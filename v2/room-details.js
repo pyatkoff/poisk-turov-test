@@ -11,6 +11,7 @@ async function decorate(t){const selected=document.getElementById('selectedTour'
 function scheduleDecorate(){if(decorateTimer)clearTimeout(decorateTimer);let tries=0;const run=async()=>{tries++;if(await decorate(lastTour))return;if(tries<20)decorateTimer=setTimeout(run,100);};decorateTimer=setTimeout(run,0);}
 window.addEventListener('v2:tour-selected',e=>{lastTour=e.detail&&e.detail.tour||lastTour;scheduleDecorate();});
 const selected=document.getElementById('selectedTour');if(selected)new MutationObserver(()=>{if(lastTour)scheduleDecorate();}).observe(selected,{childList:true,subtree:true});
-function loadTourController(){if(document.querySelector('script[data-v2-tour-controller]'))return;const s=document.createElement('script');s.src='/poisk-turov-test/v2/tour-controller.js?v=1';s.dataset.v2TourController='1';document.body.appendChild(s);}
+function addScript(src,attr,onload){const s=document.createElement('script');s.src=src;s.dataset[attr]='1';if(onload)s.addEventListener('load',onload,{once:true});document.body.appendChild(s);}
+function loadTourController(){if(window.V2Runtime){if(!document.querySelector('script[data-v2-tour-controller]'))addScript('/poisk-turov-test/v2/tour-controller-runtime.js?v=1','v2TourController');return;}if(document.querySelector('script[data-v2-runtime]'))return;addScript('/poisk-turov-test/v2/runtime.js?v=1','v2Runtime',()=>{if(!document.querySelector('script[data-v2-tour-controller]'))addScript('/poisk-turov-test/v2/tour-controller-runtime.js?v=1','v2TourController');});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadTourController,{once:true});else loadTourController();
 })();
