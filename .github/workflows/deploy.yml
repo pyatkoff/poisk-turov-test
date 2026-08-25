@@ -10,6 +10,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate active V2 JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            v2/runtime-v3.js \
+            v2/analytics.js \
+            v2/results-renderer-v3.js \
+            v2/search-continue-v5.js \
+            v2/hotel-actions-v2.js \
+            v2/room-details-v2.js \
+            v2/tour-controller-v3.js \
+            v2/tour-controller-v4.js \
+            v2/catalogs-v2.js \
+            v2/search-lifecycle-v4.js
+          do
+            node --check "$file"
+          done
       - name: Prepare SSH key
         env:
           DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -41,6 +59,12 @@ jobs:
           ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
           ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" '
             set -euo pipefail
+            root="$HOME/www/anytour.online/poisk-turov-test/v2"
+            php -l "$root/index.php" >/dev/null
+            php -l "$root/api-v2.php" >/dev/null
+            php -l "$root/lead-adapter-v2.php" >/dev/null
+            php -l "$root/analytics-config.php" >/dev/null
+            php -l "$root/form-defaults.php" >/dev/null
             page_code="$(curl -k -L -sS -o /tmp/v2.html -w "%{http_code}" --max-time 40 https://anytour.online/poisk-turov-test/v2/)"
             api_code="$(curl -k -L -sS -o /tmp/v2-health.json -w "%{http_code}" --max-time 45 "https://anytour.online/poisk-turov-test/v2/api-v2.php?action=health")"
             echo "PAGE=$page_code API=$api_code"
