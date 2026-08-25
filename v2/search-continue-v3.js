@@ -1,0 +1,13 @@
+(function(){'use strict';
+let searchId=0;
+const rt=window.V2Runtime;if(!rt){console.warn('V2 search continue: runtime unavailable');return;}
+function moreNode(){return document.getElementById('v2SearchMore');}
+function removeMore(){const n=moreNode();if(n)n.remove();}
+function render(list){const r=window.V2Results;if(!r||typeof r.render!=='function')throw new Error('Модуль результатов не загружен');r.render(Array.isArray(list)?list:[],{empty:false});}
+function ensureMore(){const results=document.getElementById('results');if(!results||!searchId||moreNode())return;const wrap=document.createElement('div');wrap.id='v2SearchMore';wrap.className='results-more';wrap.innerHTML='<button type="button" class="secondary more-search">Показать ещё варианты</button><small>Tourvisor выполнит дополнительный запрос к туроператорам</small>';results.insertAdjacentElement('afterend',wrap);wrap.querySelector('button').addEventListener('click',continueSearch);}
+async function waitComplete(){for(let i=0;i<24;i++){await new Promise(r=>setTimeout(r,1500));const s=await rt.api('search_status',{searchId});const p=Math.max(0,Math.min(100,Number(s.progress||0)));const status=document.getElementById('status');if(status)status.textContent='Ищем дополнительные предложения · '+p+'%';if(p>=100||String(s.status||'').toLowerCase()==='complete')return;}throw new Error('Tourvisor не завершил продолжение поиска вовремя');}
+async function continueSearch(){const btn=document.querySelector('#v2SearchMore button'),status=document.getElementById('status');if(!searchId||!btn)return;btn.disabled=true;btn.textContent='Ищем ещё…';try{const d=await rt.api('search_continue',{searchId});if(status)status.textContent='Запрошены дополнительные предложения'+(d&&d.requestCount?' · запросов: '+d.requestCount:'');await waitComplete();const all=await rt.api('search_results',{searchId,limit:100});render(all);if(status)status.textContent='Дополнительный поиск завершён · предложения обновлены';removeMore();ensureMore();window.dispatchEvent(new CustomEvent('v2:search-continued',{detail:{searchId,items:Array.isArray(all)?all:[]}}));}catch(e){btn.disabled=false;btn.textContent='Попробовать ещё раз';if(status)status.textContent='Не удалось продолжить поиск: '+e.message;}}
+rt.on('search_start',d=>{searchId=Number(d&&d.searchId||0);removeMore();});
+window.addEventListener('v2:search-complete',e=>{const id=Number(e.detail&&e.detail.searchId||0);if(id)searchId=id;ensureMore();});
+window.V2SearchContinue={ensureMore,version:3};
+})();
