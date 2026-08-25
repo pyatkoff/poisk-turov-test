@@ -24,7 +24,7 @@ jobs:
           rm -f "$key_file"
 
           if [[ "$raw" == *"PRIVATE KEY"* ]]; then
-            if [[ "$raw" == *'\n'* ]]; then
+            if [[ "$raw" == *'\\n'* ]]; then
               printf '%b\n' "$raw" | tr -d '\r' > "$key_file"
             else
               printf '%s\n' "$raw" | tr -d '\r' > "$key_file"
@@ -61,6 +61,21 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            SITE_ROOT="$HOME/www/anytour.online"
+            LIVE_COMPONENT="$SITE_ROOT/local/components/rhat.search/form"
+
+            if [ ! -f component/component.php ] && [ -d "$LIVE_COMPONENT" ]; then
+              mkdir -p component
+              cp "$LIVE_COMPONENT/component.php" component/component.php
+              cp "$LIVE_COMPONENT/ajax.php" component/ajax.php
+              cp "$LIVE_COMPONENT/.description.php" component/.description.php
+              cp "$LIVE_COMPONENT/.parameters.php" component/.parameters.php
+              git add component
+              git -c user.name="poisk-turov-test deploy" -c user.email="deploy@localhost" commit -m "Import live rhat.search form component"
+              git push origin main
+              echo "Imported live component into repository"
+            fi
+
             if command -v /opt/php81/bin/php >/dev/null 2>&1; then
               PHP_BIN=/opt/php81/bin/php
             else
@@ -68,32 +83,11 @@ jobs:
             fi
 
             "$PHP_BIN" -l index.php
-            if [ -f anytour/components/rhat.search/form/form/ajax.php ]; then
-              "$PHP_BIN" -l anytour/components/rhat.search/form/form/ajax.php
-            fi
-            if [ -f anytour/components/rhat.search/form/form/template.php ]; then
-              "$PHP_BIN" -l anytour/components/rhat.search/form/form/template.php
-            fi
-            if [ -f tv_api/search.php ]; then
-              "$PHP_BIN" -l tv_api/search.php
-            fi
-            if [ -f tv_api/tvapi.php ]; then
-              "$PHP_BIN" -l tv_api/tvapi.php
-            fi
-
-            SITE_ROOT="$HOME/www/anytour.online"
-            echo "--- Bitrix search component diagnostics ---"
-            for p in \
-              "$SITE_ROOT/bitrix/components/rhat.search/form" \
-              "$SITE_ROOT/local/components/rhat.search/form" \
-              "$SITE_ROOT/bitrix/templates/anytour/components/rhat.search/form/form" \
-              "$SITE_ROOT/local/templates/anytour/components/rhat.search/form/form"; do
-              if [ -e "$p" ]; then
-                echo "FOUND: $p"
-                find "$p" -maxdepth 2 -type f | sort | head -80
-              else
-                echo "MISSING: $p"
-              fi
-            done
+            [ ! -f component/component.php ] || "$PHP_BIN" -l component/component.php
+            [ ! -f component/ajax.php ] || "$PHP_BIN" -l component/ajax.php
+            [ ! -f anytour/components/rhat.search/form/form/ajax.php ] || "$PHP_BIN" -l anytour/components/rhat.search/form/form/ajax.php
+            [ ! -f anytour/components/rhat.search/form/form/template.php ] || "$PHP_BIN" -l anytour/components/rhat.search/form/form/template.php
+            [ ! -f tv_api/search.php ] || "$PHP_BIN" -l tv_api/search.php
+            [ ! -f tv_api/tvapi.php ] || "$PHP_BIN" -l tv_api/tvapi.php
 
             echo "Deployed commit: $(git rev-parse HEAD)"
