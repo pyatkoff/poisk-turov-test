@@ -1,4 +1,4 @@
-name: Audit live Bitrix template
+name: Restore production search assets
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  audit:
+  restore:
     runs-on: ubuntu-latest
     steps:
       - name: Prepare SSH private key
@@ -27,7 +27,7 @@ jobs:
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Compare initial snapshot to live Bitrix template
+      - name: Explicitly reconnect search style and script
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -36,41 +36,41 @@ jobs:
           script: |
             set -euo pipefail
             SITE="$HOME/www/anytour.online"
-            REPO="$SITE/poisk-turov-test"
-            LIVE="$SITE/bitrix/templates/anytour"
-            INITIAL_SHA="13be0bb60f1822a5342fbaaeb35dd3d4c12ecc8a"
-            cd "$REPO"
-            git fetch origin main
-            TMP="$(mktemp -d)"
-            trap 'rm -rf "$TMP"' EXIT
-            git archive "$INITIAL_SHA" anytour | tar -x -C "$TMP"
-            SNAP="$TMP/anytour"
-            echo '=== CHANGED VS INITIAL SNAPSHOT ==='
-            changed=0
-            while IFS= read -r -d '' src; do
-              rel="${src#$SNAP/}"
-              dst="$LIVE/$rel"
-              if [ -f "$dst" ]; then
-                a="$(sha256sum "$src" | awk '{print $1}')"
-                b="$(sha256sum "$dst" | awk '{print $1}')"
-                if [ "$a" != "$b" ]; then
-                  echo "DIFF $rel"
-                  changed=$((changed+1))
-                fi
-              else
-                echo "MISSING $rel"
-                changed=$((changed+1))
-              fi
-            done < <(find "$SNAP" -type f -print0)
-            echo "CHANGED_COUNT=$changed"
-            echo '=== KEY LIVE FILES ==='
-            for rel in header.php footer.php style.css template_styles.css components/rhat.search/form/form/template.php components/rhat.search/form/form/style.css components/rhat.search/form/form/script.js; do
-              if [ -f "$LIVE/$rel" ]; then printf '%s ' "$rel"; stat -c 'size=%s mtime=%y' "$LIVE/$rel"; fi
-            done
-            echo '=== PAGE CSS LINKS ==='
+            TPL="$SITE/bitrix/templates/anytour/components/rhat.search/form/form/template.php"
+            BACKUP="$HOME/backups/template.php-before-asset-fix-$(date +%Y%m%d-%H%M%S)"
+            mkdir -p "$HOME/backups"
+            cp -a "$TPL" "$BACKUP"
+            echo "BACKUP=$BACKUP"
+            python3 - "$TPL" <<'PY'
+            import sys
+            p=sys.argv[1]
+            s=open(p,encoding='utf-8').read()
+            css='''<link href="<?=$templateFolder. '/style.css?v1.004'?>" rel="stylesheet">'''
+            js='''<script src="<?=$templateFolder?>/script.js"></script>'''
+            anchor='''<link href="<?=$templateFolder. '/slick/slick.css?v1.001'?>" rel="stylesheet">'''
+            if css not in s.replace('<?/*?>','').replace('<?*/?>',''):
+                pass
+            # Add explicit live includes outside the old commented blocks if absent as live lines.
+            live_css='''<link href="<?=$templateFolder. '/style.css?v1.005'?>" rel="stylesheet">'''
+            live_js='''<script src="<?=$templateFolder?>/script.js?v1.001"></script>'''
+            if live_css not in s:
+                s=s.replace(anchor, anchor+'\n'+live_css, 1)
+            if live_js not in s:
+                marker='''<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key='''
+                pos=s.find(marker)
+                if pos>=0:
+                    s=s[:pos]+live_js+'\n'+s[pos:]
+                else:
+                    s=s.replace(anchor+'\n'+live_css, anchor+'\n'+live_css+'\n'+live_js, 1)
+            open(p,'w',encoding='utf-8').write(s)
+            PY
+            if command -v /opt/php81/bin/php >/dev/null 2>&1; then PHP_BIN=/opt/php81/bin/php; else PHP_BIN=php; fi
+            "$PHP_BIN" -l "$TPL"
             PAGE="$(mktemp)"
-            curl -k -L -sS --max-time 30 https://anytour.online/poisk-turov/ -o "$PAGE"
-            grep -oE 'href="[^"]+\.css[^\"]*"' "$PAGE" | sort -u || true
-            echo '=== PAGE JS LINKS RHAT/ANYTOUR ==='
-            grep -oE 'src="[^"]+\.js[^\"]*"' "$PAGE" | grep -E 'anytour|rhat.search' | sort -u || true
+            CODE="$(curl -k -L -sS -o "$PAGE" -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
+            echo "HTTP_CODE=$CODE"
+            test "$CODE" = "200"
+            grep -q '/bitrix/templates/anytour/components/rhat.search/form/form/style.css?v1.005' "$PAGE"
+            grep -q '/bitrix/templates/anytour/components/rhat.search/form/form/script.js?v1.001' "$PAGE"
+            echo 'SEARCH_ASSETS=RESTORED'
             rm -f "$PAGE"
