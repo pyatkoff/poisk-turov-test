@@ -42,9 +42,16 @@ jobs:
           ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" '
             set -euo pipefail
             page_code="$(curl -k -L -sS -o /tmp/v2.html -w "%{http_code}" --max-time 40 https://anytour.online/poisk-turov-test/v2/)"
-            api_code="$(curl -k -L -sS -o /tmp/v2-health.json -w "%{http_code}" --max-time 45 "https://anytour.online/poisk-turov-test/v2/api.php?action=health")"
+            api_code="$(curl -k -L -sS -o /tmp/v2-health.json -w "%{http_code}" --max-time 45 "https://anytour.online/poisk-turov-test/v2/api-v2.php?action=health")"
             echo "PAGE=$page_code API=$api_code"
             cat /tmp/v2-health.json
+            test "$page_code" = "200"
+            test "$api_code" = "200"
             grep -q "Найти тур" /tmp/v2.html
-            grep -q "tourvisor-direct" /tmp/v2-health.json
+            grep -q "api-v2.php" /tmp/v2.html
+            grep -q "runtime-v3.js" /tmp/v2.html
+            grep -Eq "metrikaCounter:[1-9][0-9]*" /tmp/v2.html
+            ! grep -q "METRIKA_OAUTH_TOKEN" /tmp/v2.html
+            grep -q '"source":"tourvisor-direct"' /tmp/v2-health.json
+            grep -q '"gatewayVersion":2' /tmp/v2-health.json
           '
