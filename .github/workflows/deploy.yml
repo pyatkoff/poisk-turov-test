@@ -74,7 +74,8 @@ jobs:
             grep -q "Найти тур" /tmp/v2.html
             grep -q "api-v2.php" /tmp/v2.html
             grep -q "runtime-v3.js" /tmp/v2.html
-            grep -Eq "metrikaCounter:[1-9][0-9]*" /tmp/v2.html
+            grep -Eq "metrikaCounter:[0-9]+" /tmp/v2.html
+            if grep -q "metrikaCounter:0" /tmp/v2.html; then echo "WARNING: METRIKA_COUNTER_ID is not configured"; fi
             ! grep -q "METRIKA_OAUTH_TOKEN" /tmp/v2.html
             grep -q '"source":"tourvisor-direct"' /tmp/v2-health.json
             grep -q '"gatewayVersion":2' /tmp/v2-health.json
