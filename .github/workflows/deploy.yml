@@ -1,12 +1,16 @@
-name: Restore production search assets
+name: Deploy tour search test
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: poisk-turov-test-deploy
+  cancel-in-progress: false
+
 jobs:
-  restore:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Prepare SSH private key
@@ -19,15 +23,23 @@ jobs:
           raw="$DEPLOY_SSH_KEY_VALUE"
           rm -f "$key_file"
           if [[ "$raw" == *"PRIVATE KEY"* ]]; then
-            if [[ "$raw" == *'\\n'* ]]; then printf '%b\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; fi
+            if [[ "$raw" == *'\\n'* ]]; then
+              printf '%b\n' "$raw" | tr -d '\r' > "$key_file"
+            else
+              printf '%s\n' "$raw" | tr -d '\r' > "$key_file"
+            fi
           else
             decoded="$(printf '%s' "$raw" | base64 --decode 2>/dev/null || true)"
-            if [[ "$decoded" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$decoded" | tr -d '\r' > "$key_file"; else exit 1; fi
+            if [[ "$decoded" == *"PRIVATE KEY"* ]]; then
+              printf '%s\n' "$decoded" | tr -d '\r' > "$key_file"
+            else
+              exit 1
+            fi
           fi
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Explicitly reconnect search style and script
+      - name: Deploy test directory only
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -35,42 +47,15 @@ jobs:
           key_path: ${{ runner.temp }}/deploy_key
           script: |
             set -euo pipefail
-            SITE="$HOME/www/anytour.online"
-            TPL="$SITE/bitrix/templates/anytour/components/rhat.search/form/form/template.php"
-            BACKUP="$HOME/backups/template.php-before-asset-fix-$(date +%Y%m%d-%H%M%S)"
-            mkdir -p "$HOME/backups"
-            cp -a "$TPL" "$BACKUP"
-            echo "BACKUP=$BACKUP"
-            python3 - "$TPL" <<'PY'
-            import sys
-            p=sys.argv[1]
-            s=open(p,encoding='utf-8').read()
-            css='''<link href="<?=$templateFolder. '/style.css?v1.004'?>" rel="stylesheet">'''
-            js='''<script src="<?=$templateFolder?>/script.js"></script>'''
-            anchor='''<link href="<?=$templateFolder. '/slick/slick.css?v1.001'?>" rel="stylesheet">'''
-            if css not in s.replace('<?/*?>','').replace('<?*/?>',''):
-                pass
-            # Add explicit live includes outside the old commented blocks if absent as live lines.
-            live_css='''<link href="<?=$templateFolder. '/style.css?v1.005'?>" rel="stylesheet">'''
-            live_js='''<script src="<?=$templateFolder?>/script.js?v1.001"></script>'''
-            if live_css not in s:
-                s=s.replace(anchor, anchor+'\n'+live_css, 1)
-            if live_js not in s:
-                marker='''<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key='''
-                pos=s.find(marker)
-                if pos>=0:
-                    s=s[:pos]+live_js+'\n'+s[pos:]
-                else:
-                    s=s.replace(anchor+'\n'+live_css, anchor+'\n'+live_css+'\n'+live_js, 1)
-            open(p,'w',encoding='utf-8').write(s)
-            PY
+            TEST_DIR="$HOME/www/anytour.online/poisk-turov-test"
+            cd "$TEST_DIR"
+            git fetch origin main
+            git reset --hard origin/main
             if command -v /opt/php81/bin/php >/dev/null 2>&1; then PHP_BIN=/opt/php81/bin/php; else PHP_BIN=php; fi
-            "$PHP_BIN" -l "$TPL"
-            PAGE="$(mktemp)"
-            CODE="$(curl -k -L -sS -o "$PAGE" -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
-            echo "HTTP_CODE=$CODE"
-            test "$CODE" = "200"
-            grep -q '/bitrix/templates/anytour/components/rhat.search/form/form/style.css?v1.005' "$PAGE"
-            grep -q '/bitrix/templates/anytour/components/rhat.search/form/form/script.js?v1.001' "$PAGE"
-            echo 'SEARCH_ASSETS=RESTORED'
-            rm -f "$PAGE"
+            "$PHP_BIN" -l index.php
+            TEST_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov-test/)"
+            PROD_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
+            echo "TEST_HTTP_CODE=$TEST_CODE PROD_HTTP_CODE=$PROD_CODE"
+            test "$TEST_CODE" = "200"
+            test "$PROD_CODE" = "200"
+            echo "DEPLOY_SCOPE=$TEST_DIR"
