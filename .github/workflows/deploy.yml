@@ -26,7 +26,7 @@ jobs:
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Read Bitrix site/template bindings only
+      - name: Read template bindings for o1 only
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -40,17 +40,11 @@ jobs:
             "$phpbin" -d display_errors=1 -r '
               $root="'"$SITE"'";
               $settings=require $root."/bitrix/.settings.php";
-              $c=$settings["connections"]["value"]["default"] ?? null;
-              if(!$c){fwrite(STDERR,"NO_DB_CONFIG\n"); exit(2);}
+              $c=$settings["connections"]["value"]["default"];
               $db=new mysqli($c["host"],$c["login"],$c["password"],$c["database"]);
-              if($db->connect_errno){fwrite(STDERR,"DB_CONNECT_FAIL\n"); exit(3);}
               $db->set_charset("utf8mb4");
-              echo "=== SITES ===\n";
-              $r=$db->query("SELECT LID,ACTIVE,SORT,NAME,DIR,SERVER_NAME FROM b_lang ORDER BY SORT,LID");
-              while($x=$r->fetch_assoc()){echo implode(" | ",$x)."\n";}
-              echo "=== SITE TEMPLATE BINDINGS ===\n";
-              $r=$db->query("SELECT SITE_ID,SORT,CONDITION,TEMPLATE FROM b_site_template ORDER BY SITE_ID,SORT");
-              while($x=$r->fetch_assoc()){echo "SITE_ID={$x["SITE_ID"]} SORT={$x["SORT"]} TEMPLATE={$x["TEMPLATE"]} CONDITION={$x["CONDITION"]}\n";}
+              $r=$db->query("SELECT SITE_ID,SORT,`CONDITION` AS COND,TEMPLATE FROM b_site_template WHERE SITE_ID=\"o1\" ORDER BY SORT");
+              while($x=$r->fetch_assoc()){echo "SITE_ID={$x["SITE_ID"]} SORT={$x["SORT"]} TEMPLATE={$x["TEMPLATE"]} CONDITION={$x["COND"]}\n";}
               $db->close();
             '
-            echo 'READ_ONLY_TEMPLATE_BINDING_AUDIT=OK'
+            echo 'READ_ONLY_O1_BINDING_AUDIT=OK'
