@@ -12,6 +12,6 @@ $APPLICATION->AddHeadString('<link rel="stylesheet" href="/poisk-turov-test/temp
 require __DIR__ . '/../site-template/header.php';
 ?>
 <link rel="stylesheet" href="/poisk-turov-test/template/form-overrides.css?v=2">
-<link rel="stylesheet" href="/poisk-turov-test/template/form-layout-fixes.css?v=3">
+<link rel="stylesheet" href="/poisk-turov-test/template/form-layout-fixes.css?v=4">
 <link rel="stylesheet" href="/poisk-turov-test/template/card-overrides.css?v=3">
-<script src="/poisk-turov-test/template/layout-fixes.js?v=2" defer></script>
+<script src="/poisk-turov-test/template/layout-fixes.js?v=3" defer></script>
