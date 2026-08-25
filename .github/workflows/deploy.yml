@@ -48,12 +48,3 @@ jobs:
             grep -q "Найти тур" /tmp/v2.html
             grep -q "tourvisor-direct" /tmp/v2-health.json
           '
-      - name: Audit V2 private config names
-        env:
-          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
-          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" 'php -r '\''$cfg=getenv("HOME")."/www/anytour.online/poisk-turov-test/v2/config.php"; $beforeConsts=get_defined_constants(true)["user"]??[]; $beforeVars=array_keys(get_defined_vars()); if (is_file($cfg)) require $cfg; $afterConsts=get_defined_constants(true)["user"]??[]; foreach (array_diff_key($afterConsts,$beforeConsts) as $k=>$v) echo "CONST:".$k.":".gettype($v).PHP_EOL; foreach (array_diff(array_keys(get_defined_vars()),$beforeVars) as $k) { if (in_array($k,["cfg","beforeConsts","beforeVars","afterConsts","k","v"],true)) continue; echo "VAR:".$k.":".gettype($$k).PHP_EOL; }'\'''
