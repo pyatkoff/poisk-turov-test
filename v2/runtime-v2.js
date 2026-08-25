@@ -1,0 +1,12 @@
+(function(){'use strict';
+if(window.V2RuntimeV2)return;
+const listeners=new Map(),state={searchId:0},baseFetch=window.fetch.bind(window),DEFAULT_TIMEOUT=20000;
+function actionFrom(input){try{const raw=typeof input==='string'?input:(input&&input.url)||'';if(!raw)return'';return new URL(raw,location.href).searchParams.get('action')||'';}catch(e){return'';}}
+function emit(action,data,response){const set=listeners.get(action);if(!set)return;set.forEach(fn=>{try{fn(data,response);}catch(e){console.warn('V2Runtime listener',action,e);}});}
+async function observedFetch(input,init){const action=actionFrom(input),response=await baseFetch(input,init);if(action){response.clone().json().then(data=>{if(action==='search_start'&&data)state.searchId=Number(data.searchId||0);emit(action,data,response);}).catch(()=>{});}return response;}
+function build(action,params){const q=new URLSearchParams({action});Object.entries(params||{}).forEach(([k,v])=>{if(v===''||v===null||v===undefined)return;if(Array.isArray(v)){v.forEach(x=>{if(x!==''&&x!==null&&x!==undefined)q.append(k+'[]',String(x));});}else q.append(k,String(v));});return (window.V2_CONFIG&&window.V2_CONFIG.api||'api.php')+'?'+q.toString();}
+async function api(action,params,options){const opts=Object.assign({credentials:'same-origin'},options||{}),timeout=Number(opts.timeout||DEFAULT_TIMEOUT);delete opts.timeout;let controller=null,timer=0;if(!opts.signal&&typeof AbortController!=='undefined'&&timeout>0){controller=new AbortController();opts.signal=controller.signal;timer=setTimeout(()=>controller.abort(),timeout);}try{const r=await observedFetch(build(action,params),opts),d=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(d&&d.error||('API HTTP '+r.status));e.status=r.status;e.data=d;e.code='HTTP_ERROR';throw e;}return d;}catch(e){if(e&&e.name==='AbortError'){const x=new Error('Tourvisor не ответил вовремя');x.code='TIMEOUT';x.timeout=timeout;throw x;}throw e;}finally{if(timer)clearTimeout(timer);}}
+function on(action,fn){if(!listeners.has(action))listeners.set(action,new Set());listeners.get(action).add(fn);return()=>{const set=listeners.get(action);if(set)set.delete(fn);};}
+function setSearchId(id){state.searchId=Number(id||0);}
+window.V2RuntimeV2={api,on,state,setSearchId,build,fetch:observedFetch,version:2,defaultTimeout:DEFAULT_TIMEOUT};
+})();
