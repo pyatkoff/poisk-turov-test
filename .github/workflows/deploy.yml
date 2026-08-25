@@ -17,6 +17,7 @@ jobs:
           for file in \
             v2/runtime-v3.js \
             v2/analytics.js \
+            v2/analytics-v3.js \
             v2/results-renderer-v3.js \
             v2/search-continue-v5.js \
             v2/hotel-actions-v2.js \
@@ -59,24 +60,30 @@ jobs:
           ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
           ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" '
             set -euo pipefail
+            fail(){ echo "VERIFY_FAIL:$1"; exit 1; }
             root="$HOME/www/anytour.online/poisk-turov-test/v2"
-            php -l "$root/index.php" >/dev/null
-            php -l "$root/api-v2.php" >/dev/null
-            php -l "$root/lead-adapter-v2.php" >/dev/null
-            php -l "$root/analytics-config.php" >/dev/null
-            php -l "$root/form-defaults.php" >/dev/null
+            php -l "$root/index.php" >/dev/null || fail php_index
+            php -l "$root/api-v2.php" >/dev/null || fail php_api
+            php -l "$root/lead-adapter-v2.php" >/dev/null || fail php_lead
+            php -l "$root/analytics-config.php" >/dev/null || fail php_analytics_config
+            php -l "$root/form-defaults.php" >/dev/null || fail php_form_defaults
             page_code="$(curl -k -L -sS -o /tmp/v2.html -w "%{http_code}" --max-time 40 https://anytour.online/poisk-turov-test/v2/)"
             api_code="$(curl -k -L -sS -o /tmp/v2-health.json -w "%{http_code}" --max-time 45 "https://anytour.online/poisk-turov-test/v2/api-v2.php?action=health")"
             echo "PAGE=$page_code API=$api_code"
             cat /tmp/v2-health.json
-            test "$page_code" = "200"
-            test "$api_code" = "200"
-            grep -q "Найти тур" /tmp/v2.html
-            grep -q "api-v2.php" /tmp/v2.html
-            grep -q "runtime-v3.js" /tmp/v2.html
-            grep -Eq "metrikaCounter:[0-9]+" /tmp/v2.html
-            if grep -q "metrikaCounter:0" /tmp/v2.html; then echo "WARNING: METRIKA_COUNTER_ID is not configured"; fi
-            ! grep -q "METRIKA_OAUTH_TOKEN" /tmp/v2.html
-            grep -q '"source":"tourvisor-direct"' /tmp/v2-health.json
-            grep -q '"gatewayVersion":2' /tmp/v2-health.json
+            test "$page_code" = "200" || fail page_http
+            test "$api_code" = "200" || fail api_http
+            grep -q "Найти тур" /tmp/v2.html || fail page_marker
+            grep -q "api-v2.php" /tmp/v2.html || fail active_api
+            grep -q "runtime-v3.js" /tmp/v2.html || fail active_runtime
+            if grep -Eq "metrikaCounter[[:space:]]*:[[:space:]]*[1-9][0-9]*" /tmp/v2.html; then
+              echo "METRIKA_COUNTER=configured"
+            elif grep -Eq "metrikaCounter[[:space:]]*:[[:space:]]*0" /tmp/v2.html; then
+              echo "WARNING: METRIKA_COUNTER_ID is not configured"
+            else
+              fail metrika_config_shape
+            fi
+            ! grep -q "METRIKA_OAUTH_TOKEN" /tmp/v2.html || fail oauth_exposed
+            grep -q '"source":"tourvisor-direct"' /tmp/v2-health.json || fail api_source
+            grep -q '"gatewayVersion":2' /tmp/v2-health.json || fail api_version
           '
