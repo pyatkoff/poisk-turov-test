@@ -22,4 +22,4 @@ require __DIR__ . '/../site-template/header.php';
 <script src="/poisk-turov-test/template/layout-fixes.js?v=7" defer></script>
 <script src="/poisk-turov-test/template/results-controls.js?v=2" defer></script>
 <script src="/poisk-turov-test/template/tour-choice-enhance.js?v=1" defer></script>
-<script src="/poisk-turov-test/template/hotel-toggle-fix.js?v=1" defer></script>
+<script src="/poisk-turov-test/template/hotel-toggle-fix.js?v=2" defer></script>
