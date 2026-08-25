@@ -2,8 +2,9 @@
 require($_SERVER['DOCUMENT_ROOT'].'/bitrix/modules/main/include/prolog_before.php');
 require_once($_SERVER['DOCUMENT_ROOT'].'/site_conf.php');
 require_once(dirname(__DIR__).'/tv_api/tvapi.php');
+require_once(__DIR__.'/assets.php');
 $dataFilter=['COUNTRY'=>4];if(!empty($params['TV_CITY']))$dataFilter['FROM']=$params['TV_CITY'];if(isset($_GET['from']))$dataFilter['FROM']=(int)$_GET['from'];if(isset($_GET['country']))$dataFilter['COUNTRY']=(int)$_GET['country'];$form=TvApi::prepareForm($dataFilter);function e($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}$from=(int)($form['from']??1);$country=(int)($dataFilter['COUNTRY']??4);
-?><!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Поиск туров — V2</title><link rel="stylesheet" href="/poisk-turov-test/v2/app.css?v=6"><link rel="stylesheet" href="/poisk-turov-test/v2/enhancements.css?v=3"><link rel="stylesheet" href="/poisk-turov-test/v2/room-details.css?v=2"></head><body>
+?><!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Поиск туров — V2</title><link rel="stylesheet" href="<?=e(v2_asset('app.css'))?>"><link rel="stylesheet" href="<?=e(v2_asset('enhancements.css'))?>"><link rel="stylesheet" href="<?=e(v2_asset('room-details.css'))?>"></head><body>
 <main class="v2-shell">
 <header class="v2-head"><div><span class="eyebrow">ANYTOUR · V2</span><h1>Найдём тур под ваши планы</h1><p>Сравниваем предложения туроператоров и показываем рейсы до отправки заявки.</p></div><div class="head-badge">Прямой Tourvisor API</div></header>
 <form id="tourSearch" class="search-card" autocomplete="off"><?=bitrix_sessid_post()?>
@@ -41,4 +42,4 @@ $dataFilter=['COUNTRY'=>4];if(!empty($params['TV_CITY']))$dataFilter['FROM']=$pa
 <section id="resultsTools" class="results-tools" hidden><div><strong>Предложения</strong><span id="resultSummary">Актуальные варианты</span></div><label>Сортировка <select id="sortResults"><option value="price">Сначала дешевле</option><option value="rating">По рейтингу</option><option value="stars">По звёздам</option></select></label></section>
 <section id="results" class="results"></section><section id="selectedTour" class="selected-tour" hidden></section>
 </main>
-<script>window.V2_CONFIG={api:'/poisk-turov-test/v2/api.php'};</script><script src="/poisk-turov-test/v2/runtime.js?v=1"></script><script src="/poisk-turov-test/v2/search-continue.js?v=2"></script><script src="/poisk-turov-test/v2/hotel-actions-runtime.js?v=1"></script><script src="/poisk-turov-test/v2/room-details-runtime.js?v=1"></script><script src="/poisk-turov-test/v2/tour-controller-runtime.js?v=1"></script><script src="/poisk-turov-test/v2/direct-search.js?v=10"></script></body></html>
+<script>window.V2_CONFIG={api:'/poisk-turov-test/v2/api.php'};</script><script src="<?=e(v2_asset('runtime.js'))?>"></script><script src="<?=e(v2_asset('search-continue.js'))?>"></script><script src="<?=e(v2_asset('hotel-actions-runtime.js'))?>"></script><script src="<?=e(v2_asset('room-details-runtime.js'))?>"></script><script src="<?=e(v2_asset('tour-controller-runtime.js'))?>"></script><script src="<?=e(v2_asset('direct-search.js'))?>"></script></body></html>
