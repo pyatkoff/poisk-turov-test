@@ -1,0 +1,43 @@
+/* Test-only explicit action for each concrete tour variant. */
+.hotel_tours .airTourPrice {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    gap: 8px !important;
+}
+
+.testChooseTourBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 132px;
+    min-height: 40px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--color-main);
+    color: #fff;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.testChooseTourBtn:hover {
+    filter: brightness(.97);
+}
+
+@media (max-width: 700px) {
+    .hotel_tours .airTourPrice {
+        align-items: stretch !important;
+        text-align: left !important;
+    }
+
+    .testChooseTourBtn {
+        width: 100%;
+        min-height: 44px;
+    }
+}
