@@ -1,80 +1,69 @@
-/* Test-only alignment fixes for the existing tour search form. */
-
+/* Test-only form alignment fixes. */
 .searchTop {
-    grid-template-columns: 1.05fr 1fr 1.15fr 1fr 1fr !important;
-    align-items: end;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    align-items: end !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 .searchTop > #fromWrap,
 .searchTop > .searchQuadColLeft,
 .searchTop > .searchQuadColCenter,
 .searchTop > .searchQuadColRight {
-    min-width: 0;
-}
-
-#fromWrap {
-    display: block !important;
-}
-
-#fromWrap .searchLabel {
-    display: block !important;
+    float: none !important;
     width: auto !important;
-    margin: 0 0 7px !important;
-    line-height: 1.2 !important;
-}
-
-#fromWrap .searchSelect {
-    display: block !important;
-    width: 100% !important;
-    min-height: 50px !important;
+    min-width: 0 !important;
+    max-width: none !important;
     margin: 0 !important;
+    box-sizing: border-box !important;
 }
 
-#fromWrap .searchSelectText {
-    display: block !important;
+.searchTop > #fromWrap {
+    grid-column: auto !important;
+}
+
+.searchTop .searchColInner {
+    min-width: 0 !important;
+}
+
+.searchTop .searchLabel {
+    min-height: 20px !important;
+    margin-bottom: 7px !important;
+}
+
+.searchTop .searchSelect,
+.searchTop .searchInput,
+.searchTop .sInputWrap {
     width: 100% !important;
-    box-sizing: border-box;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
 }
 
 #date_from_till_block,
 #nights-from_till_block,
-#peoplePick {
-    display: flex !important;
-    align-items: center;
-    width: 100%;
-    box-sizing: border-box;
+#peoplePick,
+#fromWrap .searchSelectText,
+#countryWrap .searchSelectText {
     white-space: nowrap !important;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-#date_from_till_block {
-    line-height: 1.2 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 .searchColLeft,
 .searchColCenter,
 .searchColRight {
-    box-sizing: border-box;
+    float: left !important;
+    width: 33.333333% !important;
+    box-sizing: border-box !important;
 }
 
 .searchColLeft .searchColInner,
 .searchColCenter .searchColInner,
 .searchColRight .searchColInner {
-    min-height: 440px;
-}
-
-.additionalFiltersToggle {
-    display: none;
-}
-
-/* Old template gives #hotelByName its own box/positioning. Neutralize it. */
-#hotelWrap {
-    position: static !important;
-    overflow: visible !important;
+    min-height: 560px;
+    box-sizing: border-box !important;
 }
 
 #hotelByName {
@@ -85,8 +74,8 @@
     bottom: auto !important;
     left: auto !important;
     transform: none !important;
-    float: none !important;
     clear: both !important;
+    float: none !important;
     display: block !important;
     width: 100% !important;
     height: auto !important;
@@ -95,7 +84,6 @@
     margin: 10px 0 12px !important;
     padding: 0 !important;
     border: 0 !important;
-    border-radius: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
     overflow: visible !important;
@@ -258,21 +246,47 @@
         white-space: nowrap !important;
     }
 
+    .searchColLeft,
+    .searchColCenter,
+    .searchColRight {
+        float: none !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .searchColLeft .searchColInner,
+    .searchColCenter .searchColInner,
+    .searchColRight .searchColInner {
+        width: 100% !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        height: auto !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
     .additionalFiltersToggle {
         display: flex;
         align-items: center;
         justify-content: space-between;
         width: 100%;
-        min-height: 50px;
-        margin: 4px 0 2px;
-        padding: 0 16px;
+        min-height: 40px;
+        margin: 8px 0 6px;
+        padding: 0 12px;
         border: 1px solid #d9dde3;
-        border-radius: 12px;
+        border-radius: 9px;
         background: #fff;
-        color: #253044;
+        color: #4b5563;
         font: inherit;
-        font-size: 16px;
-        font-weight: 600;
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.2;
         text-align: left;
         box-sizing: border-box;
         cursor: pointer;
@@ -280,8 +294,8 @@
 
     .additionalFiltersArrow {
         display: inline-block;
-        margin-left: 12px;
-        font-size: 22px;
+        margin-left: 8px;
+        font-size: 18px;
         line-height: 1;
         transition: transform .2s ease;
     }
