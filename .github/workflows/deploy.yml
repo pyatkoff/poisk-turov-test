@@ -1,4 +1,4 @@
-name: Deploy tour search test
+name: Restore original tour search template
 
 on:
   push:
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  restore:
     runs-on: ubuntu-latest
     steps:
       - name: Prepare SSH private key
@@ -40,30 +40,60 @@ jobs:
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Deploy to poisk-turov-test
+      - name: Restore production Bitrix search template
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key_path: ${{ runner.temp }}/deploy_key
           script: |
-            set -e
+            set -euo pipefail
             SITE_ROOT="$HOME/www/anytour.online"
+            REPO="$SITE_ROOT/poisk-turov-test"
+            PROD_TEMPLATE="$SITE_ROOT/bitrix/templates/anytour/components/rhat.search/form/form"
+            INITIAL_SHA="13be0bb60f1822a5342fbaaeb35dd3d4c12ecc8a"
+            SNAPSHOT_PATH="anytour/components/rhat.search/form/form"
 
-            # Remove only artifacts created for the isolated test component.
-            # Production rhat.search files are not touched.
+            cd "$REPO"
+            git fetch origin main
+            if ! git cat-file -e "${INITIAL_SHA}^{commit}" 2>/dev/null; then
+              git fetch origin "$INITIAL_SHA"
+            fi
+            git cat-file -e "${INITIAL_SHA}^{commit}"
+
+            BACKUP_ROOT="$HOME/backups"
+            mkdir -p "$BACKUP_ROOT"
+            BACKUP="$BACKUP_ROOT/rhat-search-form-before-restore-$(date +%Y%m%d-%H%M%S)"
+            if [ -d "$PROD_TEMPLATE" ]; then
+              cp -a "$PROD_TEMPLATE" "$BACKUP"
+              echo "BACKUP=$BACKUP"
+            fi
+
+            TMP="$(mktemp -d)"
+            trap 'rm -rf "$TMP"' EXIT
+            git archive "$INITIAL_SHA" "$SNAPSHOT_PATH" | tar -x -C "$TMP"
+            test -f "$TMP/$SNAPSHOT_PATH/template.php"
+            test -f "$TMP/$SNAPSHOT_PATH/style.css"
+            test -f "$TMP/$SNAPSHOT_PATH/script.js"
+            test -f "$TMP/$SNAPSHOT_PATH/ajax.php"
+
+            rm -rf "$PROD_TEMPLATE"
+            mkdir -p "$(dirname "$PROD_TEMPLATE")"
+            cp -a "$TMP/$SNAPSHOT_PATH" "$PROD_TEMPLATE"
+
+            # Remove only temporary test artifacts created during this work.
             rm -rf "$SITE_ROOT/local/components/rhat.search.test"
             rm -rf "$SITE_ROOT/local/templates/anytour/components/rhat.search.test"
             rm -rf "$SITE_ROOT/bitrix/templates/anytour/components/rhat.search.test"
 
-            cd "$SITE_ROOT/poisk-turov-test"
-            git fetch origin main
-            git reset --hard origin/main
-
             if command -v /opt/php81/bin/php >/dev/null 2>&1; then PHP_BIN=/opt/php81/bin/php; else PHP_BIN=php; fi
-            "$PHP_BIN" -l index.php
+            "$PHP_BIN" -l "$PROD_TEMPLATE/template.php"
+            "$PHP_BIN" -l "$PROD_TEMPLATE/ajax.php"
 
-            PROD_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
+            PROD_HTML="$(mktemp)"
+            PROD_CODE="$(curl -k -L -sS -o "$PROD_HTML" -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
             echo "PROD_HTTP_CODE=$PROD_CODE"
             test "$PROD_CODE" = "200"
-            echo "Production search untouched; test artifacts removed"
+            grep -q '/bitrix/templates/anytour/components/rhat.search/form/form/' "$PROD_HTML"
+            echo "PRODUCTION_TEMPLATE_RESTORED_FROM=$INITIAL_SHA"
+            rm -f "$PROD_HTML"
