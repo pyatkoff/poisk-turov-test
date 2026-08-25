@@ -1,4 +1,4 @@
-name: Audit tour search backups
+name: Fast audit original Bitrix template
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: poisk-turov-test-deploy
-  cancel-in-progress: false
+  group: poisk-turov-fast-audit
+  cancel-in-progress: true
 
 jobs:
   audit:
@@ -23,24 +23,15 @@ jobs:
           raw="$DEPLOY_SSH_KEY_VALUE"
           rm -f "$key_file"
           if [[ "$raw" == *"PRIVATE KEY"* ]]; then
-            if [[ "$raw" == *'\\n'* ]]; then
-              printf '%b\n' "$raw" | tr -d '\r' > "$key_file"
-            else
-              printf '%s\n' "$raw" | tr -d '\r' > "$key_file"
-            fi
+            if [[ "$raw" == *'\\n'* ]]; then printf '%b\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; fi
           else
             decoded="$(printf '%s' "$raw" | base64 --decode 2>/dev/null || true)"
-            if [[ "$decoded" == *"PRIVATE KEY"* ]]; then
-              printf '%s\n' "$decoded" | tr -d '\r' > "$key_file"
-            else
-              echo "DEPLOY_SSH_KEY is not a recognized private-key encoding"
-              exit 1
-            fi
+            if [[ "$decoded" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$decoded" | tr -d '\r' > "$key_file"; else exit 1; fi
           fi
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Read-only audit of production template and backups
+      - name: Fast read-only audit
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -48,21 +39,27 @@ jobs:
           key_path: ${{ runner.temp }}/deploy_key
           script: |
             set -u
-            SITE_ROOT="$HOME/www/anytour.online"
-            PROD="$SITE_ROOT/bitrix/templates/anytour/components/rhat.search/form/form"
-            echo '=== CURRENT PROD ==='
-            find "$PROD" -maxdepth 2 -type f -printf '%TY-%Tm-%Td %TH:%TM:%TS %s %p\n' 2>/dev/null | sort
-            echo '=== CURRENT CHECKSUMS ==='
-            for f in template.php style.css script.js ajax.php; do
-              if [ -f "$PROD/$f" ]; then sha256sum "$PROD/$f"; fi
+            SITE="$HOME/www/anytour.online"
+            BASE="$SITE/bitrix/templates/anytour/components/rhat.search"
+            PROD="$BASE/form/form"
+            echo '=== PROD FILES ==='
+            ls -la --time-style=long-iso "$PROD" 2>&1 || true
+            echo '=== RHAT TREE ==='
+            find "$BASE" -maxdepth 5 -printf '%y %TY-%Tm-%Td %TH:%TM %s %p\n' 2>/dev/null | sort | head -400
+            echo '=== BACKUP ROOT ==='
+            ls -la --time-style=long-iso "$HOME/backups" 2>&1 || true
+            echo '=== OUR BACKUP DIRS + FILE SIZES ==='
+            for d in "$HOME"/backups/rhat-search-form-*; do
+              [ -d "$d" ] || continue
+              echo "--- $d ---"
+              ls -la --time-style=long-iso "$d" 2>&1 || true
+              for f in template.php style.css script.js ajax.php; do
+                [ -f "$d/$f" ] && { wc -c "$d/$f"; sha256sum "$d/$f"; }
+              done
             done
-            echo '=== HOME BACKUPS ==='
-            find "$HOME/backups" -maxdepth 3 \( -type d -o -type f \) -iname '*rhat*' -o -iname '*search*' 2>/dev/null | sort | head -500
-            echo '=== LIKELY TEMPLATE COPIES UNDER HOME ==='
-            find "$HOME" -type f -path '*/rhat.search/form/form/template.php' -printf '%TY-%Tm-%Td %TH:%TM:%TS %s %p\n' 2>/dev/null | sort | head -200
-            echo '=== LIKELY TEMPLATE COPIES UNDER SITE ==='
-            find "$SITE_ROOT" -type f -path '*/rhat.search/form/form/template.php' -printf '%TY-%Tm-%Td %TH:%TM:%TS %s %p\n' 2>/dev/null | sort | head -200
-            echo '=== BACKUP TEMPLATE HASHES ==='
-            find "$HOME/backups" -type f -name template.php 2>/dev/null | while read -r f; do
-              case "$f" in *rhat*|*search*) printf '%s  ' "$f"; sha256sum "$f" | awk '{print $1}';; esac
-            done | sort
+            echo '=== PROD KEY FILE SIZES/HASHES ==='
+            for f in template.php style.css script.js ajax.php; do
+              [ -f "$PROD/$f" ] && { wc -c "$PROD/$f"; sha256sum "$PROD/$f"; }
+            done
+            echo '=== NEARBY BACKUP-NAMED FILES ==='
+            find "$SITE/bitrix/templates/anytour" -maxdepth 8 -type f \( -name '*.bak' -o -name '*.old' -o -name '*~' -o -name '*.orig' -o -name '*.save' \) -printf '%TY-%Tm-%Td %TH:%TM %s %p\n' 2>/dev/null | sort | head -300
