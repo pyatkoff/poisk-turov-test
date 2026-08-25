@@ -1,7 +1,5 @@
-</main>
-<footer class="testFooter">
-    <div class="testFooterInner">Тестовая версия поиска туров</div>
-</footer>
+<?php
+/** Test-only footer: local search JS + frozen site footer. */
+?>
 <script src="/poisk-turov-test/template/search/script.js"></script>
-</body>
-</html>
+<?php require __DIR__ . '/../site-template/footer.php'; ?>
