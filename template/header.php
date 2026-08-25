@@ -8,9 +8,10 @@ $APPLICATION->SetTitle('Поиск туров — тест');
 $APPLICATION->AddHeadString('<link rel="stylesheet" href="/poisk-turov-test/template/search/style.css">', true);
 $APPLICATION->AddHeadString('<link rel="stylesheet" href="/poisk-turov-test/template/search/slick/slick.css">', true);
 $APPLICATION->AddHeadString('<link rel="stylesheet" href="/poisk-turov-test/template/style.css">', true);
-$APPLICATION->AddHeadString('<link rel="stylesheet" href="/poisk-turov-test/template/form-overrides.css?v=1">', true);
-$APPLICATION->AddHeadString('<link rel="stylesheet" href="/poisk-turov-test/template/form-layout-fixes.css?v=1">', true);
-$APPLICATION->AddHeadString('<link rel="stylesheet" href="/poisk-turov-test/template/card-overrides.css?v=2">', true);
-$APPLICATION->AddHeadString('<script src="/poisk-turov-test/template/layout-fixes.js?v=1" defer></script>', true);
 
 require __DIR__ . '/../site-template/header.php';
+?>
+<link rel="stylesheet" href="/poisk-turov-test/template/form-overrides.css?v=2">
+<link rel="stylesheet" href="/poisk-turov-test/template/form-layout-fixes.css?v=2">
+<link rel="stylesheet" href="/poisk-turov-test/template/card-overrides.css?v=3">
+<script src="/poisk-turov-test/template/layout-fixes.js?v=2" defer></script>
