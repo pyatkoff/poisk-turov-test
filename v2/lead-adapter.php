@@ -7,11 +7,26 @@ const V2_LEAD_IBLOCK_ID = 4;
 const V2_LEAD_SECTION_ID = 12;
 const V2_LEAD_STATUS_ID = 9;
 const V2_LEAD_SOURCE_ID = 26;
+const V2_LEAD_IDEMPOTENCY_TTL = 600;
 
 function lead_out(array $data,int $status=200):void{http_response_code($status);echo json_encode($data,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);exit;}
 function lead_text($value,int $max=500):string{$value=trim(preg_replace('/\s+/u',' ',(string)$value));return mb_substr($value,0,$max,'UTF-8');}
 function lead_phone($value):string{$digits=preg_replace('/\D+/','',trim((string)$value));if(strlen($digits)===11&&$digits[0]==='8')$digits='7'.substr($digits,1);return $digits!==''?'+'.$digits:'';}
 function lead_money($value):?int{if($value===null||$value==='')return null;$n=(int)round((float)$value);return $n>0?$n:null;}
+function lead_idempotency_key(array $lead):string{return hash('sha256',implode('|',[(string)($lead['phone']??''),(string)($lead['tourId']??''),(string)($lead['searchId']??'')]));}
+function lead_idempotency_lock(string $key):array{
+    $dir=rtrim(sys_get_temp_dir(),DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'anytour-v2-leads';
+    if(!is_dir($dir)&&!@mkdir($dir,0700,true)&&!is_dir($dir))return ['ok'=>false,'error'=>'Idempotency storage unavailable'];
+    $path=$dir.DIRECTORY_SEPARATOR.$key.'.json';$fh=@fopen($path,'c+');if(!$fh)return ['ok'=>false,'error'=>'Idempotency lock unavailable'];
+    if(!flock($fh,LOCK_EX)){fclose($fh);return ['ok'=>false,'error'=>'Idempotency lock failed'];}
+    rewind($fh);$raw=stream_get_contents($fh);$stored=json_decode((string)$raw,true);
+    if(is_array($stored)&&!empty($stored['leadId'])&&!empty($stored['time'])&&((int)$stored['time']+V2_LEAD_IDEMPOTENCY_TTL)>=time())return ['ok'=>true,'duplicate'=>true,'leadId'=>(int)$stored['leadId'],'fh'=>$fh,'path'=>$path];
+    return ['ok'=>true,'duplicate'=>false,'fh'=>$fh,'path'=>$path];
+}
+function lead_idempotency_store(array $lock,int $leadId):void{
+    $fh=$lock['fh']??null;if(!is_resource($fh))return;rewind($fh);ftruncate($fh,0);fwrite($fh,json_encode(['leadId'=>$leadId,'time'=>time()],JSON_UNESCAPED_SLASHES));fflush($fh);flock($fh,LOCK_UN);fclose($fh);
+}
+function lead_idempotency_release(array $lock):void{$fh=$lock['fh']??null;if(is_resource($fh)){flock($fh,LOCK_UN);fclose($fh);}}
 
 function lead_build(array $data):array{
     $phone=lead_phone($data['phone']??'');
@@ -96,17 +111,20 @@ if($_SERVER['REQUEST_METHOD']==='GET'){
             'validPhone'=>(($sample['lead']['phone']??'')==='+79991234567'),'iblock'=>(($sample['element']['IBLOCK_ID']??0)===4),
             'section'=>(($sample['element']['IBLOCK_SECTION_ID']??0)===12),'status'=>(($p['STATUS']??0)===9),'source'=>(($p['SOURCE']??0)===26),
             'flightStored'=>(strpos((string)($p['COMMENTS']??''),'2S172')!==false&&strpos((string)($p['COMMENTS']??''),'2S171')!==false),
+            'idempotencyKeyStable'=>(lead_idempotency_key($sample['lead']??[])===lead_idempotency_key($sample['lead']??[])),
         ];
-        lead_out(['ok'=>!in_array(false,$checks,true),'mode'=>'self-test','writes'=>false,'checks'=>$checks,'config'=>['iblock'=>4,'section'=>12,'status'=>9,'source'=>26]]);
+        lead_out(['ok'=>!in_array(false,$checks,true),'mode'=>'self-test','writes'=>false,'checks'=>$checks,'config'=>['iblock'=>4,'section'=>12,'status'=>9,'source'=>26,'idempotencyTtl'=>V2_LEAD_IDEMPOTENCY_TTL]]);
     }
-    lead_out(['ok'=>true,'adapter'=>'v2-direct-bitrix-lead','mode'=>'live','writes'=>true,'config'=>['iblock'=>4,'section'=>12,'status'=>9,'source'=>26],'selftest'=>'?selftest=1']);
+    lead_out(['ok'=>true,'adapter'=>'v2-direct-bitrix-lead','mode'=>'live','writes'=>true,'config'=>['iblock'=>4,'section'=>12,'status'=>9,'source'=>26,'idempotencyTtl'=>V2_LEAD_IDEMPOTENCY_TTL],'selftest'=>'?selftest=1']);
 }
 if($_SERVER['REQUEST_METHOD']!=='POST')lead_out(['ok'=>false,'error'=>'Method not allowed'],405);
 $raw=file_get_contents('php://input');$data=json_decode((string)$raw,true);if(!is_array($data))$data=$_POST;
 $built=lead_build($data);if(!empty($built['errors']))lead_out(['ok'=>false,'error'=>'Validation failed','fields'=>$built['errors']],422);
-$boot=lead_bootstrap();if(empty($boot['ok']))lead_out(['ok'=>false,'error'=>$boot['error']??'Bitrix bootstrap failed'],500);
+$key=lead_idempotency_key($built['lead']);$lock=lead_idempotency_lock($key);if(empty($lock['ok']))lead_out(['ok'=>false,'error'=>$lock['error']??'Idempotency failure'],500);if(!empty($lock['duplicate'])){lead_idempotency_release($lock);lead_out(['ok'=>true,'mode'=>'live','writes'=>false,'duplicate'=>true,'leadId'=>(int)$lock['leadId'],'source'=>26]);}
+$boot=lead_bootstrap();if(empty($boot['ok'])){lead_idempotency_release($lock);lead_out(['ok'=>false,'error'=>$boot['error']??'Bitrix bootstrap failed'],500);}
 $projectMarker=lead_project_marker();
 if($projectMarker!==null)$built['element']['PROPERTY_VALUES']['IS_ANYTOUR_ONLINE']=$projectMarker;
 $el=new \CIBlockElement();$leadId=$el->Add($built['element']);
-if(!$leadId)lead_out(['ok'=>false,'error'=>'Bitrix lead insert failed','detail'=>(string)$el->LAST_ERROR],500);
-lead_out(['ok'=>true,'mode'=>'live','writes'=>true,'leadId'=>(int)$leadId,'source'=>26,'isAnyTourOnline'=>$projectMarker]);
+if(!$leadId){lead_idempotency_release($lock);lead_out(['ok'=>false,'error'=>'Bitrix lead insert failed','detail'=>(string)$el->LAST_ERROR],500);}
+lead_idempotency_store($lock,(int)$leadId);
+lead_out(['ok'=>true,'mode'=>'live','writes'=>true,'duplicate'=>false,'leadId'=>(int)$leadId,'source'=>26,'isAnyTourOnline'=>$projectMarker]);
