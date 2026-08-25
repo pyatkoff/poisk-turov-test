@@ -329,7 +329,7 @@ $(document).ready(function() {
             var cn = $("#country").val();
             var data = { mode:"hotel" , country: cn};
 
-            $.ajax( "/include/ajax/aj.php", {
+            $.ajax( $("form[name=searchForm]").attr("action"), {
                 cache: false,
                 data: data,
                 dataType: "json",
