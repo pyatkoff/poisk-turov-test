@@ -32,11 +32,11 @@ jobs:
             python3 - <<'PY'
             from pathlib import Path
             p=Path('template/search/script.js')
-            s=p.read_text()
+            s=p.read_text(encoding='utf-8')
             old='$.ajax( "/include/ajax/aj.php", {'
             new='$.ajax( $("form[name=searchForm]").attr("action"), {'
             if old in s:
-                p.write_text(s.replace(old,new,1))
+                p.write_text(s.replace(old,new,1), encoding='utf-8')
                 print('OLD_AJAX_PATH_FIXED=1')
             else:
                 print('OLD_AJAX_PATH_FIXED=0')
