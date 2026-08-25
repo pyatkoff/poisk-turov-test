@@ -1,6 +1,6 @@
 <?php
 /**
- * V2-only Tourvisor gateway.
+ * V2-only Tourvisor gateway. Gateway version: 1.
  * Read-only toward the current site: JWT may be read from env/constant/site_conf,
  * but search/catalog/tour/flight traffic goes directly to Tourvisor API 1.2.1.
  */
@@ -85,96 +85,33 @@ switch ($action) {
         out(['ok' => true, 'source' => 'tourvisor-direct', 'departuresCount' => is_array($data) ? count($data) : 0]);
 
     case 'departures':
-        out(tv_get('/departures', [
-            'departureCountryId' => $_GET['departureCountryId'] ?? 1,
-        ]));
-
+        out(tv_get('/departures', ['departureCountryId' => $_GET['departureCountryId'] ?? 1]));
     case 'countries':
-        out(tv_get('/countries', [
-            'departureId' => $_GET['departureId'] ?? null,
-            'onlyCharter' => filter_var($_GET['onlyCharter'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'onlyDirect' => filter_var($_GET['onlyDirect'] ?? false, FILTER_VALIDATE_BOOLEAN),
-        ]));
-
+        out(tv_get('/countries', ['departureId' => $_GET['departureId'] ?? null,'onlyCharter' => filter_var($_GET['onlyCharter'] ?? false, FILTER_VALIDATE_BOOLEAN),'onlyDirect' => filter_var($_GET['onlyDirect'] ?? false, FILTER_VALIDATE_BOOLEAN)]));
     case 'arrivals':
-        out(tv_get('/arrivals', [
-            'departureId' => $_GET['departureId'] ?? null,
-            'onlyCharter' => filter_var($_GET['onlyCharter'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'onlyDirect' => filter_var($_GET['onlyDirect'] ?? false, FILTER_VALIDATE_BOOLEAN),
-        ]));
-
+        out(tv_get('/arrivals', ['departureId' => $_GET['departureId'] ?? null,'onlyCharter' => filter_var($_GET['onlyCharter'] ?? false, FILTER_VALIDATE_BOOLEAN),'onlyDirect' => filter_var($_GET['onlyDirect'] ?? false, FILTER_VALIDATE_BOOLEAN)]));
     case 'regions':
-        out(tv_get('/regions', [
-            'countryId' => $_GET['countryId'] ?? null,
-            'arrivalId' => $_GET['arrivalId'] ?? null,
-        ]));
-
+        out(tv_get('/regions', ['countryId' => $_GET['countryId'] ?? null,'arrivalId' => $_GET['arrivalId'] ?? null]));
     case 'subregions':
-        out(tv_get('/subregions', [
-            'countryId' => $_GET['countryId'] ?? null,
-            'regionId' => $_GET['regionId'] ?? null,
-        ]));
-
+        out(tv_get('/subregions', ['countryId' => $_GET['countryId'] ?? null,'regionId' => $_GET['regionId'] ?? null]));
     case 'meals':
         out(tv_get('/meals'));
-
     case 'operators':
-        out(tv_get('/operators', [
-            'departureId' => $_GET['departureId'] ?? null,
-            'countryId' => $_GET['countryId'] ?? null,
-        ]));
-
+        out(tv_get('/operators', ['departureId' => $_GET['departureId'] ?? null,'countryId' => $_GET['countryId'] ?? null]));
     case 'dates':
-        out(tv_get('/tours/dates', [
-            'departureId' => $_GET['departureId'] ?? null,
-            'countryId' => $_GET['countryId'] ?? null,
-            'arrivalId' => $_GET['arrivalId'] ?? null,
-            'onlyCharter' => filter_var($_GET['onlyCharter'] ?? false, FILTER_VALIDATE_BOOLEAN),
-        ]));
-
+        out(tv_get('/tours/dates', ['departureId' => $_GET['departureId'] ?? null,'countryId' => $_GET['countryId'] ?? null,'arrivalId' => $_GET['arrivalId'] ?? null,'onlyCharter' => filter_var($_GET['onlyCharter'] ?? false, FILTER_VALIDATE_BOOLEAN)]));
     case 'search_start':
-        out(tv_get('/tours/search', [
-            'departureId' => $_GET['departureId'] ?? null,
-            'countryId' => $_GET['countryId'] ?? null,
-            'dateFrom' => $_GET['dateFrom'] ?? null,
-            'dateTo' => $_GET['dateTo'] ?? null,
-            'regionIds' => $_GET['regionIds'] ?? [],
-            'subregionIds' => $_GET['subregionIds'] ?? [],
-            'operatorIds' => $_GET['operatorIds'] ?? [],
-            'priceFrom' => $_GET['priceFrom'] ?? null,
-            'priceTo' => $_GET['priceTo'] ?? null,
-            'currency' => $_GET['currency'] ?? 'RUB',
-            'onlyCharter' => filter_var($_GET['onlyCharter'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'onlyDirect' => filter_var($_GET['onlyDirect'] ?? false, FILTER_VALIDATE_BOOLEAN),
-            'nightsFrom' => $_GET['nightsFrom'] ?? null,
-            'nightsTo' => $_GET['nightsTo'] ?? null,
-            'adults' => $_GET['adults'] ?? null,
-            'childAges' => $_GET['childAges'] ?? [],
-        ]));
-
+        out(tv_get('/tours/search', ['departureId' => $_GET['departureId'] ?? null,'countryId' => $_GET['countryId'] ?? null,'dateFrom' => $_GET['dateFrom'] ?? null,'dateTo' => $_GET['dateTo'] ?? null,'regionIds' => $_GET['regionIds'] ?? [],'subregionIds' => $_GET['subregionIds'] ?? [],'operatorIds' => $_GET['operatorIds'] ?? [],'priceFrom' => $_GET['priceFrom'] ?? null,'priceTo' => $_GET['priceTo'] ?? null,'currency' => $_GET['currency'] ?? 'RUB','onlyCharter' => filter_var($_GET['onlyCharter'] ?? false, FILTER_VALIDATE_BOOLEAN),'onlyDirect' => filter_var($_GET['onlyDirect'] ?? false, FILTER_VALIDATE_BOOLEAN),'nightsFrom' => $_GET['nightsFrom'] ?? null,'nightsTo' => $_GET['nightsTo'] ?? null,'adults' => $_GET['adults'] ?? null,'childAges' => $_GET['childAges'] ?? []]));
     case 'search_status':
-        $id = (int)($_GET['searchId'] ?? 0);
-        if ($id <= 0) out(['ok' => false, 'error' => 'searchId is required'], 400);
-        out(tv_get('/tours/search/' . $id . '/status', ['operatorStatus' => false]));
-
+        $id=(int)($_GET['searchId']??0);if($id<=0)out(['ok'=>false,'error'=>'searchId is required'],400);out(tv_get('/tours/search/'.$id.'/status',['operatorStatus'=>false]));
     case 'search_results':
-        $id = (int)($_GET['searchId'] ?? 0);
-        if ($id <= 0) out(['ok' => false, 'error' => 'searchId is required'], 400);
-        out(tv_get('/tours/search/' . $id, ['limit' => $_GET['limit'] ?? 25]));
-
+        $id=(int)($_GET['searchId']??0);if($id<=0)out(['ok'=>false,'error'=>'searchId is required'],400);out(tv_get('/tours/search/'.$id,['limit'=>$_GET['limit']??25]));
     case 'tour':
-        $id = trim((string)($_GET['tourId'] ?? ''));
-        if ($id === '') out(['ok' => false, 'error' => 'tourId is required'], 400);
-        out(tv_get('/tours/' . rawurlencode($id), ['currency' => $_GET['currency'] ?? 'RUB']));
-
+        $id=trim((string)($_GET['tourId']??''));if($id==='')out(['ok'=>false,'error'=>'tourId is required'],400);out(tv_get('/tours/'.rawurlencode($id),['currency'=>$_GET['currency']??'RUB']));
     case 'flights':
-        $id = trim((string)($_GET['tourId'] ?? ''));
-        if ($id === '') out(['ok' => false, 'error' => 'tourId is required'], 400);
-        out(tv_get('/tours/' . rawurlencode($id) . '/flights', ['currency' => $_GET['currency'] ?? 'RUB']));
-
+        $id=trim((string)($_GET['tourId']??''));if($id==='')out(['ok'=>false,'error'=>'tourId is required'],400);out(tv_get('/tours/'.rawurlencode($id).'/flights',['currency'=>$_GET['currency']??'RUB']));
     case 'rooms':
-        out(tv_get('/rooms', ['ids' => $_GET['ids'] ?? []]));
-
+        out(tv_get('/rooms',['ids'=>$_GET['ids']??[]]));
     default:
-        out(['ok' => false, 'error' => 'Unknown V2 action'], 404);
+        out(['ok'=>false,'error'=>'Unknown V2 action'],404);
 }
