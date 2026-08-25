@@ -76,11 +76,13 @@ jobs:
             "$PHP_BIN" -l tv_api/tvapi.php
 
             echo "--- Live smoke test ---"
-            SMOKE_FILE="$(mktemp)"
-            HTTP_CODE="$(curl -k -L -sS -o "$SMOKE_FILE" -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov-test/)"
-            echo "HTTP_CODE=$HTTP_CODE"
+            TEST_HTML="$(mktemp)"
+            PROD_HTML="$(mktemp)"
+            HTTP_CODE="$(curl -k -L -sS -o "$TEST_HTML" -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov-test/)"
+            PROD_CODE="$(curl -k -L -sS -o "$PROD_HTML" -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
+            echo "HTTP_CODE test=$HTTP_CODE prod=$PROD_CODE"
             test "$HTTP_CODE" = "200"
-            grep -q 'searchMainWrap' "$SMOKE_FILE"
+            grep -q 'searchMainWrap' "$TEST_HTML"
             grep -q 'rhat.search.test' index.php
             echo "SMOKE_FORM=OK"
 
@@ -91,9 +93,19 @@ jobs:
             JS_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$JS_URL")"
             ICON_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$ICON_URL")"
             echo "ASSET_CODES css=$CSS_CODE js=$JS_CODE icon=$ICON_CODE"
-            grep -oE '<link[^>]+style\.css[^>]*>|<script[^>]+script\.js[^>]*>' "$SMOKE_FILE" | head -20 || true
-            grep -oE 'src="[^"]+"' "$SMOKE_FILE" | grep -E 'rhat.search|poisk-turov-test' | head -20 || true
-            rm -f "$SMOKE_FILE"
 
+            echo "--- PROD stylesheets ---"
+            grep -oE 'href="[^"]+\.css[^\"]*"' "$PROD_HTML" | sed 's/^/PROD /' | sort -u || true
+            echo "--- TEST stylesheets ---"
+            grep -oE 'href="[^"]+\.css[^\"]*"' "$TEST_HTML" | sed 's/^/TEST /' | sort -u || true
+            echo "--- PROD search JS ---"
+            grep -oE 'src="[^"]+\.js[^\"]*"' "$PROD_HTML" | grep -E 'search|template|script|jquery|slick' | sed 's/^/PROD /' | sort -u || true
+            echo "--- TEST search JS ---"
+            grep -oE 'src="[^"]+\.js[^\"]*"' "$TEST_HTML" | grep -E 'search|template|script|jquery|slick' | sed 's/^/TEST /' | sort -u || true
+
+            echo "--- Theme color variables ---"
+            grep -R -n -E -- '--color-(main|text|btn)[[:space:]]*:' "$SITE_ROOT/bitrix/templates/anytour" "$SITE_ROOT/local/templates/anytour" 2>/dev/null | head -30 || true
+
+            rm -f "$TEST_HTML" "$PROD_HTML"
             echo "Deployed isolated test component: rhat.search.test:form"
             echo "Deployed commit: $(git rev-parse HEAD)"
