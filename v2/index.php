@@ -4,7 +4,7 @@ require_once($_SERVER['DOCUMENT_ROOT'].'/site_conf.php');
 require_once(dirname(__DIR__).'/tv_api/tvapi.php');
 require_once(__DIR__.'/assets.php');
 $dataFilter=['COUNTRY'=>4];if(!empty($params['TV_CITY']))$dataFilter['FROM']=$params['TV_CITY'];if(isset($_GET['from']))$dataFilter['FROM']=(int)$_GET['from'];if(isset($_GET['country']))$dataFilter['COUNTRY']=(int)$_GET['country'];$form=TvApi::prepareForm($dataFilter);function e($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}$from=(int)($form['from']??1);$country=(int)($dataFilter['COUNTRY']??4);
-?><!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Поиск туров — V2</title><link rel="stylesheet" href="<?=e(v2_asset('app.css'))?>"><link rel="stylesheet" href="<?=e(v2_asset('enhancements.css'))?>"><link rel="stylesheet" href="<?=e(v2_asset('room-details.css'))?>"></head><body>
+?><!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Поиск туров — V2</title><link rel="stylesheet" href="<?=e(v2_asset('app.css'))?>"><link rel="stylesheet" href="<?=e(v2_asset('enhancements.css'))?>"><link rel="stylesheet" href="<?=e(v2_asset('room-details.css'))?>"><link rel="stylesheet" href="<?=e(v2_asset('selected-tour-ux.css'))?>"></head><body>
 <main class="v2-shell">
 <header class="v2-head"><div><span class="eyebrow">ANYTOUR · V2</span><h1>Найдём тур под ваши планы</h1><p>Сравниваем предложения туроператоров и показываем рейсы до отправки заявки.</p></div><div class="head-badge">Прямой Tourvisor API</div></header>
 <form id="tourSearch" class="search-card" autocomplete="off"><?=bitrix_sessid_post()?>
