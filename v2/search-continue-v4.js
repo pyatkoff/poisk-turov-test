@@ -1,0 +1,14 @@
+(function(){'use strict';
+let searchId=0,operation=0;
+const rt=window.V2Runtime;if(!rt){console.warn('V2 search continue: runtime unavailable');return;}
+function moreNode(){return document.getElementById('v2SearchMore');}
+function removeMore(){const n=moreNode();if(n)n.remove();}
+function render(list){const r=window.V2Results;if(!r||typeof r.render!=='function')throw new Error('Модуль результатов не загружен');r.render(Array.isArray(list)?list:[],{empty:false});}
+function ensureMore(){const results=document.getElementById('results');if(!results||!searchId||moreNode())return;const wrap=document.createElement('div');wrap.id='v2SearchMore';wrap.className='results-more';wrap.innerHTML='<button type="button" class="secondary more-search">Показать ещё варианты</button><small>Tourvisor выполнит дополнительный запрос к туроператорам</small>';results.insertAdjacentElement('afterend',wrap);wrap.querySelector('button').addEventListener('click',continueSearch);}
+function isCurrent(id,op){return Number(id||0)===Number(searchId||0)&&op===operation;}
+async function waitComplete(id,op){for(let i=0;i<24;i++){await new Promise(r=>setTimeout(r,1500));if(!isCurrent(id,op))return false;const s=await rt.api('search_status',{searchId:id});if(!isCurrent(id,op))return false;const p=Math.max(0,Math.min(100,Number(s.progress||0)));const status=document.getElementById('status');if(status)status.textContent='Ищем дополнительные предложения · '+p+'%';if(p>=100||String(s.status||'').toLowerCase()==='complete')return true;}throw new Error('Tourvisor не завершил продолжение поиска вовремя');}
+async function continueSearch(){const btn=document.querySelector('#v2SearchMore button'),status=document.getElementById('status'),id=Number(searchId||0);if(!id||!btn)return;const op=++operation;btn.disabled=true;btn.textContent='Ищем ещё…';try{const d=await rt.api('search_continue',{searchId:id});if(!isCurrent(id,op))return;if(status)status.textContent='Запрошены дополнительные предложения'+(d&&d.requestCount?' · запросов: '+d.requestCount:'');const done=await waitComplete(id,op);if(!done||!isCurrent(id,op))return;const all=await rt.api('search_results',{searchId:id,limit:100});if(!isCurrent(id,op))return;render(all);if(status)status.textContent='Дополнительный поиск завершён · предложения обновлены';removeMore();ensureMore();window.dispatchEvent(new CustomEvent('v2:search-continued',{detail:{searchId:id,items:Array.isArray(all)?all:[]}}));}catch(e){if(!isCurrent(id,op))return;btn.disabled=false;btn.textContent='Попробовать ещё раз';if(status)status.textContent='Не удалось продолжить поиск: '+e.message;}}
+rt.on('search_start',d=>{operation++;searchId=Number(d&&d.searchId||0);removeMore();});
+window.addEventListener('v2:search-complete',e=>{const id=Number(e.detail&&e.detail.searchId||0);if(id)searchId=id;ensureMore();});
+window.V2SearchContinue={ensureMore,version:4};
+})();
