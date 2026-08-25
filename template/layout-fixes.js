@@ -6,10 +6,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    if (buttonWrap && buttonWrap.parentNode !== form) {
-        form.appendChild(buttonWrap);
-    }
-
     var firstExtraColumn = form.querySelector('.searchColLeft');
     var extraColumns = form.querySelectorAll('.searchColLeft, .searchColCenter, .searchColRight');
 
@@ -17,12 +13,19 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
+    var extrasParent = firstExtraColumn.parentNode;
+
+    /* The main search button must always live before the optional filters. */
+    if (buttonWrap) {
+        extrasParent.insertBefore(buttonWrap, firstExtraColumn);
+    }
+
     var toggle = document.createElement('button');
     toggle.type = 'button';
     toggle.className = 'additionalFiltersToggle';
     toggle.setAttribute('aria-expanded', 'true');
     toggle.innerHTML = '<span>Дополнительные фильтры</span><span class="additionalFiltersArrow" aria-hidden="true">⌄</span>';
-    firstExtraColumn.parentNode.insertBefore(toggle, firstExtraColumn);
+    extrasParent.insertBefore(toggle, firstExtraColumn);
 
     var mobileQuery = window.matchMedia('(max-width: 620px)');
 
