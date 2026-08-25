@@ -1,35 +1,38 @@
 /* Final test-only mobile fixes: keep search CTA visible and normalize hotel photos. */
 
-@media (max-width: 620px) {
-    form[name="searchForm"] > #sendBtnWrapWrap,
-    form[name="searchForm"].additional-filters-collapsed > #sendBtnWrapWrap {
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        position: static !important;
-        float: none !important;
-        clear: both !important;
-        width: 100% !important;
-        height: auto !important;
-        margin: 8px 0 6px !important;
-        padding: 0 !important;
-        box-sizing: border-box !important;
-    }
+.mobileSearchCta { display: none; }
 
-    form[name="searchForm"] > #sendBtnWrapWrap #search_start {
+@media (max-width: 620px) {
+    /* Dedicated CTA is outside all optional columns, so collapsing filters cannot hide it. */
+    .mobileSearchCta {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         width: 100% !important;
         min-height: 52px !important;
-        margin: 0 !important;
+        margin: 12px 0 8px !important;
+        padding: 0 18px !important;
+        border: 0 !important;
+        border-radius: 10px !important;
+        background: var(--color-main) !important;
+        color: #fff !important;
+        font: inherit !important;
+        font-size: 17px !important;
+        font-weight: 700 !important;
+        line-height: 1.2 !important;
+        box-sizing: border-box !important;
+        cursor: pointer !important;
+    }
+
+    /* Legacy submit remains inside .searchColRight; avoid a duplicate when filters open. */
+    form[name="searchForm"] #sendBtnWrapWrap {
+        display: none !important;
     }
 
     .additionalFiltersToggle {
         margin-top: 6px !important;
     }
 
-    /* Main hotel cards */
     #searchResult .airPic {
         position: relative !important;
         overflow: hidden !important;
@@ -48,7 +51,6 @@
         object-position: center !important;
     }
 
-    /* Expanded hotel photo grid */
     .hotel_info .hotelPics {
         display: grid !important;
         grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
@@ -76,7 +78,6 @@
         object-position: center !important;
     }
 
-    /* Final selected-tour gallery, including Slick if it is initialized. */
     .tourHotelWrap .hotelPhoto {
         width: 100% !important;
         max-width: 100% !important;
