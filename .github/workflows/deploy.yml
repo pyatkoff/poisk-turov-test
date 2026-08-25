@@ -55,6 +55,11 @@ jobs:
             SITE_ROOT="$HOME/www/anytour.online"
             TEST_COMPONENT="$SITE_ROOT/local/components/rhat.search.test/form"
             TEST_TEMPLATE="$SITE_ROOT/bitrix/templates/anytour/components/rhat.search.test/form/form"
+            STALE_LOCAL_TEMPLATE="$SITE_ROOT/local/templates/anytour/components/rhat.search.test"
+
+            # Bitrix prefers /local/templates over /bitrix/templates. Remove the old
+            # test copy so there is exactly one source of template assets.
+            rm -rf "$STALE_LOCAL_TEMPLATE"
 
             mkdir -p "$TEST_COMPONENT" "$TEST_TEMPLATE"
             cp component/component.php "$TEST_COMPONENT/component.php"
@@ -84,6 +89,10 @@ jobs:
             test "$HTTP_CODE" = "200"
             grep -q 'searchMainWrap' "$TEST_HTML"
             grep -q 'rhat.search.test' index.php
+            if grep -q '/local/templates/anytour/components/rhat.search.test' "$TEST_HTML"; then
+              echo "ERROR: stale local test template is still active"
+              exit 1
+            fi
             echo "SMOKE_FORM=OK"
 
             CSS_URL='https://anytour.online/bitrix/templates/anytour/components/rhat.search.test/form/form/style.css?v=20260825-1'
@@ -98,13 +107,6 @@ jobs:
             grep -oE 'href="[^"]+\.css[^\"]*"' "$PROD_HTML" | sed 's/^/PROD /' | sort -u || true
             echo "--- TEST stylesheets ---"
             grep -oE 'href="[^"]+\.css[^\"]*"' "$TEST_HTML" | sed 's/^/TEST /' | sort -u || true
-            echo "--- PROD search JS ---"
-            grep -oE 'src="[^"]+\.js[^\"]*"' "$PROD_HTML" | grep -E 'search|template|script|jquery|slick' | sed 's/^/PROD /' | sort -u || true
-            echo "--- TEST search JS ---"
-            grep -oE 'src="[^"]+\.js[^\"]*"' "$TEST_HTML" | grep -E 'search|template|script|jquery|slick' | sed 's/^/TEST /' | sort -u || true
-
-            echo "--- Theme color variables ---"
-            grep -R -n -E -- '--color-(main|text|btn)[[:space:]]*:' "$SITE_ROOT/bitrix/templates/anytour" "$SITE_ROOT/local/templates/anytour" 2>/dev/null | head -30 || true
 
             rm -f "$TEST_HTML" "$PROD_HTML"
             echo "Deployed isolated test component: rhat.search.test:form"
