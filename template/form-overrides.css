@@ -1,0 +1,291 @@
+/* Modern form styling for /poisk-turov-test/ only */
+.searchMainWrap {
+    max-width: 1200px;
+    margin: 32px auto 48px;
+    padding: 0 16px;
+    box-sizing: border-box;
+}
+
+.searchFormWrap {
+    margin-bottom: 24px;
+}
+
+.searchFormWrap .formWrapInner,
+.searchFormWrap form[name="searchForm"] {
+    background: #fff;
+}
+
+.searchTop {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+    border: 1px solid #e3e6ea;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 5px 20px rgba(0,0,0,.05);
+}
+
+.searchTop > #fromWrap,
+.searchTop > .searchQuadColLeft,
+.searchTop > .searchQuadColCenter,
+.searchTop > .searchQuadColRight {
+    width: auto !important;
+    float: none !important;
+    margin: 0 !important;
+}
+
+.searchTop .searchColInner {
+    margin: 0 !important;
+}
+
+.searchLabel {
+    margin-bottom: 7px;
+    font-size: 13px;
+    line-height: 1.2;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.searchSelect,
+.searchInput .searchSelect,
+#hotelByName input {
+    min-height: 50px;
+    border: 1px solid #d9dde3;
+    border-radius: 10px;
+    background: #fff;
+    box-sizing: border-box;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.searchSelect:hover,
+.searchSelect:focus-within,
+#hotelByName input:focus {
+    border-color: var(--color-main);
+    box-shadow: 0 0 0 3px rgba(0,0,0,.04);
+    outline: none;
+}
+
+.searchSelectText,
+#date_from_till_block,
+#nights-from_till_block,
+#peoplePick {
+    min-height: 50px;
+    line-height: 50px;
+    padding: 0 36px 0 14px;
+    font-size: 16px;
+    font-weight: 500;
+    box-sizing: border-box;
+}
+
+.searchSelect select {
+    height: 50px;
+}
+
+.searchColLeft,
+.searchColCenter,
+.searchColRight {
+    width: 33.3333%;
+    box-sizing: border-box;
+}
+
+.searchColLeft .searchColInner,
+.searchColCenter .searchColInner,
+.searchColRight .searchColInner {
+    margin: 0 8px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #fafbfc;
+    min-height: 100%;
+    box-sizing: border-box;
+}
+
+.searchColLeft .searchColInner { margin-left: 0; }
+.searchColRight .searchColInner { margin-right: 0; }
+
+.searchCbWrap {
+    margin-bottom: 16px;
+}
+
+.cbLine {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px 9px;
+}
+
+.cbLineItem {
+    float: none !important;
+    width: auto !important;
+}
+
+.cbBlock label,
+.sCbList label {
+    border-radius: 8px;
+}
+
+#hotelByName {
+    margin: 10px 0;
+}
+
+#hotelByName input {
+    width: 100%;
+    padding: 0 14px;
+    font-size: 15px;
+}
+
+#hotelBlock,
+#regionBlock {
+    border-radius: 10px;
+}
+
+#search_start {
+    display: block;
+    width: 100%;
+    min-height: 54px;
+    margin-top: 18px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--color-main);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+}
+
+#search_start:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0,0,0,.14);
+}
+
+#search_start.disabled {
+    opacity: .55;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+}
+
+#searchInfo .formWrapInner {
+    padding: 16px 18px;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+}
+
+#searchStatus {
+    font-size: 18px;
+}
+
+.seacrhMet {
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.seacrhMetInner {
+    height: 10px;
+    border-radius: 999px;
+}
+
+#toursFound,
+#toursPrice {
+    font-size: 16px;
+}
+
+#toursFound span,
+#searchPrice {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.nightPickBlock,
+.peoplePickBlock {
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.14);
+    overflow: hidden;
+}
+
+@media (max-width: 1020px) {
+    .searchTop {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .searchTop > #fromWrap {
+        grid-column: 1 / -1;
+    }
+
+    .searchColLeft,
+    .searchColCenter,
+    .searchColRight {
+        width: 100%;
+        float: none;
+        margin-bottom: 12px;
+    }
+
+    .searchColLeft .searchColInner,
+    .searchColCenter .searchColInner,
+    .searchColRight .searchColInner {
+        margin: 0;
+    }
+}
+
+@media (max-width: 620px) {
+    .searchMainWrap {
+        margin-top: 18px;
+        padding: 0 10px;
+    }
+
+    .searchTop {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    .searchTop > #fromWrap {
+        grid-column: auto;
+    }
+
+    .searchLabel {
+        font-size: 12px;
+    }
+
+    .searchSelect,
+    .searchInput .searchSelect,
+    #hotelByName input,
+    .searchSelectText,
+    #date_from_till_block,
+    #nights-from_till_block,
+    #peoplePick {
+        min-height: 46px;
+        line-height: 46px;
+    }
+
+    .searchColLeft .searchColInner,
+    .searchColCenter .searchColInner,
+    .searchColRight .searchColInner {
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    #search_start {
+        min-height: 52px;
+        font-size: 17px;
+    }
+
+    #searchStatus {
+        font-size: 15px;
+    }
+
+    #toursFound,
+    #toursPrice {
+        width: 100%;
+        float: none;
+        text-align: left;
+        height: auto;
+        line-height: 1.4;
+        margin: 4px 0;
+    }
+}
