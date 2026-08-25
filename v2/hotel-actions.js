@@ -3,7 +3,7 @@ const hotelData=new Map(),detailCache=new Map();
 const nativeFetch=window.fetch.bind(window);
 function key(v){return String(v||'').trim().toLowerCase();}
 function clean(v){return String(v||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function api(action,params){const q=new URLSearchParams({action});Object.entries(params||{}).forEach(([k,v])=>{if(v!==''&&v!==null&&v!==undefined)q.append(k,String(v));});return nativeFetch((window.V2_CONFIG&&window.V2_CONFIG.api||'api.php')+'?'+q.toString(),{credentials:'same-origin'}).then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||('API HTTP '+r.status));return d;});}
 window.fetch=async function(input,init){const response=await nativeFetch(input,init);try{const url=typeof input==='string'?input:(input&&input.url)||'';if(url.indexOf('action=search_results')!==-1){response.clone().json().then(list=>{if(!Array.isArray(list))return;list.forEach(h=>hotelData.set(key(h&&h.name),h||{}));decorateAll();}).catch(()=>{});}}catch(e){}return response;};
 function normalizeDetail(d){return Array.isArray(d)?(d[0]||{}):(d&&typeof d==='object'?d:{});}
