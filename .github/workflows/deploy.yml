@@ -49,6 +49,16 @@ jobs:
           script: |
             set -e
             cd ~/www/anytour.online/poisk-turov-test
+
+            # One-time normalization from the previous deploy version: persist the
+            # already-applied test-local Tourvisor vendor path instead of leaving
+            # the working tree dirty forever.
+            if ! git diff --quiet -- tv_api/tvapi.php; then
+              git add tv_api/tvapi.php
+              git -c user.name="poisk-turov-test deploy" -c user.email="deploy@localhost" commit -m "Use test-local Tourvisor vendor path"
+              git push origin main
+            fi
+
             if ! git diff --quiet || ! git diff --cached --quiet; then
               echo "ERROR: local tracked changes detected; refusing to overwrite"
               git status --short
@@ -68,11 +78,10 @@ jobs:
             cp component/ajax.php "$TEST_COMPONENT/ajax.php"
             cp -a anytour/components/rhat.search/form/form/. "$TEST_TEMPLATE/"
 
-            # Isolate the test component from production Tourvisor PHP files.
+            # Runtime copies are isolated from production Bitrix component/API paths.
             sed -i "s#'/bitrix/php_interface/tv_api/tvapi.php'#'/poisk-turov-test/tv_api/tvapi.php'#" "$TEST_COMPONENT/component.php"
             sed -i "s#'/bitrix/php_interface/tv_api/search.php'#'/poisk-turov-test/tv_api/search.php'#" "$TEST_TEMPLATE/ajax.php"
             sed -i "s#'/bitrix/php_interface/tv_api/tvapi.php'#'/poisk-turov-test/tv_api/tvapi.php'#" "$TEST_TEMPLATE/ajax.php"
-            sed -i "s#'/bitrix/php_interface/tv_api/tourvisor/vendor/autoload.php'#'/poisk-turov-test/tv_api/tourvisor/vendor/autoload.php'#" tv_api/tvapi.php || true
 
             if command -v /opt/php81/bin/php >/dev/null 2>&1; then PHP_BIN=/opt/php81/bin/php; else PHP_BIN=php; fi
             "$PHP_BIN" -l index.php
