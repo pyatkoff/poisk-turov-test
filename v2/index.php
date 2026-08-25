@@ -21,6 +21,8 @@ $dataFilter=['COUNTRY'=>4];if(!empty($params['TV_CITY']))$dataFilter['FROM']=$pa
 <div id="childAges" class="child-ages" hidden></div>
 <details class="extras" open><summary>Фильтры отдыха <span>курорт, отель, питание и перелёт</span></summary><div class="extra-grid">
 <label class="field"><span>Курорт / регион</span><select name="region"><option value="">Все курорты</option></select></label>
+<label class="field"><span>Район / субкурорт</span><select name="subregion"><option value="">Все районы</option></select></label>
+<label class="field"><span>Конкретный отель</span><select name="hotel"><option value="">Любой отель</option></select></label>
 <label class="field"><span>Туроператор</span><select name="operator"><option value="">Все операторы</option></select></label>
 <label class="field"><span>Категория отеля</span><select name="stars"><option value="">Любая</option><option value="2">2★ и выше</option><option value="3">3★ и выше</option><option value="4">4★ и выше</option><option value="5">5★</option></select></label>
 <label class="field"><span>Рейтинг отеля</span><select name="rating"><option value="">Любой</option><option value="2">от 3.0</option><option value="3">от 3.5</option><option value="4">от 4.0</option><option value="5">от 4.5</option></select></label>
@@ -35,4 +37,4 @@ $dataFilter=['COUNTRY'=>4];if(!empty($params['TV_CITY']))$dataFilter['FROM']=$pa
 <section id="resultsTools" class="results-tools" hidden><div><strong>Предложения</strong><span id="resultSummary">Актуальные варианты</span></div><label>Сортировка <select id="sortResults"><option value="price">Сначала дешевле</option><option value="rating">По рейтингу</option><option value="stars">По звёздам</option></select></label></section>
 <section id="results" class="results"></section><section id="selectedTour" class="selected-tour" hidden></section>
 </main>
-<script>window.V2_CONFIG={api:'/poisk-turov-test/v2/api.php'};</script><script src="/poisk-turov-test/v2/direct-search.js?v=7"></script></body></html>
+<script>window.V2_CONFIG={api:'/poisk-turov-test/v2/api.php'};</script><script src="/poisk-turov-test/v2/direct-search.js?v=8"></script></body></html>
