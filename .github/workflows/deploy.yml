@@ -1,4 +1,4 @@
-name: Read-only tour search audit
+name: Read-only active template audit
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Inspect live pages and assets only
+      - name: Inspect response head and redirects only
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -35,43 +35,17 @@ jobs:
           key_path: ${{ runner.temp }}/deploy_key
           script: |
             set -euo pipefail
-            SITE="$HOME/www/anytour.online"
-            PROD_HTML="$(mktemp)"
-            TEST_HTML="$(mktemp)"
-            trap 'rm -f "$PROD_HTML" "$TEST_HTML"' EXIT
-            curl -k -L -sS --max-time 30 https://anytour.online/poisk-turov/ -o "$PROD_HTML"
-            curl -k -L -sS --max-time 30 https://anytour.online/poisk-turov-test/ -o "$TEST_HTML"
-
-            echo '=== PROD CSS ==='
-            grep -oE 'href="[^"]+\.css[^\"]*"' "$PROD_HTML" | sort -u || true
-            echo '=== TEST CSS ==='
-            grep -oE 'href="[^"]+\.css[^\"]*"' "$TEST_HTML" | sort -u || true
-            echo '=== PROD JS ==='
-            grep -oE 'src="[^"]+\.js[^\"]*"' "$PROD_HTML" | sort -u || true
-            echo '=== TEST JS ==='
-            grep -oE 'src="[^"]+\.js[^\"]*"' "$TEST_HTML" | sort -u || true
-
-            echo '=== SEARCH FORM ASSET HTTP ==='
-            for u in \
-              /bitrix/templates/anytour/components/rhat.search/form/form/style.css \
-              /bitrix/templates/anytour/components/rhat.search/form/form/script.js \
-              /bitrix/templates/anytour/components/rhat.search/form/form/slick/slick.css \
-              /css/css_new.css \
-              /js/script.js; do
-              code="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://anytour.online$u")"
-              echo "$code $u"
+            for url in https://anytour.online/poisk-turov/ https://anytour.online/poisk-turov-test/; do
+              echo "=== $url HEADERS ==="
+              curl -k -sS -I --max-time 30 "$url" | sed -n '1,30p'
+              echo "=== $url FINAL ==="
+              curl -k -L -sS -o /tmp/page.$$ -w 'FINAL_URL=%{url_effective}\nHTTP=%{http_code}\n' --max-time 30 "$url"
+              echo '--- HEAD SNIPPET ---'
+              sed -n '1,140p' /tmp/page.$$ | head -140
+              echo '--- TEMPLATE MARKERS ---'
+              grep -Eo '/(bitrix|local)/templates/[^"'"' ]+|/css/[^"'"' ]+|/js/[^"'"' ]+' /tmp/page.$$ | sort -u | head -120 || true
+              rm -f /tmp/page.$$
             done
-
-            echo '=== KEY CSS RULE COUNTS ==='
-            CSS="$SITE/bitrix/templates/anytour/components/rhat.search/form/form/style.css"
-            for key in searchMainWrap searchFormWrap searchSelect hotelItem hotelImg searchButton; do
-              c="$(grep -c "$key" "$CSS" || true)"
-              echo "$key=$c"
-            done
-
-            echo '=== HTML FORM CLASSES PROD ==='
-            grep -oE 'class="[^"]*(searchMainWrap|searchFormWrap|searchSelect|hotelItem)[^"]*"' "$PROD_HTML" | head -30 || true
-            echo '=== HTML FORM CLASSES TEST ==='
-            grep -oE 'class="[^"]*(searchMainWrap|searchFormWrap|searchSelect|hotelItem)[^"]*"' "$TEST_HTML" | head -30 || true
-
-            echo 'READ_ONLY_AUDIT=OK'
+            echo '=== SITE TEMPLATE FILES ==='
+            find "$HOME/www/anytour.online/bitrix/templates" -maxdepth 2 -type f \( -name header.php -o -name style.css -o -name template_styles.css \) -printf '%p %s bytes\n' | sort
+            echo 'READ_ONLY_ACTIVE_TEMPLATE_AUDIT=OK'
