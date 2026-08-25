@@ -67,30 +67,69 @@
     min-height: 440px;
 }
 
+/* Old template gives #hotelByName its own box/positioning. Neutralize it. */
+#hotelWrap {
+    position: static !important;
+    overflow: visible !important;
+}
+
 #hotelByName {
-    position: relative !important;
-    z-index: 3;
-    width: 100%;
+    position: static !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: none !important;
+    float: none !important;
+    clear: both !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     margin: 10px 0 12px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+    z-index: auto !important;
 }
 
 #hotelByName input {
     position: static !important;
+    inset: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: none !important;
+    float: none !important;
     display: block !important;
     width: 100% !important;
     height: 50px !important;
+    min-height: 50px !important;
+    max-width: none !important;
     margin: 0 !important;
+    padding: 0 14px !important;
     box-sizing: border-box !important;
+    z-index: auto !important;
 }
 
 #hotelBlock {
     position: relative !important;
     z-index: 1;
+    clear: both !important;
+    float: none !important;
     display: block !important;
     width: 100% !important;
     height: 280px !important;
     max-height: 280px !important;
-    margin-top: 0 !important;
+    margin: 0 !important;
+    padding-top: 0 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     box-sizing: border-box;
@@ -138,20 +177,96 @@
 
 @media (max-width: 620px) {
     .searchTop {
-        grid-template-columns: 1fr !important;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        align-items: stretch !important;
+        gap: 16px !important;
     }
 
-    .searchTop > #fromWrap {
-        grid-column: auto;
+    .searchTop > #fromWrap,
+    .searchTop > .searchQuadColLeft,
+    .searchTop > .searchQuadColCenter,
+    .searchTop > .searchQuadColRight {
+        grid-column: auto !important;
+        display: block !important;
+        float: none !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .searchTop .searchColInner,
+    .searchTop .searchInput,
+    .searchTop .searchSelect,
+    .searchTop .sInputWrap,
+    #dateWrap,
+    #nightsWrap,
+    #peopleWrap,
+    #countryWrap,
+    #fromWrap {
+        position: relative !important;
+        float: none !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: auto !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .searchTop .searchColInner {
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .searchTop .searchLabel {
+        position: static !important;
+        display: block !important;
+        float: none !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 0 8px !important;
+        padding: 0 !important;
+        line-height: 1.25 !important;
+        transform: none !important;
+    }
+
+    .searchTop .searchSelect {
+        min-height: 46px !important;
+    }
+
+    #date_from_till_block,
+    #nights-from_till_block,
+    #peoplePick,
+    #fromWrap .searchSelectText,
+    #countryWrap .searchSelectText {
+        min-height: 46px !important;
+        height: 46px !important;
+        line-height: 46px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        white-space: nowrap !important;
+    }
+
+    #hotelByName {
+        margin: 10px 0 12px !important;
     }
 
     #hotelByName input {
         height: 46px !important;
+        min-height: 46px !important;
     }
 
     #hotelBlock {
         height: 230px !important;
         max-height: 230px !important;
+        margin-top: 0 !important;
     }
 
     #sendBtnWrapWrap {
