@@ -1,0 +1,143 @@
+/* Final test-only mobile fixes: keep search CTA visible and normalize hotel photos. */
+
+@media (max-width: 620px) {
+    form[name="searchForm"] > #sendBtnWrapWrap,
+    form[name="searchForm"].additional-filters-collapsed > #sendBtnWrapWrap {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: static !important;
+        float: none !important;
+        clear: both !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 8px 0 6px !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    form[name="searchForm"] > #sendBtnWrapWrap #search_start {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+        min-height: 52px !important;
+        margin: 0 !important;
+    }
+
+    .additionalFiltersToggle {
+        margin-top: 6px !important;
+    }
+
+    /* Main hotel cards */
+    #searchResult .airPic {
+        position: relative !important;
+        overflow: hidden !important;
+        border-radius: 10px !important;
+        background: #f3f5f7 !important;
+    }
+
+    #searchResult .airPic img {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        margin: 0 !important;
+        object-fit: cover !important;
+        object-position: center !important;
+    }
+
+    /* Expanded hotel photo grid */
+    .hotel_info .hotelPics {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .hotel_info .hotelPics a {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        aspect-ratio: 4 / 3 !important;
+        overflow: hidden !important;
+        border-radius: 9px !important;
+    }
+
+    .hotel_info .hotelPics img {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        object-fit: cover !important;
+        object-position: center !important;
+    }
+
+    /* Final selected-tour gallery, including Slick if it is initialized. */
+    .tourHotelWrap .hotelPhoto {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    .tourHotelWrap .hotelPhoto:not(.slick-initialized) {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 8px !important;
+    }
+
+    .tourHotelWrap .hotelPhoto.slick-initialized {
+        display: block !important;
+    }
+
+    .tourHotelWrap .hotelPhoto .slick-list {
+        width: 100% !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .tourHotelWrap .hotelPhoto .slick-track {
+        display: flex !important;
+        align-items: stretch !important;
+    }
+
+    .tourHotelWrap .hotelPhoto .slick-slide {
+        height: 150px !important;
+        padding: 0 4px !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+
+    .tourHotelWrap .hotelPhoto .slick-slide > div {
+        height: 100% !important;
+    }
+
+    .tourHotelWrap .tourInfoCaruselItem {
+        display: block !important;
+        width: 100% !important;
+        height: 150px !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+        border-radius: 10px !important;
+        background: #f3f4f6 !important;
+        box-sizing: border-box !important;
+    }
+
+    .tourHotelWrap .tourInfoCaruselItem img {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        margin: 0 !important;
+        object-fit: cover !important;
+        object-position: center !important;
+    }
+}
