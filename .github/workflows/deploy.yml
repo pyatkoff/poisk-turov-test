@@ -81,5 +81,16 @@ jobs:
             "$PHP_BIN" -l "$TEST_TEMPLATE/template.php"
             "$PHP_BIN" -l tv_api/search.php
             "$PHP_BIN" -l tv_api/tvapi.php
+
+            echo "--- Live smoke test ---"
+            SMOKE_FILE="$(mktemp)"
+            HTTP_CODE="$(curl -k -L -sS -o "$SMOKE_FILE" -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov-test/)"
+            echo "HTTP_CODE=$HTTP_CODE"
+            test "$HTTP_CODE" = "200"
+            grep -q 'searchMainWrap' "$SMOKE_FILE"
+            grep -q 'rhat.search.test' index.php
+            echo "SMOKE_FORM=OK"
+            rm -f "$SMOKE_FILE"
+
             echo "Deployed isolated test component: rhat.search.test:form"
             echo "Deployed commit: $(git rev-parse HEAD)"
