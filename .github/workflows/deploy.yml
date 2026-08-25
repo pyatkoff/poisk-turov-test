@@ -30,7 +30,7 @@ jobs:
           set -euo pipefail
           ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
           ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" 'mkdir -p "$HOME/www/anytour.online/poisk-turov-test/v2"'
-          scp "${ssh_opts[@]}" -r v2/. "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE:$HOME/www/anytour.online/poisk-turov-test/v2/"
+          scp "${ssh_opts[@]}" -r v2/. "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE:~/www/anytour.online/poisk-turov-test/v2/"
       - name: Verify V2
         env:
           DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
