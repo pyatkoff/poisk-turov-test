@@ -1,4 +1,4 @@
-name: Restore missing original Bitrix template files
+name: Deploy tour search test
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: restore-missing-bitrix-template
-  cancel-in-progress: true
+  group: poisk-turov-test-deploy
+  cancel-in-progress: false
 
 jobs:
-  restore:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Prepare SSH private key
@@ -23,15 +23,23 @@ jobs:
           raw="$DEPLOY_SSH_KEY_VALUE"
           rm -f "$key_file"
           if [[ "$raw" == *"PRIVATE KEY"* ]]; then
-            if [[ "$raw" == *'\\n'* ]]; then printf '%b\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; fi
+            if [[ "$raw" == *'\\n'* ]]; then
+              printf '%b\n' "$raw" | tr -d '\r' > "$key_file"
+            else
+              printf '%s\n' "$raw" | tr -d '\r' > "$key_file"
+            fi
           else
             decoded="$(printf '%s' "$raw" | base64 --decode 2>/dev/null || true)"
-            if [[ "$decoded" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$decoded" | tr -d '\r' > "$key_file"; else exit 1; fi
+            if [[ "$decoded" == *"PRIVATE KEY"* ]]; then
+              printf '%s\n' "$decoded" | tr -d '\r' > "$key_file"
+            else
+              exit 1
+            fi
           fi
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Restore only missing files under bitrix templates anytour
+      - name: Deploy test directory only
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -39,56 +47,15 @@ jobs:
           key_path: ${{ runner.temp }}/deploy_key
           script: |
             set -euo pipefail
-            SITE="$HOME/www/anytour.online"
-            REPO="$SITE/poisk-turov-test"
-            DEST="$SITE/bitrix/templates/anytour"
-            INITIAL_SHA="13be0bb60f1822a5342fbaaeb35dd3d4c12ecc8a"
-
-            cd "$REPO"
+            TEST_DIR="$HOME/www/anytour.online/poisk-turov-test"
+            cd "$TEST_DIR"
             git fetch origin main
-            git cat-file -e "${INITIAL_SHA}^{commit}"
-
-            TMP="$(mktemp -d)"
-            trap 'rm -rf "$TMP"' EXIT
-            git archive "$INITIAL_SHA" anytour | tar -x -C "$TMP"
-
-            echo '=== MISSING BEFORE ==='
-            missing_before=0
-            while IFS= read -r -d '' src; do
-              rel="${src#$TMP/anytour/}"
-              if [ ! -e "$DEST/$rel" ]; then
-                echo "$rel"
-                missing_before=$((missing_before+1))
-              fi
-            done < <(find "$TMP/anytour" -mindepth 1 -type f -print0)
-            echo "MISSING_BEFORE_COUNT=$missing_before"
-
-            # Add only missing source files. Existing production files remain untouched.
-            cp -a -n "$TMP/anytour/." "$DEST/"
-
-            echo '=== MISSING AFTER ==='
-            missing_after=0
-            while IFS= read -r -d '' src; do
-              rel="${src#$TMP/anytour/}"
-              if [ ! -e "$DEST/$rel" ]; then
-                echo "$rel"
-                missing_after=$((missing_after+1))
-              fi
-            done < <(find "$TMP/anytour" -mindepth 1 -type f -print0)
-            echo "MISSING_AFTER_COUNT=$missing_after"
-            test "$missing_after" -eq 0
-
-            # Remove only temporary test artifacts created during this work.
-            rm -rf "$SITE/local/components/rhat.search.test"
-            rm -rf "$SITE/local/templates/anytour/components/rhat.search.test"
-            rm -rf "$SITE/bitrix/templates/anytour/components/rhat.search.test"
-
+            git reset --hard origin/main
             if command -v /opt/php81/bin/php >/dev/null 2>&1; then PHP_BIN=/opt/php81/bin/php; else PHP_BIN=php; fi
-            [ -f "$DEST/header.php" ] && "$PHP_BIN" -l "$DEST/header.php"
-            [ -f "$DEST/footer.php" ] && "$PHP_BIN" -l "$DEST/footer.php"
-            [ -f "$DEST/components/rhat.search/form/form/template.php" ] && "$PHP_BIN" -l "$DEST/components/rhat.search/form/form/template.php"
-
-            CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
-            echo "PROD_HTTP_CODE=$CODE"
-            test "$CODE" = "200"
-            echo 'RESTORE_MISSING_ONLY=OK'
+            "$PHP_BIN" -l index.php
+            TEST_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov-test/)"
+            PROD_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
+            echo "TEST_HTTP_CODE=$TEST_CODE PROD_HTTP_CODE=$PROD_CODE"
+            test "$TEST_CODE" = "200"
+            test "$PROD_CODE" = "200"
+            echo "DEPLOY_SCOPE=$TEST_DIR"
