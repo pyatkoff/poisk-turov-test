@@ -1,13 +1,14 @@
 <?php
 /**
- * V2-only Tourvisor gateway. Gateway version: 2.
- * Read-only toward the current site: JWT may be read from env/constant/site_conf,
- * but search/catalog/tour/flight traffic goes directly to Tourvisor API 1.2.1.
+ * V2-only Tourvisor gateway.
+ * V2 secrets live in v2/config.php on the server and are never committed.
  */
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
+$privateConfig=__DIR__.'/config.php';
+if(is_file($privateConfig)) require_once $privateConfig;
 function out($data,int $status=200):void{http_response_code($status);echo json_encode($data,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);exit;}
-function jwt():string{$token=trim((string)getenv('TOURVISOR_JWT'));if($token!=='')return $token;if(defined('TOURVISOR_JWT')&&trim((string)TOURVISOR_JWT)!=='')return trim((string)TOURVISOR_JWT);$conf=$_SERVER['DOCUMENT_ROOT'].'/site_conf.php';if(is_file($conf)){$params=[];require $conf;if(!empty($params['TOURVISOR_JWT']))return trim((string)$params['TOURVISOR_JWT']);if(defined('TOURVISOR_JWT')&&trim((string)TOURVISOR_JWT)!=='')return trim((string)TOURVISOR_JWT);}return '';}
+function jwt():string{$token=trim((string)getenv('TOURVISOR_JWT'));if($token!=='')return $token;if(defined('TOURVISOR_JWT')&&trim((string)TOURVISOR_JWT)!=='')return trim((string)TOURVISOR_JWT);return '';}
 function query_string(array $params):string{$parts=[];foreach($params as $key=>$value){if($value===null||$value==='')continue;if(is_bool($value))$value=$value?'true':'false';if(is_array($value)){foreach($value as $item){if($item===''||$item===null)continue;$parts[]=rawurlencode($key).'='.rawurlencode((string)$item);}}else{$parts[]=rawurlencode($key).'='.rawurlencode((string)$value);}}return implode('&',$parts);}
 function tv_get(string $path,array $params=[]):array{$token=jwt();if($token==='')out(['ok'=>false,'error'=>'TOURVISOR_JWT is not configured for V2'],500);$url='https://api.tourvisor.ru/search/api/v1'.$path;$qs=query_string($params);if($qs!=='')$url.='?'.$qs;$ch=curl_init($url);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45,CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$token,'Accept: application/json']]);$body=curl_exec($ch);$errno=curl_errno($ch);$error=curl_error($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);if($errno)out(['ok'=>false,'error'=>'Tourvisor connection error','detail'=>$error],502);$decoded=json_decode((string)$body,true);if($code<200||$code>=300)out(['ok'=>false,'error'=>'Tourvisor HTTP '.$code,'data'=>$decoded??$body],$code>=400&&$code<600?$code:502);return is_array($decoded)?$decoded:['raw'=>$body];}
 $action=(string)($_GET['action']??$_POST['action']??'health');
