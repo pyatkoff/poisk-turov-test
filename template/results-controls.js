@@ -9,6 +9,10 @@
         return;
     }
 
+    function cloneTour(tour) {
+        return Object.assign({}, tour || {});
+    }
+
     function numberPrice(value) {
         return parseInt(String(value || '').replace(/[^0-9]/g, ''), 10) || 0;
     }
@@ -24,7 +28,7 @@
     }
 
     function sortedTours(mode) {
-        var copy = lastTours.slice();
+        var copy = lastTours.map(cloneTour);
         if (mode === 'price-asc') {
             copy.sort(function (a, b) { return numberPrice(a.price) - numberPrice(b.price); });
         } else if (mode === 'price-desc') {
@@ -73,7 +77,7 @@
     }
 
     window.constructHotelsResult = function (data) {
-        lastTours = data && Array.isArray(data.tours) ? data.tours.slice() : [];
+        lastTours = data && Array.isArray(data.tours) ? data.tours.map(cloneTour) : [];
         lastPager = data && data.pager ? data.pager : '';
         var controls = ensureControls();
         var mode = controls ? controls.querySelector('.testResultsSort').value : 'default';
