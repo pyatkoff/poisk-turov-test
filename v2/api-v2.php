@@ -6,14 +6,14 @@ header('Cache-Control: no-store');
 $privateConfig = __DIR__ . '/config.php';
 if (is_file($privateConfig)) require_once $privateConfig;
 
-function out($data, int $status = 200): void
+function out($data, int $status = 200)
 {
     http_response_code($status);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-function jwt(): string
+function jwt()
 {
     $token = trim((string)getenv('TOURVISOR_JWT'));
     if ($token !== '') return $token;
@@ -21,7 +21,7 @@ function jwt(): string
     return '';
 }
 
-function bounded_int($value, int $min, int $max, int $fallback): int
+function bounded_int($value, int $min, int $max, int $fallback)
 {
     $v = filter_var($value, FILTER_VALIDATE_INT);
     if ($v === false) return $fallback;
@@ -35,12 +35,12 @@ function optional_int($value)
     return $v === false ? null : (int)$v;
 }
 
-function short_text($value, int $max = 200): string
+function short_text($value, int $max = 200)
 {
     return mb_substr(trim((string)$value), 0, $max, 'UTF-8');
 }
 
-function request_array(string $key, int $maxItems = 100): array
+function request_array(string $key, int $maxItems = 100)
 {
     $value = $_GET[$key] ?? [];
     if ($value === '' || $value === null) return [];
@@ -53,14 +53,14 @@ function request_array(string $key, int $maxItems = 100): array
     return array_values(array_unique($out));
 }
 
-function search_id(): int
+function search_id()
 {
     $id = bounded_int($_GET['searchId'] ?? 0, 1, PHP_INT_MAX, 0);
     if ($id <= 0) out(['ok' => false, 'error' => 'searchId is required'], 400);
     return $id;
 }
 
-function query_string(array $params): string
+function query_string(array $params)
 {
     $parts = [];
     foreach ($params as $key => $value) {
@@ -78,7 +78,7 @@ function query_string(array $params): string
     return implode('&', $parts);
 }
 
-function tv_get(string $path, array $params = []): array
+function tv_get(string $path, array $params = [])
 {
     $token = jwt();
     if ($token === '') out(['ok' => false, 'error' => 'Tourvisor is not configured'], 500);
@@ -110,7 +110,7 @@ function tv_get(string $path, array $params = []): array
     return is_array($decoded) ? $decoded : ['raw' => short_text((string)$body, 1000)];
 }
 
-function bool_param(string $key): bool
+function bool_param(string $key)
 {
     return filter_var($_GET[$key] ?? false, FILTER_VALIDATE_BOOLEAN);
 }
