@@ -1,9 +1,39 @@
-name: Tour search test maintenance
+name: Deploy V2 only
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/**'
   workflow_dispatch:
 jobs:
-  info:
+  deploy-v2:
     runs-on: ubuntu-latest
     steps:
-      - name: Info
-        run: echo "Manual maintenance only for poisk-turov-test"
+      - name: Prepare SSH key
+        env:
+          DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_file="$RUNNER_TEMP/deploy_key"
+          raw="$DEPLOY_SSH_KEY_VALUE"
+          if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+      - name: Update V2 folder only
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key_path: ${{ runner.temp }}/deploy_key
+          script: |
+            set -euo pipefail
+            cd "$HOME/www/anytour.online/poisk-turov-test"
+            git fetch origin main
+            git checkout origin/main -- v2
+            page_code="$(curl -k -L -sS -o /tmp/v2.html -w '%{http_code}' --max-time 40 https://anytour.online/poisk-turov-test/v2/)"
+            api_code="$(curl -k -L -sS -o /tmp/v2-health.json -w '%{http_code}' --max-time 45 'https://anytour.online/poisk-turov-test/v2/api.php?action=health')"
+            grep -q 'Найти тур' /tmp/v2.html
+            grep -q 'tourvisor-direct' /tmp/v2-health.json
+            echo "PAGE=$page_code API=$api_code"
+            cat /tmp/v2-health.json
