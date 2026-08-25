@@ -1,0 +1,89 @@
+
+/* Slider */
+.slick-loading .slick-list
+{
+    background: #fff url('./ajax-loader.gif') center center no-repeat;
+}
+
+/* Icons */
+@font-face
+{
+   
+}
+/* Arrows */
+.slick-prev,
+.slick-next
+{
+    font-size: 0;
+    line-height: 0;
+
+    position: absolute;
+    top: 50%;
+
+    display: block;
+
+    width: 30px;
+    height: 60px;
+    margin-top: -10px;
+    padding: 0;
+
+    cursor: pointer;
+
+    color: transparent;
+    border: none;
+    outline: none;
+    background: #f3c903;
+    z-index:1
+}
+
+.slick-slider .bIcon
+{
+    width:7px;
+    height:12px;
+    position:absolute;
+    left:0px;
+    right:0;
+    top:0;
+    bottom:0;
+    margin: auto;
+}
+
+.slick-prev
+{
+    left: 15px;
+}
+
+.slick-prev .bIcon
+{
+     background: #f3c903 url('../../images/sprite_icon.png') no-repeat -38px -490px ;
+}
+
+
+.slick-next
+{
+    right: 15px;
+    
+}
+
+.slick-next .bIcon
+{
+     background: #f3c903 url('../../images/sprite_icon.png') no-repeat -46px -490px ;
+}
+
+
+/* Dots */
+.slick-slider
+{
+    margin-top:20px;
+}
+
+@media  (max-width: 520px) {
+    .slick-prev
+       {
+        left: 0px;
+    }
+    .slick-next
+       {
+        right: 0px;
+    }
+}    
