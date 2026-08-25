@@ -1,0 +1,2884 @@
+#showMoreResultWrap {
+    height: 45px;
+    width: 100%;
+    background: #fff;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    z-index: 10;
+    display: none;
+    padding-top: 5px;
+    border-top: 2px solid #2E3192;
+}
+
+.searchFormWrap label 
+{
+	font-weight:normal
+}
+
+.zakaza {
+    font-size: 20px;
+    color: #fff;
+    display: block;
+    height: 48px;
+    line-height: 48px;
+    width: 115px;
+    background:#036;
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+
+}
+
+.bold
+{
+	font-weight:bold;
+}
+
+.clear
+{
+	clear:both
+}
+.searchMainWrap
+{
+	max-width: 1200px;
+	width: 100%;
+	margin: 50px auto;
+}
+
+.clistWrap
+{
+    width:110px;
+    height:25px;
+    line-height:25px;
+    border: 1px solid #bfbfbf;
+    position: relative;
+    display:inline-block;
+}
+
+.searchFormWrap
+{
+    margin-bottom:15px
+}
+#searchInfo
+{
+   margin-bottom:15px; 
+}
+
+#searchInfo, #searchResult, #showMoreResult
+{
+    display:none;
+}
+
+#searchInfo .formWrapInner
+{
+    padding:15px 30px;
+    
+}
+
+#showMoreResult
+{
+    float:right;
+    font-size: 16px;
+    height: 40px;
+    line-height: 40px;
+    cursor:pointer;
+	background:#5cb85c
+}
+
+#searchStatus
+{
+    font-size:24px;
+    text-align:center;
+    margin-bottom:10px;
+    color:#000
+}
+
+#searchStatus .finish
+{
+    display:none;
+}
+#searchProc
+{
+    
+}
+
+.gStar {
+
+    width: 12px;
+    height: 11px;
+    background: url('images/icon_gstar.png');
+    display: inline-block;
+    margin-right: 5px;
+
+}
+
+#toursPrice
+{
+    margin:0 auto;
+    font-size: 20px;
+    height: 40px;
+    line-height: 40px;
+    width:40%;
+    float:left;
+    text-align:center;
+    display:none;
+    color:#000
+}
+
+#searchPrice
+{
+    font-size: 26px; 
+    color:#000
+}
+
+.seacrhMet {
+    background: #036 none repeat;
+    border-radius: 10px;
+    height: 20px;
+    width: 100%;
+    margin-bottom:10px;
+}
+.seacrhMetInner {
+    background: #e52529 none repeat ;
+    border-radius: 9px;
+    height: 20px;
+    -moz-transition: all 0.5s;
+	-webkit-transition: all 0.5s;
+	transition: all 0.5s;
+}
+
+#toursFound
+{
+    font-size:20px;
+    float:left;
+    padding:0;
+    height: 40px;
+    line-height: 40px;
+    width:30%;
+    color:#000
+}
+
+#toursFound span
+{
+    font-size:26px;
+}
+#toursFound span.small
+{
+    font-size:20px;
+}
+
+.countryLeft
+{
+    width:25.8%;
+    float:left;
+}
+
+
+#searchResult .airPriceBut
+{
+    display:inline-block;
+    float: right;
+}
+
+
+#searchResult .airTour
+{
+    border-bottom:1px solid #dadada;
+    padding:8px 0;
+	position:relative
+}
+
+#searchResult .airPic
+{
+    width:186px;
+    float:left;
+    position:relative;
+    min-height:120px;
+}
+
+#searchResult .airPic img
+{
+	display:block;
+	max-width:170px;
+	height:auto;
+}
+
+.noPic
+{
+    display:block;
+    position:absolute;
+    top:0;
+    right:0;
+    bottom:0;
+    left:0;
+    margin:auto;
+}
+
+#searchResult .airTitle
+{
+    width:100%;
+    margin-bottom:8px;
+	text-align:left; 
+	font-size:20px;
+    color:#ff8c00;
+}
+
+#searchResult .airHotel
+{
+    width:36%;
+    float:left;
+    padding-right:5px;
+}
+
+
+
+#searchResult .airInfo
+{
+    width:170px;
+    float:left;
+    font-size:14px;
+    color:#000;
+    text-align:left;
+}
+#searchResult .airPrice {
+    !float: right;
+    !width: 25%;
+    margin-top: 30px;
+    text-align: right;
+    position: absolute;
+    right: 0;
+    top: 20px;
+}
+
+
+#searchResult .hotelName
+{
+    display:block;
+    margin-bottom:3px;
+    text-align:left; 
+	color: #000;
+	font-weight: 600;
+	font-size: 17px;
+	
+}
+
+#searchResult .hotelCountry{
+    margin-bottom:10px;
+    font-size:16px;
+    color:#58595a;
+}
+
+#searchResult .hotelRate
+{
+    font-size:16px;
+    color:#000;
+}
+
+#searchResult .rateMet {
+    background: #036;
+    width: 175px;
+    height: 15px;
+    -webkit-border-radius: 7px;
+    -moz-border-radius: 7px;
+    border-radius: 7px;
+}
+
+#searchResult .rateMetInner {
+
+    background: #e52529;
+    -webkit-border-radius: 6px;
+    -moz-border-radius: 6px;
+    border-radius: 6px;
+    height: 15px;
+
+}
+
+#searchResult .hotelRateTxt
+{
+    margin-bottom:3px;
+}
+
+
+#searchResult .airInfoLine
+{
+    margin-bottom:3px
+}
+#searchResult .airInfoLine a
+{
+    font-size:16px;
+    color:#0b8fc0;
+}
+
+#searchResult .airMainPrice
+{
+    color:#036;
+    text-align:right;
+    margin-bottom:8px;
+    display:inline-block;
+    margin-right:5px;
+	cursor:pointer;
+    
+}
+
+#searchResult .airMainPrice .grey
+{
+    color:#000
+}
+
+#searchResult .airMainPrice .mainPrice
+{
+    font-size:30px; 
+   
+    color:#036;
+    padding:0 0 0 3px
+}
+#searchResult .airOldPrice
+{
+    color:#31302a;
+    text-decoration:line-through;
+    text-align:right;
+    margin-bottom:8px;
+}
+
+#searchResult .airPriceBut .updateInfo
+{
+    background: #d9534f;
+    
+    color: #fff;
+    display: block;
+    font-size: 16px;
+    height: 48px;
+    line-height: 48px;
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+    width: 115px;
+    cursor:pointer;
+}
+
+#searchResult .activeTour
+{
+    border-top: 10px solid #5cb85c;
+}
+
+.tourInfoUpdate
+{
+    display:none;
+    /*font-family: "BarnaulGroteskMedium-Reg";
+    font-size: 24px;
+    padding:25px 0;
+    text-align:center;*/
+    /*border-bottom: 1px solid #dadada; */
+}
+
+#waitBlockTtl
+{
+    text-align:center;
+    margin-bottom:20px; 
+}
+
+.more900
+{
+    font-size:16px;
+    display:none;
+}
+
+.more900 a
+{
+    color:#0b8fc0;
+    padding:3px 5px 0 0;
+}
+
+#searchResult .dop480
+{
+    display:none;
+    float:left;
+    margin:0;
+    padding:0;
+    font-size:14px;
+    width:46%;
+    color:#000;
+    text-align:left;
+} 
+#searchResult .dop480 .airInfoLine
+{
+    display:block;
+}
+
+#searchResult .airTourBot
+{
+    padding-top:10px;
+}
+
+
+#searchResult .airMainPrices
+   {
+    display:inline-block;
+    margin-right:5px;
+     
+}
+
+#searchResult .airPriceBut .updateInfo, #searchResult .airPriceBut a {
+    background: #036 none repeat scroll 0 0;
+    border-radius: 5px;
+    color: #fff;
+    display: block;
+
+    font-size: 16px;
+    height: 48px;
+    line-height: 48px;
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+    width: 115px;
+    cursor: pointer;
+}
+
+.noTurs
+{
+    text-align:center;
+    font-size:30px; 
+    color: #000;
+    padding:15px 0 50px
+}
+
+.searchColLeft, .searchColCenter, .searchColRight
+{
+    width:33%;
+    float:left;
+    margin-bottom:15px;
+}
+
+.searchColLeft .searchColInner
+{
+    margin-right:5%;
+}
+
+.searchColCenter .searchColInner
+{
+    margin-right:2.5%;
+    margin-left:2.5%;
+}
+
+.searchColRight .searchColInner
+{
+    margin-left:5%;
+}
+
+.searchLabel
+{
+    font-size: 18px ;
+    color: #000;
+    margin-bottom:10px;
+}
+
+.searchSelect
+{
+    border: 1px solid #bbb;
+    height: 44px;
+    line-height: 44px;
+    position: relative;
+}
+
+.searchSelect select
+{
+    cursor: pointer;
+    display: block;
+    left: 0;
+    opacity: 0;
+    padding: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 44px;
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";
+    filter: alpha(opacity=0);
+    -moz-opacity: 0;
+    -khtml-opacity: 0;
+    opacity: 0;
+    font-size:14px;
+}
+
+.searchSelect select.hiddenSelect
+{
+	display:none;
+}
+
+
+.searchSelectText {
+    height: 44px;
+    line-height: 44px;
+    color: #000;
+    display: block;
+    padding: 0 30px 0 16px;
+    font-size: 16px;
+    display: block;
+    
+} 
+
+.searchSelect.disabled .searchSelectText
+{
+    color: grey;
+}
+
+.searchSelectText:before
+{
+	background: url("images/icon_arrow_bot.png") no-repeat;
+	display:block;
+	position:absolute;
+	top:20px;
+	left:100%;
+	content:'';
+	width:12px;
+	height:7px;
+	border:0;
+	margin-left:-30px;
+}   
+
+.searchSelectText.hiddenSelect:before
+{
+	display:none;
+}
+
+.searchSelect.disabled .searchSelectText:before
+{
+   background:none
+}
+
+*::-moz-selection {
+    background-color: #fff;
+    color:  #000;
+}
+
+#fromWrap, #countryWrap, #nightsWrap, #adultsWrap, #childrenWrap, #chidrenSelectWrap, #dateWrap, #categoryWrap
+{
+    margin-bottom:15px;
+}
+#foodWrap
+{
+    margin-bottom:25px;
+}
+
+#regionBlock, #hotelBlock
+{
+    height:218px;
+    overflow:auto; 
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #bbb;
+    padding:10px 0 10px 15px
+    
+}
+#hotelBlock
+{
+    height:161px; 
+    display:none;
+     margin-bottom:15px;
+}
+
+.sCbList
+{
+    overflow: hidden;
+    white-space: nowrap;
+}
+.sCbList input
+{
+    display:none;
+    height: 17px;
+    line-height: 17px;
+}
+.sCbList label
+{
+    cursor: pointer;
+    line-height: 17px;
+    padding: 0 0 0 22px;
+    display:block;
+    background:url("images/icon_box.png") no-repeat;
+    margin-bottom:5px;
+}
+
+.sCbList label.activelbl
+{   
+    background:url("images/icon_tik.png") no-repeat;
+    
+}
+
+
+.searchInputDbl {
+    display: inline-block;
+    float: left;
+    text-align: left;
+    width: 48%;
+}
+
+.searchInputDbl .searchSelectText
+{
+    padding: 0 30px 0 23%;
+}
+
+.searchDblLeft {
+    margin-right: 4%;
+}
+
+.searchSelectPref
+{
+    width:18%;
+    position:absolute;
+    top:0;
+    left:0;
+    height: 44px;
+    line-height: 48px;
+    text-align:right;
+    font-size:14px;
+    
+}
+
+.searchSelect .sInputWrap 
+{
+    height: 43px;
+    line-height: 43px;
+    color: #000;
+    display: block;
+    padding: 0 23px 0 23%;
+    font-size: 16px;
+    display: block;
+	text-align:center;
+}
+
+.sInputWrap.inputDate
+{
+	 padding: 0 10px 0 23%;
+}
+
+
+.dateIcon
+{ 
+    !background: url("images/icon_calendar.png") no-repeat;
+    bottom: 0;
+    cursor: pointer;
+    !display: inline-block;
+    height: 16px;
+    margin: auto;
+    position: absolute;
+    right: 3px;
+    top: 0;
+    width: 20px;
+	display:none;
+}
+
+.searchSelect .sInputWrap input
+{
+    height: 44px;
+    line-height: 44px;
+    font-size: 14px;
+    border:none;
+    width:100%;
+    padding:0;
+    outline:none;
+	background:none;
+}
+
+.searchInputTpl {
+    display: inline-block;
+    float: left;
+    text-align: left;
+    width: 31%;
+}
+.searchTplLeft {
+    margin-right: 2.5%;
+}
+
+.searchTplMid {
+    margin-right: 1%;
+    margin-left: 1%;
+}
+.searchTplRight {
+    margin-left: 2.5%;
+}
+
+.searchCbWrap
+{
+    border: 1px solid #bbb;
+    !height: 70px;
+    line-height: 35px;
+    position: relative;
+}
+
+
+.cbBlock input, .buycb input
+{
+    display:none;
+}
+.cbBlock input + label, .buycb input + label
+{
+    margin-left:5px;
+}
+.cbBlock input + label.star
+{
+    background:url('images/icon_gstar.png') no-repeat right 3px;
+    padding-right:15px;
+}
+
+
+
+.cbBlock input + label span,  .buycb input + label span{
+    display:inline-block;
+    width:17px;
+    height:17px;
+    margin:0px 4px 0 0;
+    vertical-align:middle;
+    background:url('images/icon_box.png') no-repeat;
+    cursor:pointer;
+}
+.cbBlock input:checked + label span,  .buycb input:checked + label span {
+   background:url('images/icon_tik.png') no-repeat;
+}
+
+.cbLine
+{
+    padding: 0 10px;
+}
+.cbLineItem
+{
+    width:25%;
+    float:left;
+}
+
+.dopCb
+{
+    float:right;
+    
+    font-size:14px;
+    
+}
+
+#search_start {
+    background: #e52529;
+    border: medium none;
+    color: #fff;
+    cursor: pointer;
+    display: block;
+    float: right;
+ 
+    font-size: 16px;
+    height: 45px;
+    line-height: 45px;
+    margin: 0;
+    padding: 0 50px;
+    text-decoration: none;
+    text-transform: uppercase;
+     -webkit-appearance: none;
+}
+
+#search_start::-moz-focus-inner {
+  border: 0;
+}
+
+#searchResultTable .zakaza
+{
+    font-size:18px;
+}
+#searchResultTable .airMainPrice
+{
+    margin-bottom: 0px; 
+    height: 45px;
+    line-height: 45px;
+}
+
+.bigMargin
+{
+    margin-bottom:212px;
+}
+
+#waitBlock/*, .tourInfoWrap*/
+{
+   display:none
+}
+
+.waitBlockWrap
+{
+    text-align:center;
+   
+    font-size: 30px;
+    line-height: 32px;
+    padding:50px 0;
+}
+
+.tourInfoLeft
+{
+    float:left;
+    /*width:82%;*/
+    width:100%;
+    position:relative;
+    /*border-bottom: 10px solid #fee13c;*/
+    border-bottom: 10px solid #5cb85c;
+    padding:15px 0 
+}
+
+.tourInfoName
+{
+    color: #000;
+   
+    font-size: 34px;
+    line-height: 34px;
+    margin-bottom:20px;
+}
+
+
+.tourInfoPriceWrap
+{
+    float:right;
+    width:36%;
+    position: absolute;
+    right: 0;
+}
+
+.tourInfoPriceBlock
+{
+    margin-bottom:15px;
+}
+
+.tourInfoPrice
+{
+    color: #e52529;
+    text-align:right;
+    margin:0 0 5px;
+    padding-top:5px;
+    font-size: 18px;
+    display:block;
+
+}
+
+.tourInfoPrice span
+{
+   
+    font-size: 40px;
+}
+
+.tourInfoPrice span.tPriceBlack
+{
+    font-size: 18px;
+    color:#1d2638;
+}
+
+.tourInfoOffline, .tourInfoOnline
+{
+    background: #5cb85c ;
+    color: #fff;
+    display: block;
+    
+    font-size: 16px;
+    height: 48px;
+    line-height: 48px;
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+    width: 145px;
+    cursor:pointer;
+    margin:0px 0px 5px;
+    float:right;
+    clear:both;
+}
+.tourInfoOnline
+{
+    display:none;
+}
+
+.tourInfoDop
+{
+    min-width:125px;
+    float:left;
+    font-size: 13px;
+    padding:5px 5px;
+    border:1px solid #e52529;
+    width: 145px;
+    margin-bottom:5px
+}
+
+.tourInfoCaruselItem  .slick-prev, .tourInfoCaruselItem .slick-next
+{
+    margin-top: -20px;
+}
+
+.tourInfoDopLine .lName, .tourInfoDopTtl
+{
+   
+}
+
+.tourInfoDopTtl
+{
+    font-size: 15px;
+}
+
+.tourInfoDopLine
+{
+    line-height:16px;
+}
+
+.tourInfoDopLine .lVal
+{
+    display:block;
+    1padding-left:15px;
+}
+
+.tourInfoSline
+{
+    margin-bottom:5px;
+}
+
+.tourInfoSline span
+{
+   font-weight:bold;
+}
+
+.tourInfoSubLeft
+{
+    /*width:30%;
+    float:left;
+    margin-right:2%;*/
+    margin-bottom:5px
+}
+
+.tourInfoSubRight
+{
+    /*width:30%;
+    float:left;
+    margin-right:2%;*/
+    margin-bottom:5px
+}
+
+.tLbl
+{
+    font-size:18px;
+   
+    margin-bottom:5px
+}
+.tName
+{
+   
+    font-size:24px;
+    margin-bottom:5px;
+    line-height:26px;
+}
+
+.tourHotelInfo
+{
+    margin-bottom:20px;
+    padding-right:175px;
+}
+
+.tourHotelInfo .slick-prev, .tourHotelInfo  .slick-next
+{
+    margin-top:-20px;
+}
+
+.tourHotelInfo .gStar {
+    background: url("../../../../images/sprite_icon.png") no-repeat  -36px -248px;
+    display: inline-block;
+    height: 17px;
+    margin-right: 5px;
+    width: 17px;
+}
+
+.tourHotelInfoLeft, .tourHotelInfoRight
+{
+    width:47%;
+    float:left;
+    position: relative;
+    margin-right:2%
+}
+
+.tourHotelInfoRight
+{
+    margin-right:0;
+    width:48%;
+}
+
+.tourHotelInfoLeft img
+{
+    display:block;
+    width:100%;
+}
+
+.tourInfoCarusel.slick-slider
+{
+     margin-top: 0!important;
+}
+
+.tourHotelInfoLeft.no-pic
+{
+    min-height:120px;
+}
+.tourHotelInfoLeft.no-pic img
+{
+    display:block;
+    position:absolute;
+    top:0;
+    right:0;
+    left:0;
+    bottom:0;
+    margin: auto;
+    width:auto;
+}
+
+.tourHotelRateTxt
+{
+    font-size:18px;
+    margin-bottom:3px;
+   
+}
+.tourHotelRateMet
+{
+    background: #036 ;
+    width:200px;
+    height:18px;
+    -webkit-border-radius: 9px;
+    -moz-border-radius: 9px;
+    border-radius: 9px;
+    margin-bottom:10px
+}
+
+.tourHotelRateMetInner {
+    background: #fee13c ;
+   -webkit-border-radius: 8px;
+    -moz-border-radius: 8px;
+    border-radius: 8px;
+    height: 18px;
+}
+
+
+.tourInfoButons
+{
+    text-align:center;
+    float:right;
+}
+
+.tourHotelLink
+{
+    display:block;
+    margin-bottom:5px
+}
+
+.orderTtl
+{
+    color: #000;
+    
+    font-size: 26px;
+    margin-bottom: 20px;
+}
+
+.orderInputWrap
+{
+    border: 1px solid #bbb;
+    height: 44px;
+    line-height: 44px;
+    position: relative;
+    padding:0 10px
+}
+
+.orderInputWrap.errorBord
+{
+    border: 1px solid red;
+}
+
+.orderTextWrap
+{
+    border: 1px solid #bbb;
+    height: 45px;
+    position: relative;
+    padding:10px 20px;
+    margin-bottom:15px;
+}
+.orderTextWrap textarea
+{
+    border: none;
+    width:100%;
+    height:100%;
+    font-size: 16px;
+    
+}
+
+.orderInputText {
+    color: #000;
+  
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.orderLeft, .orderMid, .orderRight {
+    float: left;
+    margin-bottom: 5px;
+    width: 33.3%;
+}
+.orderLeft .orderInner {
+    margin-right: 9%;
+}
+
+.orderRight .orderInner {
+    margin-left: 9%;
+}
+
+.orderMid .orderInner {
+    margin-left: 4.5%;
+    margin-right: 4.5%;
+}
+.orderInputWrap input 
+{
+    border: none;
+    font-size: 14px;
+    height: 42px;
+    line-height: 44px;
+    padding: 0;
+    width: 100%;
+  
+}
+.orderTextWrap textarea
+{
+	font-size: 18px;
+	font-family:Arial;
+}
+
+.orderSend
+{
+    background: #5cb85c;
+    color: #fff;
+    display: block;
+    
+    font-size: 16px;
+    height: 48px;
+    line-height: 48px;
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+    width: 200px;
+    cursor:pointer;
+    margin:0px auto;
+    clear:both;
+    border:none;
+    -webkit-appearance: none;
+}
+
+.turZakazWrap .fancybox-skin
+{
+    background:#fff;
+    padding:35px 40px 25px!important;
+    -webkit-border-radius: 0px!important;
+    -moz-border-radius: 0px!important;
+    border-radius: 0px!important;
+    color:#1d2638!important;
+}
+
+.turZakazWrap .fancybox-close
+{
+    background: #fee13c url('images/close.png') center center no-repeat;
+    -moz-border-radius: 0px; 
+    -webkit-border-radius: 0px; 
+    -khtml-border-radius: 0px; 
+    width:48px;
+    height:48px;
+    display:block;
+    border:1px solid #fee13c;
+    right: 0;
+    top: 0;
+    
+}
+
+#claimOkMain
+{
+    text-align:center;
+    font-size:20px;
+}
+
+.orderInfoBlock
+{
+    width:100%;
+    text-align:center;
+    font-size:16px;
+    color:grey;
+	margin-bottom:15px;
+}
+
+.tourButtons600
+{
+    display:none;
+    text-align:center;
+    margin-bottom:5px;
+}
+
+.hidPrice
+{
+    display:none!important;
+}
+
+
+.airDopBtns
+{
+	padding-left:186px;
+    margin-top:5px;
+}
+
+.airDopBtn
+{
+	
+	border-radius: 5px;
+	color: #036;
+	display: block;
+	font-size: 12px;
+	height: 30px;
+	line-height: 30px;
+	text-align: center;
+	text-decoration: none;
+	text-transform: uppercase;
+	width: 80px;
+	cursor: pointer;
+	display: inline-block;
+	margin-right: 10px;
+    border:1px solid #036;
+    border-radius: 5px;
+}
+
+@media (max-width: 1240px) {    
+	.searchMainWrap
+	{
+		padding: 0 15px;
+	}
+}
+@media (max-width: 1200px) {    
+    .searchSelect .sInputWrap
+    {
+        padding: 0 0px 0 19%;
+    }
+    
+	
+	
+    .searchSelectPref
+       {
+        width: 15%;
+    }
+}
+
+@media (max-width: 1120px) {
+    #searchResult .airPrice
+       {
+        width:25%;
+        margin-top:0px;  
+        text-align:right;
+    }
+    
+    #searchResult .airMainPrices
+       {
+        display:block;
+        margin-right:0px;
+    }
+    #searchResult .airPriceBut
+       {
+        display:block;
+    }
+	#toursPrice
+	{
+		float:right;
+		width:50%;
+	}
+	#toursFound
+	{
+		width:50%;
+	}
+
+}
+@media (max-width: 1020px) {
+    #searchResult .airPrice
+       {
+        width:25%;
+        margin-top: 10px;        
+    }
+    #searchResult .airMainPrice
+       {
+        margin-right:0
+    }
+}    
+
+@media (max-width: 1000px) {
+    .searchColLeft .searchColInner
+       {
+        margin-right:4%
+    }
+    .searchColRight .searchColInner
+       {
+        margin-left:2%
+    }
+    
+    .searchColCenter .searchColInner {
+        margin-left: 2%;
+        margin-right: 2%;
+    }
+    
+    .searchSelect .sInputWrap input
+    {
+        font-size: 14px;
+		height: 40px;
+    }
+    .tourInfoPriceBlock
+       {
+        float:none;
+        margin-bottom:10px
+    } 
+    
+    .tourInfoSline
+       {
+        margin-bottom: 1px;
+    }
+    .tourInfoSubLeft, .tourInfoSubRight
+       {
+        margin-bottom:0;    
+    }
+}    
+
+
+
+@media (max-width: 900px) {
+    
+
+    #searchResult .hotelLink
+       {
+        font-size:18px
+    }
+    
+    #searchResult .hotelRate
+       {
+        font-size:16px
+    }
+
+    #searchResult .airHotel 
+       {
+         width:30%; 
+    }
+    
+    #searchResult .airInfo
+       {
+        width:130px;
+    }
+    
+     #searchResult  .airPrice
+       {
+        width:28%;
+        margin-top:0px;  
+        text-align:right;
+    }
+    #searchResult .airMainPrice
+       {
+        font-size:14px; 
+    }
+    #searchResult .airOldPrice
+       {
+        font-size:14px;  
+    }
+    
+    
+    #searchResult .airMainPrice .mainPrice
+       {
+        font-size:26px; 
+        padding: 0 0 0 1px;
+    }
+    
+    #searchResult .airInfoLine
+       {
+        line-height:14px;
+        margin-bottom: 7px;
+    }
+    .lineRoom span.bold
+       {
+        display:block;
+    }
+    
+    .dateIcon
+       {
+        display:none;    
+    }
+    
+    .searchSelect .sInputWrap {
+        padding: 0 0 0 25%;
+    }
+	
+	.sInputWrap.inputDate {
+        padding: 0 0 0 15%;
+    }
+	
+    
+    #categoryWrap, #foodWrap
+       {
+        font-size:14px;    
+    }
+    
+    .cbLine
+       {
+        padding: 0 3px;
+    } 
+    .tourHotelInfo
+       {
+        padding-right:0;    
+    }
+    
+    .tourInfoSubLeft, .tourInfoSubRight
+       {
+        width: 50%;
+        margin-right:2%;
+        float:left;
+    }
+    
+    .tourInfoSubRight
+       {
+        width:170px
+    }
+    
+    .tourHotelInfoLeft
+       {
+        width: 100%;
+        margin-bottom:5px;
+        max-width:400px;
+        
+    }
+    .tourHotelInfoRight
+       {
+        width: 100%;
+    }
+    
+    .tourSubInfoLeft
+       {
+        float:left;
+        margin-right:15px;    
+    }
+    
+    .tourSubInfoRight
+       {
+        float:left;
+        width:100%;
+    }
+    
+    /* #searchResult .airPrice
+       {
+        width:23%;
+        margin-top: 10px;        
+    }
+    #searchResult .airMainPrice
+       {
+        margin-right:0
+    }*/
+	
+	#toursFound
+	{
+		font-size:18px
+	}
+	
+	#toursFound span, #searchPrice {
+		font-size: 22px;
+	}
+}
+
+@media (max-width: 720px) {
+	.searchMainWrap {
+		padding: 0 10px;
+		margin: 0 auto 20px;
+	}
+	#searchResult .airTitle
+	{
+		font-size:18px;
+	}
+    #searchResult .airPic
+    {
+        width: 160px; 
+		margin-right:5px;
+		padding-top:4px
+    }
+	#searchResult .airPic img
+	{
+		max-width:100%;
+		height:auto;
+		
+		
+	}
+    #searchResult .hotelStars
+       {
+        line-height:14px;
+    }
+    
+    #searchResult .hotelCountry
+       {
+        margin-bottom: 0px;
+        /*line-height:16px;*/
+		font-size:14px;
+    }
+     #searchResult .hotelRateTxt
+       {
+        margin-bottom: 5px;
+		font-size:14px;
+    }   
+
+    #searchResult .airInfo
+       {
+        width:40%;
+        font-size:13px;
+        line-height:17px;
+        
+    }    
+    #searchResult .airInfoLine
+       {
+        display:inline-block;
+        margin:0 2px 0 0;
+    }
+    #searchResult .airMainPrice .mainPrice {
+		font-size: 23px;
+	}
+	#searchResult .airPriceBut .updateInfo
+	{
+		font-size: 14px;
+		height: 40px;
+		line-height: 40px;
+		width: 100px;
+
+	}
+	#searchResult .airHotel
+	{
+		width: 40%;
+	}
+	#searchResult .airPrice {
+		width: 30%;
+	}
+	
+    .lineRoom span.bold
+    {
+        display:inline-block;
+    }
+    
+    #searchResult .more900
+       {
+        display:block; 
+    }   
+    #searchResult  .rateMet,
+    /*.textBlock,*/
+    #searchResult .more1920
+       {
+        display:none;
+    }
+    
+    #searchResult .airTourBot
+       {
+        text-align:center; 
+    }
+    
+    #searchResult .moreTurs
+       {
+        display:inline-block!important;
+        float:none!important;
+    }
+    
+     .searchColLeft, .searchColCenter, .searchColRight
+       {
+        float: none;
+        margin-bottom: 10px;
+        width: 100%;
+    } 
+    
+    .searchColInner
+       {
+        margin:0!important    
+    }
+    
+    #categoryWrap, #foodWrap
+       {
+        font-size:16px;    
+    }
+    
+    .searchSelect .sInputWrap input
+       {
+        font-size: 16px;
+    }
+    
+    .dateIcon
+       {
+        display:block;    
+    }
+    
+    .searchSelectPref {
+        width: 20%;
+    }
+    
+    .searchSelect .sInputWrap {
+        padding: 0 0 0 30%;
+    }
+    
+    .searchInputDbl .searchSelectText {
+        padding: 0 30px 0 30%;
+    }
+    
+    .bigMargin
+       {
+        margin-bottom: 30px;
+    }
+    
+    #search_start
+       {
+        float:none;
+        margin: 0 auto;
+    }
+    
+    #regionBlock
+       {
+        height:120px
+    }
+    
+    #searchInfo .formWrapInner
+       {
+        padding: 15px 10px;
+    }
+    
+    #toursFound
+       {
+        width: 35%;
+    }
+    
+    .orderLeft .orderInner {
+        margin-right: 5%;
+    }
+    .orderMid .orderInner {
+        margin-left: 2.5%;
+        margin-right: 2.5%;
+    }
+    .orderRight .orderInner {
+        margin-left: 5%;
+    }
+    
+    .tourInfoSubLeft
+       {
+        width: 40%;
+    }
+    .tourInfoPrice span
+       {
+        font-size: 36px;
+    }
+	.airDopBtns {
+		padding-left: 165px;
+	}
+	
+}
+
+@media (max-width: 640px) {
+    #showMoreResult
+    {
+        /*clear: left;
+        float: none;
+        margin:0 auto;*/
+		font-size: 14px;
+		width:100px;
+    }
+    #toursFound, #toursPrice
+       {
+        margin-bottom:10px;
+        width:50%
+    }
+	.greyTours
+	{
+		display:none;
+	}
+	#searchStatus
+	{
+		font-size:22px;
+	}
+	
+}
+
+@media (max-width: 600px) {
+    .tourInfoUpdate
+    {
+        font-size:14px;    
+    }
+    
+    .tourInfoName
+       {
+        font-size: 26px;
+        line-height: 28px;
+        margin-bottom: 10px;
+        text-align:center;
+    }
+    
+    .tourInfoPriceWrap
+       {
+        float:none;
+        width:100%;
+        position:relative;
+    }
+    
+    .tourInfoPriceBlock
+       {
+        margin:0px;
+    }
+    
+    .tourInfoPriceBlock
+       {
+        margin:0px;
+    }
+    .tourInfoPrice
+       {
+        text-align:center;
+    }
+    
+    .tourInfoButons
+       {
+        float:none;
+    }
+    
+    .tourInfoDop
+       {
+        float:none;
+        display:inline-block;
+        widtH: auto;
+        margin-bottom:10px
+    }
+    
+    .tourInfoOffline, .tourInfoOnline
+       {
+        display:none;
+    }
+    .tourButtons600 .tourInfoOffline, .tourButtons600 .tourInfoOnline
+       {
+        float:none;   
+        display:inline-block;
+    }
+    
+    .tourButtons600
+       {
+        display:block;
+    }
+    .tourInfoDopLine .lVal {
+        display: inline-block;
+    }
+    .tourInfoSubLeft, .tourInfoSubRight
+       {
+        width:50%;
+        margin:0
+    }
+    
+    .tourInfoSubRight
+       {
+        margin-right:0;
+    } 
+    
+    .tourInfoPrice span
+       {
+        font-size:36px;
+    }
+    
+    .tourInfoSline
+       {
+        margin:0;
+        text-align: center;
+    } 
+    
+    .tName
+       {
+        font-size: 22px;
+        line-height: 24px;
+    }
+    .tourHotelRateTxt {
+        font-size: 16px;
+        margin-bottom: 3px;
+    }
+    .tourHotelRateMet
+       {
+        widtH:150px;    
+    }
+   
+    .tourSubInfoRight
+       {
+        width:100%;
+    }
+    
+    .waitBlockWrap
+      {
+        font-size: 24px;
+        line-height: 26px;
+        padding:50px 0;
+    }
+    
+    .orderTtl
+       {
+        font-size: 24px;
+        line-height: 26px;
+    }
+    
+    .orderInputText {
+        !font-size: 18px;
+    }
+    .orderInfoBlock
+       {
+        font-size: 16px;
+    }
+    
+    .tourInfoCarusel.slick-slider
+       {
+        float:none;
+        margin:0 auto;
+    }
+    
+}    
+    
+    
+    
+@media (max-width: 520px) {
+	.searchMainWrap
+	{
+		padding:0
+	}
+	
+	  
+    
+    #searchResultTable .airPic {
+        width: 85px;
+		padding-top: 5px;
+		min-height:55px
+    }
+    
+    #searchResultTable .airPic img
+    {
+        max-width: 80px;
+	    max-height: 80px;
+       
+    }
+	
+	#searchResult .airHotel {
+		width: 70%;
+		padding-right:0;
+	}
+	#searchResult .hotelName
+	{
+		font-size:16px;
+		font-weight:500;
+	}
+	#searchResult .airPrice
+	{
+		margin-top: 20px;
+	}
+	
+	#searchResult .airMainPrice .mainPrice {
+		font-size: 20px;
+		
+	}
+	.airDopBtns {
+		padding-left: 0px;
+	}
+	.airDopBtn {
+		font-size: 10px;
+		width:60px;
+		margin-right:5px;
+		color: #fff;
+		background: #036;
+	}	
+    
+	
+	.airMR {
+		text-overflow:ellipsis
+	}
+
+	.airLabel
+	{
+		display:none;
+	}
+    .airTourPrice span {
+		font-size: 22px;
+	}
+	
+	.airTourPrice {
+		font-size: 14px;
+		top:30px;
+	}
+	
+	#toursFound {
+		font-size: 16px;
+	}
+	#toursPrice
+	{
+		font-size: 16px;
+	}
+	
+	#toursFound span, #searchPrice {
+		font-size: 18px;
+	}	
+	
+	#searchInfo {
+		margin-bottom: 0px;
+	}
+	#searchInfo .formWrapInner {
+		padding-bottom:0px;
+	}
+	#searchStatus {
+		font-size: 18px;
+		line-height: 22px;
+	}
+	
+    /*
+    #searchResultTable .more900,
+    #searchResultTable .airHotel .hotelCountry,
+    #searchResultTable .airHotel .hotelRate,
+    #searchResultTable  .airInfo
+    {
+         display:none; 
+    }
+    
+    #searchResultTable .airHotel
+       {
+        width:100%;
+        padding-right:0px;
+    }
+    
+    #searchResultTable .airPrice
+       {
+        width:100%;
+        text-align: center;
+        padding-top:5px;
+    }
+    
+    #searchResultTable .airMainPrices
+       {
+        display:inline-block;
+        float:left;
+        margin-right:5px;
+    
+    }
+    
+    #searchResultTable .airPriceBut
+       {
+        display:inline-block;
+        float:right;
+    }
+    
+    #searchResultTable .airMainPrice
+       {
+        margin-bottom: 3px;
+    }
+    
+    #searchResultTable .hotelRateTxt
+       {
+        margin-bottom:1px; 
+    }
+    
+    #searchResultTable .dop480, 
+    #searchResultTable .rateMet
+       {
+        display:block; 
+    }
+    
+    #searchResultTable .rateMet
+       {
+        width:120px!important;
+    }
+    
+    
+    #searchResultTable .moreTurs
+       {
+        font-size:14px!important;
+    }
+   
+    #toursFound, #toursPrice
+       {
+        font-size: 16px;
+    }
+    
+    #toursPrice
+       {
+        text-align:right;    
+    }
+	*/
+    #searchStatus
+    {
+        font-size: 18px
+    }
+    
+    .orderLeft, .orderMid, .orderRight {
+        float: none;
+        margin-bottom: 5px;
+        width: 100%;
+    }
+    .orderInner
+       {
+        margin:0!important
+    }
+    .orderInfoBlock
+       {
+        float: none;
+        margin-bottom: 5px;
+        width: 100%;
+    }
+	
+	#searchCount2
+	{
+		font-size:14px; 
+	}
+    
+	.searchLabel {
+		font-size: 16px;
+		margin-bottom: 5px;
+	}
+	
+	.searchSelectText {
+		height: 38px;
+		line-height: 38px;
+		padding: 0 30px 0 16px;
+		font-size: 14px;
+	}
+	
+	.searchSelect {
+		height: 38px;
+		line-height: 38px;
+	}
+	.searchSelect select
+	{
+		height: 38px;
+	}
+	.searchSelect .sInputWrap input {
+		font-size: 14px;
+		height: 36px;
+	}
+	
+	.searchSelect .sInputWrap {
+		height: 37px;
+		line-height: 37px;
+	}	
+	
+	.searchSelectPref {
+		height: 38px;
+		line-height: 44px;
+		font-size: 12px;
+	}
+	
+	
+	
+}
+@media (max-width: 440px) {
+    #searchResult .airPrice
+    {
+	    height:30px;
+	    width: 40%;
+		margin-top: 0px;
+		bottom: 10px;
+		top: auto;
+    }
+	#searchResultTable .airMainPrice {
+		margin-bottom: 0px;
+		height: 30px;
+		line-height: 30px;
+	}
+}    
+
+@media (max-width: 400px) {
+    .dateIcon
+       {
+        display:none;    
+    }
+    
+    #toursFound, #toursPrice
+       {
+        width:100%;
+        text-align:center;
+        height: 30px;
+        line-height: 30px;
+    } 
+    
+    #toursFound
+       {
+        margin-bottom:0
+    }
+}
+
+@media (max-width: 340px) {
+    .discontWrap
+       {
+        background:none!important;
+        top:35px!important;
+    }
+    
+    .airPic {
+        width: 155px;
+    }
+}
+
+@media (min-width: 480px) and (max-width: 720px) {
+    .discontWrap
+       {
+        background:none!important;
+        top:35px!important;
+    }
+}
+
+div.modern-page-navigation { 
+	text-align: right;
+	color:#000;
+	font-size: 16px;
+	margin: 15px 0 0px 0px;
+   
+    border-bottom: 1px solid #dadada;
+    padding-bottom:15px;
+}
+div.modern-page-navigation a, 
+span.modern-page-current, 
+span.modern-page-dots
+{
+    color:#000;
+    padding: 0 3px;
+}
+
+span.modern-page-current { 
+
+   background:#337ab7;
+
+   display: inline-block;
+   height: 30px;
+   line-height: 30px;
+   padding: 0 12px;
+   color:#fff;
+   text-decoration:none;
+}
+
+	 
+div.modern-page-navigation a, span.modern-page-current 
+{
+   background:#f39100;
+ 
+ 
+   display: inline-block;
+   height: 30px;
+   line-height: 30px;
+   padding: 0 12px;
+   text-decoration:none;
+}
+
+span.modern-page-current { 
+
+    background:#337ab7;
+}
+
+div.modern-page-navigation .modern-page-title
+{
+	font-weight:bold;
+}
+
+
+.modern-page-next, .modern-page-previous
+{
+    display:none!important;
+}
+
+@media (max-width: 550px) {
+    div.modern-page-navigation a, span.modern-page-current
+       {
+        height: 25px;
+        line-height: 25px;
+        padding: 0 10px;
+        font-size: 14px;
+        
+    } 
+     
+}    
+
+@media (max-width: 440px) {
+    div.modern-page-navigation a, span.modern-page-current
+       {
+        height: 25px;
+        line-height: 25px;
+        padding: 0 9px;
+        font-size: 14px;
+           
+        font-size: 12px;        
+    } 
+}        
+
+.procY
+{
+    color:#f1c000;
+}
+.procG
+{
+    color:#0bc029;
+}
+.procR
+{
+    color:#f13737;
+}
+
+.fbox .fancybox-close
+{
+	z-index:8041
+}
+
+.buycb
+{
+	text-align:center;
+	margin-bottom: 10px;
+}
+
+.ui-datepicker .ui-datepicker-prev span,
+.ui-datepicker .ui-datepicker-next span
+{
+	width:17px;
+}
+
+#searchCount2 {
+    float: left;
+    font-size: 16px;
+    padding-top: 10px;
+    padding-left: 10px;
+    color:#000
+}
+
+#showMoreResult {
+    float: right;
+    font-size: 16px;
+    height: 32px;
+    line-height: 32px;
+    cursor: pointer;
+    margin-right: 10px;
+    display:block;
+    background:#e52529
+}
+.airInfoLine
+{
+    margin-bottom:3px
+}
+.airInfoLine a
+{
+    font-size:16px;
+    color:#0b8fc0;
+}
+
+
+.airTourBot
+{
+    padding-top:10px;
+}
+
+.airMainPrices
+   {
+    display:inline-block;
+    margin-right:5px;
+     
+}
+
+
+.airTourVar
+{
+	border-bottom: 1px solid #dadada;
+	padding: 8px 0;
+	position: relative;
+	display:block;
+	text-decoration:none;
+	color: #2d2f30;
+    cursor:pointer;
+}
+
+.airTourVar:nth-child(2n+2)
+{
+	background:#f9f9f9
+}
+
+.airTourPrice
+{
+	position:absolute;
+	right:0;
+	top:25px;
+	color: #036;
+}
+
+.airTourPrice span {
+    font-size: 25px;
+    color: #036;
+    padding: 0 0 0 3px;
+	
+}
+
+.tourStartDate
+{
+	background: url('images/plainUp.png') no-repeat;
+	padding-left:25px;
+	background-size:20px 20px;
+	display:inline-block;
+	color: #036;
+	margin-right:10px;
+	font-weight:bold;
+}
+.tourEndDate
+{
+	background: url('images/plainDown.png') no-repeat;
+	padding-left:25px;
+	background-size:20px 20px;
+	color: #036;
+	display:inline-block;
+	font-weight:bold;
+}
+
+.airNights span
+{
+	color: #036;
+}
+
+.airMR
+{
+	color: #036;
+}
+
+.airMR .airLabel
+{
+	color: #000;
+}
+
+ 
+
+
+.hotel_info
+{
+    padding:10px 0;
+    color:#000;
+}
+
+.hotelPics
+{
+    float:left;
+    width:170px;
+}
+
+.hotelData
+{
+    margin-left:180px;
+}
+.hotelDataLine span
+{
+    font-weight:bold;
+    padding-right:5px;
+}
+
+.hotelDataLine ul li
+{
+    display: inline;
+    background-image: none;
+    padding: 0;
+}
+
+.hotelDataLine ul li:not(:last-child)::after {
+    content: ", ";
+}
+
+.hotelPics a
+{
+    display:inline-block;
+    margin-right:8px;
+    margin-bottom:5px;
+}
+
+.hotelPics a:nth-child(3n+3)
+{
+    margin-right:0px;
+}
+
+.tourHotelWrap
+{
+	width:100%;
+	max-width:600px;
+	padding:20px;
+}
+
+.hotelName {
+    display: block;
+    font-size: 20px;
+    color: #2d2f30;
+}
+.hotelPhoto
+{
+	margin-bottom:10px;
+}
+.infoWrapper
+{
+	padding: 10px 0;
+	
+	display: flex;
+	border-top: 1px solid #dadada;
+	color: #58595a;
+}
+.infoLabel
+{
+	width: 150px;
+	font-weight:bold;
+	flex-shrink: 0;
+	color: #000;
+}
+
+.infoWrapper ul li {
+    
+    position: relative;
+    line-height: 21px;
+	box-sizing: content-box;
+	list-style-type: disc;
+}
+
+.hotelPriceInfo
+{
+	margin-top:10px;
+	margin-bottom:10px;
+	padding-top:10px;
+	padding-bottom:10px;	
+	border-top: 1px solid #dadada;
+	border-bottom: 1px solid #dadada;
+}
+
+.hotelPriceInfo:after
+{
+	content:"";
+	clear:both;
+	display:block;
+}
+
+.hotelTourPrice {
+    color: #036;
+	float: left;
+	line-height: 35px;
+}
+
+.hotelTourPrice span{
+    font-size: 26px;
+    color: #036;
+    padding: 0 0 0 3px;
+}
+
+.hotelNextStep
+{
+	background: #036 none repeat scroll 0 0;
+    border-radius: 5px;
+    color: #fff;
+    display: block;
+    font-size: 14px;
+    height: 35px;
+    line-height: 35px;
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+    width: 120px;
+    cursor: pointer;
+	float:right;
+}
+.hotelNextStep.loading
+{
+	opacity:.4;
+}
+
+.hotelTourDates {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #dadada;
+	color: #000;
+	
+}
+
+.hotelTourDates:after
+{
+	content:"";
+	clear:both;
+	display:block;
+}
+
+.tourDatesBlock {
+    float: left;
+    width: 30.3%;
+    margin: 0 1.5%;
+}
+
+.tourDatesBlock span {
+    font-size: 16px;
+    font-weight:bold;
+	
+}
+
+.hotelTourInfo {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #dadada;
+}
+
+.tourInfoLine {
+    padding: 10px 1.5%;
+	color:#000;
+}
+
+.tourInfoLine:nth-child(2n+2) {
+    background: #f9f9f9;
+}
+
+.tourInfoLine span {
+    font-weight:bold;
+}
+
+.loading .hotelTourPrice
+{
+	padding-right:50px;
+	background: url('/upload/loading.gif') right top no-repeat;
+}
+
+.formshow .hotelPhoto,
+.formshow .infoWrapper
+{
+	display:none;
+}
+
+.hotelOrderWrapper
+{
+	display:none;
+}
+
+.formshow .hotelOrderWrapper
+{
+	display:block;
+}
+.orderFormTitle
+{
+	font-size: 16px;
+	font-weight: 600;
+	color: #000;
+	margin-bottom: 20px;
+}
+
+.orderSubTtl
+{
+	font-size: 16px;
+	font-weight: 600;
+	color: #000;
+	margin-bottom: 20px;
+}
+
+.onName, .onSname
+{
+    width:48%;
+    float:left;
+    margin-right:2%;
+	margin-bottom:10px
+}
+
+.onBdate
+{
+    width:48%;
+    float:left;
+    margin-right:2%;
+}
+
+.onNat
+{
+    width:30%;
+    float:left;
+    margin-right:2%;
+}
+
+.onNat.onTill
+{
+    width: 48%;
+}
+
+.onGend
+{ 
+    width:16%;
+    float:left;
+}
+
+.orderInputBdWrap
+{
+    border: 1px solid #bbb;
+    height: 44px;
+    line-height: 44px;
+    position: relative;
+    padding:0 0px
+}
+.orderInputBdWrap.errorBord
+{
+	border: 1px solid red;
+}
+
+.orderBdateD, .orderBdateM, .orderBdateY
+{
+    width:29%;
+    padding:0;
+    float:left;
+    height: 43px;
+    line-height: 43px;
+    border-right: 1px solid #bbb;
+}
+.orderBdateY
+{
+    width:40%;
+    border-right: none;
+}
+
+.orderInputBdWrap input
+{
+    border: none;
+    font-size: 14px;
+    height: 43px;
+    line-height: 44px;
+    padding: 0;
+    width: 100%;
+    text-align:center;
+}
+
+.onLine
+{
+    margin-bottom:10px;
+}
+
+.orderOnlineTextWrap{
+    border: 1px solid #bbb;
+    height: 55px;
+    margin-bottom: 15px;
+    padding: 10px 20px;
+    position: relative;
+}
+
+.orderOnlineTextWrap textarea {
+    border: medium none;
+    font-size: 14px;
+    height: 100%;
+    width: 100%;
+}
+
+.orderOnlineWrap .orderTtl
+{
+    margin-bottom:10px;
+}
+.orderOnlineWrap .orderSubTtl
+{
+    margin-bottom:10px;
+    font-size:20px;
+    color:#0b8fc0;
+}
+
+.turistBlock
+{
+    padding-bottom:0px;
+    border-bottom:2px solid #e52529 ;
+    margin-bottom:15px;
+}
+
+.uPhone, .uFio
+{
+    widtH:30.3%;
+    margin-right:3%;
+    float:left;
+}
+
+.uEmail, .uPasport
+{
+    widtH:30.3%;
+    margin-left:1.5%;
+    margin-right:1.5%;
+    float:left;
+}
+
+.uAdres, .uPasout
+{
+    widtH:30.3%;
+    margin-left:3%;
+    float:left;
+}
+
+.userBlock
+{
+    margin-bottom:20px;
+}
+.turistBlockSubTitile
+{
+    font-weight: 600;
+    color: #000;
+    margin-bottom: 10px;
+}
+
+.hotelOrderType
+{
+    display:block;
+    height:40px;
+    line-height:40px;
+    margin-bottom:15px;
+}
+
+.hotelOrderType div
+{
+    display:inline-block;
+    height:35px;
+    line-height:35px;
+    padding: 0 15px;
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin: 0px auto;
+    clear: both;
+    border: none;
+    -webkit-appearance: none;
+    border:1px solid #5cb85c;
+    color:#000;
+}
+
+.hotelOrderType div.active
+{
+    background:#5cb85c;
+    color:#fff;
+}
+
+.hotelOrderOnline,
+.hotelOrderOffice
+{
+    display:none;
+}
+
+.hotelOrderOnline.active,
+.hotelOrderOffice.active
+{
+    display:block;
+}
+
+.orderWide
+{
+    margin-bottom:10px;
+}
+
+.errorBlock
+{
+	color: red;
+	margin-top: 5px;
+}
+
+.removeTours,.removeHotelInfo,.hotelMapRemove
+{
+	font-size: 14px;
+	height: 32px;
+	line-height: 32px;
+	cursor: pointer;
+	display: block;
+	background: #036;
+	margin: 5px auto;
+	text-align: center;
+	width: 90px;
+	color: #fff;
+	border-radius: 5px;
+	width:100%;
+	clear:left;
+}
+
+.fuelBlock
+{
+    clear:both;
+    color:#000;
+    padding-left:0;
+    display:none;
+}
+
+.fuelBlock span
+{
+    font-weight:bold;
+}
+
+
+@media (max-width: 520px) {
+	
+	.hotelPics {
+		float: none;
+		width: 100%;
+		margin-bottom:15px;
+	}
+	.hotelData {
+		margin-left: 0px;
+	}
+	.hotelPics a:nth-child(3n+3) {
+		margin-right: 8px;
+	}
+	
+	.airTourPrice {
+		top: 20px;
+	}
+	.airTourPrice span {
+		font-size: 20px;
+	}
+	
+	.infoWrapper {
+		display: block;
+	}	
+	.infoWrapper ul
+	{
+		margin-left: 15px;
+	}
+	
+	.searchSelect.sSelectWrap {
+		height: 44px;
+		line-height: 44px;
+	}
+	
+	.searchSelectText.sSelectSpan
+	{
+		padding: 0 20px 0 8px;
+		height: 44px;
+		line-height: 44px;
+	}
+	
+	.searchSelectText.sSelectSpan::before
+	{
+		margin-left: -20px;
+	}
+	
+	.tourHotelWrap {
+		padding:20px 10px;
+	}
+}
+
+@media (max-width: 440px) {
+    .turistBlock .orderInputText
+    {
+		font-size: 14px;
+    }
+	.hotelOrderType div
+	{
+		
+		font-size: 12px;
+		height: 30px;
+		line-height: 30px;
+		padding: 0 10px;
+	}
+}  
+
+#hotelByName
+{
+    border: 1px solid #bbb;
+    height: 22px;
+    line-height: 22px;
+    position: relative;
+	margin-bottom:5px;
+	padding: 0 10px;
+	display:none;
+}
+#hotelByName input
+{
+	
+    height: 22px;
+    line-height: 22px;
+    font-size: 14px;
+    border: none;
+    width: 100%;
+    padding: 0;
+    outline: none;
+    background: none;
+
+}
+.orderBot
+{
+    padding-top:5px;
+}
+
+.hotelMapBlock
+{
+	width:100%;
+	height:340px;
+}
+.hotelMapBlock .hotelMapInner
+{
+	width:100%;
+	height:300px;
+}

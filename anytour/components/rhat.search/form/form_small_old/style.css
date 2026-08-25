@@ -1,0 +1,299 @@
+*::-moz-selection {
+    background-color: #fff;
+    color:  #000;
+}
+
+.searchSmallLine
+{
+	display: grid; 
+	grid-template-columns:  1fr 1fr 1fr;  
+}
+.searchSmallItem
+{
+	padding-right:5%;
+	margin-bottom:10px;
+}
+
+.searchSmallItemGridItem
+{
+	padding-right:2%;
+}
+
+
+.searchSmallItemGrid
+{
+	display: grid; 
+	grid-template-columns:  1fr 1fr;  
+}
+
+#search_start_small {
+    background: #e52529;
+    border: medium none;
+    color: #fff;
+    cursor: pointer;
+    display: block;
+    font-size: 16px;
+    height: 44px;
+    line-height: 44px;
+    margin: 0;
+    padding: 0 50px;
+    text-decoration: none;
+    text-transform: uppercase;
+     -webkit-appearance: none;
+	width:100%; 
+}
+
+#search_start_small ::-moz-focus-inner {
+  border: 0;
+}
+
+
+.bold
+{
+	font-weight:bold;
+}
+
+.clear
+{
+	clear:both
+}
+
+
+.searchLabel
+{
+    font-size: 18px ;
+    color: #000;
+    margin-bottom:10px;
+}
+
+.searchSelect
+{
+    border: 1px solid #bbb;
+    height: 44px;
+    line-height: 44px;
+    position: relative;
+}
+
+.searchSelect select
+{
+    cursor: pointer;
+    display: block;
+    left: 0;
+    opacity: 0;
+    padding: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 44px;
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=0)";
+    filter: alpha(opacity=0);
+    -moz-opacity: 0;
+    -khtml-opacity: 0;
+    opacity: 0;
+    font-size:14px;
+}
+
+.searchSelect select.hiddenSelect
+{
+	display:none;
+}
+
+
+.searchSelectText {
+    height: 44px;
+    line-height: 44px;
+    color: #000;
+    display: block;
+    padding: 0 30px 0 16px;
+    font-size: 16px;
+    display: block; 
+} 
+
+.searchSelectTextWithPref {
+    padding: 0 30px 0 36px;
+   
+} 
+
+
+.searchSelect.disabled .searchSelectText
+{
+    color: grey;
+}
+
+.searchSelectText:before
+{
+	background: url("images/icon_arrow_bot.png") no-repeat;
+	display:block;
+	position:absolute;
+	top:20px;
+	left:100%;
+	content:'';
+	width:12px;
+	height:7px;
+	border:0;
+	margin-left:-30px;
+}   
+
+.searchSelectText.hiddenSelect:before
+{
+	display:none;
+}
+
+.searchSelect.disabled .searchSelectText:before
+{
+   background:none
+}
+
+.searchSelectPref
+{
+    width:18%;
+    position:absolute;
+    top:0;
+    left:0;
+    height: 44px;
+    line-height: 48px;
+    text-align:right;
+    font-size:14px;
+    
+}
+
+.searchSelect .sInputWrap 
+{
+    height: 43px;
+    line-height: 43px;
+    color: #000;
+    display: block;
+    padding: 0 23px 0 23%;
+    font-size: 16px;
+    display: block;
+	text-align:center;
+}
+
+.sInputWrap.inputDate
+{
+	 padding: 0 0px 0 23%;
+}
+
+
+.searchSelect .sInputWrap input
+{
+    height: 44px;
+    line-height: 44px;
+    font-size: 14px;
+    border:none;
+    width:100%;
+    padding:0;
+    outline:none;
+	background:none;
+}
+
+.searchInputTpl {
+    display: inline-block;
+    float: left;
+    text-align: left;
+    width: 31%;
+}
+.searchTplLeft {
+    margin-right: 2.5%;
+}
+
+.searchTplMid {
+    margin-right: 1%;
+    margin-left: 1%;
+}
+.searchTplRight {
+    margin-left: 2.5%;
+}
+.clearfix:after
+{
+	content:'';
+	display:block;
+	clear:both;
+}
+
+
+@media (max-width: 1000px) {
+	.searchSelectPref {
+		width: 12%;
+	}
+	.sInputWrap.inputDate
+	{
+		padding: 0 5px 0 15%;
+		height: 44px;
+		line-height: 44px;
+	}
+}	
+
+@media (max-width: 860px) {
+	.searchSmallLine
+	{
+		display: grid; 
+		grid-template-columns:  1fr 1fr;  
+	}
+	.searchSmallItem
+	{
+		padding-right:2.5%;
+	}
+	.searchSmallItem:nth-child(2n)
+	{
+		padding-left:2.5%;
+		padding-right:0;
+	}
+	.searchSmallItemGridItem:last-child {
+		padding-right: 0%;
+	}
+}	
+
+@media (max-width: 520px) {
+	.searchSmallLine
+	{
+		display: block; 
+	}
+	
+	.searchSmallItem, .searchSmallItem:nth-child(2n)
+	{
+		padding:0;
+	}
+	
+	.searchLabel {
+		font-size: 16px;
+	}
+	
+	.searchSelectText {
+		height: 38px;
+		line-height: 38px;
+		font-size: 14px;
+	}
+	.searchSelect select
+	{
+		height: 38px;
+	}
+	.searchSelectText::before
+	{
+		top:16px;
+	}
+	.searchSelect {
+		height: 38px;
+		line-height: 38px;
+	}
+	.sInputWrap.inputDate {
+		height: 38px;
+		line-height: 38px;
+	}
+	
+	.searchSelectPref {
+		height: 38px;
+		line-height: 44px;
+	}	
+	.searchSelect .sInputWrap input {
+		height: 38px;
+		line-height: 39px;
+		font-size: 13px;
+	}
+	
+	#search_start_small
+	{
+		height: 38px!important;
+		line-height: 38px!important;
+	}
+}	
