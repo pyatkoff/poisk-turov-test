@@ -1,16 +1,12 @@
-name: Deploy tour search test
+name: Audit live Bitrix template
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-concurrency:
-  group: poisk-turov-test-deploy
-  cancel-in-progress: false
-
 jobs:
-  deploy:
+  audit:
     runs-on: ubuntu-latest
     steps:
       - name: Prepare SSH private key
@@ -23,23 +19,15 @@ jobs:
           raw="$DEPLOY_SSH_KEY_VALUE"
           rm -f "$key_file"
           if [[ "$raw" == *"PRIVATE KEY"* ]]; then
-            if [[ "$raw" == *'\\n'* ]]; then
-              printf '%b\n' "$raw" | tr -d '\r' > "$key_file"
-            else
-              printf '%s\n' "$raw" | tr -d '\r' > "$key_file"
-            fi
+            if [[ "$raw" == *'\\n'* ]]; then printf '%b\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; fi
           else
             decoded="$(printf '%s' "$raw" | base64 --decode 2>/dev/null || true)"
-            if [[ "$decoded" == *"PRIVATE KEY"* ]]; then
-              printf '%s\n' "$decoded" | tr -d '\r' > "$key_file"
-            else
-              exit 1
-            fi
+            if [[ "$decoded" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$decoded" | tr -d '\r' > "$key_file"; else exit 1; fi
           fi
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Deploy test directory only
+      - name: Compare initial snapshot to live Bitrix template
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -47,15 +35,42 @@ jobs:
           key_path: ${{ runner.temp }}/deploy_key
           script: |
             set -euo pipefail
-            TEST_DIR="$HOME/www/anytour.online/poisk-turov-test"
-            cd "$TEST_DIR"
+            SITE="$HOME/www/anytour.online"
+            REPO="$SITE/poisk-turov-test"
+            LIVE="$SITE/bitrix/templates/anytour"
+            INITIAL_SHA="13be0bb60f1822a5342fbaaeb35dd3d4c12ecc8a"
+            cd "$REPO"
             git fetch origin main
-            git reset --hard origin/main
-            if command -v /opt/php81/bin/php >/dev/null 2>&1; then PHP_BIN=/opt/php81/bin/php; else PHP_BIN=php; fi
-            "$PHP_BIN" -l index.php
-            TEST_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov-test/)"
-            PROD_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
-            echo "TEST_HTTP_CODE=$TEST_CODE PROD_HTTP_CODE=$PROD_CODE"
-            test "$TEST_CODE" = "200"
-            test "$PROD_CODE" = "200"
-            echo "DEPLOY_SCOPE=$TEST_DIR"
+            TMP="$(mktemp -d)"
+            trap 'rm -rf "$TMP"' EXIT
+            git archive "$INITIAL_SHA" anytour | tar -x -C "$TMP"
+            SNAP="$TMP/anytour"
+            echo '=== CHANGED VS INITIAL SNAPSHOT ==='
+            changed=0
+            while IFS= read -r -d '' src; do
+              rel="${src#$SNAP/}"
+              dst="$LIVE/$rel"
+              if [ -f "$dst" ]; then
+                a="$(sha256sum "$src" | awk '{print $1}')"
+                b="$(sha256sum "$dst" | awk '{print $1}')"
+                if [ "$a" != "$b" ]; then
+                  echo "DIFF $rel"
+                  changed=$((changed+1))
+                fi
+              else
+                echo "MISSING $rel"
+                changed=$((changed+1))
+              fi
+            done < <(find "$SNAP" -type f -print0)
+            echo "CHANGED_COUNT=$changed"
+            echo '=== KEY LIVE FILES ==='
+            for rel in header.php footer.php style.css template_styles.css components/rhat.search/form/form/template.php components/rhat.search/form/form/style.css components/rhat.search/form/form/script.js; do
+              if [ -f "$LIVE/$rel" ]; then printf '%s ' "$rel"; stat -c 'size=%s mtime=%y' "$LIVE/$rel"; fi
+            done
+            echo '=== PAGE CSS LINKS ==='
+            PAGE="$(mktemp)"
+            curl -k -L -sS --max-time 30 https://anytour.online/poisk-turov/ -o "$PAGE"
+            grep -oE 'href="[^"]+\.css[^\"]*"' "$PAGE" | sort -u || true
+            echo '=== PAGE JS LINKS RHAT/ANYTOUR ==='
+            grep -oE 'src="[^"]+\.js[^\"]*"' "$PAGE" | grep -E 'anytour|rhat.search' | sort -u || true
+            rm -f "$PAGE"
