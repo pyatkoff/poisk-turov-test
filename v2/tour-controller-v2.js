@@ -1,7 +1,7 @@
 (function(){'use strict';
 const rt=window.V2Runtime;if(!rt)return;
 let currentTour=null,flightVariants=[],selectedFlightIndex=0,busyTourId='';
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function money(v){const n=Number(v||0);return n?new Intl.NumberFormat('ru-RU').format(n):'';}
 function clean(v){return String(v||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
 const api=(action,params)=>rt.api(action,params);
