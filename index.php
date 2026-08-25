@@ -1,6 +1,6 @@
 <?
 require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
-$APPLICATION->SetTitle("Поиск туров — тест");
+$APPLICATION->SetTitle("Поиск туров");
 
 $dir = $APPLICATION->GetCurDir();
 $baseDir = "/poisk-turov-test/";
@@ -11,14 +11,11 @@ if ($dir !== $baseDir)
 }
 ?>
 
-<link rel="stylesheet" href="/bitrix/templates/anytour/components/rhat.search.test/form/form/style.css?v=20260825-1">
-<script src="/bitrix/templates/anytour/components/rhat.search.test/form/form/script.js?v=20260825-1"></script>
-
 <div data-marquiz-id="64a2e3becefb38002582445a"></div>
 <script>(function(t, p) {window.Marquiz ? Marquiz.add([t, p]) : document.addEventListener('marquizLoaded', function() {Marquiz.add([t, p])})})('Button', {id: '64a2e3becefb38002582445a', buttonText: 'Хотите подберем Вам тур?', bgColor: '#d34085', textColor: '#fff', rounded: true, shadow: 'rgba(211, 64, 133, 0.5)', blicked: true})</script>
 
 <?$APPLICATION->IncludeComponent(
-    "rhat.search.test:form",
+    "rhat.search:form",
     "form",
     Array(
         "FROM" => $params["TV_CITY"],
