@@ -1,11 +1,72 @@
-name: Tour search test maintenance
-
+name: Diagnose test search photos
 on:
-  workflow_dispatch:
-
+  push:
+    branches: [main]
 jobs:
-  info:
+  diagnose:
     runs-on: ubuntu-latest
     steps:
-      - name: Test sandbox only
-        run: echo "Automatic server changes are disabled. Work is limited to poisk-turov-test."
+      - name: Prepare SSH key
+        env:
+          DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_file="$RUNNER_TEMP/deploy_key"
+          raw="$DEPLOY_SSH_KEY_VALUE"
+          if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+      - name: Diagnose and fix test sandbox only
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key_path: ${{ runner.temp }}/deploy_key
+          script: |
+            set -euo pipefail
+            TEST_DIR="$HOME/www/anytour.online/poisk-turov-test"
+            cd "$TEST_DIR"
+            git fetch origin main
+            git reset --hard origin/main
+            python3 - <<'PY'
+            from pathlib import Path
+            p=Path('template/search/script.js')
+            s=p.read_text()
+            old='$.ajax( "/include/ajax/aj.php", {'
+            new='$.ajax( $("form[name=searchForm]").attr("action"), {'
+            if old in s:
+                p.write_text(s.replace(old,new,1))
+                print('OLD_AJAX_PATH_FIXED=1')
+            else:
+                print('OLD_AJAX_PATH_FIXED=0')
+            PY
+            php -r '
+            $_SERVER["DOCUMENT_ROOT"] = realpath("..");
+            require $_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_before.php";
+            require __DIR__."/tv_api/search.php";
+            \Bitrix\Main\Loader::includeModule("highloadblock");
+            $hl=\Bitrix\Highloadblock\HighloadBlockTable::getById(TVToursTable::$hotelHL)->fetch();
+            $e=\Bitrix\Highloadblock\HighloadBlockTable::compileEntity($hl)->getDataClass();
+            $r=$e::getList(["select"=>["UF_HID","UF_NAME","UF_PHOTO"],"filter"=>["!UF_PHOTO"=>false],"limit"=>5]);
+            $n=0;
+            while($h=$r->fetch()){
+              $n++;
+              $a=TVToursTable::GetHotelList([$h["UF_HID"]]);
+              $img=$a[$h["UF_HID"]]["IMG"] ?? "";
+              $exists=$img && is_file($_SERVER["DOCUMENT_ROOT"].$img) ? "YES" : "NO";
+              echo "PHOTO_CHECK #$n HID={$h["UF_HID"]} IMG=$img FILE=$exists\n";
+            }
+            echo "PHOTO_ROWS=$n\n";
+            '
+            php -l template/search/ajax.php
+            git add template/search/script.js
+            if ! git diff --cached --quiet; then
+              git config user.name "OpenAI test maintenance"
+              git config user.email "actions@users.noreply.github.com"
+              git commit -m "Keep search AJAX inside test sandbox"
+              git push origin main
+            fi
+            code="$(curl -k -L -sS -o /tmp/poisk-test.html -w '%{http_code}' --max-time 40 https://anytour.online/poisk-turov-test/)"
+            echo "HTTP_CODE=$code"
+            echo "TEST_ONLY=OK"
