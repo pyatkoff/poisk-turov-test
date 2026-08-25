@@ -17,7 +17,7 @@ jobs:
           if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
-      - name: Run browser-equivalent search in poisk-turov-test only
+      - name: Run real search in poisk-turov-test only
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -26,104 +26,47 @@ jobs:
           command_timeout: 5m
           script: |
             set -euo pipefail
-            TEST_DIR="$HOME/www/anytour.online/poisk-turov-test"
-            cd "$TEST_DIR"
+            cd "$HOME/www/anytour.online/poisk-turov-test"
             git fetch origin main
             git reset --hard origin/main
-
             BASE='https://anytour.online/poisk-turov-test/'
             AJAX='https://anytour.online/poisk-turov-test/template/search/ajax.php'
             COOKIE=/tmp/poisk_test_cookies.txt
-            PAGE=/tmp/poisk_test_page.html
-            curl -k -L -sS -c "$COOKIE" -b "$COOKIE" --max-time 40 "$BASE" -o "$PAGE"
-
+            curl -k -L -sS -c "$COOKIE" -b "$COOKIE" --max-time 40 "$BASE" -o /tmp/page.html
             python3 - <<'PY'
             import re
-            html=open('/tmp/poisk_test_page.html','r',encoding='utf-8').read()
-            def inp(i, default=''):
-                m=re.search(r'id=["\']%s["\'][^>]*value=["\']([^"\']*)' % re.escape(i), html, re.I)
-                return m.group(1) if m else default
-            def selected(select_id, default=''):
-                m=re.search(r'<select[^>]*id=["\']%s["\'][^>]*>(.*?)</select>' % re.escape(select_id), html, re.I|re.S)
-                if not m: return default
-                block=m.group(1)
-                s=re.search(r'<option[^>]*value=["\']?([^"\' >]+)["\']?[^>]*selected', block, re.I)
-                if not s:
-                    s=re.search(r'<option[^>]*selected[^>]*value=["\']?([^"\' >]+)', block, re.I)
-                return s.group(1) if s else default
-            vals={
-              'CITY': selected('from','1'),
-              'COUNTRY': inp('country','4') or selected('country','4'),
-              'DATEFROM': inp('date_from'),
-              'DATETILL': inp('date_till'),
-              'NIGHTSMIN': inp('count_days_from','5'),
-              'NIGHTSMAX': inp('count_days_till','14'),
-              'ADULTS': inp('count_people','2'),
-              'CHILDREN': inp('count_child','0'),
-            }
-            with open('/tmp/poisk_params.env','w') as f:
-                for k,v in vals.items():
-                    f.write('%s=%s\n' % (k, v))
-            print('FORM_PARAMS', vals)
+            h=open('/tmp/page.html','r',encoding='utf-8').read()
+            def inp(i,d=''):
+                m=re.search(r'id=["\']%s["\'][^>]*value=["\']([^"\']*)'%re.escape(i),h,re.I); return m.group(1) if m else d
+            def sel(i,d=''):
+                m=re.search(r'<select[^>]*id=["\']%s["\'][^>]*>(.*?)</select>'%re.escape(i),h,re.I|re.S)
+                if not m:return d
+                b=m.group(1); s=re.search(r'<option[^>]*value=["\']?([^"\' >]+)["\']?[^>]*selected',b,re.I)
+                return s.group(1) if s else d
+            v={'CITY':sel('from','1'),'COUNTRY':inp('country','4') or sel('country','4'),'DATEFROM':inp('date_from'),'DATETILL':inp('date_till'),'NIGHTSMIN':inp('count_days_from','5'),'NIGHTSMAX':inp('count_days_till','14'),'ADULTS':inp('count_people','2'),'CHILDREN':inp('count_child','0')}
+            open('/tmp/p.env','w').write('\n'.join('%s=%s'%x for x in v.items())+'\n'); print('FORM_PARAMS',v)
             PY
-            . /tmp/poisk_params.env
-
-            echo '--- CREATE SEARCH ---'
-            curl -k -sS -c "$COOKIE" -b "$COOKIE" --max-time 60 \
-              --data-urlencode "search_create=1" \
-              --data-urlencode "city=$CITY" \
-              --data-urlencode "country=$COUNTRY" \
-              --data-urlencode "datefrom=$DATEFROM" \
-              --data-urlencode "datetill=$DATETILL" \
-              --data-urlencode "nightsmin=$NIGHTSMIN" \
-              --data-urlencode "nightsmax=$NIGHTSMAX" \
-              --data-urlencode "adults=$ADULTS" \
-              --data-urlencode "children=$CHILDREN" \
-              --data-urlencode "hide_reg_tours=0" \
-              --data-urlencode "params_changed=0" \
-              "$AJAX" > /tmp/create.json
+            . /tmp/p.env
+            curl -k -sS -c "$COOKIE" -b "$COOKIE" --max-time 60 --data-urlencode search_create=1 --data-urlencode "city=$CITY" --data-urlencode "country=$COUNTRY" --data-urlencode "datefrom=$DATEFROM" --data-urlencode "datetill=$DATETILL" --data-urlencode "nightsmin=$NIGHTSMIN" --data-urlencode "nightsmax=$NIGHTSMAX" --data-urlencode "adults=$ADULTS" --data-urlencode "children=$CHILDREN" --data-urlencode hide_reg_tours=0 --data-urlencode params_changed=0 "$AJAX" >/tmp/create.json
             python3 - <<'PY'
             import json
-            d=json.load(open('/tmp/create.json'))
-            print('CREATE reqid=%s progress=%s tcount=%s error=%s' % (d.get('reqid'),d.get('percent'),d.get('tcount'),d.get('error')))
-            open('/tmp/reqid','w').write(str(d.get('reqid') or ''))
+            d=json.load(open('/tmp/create.json','r',encoding='utf-8')); print('CREATE reqid=%s progress=%s tcount=%s error=%s'%(d.get('reqid'),d.get('percent'),d.get('tcount'),d.get('error'))); open('/tmp/reqid','w').write(str(d.get('reqid') or ''))
             PY
-            REQID="$(cat /tmp/reqid)"
-            test -n "$REQID"
-            test "$REQID" != "0"
-
+            REQID="$(cat /tmp/reqid)"; test -n "$REQID"; test "$REQID" != 0
             for i in 1 2 3 4 5 6 7 8; do
               sleep 3
-              curl -k -sS -c "$COOKIE" -b "$COOKIE" --max-time 60 \
-                --data-urlencode "search_update=1" \
-                --data-urlencode "reqid=$REQID" \
-                "$AJAX" > "/tmp/update_$i.json"
+              curl -k -sS -c "$COOKIE" -b "$COOKIE" --max-time 90 --data-urlencode search_update=1 --data-urlencode "reqid=$REQID" "$AJAX" >"/tmp/u$i.json"
               python3 - "$i" <<'PY'
             import json,sys
-            i=sys.argv[1]
-            d=json.load(open('/tmp/update_%s.json'%i))
-            tours=d.get('tours') or []
-            photos=sum(1 for x in tours if x.get('hotel_img'))
-            print('UPDATE %s progress=%s tcount=%s cards=%s photos=%s lazy=%s' % (i,d.get('percent'),d.get('tcount'),len(tours),photos,d.get('test_photo_lazy')))
+            i=sys.argv[1]; d=json.load(open('/tmp/u%s.json'%i,'r',encoding='utf-8')); t=d.get('tours') or []; print('UPDATE %s progress=%s tcount=%s cards=%s photos=%s lazy=%s'%(i,d.get('percent'),d.get('tcount'),len(t),sum(1 for x in t if x.get('hotel_img')),d.get('test_photo_lazy')))
             PY
             done
-
-            echo '--- FINAL RESULT ---'
-            curl -k -sS -c "$COOKIE" -b "$COOKIE" --max-time 90 \
-              --data-urlencode "search_result=1" \
-              --data-urlencode "reqid=$REQID" \
-              --data-urlencode "page=1" \
-              --data-urlencode "upd=true" \
-              "$AJAX" > /tmp/result.json
+            curl -k -sS -c "$COOKIE" -b "$COOKIE" --max-time 120 --data-urlencode search_result=1 --data-urlencode "reqid=$REQID" --data-urlencode page=1 --data-urlencode upd=true "$AJAX" >/tmp/result.json
             python3 - <<'PY'
             import json,re
-            d=json.load(open('/tmp/result.json'))
-            tours=d.get('tours') or []
-            print('RESULT tcount=%s cards=%s progress=%s lazy=%s' % (d.get('tcount'),len(tours),d.get('percent'),d.get('test_photo_lazy')))
-            for i,x in enumerate(tours[:10],1):
-                img=x.get('hotel_img') or ''
-                m=re.search(r"src=['\"]([^'\"]+)",img)
-                print('CARD #%d HID=%s HOTEL=%s PRICE=%s PHOTO=%s URL=%s' % (i,x.get('id'),x.get('hotel'),x.get('price'),'YES' if img else 'NO',m.group(1) if m else ''))
-            print('PHOTO_COUNT=%d/%d' % (sum(1 for x in tours if x.get('hotel_img')),len(tours)))
+            d=json.load(open('/tmp/result.json','r',encoding='utf-8')); t=d.get('tours') or []; print('RESULT tcount=%s cards=%s progress=%s lazy=%s'%(d.get('tcount'),len(t),d.get('percent'),d.get('test_photo_lazy')))
+            for i,x in enumerate(t[:10],1):
+                im=x.get('hotel_img') or ''; m=re.search(r"src=['\"]([^'\"]+)",im); print('CARD #%d HID=%s HOTEL=%s PRICE=%s PHOTO=%s URL=%s'%(i,x.get('id'),x.get('hotel'),x.get('price'),'YES' if im else 'NO',m.group(1) if m else ''))
+            print('PHOTO_COUNT=%d/%d'%(sum(1 for x in t if x.get('hotel_img')),len(t)))
             PY
-            echo 'REAL_SEARCH_CHECK=OK'
+            echo REAL_SEARCH_CHECK=OK
