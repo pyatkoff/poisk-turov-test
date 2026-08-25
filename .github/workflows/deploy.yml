@@ -74,5 +74,11 @@ jobs:
             if [ -f anytour/components/rhat.search/form/form/template.php ]; then
               "$PHP_BIN" -l anytour/components/rhat.search/form/form/template.php
             fi
+            if [ -f tv_api/search.php ]; then
+              "$PHP_BIN" -l tv_api/search.php
+            fi
+            if [ -f tv_api/tvapi.php ]; then
+              "$PHP_BIN" -l tv_api/tvapi.php
+            fi
 
             echo "Deployed commit: $(git rev-parse HEAD)"
