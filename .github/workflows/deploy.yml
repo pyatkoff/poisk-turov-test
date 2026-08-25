@@ -1,4 +1,4 @@
-name: Fast audit original Bitrix template
+name: Restore missing original Bitrix template files
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: poisk-turov-fast-audit
+  group: restore-missing-bitrix-template
   cancel-in-progress: true
 
 jobs:
-  audit:
+  restore:
     runs-on: ubuntu-latest
     steps:
       - name: Prepare SSH private key
@@ -31,35 +31,64 @@ jobs:
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Fast read-only audit
+      - name: Restore only missing files under bitrix templates anytour
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key_path: ${{ runner.temp }}/deploy_key
           script: |
-            set -u
+            set -euo pipefail
             SITE="$HOME/www/anytour.online"
-            BASE="$SITE/bitrix/templates/anytour/components/rhat.search"
-            PROD="$BASE/form/form"
-            echo '=== PROD FILES ==='
-            ls -la --time-style=long-iso "$PROD" 2>&1 || true
-            echo '=== RHAT TREE ==='
-            find "$BASE" -maxdepth 5 -printf '%y %TY-%Tm-%Td %TH:%TM %s %p\n' 2>/dev/null | sort | head -400
-            echo '=== BACKUP ROOT ==='
-            ls -la --time-style=long-iso "$HOME/backups" 2>&1 || true
-            echo '=== OUR BACKUP DIRS + FILE SIZES ==='
-            for d in "$HOME"/backups/rhat-search-form-*; do
-              [ -d "$d" ] || continue
-              echo "--- $d ---"
-              ls -la --time-style=long-iso "$d" 2>&1 || true
-              for f in template.php style.css script.js ajax.php; do
-                [ -f "$d/$f" ] && { wc -c "$d/$f"; sha256sum "$d/$f"; }
-              done
-            done
-            echo '=== PROD KEY FILE SIZES/HASHES ==='
-            for f in template.php style.css script.js ajax.php; do
-              [ -f "$PROD/$f" ] && { wc -c "$PROD/$f"; sha256sum "$PROD/$f"; }
-            done
-            echo '=== NEARBY BACKUP-NAMED FILES ==='
-            find "$SITE/bitrix/templates/anytour" -maxdepth 8 -type f \( -name '*.bak' -o -name '*.old' -o -name '*~' -o -name '*.orig' -o -name '*.save' \) -printf '%TY-%Tm-%Td %TH:%TM %s %p\n' 2>/dev/null | sort | head -300
+            REPO="$SITE/poisk-turov-test"
+            DEST="$SITE/bitrix/templates/anytour"
+            INITIAL_SHA="13be0bb60f1822a5342fbaaeb35dd3d4c12ecc8a"
+
+            cd "$REPO"
+            git fetch origin main
+            git cat-file -e "${INITIAL_SHA}^{commit}"
+
+            TMP="$(mktemp -d)"
+            trap 'rm -rf "$TMP"' EXIT
+            git archive "$INITIAL_SHA" anytour | tar -x -C "$TMP"
+
+            echo '=== MISSING BEFORE ==='
+            missing_before=0
+            while IFS= read -r -d '' src; do
+              rel="${src#$TMP/anytour/}"
+              if [ ! -e "$DEST/$rel" ]; then
+                echo "$rel"
+                missing_before=$((missing_before+1))
+              fi
+            done < <(find "$TMP/anytour" -mindepth 1 -type f -print0)
+            echo "MISSING_BEFORE_COUNT=$missing_before"
+
+            # Add only missing source files. Existing production files remain untouched.
+            cp -a -n "$TMP/anytour/." "$DEST/"
+
+            echo '=== MISSING AFTER ==='
+            missing_after=0
+            while IFS= read -r -d '' src; do
+              rel="${src#$TMP/anytour/}"
+              if [ ! -e "$DEST/$rel" ]; then
+                echo "$rel"
+                missing_after=$((missing_after+1))
+              fi
+            done < <(find "$TMP/anytour" -mindepth 1 -type f -print0)
+            echo "MISSING_AFTER_COUNT=$missing_after"
+            test "$missing_after" -eq 0
+
+            # Remove only temporary test artifacts created during this work.
+            rm -rf "$SITE/local/components/rhat.search.test"
+            rm -rf "$SITE/local/templates/anytour/components/rhat.search.test"
+            rm -rf "$SITE/bitrix/templates/anytour/components/rhat.search.test"
+
+            if command -v /opt/php81/bin/php >/dev/null 2>&1; then PHP_BIN=/opt/php81/bin/php; else PHP_BIN=php; fi
+            [ -f "$DEST/header.php" ] && "$PHP_BIN" -l "$DEST/header.php"
+            [ -f "$DEST/footer.php" ] && "$PHP_BIN" -l "$DEST/footer.php"
+            [ -f "$DEST/components/rhat.search/form/form/template.php" ] && "$PHP_BIN" -l "$DEST/components/rhat.search/form/form/template.php"
+
+            CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
+            echo "PROD_HTTP_CODE=$CODE"
+            test "$CODE" = "200"
+            echo 'RESTORE_MISSING_ONLY=OK'
