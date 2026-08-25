@@ -22,7 +22,9 @@ case'regions':out(tv_get('/regions',['countryId'=>$_GET['countryId']??null,'arri
 case'subregions':out(tv_get('/subregions',['countryId'=>$_GET['countryId']??null,'regionId'=>$_GET['regionId']??null]));
 case'meals':out(tv_get('/meals'));
 case'operators':out(tv_get('/operators',['departureId'=>$_GET['departureId']??null,'countryId'=>$_GET['countryId']??null]));
-case'hotels':out(tv_get('/hotels',['countryId'=>$_GET['countryId']??null,'regionId'=>$_GET['regionId']??null,'category'=>$_GET['category']??null,'rating'=>$_GET['rating']??null,'page'=>$_GET['page']??1,'limit'=>$_GET['limit']??100]));
+case'hotel_types':out(tv_get('/hotel-types',['countryId'=>$_GET['countryId']??null]));
+case'hotel_services':out(tv_get('/hotel-group-services',['countryId'=>$_GET['countryId']??null,'regionIds'=>request_array('regionIds')]));
+case'hotels':out(tv_get('/hotels',['countryId'=>$_GET['countryId']??null,'regionId'=>$_GET['regionId']??null,'category'=>$_GET['category']??null,'types'=>request_array('types'),'rating'=>$_GET['rating']??null,'page'=>$_GET['page']??1,'limit'=>$_GET['limit']??100]));
 case'dates':out(tv_get('/tours/dates',['departureId'=>$_GET['departureId']??null,'countryId'=>$_GET['countryId']??null,'arrivalId'=>$_GET['arrivalId']??null,'onlyCharter'=>filter_var($_GET['onlyCharter']??false,FILTER_VALIDATE_BOOLEAN)]));
 case'search_start':out(tv_get('/tours/search',[
     'departureId'=>$_GET['departureId']??null,'countryId'=>$_GET['countryId']??null,'dateFrom'=>$_GET['dateFrom']??null,'dateTo'=>$_GET['dateTo']??null,
