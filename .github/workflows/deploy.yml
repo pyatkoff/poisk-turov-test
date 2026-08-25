@@ -49,8 +49,6 @@ jobs:
           script: |
             set -e
             cd ~/www/anytour.online/poisk-turov-test
-
-            # This repository is the source of truth for the test directory.
             git fetch origin main
             git reset --hard origin/main
 
@@ -65,7 +63,6 @@ jobs:
             cp component/ajax.php "$TEST_COMPONENT/ajax.php"
             cp -a anytour/components/rhat.search/form/form/. "$TEST_TEMPLATE/"
 
-            # Runtime copies are isolated from production Bitrix component/API paths.
             sed -i "s#'/bitrix/php_interface/tv_api/tvapi.php'#'/poisk-turov-test/tv_api/tvapi.php'#" "$TEST_COMPONENT/component.php"
             sed -i "s#'/bitrix/php_interface/tv_api/search.php'#'/poisk-turov-test/tv_api/search.php'#" "$TEST_TEMPLATE/ajax.php"
             sed -i "s#'/bitrix/php_interface/tv_api/tvapi.php'#'/poisk-turov-test/tv_api/tvapi.php'#" "$TEST_TEMPLATE/ajax.php"
@@ -86,6 +83,16 @@ jobs:
             grep -q 'searchMainWrap' "$SMOKE_FILE"
             grep -q 'rhat.search.test' index.php
             echo "SMOKE_FORM=OK"
+
+            CSS_URL='https://anytour.online/bitrix/templates/anytour/components/rhat.search.test/form/form/style.css?v=20260825-1'
+            JS_URL='https://anytour.online/bitrix/templates/anytour/components/rhat.search.test/form/form/script.js?v=20260825-1'
+            ICON_URL='https://anytour.online/bitrix/templates/anytour/components/rhat.search.test/form/form/images/icon_gstar.png'
+            CSS_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$CSS_URL")"
+            JS_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$JS_URL")"
+            ICON_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$ICON_URL")"
+            echo "ASSET_CODES css=$CSS_CODE js=$JS_CODE icon=$ICON_CODE"
+            grep -oE '<link[^>]+style\.css[^>]*>|<script[^>]+script\.js[^>]*>' "$SMOKE_FILE" | head -20 || true
+            grep -oE 'src="[^"]+"' "$SMOKE_FILE" | grep -E 'rhat.search|poisk-turov-test' | head -20 || true
             rm -f "$SMOKE_FILE"
 
             echo "Deployed isolated test component: rhat.search.test:form"
