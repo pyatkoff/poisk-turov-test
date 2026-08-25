@@ -22,25 +22,29 @@ jobs:
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
       - name: Copy V2 folder only
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key_path: /github/workspace/deploy_key
-          source: "v2/*"
-          target: "~/www/anytour.online/poisk-turov-test/"
-          overwrite: true
+        env:
+          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" 'mkdir -p "$HOME/www/anytour.online/poisk-turov-test/v2"'
+          scp "${ssh_opts[@]}" -r v2/. "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE:$HOME/www/anytour.online/poisk-turov-test/v2/"
       - name: Verify V2
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key_path: ${{ github.workspace }}/deploy_key
-          script: |
+        env:
+          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" '
             set -euo pipefail
-            page_code="$(curl -k -L -sS -o /tmp/v2.html -w '%{http_code}' --max-time 40 https://anytour.online/poisk-turov-test/v2/)"
-            api_code="$(curl -k -L -sS -o /tmp/v2-health.json -w '%{http_code}' --max-time 45 'https://anytour.online/poisk-turov-test/v2/api.php?action=health')"
+            page_code="$(curl -k -L -sS -o /tmp/v2.html -w "%{http_code}" --max-time 40 https://anytour.online/poisk-turov-test/v2/)"
+            api_code="$(curl -k -L -sS -o /tmp/v2-health.json -w "%{http_code}" --max-time 45 "https://anytour.online/poisk-turov-test/v2/api.php?action=health")"
             echo "PAGE=$page_code API=$api_code"
             cat /tmp/v2-health.json
-            grep -q 'Найти тур' /tmp/v2.html
-            grep -q 'tourvisor-direct' /tmp/v2-health.json
+            grep -q "Найти тур" /tmp/v2.html
+            grep -q "tourvisor-direct" /tmp/v2-health.json
+          '
