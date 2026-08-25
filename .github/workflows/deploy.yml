@@ -30,7 +30,7 @@ jobs:
             set -euo pipefail
             cd "$HOME/www/anytour.online/poisk-turov-test"
             git fetch origin main
-            git checkout origin/main -- v2
+            git archive origin/main v2 | tar -x -C .
             page_code="$(curl -k -L -sS -o /tmp/v2.html -w '%{http_code}' --max-time 40 https://anytour.online/poisk-turov-test/v2/)"
             api_code="$(curl -k -L -sS -o /tmp/v2-health.json -w '%{http_code}' --max-time 45 'https://anytour.online/poisk-turov-test/v2/api.php?action=health')"
             grep -q 'Найти тур' /tmp/v2.html
