@@ -1,6 +1,6 @@
 <?
 require($_SERVER["DOCUMENT_ROOT"]."/bitrix/header.php");
-$APPLICATION->SetTitle("Поиск туров");
+$APPLICATION->SetTitle("Поиск туров — тест");
 
 $dir = $APPLICATION->GetCurDir();
 $baseDir = "/poisk-turov-test/";
@@ -15,7 +15,7 @@ if ($dir !== $baseDir)
 <script>(function(t, p) {window.Marquiz ? Marquiz.add([t, p]) : document.addEventListener('marquizLoaded', function() {Marquiz.add([t, p])})})('Button', {id: '64a2e3becefb38002582445a', buttonText: 'Хотите подберем Вам тур?', bgColor: '#d34085', textColor: '#fff', rounded: true, shadow: 'rgba(211, 64, 133, 0.5)', blicked: true})</script>
 
 <?$APPLICATION->IncludeComponent(
-    "rhat.search:form",
+    "rhat.search.test:form",
     "form",
     Array(
         "FROM" => $params["TV_CITY"],
