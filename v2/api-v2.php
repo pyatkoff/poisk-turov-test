@@ -28,7 +28,7 @@ function bounded_int($value, int $min, int $max, int $fallback): int
     return max($min, min($max, (int)$v));
 }
 
-function optional_int($value): ?int
+function optional_int($value)
 {
     if ($value === null || $value === '') return null;
     $v = filter_var($value, FILTER_VALIDATE_INT);
@@ -115,7 +115,7 @@ function bool_param(string $key): bool
     return filter_var($_GET[$key] ?? false, FILTER_VALIDATE_BOOLEAN);
 }
 
-function date_param(string $key): ?string
+function date_param(string $key)
 {
     $raw = short_text($_GET[$key] ?? '', 20);
     if ($raw === '') return null;
@@ -196,14 +196,23 @@ switch ($action) {
         $countryId = optional_int($_GET['countryId'] ?? null);
         $dateFrom = date_param('dateFrom');
         $dateTo = date_param('dateTo');
+        $nightsFrom = bounded_int($_GET['nightsFrom'] ?? 5, 1, 28, 5);
+        $nightsTo = bounded_int($_GET['nightsTo'] ?? 14, 1, 28, 14);
+        $priceFrom = optional_int($_GET['priceFrom'] ?? null);
+        $priceTo = optional_int($_GET['priceTo'] ?? null);
         if (!$departureId || !$countryId || !$dateFrom || !$dateTo) out(['ok' => false, 'error' => 'Invalid required search parameters'], 400);
+        if ($dateTo < $dateFrom) out(['ok' => false, 'error' => 'dateTo must not be before dateFrom'], 400);
+        if ($nightsTo < $nightsFrom) out(['ok' => false, 'error' => 'nightsTo must not be less than nightsFrom'], 400);
+        if ($priceFrom !== null && $priceFrom < 0) out(['ok' => false, 'error' => 'priceFrom must be positive'], 400);
+        if ($priceTo !== null && $priceTo < 0) out(['ok' => false, 'error' => 'priceTo must be positive'], 400);
+        if ($priceFrom !== null && $priceTo !== null && $priceTo < $priceFrom) out(['ok' => false, 'error' => 'priceTo must not be less than priceFrom'], 400);
         out(tv_get('/tours/search', [
             'departureId' => $departureId,
             'countryId' => $countryId,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
-            'nightsFrom' => bounded_int($_GET['nightsFrom'] ?? 5, 1, 28, 5),
-            'nightsTo' => bounded_int($_GET['nightsTo'] ?? 14, 1, 28, 14),
+            'nightsFrom' => $nightsFrom,
+            'nightsTo' => $nightsTo,
             'adults' => bounded_int($_GET['adults'] ?? 2, 1, 6, 2),
             'childs' => request_array('childs', 3),
             'meal' => short_text($_GET['meal'] ?? '', 40),
@@ -216,8 +225,8 @@ switch ($action) {
             'regionIds' => request_array('regionIds', 50),
             'subregionIds' => request_array('subregionIds', 50),
             'operatorIds' => request_array('operatorIds', 50),
-            'priceFrom' => optional_int($_GET['priceFrom'] ?? null),
-            'priceTo' => optional_int($_GET['priceTo'] ?? null),
+            'priceFrom' => $priceFrom,
+            'priceTo' => $priceTo,
             'currency' => short_text($_GET['currency'] ?? 'RUB', 8) ?: 'RUB',
             'onlyCharter' => bool_param('onlyCharter'),
             'onlyDirect' => bool_param('onlyDirect'),
