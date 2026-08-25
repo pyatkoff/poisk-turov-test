@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     var extrasParent = firstExtraColumn.parentNode;
+    var lastExtraColumn = extraColumns[extraColumns.length - 1];
     var originalSubmit = form.querySelector('#search_start');
 
     var toggle = document.createElement('button');
@@ -22,7 +23,6 @@ document.addEventListener('DOMContentLoaded', function () {
     toggle.innerHTML = '<span>Дополнительные фильтры</span><span class="additionalFiltersArrow" aria-hidden="true">⌄</span>';
     extrasParent.insertBefore(toggle, firstExtraColumn);
 
-    /* Mobile CTA is outside the collapsible columns, directly below the filters toggle. */
     var mobileCta = document.getElementById('mobileSearchCta');
     if (!mobileCta && originalSubmit) {
         mobileCta = document.createElement('button');
@@ -32,21 +32,32 @@ document.addEventListener('DOMContentLoaded', function () {
         mobileCta.name = originalSubmit.name || 'search_start';
         mobileCta.value = originalSubmit.value || 'Искать туры';
         mobileCta.textContent = originalSubmit.value || 'Искать туры';
-        toggle.insertAdjacentElement('afterend', mobileCta);
     }
 
     var mobileQuery = window.matchMedia('(max-width: 620px)');
+
+    function positionMobileCta(collapsed) {
+        if (!mobileCta) return;
+        if (collapsed) {
+            toggle.insertAdjacentElement('afterend', mobileCta);
+        } else {
+            lastExtraColumn.insertAdjacentElement('afterend', mobileCta);
+        }
+    }
 
     function setCollapsed(collapsed) {
         form.classList.toggle('additional-filters-collapsed', collapsed);
         toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
         toggle.classList.toggle('is-open', !collapsed);
+        positionMobileCta(collapsed);
     }
 
     function applyViewportState() {
         if (mobileQuery.matches) {
             if (!form.dataset.additionalFiltersTouched) {
                 setCollapsed(true);
+            } else {
+                positionMobileCta(form.classList.contains('additional-filters-collapsed'));
             }
         } else {
             setCollapsed(false);
