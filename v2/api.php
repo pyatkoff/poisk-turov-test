@@ -12,6 +12,7 @@ function jwt():string{$token=trim((string)getenv('TOURVISOR_JWT'));if($token!=='
 function query_string(array $params):string{$parts=[];foreach($params as $key=>$value){if($value===null||$value==='')continue;if(is_bool($value))$value=$value?'true':'false';if(is_array($value)){foreach($value as $item){if($item===''||$item===null)continue;$parts[]=rawurlencode($key).'='.rawurlencode((string)$item);}}else{$parts[]=rawurlencode($key).'='.rawurlencode((string)$value);}}return implode('&',$parts);}
 function tv_get(string $path,array $params=[]):array{$token=jwt();if($token==='')out(['ok'=>false,'error'=>'TOURVISOR_JWT is not configured for V2'],500);$url='https://api.tourvisor.ru/search/api/v1'.$path;$qs=query_string($params);if($qs!=='')$url.='?'.$qs;$ch=curl_init($url);curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>10,CURLOPT_TIMEOUT=>45,CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$token,'Accept: application/json']]);$body=curl_exec($ch);$errno=curl_errno($ch);$error=curl_error($ch);$code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);curl_close($ch);if($errno)out(['ok'=>false,'error'=>'Tourvisor connection error','detail'=>$error],502);$decoded=json_decode((string)$body,true);if($code<200||$code>=300)out(['ok'=>false,'error'=>'Tourvisor HTTP '.$code,'data'=>$decoded??$body],$code>=400&&$code<600?$code:502);return is_array($decoded)?$decoded:['raw'=>$body];}
 function request_array(string $key):array{$value=$_GET[$key]??[];if($value===''||$value===null)return[];return is_array($value)?array_values(array_filter($value,fn($v)=>$v!==''&&$v!==null)):[$value];}
+function search_id():int{$id=(int)($_GET['searchId']??0);if($id<=0)out(['ok'=>false,'error'=>'searchId is required'],400);return $id;}
 $action=(string)($_GET['action']??$_POST['action']??'health');
 switch($action){
 case'health':$data=tv_get('/departures');out(['ok'=>true,'source'=>'tourvisor-direct','departuresCount'=>is_array($data)?count($data):0]);
@@ -35,8 +36,9 @@ case'search_start':out(tv_get('/tours/search',[
     'priceFrom'=>$_GET['priceFrom']??null,'priceTo'=>$_GET['priceTo']??null,'currency'=>$_GET['currency']??'RUB',
     'onlyCharter'=>filter_var($_GET['onlyCharter']??false,FILTER_VALIDATE_BOOLEAN),'onlyDirect'=>filter_var($_GET['onlyDirect']??false,FILTER_VALIDATE_BOOLEAN)
 ]));
-case'search_status':$id=(int)($_GET['searchId']??0);if($id<=0)out(['ok'=>false,'error'=>'searchId is required'],400);out(tv_get('/tours/search/'.$id.'/status',['operatorStatus'=>false]));
-case'search_results':$id=(int)($_GET['searchId']??0);if($id<=0)out(['ok'=>false,'error'=>'searchId is required'],400);out(tv_get('/tours/search/'.$id,['limit'=>$_GET['limit']??25]));
+case'search_continue':$id=search_id();out(tv_get('/tours/search/'.$id.'/continue'));
+case'search_status':$id=search_id();out(tv_get('/tours/search/'.$id.'/status',['operatorStatus'=>false]));
+case'search_results':$id=search_id();out(tv_get('/tours/search/'.$id,['limit'=>$_GET['limit']??25]));
 case'tour':$id=trim((string)($_GET['tourId']??''));if($id==='')out(['ok'=>false,'error'=>'tourId is required'],400);out(tv_get('/tours/'.rawurlencode($id),['currency'=>$_GET['currency']??'RUB']));
 case'flights':$id=trim((string)($_GET['tourId']??''));if($id==='')out(['ok'=>false,'error'=>'tourId is required'],400);out(tv_get('/tours/'.rawurlencode($id).'/flights',['currency'=>$_GET['currency']??'RUB']));
 case'rooms':out(tv_get('/rooms',['ids'=>request_array('ids')]));
