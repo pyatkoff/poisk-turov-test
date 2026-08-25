@@ -1,4 +1,4 @@
-name: Read-only active template audit
+name: Read-only Bitrix header audit
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Inspect response head and redirects only
+      - name: Inspect Bitrix header and site template selection only
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -35,17 +35,31 @@ jobs:
           key_path: ${{ runner.temp }}/deploy_key
           script: |
             set -euo pipefail
-            for url in https://anytour.online/poisk-turov/ https://anytour.online/poisk-turov-test/; do
-              echo "=== $url HEADERS ==="
-              curl -k -sS -I --max-time 30 "$url" | sed -n '1,30p'
-              echo "=== $url FINAL ==="
-              curl -k -L -sS -o /tmp/page.$$ -w 'FINAL_URL=%{url_effective}\nHTTP=%{http_code}\n' --max-time 30 "$url"
-              echo '--- HEAD SNIPPET ---'
-              sed -n '1,140p' /tmp/page.$$ | head -140
-              echo '--- TEMPLATE MARKERS ---'
-              grep -Eo '/(bitrix|local)/templates/[^"'"' ]+|/css/[^"'"' ]+|/js/[^"'"' ]+' /tmp/page.$$ | sort -u | head -120 || true
-              rm -f /tmp/page.$$
-            done
-            echo '=== SITE TEMPLATE FILES ==='
-            find "$HOME/www/anytour.online/bitrix/templates" -maxdepth 2 -type f \( -name header.php -o -name style.css -o -name template_styles.css \) -printf '%p %s bytes\n' | sort
-            echo 'READ_ONLY_ACTIVE_TEMPLATE_AUDIT=OK'
+            SITE="$HOME/www/anytour.online"
+            echo '=== ROOT BITRIX HEADER ==='
+            stat -c '%s bytes %y %n' "$SITE/bitrix/header.php" "$SITE/bitrix/footer.php"
+            sed -n '1,120p' "$SITE/bitrix/header.php"
+            echo '=== ROOT BITRIX FOOTER ==='
+            sed -n '1,80p' "$SITE/bitrix/footer.php"
+            echo '=== TEMPLATE HEADER FIRST 80 ==='
+            sed -n '1,80p' "$SITE/bitrix/templates/anytour/header.php"
+            echo '=== SITE DEFINITIONS / TEMPLATE REFERENCES ==='
+            grep -RniE 'SITE_TEMPLATE_ID|anytour.*template|TEMPLATE_ID' "$SITE/bitrix/php_interface" "$SITE/local/php_interface" 2>/dev/null | head -120 || true
+            echo '=== DB SITE TEMPLATE TABLE (read only) ==='
+            phpbin=php
+            [ -x /opt/php81/bin/php ] && phpbin=/opt/php81/bin/php
+            "$phpbin" -r '
+              $_SERVER["DOCUMENT_ROOT"]="'"$SITE"'";
+              $_SERVER["HTTP_HOST"]="anytour.online";
+              $_SERVER["REQUEST_URI"]="/poisk-turov/";
+              $_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php";
+              define("NO_KEEP_STATISTIC", true);
+              define("NOT_CHECK_PERMISSIONS", true);
+              require $_SERVER["DOCUMENT_ROOT"]."/bitrix/modules/main/include/prolog_before.php";
+              echo "SITE_ID=".(defined("SITE_ID")?SITE_ID:"<undef>")."\n";
+              echo "SITE_TEMPLATE_ID=".(defined("SITE_TEMPLATE_ID")?SITE_TEMPLATE_ID:"<undef>")."\n";
+              $rs=CSite::GetList($by="sort",$order="asc",[]);
+              while($s=$rs->Fetch()){if($s["SERVER_NAME"]==="anytour.online" || $s["DIR"]==="/") echo "SITE ".$s["ID"]." SERVER=".$s["SERVER_NAME"]." DIR=".$s["DIR"]." ACTIVE=".$s["ACTIVE"]."\n";}
+              if(defined("SITE_ID")){ $ts=CSite::GetTemplateList(SITE_ID); while($t=$ts->Fetch()) echo "TPL ".$t["TEMPLATE"]." CONDITION=".$t["CONDITION"]." SORT=".$t["SORT"]."\n"; }
+            '
+            echo 'READ_ONLY_BITRIX_HEADER_AUDIT=OK'
