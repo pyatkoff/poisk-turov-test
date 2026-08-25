@@ -13,25 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     var extrasParent = firstExtraColumn.parentNode;
-    var searchTop = form.querySelector('.searchTop');
     var originalSubmit = form.querySelector('#search_start');
-
-    /*
-     * Do not depend on moving the legacy submit out of .searchColRight:
-     * that column is one of the optional filters and is hidden on mobile.
-     * Create a dedicated submit immediately after the main fields instead.
-     */
-    var mobileCta = document.getElementById('mobileSearchCta');
-    if (!mobileCta && originalSubmit && searchTop) {
-        mobileCta = document.createElement('button');
-        mobileCta.type = 'submit';
-        mobileCta.id = 'mobileSearchCta';
-        mobileCta.className = 'mobileSearchCta';
-        mobileCta.name = originalSubmit.name || 'search_start';
-        mobileCta.value = originalSubmit.value || 'Искать туры';
-        mobileCta.textContent = originalSubmit.value || 'Искать туры';
-        searchTop.insertAdjacentElement('afterend', mobileCta);
-    }
 
     var toggle = document.createElement('button');
     toggle.type = 'button';
@@ -39,6 +21,19 @@ document.addEventListener('DOMContentLoaded', function () {
     toggle.setAttribute('aria-expanded', 'true');
     toggle.innerHTML = '<span>Дополнительные фильтры</span><span class="additionalFiltersArrow" aria-hidden="true">⌄</span>';
     extrasParent.insertBefore(toggle, firstExtraColumn);
+
+    /* Mobile CTA is outside the collapsible columns, directly below the filters toggle. */
+    var mobileCta = document.getElementById('mobileSearchCta');
+    if (!mobileCta && originalSubmit) {
+        mobileCta = document.createElement('button');
+        mobileCta.type = 'submit';
+        mobileCta.id = 'mobileSearchCta';
+        mobileCta.className = 'mobileSearchCta';
+        mobileCta.name = originalSubmit.name || 'search_start';
+        mobileCta.value = originalSubmit.value || 'Искать туры';
+        mobileCta.textContent = originalSubmit.value || 'Искать туры';
+        toggle.insertAdjacentElement('afterend', mobileCta);
+    }
 
     var mobileQuery = window.matchMedia('(max-width: 620px)');
 
