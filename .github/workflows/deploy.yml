@@ -9,6 +9,7 @@ jobs:
   deploy-v2:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Prepare SSH key
         env:
           DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -20,7 +21,16 @@ jobs:
           if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
-      - name: Update V2 folder only
+      - name: Copy V2 folder only
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key_path: ${{ runner.temp }}/deploy_key
+          source: "v2/*"
+          target: "~/www/anytour.online/poisk-turov-test/"
+          overwrite: true
+      - name: Verify V2
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -28,12 +38,9 @@ jobs:
           key_path: ${{ runner.temp }}/deploy_key
           script: |
             set -euo pipefail
-            cd "$HOME/www/anytour.online/poisk-turov-test"
-            git fetch origin main
-            git archive origin/main v2 | tar -x -C .
             page_code="$(curl -k -L -sS -o /tmp/v2.html -w '%{http_code}' --max-time 40 https://anytour.online/poisk-turov-test/v2/)"
             api_code="$(curl -k -L -sS -o /tmp/v2-health.json -w '%{http_code}' --max-time 45 'https://anytour.online/poisk-turov-test/v2/api.php?action=health')"
-            grep -q 'Найти тур' /tmp/v2.html
-            grep -q 'tourvisor-direct' /tmp/v2-health.json
             echo "PAGE=$page_code API=$api_code"
             cat /tmp/v2-health.json
+            grep -q 'Найти тур' /tmp/v2.html
+            grep -q 'tourvisor-direct' /tmp/v2-health.json
