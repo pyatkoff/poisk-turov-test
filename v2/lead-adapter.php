@@ -74,10 +74,16 @@ function lead_bootstrap():array{
     $docRoot=$_SERVER['DOCUMENT_ROOT']??'';$prolog=$docRoot.'/bitrix/modules/main/include/prolog_before.php';
     if($docRoot===''||!is_file($prolog))return ['ok'=>false,'error'=>'Bitrix bootstrap not found'];
     require_once $prolog;
+    $siteConf=$docRoot.'/site_conf.php';
+    if(is_file($siteConf))require_once $siteConf;
     if(!class_exists('Bitrix\\Main\\Loader'))return ['ok'=>false,'error'=>'Bitrix Loader unavailable'];
     if(!\Bitrix\Main\Loader::includeModule('iblock'))return ['ok'=>false,'error'=>'iblock module unavailable'];
     if(!class_exists('CIBlockElement'))return ['ok'=>false,'error'=>'CIBlockElement unavailable'];
     return ['ok'=>true];
+}
+function lead_project_marker(){
+    if(class_exists('CSiteParams')&&property_exists('CSiteParams','isAnytourOnline'))return \CSiteParams::$isAnytourOnline;
+    return null;
 }
 
 if($_SERVER['REQUEST_METHOD']==='GET'){
@@ -99,6 +105,8 @@ if($_SERVER['REQUEST_METHOD']!=='POST')lead_out(['ok'=>false,'error'=>'Method no
 $raw=file_get_contents('php://input');$data=json_decode((string)$raw,true);if(!is_array($data))$data=$_POST;
 $built=lead_build($data);if(!empty($built['errors']))lead_out(['ok'=>false,'error'=>'Validation failed','fields'=>$built['errors']],422);
 $boot=lead_bootstrap();if(empty($boot['ok']))lead_out(['ok'=>false,'error'=>$boot['error']??'Bitrix bootstrap failed'],500);
+$projectMarker=lead_project_marker();
+if($projectMarker!==null)$built['element']['PROPERTY_VALUES']['IS_ANYTOUR_ONLINE']=$projectMarker;
 $el=new \CIBlockElement();$leadId=$el->Add($built['element']);
 if(!$leadId)lead_out(['ok'=>false,'error'=>'Bitrix lead insert failed','detail'=>(string)$el->LAST_ERROR],500);
-lead_out(['ok'=>true,'mode'=>'live','writes'=>true,'leadId'=>(int)$leadId,'source'=>26]);
+lead_out(['ok'=>true,'mode'=>'live','writes'=>true,'leadId'=>(int)$leadId,'source'=>26,'isAnyTourOnline'=>$projectMarker]);
