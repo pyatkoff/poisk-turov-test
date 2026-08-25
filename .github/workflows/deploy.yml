@@ -1,4 +1,4 @@
-name: Read-only Bitrix header quick audit
+name: Read-only Bitrix template binding audit
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Inspect root Bitrix include files only
+      - name: Read Bitrix site/template bindings only
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -35,16 +35,22 @@ jobs:
           script: |
             set -euo pipefail
             SITE="$HOME/www/anytour.online"
-            echo '=== BITRIX HEADER STAT ==='
-            stat -c '%s bytes %y %n' "$SITE/bitrix/header.php" "$SITE/bitrix/footer.php"
-            echo '=== BITRIX HEADER CONTENT ==='
-            cat "$SITE/bitrix/header.php"
-            echo '=== BITRIX FOOTER CONTENT ==='
-            cat "$SITE/bitrix/footer.php"
-            echo '=== ANYTOUR HEADER STAT ==='
-            stat -c '%s bytes %y %n' "$SITE/bitrix/templates/anytour/header.php" "$SITE/bitrix/templates/anytour/footer.php"
-            echo '=== SEARCH INDEX STAT ==='
-            stat -c '%s bytes %y %n' "$SITE/poisk-turov/index.php" "$SITE/poisk-turov-test/index.php"
-            echo '=== SEARCH INDEX FIRST 30 ==='
-            sed -n '1,30p' "$SITE/poisk-turov/index.php"
-            echo 'READ_ONLY_QUICK_AUDIT=OK'
+            phpbin=php
+            [ -x /opt/php81/bin/php ] && phpbin=/opt/php81/bin/php
+            "$phpbin" -d display_errors=1 -r '
+              $root="'"$SITE"'";
+              $settings=require $root."/bitrix/.settings.php";
+              $c=$settings["connections"]["value"]["default"] ?? null;
+              if(!$c){fwrite(STDERR,"NO_DB_CONFIG\n"); exit(2);}
+              $db=new mysqli($c["host"],$c["login"],$c["password"],$c["database"]);
+              if($db->connect_errno){fwrite(STDERR,"DB_CONNECT_FAIL\n"); exit(3);}
+              $db->set_charset("utf8mb4");
+              echo "=== SITES ===\n";
+              $r=$db->query("SELECT LID,ACTIVE,SORT,NAME,DIR,SERVER_NAME FROM b_lang ORDER BY SORT,LID");
+              while($x=$r->fetch_assoc()){echo implode(" | ",$x)."\n";}
+              echo "=== SITE TEMPLATE BINDINGS ===\n";
+              $r=$db->query("SELECT SITE_ID,SORT,CONDITION,TEMPLATE FROM b_site_template ORDER BY SITE_ID,SORT");
+              while($x=$r->fetch_assoc()){echo "SITE_ID={$x["SITE_ID"]} SORT={$x["SORT"]} TEMPLATE={$x["TEMPLATE"]} CONDITION={$x["CONDITION"]}\n";}
+              $db->close();
+            '
+            echo 'READ_ONLY_TEMPLATE_BINDING_AUDIT=OK'
