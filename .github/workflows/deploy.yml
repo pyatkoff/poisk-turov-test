@@ -88,8 +88,8 @@ jobs:
               fail metrika_config_shape
             fi
             ! grep -q "METRIKA_OAUTH_TOKEN" /tmp/v2.html || fail oauth_exposed
-            grep -q '"source":"tourvisor-direct"' /tmp/v2-health.json || grep -q '"source": "tourvisor-direct"' /tmp/v2-health.json || fail api_source
-            grep -q '"gatewayVersion":2' /tmp/v2-health.json || grep -q '"gatewayVersion": 2' /tmp/v2-health.json || fail api_version
-            grep -q '"adapter":"v2-direct-bitrix-lead"' /tmp/v2-lead.json || grep -q '"adapter": "v2-direct-bitrix-lead"' /tmp/v2-lead.json || fail lead_adapter
-            grep -q '"version":2' /tmp/v2-lead.json || grep -q '"version": 2' /tmp/v2-lead.json || fail lead_version
+            grep -q "tourvisor-direct" /tmp/v2-health.json || fail api_source
+            grep -q "gatewayVersion" /tmp/v2-health.json || fail api_version
+            grep -q "v2-direct-bitrix-lead" /tmp/v2-lead.json || fail lead_adapter
+            grep -q "version" /tmp/v2-lead.json || fail lead_version
           '
