@@ -50,26 +50,13 @@ jobs:
             set -e
             cd ~/www/anytour.online/poisk-turov-test
 
-            # One-time normalization from the previous deploy version: persist the
-            # already-applied test-local Tourvisor vendor path instead of leaving
-            # the working tree dirty forever.
-            if ! git diff --quiet -- tv_api/tvapi.php; then
-              git add tv_api/tvapi.php
-              git -c user.name="poisk-turov-test deploy" -c user.email="deploy@localhost" commit -m "Use test-local Tourvisor vendor path"
-              git push origin main
-            fi
-
-            if ! git diff --quiet || ! git diff --cached --quiet; then
-              echo "ERROR: local tracked changes detected; refusing to overwrite"
-              git status --short
-              exit 1
-            fi
+            # This repository is the source of truth for the test directory.
             git fetch origin main
             git reset --hard origin/main
 
             SITE_ROOT="$HOME/www/anytour.online"
             TEST_COMPONENT="$SITE_ROOT/local/components/rhat.search.test/form"
-            TEST_TEMPLATE="$SITE_ROOT/local/templates/anytour/components/rhat.search.test/form/form"
+            TEST_TEMPLATE="$SITE_ROOT/bitrix/templates/anytour/components/rhat.search.test/form/form"
 
             mkdir -p "$TEST_COMPONENT" "$TEST_TEMPLATE"
             cp component/component.php "$TEST_COMPONENT/component.php"
