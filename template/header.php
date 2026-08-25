@@ -18,5 +18,7 @@ require __DIR__ . '/../site-template/header.php';
 <link rel="stylesheet" href="/poisk-turov-test/template/hotel-details-overrides.css?v=1">
 <link rel="stylesheet" href="/poisk-turov-test/template/tour-final-overrides.css?v=1">
 <link rel="stylesheet" href="/poisk-turov-test/template/mobile-critical-fixes.css?v=2">
+<link rel="stylesheet" href="/poisk-turov-test/template/tour-choice-enhance.css?v=1">
 <script src="/poisk-turov-test/template/layout-fixes.js?v=6" defer></script>
 <script src="/poisk-turov-test/template/results-controls.js?v=1" defer></script>
+<script src="/poisk-turov-test/template/tour-choice-enhance.js?v=1" defer></script>
