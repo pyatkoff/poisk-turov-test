@@ -54,60 +54,39 @@ jobs:
 
             SITE_ROOT="$HOME/www/anytour.online"
             TEST_COMPONENT="$SITE_ROOT/local/components/rhat.search.test/form"
-            TEST_TEMPLATE="$SITE_ROOT/bitrix/templates/anytour/components/rhat.search.test/form/form"
+            TEST_COMPONENT_TEMPLATE="$TEST_COMPONENT/templates/form"
             STALE_LOCAL_TEMPLATE="$SITE_ROOT/local/templates/anytour/components/rhat.search.test"
+            STALE_BITRIX_TEMPLATE="$SITE_ROOT/bitrix/templates/anytour/components/rhat.search.test"
 
-            # Bitrix prefers /local/templates over /bitrix/templates. Remove the old
-            # test copy so there is exactly one source of template assets.
-            rm -rf "$STALE_LOCAL_TEMPLATE"
+            rm -rf "$STALE_LOCAL_TEMPLATE" "$STALE_BITRIX_TEMPLATE"
+            mkdir -p "$TEST_COMPONENT" "$TEST_COMPONENT_TEMPLATE"
 
-            mkdir -p "$TEST_COMPONENT" "$TEST_TEMPLATE"
             cp component/component.php "$TEST_COMPONENT/component.php"
             cp component/.description.php "$TEST_COMPONENT/.description.php"
             cp component/.parameters.php "$TEST_COMPONENT/.parameters.php"
             cp component/ajax.php "$TEST_COMPONENT/ajax.php"
-            cp -a anytour/components/rhat.search/form/form/. "$TEST_TEMPLATE/"
+            cp -a anytour/components/rhat.search/form/form/. "$TEST_COMPONENT_TEMPLATE/"
 
             sed -i "s#'/bitrix/php_interface/tv_api/tvapi.php'#'/poisk-turov-test/tv_api/tvapi.php'#" "$TEST_COMPONENT/component.php"
-            sed -i "s#'/bitrix/php_interface/tv_api/search.php'#'/poisk-turov-test/tv_api/search.php'#" "$TEST_TEMPLATE/ajax.php"
-            sed -i "s#'/bitrix/php_interface/tv_api/tvapi.php'#'/poisk-turov-test/tv_api/tvapi.php'#" "$TEST_TEMPLATE/ajax.php"
+            sed -i "s#'/bitrix/php_interface/tv_api/search.php'#'/poisk-turov-test/tv_api/search.php'#" "$TEST_COMPONENT_TEMPLATE/ajax.php"
+            sed -i "s#'/bitrix/php_interface/tv_api/tvapi.php'#'/poisk-turov-test/tv_api/tvapi.php'#" "$TEST_COMPONENT_TEMPLATE/ajax.php"
 
             if command -v /opt/php81/bin/php >/dev/null 2>&1; then PHP_BIN=/opt/php81/bin/php; else PHP_BIN=php; fi
             "$PHP_BIN" -l index.php
             "$PHP_BIN" -l "$TEST_COMPONENT/component.php"
-            "$PHP_BIN" -l "$TEST_TEMPLATE/ajax.php"
-            "$PHP_BIN" -l "$TEST_TEMPLATE/template.php"
+            "$PHP_BIN" -l "$TEST_COMPONENT_TEMPLATE/ajax.php"
+            "$PHP_BIN" -l "$TEST_COMPONENT_TEMPLATE/template.php"
             "$PHP_BIN" -l tv_api/search.php
             "$PHP_BIN" -l tv_api/tvapi.php
 
-            echo "--- Live smoke test ---"
             TEST_HTML="$(mktemp)"
-            PROD_HTML="$(mktemp)"
             HTTP_CODE="$(curl -k -L -sS -o "$TEST_HTML" -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov-test/)"
-            PROD_CODE="$(curl -k -L -sS -o "$PROD_HTML" -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
-            echo "HTTP_CODE test=$HTTP_CODE prod=$PROD_CODE"
+            echo "HTTP_CODE=$HTTP_CODE"
             test "$HTTP_CODE" = "200"
             grep -q 'searchMainWrap' "$TEST_HTML"
-            grep -q 'rhat.search.test' index.php
-            if grep -q '/local/templates/anytour/components/rhat.search.test' "$TEST_HTML"; then
-              echo "ERROR: stale local test template is still active"
-              exit 1
-            fi
+            grep -q '/local/components/rhat.search.test/form/templates/form/' "$TEST_HTML"
             echo "SMOKE_FORM=OK"
+            rm -f "$TEST_HTML"
 
-            CSS_URL='https://anytour.online/bitrix/templates/anytour/components/rhat.search.test/form/form/style.css?v=20260825-1'
-            JS_URL='https://anytour.online/bitrix/templates/anytour/components/rhat.search.test/form/form/script.js?v=20260825-1'
-            ICON_URL='https://anytour.online/bitrix/templates/anytour/components/rhat.search.test/form/form/images/icon_gstar.png'
-            CSS_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$CSS_URL")"
-            JS_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$JS_URL")"
-            ICON_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 20 "$ICON_URL")"
-            echo "ASSET_CODES css=$CSS_CODE js=$JS_CODE icon=$ICON_CODE"
-
-            echo "--- PROD stylesheets ---"
-            grep -oE 'href="[^"]+\.css[^\"]*"' "$PROD_HTML" | sed 's/^/PROD /' | sort -u || true
-            echo "--- TEST stylesheets ---"
-            grep -oE 'href="[^"]+\.css[^\"]*"' "$TEST_HTML" | sed 's/^/TEST /' | sort -u || true
-
-            rm -f "$TEST_HTML" "$PROD_HTML"
-            echo "Deployed isolated test component: rhat.search.test:form"
+            echo "Deployed isolated test component with native Bitrix template assets"
             echo "Deployed commit: $(git rev-parse HEAD)"
