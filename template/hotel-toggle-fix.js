@@ -1,30 +1,29 @@
-document.addEventListener('click', function (event) {
-    var button = event.target.closest('.hotelNextStep');
-    if (!button) return;
+(function () {
+    'use strict';
 
-    /* Replace the legacy inverted Подробнее/Об отеле toggle only in test UI. */
-    event.preventDefault();
-    event.stopPropagation();
-    if (typeof event.stopImmediatePropagation === 'function') {
-        event.stopImmediatePropagation();
-    }
+    /*
+     * Keep the legacy click handler and all of its existing form/AJAX logic.
+     * We only normalize the label after it has toggled .formshow.
+     * Details visible:  Продолжить
+     * Order form visible: Об отеле
+     */
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('.hotelNextStep');
+        if (!button || button.classList.contains('loading')) return;
 
-    if (button.classList.contains('loading')) return;
+        window.setTimeout(function () {
+            var wrap = button.closest('.tourHotelWrap');
+            if (!wrap) return;
 
-    var wrap = button.closest('.tourHotelWrap');
-    if (!wrap) return;
-
-    var isOpen = wrap.classList.contains('formshow');
-
-    if (isOpen) {
-        wrap.classList.remove('formshow');
-        button.classList.remove('orderOpen');
-        button.textContent = 'Об отеле';
-        button.setAttribute('aria-expanded', 'false');
-    } else {
-        wrap.classList.add('formshow');
-        button.classList.add('orderOpen');
-        button.textContent = 'Свернуть';
-        button.setAttribute('aria-expanded', 'true');
-    }
-}, true);
+            if (wrap.classList.contains('formshow')) {
+                button.classList.add('orderOpen');
+                button.textContent = 'Об отеле';
+                button.setAttribute('aria-expanded', 'true');
+            } else {
+                button.classList.remove('orderOpen');
+                button.textContent = 'Продолжить';
+                button.setAttribute('aria-expanded', 'false');
+            }
+        }, 0);
+    });
+})();
