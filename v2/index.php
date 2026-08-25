@@ -58,5 +58,5 @@ $country = (int)($dataFilter['COUNTRY'] ?? 4);
   <section id="results" class="results"></section>
 </main>
 <script>window.V2_CONFIG={ajax:'/poisk-turov-test/template/search/ajax.php'};</script>
-<script src="/poisk-turov-test/v2/app.js?v=1"></script>
+<script src="/poisk-turov-test/v2/app.js?v=2"></script>
 </body></html>
