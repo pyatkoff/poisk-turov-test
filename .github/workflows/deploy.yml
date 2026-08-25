@@ -1,11 +1,15 @@
-name: Read-only Bitrix template binding audit
+name: Import template into test directory only
 
 on:
   push:
     branches: [main]
 
+concurrency:
+  group: poisk-turov-test-template-import
+  cancel-in-progress: false
+
 jobs:
-  audit:
+  import:
     runs-on: ubuntu-latest
     steps:
       - name: Prepare SSH private key
@@ -26,7 +30,7 @@ jobs:
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Read template bindings for o1 only
+      - name: Copy template into poisk-turov-test only
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -35,16 +39,34 @@ jobs:
           script: |
             set -euo pipefail
             SITE="$HOME/www/anytour.online"
-            phpbin=php
-            [ -x /opt/php81/bin/php ] && phpbin=/opt/php81/bin/php
-            "$phpbin" -d display_errors=1 -r '
-              $root="'"$SITE"'";
-              $settings=require $root."/bitrix/.settings.php";
-              $c=$settings["connections"]["value"]["default"];
-              $db=new mysqli($c["host"],$c["login"],$c["password"],$c["database"]);
-              $db->set_charset("utf8mb4");
-              $r=$db->query("SELECT SITE_ID,SORT,`CONDITION` AS COND,TEMPLATE FROM b_site_template WHERE SITE_ID=\"o1\" ORDER BY SORT");
-              while($x=$r->fetch_assoc()){echo "SITE_ID={$x["SITE_ID"]} SORT={$x["SORT"]} TEMPLATE={$x["TEMPLATE"]} CONDITION={$x["COND"]}\n";}
-              $db->close();
-            '
-            echo 'READ_ONLY_O1_BINDING_AUDIT=OK'
+            TEST_DIR="$SITE/poisk-turov-test"
+            SOURCE="$SITE/local/templates/anytour"
+            DEST="$TEST_DIR/site-template"
+
+            test -d "$TEST_DIR/.git"
+            test -d "$SOURCE"
+
+            cd "$TEST_DIR"
+            git fetch origin main
+            git reset --hard origin/main
+
+            # All writes are strictly inside poisk-turov-test.
+            rm -rf "$DEST"
+            mkdir -p "$DEST"
+            cp -a "$SOURCE"/. "$DEST"/
+
+            echo "SOURCE=$SOURCE (read only)"
+            echo "DEST=$DEST"
+            echo "FILES=$(find "$DEST" -type f | wc -l)"
+            du -sh "$DEST"
+
+            git config user.name "poisk-turov-test importer"
+            git config user.email "pavel@pyatkoff.com"
+            git add site-template
+            if git diff --cached --quiet; then
+              echo "TEMPLATE_IMPORT_NO_CHANGES"
+              exit 0
+            fi
+            git commit -m "Import working anytour template into test sandbox"
+            git push origin main
+            echo "TEMPLATE_IMPORTED_INSIDE_TEST_ONLY=OK"
