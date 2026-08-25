@@ -1,22 +1,22 @@
 <?php
 require($_SERVER['DOCUMENT_ROOT'].'/bitrix/modules/main/include/prolog_before.php');
 require_once($_SERVER['DOCUMENT_ROOT'].'/site_conf.php');
-require_once(dirname(__DIR__).'/tv_api/tvapi.php');
 require_once(__DIR__.'/assets.php');
-$dataFilter=['COUNTRY'=>4];if(!empty($params['TV_CITY']))$dataFilter['FROM']=$params['TV_CITY'];if(isset($_GET['from']))$dataFilter['FROM']=(int)$_GET['from'];if(isset($_GET['country']))$dataFilter['COUNTRY']=(int)$_GET['country'];$form=TvApi::prepareForm($dataFilter);function e($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}$from=(int)($form['from']??1);$country=(int)($dataFilter['COUNTRY']??4);
+require_once(__DIR__.'/form-defaults.php');
+$siteParams=is_array($params??null)?$params:[];$form=v2_form_defaults($_GET,$siteParams);function e($v){return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}$from=(int)$form['from'];$country=(int)$form['country'];
 ?><!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Поиск туров — V2</title><link rel="stylesheet" href="<?=e(v2_asset('app.css'))?>"><link rel="stylesheet" href="<?=e(v2_asset('enhancements.css'))?>"><link rel="stylesheet" href="<?=e(v2_asset('room-details.css'))?>"><link rel="stylesheet" href="<?=e(v2_asset('selected-tour-ux.css'))?>"></head><body>
 <main class="v2-shell">
 <header class="v2-head"><div><span class="eyebrow">ANYTOUR · V2</span><h1>Найдём тур под ваши планы</h1><p>Сравниваем предложения туроператоров и показываем рейсы до отправки заявки.</p></div><div class="head-badge">Прямой Tourvisor API</div></header>
 <form id="tourSearch" class="search-card" autocomplete="off"><?=bitrix_sessid_post()?>
 <div class="search-section-title"><span>Куда и когда</span><small>Основные параметры</small></div>
 <div class="main-fields">
-<label class="field field-wide"><span>Вылет из</span><select name="from" data-v2-catalog="departures"><?php foreach(($form['fromListFull']??[]) as $id=>$item):?><option value="<?=e($id)?>" <?=$id==$from?'selected':''?>><?=e($item['NAME2']?:$item['NAME'])?></option><?php endforeach;?></select></label>
-<label class="field field-wide"><span>Страна</span><select name="country" data-v2-catalog="countries"><?php foreach(($form['countryList']??[]) as $id=>$name):?><option value="<?=e($id)?>" <?=$id==$country?'selected':''?>><?=e(is_array($name)?($name['NAME']??''):$name)?></option><?php endforeach;?></select></label>
-<label class="field"><span>Вылет с</span><input type="date" name="dateFrom" value="<?=e($form['date_from']??'')?>"></label>
-<label class="field"><span>Вылет до</span><input type="date" name="dateTo" value="<?=e($form['date_till']??'')?>"></label>
-<label class="field"><span>Ночей от</span><input type="number" min="1" max="28" name="daysFrom" value="<?=e($form['nights_from']??5)?>"></label>
-<label class="field"><span>Ночей до</span><input type="number" min="1" max="28" name="daysTill" value="<?=e($form['nights_till']??14)?>"></label>
-<label class="field"><span>Взрослых</span><select name="count_people"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
+<label class="field field-wide"><span>Вылет из</span><select name="from" data-v2-catalog="departures"><option value="<?=e($from)?>" selected>Загружаем города…</option></select></label>
+<label class="field field-wide"><span>Страна</span><select name="country" data-v2-catalog="countries"><option value="<?=e($country)?>" selected>Загружаем страны…</option></select></label>
+<label class="field"><span>Вылет с</span><input type="date" name="dateFrom" value="<?=e($form['date_from'])?>"></label>
+<label class="field"><span>Вылет до</span><input type="date" name="dateTo" value="<?=e($form['date_till'])?>"></label>
+<label class="field"><span>Ночей от</span><input type="number" min="1" max="28" name="daysFrom" value="<?=e($form['nights_from'])?>"></label>
+<label class="field"><span>Ночей до</span><input type="number" min="1" max="28" name="daysTill" value="<?=e($form['nights_till'])?>"></label>
+<label class="field"><span>Взрослых</span><select name="count_people"><?php for($i=1;$i<=6;$i++):?><option value="<?=$i?>" <?=$i===(int)$form['count_people']?'selected':''?>><?=$i?></option><?php endfor;?></select></label>
 <label class="field"><span>Детей</span><select name="child_count" id="childCount"><option value="0" selected>Без детей</option><option value="1">1 ребёнок</option><option value="2">2 ребёнка</option><option value="3">3 ребёнка</option></select></label>
 </div>
 <div id="childAges" class="child-ages" hidden></div>
