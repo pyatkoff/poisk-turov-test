@@ -25,7 +25,9 @@ jobs:
             v2/tour-controller-v3.js \
             v2/tour-controller-v4.js \
             v2/catalogs-v2.js \
-            v2/search-lifecycle-v4.js
+            v2/search-lifecycle-v4.js \
+            v2/search-lifecycle-v5.js \
+            v2/accessibility.js
           do
             node --check "$file"
           done
@@ -69,10 +71,12 @@ jobs:
             php -l "$root/form-defaults.php" >/dev/null || fail php_form_defaults
             page_code="$(curl -k -L -sS -o /tmp/v2.html -w "%{http_code}" --max-time 40 https://anytour.online/poisk-turov-test/v2/)"
             api_code="$(curl -k -L -sS -o /tmp/v2-health.json -w "%{http_code}" --max-time 45 "https://anytour.online/poisk-turov-test/v2/api-v2.php?action=health")"
-            echo "PAGE=$page_code API=$api_code"
+            lead_code="$(curl -k -L -sS -o /tmp/v2-lead.json -w "%{http_code}" --max-time 30 "https://anytour.online/poisk-turov-test/v2/lead-adapter-v2.php")"
+            echo "PAGE=$page_code API=$api_code LEAD=$lead_code"
             cat /tmp/v2-health.json
             test "$page_code" = "200" || fail page_http
             test "$api_code" = "200" || fail api_http
+            test "$lead_code" = "200" || fail lead_http
             grep -q "Найти тур" /tmp/v2.html || fail page_marker
             grep -q "api-v2.php" /tmp/v2.html || fail active_api
             grep -q "runtime-v3.js" /tmp/v2.html || fail active_runtime
@@ -84,6 +88,8 @@ jobs:
               fail metrika_config_shape
             fi
             ! grep -q "METRIKA_OAUTH_TOKEN" /tmp/v2.html || fail oauth_exposed
-            grep -q '"source":"tourvisor-direct"' /tmp/v2-health.json || fail api_source
-            grep -q '"gatewayVersion":2' /tmp/v2-health.json || fail api_version
+            grep -q '"source":"tourvisor-direct"' /tmp/v2-health.json || grep -q '"source": "tourvisor-direct"' /tmp/v2-health.json || fail api_source
+            grep -q '"gatewayVersion":2' /tmp/v2-health.json || grep -q '"gatewayVersion": 2' /tmp/v2-health.json || fail api_version
+            grep -q '"adapter":"v2-direct-bitrix-lead"' /tmp/v2-lead.json || grep -q '"adapter": "v2-direct-bitrix-lead"' /tmp/v2-lead.json || fail lead_adapter
+            grep -q '"version":2' /tmp/v2-lead.json || grep -q '"version": 2' /tmp/v2-lead.json || fail lead_version
           '
