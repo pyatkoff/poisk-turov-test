@@ -1,9 +1,9 @@
-name: Real test search check
+name: Apply test card styles
 on:
   push:
     branches: [main]
 jobs:
-  check:
+  apply:
     runs-on: ubuntu-latest
     steps:
       - name: Prepare SSH key
@@ -17,56 +17,158 @@ jobs:
           if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
-      - name: Run real search in poisk-turov-test only
+      - name: Update poisk-turov-test only
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key_path: ${{ runner.temp }}/deploy_key
-          command_timeout: 5m
           script: |
             set -euo pipefail
             cd "$HOME/www/anytour.online/poisk-turov-test"
             git fetch origin main
             git reset --hard origin/main
-            BASE='https://anytour.online/poisk-turov-test/'
-            AJAX='https://anytour.online/poisk-turov-test/template/search/ajax.php'
-            COOKIE=/tmp/poisk_test_cookies.txt
-            curl -k -L -sS -c "$COOKIE" -b "$COOKIE" --max-time 40 "$BASE" -o /tmp/page.html
             python3 - <<'PY'
-            import re
-            h=open('/tmp/page.html','r',encoding='utf-8').read()
-            def inp(i,d=''):
-                m=re.search(r'id=["\']%s["\'][^>]*value=["\']([^"\']*)'%re.escape(i),h,re.I); return m.group(1) if m else d
-            def sel(i,d=''):
-                m=re.search(r'<select[^>]*id=["\']%s["\'][^>]*>(.*?)</select>'%re.escape(i),h,re.I|re.S)
-                if not m:return d
-                b=m.group(1); s=re.search(r'<option[^>]*value=["\']?([^"\' >]+)["\']?[^>]*selected',b,re.I)
-                return s.group(1) if s else d
-            v={'CITY':sel('from','1'),'COUNTRY':inp('country','4') or sel('country','4'),'DATEFROM':inp('date_from'),'DATETILL':inp('date_till'),'NIGHTSMIN':inp('count_days_from','5'),'NIGHTSMAX':inp('count_days_till','14'),'ADULTS':inp('count_people','2'),'CHILDREN':inp('count_child','0')}
-            open('/tmp/p.env','w').write('\n'.join('%s=%s'%x for x in v.items())+'\n'); print('FORM_PARAMS',v)
+            from pathlib import Path
+            p=Path('template/search/style.css')
+            s=p.read_text(encoding='utf-8')
+            marker='/* TEST MODERN HOTEL CARDS */'
+            block=r'''
+
+/* TEST MODERN HOTEL CARDS */
+#searchResultTable { margin-top: 18px; }
+#searchResult .airTour {
+    display: grid;
+    grid-template-columns: 220px minmax(0,1fr) 220px;
+    grid-template-areas:
+        "pic hotel price"
+        "pic hotel buttons";
+    gap: 14px 24px;
+    padding: 18px;
+    margin: 0 0 16px;
+    border: 1px solid #e2e5e9;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 4px 18px rgba(0,0,0,.06);
+    overflow: hidden;
+}
+#searchResult .airTour > .clear { display:none; }
+#searchResult .airPic {
+    grid-area: pic;
+    width: 220px;
+    min-height: 155px;
+    float: none;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #f3f5f7;
+}
+#searchResult .airPic img {
+    width: 220px;
+    height: 155px;
+    max-width: none;
+    object-fit: cover;
+}
+#searchResult .airHotel {
+    grid-area: hotel;
+    width: auto;
+    float: none;
+    padding: 2px 0 0;
+}
+#searchResult .hotelName {
+    margin: 0 0 8px;
+    font-size: 22px;
+    line-height: 1.25;
+}
+#searchResult .hotelStars { margin-bottom: 7px; }
+#searchResult .hotelCountry {
+    margin-bottom: 12px;
+    font-size: 15px;
+    color: #6b7280;
+}
+#searchResult .hotelRate { font-size: 14px; color:#374151; }
+#searchResult .rateMet { width: 150px; height: 8px; }
+#searchResult .rateMetInner { height: 8px; }
+#searchResult .airPrice {
+    grid-area: price;
+    position: static;
+    margin: 0;
+    text-align: right;
+}
+#searchResult .airMainPrices { margin:0; }
+#searchResult .airMainPrice { margin:0; }
+#searchResult .airMainPrice .mainPrice {
+    display:inline-block;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.15;
+}
+#searchResult .airDopBtns {
+    grid-area: buttons;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+#searchResult .airDopBtn {
+    min-width: 86px;
+    padding: 9px 13px;
+    border: 1px solid #d5d9df;
+    border-radius: 8px;
+    background:#fff;
+    text-align:center;
+    cursor:pointer;
+    font-size:14px;
+    line-height:1.2;
+    transition: .15s ease;
+}
+#searchResult .airDopBtn:hover {
+    border-color: var(--color-main);
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+#searchResult .airDopBtn.hotelTours {
+    border-color: var(--color-main);
+    background: var(--color-main);
+    color: #fff;
+    font-weight: 500;
+}
+@media (max-width: 760px) {
+    #searchResult .airTour {
+        grid-template-columns: 120px minmax(0,1fr);
+        grid-template-areas:
+            "pic hotel"
+            "price price"
+            "buttons buttons";
+        gap: 12px;
+        padding: 12px;
+        border-radius: 12px;
+    }
+    #searchResult .airPic { width:120px; min-height:100px; }
+    #searchResult .airPic img { width:120px; height:100px; }
+    #searchResult .hotelName { font-size:17px; }
+    #searchResult .hotelCountry { font-size:13px; margin-bottom:8px; }
+    #searchResult .hotelRate { font-size:12px; }
+    #searchResult .rateMet { width:120px; }
+    #searchResult .airPrice { text-align:left; padding-top:2px; }
+    #searchResult .airMainPrice .mainPrice { font-size:26px; }
+    #searchResult .airDopBtns { justify-content:flex-start; }
+    #searchResult .airDopBtn { flex:1 1 auto; }
+}
+'''
+            if marker not in s:
+                p.write_text(s+block,encoding='utf-8')
+                print('CARD_STYLES_ADDED=1')
+            else:
+                print('CARD_STYLES_ADDED=0')
             PY
-            . /tmp/p.env
-            curl -k -sS -c "$COOKIE" -b "$COOKIE" --max-time 60 --data-urlencode search_create=1 --data-urlencode "city=$CITY" --data-urlencode "country=$COUNTRY" --data-urlencode "datefrom=$DATEFROM" --data-urlencode "datetill=$DATETILL" --data-urlencode "nightsmin=$NIGHTSMIN" --data-urlencode "nightsmax=$NIGHTSMAX" --data-urlencode "adults=$ADULTS" --data-urlencode "children=$CHILDREN" --data-urlencode hide_reg_tours=0 --data-urlencode params_changed=0 "$AJAX" >/tmp/create.json
-            python3 - <<'PY'
-            import json
-            d=json.load(open('/tmp/create.json','r',encoding='utf-8')); print('CREATE reqid=%s progress=%s tcount=%s error=%s'%(d.get('reqid'),d.get('percent'),d.get('tcount'),d.get('error'))); open('/tmp/reqid','w').write(str(d.get('reqid') or ''))
-            PY
-            REQID="$(cat /tmp/reqid)"; test -n "$REQID"; test "$REQID" != 0
-            for i in 1 2 3 4 5 6 7 8; do
-              sleep 3
-              curl -k -sS -c "$COOKIE" -b "$COOKIE" --max-time 90 --data-urlencode search_update=1 --data-urlencode "reqid=$REQID" "$AJAX" >"/tmp/u$i.json"
-              python3 - "$i" <<'PY'
-            import json,sys
-            i=sys.argv[1]; d=json.load(open('/tmp/u%s.json'%i,'r',encoding='utf-8')); t=d.get('tours') or []; print('UPDATE %s progress=%s tcount=%s cards=%s photos=%s lazy=%s'%(i,d.get('percent'),d.get('tcount'),len(t),sum(1 for x in t if x.get('hotel_img')),d.get('test_photo_lazy')))
-            PY
-            done
-            curl -k -sS -c "$COOKIE" -b "$COOKIE" --max-time 120 --data-urlencode search_result=1 --data-urlencode "reqid=$REQID" --data-urlencode page=1 --data-urlencode upd=true "$AJAX" >/tmp/result.json
-            python3 - <<'PY'
-            import json,re
-            d=json.load(open('/tmp/result.json','r',encoding='utf-8')); t=d.get('tours') or []; print('RESULT tcount=%s cards=%s progress=%s lazy=%s'%(d.get('tcount'),len(t),d.get('percent'),d.get('test_photo_lazy')))
-            for i,x in enumerate(t[:10],1):
-                im=x.get('hotel_img') or ''; m=re.search(r"src=['\"]([^'\"]+)",im); print('CARD #%d HID=%s HOTEL=%s PRICE=%s PHOTO=%s URL=%s'%(i,x.get('id'),x.get('hotel'),x.get('price'),'YES' if im else 'NO',m.group(1) if m else ''))
-            print('PHOTO_COUNT=%d/%d'%(sum(1 for x in t if x.get('hotel_img')),len(t)))
-            PY
-            echo REAL_SEARCH_CHECK=OK
+            git add template/search/style.css
+            if ! git diff --cached --quiet; then
+              git config user.name "OpenAI test maintenance"
+              git config user.email "actions@users.noreply.github.com"
+              git commit -m "Improve hotel cards in test search [skip ci]"
+              git push origin main
+            fi
+            code="$(curl -k -L -sS -o /tmp/test.html -w '%{http_code}' --max-time 40 https://anytour.online/poisk-turov-test/)"
+            css="$(curl -k -sS -o /tmp/test.css -w '%{http_code}' --max-time 40 https://anytour.online/poisk-turov-test/template/search/style.css)"
+            grep -q 'TEST MODERN HOTEL CARDS' /tmp/test.css
+            echo "HTTP_CODE=$code CSS_CODE=$css CARD_STYLES=OK"
