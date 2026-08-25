@@ -1,4 +1,4 @@
-name: Deploy tour search test
+name: Audit tour search backups
 
 on:
   push:
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  audit:
     runs-on: ubuntu-latest
     steps:
       - name: Prepare SSH private key
@@ -40,25 +40,29 @@ jobs:
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
 
-      - name: Deploy test directory only
+      - name: Read-only audit of production template and backups
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key_path: ${{ runner.temp }}/deploy_key
           script: |
-            set -euo pipefail
-            TEST_DIR="$HOME/www/anytour.online/poisk-turov-test"
-            cd "$TEST_DIR"
-            git fetch origin main
-            git reset --hard origin/main
-
-            if command -v /opt/php81/bin/php >/dev/null 2>&1; then PHP_BIN=/opt/php81/bin/php; else PHP_BIN=php; fi
-            "$PHP_BIN" -l index.php
-
-            TEST_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov-test/)"
-            PROD_CODE="$(curl -k -L -sS -o /dev/null -w '%{http_code}' --max-time 30 https://anytour.online/poisk-turov/)"
-            echo "TEST_HTTP_CODE=$TEST_CODE PROD_HTTP_CODE=$PROD_CODE"
-            test "$TEST_CODE" = "200"
-            test "$PROD_CODE" = "200"
-            echo "DEPLOY_SCOPE=$TEST_DIR"
+            set -u
+            SITE_ROOT="$HOME/www/anytour.online"
+            PROD="$SITE_ROOT/bitrix/templates/anytour/components/rhat.search/form/form"
+            echo '=== CURRENT PROD ==='
+            find "$PROD" -maxdepth 2 -type f -printf '%TY-%Tm-%Td %TH:%TM:%TS %s %p\n' 2>/dev/null | sort
+            echo '=== CURRENT CHECKSUMS ==='
+            for f in template.php style.css script.js ajax.php; do
+              if [ -f "$PROD/$f" ]; then sha256sum "$PROD/$f"; fi
+            done
+            echo '=== HOME BACKUPS ==='
+            find "$HOME/backups" -maxdepth 3 \( -type d -o -type f \) -iname '*rhat*' -o -iname '*search*' 2>/dev/null | sort | head -500
+            echo '=== LIKELY TEMPLATE COPIES UNDER HOME ==='
+            find "$HOME" -type f -path '*/rhat.search/form/form/template.php' -printf '%TY-%Tm-%Td %TH:%TM:%TS %s %p\n' 2>/dev/null | sort | head -200
+            echo '=== LIKELY TEMPLATE COPIES UNDER SITE ==='
+            find "$SITE_ROOT" -type f -path '*/rhat.search/form/form/template.php' -printf '%TY-%Tm-%Td %TH:%TM:%TS %s %p\n' 2>/dev/null | sort | head -200
+            echo '=== BACKUP TEMPLATE HASHES ==='
+            find "$HOME/backups" -type f -name template.php 2>/dev/null | while read -r f; do
+              case "$f" in *rhat*|*search*) printf '%s  ' "$f"; sha256sum "$f" | awk '{print $1}';; esac
+            done | sort
