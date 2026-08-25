@@ -48,7 +48,7 @@ jobs:
             grep -q "Найти тур" /tmp/v2.html
             grep -q "tourvisor-direct" /tmp/v2-health.json
           '
-      - name: Audit V2 Metrika config key
+      - name: Audit V2 config key names
         env:
           DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
@@ -56,4 +56,4 @@ jobs:
         run: |
           set -euo pipefail
           ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
-          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" 'php -r '\''$_SERVER["DOCUMENT_ROOT"]=getenv("HOME")."/www/anytour.online"; require $_SERVER["DOCUMENT_ROOT"]."/site_conf.php"; foreach (($params ?? []) as $k=>$v) { if (preg_match("/(metr|counter|ym)/i", (string)$k) && is_scalar($v) && preg_match("/^\\d+$/", trim((string)$v))) echo $k."=".trim((string)$v).PHP_EOL; }'\'''
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" 'php -r '\''$_SERVER["DOCUMENT_ROOT"]=getenv("HOME")."/www/anytour.online"; require $_SERVER["DOCUMENT_ROOT"]."/site_conf.php"; foreach (($params ?? []) as $k=>$v) echo (string)$k.":".gettype($v).PHP_EOL;'\'''
