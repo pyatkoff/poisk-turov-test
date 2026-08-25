@@ -81,4 +81,19 @@ jobs:
               "$PHP_BIN" -l tv_api/tvapi.php
             fi
 
+            SITE_ROOT="$HOME/www/anytour.online"
+            echo "--- Bitrix search component diagnostics ---"
+            for p in \
+              "$SITE_ROOT/bitrix/components/rhat.search/form" \
+              "$SITE_ROOT/local/components/rhat.search/form" \
+              "$SITE_ROOT/bitrix/templates/anytour/components/rhat.search/form/form" \
+              "$SITE_ROOT/local/templates/anytour/components/rhat.search/form/form"; do
+              if [ -e "$p" ]; then
+                echo "FOUND: $p"
+                find "$p" -maxdepth 2 -type f | sort | head -80
+              else
+                echo "MISSING: $p"
+              fi
+            done
+
             echo "Deployed commit: $(git rev-parse HEAD)"
