@@ -1,0 +1,198 @@
+/* Test-only styling for expanded hotel prices/info. */
+.hotel_tours,
+.hotel_info {
+    margin: -2px 0 20px;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-top: 0;
+    border-radius: 0 0 14px 14px;
+    background: #f8fafc;
+    box-sizing: border-box;
+}
+
+.hotel_tours .airTourVar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    float: none !important;
+    width: 100% !important;
+    margin: 0 0 10px !important;
+    padding: 14px 16px !important;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    box-sizing: border-box;
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.hotel_tours .airTourVar:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 5px 18px rgba(15, 23, 42, .07);
+    transform: translateY(-1px);
+}
+
+.hotel_tours .airTourInner {
+    min-width: 0;
+}
+
+.hotel_tours .airTourLine {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px 14px;
+    margin: 0 0 6px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #334155;
+}
+
+.hotel_tours .tourStartDate,
+.hotel_tours .tourEndDate {
+    float: none !important;
+    width: auto !important;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.hotel_tours .tourStartDate::before {
+    content: 'Вылет: ';
+    font-weight: 400;
+    color: #64748b;
+}
+
+.hotel_tours .tourEndDate::before {
+    content: 'Возврат: ';
+    font-weight: 400;
+    color: #64748b;
+}
+
+.hotel_tours .airNights,
+.hotel_tours .airMR {
+    color: #475569;
+}
+
+.hotel_tours .airLabel {
+    color: #64748b;
+}
+
+.hotel_tours .airTourPrice {
+    float: none !important;
+    width: auto !important;
+    min-width: 150px;
+    text-align: right;
+    font-size: 14px;
+    line-height: 1.2;
+    color: #64748b;
+}
+
+.hotel_tours .airTourPrice span {
+    display: inline-block;
+    font-size: 22px;
+    line-height: 1.1;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.hotel_info {
+    display: grid;
+    grid-template-columns: minmax(260px, .9fr) minmax(0, 1.6fr);
+    gap: 20px;
+}
+
+.hotel_info .hotelPics {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    float: none !important;
+    width: auto !important;
+    align-content: start;
+}
+
+.hotel_info .hotelPics a {
+    display: block;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #e2e8f0;
+    aspect-ratio: 4 / 3;
+}
+
+.hotel_info .hotelPics img {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    object-fit: cover;
+}
+
+.hotel_info .hotelData {
+    float: none !important;
+    width: auto !important;
+    min-width: 0;
+    padding: 0 !important;
+}
+
+.hotel_info .hotelDataLine {
+    margin: 0 0 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 14px;
+    line-height: 1.55;
+    color: #334155;
+}
+
+.hotel_info .hotelDataLine:last-child {
+    border-bottom: 0;
+}
+
+.hotel_info .hotelDataLine > span {
+    display: block;
+    margin-bottom: 3px;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.removeTours,
+.removeHotelInfo {
+    grid-column: 1 / -1;
+    width: max-content;
+    margin: 8px auto 0 !important;
+    padding: 8px 15px;
+    border-radius: 9px;
+    background: #fff;
+    border: 1px solid #dbe2ea;
+    color: #334155;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+@media (max-width: 700px) {
+    .hotel_tours,
+    .hotel_info {
+        margin-bottom: 14px;
+        padding: 10px;
+        border-radius: 0 0 12px 12px;
+    }
+
+    .hotel_tours .airTourVar {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+        padding: 12px !important;
+    }
+
+    .hotel_tours .airTourPrice {
+        min-width: 0;
+        text-align: left;
+        padding-top: 7px;
+        border-top: 1px solid #eef2f7;
+    }
+
+    .hotel_info {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 14px;
+    }
+
+    .hotel_info .hotelPics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
