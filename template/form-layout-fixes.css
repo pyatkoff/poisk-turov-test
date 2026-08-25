@@ -67,6 +67,10 @@
     min-height: 440px;
 }
 
+.additionalFiltersToggle {
+    display: none;
+}
+
 /* Old template gives #hotelByName its own box/positioning. Neutralize it. */
 #hotelWrap {
     position: static !important;
@@ -252,6 +256,44 @@
         padding-top: 0 !important;
         padding-bottom: 0 !important;
         white-space: nowrap !important;
+    }
+
+    .additionalFiltersToggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        min-height: 50px;
+        margin: 4px 0 2px;
+        padding: 0 16px;
+        border: 1px solid #d9dde3;
+        border-radius: 12px;
+        background: #fff;
+        color: #253044;
+        font: inherit;
+        font-size: 16px;
+        font-weight: 600;
+        text-align: left;
+        box-sizing: border-box;
+        cursor: pointer;
+    }
+
+    .additionalFiltersArrow {
+        display: inline-block;
+        margin-left: 12px;
+        font-size: 22px;
+        line-height: 1;
+        transition: transform .2s ease;
+    }
+
+    .additionalFiltersToggle.is-open .additionalFiltersArrow {
+        transform: rotate(180deg);
+    }
+
+    form[name="searchForm"].additional-filters-collapsed > .searchColLeft,
+    form[name="searchForm"].additional-filters-collapsed > .searchColCenter,
+    form[name="searchForm"].additional-filters-collapsed > .searchColRight {
+        display: none !important;
     }
 
     #hotelByName {
