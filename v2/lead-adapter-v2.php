@@ -4,6 +4,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 require_once __DIR__.'/lead-price-v1.php';
+require_once __DIR__.'/lead-idempotency-v1.php';
 
 const V2_LEAD_IBLOCK_ID = 4;
 const V2_LEAD_SECTION_ID = 12;
@@ -18,7 +19,7 @@ function lead_phone($value){$digits=preg_replace('/\D+/','',trim((string)$value)
 function lead_money($value){if($value===null||$value==='')return null;$n=(int)round((float)$value);return $n>0?$n:null;}
 function lead_bool($value){return filter_var($value,FILTER_VALIDATE_BOOLEAN);}
 function lead_child_ages($value,&$error=null){$error=null;if($value===null||$value==='')return[];if(!is_array($value)){$error='childAges must be an array';return[];}if(count($value)>3){$error='No more than 3 child ages are allowed';return[];}$ages=[];foreach($value as $age){$v=filter_var($age,FILTER_VALIDATE_INT);if($v===false||(int)$v<0||(int)$v>17){$error='Child age must be between 0 and 17';return[];}$ages[]=(int)$v;}return$ages;}
-function lead_idempotency_key(array $lead){return hash('sha256',implode('|',[(string)($lead['phone']??''),(string)($lead['tourId']??''),(string)($lead['searchId']??'')]));}
+function lead_idempotency_key(array $lead){return v2_lead_idempotency_key($lead);}
 function lead_idempotency_cleanup($dir){if(mt_rand(1,50)!==1)return;$cutoff=time()-(V2_LEAD_IDEMPOTENCY_TTL*3);foreach((array)glob($dir.DIRECTORY_SEPARATOR.'*.json') as $file){if(is_file($file)&&@filemtime($file)<$cutoff)@unlink($file);}}
 function lead_idempotency_lock(string $key){$dir=rtrim(sys_get_temp_dir(),DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'anytour-v2-leads';if(!is_dir($dir)&&!@mkdir($dir,0700,true)&&!is_dir($dir))return['ok'=>false,'error'=>'Idempotency storage unavailable'];lead_idempotency_cleanup($dir);$path=$dir.DIRECTORY_SEPARATOR.$key.'.json';$fh=@fopen($path,'c+');if(!$fh)return['ok'=>false,'error'=>'Idempotency lock unavailable'];if(!flock($fh,LOCK_EX)){fclose($fh);return['ok'=>false,'error'=>'Idempotency lock failed'];}rewind($fh);$stored=json_decode((string)stream_get_contents($fh),true);if(is_array($stored)&&!empty($stored['leadId'])&&!empty($stored['time'])&&((int)$stored['time']+V2_LEAD_IDEMPOTENCY_TTL)>=time())return['ok'=>true,'duplicate'=>true,'leadId'=>(int)$stored['leadId'],'fh'=>$fh];return['ok'=>true,'duplicate'=>false,'fh'=>$fh];}
 function lead_idempotency_store(array $lock,int $leadId){$fh=$lock['fh']??null;if(!is_resource($fh))return;rewind($fh);ftruncate($fh,0);fwrite($fh,json_encode(['leadId'=>$leadId,'time'=>time()],JSON_UNESCAPED_SLASHES));fflush($fh);flock($fh,LOCK_UN);fclose($fh);}
