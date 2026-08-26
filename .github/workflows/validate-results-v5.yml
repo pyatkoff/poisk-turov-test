@@ -16,7 +16,7 @@ jobs:
           set -euo pipefail
           node --check v2/results-renderer-v5.js
           node <<'NODE'
-          global.document={getElementById:()=>({value:'price'}),addEventListener:()=>{}};
+          global.document={readyState:'loading',getElementById:()=>({value:'price',dataset:{},addEventListener:()=>{}}),addEventListener:()=>{}};
           global.window={addEventListener:()=>{},dispatchEvent:()=>{}};
           global.CustomEvent=function(){};
           require('./v2/results-renderer-v5.js');
