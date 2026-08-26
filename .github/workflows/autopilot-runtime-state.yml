@@ -3,7 +3,6 @@ name: Autopilot runtime state
 on:
   workflow_run:
     workflows:
-      - "Visual V2 baseline"
       - "Deploy V2 only"
       - "Validate active V2 contract"
       - "Measure V2 results DOM"
