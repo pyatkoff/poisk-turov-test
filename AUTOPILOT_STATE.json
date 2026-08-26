@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "project": "pyatkoff/poisk-turov-test",
+  "updated_at": "2026-08-27T00:58:00+02:00",
+  "mode": "active_development",
+  "phase": "pre-live visual/ux stabilization",
+  "current_task": {
+    "id": "A1",
+    "category": "VISUAL_UX",
+    "title": "Visual baseline and regression harness",
+    "status": "IN_PROGRESS",
+    "objective": "Establish repeatable browser-level visual checks across critical V2 viewports and states, then fix concrete visual regressions found.",
+    "next_action": "Diagnose and fix the first Visual V2 baseline workflow failure, rerun it, inspect screenshots/report, then fix the highest-priority real visual issue."
+  },
+  "queue": [
+    {"id":"A1","status":"IN_PROGRESS","title":"Visual baseline and regression harness"},
+    {"id":"A2","status":"QUEUED","title":"End-to-end search journey UX audit"},
+    {"id":"A3","status":"QUEUED","title":"Consolidate unstable visual cascade areas"},
+    {"id":"A4","status":"QUEUED","title":"Conversion readiness before live traffic"},
+    {"id":"A5","status":"QUEUED","title":"Live Tourvisor correctness pass"},
+    {"id":"A6","status":"QUEUED","title":"Focused whole-project refactor pass"},
+    {"id":"A7","status":"QUEUED","title":"SEO foundation audit and incremental work"},
+    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop"}
+  ],
+  "last_ci": {
+    "workflow": "Visual V2 baseline",
+    "run_id": 33018445607,
+    "head_sha": "227194d7b8a8171122604c06f9cb2d1bca20fef8",
+    "conclusion": "failure",
+    "classification": "HARNESS_OR_VISUAL_FAILURE_PENDING_DIAGNOSIS"
+  },
+  "last_verified_commit": "ea18c0dc613817720b0cb6babc706e456deb9e3f",
+  "blocked": [],
+  "protected": {
+    "other_projects": "DO_NOT_MODIFY",
+    "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
+    "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
+    "lead_sending_mechanism": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL"
+  },
+  "continuation_policy": {
+    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_blocker",
+    "on_ci_success": "collect_done_evidence_then_advance_queue",
+    "on_blocker": "record_blocker_and_continue_independent_work",
+    "on_visual_change": "require_browser_viewports_and_affected_state_verification",
+    "on_user_facing_change": "prioritize_ux_and_visual_stability",
+    "watchdog": "hourly_chat_automation"
+  }
+}
