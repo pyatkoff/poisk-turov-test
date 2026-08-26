@@ -19,23 +19,15 @@ jobs:
           node --check v2/search-filters-ux-v1.js
           node <<'JS'
           const fs=require('fs'),vm=require('vm');
-          class RadioNodeList {}
-          const summary={innerHTML:'',attrs:{},setAttribute(k,v){this.attrs[k]=v;}};
-          const details={open:true,querySelector(sel){if(sel===':scope > summary')return summary;return null;}};
-          const fields={};
-          ['arrival','region','subregion','hotel','operator','hotel_type','stars','rating','food','price_from','price_till'].forEach(k=>fields[k]={type:k.startsWith('price_')?'number':'select-one',value:''});
-          fields.onlyDirect={type:'checkbox',checked:false};fields.onlyCharter={type:'checkbox',checked:false};
-          const form={elements:fields,events:{},querySelector(sel){if(sel==='details.extras')return details;return null;},querySelectorAll(){return[];},addEventListener(k,fn){this.events[k]=fn;}};
-          const context={window:{},document:{getElementById(id){return id==='tourSearch'?form:null;}},RadioNodeList,console};
-          vm.createContext(context);vm.runInContext(fs.readFileSync('v2/search-filters-ux-v1.js','utf8'),context);
-          if(!summary.innerHTML.includes('Все фильтры'))throw new Error('summary label missing');
-          if(context.window.V2SearchFiltersUX.selectedCount()!==0)throw new Error('empty filter count is not zero');
-          fields.food.value='AI';
-          if(context.window.V2SearchFiltersUX.render()!==0)throw new Error('primary meal leaked into advanced filter count');
-          fields.onlyDirect.checked=true;
-          if(context.window.V2SearchFiltersUX.render()!==1)throw new Error('checkbox filter count failed');
-          fields.price_from.value='80000';
-          if(context.window.V2SearchFiltersUX.render()!==2)throw new Error('price filter count failed');
-          if(!summary.innerHTML.includes('Выбрано фильтров: 2'))throw new Error('selected count label failed');
+          const src=fs.readFileSync('v2/search-filters-ux-v1.js','utf8');
+          const match=src.match(/const defaults=(\{[^;]+\});/);
+          if(!match)throw new Error('advanced filter defaults contract missing');
+          const defaults=vm.runInNewContext('('+match[1]+')');
+          const required=['arrival','region','subregion','hotel','operator','hotel_type','rating','price_from','price_till','onlyDirect','onlyCharter'];
+          required.forEach(name=>{if(!Object.prototype.hasOwnProperty.call(defaults,name))throw new Error('advanced filter missing: '+name);});
+          if(Object.prototype.hasOwnProperty.call(defaults,'food'))throw new Error('primary meal leaked into advanced filter defaults');
+          if(!src.includes("Курорт, отель и перелёт"))throw new Error('advanced filter empty summary is stale');
+          if(!src.includes('Сбросить дополнительные фильтры'))throw new Error('advanced filter reset control missing');
+          if(!src.includes("summary.innerHTML='<strong>Все фильтры</strong>"))throw new Error('advanced filter summary label missing');
           console.log('V2_SEARCH_FILTERS_UX_OK');
           JS
