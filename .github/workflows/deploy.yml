@@ -27,6 +27,7 @@ jobs:
             v2/catalogs-v2.js \
             v2/search-lifecycle-v4.js \
             v2/search-lifecycle-v5.js \
+            v2/search-lifecycle-v6.js \
             v2/accessibility.js
           do
             node --check "$file"
@@ -80,6 +81,7 @@ jobs:
             grep -q "Найти тур" /tmp/v2.html || fail page_marker
             grep -q "api-v2.php" /tmp/v2.html || fail active_api
             grep -q "runtime-v3.js" /tmp/v2.html || fail active_runtime
+            grep -q "search-lifecycle-v6.js" /tmp/v2.html || fail active_search_lifecycle
             if grep -Eq "metrikaCounter[[:space:]]*:[[:space:]]*[1-9][0-9]*" /tmp/v2.html; then
               echo "METRIKA_COUNTER=configured"
             elif grep -Eq "metrikaCounter[[:space:]]*:[[:space:]]*0" /tmp/v2.html; then
