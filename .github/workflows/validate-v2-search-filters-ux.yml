@@ -1,0 +1,40 @@
+name: Validate V2 search filters UX
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/search-filters-ux-v1.js'
+      - '.github/workflows/validate-v2-search-filters-ux.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate advanced filter UX contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check v2/search-filters-ux-v1.js
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm');
+          class RadioNodeList {}
+          const summary={innerHTML:'',attrs:{},setAttribute(k,v){this.attrs[k]=v;}};
+          const details={open:true,querySelector(sel){if(sel===':scope > summary')return summary;return null;}};
+          const fields={};
+          ['arrival','region','subregion','hotel','operator','hotel_type','stars','rating','food','price_from','price_till'].forEach(k=>fields[k]={type:k.startsWith('price_')?'number':'select-one',value:''});
+          fields.onlyDirect={type:'checkbox',checked:false};fields.onlyCharter={type:'checkbox',checked:false};
+          const form={elements:fields,events:{},querySelector(sel){if(sel==='details.extras')return details;return null;},querySelectorAll(){return[];},addEventListener(k,fn){this.events[k]=fn;}};
+          const context={window:{},document:{getElementById(id){return id==='tourSearch'?form:null;}},RadioNodeList,console};
+          vm.createContext(context);vm.runInContext(fs.readFileSync('v2/search-filters-ux-v1.js','utf8'),context);
+          if(details.open!==false)throw new Error('advanced filters were not collapsed');
+          if(!summary.innerHTML.includes('Все фильтры'))throw new Error('summary label missing');
+          if(context.window.V2SearchFiltersUX.selectedCount()!==0)throw new Error('empty filter count is not zero');
+          fields.onlyDirect.checked=true;
+          if(context.window.V2SearchFiltersUX.render()!==1)throw new Error('checkbox filter count failed');
+          fields.price_from.value='80000';
+          if(context.window.V2SearchFiltersUX.render()!==2)throw new Error('price filter count failed');
+          if(!summary.innerHTML.includes('Выбрано фильтров: 2'))throw new Error('selected count label failed');
+          console.log('V2_SEARCH_FILTERS_UX_OK');
+          JS
