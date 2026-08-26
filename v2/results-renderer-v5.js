@@ -1,7 +1,7 @@
 (function(){'use strict';
 if(window.V2ResultsV5)return;
 const state={items:[],lastOptions:{}},expandedHotels=new Set(),INITIAL_TOURS=3;
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function money(v){const n=Number(v||0);return n>0?new Intl.NumberFormat('ru-RU').format(n):'';}
 function mealName(t){return t&&t.meal&&(t.meal.russianName||t.meal.fullRussianName||t.meal.name)||'';}
 function operatorName(t){return t&&t.operator&&(t.operator.russianName||t.operator.name)||'';}
@@ -11,7 +11,7 @@ function priceHtml(value,prefix){const formatted=money(value);return formatted?(
 function priceRank(v){const n=Number(v||0);return Number.isFinite(n)&&n>0?n:Number.POSITIVE_INFINITY;}
 function tourRow(t){return '<div class="tour-row"><div class="tour-meta"><strong>'+esc(t.date||'Вариант тура')+'</strong><span>'+esc([t.nights?t.nights+' ноч.':'',mealName(t),t.roomType||'',t.placement||'',operatorName(t),t.isCharter?'чартер':''].filter(Boolean).join(' · '))+'</span></div><div class="tour-action"><b>'+priceHtml(t.price,'')+'</b><button type="button" class="direct-tour" data-tid="'+esc(t.id||'')+'">Выбрать</button></div></div>';}
 function hotelKey(h){return String(h&&h.id!==undefined&&h.id!==null?h.id:'');}
-function toursHtml(h){const tours=Array.isArray(h&&h.tours)?h.tours:[],key=hotelKey(h),expanded=key&&expandedHotels.has(key),visible=expanded?tours:tours.slice(0,INITIAL_TOURS),hidden=Math.max(0,tours.length-visible.length);if(!tours.length)return'<div class="tour-loading">Нет доступных вариантов</div>';return visible.map(tourRow).join('')+(tours.length>INITIAL_TOURS?'<button type="button" class="secondary tour-more-toggle" data-hotel-id="'+esc(key)+'" aria-expanded="'+(expanded?'true':'false')+'">'+(expanded?'Скрыть дополнительные варианты':'Показать ещё '+hidden+' '+(hidden===1?'вариант':hidden>=2&&hidden<=4?'варианта':'вариантов'))+'</button>':'');}
+function toursHtml(h){const tours=Array.isArray(h&&h.tours)?h.tours:[],key=hotelKey(h),expanded=key&&expandedHotels.has(key),visible=expanded?tours:tours.slice(0,INITIAL_TOURS),hidden=Math.max(0,tours.length-visible.length);if(!tours.length)return'<div class="tour-loading">Нет доступных вариантов</div>';return visible.map(tourRow).join('')+(tours.length>INITIAL_TOURS?'<button type="button" class="secondary tour-more-toggle" data-hotel-id="'+esc(key)+'" aria-expanded="'+(expanded?'true':'false')+'">'+(expanded?'Скрыть дополнительные варианты':'Показать ещё '+tourCountLabel(hidden))+'</button>':'');}
 function mode(){return (document.getElementById('sortResults')||{}).value||'price';}
 function sorted(list,sortMode){const copy=(Array.isArray(list)?list:[]).slice(),m=sortMode||mode();copy.sort((a,b)=>{if(m==='rating')return Number(b.rating||0)-Number(a.rating||0)||priceRank(a.price)-priceRank(b.price);if(m==='stars')return Number(b.category||0)-Number(a.category||0)||priceRank(a.price)-priceRank(b.price);return priceRank(a.price)-priceRank(b.price);});return copy;}
 function emit(items,results){window.dispatchEvent(new CustomEvent('v2:results-rendered',{detail:{items:items.slice(),results,sort:mode()}}));}
