@@ -1,0 +1,37 @@
+name: Validate V2 flight autoload
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/flight-autoload-v1.js'
+      - '.github/workflows/validate-v2-flight-autoload.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate flight autoload contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check v2/flight-autoload-v1.js
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm');
+          let clicks=0,listener=null;
+          const btn={disabled:false,dataset:{tid:'123'},click(){clicks++;}};
+          const root={querySelector(sel){return sel==='.load-flights'?btn:null;}};
+          const document={getElementById(id){return id==='selectedTour'?root:null;},contains(node){return node===btn;}};
+          const window={addEventListener(name,fn){if(name==='v2:tour-selected')listener=fn;}};
+          const context={window,document,setTimeout(fn){fn();},console};
+          vm.createContext(context);vm.runInContext(fs.readFileSync('v2/flight-autoload-v1.js','utf8'),context);
+          if(typeof listener!=='function')throw new Error('tour-selected listener missing');
+          listener({detail:{tour:{id:'123'}}});
+          if(clicks!==1)throw new Error('matching tour did not autoload flights');
+          listener({detail:{tour:{id:'999'}}});
+          if(clicks!==1)throw new Error('mismatched tour triggered flight load');
+          btn.disabled=true;listener({detail:{tour:{id:'123'}}});
+          if(clicks!==1)throw new Error('disabled button triggered duplicate flight load');
+          console.log('V2_FLIGHT_AUTOLOAD_OK');
+          JS
