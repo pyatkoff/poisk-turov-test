@@ -96,9 +96,9 @@ jobs:
                 };
               });
 
-              const extras = page.locator('details.extras');
-              if (await extras.count()) {
-                await extras.locator('summary').click();
+              const extrasSummary = page.locator('details.extras > summary').first();
+              if (await extrasSummary.count()) {
+                await extrasSummary.click();
                 await page.waitForTimeout(300);
                 await page.screenshot({ path: `visual-artifacts/${vp.name}-filters-open.png`, fullPage: true });
               }
