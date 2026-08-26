@@ -202,7 +202,10 @@ switch ($action) {
         $priceTo = optional_int($_GET['priceTo'] ?? null);
         if (!$departureId || !$countryId || !$dateFrom || !$dateTo) out(['ok' => false, 'error' => 'Invalid required search parameters'], 400);
         if ($dateTo < $dateFrom) out(['ok' => false, 'error' => 'dateTo must not be before dateFrom'], 400);
+        $dateSpan = (new DateTimeImmutable($dateFrom))->diff(new DateTimeImmutable($dateTo))->days;
+        if ($dateSpan === false || $dateSpan > 21) out(['ok' => false, 'error' => 'date range must not exceed 21 days'], 400);
         if ($nightsTo < $nightsFrom) out(['ok' => false, 'error' => 'nightsTo must not be less than nightsFrom'], 400);
+        if (($nightsTo - $nightsFrom) > 10) out(['ok' => false, 'error' => 'nights range must not exceed 10'], 400);
         if ($priceFrom !== null && $priceFrom < 0) out(['ok' => false, 'error' => 'priceFrom must be positive'], 400);
         if ($priceTo !== null && $priceTo < 0) out(['ok' => false, 'error' => 'priceTo must be positive'], 400);
         if ($priceFrom !== null && $priceTo !== null && $priceTo < $priceFrom) out(['ok' => false, 'error' => 'priceTo must not be less than priceFrom'], 400);
