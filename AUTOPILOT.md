@@ -76,19 +76,16 @@ Historical `analytics.js` / `analytics-v3.js` files exist but are not the active
 - Production verification checks page/API/lead endpoint availability and active asset markers.
 - Deployment includes a live Tourvisor search smoke and search-continue duplicate check.
 - Repository contains focused validators for analytics, search lifecycle, results, flights, price sync, lead behavior and UX contracts.
+- `visual-v2-baseline.yml` now provides a live Chromium visual/DOM audit across 375, 430, 768, 1024 and 1440 px widths, capturing initial form, opened filters and child controls while checking overflow, bad initial visibility and browser errors.
 
-This is useful regression coverage, but it does not replace visual verification.
+This is useful regression coverage, but it does not replace human review of the captured visual evidence.
 
 ## First audit findings
 
 ### P0/P1 — visual stability gap
-The project has strong code/contract smoke coverage but the deployment workflow does not provide a true visual regression gate. Given repeated real-world visual breakage, this is currently the largest quality-process gap.
+The project had strong code/contract smoke coverage but no true browser visual regression gate. Given repeated real-world visual breakage, this was the largest quality-process gap.
 
-Required direction:
-1. establish repeatable browser screenshots for critical states/viewports;
-2. verify initial search, results, selected tour and lead UI;
-3. cover mobile, intermediate responsive and desktop widths;
-4. treat overflow/overlap/clipping/layout collapse as release failures for user-facing changes.
+A first browser audit harness is now implemented. It captures repeatable screenshots and hard-fails on important measurable layout/initial-state defects. Next step is to inspect the first artifact set and convert concrete findings into fixes/baselines.
 
 ### P1 — CSS/visual layer complexity
 The active page currently composes many CSS layers (`app`, `enhancements`, room/selected-tour/design/hotel/tour/search-state/brand/results/checkout/header and several UX-specific stylesheets). This makes cascade regressions likely even though recent work correctly started extracting JS-injected styles into explicit CSS.
@@ -123,12 +120,14 @@ The long-term product needs SEO-friendly architecture, but the immediate bottlen
 ## Autopilot queue
 
 ### A1 — VISUAL / UX: baseline and regression harness
-Status: `NEXT`
+Status: `IN PROGRESS`
 
-- Build a repeatable visual inspection matrix for critical V2 states.
-- Add browser-level screenshot/regression capability to the project workflow where practical.
-- Establish mobile + intermediate + desktop viewport coverage.
-- Record/fix the first concrete visual regressions found.
+- Browser audit harness: implemented.
+- Viewports: 375 / 430 / 768 / 1024 / 1440.
+- Captured states: initial, additional filters open, children controls.
+- Automated checks: HTTP status, horizontal overflow, incorrect initial results/status/selected-tour visibility, child-control visibility and page errors.
+- Current run: first live baseline execution started from commit `227194d7b8a8171122604c06f9cb2d1bca20fef8`.
+- Next: inspect first report/screenshots, fix concrete regressions, then extend coverage to results/selected-tour/lead states.
 
 DONE evidence: screenshots/visual checks + functional regressions + production verification.
 
