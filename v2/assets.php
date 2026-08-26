@@ -1,5 +1,7 @@
 <?php
-/** V2-only asset URL helper. Keeps browser cache-busting tied to the deployed file itself. */
+/** V2-only asset URL helper. Browser cache-busting follows file contents, not deploy mtime. */
+require_once __DIR__ . '/asset-version-v1.php';
+
 function v2_asset(string $file): string
 {
     $name = basename($file);
@@ -7,6 +9,6 @@ function v2_asset(string $file): string
         throw new InvalidArgumentException('Invalid V2 asset name');
     }
     $path = __DIR__ . '/' . $name;
-    $version = is_file($path) ? (string)filemtime($path) : '0';
+    $version = v2_asset_content_version($path);
     return '/poisk-turov-test/v2/' . rawurlencode($name) . '?v=' . rawurlencode($version);
 }
