@@ -15,6 +15,7 @@ function v2_catalog_cache_read(string $path, array $params, int $ttl)
 {
     if ($ttl <= 0) return null;
     $file = v2_catalog_cache_dir() . '/' . v2_catalog_cache_key($path, $params) . '.json';
+    clearstatcache(true, $file);
     if (!is_file($file)) return null;
     $mtime = @filemtime($file);
     if ($mtime === false || (time() - $mtime) > $ttl) return null;
