@@ -76,19 +76,13 @@ jobs:
                   if (cs.position === 'fixed' && el.getBoundingClientRect().width > window.innerWidth + 2) return true;
                   const r = el.getBoundingClientRect();
                   return r.right > window.innerWidth + 2 || r.left < -2;
-                }).slice(0, 20).map(el => ({
-                  tag: el.tagName,
-                  id: el.id || '',
-                  class: String(el.className || '').slice(0, 160),
-                  rect: { x:el.getBoundingClientRect().x, width:el.getBoundingClientRect().width, right:el.getBoundingClientRect().right }
-                }));
+                }).slice(0, 20).map(el => ({ tag:el.tagName,id:el.id||'',class:String(el.className||'').slice(0,160),rect:{x:el.getBoundingClientRect().x,width:el.getBoundingClientRect().width,right:el.getBoundingClientRect().right} }));
                 return {
                   title: document.title,
                   viewport: { width: window.innerWidth, height: window.innerHeight },
                   document: { scrollWidth: root.scrollWidth, clientWidth: root.clientWidth, bodyScrollWidth: body.scrollWidth },
                   horizontalOverflow: root.scrollWidth > root.clientWidth + 2 || body.scrollWidth > root.clientWidth + 2,
-                  offenders,
-                  boxes,
+                  offenders, boxes,
                   searchButtonText: (document.querySelector('.search-submit')?.innerText || '').trim(),
                   visibleResultsBeforeSearch: !!document.querySelector('#results .hotel-card, #results .result-card'),
                   statusInitiallyVisible: (()=>{ const e=document.querySelector('#status'); return e ? !e.hidden && getComputedStyle(e).display !== 'none' : false; })(),
@@ -105,7 +99,13 @@ jobs:
 
               const childSelect = page.locator('#childCount');
               if (await childSelect.count()) {
-                await childSelect.selectOption('2');
+                await page.evaluate(() => {
+                  const el = document.querySelector('#childCount');
+                  if (!el) return;
+                  el.value = '2';
+                  el.dispatchEvent(new Event('input', { bubbles: true }));
+                  el.dispatchEvent(new Event('change', { bubbles: true }));
+                });
                 await page.waitForTimeout(300);
                 await page.screenshot({ path: `visual-artifacts/${vp.name}-children.png`, fullPage: true });
               }
@@ -124,10 +124,8 @@ jobs:
 
               const item = { viewport: vp, httpStatus: response ? response.status() : 0, initial, interaction, consoleErrors, pageErrors };
               report.push(item);
-
               const bad = item.httpStatus !== 200 || initial.horizontalOverflow || interaction.horizontalOverflow || initial.visibleResultsBeforeSearch || initial.statusInitiallyVisible || initial.selectedTourInitiallyVisible || !interaction.childAgesVisible || pageErrors.length > 0;
               if (bad) failed = true;
-
               console.log(`VISUAL_AUDIT ${vp.name} http=${item.httpStatus} overflow_initial=${initial.horizontalOverflow} overflow_interaction=${interaction.horizontalOverflow} child_ages=${interaction.childAgesVisible} page_errors=${pageErrors.length} console_errors=${consoleErrors.length}`);
               if (initial.offenders.length) console.log(`OVERFLOW_OFFENDERS ${vp.name} ${JSON.stringify(initial.offenders)}`);
               await context.close();
