@@ -1,0 +1,21 @@
+name: Validate hotel actions v3
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/hotel-actions-v3.js'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax check
+        run: node --check v2/hotel-actions-v3.js
+      - name: Contract markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "version:3" v2/hotel-actions-v3.js
+          grep -q "delete detail.dataset.loaded" v2/hotel-actions-v3.js
+          grep -q "aria-expanded" v2/hotel-actions-v3.js
