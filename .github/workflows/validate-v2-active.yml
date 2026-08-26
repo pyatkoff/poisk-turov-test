@@ -45,8 +45,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq "- 'v2/**'" .github/workflows/deploy.yml
-          grep -Fq 'scp "${ssh_opts[@]}" -r v2/.' .github/workflows/deploy.yml
-          grep -Fq 'poisk-turov-test/v2/' .github/workflows/deploy.yml
-          ! grep -Eq 'scp .*anytour\.com|scp .*max-search|scp .*poisk-turov-tg' .github/workflows/deploy.yml
+          grep -Fq -- "- 'v2/**'" .github/workflows/deploy.yml
+          grep -Fq -- 'scp "${ssh_opts[@]}" -r v2/.' .github/workflows/deploy.yml
+          grep -Fq -- 'poisk-turov-test/v2/' .github/workflows/deploy.yml
+          ! grep -Eq -- 'scp .*anytour\.com|scp .*max-search|scp .*poisk-turov-tg' .github/workflows/deploy.yml
           echo "V2_ISOLATION_OK"
