@@ -1,4 +1,4 @@
-name: Sync V2 logo into repository
+name: Patch V2 deploy verification
 on:
   push:
     branches: [main]
@@ -8,24 +8,40 @@ on:
 permissions:
   contents: write
 jobs:
-  sync:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Sync live V2 logo to v2 only
+      - name: Harden active V2 deploy checks
         shell: bash
         run: |
           set -euo pipefail
-          curl -k -L -sS --max-time 30 https://anytour.online/poisk-turov-test/v2/Layer_1.png -o v2/Layer_1.png
-          test -s v2/Layer_1.png
-          file v2/Layer_1.png | grep -q 'PNG image data'
-          test "$(sha256sum v2/Layer_1.png | awk '{print $1}')" = "e4216ce3cb8f4f12e6f6c026b74ac5477e0ea8e86ac058bdc835ba133778e62d"
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('.github/workflows/deploy.yml')
+          s=p.read_text()
+          replacements={
+            '            v2/analytics-v3.js \\\n':'            v2/analytics-v3.js \\\n            v2/analytics-v4.js \\\n',
+            '            v2/results-renderer-v3.js \\\n':'            v2/results-renderer-v3.js \\\n            v2/results-renderer-v4.js \\\n',
+            '            v2/room-details-v2.js \\\n':'            v2/room-details-v2.js \\\n            v2/room-details-v3.js \\\n',
+            '            v2/tour-controller-v4.js \\\n':'            v2/tour-controller-v4.js \\\n            v2/lead-form-guard-v1.js \\\n            v2/flight-price-sync-v1.js \\\n',
+            '            for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do\n':'            for attempt in $(seq 1 36); do\n',
+            '            grep -q "search-continue-v6.js" /tmp/v2.html || fail active_search_continue\n':'            grep -q "search-continue-v6.js" /tmp/v2.html || fail active_search_continue\n            grep -q "analytics-v4.js" /tmp/v2.html || fail active_analytics\n            grep -q "results-renderer-v4.js" /tmp/v2.html || fail active_results_renderer\n            grep -q "hotel-actions-v3.js" /tmp/v2.html || fail active_hotel_actions\n            grep -q "room-details-v3.js" /tmp/v2.html || fail active_room_details\n            grep -q "lead-form-guard-v1.js" /tmp/v2.html || fail active_lead_guard\n            grep -q "flight-price-sync-v1.js" /tmp/v2.html || fail active_flight_price\n'
+          }
+          for old,new in replacements.items():
+              if old not in s:
+                  raise SystemExit('missing patch marker: '+repr(old[:80]))
+              s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          git diff --check
+          git diff -- .github/workflows/deploy.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add v2/Layer_1.png
-          if git diff --cached --quiet; then echo 'Logo already tracked'; exit 0; fi
-          git commit -m 'Track live V2 Layer_1 logo'
+          git add .github/workflows/deploy.yml
+          git diff --cached --quiet && exit 0
+          git commit -m 'Harden active V2 deploy verification'
           git pull --rebase origin main
           git push origin HEAD:main
