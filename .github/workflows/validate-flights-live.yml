@@ -37,6 +37,19 @@ jobs:
             code="$(curl -k -L -sS -o /tmp/v2-flights.json -w "%{http_code}" --max-time 45 --get --data-urlencode "action=flights" --data-urlencode "tourId=$tour_id" --data-urlencode "currency=RUB" "$base")"
             echo "FLIGHTS_HTTP=$code TOUR_ID=$tour_id"
             test "$code" = "200" || fail flights_http
-            python3 -c "import json,sys; d=json.load(open(\"/tmp/v2-flights.json\")); v=d if isinstance(d,list) else d.get(\"flights\",[]) if isinstance(d,dict) else []; print(\"FLIGHT_VARIANTS\",len(v)); first=v[0] if v else {}; fw=first.get(\"forward\",[]) if isinstance(first,dict) else []; bw=first.get(\"backward\",[]) if isinstance(first,dict) else []; print(\"FORWARD\",len(fw),\"BACKWARD\",len(bw),\"DEFAULT\",first.get(\"isDefault\")); seg=(fw[0] if fw else {}); print(\"SEGMENT\",{\"number\":seg.get(\"number\"),\"company\":(seg.get(\"company\") or {}).get(\"name\"),\"departure\":seg.get(\"departure\"),\"arrival\":seg.get(\"arrival\")}); sys.exit(0 if v and fw and bw else 1)" || fail flights_shape
+            python3 - <<'PY'
+import json,sys
+with open('/tmp/v2-flights.json') as f: d=json.load(f)
+v=d if isinstance(d,list) else d.get('flights',[]) if isinstance(d,dict) else []
+print('FLIGHT_VARIANTS',len(v))
+for i,x in enumerate(v[:8]):
+    p=x.get('price') if isinstance(x,dict) else None
+    fuel=x.get('fuelCharge') if isinstance(x,dict) else None
+    fw=x.get('forward',[]) if isinstance(x,dict) else []
+    bw=x.get('backward',[]) if isinstance(x,dict) else []
+    f0=fw[0] if fw else {}
+    print('VARIANT',i,{'default':x.get('isDefault'),'price':p,'fuelCharge':fuel,'forward':len(fw),'backward':len(bw),'number':f0.get('number'),'company':(f0.get('company') or {}).get('name')})
+if not v or not (v[0].get('forward') or []) or not (v[0].get('backward') or []): sys.exit(1)
+PY
             echo "FLIGHTS_OK tourId=$tour_id"
           '
