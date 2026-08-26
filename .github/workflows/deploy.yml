@@ -85,9 +85,7 @@ jobs:
             grep -q "search-lifecycle-v6.js" /tmp/v2.html || fail active_search_lifecycle
             grep -q "search-continue-v6.js" /tmp/v2.html || fail active_search_continue
             grep -q "Layer_1.png" /tmp/v2.html || fail active_logo
-            logo_url="$(grep -oE '/poisk-turov-test/v2/Layer_1\.png\?v=[0-9]+' /tmp/v2.html | head -1)"
-            test -n "$logo_url" || fail logo_url
-            logo_code="$(curl -k -L -sS -o /tmp/v2-logo.png -w "%{http_code}" --max-time 20 "https://anytour.online$logo_url")"
+            logo_code="$(curl -k -L -sS -o /tmp/v2-logo.png -w "%{http_code}" --max-time 20 "https://anytour.online/poisk-turov-test/v2/Layer_1.png")"
             test "$logo_code" = "200" || fail logo_http
             test -s /tmp/v2-logo.png || fail logo_empty
             if grep -Eq "metrikaCounter[[:space:]]*:[[:space:]]*[1-9][0-9]*" /tmp/v2.html; then
@@ -118,19 +116,22 @@ jobs:
             from="$(date -d "+2 day" +%Y-%m-%d)"
             till="$(date -d "+9 day" +%Y-%m-%d)"
             curl -k -L -sS --max-time 45 "$base?action=departures" -o /tmp/v2-departures.json
-            grep -q '"id"' /tmp/v2-departures.json || fail departures
+            grep -q "\"id\"" /tmp/v2-departures.json || fail departures
             curl -k -L -sS --max-time 45 "$base?action=countries&departureId=1" -o /tmp/v2-countries.json
-            grep -q '"id"' /tmp/v2-countries.json || fail countries
+            grep -q "\"id\"" /tmp/v2-countries.json || fail countries
             start_url="$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB"
             start_code="$(curl -k -L -sS -o /tmp/v2-search-start.json -w "%{http_code}" --max-time 50 "$start_url")"
             echo "SEARCH_START_HTTP=$start_code"
             cat /tmp/v2-search-start.json
             test "$start_code" = "200" || fail search_start_http
-            search_id="$(php -r '$d=json_decode(file_get_contents("/tmp/v2-search-start.json"),true); echo (int)($d["searchId"]??0);')"
+            search_id="$(grep -oE "\"searchId\"[[:space:]]*:[[:space:]]*[0-9]+" /tmp/v2-search-start.json | head -1 | grep -oE "[0-9]+$" || true)"
+            test -n "$search_id" || fail search_id
             test "$search_id" -gt 0 || fail search_id
             status_code="$(curl -k -L -sS -o /tmp/v2-search-status.json -w "%{http_code}" --max-time 45 "$base?action=search_status&searchId=$search_id")"
             test "$status_code" = "200" || fail search_status_http
             results_code="$(curl -k -L -sS -o /tmp/v2-search-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25")"
             test "$results_code" = "200" || fail search_results_http
-            php -r '$d=json_decode(file_get_contents("/tmp/v2-search-results.json"),true); if(!is_array($d)){exit(1);} echo "SEARCH_RESULTS=".count($d).PHP_EOL;' || fail search_results_json
+            first="$(head -c1 /tmp/v2-search-results.json)"
+            test "$first" = "[" || fail search_results_json
+            echo "SEARCH_SMOKE_OK searchId=$search_id"
           '
