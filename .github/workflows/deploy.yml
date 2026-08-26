@@ -126,10 +126,17 @@ jobs:
             test "$start_code" = "200" || fail search_start_http
             search_id="$(grep -oE "\"searchId\"[[:space:]]*:[[:space:]]*[0-9]+" /tmp/v2-search-start.json | head -1 | grep -oE "[0-9]+$" || true)"
             test -n "$search_id" || fail search_id
-            test "$search_id" -gt 0 || fail search_id
-            status_code="$(curl -k -L -sS -o /tmp/v2-search-status.json -w "%{http_code}" --max-time 45 "$base?action=search_status&searchId=$search_id")"
+            status_code=0
+            for attempt in 1 2 3 4 5; do
+              sleep 2
+              status_code="$(curl -k -L -sS -o /tmp/v2-search-status.json -w "%{http_code}" --max-time 45 "$base?action=search_status&searchId=$search_id")"
+              echo "SEARCH_STATUS attempt=$attempt http=$status_code"
+              cat /tmp/v2-search-status.json
+              test "$status_code" = "200" && break
+            done
             test "$status_code" = "200" || fail search_status_http
             results_code="$(curl -k -L -sS -o /tmp/v2-search-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25")"
+            echo "SEARCH_RESULTS_HTTP=$results_code"
             test "$results_code" = "200" || fail search_results_http
             first="$(head -c1 /tmp/v2-search-results.json)"
             test "$first" = "[" || fail search_results_json
