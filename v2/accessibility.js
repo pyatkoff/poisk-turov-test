@@ -17,10 +17,5 @@ window.addEventListener('v2:results-rendered',e=>decorate(e.detail&&e.detail.res
 window.addEventListener('v2:tour-selected',()=>{if(selected)selected.setAttribute('tabindex','-1');decorate(selected||document);});
 document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('.hotel-info-toggle');if(!b)return;setTimeout(()=>{const card=b.closest('.hotel-card'),detail=card&&card.querySelector('.hotel-inline-detail');if(detail)b.setAttribute('aria-expanded',detail.hidden?'false':'true');},0);},false);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>decorate(document),{once:true});else decorate(document);
-function loadUXScript(src,flag,ready){if(window[ready]||document.querySelector('script['+flag+']'))return;const script=document.createElement('script');script.setAttribute(flag,'1');script.src=src;script.defer=true;document.head.appendChild(script);}
-loadUXScript('/poisk-turov-test/v2/mobile-results-filters-v1.js','data-v2-mobile-results-filters','V2MobileResultsFiltersV1');
-loadUXScript('/poisk-turov-test/v2/primary-meal-ux-v1.js','data-v2-primary-meal-ux','V2PrimaryMealUXV1');
-loadUXScript('/poisk-turov-test/v2/search-progress-ux-v1.js','data-v2-search-progress-ux','V2SearchProgressUXV1');
-loadUXScript('/poisk-turov-test/v2/search-dirty-ux-v1.js','data-v2-search-dirty-ux','V2SearchDirtyUXV1');
 window.V2Accessibility={decorate,closeSearchPanels,version:1};
 })();
