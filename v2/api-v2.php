@@ -5,6 +5,7 @@ header('Cache-Control: no-store');
 
 $privateConfig = __DIR__ . '/config.php';
 if (is_file($privateConfig)) require_once $privateConfig;
+require_once __DIR__ . '/catalog-cache-v1.php';
 
 function out($data, int $status = 200)
 {
@@ -156,39 +157,39 @@ switch ($action) {
         out(['ok' => true, 'source' => 'tourvisor-direct', 'departuresCount' => is_array($data) ? count($data) : 0, 'gatewayVersion' => 2]);
 
     case 'departures':
-        out(tv_get('/departures', ['departureCountryId' => bounded_int($_GET['departureCountryId'] ?? 1, 1, 9999, 1)]));
+        out(v2_catalog_get('/departures', ['departureCountryId' => bounded_int($_GET['departureCountryId'] ?? 1, 1, 9999, 1)], 3600));
 
     case 'countries':
-        out(tv_get('/countries', [
+        out(v2_catalog_get('/countries', [
             'departureId' => optional_int($_GET['departureId'] ?? null),
             'onlyCharter' => bool_param('onlyCharter'),
             'onlyDirect' => bool_param('onlyDirect'),
-        ]));
+        ], 900));
 
     case 'arrivals':
-        out(tv_get('/arrivals', [
+        out(v2_catalog_get('/arrivals', [
             'departureId' => optional_int($_GET['departureId'] ?? null),
             'onlyCharter' => bool_param('onlyCharter'),
             'onlyDirect' => bool_param('onlyDirect'),
-        ]));
+        ], 900));
 
     case 'regions':
-        out(tv_get('/regions', ['countryId' => optional_int($_GET['countryId'] ?? null), 'arrivalId' => optional_int($_GET['arrivalId'] ?? null)]));
+        out(v2_catalog_get('/regions', ['countryId' => optional_int($_GET['countryId'] ?? null), 'arrivalId' => optional_int($_GET['arrivalId'] ?? null)], 3600));
 
     case 'subregions':
-        out(tv_get('/subregions', ['countryId' => optional_int($_GET['countryId'] ?? null), 'regionId' => optional_int($_GET['regionId'] ?? null)]));
+        out(v2_catalog_get('/subregions', ['countryId' => optional_int($_GET['countryId'] ?? null), 'regionId' => optional_int($_GET['regionId'] ?? null)], 3600));
 
     case 'meals':
-        out(tv_get('/meals'));
+        out(v2_catalog_get('/meals', [], 21600));
 
     case 'operators':
-        out(tv_get('/operators', ['departureId' => optional_int($_GET['departureId'] ?? null), 'countryId' => optional_int($_GET['countryId'] ?? null)]));
+        out(v2_catalog_get('/operators', ['departureId' => optional_int($_GET['departureId'] ?? null), 'countryId' => optional_int($_GET['countryId'] ?? null)], 900));
 
     case 'hotel_types':
-        out(tv_get('/hotel-types', ['countryId' => optional_int($_GET['countryId'] ?? null)]));
+        out(v2_catalog_get('/hotel-types', ['countryId' => optional_int($_GET['countryId'] ?? null)], 21600));
 
     case 'hotel_services':
-        out(tv_get('/hotel-group-services', ['countryId' => optional_int($_GET['countryId'] ?? null), 'regionIds' => request_array('regionIds', 50)]));
+        out(v2_catalog_get('/hotel-group-services', ['countryId' => optional_int($_GET['countryId'] ?? null), 'regionIds' => request_array('regionIds', 50)], 21600));
 
     case 'hotels':
         out(tv_get('/hotels', [
