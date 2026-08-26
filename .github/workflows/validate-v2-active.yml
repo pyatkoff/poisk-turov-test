@@ -33,6 +33,21 @@ jobs:
           grep -q "flight-price-sync-v1.js" v2/index.php
           grep -q "search-lifecycle-v6.js" v2/index.php
           grep -q "search-continue-v6.js" v2/index.php
+      - name: Validate dirty-search invalidation contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          lifecycle=v2/search-lifecycle-v6.js
+          continuation=v2/search-continue-v6.js
+          grep -Fq 'generation++;' "$lifecycle"
+          grep -Fq 'clearTimeout(pollTimer)' "$lifecycle"
+          grep -Fq 'searchId=0' "$lifecycle"
+          grep -Fq 'rt.setSearchId(0)' "$lifecycle"
+          grep -Fq "emit('reset'" "$lifecycle"
+          grep -Fq 'run===generation&&Number(id||0)===Number(searchId||0)' "$lifecycle"
+          grep -Fq "window.addEventListener('v2:search-reset'" "$continuation"
+          grep -Fq 'operation++;searchId=0;removeMore();' "$continuation"
+          echo "DIRTY_SEARCH_INVALIDATION_OK"
       - name: Validate active PHP
         shell: bash
         run: |
