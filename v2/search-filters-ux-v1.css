@@ -1,0 +1,50 @@
+.ux-native-field-hidden{display:none!important}
+.ux-native-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.primary-search-flow{grid-template-columns:repeat(12,minmax(0,1fr))!important;gap:14px!important;align-items:end}
+.primary-step{min-width:0}
+.primary-step-1,.primary-step-2,.primary-step-3,.primary-step-4{grid-column:span 6}
+.primary-step-5{grid-column:span 5}
+.primary-step-6{grid-column:span 7}
+.extras-secondary{margin-top:22px;padding-top:16px;border-top:1px solid #e8ebf2}
+.extras-secondary>summary{border:1px solid #e1e5ed;border-radius:14px;background:#fafbfe;padding:13px 15px}
+.dates-ux,.main-stars,.nights-ux,.guests-ux{align-self:end}
+.dates-picker,.guests-picker{position:relative}
+.dates-picker summary,.guests-picker summary{list-style:none;height:50px;border:1px solid #d7dde8;border-radius:13px;background:#fff;padding:0 13px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer}
+.dates-picker summary::-webkit-details-marker,.guests-picker summary::-webkit-details-marker{display:none}
+.dates-picker summary strong,.guests-picker summary strong{font-size:14px;color:#273248}
+.dates-picker summary small,.guests-picker summary small{color:#6079d8;font-weight:800}
+.dates-panel,.guests-panel{position:absolute;z-index:30;left:0;right:0;top:56px;background:#fff;border:1px solid #dfe4ed;border-radius:15px;box-shadow:0 18px 44px rgba(38,53,89,.14);padding:14px}
+.dates-panel{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dates-panel label span{display:block;font-size:11px;font-weight:800;color:#697386;margin-bottom:6px}
+.dates-panel input{width:100%}
+.dates-hint{grid-column:1/-1;color:#98a2b3}
+.stars-quick,.nights-quick{display:grid;gap:6px;height:50px}
+.stars-quick{grid-template-columns:repeat(5,minmax(0,1fr))}
+.nights-quick{grid-template-columns:repeat(5,minmax(0,1fr))}
+.stars-choice,.nights-choice{border:1px solid #d7dde8;border-radius:11px;background:#fff;color:#596579;font:800 13px/1 Inter,Arial,sans-serif;cursor:pointer;transition:.18s}
+.stars-choice:hover,.nights-choice:hover{border-color:#aebbe4;background:#fafbff}
+.stars-choice.is-active,.nights-choice.is-active{border-color:#6079d8;background:#edf2ff;color:#2442ad;box-shadow:0 0 0 2px rgba(64,92,199,.08)}
+.dates-picker summary:focus-visible,.stars-choice:focus-visible,.nights-choice:focus-visible,.guests-picker summary:focus-visible,.stepper button:focus-visible{outline:3px solid rgba(64,92,199,.18);outline-offset:1px}
+.nights-custom{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.nights-custom label{display:flex;align-items:center;gap:6px}
+.nights-custom small{color:#7f899a}
+.nights-custom select{min-width:0}
+.guests-panel{display:grid;gap:12px}
+.guests-row{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.guests-row b{display:block;color:#334155}
+.guests-row>div>small{display:block;color:#8b95a6;margin-top:2px}
+.stepper{display:grid;grid-template-columns:40px 38px 40px;align-items:center}
+.stepper button{width:40px;height:40px;border:1px solid #d8deea;background:#f9fbff;color:#3154cf;font-size:20px;font-weight:800;cursor:pointer}
+.stepper button:first-child{border-radius:10px 0 0 10px}
+.stepper button:last-child{border-radius:0 10px 10px 0}
+.stepper button:disabled{color:#b7becb;background:#f4f5f7;cursor:not-allowed}
+.stepper output{height:40px;display:flex;align-items:center;justify-content:center;border-top:1px solid #d8deea;border-bottom:1px solid #d8deea;background:#fff;color:#273248;font-weight:900}
+.guests-ages{grid-column:1/-1;margin-top:9px}
+.extras-secondary[open]>summary{margin-bottom:14px}
+@media(max-width:700px){
+  .primary-step-1,.primary-step-2,.primary-step-3,.primary-step-4,.primary-step-5,.primary-step-6{grid-column:1/-1}
+  .stars-quick,.nights-quick{height:auto;grid-template-columns:repeat(5,minmax(92px,1fr));overflow-x:auto;padding-bottom:3px}
+  .dates-panel{grid-template-columns:1fr}
+  .dates-hint{grid-column:1}
+  .search-section-title small{display:none}
+}
