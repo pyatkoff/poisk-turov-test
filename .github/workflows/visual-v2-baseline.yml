@@ -114,11 +114,21 @@ jobs:
                 const child = document.querySelector('#childAges');
                 const extras = document.querySelector('details.extras');
                 const r = child?.getBoundingClientRect();
+                const offenders = [...document.querySelectorAll('body *')].filter(el => {
+                  const cs = getComputedStyle(el);
+                  if (cs.position === 'fixed' && el.getBoundingClientRect().width > window.innerWidth + 2) return true;
+                  const rect = el.getBoundingClientRect();
+                  return rect.right > window.innerWidth + 2 || rect.left < -2;
+                }).slice(0, 30).map(el => {
+                  const rect = el.getBoundingClientRect();
+                  return { tag:el.tagName,id:el.id||'',class:String(el.className||'').slice(0,160),rect:{x:rect.x,width:rect.width,right:rect.right},parentClass:String(el.parentElement?.className||'').slice(0,160) };
+                });
                 return {
                   childAgesVisible: child ? !child.hidden && getComputedStyle(child).display !== 'none' : false,
                   childAgesRect: r ? { x:r.x, y:r.y, width:r.width, height:r.height, right:r.right } : null,
                   extrasOpen: !!extras?.open,
                   horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2 || document.body.scrollWidth > document.documentElement.clientWidth + 2,
+                  offenders,
                 };
               });
 
@@ -127,7 +137,8 @@ jobs:
               const bad = item.httpStatus !== 200 || initial.horizontalOverflow || interaction.horizontalOverflow || initial.visibleResultsBeforeSearch || initial.statusInitiallyVisible || initial.selectedTourInitiallyVisible || !interaction.childAgesVisible || pageErrors.length > 0;
               if (bad) failed = true;
               console.log(`VISUAL_AUDIT ${vp.name} http=${item.httpStatus} overflow_initial=${initial.horizontalOverflow} overflow_interaction=${interaction.horizontalOverflow} child_ages=${interaction.childAgesVisible} page_errors=${pageErrors.length} console_errors=${consoleErrors.length}`);
-              if (initial.offenders.length) console.log(`OVERFLOW_OFFENDERS ${vp.name} ${JSON.stringify(initial.offenders)}`);
+              if (initial.offenders.length) console.log(`OVERFLOW_OFFENDERS_INITIAL ${vp.name} ${JSON.stringify(initial.offenders)}`);
+              if (interaction.offenders.length) console.log(`OVERFLOW_OFFENDERS_INTERACTION ${vp.name} ${JSON.stringify(interaction.offenders)}`);
               await context.close();
             }
 
