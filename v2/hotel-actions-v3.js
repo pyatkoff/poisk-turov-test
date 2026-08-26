@@ -3,7 +3,7 @@ const rt=window.V2Runtime;if(!rt)return;
 const byId=new Map(),byName=new Map(),detailCache=new Map();
 function key(v){return String(v||'').trim().toLowerCase();}
 function clean(v){return String(v||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function remember(list){if(!Array.isArray(list))return;byId.clear();byName.clear();list.forEach(h=>{if(!h)return;if(h.id!=null)byId.set(String(h.id),h);if(h.name)byName.set(key(h.name),h);});}
 function normalizeDetail(d){return Array.isArray(d)?(d[0]||{}):(d&&typeof d==='object'?d:{});}
 function mapUrl(h){const common=h&&h.common||{},lat=Number(h.latitude||common.latitude||0),lon=Number(h.longitude||common.longitude||0);if(lat&&lon)return 'https://yandex.ru/maps/?pt='+encodeURIComponent(lon+','+lat)+'&z=15&l=map';return 'https://yandex.ru/maps/?text='+encodeURIComponent([h.name,h.region&&h.region.name,h.country&&h.country.name].filter(Boolean).join(', '));}
