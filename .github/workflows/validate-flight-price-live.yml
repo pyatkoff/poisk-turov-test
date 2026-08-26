@@ -1,0 +1,40 @@
+name: Validate V2 flight price live
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-flight-price-live.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_file="$GITHUB_WORKSPACE/deploy_key"
+          raw="$DEPLOY_SSH_KEY_VALUE"
+          if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+      - name: Compare tour and flight prices
+        env:
+          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" '
+            set -euo pipefail
+            fail(){ echo "FLIGHT_PRICE_FAIL:$1"; exit 1; }
+            base="https://anytour.online/poisk-turov-test/v2/api-v2.php"
+            tour_id="18253832023139"
+            curl -k -L -sS --max-time 45 --get --data-urlencode "action=tour" --data-urlencode "tourId=$tour_id" --data-urlencode "currency=RUB" "$base" -o /tmp/v2-tour-price.json
+            curl -k -L -sS --max-time 45 --get --data-urlencode "action=flights" --data-urlencode "tourId=$tour_id" --data-urlencode "currency=RUB" "$base" -o /tmp/v2-flight-price.json
+            python3 -c "import json,sys; t=json.load(open(\"/tmp/v2-tour-price.json\")); f=json.load(open(\"/tmp/v2-flight-price.json\")); vs=f if isinstance(f,list) else f.get(\"flights\",[]) if isinstance(f,dict) else []; default=next((x for x in vs if isinstance(x,dict) and x.get(\"isDefault\")),vs[0] if vs else {}); val=lambda x: float((x or {}).get(\"value\",0)) if isinstance(x,dict) else float(x or 0); tp=val(t.get(\"price\")) if isinstance(t,dict) else 0; fp=val(default.get(\"price\")) if isinstance(default,dict) else 0; fuel=val(default.get(\"fuelCharge\")) if isinstance(default,dict) else 0; print(\"TOUR_PRICE\",tp,\"DEFAULT_FLIGHT_PRICE\",fp,\"DELTA\",fp-tp,\"FUEL\",fuel,\"VARIANTS\",len(vs)); print(\"FIRST_PRICES\",[val(x.get(\"price\")) for x in vs[:5] if isinstance(x,dict)]); sys.exit(0 if tp>0 and fp>0 and len(vs)>0 else 1)" || fail price_shape
+          '
