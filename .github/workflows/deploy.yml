@@ -140,5 +140,26 @@ jobs:
             test "$results_code" = "200" || fail search_results_http
             first="$(head -c1 /tmp/v2-search-results.json)"
             test "$first" = "[" || fail search_results_json
-            echo "SEARCH_SMOKE_OK searchId=$search_id"
+            before_count="$(python3 -c "import json; print(len(json.load(open(\"/tmp/v2-search-results.json\"))))")"
+            echo "SEARCH_RESULTS_BEFORE=$before_count"
+            continue_code="$(curl -k -L -sS -o /tmp/v2-search-continue.json -w "%{http_code}" --max-time 50 "$base?action=search_continue&searchId=$search_id")"
+            echo "SEARCH_CONTINUE_HTTP=$continue_code"
+            cat /tmp/v2-search-continue.json
+            test "$continue_code" = "200" || fail search_continue_http
+            continue_status=0
+            for attempt in 1 2 3 4 5 6 7 8; do
+              sleep 2
+              continue_status="$(curl -k -L -sS -o /tmp/v2-search-status-continue.json -w "%{http_code}" --max-time 45 "$base?action=search_status&searchId=$search_id")"
+              echo "SEARCH_CONTINUE_STATUS attempt=$attempt http=$continue_status"
+              cat /tmp/v2-search-status-continue.json
+              if test "$continue_status" = "200" && grep -Eq "\"progress\"[[:space:]]*:[[:space:]]*100|\"status\"[[:space:]]*:[[:space:]]*\"complete\"" /tmp/v2-search-status-continue.json; then break; fi
+            done
+            test "$continue_status" = "200" || fail search_continue_status_http
+            results100_code="$(curl -k -L -sS -o /tmp/v2-search-results-100.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=100")"
+            test "$results100_code" = "200" || fail search_continue_results_http
+            after_count="$(python3 -c "import json; print(len(json.load(open(\"/tmp/v2-search-results-100.json\"))))")"
+            duplicate_count="$(python3 -c "import json; d=json.load(open(\"/tmp/v2-search-results-100.json\")); ids=[str(x.get(\"id\")) for x in d if isinstance(x,dict) and x.get(\"id\") is not None]; print(len(ids)-len(set(ids)))")"
+            echo "SEARCH_RESULTS_AFTER=$after_count DUPLICATE_HOTEL_IDS=$duplicate_count"
+            test "$duplicate_count" = "0" || fail duplicate_hotel_ids
+            echo "SEARCH_CONTINUE_SMOKE_OK searchId=$search_id before=$before_count after=$after_count"
           '
