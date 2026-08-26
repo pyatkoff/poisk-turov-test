@@ -1,0 +1,36 @@
+name: Validate V2 asset content version
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/asset-version-v1.php'
+      - '.github/workflows/validate-v2-asset-version.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate content-based cache version semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/asset-version-v1.php >/dev/null
+          php <<'PHP'
+          <?php
+          require 'v2/asset-version-v1.php';
+          $f=tempnam(sys_get_temp_dir(),'v2asset');
+          file_put_contents($f,'same-content');
+          $a=v2_asset_content_version($f);
+          touch($f,time()+20);
+          clearstatcache(true,$f);
+          $b=v2_asset_content_version($f);
+          if($a==='0'||$a!==$b){fwrite(STDERR,"mtime changed content version\n");exit(1);}
+          file_put_contents($f,'changed-content');
+          $c=v2_asset_content_version($f);
+          if($c==='0'||$c===$a){fwrite(STDERR,"content change did not change version\n");exit(1);}
+          @unlink($f);
+          if(v2_asset_content_version($f)!=='0'){fwrite(STDERR,"missing file contract failed\n");exit(1);}
+          echo "V2_ASSET_CONTENT_VERSION_OK\n";
+          PHP
