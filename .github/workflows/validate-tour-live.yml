@@ -36,31 +36,31 @@ jobs:
             till="$(date -d "+9 day" +%Y-%m-%d)"
             start_code="$(curl -k -L -sS -o /tmp/v2-tour-search-start.json -w "%{http_code}" --max-time 50 "$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB")"
             test "$start_code" = "200" || fail search_start_http
-            search_id="$(python3 -c "import json; print(json.load(open('/tmp/v2-tour-search-start.json')).get('searchId',''))")"
+            search_id="$(grep -oE "\"searchId\"[[:space:]]*:[[:space:]]*[0-9]+" /tmp/v2-tour-search-start.json | head -1 | grep -oE "[0-9]+$" || true)"
             test -n "$search_id" || fail search_id
             complete=0
             for attempt in $(seq 1 20); do
               sleep 2
               status_code="$(curl -k -L -sS -o /tmp/v2-tour-search-status.json -w "%{http_code}" --max-time 45 "$base?action=search_status&searchId=$search_id")"
-              if test "$status_code" = "200" && python3 -c "import json; d=json.load(open('/tmp/v2-tour-search-status.json')); raise SystemExit(0 if d.get('status')=='complete' or int(d.get('progress',0))>=100 else 1)"; then complete=1; break; fi
+              if test "$status_code" = "200" && grep -Eq "\"progress\"[[:space:]]*:[[:space:]]*100|\"status\"[[:space:]]*:[[:space:]]*\"complete\"" /tmp/v2-tour-search-status.json; then complete=1; break; fi
             done
             test "$complete" = "1" || fail search_not_complete
             results_code="$(curl -k -L -sS -o /tmp/v2-tour-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25")"
             test "$results_code" = "200" || fail results_http
-            python3 -c "import json; items=json.load(open('/tmp/v2-tour-results.json')); ids=[]; [ids.append(str(t.get('id'))) for h in (items if isinstance(items,list) else []) if isinstance(h,dict) for t in (h.get('tours') or []) if isinstance(t,dict) and t.get('id') is not None and str(t.get('id')) not in ids]; print('\\n'.join(ids[:10]))" >/tmp/v2-tour-ids.txt
+            python3 -c "import json; items=json.load(open(\"/tmp/v2-tour-results.json\")); ids=[]; [ids.append(str(t.get(\"id\"))) for h in (items if isinstance(items,list) else []) if isinstance(h,dict) for t in (h.get(\"tours\") or []) if isinstance(t,dict) and t.get(\"id\") is not None and str(t.get(\"id\")) not in ids]; print(\"\\n\".join(ids[:10]))" >/tmp/v2-tour-ids.txt
             first_tour="$(head -1 /tmp/v2-tour-ids.txt)"
             test -n "$first_tour" || fail no_tour_ids
             tour_code="$(curl -k -L -sS -o /tmp/v2-tour.json -w "%{http_code}" --max-time 45 "$base?action=tour&tourId=$first_tour&currency=RUB")"
             echo "TOUR_HTTP=$tour_code TOUR_ID=$first_tour"
             cat /tmp/v2-tour.json
             test "$tour_code" = "200" || fail tour_http
-            python3 -c "import json; d=json.load(open('/tmp/v2-tour.json')); assert isinstance(d,dict) and str(d.get('id') or '')" || fail tour_shape
+            python3 -c "import json; d=json.load(open(\"/tmp/v2-tour.json\")); assert isinstance(d,dict) and str(d.get(\"id\") or \"\")" || fail tour_shape
             flights_ok=0
             while IFS= read -r tid; do
               test -n "$tid" || continue
               flight_code="$(curl -k -L -sS -o /tmp/v2-flights.json -w "%{http_code}" --max-time 45 "$base?action=flights&tourId=$tid&currency=RUB")"
               echo "FLIGHTS_HTTP=$flight_code TOUR_ID=$tid"
-              if test "$flight_code" = "200" && python3 -c "import json; d=json.load(open('/tmp/v2-flights.json')); assert isinstance(d,list) or isinstance(d,dict)"; then
+              if test "$flight_code" = "200" && python3 -c "import json; d=json.load(open(\"/tmp/v2-flights.json\")); assert isinstance(d,list) or isinstance(d,dict)"; then
                 flights_ok=1
                 cat /tmp/v2-flights.json
                 break
