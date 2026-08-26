@@ -37,45 +37,12 @@ jobs:
             tour_code="$(curl -k -L -sS -o /tmp/v2-tour.json -w "%{http_code}" --max-time 45 --get --data-urlencode "action=tour" --data-urlencode "tourId=$tour_id" --data-urlencode "currency=RUB" "$base")"
             echo "TOUR_HTTP=$tour_code"
             test "$tour_code" = "200" || fail tour_http
-            python3 - <<'PY'
-import json
-p='/tmp/v2-tour.json'
-d=json.load(open(p))
-print('TOUR_KEYS', sorted(d.keys()) if isinstance(d,dict) else type(d).__name__)
-print('ROOM_ID', d.get('roomId') if isinstance(d,dict) else None)
-print('ROOM_TYPE_ID', d.get('roomTypeId') if isinstance(d,dict) else None)
-print('ROOM_OBJECT', d.get('room') if isinstance(d,dict) else None)
-PY
-            room_ids="$(python3 - <<'PY'
-import json
-x=json.load(open('/tmp/v2-tour.json'))
-ids=[]
-if isinstance(x,dict):
-    for k in ('roomId','roomTypeId'):
-        try:
-            n=int(x.get(k) or 0)
-            if n>0: ids.append(n)
-        except: pass
-    r=x.get('room')
-    if isinstance(r,dict):
-        try:
-            n=int(r.get('id') or 0)
-            if n>0: ids.append(n)
-        except: pass
-print(','.join(map(str,dict.fromkeys(ids))))
-PY
-)"
+            python3 -c "import json; d=json.load(open('/tmp/v2-tour.json')); print('TOUR_KEYS',sorted(d.keys()) if isinstance(d,dict) else type(d).__name__); print('ROOM_ID',d.get('roomId') if isinstance(d,dict) else None); print('ROOM_TYPE_ID',d.get('roomTypeId') if isinstance(d,dict) else None); print('ROOM_OBJECT',d.get('room') if isinstance(d,dict) else None)"
+            room_ids="$(python3 -c "import json; x=json.load(open('/tmp/v2-tour.json')); ids=[]; vals=[x.get('roomId'),x.get('roomTypeId'),(x.get('room') or {}).get('id') if isinstance(x.get('room'),dict) else None] if isinstance(x,dict) else []; [ids.append(int(v)) for v in vals if str(v or '').isdigit() and int(v)>0 and int(v) not in ids]; print(','.join(map(str,ids)))")"
             test -n "$room_ids" || fail no_room_ids
             rooms_code="$(curl -k -L -sS -o /tmp/v2-rooms.json -w "%{http_code}" --max-time 45 --get --data-urlencode "action=rooms" --data-urlencode "ids=$room_ids" "$base")"
             echo "ROOMS_HTTP=$rooms_code IDS=$room_ids"
             cat /tmp/v2-rooms.json
             test "$rooms_code" = "200" || fail rooms_http
-            python3 - <<'PY' || exit 1
-import json,sys
-x=json.load(open('/tmp/v2-rooms.json'))
-print('ROOMS_TYPE', type(x).__name__)
-if isinstance(x,list): print('ROOMS_COUNT',len(x))
-elif isinstance(x,dict): print('ROOMS_KEYS',sorted(x.keys()))
-sys.exit(0 if isinstance(x,(list,dict)) else 1)
-PY
+            python3 -c "import json,sys; x=json.load(open('/tmp/v2-rooms.json')); print('ROOMS_TYPE',type(x).__name__); print('ROOMS_COUNT',len(x) if isinstance(x,list) else '-'); print('ROOMS_KEYS',sorted(x.keys()) if isinstance(x,dict) else '-'); sys.exit(0 if isinstance(x,(list,dict)) else 1)" || fail rooms_shape
           '
