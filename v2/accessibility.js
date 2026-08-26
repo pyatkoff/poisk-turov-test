@@ -17,5 +17,6 @@ function loadUXScript(src,flag,ready){if(window[ready]||document.querySelector('
 loadUXScript('/poisk-turov-test/v2/mobile-results-filters-v1.js','data-v2-mobile-results-filters','V2MobileResultsFiltersV1');
 loadUXScript('/poisk-turov-test/v2/primary-meal-ux-v1.js','data-v2-primary-meal-ux','V2PrimaryMealUXV1');
 loadUXScript('/poisk-turov-test/v2/search-progress-ux-v1.js','data-v2-search-progress-ux','V2SearchProgressUXV1');
+loadUXScript('/poisk-turov-test/v2/search-dirty-ux-v1.js','data-v2-search-dirty-ux','V2SearchDirtyUXV1');
 window.V2Accessibility={decorate,version:1};
 })();
