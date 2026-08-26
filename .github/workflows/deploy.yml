@@ -20,6 +20,7 @@ jobs:
             v2/analytics-v3.js \
             v2/results-renderer-v3.js \
             v2/search-continue-v5.js \
+            v2/search-continue-v6.js \
             v2/hotel-actions-v2.js \
             v2/room-details-v2.js \
             v2/tour-controller-v3.js \
