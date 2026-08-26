@@ -1,0 +1,58 @@
+name: Validate V2 generation guards
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/search-lifecycle-v6.js'
+      - 'v2/search-continue-v6.js'
+      - 'v2/tour-controller-v4.js'
+      - '.github/workflows/validate-v2-generation-guards.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate search, continue, tour and flight stale-response guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check v2/search-lifecycle-v6.js
+          node --check v2/search-continue-v6.js
+          node --check v2/tour-controller-v4.js
+          python3 - <<'PY'
+          from pathlib import Path
+          search = Path('v2/search-lifecycle-v6.js').read_text()
+          cont = Path('v2/search-continue-v6.js').read_text()
+          tour = Path('v2/tour-controller-v4.js').read_text()
+
+          required_search = [
+              'let searchId=0,pollTimer=0,generation=0',
+              'function isCurrent(run,id)',
+              'generation++;',
+              'if(run!==generation)return;',
+              'if(!isCurrent(run,id))return',
+              "rt.setSearchId(0)",
+          ]
+          required_continue = [
+              'let searchId=0,operation=0',
+              'function isCurrent(id,op)',
+              'const op=++operation',
+              'if(!isCurrent(id,op))return',
+              "window.addEventListener('v2:search-reset',()=>{operation++;searchId=0;removeMore();});",
+          ]
+          required_tour = [
+              'tourGeneration=0,flightGeneration=0',
+              'const run=++flightGeneration',
+              'if(run!==flightGeneration',
+              'const run=++tourGeneration',
+              'flightGeneration++;',
+              'if(run!==tourGeneration)return;',
+          ]
+          for label, text, req in [('search', search, required_search), ('continue', cont, required_continue), ('tour/flight', tour, required_tour)]:
+              missing = [x for x in req if x not in text]
+              if missing:
+                  raise SystemExit(f'{label} stale-response guard contract missing: {missing}')
+          print('V2_GENERATION_GUARDS_OK')
+          PY
