@@ -1,0 +1,33 @@
+name: Validate V2 runtime retry policy
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/runtime-retry-policy.js'
+      - '.github/workflows/validate-runtime-retry-policy.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate retry policy semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check v2/runtime-retry-policy.js
+          node - <<'NODE'
+          global.window={};
+          require('./v2/runtime-retry-policy.js');
+          const p=window.V2RetryPolicy;
+          if(!p) process.exit(1);
+          if(!p.shouldRetry('search_status',{code:'HTTP_ERROR',status:502},0)) process.exit(2);
+          if(!p.shouldRetry('flights',{code:'NETWORK_ERROR'},0)) process.exit(3);
+          if(p.shouldRetry('search_status',{code:'HTTP_ERROR',status:400},0)) process.exit(4);
+          if(p.shouldRetry('search_start',{code:'HTTP_ERROR',status:502},0)) process.exit(5);
+          if(p.shouldRetry('search_continue',{code:'NETWORK_ERROR'},0)) process.exit(6);
+          if(p.shouldRetry('search_status',{code:'TIMEOUT'},0)) process.exit(7);
+          if(p.shouldRetry('search_status',{code:'HTTP_ERROR',status:503},1)) process.exit(8);
+          console.log('V2_RETRY_POLICY_OK');
+          NODE
