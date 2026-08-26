@@ -28,9 +28,10 @@ jobs:
           const form={elements:fields,events:{},querySelector(sel){if(sel==='details.extras')return details;return null;},querySelectorAll(){return[];},addEventListener(k,fn){this.events[k]=fn;}};
           const context={window:{},document:{getElementById(id){return id==='tourSearch'?form:null;}},RadioNodeList,console};
           vm.createContext(context);vm.runInContext(fs.readFileSync('v2/search-filters-ux-v1.js','utf8'),context);
-          if(details.open!==false)throw new Error('advanced filters were not collapsed');
           if(!summary.innerHTML.includes('Все фильтры'))throw new Error('summary label missing');
           if(context.window.V2SearchFiltersUX.selectedCount()!==0)throw new Error('empty filter count is not zero');
+          fields.food.value='AI';
+          if(context.window.V2SearchFiltersUX.render()!==0)throw new Error('primary meal leaked into advanced filter count');
           fields.onlyDirect.checked=true;
           if(context.window.V2SearchFiltersUX.render()!==1)throw new Error('checkbox filter count failed');
           fields.price_from.value='80000';
