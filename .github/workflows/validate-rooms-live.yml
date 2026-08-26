@@ -1,0 +1,81 @@
+name: Validate V2 rooms live
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-rooms-live.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_file="$GITHUB_WORKSPACE/deploy_key"
+          raw="$DEPLOY_SSH_KEY_VALUE"
+          if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+      - name: Live tour and rooms contract
+        env:
+          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" '
+            set -euo pipefail
+            fail(){ echo "ROOMS_FAIL:$1"; exit 1; }
+            base="https://anytour.online/poisk-turov-test/v2/api-v2.php"
+            tour_id="18253832023139"
+            tour_code="$(curl -k -L -sS -o /tmp/v2-tour.json -w "%{http_code}" --max-time 45 --get --data-urlencode "action=tour" --data-urlencode "tourId=$tour_id" --data-urlencode "currency=RUB" "$base")"
+            echo "TOUR_HTTP=$tour_code"
+            test "$tour_code" = "200" || fail tour_http
+            python3 - <<'PY'
+import json
+p='/tmp/v2-tour.json'
+d=json.load(open(p))
+print('TOUR_KEYS', sorted(d.keys()) if isinstance(d,dict) else type(d).__name__)
+print('ROOM_ID', d.get('roomId') if isinstance(d,dict) else None)
+print('ROOM_TYPE_ID', d.get('roomTypeId') if isinstance(d,dict) else None)
+print('ROOM_OBJECT', d.get('room') if isinstance(d,dict) else None)
+PY
+            room_ids="$(python3 - <<'PY'
+import json
+x=json.load(open('/tmp/v2-tour.json'))
+ids=[]
+if isinstance(x,dict):
+    for k in ('roomId','roomTypeId'):
+        try:
+            n=int(x.get(k) or 0)
+            if n>0: ids.append(n)
+        except: pass
+    r=x.get('room')
+    if isinstance(r,dict):
+        try:
+            n=int(r.get('id') or 0)
+            if n>0: ids.append(n)
+        except: pass
+print(','.join(map(str,dict.fromkeys(ids))))
+PY
+)"
+            test -n "$room_ids" || fail no_room_ids
+            rooms_code="$(curl -k -L -sS -o /tmp/v2-rooms.json -w "%{http_code}" --max-time 45 --get --data-urlencode "action=rooms" --data-urlencode "ids=$room_ids" "$base")"
+            echo "ROOMS_HTTP=$rooms_code IDS=$room_ids"
+            cat /tmp/v2-rooms.json
+            test "$rooms_code" = "200" || fail rooms_http
+            python3 - <<'PY' || exit 1
+import json,sys
+x=json.load(open('/tmp/v2-rooms.json'))
+print('ROOMS_TYPE', type(x).__name__)
+if isinstance(x,list): print('ROOMS_COUNT',len(x))
+elif isinstance(x,dict): print('ROOMS_KEYS',sorted(x.keys()))
+sys.exit(0 if isinstance(x,(list,dict)) else 1)
+PY
+          '
