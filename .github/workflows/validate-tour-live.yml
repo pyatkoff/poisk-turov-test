@@ -47,19 +47,7 @@ jobs:
             test "$complete" = "1" || fail search_not_complete
             results_code="$(curl -k -L -sS -o /tmp/v2-tour-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25")"
             test "$results_code" = "200" || fail results_http
-            python3 - <<'PY' >/tmp/v2-tour-ids.txt
-import json
-items=json.load(open('/tmp/v2-tour-results.json'))
-seen=set()
-for hotel in items if isinstance(items,list) else []:
-    for tour in (hotel.get('tours') or []) if isinstance(hotel,dict) else []:
-        tid=str(tour.get('id') or '').strip()
-        if tid and tid not in seen:
-            seen.add(tid)
-            print(tid)
-        if len(seen)>=10:
-            raise SystemExit
-PY
+            python3 -c "import json; items=json.load(open('/tmp/v2-tour-results.json')); ids=[]; [ids.append(str(t.get('id'))) for h in (items if isinstance(items,list) else []) if isinstance(h,dict) for t in (h.get('tours') or []) if isinstance(t,dict) and t.get('id') is not None and str(t.get('id')) not in ids]; print('\\n'.join(ids[:10]))" >/tmp/v2-tour-ids.txt
             first_tour="$(head -1 /tmp/v2-tour-ids.txt)"
             test -n "$first_tour" || fail no_tour_ids
             tour_code="$(curl -k -L -sS -o /tmp/v2-tour.json -w "%{http_code}" --max-time 45 "$base?action=tour&tourId=$first_tour&currency=RUB")"
