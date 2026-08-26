@@ -1,0 +1,20 @@
+name: Validate room details v3
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/room-details-v3.js'
+      - '.github/workflows/validate-room-details-v3.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check room details
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check v2/room-details-v3.js
+          grep -q "normalizeRooms" v2/room-details-v3.js
+          grep -q "room-detail-retry" v2/room-details-v3.js
+          grep -q "version:3" v2/room-details-v3.js
