@@ -4,41 +4,33 @@ on:
     branches: [main]
     paths:
       - 'v2/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
+
 jobs:
   deploy-v2:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate active V2 JavaScript
+      - name: Validate active V2 before deploy
         shell: bash
         run: |
           set -euo pipefail
-          for file in \
-            v2/runtime-v3.js \
-            v2/analytics.js \
-            v2/analytics-v3.js \
-            v2/analytics-v4.js \
-            v2/results-renderer-v3.js \
-            v2/results-renderer-v4.js \
-            v2/search-continue-v5.js \
-            v2/search-continue-v6.js \
-            v2/hotel-actions-v2.js \
-            v2/hotel-actions-v3.js \
-            v2/room-details-v2.js \
-            v2/room-details-v3.js \
-            v2/tour-controller-v3.js \
-            v2/tour-controller-v4.js \
-            v2/lead-form-guard-v1.js \
-            v2/flight-price-sync-v1.js \
-            v2/catalogs-v2.js \
-            v2/search-lifecycle-v4.js \
-            v2/search-lifecycle-v5.js \
-            v2/search-lifecycle-v6.js \
-            v2/accessibility.js
-          do
-            node --check "$file"
+          mapfile -t assets < <(grep -oE "v2_asset\('[^']+\.js'\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\1/" | sort -u)
+          test "${#assets[@]}" -gt 0
+          printf 'ACTIVE_JS=%s\n' "${assets[*]}"
+          for asset in "${assets[@]}"; do
+            test -f "v2/$asset" || { echo "ACTIVE_ASSET_MISSING:$asset"; exit 1; }
+            node --check "v2/$asset"
           done
+          for file in v2/index.php v2/api-v2.php v2/lead-adapter-v2.php v2/lead-price-v1.php v2/assets.php v2/form-defaults.php v2/analytics-config.php v2/privacy-config.php; do
+            test -f "$file" || { echo "ACTIVE_PHP_MISSING:$file"; exit 1; }
+            php -l "$file" >/dev/null
+          done
+          for marker in analytics-v4.js results-renderer-v4.js search-continue-v6.js hotel-actions-v3.js room-details-v3.js tour-controller-v4.js lead-form-guard-v1.js flight-price-sync-v1.js catalogs-v2.js search-lifecycle-v6.js accessibility.js; do
+            grep -q "$marker" v2/index.php || { echo "ACTIVE_MARKER_MISSING:$marker"; exit 1; }
+          done
+          echo "ACTIVE_V2_PREDEPLOY_OK"
       - name: Prepare SSH key
         env:
           DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
@@ -72,30 +64,21 @@ jobs:
             set -euo pipefail
             fail(){ echo "VERIFY_FAIL:$1"; exit 1; }
             root="$HOME/www/anytour.online/poisk-turov-test/v2"
-            php -l "$root/index.php" >/dev/null || fail php_index
-            php -l "$root/api-v2.php" >/dev/null || fail php_api
-            php -l "$root/lead-adapter-v2.php" >/dev/null || fail php_lead
-            php -l "$root/analytics-config.php" >/dev/null || fail php_analytics_config
-            php -l "$root/form-defaults.php" >/dev/null || fail php_form_defaults
+            for file in index.php api-v2.php lead-adapter-v2.php lead-price-v1.php analytics-config.php form-defaults.php privacy-config.php assets.php; do
+              php -l "$root/$file" >/dev/null || fail "php_$file"
+            done
             page_code="$(curl -k -L -sS -o /tmp/v2.html -w "%{http_code}" --max-time 40 https://anytour.online/poisk-turov-test/v2/)"
             api_code="$(curl -k -L -sS -o /tmp/v2-health.json -w "%{http_code}" --max-time 45 "https://anytour.online/poisk-turov-test/v2/api-v2.php?action=health")"
             lead_code="$(curl -k -L -sS -o /tmp/v2-lead.json -w "%{http_code}" --max-time 30 "https://anytour.online/poisk-turov-test/v2/lead-adapter-v2.php")"
             echo "PAGE=$page_code API=$api_code LEAD=$lead_code"
-            cat /tmp/v2-health.json
             test "$page_code" = "200" || fail page_http
             test "$api_code" = "200" || fail api_http
             test "$lead_code" = "200" || fail lead_http
             grep -q "Найти тур" /tmp/v2.html || fail page_marker
             grep -q "api-v2.php" /tmp/v2.html || fail active_api
-            grep -q "runtime-v3.js" /tmp/v2.html || fail active_runtime
-            grep -q "search-lifecycle-v6.js" /tmp/v2.html || fail active_search_lifecycle
-            grep -q "search-continue-v6.js" /tmp/v2.html || fail active_search_continue
-            grep -q "analytics-v4.js" /tmp/v2.html || fail active_analytics
-            grep -q "results-renderer-v4.js" /tmp/v2.html || fail active_results_renderer
-            grep -q "hotel-actions-v3.js" /tmp/v2.html || fail active_hotel_actions
-            grep -q "room-details-v3.js" /tmp/v2.html || fail active_room_details
-            grep -q "lead-form-guard-v1.js" /tmp/v2.html || fail active_lead_guard
-            grep -q "flight-price-sync-v1.js" /tmp/v2.html || fail active_flight_price
+            for marker in runtime-v3.js analytics-v4.js results-renderer-v4.js search-continue-v6.js hotel-actions-v3.js room-details-v3.js tour-controller-v4.js lead-form-guard-v1.js flight-price-sync-v1.js catalogs-v2.js search-lifecycle-v6.js accessibility.js; do
+              grep -q "$marker" /tmp/v2.html || fail "active_$marker"
+            done
             grep -q "Layer_1.png" /tmp/v2.html || fail active_logo
             logo_code="$(curl -k -L -sS -o /tmp/v2-logo.png -w "%{http_code}" --max-time 20 "https://anytour.online/poisk-turov-test/v2/Layer_1.png")"
             test "$logo_code" = "200" || fail logo_http
@@ -134,7 +117,6 @@ jobs:
             start_url="$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB"
             start_code="$(curl -k -L -sS -o /tmp/v2-search-start.json -w "%{http_code}" --max-time 50 "$start_url")"
             echo "SEARCH_START_HTTP=$start_code"
-            cat /tmp/v2-search-start.json
             test "$start_code" = "200" || fail search_start_http
             search_id="$(grep -oE "\"searchId\"[[:space:]]*:[[:space:]]*[0-9]+" /tmp/v2-search-start.json | head -1 | grep -oE "[0-9]+$" || true)"
             test -n "$search_id" || fail search_id
@@ -144,36 +126,32 @@ jobs:
               sleep 2
               status_code="$(curl -k -L -sS -o /tmp/v2-search-status.json -w "%{http_code}" --max-time 45 "$base?action=search_status&searchId=$search_id")"
               echo "SEARCH_STATUS attempt=$attempt http=$status_code"
-              cat /tmp/v2-search-status.json
               if test "$status_code" = "200" && grep -Eq "\"progress\"[[:space:]]*:[[:space:]]*100|\"status\"[[:space:]]*:[[:space:]]*\"complete\"" /tmp/v2-search-status.json; then search_complete=1; break; fi
             done
             test "$status_code" = "200" || fail search_status_http
             test "$search_complete" = "1" || fail search_not_complete
             results_code="$(curl -k -L -sS -o /tmp/v2-search-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25")"
-            echo "SEARCH_RESULTS_HTTP=$results_code"
             test "$results_code" = "200" || fail search_results_http
             first="$(head -c1 /tmp/v2-search-results.json)"
             test "$first" = "[" || fail search_results_json
             before_count="$(python3 -c "import json; print(len(json.load(open(\"/tmp/v2-search-results.json\"))))")"
-            echo "SEARCH_RESULTS_BEFORE=$before_count"
             continue_code="$(curl -k -L -sS -o /tmp/v2-search-continue.json -w "%{http_code}" --max-time 50 "$base?action=search_continue&searchId=$search_id")"
-            echo "SEARCH_CONTINUE_HTTP=$continue_code"
-            cat /tmp/v2-search-continue.json
             test "$continue_code" = "200" || fail search_continue_http
             continue_status=0
-            for attempt in 1 2 3 4 5 6 7 8; do
+            continue_complete=0
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
               sleep 2
               continue_status="$(curl -k -L -sS -o /tmp/v2-search-status-continue.json -w "%{http_code}" --max-time 45 "$base?action=search_status&searchId=$search_id")"
               echo "SEARCH_CONTINUE_STATUS attempt=$attempt http=$continue_status"
-              cat /tmp/v2-search-status-continue.json
-              if test "$continue_status" = "200" && grep -Eq "\"progress\"[[:space:]]*:[[:space:]]*100|\"status\"[[:space:]]*:[[:space:]]*\"complete\"" /tmp/v2-search-status-continue.json; then break; fi
+              if test "$continue_status" = "200" && grep -Eq "\"progress\"[[:space:]]*:[[:space:]]*100|\"status\"[[:space:]]*:[[:space:]]*\"complete\"" /tmp/v2-search-status-continue.json; then continue_complete=1; break; fi
             done
             test "$continue_status" = "200" || fail search_continue_status_http
+            test "$continue_complete" = "1" || fail search_continue_not_complete
             results100_code="$(curl -k -L -sS -o /tmp/v2-search-results-100.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=100")"
             test "$results100_code" = "200" || fail search_continue_results_http
             after_count="$(python3 -c "import json; print(len(json.load(open(\"/tmp/v2-search-results-100.json\"))))")"
             duplicate_count="$(python3 -c "import json; d=json.load(open(\"/tmp/v2-search-results-100.json\")); ids=[str(x.get(\"id\")) for x in d if isinstance(x,dict) and x.get(\"id\") is not None]; print(len(ids)-len(set(ids)))")"
-            echo "SEARCH_RESULTS_AFTER=$after_count DUPLICATE_HOTEL_IDS=$duplicate_count"
+            echo "SEARCH_RESULTS_BEFORE=$before_count SEARCH_RESULTS_AFTER=$after_count DUPLICATE_HOTEL_IDS=$duplicate_count"
             test "$duplicate_count" = "0" || fail duplicate_hotel_ids
             echo "SEARCH_CONTINUE_SMOKE_OK searchId=$search_id before=$before_count after=$after_count"
           '
