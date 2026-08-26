@@ -1,0 +1,20 @@
+name: Export V2 logo
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/export-v2-logo.yml'
+  workflow_dispatch:
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read live V2 logo
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -k -L -sS --max-time 30 https://anytour.online/poisk-turov-test/v2/Layer_1.png -o /tmp/Layer_1.png
+          test -s /tmp/Layer_1.png
+          file /tmp/Layer_1.png
+          sha256sum /tmp/Layer_1.png
+          printf 'LOGO_BASE64=' && base64 -w0 /tmp/Layer_1.png && printf '\n'
