@@ -30,7 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p visual-artifacts
-          cat > /tmp/v2-visual-audit.js <<'JS'
+          cat > ./v2-visual-audit.cjs <<'JS'
           const { chromium } = require('playwright');
           const fs = require('fs');
 
@@ -42,10 +42,6 @@ jobs:
             { name: 'intermediate-1024', width: 1024, height: 900 },
             { name: 'desktop-1440', width: 1440, height: 1000 },
           ];
-
-          function rect(r) {
-            return r ? { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) } : null;
-          }
 
           (async () => {
             const browser = await chromium.launch({ headless: true });
@@ -100,7 +96,6 @@ jobs:
                 };
               });
 
-              // Exercise important initial interaction states without starting a paid/business action.
               const extras = page.locator('details.extras');
               if (await extras.count()) {
                 await extras.locator('summary').click();
@@ -127,14 +122,7 @@ jobs:
                 };
               });
 
-              const item = {
-                viewport: vp,
-                httpStatus: response ? response.status() : 0,
-                initial,
-                interaction,
-                consoleErrors,
-                pageErrors,
-              };
+              const item = { viewport: vp, httpStatus: response ? response.status() : 0, initial, interaction, consoleErrors, pageErrors };
               report.push(item);
 
               const bad = item.httpStatus !== 200 || initial.horizontalOverflow || interaction.horizontalOverflow || initial.visibleResultsBeforeSearch || initial.statusInitiallyVisible || initial.selectedTourInitiallyVisible || !interaction.childAgesVisible || pageErrors.length > 0;
@@ -150,7 +138,7 @@ jobs:
             if (failed) process.exit(1);
           })().catch(err => { console.error(err); process.exit(1); });
           JS
-          node /tmp/v2-visual-audit.js
+          node ./v2-visual-audit.cjs
 
       - name: Upload visual evidence
         if: always()
