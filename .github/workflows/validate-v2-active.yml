@@ -1,0 +1,52 @@
+name: Validate active V2 contract
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/deploy.yml'
+      - '.github/workflows/validate-v2-active.yml'
+  workflow_dispatch:
+
+jobs:
+  validate-active-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate active JavaScript from index
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t assets < <(grep -oE "v2_asset\('[^']+\.js'\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\1/" | sort -u)
+          test "${#assets[@]}" -gt 0
+          printf 'ACTIVE_JS=%s\n' "${assets[*]}"
+          for asset in "${assets[@]}"; do
+            test -f "v2/$asset" || { echo "ACTIVE_ASSET_MISSING:$asset"; exit 1; }
+            node --check "v2/$asset"
+          done
+          grep -q "analytics-v4.js" v2/index.php
+          grep -q "results-renderer-v4.js" v2/index.php
+          grep -q "hotel-actions-v3.js" v2/index.php
+          grep -q "room-details-v3.js" v2/index.php
+          grep -q "tour-controller-v4.js" v2/index.php
+          grep -q "lead-form-guard-v1.js" v2/index.php
+          grep -q "flight-price-sync-v1.js" v2/index.php
+          grep -q "search-lifecycle-v6.js" v2/index.php
+          grep -q "search-continue-v6.js" v2/index.php
+      - name: Validate active PHP
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in v2/index.php v2/api-v2.php v2/lead-adapter-v2.php v2/lead-price-v1.php v2/assets.php v2/form-defaults.php v2/analytics-config.php v2/privacy-config.php; do
+            test -f "$file" || { echo "ACTIVE_PHP_MISSING:$file"; exit 1; }
+            php -l "$file"
+          done
+      - name: Validate V2 deployment isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "- 'v2/**'" .github/workflows/deploy.yml
+          grep -Fq 'scp "${ssh_opts[@]}" -r v2/.' .github/workflows/deploy.yml
+          grep -Fq 'poisk-turov-test/v2/' .github/workflows/deploy.yml
+          ! grep -Eq 'scp .*anytour\.com|scp .*max-search|scp .*poisk-turov-tg' .github/workflows/deploy.yml
+          echo "V2_ISOLATION_OK"
