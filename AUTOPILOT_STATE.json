@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T00:58:00+02:00",
+  "updated_at": "2026-08-27T01:03:00+02:00",
   "mode": "active_development",
   "phase": "pre-live visual/ux stabilization",
   "current_task": {
@@ -10,7 +10,7 @@
     "title": "Visual baseline and regression harness",
     "status": "IN_PROGRESS",
     "objective": "Establish repeatable browser-level visual checks across critical V2 viewports and states, then fix concrete visual regressions found.",
-    "next_action": "Diagnose and fix the first Visual V2 baseline workflow failure, rerun it, inspect screenshots/report, then fix the highest-priority real visual issue."
+    "next_action": "Inspect the Visual V2 baseline rerun triggered by commit 1a090cff, collect screenshots/report if successful, then fix the highest-priority real visual issue."
   },
   "queue": [
     {"id":"A1","status":"IN_PROGRESS","title":"Visual baseline and regression harness"},
@@ -27,7 +27,7 @@
     "run_id": 33018445607,
     "head_sha": "227194d7b8a8171122604c06f9cb2d1bca20fef8",
     "conclusion": "failure",
-    "classification": "HARNESS_OR_VISUAL_FAILURE_PENDING_DIAGNOSIS"
+    "classification": "HARNESS_FAILURE_FIXED_PENDING_RERUN"
   },
   "last_verified_commit": "ea18c0dc613817720b0cb6babc706e456deb9e3f",
   "blocked": [],
