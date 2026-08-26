@@ -1,0 +1,18 @@
+name: Validate V2 lead price contract
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/lead-price-v1.php'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate price semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/lead-price-v1.php
+          php -r 'require "v2/lead-price-v1.php"; $x=v2_lead_price_summary(70941,87807); if($x["basePrice"]!==70941||$x["selectedPrice"]!==87807||$x["delta"]!==16866) exit(1); $y=v2_lead_price_summary(70941,70941); if($y["selectedPrice"]!==70941||$y["delta"]!==0) exit(2); echo "PRICE_CONTRACT_OK\n";'
