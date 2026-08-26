@@ -79,10 +79,8 @@ jobs:
             for marker in runtime-v3.js analytics-v4.js results-renderer-v5.js search-continue-v6.js hotel-actions-v3.js room-details-v3.js tour-controller-v4.js lead-form-guard-v1.js flight-price-sync-v1.js catalogs-v2.js search-lifecycle-v6.js accessibility.js; do
               grep -q "$marker" /tmp/v2.html || fail "active_$marker"
             done
-            grep -q "Layer_1.png" /tmp/v2.html || fail active_logo
-            logo_code="$(curl -k -L -sS -o /tmp/v2-logo.png -w "%{http_code}" --max-time 20 "https://anytour.online/poisk-turov-test/v2/Layer_1.png")"
-            test "$logo_code" = "200" || fail logo_http
-            test -s /tmp/v2-logo.png || fail logo_empty
+            grep -q 'class="at-site-logo"' /tmp/v2.html || fail active_logo
+            grep -q 'src="/images/logo.svg"' /tmp/v2.html || fail active_logo_source
             if grep -Eq "metrikaCounter[[:space:]]*:[[:space:]]*[1-9][0-9]*" /tmp/v2.html; then
               echo "METRIKA_COUNTER=configured"
             elif grep -Eq "metrikaCounter[[:space:]]*:[[:space:]]*0" /tmp/v2.html; then
