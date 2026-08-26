@@ -28,6 +28,15 @@ function bounded_int($value, int $min, int $max, int $fallback)
     return max($min, min($max, (int)$v));
 }
 
+function strict_int($value, int $min, int $max, string $name)
+{
+    $v = filter_var($value, FILTER_VALIDATE_INT);
+    if ($v === false || (int)$v < $min || (int)$v > $max) {
+        out(['ok' => false, 'error' => $name . ' must be between ' . $min . ' and ' . $max], 400);
+    }
+    return (int)$v;
+}
+
 function optional_int($value)
 {
     if ($value === null || $value === '') return null;
@@ -51,6 +60,20 @@ function request_array(string $key, int $maxItems = 100)
         if ($v !== '') $out[] = $v;
     }
     return array_values(array_unique($out));
+}
+
+function child_ages()
+{
+    $ages = request_array('childs', 3);
+    $out = [];
+    foreach ($ages as $age) {
+        $v = filter_var($age, FILTER_VALIDATE_INT);
+        if ($v === false || (int)$v < 0 || (int)$v > 17) {
+            out(['ok' => false, 'error' => 'child age must be between 0 and 17'], 400);
+        }
+        $out[] = (int)$v;
+    }
+    return $out;
 }
 
 function search_id()
@@ -196,11 +219,15 @@ switch ($action) {
         $countryId = optional_int($_GET['countryId'] ?? null);
         $dateFrom = date_param('dateFrom');
         $dateTo = date_param('dateTo');
-        $nightsFrom = bounded_int($_GET['nightsFrom'] ?? 5, 1, 28, 5);
-        $nightsTo = bounded_int($_GET['nightsTo'] ?? 14, 1, 28, 14);
+        $nightsFrom = strict_int($_GET['nightsFrom'] ?? 5, 1, 28, 'nightsFrom');
+        $nightsTo = strict_int($_GET['nightsTo'] ?? 14, 1, 28, 'nightsTo');
+        $adults = strict_int($_GET['adults'] ?? 2, 1, 6, 'adults');
+        $childs = child_ages();
         $priceFrom = optional_int($_GET['priceFrom'] ?? null);
         $priceTo = optional_int($_GET['priceTo'] ?? null);
         if (!$departureId || !$countryId || !$dateFrom || !$dateTo) out(['ok' => false, 'error' => 'Invalid required search parameters'], 400);
+        $today = (new DateTimeImmutable('today'))->format('Y-m-d');
+        if ($dateFrom < $today) out(['ok' => false, 'error' => 'dateFrom must not be in the past'], 400);
         if ($dateTo < $dateFrom) out(['ok' => false, 'error' => 'dateTo must not be before dateFrom'], 400);
         $dateSpan = (new DateTimeImmutable($dateFrom))->diff(new DateTimeImmutable($dateTo))->days;
         if ($dateSpan === false || $dateSpan > 21) out(['ok' => false, 'error' => 'date range must not exceed 21 days'], 400);
@@ -216,8 +243,8 @@ switch ($action) {
             'dateTo' => $dateTo,
             'nightsFrom' => $nightsFrom,
             'nightsTo' => $nightsTo,
-            'adults' => bounded_int($_GET['adults'] ?? 2, 1, 6, 2),
-            'childs' => request_array('childs', 3),
+            'adults' => $adults,
+            'childs' => $childs,
             'meal' => short_text($_GET['meal'] ?? '', 40),
             'hotelCategory' => short_text($_GET['hotelCategory'] ?? '', 20),
             'hotelRating' => short_text($_GET['hotelRating'] ?? '', 20),
