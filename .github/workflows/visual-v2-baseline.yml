@@ -1,0 +1,161 @@
+name: Visual V2 baseline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/visual-v2-baseline.yml'
+      - 'v2/**'
+  workflow_dispatch:
+
+jobs:
+  visual-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Audit live V2 viewports
+        shell: bash
+        env:
+          V2_URL: https://anytour.online/poisk-turov-test/v2/
+        run: |
+          set -euo pipefail
+          mkdir -p visual-artifacts
+          cat > /tmp/v2-visual-audit.js <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+
+          const url = process.env.V2_URL;
+          const viewports = [
+            { name: 'mobile-375', width: 375, height: 812 },
+            { name: 'mobile-430', width: 430, height: 932 },
+            { name: 'tablet-768', width: 768, height: 1024 },
+            { name: 'intermediate-1024', width: 1024, height: 900 },
+            { name: 'desktop-1440', width: 1440, height: 1000 },
+          ];
+
+          function rect(r) {
+            return r ? { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) } : null;
+          }
+
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const report = [];
+            let failed = false;
+
+            for (const vp of viewports) {
+              const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, ignoreHTTPSErrors: true });
+              const page = await context.newPage();
+              const consoleErrors = [];
+              const pageErrors = [];
+              page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text().slice(0, 500)); });
+              page.on('pageerror', err => pageErrors.push(String(err).slice(0, 500)));
+
+              const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+              await page.waitForTimeout(5000);
+              await page.screenshot({ path: `visual-artifacts/${vp.name}-initial.png`, fullPage: true });
+
+              const initial = await page.evaluate(() => {
+                const root = document.documentElement;
+                const body = document.body;
+                const selectors = ['.at-site-header', '.search-card', '.main-fields', '.search-submit', '#status', '#resultsTools', '#results', '#selectedTour'];
+                const boxes = {};
+                for (const s of selectors) {
+                  const el = document.querySelector(s);
+                  if (!el) continue;
+                  const r = el.getBoundingClientRect();
+                  boxes[s] = { x:r.x, y:r.y, width:r.width, height:r.height, hidden: !!el.hidden, display:getComputedStyle(el).display };
+                }
+                const offenders = [...document.querySelectorAll('body *')].filter(el => {
+                  const cs = getComputedStyle(el);
+                  if (cs.position === 'fixed' && el.getBoundingClientRect().width > window.innerWidth + 2) return true;
+                  const r = el.getBoundingClientRect();
+                  return r.right > window.innerWidth + 2 || r.left < -2;
+                }).slice(0, 20).map(el => ({
+                  tag: el.tagName,
+                  id: el.id || '',
+                  class: String(el.className || '').slice(0, 160),
+                  rect: { x:el.getBoundingClientRect().x, width:el.getBoundingClientRect().width, right:el.getBoundingClientRect().right }
+                }));
+                return {
+                  title: document.title,
+                  viewport: { width: window.innerWidth, height: window.innerHeight },
+                  document: { scrollWidth: root.scrollWidth, clientWidth: root.clientWidth, bodyScrollWidth: body.scrollWidth },
+                  horizontalOverflow: root.scrollWidth > root.clientWidth + 2 || body.scrollWidth > root.clientWidth + 2,
+                  offenders,
+                  boxes,
+                  searchButtonText: (document.querySelector('.search-submit')?.innerText || '').trim(),
+                  visibleResultsBeforeSearch: !!document.querySelector('#results .hotel-card, #results .result-card'),
+                  statusInitiallyVisible: (()=>{ const e=document.querySelector('#status'); return e ? !e.hidden && getComputedStyle(e).display !== 'none' : false; })(),
+                  selectedTourInitiallyVisible: (()=>{ const e=document.querySelector('#selectedTour'); return e ? !e.hidden && getComputedStyle(e).display !== 'none' : false; })(),
+                };
+              });
+
+              // Exercise important initial interaction states without starting a paid/business action.
+              const extras = page.locator('details.extras');
+              if (await extras.count()) {
+                await extras.locator('summary').click();
+                await page.waitForTimeout(300);
+                await page.screenshot({ path: `visual-artifacts/${vp.name}-filters-open.png`, fullPage: true });
+              }
+
+              const childSelect = page.locator('#childCount');
+              if (await childSelect.count()) {
+                await childSelect.selectOption('2');
+                await page.waitForTimeout(300);
+                await page.screenshot({ path: `visual-artifacts/${vp.name}-children.png`, fullPage: true });
+              }
+
+              const interaction = await page.evaluate(() => {
+                const child = document.querySelector('#childAges');
+                const extras = document.querySelector('details.extras');
+                const r = child?.getBoundingClientRect();
+                return {
+                  childAgesVisible: child ? !child.hidden && getComputedStyle(child).display !== 'none' : false,
+                  childAgesRect: r ? { x:r.x, y:r.y, width:r.width, height:r.height, right:r.right } : null,
+                  extrasOpen: !!extras?.open,
+                  horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2 || document.body.scrollWidth > document.documentElement.clientWidth + 2,
+                };
+              });
+
+              const item = {
+                viewport: vp,
+                httpStatus: response ? response.status() : 0,
+                initial,
+                interaction,
+                consoleErrors,
+                pageErrors,
+              };
+              report.push(item);
+
+              const bad = item.httpStatus !== 200 || initial.horizontalOverflow || interaction.horizontalOverflow || initial.visibleResultsBeforeSearch || initial.statusInitiallyVisible || initial.selectedTourInitiallyVisible || !interaction.childAgesVisible || pageErrors.length > 0;
+              if (bad) failed = true;
+
+              console.log(`VISUAL_AUDIT ${vp.name} http=${item.httpStatus} overflow_initial=${initial.horizontalOverflow} overflow_interaction=${interaction.horizontalOverflow} child_ages=${interaction.childAgesVisible} page_errors=${pageErrors.length} console_errors=${consoleErrors.length}`);
+              if (initial.offenders.length) console.log(`OVERFLOW_OFFENDERS ${vp.name} ${JSON.stringify(initial.offenders)}`);
+              await context.close();
+            }
+
+            fs.writeFileSync('visual-artifacts/report.json', JSON.stringify(report, null, 2));
+            await browser.close();
+            if (failed) process.exit(1);
+          })().catch(err => { console.error(err); process.exit(1); });
+          JS
+          node /tmp/v2-visual-audit.js
+
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-visual-baseline
+          path: visual-artifacts/
+          retention-days: 14
