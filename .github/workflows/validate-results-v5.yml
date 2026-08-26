@@ -1,0 +1,30 @@
+name: Validate V2 results v5
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/results-renderer-v5.js'
+      - '.github/workflows/validate-results-v5.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax and sorting smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check v2/results-renderer-v5.js
+          node <<'NODE'
+          global.document={getElementById:()=>({value:'price'}),addEventListener:()=>{}};
+          global.window={addEventListener:()=>{},dispatchEvent:()=>{}};
+          global.CustomEvent=function(){};
+          require('./v2/results-renderer-v5.js');
+          const r=global.window.V2ResultsV5;
+          if(!r||r.version!==5)process.exit(1);
+          let list=r.sorted([{id:'unknown',price:0},{id:'expensive',price:90000},{id:'cheap',price:70000}],'price');
+          if(list.map(x=>x.id).join(',')!=='cheap,expensive,unknown')process.exit(2);
+          list=r.sorted([{id:'unknown',rating:4.8,price:0},{id:'priced',rating:4.8,price:80000}],'rating');
+          if(list.map(x=>x.id).join(',')!=='priced,unknown')process.exit(3);
+          console.log('RESULTS_V5_OK');
+          NODE
