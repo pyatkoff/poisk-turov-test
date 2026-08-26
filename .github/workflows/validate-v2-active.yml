@@ -25,7 +25,7 @@ jobs:
             node --check "v2/$asset"
           done
           grep -q "analytics-v4.js" v2/index.php
-          grep -q "results-renderer-v4.js" v2/index.php
+          grep -q "results-renderer-v5.js" v2/index.php
           grep -q "hotel-actions-v3.js" v2/index.php
           grep -q "room-details-v3.js" v2/index.php
           grep -q "tour-controller-v4.js" v2/index.php
