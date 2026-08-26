@@ -1,20 +1,31 @@
-name: Export V2 logo
+name: Sync V2 logo into repository
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/export-v2-logo.yml'
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
-  export:
+  sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Read live V2 logo
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Sync live V2 logo to v2 only
         shell: bash
         run: |
           set -euo pipefail
-          curl -k -L -sS --max-time 30 https://anytour.online/poisk-turov-test/v2/Layer_1.png -o /tmp/Layer_1.png
-          test -s /tmp/Layer_1.png
-          file /tmp/Layer_1.png
-          sha256sum /tmp/Layer_1.png
-          printf 'LOGO_BASE64=' && base64 -w0 /tmp/Layer_1.png && printf '\n'
+          curl -k -L -sS --max-time 30 https://anytour.online/poisk-turov-test/v2/Layer_1.png -o v2/Layer_1.png
+          test -s v2/Layer_1.png
+          file v2/Layer_1.png | grep -q 'PNG image data'
+          test "$(sha256sum v2/Layer_1.png | awk '{print $1}')" = "e4216ce3cb8f4f12e6f6c026b74ac5477e0ea8e86ac058bdc835ba133778e62d"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add v2/Layer_1.png
+          if git diff --cached --quiet; then echo 'Logo already tracked'; exit 0; fi
+          git commit -m 'Track live V2 Layer_1 logo'
+          git pull --rebase origin main
+          git push origin HEAD:main
