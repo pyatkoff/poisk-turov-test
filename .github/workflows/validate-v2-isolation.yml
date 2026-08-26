@@ -1,0 +1,44 @@
+name: Validate V2 isolation
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/validate-v2-isolation.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate active V2 dependency closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import pathlib,re,sys
+          root=pathlib.Path('v2')
+          index=(root/'index.php').read_text(encoding='utf-8')
+          assets=re.findall(r"v2_asset\('([^']+)'\)",index)
+          missing=[x for x in assets if not (root/x).is_file()]
+          print('ACTIVE_ASSETS',len(assets),'MISSING',missing)
+          if missing: sys.exit(1)
+          active=['index.php','api-v2.php','lead-adapter-v2.php','assets.php','form-defaults.php','analytics-config.php','privacy-config.php']+assets
+          forbidden=[r'poisk-turov-test/anytour',r'\.\./anytour',r'/anytour/images',r'\bTvApi\b',r'tvapi\.php',r'/max-search/']
+          hits=[]
+          for rel in dict.fromkeys(active):
+              p=root/rel
+              if not p.is_file() or p.suffix.lower() in {'.png','.jpg','.jpeg','.gif','.webp','.svg'}: continue
+              text=p.read_text(encoding='utf-8',errors='ignore')
+              for pattern in forbidden:
+                  if re.search(pattern,text,re.I): hits.append((rel,pattern))
+          print('FORBIDDEN_HITS',hits)
+          if hits: sys.exit(2)
+          allowed=[]
+          for rel in ('index.php','lead-adapter-v2.php'):
+              text=(root/rel).read_text(encoding='utf-8',errors='ignore')
+              if 'bitrix/modules/main/include/prolog_before.php' in text: allowed.append(rel+':bitrix')
+              if 'site_conf.php' in text: allowed.append(rel+':site_conf')
+          print('ALLOWED_PLATFORM_DEPS',allowed)
+          print('V2_ISOLATION_OK')
+          PY
