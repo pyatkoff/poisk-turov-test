@@ -1,11 +1,6 @@
 name: Visual V2 baseline
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/visual-v2-baseline.yml'
-      - 'v2/**'
   workflow_dispatch:
 
 jobs:
