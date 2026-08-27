@@ -154,9 +154,9 @@ jobs:
                 if(window.V2CheckoutExperienceV1)window.V2CheckoutExperienceV1.decorate(selected);
                 const form=selected.querySelector('.lead-form'),steps=[...selected.querySelectorAll('.checkout-journey span')];
                 const state={decorator:!!window.V2CheckoutExperienceV1,journey:steps.length,firstActive:steps[0]?.classList.contains('is-active')||false,facts:selected.querySelectorAll('.facts.checkout-facts>div').length,groups:selected.querySelectorAll('.facts.checkout-facts>div[data-fact-group]').length,head:!!selected.querySelector('.checkout-head'),flights:!!selected.querySelector('.checkout-flights'),lead:!!selected.querySelector('.checkout-lead'),help:!!selected.querySelector('.checkout-help'),fields:!!form?.querySelector('[name="name"]')&&!!form?.querySelector('[name="phone"]')&&!!form?.querySelector('[name="comment"]')&&!!form?.querySelector('[name="consent"]')&&!!form?.querySelector('button[type="submit"]')};
-                window.dispatchEvent(new CustomEvent('v2:flight-selected'));state.secondActive=steps[1]?.classList.contains('is-active')||false;
-                window.dispatchEvent(new CustomEvent('v2:lead-started'));state.thirdActive=steps[2]?.classList.contains('is-active')||false;
-                window.dispatchEvent(new CustomEvent('v2:lead-success'));state.thirdComplete=steps[2]?.classList.contains('is-complete')||false;
+                window.V2CheckoutExperienceV1.setStage(2,false);state.secondActive=steps[1]?.classList.contains('is-active')||false;
+                window.V2CheckoutExperienceV1.setStage(3,false);state.thirdActive=steps[2]?.classList.contains('is-active')||false;
+                window.V2CheckoutExperienceV1.setStage(3,true);state.thirdComplete=steps[2]?.classList.contains('is-complete')||false;
                 selected.innerHTML=html;
                 if(window.V2SelectedTourDescription)window.V2SelectedTourDescription.decorate(selected);
                 if(window.V2CheckoutExperienceV1)window.V2CheckoutExperienceV1.decorate(selected);
