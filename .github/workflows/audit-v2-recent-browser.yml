@@ -1,0 +1,120 @@
+name: Audit V2 recent browser traffic
+on:
+  push:
+    branches:
+      - 'autopilot/recent-live-window'
+    paths:
+      - '.github/workflows/audit-v2-recent-browser.yml'
+  schedule:
+    - cron: '42 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-audit-v2-recent-browser-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_file="$GITHUB_WORKSPACE/deploy_key"
+          raw="$DEPLOY_SSH_KEY_VALUE"
+          if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+      - name: Build recent privacy-safe audit
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/v2-recent-audit.py" <<'PY'
+          import os,re,collections,subprocess,datetime
+          home=os.path.expanduser('~')
+          access=os.path.join(home,'logs','anytour.online.access.log')
+          error=os.path.join(home,'logs','anytour.online.error.log')
+          project='/poisk-turov-test/v2'
+          window=datetime.timedelta(minutes=30)
+          def tail(path,count):
+              if not os.path.isfile(path) or not os.access(path,os.R_OK): return []
+              p=subprocess.Popen(['tail','-n',str(count),'--',path],stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+              out,_=p.communicate(); return (out or '').splitlines()
+          def access_time(line):
+              m=re.search(r'\[([^\]]+)\]',line)
+              if not m:return None
+              try:return datetime.datetime.strptime(m.group(1),'%d/%b/%Y:%H:%M:%S %z')
+              except ValueError:return None
+          def error_time(line):
+              m=re.match(r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})',line)
+              if not m:return None
+              try:return datetime.datetime.strptime(m.group(1),'%Y/%m/%d %H:%M:%S')
+              except ValueError:return None
+          def actor(line):
+              l=line.lower()
+              if 'headlesschrome' in l or 'playwright' in l:return 'headless'
+              if 'bot' in l or 'spider' in l or 'crawler' in l:return 'bot'
+              if 'curl/' in l:return 'curl'
+              if 'python-requests' in l or 'python/' in l:return 'python'
+              if 'mozilla/' in l:return 'browser'
+              return 'other'
+          def action_from_target(target):
+              if '?' not in target:return '(none)'
+              m=re.search(r'(?:^|&)action=([^&]+)',target.split('?',1)[1]); return m.group(1) if m else '(none)'
+          lines=tail(access,50000)
+          stamped=[(access_time(x),x) for x in lines]
+          stamped=[x for x in stamped if x[0] is not None]
+          latest=max((x[0] for x in stamped),default=None)
+          cutoff=latest-window if latest else None
+          req=re.compile(r'"([A-Z]+)\s+([^\s"]+)\s+HTTP/[^"]+"\s+(\d{3})')
+          status=collections.Counter(); actions=collections.Counter(); paths=collections.Counter(); bad=collections.Counter(); recent=[]; actor_by_ip={}
+          for ts,line in stamped:
+              if cutoff and ts<cutoff:continue
+              if project not in line:continue
+              parts=line.split(None,1)
+              if parts:actor_by_ip[parts[0]]=actor(line)
+              if actor(line)!='browser':continue
+              m=req.search(line)
+              if not m:continue
+              method,target,code=m.groups(); action=action_from_target(target); path=target.split('?',1)[0]
+              recent.append(line); status[code]+=1; paths[path]+=1
+              if action!='(none)':actions[action]+=1
+              if code.startswith(('4','5')):bad[(code,action,path)]+=1
+          print('RECENT_30M_ACCESS_LATEST',latest.isoformat() if latest else '(none)')
+          print('RECENT_30M_BROWSER_REQUESTS',len(recent))
+          print('RECENT_30M_BROWSER_STATUS',dict(status))
+          print('RECENT_30M_BROWSER_ACTIONS',actions.most_common(20))
+          print('RECENT_30M_BROWSER_PATHS',paths.most_common(15))
+          print('RECENT_30M_BROWSER_4XX_5XX',bad.most_common(15))
+          errs=tail(error,30000)
+          estamp=[(error_time(x),x) for x in errs]
+          estamp=[x for x in estamp if x[0] is not None]
+          elatest=max((x[0] for x in estamp),default=None); ecut=elatest-window if elatest else None
+          client_rx=re.compile(r', client:\s*([^,\s]+)'); request_rx=re.compile(r'request:\s+"[A-Z]+\s+([^\s"]+)')
+          delays=collections.Counter()
+          for ts,line in estamp:
+              if ecut and ts<ecut:continue
+              if project not in line or not re.search(r'limiting requests|limiting connections|delaying request, excess',line,re.I):continue
+              cm=client_rx.search(line); who=actor_by_ip.get(cm.group(1),'unknown') if cm else 'unknown'
+              if who!='browser':continue
+              rm=request_rx.search(line); target=rm.group(1) if rm else ''; action=action_from_target(target); path=target.split('?',1)[0] if target else '(none)'
+              delays[(action,path)]+=1
+          print('RECENT_30M_ERROR_LATEST',elatest.isoformat() if elatest else '(none)')
+          print('RECENT_30M_BROWSER_RATE_LIMIT',sum(delays.values()))
+          print('RECENT_30M_BROWSER_RATE_LIMIT_BY_ROUTE',delays.most_common(20))
+          PY
+          python3 -m py_compile "$RUNNER_TEMP/v2-recent-audit.py"
+      - name: Aggregate recent production signals
+        env:
+          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          remote="/tmp/v2-recent-audit-${GITHUB_RUN_ID}.py"
+          scp "${ssh_opts[@]}" "$RUNNER_TEMP/v2-recent-audit.py" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE:$remote"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" "timeout 45s python3 '$remote'; rc=\$?; rm -f '$remote'; exit \$rc"
