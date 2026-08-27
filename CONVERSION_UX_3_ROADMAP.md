@@ -41,6 +41,8 @@ A fresh five-viewport audit after C1–C5 confirmed one material nested-card iss
 
 The selected-tour visual audit then exposed a real mobile overlap from the C1 sticky search CTA: it could remain visible over checkout after a tour was selected, including the public/programmatic selection path. PR #59 suppresses that sticky immediately for direct-tour clicks and on `v2:tour-selected`, and the selected-tour visual gate now fails if the sticky overlaps checkout. V2-only deploy, live smoke, post-deploy visual and durable baseline passed.
 
+A subsequent fresh selected-tour review still found unnecessary nested-card visual weight in the reassurance area immediately before lead entry. PR #61 compacted the existing reassurance content into a lightweight strip: the duplicate explanatory paragraph is visually removed, individual reassurance steps no longer look like nested cards, and spacing/type are reduced so the lead form sits closer to the selected flight. Trust semantics and DOM/data behavior remain intact. PR #61 passed V2-only deploy `33102452656`, active contract `33102452612`, tour live `33102452599`, result-detail live `33102452609`, security `33102452634`, post-deploy visual `33102554997` and five-viewport baseline `33102554873`.
+
 The analogous results-card flattening candidate was reviewed on mobile and desktop and intentionally retained: the `Варианты тура` section background materially separates hotel-level comparison from a concrete tour choice on desktop. C6 therefore stops here rather than mechanically removing useful hierarchy.
 
 ## C7 — Live Conversion Optimization
