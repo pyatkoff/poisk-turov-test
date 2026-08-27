@@ -98,6 +98,10 @@ jobs:
               await page.waitForTimeout(150);
               await page.screenshot({path:`visual-pr-artifacts/${name}-dates.png`,fullPage:true});
 
+              // A picker is a modal sheet on mobile and a popover on larger screens.
+              // Follow the real user flow: finish the current picker before opening the next.
+              await page.locator('.dates-picker .picker-done').click();
+              const datesDoneClosed=await page.locator('.dates-picker').evaluate(el=>!el.open);
               await page.locator('.guests-picker summary').click();
               await page.waitForTimeout(100);
               await page.locator('#childCount').evaluate(el=>{el.value='2';el.dispatchEvent(new Event('change',{bubbles:true}));});
@@ -120,6 +124,19 @@ jobs:
               await page.locator('.guests-picker .picker-done').click();
               const doneClosed=await page.locator('.guests-picker').evaluate(el=>!el.open);
 
+              // Separately verify the single-open invariant without requiring a click through an open modal/popover.
+              const singleOpen=await page.evaluate(async()=>{
+                const dates=document.querySelector('.dates-picker');
+                const guests=document.querySelector('.guests-picker');
+                dates.open=true;
+                await new Promise(r=>setTimeout(r,0));
+                guests.open=true;
+                await new Promise(r=>setTimeout(r,0));
+                const ok=!dates.open&&guests.open;
+                guests.open=false;
+                return ok;
+              });
+
               await page.locator('details.extras > summary').click();
               await page.waitForTimeout(150);
               const advancedState=await page.evaluate(()=>{
@@ -139,13 +156,13 @@ jobs:
               if(advancedState.mobile)await page.locator('.search-filters-backdrop').click();else await page.locator('details.extras > summary').click();
               const advancedClosed=await page.locator('details.extras').evaluate(el=>!el.open);
 
-              const item={name,width,height,http:response?response.status():0,pageErrors,initial,dateState,guestState,doneClosed,advancedState,advancedClosed};
+              const item={name,width,height,http:response?response.status():0,pageErrors,initial,dateState,datesDoneClosed,guestState,doneClosed,singleOpen,advancedState,advancedClosed};
               report.push(item);
               const mobileAdvancedBad=advancedState.mobile&&(!advancedState.backdropVisible||!advancedState.bodyLocked||advancedState.position!=='fixed');
               const desktopAdvancedBad=!advancedState.mobile&&advancedState.backdropVisible;
-              const bad=item.http!==200||pageErrors.length||initial.overflow||!initial.hero||!initial.search||!initial.dates||!initial.guests||initial.resultsVisible||!dateState.open||!dateState.min||!dateState.toMin||!dateState.toMax||!dateState.hint.includes('21')||!guestState.datesClosed||!guestState.guestsOpen||!guestState.agesVisible||!guestState.agesInsidePanel||guestState.ageCount!==2||guestState.overflow||!doneClosed||!advancedState.open||advancedState.overflow||mobileAdvancedBad||desktopAdvancedBad||!advancedClosed;
+              const bad=item.http!==200||pageErrors.length||initial.overflow||!initial.hero||!initial.search||!initial.dates||!initial.guests||initial.resultsVisible||!dateState.open||!dateState.min||!dateState.toMin||!dateState.toMax||!dateState.hint.includes('21')||!datesDoneClosed||!guestState.datesClosed||!guestState.guestsOpen||!guestState.agesVisible||!guestState.agesInsidePanel||guestState.ageCount!==2||guestState.overflow||!doneClosed||!singleOpen||!advancedState.open||advancedState.overflow||mobileAdvancedBad||desktopAdvancedBad||!advancedClosed;
               if(bad)failed=true;
-              console.log(`PR_VISUAL ${name} http=${item.http} overflow=${initial.overflow}/${guestState.overflow}/${advancedState.overflow} dates=${initial.dates} guests=${initial.guests} ages=${guestState.ageCount} advanced=${advancedState.open}/${advancedState.position} errors=${pageErrors.length}`);
+              console.log(`PR_VISUAL ${name} http=${item.http} overflow=${initial.overflow}/${guestState.overflow}/${advancedState.overflow} dates=${initial.dates} guests=${initial.guests} ages=${guestState.ageCount} single=${singleOpen} advanced=${advancedState.open}/${advancedState.position} errors=${pageErrors.length}`);
               await context.close();
             }
             fs.writeFileSync('visual-pr-artifacts/report.json',JSON.stringify(report,null,2));
