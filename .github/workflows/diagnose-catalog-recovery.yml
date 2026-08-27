@@ -1,0 +1,78 @@
+name: Diagnose catalog recovery
+on:
+  pull_request:
+    paths:
+      - 'v2/catalogs-v2.js'
+      - '.github/workflows/diagnose-catalog-recovery.yml'
+
+jobs:
+  catalog-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise critical catalog failure and retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save jsdom@26 >/dev/null
+          cat > /tmp/catalog-recovery.cjs <<'JS'
+          const fs=require('fs');
+          const {JSDOM}=require('jsdom');
+          const html=`<!doctype html><body>
+          <form id="tourSearch">
+            <select name="from"><option value="1" selected>Загружаем города…</option></select>
+            <select name="country"><option value="4" selected>Загружаем страны…</option></select>
+            <select name="arrival"><option value="">Любой аэропорт</option></select>
+            <select name="region"><option value="55">Старый курорт</option></select>
+            <select name="subregion"><option value="66">Старый район</option></select>
+            <select name="hotel"><option value="77">Старый отель</option></select>
+            <select name="operator"><option value="88">Старый оператор</option></select>
+            <select name="hotel_type"><option value="99">Старый тип</option></select>
+            <select name="food"><option value="">Любое</option></select>
+            <select name="stars"><option value="">Любая</option></select>
+            <select name="rating"><option value="">Любой</option></select>
+            <select id="childCount" name="child_count"><option value="0">0</option></select>
+            <div id="childAges"></div><div id="hotelServices"></div><span id="serviceCount"></span>
+          </form></body>`;
+          const dom=new JSDOM(html,{runScripts:'outside-only',url:'https://example.test/'});
+          const {window}=dom;
+          let mode='initial-fail';
+          window.V2Runtime={api:async(action,params)=>{
+            if(mode==='initial-fail'&&action==='departures')throw Object.assign(new Error('departures unavailable'),{code:'NETWORK_ERROR'});
+            if(mode==='country-fail'&&action==='countries')throw Object.assign(new Error('countries unavailable'),{code:'NETWORK_ERROR'});
+            const data={
+              departures:[{id:1,name:'Москва'},{id:2,name:'Санкт-Петербург'}],
+              countries:[{id:4,name:'Турция'},{id:5,name:'Египет'}],arrivals:[],regions:[],subregions:[],meals:[],operators:[],hotel_types:[],hotel_services:[],hotels:[]
+            };
+            return data[action]||[];
+          }};
+          window.console.warn=()=>{};
+          window.eval(fs.readFileSync('v2/catalogs-v2.js','utf8'));
+          const form=window.document.getElementById('tourSearch');
+          const wait=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            await window.V2Catalogs.init();
+            if(form.elements.from.value!==''||form.elements.country.value!=='')throw new Error('critical defaults were not cleared after initial failure');
+            let recovery=window.document.querySelector('.catalog-recovery');
+            if(!recovery||!recovery.textContent.includes('Повторить загрузку'))throw new Error('initial failure recovery missing');
+            mode='ok';
+            recovery.querySelector('.catalog-retry').click();
+            for(let i=0;i<30&&window.document.querySelector('.catalog-recovery');i++)await wait(10);
+            if(window.document.querySelector('.catalog-recovery'))throw new Error('recovery did not clear after successful retry');
+            if(form.elements.from.value!=='1'||form.elements.country.value!=='4')throw new Error('critical catalogs did not recover defaults');
+            form.elements.region.innerHTML='<option value="55" selected>Старый курорт</option>';
+            form.elements.hotel.innerHTML='<option value="77" selected>Старый отель</option>';
+            form.elements.from.value='2';
+            mode='country-fail';
+            let rejected=false;
+            try{await window.V2Catalogs.handleChange({target:form.elements.from});}catch(e){rejected=true;}
+            if(!rejected)throw new Error('country failure should remain observable to caller');
+            if(form.elements.country.value!=='')throw new Error('stale country survived departure-change failure');
+            if(form.elements.region.value!==''||form.elements.hotel.value!=='')throw new Error('stale dependent destination filters survived country failure');
+            recovery=window.document.querySelector('.catalog-recovery');
+            if(!recovery||!recovery.textContent.includes('Повторить загрузку'))throw new Error('departure-change recovery missing');
+            console.log('CATALOG_RECOVERY_OK initial_failure_retry=1 stale_destination_cleared=1');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node /tmp/catalog-recovery.cjs
