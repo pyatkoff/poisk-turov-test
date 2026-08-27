@@ -16,7 +16,7 @@ jobs:
           set -euo pipefail
           npm init -y >/dev/null 2>&1
           npm install --no-save jsdom@26 >/dev/null
-          cat > /tmp/catalog-recovery.cjs <<'JS'
+          cat > catalog-recovery.cjs <<'JS'
           const fs=require('fs');
           const {JSDOM}=require('jsdom');
           const html=`<!doctype html><body>
@@ -75,4 +75,6 @@ jobs:
             console.log('CATALOG_RECOVERY_OK initial_failure_retry=1 stale_destination_cleared=1');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node /tmp/catalog-recovery.cjs
+          node catalog-recovery.cjs
+          rm -f catalog-recovery.cjs package.json package-lock.json
+          rm -rf node_modules
