@@ -14,6 +14,9 @@ concurrency:
   group: ci-visual-v2-post-deploy
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   visual-post-deploy:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
