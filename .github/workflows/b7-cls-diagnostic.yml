@@ -1,0 +1,42 @@
+name: B7 selected-tour CLS diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/b7-cls-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cls-diagnostic:
+    runs-on: self-hosted
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Measure progressive selected-tour image shift
+        shell: bash
+        env:
+          V2_URL: https://anytour.online/poisk-turov-test/v2/
+        run: |
+          set -euo pipefail
+          if ! node -e "require('playwright')" >/dev/null 2>&1; then npm install --no-save playwright@1.55.0 >/dev/null; fi
+          mkdir -p b7-cls-artifacts
+          cat > b7-cls.cjs <<'JS'
+          const {chromium}=require('playwright');
+          const fs=require('fs');
+          const viewports=[['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000]];
+          const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="1600" height="900" fill="#dfe8ff"/><text x="800" y="450" text-anchor="middle" font-size="72" fill="#6578aa">HOTEL</text></svg>`;
+          const fixture=`<button class="back-results">← Вернуться к предложениям</button><div class="selected-head checkout-head"><div><span class="eyebrow">ВЫБРАННЫЙ ТУР</span><h2>AnyTour Coast Resort</h2><p>Турция · Анталья</p></div><div class="selected-price"><small>Стоимость</small>142 000 ₽</div></div><div class="checkout-journey"><span><b>1</b>Проверить тур</span><span><b>2</b>Выбрать перелёт</span><span><b>3</b>Оставить контакты</span></div><div class="selected-picture checkout-picture"><img src="https://cls.test/hotel.svg" alt=""></div><div class="checkout-facts-heading"><strong>Параметры тура</strong><span>Проверьте детали</span></div><div class="facts checkout-facts">${Array.from({length:10},(_,i)=>`<div><span>Параметр ${i+1}</span><b>Значение</b></div>`).join('')}</div><div class="tour-flights checkout-flights"><div class="section-heading"><strong>Авиарейсы</strong><span>Проверьте рейсы и итоговую стоимость</span></div><button class="secondary">Проверить рейсы и цену</button></div>`;
+          (async()=>{const browser=await chromium.launch({headless:true});const report=[];for(const [name,width,height] of viewports){const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});const page=await context.newPage();await page.route('https://cls.test/hotel.svg',async route=>{await new Promise(r=>setTimeout(r,1200));await route.fulfill({status:200,contentType:'image/svg+xml',body:svg});});await page.goto(process.env.V2_URL,{waitUntil:'domcontentloaded',timeout:45000});await page.evaluate(()=>{window.__cls=0;window.__shifts=[];new PerformanceObserver(list=>{for(const e of list.getEntries()){if(!e.hadRecentInput){window.__cls+=e.value;window.__shifts.push({value:e.value,sources:(e.sources||[]).map(s=>({node:s.node&&s.node.className||s.node&&s.node.tagName||'',previousRect:s.previousRect,currentRect:s.currentRect}))});}}}).observe({type:'layout-shift',buffered:true});});await page.evaluate(html=>{['.v2-product-hero','#tourSearch','#status','#resultsTools','#results'].forEach(sel=>{const el=document.querySelector(sel);if(el)el.style.display='none';});const selected=document.getElementById('selectedTour');selected.hidden=false;selected.innerHTML=html;window.scrollTo(0,0);},fixture);const before=await page.evaluate(()=>{const pic=document.querySelector('.selected-picture'),facts=document.querySelector('.checkout-facts');return{pic:pic&&pic.getBoundingClientRect().height||0,factsTop:facts&&facts.getBoundingClientRect().top||0};});await page.waitForTimeout(1800);const after=await page.evaluate(()=>{const pic=document.querySelector('.selected-picture'),facts=document.querySelector('.checkout-facts'),img=pic&&pic.querySelector('img');return{pic:pic&&pic.getBoundingClientRect().height||0,factsTop:facts&&facts.getBoundingClientRect().top||0,imgNatural:[img&&img.naturalWidth||0,img&&img.naturalHeight||0],cls:window.__cls||0,shifts:window.__shifts||[]};});await page.screenshot({path:`b7-cls-artifacts/${name}.png`,fullPage:true});const item={name,width,height,before,after,deltaPicture:after.pic-before.pic,deltaFactsTop:after.factsTop-before.factsTop};report.push(item);console.log('B7_CLS',JSON.stringify(item));await context.close();}fs.writeFileSync('b7-cls-artifacts/report.json',JSON.stringify(report,null,2));await browser.close();})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node b7-cls.cjs
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b7-cls-diagnostic-${{ github.event.pull_request.number || 'manual' }}
+          path: b7-cls-artifacts/
+          retention-days: 7
