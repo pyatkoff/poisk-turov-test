@@ -61,6 +61,16 @@ jobs:
               core=re.sub(r'\b[0-9a-f]{2,}:[0-9a-f:]+\b','<addr>',core,flags=re.I)
               core=re.sub(r'\b\d+\b','<n>',core)
               return re.sub(r'\s+',' ',core).strip()[:180] or '(empty)'
+          def error_request(line):
+              m=re.search(r'request:\s+"[A-Z]+\s+([^\s"]+)',line)
+              if not m: return '(none)','(none)'
+              target=m.group(1); clean=target.split('?',1)[0]
+              if not clean.startswith(project): clean='(outside-project)'
+              action='(none)'
+              if '?' in target:
+                  am=re.search(r'(?:^|&)action=([^&]+)',target.split('?',1)[1])
+                  if am: action=am.group(1)
+              return clean,action
           def summarize(lines,needle,label):
               req=re.compile(r'"([A-Z]+)\s+([^\s"]+)\s+HTTP/[^"]+"\s+(\d{3})')
               total=0; methods=collections.Counter(); status=collections.Counter(); paths=collections.Counter(); actions=collections.Counter(); bad=collections.Counter(); bad_actions=collections.Counter(); bad_actors=collections.Counter(); actors=collections.Counter(); browser_actions=collections.Counter()
@@ -94,7 +104,7 @@ jobs:
           root_total=summarize(lines,project,"PROJECT_LIVE")
           v2_total=summarize(lines,v2,"V2_LIVE")
           print("PROJECT_NON_V2_REQUESTS",max(0,root_total-v2_total))
-          err=collections.Counter(); severities=collections.Counter(); signatures=collections.Counter(); matched=0
+          err=collections.Counter(); severities=collections.Counter(); signatures=collections.Counter(); class_paths=collections.Counter(); class_actions=collections.Counter(); matched=0
           severity_rx=re.compile(r'\[(debug|info|notice|warn|error|crit|alert|emerg)\]',re.I)
           classes=[
               ("php_fatal",re.compile(r'PHP Fatal error|Uncaught',re.I)),
@@ -110,8 +120,9 @@ jobs:
               ("client_body_too_large",re.compile(r'client intended to send too large body',re.I)),
               ("request_header_too_large",re.compile(r'client sent too large request|request header or cookie too large',re.I)),
               ("ssl_handshake",re.compile(r'SSL_do_handshake\(\) failed|SSL handshaking',re.I)),
-              ("rate_limited",re.compile(r'limiting requests|limiting connections',re.I)),
-              ("open_failed",re.compile(r'open\(\).*failed',re.I)),
+              ("rate_limited",re.compile(r'limiting requests|limiting connections|delaying request, excess',re.I)),
+              ("filesystem_symlink_loop",re.compile(r'openat\(\).*Too many levels of symbolic links',re.I)),
+              ("open_failed",re.compile(r'open(?:at)?\(\).*failed',re.I)),
               ("access_forbidden",re.compile(r'forbidden|permission denied',re.I)),
               ("internal_redirect",re.compile(r'internal redirection cycle',re.I)),
           ]
@@ -120,15 +131,18 @@ jobs:
               matched+=1
               sm=severity_rx.search(line); severities[(sm.group(1).lower() if sm else "unknown")]+=1
               signatures[safe_signature(line)]+=1
-              hit=False
+              path,action=error_request(line); hit=False
               for name,rx in classes:
-                  if rx.search(line): err[name]+=1; hit=True
+                  if rx.search(line):
+                      err[name]+=1; class_paths[(name,path)]+=1; class_actions[(name,action)]+=1; hit=True; break
               if not hit: err["other_project_error_line"]+=1
           print("PROJECT_ERROR_SOURCE",os.path.relpath(error,home),os.path.getsize(error) if os.path.isfile(error) else 0)
           print("PROJECT_ERROR_LINES",matched)
           print("PROJECT_ERROR_SEVERITIES",dict(severities))
           print("PROJECT_ERROR_CLASSES",dict(err))
           print("PROJECT_ERROR_SAFE_SIGNATURES",signatures.most_common(15))
+          print("PROJECT_ERROR_CLASS_PATHS",class_paths.most_common(20))
+          print("PROJECT_ERROR_CLASS_ACTIONS",class_actions.most_common(20))
           PY
           python3 -m py_compile "$RUNNER_TEMP/v2-live-audit.py"
       - name: Aggregate exact vhost production signals
