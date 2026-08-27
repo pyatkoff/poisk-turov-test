@@ -52,12 +52,13 @@ jobs:
           done
           grep -Fq '<img src="/images/logo.svg" alt="AnyTour">' v2/index.php
           echo "RETIRED_V2_STATIC_ASSETS_ABSENT"
-      - name: Validate dirty-search invalidation contract
+      - name: Validate stale-response generation guards
         shell: bash
         run: |
           set -euo pipefail
           lifecycle=v2/search-lifecycle-v6.js
           continuation=v2/search-continue-v6.js
+          tour=v2/tour-controller-v4.js
           grep -Fq 'generation++;' "$lifecycle"
           grep -Fq 'clearTimeout(pollTimer)' "$lifecycle"
           grep -Fq 'searchId=0' "$lifecycle"
@@ -66,7 +67,13 @@ jobs:
           grep -Fq 'run===generation&&Number(id||0)===Number(searchId||0)' "$lifecycle"
           grep -Fq "window.addEventListener('v2:search-reset'" "$continuation"
           grep -Fq 'operation++;searchId=0;removeMore();' "$continuation"
-          echo "DIRTY_SEARCH_INVALIDATION_OK"
+          grep -Fq 'tourGeneration=0,flightGeneration=0' "$tour"
+          grep -Fq 'const run=++flightGeneration' "$tour"
+          grep -Fq 'if(run!==flightGeneration' "$tour"
+          grep -Fq 'const run=++tourGeneration' "$tour"
+          grep -Fq 'flightGeneration++;' "$tour"
+          grep -Fq 'if(run!==tourGeneration)return;' "$tour"
+          echo "STALE_RESPONSE_GENERATION_GUARDS_OK"
       - name: Validate active PHP
         shell: bash
         run: |
