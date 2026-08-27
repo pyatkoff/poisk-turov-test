@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T19:06:00+03:00",
+  "updated_at": "2026-08-27T19:18:00+03:00",
   "mode": "product_ux_visual_development",
-  "phase": "Product UX and visual development before and during live traffic",
+  "phase": "Live product optimization readiness",
   "current_task": {
-    "id": "B7",
-    "category": "PERFORMANCE_VISUAL_STABILITY",
-    "title": "Performance and visual stability",
-    "status": "IN_PROGRESS",
-    "objective": "Reduce client overhead, cascade complexity and layout instability while preserving the locked five-viewport product contract and strong recovery UX.",
-    "next_action": "Continue the whole V2 recovery/performance audit rather than speculative micro-optimization. First inspect catalog bootstrap/change failure UX and search-continue recovery for user-visible dead ends; fix only confirmed issues. Then reassess whether B7 has enough remaining material evidence to stay open or can be closed pending real traffic. Progressive result dedup is explicitly deferred: live PR #40 observed only two material snapshots (37% and 100%) and both differed. Keep the lead-form-guard selectedTour MutationObserver intact; do not bundle JS merely to reduce request count."
+    "id": "B8",
+    "category": "LIVE_PRODUCT_OPTIMIZATION",
+    "title": "Live product optimization",
+    "status": "WAITING_FOR_TRAFFIC",
+    "objective": "Use real traffic, live conversations and production behavior to prioritize the next product improvements instead of speculative micro-optimization.",
+    "next_action": "Wait for meaningful live traffic evidence, then activate B8 and A8 together. Prioritize production breakage, lead loss, incorrect data, user-flow friction and visual/responsive regressions from real sessions before lower-value performance work. Keep the deferred B7 micro-optimizations deferred unless profiling or live evidence makes them material."
   },
   "queue": [
     {"id":"B1","status":"DONE","title":"Visual foundation"},
@@ -19,7 +19,7 @@
     {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0"},
     {"id":"B5","status":"DONE","title":"Trust and conversion UX"},
     {"id":"B6","status":"DONE","title":"Visual regression baseline"},
-    {"id":"B7","status":"IN_PROGRESS","title":"Performance and visual stability","note":"B7 production-green work includes CSS request/cascade reduction, safe live-read timeout hardening, selected-tour desktop image CLS reservation, mobile-only lazy initialization, deferred hidden result-state DOM, removal/lazy-binding of empty startup scans/listeners, cached result counts, and hot-path formatter reuse. PR #39 cached the results renderer Intl.NumberFormat and passed deploy/live/post-deploy/baseline. PR #41 cached the automatically repeated search-status minPrice formatter and passed deploy/live/post-deploy/baseline. Temporary diagnostic PR #40 sampled one real progressive search: 25 hotels at 37% and 25 hotels at 100% had different material fingerprints (changed_transitions=1, unchanged_transitions=0); it was closed without merge, disproving the current case for payload-dedup/incremental-render complexity. Whole-flow audit then found a selected-tour recovery dead end: transient tour API failure offered only back-to-results. PR #42 added in-place `Повторить загрузку тура` through the existing guarded selectTour path; all six PR gates passed, merged as ad4f90aac263c7583d06e98b5c55efa5383869ae, deploy 33091140734, active contract 33091140572, tour live 33091140613, flights live 33091140661, result-detail live 33091140648, security 33091140856, post-deploy visual 33091226239 and baseline 33091226226 all passed. Selected-tour/flight formatter allocations and per-card matchMedia remain deferred as lower-frequency/smaller than proven targets."},
+    {"id":"B7","status":"DONE","title":"Performance and visual stability","note":"B7 closed after the whole-flow recovery/performance audit found no remaining material evidence worth speculative optimization. Production-green work includes CSS request/cascade reduction, safe live-read timeout hardening, selected-tour desktop image CLS reservation, mobile-only lazy initialization, deferred hidden result-state DOM, removal/lazy-binding of empty startup scans/listeners, cached result counts, formatter reuse and recovery hardening. PR #39 cached the results renderer Intl.NumberFormat. PR #41 cached search-status minPrice formatting. Diagnostic PR #40 disproved progressive payload dedup as useful in the sampled real search. PR #42 added in-place selected-tour retry after transient tour API failure. PR #43 fixed critical catalog recovery: initial departures/countries failures no longer leave indefinite loading, stale dependent destination filters are cleared after countries failure, and an on-page retry preserves dates/guest inputs. PR #43 merged as 00a2c2d36b662ed18ecfecb06c3f8e86d48cb3da; its six PR gates passed, Visual V2 post-deploy run 33092133320 passed, and Visual V2 baseline job in run 33092133372 passed. Search-continue already restores its button as `Попробовать ещё раз`; hotel-details and room-details already expose recoverable retry paths. No further confirmed B7 dead ends remain."},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
@@ -33,12 +33,12 @@
   ],
   "last_ci": {
     "workflow": "Visual V2 post-deploy",
-    "run_id": 33091226239,
-    "head_sha": "ad4f90aac263c7583d06e98b5c55efa5383869ae",
+    "run_id": 33092133320,
+    "head_sha": "00a2c2d36b662ed18ecfecb06c3f8e86d48cb3da",
     "conclusion": "success",
-    "classification": "B7_SELECTED_TOUR_LOAD_RECOVERY_PRODUCTION_GREEN"
+    "classification": "B7_CATALOG_RECOVERY_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "ad4f90aac263c7583d06e98b5c55efa5383869ae",
+  "last_verified_commit": "00a2c2d36b662ed18ecfecb06c3f8e86d48cb3da",
   "pending_verification": null,
   "blocked": [],
   "deferred": [
