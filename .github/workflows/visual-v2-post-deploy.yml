@@ -116,8 +116,7 @@ jobs:
               await page.screenshot({path:`visual-artifacts/${name}-results.png`,fullPage:true});
               const item={name,width,height,http:response?response.status():0,pageErrors,state,resultState};
               report.push(item);
-              const expectedTourRows=width<=760?1:2;
-              const resultBad=!resultState.renderer||resultState.cards!==2||!resultState.toolsVisible||resultState.decisionFacts<2||!resultState.bestOffer||resultState.tourRows!==expectedTourRows||(width<=760&&!resultState.moreToggle)||(width>760&&resultState.moreToggle)||(width<=760&&!resultState.mobileFilterVisible)||(width>760&&resultState.mobileFilterVisible)||resultState.overflow;
+              const resultBad=!resultState.renderer||resultState.cards!==2||!resultState.toolsVisible||resultState.decisionFacts<2||!resultState.bestOffer||resultState.tourRows!==1||!resultState.moreToggle||(width<=760&&!resultState.mobileFilterVisible)||(width>760&&resultState.mobileFilterVisible)||resultState.overflow;
               if(item.http!==200||pageErrors.length||state.overflow||!state.heroVisible||!state.headerVisible||!state.searchVisible||state.resultsInitiallyVisible||state.selectedInitiallyVisible||resultBad)failed=true;
               console.log(`VISUAL ${name} http=${item.http} overflow=${state.overflow}/${resultState.overflow} hero=${state.heroVisible} header=${state.headerVisible} search=${state.searchVisible} results=${resultState.cards}/${resultState.tourRows} more=${resultState.moreToggle} mrf=${resultState.mobileFilterVisible} pageErrors=${pageErrors.length}`);
               if(state.offenders.length)console.log(`OFFENDERS ${name} ${JSON.stringify(state.offenders)}`);
