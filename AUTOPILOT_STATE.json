@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T14:04:00+02:00",
+  "updated_at": "2026-08-27T14:39:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
-    "id": "B6",
-    "category": "VISUAL_REGRESSION_BASELINE",
-    "title": "Visual regression baseline",
+    "id": "B7",
+    "category": "PERFORMANCE_VISUAL_STABILITY",
+    "title": "Performance and visual stability",
     "status": "IN_PROGRESS",
-    "objective": "Turn the redesigned V2 journey into a durable five-viewport visual safety net without creating redundant workflow layers.",
-    "next_action": "Use the existing visual-v2-baseline.yml as the single B6 baseline owner. Expand it from initial/filters/children evidence to include populated results, selected-tour/checkout and recovery states at 375/430/768/1024/1440, then establish a durable comparison strategy and consolidate redundant specialized visual gates only after equivalent coverage is proven."
+    "objective": "Reduce client overhead, cascade complexity and layout instability while preserving the now-locked five-viewport product contract.",
+    "next_action": "Start with a measured B7 audit of active V2 asset loading, CSS ownership and layout-shift risks. Prefer isolated changes with baseline comparison evidence; first candidates are redundant CSS ownership/tokens, image/intrinsic-size stability and avoidable client work. Preserve the B6 baseline as the visual contract and keep live Tourvisor/tour-flight validation green after relevant changes."
   },
   "queue": [
     {"id":"B1","status":"DONE","title":"Visual foundation"},
@@ -18,8 +18,8 @@
     {"id":"B3","status":"DONE","title":"Results Experience 2.0","note":"Hotel-level operator hotfix merged as 8c43c98b5e1581517f9a58379c538504ac904d68; operator remains only in concrete tour rows. Production post-deploy visual run 33064644452 passed."},
     {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0","note":"Final B4 checkout PR #10 merged as 87a10fd10f10af293a591e17ec9e5ec3d96fcb05 after contract/security/general visual plus dedicated checkout/selected-tour gates. Production post-deploy visual run 33066545500 passed. SEO H1 regression was isolated and fixed in PR #12 as 8161feb64cc0d3e6346641368a35e1d132d879b4."},
     {"id":"B5","status":"DONE","title":"Trust and conversion UX","note":"PR #11 improved tour/flight/lead failure recovery and no-payment reassurance. PR #13 changed result CTA to 'Проверить тур' and added flight/baggage/final-price confidence cues; merged as 760d9c8c28c46ce769cd8ebf0a88cbb8bf8403af and production post-deploy run 33069724534 passed. PR #14 removed the zero-result dead end with preserved search parameters plus explicit edit/filter recovery actions and a five-viewport recovery gate; merged as fceaf4a1b049400031f7f9585b0b83155d1d6c0d and production post-deploy run 33070022638 passed."},
-    {"id":"B6","status":"IN_PROGRESS","title":"Visual regression baseline","note":"Existing visual-v2-baseline.yml is the intended owner but currently captures only initial, filters and children states as evidence; it does not yet provide durable baseline comparison or complete results/checkout/recovery coverage."},
-    {"id":"B7","status":"QUEUED","title":"Performance and visual stability"},
+    {"id":"B6","status":"DONE","title":"Visual regression baseline","note":"PR #17 folded results conversion, checkout and recovery semantics into deterministic screenshots for 375/430/768/1024/1440 and fixed a comparator false-positive caused by product event dispatch during stage assertions; merged as 694d588487fa8fc80be107e4a14e4e6e426d2051. PR #18 retired four now-redundant specialized PR visual gates only after equivalent baseline coverage and zero unintended screenshot change were proven; merged as e5a153ff85269602716472ffdc1bb16b222c80d4. Production deploy 33072399106, post-deploy visual 33072469440 and main baseline 33072469294 passed."},
+    {"id":"B7","status":"IN_PROGRESS","title":"Performance and visual stability"},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
@@ -32,13 +32,13 @@
     {"id":"A9","status":"DONE","title":"Residual V2 generation and CI cleanup"}
   ],
   "last_ci": {
-    "workflow": "Visual V2 post-deploy",
-    "run_id": 33070022638,
-    "head_sha": "fceaf4a1b049400031f7f9585b0b83155d1d6c0d",
+    "workflow": "Validate V2 tour live",
+    "run_id": 33072844638,
+    "head_sha": "0a91b36bacc6a7170282a86c01302c3a00e7f3a5",
     "conclusion": "success",
-    "classification": "B5_PRODUCTION_GREEN"
+    "classification": "LIVE_TOUR_FLIGHT_CHAIN_GREEN"
   },
-  "last_verified_commit": "fceaf4a1b049400031f7f9585b0b83155d1d6c0d",
+  "last_verified_commit": "0a91b36bacc6a7170282a86c01302c3a00e7f3a5",
   "pending_verification": null,
   "blocked": [],
   "protected": {
