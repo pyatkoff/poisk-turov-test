@@ -37,6 +37,27 @@ jobs:
           done
           echo V2_JS_OK
 
+      - name: Validate C5 flight autoload contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const src=fs.readFileSync('v2/tour-controller-v4.js','utf8');
+          const required=[
+            "flightLoadingTourId===expectedTourId",
+            "renderFlightLoading();",
+            "renderFlightError(tid",
+            "emit('tour-selected',{tour:t});loadFlights(tid);",
+            "class=\"load-flights secondary\"",
+            "Попробовать загрузить рейсы ещё раз",
+            "emit('flight-selected'"
+          ];
+          required.forEach(token=>{if(!src.includes(token))throw new Error('C5 autoload contract missing: '+token);});
+          if(src.includes('>Показать рейсы</button>'))throw new Error('manual flight-load first step leaked back into selected tour');
+          console.log('V2_C5_FLIGHT_AUTOLOAD_OK');
+          NODE
+
       - name: Validate active asset closure
         shell: bash
         run: |
