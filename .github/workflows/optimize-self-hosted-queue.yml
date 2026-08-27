@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   optimize:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:

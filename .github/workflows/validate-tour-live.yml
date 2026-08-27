@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   validate-tour-live:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - name: Prepare SSH key
         env:

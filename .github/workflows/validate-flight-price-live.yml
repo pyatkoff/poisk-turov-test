@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   validate:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - name: Compare live search, tour and default flight price
         shell: bash

@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   seo-foundation:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - name: Validate test-route SEO contract live
         shell: bash

@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   validate-result-detail-live:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - name: Compare live result cards with tour detail
         shell: bash

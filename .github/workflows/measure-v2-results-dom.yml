@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   measure:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - name: Run live search and count hotel tour rows
         shell: bash
