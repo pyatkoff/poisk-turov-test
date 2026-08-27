@@ -2,7 +2,7 @@ name: Audit V2 recent browser traffic
 on:
   push:
     branches:
-      - 'autopilot/recent-live-window'
+      - main
     paths:
       - '.github/workflows/audit-v2-recent-browser.yml'
   schedule:
