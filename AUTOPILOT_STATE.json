@@ -1,35 +1,35 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T09:19:00+02:00",
+  "updated_at": "2026-08-27T09:22:00+02:00",
   "mode": "active_development",
-  "phase": "SEO foundation audit and incremental hardening",
+  "phase": "Visual cascade consolidation and responsive stability",
   "current_task": {
-    "id": "A7",
-    "category": "SEO/FOUNDATION",
-    "title": "SEO foundation audit and incremental work",
+    "id": "A3",
+    "category": "UX/VISUAL_STABILITY",
+    "title": "Consolidate unstable visual cascade areas",
     "status": "IN_PROGRESS",
-    "objective": "Prepare the modern tour-search V2 as a safe foundation for future SEO growth without weakening the current conversion journey or changing protected analytics, Metrika goals or lead-sending semantics.",
-    "next_action": "Continue the A7 audit with URL/search-state crawl behavior, semantic result/detail structure and future canonical/indexability promotion rules; avoid speculative structured data and do not index the temporary /poisk-turov-test/v2/ route."
+    "objective": "Reduce proven CSS cascade fragility in the active V2 experience while preserving the current conversion flow and protected analytics/lead contracts.",
+    "next_action": "Audit the active CSS stack for duplicate/conflicting selectors around result cards, selected-tour layout, search form and narrow mobile breakpoints; consolidate only proven conflicts, then run active/isolation/search/result-detail/deploy regressions and manual responsive verification where practical."
   },
   "queue": [
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass","note":"Removed proven inactive historical generations for results-renderer, search-continue, search-lifecycle, and tour-controller; final contract/isolation/live/deploy checks passed."},
     {"id":"A1","status":"DEFERRED","title":"Visual baseline and regression harness","note":"Automatic visual runs temporarily disabled by project decision; workflow remains available manually."},
     {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit","note":"Primary form ordering, stale-result invalidation, search retry/error recovery, mobile result-filter outcome preview, selected-tour progressive disclosure and lead entry/completion UX were fixed through the active V2 path."},
-    {"id":"A3","status":"QUEUED","title":"Consolidate unstable visual cascade areas","note":"Concrete cascade conflicts in mobile result-card imagery and long-content wrapping were fixed during A4; broader consolidation remains incremental rather than wholesale."},
+    {"id":"A3","status":"IN_PROGRESS","title":"Consolidate unstable visual cascade areas","note":"Concrete cascade conflicts in mobile result-card imagery and long-content wrapping were already fixed during A4. Now auditing the remaining active stylesheet stack incrementally rather than performing a risky wholesale rewrite."},
     {"id":"A4","status":"DONE","title":"Conversion readiness before live traffic","note":"Selected-tour and result-card UX were hardened across CTA clarity, progressive disclosure, mobile imagery, long Tourvisor content, flight selection and lead-entry context; protected lead semantics remained unchanged."},
-    {"id":"A5","status":"DONE","title":"Live Tourvisor correctness pass","note":"Completed live coverage across catalogs, search/result/detail identity, tour-flight/default-price consistency, room association, repricing observation and partial-flight edge data. Production user-facing flight presentation was hardened in f7b16d06/2ee6e52d so placeholder SU000/00:00/zero-baggage/empty carry-on data is not shown as false precision, and collapsed equal-price mobile flight variants now expose safe outbound/return flight-time summaries including transfer-safe labeling. Commit 2ee6e52d passed active contract, isolation, flight-price contract, result-detail, tour live, security and deploy run 33048725775 with Verify V2 + live search smoke. Updated E2E journey c81187a9 passed run 33048842814. Multi-tour flight profile b88909ef passed run 33048909672 across 3 tours / 252 variants / 504 segments: no noPlaces/onDemand flags, no missing fuel, 8 placeholder time points, and 488 zero-baggage + missing-carry-on segments handled by the clarified UI."},
-    {"id":"A7","status":"IN_PROGRESS","title":"SEO foundation audit and incremental work","note":"Initial audit found the temporary V2 route had a title but no meta description, robots policy or H1. Commit 8982c810 added a description, one semantic H1 and noindex,follow for the temporary /poisk-turov-test/v2/ route; canonical remains intentionally absent until a final SEO route is selected. Deploy run 33049074971 succeeded. Commit 04a9d670 added a live SEO foundation guard checking HTTP 200, title, description, noindex/follow, absent canonical, H1, core internal links and active V2 markers. Its first attempt correctly failed before deployment completed; rerun attempt 2 passed against the deployed HTML."},
+    {"id":"A5","status":"DONE","title":"Live Tourvisor correctness pass","note":"Completed live coverage across catalogs, search/result/detail identity, tour-flight/default-price consistency, room association, repricing observation and partial-flight edge data. Production user-facing flight presentation was hardened in f7b16d06/2ee6e52d so placeholder SU000/00:00/zero-baggage/empty carry-on data is not shown as false precision, and collapsed equal-price mobile flight variants now expose safe outbound/return flight-time summaries including transfer-safe labeling. Updated E2E journey c81187a9 passed run 33048842814. Multi-tour flight profile b88909ef passed run 33048909672 across 3 tours / 252 variants / 504 segments with no noPlaces/onDemand flags."},
+    {"id":"A7","status":"DONE","title":"SEO foundation audit and incremental work","note":"Temporary /poisk-turov-test/v2/ now has description, one H1 and noindex,follow; canonical remains intentionally absent. Live SEO guard covers base and parameterized search-state URLs, valid prefill, invalid-value normalization, internal links and active markers. Run 33049366372 passed on e2788661. SEO_FOUNDATION.md records the promotion contract and the boundary that client-rendered live results are application state, while future indexable destination pages need stable server-visible editorial content and URLs."},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop"}
   ],
   "last_ci": {
     "workflow": "Validate V2 SEO foundation",
-    "run_id": 33049143601,
-    "head_sha": "04a9d670a6dad55a7daebae5be710bda0616fd3f",
+    "run_id": 33049366372,
+    "head_sha": "e2788661947750be3a67da1cf03c7a876a4bd6f9",
     "conclusion": "success",
-    "classification": "TEST_ROUTE_SEO_FOUNDATION_VERIFIED"
+    "classification": "SEARCH_STATE_SEO_BOUNDARY_VERIFIED"
   },
-  "last_verified_commit": "04a9d670a6dad55a7daebae5be710bda0616fd3f",
+  "last_verified_commit": "e2788661947750be3a67da1cf03c7a876a4bd6f9",
   "pending_verification": null,
   "blocked": [],
   "protected": {
