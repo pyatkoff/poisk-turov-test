@@ -1,7 +1,7 @@
 (function(){'use strict';
 const form=document.getElementById('tourSearch');
 if(!form||typeof document.createElement!=='function')return;
-const mq=window.matchMedia?window.matchMedia('(max-width: 560px)'):{matches:false};
+const mq=window.matchMedia?window.matchMedia('(max-width: 700px)'):{matches:false};
 let collapsed=false;
 const summary=document.createElement('div');
 summary.className='mobile-search-summary';
