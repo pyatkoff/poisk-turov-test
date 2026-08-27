@@ -5,6 +5,7 @@ on:
     paths:
       - 'v2/search-filters-ux-v1.js'
       - 'v2/search-filters-ux-v1.css'
+      - 'v2/mobile-results-filters-v1.css'
       - 'v2/index.php'
       - '.github/workflows/validate-v2-search-filters-ux.yml'
   workflow_dispatch:
@@ -20,12 +21,16 @@ jobs:
           set -euo pipefail
           node --check v2/search-filters-ux-v1.js
           test -s v2/search-filters-ux-v1.css
+          test -s v2/mobile-results-filters-v1.css
           grep -Fq "v2_asset('search-filters-ux-v1.css')" v2/index.php
+          grep -Fq "v2_asset('mobile-results-filters-v1.css')" v2/index.php
           grep -Fq 'id="v2-primary-search-ux-style"' v2/index.php
           ! grep -Fq 'installStyles' v2/search-filters-ux-v1.js
           ! grep -Fq "document.createElement('style')" v2/search-filters-ux-v1.js
           ! grep -Fq '.style.marginTop' v2/search-filters-ux-v1.js
           grep -Fq '.search-filters-reset{margin-top:14px}' v2/search-filters-ux-v1.css
+          grep -Fq '.search-submit{position:sticky;' v2/search-filters-ux-v1.css
+          grep -Fq '.results-tools[hidden]{display:none!important}' v2/mobile-results-filters-v1.css
           node <<'JS'
           const fs=require('fs'),vm=require('vm');
           const src=fs.readFileSync('v2/search-filters-ux-v1.js','utf8');
