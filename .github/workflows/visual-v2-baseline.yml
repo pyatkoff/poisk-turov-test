@@ -157,7 +157,9 @@ jobs:
                 window.dispatchEvent(new CustomEvent('v2:flight-selected'));state.secondActive=steps[1]?.classList.contains('is-active')||false;
                 window.dispatchEvent(new CustomEvent('v2:lead-started'));state.thirdActive=steps[2]?.classList.contains('is-active')||false;
                 window.dispatchEvent(new CustomEvent('v2:lead-success'));state.thirdComplete=steps[2]?.classList.contains('is-complete')||false;
-                if(window.V2CheckoutExperienceV1)window.V2CheckoutExperienceV1.setStage(1,false);
+                selected.innerHTML=html;
+                if(window.V2SelectedTourDescription)window.V2SelectedTourDescription.decorate(selected);
+                if(window.V2CheckoutExperienceV1)window.V2CheckoutExperienceV1.decorate(selected);
                 state.overflow=document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2;
                 return state;
               },selectedFixture);
