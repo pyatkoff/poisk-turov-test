@@ -1,0 +1,118 @@
+name: Validate V2 result-detail live
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/validate-result-detail-live.yml'
+  workflow_dispatch:
+jobs:
+  validate-result-detail-live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare SSH key
+        env:
+          DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_file="$GITHUB_WORKSPACE/deploy_key"
+          raw="$DEPLOY_SSH_KEY_VALUE"
+          if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+      - name: Compare live result cards with tour detail
+        env:
+          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" '
+            set -euo pipefail
+            fail(){ echo "RESULT_DETAIL_LIVE_FAIL:$1"; exit 1; }
+            base="https://anytour.online/poisk-turov-test/v2/api-v2.php"
+            from="$(date -d "+2 day" +%Y-%m-%d)"
+            till="$(date -d "+9 day" +%Y-%m-%d)"
+            curl -k -L -fsS --max-time 50 "$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB" >/tmp/v2-rd-start.json || fail search_start
+            search_id="$(python3 -c "import json; d=json.load(open('/tmp/v2-rd-start.json')); print(d.get('searchId') or '')")"
+            test -n "$search_id" || fail search_id
+            complete=0
+            for attempt in $(seq 1 20); do
+              sleep 2
+              if curl -k -L -fsS --max-time 45 "$base?action=search_status&searchId=$search_id" >/tmp/v2-rd-status.json && python3 -c "import json; d=json.load(open('/tmp/v2-rd-status.json')); assert d.get('progress')==100 or d.get('status')=='complete'" 2>/dev/null; then complete=1; break; fi
+            done
+            test "$complete" = 1 || fail search_not_complete
+            curl -k -L -fsS --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25" >/tmp/v2-rd-results.json || fail search_results
+            python3 - <<'PY'
+import json
+items=json.load(open('/tmp/v2-rd-results.json'))
+rows=[]
+if isinstance(items,list):
+  for h in items:
+    if not isinstance(h,dict): continue
+    hid=h.get('id') or h.get('hotelId')
+    hname=h.get('name') or h.get('hotelName')
+    for t in h.get('tours') or []:
+      if not isinstance(t,dict) or t.get('id') is None: continue
+      rows.append({
+        'id':str(t.get('id')),
+        'hotelId':t.get('hotelId') or hid,
+        'hotelName':t.get('hotelName') or hname,
+        'date':t.get('date') or t.get('dateFrom') or t.get('startDate'),
+        'price':t.get('price') if not isinstance(t.get('price'),dict) else t.get('price',{}).get('value'),
+        'currency':t.get('currency') or (t.get('price',{}).get('currency') if isinstance(t.get('price'),dict) else None),
+        'nights':t.get('nights'),
+      })
+json.dump(rows[:8],open('/tmp/v2-rd-map.json','w'),ensure_ascii=False)
+print('RESULT_SAMPLE_ROWS='+str(min(len(rows),8)))
+PY
+            test "$(python3 -c "import json; print(len(json.load(open('/tmp/v2-rd-map.json'))))")" -ge 3 || fail insufficient_result_rows
+            compared=0
+            matched=0
+            while IFS= read -r tid; do
+              test -n "$tid" || continue
+              if ! curl -k -L -fsS --max-time 45 "$base?action=tour&tourId=$tid&currency=RUB" >/tmp/v2-rd-tour.json; then continue; fi
+              if TID="$tid" python3 - <<'PY'
+import json,os,sys,datetime as dt
+rows=json.load(open('/tmp/v2-rd-map.json'))
+r=next((x for x in rows if x['id']==os.environ['TID']),None)
+d=json.load(open('/tmp/v2-rd-tour.json'))
+assert r and isinstance(d,dict) and str(d.get('id') or '')==r['id']
+checks=0
+hotel=d.get('hotel') or {}
+if r.get('hotelId') not in (None,''):
+  checks+=1; assert str(hotel.get('id') or '')==str(r['hotelId'])
+if r.get('hotelName'):
+  checks+=1; assert str(hotel.get('name') or '').strip().casefold()==str(r['hotelName']).strip().casefold()
+if r.get('date'):
+  checks+=1
+  def norm(v):
+    s=str(v)
+    for f in ('%d.%m.%Y','%Y-%m-%d'):
+      try:return dt.datetime.strptime(s,f).date().isoformat()
+      except: pass
+    return s
+  assert norm(d.get('date'))==norm(r['date'])
+if r.get('price') not in (None,''):
+  checks+=1; assert float(d.get('price'))==float(r['price'])
+if r.get('currency'):
+  checks+=1; assert str(d.get('currency') or 'RUB')==str(r['currency'])
+if r.get('nights') not in (None,''):
+  checks+=1; assert int(d.get('nights'))==int(r['nights'])
+assert checks>=2
+print('RESULT_DETAIL_MATCH tourId='+r['id']+' checks='+str(checks))
+PY
+              then
+                matched=$((matched+1))
+              else
+                echo "RESULT_DETAIL_MISMATCH tourId=$tid"
+                fail result_detail_mismatch
+              fi
+              compared=$((compared+1))
+              test "$compared" -ge 5 && break
+            done < <(python3 -c "import json; print('\\n'.join(x['id'] for x in json.load(open('/tmp/v2-rd-map.json'))))")
+            test "$matched" -ge 3 || fail insufficient_result_detail_matches
+            echo "RESULT_DETAIL_LIVE_OK searchId=$search_id compared=$compared matched=$matched"
+          '
