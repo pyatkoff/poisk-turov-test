@@ -7,5 +7,6 @@
 .meal-choice.is-active{border-color:#6079d8;background:#edf2ff;color:#2442ad}
 .meal-choice:disabled{cursor:wait;color:#8a94a6;background:#f7f8fb}
 .meal-choice:focus-visible{outline:3px solid rgba(64,92,199,.18);outline-offset:1px}
+@media(max-width:900px){.primary-search-flow>.primary-step-5{grid-column:1/-1!important}.primary-search-flow>.primary-step-6,.primary-search-flow>.primary-step-7{grid-column:span 6!important}.meal-quick{min-width:0}}
 @media(max-width:700px){.primary-search-flow>.primary-step-5,.primary-search-flow>.primary-step-6,.primary-search-flow>.primary-step-7,.main-meal{grid-column:1/-1!important}}
 @media(max-width:560px){.meal-choice{min-height:44px;padding:0 13px;font-size:12px}}
