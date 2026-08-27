@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T19:03:00+03:00",
+  "updated_at": "2026-08-27T19:06:00+03:00",
   "mode": "product_ux_visual_development",
   "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
@@ -9,8 +9,8 @@
     "category": "PERFORMANCE_VISUAL_STABILITY",
     "title": "Performance and visual stability",
     "status": "IN_PROGRESS",
-    "objective": "Reduce client overhead, cascade complexity and layout instability while preserving the locked five-viewport product contract.",
-    "next_action": "Continue B7 with measured repeated-work profiling in the selected-tour and search-continue lifecycle. Progressive results fingerprinting is closed: a live diagnostic search produced two material snapshots at 37% and 100%, and both differed, so payload dedup/incremental-render complexity is not justified. Prioritize automatically repeated DOM scans, formatting, layout/mutation work or network work over user-driven one-off micro-costs. Do not optimize the smaller per-card matchMedia or selected-tour/flight formatter allocations unless evidence shows material impact. Keep the lead-form-guard selectedTour MutationObserver intact unless a safe pre-mutation lifecycle contract is introduced and proven; do not bundle JS merely to reduce request count."
+    "objective": "Reduce client overhead, cascade complexity and layout instability while preserving the locked five-viewport product contract and strong recovery UX.",
+    "next_action": "Continue the whole V2 recovery/performance audit rather than speculative micro-optimization. First inspect catalog bootstrap/change failure UX and search-continue recovery for user-visible dead ends; fix only confirmed issues. Then reassess whether B7 has enough remaining material evidence to stay open or can be closed pending real traffic. Progressive result dedup is explicitly deferred: live PR #40 observed only two material snapshots (37% and 100%) and both differed. Keep the lead-form-guard selectedTour MutationObserver intact; do not bundle JS merely to reduce request count."
   },
   "queue": [
     {"id":"B1","status":"DONE","title":"Visual foundation"},
@@ -19,7 +19,7 @@
     {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0"},
     {"id":"B5","status":"DONE","title":"Trust and conversion UX"},
     {"id":"B6","status":"DONE","title":"Visual regression baseline"},
-    {"id":"B7","status":"IN_PROGRESS","title":"Performance and visual stability","note":"Earlier B7 work includes CSS request/cascade reductions, live-read timeout hardening, selected-tour desktop image CLS reservation, lazy mobile search-summary/results-filter initialization, deferred hidden result-state DOM, and removal of empty accessibility startup scans. PR #35 cached the rendered result count instead of scanning `.hotel-card` on every search-progress poll; merged as 59fc25d10a5ca06f2247a90801c20d62bdfd63a7 with deploy 33088028419, post-deploy 33088135420, baseline 33088135455. PR #36 lazy-bound the results document action handler on first render; merged as c44e84d1c3a61bbf5a8313807436ccde884fcf15 with deploy 33088328395, post-deploy 33088421118, baseline 33088421114. PR #37 lazy-bound room-details document clicks on first valid decorate; merged as 5665f2d99ad9027ef33b2a1e3f58de9d9f31235f with deploy 33088580155, post-deploy 33088680419, baseline 33088680487. PR #38 removed the guaranteed-empty initial hotel-actions document scan; merged as 47733bc8dfa888ebde37840b2a5ce8a0ca8b6676 with deploy 33088814279, post-deploy 33088902786, baseline 33088902601. PR #39 cached the `Intl.NumberFormat('ru-RU')` used by the hot results price path instead of constructing a formatter for every hotel/tour price on every progressive render; merged as 13e5b1bdc3506bdcf6238110af4a6c5998446a57 with deploy 33089824068, active contract 33089823699, tour live 33089823766, result-detail live 33089824092, security 33089824131, post-deploy visual 33089919791 and baseline 33089920172 all successful. Temporary diagnostic PR #40 sampled a real progressive search: 25 hotels at 37% and 25 hotels at 100% had different material fingerprints; changed_transitions=1, unchanged_transitions=0. PR #40 was closed without merge, so no diagnostic workflow entered main. This disproves the current case for result-payload fingerprint dedup/incremental render complexity. PR #41 cached the search-lifecycle `Intl.NumberFormat('ru-RU')` used when repeated Tourvisor status polls expose minPrice; merged as 35c4b4f92718ccb1798c725b1bf86e64b23f8881. PR gates all passed; production deploy/live search smoke 33090963148, active contract 33090963352, tour live 33090963287, result-detail live 33090963523, security 33090963272, post-deploy visual 33091044664 and baseline 33091044637 all passed. Selected-tour and flight-price formatter allocations were inspected but deliberately not changed because they are user-driven low-frequency work compared with automatically repeated search lifecycle costs. Lead-form-guard selectedTour MutationObserver remains intentionally unchanged because programmatic selectTour can mutate before tour-selected; primary-meal observation remains justified by dynamic catalog option replacement. No evidence justifies JS bundling by request count alone."},
+    {"id":"B7","status":"IN_PROGRESS","title":"Performance and visual stability","note":"B7 production-green work includes CSS request/cascade reduction, safe live-read timeout hardening, selected-tour desktop image CLS reservation, mobile-only lazy initialization, deferred hidden result-state DOM, removal/lazy-binding of empty startup scans/listeners, cached result counts, and hot-path formatter reuse. PR #39 cached the results renderer Intl.NumberFormat and passed deploy/live/post-deploy/baseline. PR #41 cached the automatically repeated search-status minPrice formatter and passed deploy/live/post-deploy/baseline. Temporary diagnostic PR #40 sampled one real progressive search: 25 hotels at 37% and 25 hotels at 100% had different material fingerprints (changed_transitions=1, unchanged_transitions=0); it was closed without merge, disproving the current case for payload-dedup/incremental-render complexity. Whole-flow audit then found a selected-tour recovery dead end: transient tour API failure offered only back-to-results. PR #42 added in-place `Повторить загрузку тура` through the existing guarded selectTour path; all six PR gates passed, merged as ad4f90aac263c7583d06e98b5c55efa5383869ae, deploy 33091140734, active contract 33091140572, tour live 33091140613, flights live 33091140661, result-detail live 33091140648, security 33091140856, post-deploy visual 33091226239 and baseline 33091226226 all passed. Selected-tour/flight formatter allocations and per-card matchMedia remain deferred as lower-frequency/smaller than proven targets."},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
@@ -33,19 +33,19 @@
   ],
   "last_ci": {
     "workflow": "Visual V2 post-deploy",
-    "run_id": 33091044664,
-    "head_sha": "35c4b4f92718ccb1798c725b1bf86e64b23f8881",
+    "run_id": 33091226239,
+    "head_sha": "ad4f90aac263c7583d06e98b5c55efa5383869ae",
     "conclusion": "success",
-    "classification": "B7_SEARCH_LIFECYCLE_PRICE_FORMATTER_CACHE_PRODUCTION_GREEN"
+    "classification": "B7_SELECTED_TOUR_LOAD_RECOVERY_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "35c4b4f92718ccb1798c725b1bf86e64b23f8881",
+  "last_verified_commit": "ad4f90aac263c7583d06e98b5c55efa5383869ae",
   "pending_verification": null,
   "blocked": [],
   "deferred": [
     {"scope":"lead-form-guard-v1.js selectedTour MutationObserver","reason":"Public programmatic V2TourController.selectTour() can mutate #selectedTour before v2:tour-selected; lazy observation tied only to clicks/events would weaken recovery coverage."},
-    {"scope":"results-renderer-v5.js per-card initialTourLimit matchMedia allocation","reason":"Real repeated work, but expected gain remains smaller than stronger lifecycle targets; defer until profiling justifies it."},
-    {"scope":"tour-controller-v4.js and flight-price-sync-v1.js price formatter allocations","reason":"Confirmed allocations, but they occur on user-driven selected-tour/flight interactions rather than automatic polling/render loops; defer unless profiling shows material interaction cost."},
-    {"scope":"progressive results payload fingerprint dedup/incremental render","reason":"Live diagnostic PR #40 observed only two progressive snapshots (37% and 100%) and both materially differed; no unchanged transition to eliminate, so added render-dedup complexity is not justified."}
+    {"scope":"results-renderer-v5.js per-card initialTourLimit matchMedia allocation","reason":"Confirmed but small; defer until profiling justifies it."},
+    {"scope":"tour-controller-v4.js and flight-price-sync-v1.js price formatter allocations","reason":"User-driven low-frequency work compared with automatic search loops; defer unless profiling shows material interaction cost."},
+    {"scope":"progressive results payload fingerprint dedup/incremental render","reason":"Live diagnostic PR #40 observed only two snapshots and both materially differed; no unchanged transition to eliminate."}
   ],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
