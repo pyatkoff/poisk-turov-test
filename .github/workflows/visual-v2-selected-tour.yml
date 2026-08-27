@@ -62,7 +62,7 @@ jobs:
               <div><span>Вылет из</span><b>Москва</b></div><div><span>Дата</span><b>12.09.2026</b></div><div><span>Ночей</span><b>9</b></div><div><span>Туристы</span><b>2 взр. + 1 дет.</b></div><div><span>Питание</span><b>Ультра всё включено</b></div>
               <div><span>Номер</span><b>Deluxe Sea View</b></div><div><span>Размещение</span><b>2 ADL + CHD</b></div><div><span>Оператор</span><b>PEGAS</b></div><div><span>Перелёт</span><b>Чартер</b></div><div><span>Топливный сбор</span><b>6 000 ₽</b></div>
             </div>
-            <div class="hotel-desc">Большой курортный отель у моря с семейной инфраструктурой, несколькими бассейнами и удобным расположением. Описание намеренно длинное, чтобы проверить ритм текста и адаптивность checkout-поверхности.</div>
+            <div class="hotel-desc">Большой курортный отель у моря с семейной инфраструктурой, несколькими бассейнами и удобным расположением. На территории есть зоны для спокойного отдыха и семейные активности, рестораны, бары и пространства для детей. Описание намеренно длинное, чтобы проверить раскрытие текста, ритм страницы и адаптивность checkout-поверхности на маленьких экранах без визуального перегруза.</div>
             <div class="tour-flights">
               <div class="section-heading"><strong>Авиарейсы</strong><span>Выберите подходящий вариант</span></div>
               <div class="flight-variants">
@@ -78,7 +78,7 @@ jobs:
               <div class="lead-fields"><label>Имя<input name="name" value="Павел"></label><label>Телефон<input name="phone" value="+7 999 123-45-67"></label></div>
               <label>Комментарий<textarea name="comment" rows="3">Нужен номер повыше и тихая сторона.</textarea></label>
               <label class="lead-consent"><input type="checkbox" checked><span>Согласен на обработку персональных данных</span></label>
-              <button type="button" class="primary">Отправить заявку</button><p class="lead-message"></p>
+              <button type="submit" class="primary">Отправить заявку</button><p class="lead-message"></p>
             </form>`;
 
           (async()=>{
@@ -105,12 +105,31 @@ jobs:
                 const selected=document.querySelector('#selectedTour');
                 selected.hidden=false;
                 selected.innerHTML=fixtureHtml;
+                if(window.V2SelectedTourDescription)window.V2SelectedTourDescription.decorate(selected);
+                if(window.V2LeadFormGuard){
+                  window.V2LeadFormGuard.decorate(selected);
+                  window.V2LeadFormGuard.clarifyFlightType({isCharter:true},selected);
+                  window.V2LeadFormGuard.clarifyFuelStatus({fuelCharge:6000},selected);
+                  window.V2LeadFormGuard.clarifyFlightPricePrompt(selected);
+                  window.V2LeadFormGuard.clarifyDefaultFlightLabel(selected);
+                  window.V2LeadFormGuard.syncFlightContext(true,selected);
+                  window.V2LeadFormGuard.syncLeadSelectionSummary(selected);
+                }
+                if(window.V2FlightPriceSync){
+                  window.V2FlightPriceSync.clarifyVariantPrices();
+                  window.V2FlightPriceSync.clarifyVariantChoices();
+                }
                 window.scrollTo(0,0);
                 return {
                   selected:!!selected,
                   facts:selected.querySelectorAll('.facts>div').length,
                   flights:selected.querySelectorAll('.flight-variant').length,
                   lead:!!selected.querySelector('.lead-form'),
+                  leadCta:!!selected.querySelector('.selected-lead-cta'),
+                  leadSummary:!!selected.querySelector('.lead-selection-summary'),
+                  trust:!!selected.querySelector('.lead-trust-note'),
+                  detailsToggle:!!selected.querySelector('.facts-secondary-toggle'),
+                  descToggle:!!selected.querySelector('.hotel-desc-toggle'),
                   overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,
                 };
               },fixture);
@@ -118,8 +137,8 @@ jobs:
               await page.screenshot({path:`visual-selected-tour-artifacts/${name}-selected-tour.png`,fullPage:true});
               const item={name,width,height,http:response?response.status():0,pageErrors,state};
               report.push(item);
-              if(item.http!==200||pageErrors.length||!state.selected||state.facts!==10||state.flights!==2||!state.lead||state.overflow)failed=true;
-              console.log(`SELECTED_VISUAL ${name} http=${item.http} facts=${state.facts} flights=${state.flights} lead=${state.lead} overflow=${state.overflow} errors=${pageErrors.length}`);
+              if(item.http!==200||pageErrors.length||!state.selected||state.facts!==10||state.flights!==2||!state.lead||!state.leadCta||!state.leadSummary||!state.trust||!state.detailsToggle||!state.descToggle||state.overflow)failed=true;
+              console.log(`SELECTED_VISUAL ${name} http=${item.http} facts=${state.facts} flights=${state.flights} lead=${state.lead}/${state.leadCta}/${state.leadSummary} toggles=${state.detailsToggle}/${state.descToggle} overflow=${state.overflow} errors=${pageErrors.length}`);
               await context.close();
             }
             fs.writeFileSync('visual-selected-tour-artifacts/report.json',JSON.stringify(report,null,2));
