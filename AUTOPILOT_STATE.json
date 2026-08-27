@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T18:40:00+03:00",
+  "updated_at": "2026-08-27T18:55:00+03:00",
   "mode": "product_ux_visual_development",
   "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
@@ -10,7 +10,7 @@
     "title": "Performance and visual stability",
     "status": "IN_PROGRESS",
     "objective": "Reduce client overhead, cascade complexity and layout instability while preserving the locked five-viewport product contract.",
-    "next_action": "Continue B7 with measured startup/runtime profiling, prioritizing repeated work during search/results/selected-tour lifecycle over speculative one-time micro-cleanups. Re-audit the full V2 journey periodically. Keep the lead-form-guard selectedTour MutationObserver intact unless a safe pre-mutation lifecycle contract is introduced and proven; public programmatic selectTour() can mutate selectedTour before v2:tour-selected. Do not bundle JS merely to reduce request count."
+    "next_action": "Measure the cost of full progressive results rerenders before further micro-cleanups. Focus on whether repeated search_results refreshes rebuild unchanged hotel cards/tour rows and whether a behavior-preserving incremental/deduplicated render can materially reduce DOM work. Do not optimize the smaller per-card matchMedia call unless evidence shows it matters. Keep the lead-form-guard selectedTour MutationObserver intact unless a safe pre-mutation lifecycle contract is introduced and proven; do not bundle JS merely to reduce request count."
   },
   "queue": [
     {"id":"B1","status":"DONE","title":"Visual foundation"},
@@ -19,7 +19,7 @@
     {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0"},
     {"id":"B5","status":"DONE","title":"Trust and conversion UX"},
     {"id":"B6","status":"DONE","title":"Visual regression baseline"},
-    {"id":"B7","status":"IN_PROGRESS","title":"Performance and visual stability","note":"Earlier B7 work includes CSS request/cascade reductions, live-read timeout hardening, selected-tour desktop image CLS reservation, lazy mobile search-summary/results-filter initialization, deferred hidden result-state DOM, and removal of empty accessibility startup scans. This session added four production-green runtime cleanups: PR #35 cached the rendered result count instead of scanning `.hotel-card` on every search-progress poll; merged as 59fc25d10a5ca06f2247a90801c20d62bdfd63a7 with deploy 33088028419, post-deploy 33088135420, baseline 33088135455. PR #36 lazy-bound the results document action handler on first render; merged as c44e84d1c3a61bbf5a8313807436ccde884fcf15 with deploy 33088328395, post-deploy 33088421118, baseline 33088421114. PR #37 lazy-bound room-details document clicks on first valid decorate; merged as 5665f2d99ad9027ef33b2a1e3f58de9d9f31235f with deploy 33088580155, post-deploy 33088680419, baseline 33088680487. PR #38 removed the guaranteed-empty initial hotel-actions document scan; merged as 47733bc8dfa888ebde37840b2a5ce8a0ca8b6676 with deploy 33088814279, post-deploy 33088902786, baseline 33088902601. Lead-form-guard selectedTour MutationObserver remains intentionally unchanged because programmatic selectTour can mutate before tour-selected; primary-meal observation remains justified by dynamic catalog option replacement. No evidence justifies JS bundling by request count alone."},
+    {"id":"B7","status":"IN_PROGRESS","title":"Performance and visual stability","note":"Earlier B7 work includes CSS request/cascade reductions, live-read timeout hardening, selected-tour desktop image CLS reservation, lazy mobile search-summary/results-filter initialization, deferred hidden result-state DOM, and removal of empty accessibility startup scans. PR #35 cached the rendered result count instead of scanning `.hotel-card` on every search-progress poll; merged as 59fc25d10a5ca06f2247a90801c20d62bdfd63a7 with deploy 33088028419, post-deploy 33088135420, baseline 33088135455. PR #36 lazy-bound the results document action handler on first render; merged as c44e84d1c3a61bbf5a8313807436ccde884fcf15 with deploy 33088328395, post-deploy 33088421118, baseline 33088421114. PR #37 lazy-bound room-details document clicks on first valid decorate; merged as 5665f2d99ad9027ef33b2a1e3f58de9d9f31235f with deploy 33088580155, post-deploy 33088680419, baseline 33088680487. PR #38 removed the guaranteed-empty initial hotel-actions document scan; merged as 47733bc8dfa888ebde37840b2a5ce8a0ca8b6676 with deploy 33088814279, post-deploy 33088902786, baseline 33088902601. PR #39 cached the `Intl.NumberFormat('ru-RU')` used by the hot results price path instead of constructing a formatter for every hotel/tour price on every progressive render; merged as 13e5b1bdc3506bdcf6238110af4a6c5998446a57. PR gates all passed; production deploy 33089824068, active contract 33089823699, tour live 33089823766, result-detail live 33089824092, security 33089824131, post-deploy visual 33089919791 and baseline 33089920172 all passed. A follow-up per-card matchMedia cache was inspected but deliberately not pursued because the expected gain is smaller; the next priority is measuring full progressive rerender DOM cost. Lead-form-guard selectedTour MutationObserver remains intentionally unchanged because programmatic selectTour can mutate before tour-selected; primary-meal observation remains justified by dynamic catalog option replacement. No evidence justifies JS bundling by request count alone."},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
@@ -33,16 +33,17 @@
   ],
   "last_ci": {
     "workflow": "Visual V2 post-deploy",
-    "run_id": 33088902786,
-    "head_sha": "47733bc8dfa888ebde37840b2a5ce8a0ca8b6676",
+    "run_id": 33089919791,
+    "head_sha": "13e5b1bdc3506bdcf6238110af4a6c5998446a57",
     "conclusion": "success",
-    "classification": "B7_HOTEL_ACTIONS_EMPTY_STARTUP_SCAN_REMOVED_PRODUCTION_GREEN"
+    "classification": "B7_RESULTS_PRICE_FORMATTER_CACHE_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "47733bc8dfa888ebde37840b2a5ce8a0ca8b6676",
+  "last_verified_commit": "13e5b1bdc3506bdcf6238110af4a6c5998446a57",
   "pending_verification": null,
   "blocked": [],
   "deferred": [
-    {"scope":"lead-form-guard-v1.js selectedTour MutationObserver","reason":"Public programmatic V2TourController.selectTour() can mutate #selectedTour before v2:tour-selected; lazy observation tied only to clicks/events would weaken recovery coverage."}
+    {"scope":"lead-form-guard-v1.js selectedTour MutationObserver","reason":"Public programmatic V2TourController.selectTour() can mutate #selectedTour before v2:tour-selected; lazy observation tied only to clicks/events would weaken recovery coverage."},
+    {"scope":"results-renderer-v5.js per-card initialTourLimit matchMedia allocation","reason":"Real repeated work, but expected gain is smaller than the full progressive rerender cost; defer until profiling justifies it."}
   ],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
