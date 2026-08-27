@@ -52,19 +52,19 @@ jobs:
             results_code="$(curl -k -L -sS -o /tmp/v2-price-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25")"
             test "$results_code" = "200" || fail results_http
             python3 - <<"PY" >/tmp/v2-price-tour-ids.txt
-import json
-items=json.load(open("/tmp/v2-price-results.json"))
-seen=[]
-for hotel in items if isinstance(items,list) else []:
-    if not isinstance(hotel,dict): continue
-    for tour in hotel.get("tours") or []:
-        if not isinstance(tour,dict) or tour.get("id") is None: continue
-        tid=str(tour["id"])
-        if tid not in seen:
-            seen.append(tid)
-            print(tid)
-        if len(seen)>=10: raise SystemExit
-PY
+            import json
+            items=json.load(open("/tmp/v2-price-results.json"))
+            seen=[]
+            for hotel in items if isinstance(items,list) else []:
+                if not isinstance(hotel,dict): continue
+                for tour in hotel.get("tours") or []:
+                    if not isinstance(tour,dict) or tour.get("id") is None: continue
+                    tid=str(tour["id"])
+                    if tid not in seen:
+                        seen.append(tid)
+                        print(tid)
+                    if len(seen)>=10: raise SystemExit
+            PY
             test -s /tmp/v2-price-tour-ids.txt || fail no_tours
 
             chosen=""
@@ -78,56 +78,57 @@ PY
             done </tmp/v2-price-tour-ids.txt
             test -n "$chosen" || fail no_tour_with_flights
 
-            CHOSEN_TOUR_ID="$chosen" python3 - <<"PY" || fail consistency
-import json, os, math
-requested=str(os.environ["CHOSEN_TOUR_ID"])
-results=json.load(open("/tmp/v2-price-results.json"))
-tour=json.load(open("/tmp/v2-price-tour.json"))
-flights_raw=json.load(open("/tmp/v2-price-flights.json"))
-assert isinstance(tour,dict), "tour_not_object"
-assert str(tour.get("id") or "")==requested, "tour_id_mismatch"
+            CHOSEN_TOUR_ID="$chosen" SEARCH_ID="$search_id" python3 - <<"PY" || fail consistency
+            import json, os, math
+            requested=str(os.environ["CHOSEN_TOUR_ID"])
+            search_id=str(os.environ["SEARCH_ID"])
+            results=json.load(open("/tmp/v2-price-results.json"))
+            tour=json.load(open("/tmp/v2-price-tour.json"))
+            flights_raw=json.load(open("/tmp/v2-price-flights.json"))
+            assert isinstance(tour,dict), "tour_not_object"
+            assert str(tour.get("id") or "")==requested, "tour_id_mismatch"
 
-result_tour=None
-result_hotel=None
-for hotel in results if isinstance(results,list) else []:
-    if not isinstance(hotel,dict): continue
-    for candidate in hotel.get("tours") or []:
-        if isinstance(candidate,dict) and str(candidate.get("id") or "")==requested:
-            result_tour=candidate; result_hotel=hotel; break
-    if result_tour: break
-assert result_tour is not None, "tour_missing_from_results"
+            result_tour=None
+            result_hotel=None
+            for hotel in results if isinstance(results,list) else []:
+                if not isinstance(hotel,dict): continue
+                for candidate in hotel.get("tours") or []:
+                    if isinstance(candidate,dict) and str(candidate.get("id") or "")==requested:
+                        result_tour=candidate; result_hotel=hotel; break
+                if result_tour: break
+            assert result_tour is not None, "tour_missing_from_results"
 
-def number(v):
-    if isinstance(v,dict): v=v.get("value",0)
-    try: return float(v or 0)
-    except (TypeError,ValueError): return 0.0
+            def number(v):
+                if isinstance(v,dict): v=v.get("value",0)
+                try: return float(v or 0)
+                except (TypeError,ValueError): return 0.0
 
-def same_if_present(a,b,key):
-    if key in a and key in b and a.get(key) not in (None,"") and b.get(key) not in (None,""):
-        assert str(a.get(key))==str(b.get(key)), f"{key}_mismatch:{a.get(key)}!={b.get(key)}"
+            def same_if_present(a,b,key):
+                if key in a and key in b and a.get(key) not in (None,"") and b.get(key) not in (None,""):
+                    assert str(a.get(key))==str(b.get(key)), f"{key}_mismatch:{a.get(key)}!={b.get(key)}"
 
-for key in ("date","nights","adults","childs"):
-    same_if_present(result_tour,tour,key)
+            for key in ("date","nights","adults","childs"):
+                same_if_present(result_tour,tour,key)
 
-result_hotel_id=(result_hotel or {}).get("id")
-detail_hotel_id=(tour.get("hotel") or {}).get("id") if isinstance(tour.get("hotel"),dict) else None
-if result_hotel_id not in (None,"") and detail_hotel_id not in (None,""):
-    assert str(result_hotel_id)==str(detail_hotel_id), "hotel_id_mismatch"
+            result_hotel_id=(result_hotel or {}).get("id")
+            detail_hotel_id=(tour.get("hotel") or {}).get("id") if isinstance(tour.get("hotel"),dict) else None
+            if result_hotel_id not in (None,"") and detail_hotel_id not in (None,""):
+                assert str(result_hotel_id)==str(detail_hotel_id), "hotel_id_mismatch"
 
-variants=flights_raw if isinstance(flights_raw,list) else flights_raw.get("flights",[]) if isinstance(flights_raw,dict) else []
-assert variants, "no_flight_variants"
-default=next((v for v in variants if isinstance(v,dict) and v.get("isDefault")), variants[0])
-assert isinstance(default,dict), "default_flight_not_object"
-tour_price=number(tour.get("price"))
-flight_price=number(default.get("price"))
-assert tour_price>0 and flight_price>0, "non_positive_price"
-assert math.isclose(tour_price,flight_price,abs_tol=0.01), f"default_price_mismatch:{tour_price}!={flight_price}"
-forward=default.get("forward") or []
-if forward and isinstance(forward[0],dict):
-    fd=(forward[0].get("departure") or {}).get("date") if isinstance(forward[0].get("departure"),dict) else None
-    if fd and tour.get("date"):
-        expected=".".join(reversed(str(tour["date"]).split("-"))) if "-" in str(tour["date"]) else str(tour["date"])
-        assert str(fd)==expected, f"forward_date_mismatch:{fd}!={expected}"
-print("LIVE_PRICE_CONSISTENCY_OK", "searchId="+str(requested), "tourId="+requested, "price="+str(tour_price), "variants="+str(len(variants)))
-PY
+            variants=flights_raw if isinstance(flights_raw,list) else flights_raw.get("flights",[]) if isinstance(flights_raw,dict) else []
+            assert variants, "no_flight_variants"
+            default=next((v for v in variants if isinstance(v,dict) and v.get("isDefault")), variants[0])
+            assert isinstance(default,dict), "default_flight_not_object"
+            tour_price=number(tour.get("price"))
+            flight_price=number(default.get("price"))
+            assert tour_price>0 and flight_price>0, "non_positive_price"
+            assert math.isclose(tour_price,flight_price,abs_tol=0.01), f"default_price_mismatch:{tour_price}!={flight_price}"
+            forward=default.get("forward") or []
+            if forward and isinstance(forward[0],dict):
+                fd=(forward[0].get("departure") or {}).get("date") if isinstance(forward[0].get("departure"),dict) else None
+                if fd and tour.get("date"):
+                    expected=".".join(reversed(str(tour["date"]).split("-"))) if "-" in str(tour["date"]) else str(tour["date"])
+                    assert str(fd)==expected, f"forward_date_mismatch:{fd}!={expected}"
+            print("LIVE_PRICE_CONSISTENCY_OK", "searchId="+search_id, "tourId="+requested, "price="+str(tour_price), "variants="+str(len(variants)))
+            PY
           '
