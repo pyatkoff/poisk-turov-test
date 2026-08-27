@@ -47,85 +47,27 @@ jobs:
           const fs = require('fs');
           const url = process.env.V2_URL;
           const viewports = [
-            ['mobile-375',375,812],
-            ['mobile-430',430,932],
-            ['tablet-768',768,1024],
-            ['intermediate-1024',1024,900],
-            ['desktop-1440',1440,1000],
+            ['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000],
           ];
           const fixture=[
-            {id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[
-              {id:'tour-901-a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'},roomType:'Standard Sea View',placement:'DBL',operator:{name:'ANEX'},isCharter:true},
-              {id:'tour-901-b',date:'12.09.2026',nights:9,price:142000,meal:{name:'Ультра всё включено'},roomType:'Deluxe',placement:'DBL',operator:{name:'PEGAS'}},
-            ]},
-            {id:902,name:'AnyTour Garden Hotel with a deliberately long responsive title',category:4,rating:4.4,seaDistance:650,price:98000,country:{name:'Турция'},region:{name:'Аланья'},tours:[
-              {id:'tour-902-a',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'},roomType:'Family Room',placement:'2ADL',operator:{name:'Coral Travel'}},
-            ]},
+            {id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[{id:'tour-901-a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'},roomType:'Standard Sea View',placement:'DBL',operator:{name:'ANEX'},isCharter:true},{id:'tour-901-b',date:'12.09.2026',nights:9,price:142000,meal:{name:'Ультра всё включено'},roomType:'Deluxe',placement:'DBL',operator:{name:'PEGAS'}}]},
+            {id:902,name:'AnyTour Garden Hotel with a deliberately long responsive title',category:4,rating:4.4,seaDistance:650,price:98000,country:{name:'Турция'},region:{name:'Аланья'},tours:[{id:'tour-902-a',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'},roomType:'Family Room',placement:'2ADL',operator:{name:'Coral Travel'}}]},
           ];
+          function checkoutFixture(){return '<button type="button" class="back-results">← Вернуться к предложениям</button><div class="selected-head"><div><span class="eyebrow">ВЫБРАННЫЙ ТУР</span><h2>AnyTour Coast Resort</h2><p>Турция · Анталья · Лара</p></div><div class="selected-price"><small>Стоимость</small>125 000 ₽</div></div><div class="selected-picture"><div class="photo-placeholder">ANYTOUR</div></div><div class="facts"><div><span>Вылет из</span><b>Москва</b></div><div><span>Дата</span><b>10.09.2026</b></div><div><span>Ночей</span><b>7</b></div><div><span>Туристы</span><b>2 взр.</b></div><div><span>Питание</span><b>Все включено</b></div><div><span>Номер</span><b>Standard Sea View</b></div><div><span>Размещение</span><b>DBL</b></div><div><span>Оператор</span><b>ANEX</b></div><div><span>Перелёт</span><b>Чартер</b></div><div><span>Топливный сбор</span><b>—</b></div></div><div class="hotel-desc">Отель на первой береговой линии. Описание достаточно подробное для проверки презентации выбранного тура и поведения длинного текста на разных ширинах экрана.</div><div class="tour-flights"><div class="section-heading"><strong>Авиарейсы</strong><span>Выберите подходящий вариант</span></div><div class="flight-variants"><div class="flight-variant is-selected"><label class="flight-choice"><input type="radio" checked><span>Вариант 1 · рекомендуемый</span><b>125 000 ₽</b></label><div class="flight-segment"><div class="flight-segment-title"><strong>Туда</strong><span>Southwind · 2S172 · Boeing 737-800</span></div><div class="flight-route"><div><b>Шереметьево (SVO)</b><span>10.09.2026 · 14:00</span></div><div class="flight-arrow">→</div><div><b>Даламан (DLM)</b><span>10.09.2026 · 18:05</span></div></div><div class="flight-baggage">Багаж: <b>10 кг</b> · Ручная кладь: <b>8 кг</b></div></div></div></div></div><form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер получит выбранный тур и рейс</span></div><div class="lead-fields"><label>Имя<input name="name"></label><label>Телефон<input name="phone" type="tel" required></label></div><label>Комментарий<textarea name="comment"></textarea></label><label class="lead-consent"><input type="checkbox" name="consent" value="1" required><span>Согласен на обработку персональных данных</span></label><button type="submit" class="primary">Отправить заявку</button><p class="lead-message"></p></form>';}
           (async()=>{
-            const browser=await chromium.launch({headless:true});
-            const report=[];
-            let failed=false;
+            const browser=await chromium.launch({headless:true});const report=[];let failed=false;
             for(const [name,width,height] of viewports){
-              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
-              const page=await context.newPage();
-              const pageErrors=[];
-              page.on('pageerror',e=>pageErrors.push(String(e).slice(0,500)));
-              const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
-              await page.waitForTimeout(5000);
-              await page.screenshot({path:`visual-artifacts/${name}.png`,fullPage:true});
-              const state=await page.evaluate(()=>{
-                const root=document.documentElement,body=document.body;
-                const hero=document.querySelector('.v2-product-hero');
-                const header=document.querySelector('.at-site-header');
-                const search=document.querySelector('.search-card');
-                const visible=el=>!!el&&!el.hidden&&getComputedStyle(el).display!=='none';
-                const offenders=[...document.querySelectorAll('body *')].filter(el=>{
-                  const r=el.getBoundingClientRect();
-                  return r.right>innerWidth+2||r.left<-2;
-                }).slice(0,20).map(el=>({tag:el.tagName,id:el.id||'',class:String(el.className||'').slice(0,120),right:Math.round(el.getBoundingClientRect().right),x:Math.round(el.getBoundingClientRect().x)}));
-                return {
-                  overflow:root.scrollWidth>root.clientWidth+2||body.scrollWidth>root.clientWidth+2,
-                  offenders,
-                  heroVisible:visible(hero),
-                  headerVisible:visible(header),
-                  searchVisible:visible(search),
-                  resultsInitiallyVisible:visible(document.querySelector('#resultsTools'))||!!document.querySelector('#results .hotel-card'),
-                  selectedInitiallyVisible:visible(document.querySelector('#selectedTour')),
-                  heroBox:hero?{w:Math.round(hero.getBoundingClientRect().width),h:Math.round(hero.getBoundingClientRect().height)}:null,
-                  headerBox:header?{w:Math.round(header.getBoundingClientRect().width),h:Math.round(header.getBoundingClientRect().height)}:null
-                };
-              });
-              const resultState=await page.evaluate(fixture=>{
-                if(!window.V2Results||typeof window.V2Results.render!=='function')return{renderer:false};
-                window.V2Results.render(fixture);
-                const root=document.documentElement,body=document.body,cards=[...document.querySelectorAll('#results .hotel-card')],multi=cards.find(card=>card.dataset.hotelId==='901'),tools=document.querySelector('#resultsTools'),bar=document.querySelector('.mrf-bar');
-                return {
-                  renderer:true,
-                  cards:cards.length,
-                  toolsVisible:!!tools&&!tools.hidden&&getComputedStyle(tools).display!=='none',
-                  decisionFacts:multi?multi.querySelectorAll('.hotel-decision-line span').length:0,
-                  bestOffer:!!multi?.querySelector('.hotel-best-offer'),
-                  tourRows:multi?multi.querySelectorAll('.tour-row').length:0,
-                  moreToggle:!!multi?.querySelector('.tour-more-toggle'),
-                  mobileFilterVisible:!!bar&&!bar.hidden&&getComputedStyle(bar).display!=='none',
-                  overflow:root.scrollWidth>root.clientWidth+2||body.scrollWidth>root.clientWidth+2,
-                };
-              },fixture);
-              await page.waitForTimeout(150);
-              await page.screenshot({path:`visual-artifacts/${name}-results.png`,fullPage:true});
-              const item={name,width,height,http:response?response.status():0,pageErrors,state,resultState};
-              report.push(item);
-              const expectedTourRows=width<=760?1:2;
-              const resultBad=!resultState.renderer||resultState.cards!==2||!resultState.toolsVisible||resultState.decisionFacts<2||!resultState.bestOffer||resultState.tourRows!==expectedTourRows||(width<=760&&!resultState.moreToggle)||(width>760&&resultState.moreToggle)||(width<=760&&!resultState.mobileFilterVisible)||(width>760&&resultState.mobileFilterVisible)||resultState.overflow;
-              if(item.http!==200||pageErrors.length||state.overflow||!state.heroVisible||!state.headerVisible||!state.searchVisible||state.resultsInitiallyVisible||state.selectedInitiallyVisible||resultBad)failed=true;
-              console.log(`VISUAL ${name} http=${item.http} overflow=${state.overflow}/${resultState.overflow} hero=${state.heroVisible} header=${state.headerVisible} search=${state.searchVisible} results=${resultState.cards}/${resultState.tourRows} more=${resultState.moreToggle} mrf=${resultState.mobileFilterVisible} pageErrors=${pageErrors.length}`);
-              if(state.offenders.length)console.log(`OFFENDERS ${name} ${JSON.stringify(state.offenders)}`);
-              await context.close();
+              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});const page=await context.newPage();const pageErrors=[];page.on('pageerror',e=>pageErrors.push(String(e).slice(0,500)));
+              const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});await page.waitForTimeout(5000);
+              const state=await page.evaluate(()=>{const root=document.documentElement,body=document.body,visible=el=>!!el&&!el.hidden&&getComputedStyle(el).display!=='none';return{overflow:root.scrollWidth>root.clientWidth+2||body.scrollWidth>root.clientWidth+2,heroVisible:visible(document.querySelector('.v2-product-hero')),headerVisible:visible(document.querySelector('.at-site-header')),searchVisible:visible(document.querySelector('.search-card')),resultsInitiallyVisible:visible(document.querySelector('#resultsTools'))||!!document.querySelector('#results .hotel-card'),selectedInitiallyVisible:visible(document.querySelector('#selectedTour'))};});
+              const resultState=await page.evaluate(fixture=>{if(!window.V2Results)return{renderer:false};window.V2Results.render(fixture);const root=document.documentElement,body=document.body,cards=[...document.querySelectorAll('#results .hotel-card')],multi=cards.find(card=>card.dataset.hotelId==='901'),tools=document.querySelector('#resultsTools'),bar=document.querySelector('.mrf-bar');return{renderer:true,cards:cards.length,toolsVisible:!!tools&&!tools.hidden&&getComputedStyle(tools).display!=='none',decisionFacts:multi?multi.querySelectorAll('.hotel-decision-line span').length:0,bestOffer:!!multi?.querySelector('.hotel-best-offer'),tourRows:multi?multi.querySelectorAll('.tour-row').length:0,moreToggle:!!multi?.querySelector('.tour-more-toggle'),mobileFilterVisible:!!bar&&!bar.hidden&&getComputedStyle(bar).display!=='none',overflow:root.scrollWidth>root.clientWidth+2||body.scrollWidth>root.clientWidth+2};},fixture);
+              const checkoutState=await page.evaluate(html=>{const selected=document.getElementById('selectedTour');selected.hidden=false;selected.innerHTML=html;if(window.V2SelectedTourDescription)window.V2SelectedTourDescription.decorate(selected);if(window.V2CheckoutExperienceV1)window.V2CheckoutExperienceV1.decorate(selected);const form=selected.querySelector('.lead-form'),root=document.documentElement,body=document.body;return{decorator:!!window.V2CheckoutExperienceV1,journey:selected.querySelectorAll('.checkout-journey span').length,facts:selected.querySelectorAll('.facts.checkout-facts>div').length,groupedFacts:selected.querySelectorAll('.facts.checkout-facts>div[data-fact-group]').length,checkoutHead:!!selected.querySelector('.selected-head.checkout-head'),checkoutFlights:!!selected.querySelector('.tour-flights.checkout-flights'),checkoutLead:!!selected.querySelector('.lead-form.checkout-lead'),help:!!selected.querySelector('.checkout-help'),leadFields:!!form?.querySelector('[name="name"]')&&!!form?.querySelector('[name="phone"]')&&!!form?.querySelector('[name="comment"]')&&!!form?.querySelector('[name="consent"]')&&!!form?.querySelector('button[type="submit"]'),overflow:root.scrollWidth>root.clientWidth+2||body.scrollWidth>root.clientWidth+2};},checkoutFixture());
+              await page.waitForTimeout(150);await page.screenshot({path:`visual-artifacts/${name}-checkout.png`,fullPage:true});
+              const expectedTourRows=width<=760?1:2,resultBad=!resultState.renderer||resultState.cards!==2||!resultState.toolsVisible||resultState.decisionFacts<2||!resultState.bestOffer||resultState.tourRows!==expectedTourRows||(width<=760&&!resultState.moreToggle)||(width>760&&resultState.moreToggle)||(width<=760&&!resultState.mobileFilterVisible)||(width>760&&resultState.mobileFilterVisible)||resultState.overflow,checkoutBad=!checkoutState.decorator||checkoutState.journey!==3||checkoutState.facts!==10||checkoutState.groupedFacts!==10||!checkoutState.checkoutHead||!checkoutState.checkoutFlights||!checkoutState.checkoutLead||!checkoutState.help||!checkoutState.leadFields||checkoutState.overflow;
+              const item={name,width,height,http:response?response.status():0,pageErrors,state,resultState,checkoutState};report.push(item);if(item.http!==200||pageErrors.length||state.overflow||!state.heroVisible||!state.headerVisible||!state.searchVisible||state.resultsInitiallyVisible||state.selectedInitiallyVisible||resultBad||checkoutBad)failed=true;
+              console.log(`VISUAL ${name} http=${item.http} overflow=${state.overflow}/${resultState.overflow}/${checkoutState.overflow} results=${resultState.cards}/${resultState.tourRows} checkout=${checkoutState.journey}/${checkoutState.facts} errors=${pageErrors.length}`);await context.close();
             }
-            fs.writeFileSync('visual-artifacts/report.json',JSON.stringify(report,null,2));
-            await browser.close();
-            if(failed)process.exit(1);
+            fs.writeFileSync('visual-artifacts/report.json',JSON.stringify(report,null,2));await browser.close();if(failed)process.exit(1);
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node ./v2-post-deploy-visual.cjs
