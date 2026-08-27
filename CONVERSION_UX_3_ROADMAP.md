@@ -39,7 +39,9 @@ Status: **DONE**
 
 A fresh five-viewport audit after C1–C5 confirmed one material nested-card issue in checkout: the flights section was a bordered/background card containing another bordered card for each flight variant. PR #57 flattened only the outer flights container, preserving individual variants, selected state, loading/error/retry and lead presentation. V2-only deploy, live smoke, post-deploy visual and durable baseline passed.
 
-The analogous results candidate was reviewed on mobile and desktop and intentionally retained: the `Варианты тура` section background materially separates hotel-level comparison from a concrete tour choice on desktop. C6 therefore stops here rather than mechanically removing useful hierarchy.
+The selected-tour visual audit then exposed a real mobile overlap from the C1 sticky search CTA: it could remain visible over checkout after a tour was selected, including the public/programmatic selection path. PR #59 suppresses that sticky immediately for direct-tour clicks and on `v2:tour-selected`, and the selected-tour visual gate now fails if the sticky overlaps checkout. V2-only deploy, live smoke, post-deploy visual and durable baseline passed.
+
+The analogous results-card flattening candidate was reviewed on mobile and desktop and intentionally retained: the `Варианты тура` section background materially separates hotel-level comparison from a concrete tour choice on desktop. C6 therefore stops here rather than mechanically removing useful hierarchy.
 
 ## C7 — Live Conversion Optimization
 Status: **WAITING_FOR_TRAFFIC**
