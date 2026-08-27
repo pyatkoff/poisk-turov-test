@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T22:08:00+02:00",
+  "updated_at": "2026-08-27T23:20:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Conversion UX 3.0 complete; live optimization waiting for evidence",
   "current_task": {
@@ -10,7 +10,7 @@
     "title": "Live conversion optimization",
     "status": "WAITING_FOR_TRAFFIC",
     "objective": "Use meaningful real production traffic and funnel behavior to prioritize the next conversion improvements instead of speculative polish.",
-    "next_action": "Inspect the latest successful hourly Audit V2 live traffic run before deciding C7. The audit now separates headless CI from real browsers and attributes 4xx/5xx by actor. Current sample is insufficient for conversion work: 461 real-browser requests with only 2 search_start and 1 tour; both observed V2 5xx were curl validation traffic. Keep C7/B8/A8 waiting until a larger real-browser funnel or a user-impacting live signal appears; continue whole-flow health/visual checks without speculative micro-work."
+    "next_action": "Inspect the next fresh privacy-safe real-browser sample after production commit 06edf5905a9290698a413efd11e1606a86a74a2c. PRs #67-#71 upgraded the hourly audit to classify nginx errors, safe route/action attribution and actor classes; that evidence found real-browser startup rate-limit delays concentrated in hidden advanced catalogs. PR #72 now defers those noncritical catalogs until `Фильтры отдыха` is opened and is production-green. Do not judge the effect from the current cumulative log tail because it still contains pre-deploy browser sessions; confirm against new post-deploy browser sessions. Keep C7 conversion changes waiting because the observed funnel remains only 2 search_start and 1 tour."
   },
   "queue": [
     {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
@@ -18,8 +18,8 @@
     {"id":"C3","status":"DONE","title":"Selected Tour Experience 3.0"},
     {"id":"C4","status":"DONE","title":"Lead Experience 3.0"},
     {"id":"C5","status":"DONE","title":"Flight friction"},
-    {"id":"C6","status":"DONE","title":"Visual refinement","note":"PR #57 flattened the redundant outer flights-section card while preserving individual flight variants and recovery. PR #59 then fixed a confirmed mobile selected-tour overlap where the C1 sticky search CTA could remain visible over checkout, including programmatic tour selection. The selected-tour visual gate now asserts the sticky is hidden. Fresh five-viewport selected-tour evidence then showed the reassurance block still carried too much nested-card weight; PR #61 compacted it into a lightweight reassurance strip while preserving trust semantics and passed deploy/live/post-deploy/baseline. The analogous results-panel flattening was intentionally rejected because it improves hotel-vs-tour hierarchy on desktop."},
-    {"id":"C7","status":"WAITING_FOR_TRAFFIC","title":"Live conversion optimization","note":"PRs #63-#65 turned the existing privacy-safe production log audit into an hourly evidence source, separated headless CI from real browser traffic, and attributed 4xx/5xx by actor. Latest run 33111745694 observed 461 real-browser V2 requests but only 2 search_start and 1 tour; both V2 5xx belonged to curl validation traffic, so no user-impacting failure is confirmed and the conversion sample remains too small for evidence-driven changes."},
+    {"id":"C6","status":"DONE","title":"Visual refinement","note":"PR #57 flattened the redundant outer flights-section card while preserving individual flight variants and recovery. PR #59 fixed a confirmed mobile selected-tour overlap where the C1 sticky search CTA could remain visible over checkout, including programmatic selection. PR #61 compacted selected-tour reassurance into a lightweight strip while preserving trust semantics. The analogous results-panel flattening remains intentionally rejected because it improves hotel-vs-tour hierarchy on desktop."},
+    {"id":"C7","status":"WAITING_FOR_TRAFFIC","title":"Live conversion optimization","note":"PRs #63-#65 established privacy-safe live actor/funnel evidence. PRs #67-#71 then classified the previously opaque nginx error log: the tail contained rate-limit delays plus filesystem symlink-loop warnings; actor/action attribution proved 106 rate-limit delays belonged to browsers, especially hidden startup catalogs (hotel_types 12/18 browser requests delayed, operators 12/18, meals 8/14). PR #72 moved advanced catalogs behind opening `Фильтры отдыха`; all six PR gates, V2 deploy 33117246904, live search smoke, post-deploy visual 33117341554 and baseline 33117341548 passed. Conversion evidence is still only 2 search_start and 1 tour, so C7 stays waiting."},
     {"id":"B1","status":"DONE","title":"Visual foundation"},
     {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
     {"id":"B3","status":"DONE","title":"Results Experience 2.0"},
@@ -27,8 +27,8 @@
     {"id":"B5","status":"DONE","title":"Trust and conversion UX"},
     {"id":"B6","status":"DONE","title":"Visual regression baseline"},
     {"id":"B7","status":"DONE","title":"Performance and visual stability"},
-    {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
-    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
+    {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization","note":"A live-derived performance issue was fixed in PR #72: hidden advanced catalogs no longer contribute to initial browser request burst. Wait for fresh post-deploy browser evidence before further optimization."},
+    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop","note":"PRs #67-#71 now classify nginx severity/families, safe paths/actions and actor classes without exposing IPs/query strings/user payloads. Continue using this evidence source on each run."},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
     {"id":"A1","status":"DEFERRED_SUPERSEDED_BY_B6","title":"Visual baseline and regression harness"},
     {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit"},
@@ -48,17 +48,18 @@
     "c6": "PR #57 flattened nested outer flight-section chrome; PR #59 fixed mobile sticky-search overlap on selected tour; PR #61 compacted selected-tour reassurance into a lightweight strip; all are production-green"
   },
   "last_ci": {
-    "workflow": "Audit V2 live traffic",
-    "run_id": 33111745694,
-    "head_sha": "032b589262f44a65c7cfdde2814f63a4c1ece0fc",
+    "workflow": "Visual V2 baseline",
+    "run_id": 33117341548,
+    "head_sha": "06edf5905a9290698a413efd11e1606a86a74a2c",
     "conclusion": "success",
-    "classification": "LIVE_AUDIT_LOW_REAL_TRAFFIC_NO_BROWSER_5XX"
+    "classification": "LIVE_BROWSER_STARTUP_CATALOG_RATE_LIMIT_MITIGATION_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "07af7feeabe8ff73fef7d8468c69841aa9382475",
-  "pending_verification": null,
+  "last_verified_commit": "06edf5905a9290698a413efd11e1606a86a74a2c",
+  "pending_verification": "Fresh post-deploy real-browser rate-limit sample; current audit tail still includes pre-deploy sessions.",
   "blocked": [],
   "deferred": [
-    {"scope":"C7 conversion changes from current live sample","reason":"Latest privacy-safe real-browser sample has only 2 search_start and 1 tour; insufficient evidence for conversion changes. Both observed V2 5xx were curl validation traffic, not real browsers."},
+    {"scope":"C7 conversion changes from current live sample","reason":"Latest privacy-safe real-browser funnel still has only 2 search_start and 1 tour; insufficient evidence for conversion changes. Observed V2 5xx remains curl validation traffic, not real browsers."},
+    {"scope":"global /images symlink-loop used by V2","reason":"Nginx error attribution found `Too many levels of symbolic links` on /images/logo.svg, /images/pay_icons.png and /images/mir-logo-h229px.png; only 6 events mapped to real browsers and access responses remain HTTP 200. Those global assets live outside the allowed V2/repository write scope. Do not modify the neighboring/global site or server config; revisit only if user impact is confirmed or a safe V2-local source asset can be vendored."},
     {"scope":"results variant outer panel flattening","reason":"Fresh mobile+desktop baseline review showed the panel materially separates hotel-level comparison from concrete tour choice on desktop; retain the hierarchy rather than mechanically flattening it."},
     {"scope":"lead-form-guard-v1.js selectedTour MutationObserver","reason":"Public programmatic V2TourController.selectTour() can mutate #selectedTour before v2:tour-selected; lazy observation tied only to clicks/events would weaken recovery coverage."},
     {"scope":"results-renderer-v5.js per-card initialTourLimit matchMedia allocation","reason":"Confirmed but small; defer until profiling or live traffic justifies it."},
