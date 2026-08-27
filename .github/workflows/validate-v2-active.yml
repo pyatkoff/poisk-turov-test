@@ -98,9 +98,8 @@ jobs:
           const match=src.match(/const defaults=(\{[^;]+\});/);
           if(!match)throw new Error('advanced filter defaults contract missing');
           const defaults=vm.runInNewContext('('+match[1]+')');
-          const required=['arrival','region','subregion','hotel','operator','hotel_type','rating','price_from','price_till','onlyDirect','onlyCharter'];
+          const required=['arrival','region','subregion','hotel','operator','hotel_type','stars','rating','food','price_from','price_till','onlyDirect','onlyCharter'];
           required.forEach(name=>{if(!Object.prototype.hasOwnProperty.call(defaults,name))throw new Error('advanced filter missing: '+name);});
-          if(Object.prototype.hasOwnProperty.call(defaults,'food'))throw new Error('primary meal leaked into advanced filter defaults');
           if(!src.includes("Курорт, отель и перелёт"))throw new Error('advanced filter empty summary is stale');
           if(!src.includes('Сбросить дополнительные фильтры'))throw new Error('advanced filter reset control missing');
           if(!src.includes("summary.innerHTML='<strong>Все фильтры</strong>"))throw new Error('advanced filter summary label missing');
