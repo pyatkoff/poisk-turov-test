@@ -9,126 +9,108 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Prepare SSH key
-        env:
-          DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          key_file="$GITHUB_WORKSPACE/deploy_key"
-          raw="$DEPLOY_SSH_KEY_VALUE"
-          if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
-          chmod 600 "$key_file"
-          ssh-keygen -y -f "$key_file" >/dev/null
       - name: Compare live search, tour and default flight price
-        env:
-          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
         shell: bash
         run: |
           set -euo pipefail
-          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
-          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" '
-            set -euo pipefail
-            fail(){ echo "FLIGHT_PRICE_FAIL:$1"; exit 1; }
-            base="https://anytour.online/poisk-turov-test/v2/api-v2.php"
-            from="$(date -d "+2 day" +%Y-%m-%d)"
-            till="$(date -d "+9 day" +%Y-%m-%d)"
+          fail(){ echo "FLIGHT_PRICE_FAIL:$1"; exit 1; }
+          base="https://anytour.online/poisk-turov-test/v2/api-v2.php"
+          from="$(date -d "+2 day" +%Y-%m-%d)"
+          till="$(date -d "+9 day" +%Y-%m-%d)"
 
-            start_code="$(curl -k -L -sS -o /tmp/v2-price-search-start.json -w "%{http_code}" --max-time 50 "$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB")"
-            test "$start_code" = "200" || fail search_start_http
-            search_id="$(python3 -c "import json; d=json.load(open(\"/tmp/v2-price-search-start.json\")); print(d.get(\"searchId\",\"\") if isinstance(d,dict) else \"\")")"
-            test -n "$search_id" || fail search_id
+          start_code="$(curl -k -L -sS -o /tmp/v2-price-search-start.json -w "%{http_code}" --max-time 50 "$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB")"
+          test "$start_code" = "200" || fail search_start_http
+          search_id="$(python3 -c "import json; d=json.load(open('/tmp/v2-price-search-start.json')); print(d.get('searchId','') if isinstance(d,dict) else '')")"
+          test -n "$search_id" || fail search_id
 
-            complete=0
-            for attempt in $(seq 1 20); do
-              sleep 2
-              status_code="$(curl -k -L -sS -o /tmp/v2-price-search-status.json -w "%{http_code}" --max-time 45 "$base?action=search_status&searchId=$search_id")"
-              if test "$status_code" = "200" && python3 -c "import json; d=json.load(open(\"/tmp/v2-price-search-status.json\")); raise SystemExit(0 if isinstance(d,dict) and (d.get(\"progress\")==100 or d.get(\"status\")==\"complete\") else 1)"; then complete=1; break; fi
-            done
-            test "$complete" = "1" || fail search_not_complete
+          complete=0
+          for attempt in $(seq 1 20); do
+            sleep 2
+            status_code="$(curl -k -L -sS -o /tmp/v2-price-search-status.json -w "%{http_code}" --max-time 45 "$base?action=search_status&searchId=$search_id")"
+            if test "$status_code" = "200" && python3 -c "import json; d=json.load(open('/tmp/v2-price-search-status.json')); raise SystemExit(0 if isinstance(d,dict) and (d.get('progress')==100 or d.get('status')=='complete') else 1)"; then complete=1; break; fi
+          done
+          test "$complete" = "1" || fail search_not_complete
 
-            results_code="$(curl -k -L -sS -o /tmp/v2-price-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25")"
-            test "$results_code" = "200" || fail results_http
-            python3 - <<"PY" >/tmp/v2-price-tour-ids.txt
-            import json
-            items=json.load(open("/tmp/v2-price-results.json"))
-            seen=[]
-            for hotel in items if isinstance(items,list) else []:
-                if not isinstance(hotel,dict): continue
-                for tour in hotel.get("tours") or []:
-                    if not isinstance(tour,dict) or tour.get("id") is None: continue
-                    tid=str(tour["id"])
-                    if tid not in seen:
-                        seen.append(tid)
-                        print(tid)
-                    if len(seen)>=10: raise SystemExit
-            PY
-            test -s /tmp/v2-price-tour-ids.txt || fail no_tours
+          results_code="$(curl -k -L -sS -o /tmp/v2-price-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25")"
+          test "$results_code" = "200" || fail results_http
+          python3 - <<'PY' >/tmp/v2-price-tour-ids.txt
+          import json
+          items=json.load(open('/tmp/v2-price-results.json'))
+          seen=[]
+          for hotel in items if isinstance(items,list) else []:
+              if not isinstance(hotel,dict): continue
+              for tour in hotel.get('tours') or []:
+                  if not isinstance(tour,dict) or tour.get('id') is None: continue
+                  tid=str(tour['id'])
+                  if tid not in seen:
+                      seen.append(tid)
+                      print(tid)
+                  if len(seen)>=10: raise SystemExit
+          PY
+          test -s /tmp/v2-price-tour-ids.txt || fail no_tours
 
-            chosen=""
-            while IFS= read -r tid; do
-              test -n "$tid" || continue
-              tour_code="$(curl -k -L -sS -o /tmp/v2-price-tour.json -w "%{http_code}" --max-time 45 "$base?action=tour&tourId=$tid&currency=RUB")"
-              test "$tour_code" = "200" || continue
-              flight_code="$(curl -k -L -sS -o /tmp/v2-price-flights.json -w "%{http_code}" --max-time 45 "$base?action=flights&tourId=$tid&currency=RUB")"
-              test "$flight_code" = "200" || continue
-              if python3 -c "import json; d=json.load(open(\"/tmp/v2-price-flights.json\")); v=d if isinstance(d,list) else d.get(\"flights\",[]) if isinstance(d,dict) else []; raise SystemExit(0 if v else 1)"; then chosen="$tid"; break; fi
-            done </tmp/v2-price-tour-ids.txt
-            test -n "$chosen" || fail no_tour_with_flights
+          chosen=""
+          while IFS= read -r tid; do
+            test -n "$tid" || continue
+            tour_code="$(curl -k -L -sS -o /tmp/v2-price-tour.json -w "%{http_code}" --max-time 45 "$base?action=tour&tourId=$tid&currency=RUB")"
+            test "$tour_code" = "200" || continue
+            flight_code="$(curl -k -L -sS -o /tmp/v2-price-flights.json -w "%{http_code}" --max-time 45 "$base?action=flights&tourId=$tid&currency=RUB")"
+            test "$flight_code" = "200" || continue
+            if python3 -c "import json; d=json.load(open('/tmp/v2-price-flights.json')); v=d if isinstance(d,list) else d.get('flights',[]) if isinstance(d,dict) else []; raise SystemExit(0 if v else 1)"; then chosen="$tid"; break; fi
+          done </tmp/v2-price-tour-ids.txt
+          test -n "$chosen" || fail no_tour_with_flights
 
-            CHOSEN_TOUR_ID="$chosen" SEARCH_ID="$search_id" python3 - <<"PY" || fail consistency
-            import json, os, math
-            requested=str(os.environ["CHOSEN_TOUR_ID"])
-            search_id=str(os.environ["SEARCH_ID"])
-            results=json.load(open("/tmp/v2-price-results.json"))
-            tour=json.load(open("/tmp/v2-price-tour.json"))
-            flights_raw=json.load(open("/tmp/v2-price-flights.json"))
-            assert isinstance(tour,dict), "tour_not_object"
-            assert str(tour.get("id") or "")==requested, "tour_id_mismatch"
+          CHOSEN_TOUR_ID="$chosen" SEARCH_ID="$search_id" python3 - <<'PY' || fail consistency
+          import json, os, math
+          requested=str(os.environ['CHOSEN_TOUR_ID'])
+          search_id=str(os.environ['SEARCH_ID'])
+          results=json.load(open('/tmp/v2-price-results.json'))
+          tour=json.load(open('/tmp/v2-price-tour.json'))
+          flights_raw=json.load(open('/tmp/v2-price-flights.json'))
+          assert isinstance(tour,dict), 'tour_not_object'
+          assert str(tour.get('id') or '')==requested, 'tour_id_mismatch'
 
-            result_tour=None
-            result_hotel=None
-            for hotel in results if isinstance(results,list) else []:
-                if not isinstance(hotel,dict): continue
-                for candidate in hotel.get("tours") or []:
-                    if isinstance(candidate,dict) and str(candidate.get("id") or "")==requested:
-                        result_tour=candidate; result_hotel=hotel; break
-                if result_tour: break
-            assert result_tour is not None, "tour_missing_from_results"
+          result_tour=None
+          result_hotel=None
+          for hotel in results if isinstance(results,list) else []:
+              if not isinstance(hotel,dict): continue
+              for candidate in hotel.get('tours') or []:
+                  if isinstance(candidate,dict) and str(candidate.get('id') or '')==requested:
+                      result_tour=candidate; result_hotel=hotel; break
+              if result_tour: break
+          assert result_tour is not None, 'tour_missing_from_results'
 
-            def number(v):
-                if isinstance(v,dict): v=v.get("value",0)
-                try: return float(v or 0)
-                except (TypeError,ValueError): return 0.0
+          def number(v):
+              if isinstance(v,dict): v=v.get('value',0)
+              try: return float(v or 0)
+              except (TypeError,ValueError): return 0.0
 
-            def same_if_present(a,b,key):
-                if key in a and key in b and a.get(key) not in (None,"") and b.get(key) not in (None,""):
-                    assert str(a.get(key))==str(b.get(key)), f"{key}_mismatch:{a.get(key)}!={b.get(key)}"
+          def same_if_present(a,b,key):
+              if key in a and key in b and a.get(key) not in (None,'') and b.get(key) not in (None,''):
+                  assert str(a.get(key))==str(b.get(key)), f'{key}_mismatch:{a.get(key)}!={b.get(key)}'
 
-            for key in ("date","nights","adults","childs"):
-                same_if_present(result_tour,tour,key)
+          for key in ('date','nights','adults','childs'):
+              same_if_present(result_tour,tour,key)
 
-            result_hotel_id=(result_hotel or {}).get("id")
-            detail_hotel_id=(tour.get("hotel") or {}).get("id") if isinstance(tour.get("hotel"),dict) else None
-            if result_hotel_id not in (None,"") and detail_hotel_id not in (None,""):
-                assert str(result_hotel_id)==str(detail_hotel_id), "hotel_id_mismatch"
+          result_hotel_id=(result_hotel or {}).get('id')
+          detail_hotel_id=(tour.get('hotel') or {}).get('id') if isinstance(tour.get('hotel'),dict) else None
+          if result_hotel_id not in (None,'') and detail_hotel_id not in (None,''):
+              assert str(result_hotel_id)==str(detail_hotel_id), 'hotel_id_mismatch'
 
-            variants=flights_raw if isinstance(flights_raw,list) else flights_raw.get("flights",[]) if isinstance(flights_raw,dict) else []
-            assert variants, "no_flight_variants"
-            default=next((v for v in variants if isinstance(v,dict) and v.get("isDefault")), variants[0])
-            assert isinstance(default,dict), "default_flight_not_object"
-            tour_price=number(tour.get("price"))
-            flight_price=number(default.get("price"))
-            assert tour_price>0 and flight_price>0, "non_positive_price"
-            assert math.isclose(tour_price,flight_price,abs_tol=0.01), f"default_price_mismatch:{tour_price}!={flight_price}"
-            forward=default.get("forward") or []
-            if forward and isinstance(forward[0],dict):
-                fd=(forward[0].get("departure") or {}).get("date") if isinstance(forward[0].get("departure"),dict) else None
-                if fd and tour.get("date"):
-                    expected=".".join(reversed(str(tour["date"]).split("-"))) if "-" in str(tour["date"]) else str(tour["date"])
-                    assert str(fd)==expected, f"forward_date_mismatch:{fd}!={expected}"
-            print("LIVE_PRICE_CONSISTENCY_OK", "searchId="+search_id, "tourId="+requested, "price="+str(tour_price), "variants="+str(len(variants)))
-            PY
-          '
+          variants=flights_raw if isinstance(flights_raw,list) else flights_raw.get('flights',[]) if isinstance(flights_raw,dict) else []
+          assert variants, 'no_flight_variants'
+          default=next((v for v in variants if isinstance(v,dict) and v.get('isDefault')), variants[0])
+          assert isinstance(default,dict), 'default_flight_not_object'
+          tour_price=number(tour.get('price'))
+          flight_price=number(default.get('price'))
+          assert tour_price>0 and flight_price>0, 'non_positive_price'
+          assert math.isclose(tour_price,flight_price,abs_tol=0.01), f'default_price_mismatch:{tour_price}!={flight_price}'
+          forward=default.get('forward') or []
+          if forward and isinstance(forward[0],dict):
+              dep=forward[0].get('departure') or {}
+              fd=dep.get('date') if isinstance(dep,dict) else None
+              if fd and tour.get('date'):
+                  expected='.'.join(reversed(str(tour['date']).split('-'))) if '-' in str(tour['date']) else str(tour['date'])
+                  assert str(fd)==expected, f'forward_date_mismatch:{fd}!={expected}'
+          print('LIVE_PRICE_CONSISTENCY_OK', 'searchId='+search_id, 'tourId='+requested, 'price='+str(tour_price), 'variants='+str(len(variants)))
+          PY
