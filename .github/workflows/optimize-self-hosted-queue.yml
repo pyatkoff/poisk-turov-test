@@ -1,0 +1,59 @@
+name: Optimize self-hosted CI queue
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/optimize-self-hosted-queue.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  optimize:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SELF_HOSTED_GH_TOKEN }}
+      - name: Add latest-commit concurrency to non-deploy workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          root = Path('.github/workflows')
+          skip = {'deploy.yml', 'optimize-self-hosted-queue.yml'}
+          changed = []
+          block = "\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: true\n\n"
+
+          for path in sorted(root.glob('*.y*ml')):
+              if path.name in skip:
+                  continue
+              text = path.read_text(encoding='utf-8')
+              if '\nconcurrency:\n' in text:
+                  continue
+              marker = '\njobs:\n'
+              if marker not in text:
+                  continue
+              text = text.replace(marker, block + 'jobs:\n', 1)
+              path.write_text(text, encoding='utf-8')
+              changed.append(str(path))
+
+          print('OPTIMIZED', len(changed))
+          for p in changed:
+              print(p)
+          PY
+
+          if git diff --quiet -- .github/workflows; then
+            echo 'No workflow queue changes needed'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows
+          git commit -m 'ci: collapse stale self-hosted validation runs'
+          git push
