@@ -1,71 +1,62 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T00:19:00+02:00",
+  "updated_at": "2026-08-28T01:03:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "9.0 design roadmap active only where product direction is explicit; live conversion optimization still waits for evidence",
+  "phase": "Search/Brand/Trust 9.0 production-green; live conversion optimization still waits for meaningful browser evidence",
   "current_task": {
     "id": "C7",
     "category": "LIVE_CONVERSION_OPTIMIZATION",
     "title": "Live conversion optimization",
     "status": "WAITING_FOR_TRAFFIC",
-    "objective": "Use meaningful real production traffic and funnel behavior for conversion changes while preserving user-confirmed design contracts.",
-    "next_action": "First verify fresh main/deploy/live/visual health and inspect the privacy-safe recent 30-minute browser audit. Preserve PR #76 first-screen stars+meal and its delayed/on-demand meal catalog. PR #77 Brand/Hero 9.0 is production-green and preserves the logo. Continue the 9.0 roadmap only for confirmed material design gaps; the current results/price hierarchy was re-audited and already has a strong photo→facts→best-offer price→tour CTA structure, so do not manufacture a results redesign without new evidence. Activate C7/B8/A8 only from meaningful real-browser evidence."
+    "objective": "Use meaningful real production traffic and funnel behavior for conversion changes while preserving confirmed product contracts.",
+    "next_action": "Inspect fresh main/open PRs and the latest privacy-safe 30-minute browser audit. Preserve first-screen stars+meal and delayed/on-demand meals loading. Re-audit the full mobile+desktop journey. Do not manufacture Results 9.0 micro-work: PR #82 was closed because it duplicated meal information already present in best-offer context. Activate C7/B8/A8 only from meaningful real-browser evidence."
   },
   "queue": [
-    {"id":"C1","status":"DONE","title":"Search Experience 3.0","note":"PR #76 additionally establishes stars/category and meal as first-screen primary controls."},
-    {"id":"C2","status":"DONE","title":"Results Experience 3.0","note":"Fresh post-#77 reread found no confirmed material results/price-hierarchy defect; retain current commercial hierarchy until evidence changes priority."},
+    {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
+    {"id":"C2","status":"DONE","title":"Results Experience 3.0","note":"Current hierarchy intentionally retained; PR #82 closed as duplicative without evidence."},
     {"id":"C3","status":"DONE","title":"Selected Tour Experience 3.0"},
     {"id":"C4","status":"DONE","title":"Lead Experience 3.0"},
     {"id":"C5","status":"DONE","title":"Flight friction"},
     {"id":"C6","status":"DONE","title":"Visual refinement"},
     {"id":"C7","status":"WAITING_FOR_TRAFFIC","title":"Live conversion optimization"},
-    {"id":"B1","status":"DONE","title":"Visual foundation"},
-    {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
-    {"id":"B3","status":"DONE","title":"Results Experience 2.0"},
-    {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0"},
-    {"id":"B5","status":"DONE","title":"Trust and conversion UX"},
-    {"id":"B6","status":"DONE","title":"Visual regression baseline"},
-    {"id":"B7","status":"DONE","title":"Performance and visual stability"},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
-    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
-    {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
-    {"id":"A1","status":"DEFERRED_SUPERSEDED_BY_B6","title":"Visual baseline and regression harness"},
-    {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit"},
-    {"id":"A3","status":"DONE","title":"Consolidate unstable visual cascade areas"},
-    {"id":"A4","status":"DONE","title":"Conversion readiness before live traffic"},
-    {"id":"A5","status":"DONE","title":"Live Tourvisor correctness pass"},
-    {"id":"A7","status":"DONE","title":"SEO foundation audit and incremental work"},
-    {"id":"A9","status":"DONE","title":"Residual V2 generation and CI cleanup"}
+    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"}
   ],
   "design_9": {
-    "status": "PRIMARY_SEARCH_AND_BRAND_HERO_PRODUCTION_GREEN",
-    "primary_search": "PR #76 keeps hotel category/stars and meal type on the first screen. Initial visual CI caught and forced fixes for wrong DOM order and clipped meal chips before baseline refresh was accepted.",
-    "brand_hero": "PR #77 preserves the logo and strengthens hero/header/travel-tech character. All six PR gates, V2 deploy 33121563417, post-deploy visual 33121635099 and baseline 33121635148 passed.",
-    "results_price_hierarchy": "Re-audited after PR #77. Existing renderer already exposes hotel photo/title/facts, best-offer price+context, tour facts, tour price and orange Choose tour CTA with responsive rules. No material change justified yet.",
-    "trust_inputs": "Four offices: Moscow, Saint Petersburg, Kaliningrad, Cheboksary. Yandex Maps reviews exist. Office/manager photos will arrive later. Payment/contract/support are trust themes but exact factual terms are not yet recorded; do not invent claims."
+    "status": "SEARCH_BRAND_TRUST_PRODUCTION_GREEN",
+    "primary_search": "PR #76 established desktop/tablet first-screen stars+meal; PR #79 corrected mobile so stars+meal remain primary there too while nights stay advanced for compactness.",
+    "brand_hero": "PR #77 production-green; logo preserved.",
+    "trust": "PR #81 production-green with verified AnyTour agency proof and office review links. Head 252750e578848823bc5c27f80ad12186b14bef77 passed all six PR gates; merge 9309d965db5c1232e78b7f9514709c00f5507444 passed deploy/live/post-deploy visual.",
+    "results_price_hierarchy": "Retain current hierarchy. Meal already appears in best-offer price context; PR #82 was closed without merge because adding it again to decision facts duplicated information without a confirmed material gap."
   },
   "product_contracts": {
     "logo": "DO_NOT_CHANGE",
-    "primary_search": "Stars/category and meal stay visible on first screen. Other advanced resort/hotel/operator/flight-detail filters may remain behind All filters.",
-    "meal_catalog_performance": "Do not return meals to the immediate startup burst. PR #76 loads meals after 2.2 seconds on a visible page or immediately on explicit user request.",
+    "primary_search": "Stars/category and meal stay visible on first screen, including mobile. Other advanced resort/hotel/operator/flight-detail filters may remain behind All filters.",
+    "meal_catalog_performance": "Do not return meals to the immediate startup burst. Keep delayed/on-demand loading from PR #76.",
     "protected_business_contracts": "Do not modify Metrika/goals or lead transport without explicit approval."
   },
   "last_ci": {
     "workflow": "Visual V2 post-deploy",
-    "run_id": 33121635099,
-    "head_sha": "f917db73e4ae03f7bc81aa59cd7b5525df825e0f",
+    "run_id": 33122969392,
+    "head_sha": "9309d965db5c1232e78b7f9514709c00f5507444",
     "conclusion": "success",
-    "classification": "BRAND_HERO_9_PRODUCTION_GREEN"
+    "classification": "TRUST_9_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "f917db73e4ae03f7bc81aa59cd7b5525df825e0f",
-  "pending_verification": "Require a non-zero recent 30-minute real-browser sample before C7 or further live optimization; current funnel evidence remains insufficient.",
+  "last_verified_commit": "9309d965db5c1232e78b7f9514709c00f5507444",
+  "production_evidence": {
+    "deploy_v2": 33122903508,
+    "result_detail_live": 33122903548,
+    "tour_live": 33122903586,
+    "post_deploy_visual": 33122969392,
+    "visual_baseline": 33122969373
+  },
+  "pending_verification": "Require a non-zero useful recent 30-minute real-browser sample before C7/B8/A8 or further live optimization.",
   "blocked": [],
   "deferred": [
-    {"scope":"C7 conversion changes","reason":"Real-browser funnel evidence remains too small."},
-    {"scope":"additional results/price redesign","reason":"Fresh reread found the current hierarchy already materially strong; do not redesign without a confirmed gap/evidence."},
-    {"scope":"global /images symlink-loop","reason":"Outside allowed V2/repository write scope while access responses remain HTTP 200."},
-    {"scope":"payment/contract/trip-support trust claims","reason":"Exact factual operating terms are not yet recorded; do not invent promises."},
+    {"scope":"C7 conversion changes","reason":"Real-browser funnel evidence remains insufficient."},
+    {"scope":"additional results/price redesign","reason":"Current hierarchy remains materially strong; PR #82 confirmed that extra meal surfacing would duplicate existing context without evidence."},
+    {"scope":"global /images symlink-loop","reason":"Outside allowed V2/repository write scope while sampled access remains successful."},
     {"scope":"small formatter/matchMedia/progressive-results micro-optimizations","reason":"Defer until profiling/live evidence justifies them."}
   ],
   "protected": {
@@ -76,10 +67,6 @@
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "lead_sending_mechanism": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL"
   },
-  "permissions": {
-    "design_within_project": "PROACTIVE_CHANGES_ALLOWED_EXCEPT_LOGO",
-    "site_surface_within_project": "PROACTIVE_DESIGN_AND_UX_CHANGES_ALLOWED"
-  },
   "quality_priorities": {
     "ux": "PRIMARY_PRODUCT_PRIORITY",
     "visual_coherence": "HIGH",
@@ -88,11 +75,11 @@
     "visual_viewports": [375,430,768,1024,1440]
   },
   "continuation_policy": {
-    "on_ci_failure": "diagnose_failure_then_fix_or defer if external or explicitly deferred",
-    "on_ci_success": "collect done evidence then advance queue",
-    "on_blocker": "record blocker and continue independent safe work",
-    "on_visual_change": "visual verification at required viewports before advancing",
-    "on_user_facing_change": "preserve protected contracts and validate behavior before advancing",
-    "on_live_traffic": "activate_C7_B8_A8_and_reprioritize_from_real_evidence"
+    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
+    "on_ci_success": "collect_done_evidence_then_continue",
+    "on_blocker": "record_blocker_and_continue_independent_safe_work",
+    "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
+    "on_live_traffic": "activate_C7_B8_A8_and_reprioritize_from_real_evidence",
+    "on_no_evidence": "keep_V2_stable_and_do_not_manufacture_micro_work"
   }
 }
