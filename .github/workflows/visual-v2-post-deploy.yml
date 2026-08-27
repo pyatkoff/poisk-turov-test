@@ -1,6 +1,10 @@
 name: Visual V2 post-deploy
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/visual-v2-post-deploy.yml'
   workflow_run:
     workflows: ["Deploy V2 only"]
     types: [completed]
@@ -12,7 +16,7 @@ concurrency:
 
 jobs:
   visual-post-deploy:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 15
     steps:
@@ -26,7 +30,7 @@ jobs:
           set -euo pipefail
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
-          npx playwright install chromium >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
 
       - name: Audit production V2 viewports
         shell: bash
