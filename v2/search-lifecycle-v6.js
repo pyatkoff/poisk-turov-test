@@ -2,9 +2,9 @@
 const rt=window.V2Runtime,renderer=window.V2Results,catalogs=window.V2Catalogs;if(!rt||!renderer||!catalogs)return;
 const form=document.getElementById('tourSearch'),status=document.getElementById('status'),results=document.getElementById('results'),selected=document.getElementById('selectedTour'),tools=document.getElementById('resultsTools');if(!form||!status||!results)return;
 let searchId=0,pollTimer=0,generation=0,searchPending=false,dirty=false,searchSnapshot=null,lastResultsProgress=0,lastResultsAt=0;
-const api=(action,params,options)=>rt.api(action,params,options);
+const api=(action,params,options)=>rt.api(action,params,options),moneyFormatter=new Intl.NumberFormat('ru-RU');
 function emit(name,detail,id){window.dispatchEvent(new CustomEvent('v2:search-'+name,{detail:Object.assign({searchId:Number(id===undefined?searchId:id)||0},detail||{})}));}
-function money(v){const n=Number(v||0);return n?new Intl.NumberFormat('ru-RU').format(n):'';}
+function money(v){const n=Number(v||0);return n?moneyFormatter.format(n):'';}
 function show(text){status.hidden=false;status.textContent=text;}
 function params(){const f=new FormData(form),ages=f.getAll('child_age[]').map(v=>Number(v)).filter(Number.isFinite);return{departureId:f.get('from'),countryId:f.get('country'),dateFrom:f.get('dateFrom'),dateTo:f.get('dateTo'),nightsFrom:f.get('daysFrom'),nightsTo:f.get('daysTill'),adults:f.get('count_people')||2,childs:ages,meal:f.get('food')||'',hotelCategory:f.get('stars')||'',hotelRating:f.get('rating')||'',hotelTypes:f.get('hotel_type')?[f.get('hotel_type')]:[],hotelIds:f.get('hotel')?[f.get('hotel')]:[],hotelServices:f.getAll('hotel_service[]'),arrivalId:f.get('arrival')||'',regionIds:f.get('region')?[f.get('region')]:[],subregionIds:f.get('subregion')?[f.get('subregion')]:[],operatorIds:f.get('operator')?[f.get('operator')]:[],priceFrom:f.get('price_from')||'',priceTo:f.get('price_till')||'',currency:'RUB',onlyCharter:f.get('onlyCharter')?'true':'false',onlyDirect:f.get('onlyDirect')?'true':'false'};}
 function cloneSnapshot(p){if(!p)return null;const out={};Object.entries(p).forEach(([k,v])=>{out[k]=Array.isArray(v)?v.slice():v;});return out;}
