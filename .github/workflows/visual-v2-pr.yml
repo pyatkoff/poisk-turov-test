@@ -51,7 +51,6 @@ jobs:
           ];
           const root = path.resolve('v2');
           const browserAsset = /\/poisk-turov-test\/v2\/([^/?]+\.(?:js|css))(?:\?.*)?$/i;
-          const visible = el => !!el && !el.hidden && getComputedStyle(el).display !== 'none';
           const iso = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
           const plusDays = days => { const d=new Date(); d.setDate(d.getDate()+days); return iso(d); };
 
@@ -84,8 +83,7 @@ jobs:
               }));
               await page.screenshot({path:`visual-pr-artifacts/${name}-initial.png`,fullPage:true});
 
-              const dates=page.locator('.dates-picker');
-              await dates.locator('summary').click();
+              await page.locator('.dates-picker summary').click();
               await page.waitForTimeout(150);
               const dateState=await page.evaluate(({fromValue,toValue})=>{
                 const from=document.querySelector('input[name="dateFrom"]');
@@ -102,8 +100,7 @@ jobs:
 
               await page.locator('.guests-picker summary').click();
               await page.waitForTimeout(100);
-              const childSelect=page.locator('#childCount');
-              await childSelect.evaluate(el=>{el.value='2';el.dispatchEvent(new Event('change',{bubbles:true}));});
+              await page.locator('#childCount').evaluate(el=>{el.value='2';el.dispatchEvent(new Event('change',{bubbles:true}));});
               await page.waitForTimeout(200);
               const guestState=await page.evaluate(()=>{
                 const dates=document.querySelector('.dates-picker');
@@ -123,11 +120,32 @@ jobs:
               await page.locator('.guests-picker .picker-done').click();
               const doneClosed=await page.locator('.guests-picker').evaluate(el=>!el.open);
 
-              const item={name,width,height,http:response?response.status():0,pageErrors,initial,dateState,guestState,doneClosed};
+              await page.locator('details.extras > summary').click();
+              await page.waitForTimeout(150);
+              const advancedState=await page.evaluate(()=>{
+                const extras=document.querySelector('details.extras');
+                const backdrop=document.querySelector('.search-filters-backdrop');
+                const mobile=innerWidth<=700;
+                return {
+                  open:!!extras?.open,
+                  mobile,
+                  backdropVisible:!!backdrop&&!backdrop.hidden&&getComputedStyle(backdrop).display!=='none',
+                  bodyLocked:document.body.classList.contains('v2-advanced-filters-open'),
+                  position:extras?getComputedStyle(extras).position:'',
+                  overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,
+                };
+              });
+              await page.screenshot({path:`visual-pr-artifacts/${name}-advanced.png`,fullPage:true});
+              if(advancedState.mobile)await page.locator('.search-filters-backdrop').click();else await page.locator('details.extras > summary').click();
+              const advancedClosed=await page.locator('details.extras').evaluate(el=>!el.open);
+
+              const item={name,width,height,http:response?response.status():0,pageErrors,initial,dateState,guestState,doneClosed,advancedState,advancedClosed};
               report.push(item);
-              const bad=item.http!==200||pageErrors.length||initial.overflow||!initial.hero||!initial.search||!initial.dates||!initial.guests||initial.resultsVisible||!dateState.open||!dateState.min||!dateState.toMin||!dateState.toMax||!dateState.hint.includes('21')||!guestState.datesClosed||!guestState.guestsOpen||!guestState.agesVisible||!guestState.agesInsidePanel||guestState.ageCount!==2||guestState.overflow||!doneClosed;
+              const mobileAdvancedBad=advancedState.mobile&&(!advancedState.backdropVisible||!advancedState.bodyLocked||advancedState.position!=='fixed');
+              const desktopAdvancedBad=!advancedState.mobile&&advancedState.backdropVisible;
+              const bad=item.http!==200||pageErrors.length||initial.overflow||!initial.hero||!initial.search||!initial.dates||!initial.guests||initial.resultsVisible||!dateState.open||!dateState.min||!dateState.toMin||!dateState.toMax||!dateState.hint.includes('21')||!guestState.datesClosed||!guestState.guestsOpen||!guestState.agesVisible||!guestState.agesInsidePanel||guestState.ageCount!==2||guestState.overflow||!doneClosed||!advancedState.open||advancedState.overflow||mobileAdvancedBad||desktopAdvancedBad||!advancedClosed;
               if(bad)failed=true;
-              console.log(`PR_VISUAL ${name} http=${item.http} overflow=${initial.overflow}/${guestState.overflow} dates=${initial.dates} guests=${initial.guests} ages=${guestState.ageCount} inside=${guestState.agesInsidePanel} errors=${pageErrors.length}`);
+              console.log(`PR_VISUAL ${name} http=${item.http} overflow=${initial.overflow}/${guestState.overflow}/${advancedState.overflow} dates=${initial.dates} guests=${initial.guests} ages=${guestState.ageCount} advanced=${advancedState.open}/${advancedState.position} errors=${pageErrors.length}`);
               await context.close();
             }
             fs.writeFileSync('visual-pr-artifacts/report.json',JSON.stringify(report,null,2));
