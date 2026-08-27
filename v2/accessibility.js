@@ -16,6 +16,5 @@ window.addEventListener('v2:search-error',()=>markBusy(false));
 window.addEventListener('v2:results-rendered',e=>decorate(e.detail&&e.detail.results||document));
 window.addEventListener('v2:tour-selected',()=>{if(selected)selected.setAttribute('tabindex','-1');decorate(selected||document);});
 document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('.hotel-info-toggle');if(!b)return;setTimeout(()=>{const card=b.closest('.hotel-card'),detail=card&&card.querySelector('.hotel-inline-detail');if(detail)b.setAttribute('aria-expanded',detail.hidden?'false':'true');},0);},false);
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>decorate(document),{once:true});else decorate(document);
 window.V2Accessibility={decorate,closeSearchPanels,version:1};
 })();
