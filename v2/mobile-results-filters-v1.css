@@ -34,6 +34,7 @@
 .mrf-empty strong{display:block;margin-bottom:5px}
 .mrf-empty button{margin-top:10px;min-height:42px;border:0;border-radius:11px;background:#3154cf;color:#fff;padding:0 16px;font-weight:900}
 .results-tools{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(145px,42%);align-items:end!important;gap:10px!important;padding:13px 13px 12px!important}
+.results-tools[hidden]{display:none!important}
 .results-tools>div{display:block!important;min-width:0;margin:0!important}
 .results-tools>div strong{display:block;font-size:18px;line-height:1.15}
 .results-tools>div span{display:block;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
