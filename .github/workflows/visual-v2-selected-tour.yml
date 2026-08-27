@@ -1,0 +1,138 @@
+name: Visual V2 selected tour
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/visual-v2-selected-tour.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-visual-v2-selected-tour-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  visual-selected-tour:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Audit selected-tour checkout surface
+        shell: bash
+        env:
+          V2_URL: https://anytour.online/poisk-turov-test/v2/
+        run: |
+          set -euo pipefail
+          mkdir -p visual-selected-tour-artifacts
+          cat > ./v2-selected-tour-visual.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const path = require('path');
+          const url = process.env.V2_URL;
+          const viewports = [
+            ['mobile-375',375,812],
+            ['mobile-430',430,932],
+            ['tablet-768',768,1024],
+            ['intermediate-1024',1024,900],
+            ['desktop-1440',1440,1000],
+          ];
+          const root = path.resolve('v2');
+          const browserAsset = /\/poisk-turov-test\/v2\/([^/?]+\.(?:js|css))(?:\?.*)?$/i;
+          const fixture = `
+            <button type="button" class="back-results">← Вернуться к предложениям</button>
+            <div class="selected-head">
+              <div><span class="eyebrow">ВЫБРАННЫЙ ТУР</span><h2>AnyTour Coast Resort & Spa</h2><p>Турция · Анталья · Лара</p></div>
+              <div class="selected-price"><small>Стоимость</small>142 000 ₽</div>
+            </div>
+            <div class="selected-picture"><div style="height:260px;background:linear-gradient(135deg,#dfe8ff,#f6f8ff);display:grid;place-items:center;font-weight:900;color:#6b7da9">ANYTOUR HOTEL</div></div>
+            <div class="facts">
+              <div><span>Вылет из</span><b>Москва</b></div><div><span>Дата</span><b>12.09.2026</b></div><div><span>Ночей</span><b>9</b></div><div><span>Туристы</span><b>2 взр. + 1 дет.</b></div><div><span>Питание</span><b>Ультра всё включено</b></div>
+              <div><span>Номер</span><b>Deluxe Sea View</b></div><div><span>Размещение</span><b>2 ADL + CHD</b></div><div><span>Оператор</span><b>PEGAS</b></div><div><span>Перелёт</span><b>Чартер</b></div><div><span>Топливный сбор</span><b>6 000 ₽</b></div>
+            </div>
+            <div class="hotel-desc">Большой курортный отель у моря с семейной инфраструктурой, несколькими бассейнами и удобным расположением. Описание намеренно длинное, чтобы проверить ритм текста и адаптивность checkout-поверхности.</div>
+            <div class="tour-flights">
+              <div class="section-heading"><strong>Авиарейсы</strong><span>Выберите подходящий вариант</span></div>
+              <div class="flight-variants">
+                <div class="flight-variant is-selected"><label class="flight-choice"><input type="radio" checked><span>Вариант 1 · рекомендуемый</span><b>142 000 ₽</b></label>
+                  <div class="flight-segment"><div class="flight-segment-title"><strong>Туда</strong><span>Southwind · 2S172 · Boeing 737-800</span></div><div class="flight-route"><div><b>Шереметьево (SVO)</b><span>12.09.2026 · 14:00</span></div><div class="flight-arrow">→</div><div><b>Даламан (DLM)</b><span>12.09.2026 · 18:05</span></div></div><div class="flight-baggage">Багаж: <b>20 кг</b> · Ручная кладь: <b>8 кг</b></div></div>
+                  <div class="flight-segment"><div class="flight-segment-title"><strong>Обратно</strong><span>Southwind · 2S173 · Boeing 737-800</span></div><div class="flight-route"><div><b>Даламан (DLM)</b><span>21.09.2026 · 09:30</span></div><div class="flight-arrow">→</div><div><b>Шереметьево (SVO)</b><span>21.09.2026 · 13:35</span></div></div><div class="flight-baggage">Багаж: <b>20 кг</b> · Ручная кладь: <b>8 кг</b></div></div>
+                </div>
+                <div class="flight-variant"><label class="flight-choice"><input type="radio"><span>Вариант 2</span><b>149 500 ₽</b></label><div class="flight-segment"><div class="flight-segment-title"><strong>Туда</strong><span>Turkish Airlines · TK000 · Airbus A321</span></div></div></div>
+              </div>
+            </div>
+            <form class="lead-form">
+              <div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер получит выбранный тур и рейс</span></div>
+              <div class="lead-fields"><label>Имя<input name="name" value="Павел"></label><label>Телефон<input name="phone" value="+7 999 123-45-67"></label></div>
+              <label>Комментарий<textarea name="comment" rows="3">Нужен номер повыше и тихая сторона.</textarea></label>
+              <label class="lead-consent"><input type="checkbox" checked><span>Согласен на обработку персональных данных</span></label>
+              <button type="button" class="primary">Отправить заявку</button><p class="lead-message"></p>
+            </form>`;
+
+          (async()=>{
+            const browser = await chromium.launch({headless:true});
+            const report=[];
+            let failed=false;
+            for(const [name,width,height] of viewports){
+              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+              const page=await context.newPage();
+              const pageErrors=[];
+              page.on('pageerror',e=>pageErrors.push(String(e).slice(0,500)));
+              await page.route('**/*', async route => {
+                const match=new URL(route.request().url()).pathname.match(browserAsset);
+                if(!match)return route.continue();
+                const file=path.join(root,path.basename(match[1]));
+                if(!fs.existsSync(file))return route.continue();
+                const ext=path.extname(file).toLowerCase();
+                return route.fulfill({status:200,contentType:ext==='.css'?'text/css':'application/javascript',body:fs.readFileSync(file)});
+              });
+              const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForTimeout(3500);
+              const state=await page.evaluate(fixtureHtml=>{
+                ['.v2-product-hero','#tourSearch','#status','#resultsTools','#results'].forEach(sel=>{const el=document.querySelector(sel);if(el)el.style.display='none';});
+                const selected=document.querySelector('#selectedTour');
+                selected.hidden=false;
+                selected.innerHTML=fixtureHtml;
+                window.scrollTo(0,0);
+                return {
+                  selected:!!selected,
+                  facts:selected.querySelectorAll('.facts>div').length,
+                  flights:selected.querySelectorAll('.flight-variant').length,
+                  lead:!!selected.querySelector('.lead-form'),
+                  overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,
+                };
+              },fixture);
+              await page.waitForTimeout(150);
+              await page.screenshot({path:`visual-selected-tour-artifacts/${name}-selected-tour.png`,fullPage:true});
+              const item={name,width,height,http:response?response.status():0,pageErrors,state};
+              report.push(item);
+              if(item.http!==200||pageErrors.length||!state.selected||state.facts!==10||state.flights!==2||!state.lead||state.overflow)failed=true;
+              console.log(`SELECTED_VISUAL ${name} http=${item.http} facts=${state.facts} flights=${state.flights} lead=${state.lead} overflow=${state.overflow} errors=${pageErrors.length}`);
+              await context.close();
+            }
+            fs.writeFileSync('visual-selected-tour-artifacts/report.json',JSON.stringify(report,null,2));
+            await browser.close();
+            if(failed)process.exit(1);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node ./v2-selected-tour-visual.cjs
+
+      - name: Upload selected-tour visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-selected-tour-${{ github.event.pull_request.number || 'manual' }}
+          path: visual-selected-tour-artifacts/
+          retention-days: 14
