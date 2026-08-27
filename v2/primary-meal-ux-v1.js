@@ -1,12 +1,13 @@
 (function(){'use strict';
 if(window.V2PrimaryMealUXV1)return;
 var form=document.getElementById('tourSearch');if(!form)return;
-var select=form.elements.food,main=form.querySelector('.main-fields');if(!select||!main)return;
+var select=form.elements.food,main=form.querySelector('.main-fields'),details=form.querySelector('details.extras'),extraGrid=details&&details.querySelector('.extra-grid');if(!select||!main||!extraGrid)return;
 var field=select.closest('.field');if(!field)return;
-field.classList.add('field-wide','main-meal','primary-step','primary-step-7');
+var stars=form.elements.stars,starsField=stars&&stars.closest('.field');
+function makeSecondary(fieldEl){if(!fieldEl)return;['field-wide','main-stars','main-meal','primary-step','primary-step-6','primary-step-7'].forEach(function(name){fieldEl.classList.remove(name);});}
+function placeSecondaryPreferences(){if(starsField){makeSecondary(starsField);extraGrid.appendChild(starsField);}makeSecondary(field);extraGrid.appendChild(field);}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',placeSecondaryPreferences,{once:true});else placeSecondaryPreferences();
 var title=field.querySelector(':scope > span');if(title)title.textContent='Питание';
-function placeField(){main.appendChild(field);}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',placeField,{once:true});else placeField();
 select.classList.add('meal-native-select');
 var wrap=document.createElement('div');wrap.className='meal-quick';wrap.setAttribute('role','group');wrap.setAttribute('aria-label','Тип питания');field.appendChild(wrap);
 function lower(v){return String(v||'').toLowerCase().replace('ё','е');}
@@ -18,5 +19,5 @@ function addButton(value,label){var btn=document.createElement('button');btn.typ
 function render(){var current=String(select.value||'');wrap.innerHTML='';addButton('','Любое');items().forEach(function(item){addButton(item.value,item.label);});if(current&&Array.from(select.options||[]).some(function(o){return String(o.value)===current;}))select.value=current;sync();}
 select.addEventListener('change',sync);
 var timer=0,observer=new MutationObserver(function(){clearTimeout(timer);timer=setTimeout(render,0);});observer.observe(select,{childList:true});
-render();window.V2PrimaryMealUXV1={render:render,version:1};
+render();window.V2PrimaryMealUXV1={render:render,version:2};
 })();

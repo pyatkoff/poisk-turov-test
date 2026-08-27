@@ -30,8 +30,9 @@ function v2_form_defaults(array $query = [], array $siteParams = []): array
     $dateTill = v2_date_value($query['dateTo'] ?? null, $today->modify('+14 days'));
     if ($dateTill < $dateFrom) $dateTill = $dateFrom;
 
-    $nightsFrom = v2_positive_int($query['daysFrom'] ?? 5, 5, 28);
-    $nightsTill = v2_positive_int($query['daysTill'] ?? 14, 14, 28);
+    // Keep the first search on a compact common preset; explicit query values still win.
+    $nightsFrom = v2_positive_int($query['daysFrom'] ?? 7, 7, 28);
+    $nightsTill = v2_positive_int($query['daysTill'] ?? 10, 10, 28);
     if ($nightsTill < $nightsFrom) $nightsTill = $nightsFrom;
 
     return [

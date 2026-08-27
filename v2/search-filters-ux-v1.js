@@ -2,7 +2,7 @@
 const form=document.getElementById('tourSearch');if(!form)return;
 const details=form.querySelector('details.extras');if(!details)return;
 const summary=details.querySelector(':scope > summary');if(!summary)return;
-const defaults={arrival:'',region:'',subregion:'',hotel:'',operator:'',hotel_type:'',rating:'',price_from:'',price_till:'',onlyDirect:false,onlyCharter:false};
+const defaults={arrival:'',region:'',subregion:'',hotel:'',operator:'',hotel_type:'',stars:'',rating:'',food:'',price_from:'',price_till:'',onlyDirect:false,onlyCharter:false};
 const names=Object.keys(defaults);
 function text(el){if(!el)return'';if(el.tagName==='SELECT'){const o=el.options&&el.options[el.selectedIndex];return o?String(o.textContent||'').trim():'';}return String(el.value||'').trim();}
 function activeItems(){const items=[];names.forEach(name=>{const el=form.elements[name];if(!el)return;if(el instanceof RadioNodeList){if(String(el.value||'')!==String(defaults[name]))items.push(String(el.value||''));return;}if(el.type==='checkbox'){if(!!el.checked!==!!defaults[name])items.push(name==='onlyDirect'?'прямой перелёт':'чартер');return;}if(String(el.value||'')===String(defaults[name]))return;let label=text(el);if(name==='price_from')label='от '+label+' ₽';else if(name==='price_till')label='до '+label+' ₽';items.push(label);});form.querySelectorAll('input[name="hotel_service[]"]:checked').forEach(el=>{const label=el.closest('label');items.push(label?String(label.textContent||'').trim():'услуга отеля');});return items.filter(Boolean);}
