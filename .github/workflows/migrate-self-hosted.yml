@@ -23,6 +23,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "migration-trigger=v2"
           changed=0
           while IFS= read -r -d '' file; do
             if [[ "$file" == ".github/workflows/deploy.yml" ]]; then
