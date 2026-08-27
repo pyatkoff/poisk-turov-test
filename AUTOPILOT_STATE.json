@@ -1,27 +1,35 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T11:10:00+02:00",
-  "mode": "pre_traffic_ready",
-  "phase": "Pre-traffic ready; waiting for live traffic",
+  "updated_at": "2026-08-27T11:40:00+02:00",
+  "mode": "product_ux_visual_development",
+  "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
-    "id": "A8",
-    "category": "LIVE_TRAFFIC",
-    "title": "Live traffic feedback loop",
-    "status": "WAITING_FOR_TRAFFIC",
-    "objective": "Use real production errors, search behavior, UX drop-offs and lead evidence as the primary feedback loop once advertising traffic begins, without changing protected Metrika/goals or the lead transport contract.",
-    "next_action": "Remain production-ready and collect real live-traffic evidence when advertising starts. Prioritize production breakage, lead loss, incorrect data and user-flow regressions; do not make speculative cleanup changes to protected or externally callable residuals."
+    "id": "B1",
+    "category": "VISUAL_FOUNDATION",
+    "title": "Modernize the full AnyTour V2 product shell and first screen",
+    "status": "IN_PROGRESS",
+    "objective": "Make the full AnyTour V2 surface feel like one coherent modern travel product, starting with the global header, first screen, core visual tokens and responsive stability.",
+    "next_action": "Finish PR #3 on ux/b1-visual-foundation, run contract/live checks and visually inspect 375/430/768/1024/1440 before merge. Then advance to B2 Search Experience 2.0."
   },
   "queue": [
+    {"id":"B1","status":"IN_PROGRESS","title":"Visual foundation","note":"Modernize site header/navigation within this project, branded first screen/hero, trust cues, product-shell tokens and responsive coherence. Current branch ux/b1-visual-foundation, PR #3."},
+    {"id":"B2","status":"QUEUED","title":"Search Experience 2.0","note":"Travel-search composer, stronger date UX, compact mobile flow, advanced filter sheet/panel, reduce JS layout shift while preserving search lifecycle semantics."},
+    {"id":"B3","status":"QUEUED","title":"Results Experience 2.0","note":"Decision-oriented hotel cards, stronger imagery/price hierarchy, hotel-vs-tour separation and improved post-search filtering."},
+    {"id":"B4","status":"QUEUED","title":"Tour / Checkout Experience 2.0","note":"Selected-tour checkout summary, clearer travel/room/flight/price hierarchy, stronger flight timeline presentation and shorter path to conversion."},
+    {"id":"B5","status":"QUEUED","title":"Trust and conversion UX","note":"Trust signals, stronger CTA hierarchy, empty/error recovery and conversion surfaces without changing lead transport."},
+    {"id":"B6","status":"QUEUED","title":"Visual regression baseline","note":"Establish durable visual baselines at 375/430/768/1024/1440 after redesigned flow stabilizes; supersedes the old deferred A1 baseline decision."},
+    {"id":"B7","status":"QUEUED","title":"Performance and visual stability","note":"Consolidate CSS/tokens, reduce cascade complexity and layout shift, optimize images/lazy behavior and preserve responsive stability."},
+    {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization","note":"Use real searches, interactions, tour selections, mobile drop-offs and lead behavior to drive product iterations once advertising starts."},
+    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop","note":"Parallel safety loop retained from A-series. When traffic starts, prioritize production breakage, lead loss, incorrect data and user-flow regressions from real evidence."},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
-    {"id":"A1","status":"DEFERRED","title":"Visual baseline and regression harness"},
+    {"id":"A1","status":"DEFERRED_SUPERSEDED_BY_B6","title":"Visual baseline and regression harness"},
     {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit"},
     {"id":"A3","status":"DONE","title":"Consolidate unstable visual cascade areas"},
     {"id":"A4","status":"DONE","title":"Conversion readiness before live traffic"},
     {"id":"A5","status":"DONE","title":"Live Tourvisor correctness pass"},
     {"id":"A7","status":"DONE","title":"SEO foundation audit and incremental work"},
-    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop","note":"Pre-traffic hardening is complete. Activate this task when real advertising traffic starts; live production evidence then becomes the primary feedback loop."},
-    {"id":"A9","status":"DONE","title":"Residual V2 generation and CI cleanup","note":"Removed 17 proven inactive JS generations/helpers, 8 unused local static assets, 3 obsolete V2 smoke/deploy marker files and 14 stale/redundant/completed workflows. Unique contract coverage was consolidated rather than dropped. Self-hosted migration is complete and no ubuntu-latest jobs remain. Final head cd342950305359267034550e20478502b234e5f6 passed active contract 33056378037, deploy/live-search 33056378060, security guard 33056378038, tour live 33056378046, result-detail live 33056378047 and tour-selection live 33056378054. Protected analytics/lead files and externally callable api.php/phone-config.php remain intentionally untouched because retirement is not independently proven."}
+    {"id":"A9","status":"DONE","title":"Residual V2 generation and CI cleanup"}
   ],
   "last_ci": {
     "workflow": "Full pending-head verification",
@@ -31,7 +39,12 @@
     "classification": "A9_FINAL_HEAD_FULL_GREEN"
   },
   "last_verified_commit": "cd342950305359267034550e20478502b234e5f6",
-  "pending_verification": null,
+  "pending_verification": {
+    "branch": "ux/b1-visual-foundation",
+    "pr": 3,
+    "task": "B1",
+    "requirements": ["active_contract", "relevant_live_checks", "manual_visual_375_430_768_1024_1440"]
+  },
   "blocked": [],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
@@ -39,12 +52,24 @@
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "lead_sending_mechanism": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL"
   },
+  "permissions": {
+    "design_within_project": "PROACTIVE_CHANGES_ALLOWED",
+    "site_surface_within_project": "PROACTIVE_DESIGN_AND_UX_CHANGES_ALLOWED"
+  },
+  "quality_priorities": {
+    "ux": "PRIMARY_PRODUCT_PRIORITY",
+    "visual_coherence": "HIGH",
+    "responsive_stability": "HIGH",
+    "whole_project_reread": "PERIODIC",
+    "visual_viewports": [375,430,768,1024,1440]
+  },
   "continuation_policy": {
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_explicitly_deferred",
     "on_ci_success": "collect_done_evidence_then_advance_queue",
     "on_blocker": "record_blocker_and_continue_independent_work",
-    "on_visual_change": "manual_visual_verification_while_visual_workflow_is_deferred",
+    "on_visual_change": "manual_visual_verification_at_required_viewports_before_advancing",
     "on_user_facing_change": "preserve_protected_contracts_and_validate_behavior_before_advancing",
+    "on_live_traffic": "activate_A8_and_B8_and_reprioritize_from_real_evidence",
     "watchdog": "hourly_chat_automation"
   }
 }
