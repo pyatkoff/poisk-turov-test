@@ -70,7 +70,7 @@ Presentation may improve; changing the sending mechanism or external contract re
 - B6 Visual regression baseline — **DONE**
 - B7 Performance & Visual Stability — **IN PROGRESS**
 - B8 Live Product Optimization — **WAITING FOR TRAFFIC**
-- A8 Operational live traffic feedback loop — **WAITING FOR TRAFFIC**
+- A8 Operational live traffic feedback loop — **WAITING_FOR_TRAFFIC**
 
 Other A-series technical/product milestones are complete except A1, which is superseded by B6.
 
@@ -89,23 +89,29 @@ Objective: reduce client overhead, cascade complexity and layout instability wit
 - PR #29 changed `mobile-search-summary-v1.js` so mobile DOM/listeners initialize only at <=700 px, including safe later desktop→mobile initialization. Merged as `6a5dec89b4e365326dede1c26c85d11f22098df6`; production post-deploy visual run `33081786159` passed.
 - PR #30 changed `mobile-results-filters-v1.js` so the heavy mobile filter bar/sheet/handlers initialize only at <=760 px while lightweight listeners retain result data for desktop→mobile resize. Merged as `c0b1ab652db744b99801f12eb3e25bfe929e83c7`; production post-deploy run `33085353476` and main baseline run `33085353432` passed.
 - PR #32 stopped creating hidden stale-results and conversion-confidence result DOM before those states exist. All six PR gates passed; merged as `a40ec76212cead4bada397cf267e9294fc9e53d3`.
-- PR #33 removed the empty initial document-wide `accessibility.js` decoration scan while preserving initial ARIA/visibility setup and event-driven decoration when hotel/room/lead elements actually exist. All six PR gates passed; merged as `6dbc441952a72fa57fcb7c59643d33322acaf7b5`. Production verification was still running when this state was updated.
+- PR #33 removed the empty initial document-wide `accessibility.js` decoration scan while preserving initial ARIA/visibility setup and event-driven decoration. Merged as `6dbc441952a72fa57fcb7c59643d33322acaf7b5`; deploy `33085842973`, post-deploy visual `33085959357` and baseline `33085959378` passed.
+- PR #35 removed repeated result-DOM scans from every search progress poll. `search-progress-ux-v1.js` now uses the exact item count already supplied by `v2:results-rendered`; merged as `59fc25d10a5ca06f2247a90801c20d62bdfd63a7`. Deploy `33088028419`, post-deploy visual `33088135420` and baseline `33088135455` passed.
+- PR #36 stopped installing the document-wide result-action capture listener on the empty initial page. `results-renderer-v5.js` now binds it on first `render()`, including programmatic renders. Merged as `c44e84d1c3a61bbf5a8313807436ccde884fcf15`; deploy `33088328395`, post-deploy visual `33088421118` and baseline `33088421114` passed.
+- PR #37 stopped installing the room-details document click handler before room controls exist. It now binds on first valid `decorate()`, including public programmatic decoration. Merged as `5665f2d99ad9027ef33b2a1e3f58de9d9f31235f`; deploy `33088580155`, post-deploy visual `33088680419` and baseline `33088680487` passed.
+- PR #38 removed the guaranteed-empty initial `hotel-actions-v3.js` document scan. Hotel actions remain event-driven from `v2:results-rendered`. Merged as `47733bc8dfa888ebde37840b2a5ce8a0ca8b6676`; deploy `33088814279`, post-deploy visual `33088902786` and baseline `33088902601` passed.
 
 ### Current audit observations
 
 - Result hotel images already reserve height/min-height and use lazy loading.
 - Selected-tour desktop image CLS is fixed and baseline-protected.
-- Mobile-only UX modules should not build heavy DOM on desktop; the two confirmed cases are now gated.
+- Mobile-only UX modules should not build heavy DOM on desktop; confirmed cases are now gated.
 - Hidden result-state helpers should not allocate UI until the related state exists; confirmed cases are now lazy.
-- `accessibility.js` no longer dynamically bootstraps UX scripts and no longer performs a pointless empty initial decoration scan.
-- `lead-form-guard-v1.js` remains a startup-audit candidate: it currently installs a `MutationObserver` on the initially empty hidden selected-tour container and schedules work before any tour is selected. This must **not** be changed until every direct and programmatic tour-selection/error path is proven to install observation before the first selected-tour mutation.
+- Empty startup document scans and document-wide handlers should be removed only where the owning UI provably does not exist before a later lifecycle event; confirmed result/hotel/room/accessibility cases are now event/lifecycle driven.
+- `lead-form-guard-v1.js` selected-tour `MutationObserver` was audited and intentionally retained. Public `V2TourController.selectTour()` can programmatically mutate `#selectedTour` before `v2:tour-selected`; click-only lazy observation would weaken programmatic/error recovery.
+- `primary-meal-ux-v1.js` observation remains justified because catalog options are replaced dynamically.
+- `search-filters-ux-v1.js` performs substantial initial form transformation by design; no safe micro-cleanup has been proven yet.
 - No current evidence justifies JS bundling by file/request count alone.
 
 ## Exact next work order
 
-1. Verify production deploy, live checks, post-deploy visual and main baseline for merged PR #33 (`6dbc441952a72fa57fcb7c59643d33322acaf7b5`).
-2. Audit all selected-tour entry paths around `tour-controller-v4.js` and `lead-form-guard-v1.js`; only defer the always-on selected-tour observer if error/retry coverage can be preserved before the first mutation.
-3. Continue startup/DOM/runtime measurement for other always-on modules; make only evidence-backed behavior-preserving changes.
+1. Continue B7 with measured startup/runtime profiling rather than another speculative micro-refactor. Prioritize work occurring repeatedly during search/results/selected-tour lifecycle over one-time tiny startup savings.
+2. Periodically re-audit the full V2 journey: initial search → progress/wait → stale results → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery, at mobile and desktop widths.
+3. Keep the `lead-form-guard-v1.js` selected-tour observer unchanged unless a pre-mutation lifecycle contract is introduced and proven for direct and programmatic selection/error paths.
 4. Continue CSS ownership consolidation only where original cascade order can be preserved exactly and B6 screenshots remain unchanged.
 5. Keep live Tourvisor/tour-flight validation green whenever search/tour/flight surfaces are touched.
 6. Activate A8/B8 immediately when real advertising traffic appears.
