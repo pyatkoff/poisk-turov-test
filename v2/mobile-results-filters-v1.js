@@ -1,43 +1,10 @@
 (function(){'use strict';
-if(window.V2MobileResultsFiltersV1)return;
+if(window.V2MobileResultsFiltersV1||window.__V2MobileResultsFiltersLoading)return;
 const mq=window.matchMedia?window.matchMedia('(max-width:760px)'):{matches:true};
-const results=document.getElementById('results'),tools=document.getElementById('resultsTools'),summary=document.getElementById('resultSummary');
-if(!results||!tools)return;
-let items=[],state={stars:0,rating:0,meal:false,priceMax:0},draft={...state},ui=null,lastFocus=null,initialized=false;
-function money(v){const n=Number(v||0);return n>0?new Intl.NumberFormat('ru-RU').format(n):'';}
-function hotelId(h){return String(h&&h.id!=null?h.id:'');}
-function price(h){const n=Number(h&&h.price||0);return Number.isFinite(n)&&n>0?n:0;}
-function tourPrice(t){const n=Number(t&&t.price||0);return Number.isFinite(n)&&n>0?n:0;}
-function tourMealText(t){return [t&&t.meal&&t.meal.russianName,t&&t.meal&&t.meal.fullRussianName,t&&t.meal&&t.meal.name].filter(Boolean).join(' ');}
-function isAllInclusiveTour(t){return /вс[её]\s+включено|all\s+inclusive|(^|\s)ai($|\s)/i.test(tourMealText(t));}
-function hasAllInclusive(h){return (Array.isArray(h&&h.tours)?h.tours:[]).some(isAllInclusiveTour);}
-function hasAllInclusiveUnderPrice(h,max){return (Array.isArray(h&&h.tours)?h.tours:[]).some(t=>{const p=tourPrice(t);return isAllInclusiveTour(t)&&p&&p<=max;});}
-function activeCount(){return (state.stars?1:0)+(state.rating?1:0)+(state.meal?1:0)+(state.priceMax?1:0);}
-function matches(h,criteria){const s=criteria||state;if(s.stars&&Number(h&&h.category||0)<s.stars)return false;if(s.rating&&Number(h&&h.rating||0)<s.rating)return false;if(s.meal&&s.priceMax){if(!hasAllInclusiveUnderPrice(h,s.priceMax))return false;}else{if(s.meal&&!hasAllInclusive(h))return false;if(s.priceMax){const p=price(h);if(!p||p>s.priceMax)return false;}}return true;}
-function visibleItems(criteria){return items.filter(h=>matches(h,criteria));}
-function cloneState(src){return {stars:Number(src.stars||0),rating:Number(src.rating||0),meal:!!src.meal,priceMax:Number(src.priceMax||0)};}
-function updateApplyCount(){if(!ui)return;const apply=ui.sheet.querySelector('.mrf-apply');if(!apply)return;const count=items.length?visibleItems(draft).length:0;apply.textContent=items.length?'Показать '+count:'Показать';apply.setAttribute('aria-label',items.length?'Показать подходящие отели: '+count:'Показать результаты');}
-function setOpenState(open){if(!ui)return;ui.bar.querySelectorAll('.mrf-open').forEach(btn=>btn.setAttribute('aria-expanded',open?'true':'false'));}
-function createUI(){if(ui)return ui;const bar=document.createElement('div');bar.className='mrf-bar';bar.setAttribute('aria-label','Фильтры результатов');tools.insertAdjacentElement('afterend',bar);const sheet=document.createElement('div');sheet.className='mrf-sheet';sheet.id='mrfSheet';sheet.innerHTML='<div class="mrf-backdrop" data-close></div><div class="mrf-panel" role="dialog" aria-modal="true" aria-label="Фильтры результатов"><div class="mrf-grab"></div><div class="mrf-head"><h3>Фильтры</h3><button type="button" class="mrf-close" data-close aria-label="Закрыть">×</button></div><div class="mrf-section"><strong>Категория отеля</strong><div class="mrf-options" data-group="stars"></div></div><div class="mrf-section"><strong>Рейтинг</strong><div class="mrf-options" data-group="rating"></div></div><div class="mrf-section"><strong>Питание</strong><div class="mrf-options"><button type="button" class="mrf-choice" data-meal>Всё включено</button></div></div><div class="mrf-section"><strong>Цена за тур, до</strong><div class="mrf-price"><input type="number" inputmode="numeric" min="0" step="5000" placeholder="Без ограничения" data-price><span>₽</span></div></div><div class="mrf-actions"><button type="button" class="mrf-reset">Сбросить</button><button type="button" class="mrf-apply">Показать</button></div></div>';document.body.appendChild(sheet);
-ui={bar,sheet,price:sheet.querySelector('[data-price]')};
-[[0,'Любая'],[3,'3★+'],[4,'4★+'],[5,'5★']].forEach(([v,label])=>choice(sheet.querySelector('[data-group="stars"]'),label,'stars',v));
-[[0,'Любой'],[4,'4.0+'],[4.5,'4.5+']].forEach(([v,label])=>choice(sheet.querySelector('[data-group="rating"]'),label,'rating',v));
-sheet.addEventListener('click',e=>{const close=e.target.closest('[data-close]');if(close){closeSheet();return;}const btn=e.target.closest('.mrf-choice');if(btn){if(btn.dataset.meal!==undefined)draft.meal=!draft.meal;else if(btn.dataset.key)draft[btn.dataset.key]=Number(btn.dataset.value||0);syncControls();return;}if(e.target.closest('.mrf-reset')){draft={stars:0,rating:0,meal:false,priceMax:0};if(ui)ui.price.value='';syncControls();return;}if(e.target.closest('.mrf-apply')){draft.priceMax=Math.max(0,Number(ui.price.value||0)||0);state=cloneState(draft);apply();closeSheet();}});
-ui.price.addEventListener('input',()=>{draft.priceMax=Math.max(0,Number(ui.price.value||0)||0);updateApplyCount();});
-bar.addEventListener('click',e=>{if(e.target.closest('.mrf-open')){openSheet(e.target.closest('.mrf-open'));return;}const chip=e.target.closest('.mrf-chip');if(!chip)return;const key=chip.dataset.key;if(key==='meal')state.meal=false;else state[key]=0;apply();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheet.classList.contains('is-open'))closeSheet();});
-return ui;}
-function init(){if(initialized)return;initialized=true;createUI();ui.bar.hidden=true;apply();}
-function choice(box,label,key,value){const b=document.createElement('button');b.type='button';b.className='mrf-choice';b.textContent=label;b.dataset.key=key;b.dataset.value=String(value);box.appendChild(b);}
-function syncControls(){if(!ui)return;ui.sheet.querySelectorAll('.mrf-choice[data-key]').forEach(b=>b.classList.toggle('is-active',Number(b.dataset.value||0)===Number(draft[b.dataset.key]||0)));const meal=ui.sheet.querySelector('[data-meal]');if(meal)meal.classList.toggle('is-active',!!draft.meal);if(document.activeElement!==ui.price)ui.price.value=draft.priceMax?String(draft.priceMax):'';updateApplyCount();}
-function openSheet(source){if(!mq.matches)return;init();lastFocus=source||document.activeElement;draft=cloneState(state);syncControls();ui.sheet.classList.add('is-open');setOpenState(true);document.documentElement.style.overflow='hidden';setTimeout(()=>ui.sheet.querySelector('.mrf-close').focus(),0);}
-function closeSheet(){if(!ui)return;const wasOpen=ui.sheet.classList.contains('is-open');ui.sheet.classList.remove('is-open');setOpenState(false);document.documentElement.style.overflow='';draft=cloneState(state);if(wasOpen&&lastFocus&&lastFocus.focus)lastFocus.focus();}
-function renderBar(){if(!mq.matches||!initialized)return;createUI();const c=activeCount(),parts=[];ui.bar.innerHTML='<button type="button" class="mrf-open" aria-controls="mrfSheet" aria-expanded="false">Фильтры'+(c?' <b>'+c+'</b>':'')+'</button>';if(state.stars)parts.push(['stars','от '+state.stars+'★']);if(state.rating)parts.push(['rating','рейтинг '+state.rating+'+']);if(state.meal)parts.push(['meal','всё включено']);if(state.priceMax)parts.push(['priceMax','до '+money(state.priceMax)+' ₽']);parts.forEach(([key,label])=>{const b=document.createElement('button');b.type='button';b.className='mrf-chip';b.dataset.key=key;b.innerHTML=label+' <span aria-hidden="true">×</span>';b.setAttribute('aria-label','Убрать фильтр: '+label);ui.bar.appendChild(b);});ui.bar.hidden=!items.length;}
-function apply(){if(!mq.matches||!initialized)return;if(!items.length){renderBar();return;}const visible=visibleItems(),allowed=new Set(visible.map(hotelId));results.querySelectorAll('.hotel-card').forEach(card=>{card.hidden=!allowed.has(String(card.dataset.hotelId||''));});let empty=results.querySelector('.mrf-empty');if(!visible.length){if(!empty){empty=document.createElement('div');empty.className='mrf-empty';empty.innerHTML='<strong>По этим фильтрам ничего нет</strong><span>Попробуйте ослабить условия.</span><button type="button">Сбросить фильтры</button>';empty.querySelector('button').addEventListener('click',()=>resetFilters(true));results.prepend(empty);}empty.hidden=false;}else if(empty)empty.hidden=true;if(summary)summary.textContent='Показано отелей: '+visible.length+(visible.length!==items.length?' из '+items.length:'');renderBar();}
-function resetFilters(close){state={stars:0,rating:0,meal:false,priceMax:0};draft=cloneState(state);if(ui)ui.price.value='';if(initialized&&mq.matches)apply();if(close)closeSheet();}
-window.addEventListener('v2:results-rendered',e=>{items=Array.isArray(e.detail&&e.detail.items)?e.detail.items.slice():[];if(mq.matches){init();apply();}});
-window.addEventListener('v2:search-reset',()=>{items=[];resetFilters(true);if(ui)ui.bar.hidden=true;});
-if(mq.addEventListener)mq.addEventListener('change',e=>{if(e.matches){init();apply();}else{closeSheet();if(ui)ui.bar.hidden=true;}});
-if(mq.matches)init();
-window.V2MobileResultsFiltersV1={apply:()=>{if(mq.matches){init();apply();}},reset:()=>resetFilters(false),get state(){return Object.assign({},state);},version:1};
+const current=document.currentScript&&document.currentScript.src?document.currentScript.src:'';
+function runtimeSrc(){return current?current.replace('mobile-results-filters-v1.js','mobile-results-filters-runtime-v1.js'):'/poisk-turov-test/v2/mobile-results-filters-runtime-v1.js';}
+function loadDynamic(){if(!mq.matches||window.V2MobileResultsFiltersV1||window.__V2MobileResultsFiltersLoading)return;window.__V2MobileResultsFiltersLoading=true;const s=document.createElement('script');s.src=runtimeSrc();s.async=false;s.onload=()=>{window.__V2MobileResultsFiltersLoading=false;};s.onerror=()=>{window.__V2MobileResultsFiltersLoading=false;};document.head.appendChild(s);}
+if(mq.matches&&document.readyState==='loading'){document.write('<script src="'+runtimeSrc().replace(/"/g,'&quot;')+'"><\/script>');}
+else loadDynamic();
+if(mq&&typeof mq.addEventListener==='function')mq.addEventListener('change',loadDynamic);
 })();
