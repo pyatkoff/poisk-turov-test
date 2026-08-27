@@ -39,12 +39,12 @@ The active product is `v2/`. The focused technical refactor pass is complete and
 ### Tour selection / price / flights
 - `tour-controller-v4.js`: selected-tour flow.
 - `hotel-actions-v3.js`: hotel actions/details integration.
-- `room-details-v3.js`: room details.
+- `room-details-v3.js`: room details. Detailed room content is now progressive disclosure: the compact selected-room control is rendered immediately, while the rooms API, gallery and long description load only after the tourist expands `Подробнее о номере`.
 - `flight-price-sync-v1.js`: selected flight and displayed/submitted price synchronization.
 
 ### Lead path
 - `lead-search-context.js`: search context for lead payload.
-- `lead-form-guard-v1.js`: lead form behavior/guarding.
+- `lead-form-guard-v1.js`: lead form behavior/guarding, explicit field requirements, selection summary, pre-submit contact-purpose note and post-submit success/deduplication confirmation.
 - `lead-adapter-v2.php` and `lead-price-v1.php`: active server lead adapter/price handling.
 
 **Protected contract:** do not change the lead-sending mechanism/external contract without explicit user approval.
@@ -97,7 +97,21 @@ The mobile result-filter sheet previously let the user draft category, rating, m
 
 **Fixed:** the existing client-side filter matcher can now evaluate either active or draft criteria. While the filter sheet is open, its primary action updates immediately to `Показать N` as category/rating/meal selections or the maximum-price input change, and exposes the same count in its accessible label. Applying still happens only on explicit action and only filters the already-rendered result set; server search parameters, Tourvisor API, analytics and lead transport are unchanged.
 
-Verification for A2.4: active V2 contract, V2 isolation and live Tourvisor validation passed on commit `d7bb2494f230143323406a54cebcab0f120d2be2`. Production deploy/verification was still running when this state note was written. Deliberate visual confirmation remains deferred to the manual visual pass while automatic visual execution is paused by project decision.
+Verification for A2.4: active V2 contract, V2 isolation and live Tourvisor validation passed on commit `d7bb2494f230143323406a54cebcab0f120d2be2`. Deliberate visual confirmation remains deferred to the manual visual pass while automatic visual execution is paused by project decision.
+
+### A2.5 — Lead entry and completion clarity
+The lead form previously remained visually editable after a confirmed write, leaving the tourist without a clear completion state or obvious way back to the offers. Before submission, the required phone also lacked a direct explanation of why the contact was needed.
+
+**Fixed:** confirmed new and deduplicated leads now become a dedicated success state with the stored selection context, lead number when available and a `Вернуться к предложениям` action. The editable fields disappear only after confirmed success; errors preserve entered data and the retry action. Before submission, a neutral note explains that the selected tour is sent to the manager and the supplied phone is used to contact the tourist about that request. Lead payload, deduplication, consent, transport and analytics are unchanged.
+
+Verification for A2.5: focused lead guard, active V2 contract, V2 isolation, live Tourvisor validation and production deploy/live search smoke passed on the final lead UX code (`8ce16c768b0eefd98a55d72a32585018d49933e2`).
+
+### A2.6 — Selected-room content blocking the conversion path
+`room-details-v3.js` previously fetched the room API immediately after tour selection and inserted the full room gallery/description before the flight block. With up to ten room photos this could make the mobile selected-tour page substantially longer before the tourist reached the higher-priority flight/price verification and lead path.
+
+**Fixed:** the selected room now renders as a compact `Подробнее о номере` disclosure. The rooms API call, image gallery and long descriptive content are deferred until explicit expansion; collapse/expand does not refetch already-loaded room data, and retry remains available on room API failure. Tour selection, flight/price state, Tourvisor contracts, lead payload and analytics are unchanged.
+
+Verification for A2.6: active V2 contract, V2 isolation and live Tourvisor validation passed on final code commit `dbb42147bffef22f475cd73d2769c4045ecebb93`; production deploy verification was still running when this state note was written.
 
 ## Autopilot queue
 
@@ -120,8 +134,10 @@ Current work order:
 - primary-form ordering/friction: first concrete ordering race fixed;
 - waiting/progress, stale-search and retry/error transitions: three concrete issues fixed;
 - mobile result-filter discoverability/outcome preview: first concrete issue fixed;
-- next: inspect result-card comparison/information hierarchy;
-- then inspect selected-tour, flight/price clarity and lead entry without changing protected lead transport.
+- lead entry/completion: success, duplicate, retry and contact-purpose clarity fixed;
+- selected-tour length: room details changed to on-demand progressive disclosure;
+- next: inspect remaining selected-tour hotel description and fact hierarchy for mobile density/context loss;
+- then return to result-card comparison/information hierarchy and broader conversion-readiness audit.
 
 ### A3 — VISUAL: consolidate unstable cascade areas
 Status: `QUEUED`
