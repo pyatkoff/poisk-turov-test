@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T09:15:00+02:00",
+  "updated_at": "2026-08-27T09:19:00+02:00",
   "mode": "active_development",
   "phase": "SEO foundation audit and incremental hardening",
   "current_task": {
@@ -10,7 +10,7 @@
     "title": "SEO foundation audit and incremental work",
     "status": "IN_PROGRESS",
     "objective": "Prepare the modern tour-search V2 as a safe foundation for future SEO growth without weakening the current conversion journey or changing protected analytics, Metrika goals or lead-sending semantics.",
-    "next_action": "Audit current V2 indexability and page semantics first: title/meta/robots/canonical, heading structure, structured data opportunities, internal-link foundations and URL/state behavior. Implement only low-risk foundational fixes that do not interfere with the search funnel."
+    "next_action": "Continue the A7 audit with URL/search-state crawl behavior, semantic result/detail structure and future canonical/indexability promotion rules; avoid speculative structured data and do not index the temporary /poisk-turov-test/v2/ route."
   },
   "queue": [
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass","note":"Removed proven inactive historical generations for results-renderer, search-continue, search-lifecycle, and tour-controller; final contract/isolation/live/deploy checks passed."},
@@ -19,17 +19,17 @@
     {"id":"A3","status":"QUEUED","title":"Consolidate unstable visual cascade areas","note":"Concrete cascade conflicts in mobile result-card imagery and long-content wrapping were fixed during A4; broader consolidation remains incremental rather than wholesale."},
     {"id":"A4","status":"DONE","title":"Conversion readiness before live traffic","note":"Selected-tour and result-card UX were hardened across CTA clarity, progressive disclosure, mobile imagery, long Tourvisor content, flight selection and lead-entry context; protected lead semantics remained unchanged."},
     {"id":"A5","status":"DONE","title":"Live Tourvisor correctness pass","note":"Completed live coverage across catalogs, search/result/detail identity, tour-flight/default-price consistency, room association, repricing observation and partial-flight edge data. Production user-facing flight presentation was hardened in f7b16d06/2ee6e52d so placeholder SU000/00:00/zero-baggage/empty carry-on data is not shown as false precision, and collapsed equal-price mobile flight variants now expose safe outbound/return flight-time summaries including transfer-safe labeling. Commit 2ee6e52d passed active contract, isolation, flight-price contract, result-detail, tour live, security and deploy run 33048725775 with Verify V2 + live search smoke. Updated E2E journey c81187a9 passed run 33048842814. Multi-tour flight profile b88909ef passed run 33048909672 across 3 tours / 252 variants / 504 segments: no noPlaces/onDemand flags, no missing fuel, 8 placeholder time points, and 488 zero-baggage + missing-carry-on segments handled by the clarified UI."},
-    {"id":"A7","status":"IN_PROGRESS","title":"SEO foundation audit and incremental work","note":"Starting with technical/indexability semantics before any scalable SEO page architecture."},
+    {"id":"A7","status":"IN_PROGRESS","title":"SEO foundation audit and incremental work","note":"Initial audit found the temporary V2 route had a title but no meta description, robots policy or H1. Commit 8982c810 added a description, one semantic H1 and noindex,follow for the temporary /poisk-turov-test/v2/ route; canonical remains intentionally absent until a final SEO route is selected. Deploy run 33049074971 succeeded. Commit 04a9d670 added a live SEO foundation guard checking HTTP 200, title, description, noindex/follow, absent canonical, H1, core internal links and active V2 markers. Its first attempt correctly failed before deployment completed; rerun attempt 2 passed against the deployed HTML."},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop"}
   ],
   "last_ci": {
-    "workflow": "Validate V2 flights live",
-    "run_id": 33048909672,
-    "head_sha": "b88909ef842fe05cc14a590f00d57e325f6809bf",
+    "workflow": "Validate V2 SEO foundation",
+    "run_id": 33049143601,
+    "head_sha": "04a9d670a6dad55a7daebae5be710bda0616fd3f",
     "conclusion": "success",
-    "classification": "MULTI_TOUR_FLIGHT_EDGE_PROFILE_VERIFIED"
+    "classification": "TEST_ROUTE_SEO_FOUNDATION_VERIFIED"
   },
-  "last_verified_commit": "b88909ef842fe05cc14a590f00d57e325f6809bf",
+  "last_verified_commit": "04a9d670a6dad55a7daebae5be710bda0616fd3f",
   "pending_verification": null,
   "blocked": [],
   "protected": {
