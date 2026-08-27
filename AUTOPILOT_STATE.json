@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T12:22:00+02:00",
+  "updated_at": "2026-08-27T12:30:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
@@ -10,12 +10,12 @@
     "title": "Results Experience 2.0",
     "status": "IN_PROGRESS",
     "objective": "Make search results decision-oriented, visually coherent and faster to compare while preserving renderer/search ownership and Tourvisor data semantics.",
-    "next_action": "Continue ux/b3-results-experience: validate the new decision-oriented hotel cards and result toolbar across populated/mobile states, then improve post-search filtering and open a PR when contract/security/visual evidence is green."
+    "next_action": "Continue draft PR #5 on ux/b3-results-experience: get contract/security/populated-results visual gate green, inspect five-viewport evidence, fix any result-card/mobile-filter regression, then merge/deploy and verify production populated results plus tour-selection transition."
   },
   "queue": [
     {"id":"B1","status":"DONE","title":"Visual foundation","note":"Merged PR #3 and deployed. Production visual gate run 33060952362 passed at 375/430/768/1024/1440 with HTTP 200, no document overflow and no page errors."},
     {"id":"B2","status":"DONE","title":"Search Experience 2.0","note":"Merged PR #4 as 112f1ea4b70fa3cca1a1419b598693bf68025606. PR contract/security/visual checks passed and production post-deploy visual run 33062455516 passed."},
-    {"id":"B3","status":"IN_PROGRESS","title":"Results Experience 2.0","note":"Branch ux/b3-results-experience. First iteration adds decision-oriented card hierarchy, stronger result toolbar/price/tour separation, rating/sea/tour-count signals, and improved responsive result presentation without changing Tourvisor/search contracts."},
+    {"id":"B3","status":"IN_PROGRESS","title":"Results Experience 2.0","note":"Draft PR #5 on ux/b3-results-experience. Decision-oriented card hierarchy, stronger result toolbar/price/tour separation, rating/sea/tour-count signals, mobile filter viewport-state fix, and populated-results five-viewport visual coverage are implemented; final green evidence pending."},
     {"id":"B4","status":"QUEUED","title":"Tour / Checkout Experience 2.0","note":"Selected-tour checkout summary, clearer travel/room/flight/price hierarchy, stronger flight timeline presentation and shorter path to conversion."},
     {"id":"B5","status":"QUEUED","title":"Trust and conversion UX","note":"Trust signals, stronger CTA hierarchy, empty/error recovery and conversion surfaces without changing lead transport."},
     {"id":"B6","status":"QUEUED","title":"Visual regression baseline","note":"Establish durable visual baselines at 375/430/768/1024/1440 after redesigned flow stabilizes; supersedes the old deferred A1 baseline decision."},
@@ -41,7 +41,7 @@
   "last_verified_commit": "112f1ea4b70fa3cca1a1419b598693bf68025606",
   "pending_verification": {
     "branch": "ux/b3-results-experience",
-    "pr": null,
+    "pr": 5,
     "task": "B3",
     "requirements": ["renderer_contract_ci", "populated_results_visual_375_430_768_1024_1440", "mobile_result_filter_flow", "production_checks_after_merge"]
   },
