@@ -1,0 +1,64 @@
+name: Validate V2 catalog consistency live
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-catalog-consistency-live.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare SSH key
+        env:
+          DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_file="$GITHUB_WORKSPACE/deploy_key"
+          raw="$DEPLOY_SSH_KEY_VALUE"
+          if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+      - name: Validate dependent Tourvisor catalogs
+        env:
+          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" '
+            set -euo pipefail
+            fail(){ echo "CATALOG_LIVE_FAIL:$1"; exit 1; }
+            base="https://anytour.online/poisk-turov-test/v2/api-v2.php"
+            get(){ local name="$1"; shift; local code; code="$(curl -k -L -sS -o "/tmp/v2-catalog-$name.json" -w "%{http_code}" --max-time 45 --get "$base" "$@")"; test "$code" = "200" || fail "${name}_http_${code}"; }
+
+            get departures --data-urlencode "action=departures" --data-urlencode "departureCountryId=1"
+            get countries --data-urlencode "action=countries" --data-urlencode "departureId=1"
+            get regions --data-urlencode "action=regions" --data-urlencode "countryId=4"
+            get meals --data-urlencode "action=meals"
+            get operators --data-urlencode "action=operators" --data-urlencode "departureId=1" --data-urlencode "countryId=4"
+            get dates --data-urlencode "action=dates" --data-urlencode "departureId=1" --data-urlencode "countryId=4"
+
+            python3 - <<"PY" || fail shape
+            import json
+            def load(name):
+                return json.load(open(f"/tmp/v2-catalog-{name}.json"))
+            def rows(value):
+                if isinstance(value,list): return value
+                if isinstance(value,dict):
+                    for key in ("items","data","departures","countries","regions","meals","operators","dates"):
+                        if isinstance(value.get(key),list): return value[key]
+                return []
+            dep=rows(load("departures")); countries=rows(load("countries")); regions=rows(load("regions")); meals=rows(load("meals")); operators=rows(load("operators")); dates=rows(load("dates"))
+            assert dep, "departures_empty"
+            assert countries, "countries_empty"
+            assert any(str(x.get("id") or "")=="4" for x in countries if isinstance(x,dict)), "turkey_missing_for_departure_1"
+            assert regions, "turkey_regions_empty"
+            assert meals, "meals_empty"
+            assert operators, "operators_empty"
+            assert dates, "dates_empty"
+            print("CATALOG_CONSISTENCY_OK", "departures="+str(len(dep)), "countries="+str(len(countries)), "regions="+str(len(regions)), "meals="+str(len(meals)), "operators="+str(len(operators)), "dates="+str(len(dates)))
+            PY
+          '
