@@ -1,36 +1,35 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T09:11:00+02:00",
+  "updated_at": "2026-08-27T09:15:00+02:00",
   "mode": "active_development",
-  "phase": "Live Tourvisor correctness and pre-traffic hardening",
+  "phase": "SEO foundation audit and incremental hardening",
   "current_task": {
-    "id": "A5",
-    "category": "DATA/CORRECTNESS",
-    "title": "Live Tourvisor correctness pass",
+    "id": "A7",
+    "category": "SEO/FOUNDATION",
+    "title": "SEO foundation audit and incremental work",
     "status": "IN_PROGRESS",
-    "objective": "Validate that live Tourvisor search, selected-tour detail and flight data remain internally consistent across the complete V2 journey without changing protected analytics, Metrika goals or the lead-sending mechanism.",
-    "next_action": "Refresh the end-to-end live user-journey validator to current active V2 markers and optional room semantics, then broaden the fresh flight edge profile across multiple distinct tours; if availability flags remain clean, finish A5 and advance to A7 SEO."
+    "objective": "Prepare the modern tour-search V2 as a safe foundation for future SEO growth without weakening the current conversion journey or changing protected analytics, Metrika goals or lead-sending semantics.",
+    "next_action": "Audit current V2 indexability and page semantics first: title/meta/robots/canonical, heading structure, structured data opportunities, internal-link foundations and URL/state behavior. Implement only low-risk foundational fixes that do not interfere with the search funnel."
   },
   "queue": [
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass","note":"Removed proven inactive historical generations for results-renderer, search-continue, search-lifecycle, and tour-controller; final contract/isolation/live/deploy checks passed."},
     {"id":"A1","status":"DEFERRED","title":"Visual baseline and regression harness","note":"Automatic visual runs temporarily disabled by project decision; workflow remains available manually."},
     {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit","note":"Primary form ordering, stale-result invalidation, search retry/error recovery, mobile result-filter outcome preview, selected-tour progressive disclosure and lead entry/completion UX were fixed through the active V2 path."},
     {"id":"A3","status":"QUEUED","title":"Consolidate unstable visual cascade areas","note":"Concrete cascade conflicts in mobile result-card imagery and long-content wrapping were fixed during A4; broader consolidation remains incremental rather than wholesale."},
-    {"id":"A4","status":"DONE","title":"Conversion readiness before live traffic","note":"Selected-tour work includes lead CTA and field clarity, room-details progressive disclosure, secondary fact disclosure, compact mobile selected-tour image/fact hierarchy, compact unselected flight variants, stable mobile flight choice pricing layout, stronger flight-time hierarchy and separate baggage treatment. Result-card work fixed the narrow/tall mobile image cascade conflict, selected-hotel description nested scrolling, long Tourvisor content/price wrapping, hidden unusable CTA for variants without tourId, and object/array text normalization for roomType, placement, meal and operator. Selected-tour display also normalizes roomType/placement objects and arrays without changing leadPayload semantics. Final active contract, isolation, live Tourvisor, production Verify V2 and live search smoke passed on ba5a20ac."},
-    {"id":"A5","status":"IN_PROGRESS","title":"Live Tourvisor correctness pass","note":"Live validation now covers dependent catalogs, result-detail identity, default-flight price and fresh room association. Catalog run 33047761876 returned 41 departures, 50 countries, 56 Turkey regions, 30 meals and 42 operators. Result-detail run 33048016102 matched 5/5 sampled tours on 8 comparable fields each. Flight-price run 33048054538 confirmed tour 18271253225084 at 73,935 RUB equals its default flight price across 67 variants. Fresh flight profiling run 33048534622 sampled tour 18264322623895 with 122 variants/244 segments: 4 placeholder times, 4 missing timezones, carryOn absent on all 244 segments, no missing baggage/fuel, no noPlaces/onDemand flags, and 121 variants sharing the dominant price. Active UI now presents placeholder schedule/baggage/carry-on uncertainty clearly without changing leadPayload semantics; an HTML quote-escaping regression was also corrected in f7b16d06 and production deploy run 33048505271 passed active contract, isolation, tour/result-detail/flights/generation/security checks, Verify V2 and live search smoke. Fresh rooms run 33048578710 verified requested room 2197116 was returned for a current live tour."
-    },
-    {"id":"A7","status":"QUEUED","title":"SEO foundation audit and incremental work"},
+    {"id":"A4","status":"DONE","title":"Conversion readiness before live traffic","note":"Selected-tour and result-card UX were hardened across CTA clarity, progressive disclosure, mobile imagery, long Tourvisor content, flight selection and lead-entry context; protected lead semantics remained unchanged."},
+    {"id":"A5","status":"DONE","title":"Live Tourvisor correctness pass","note":"Completed live coverage across catalogs, search/result/detail identity, tour-flight/default-price consistency, room association, repricing observation and partial-flight edge data. Production user-facing flight presentation was hardened in f7b16d06/2ee6e52d so placeholder SU000/00:00/zero-baggage/empty carry-on data is not shown as false precision, and collapsed equal-price mobile flight variants now expose safe outbound/return flight-time summaries including transfer-safe labeling. Commit 2ee6e52d passed active contract, isolation, flight-price contract, result-detail, tour live, security and deploy run 33048725775 with Verify V2 + live search smoke. Updated E2E journey c81187a9 passed run 33048842814. Multi-tour flight profile b88909ef passed run 33048909672 across 3 tours / 252 variants / 504 segments: no noPlaces/onDemand flags, no missing fuel, 8 placeholder time points, and 488 zero-baggage + missing-carry-on segments handled by the clarified UI."},
+    {"id":"A7","status":"IN_PROGRESS","title":"SEO foundation audit and incremental work","note":"Starting with technical/indexability semantics before any scalable SEO page architecture."},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop"}
   ],
   "last_ci": {
-    "workflow": "Validate V2 rooms live",
-    "run_id": 33048578710,
-    "head_sha": "5407dc5752dc0256f8ad6cefa9419d201f21d942",
+    "workflow": "Validate V2 flights live",
+    "run_id": 33048909672,
+    "head_sha": "b88909ef842fe05cc14a590f00d57e325f6809bf",
     "conclusion": "success",
-    "classification": "FRESH_LIVE_ROOMS_ASSOCIATION_VERIFIED"
+    "classification": "MULTI_TOUR_FLIGHT_EDGE_PROFILE_VERIFIED"
   },
-  "last_verified_commit": "5407dc5752dc0256f8ad6cefa9419d201f21d942",
+  "last_verified_commit": "b88909ef842fe05cc14a590f00d57e325f6809bf",
   "pending_verification": null,
   "blocked": [],
   "protected": {
