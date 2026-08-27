@@ -1,35 +1,40 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T02:58:00+02:00",
+  "updated_at": "2026-08-27T06:59:00+02:00",
   "mode": "active_development",
-  "phase": "UX and visual iteration after technical refactor",
+  "phase": "Conversion readiness and visual stabilization before live traffic",
   "current_task": {
-    "id": "A2",
-    "category": "UX",
-    "title": "End-to-end search journey UX audit",
+    "id": "A4",
+    "category": "PRODUCT/UX",
+    "title": "Conversion readiness before live traffic",
     "status": "IN_PROGRESS",
-    "objective": "Audit the live V2 search journey from initial form through results and tour details, identify friction and confusing states, and prioritize UX improvements without changing protected analytics, Metrika, or lead-sending contracts.",
-    "next_action": "Continue through waiting/progress and stale-search transitions, then inspect results comparison, selected-tour/flight-price clarity, and lead entry. Keep automatic visual baseline runs manual-only."
+    "objective": "Improve CTA hierarchy, selected-tour clarity, flight/price understanding and lead-entry UX without changing protected analytics, Metrika goals or the lead-sending mechanism.",
+    "next_action": "Finish production verification of the mobile flight-price layout safeguard, then continue trust/information hierarchy around the selected tour and lead form. After A4, resume the broader A5 live Tourvisor correctness pass."
   },
   "queue": [
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass","note":"Removed proven inactive historical generations for results-renderer, search-continue, search-lifecycle, and tour-controller; final contract/isolation/live/deploy checks passed."},
     {"id":"A1","status":"DEFERRED","title":"Visual baseline and regression harness","note":"Automatic visual runs temporarily disabled; workflow remains available manually."},
-    {"id":"A2","status":"IN_PROGRESS","title":"End-to-end search journey UX audit","note":"Primary meal ordering DOM race fixed and verified by active contract, isolation, live checks and successful V2 deploy."},
+    {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit","note":"Primary form ordering, stale-result invalidation, search retry/error recovery, mobile result-filter outcome preview, selected-tour lead entry and related UX issues were fixed through the active V2 path with contract/live/deploy checks."},
     {"id":"A3","status":"QUEUED","title":"Consolidate unstable visual cascade areas"},
-    {"id":"A4","status":"QUEUED","title":"Conversion readiness before live traffic"},
-    {"id":"A5","status":"QUEUED","title":"Live Tourvisor correctness pass"},
+    {"id":"A4","status":"IN_PROGRESS","title":"Conversion readiness before live traffic","note":"Added selected-tour lead CTA, clarified optional/required lead fields and retry state, clarified selected flight price as total tour price, and added narrow-mobile wrapping protection."},
+    {"id":"A5","status":"QUEUED","title":"Live Tourvisor correctness pass","note":"Initial selected-flight price path check passed: flight-price-sync validator and live tour validation are green; broader correctness pass remains."},
     {"id":"A7","status":"QUEUED","title":"SEO foundation audit and incremental work"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop"}
   ],
   "last_ci": {
     "workflow": "Deploy V2 only",
-    "run_id": 33028485502,
-    "head_sha": "4c52edfdcff26129f5ab57ff67d902c9b7615ba5",
+    "run_id": 33040929599,
+    "head_sha": "64723f4f55f6677ad46d7d6e281b40a5680372d4",
     "conclusion": "success",
-    "classification": "UX_ORDERING_FIX_VERIFIED"
+    "classification": "FLIGHT_PRICE_CLARITY_VERIFIED"
   },
-  "last_verified_commit": "4c52edfdcff26129f5ab57ff67d902c9b7615ba5",
+  "last_verified_commit": "64723f4f55f6677ad46d7d6e281b40a5680372d4",
+  "pending_verification": {
+    "commit": "2fb509a73ef5419609e40d3530a7ac8f686077c9",
+    "purpose": "Narrow-mobile flight price label layout safeguard",
+    "deploy_run_id": 33041015820
+  },
   "blocked": [],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
