@@ -6,7 +6,7 @@ var field=select.closest('.field');if(!field)return;
 var stars=form.elements.stars,starsField=stars&&stars.closest('.field');
 function makeSecondary(fieldEl){if(!fieldEl)return;['field-wide','main-stars','main-meal','primary-step','primary-step-6','primary-step-7'].forEach(function(name){fieldEl.classList.remove(name);});}
 function placeSecondaryPreferences(){if(starsField){makeSecondary(starsField);extraGrid.appendChild(starsField);}makeSecondary(field);extraGrid.appendChild(field);}
-placeSecondaryPreferences();
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',placeSecondaryPreferences,{once:true});else placeSecondaryPreferences();
 var title=field.querySelector(':scope > span');if(title)title.textContent='Питание';
 select.classList.add('meal-native-select');
 var wrap=document.createElement('div');wrap.className='meal-quick';wrap.setAttribute('role','group');wrap.setAttribute('aria-label','Тип питания');field.appendChild(wrap);
