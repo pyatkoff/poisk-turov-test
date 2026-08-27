@@ -53,7 +53,7 @@ jobs:
               return "other"
           def summarize(lines,needle,label):
               req=re.compile(r'"([A-Z]+)\s+([^\s"]+)\s+HTTP/[^"]+"\s+(\d{3})')
-              total=0; methods=collections.Counter(); status=collections.Counter(); paths=collections.Counter(); actions=collections.Counter(); bad=collections.Counter(); bad_actions=collections.Counter(); actors=collections.Counter(); browser_actions=collections.Counter()
+              total=0; methods=collections.Counter(); status=collections.Counter(); paths=collections.Counter(); actions=collections.Counter(); bad=collections.Counter(); bad_actions=collections.Counter(); bad_actors=collections.Counter(); actors=collections.Counter(); browser_actions=collections.Counter()
               for line in lines:
                   if needle not in line: continue
                   m=req.search(line)
@@ -67,7 +67,7 @@ jobs:
                       if am: action=am.group(1); actions[action]+=1
                   if who=="browser" and action!="(none)": browser_actions[action]+=1
                   if code.startswith(("4","5")):
-                      bad[(code,clean)]+=1; bad_actions[(code,action)]+=1
+                      bad[(code,clean)]+=1; bad_actions[(code,action)]+=1; bad_actors[(code,who,action)]+=1
               print(label+"_REQUESTS",total)
               print(label+"_METHODS",dict(methods))
               print(label+"_STATUS",dict(status))
@@ -77,6 +77,7 @@ jobs:
               print(label+"_BROWSER_ACTIONS",browser_actions.most_common(20))
               print(label+"_4XX_5XX",bad.most_common(20))
               print(label+"_4XX_5XX_ACTIONS",bad_actions.most_common(20))
+              print(label+"_4XX_5XX_ACTORS",bad_actors.most_common(20))
               return total
           print("ACCESS_SOURCE",os.path.relpath(access,home),os.path.getsize(access) if os.path.isfile(access) else 0,int(os.path.getmtime(access)) if os.path.isfile(access) else 0)
           lines=tail(access,50000)
