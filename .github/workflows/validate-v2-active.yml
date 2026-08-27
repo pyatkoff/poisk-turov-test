@@ -55,7 +55,8 @@ jobs:
           if(r.textValue({russianName:'Стандарт'})!=='Стандарт')process.exit(4);
           if(r.textValue([{name:'DBL'},{title:'SEA VIEW'}])!=='DBL, SEA VIEW')process.exit(5);
           const row=r.tourRow({id:'x',roomType:{name:'Deluxe'},placement:{title:'2 ADL'},meal:{russianName:'Всё включено'},operator:{name:'Test operator'},price:100000});
-          if(row.includes('[object Object]')||!row.includes('Deluxe')||!row.includes('2 ADL')||!row.includes('Всё включено'))process.exit(6);
+          if(row.includes('[object Object]')||!row.includes('Deluxe')||!row.includes('2 ADL')||!row.includes('Всё включено')||!row.includes('Test operator'))process.exit(6);
+          if(typeof r.primaryTourTags==='function')process.exit(7);
           console.log('RESULTS_V5_OK');
           NODE
       - name: Validate runtime retry policy semantics
@@ -89,7 +90,7 @@ jobs:
           ! grep -Fq "document.createElement('style')" v2/search-filters-ux-v1.js
           ! grep -Fq '.style.marginTop' v2/search-filters-ux-v1.js
           grep -Fq '.search-filters-reset{margin-top:14px}' v2/search-filters-ux-v1.css
-          grep -Fq '.search-submit{position:sticky;' v2/search-filters-ux-v1.css
+          grep -Fq '.search-submit{position:static;' v2/search-filters-ux-v1.css
           grep -Fq '.results-tools[hidden]{display:none!important}' v2/mobile-results-filters-v1.css
           node <<'JS'
           const fs=require('fs'),vm=require('vm');
