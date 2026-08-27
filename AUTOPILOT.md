@@ -29,7 +29,7 @@ The active product is `v2/`. The focused technical refactor pass is complete and
 - `search-filters-ux-v1.js`: primary search form behavior and additional-filter behavior. Its presentation CSS is owned declaratively by `search-filters-ux-v1.css`.
 - `primary-meal-ux-v1.js`: promotes meal selection into primary controls. Its DOM placement is deliberately deferred until `DOMContentLoaded` so it is appended after the six primary fields arranged by `search-filters-ux-v1.js`; this prevents the previous ordering race that could place `Питание` first on mobile.
 - `search-lifecycle-v6.js`: single owner of search request state, validation, searchId/generation, dirty invalidation, polling and result loading. When parameters change after results exist, it preserves the rendered cards long enough for the stale-results UX layer to mark and disable them; when no cards exist it shows the explicit dirty empty state.
-- `search-progress-ux-v1.js`: search progress presentation only.
+- `search-progress-ux-v1.js`: search progress presentation and recoverable search-error presentation. Non-validation start/status failures now render a clear retry state whose button reuses the existing lifecycle `submit()` path with the current form parameters.
 - `results-renderer-v5.js`: result data/rendering and sort order.
 - `mobile-results-filters-v1.js`: client-side result filtering on mobile; draft state applies only on explicit action.
 - `search-dirty-ux-v1.js`: dirty/stale presentation only; stale cards are visually muted and non-interactive until results are refreshed.
@@ -85,7 +85,12 @@ The primary meal module previously appended `Питание` into `.main-fields`
 
 **Fixed:** dirty invalidation still cancels polling, advances generation, clears `searchId`, hides result tools/selected tour and invalidates runtime state, but now preserves already-rendered hotel cards for the stale UX layer to mark and disable. If no hotel cards are present, the existing explicit dirty empty state is shown instead. Search payload, Tourvisor contracts, analytics and lead transport are unchanged.
 
-Verification: active V2 contract passed on commit `cda2e369671676466c06d9d8295df8b59f48d4f3`; deploy production verification/live smoke were in progress when this state note was written. Deliberate visual confirmation remains part of A2/A3 while the automatic visual workflow is paused.
+### A2.3 — Search error recovery clarity
+Search start/status failures previously collapsed the rich progress UI back to plain status text. The primary search button was re-enabled, but the failure state did not provide an obvious recovery action, especially on mobile after the loading/progress state.
+
+**Fixed:** non-validation search errors now render a dedicated accessible error state with concise context and a `Повторить поиск` action. Retry calls the existing `V2SearchLifecycle.submit()` path, preserving the form values and all existing search/API contracts. The mobile layout makes the retry action full width. Search parameters, Tourvisor API behavior, analytics and lead transport are unchanged.
+
+Verification for A2.3: active V2 contract, V2 isolation and live Tourvisor validation passed on commit `6a8ef1eb3e1d9bdd2e2c89cba757ad8813cdeb67`. Deploy production verification/live smoke was still running when this state note was written. Deliberate visual confirmation remains deferred to the manual visual pass while automatic visual execution is paused by project decision.
 
 ## Autopilot queue
 
@@ -106,9 +111,9 @@ Audit the full tourist journey: search intent -> form -> waiting -> comparing re
 
 Current work order:
 - primary-form ordering/friction: first concrete ordering race fixed;
-- waiting/progress and stale-search transitions: stale-results conflict fixed; continue audit of error/retry clarity;
-- inspect results comparison and mobile filter discoverability;
-- inspect selected-tour, flight/price clarity and lead entry without changing protected lead transport.
+- waiting/progress, stale-search and retry/error transitions: three concrete issues fixed;
+- next: inspect results comparison and mobile filter discoverability;
+- then inspect selected-tour, flight/price clarity and lead entry without changing protected lead transport.
 
 ### A3 — VISUAL: consolidate unstable cascade areas
 Status: `QUEUED`
