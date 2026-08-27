@@ -8,7 +8,7 @@ var stars=form.elements.stars,starsField=stars&&stars.closest('.field'),loaded=A
 function lower(v){return String(v||'').toLowerCase().replace('ё','е');}
 function priority(label){var s=lower(label);if(s.indexOf('ультра')>=0||s.indexOf('uai')>=0)return 100;if(s.indexOf('все включ')>=0||s.indexOf('all inclusive')>=0)return 90;if(s.indexOf('завтрак')>=0||s.indexOf('breakfast')>=0)return 80;if(s.indexOf('без пит')>=0||s.indexOf('room only')>=0)return 70;return 10;}
 function labelFor(label){var s=lower(label);if(s.indexOf('ультра')>=0||s.indexOf('uai')>=0)return'Ультра всё включено';if(s.indexOf('все включ')>=0||s.indexOf('all inclusive')>=0)return'Всё включено';if(s.indexOf('завтрак')>=0||s.indexOf('breakfast')>=0)return'Завтраки';if(s.indexOf('без пит')>=0||s.indexOf('room only')>=0)return'Без питания';return String(label||'').trim();}
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m];});}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];});}
 function promote(){if(starsField&&!main.contains(starsField))main.appendChild(starsField);if(starsField){starsField.classList.add('field-wide','main-stars','primary-step','primary-step-6');}field.classList.add('field-wide','main-meal','primary-step','primary-step-7');main.appendChild(field);}
 promote();
 var title=field.querySelector(':scope > span');if(title)title.textContent='Питание';
