@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-27
+Updated: 2026-08-28
 
 This file is the operational companion to `AGENTS.md`. `AGENTS.md` defines authority and hard boundaries; `AUTOPILOT_STATE.json` is the exact machine-readable resume point.
 
@@ -8,7 +8,9 @@ This file is the operational companion to `AGENTS.md`. `AGENTS.md` defines autho
 
 **Conversion UX 3.0 C1–C6 is production-green. C7/B8/A8 wait for meaningful real traffic evidence.**
 
-The active product is `v2/`. Search/results/selected-tour/lead/flight conversion passes have been completed and verified at the durable 375 / 430 / 768 / 1024 / 1440 viewport contract. Real advertising/live-user evidence now outranks speculative polish. A real-browser performance signal was found and fixed in PR #72; PR #74 now provides a privacy-safe recent 30-minute browser window so the effect can be judged only from fresh post-deploy sessions. Conversion changes still wait for a larger funnel sample.
+The active product is `v2/`. Search/results/selected-tour/lead/flight conversion passes are complete and verified at the durable 375 / 430 / 768 / 1024 / 1440 viewport contract. Real advertising/live-user evidence outranks speculative polish. A real-browser startup performance signal was fixed in PR #72 and PR #74 provides a privacy-safe recent 30-minute browser window. The available conversion funnel remains too small to activate C7.
+
+A user-confirmed product contract was added in PR #76: **hotel category/stars and meal type belong on the first-screen primary search**. They must not be pushed back into `Все фильтры`. The logo is protected and must not be redesigned. Other visual design inside this repository remains proactively editable.
 
 Protected without explicit approval: Yandex Metrika configuration/goals and the existing lead-sending mechanism/external contract. Work stays inside `pyatkoff/poisk-turov-test`; production deployment stays V2-only.
 
@@ -28,7 +30,9 @@ Protected without explicit approval: Yandex Metrika configuration/goals and the 
 ### Search / Tourvisor
 - `v2/api-v2.php`: active Tourvisor gateway.
 - `catalog-cache-v1.php`: catalog TTL cache.
-- `catalogs-v2.js`: critical departures/countries bootstrap eagerly with retry/stale-filter clearing; advanced destination/operator/type/service/meal catalogs load only when `Фильтры отдыха` is opened, reducing the initial request burst while preserving the public refresh helper.
+- `catalogs-v2.js`: critical departures/countries bootstrap eagerly with retry/stale-filter clearing; advanced destination/operator/type/service catalogs load lazily to reduce startup pressure.
+- `search-filters-ux-v1.js`: primary search layout and advanced-filter presentation.
+- `primary-meal-ux-v1.js/.css`: PR #76 keeps stars and meal in the primary search. Meal values still come from the real Tourvisor catalog, but the meals request is delayed until 2.2 seconds after a visible page load or runs immediately on explicit user request. This deliberately preserves the PR #72 startup-burst mitigation. Advanced-filter reset preserves primary stars/meal and the advanced summary does not double-count them.
 - `search-lifecycle-v6.js`: sole search state/start/status/results/dirty owner.
 - `search-progress-ux-v1.js`: waiting/progress/error/zero-result presentation.
 - `results-renderer-v5.js`: result rendering and sorting.
@@ -48,73 +52,62 @@ Protected without explicit approval: Yandex Metrika configuration/goals and the 
 
 Presentation/recovery may improve; changing the sending mechanism or external contract requires explicit approval.
 
-### Live production evidence
-- `.github/workflows/audit-v2-live-traffic.yml` is the privacy-safe hourly rolling-tail evidence source.
-- `.github/workflows/audit-v2-recent-browser.yml`, added in PR #74, is the privacy-safe recent 30-minute browser-only evidence source for post-deploy attribution. It reports aggregated browser request/status/action/path counts, 4xx/5xx and rate-limit delays without emitting IPs or query values.
-- PRs #63–#65 separated headless CI from real browsers and attributed 4xx/5xx by actor.
-- PRs #67–#71 added nginx severity/family classification, sanitized signatures, safe path/action attribution and actor correlation without emitting IPs, query strings or raw user payloads.
-- That evidence found 106 real-browser nginx rate-limit delays in the sampled rolling tail. Hidden startup catalogs were materially affected: `hotel_types` 12/18 browser requests delayed, `operators` 12/18 and `meals` 8/14.
-- PR #72 therefore kept critical departures/countries eager and moved advanced catalogs behind opening `Фильтры отдыха`. It passed all six PR gates, V2 deploy `33117246904`, live search smoke, post-deploy visual `33117341554` and baseline `33117341548`.
-- The first validated PR #74 recent-window run at 2026-08-27 23:29 +02 saw 0 real-browser V2 requests, 0 browser 4xx/5xx and 0 browser rate-limit delays. This proves the recent window works but provides no traffic sample yet; do not claim a PR #72 performance improvement until a non-zero recent browser window appears.
-- Nginx also reports `Too many levels of symbolic links` for global `/images/logo.svg`, `/images/pay_icons.png` and `/images/mir-logo-h229px.png`. Only six sampled events mapped to real browsers and access responses remain HTTP 200. Those global assets are outside the allowed V2/repository write scope, so this is explicitly deferred unless user impact is confirmed or a safe V2-local asset source becomes available.
+## Brand/product facts carried forward
 
-### Visual regression ownership
-- `.github/workflows/visual-v2-baseline.yml` is the durable deterministic five-viewport owner for initial search, dates, guests, advanced filters, populated results, selected-tour checkout and zero-result recovery.
-- The selected-tour workflow remains because it covers lead/error/trust states not fully equivalent to the baseline.
-- Do not create a new visual gate for a state already represented by an existing owner.
+- Logo: **do not change**.
+- Other V2 design may be changed proactively when evidence/product direction supports it.
+- AnyTour currently has four offices: Moscow, Saint Petersburg, Kaliningrad and Cheboksary.
+- Yandex Maps reviews exist for those offices, but trust-copy should use only freshly verified factual ratings/counts if surfaced.
+- Payment, contract and support-before/during-trip are valid trust themes, but their exact operating terms are not yet recorded. Do not invent promises until the factual details are available.
+- Office/manager photography may be added later and does not block current V2 work.
+
+## Live production evidence
+
+- `.github/workflows/audit-v2-live-traffic.yml`: privacy-safe rolling-tail evidence source.
+- `.github/workflows/audit-v2-recent-browser.yml`: privacy-safe recent 30-minute browser-only evidence source for post-deploy attribution.
+- PRs #63–#65 separated headless CI from real browsers and attributed 4xx/5xx by actor.
+- PRs #67–#71 classified nginx severity/families and safe actor/action/path attribution without exposing IPs, query strings or raw payloads.
+- Evidence found real-browser nginx rate-limit delays concentrated in hidden startup catalogs. PR #72 kept critical departures/countries eager and moved advanced catalogs out of the startup burst; its deploy/live/post-deploy/baseline were green.
+- The first validated PR #74 recent-window sample contained 0 real-browser requests, so it proves the window works but does not yet prove the post-#72 performance effect.
+- The cumulative real-browser conversion sample remains only 2 `search_start` and 1 `tour`; do not activate C7 on that sample.
+- Nginx `Too many levels of symbolic links` warnings for global `/images/...` assets remain outside the allowed V2/repository write scope and are explicitly deferred while access responses remain HTTP 200.
+
+## PR #76 — primary stars + meal
+
+Whole-flow reread after the user clarified the first-screen product requirements found a real UX mismatch: `primary-meal-ux-v1.js` was moving both hotel category and meal back into `Все фильтры`, contradicting the intended search flow.
+
+PR #76 corrected the first screen and was deliberately treated as a visual baseline refresh only after inspecting the five-viewport evidence. The first implementation was **not** accepted: visual CI exposed an initialization-order bug that placed meal before departure and clipped meal chips around tablet/desktop widths. The cause was enhancement timing relative to `search-filters-ux-v1.js`. It was fixed by initializing the primary meal enhancement after the search layout, then giving meal adequate responsive grid space. Final evidence showed correct order, visible meal choices and no horizontal overflow at 375 / 430 / 768 / 1024 / 1440.
+
+PR gates for final head all passed, including Validate V2, Security, selected-tour visual, trust visual, general visual and the explicit visual baseline refresh. PR #76 merged as `940758c08b9711a20d0429d124c941b6596bc710`. Production V2 deploy `33121218369`, result-detail live validation `33121218302`, security `33121218320` and post-deploy visual `33121280050` all passed.
 
 ## Conversion UX 3.0 status
 
-- C1 Search Experience 3.0 — **DONE**. PRs #46/#48 simplified the first decision path and compacted mobile; #50 aligned the active contract.
-- C2 Results Experience 3.0 — **DONE**. PR #49 made hotel comparison primary with one representative tour and progressive disclosure; #52 aligned the post-deploy visual contract.
-- C3 Selected Tour Experience 3.0 — **DONE**. PR #51 keeps core facts first and secondary facts behind disclosure.
-- C4 Lead Experience 3.0 — **DONE**. PR #53 made the form phone-first; #55 removed duplicated trust copy without changing lead transport.
-- C5 Flight Friction — **DONE**. PR #54 measured fresh production flight latency (~739–1060 ms, median ~868 ms); PR #56 automatically loads flights after tour selection while preserving explicit retry/default-flight event/price and lead synchronization. V2 deploy/live/post-deploy/baseline passed.
-- C6 Visual Refinement — **DONE**. Fresh five-viewport evidence confirmed nested flight-section chrome; PR #57 removed only the redundant outer flight card while keeping individual variants/recovery. Deploy `33101438316`, post-deploy visual `33101538683` and baseline `33101538761` passed. A selected-tour audit then found a real mobile regression: the C1 sticky search CTA could remain over checkout after tour selection, including programmatic selection. PR #59 suppresses the sticky on direct-tour selection and `v2:tour-selected`, adds a selected-tour visual assertion, and passed V2 deploy `33101901865`, post-deploy visual `33102012154` and baseline `33102012178`. Fresh selected-tour evidence still showed the reassurance block carrying unnecessary nested-card visual weight; PR #61 compacted it into a lightweight reassurance strip while preserving the existing trust semantics. PR #61 is production-green: deploy `33102452656`, active contract `33102452612`, tour live `33102452599`, result-detail live `33102452609`, security `33102452634`, post-deploy visual `33102554997` and baseline `33102554873` passed. The analogous results panel remains intentionally retained because it improves hotel-vs-tour hierarchy on desktop.
-- C7 Live Conversion Optimization — **WAITING_FOR_TRAFFIC**. The cumulative real-browser funnel remains only 2 `search_start` and 1 `tour`; the first fresh 30-minute browser window contains 0 requests. This is insufficient for conversion changes. Live-derived performance work is allowed when a concrete production signal exists, as demonstrated by PR #72.
+- C1 Search Experience 3.0 — **DONE**. PRs #46/#48/#50 established the simplified primary path; PR #76 additionally locks stars and meal into the first-screen primary search.
+- C2 Results Experience 3.0 — **DONE**.
+- C3 Selected Tour Experience 3.0 — **DONE**.
+- C4 Lead Experience 3.0 — **DONE**.
+- C5 Flight Friction — **DONE**.
+- C6 Visual Refinement — **DONE**.
+- C7 Live Conversion Optimization — **WAITING_FOR_TRAFFIC**. Require meaningful real-browser/funnel evidence rather than speculative conversion work.
 
-See `CONVERSION_UX_3_ROADMAP.md` for the stage-level record.
-
-## Earlier roadmap status
-
-- B1 Visual foundation — **DONE**
-- B2 Search Experience 2.0 — **DONE**
-- B3 Results Experience 2.0 — **DONE**
-- B4 Tour / Checkout Experience 2.0 — **DONE**
-- B5 Trust & Conversion UX — **DONE**
-- B6 Visual regression baseline — **DONE**
-- B7 Performance & Visual Stability — **DONE**
-- B8 Live Product Optimization — **WAITING_FOR_TRAFFIC**
-- A8 Operational live traffic feedback loop — **WAITING_FOR_TRAFFIC**
-
-Other A-series technical/product milestones are complete except A1, superseded by B6.
-
-## Evidence retained from B7
-
-B7 closed after evidence-backed performance/recovery work and a whole-flow audit. Important retained decisions:
-- safe live-read timeout retry does not auto-retry non-idempotent `search_start`;
-- selected-tour desktop image space is reserved for CLS stability;
-- mobile-only/deferred DOM work initializes lazily where safe;
-- hot repeated price formatters were cached where evidence justified it;
-- diagnostic PR #40 disproved progressive-results dedup as useful in its live sample;
-- PR #42 added in-place selected-tour retry;
-- PR #43 fixed critical catalog bootstrap/change recovery;
-- `search-continue-v6.js`, hotel details and room details already expose recovery paths;
-- selected-tour MutationObserver, dynamic catalog observation and small formatter/matchMedia micro-optimizations remain retained/deferred unless real profiling evidence changes priority.
+Earlier B1–B7 and technical A-series milestones remain complete; B8 and A8 remain waiting for traffic. A1 remains superseded by B6.
 
 ## Exact next work order
 
 1. On every autonomous run inspect fresh `main`, open PRs, production deploy/live/security/visual results and the current V2 journey.
-2. Inspect `.github/workflows/audit-v2-recent-browser.yml` first. Require a **non-zero recent 30-minute real-browser sample** before judging whether advanced startup catalog actions/rate-limit delays disappeared after `06edf5905a9290698a413efd11e1606a86a74a2c`. Use the rolling audit only as historical/context evidence.
-3. Re-audit search → waiting/progress → stale/zero results → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery, including mobile and desktop.
-4. If production breakage, lead risk, incorrect data, UX friction or responsive regression is confirmed, fix it immediately and verify through relevant contracts/live/visual gates.
-5. If meaningful live traffic/funnel evidence is available, activate C7 + B8 + A8 together and prioritize observed friction from `search_started → search_complete → tour_selected → flight_selected → lead_started → lead_submitted`.
-6. If production is healthy and there is no real evidence, keep V2 stable; do not create speculative visual/performance changes. Do not change the global `/images` symlink layer from this repository.
+2. Inspect `.github/workflows/audit-v2-recent-browser.yml` first. Require a **non-zero recent 30-minute real-browser sample** before judging the startup/rate-limit effect or making C7 conversion changes. Use the rolling audit as historical/context evidence.
+3. Preserve the PR #76 first-screen contract: departure/country + dates/duration/tourists + stars/meal are primary; additional resort/hotel/operator/flight-detail filters can stay behind `Все фильтры`.
+4. Preserve the delayed/on-demand meals request; do not casually return it to the immediate startup request burst.
+5. Re-audit search → waiting/progress → stale/zero results → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery, including mobile and desktop.
+6. If production breakage, lead risk, incorrect data, UX friction or responsive regression is confirmed, fix it immediately and verify through relevant contracts/live/visual gates.
+7. If meaningful live traffic/funnel evidence is available, activate C7 + B8 + A8 and prioritize observed friction from `search_started → search_complete → tour_selected → flight_selected → lead_started → lead_submitted`.
+8. If production is healthy and there is no evidence, keep V2 stable; do not create speculative micro-work. Do not change the global `/images` symlink layer from this repository.
 
 ## Guardrails carried forward
 
 - Work only inside `pyatkoff/poisk-turov-test`.
 - Production deploy scope is V2 only.
+- Do not change the logo.
 - Do not modify neighboring projects, global site assets or server configuration outside the allowed V2 deployment scope.
 - Do not change Yandex Metrika configuration or goals without explicit approval.
 - Do not change the existing lead-sending mechanism/external contract without explicit approval.
