@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T20:08:00+02:00",
+  "updated_at": "2026-08-27T20:13:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Conversion UX 3.0 complete; live optimization waiting for evidence",
   "current_task": {
@@ -18,7 +18,7 @@
     {"id":"C3","status":"DONE","title":"Selected Tour Experience 3.0"},
     {"id":"C4","status":"DONE","title":"Lead Experience 3.0"},
     {"id":"C5","status":"DONE","title":"Flight friction"},
-    {"id":"C6","status":"DONE","title":"Visual refinement","note":"Fresh five-viewport audit confirmed one material nested-card issue in checkout. PR #57 flattened only the outer flights section while preserving individual flight variants and recovery. The analogous results section was intentionally retained because it improves hotel-vs-tour hierarchy on desktop."},
+    {"id":"C6","status":"DONE","title":"Visual refinement","note":"PR #57 flattened the redundant outer flights-section card while preserving individual flight variants and recovery. PR #59 then fixed a confirmed mobile selected-tour overlap where the C1 sticky search CTA could remain visible over checkout, including programmatic tour selection. The selected-tour visual gate now asserts the sticky is hidden. The analogous results-panel flattening was intentionally rejected because it improves hotel-vs-tour hierarchy on desktop."},
     {"id":"C7","status":"WAITING_FOR_TRAFFIC","title":"Live conversion optimization"},
     {"id":"B1","status":"DONE","title":"Visual foundation"},
     {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
@@ -45,16 +45,16 @@
     "c3": "PR #51",
     "c4": "PRs #53 and #55",
     "c5": "PR #54 measured fresh flight latency; PR #56 auto-loads flights after tour selection and is production-green",
-    "c6": "PR #57 flattened nested outer flight-section chrome and is production-green"
+    "c6": "PR #57 flattened nested outer flight-section chrome; PR #59 fixed mobile sticky-search overlap on selected tour; both are production-green"
   },
   "last_ci": {
     "workflow": "Visual V2 baseline",
-    "run_id": 33101538761,
-    "head_sha": "0dd32c3507b3735b3f6705018563cec372b91773",
+    "run_id": 33102012178,
+    "head_sha": "e2550d367241d651cc6d18c2f24fdfece14bbb56",
     "conclusion": "success",
-    "classification": "C6_FLIGHT_SECTION_FLATTEN_PRODUCTION_GREEN"
+    "classification": "C6_MOBILE_SELECTED_TOUR_STICKY_OVERLAP_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "0dd32c3507b3735b3f6705018563cec372b91773",
+  "last_verified_commit": "e2550d367241d651cc6d18c2f24fdfece14bbb56",
   "pending_verification": null,
   "blocked": [],
   "deferred": [
@@ -82,7 +82,7 @@
     "visual_viewports": [375,430,768,1024,1440]
   },
   "continuation_policy": {
-    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or explicitly_deferred",
+    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_explicitly_deferred",
     "on_ci_success": "collect_done_evidence_then_advance_queue",
     "on_blocker": "record_blocker_and_continue_independent_work",
     "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
