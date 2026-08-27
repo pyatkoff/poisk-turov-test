@@ -22,15 +22,10 @@ jobs:
           if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
-      - name: Aggregate project-only production signals
-        env:
-          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
+      - name: Build privacy-safe audit script
         shell: bash
         run: |
-          set -euo pipefail
-          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
-          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" 'python3 - <<'"'"'PY'"'"'
+          cat > "$RUNNER_TEMP/v2-live-audit.py" <<'PY'
           import os,re,glob,collections
           needle="/poisk-turov-test/v2"
           home=os.path.expanduser("~")
@@ -121,3 +116,15 @@ jobs:
                       local.append((os.path.relpath(fp,root),size))
           print("V2_PROJECT_LOCAL_SIGNAL_FILES",sorted(local)[:50])
           PY
+          python3 -m py_compile "$RUNNER_TEMP/v2-live-audit.py"
+      - name: Aggregate project-only production signals
+        env:
+          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          remote="/tmp/v2-live-audit-${GITHUB_RUN_ID}.py"
+          scp "${ssh_opts[@]}" "$RUNNER_TEMP/v2-live-audit.py" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE:$remote"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" "python3 '$remote'; rc=\$?; rm -f '$remote'; exit \$rc"
