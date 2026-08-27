@@ -19,5 +19,6 @@
 }
 @media(max-width:700px){
   .primary-search-flow>.primary-step-1,.primary-search-flow>.primary-step-2,.primary-search-flow>.primary-step-3,.primary-search-flow>.primary-step-4,.primary-search-flow>.primary-step-5,.primary-search-flow>.primary-step-6,.primary-search-flow>.primary-step-7,.main-meal{grid-column:1/-1!important}
+  .meal-quick{flex-wrap:wrap;overflow-x:visible;scrollbar-width:auto}
 }
 @media(max-width:560px){.meal-choice{min-height:44px;padding:0 13px;font-size:12px}}
