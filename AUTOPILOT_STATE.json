@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T20:13:00+02:00",
+  "updated_at": "2026-08-27T20:54:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Conversion UX 3.0 complete; live optimization waiting for evidence",
   "current_task": {
@@ -18,7 +18,7 @@
     {"id":"C3","status":"DONE","title":"Selected Tour Experience 3.0"},
     {"id":"C4","status":"DONE","title":"Lead Experience 3.0"},
     {"id":"C5","status":"DONE","title":"Flight friction"},
-    {"id":"C6","status":"DONE","title":"Visual refinement","note":"PR #57 flattened the redundant outer flights-section card while preserving individual flight variants and recovery. PR #59 then fixed a confirmed mobile selected-tour overlap where the C1 sticky search CTA could remain visible over checkout, including programmatic tour selection. The selected-tour visual gate now asserts the sticky is hidden. The analogous results-panel flattening was intentionally rejected because it improves hotel-vs-tour hierarchy on desktop."},
+    {"id":"C6","status":"DONE","title":"Visual refinement","note":"PR #57 flattened the redundant outer flights-section card while preserving individual flight variants and recovery. PR #59 then fixed a confirmed mobile selected-tour overlap where the C1 sticky search CTA could remain visible over checkout, including programmatic tour selection. The selected-tour visual gate now asserts the sticky is hidden. Fresh five-viewport selected-tour evidence then showed the reassurance block still carried too much nested-card weight; PR #61 compacted it into a lightweight reassurance strip while preserving trust semantics and passed deploy/live/post-deploy/baseline. The analogous results-panel flattening was intentionally rejected because it improves hotel-vs-tour hierarchy on desktop."},
     {"id":"C7","status":"WAITING_FOR_TRAFFIC","title":"Live conversion optimization"},
     {"id":"B1","status":"DONE","title":"Visual foundation"},
     {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
@@ -45,16 +45,16 @@
     "c3": "PR #51",
     "c4": "PRs #53 and #55",
     "c5": "PR #54 measured fresh flight latency; PR #56 auto-loads flights after tour selection and is production-green",
-    "c6": "PR #57 flattened nested outer flight-section chrome; PR #59 fixed mobile sticky-search overlap on selected tour; both are production-green"
+    "c6": "PR #57 flattened nested outer flight-section chrome; PR #59 fixed mobile sticky-search overlap on selected tour; PR #61 compacted selected-tour reassurance into a lightweight strip; all are production-green"
   },
   "last_ci": {
     "workflow": "Visual V2 baseline",
-    "run_id": 33102012178,
-    "head_sha": "e2550d367241d651cc6d18c2f24fdfece14bbb56",
+    "run_id": 33102554873,
+    "head_sha": "07af7feeabe8ff73fef7d8468c69841aa9382475",
     "conclusion": "success",
-    "classification": "C6_MOBILE_SELECTED_TOUR_STICKY_OVERLAP_PRODUCTION_GREEN"
+    "classification": "C6_SELECTED_TOUR_REASSURANCE_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "e2550d367241d651cc6d18c2f24fdfece14bbb56",
+  "last_verified_commit": "07af7feeabe8ff73fef7d8468c69841aa9382475",
   "pending_verification": null,
   "blocked": [],
   "deferred": [
