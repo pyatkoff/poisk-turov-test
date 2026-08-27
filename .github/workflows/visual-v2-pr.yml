@@ -98,8 +98,6 @@ jobs:
               await page.waitForTimeout(150);
               await page.screenshot({path:`visual-pr-artifacts/${name}-dates.png`,fullPage:true});
 
-              // A picker is a modal sheet on mobile and a popover on larger screens.
-              // Follow the real user flow: finish the current picker before opening the next.
               await page.locator('.dates-picker .picker-done').click();
               const datesDoneClosed=await page.locator('.dates-picker').evaluate(el=>!el.open);
               await page.locator('.guests-picker summary').click();
@@ -124,7 +122,6 @@ jobs:
               await page.locator('.guests-picker .picker-done').click();
               const doneClosed=await page.locator('.guests-picker').evaluate(el=>!el.open);
 
-              // Separately verify the single-open invariant without requiring a click through an open modal/popover.
               const singleOpen=await page.evaluate(async()=>{
                 const dates=document.querySelector('.dates-picker');
                 const guests=document.querySelector('.guests-picker');
@@ -153,7 +150,7 @@ jobs:
                 };
               });
               await page.screenshot({path:`visual-pr-artifacts/${name}-advanced.png`,fullPage:true});
-              if(advancedState.mobile)await page.locator('.search-filters-backdrop').click();else await page.locator('details.extras > summary').click();
+              if(advancedState.mobile)await page.locator('.search-filters-backdrop').click({position:{x:5,y:5}});else await page.locator('details.extras > summary').click();
               const advancedClosed=await page.locator('details.extras').evaluate(el=>!el.open);
 
               const item={name,width,height,http:response?response.status():0,pageErrors,initial,dateState,datesDoneClosed,guestState,doneClosed,singleOpen,advancedState,advancedClosed};
