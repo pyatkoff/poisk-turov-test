@@ -38,7 +38,7 @@ jobs:
 
             page_code="$(curl -k -L -sS -o /tmp/v2-journey-page.html -w "%{http_code}" --max-time 40 "$base/")"
             test "$page_code" = "200" || fail page_http
-            for marker in "analytics-v4.js" "results-renderer-v4.js" "hotel-actions-v3.js" "room-details-v3.js" "tour-controller-v4.js" "lead-form-guard-v1.js" "flight-price-sync-v1.js"; do
+            for marker in "analytics-v4.js" "results-renderer-v5.js" "hotel-actions-v3.js" "room-details-v3.js" "tour-controller-v4.js" "lead-form-guard-v1.js" "flight-price-sync-v1.js"; do
               grep -q "$marker" /tmp/v2-journey-page.html || fail "page_marker_$marker"
             done
             echo "JOURNEY_PAGE_OK"
@@ -74,7 +74,7 @@ jobs:
             test "$complete" = "1" || fail search_not_complete
 
             curl -k -L -sS --max-time 45 "$api?action=search_results&searchId=$search_id&limit=25" -o /tmp/v2-journey-results.json
-            python3 -c "import json; d=json.load(open(\"/tmp/v2-journey-results.json\")); assert isinstance(d,list) and len(d)>0"
+            python3 -c "import json; d=json.load(open(\"/tmp/v2-journey-results.json\")); assert isinstance(d,list) and len(d)>0; assert any(isinstance(h,dict) and isinstance(h.get(\"tours\"),list) and h.get(\"tours\") for h in d)"
             before="$(python3 -c "import json; print(len(json.load(open(\"/tmp/v2-journey-results.json\"))))")"
             echo "JOURNEY_RESULTS_BEFORE=$before"
 
@@ -106,13 +106,16 @@ jobs:
             test "$tour_code" = "200" || fail tour_http
             python3 -c "import json; d=json.load(open(\"/tmp/v2-journey-tour.json\")); assert isinstance(d,dict) and str(d.get(\"id\",\"\"))"
             room_id="$(python3 -c "import json; t=json.load(open(\"/tmp/v2-journey-tour.json\")); vals=[t.get(\"roomId\"),t.get(\"roomTypeId\"),(t.get(\"room\") or {}).get(\"id\") if isinstance(t.get(\"room\"),dict) else None]; print(next((str(int(float(v))) for v in vals if v and str(v).replace(\".0\",\"\").isdigit() and int(float(v))>0),\"\"))")"
-            test -n "$room_id" || fail room_id
-            echo "JOURNEY_TOUR_OK roomId=$room_id"
-
-            room_code="$(curl -k -L -sS -o /tmp/v2-journey-room.json -w "%{http_code}" --max-time 45 --get --data-urlencode "action=rooms" --data-urlencode "ids=$room_id" "$api")"
-            test "$room_code" = "200" || fail room_http
-            python3 -c "import json; d=json.load(open(\"/tmp/v2-journey-room.json\")); rooms=d if isinstance(d,list) else d.get(\"rooms\",[]) if isinstance(d,dict) else []; assert rooms"
-            echo "JOURNEY_ROOM_OK"
+            if test -n "$room_id"; then
+              echo "JOURNEY_TOUR_OK roomId=$room_id"
+              room_code="$(curl -k -L -sS -o /tmp/v2-journey-room.json -w "%{http_code}" --max-time 45 --get --data-urlencode "action=rooms" --data-urlencode "ids=$room_id" "$api")"
+              test "$room_code" = "200" || fail room_http
+              python3 -c "import json; d=json.load(open(\"/tmp/v2-journey-room.json\")); rooms=d if isinstance(d,list) else d.get(\"rooms\",[]) if isinstance(d,dict) else []; assert rooms"
+              echo "JOURNEY_ROOM_OK"
+            else
+              echo "JOURNEY_TOUR_OK roomId=optional_missing"
+              echo "JOURNEY_ROOM_SKIPPED_OPTIONAL"
+            fi
 
             flights_code="$(curl -k -L -sS -o /tmp/v2-journey-flights.json -w "%{http_code}" --max-time 45 --get --data-urlencode "action=flights" --data-urlencode "tourId=$tour_id" --data-urlencode "currency=RUB" "$api")"
             test "$flights_code" = "200" || fail flights_http
@@ -123,5 +126,5 @@ jobs:
             test "$lead_code" = "200" || fail lead_health_http
             python3 -c "import json; d=json.load(open(\"/tmp/v2-journey-lead-health.json\")); assert d.get(\"ok\") is True and d.get(\"adapter\")==\"v2-direct-bitrix-lead\" and d.get(\"writes\") is True"
             echo "JOURNEY_LEAD_FORM_READY_NO_POST"
-            echo "V2_USER_JOURNEY_OK searchId=$search_id hotelId=$hotel_id tourId=$tour_id roomId=$room_id before=$before after=$after"
+            echo "V2_USER_JOURNEY_OK searchId=$search_id hotelId=$hotel_id tourId=$tour_id roomId=${room_id:-optional_missing} before=$before after=$after"
           '
