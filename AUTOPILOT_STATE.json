@@ -1,23 +1,23 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T13:04:00+02:00",
+  "updated_at": "2026-08-27T13:08:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
-    "id": "B4",
-    "category": "TOUR_CHECKOUT_EXPERIENCE",
-    "title": "Tour / Checkout Experience 2.0",
-    "status": "READY_FOR_MERGE",
-    "objective": "Turn the selected-tour flow into a clear checkout summary with stronger trip, room, flight and total-price hierarchy while preserving exact Tourvisor data, flight-price synchronization and the protected lead transport contract.",
-    "next_action": "Re-run PR #9 gates after this state-only commit, mark ready and merge if green, then verify V2 deploy/live selected-tour and post-deploy visual evidence before advancing to B5."
+    "id": "B5",
+    "category": "TRUST_CONVERSION_UX",
+    "title": "Trust and conversion UX",
+    "status": "IN_PROGRESS",
+    "objective": "Strengthen user confidence, recovery paths and conversion clarity across search, results and checkout without changing Tourvisor correctness, analytics configuration or the protected lead-sending mechanism.",
+    "next_action": "Audit current recovery/trust surfaces across search errors, empty results, flight-load errors and lead states; implement the highest-impact presentation/recovery fixes in a separate B5 branch with five-viewport evidence and protected contracts unchanged."
   },
   "queue": [
     {"id":"B1","status":"DONE","title":"Visual foundation"},
     {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
     {"id":"B3","status":"DONE","title":"Results Experience 2.0","note":"Hotel-level operator hotfix merged as 8c43c98b5e1581517f9a58379c538504ac904d68; operator remains only in concrete tour rows. Production post-deploy visual run 33064644452 passed."},
-    {"id":"B4","status":"READY_FOR_MERGE","title":"Tour / Checkout Experience 2.0","note":"Draft PR #9. Selected-tour checkout hierarchy improved in the existing UX layer; mobile primary facts compacted; flight and lead surfaces clarified. Dedicated selected-tour gate exercises real description/lead/flight decorators and passed at 375/430/768/1024/1440 on verified head 25d72d67146d9a339610b856b8fc28d777b0ca3e with no overflow/page errors. General PR visual, validation and security also passed on that head. Lead transport, analytics and Tourvisor data contracts were not changed."},
-    {"id":"B5","status":"QUEUED","title":"Trust and conversion UX"},
+    {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0","note":"Merged PR #9 as 3f4be3d8ebcc2b6df35812c633101304a0397403. Selected-tour hierarchy, mobile fact compaction, flight timeline and lead-entry presentation shipped without changing lead transport or Tourvisor/analytics contracts. PR validation/security/general visual and dedicated selected-tour five-viewport gate passed. Production deploy run 33065753691, active contract 33065753667, tour+flights live 33065753733, result-detail live 33065753620 and post-deploy visual 33065830449 all passed."},
+    {"id":"B5","status":"IN_PROGRESS","title":"Trust and conversion UX"},
     {"id":"B6","status":"QUEUED","title":"Visual regression baseline"},
     {"id":"B7","status":"QUEUED","title":"Performance and visual stability"},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
@@ -32,20 +32,14 @@
     {"id":"A9","status":"DONE","title":"Residual V2 generation and CI cleanup"}
   ],
   "last_ci": {
-    "workflow": "Visual V2 selected tour",
-    "run_id": 33065384822,
-    "head_sha": "25d72d67146d9a339610b856b8fc28d777b0ca3e",
+    "workflow": "Visual V2 post-deploy",
+    "run_id": 33065830449,
+    "head_sha": "3f4be3d8ebcc2b6df35812c633101304a0397403",
     "conclusion": "success",
-    "classification": "B4_SELECTED_TOUR_5_VIEWPORTS_GREEN"
+    "classification": "B4_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "8c43c98b5e1581517f9a58379c538504ac904d68",
-  "pending_verification": {
-    "branch": "ux/b4-checkout-experience",
-    "pr": 9,
-    "task": "B4",
-    "verified_visual_head": "25d72d67146d9a339610b856b8fc28d777b0ca3e",
-    "requirements": ["final_pr_gates_after_state_commit", "production_deploy", "selected_tour_live", "post_deploy_visual", "lead_transport_unchanged"]
-  },
+  "last_verified_commit": "3f4be3d8ebcc2b6df35812c633101304a0397403",
+  "pending_verification": null,
   "blocked": [],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
