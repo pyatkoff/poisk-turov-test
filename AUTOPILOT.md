@@ -31,7 +31,7 @@ The active product is `v2/`. The focused technical refactor pass is complete and
 - `search-lifecycle-v6.js`: single owner of search request state, validation, searchId/generation, dirty invalidation, polling and result loading. When parameters change after results exist, it preserves the rendered cards long enough for the stale-results UX layer to mark and disable them; when no cards exist it shows the explicit dirty empty state.
 - `search-progress-ux-v1.js`: search progress presentation and recoverable search-error presentation. Non-validation start/status failures now render a clear retry state whose button reuses the existing lifecycle `submit()` path with the current form parameters.
 - `results-renderer-v5.js`: result data/rendering and sort order.
-- `mobile-results-filters-v1.js`: client-side result filtering on mobile; draft state applies only on explicit action.
+- `mobile-results-filters-v1.js`: client-side result filtering on mobile; draft state applies only on explicit action. The apply action now previews the number of matching rendered hotels while the user changes category, rating, meal and maximum price, so restrictive combinations are visible before application.
 - `search-dirty-ux-v1.js`: dirty/stale presentation only; stale cards are visually muted and non-interactive until results are refreshed.
 - `mobile-search-summary-v1.js`: compact mobile search context.
 - `accessibility.js`: accessibility decoration/helper behavior.
@@ -90,7 +90,14 @@ Search start/status failures previously collapsed the rich progress UI back to p
 
 **Fixed:** non-validation search errors now render a dedicated accessible error state with concise context and a `Повторить поиск` action. Retry calls the existing `V2SearchLifecycle.submit()` path, preserving the form values and all existing search/API contracts. The mobile layout makes the retry action full width. Search parameters, Tourvisor API behavior, analytics and lead transport are unchanged.
 
-Verification for A2.3: active V2 contract, V2 isolation and live Tourvisor validation passed on commit `6a8ef1eb3e1d9bdd2e2c89cba757ad8813cdeb67`. Deploy production verification/live smoke was still running when this state note was written. Deliberate visual confirmation remains deferred to the manual visual pass while automatic visual execution is paused by project decision.
+Verification for A2.3: active V2 contract, V2 isolation and live Tourvisor validation passed on commit `6a8ef1eb3e1d9bdd2e2c89cba757ad8813cdeb67`. Deliberate visual confirmation remains deferred to the manual visual pass while automatic visual execution is paused by project decision.
+
+### A2.4 — Mobile result-filter outcome preview
+The mobile result-filter sheet previously let the user draft category, rating, meal and maximum-price conditions but the main apply action stayed as a generic `Показать`. A restrictive combination could therefore produce an empty result only after closing/applying the sheet, making mobile filtering less predictable.
+
+**Fixed:** the existing client-side filter matcher can now evaluate either active or draft criteria. While the filter sheet is open, its primary action updates immediately to `Показать N` as category/rating/meal selections or the maximum-price input change, and exposes the same count in its accessible label. Applying still happens only on explicit action and only filters the already-rendered result set; server search parameters, Tourvisor API, analytics and lead transport are unchanged.
+
+Verification for A2.4: active V2 contract, V2 isolation and live Tourvisor validation passed on commit `d7bb2494f230143323406a54cebcab0f120d2be2`. Production deploy/verification was still running when this state note was written. Deliberate visual confirmation remains deferred to the manual visual pass while automatic visual execution is paused by project decision.
 
 ## Autopilot queue
 
@@ -112,7 +119,8 @@ Audit the full tourist journey: search intent -> form -> waiting -> comparing re
 Current work order:
 - primary-form ordering/friction: first concrete ordering race fixed;
 - waiting/progress, stale-search and retry/error transitions: three concrete issues fixed;
-- next: inspect results comparison and mobile filter discoverability;
+- mobile result-filter discoverability/outcome preview: first concrete issue fixed;
+- next: inspect result-card comparison/information hierarchy;
 - then inspect selected-tour, flight/price clarity and lead entry without changing protected lead transport.
 
 ### A3 — VISUAL: consolidate unstable cascade areas
