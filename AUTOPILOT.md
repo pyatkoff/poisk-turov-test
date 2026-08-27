@@ -8,234 +8,121 @@ This file is the operational companion to `AGENTS.md`. `AGENTS.md` defines autho
 
 **Phase: product UX/visual development before and during live traffic.**
 
-The active product is `v2/`. The major technical refactor, correctness hardening, SEO foundation and residual pre-traffic cleanup are complete. Development is now product-led: make the full AnyTour experience visually coherent, modern, fast and conversion-oriented, with UX and visual quality as first-class priorities.
+The active product is `v2/`. The major technical refactor, correctness hardening, SEO foundation and residual pre-traffic cleanup are complete. B1-B5 product redesign/conversion work is now production-green. Development is moving into visual-regression hardening and then performance/visual-stability cleanup.
 
-Current primary task: **B4 — Tour / Checkout Experience 2.0 (`IN PROGRESS`)**.
+Current primary task: **B6 — Visual Regression Baseline (`IN PROGRESS`)**.
 
-Parallel waiting task: **A8 — live traffic feedback loop (`WAITING FOR TRAFFIC`)**. Once advertising traffic starts, live production evidence must immediately influence prioritization without stopping safe B-series product work.
+Parallel waiting task: **A8/B8 — live traffic feedback loop (`WAITING FOR TRAFFIC`)**. When advertising traffic appears, production evidence immediately outranks speculative polish.
 
-The user has explicitly approved redesign work across the whole site surface within this project, not only the search widget. Existing Yandex Metrika configuration/goals and the existing lead-sending mechanism remain protected and must not be changed without explicit approval.
+Existing Yandex Metrika configuration/goals and the existing lead-sending mechanism remain protected and must not be changed without explicit approval.
 
 ## Product quality priorities
 
 1. Production breakage, lead loss and incorrect data remain highest severity.
 2. UX is a primary product priority, not secondary polish.
-3. Visual coherence and responsive stability are high-priority product requirements.
-4. Regularly inspect the running product at 375, 430, 768, 1024 and 1440 px widths when user-facing visual changes are made.
-5. Prefer improving the complete user journey over adding isolated features.
-6. Do not add another CSS override layer merely to compensate for an existing override layer; consolidate toward a coherent design system.
-7. Preserve protected analytics and lead transport contracts while freely improving their presentation/entry UX.
-8. Normal CI and visual checks run on GitHub-hosted runners; production deployment remains V2-only and uses the repository deploy workflow.
+3. Visual coherence and responsive stability are high-priority requirements.
+4. User-facing visual changes are checked at 375, 430, 768, 1024 and 1440 px.
+5. Prefer complete user-journey improvements over isolated features.
+6. Do not add CSS/workflow layers merely to compensate for existing layers; consolidate ownership when equivalent coverage is proven.
+7. Preserve analytics and lead transport contracts.
+8. Production deployment remains V2-only and uses the repository deploy workflow.
 
 ## Active architecture
 
-### Page and configuration
-- `v2/index.php` owns server-rendered page composition, active CSS/JS order and public V2 config.
-- `v2/form-defaults.php` owns initial search defaults.
-- `v2/assets.php` + `v2/asset-version-v1.php` own content-based asset versioning.
-- `v2/analytics-config.php` exposes the existing configured Metrika counter id; it is read-only for autopilot.
-- `v2/privacy-config.php` owns the privacy URL.
+### Page / config
+- `v2/index.php`: server-rendered page composition, active CSS/JS order and public V2 config.
+- `v2/form-defaults.php`: initial search defaults.
+- `v2/assets.php` + `v2/asset-version-v1.php`: content-based asset versioning.
+- `v2/analytics-config.php`: configured Metrika counter id; read-only for autopilot.
+- `v2/privacy-config.php`: privacy URL.
 
-### Tourvisor/search backend
-- `v2/api-v2.php` is the active V2 Tourvisor gateway.
-- `v2/catalog-cache-v1.php` provides catalog TTL caching and is required by the active API.
-- Search flow is asynchronous: start -> status -> results, with explicit continuation.
-
-### Active client search
-- `runtime-retry-policy.js`: operation-specific retry policy; non-idempotent search start/continue are deliberately not automatically retried.
-- `runtime-v3.js`: shared V2 runtime/state helpers.
-- `catalogs-v2.js`: Tourvisor catalogs and child-age controls.
-- `search-filters-ux-v1.js`: primary/advanced search form behavior.
-- `primary-meal-ux-v1.js`: primary meal control placement.
-- `search-lifecycle-v6.js`: search request state, validation, generation/searchId ownership, polling and dirty invalidation.
-- `search-progress-ux-v1.js`: waiting/progress/error recovery presentation.
-- `results-renderer-v5.js`: result rendering/sorting and B3 hotel-vs-tour decision hierarchy.
+### Search / Tourvisor
+- `v2/api-v2.php`: active Tourvisor gateway.
+- `v2/catalog-cache-v1.php`: catalog TTL caching.
+- `search-lifecycle-v6.js`: start/status/results ownership, validation, generation/searchId state and dirty invalidation.
+- `search-progress-ux-v1.js`: waiting/progress/error/zero-result recovery presentation.
+- `results-renderer-v5.js`: result rendering, sorting and hotel-vs-tour hierarchy.
 - `search-continue-v6.js`: explicit additional-results continuation.
-- `mobile-results-filters-v1.js`: client-side mobile result filtering with draft outcome preview.
-- `search-dirty-ux-v1.js`: stale-result presentation and interaction lockout.
-- `mobile-search-summary-v1.js`: compact mobile search context.
-- `accessibility.js`: accessibility helper behavior.
+- `mobile-results-filters-v1.js`, `search-dirty-ux-v1.js`, `mobile-search-summary-v1.js`: mobile/result-state UX.
 
-### Tour selection / flights / price
-- `tour-controller-v4.js`: selected-tour flow and stale-response generation guards.
-- `hotel-actions-v3.js`: hotel action/detail behavior.
-- `room-details-v3.js`: lazy progressive disclosure for detailed room information.
-- `selected-tour-description-v1.js`: selected-tour description presentation.
+### Selected tour / checkout
+- `tour-controller-v4.js`: selected-tour flow and stale-response guards.
+- `hotel-actions-v3.js`, `room-details-v3.js`, `selected-tour-description-v1.js`: detail presentation.
+- `checkout-experience-v1.js` / `.css`: selected-tour checkout hierarchy.
 - `flight-price-sync-v1.js`: selected flight and displayed/submitted price synchronization.
 
 ### Lead path — protected transport contract
 - `lead-search-context.js`: search context included with the lead.
-- `lead-form-guard-v1.js`: lead-entry UX, requirements, dedup/success presentation.
+- `lead-form-guard-v1.js`: lead-entry, validation, recovery, dedup/success presentation.
 - `lead-adapter-v2.php`, `lead-price-v1.php`, `lead-idempotency-v1.php`: active server lead support.
 
-The mechanism/external contract that actually sends the lead must not be changed without explicit user approval. Presentation, placement, CTA hierarchy and form UX may be improved while preserving transport semantics.
+Presentation/placement/CTA UX may improve; the mechanism/external contract that sends the lead must not change without explicit approval.
 
-### Analytics — protected
-The active page loads `analytics-v4.js`. Existing identifiers/configuration are read-only for autopilot. Historical analytics files are not retired without separate contract evidence.
+## B-series roadmap
 
-## B-series product roadmap
+### B1 — VISUAL FOUNDATION — `DONE`
+Header/navigation, product shell, branded hero and responsive visual foundation shipped. Production five-viewport visual checks passed.
 
-### B1 — VISUAL FOUNDATION
-Status: `DONE`
+### B2 — SEARCH EXPERIENCE 2.0 — `DONE`
+Search hierarchy, date/guest pickers, child ages, advanced filters and responsive behavior shipped. Production five-viewport checks passed.
 
+### B3 — RESULTS EXPERIENCE 2.0 — `DONE`
+Hotel-vs-tour hierarchy, best-offer context, result filtering and populated-result visual coverage shipped. Hotel-level operator regression was fixed in `8c43c98b5e1581517f9a58379c538504ac904d68`; production post-deploy visual run `33064644452` passed.
+
+### B4 — TOUR / CHECKOUT EXPERIENCE 2.0 — `DONE`
+Selected tour became a staged checkout summary with clearer facts, flight choice and lead-entry hierarchy while preserving flight/price sync and lead transport. PR #10 merged as `87a10fd10f10af293a591e17ec9e5ec3d96fcb05`; production post-deploy visual run `33066545500` passed. A resulting SEO H1 regression was isolated and fixed in PR #12 as `8161feb64cc0d3e6346641368a35e1d132d879b4`.
+
+### B5 — TRUST & CONVERSION UX — `DONE`
 Result:
-- global header/navigation and first-screen product shell were modernized in PR #3 without changing navigation, analytics, Tourvisor or lead contracts;
-- compact branded hero and trust cues were added;
-- product-shell visual tokens and responsive ownership were established;
-- B1 was merged and deployed to production;
-- production functional/live checks remained green;
-- GitHub-hosted visual post-deploy run `33060952362` passed at 375, 430, 768, 1024 and 1440 px with HTTP 200, no document-level overflow and no page errors.
+- PR #11 strengthened tour/flight/lead error recovery, preserved lead data on failure and added explicit no-payment reassurance;
+- PR #13 changed the result CTA to `Проверить тур` and explains that flight, baggage and final price are checked before the no-payment contact step; merged as `760d9c8c28c46ce769cd8ebf0a88cbb8bf8403af`; production post-deploy visual run `33069724534` passed;
+- PR #14 removed the zero-result dead end: search parameters remain intact and the user can explicitly return to editing or open filters; a dedicated five-viewport recovery gate passed; merged as `fceaf4a1b049400031f7f9585b0b83155d1d6c0d`; production post-deploy visual run `33070022638` passed.
 
-### B2 — SEARCH EXPERIENCE 2.0
-Status: `DONE`
+### B6 — VISUAL REGRESSION BASELINE — `IN PROGRESS`
+Objective: lock the redesigned journey into a durable visual safety net.
 
-Result:
-- primary search hierarchy and density were improved without changing search request semantics;
-- dates and tourists use intentional desktop popovers / mobile sheets with explicit `Готово`, outside-click and Escape closing, and single-open-picker behavior;
-- child ages stay inside the guest sheet on mobile;
-- departure date controls mirror the lifecycle rule: no past dates and a maximum 21-day departure range;
-- advanced filters use intentional mobile sheet behavior;
-- PR #4 passed contract, security and five-viewport visual checks;
-- merged to `main` as `112f1ea4b70fa3cca1a1419b598693bf68025606`;
-- production post-deploy visual run `33062455516` passed at 375/430/768/1024/1440.
+Current evidence:
+- `visual-v2-pr.yml` already gates initial search, dates, guests, advanced filters and populated results across 375/430/768/1024/1440;
+- selected-tour, checkout, conversion and recovery states have dedicated visual workflows;
+- `visual-v2-baseline.yml` already exists, but currently captures only initial/filters/children as evidence and has no durable baseline comparison.
 
-### B3 — RESULTS EXPERIENCE 2.0
-Status: `DONE`
+Next work:
+1. Keep `visual-v2-baseline.yml` as the single B6 baseline owner rather than create another harness.
+2. Expand baseline state coverage to populated results, selected tour/checkout and recovery at all five viewports.
+3. Establish a durable comparison strategy once the state set is deterministic enough for stable snapshots.
+4. Consolidate specialized visual workflows only after the baseline proves equivalent coverage; do not remove gates prematurely.
 
-Result:
-- result toolbar/card/tour visual hierarchy was strengthened with a dedicated results experience layer;
-- hotel-level decision signals explicitly separate rating, sea distance and available-tour count from operator/tour metadata;
-- hotel card best-offer price and its date/nights/meal context are visually separated from concrete tour variants;
-- specific tour variants remain owned by `results-renderer-v5.js` and preserve existing choose-tour semantics;
-- mobile result-filter sheet closes safely when crossing to desktop width and exposes explicit `aria-controls` / `aria-expanded` state;
-- PR and post-deploy visual gates now render populated fixture results at 375/430/768/1024/1440 and assert decision signals, mobile filtering visibility, collapsed-tour behavior and document overflow;
-- a temporary double-load of the new results CSS was detected before merge and removed;
-- PR #5 passed validation/security and populated-results visual evidence, then merged as `bb54ff7b439f96f2c2d5bd16af2cc89485c8191e`;
-- deploy run `33063715814` passed including verify + live search smoke;
-- live tour/flights and result-detail validations passed on the merged commit;
-- production post-deploy visual run `33063775862` passed with populated results at all five required viewports, HTTP 200, no page errors and no horizontal overflow.
+### B7 — PERFORMANCE & VISUAL STABILITY — `QUEUED`
+After visual behavior is locked: consolidate CSS ownership/tokens, reduce cascade complexity and layout shifts, optimize image loading/client overhead, and retain responsive stability.
 
-### B4 — TOUR / CHECKOUT EXPERIENCE 2.0
-Status: `IN PROGRESS`
-
-Objective: transform the selected-tour screen from a technical fact list into a clear travel checkout summary.
-
-Scope:
-- restructure selected tour into hotel, trip, room/meal, flight and total-price sections;
-- improve flight presentation into an understandable route/timeline while preserving exact data;
-- keep price/flight synchronization intact;
-- shorten the cognitive path from tour choice to conversion;
-- preserve the existing lead transport contract while improving only presentation and entry UX;
-- add selected-tour visual coverage at 375/430/768/1024/1440 before merge/deploy.
-
-### B5 — TRUST & CONVERSION UX
-Status: `QUEUED`
-
-Objective: increase confidence and make manager assistance feel timely rather than intrusive.
-
-Scope:
-- add appropriate trust signals and reassurance near high-intent decisions;
-- improve empty/error/recovery states;
-- introduce stronger conversion surfaces without altering the lead transport contract;
-- improve CTA copy/hierarchy based on user intent and stage.
-
-### B6 — VISUAL REGRESSION BASELINE
-Status: `QUEUED`
-
-Objective: lock the redesigned product into a repeatable visual safety net.
-
-Scope:
-- run and refine screenshot coverage at 375, 430, 768, 1024 and 1440;
-- cover initial search, opened filters, children, results and selected-tour states where practical;
-- promote the visual harness from gate/evidence usage to durable baseline comparison once the redesign is stable enough for meaningful snapshots.
-
-### B7 — PERFORMANCE & VISUAL STABILITY
-Status: `QUEUED`
-
-Objective: reduce visual instability and client overhead after the redesign.
-
-Scope:
-- consolidate CSS ownership and repeated tokens;
-- reduce unnecessary cascade/override complexity;
-- reduce hydration/layout shifts;
-- optimize image loading and lazy behavior;
-- maintain responsive stability across relevant viewports.
-
-### B8 — LIVE PRODUCT OPTIMIZATION
-Status: `WAITING FOR_TRAFFIC`
-
-Objective: use real user behavior to drive the next iteration after advertising starts.
-
-Scope:
-- inspect real searches, errors, result interactions, tour selections and lead behavior;
-- prioritize observed mobile drop-offs and conversion friction;
-- feed evidence back into B2-B5 continuously;
-- never change Metrika goals/configuration merely to make reporting easier without explicit approval.
+### B8 — LIVE PRODUCT OPTIMIZATION — `WAITING FOR TRAFFIC`
+Use real searches/errors/result interactions/tour selections/leads to reprioritize product work. Do not change Metrika goals/config merely for reporting convenience.
 
 ## Completed A-series milestones
 
-### A6 — TECH DEBT: focused whole-project refactor
-Status: `DONE`
-
-Historical result/search/tour generations were reduced, ownership was clarified and active contracts were preserved.
-
-### A2 — UX: end-to-end search journey audit
-Status: `DONE`
-
-Material fixes included primary meal ordering, stale-result handling, search retry/error clarity, mobile filter outcome preview, lead completion clarity and lazy room-detail disclosure.
-
-### A3 — VISUAL: consolidate unstable cascade areas
-Status: `DONE`
-
-Highest-risk visual ownership/cascade areas were incrementally consolidated without a wholesale redesign.
-
-### A4 — PRODUCT/UX: conversion readiness before live traffic
-Status: `DONE`
-
-CTA hierarchy, selected-tour path, price/flight clarity and lead entry were audited and hardened within protected contracts.
-
-### A5 — BUG/DATA: live Tourvisor correctness pass
-Status: `DONE`
-
-Real search, continuation, tour selection, rooms, flights and price behavior were validated against production. A later isolated `search_continue` failure was diagnostically repeated successfully and classified as transient; no unsafe retry was added to the non-idempotent continuation action.
-
-### A7 — SEO FOUNDATION
-Status: `DONE`
-
-Initial URL/state, metadata/indexability, architecture and future landing-page integration work was completed incrementally without creating a parallel product.
-
-### A9 — HARDENING: residual V2 generation and CI cleanup
-Status: `DONE`
-
-Residual inactive generations, static assets, markers and redundant workflows were removed with contract coverage preserved. Protected or potentially externally callable residuals such as `api.php`, `phone-config.php`, historical analytics and lead adapters remain intentionally untouched because retirement has not been independently proven.
-
-## Deferred / parallel waiting
-
-### A1 — VISUAL / UX: baseline and regression harness
-Status: `DEFERRED -> superseded by B6 once redesign stabilizes`
-
-The visual harness is active for evidence/gating. B6 owns durable baseline comparison after the redesign is stable enough that screenshots represent a lasting visual contract.
-
-### A8 — LIVE TRAFFIC FEEDBACK LOOP
-Status: `WAITING FOR TRAFFIC`
-
-A8 remains the operational live-traffic safety loop. B8 is the product-optimization continuation of the same evidence once traffic exists.
+- **A2 UX journey audit — DONE**: search, stale state, retry clarity, mobile filters, lead completion and room disclosure hardened.
+- **A3 visual cascade consolidation — DONE**.
+- **A4 conversion readiness — DONE**.
+- **A5 live Tourvisor correctness — DONE**: search/continue/tour/rooms/flights/price validated; transient continuation failure was not given an unsafe automatic retry.
+- **A6 focused whole-project refactor — DONE**.
+- **A7 SEO foundation — DONE**.
+- **A9 residual V2 generation/CI cleanup — DONE**.
+- **A1 baseline harness — DEFERRED / superseded by B6**.
+- **A8 live traffic feedback — WAITING FOR TRAFFIC**.
 
 ## Next work order
 
-1. B4 checkout/selected-tour: audit desktop/mobile selected-tour presentation, improve hierarchy, preserve flight/price sync and protected lead transport, and add five-viewport visual coverage.
-2. Merge/deploy B4 only after contract/security/visual checks are green and production selected-tour/live validations pass.
-3. Implement B5 trust/conversion surfaces while preserving lead transport and analytics contracts.
-4. Establish B6 durable visual baselines after the redesigned flow is visually stable.
-5. Perform B7 CSS/performance/CLS consolidation after behavior and design settle.
-6. Activate A8/B8 immediately when real advertising traffic starts and reprioritize from evidence.
+1. B6: expand the existing baseline owner to the complete redesigned journey and make its state fixtures deterministic.
+2. Add durable comparison only after deterministic state capture is proven; avoid snapshot noise.
+3. Consolidate redundant specialized visual gates only with equivalent baseline evidence.
+4. B7: CSS/performance/CLS consolidation after B6 locks the visual contract.
+5. Activate A8/B8 immediately when real advertising traffic appears.
 
 ## Hard boundaries carried forward
 
 - Work only inside `pyatkoff/poisk-turov-test`.
-- Production deployment is V2 scope only unless explicitly extending the site surface within this repository/project.
+- Production deployment is V2 scope only unless explicitly extending this repository/project surface.
 - Do not modify neighboring projects.
-- Design and UX across the site's surfaces inside this project may be improved proactively.
 - Do not change Yandex Metrika configuration or goals without explicit approval.
 - Do not change the existing lead-sending mechanism/external contract without explicit approval.
 - If one item is blocked, record/defer it and continue independent safe work.
