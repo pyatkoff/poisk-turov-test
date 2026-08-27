@@ -1,0 +1,48 @@
+name: Self-hosted runner smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/self-hosted-runner-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Runner diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "HOST=$(hostname)"
+          echo "USER=$(whoami)"
+          echo "KERNEL=$(uname -srmo)"
+          echo "WORKSPACE=$GITHUB_WORKSPACE"
+          echo "CPU=$(nproc)"
+          free -h
+          df -h /
+          git --version
+          curl --version | head -1
+          python3 --version
+          php --version | head -1
+          node --version
+          npm --version
+
+      - name: Project syntax smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/index.php >/dev/null
+          php -l v2/api-v2.php >/dev/null
+          mapfile -t assets < <(grep -oE "v2_asset\\('[^']+\\.js'\\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\\1/" | sort -u)
+          test "${#assets[@]}" -gt 0
+          for asset in "${assets[@]}"; do
+            test -f "v2/$asset"
+            node --check "v2/$asset"
+          done
+          echo "SELF_HOSTED_RUNNER_SMOKE_OK"
