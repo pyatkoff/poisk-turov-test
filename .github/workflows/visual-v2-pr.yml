@@ -186,8 +186,8 @@ jobs:
               report.push(item);
               const mobileAdvancedBad=advancedState.mobile&&(!advancedState.backdropVisible||!advancedState.bodyLocked||advancedState.position!=='fixed');
               const desktopAdvancedBad=!advancedState.mobile&&advancedState.backdropVisible;
-              const expectedTourRows=width<=760?1:2;
-              const resultBad=resultState.cards!==2||!resultState.toolsVisible||resultState.decisionFacts<2||!resultState.bestOffer||resultState.tourRows!==expectedTourRows||(width<=760&&!resultState.moreToggle)||(width>760&&resultState.moreToggle)||(width<=760&&!resultState.mobileFilterVisible)||(width>760&&resultState.mobileFilterVisible)||resultState.overflow;
+              const expectedTourRows=1;
+              const resultBad=resultState.cards!==2||!resultState.toolsVisible||resultState.decisionFacts<2||!resultState.bestOffer||resultState.tourRows!==expectedTourRows||!resultState.moreToggle||(width<=760&&!resultState.mobileFilterVisible)||(width>760&&resultState.mobileFilterVisible)||resultState.overflow;
               const bad=item.http!==200||pageErrors.length||initial.overflow||!initial.hero||!initial.search||!initial.dates||!initial.guests||initial.resultsVisible||!dateState.open||!dateState.min||!dateState.toMin||!dateState.toMax||!dateState.hint.includes('21')||!datesDoneClosed||!guestState.datesClosed||!guestState.guestsOpen||!guestState.agesVisible||!guestState.agesInsidePanel||guestState.ageCount!==2||guestState.overflow||!doneClosed||!singleOpen||!advancedState.open||advancedState.overflow||mobileAdvancedBad||desktopAdvancedBad||!advancedClosed||resultBad;
               if(bad)failed=true;
               console.log(`PR_VISUAL ${name} http=${item.http} overflow=${initial.overflow}/${guestState.overflow}/${advancedState.overflow}/${resultState.overflow} dates=${initial.dates} guests=${initial.guests} ages=${guestState.ageCount} single=${singleOpen} advanced=${advancedState.open}/${advancedState.position} results=${resultState.cards}/${resultState.tourRows} more=${resultState.moreToggle} mrf=${resultState.mobileFilterVisible} errors=${pageErrors.length}`);
