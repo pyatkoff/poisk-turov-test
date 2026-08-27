@@ -10,7 +10,7 @@ This file is the operational companion to `AGENTS.md`. `AGENTS.md` defines autho
 
 The active product is `v2/`. The major technical refactor, correctness hardening, SEO foundation and residual pre-traffic cleanup are complete. Development is now product-led: make the full AnyTour experience visually coherent, modern, fast and conversion-oriented, with UX and visual quality as first-class priorities.
 
-Current primary task: **B3 — Results Experience 2.0 (`IN PROGRESS`)**.
+Current primary task: **B4 — Tour / Checkout Experience 2.0 (`IN PROGRESS`)**.
 
 Parallel waiting task: **A8 — live traffic feedback loop (`WAITING FOR TRAFFIC`)**. Once advertising traffic starts, live production evidence must immediately influence prioritization without stopping safe B-series product work.
 
@@ -100,28 +100,23 @@ Result:
 - production post-deploy visual run `33062455516` passed at 375/430/768/1024/1440.
 
 ### B3 — RESULTS EXPERIENCE 2.0
-Status: `IN PROGRESS`
+Status: `DONE`
 
-Objective: make results decision-oriented instead of data-dump oriented.
-
-Current implementation: `ux/b3-results-experience`, draft PR #5.
-
-Completed in the current B3 iteration:
-- result toolbar/card/tour visual hierarchy strengthened with a dedicated results experience layer;
-- hotel-level decision signals now explicitly separate rating, sea distance and available-tour count from operator/tour metadata;
+Result:
+- result toolbar/card/tour visual hierarchy was strengthened with a dedicated results experience layer;
+- hotel-level decision signals explicitly separate rating, sea distance and available-tour count from operator/tour metadata;
 - hotel card best-offer price and its date/nights/meal context are visually separated from concrete tour variants;
 - specific tour variants remain owned by `results-renderer-v5.js` and preserve existing choose-tour semantics;
-- mobile result-filter sheet now closes safely when crossing to desktop width and exposes explicit `aria-controls` / `aria-expanded` state;
-- the PR visual gate was extended to render populated fixture results at 375/430/768/1024/1440 and assert cards, decision signals, mobile filtering visibility, collapsed-tour behavior and document overflow instead of checking only the search form.
-
-Remaining B3 scope:
-- get contract/security/new populated-results visual gate green and inspect artifacts;
-- fix any responsive/card overflow or hierarchy regression found by the new gate;
-- continue improving post-search filtering only where it reduces decision friction without duplicating server search filters;
-- merge/deploy only after green checks, then verify production populated results and selected-tour transition.
+- mobile result-filter sheet closes safely when crossing to desktop width and exposes explicit `aria-controls` / `aria-expanded` state;
+- PR and post-deploy visual gates now render populated fixture results at 375/430/768/1024/1440 and assert decision signals, mobile filtering visibility, collapsed-tour behavior and document overflow;
+- a temporary double-load of the new results CSS was detected before merge and removed;
+- PR #5 passed validation/security and populated-results visual evidence, then merged as `bb54ff7b439f96f2c2d5bd16af2cc89485c8191e`;
+- deploy run `33063715814` passed including verify + live search smoke;
+- live tour/flights and result-detail validations passed on the merged commit;
+- production post-deploy visual run `33063775862` passed with populated results at all five required viewports, HTTP 200, no page errors and no horizontal overflow.
 
 ### B4 — TOUR / CHECKOUT EXPERIENCE 2.0
-Status: `QUEUED`
+Status: `IN PROGRESS`
 
 Objective: transform the selected-tour screen from a technical fact list into a clear travel checkout summary.
 
@@ -129,7 +124,9 @@ Scope:
 - restructure selected tour into hotel, trip, room/meal, flight and total-price sections;
 - improve flight presentation into an understandable route/timeline while preserving exact data;
 - keep price/flight synchronization intact;
-- shorten the cognitive path from tour choice to conversion.
+- shorten the cognitive path from tour choice to conversion;
+- preserve the existing lead transport contract while improving only presentation and entry UX;
+- add selected-tour visual coverage at 375/430/768/1024/1440 before merge/deploy.
 
 ### B5 — TRUST & CONVERSION UX
 Status: `QUEUED`
@@ -165,7 +162,7 @@ Scope:
 - maintain responsive stability across relevant viewports.
 
 ### B8 — LIVE PRODUCT OPTIMIZATION
-Status: `WAITING FOR TRAFFIC`
+Status: `WAITING FOR_TRAFFIC`
 
 Objective: use real user behavior to drive the next iteration after advertising starts.
 
@@ -226,13 +223,12 @@ A8 remains the operational live-traffic safety loop. B8 is the product-optimizat
 
 ## Next work order
 
-1. Complete B3 in draft PR #5: populated-result visual validation, responsive/card fixes and post-search filtering polish.
-2. Merge/deploy B3 only after contract/security/visual checks are green; then verify production populated results and tour-selection transition.
-3. Advance to B4 checkout/selected-tour.
-4. Implement B5 trust/conversion surfaces while preserving lead transport and analytics contracts.
-5. Establish B6 durable visual baselines after the redesigned flow is visually stable.
-6. Perform B7 CSS/performance/CLS consolidation after behavior and design settle.
-7. Activate A8/B8 immediately when real advertising traffic starts and reprioritize from evidence.
+1. B4 checkout/selected-tour: audit desktop/mobile selected-tour presentation, improve hierarchy, preserve flight/price sync and protected lead transport, and add five-viewport visual coverage.
+2. Merge/deploy B4 only after contract/security/visual checks are green and production selected-tour/live validations pass.
+3. Implement B5 trust/conversion surfaces while preserving lead transport and analytics contracts.
+4. Establish B6 durable visual baselines after the redesigned flow is visually stable.
+5. Perform B7 CSS/performance/CLS consolidation after behavior and design settle.
+6. Activate A8/B8 immediately when real advertising traffic starts and reprioritize from evidence.
 
 ## Hard boundaries carried forward
 
