@@ -45,6 +45,7 @@ jobs:
               return (out or "").splitlines()
           def actor(line):
               l=line.lower()
+              if "headlesschrome" in l or "playwright" in l: return "headless"
               if "bot" in l or "spider" in l or "crawler" in l: return "bot"
               if "curl/" in l: return "curl"
               if "python-requests" in l or "python/" in l: return "python"
