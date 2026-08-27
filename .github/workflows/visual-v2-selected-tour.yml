@@ -119,9 +119,12 @@ jobs:
                   window.V2FlightPriceSync.clarifyVariantPrices();
                   window.V2FlightPriceSync.clarifyVariantChoices();
                 }
+                window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:{id:'visual-fixture',price:142000,isCharter:true,fuelCharge:6000,hotel:{name:'AnyTour Coast Resort & Spa'}}}}));
                 window.scrollTo(0,0);
                 const ctaNote=selected.querySelector('.selected-lead-cta-note');
                 const trust=selected.querySelector('.lead-trust-note');
+                const searchSticky=document.querySelector('.mobile-search-sticky');
+                const stickyVisible=!!searchSticky&&!searchSticky.hidden&&getComputedStyle(searchSticky).display!=='none';
                 return {
                   selected:!!selected,
                   facts:selected.querySelectorAll('.facts>div').length,
@@ -133,6 +136,7 @@ jobs:
                   trust:!!trust&&String(trust.textContent||'').includes('не является оплатой'),
                   detailsToggle:!!selected.querySelector('.facts-secondary-toggle'),
                   descToggle:!!selected.querySelector('.hotel-desc-toggle'),
+                  stickyVisible,
                   overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,
                 };
               },fixture);
@@ -155,8 +159,8 @@ jobs:
               const item={name,width,height,http:response?response.status():0,pageErrors,state,errorState};
               report.push(item);
               const leadErrorBad=errorState.state!=='error'||errorState.role!=='alert'||!errorState.message.includes('Данные остались в форме')||!errorState.button.includes('Повторить')||errorState.overflow;
-              if(item.http!==200||pageErrors.length||!state.selected||state.facts!==10||state.flights!==2||!state.lead||!state.leadCta||!state.ctaNote||!state.leadSummary||!state.trust||!state.detailsToggle||!state.descToggle||state.overflow||leadErrorBad)failed=true;
-              console.log(`SELECTED_VISUAL ${name} http=${item.http} facts=${state.facts} flights=${state.flights} lead=${state.lead}/${state.leadCta}/${state.leadSummary} trust=${state.ctaNote}/${state.trust} recovery=${errorState.state}/${errorState.role} overflow=${state.overflow}/${errorState.overflow} errors=${pageErrors.length}`);
+              if(item.http!==200||pageErrors.length||!state.selected||state.facts!==10||state.flights!==2||!state.lead||!state.leadCta||!state.ctaNote||!state.leadSummary||!state.trust||!state.detailsToggle||!state.descToggle||state.stickyVisible||state.overflow||leadErrorBad)failed=true;
+              console.log(`SELECTED_VISUAL ${name} http=${item.http} facts=${state.facts} flights=${state.flights} lead=${state.lead}/${state.leadCta}/${state.leadSummary} trust=${state.ctaNote}/${state.trust} sticky=${state.stickyVisible} recovery=${errorState.state}/${errorState.role} overflow=${state.overflow}/${errorState.overflow} errors=${pageErrors.length}`);
               await context.close();
             }
             fs.writeFileSync('visual-selected-tour-artifacts/report.json',JSON.stringify(report,null,2));
