@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T10:00:00+02:00",
+  "updated_at": "2026-08-27T10:15:00+02:00",
   "mode": "pre_traffic_hardening",
   "phase": "Residual pre-traffic hardening",
   "current_task": {
@@ -10,7 +10,7 @@
     "title": "Residual V2 generation and CI cleanup",
     "status": "IN_PROGRESS",
     "objective": "Remove only proven inactive V2 generations and stale validation paths while preserving active search, analytics and lead contracts.",
-    "next_action": "Resume auditing remaining stale assets/workflows against the active index and CI graph. Keep protected app.js, lead/analytics files and externally callable api.php untouched unless separate contract evidence proves retirement is safe."
+    "next_action": "Continue consolidating only redundant non-protected CI checks into validate-v2-active.yml, then audit remaining non-analytics/non-lead assets and workflows. Keep externally callable api.php and protected analytics/lead contracts unchanged unless retirement is separately proven safe."
   },
   "queue": [
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
@@ -21,16 +21,16 @@
     {"id":"A5","status":"DONE","title":"Live Tourvisor correctness pass"},
     {"id":"A7","status":"DONE","title":"SEO foundation audit and incremental work"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop","note":"Real advertising traffic has not been launched yet; keep this task waiting while pre-traffic hardening continues independently."},
-    {"id":"A9","status":"IN_PROGRESS","title":"Residual V2 generation and CI cleanup","note":"Removed 16 proven inactive JS generations/helpers, 8 unused local static assets and 3 stale validation workflows. Active contract run 33051770229 passed with retired JS/static guards. Protected app.js, lead/analytics files and externally callable api.php remain untouched. Isolated deploy run 33051742657 failed at search_continue_http, but diagnostic repeat 33051960024 passed fully: search_continue HTTP 200, continuation status 200, results 25→100 and duplicate hotel IDs 0. Classified as transient upstream/temporary failure; no retry was added to the non-idempotent continuation action. Deploy smoke now exposes safe continuation diagnostics on future failures."}
+    {"id":"A9","status":"IN_PROGRESS","title":"Residual V2 generation and CI cleanup","note":"Removed 17 proven inactive JS generations/helpers and 8 unused local static assets. Eight stale or redundant validation workflows have now been removed in total. Unique generation, asset-version, hotel/room and flight-price invariants were consolidated into the active V2 contract rather than dropped. Active contract run 33053185213 passed all consolidated checks. The earlier isolated search_continue failure was rechecked green in deploy run 33051960024 (HTTP 200, results 25→100, duplicate hotel IDs 0) and remains classified as transient upstream/temporary; no retry was added to the non-idempotent continuation action."}
   ],
   "last_ci": {
-    "workflow": "Deploy V2 only",
-    "run_id": 33051960024,
-    "head_sha": "1f04434e668a121bedd5a3eb5d0293cdcca21381",
+    "workflow": "Validate active V2 contract",
+    "run_id": 33053185213,
+    "head_sha": "401d24eb5b6b51752cbdb2a33153cce3731213f5",
     "conclusion": "success",
-    "classification": "A9_SEARCH_CONTINUE_TRANSIENT_RECHECK_GREEN"
+    "classification": "A9_CI_CONSOLIDATION_GREEN"
   },
-  "last_verified_commit": "1f04434e668a121bedd5a3eb5d0293cdcca21381",
+  "last_verified_commit": "401d24eb5b6b51752cbdb2a33153cce3731213f5",
   "pending_verification": null,
   "blocked": [],
   "protected": {
