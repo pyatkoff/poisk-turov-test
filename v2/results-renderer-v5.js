@@ -2,7 +2,7 @@
 if(window.V2ResultsV5)return;
 const state={items:[],lastOptions:{}},expandedHotels=new Set(),INITIAL_TOURS=3,moneyFormatter=new Intl.NumberFormat('ru-RU');
 function initialTourLimit(){return window.matchMedia&&window.matchMedia('(max-width:760px)').matches?1:INITIAL_TOURS;}
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function money(v){const n=Number(v||0);return n>0?moneyFormatter.format(n):'';}
 function textValue(v){if(v===null||v===undefined)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(textValue).filter(Boolean).join(', ');if(typeof v==='object')return textValue(v.russianName||v.fullRussianName||v.name||v.title||v.value||v.description||'');return'';}
 function mealName(t){return textValue(t&&t.meal);}
