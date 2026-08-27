@@ -5,7 +5,8 @@ var select=form.elements.food,main=form.querySelector('.main-fields');if(!select
 var field=select.closest('.field');if(!field)return;
 field.classList.add('field-wide','main-meal','primary-step','primary-step-7');
 var title=field.querySelector(':scope > span');if(title)title.textContent='Питание';
-main.appendChild(field);
+function placeField(){main.appendChild(field);}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',placeField,{once:true});else placeField();
 select.classList.add('meal-native-select');
 var wrap=document.createElement('div');wrap.className='meal-quick';wrap.setAttribute('role','group');wrap.setAttribute('aria-label','Тип питания');field.appendChild(wrap);
 function lower(v){return String(v||'').toLowerCase().replace('ё','е');}
