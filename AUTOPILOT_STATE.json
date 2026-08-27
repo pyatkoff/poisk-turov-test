@@ -1,24 +1,24 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T13:30:00+02:00",
+  "updated_at": "2026-08-27T14:04:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
-    "id": "B5",
-    "category": "TRUST_CONVERSION_UX",
-    "title": "Trust and conversion UX",
+    "id": "B6",
+    "category": "VISUAL_REGRESSION_BASELINE",
+    "title": "Visual regression baseline",
     "status": "IN_PROGRESS",
-    "objective": "Strengthen user confidence, recovery paths and conversion clarity across search, results and checkout without changing Tourvisor correctness, analytics configuration or the protected lead-sending mechanism.",
-    "next_action": "Verify PR #13 contract/security/general visual and dedicated five-viewport conversion gate. If green, merge/deploy, confirm production post-deploy behavior, then decide whether B5 has enough evidence to close or needs one final trust/recovery slice."
+    "objective": "Turn the redesigned V2 journey into a durable five-viewport visual safety net without creating redundant workflow layers.",
+    "next_action": "Use the existing visual-v2-baseline.yml as the single B6 baseline owner. Expand it from initial/filters/children evidence to include populated results, selected-tour/checkout and recovery states at 375/430/768/1024/1440, then establish a durable comparison strategy and consolidate redundant specialized visual gates only after equivalent coverage is proven."
   },
   "queue": [
     {"id":"B1","status":"DONE","title":"Visual foundation"},
     {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
     {"id":"B3","status":"DONE","title":"Results Experience 2.0","note":"Hotel-level operator hotfix merged as 8c43c98b5e1581517f9a58379c538504ac904d68; operator remains only in concrete tour rows. Production post-deploy visual run 33064644452 passed."},
-    {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0","note":"Final B4 checkout merge PR #10 landed as 87a10fd10f10af293a591e17ec9e5ec3d96fcb05 after contract/security/general visual plus dedicated checkout/selected-tour five-viewport gates passed. Production post-deploy visual run 33066545500 passed. The resulting SEO H1 regression was isolated to hero copy and fixed separately in PR #12 as 8161feb64cc0d3e6346641368a35e1d132d879b4."},
-    {"id":"B5","status":"IN_PROGRESS","title":"Trust and conversion UX","note":"First recovery/trust slice shipped in PR #11: actionable empty results, tour/flight retry UX, preserved lead data on error and explicit no-payment reassurance. Second slice is PR #13: result CTA becomes 'Проверить тур' and a concise confidence cue explains flight/baggage/final-price verification before the no-payment lead step."},
-    {"id":"B6","status":"QUEUED","title":"Visual regression baseline"},
+    {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0","note":"Final B4 checkout PR #10 merged as 87a10fd10f10af293a591e17ec9e5ec3d96fcb05 after contract/security/general visual plus dedicated checkout/selected-tour gates. Production post-deploy visual run 33066545500 passed. SEO H1 regression was isolated and fixed in PR #12 as 8161feb64cc0d3e6346641368a35e1d132d879b4."},
+    {"id":"B5","status":"DONE","title":"Trust and conversion UX","note":"PR #11 improved tour/flight/lead failure recovery and no-payment reassurance. PR #13 changed result CTA to 'Проверить тур' and added flight/baggage/final-price confidence cues; merged as 760d9c8c28c46ce769cd8ebf0a88cbb8bf8403af and production post-deploy run 33069724534 passed. PR #14 removed the zero-result dead end with preserved search parameters plus explicit edit/filter recovery actions and a five-viewport recovery gate; merged as fceaf4a1b049400031f7f9585b0b83155d1d6c0d and production post-deploy run 33070022638 passed."},
+    {"id":"B6","status":"IN_PROGRESS","title":"Visual regression baseline","note":"Existing visual-v2-baseline.yml is the intended owner but currently captures only initial, filters and children states as evidence; it does not yet provide durable baseline comparison or complete results/checkout/recovery coverage."},
     {"id":"B7","status":"QUEUED","title":"Performance and visual stability"},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
@@ -33,18 +33,13 @@
   ],
   "last_ci": {
     "workflow": "Visual V2 post-deploy",
-    "run_id": 33066545500,
-    "head_sha": "87a10fd10f10af293a591e17ec9e5ec3d96fcb05",
+    "run_id": 33070022638,
+    "head_sha": "fceaf4a1b049400031f7f9585b0b83155d1d6c0d",
     "conclusion": "success",
-    "classification": "B4_PRODUCTION_GREEN"
+    "classification": "B5_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "87a10fd10f10af293a591e17ec9e5ec3d96fcb05",
-  "pending_verification": {
-    "type": "PR_AND_PRODUCTION",
-    "pr": 13,
-    "head_sha": "f8b428fde0505f4bf1557b4c8ee4b4a27747bb71",
-    "note": "B5 result-to-checkout confidence cues and dedicated conversion visual gate"
-  },
+  "last_verified_commit": "fceaf4a1b049400031f7f9585b0b83155d1d6c0d",
+  "pending_verification": null,
   "blocked": [],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
