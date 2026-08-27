@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T09:51:00+02:00",
+  "updated_at": "2026-08-27T09:59:00+02:00",
   "mode": "pre_traffic_hardening",
   "phase": "Residual pre-traffic hardening",
   "current_task": {
@@ -10,28 +10,33 @@
     "title": "Residual V2 generation and CI cleanup",
     "status": "IN_PROGRESS",
     "objective": "Remove only proven inactive V2 generations and stale validation paths while preserving active search, analytics and lead contracts.",
-    "next_action": "Continue auditing stale assets and workflows against the active index/CI graph; remove only unreferenced generations, then rerun active contract, isolation, live checks and deploy smoke."
+    "next_action": "Classify the isolated search_continue smoke failure with the diagnostic deploy. Do not remove further files until continuation is green or the upstream response is understood; then resume stale asset/workflow audit."
   },
   "queue": [
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass","note":"Removed proven inactive historical generations for results-renderer, search-continue, search-lifecycle, and tour-controller; final contract/isolation/live/deploy checks passed."},
     {"id":"A1","status":"DEFERRED","title":"Visual baseline and regression harness","note":"Automatic visual runs temporarily disabled by project decision; workflow remains available manually."},
-    {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit","note":"Primary form ordering, stale-result invalidation, search retry/error recovery, mobile result-filter outcome preview, selected-tour progressive disclosure and lead entry/completion UX were fixed through the active V2 path."},
-    {"id":"A3","status":"DONE","title":"Consolidate unstable visual cascade areas","note":"Incremental cascade audit fixed two proven mobile winning-layer conflicts. Commit 383f1b65 stabilized selected-tour dynamic price wrapping/size. Commit 1fd69bc2 fixed mobile results-tools hidden-state precedence. Final audit confirmed sticky search controls and selected-tour/flight narrow breakpoints are consistent. Commit c24d38bd added CI regression coverage for sticky search CSS and the mobile hidden-state invariant; Validate V2 search filters UX run 33050212255 passed."},
-    {"id":"A4","status":"DONE","title":"Conversion readiness before live traffic","note":"Selected-tour and result-card UX were hardened across CTA clarity, progressive disclosure, mobile imagery, long Tourvisor content, flight selection and lead-entry context; protected lead semantics remained unchanged."},
-    {"id":"A5","status":"DONE","title":"Live Tourvisor correctness pass","note":"Completed live coverage across catalogs, search/result/detail identity, tour-flight/default-price consistency, room association, repricing observation and partial-flight edge data. Updated E2E journey c81187a9 passed run 33048842814. Multi-tour flight profile b88909ef passed run 33048909672 across 3 tours / 252 variants / 504 segments."},
-    {"id":"A7","status":"DONE","title":"SEO foundation audit and incremental work","note":"Temporary /poisk-turov-test/v2/ has description, one H1 and noindex,follow; canonical remains intentionally absent. Live SEO/search-state guards passed and SEO_FOUNDATION.md records the promotion contract."},
+    {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit"},
+    {"id":"A3","status":"DONE","title":"Consolidate unstable visual cascade areas"},
+    {"id":"A4","status":"DONE","title":"Conversion readiness before live traffic"},
+    {"id":"A5","status":"DONE","title":"Live Tourvisor correctness pass"},
+    {"id":"A7","status":"DONE","title":"SEO foundation audit and incremental work"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop","note":"Real advertising traffic has not been launched yet; keep this task waiting while pre-traffic hardening continues independently."},
-    {"id":"A9","status":"IN_PROGRESS","title":"Residual V2 generation and CI cleanup","note":"Removed 11 proven inactive JS generations across runtime, hotel actions, room details, direct search and catalogs; active contract now rejects their return. Also removed stale results-renderer-v4 validation workflow. app.js and analytics/lead historical files remain untouched pending separate protected-contract review."}
+    {"id":"A9","status":"IN_PROGRESS","title":"Residual V2 generation and CI cleanup","note":"Removed 16 proven inactive JS generations/helpers, 8 unused local static assets and 3 stale validation workflows. Active contract run 33051770229 passed with retired JS/static guards. Protected app.js, lead/analytics files and externally callable api.php remain untouched. Latest production copy and Verify V2 passed, but deploy run 33051742657 failed only at search_continue_http; diagnostic-only deploy commit 1f04434e is running to classify the response without retrying the non-idempotent continuation action."}
   ],
   "last_ci": {
     "workflow": "Validate active V2 contract",
-    "run_id": 33051385755,
-    "head_sha": "233acc86e44cfec15f0d534550b14d0a5a5264f4",
+    "run_id": 33051770229,
+    "head_sha": "8a4632a1cc6fd08e8fdbc4a9cf5585f278242ec4",
     "conclusion": "success",
-    "classification": "A9_RETIRED_GENERATION_GUARD_GREEN"
+    "classification": "A9_RETIRED_JS_AND_STATIC_GUARDS_GREEN"
   },
-  "last_verified_commit": "233acc86e44cfec15f0d534550b14d0a5a5264f4",
-  "pending_verification": null,
+  "last_verified_commit": "8a4632a1cc6fd08e8fdbc4a9cf5585f278242ec4",
+  "pending_verification": {
+    "workflow": "Deploy V2 only",
+    "run_id": 33051960024,
+    "head_sha": "1f04434e668a121bedd5a3eb5d0293cdcca21381",
+    "reason": "Repeat search_start/status/search_continue smoke with explicit continuation HTTP/error diagnostics after isolated search_continue_http failure."
+  },
   "blocked": [],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
