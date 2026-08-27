@@ -182,15 +182,39 @@ jobs:
               await page.waitForTimeout(150);
               await page.screenshot({path:`visual-pr-artifacts/${name}-results.png`,fullPage:true});
 
-              const item={name,width,height,http:response?response.status():0,pageErrors,initial,dateState,datesDoneClosed,guestState,doneClosed,singleOpen,advancedState,advancedClosed,resultState};
+              const checkoutState=await page.evaluate(()=>{
+                const selected=document.getElementById('selectedTour');
+                selected.hidden=false;
+                selected.innerHTML='<button type="button" class="back-results">← Вернуться к предложениям</button><div class="selected-head"><div><span class="eyebrow">ВЫБРАННЫЙ ТУР</span><h2>AnyTour Coast Resort</h2><p>Турция · Анталья · Лара</p></div><div class="selected-price"><small>Стоимость</small>125 000 ₽</div></div><div class="selected-picture"><div class="photo-placeholder">ANYTOUR</div></div><div class="facts"><div><span>Вылет из</span><b>Москва</b></div><div><span>Дата</span><b>10.09.2026</b></div><div><span>Ночей</span><b>7</b></div><div><span>Туристы</span><b>2 взр.</b></div><div><span>Питание</span><b>Все включено</b></div><div><span>Номер</span><b>Standard Sea View</b></div><div><span>Размещение</span><b>DBL</b></div><div><span>Оператор</span><b>ANEX</b></div><div><span>Перелёт</span><b>Чартер</b></div><div><span>Топливный сбор</span><b>—</b></div></div><div class="hotel-desc">Отель на первой береговой линии. Описание достаточно подробное для проверки презентации выбранного тура и поведения длинного текста на разных ширинах экрана.</div><div class="tour-flights"><div class="section-heading"><strong>Авиарейсы</strong><span>Выберите подходящий вариант</span></div><div class="flight-variants"><div class="flight-variant is-selected"><label class="flight-choice"><input type="radio" name="v2flight-fixture" checked><span>Вариант 1 · рекомендуемый</span><b>125 000 ₽</b></label><div class="flight-segment"><div class="flight-segment-title"><strong>Туда</strong><span>Southwind · 2S172 · Boeing 737-800</span></div><div class="flight-route"><div><b>Шереметьево (SVO)</b><span>10.09.2026 · 14:00</span></div><div class="flight-arrow">→</div><div><b>Даламан (DLM)</b><span>10.09.2026 · 18:05</span></div></div><div class="flight-baggage">Багаж: <b>10 кг</b> · Ручная кладь: <b>8 кг</b></div></div><div class="flight-segment"><div class="flight-segment-title"><strong>Обратно</strong><span>Southwind · 2S171 · Boeing 737-800</span></div><div class="flight-route"><div><b>Даламан (DLM)</b><span>17.09.2026 · 09:00</span></div><div class="flight-arrow">→</div><div><b>Шереметьево (SVO)</b><span>17.09.2026 · 13:10</span></div></div><div class="flight-baggage">Багаж: <b>10 кг</b> · Ручная кладь: <b>8 кг</b></div></div></div></div></div><form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер получит выбранный тур и рейс</span></div><div class="lead-fields"><label>Имя<input name="name"></label><label>Телефон<input name="phone" type="tel" required></label></div><label>Комментарий<textarea name="comment"></textarea></label><label class="lead-consent"><input type="checkbox" name="consent" value="1" required><span>Согласен на обработку персональных данных</span></label><button type="submit" class="primary">Отправить заявку</button><p class="lead-message"></p></form>';
+                if(window.V2SelectedTourDescription)window.V2SelectedTourDescription.decorate(selected);
+                if(window.V2CheckoutExperienceV1)window.V2CheckoutExperienceV1.decorate(selected);
+                const form=selected.querySelector('.lead-form');
+                return {
+                  decorator:!!window.V2CheckoutExperienceV1,
+                  journey:selected.querySelectorAll('.checkout-journey span').length,
+                  facts:selected.querySelectorAll('.facts.checkout-facts>div').length,
+                  groupedFacts:selected.querySelectorAll('.facts.checkout-facts>div[data-fact-group]').length,
+                  checkoutHead:!!selected.querySelector('.selected-head.checkout-head'),
+                  checkoutFlights:!!selected.querySelector('.tour-flights.checkout-flights'),
+                  checkoutLead:!!selected.querySelector('.lead-form.checkout-lead'),
+                  help:!!selected.querySelector('.checkout-help'),
+                  leadFields:!!form?.querySelector('[name="name"]')&&!!form?.querySelector('[name="phone"]')&&!!form?.querySelector('[name="comment"]')&&!!form?.querySelector('[name="consent"]')&&!!form?.querySelector('button[type="submit"]'),
+                  overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,
+                };
+              });
+              await page.waitForTimeout(150);
+              await page.screenshot({path:`visual-pr-artifacts/${name}-selected-tour.png`,fullPage:true});
+
+              const item={name,width,height,http:response?response.status():0,pageErrors,initial,dateState,datesDoneClosed,guestState,doneClosed,singleOpen,advancedState,advancedClosed,resultState,checkoutState};
               report.push(item);
               const mobileAdvancedBad=advancedState.mobile&&(!advancedState.backdropVisible||!advancedState.bodyLocked||advancedState.position!=='fixed');
               const desktopAdvancedBad=!advancedState.mobile&&advancedState.backdropVisible;
               const expectedTourRows=width<=760?1:2;
               const resultBad=resultState.cards!==2||!resultState.toolsVisible||resultState.decisionFacts<2||!resultState.bestOffer||resultState.tourRows!==expectedTourRows||(width<=760&&!resultState.moreToggle)||(width>760&&resultState.moreToggle)||(width<=760&&!resultState.mobileFilterVisible)||(width>760&&resultState.mobileFilterVisible)||resultState.overflow;
-              const bad=item.http!==200||pageErrors.length||initial.overflow||!initial.hero||!initial.search||!initial.dates||!initial.guests||initial.resultsVisible||!dateState.open||!dateState.min||!dateState.toMin||!dateState.toMax||!dateState.hint.includes('21')||!datesDoneClosed||!guestState.datesClosed||!guestState.guestsOpen||!guestState.agesVisible||!guestState.agesInsidePanel||guestState.ageCount!==2||guestState.overflow||!doneClosed||!singleOpen||!advancedState.open||advancedState.overflow||mobileAdvancedBad||desktopAdvancedBad||!advancedClosed||resultBad;
+              const checkoutBad=!checkoutState.decorator||checkoutState.journey!==3||checkoutState.facts!==10||checkoutState.groupedFacts!==10||!checkoutState.checkoutHead||!checkoutState.checkoutFlights||!checkoutState.checkoutLead||!checkoutState.help||!checkoutState.leadFields||checkoutState.overflow;
+              const bad=item.http!==200||pageErrors.length||initial.overflow||!initial.hero||!initial.search||!initial.dates||!initial.guests||initial.resultsVisible||!dateState.open||!dateState.min||!dateState.toMin||!dateState.toMax||!dateState.hint.includes('21')||!datesDoneClosed||!guestState.datesClosed||!guestState.guestsOpen||!guestState.agesVisible||!guestState.agesInsidePanel||guestState.ageCount!==2||guestState.overflow||!doneClosed||!singleOpen||!advancedState.open||advancedState.overflow||mobileAdvancedBad||desktopAdvancedBad||!advancedClosed||resultBad||checkoutBad;
               if(bad)failed=true;
-              console.log(`PR_VISUAL ${name} http=${item.http} overflow=${initial.overflow}/${guestState.overflow}/${advancedState.overflow}/${resultState.overflow} dates=${initial.dates} guests=${initial.guests} ages=${guestState.ageCount} single=${singleOpen} advanced=${advancedState.open}/${advancedState.position} results=${resultState.cards}/${resultState.tourRows} more=${resultState.moreToggle} mrf=${resultState.mobileFilterVisible} errors=${pageErrors.length}`);
+              console.log(`PR_VISUAL ${name} http=${item.http} overflow=${initial.overflow}/${guestState.overflow}/${advancedState.overflow}/${resultState.overflow}/${checkoutState.overflow} dates=${initial.dates} guests=${initial.guests} ages=${guestState.ageCount} results=${resultState.cards}/${resultState.tourRows} checkout=${checkoutState.journey}/${checkoutState.facts} errors=${pageErrors.length}`);
               await context.close();
             }
             fs.writeFileSync('visual-pr-artifacts/report.json',JSON.stringify(report,null,2));
