@@ -10,7 +10,7 @@ This file is the operational companion to `AGENTS.md`. `AGENTS.md` defines autho
 
 The active product is `v2/`. The major technical refactor, correctness hardening, SEO foundation and residual pre-traffic cleanup are complete. Development is now product-led: make the full AnyTour experience visually coherent, modern, fast and conversion-oriented, with UX and visual quality as first-class priorities.
 
-Current primary task: **B2 — Search Experience 2.0 (`IN PROGRESS`)**.
+Current primary task: **B3 — Results Experience 2.0 (`IN PROGRESS`)**.
 
 Parallel waiting task: **A8 — live traffic feedback loop (`WAITING FOR TRAFFIC`)**. Once advertising traffic starts, live production evidence must immediately influence prioritization without stopping safe B-series product work.
 
@@ -49,7 +49,7 @@ The user has explicitly approved redesign work across the whole site surface wit
 - `primary-meal-ux-v1.js`: primary meal control placement.
 - `search-lifecycle-v6.js`: search request state, validation, generation/searchId ownership, polling and dirty invalidation.
 - `search-progress-ux-v1.js`: waiting/progress/error recovery presentation.
-- `results-renderer-v5.js`: result normalization, rendering and sorting.
+- `results-renderer-v5.js`: result rendering/sorting and B3 hotel-vs-tour decision hierarchy.
 - `search-continue-v6.js`: explicit additional-results continuation.
 - `mobile-results-filters-v1.js`: client-side mobile result filtering with draft outcome preview.
 - `search-dirty-ux-v1.js`: stale-result presentation and interaction lockout.
@@ -87,40 +87,38 @@ Result:
 - GitHub-hosted visual post-deploy run `33060952362` passed at 375, 430, 768, 1024 and 1440 px with HTTP 200, no document-level overflow and no page errors.
 
 ### B2 — SEARCH EXPERIENCE 2.0
-Status: `IN PROGRESS`
+Status: `DONE`
 
-Objective: turn the working search form into a fast, intuitive travel-search composer.
-
-Current implementation: `ux/b2-search-experience`, draft PR #4.
-
-Completed in the current B2 iteration:
-- primary field hierarchy and density improved without changing search request semantics;
-- dates and tourists evolved into intentional desktop popovers / mobile sheets with explicit `Готово`, outside-click and Escape closing, and single-open-picker behavior;
-- quick-night presets and guest steppers retained;
-- child ages fixed to stay inside the guest sheet instead of expanding outside it on mobile;
-- departure date controls now mirror the existing lifecycle rule: no past dates and a maximum 21-day departure range;
-- normal PR validation and security checks run green on GitHub-hosted runners;
-- a GitHub-hosted visual PR gate was added to exercise PR V2 assets against the production shell at 375/430/768/1024/1440 before merge.
-
-Remaining B2 scope:
-- validate the current branch with the visual PR gate and fix any viewport/intermediate-state regression;
-- continue reducing mobile vertical friction and improve stars/meal/secondary-filter hierarchy;
-- evolve advanced filters toward an intentional sheet/panel experience;
-- reduce initial JS-driven layout shift where this can be done safely without creating a parallel form implementation;
-- preserve search lifecycle ownership and Tourvisor request semantics.
+Result:
+- primary search hierarchy and density were improved without changing search request semantics;
+- dates and tourists use intentional desktop popovers / mobile sheets with explicit `Готово`, outside-click and Escape closing, and single-open-picker behavior;
+- child ages stay inside the guest sheet on mobile;
+- departure date controls mirror the lifecycle rule: no past dates and a maximum 21-day departure range;
+- advanced filters use intentional mobile sheet behavior;
+- PR #4 passed contract, security and five-viewport visual checks;
+- merged to `main` as `112f1ea4b70fa3cca1a1419b598693bf68025606`;
+- production post-deploy visual run `33062455516` passed at 375/430/768/1024/1440.
 
 ### B3 — RESULTS EXPERIENCE 2.0
-Status: `QUEUED`
+Status: `IN PROGRESS`
 
 Objective: make results decision-oriented instead of data-dump oriented.
 
-Scope:
-- redesign hotel cards around the reasons a tourist would choose an option;
-- strengthen photo prominence and price hierarchy;
-- surface useful facts such as rating, meal, sea distance, nights and direct-flight status when reliable data is available;
-- visually separate hotel choice from specific tour variant choice;
-- improve quick result filtering after search, especially mobile chips/sheet behavior;
-- keep sorting and result data ownership in the active renderer.
+Current implementation: `ux/b3-results-experience`, draft PR #5.
+
+Completed in the current B3 iteration:
+- result toolbar/card/tour visual hierarchy strengthened with a dedicated results experience layer;
+- hotel-level decision signals now explicitly separate rating, sea distance and available-tour count from operator/tour metadata;
+- hotel card best-offer price and its date/nights/meal context are visually separated from concrete tour variants;
+- specific tour variants remain owned by `results-renderer-v5.js` and preserve existing choose-tour semantics;
+- mobile result-filter sheet now closes safely when crossing to desktop width and exposes explicit `aria-controls` / `aria-expanded` state;
+- the PR visual gate was extended to render populated fixture results at 375/430/768/1024/1440 and assert cards, decision signals, mobile filtering visibility, collapsed-tour behavior and document overflow instead of checking only the search form.
+
+Remaining B3 scope:
+- get contract/security/new populated-results visual gate green and inspect artifacts;
+- fix any responsive/card overflow or hierarchy regression found by the new gate;
+- continue improving post-search filtering only where it reduces decision friction without duplicating server search filters;
+- merge/deploy only after green checks, then verify production populated results and selected-tour transition.
 
 ### B4 — TOUR / CHECKOUT EXPERIENCE 2.0
 Status: `QUEUED`
@@ -228,9 +226,9 @@ A8 remains the operational live-traffic safety loop. B8 is the product-optimizat
 
 ## Next work order
 
-1. Complete B2 in draft PR #4: current search composer/picker work, advanced-filter/mobile-flow polish and five-viewport visual PR validation.
-2. Merge/deploy B2 only after PR contract/security/visual checks are green; then verify production and live search behavior.
-3. Advance to B3 results and B4 checkout/selected-tour.
+1. Complete B3 in draft PR #5: populated-result visual validation, responsive/card fixes and post-search filtering polish.
+2. Merge/deploy B3 only after contract/security/visual checks are green; then verify production populated results and tour-selection transition.
+3. Advance to B4 checkout/selected-tour.
 4. Implement B5 trust/conversion surfaces while preserving lead transport and analytics contracts.
 5. Establish B6 durable visual baselines after the redesigned flow is visually stable.
 6. Perform B7 CSS/performance/CLS consolidation after behavior and design settle.

@@ -153,13 +153,44 @@ jobs:
               if(advancedState.mobile)await page.locator('.search-filters-backdrop').click({position:{x:5,y:5}});else await page.locator('details.extras > summary').click();
               const advancedClosed=await page.locator('details.extras').evaluate(el=>!el.open);
 
-              const item={name,width,height,http:response?response.status():0,pageErrors,initial,dateState,datesDoneClosed,guestState,doneClosed,singleOpen,advancedState,advancedClosed};
+              const resultState=await page.evaluate(()=>{
+                const fixture=[
+                  {id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[
+                    {id:'tour-901-a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'},roomType:'Standard Sea View',placement:'DBL',operator:{name:'ANEX'},isCharter:true},
+                    {id:'tour-901-b',date:'12.09.2026',nights:9,price:142000,meal:{name:'Ультра всё включено'},roomType:'Deluxe',placement:'DBL',operator:{name:'PEGAS'}},
+                  ]},
+                  {id:902,name:'AnyTour Garden Hotel with a deliberately long responsive title',category:4,rating:4.4,seaDistance:650,price:98000,country:{name:'Турция'},region:{name:'Аланья'},tours:[
+                    {id:'tour-902-a',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'},roomType:'Family Room',placement:'2ADL',operator:{name:'Coral Travel'}},
+                  ]},
+                ];
+                window.V2Results.render(fixture);
+                const cards=[...document.querySelectorAll('.hotel-card')];
+                const multi=cards.find(card=>card.dataset.hotelId==='901');
+                const tools=document.querySelector('#resultsTools');
+                const bar=document.querySelector('.mrf-bar');
+                return {
+                  cards:cards.length,
+                  toolsVisible:!!tools&&!tools.hidden&&getComputedStyle(tools).display!=='none',
+                  decisionFacts:multi?multi.querySelectorAll('.hotel-decision-line span').length:0,
+                  bestOffer:!!multi?.querySelector('.hotel-best-offer'),
+                  tourRows:multi?multi.querySelectorAll('.tour-row').length:0,
+                  moreToggle:!!multi?.querySelector('.tour-more-toggle'),
+                  mobileFilterVisible:!!bar&&!bar.hidden&&getComputedStyle(bar).display!=='none',
+                  overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,
+                };
+              });
+              await page.waitForTimeout(150);
+              await page.screenshot({path:`visual-pr-artifacts/${name}-results.png`,fullPage:true});
+
+              const item={name,width,height,http:response?response.status():0,pageErrors,initial,dateState,datesDoneClosed,guestState,doneClosed,singleOpen,advancedState,advancedClosed,resultState};
               report.push(item);
               const mobileAdvancedBad=advancedState.mobile&&(!advancedState.backdropVisible||!advancedState.bodyLocked||advancedState.position!=='fixed');
               const desktopAdvancedBad=!advancedState.mobile&&advancedState.backdropVisible;
-              const bad=item.http!==200||pageErrors.length||initial.overflow||!initial.hero||!initial.search||!initial.dates||!initial.guests||initial.resultsVisible||!dateState.open||!dateState.min||!dateState.toMin||!dateState.toMax||!dateState.hint.includes('21')||!datesDoneClosed||!guestState.datesClosed||!guestState.guestsOpen||!guestState.agesVisible||!guestState.agesInsidePanel||guestState.ageCount!==2||guestState.overflow||!doneClosed||!singleOpen||!advancedState.open||advancedState.overflow||mobileAdvancedBad||desktopAdvancedBad||!advancedClosed;
+              const expectedTourRows=width<=760?1:2;
+              const resultBad=resultState.cards!==2||!resultState.toolsVisible||resultState.decisionFacts<2||!resultState.bestOffer||resultState.tourRows!==expectedTourRows||(width<=760&&!resultState.moreToggle)||(width>760&&resultState.moreToggle)||(width<=760&&!resultState.mobileFilterVisible)||(width>760&&resultState.mobileFilterVisible)||resultState.overflow;
+              const bad=item.http!==200||pageErrors.length||initial.overflow||!initial.hero||!initial.search||!initial.dates||!initial.guests||initial.resultsVisible||!dateState.open||!dateState.min||!dateState.toMin||!dateState.toMax||!dateState.hint.includes('21')||!datesDoneClosed||!guestState.datesClosed||!guestState.guestsOpen||!guestState.agesVisible||!guestState.agesInsidePanel||guestState.ageCount!==2||guestState.overflow||!doneClosed||!singleOpen||!advancedState.open||advancedState.overflow||mobileAdvancedBad||desktopAdvancedBad||!advancedClosed||resultBad;
               if(bad)failed=true;
-              console.log(`PR_VISUAL ${name} http=${item.http} overflow=${initial.overflow}/${guestState.overflow}/${advancedState.overflow} dates=${initial.dates} guests=${initial.guests} ages=${guestState.ageCount} single=${singleOpen} advanced=${advancedState.open}/${advancedState.position} errors=${pageErrors.length}`);
+              console.log(`PR_VISUAL ${name} http=${item.http} overflow=${initial.overflow}/${guestState.overflow}/${advancedState.overflow}/${resultState.overflow} dates=${initial.dates} guests=${initial.guests} ages=${guestState.ageCount} single=${singleOpen} advanced=${advancedState.open}/${advancedState.position} results=${resultState.cards}/${resultState.tourRows} more=${resultState.moreToggle} mrf=${resultState.mobileFilterVisible} errors=${pageErrors.length}`);
               await context.close();
             }
             fs.writeFileSync('visual-pr-artifacts/report.json',JSON.stringify(report,null,2));
