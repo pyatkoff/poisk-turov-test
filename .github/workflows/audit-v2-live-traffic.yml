@@ -31,7 +31,7 @@ jobs:
           home=os.path.expanduser("~")
           def tail_lines(path,count):
               try:
-                  p=subprocess.run(["tail","-n",str(count),"--",path],capture_output=True,text=True,errors="ignore",timeout=20,check=False)
+                  p=subprocess.run(["tail","-n",str(count),"--",path],capture_output=True,text=True,errors="ignore",timeout=8,check=False)
                   return p.stdout.splitlines()
               except Exception:
                   return []
@@ -72,9 +72,8 @@ jobs:
           for pattern in [
               os.path.join(home,"logs","*anytour.online*error*.log*"),
               os.path.join(home,"www","anytour.online","logs","*error*.log*"),
-              os.path.join(home,"www","anytour.online","poisk-turov-test","**","*.log"),
           ]:
-              error_candidates.extend(glob.glob(pattern,recursive=True))
+              error_candidates.extend(glob.glob(pattern))
           err_counts=collections.Counter(); matched=0; err_files=0
           classes=[
               ("php_fatal",re.compile(r'PHP Fatal error|Uncaught',re.I)),
@@ -122,4 +121,4 @@ jobs:
           ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
           remote="/tmp/v2-live-audit-${GITHUB_RUN_ID}.py"
           scp "${ssh_opts[@]}" "$RUNNER_TEMP/v2-live-audit.py" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE:$remote"
-          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" "timeout 90s python3 '$remote'; rc=\$?; rm -f '$remote'; exit \$rc"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" "timeout 45s python3 '$remote'; rc=\$?; rm -f '$remote'; exit \$rc"
