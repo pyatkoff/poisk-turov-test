@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T10:59:00+02:00",
-  "mode": "pre_traffic_hardening",
-  "phase": "Residual pre-traffic hardening",
+  "updated_at": "2026-08-27T11:10:00+02:00",
+  "mode": "pre_traffic_ready",
+  "phase": "Pre-traffic ready; waiting for live traffic",
   "current_task": {
-    "id": "A9",
-    "category": "HARDENING",
-    "title": "Residual V2 generation and CI cleanup",
-    "status": "IN_PROGRESS",
-    "objective": "Remove only proven inactive V2 generations and stale validation paths while preserving active search, analytics and lead contracts.",
-    "next_action": "First collect queued self-hosted active/deploy/live evidence for head cd342950305359267034550e20478502b234e5f6. If green, continue auditing only clearly redundant non-protected infrastructure and externally callable residual endpoints by evidence; do not delete api.php, phone-config.php, analytics or lead files without separate retirement proof."
+    "id": "A8",
+    "category": "LIVE_TRAFFIC",
+    "title": "Live traffic feedback loop",
+    "status": "WAITING_FOR_TRAFFIC",
+    "objective": "Use real production errors, search behavior, UX drop-offs and lead evidence as the primary feedback loop once advertising traffic begins, without changing protected Metrika/goals or the lead transport contract.",
+    "next_action": "Remain production-ready and collect real live-traffic evidence when advertising starts. Prioritize production breakage, lead loss, incorrect data and user-flow regressions; do not make speculative cleanup changes to protected or externally callable residuals."
   },
   "queue": [
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
@@ -20,23 +20,18 @@
     {"id":"A4","status":"DONE","title":"Conversion readiness before live traffic"},
     {"id":"A5","status":"DONE","title":"Live Tourvisor correctness pass"},
     {"id":"A7","status":"DONE","title":"SEO foundation audit and incremental work"},
-    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop","note":"Real advertising traffic has not been launched yet; keep this task waiting while pre-traffic hardening continues independently."},
-    {"id":"A9","status":"IN_PROGRESS","title":"Residual V2 generation and CI cleanup","note":"Removed 17 proven inactive JS generations/helpers, 8 unused local static assets and 3 obsolete V2 smoke/deploy marker files. Fourteen stale, redundant or completed migration workflows have now been removed in total. Unique results sorting/partial-data, retry-policy, dependency-isolation, catalog-cache and search-filter UX contracts were consolidated into validate-v2-active.yml rather than dropped. Active contract run 33056151427 passed the first new consolidation block on the self-hosted runner. The self-hosted migration is complete (no ubuntu-latest jobs remain) and its write-capable migration helper was removed. Final head cd342950305359267034550e20478502b234e5f6 has active contract run 33056378037 and deploy run 33056378060 queued behind the self-hosted runner, with live tour/result-detail/tour-selection checks also queued; this is pending evidence, not a failure. Protected analytics/lead files and externally callable api.php/phone-config.php remain untouched."}
+    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop","note":"Pre-traffic hardening is complete. Activate this task when real advertising traffic starts; live production evidence then becomes the primary feedback loop."},
+    {"id":"A9","status":"DONE","title":"Residual V2 generation and CI cleanup","note":"Removed 17 proven inactive JS generations/helpers, 8 unused local static assets, 3 obsolete V2 smoke/deploy marker files and 14 stale/redundant/completed workflows. Unique contract coverage was consolidated rather than dropped. Self-hosted migration is complete and no ubuntu-latest jobs remain. Final head cd342950305359267034550e20478502b234e5f6 passed active contract 33056378037, deploy/live-search 33056378060, security guard 33056378038, tour live 33056378046, result-detail live 33056378047 and tour-selection live 33056378054. Protected analytics/lead files and externally callable api.php/phone-config.php remain intentionally untouched because retirement is not independently proven."}
   ],
   "last_ci": {
-    "workflow": "Validate active V2 contract",
-    "run_id": 33056151427,
-    "head_sha": "92704714f37b4509611efc0a0465d6d7a5fa8136",
-    "conclusion": "success",
-    "classification": "A9_SELF_HOSTED_CONSOLIDATION_GREEN"
-  },
-  "last_verified_commit": "92704714f37b4509611efc0a0465d6d7a5fa8136",
-  "pending_verification": {
+    "workflow": "Full pending-head verification",
+    "run_id": 33056378060,
     "head_sha": "cd342950305359267034550e20478502b234e5f6",
-    "active_contract_run_id": 33056378037,
-    "deploy_run_id": 33056378060,
-    "reason": "Self-hosted runner queue; runs are queued, not failed."
+    "conclusion": "success",
+    "classification": "A9_FINAL_HEAD_FULL_GREEN"
   },
+  "last_verified_commit": "cd342950305359267034550e20478502b234e5f6",
+  "pending_verification": null,
   "blocked": [],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
