@@ -6,9 +6,9 @@ This file is the operational companion to `AGENTS.md`. `AGENTS.md` defines autho
 
 ## Current product phase
 
-**Phase: technical refactor before the next UX/visual iteration of V2.**
+**Phase: UX and visual iteration after technical refactor.**
 
-The active product is `v2/`. By explicit project decision, automatic visual runs are temporarily paused while there is no live traffic. The current objective is to reduce proven technical debt and unstable CSS/runtime ownership without changing product behavior, Yandex Metrika/goals or the lead-sending mechanism. After this focused pass, autopilot returns to mobile-first UX and visual work.
+The active product is `v2/`. The focused technical refactor pass is complete and verified. Automatic visual runs remain temporarily paused while there is no live traffic; the visual workflow remains available manually. The current objective is a mobile-first end-to-end UX audit of the search journey without changing Yandex Metrika/goals or the lead-sending mechanism.
 
 ## Active architecture reconstructed from main
 
@@ -26,8 +26,8 @@ The active product is `v2/`. By explicit project decision, automatic visual runs
 
 ### Active client search ownership
 - `catalogs-v2.js`: Tourvisor catalogs and child-age controls.
-- `search-filters-ux-v1.js`: primary search form behavior and additional-filter behavior. Its presentation CSS is now owned declaratively by `search-filters-ux-v1.css`; runtime style injection was removed during the focused refactor pass.
-- `primary-meal-ux-v1.js`: promotes meal selection into primary controls.
+- `search-filters-ux-v1.js`: primary search form behavior and additional-filter behavior. Its presentation CSS is owned declaratively by `search-filters-ux-v1.css`.
+- `primary-meal-ux-v1.js`: promotes meal selection into primary controls. Its DOM placement is deliberately deferred until `DOMContentLoaded` so it is appended after the six primary fields arranged by `search-filters-ux-v1.js`; this prevents the previous ordering race that could place `Питание` first on mobile.
 - `search-lifecycle-v6.js`: single owner of search request state, validation, searchId/generation, dirty invalidation, polling and result loading.
 - `search-progress-ux-v1.js`: search progress presentation only.
 - `results-renderer-v5.js`: result data/rendering and sort order.
@@ -52,22 +52,7 @@ The active product is `v2/`. By explicit project decision, automatic visual runs
 ### Analytics
 Active page loads `analytics-v4.js`.
 
-Metrika goal identifiers emitted by the active analytics layer are:
-- `V2_SEARCH_STARTED`
-- `V2_SEARCH_COMPLETE`
-- `V2_SEARCH_ERROR`
-- `V2_SEARCH_CONTINUED`
-- `V2_TOUR_SELECTED`
-- `V2_FLIGHT_SELECTED`
-- `V2_LEAD_STARTED`
-- `V2_LEAD_SUBMITTED`
-- `V2_LEAD_ERROR`
-- `V2_SORT_CHANGED`
-- `V2_HOTEL_OPEN`
-
-These are existing code contracts and are **read-only for autopilot** unless the user explicitly authorizes analytics/Metrika changes.
-
-Historical analytics generations may still exist in the repository, but they are not active entrypoints. Because analytics is protected, the technical refactor must not modify or remove analytics code without explicit approval.
+Metrika goal identifiers emitted by the active analytics layer are existing read-only contracts for autopilot. Do not change analytics/Metrika configuration or goal identifiers without explicit user approval.
 
 ## Existing quality/deployment infrastructure
 
@@ -78,56 +63,52 @@ Historical analytics generations may still exist in the repository, but they are
 - Repository contains focused validators for search lifecycle, results, flights, price sync, lead behavior and UX contracts.
 - `visual-v2-baseline.yml` provides a live Chromium visual/DOM audit across 375, 430, 768, 1024 and 1440 px widths, but its automatic push trigger is temporarily disabled; it remains available through `workflow_dispatch` for deliberate/manual verification.
 
-## Current refactor findings
+## Completed technical refactor milestone
 
-### A6.1 — Runtime CSS ownership
-`search-filters-ux-v1.js` previously injected a large `<style>` block after page load. This made the JS module a late cascade owner and could override static fixes unexpectedly.
+### A6 — focused whole-project refactor pass
+Status: `DONE`
 
-**Done:** extracted those rules to `search-filters-ux-v1.css`, loaded it declaratively from `v2/index.php`, removed runtime style creation and moved the reset-button spacing from inline style to a CSS class. The focused validator now guards this separation.
+- Removed runtime CSS injection from the primary search filters module and moved presentation ownership into static CSS.
+- Removed only proven inactive historical generations of `results-renderer`, `search-continue`, `search-lifecycle` and `tour-controller`.
+- Preserved active search behavior, Tourvisor data contracts, analytics configuration/goals and lead transport.
+- Final active-contract, isolation, live and deploy checks passed on the refactor milestone.
 
-### A6.2 — Proven inactive generations
-Reference/entrypoint analysis identified older search-continuation generations that are not loaded by the active V2 entrypoint. Cleanup is proceeding in small commits; active search lifecycle/result contracts remain the verification boundary.
+## Current UX findings
 
-Rule: do not delete files merely because a newer numbered generation exists. Remove only when active entrypoint/reference analysis and checks prove the older generation inactive.
+### A2.1 — Primary meal ordering race
+The primary meal module previously appended `Питание` into `.main-fields` immediately, while `search-filters-ux-v1.js` registered its six-field layout arrangement for `DOMContentLoaded`. Because the six primary fields were appended after the meal field, the meal control could become visually first despite being tagged as `primary-step-7`.
 
-### A6.3 — CSS/visual layer complexity
-The active page still composes multiple historical and feature-specific CSS layers. Continue reducing ambiguous ownership incrementally, but do not combine refactor with product/UX changes.
+**Fixed:** `primary-meal-ux-v1.js` now registers its placement on `DOMContentLoaded` after the search-filter layout listener, preserving the intended order: the six core trip parameters first, then meal selection. No meal values, search payload, analytics or lead behavior changed.
 
-## Deferred visual finding
-
-The latest mobile evidence showed the primary meal control (`Питание`) in an unexpected visual position. This is **explicitly deferred** while technical refactor is in progress and there is no live traffic. Do not spend the refactor pass redesigning or reordering the form.
-
-Automatic visual baseline execution is also deferred/manual-only for this phase. Re-enable and extend it when returning to UX/visual work.
+Verification: automated active-contract/isolation/live/deploy checks are required; deliberate visual confirmation remains part of A2/A3 while the automatic visual workflow is paused.
 
 ## Autopilot queue
 
 ### A6 — TECH DEBT: focused whole-project refactor pass
-Status: `IN PROGRESS`
-
-- Complete active-entrypoint/reference analysis across V2.
-- Remove only proven inactive generations in small safe changes.
-- Reduce runtime CSS/DOM presentation ownership where it can be separated without behavior changes.
-- Strengthen focused validators around each refactored boundary.
-- Preserve active search behavior, Tourvisor data contracts, analytics configuration/goals and lead transport.
-
-DONE evidence: focused validators + active V2 contract + production/deploy checks for affected active files.
+Status: `DONE`
 
 ### A1 — VISUAL / UX: baseline and regression harness
 Status: `DEFERRED`
 
 - Harness exists and remains manually runnable.
-- Automatic push execution is paused during technical refactor.
-- Resume after A6, then review the deferred mobile primary-control ordering and other concrete screenshots before expanding coverage.
+- Automatic push execution remains paused while there is no live traffic.
+- Use deliberate visual verification for user-facing changes and re-enable broader automatic coverage when visual iteration stabilizes.
 
 ### A2 — UX: end-to-end search journey audit
-Status: `QUEUED`
+Status: `IN PROGRESS`
 
-After A6/A1 resume, audit the full tourist journey: search intent -> form -> waiting -> comparing results -> hotel/tour understanding -> flights/price -> lead. Prioritize mobile.
+Audit the full tourist journey: search intent -> form -> waiting -> comparing results -> hotel/tour understanding -> flights/price -> lead. Prioritize mobile.
+
+Current work order:
+- resolve concrete primary-form ordering/friction findings;
+- inspect waiting/progress and stale-search transitions;
+- inspect results comparison and mobile filter discoverability;
+- inspect selected-tour, flight/price clarity and lead entry without changing protected lead transport.
 
 ### A3 — VISUAL: consolidate unstable cascade areas
 Status: `QUEUED`
 
-Use the ownership information produced by A6 to consolidate the highest-risk visual layers incrementally. Do not perform a wholesale redesign.
+Use the ownership information produced by A6 and A2 evidence to consolidate the highest-risk visual layers incrementally. Do not perform a wholesale redesign.
 
 ### A4 — PRODUCT/UX: conversion readiness before live traffic
 Status: `QUEUED`
@@ -151,8 +132,8 @@ When live traffic is enabled, prioritize real production errors, search behavior
 
 ## Recurring autopilot maintenance
 
-- During A6: verify behavior/contracts for every active-file refactor; do not use the deferred visual finding as scope for redesign.
-- On return to UX/visual work: re-enable deliberate visual verification for affected states/viewports before increasing traffic.
+- During A2: verify functional contracts for every UX change and inspect relevant responsive/user states deliberately.
+- Keep automatic visual baseline execution manual-only until the project explicitly re-enables it.
 - Approximately weekly during active development: reread the whole repository and refresh this file if architecture/priorities changed.
 - After major milestones: architecture + UX + visual audit before moving to the next phase.
 
@@ -161,5 +142,4 @@ When live traffic is enabled, prioritize real production errors, search behavior
 A blocked item does not stop independent work. Record it here and move to the next safe queue item.
 
 Deferred by project decision:
-- automatic Visual V2 baseline runs during A6;
-- mobile `Питание` ordering/visual issue until the UX/visual phase resumes.
+- automatic Visual V2 baseline runs while there is no live traffic.
