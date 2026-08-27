@@ -42,6 +42,16 @@ jobs:
             test ! -e "v2/$asset" || { echo "RETIRED_ASSET_PRESENT:$asset"; exit 1; }
           done
           echo "RETIRED_V2_GENERATIONS_ABSENT"
+      - name: Reject retired static assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          retired=(Layer_1.png anytour-logo-v2.svg anytour-logo.png anytour-current-logo.svg footer-current-site.css header-compact.css header-design-v2.css lead-form.css)
+          for asset in "${retired[@]}"; do
+            test ! -e "v2/$asset" || { echo "RETIRED_STATIC_ASSET_PRESENT:$asset"; exit 1; }
+          done
+          grep -Fq '<img src="/images/logo.svg" alt="AnyTour">' v2/index.php
+          echo "RETIRED_V2_STATIC_ASSETS_ABSENT"
       - name: Validate dirty-search invalidation contract
         shell: bash
         run: |
