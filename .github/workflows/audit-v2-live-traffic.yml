@@ -84,7 +84,8 @@ jobs:
           root_total=summarize(lines,project,"PROJECT_LIVE")
           v2_total=summarize(lines,v2,"V2_LIVE")
           print("PROJECT_NON_V2_REQUESTS",max(0,root_total-v2_total))
-          err=collections.Counter(); matched=0
+          err=collections.Counter(); severities=collections.Counter(); matched=0
+          severity_rx=re.compile(r'\[(debug|info|notice|warn|error|crit|alert|emerg)\]',re.I)
           classes=[
               ("php_fatal",re.compile(r'PHP Fatal error|Uncaught',re.I)),
               ("php_warning",re.compile(r'PHP Warning',re.I)),
@@ -94,18 +95,27 @@ jobs:
               ("upstream_connect_fail",re.compile(r'connect\(\) failed.*upstream|no live upstreams',re.I)),
               ("upstream_recv_fail",re.compile(r'recv\(\) failed.*upstream|readv\(\) failed.*upstream',re.I)),
               ("upstream_big_header",re.compile(r'upstream sent too big header',re.I)),
+              ("upstream_buffered",re.compile(r'upstream response is buffered to a temporary file',re.I)),
+              ("client_closed",re.compile(r'client closed connection|client prematurely closed connection',re.I)),
+              ("client_body_too_large",re.compile(r'client intended to send too large body',re.I)),
+              ("request_header_too_large",re.compile(r'client sent too large request|request header or cookie too large',re.I)),
+              ("ssl_handshake",re.compile(r'SSL_do_handshake\(\) failed|SSL handshaking',re.I)),
+              ("rate_limited",re.compile(r'limiting requests|limiting connections',re.I)),
               ("open_failed",re.compile(r'open\(\).*failed',re.I)),
               ("access_forbidden",re.compile(r'forbidden|permission denied',re.I)),
               ("internal_redirect",re.compile(r'internal redirection cycle',re.I)),
           ]
           for line in tail(error,30000):
               if project not in line: continue
-              matched+=1; hit=False
+              matched+=1
+              sm=severity_rx.search(line); severities[(sm.group(1).lower() if sm else "unknown")]+=1
+              hit=False
               for name,rx in classes:
                   if rx.search(line): err[name]+=1; hit=True
               if not hit: err["other_project_error_line"]+=1
           print("PROJECT_ERROR_SOURCE",os.path.relpath(error,home),os.path.getsize(error) if os.path.isfile(error) else 0)
           print("PROJECT_ERROR_LINES",matched)
+          print("PROJECT_ERROR_SEVERITIES",dict(severities))
           print("PROJECT_ERROR_CLASSES",dict(err))
           PY
           python3 -m py_compile "$RUNNER_TEMP/v2-live-audit.py"
