@@ -7,6 +7,7 @@
 .primary-step-6{grid-column:span 7}
 .extras-secondary{margin-top:22px;padding-top:16px;border-top:1px solid #e8ebf2}
 .extras-secondary>summary{border:1px solid #e1e5ed;border-radius:14px;background:#fafbfe;padding:13px 15px}
+.search-filters-reset{margin-top:14px}
 .dates-ux,.main-stars,.nights-ux,.guests-ux{align-self:end}
 .dates-picker,.guests-picker{position:relative}
 .dates-picker summary,.guests-picker summary{list-style:none;height:50px;border:1px solid #d7dde8;border-radius:13px;background:#fff;padding:0 13px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer}
