@@ -36,23 +36,23 @@ jobs:
             from="$(date -d "+2 day" +%Y-%m-%d)"
             till="$(date -d "+9 day" +%Y-%m-%d)"
             curl -k -L -fsS --max-time 50 "$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB" >/tmp/v2-rd-start.json || fail search_start
-            search_id="$(python3 -c "import json; d=json.load(open('/tmp/v2-rd-start.json')); print(d.get('searchId') or '')")"
+            search_id="$(python3 -c "import json; d=json.load(open(\"/tmp/v2-rd-start.json\")); print(d.get(\"searchId\") or \"\")")"
             test -n "$search_id" || fail search_id
             complete=0
             for attempt in $(seq 1 20); do
               sleep 2
-              if curl -k -L -fsS --max-time 45 "$base?action=search_status&searchId=$search_id" >/tmp/v2-rd-status.json && python3 -c "import json; d=json.load(open('/tmp/v2-rd-status.json')); assert d.get('progress')==100 or d.get('status')=='complete'" 2>/dev/null; then complete=1; break; fi
+              if curl -k -L -fsS --max-time 45 "$base?action=search_status&searchId=$search_id" >/tmp/v2-rd-status.json && python3 -c "import json; d=json.load(open(\"/tmp/v2-rd-status.json\")); assert d.get(\"progress\")==100 or d.get(\"status\")==\"complete\"" 2>/dev/null; then complete=1; break; fi
             done
             test "$complete" = 1 || fail search_not_complete
             curl -k -L -fsS --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25" >/tmp/v2-rd-results.json || fail search_results
-            python3 -c "import json; items=json.load(open('/tmp/v2-rd-results.json')); rows=[]; [(rows.append({'id':str(t.get('id')),'hotelId':t.get('hotelId') or h.get('id') or h.get('hotelId'),'hotelName':t.get('hotelName') or h.get('name') or h.get('hotelName'),'date':t.get('date') or t.get('dateFrom') or t.get('startDate'),'price':(t.get('price',{}).get('value') if isinstance(t.get('price'),dict) else t.get('price')),'currency':t.get('currency') or (t.get('price',{}).get('currency') if isinstance(t.get('price'),dict) else None),'nights':t.get('nights')}) for h in (items if isinstance(items,list) else []) if isinstance(h,dict) for t in (h.get('tours') or []) if isinstance(t,dict) and t.get('id') is not None]; json.dump(rows[:8],open('/tmp/v2-rd-map.json','w'),ensure_ascii=False); print('RESULT_SAMPLE_ROWS='+str(min(len(rows),8)))"
-            test "$(python3 -c "import json; print(len(json.load(open('/tmp/v2-rd-map.json'))))")" -ge 3 || fail insufficient_result_rows
+            python3 -c "import json; items=json.load(open(\"/tmp/v2-rd-results.json\")); rows=[]; [(rows.append({\"id\":str(t.get(\"id\")),\"hotelId\":t.get(\"hotelId\") or h.get(\"id\") or h.get(\"hotelId\"),\"hotelName\":t.get(\"hotelName\") or h.get(\"name\") or h.get(\"hotelName\"),\"date\":t.get(\"date\") or t.get(\"dateFrom\") or t.get(\"startDate\"),\"price\":(t.get(\"price\",{}).get(\"value\") if isinstance(t.get(\"price\"),dict) else t.get(\"price\")),\"currency\":t.get(\"currency\") or (t.get(\"price\",{}).get(\"currency\") if isinstance(t.get(\"price\"),dict) else None),\"nights\":t.get(\"nights\")}) for h in (items if isinstance(items,list) else []) if isinstance(h,dict) for t in (h.get(\"tours\") or []) if isinstance(t,dict) and t.get(\"id\") is not None]; json.dump(rows[:8],open(\"/tmp/v2-rd-map.json\",\"w\"),ensure_ascii=False); print(\"RESULT_SAMPLE_ROWS=\"+str(min(len(rows),8)))"
+            test "$(python3 -c "import json; print(len(json.load(open(\"/tmp/v2-rd-map.json\"))))")" -ge 3 || fail insufficient_result_rows
             compared=0
             matched=0
             while IFS= read -r tid; do
               test -n "$tid" || continue
               if ! curl -k -L -fsS --max-time 45 "$base?action=tour&tourId=$tid&currency=RUB" >/tmp/v2-rd-tour.json; then continue; fi
-              if TID="$tid" python3 -c "import json,os,datetime as dt; rows=json.load(open('/tmp/v2-rd-map.json')); r=next((x for x in rows if x['id']==os.environ['TID']),None); d=json.load(open('/tmp/v2-rd-tour.json')); assert r and isinstance(d,dict) and str(d.get('id') or '')==r['id']; hotel=d.get('hotel') or {}; checks=[]; checks.append(str(hotel.get('id') or '')==str(r['hotelId'])) if r.get('hotelId') not in (None,'') else None; checks.append(str(hotel.get('name') or '').strip().casefold()==str(r['hotelName']).strip().casefold()) if r.get('hotelName') else None; norm=lambda v: next((dt.datetime.strptime(str(v),f).date().isoformat() for f in ('%d.%m.%Y','%Y-%m-%d') if __import__('contextlib')),str(v)); checks.append(str(d.get('date'))==str(r['date']) or norm(d.get('date'))==norm(r['date'])) if r.get('date') else None; checks.append(float(d.get('price'))==float(r['price'])) if r.get('price') not in (None,'') else None; checks.append(str(d.get('currency') or 'RUB')==str(r['currency'])) if r.get('currency') else None; checks.append(int(d.get('nights'))==int(r['nights'])) if r.get('nights') not in (None,'') else None; assert len(checks)>=2 and all(checks); print('RESULT_DETAIL_MATCH tourId='+r['id']+' checks='+str(len(checks)))"; then
+              if TID="$tid" python3 -c "import json,os; rows=json.load(open(\"/tmp/v2-rd-map.json\")); r=next((x for x in rows if x[\"id\"]==os.environ[\"TID\"]),None); d=json.load(open(\"/tmp/v2-rd-tour.json\")); assert r and isinstance(d,dict) and str(d.get(\"id\") or \"\")==r[\"id\"]; hotel=d.get(\"hotel\") or {}; checks=[]; checks.append(str(hotel.get(\"id\") or \"\")==str(r[\"hotelId\"])) if r.get(\"hotelId\") not in (None,\"\") else None; checks.append(str(hotel.get(\"name\") or \"\").strip().casefold()==str(r[\"hotelName\"]).strip().casefold()) if r.get(\"hotelName\") else None; checks.append(str(d.get(\"date\") or \"\")==str(r[\"date\"])) if r.get(\"date\") else None; checks.append(float(d.get(\"price\"))==float(r[\"price\"])) if r.get(\"price\") not in (None,\"\") else None; checks.append(str(d.get(\"currency\") or \"RUB\")==str(r[\"currency\"])) if r.get(\"currency\") else None; checks.append(int(d.get(\"nights\"))==int(r[\"nights\"])) if r.get(\"nights\") not in (None,\"\") else None; assert len(checks)>=2 and all(checks); print(\"RESULT_DETAIL_MATCH tourId=\"+r[\"id\"]+\" checks=\"+str(len(checks)))"; then
                 matched=$((matched+1))
               else
                 echo "RESULT_DETAIL_MISMATCH tourId=$tid"
@@ -60,7 +60,7 @@ jobs:
               fi
               compared=$((compared+1))
               test "$compared" -ge 5 && break
-            done < <(python3 -c "import json; print('\\n'.join(x['id'] for x in json.load(open('/tmp/v2-rd-map.json'))))")
+            done < <(python3 -c "import json; print(\"\\n\".join(x[\"id\"] for x in json.load(open(\"/tmp/v2-rd-map.json\"))))")
             test "$matched" -ge 3 || fail insufficient_result_detail_matches
             echo "RESULT_DETAIL_LIVE_OK searchId=$search_id compared=$compared matched=$matched"
           '
