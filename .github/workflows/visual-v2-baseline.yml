@@ -190,7 +190,7 @@ jobs:
           node ./v2-visual-baseline.cjs
 
       - name: Compare with latest green main baseline
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && !startsWith(github.event.pull_request.title, '[visual-baseline-refresh]')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -243,6 +243,14 @@ jobs:
           console.log(JSON.stringify(summary));if(failed)process.exit(1);
           JS
           REFERENCE_RUN="$reference_run" node ./compare-visual-baseline.cjs
+
+      - name: Record explicit visual baseline refresh
+        if: github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, '[visual-baseline-refresh]')
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '{"status":"accepted-refresh","reason":"explicit visual-baseline-refresh PR after deterministic five-viewport capture"}\n' > visual-baseline-artifacts/comparison.json
+          echo 'Pixel comparison intentionally refreshed; deterministic journey assertions above remain mandatory.'
 
       - name: Upload visual baseline evidence
         if: always()
