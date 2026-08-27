@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T08:58:00+02:00",
+  "updated_at": "2026-08-27T09:02:00+02:00",
   "mode": "active_development",
   "phase": "Live Tourvisor correctness and pre-traffic hardening",
   "current_task": {
@@ -10,7 +10,7 @@
     "title": "Live Tourvisor correctness pass",
     "status": "IN_PROGRESS",
     "objective": "Validate that live Tourvisor search, selected-tour detail and flight data remain internally consistent across the complete V2 journey without changing protected analytics, Metrika goals or the lead-sending mechanism.",
-    "next_action": "Compare sampled search-result tour fields against the corresponding selected-tour detail for price/date/hotel identity where the search response supplies authoritative values, then continue partial-flight edge-case coverage."
+    "next_action": "Audit partial-flight edge cases in live Tourvisor responses and active UI handling: placeholder 00:00 times, missing baggage/carry-on/time zones, null fuel data and repeated equal-price flight variants."
   },
   "queue": [
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass","note":"Removed proven inactive historical generations for results-renderer, search-continue, search-lifecycle, and tour-controller; final contract/isolation/live/deploy checks passed."},
@@ -18,18 +18,18 @@
     {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit","note":"Primary form ordering, stale-result invalidation, search retry/error recovery, mobile result-filter outcome preview, selected-tour progressive disclosure and lead entry/completion UX were fixed through the active V2 path."},
     {"id":"A3","status":"QUEUED","title":"Consolidate unstable visual cascade areas","note":"Concrete cascade conflicts in mobile result-card imagery and long-content wrapping were fixed during A4; broader consolidation remains incremental rather than wholesale."},
     {"id":"A4","status":"DONE","title":"Conversion readiness before live traffic","note":"Selected-tour work includes lead CTA and field clarity, room-details progressive disclosure, secondary fact disclosure, compact mobile selected-tour image/fact hierarchy, compact unselected flight variants, stable mobile flight choice pricing layout, stronger flight-time hierarchy and separate baggage treatment. Result-card work fixed the narrow/tall mobile image cascade conflict, selected-hotel description nested scrolling, long Tourvisor content/price wrapping, hidden unusable CTA for variants without tourId, and object/array text normalization for roomType, placement, meal and operator. Selected-tour display also normalizes roomType/placement objects and arrays without changing leadPayload semantics. Final active contract, isolation, live Tourvisor, production Verify V2 and live search smoke passed on ba5a20ac."},
-    {"id":"A5","status":"IN_PROGRESS","title":"Live Tourvisor correctness pass","note":"Live validation was strengthened in 29e8474f from HTTP/shape checks to cross-step invariants: returned tourId must match the requested result; departure, country, adults, nights, date window, currency and positive price must match the search; when a default flight is supplied, its price, fuel charge, currency and forward date must agree with the selected tour. In edcd9c73 the sample was broadened to five distinct tours from one live result set, requiring at least three consistent tour details plus one consistent tour-flight chain. Run 33047723757 passed with all 5 sampled tours consistent on searchId 13449323729 and flightTourId 18271253225084."},
+    {"id":"A5","status":"IN_PROGRESS","title":"Live Tourvisor correctness pass","note":"Live validation was strengthened in 29e8474f from HTTP/shape checks to cross-step invariants. In edcd9c73 the sample was broadened to five distinct tours from one live result set. A dedicated result-detail production validation was then added and hardened; commit 7b3ac5ed runs it directly against production. Run 33048016102 passed on searchId 13449378302 with 5/5 sampled tours matching between search result and selected-tour detail on 8 comparable fields each, including hotel identity, date, price/currency, nights and tourist counts."},
     {"id":"A7","status":"QUEUED","title":"SEO foundation audit and incremental work"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop"}
   ],
   "last_ci": {
-    "workflow": "Validate V2 tour live",
-    "run_id": 33047723757,
-    "head_sha": "edcd9c73399ff47bed2f8e7c35451c0c41fc10a6",
+    "workflow": "Validate V2 result-detail live",
+    "run_id": 33048016102,
+    "head_sha": "7b3ac5ed850eddca84077f47410aa69353c5a343",
     "conclusion": "success",
-    "classification": "LIVE_MULTI_TOUR_SEARCH_DETAIL_FLIGHT_CONSISTENCY_VERIFIED"
+    "classification": "LIVE_RESULT_DETAIL_EIGHT_FIELD_CONSISTENCY_VERIFIED"
   },
-  "last_verified_commit": "edcd9c73399ff47bed2f8e7c35451c0c41fc10a6",
+  "last_verified_commit": "7b3ac5ed850eddca84077f47410aa69353c5a343",
   "pending_verification": null,
   "blocked": [],
   "protected": {
