@@ -1,25 +1,32 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T19:18:00+03:00",
+  "updated_at": "2026-08-27T20:08:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "Live product optimization readiness",
+  "phase": "Conversion UX 3.0 complete; live optimization waiting for evidence",
   "current_task": {
-    "id": "B8",
-    "category": "LIVE_PRODUCT_OPTIMIZATION",
-    "title": "Live product optimization",
+    "id": "C7",
+    "category": "LIVE_CONVERSION_OPTIMIZATION",
+    "title": "Live conversion optimization",
     "status": "WAITING_FOR_TRAFFIC",
-    "objective": "Use real traffic, live conversations and production behavior to prioritize the next product improvements instead of speculative micro-optimization.",
-    "next_action": "Wait for meaningful live traffic evidence, then activate B8 and A8 together. Prioritize production breakage, lead loss, incorrect data, user-flow friction and visual/responsive regressions from real sessions before lower-value performance work. Keep the deferred B7 micro-optimizations deferred unless profiling or live evidence makes them material."
+    "objective": "Use meaningful real production traffic and funnel behavior to prioritize the next conversion improvements instead of speculative polish.",
+    "next_action": "On each run first verify current production CI/deploy/live health and re-audit the V2 journey. If meaningful live traffic/funnel evidence exists, activate C7 together with B8/A8 and prioritize production breakage, lead loss, incorrect data and observed user-flow friction. Otherwise keep the now-green C1-C6 experience stable and do not manufacture micro-work."
   },
   "queue": [
+    {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
+    {"id":"C2","status":"DONE","title":"Results Experience 3.0"},
+    {"id":"C3","status":"DONE","title":"Selected Tour Experience 3.0"},
+    {"id":"C4","status":"DONE","title":"Lead Experience 3.0"},
+    {"id":"C5","status":"DONE","title":"Flight friction"},
+    {"id":"C6","status":"DONE","title":"Visual refinement","note":"Fresh five-viewport audit confirmed one material nested-card issue in checkout. PR #57 flattened only the outer flights section while preserving individual flight variants and recovery. The analogous results section was intentionally retained because it improves hotel-vs-tour hierarchy on desktop."},
+    {"id":"C7","status":"WAITING_FOR_TRAFFIC","title":"Live conversion optimization"},
     {"id":"B1","status":"DONE","title":"Visual foundation"},
     {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
     {"id":"B3","status":"DONE","title":"Results Experience 2.0"},
     {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0"},
     {"id":"B5","status":"DONE","title":"Trust and conversion UX"},
     {"id":"B6","status":"DONE","title":"Visual regression baseline"},
-    {"id":"B7","status":"DONE","title":"Performance and visual stability","note":"B7 closed after the whole-flow recovery/performance audit found no remaining material evidence worth speculative optimization. Production-green work includes CSS request/cascade reduction, safe live-read timeout hardening, selected-tour desktop image CLS reservation, mobile-only lazy initialization, deferred hidden result-state DOM, removal/lazy-binding of empty startup scans/listeners, cached result counts, formatter reuse and recovery hardening. PR #39 cached the results renderer Intl.NumberFormat. PR #41 cached search-status minPrice formatting. Diagnostic PR #40 disproved progressive payload dedup as useful in the sampled real search. PR #42 added in-place selected-tour retry after transient tour API failure. PR #43 fixed critical catalog recovery: initial departures/countries failures no longer leave indefinite loading, stale dependent destination filters are cleared after countries failure, and an on-page retry preserves dates/guest inputs. PR #43 merged as 00a2c2d36b662ed18ecfecb06c3f8e86d48cb3da; its six PR gates passed, Visual V2 post-deploy run 33092133320 passed, and Visual V2 baseline job in run 33092133372 passed. Search-continue already restores its button as `Попробовать ещё раз`; hotel-details and room-details already expose recoverable retry paths. No further confirmed B7 dead ends remain."},
+    {"id":"B7","status":"DONE","title":"Performance and visual stability"},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
@@ -31,21 +38,31 @@
     {"id":"A7","status":"DONE","title":"SEO foundation audit and incremental work"},
     {"id":"A9","status":"DONE","title":"Residual V2 generation and CI cleanup"}
   ],
-  "last_ci": {
-    "workflow": "Visual V2 post-deploy",
-    "run_id": 33092133320,
-    "head_sha": "00a2c2d36b662ed18ecfecb06c3f8e86d48cb3da",
-    "conclusion": "success",
-    "classification": "B7_CATALOG_RECOVERY_PRODUCTION_GREEN"
+  "conversion_ux_3": {
+    "status": "C1_C6_DONE_C7_WAITING_FOR_TRAFFIC",
+    "c1": "PRs #46/#48 plus #50 active-contract alignment",
+    "c2": "PR #49 plus #52 post-deploy visual contract alignment",
+    "c3": "PR #51",
+    "c4": "PRs #53 and #55",
+    "c5": "PR #54 measured fresh flight latency; PR #56 auto-loads flights after tour selection and is production-green",
+    "c6": "PR #57 flattened nested outer flight-section chrome and is production-green"
   },
-  "last_verified_commit": "00a2c2d36b662ed18ecfecb06c3f8e86d48cb3da",
+  "last_ci": {
+    "workflow": "Visual V2 baseline",
+    "run_id": 33101538761,
+    "head_sha": "0dd32c3507b3735b3f6705018563cec372b91773",
+    "conclusion": "success",
+    "classification": "C6_FLIGHT_SECTION_FLATTEN_PRODUCTION_GREEN"
+  },
+  "last_verified_commit": "0dd32c3507b3735b3f6705018563cec372b91773",
   "pending_verification": null,
   "blocked": [],
   "deferred": [
+    {"scope":"results variant outer panel flattening","reason":"Fresh mobile+desktop baseline review showed the panel materially separates hotel-level comparison from concrete tour choice on desktop; retain the hierarchy rather than mechanically flattening it."},
     {"scope":"lead-form-guard-v1.js selectedTour MutationObserver","reason":"Public programmatic V2TourController.selectTour() can mutate #selectedTour before v2:tour-selected; lazy observation tied only to clicks/events would weaken recovery coverage."},
-    {"scope":"results-renderer-v5.js per-card initialTourLimit matchMedia allocation","reason":"Confirmed but small; defer until profiling justifies it."},
-    {"scope":"tour-controller-v4.js and flight-price-sync-v1.js price formatter allocations","reason":"User-driven low-frequency work compared with automatic search loops; defer unless profiling shows material interaction cost."},
-    {"scope":"progressive results payload fingerprint dedup/incremental render","reason":"Live diagnostic PR #40 observed only two snapshots and both materially differed; no unchanged transition to eliminate."}
+    {"scope":"results-renderer-v5.js per-card initialTourLimit matchMedia allocation","reason":"Confirmed but small; defer until profiling or live traffic justifies it."},
+    {"scope":"tour-controller-v4.js and flight-price-sync-v1.js price formatter allocations","reason":"User-driven low-frequency work; defer unless profiling shows material interaction cost."},
+    {"scope":"progressive results payload fingerprint dedup/incremental render","reason":"Live diagnostic PR #40 observed only material changes; no unchanged transition to eliminate."}
   ],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
@@ -65,11 +82,11 @@
     "visual_viewports": [375,430,768,1024,1440]
   },
   "continuation_policy": {
-    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_explicitly_deferred",
+    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or explicitly_deferred",
     "on_ci_success": "collect_done_evidence_then_advance_queue",
     "on_blocker": "record_blocker_and_continue_independent_work",
     "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
     "on_user_facing_change": "preserve_protected_contracts_and_validate_behavior_before_advancing",
-    "on_live_traffic": "activate_A8_and_B8_and_reprioritize_from_real_evidence"
+    "on_live_traffic": "activate_C7_B8_A8_and_reprioritize_from_real_evidence"
   }
 }
