@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T20:54:00+02:00",
+  "updated_at": "2026-08-27T22:08:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Conversion UX 3.0 complete; live optimization waiting for evidence",
   "current_task": {
@@ -10,7 +10,7 @@
     "title": "Live conversion optimization",
     "status": "WAITING_FOR_TRAFFIC",
     "objective": "Use meaningful real production traffic and funnel behavior to prioritize the next conversion improvements instead of speculative polish.",
-    "next_action": "On each run first verify current production CI/deploy/live health and re-audit the V2 journey. If meaningful live traffic/funnel evidence exists, activate C7 together with B8/A8 and prioritize production breakage, lead loss, incorrect data and observed user-flow friction. Otherwise keep the now-green C1-C6 experience stable and do not manufacture micro-work."
+    "next_action": "Inspect the latest successful hourly Audit V2 live traffic run before deciding C7. The audit now separates headless CI from real browsers and attributes 4xx/5xx by actor. Current sample is insufficient for conversion work: 461 real-browser requests with only 2 search_start and 1 tour; both observed V2 5xx were curl validation traffic. Keep C7/B8/A8 waiting until a larger real-browser funnel or a user-impacting live signal appears; continue whole-flow health/visual checks without speculative micro-work."
   },
   "queue": [
     {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
@@ -19,7 +19,7 @@
     {"id":"C4","status":"DONE","title":"Lead Experience 3.0"},
     {"id":"C5","status":"DONE","title":"Flight friction"},
     {"id":"C6","status":"DONE","title":"Visual refinement","note":"PR #57 flattened the redundant outer flights-section card while preserving individual flight variants and recovery. PR #59 then fixed a confirmed mobile selected-tour overlap where the C1 sticky search CTA could remain visible over checkout, including programmatic tour selection. The selected-tour visual gate now asserts the sticky is hidden. Fresh five-viewport selected-tour evidence then showed the reassurance block still carried too much nested-card weight; PR #61 compacted it into a lightweight reassurance strip while preserving trust semantics and passed deploy/live/post-deploy/baseline. The analogous results-panel flattening was intentionally rejected because it improves hotel-vs-tour hierarchy on desktop."},
-    {"id":"C7","status":"WAITING_FOR_TRAFFIC","title":"Live conversion optimization"},
+    {"id":"C7","status":"WAITING_FOR_TRAFFIC","title":"Live conversion optimization","note":"PRs #63-#65 turned the existing privacy-safe production log audit into an hourly evidence source, separated headless CI from real browser traffic, and attributed 4xx/5xx by actor. Latest run 33111745694 observed 461 real-browser V2 requests but only 2 search_start and 1 tour; both V2 5xx belonged to curl validation traffic, so no user-impacting failure is confirmed and the conversion sample remains too small for evidence-driven changes."},
     {"id":"B1","status":"DONE","title":"Visual foundation"},
     {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
     {"id":"B3","status":"DONE","title":"Results Experience 2.0"},
@@ -48,16 +48,17 @@
     "c6": "PR #57 flattened nested outer flight-section chrome; PR #59 fixed mobile sticky-search overlap on selected tour; PR #61 compacted selected-tour reassurance into a lightweight strip; all are production-green"
   },
   "last_ci": {
-    "workflow": "Visual V2 baseline",
-    "run_id": 33102554873,
-    "head_sha": "07af7feeabe8ff73fef7d8468c69841aa9382475",
+    "workflow": "Audit V2 live traffic",
+    "run_id": 33111745694,
+    "head_sha": "032b589262f44a65c7cfdde2814f63a4c1ece0fc",
     "conclusion": "success",
-    "classification": "C6_SELECTED_TOUR_REASSURANCE_PRODUCTION_GREEN"
+    "classification": "LIVE_AUDIT_LOW_REAL_TRAFFIC_NO_BROWSER_5XX"
   },
   "last_verified_commit": "07af7feeabe8ff73fef7d8468c69841aa9382475",
   "pending_verification": null,
   "blocked": [],
   "deferred": [
+    {"scope":"C7 conversion changes from current live sample","reason":"Latest privacy-safe real-browser sample has only 2 search_start and 1 tour; insufficient evidence for conversion changes. Both observed V2 5xx were curl validation traffic, not real browsers."},
     {"scope":"results variant outer panel flattening","reason":"Fresh mobile+desktop baseline review showed the panel materially separates hotel-level comparison from concrete tour choice on desktop; retain the hierarchy rather than mechanically flattening it."},
     {"scope":"lead-form-guard-v1.js selectedTour MutationObserver","reason":"Public programmatic V2TourController.selectTour() can mutate #selectedTour before v2:tour-selected; lazy observation tied only to clicks/events would weaken recovery coverage."},
     {"scope":"results-renderer-v5.js per-card initialTourLimit matchMedia allocation","reason":"Confirmed but small; defer until profiling or live traffic justifies it."},
