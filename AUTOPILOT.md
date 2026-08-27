@@ -8,7 +8,7 @@ This file is the operational companion to `AGENTS.md`. `AGENTS.md` defines autho
 
 **Conversion UX 3.0 C1–C6 is production-green. C7/B8/A8 wait for meaningful real traffic evidence.**
 
-The active product is `v2/`. Search/results/selected-tour/lead/flight conversion passes have been completed and verified at the durable 375 / 430 / 768 / 1024 / 1440 viewport contract. Real advertising/live-user evidence now outranks speculative polish. A real-browser performance signal was found and fixed in PR #72; conversion changes still wait for a larger funnel sample.
+The active product is `v2/`. Search/results/selected-tour/lead/flight conversion passes have been completed and verified at the durable 375 / 430 / 768 / 1024 / 1440 viewport contract. Real advertising/live-user evidence now outranks speculative polish. A real-browser performance signal was found and fixed in PR #72; PR #74 now provides a privacy-safe recent 30-minute browser window so the effect can be judged only from fresh post-deploy sessions. Conversion changes still wait for a larger funnel sample.
 
 Protected without explicit approval: Yandex Metrika configuration/goals and the existing lead-sending mechanism/external contract. Work stays inside `pyatkoff/poisk-turov-test`; production deployment stays V2-only.
 
@@ -49,12 +49,13 @@ Protected without explicit approval: Yandex Metrika configuration/goals and the 
 Presentation/recovery may improve; changing the sending mechanism or external contract requires explicit approval.
 
 ### Live production evidence
-- `.github/workflows/audit-v2-live-traffic.yml` is the privacy-safe hourly evidence source.
+- `.github/workflows/audit-v2-live-traffic.yml` is the privacy-safe hourly rolling-tail evidence source.
+- `.github/workflows/audit-v2-recent-browser.yml`, added in PR #74, is the privacy-safe recent 30-minute browser-only evidence source for post-deploy attribution. It reports aggregated browser request/status/action/path counts, 4xx/5xx and rate-limit delays without emitting IPs or query values.
 - PRs #63–#65 separated headless CI from real browsers and attributed 4xx/5xx by actor.
 - PRs #67–#71 added nginx severity/family classification, sanitized signatures, safe path/action attribution and actor correlation without emitting IPs, query strings or raw user payloads.
-- That evidence found 106 real-browser nginx rate-limit delays in the sampled tail. Hidden startup catalogs were materially affected: `hotel_types` 12/18 browser requests delayed, `operators` 12/18 and `meals` 8/14.
+- That evidence found 106 real-browser nginx rate-limit delays in the sampled rolling tail. Hidden startup catalogs were materially affected: `hotel_types` 12/18 browser requests delayed, `operators` 12/18 and `meals` 8/14.
 - PR #72 therefore kept critical departures/countries eager and moved advanced catalogs behind opening `Фильтры отдыха`. It passed all six PR gates, V2 deploy `33117246904`, live search smoke, post-deploy visual `33117341554` and baseline `33117341548`.
-- The cumulative log tail still contains pre-deploy sessions, so the next run must use fresh post-deploy browser evidence before judging the rate-limit reduction.
+- The first validated PR #74 recent-window run at 2026-08-27 23:29 +02 saw 0 real-browser V2 requests, 0 browser 4xx/5xx and 0 browser rate-limit delays. This proves the recent window works but provides no traffic sample yet; do not claim a PR #72 performance improvement until a non-zero recent browser window appears.
 - Nginx also reports `Too many levels of symbolic links` for global `/images/logo.svg`, `/images/pay_icons.png` and `/images/mir-logo-h229px.png`. Only six sampled events mapped to real browsers and access responses remain HTTP 200. Those global assets are outside the allowed V2/repository write scope, so this is explicitly deferred unless user impact is confirmed or a safe V2-local asset source becomes available.
 
 ### Visual regression ownership
@@ -70,7 +71,7 @@ Presentation/recovery may improve; changing the sending mechanism or external co
 - C4 Lead Experience 3.0 — **DONE**. PR #53 made the form phone-first; #55 removed duplicated trust copy without changing lead transport.
 - C5 Flight Friction — **DONE**. PR #54 measured fresh production flight latency (~739–1060 ms, median ~868 ms); PR #56 automatically loads flights after tour selection while preserving explicit retry/default-flight event/price and lead synchronization. V2 deploy/live/post-deploy/baseline passed.
 - C6 Visual Refinement — **DONE**. Fresh five-viewport evidence confirmed nested flight-section chrome; PR #57 removed only the redundant outer flight card while keeping individual variants/recovery. Deploy `33101438316`, post-deploy visual `33101538683` and baseline `33101538761` passed. A selected-tour audit then found a real mobile regression: the C1 sticky search CTA could remain over checkout after tour selection, including programmatic selection. PR #59 suppresses the sticky on direct-tour selection and `v2:tour-selected`, adds a selected-tour visual assertion, and passed V2 deploy `33101901865`, post-deploy visual `33102012154` and baseline `33102012178`. Fresh selected-tour evidence still showed the reassurance block carrying unnecessary nested-card visual weight; PR #61 compacted it into a lightweight reassurance strip while preserving the existing trust semantics. PR #61 is production-green: deploy `33102452656`, active contract `33102452612`, tour live `33102452599`, result-detail live `33102452609`, security `33102452634`, post-deploy visual `33102554997` and baseline `33102554873` passed. The analogous results panel remains intentionally retained because it improves hotel-vs-tour hierarchy on desktop.
-- C7 Live Conversion Optimization — **WAITING_FOR_TRAFFIC**. The current real-browser funnel remains only 2 `search_start` and 1 `tour`; this is insufficient for conversion changes. Live-derived performance work is allowed when a concrete production signal exists, as demonstrated by PR #72.
+- C7 Live Conversion Optimization — **WAITING_FOR_TRAFFIC**. The cumulative real-browser funnel remains only 2 `search_start` and 1 `tour`; the first fresh 30-minute browser window contains 0 requests. This is insufficient for conversion changes. Live-derived performance work is allowed when a concrete production signal exists, as demonstrated by PR #72.
 
 See `CONVERSION_UX_3_ROADMAP.md` for the stage-level record.
 
@@ -104,7 +105,7 @@ B7 closed after evidence-backed performance/recovery work and a whole-flow audit
 ## Exact next work order
 
 1. On every autonomous run inspect fresh `main`, open PRs, production deploy/live/security/visual results and the current V2 journey.
-2. Inspect the next privacy-safe live audit with **new post-deploy real-browser sessions** and verify whether hidden advanced catalog actions disappear from initial browser startup/rate-limit evidence after `06edf5905a9290698a413efd11e1606a86a74a2c`.
+2. Inspect `.github/workflows/audit-v2-recent-browser.yml` first. Require a **non-zero recent 30-minute real-browser sample** before judging whether advanced startup catalog actions/rate-limit delays disappeared after `06edf5905a9290698a413efd11e1606a86a74a2c`. Use the rolling audit only as historical/context evidence.
 3. Re-audit search → waiting/progress → stale/zero results → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery, including mobile and desktop.
 4. If production breakage, lead risk, incorrect data, UX friction or responsive regression is confirmed, fix it immediately and verify through relevant contracts/live/visual gates.
 5. If meaningful live traffic/funnel evidence is available, activate C7 + B8 + A8 together and prioritize observed friction from `search_started → search_complete → tour_selected → flight_selected → lead_started → lead_submitted`.
