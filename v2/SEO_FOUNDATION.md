@@ -13,7 +13,15 @@ Current contract:
 - do not expose search-result combinations as indexable landing pages;
 - query parameters may prefill the search form, but they must not become an SEO URL architecture.
 
-The live guard in `.github/workflows/validate-v2-seo-foundation.yml` protects this temporary-route contract.
+The live guard in `.github/workflows/validate-v2-seo-foundation.yml` protects this temporary-route contract. It also verifies that valid search-state parameters prefill predictably, invalid values are normalized, and parameterized variants remain non-indexable without canonical.
+
+## Dynamic result/detail boundary
+
+The live search result list is client-rendered application state, not durable SEO page content. Hotel result cards are rendered as `article` elements and the selected-tour view has a semantic `h2`, but this dynamic UI must not be treated as the source of indexable destination content.
+
+Future indexable country/resort/seasonal pages should provide their own server-visible editorial content, metadata, heading structure and stable URL. They may prefill or deep-link into V2 search, while the resulting search/filter state remains transient and non-indexable.
+
+Do not add SEO-only markup to live tour results merely to make a JavaScript result set appear indexable. Search result correctness and conversion UX take precedence on the application route.
 
 ## Public promotion checklist
 
