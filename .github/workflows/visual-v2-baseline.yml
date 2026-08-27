@@ -1,11 +1,19 @@
 name: Visual V2 baseline
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/visual-v2-baseline.yml'
   workflow_dispatch:
 
 concurrency:
-  group: ci-visual-v2-baseline-${{ github.ref }}
+  group: ci-visual-v2-baseline-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   visual-baseline:
@@ -19,139 +27,141 @@ jobs:
         run: |
           set -euo pipefail
           npm init -y >/dev/null 2>&1
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
 
-      - name: Audit live V2 viewports
+      - name: Capture deterministic V2 journey baseline
         shell: bash
         env:
           V2_URL: https://anytour.online/poisk-turov-test/v2/
         run: |
           set -euo pipefail
-          mkdir -p visual-artifacts
-          cat > ./v2-visual-audit.cjs <<'JS'
+          mkdir -p visual-baseline-artifacts
+          cat > ./v2-visual-baseline.cjs <<'JS'
           const { chromium } = require('playwright');
           const fs = require('fs');
+          const path = require('path');
+          const crypto = require('crypto');
 
           const url = process.env.V2_URL;
+          const root = path.resolve('v2');
+          const browserAsset = /\/poisk-turov-test\/v2\/([^/?]+\.(?:js|css))(?:\?.*)?$/i;
           const viewports = [
-            { name: 'mobile-375', width: 375, height: 812 },
-            { name: 'mobile-430', width: 430, height: 932 },
-            { name: 'tablet-768', width: 768, height: 1024 },
-            { name: 'intermediate-1024', width: 1024, height: 900 },
-            { name: 'desktop-1440', width: 1440, height: 1000 },
+            ['mobile-375',375,812],
+            ['mobile-430',430,932],
+            ['tablet-768',768,1024],
+            ['intermediate-1024',1024,900],
+            ['desktop-1440',1440,1000],
           ];
+          const iso = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+          const plusDays = days => { const d=new Date(); d.setDate(d.getDate()+days); return iso(d); };
+          const hasOverflow = () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2 || document.body.scrollWidth > document.documentElement.clientWidth + 2;
 
-          (async () => {
-            const browser = await chromium.launch({ headless: true });
-            const report = [];
-            let failed = false;
+          async function shot(page,name,state,hashes){
+            const file=`visual-baseline-artifacts/${name}-${state}.png`;
+            await page.screenshot({path:file,fullPage:true});
+            hashes[`${name}-${state}`]=crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          }
 
-            for (const vp of viewports) {
-              const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, ignoreHTTPSErrors: true });
-              const page = await context.newPage();
-              const consoleErrors = [];
-              const pageErrors = [];
-              page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text().slice(0, 500)); });
-              page.on('pageerror', err => pageErrors.push(String(err).slice(0, 500)));
+          const selectedFixture = '<button type="button" class="back-results">← Вернуться к предложениям</button><div class="selected-head"><div><span class="eyebrow">ВЫБРАННЫЙ ТУР</span><h2>AnyTour Coast Resort</h2><p>Турция · Анталья · Лара</p></div><div class="selected-price"><small>Стоимость</small>125 000 ₽</div></div><div class="selected-picture"><div class="photo-placeholder">ANYTOUR</div></div><div class="facts"><div><span>Вылет из</span><b>Москва</b></div><div><span>Дата</span><b>10.09.2026</b></div><div><span>Ночей</span><b>7</b></div><div><span>Туристы</span><b>2 взр.</b></div><div><span>Питание</span><b>Все включено</b></div><div><span>Номер</span><b>Standard Sea View</b></div><div><span>Размещение</span><b>DBL</b></div><div><span>Оператор</span><b>ANEX</b></div><div><span>Перелёт</span><b>Чартер</b></div><div><span>Топливный сбор</span><b>—</b></div></div><div class="hotel-desc">Отель на первой береговой линии. Детерминированное описание для визуального baseline выбранного тура.</div><div class="tour-flights"><div class="section-heading"><strong>Авиарейсы</strong><span>Выберите подходящий вариант</span></div><div class="flight-variants"><div class="flight-variant is-selected"><label class="flight-choice"><input type="radio" checked><span>Вариант 1 · рекомендуемый</span><b>125 000 ₽</b></label><div class="flight-segment"><div class="flight-segment-title"><strong>Туда</strong><span>Southwind · 2S172 · Boeing 737-800</span></div><div class="flight-route"><div><b>Шереметьево (SVO)</b><span>10.09.2026 · 14:00</span></div><div class="flight-arrow">→</div><div><b>Даламан (DLM)</b><span>10.09.2026 · 18:05</span></div></div><div class="flight-baggage">Багаж: <b>10 кг</b> · Ручная кладь: <b>8 кг</b></div></div><div class="flight-segment"><div class="flight-segment-title"><strong>Обратно</strong><span>Southwind · 2S171 · Boeing 737-800</span></div><div class="flight-route"><div><b>Даламан (DLM)</b><span>17.09.2026 · 09:00</span></div><div class="flight-arrow">→</div><div><b>Шереметьево (SVO)</b><span>17.09.2026 · 13:10</span></div></div><div class="flight-baggage">Багаж: <b>10 кг</b> · Ручная кладь: <b>8 кг</b></div></div></div></div></div><form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер получит выбранный тур и рейс</span></div><div class="lead-fields"><label>Имя<input name="name"></label><label>Телефон<input name="phone" type="tel" required></label></div><label>Комментарий<textarea name="comment"></textarea></label><label class="lead-consent"><input type="checkbox" name="consent" value="1" required><span>Согласен на обработку персональных данных</span></label><button type="submit" class="primary">Отправить заявку</button><p class="lead-message"></p></form>';
 
-              const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-              await page.waitForTimeout(5000);
-              await page.screenshot({ path: `visual-artifacts/${vp.name}-initial.png`, fullPage: true });
-
-              const initial = await page.evaluate(() => {
-                const root = document.documentElement;
-                const body = document.body;
-                const selectors = ['.at-site-header', '.search-card', '.main-fields', '.search-submit', '#status', '#resultsTools', '#results', '#selectedTour'];
-                const boxes = {};
-                for (const s of selectors) {
-                  const el = document.querySelector(s);
-                  if (!el) continue;
-                  const r = el.getBoundingClientRect();
-                  boxes[s] = { x:r.x, y:r.y, width:r.width, height:r.height, hidden: !!el.hidden, display:getComputedStyle(el).display };
-                }
-                const offenders = [...document.querySelectorAll('body *')].filter(el => {
-                  const cs = getComputedStyle(el);
-                  if (cs.position === 'fixed' && el.getBoundingClientRect().width > window.innerWidth + 2) return true;
-                  const r = el.getBoundingClientRect();
-                  return r.right > window.innerWidth + 2 || r.left < -2;
-                }).slice(0, 20).map(el => ({ tag:el.tagName,id:el.id||'',class:String(el.className||'').slice(0,160),rect:{x:el.getBoundingClientRect().x,width:el.getBoundingClientRect().width,right:el.getBoundingClientRect().right} }));
-                return {
-                  title: document.title,
-                  viewport: { width: window.innerWidth, height: window.innerHeight },
-                  document: { scrollWidth: root.scrollWidth, clientWidth: root.clientWidth, bodyScrollWidth: body.scrollWidth },
-                  horizontalOverflow: root.scrollWidth > root.clientWidth + 2 || body.scrollWidth > root.clientWidth + 2,
-                  offenders, boxes,
-                  searchButtonText: (document.querySelector('.search-submit')?.innerText || '').trim(),
-                  visibleResultsBeforeSearch: !!document.querySelector('#results .hotel-card, #results .result-card'),
-                  statusInitiallyVisible: (()=>{ const e=document.querySelector('#status'); return e ? !e.hidden && getComputedStyle(e).display !== 'none' : false; })(),
-                  selectedTourInitiallyVisible: (()=>{ const e=document.querySelector('#selectedTour'); return e ? !e.hidden && getComputedStyle(e).display !== 'none' : false; })(),
-                };
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const report=[];
+            const hashes={};
+            let failed=false;
+            for(const [name,width,height] of viewports){
+              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+              const page=await context.newPage();
+              const pageErrors=[];
+              page.on('pageerror',e=>pageErrors.push(String(e).slice(0,500)));
+              await page.route('**/*',async route=>{
+                const match=new URL(route.request().url()).pathname.match(browserAsset);
+                if(!match)return route.continue();
+                const file=path.join(root,path.basename(match[1]));
+                if(!fs.existsSync(file))return route.continue();
+                return route.fulfill({status:200,contentType:path.extname(file).toLowerCase()==='.css'?'text/css':'application/javascript',body:fs.readFileSync(file)});
               });
+              const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForTimeout(3500);
 
-              const extrasSummary = page.locator('details.extras > summary').first();
-              if (await extrasSummary.count()) {
-                await extrasSummary.click();
-                await page.waitForTimeout(300);
-                await page.screenshot({ path: `visual-artifacts/${vp.name}-filters-open.png`, fullPage: true });
-              }
+              const initial=await page.evaluate(()=>({
+                hero:!!document.querySelector('.v2-product-hero'),search:!!document.querySelector('.search-card'),
+                dates:!!document.querySelector('.dates-picker'),guests:!!document.querySelector('.guests-picker'),
+                resultsVisible:!!document.querySelector('#results .hotel-card'),selectedVisible:(()=>{const e=document.getElementById('selectedTour');return !!e&&!e.hidden;})(),overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)
+              }));
+              await shot(page,name,'initial',hashes);
 
-              const childSelect = page.locator('#childCount');
-              if (await childSelect.count()) {
-                await page.evaluate(() => {
-                  const el = document.querySelector('#childCount');
-                  if (!el) return;
-                  el.value = '2';
-                  el.dispatchEvent(new Event('input', { bubbles: true }));
-                  el.dispatchEvent(new Event('change', { bubbles: true }));
-                });
-                await page.waitForTimeout(300);
-                await page.screenshot({ path: `visual-artifacts/${vp.name}-children.png`, fullPage: true });
-              }
+              await page.locator('.dates-picker summary').click();
+              await page.evaluate(({fromValue,toValue})=>{const from=document.querySelector('input[name="dateFrom"]'),to=document.querySelector('input[name="dateTo"]');from.value=fromValue;from.dispatchEvent(new Event('change',{bubbles:true}));to.value=toValue;to.dispatchEvent(new Event('change',{bubbles:true}));},{fromValue:plusDays(5),toValue:plusDays(18)});
+              await page.waitForTimeout(100);
+              const dates=await page.evaluate(()=>({open:!!document.querySelector('.dates-picker')?.open,overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)}));
+              await shot(page,name,'dates',hashes);
+              await page.locator('.dates-picker .picker-done').click();
 
-              const interaction = await page.evaluate(() => {
-                const child = document.querySelector('#childAges');
-                const extras = document.querySelector('details.extras');
-                const r = child?.getBoundingClientRect();
-                const offenders = [...document.querySelectorAll('body *')].filter(el => {
-                  const cs = getComputedStyle(el);
-                  if (cs.position === 'fixed' && el.getBoundingClientRect().width > window.innerWidth + 2) return true;
-                  const rect = el.getBoundingClientRect();
-                  return rect.right > window.innerWidth + 2 || rect.left < -2;
-                }).slice(0, 30).map(el => {
-                  const rect = el.getBoundingClientRect();
-                  return { tag:el.tagName,id:el.id||'',class:String(el.className||'').slice(0,160),rect:{x:rect.x,width:rect.width,right:rect.right},parentClass:String(el.parentElement?.className||'').slice(0,160) };
-                });
-                return {
-                  childAgesVisible: child ? !child.hidden && getComputedStyle(child).display !== 'none' : false,
-                  childAgesRect: r ? { x:r.x, y:r.y, width:r.width, height:r.height, right:r.right } : null,
-                  extrasOpen: !!extras?.open,
-                  horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2 || document.body.scrollWidth > document.documentElement.clientWidth + 2,
-                  offenders,
-                };
+              await page.locator('.guests-picker summary').click();
+              await page.locator('#childCount').evaluate(el=>{el.value='2';el.dispatchEvent(new Event('change',{bubbles:true}));});
+              await page.waitForTimeout(120);
+              const guests=await page.evaluate(()=>({open:!!document.querySelector('.guests-picker')?.open,ages:document.querySelectorAll('#childAges select[name="child_age[]"]').length,overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)}));
+              await shot(page,name,'guests',hashes);
+              await page.locator('.guests-picker .picker-done').click();
+
+              await page.locator('details.extras > summary').click();
+              await page.waitForTimeout(100);
+              const advanced=await page.evaluate(()=>({open:!!document.querySelector('details.extras')?.open,mobile:innerWidth<=700,backdrop:(()=>{const e=document.querySelector('.search-filters-backdrop');return !!e&&!e.hidden&&getComputedStyle(e).display!=='none';})(),overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)}));
+              await shot(page,name,'advanced',hashes);
+              if(advanced.mobile)await page.locator('.search-filters-backdrop').click({position:{x:5,y:5}});else await page.locator('details.extras > summary').click();
+
+              const results=await page.evaluate(()=>{
+                const fixture=[
+                  {id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[{id:'tour-901-a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'},roomType:'Standard Sea View',placement:'DBL',operator:{name:'ANEX'},isCharter:true},{id:'tour-901-b',date:'12.09.2026',nights:9,price:142000,meal:{name:'Ультра всё включено'},roomType:'Deluxe',placement:'DBL',operator:{name:'PEGAS'}}]},
+                  {id:902,name:'AnyTour Garden Hotel with a deliberately long responsive title',category:4,rating:4.4,seaDistance:650,price:98000,country:{name:'Турция'},region:{name:'Аланья'},tours:[{id:'tour-902-a',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'},roomType:'Family Room',placement:'2ADL',operator:{name:'Coral Travel'}}]}
+                ];
+                window.V2Results.render(fixture);
+                return {cards:document.querySelectorAll('.hotel-card').length,bestOffers:document.querySelectorAll('.hotel-best-offer').length,overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)};
               });
+              await page.waitForTimeout(100);
+              await shot(page,name,'results',hashes);
 
-              const item = { viewport: vp, httpStatus: response ? response.status() : 0, initial, interaction, consoleErrors, pageErrors };
+              const checkout=await page.evaluate(html=>{
+                const selected=document.getElementById('selectedTour');selected.hidden=false;selected.innerHTML=html;
+                if(window.V2SelectedTourDescription)window.V2SelectedTourDescription.decorate(selected);
+                if(window.V2CheckoutExperienceV1)window.V2CheckoutExperienceV1.decorate(selected);
+                return {journey:selected.querySelectorAll('.checkout-journey span').length,facts:selected.querySelectorAll('.facts.checkout-facts>div').length,flights:!!selected.querySelector('.checkout-flights'),lead:!!selected.querySelector('.checkout-lead'),overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)};
+              },selectedFixture);
+              await page.waitForTimeout(100);
+              await shot(page,name,'checkout',hashes);
+
+              const recovery=await page.evaluate(()=>{
+                const results=document.getElementById('results'),tools=document.getElementById('resultsTools'),selected=document.getElementById('selectedTour');
+                if(results)results.innerHTML='';if(tools)tools.hidden=true;if(selected){selected.hidden=true;selected.innerHTML='';}
+                window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items:[]}}));
+                const empty=document.querySelector('.search-progress-empty');
+                return {empty:!!empty,edit:!!empty?.querySelector('.search-progress-edit'),filters:!!empty?.querySelector('.search-progress-filters'),overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)};
+              });
+              await page.waitForTimeout(100);
+              await shot(page,name,'recovery',hashes);
+
+              const item={name,width,height,http:response?response.status():0,pageErrors,initial,dates,guests,advanced,results,checkout,recovery};
               report.push(item);
-              const bad = item.httpStatus !== 200 || initial.horizontalOverflow || interaction.horizontalOverflow || initial.visibleResultsBeforeSearch || initial.statusInitiallyVisible || initial.selectedTourInitiallyVisible || !interaction.childAgesVisible || pageErrors.length > 0;
-              if (bad) failed = true;
-              console.log(`VISUAL_AUDIT ${vp.name} http=${item.httpStatus} overflow_initial=${initial.horizontalOverflow} overflow_interaction=${interaction.horizontalOverflow} child_ages=${interaction.childAgesVisible} page_errors=${pageErrors.length} console_errors=${consoleErrors.length}`);
-              if (initial.offenders.length) console.log(`OVERFLOW_OFFENDERS_INITIAL ${vp.name} ${JSON.stringify(initial.offenders)}`);
-              if (interaction.offenders.length) console.log(`OVERFLOW_OFFENDERS_INTERACTION ${vp.name} ${JSON.stringify(interaction.offenders)}`);
+              const advancedBad=advanced.mobile?(!advanced.backdrop):advanced.backdrop;
+              const bad=item.http!==200||pageErrors.length||!initial.hero||!initial.search||!initial.dates||!initial.guests||initial.resultsVisible||initial.selectedVisible||initial.overflow||!dates.open||dates.overflow||!guests.open||guests.ages!==2||guests.overflow||!advanced.open||advancedBad||advanced.overflow||results.cards!==2||results.bestOffers<1||results.overflow||checkout.journey!==3||checkout.facts!==10||!checkout.flights||!checkout.lead||checkout.overflow||!recovery.empty||!recovery.edit||!recovery.filters||recovery.overflow;
+              if(bad)failed=true;
+              console.log('BASELINE',name,JSON.stringify(item));
               await context.close();
             }
-
-            fs.writeFileSync('visual-artifacts/report.json', JSON.stringify(report, null, 2));
+            fs.writeFileSync('visual-baseline-artifacts/report.json',JSON.stringify(report,null,2));
+            fs.writeFileSync('visual-baseline-artifacts/screenshot-sha256.json',JSON.stringify(hashes,null,2));
             await browser.close();
-            if (failed) process.exit(1);
-          })().catch(err => { console.error(err); process.exit(1); });
+            if(failed)process.exit(1);
+          })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node ./v2-visual-audit.cjs
+          node ./v2-visual-baseline.cjs
 
-      - name: Upload visual evidence
+      - name: Upload visual baseline evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v2-visual-baseline
-          path: visual-artifacts/
-          retention-days: 14
+          name: v2-visual-baseline-${{ github.event.pull_request.number || github.sha }}
+          path: visual-baseline-artifacts/
+          retention-days: 30
