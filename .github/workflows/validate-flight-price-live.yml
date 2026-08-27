@@ -61,7 +61,7 @@ jobs:
           test -n "$chosen" || fail no_tour_with_flights
 
           CHOSEN_TOUR_ID="$chosen" SEARCH_ID="$search_id" python3 - <<'PY' || fail consistency
-          import json, os, math
+          import json, os, math, datetime
           requested=str(os.environ['CHOSEN_TOUR_ID'])
           search_id=str(os.environ['SEARCH_ID'])
           results=json.load(open('/tmp/v2-price-results.json'))
@@ -85,9 +85,18 @@ jobs:
               try: return float(v or 0)
               except (TypeError,ValueError): return 0.0
 
+          def canonical_date(value):
+              text=str(value or '').strip()
+              for fmt in ('%Y-%m-%d','%d.%m.%Y','%d-%m-%Y'):
+                  try: return datetime.datetime.strptime(text,fmt).date().isoformat()
+                  except ValueError: pass
+              return text
+
           def same_if_present(a,b,key):
               if key in a and key in b and a.get(key) not in (None,'') and b.get(key) not in (None,''):
-                  assert str(a.get(key))==str(b.get(key)), f'{key}_mismatch:{a.get(key)}!={b.get(key)}'
+                  av,bv=a.get(key),b.get(key)
+                  if key=='date': av,bv=canonical_date(av),canonical_date(bv)
+                  assert str(av)==str(bv), f'{key}_mismatch:{a.get(key)}!={b.get(key)}'
 
           for key in ('date','nights','adults','childs'):
               same_if_present(result_tour,tour,key)
@@ -110,7 +119,6 @@ jobs:
               dep=forward[0].get('departure') or {}
               fd=dep.get('date') if isinstance(dep,dict) else None
               if fd and tour.get('date'):
-                  expected='.'.join(reversed(str(tour['date']).split('-'))) if '-' in str(tour['date']) else str(tour['date'])
-                  assert str(fd)==expected, f'forward_date_mismatch:{fd}!={expected}'
+                  assert canonical_date(fd)==canonical_date(tour['date']), f'forward_date_mismatch:{fd}!={tour["date"]}'
           print('LIVE_PRICE_CONSISTENCY_OK', 'searchId='+search_id, 'tourId='+requested, 'price='+str(tour_price), 'variants='+str(len(variants)))
           PY
