@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T15:06:00+02:00",
+  "updated_at": "2026-08-27T15:09:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
@@ -10,7 +10,7 @@
     "title": "Performance and visual stability",
     "status": "IN_PROGRESS",
     "objective": "Reduce client overhead, cascade complexity and layout instability while preserving the now-locked five-viewport product contract.",
-    "next_action": "Continue B7 from the now-measured active request surface: v2/index.php references 20 CSS and 24 JS assets (44 local CSS/JS resources), down by two CSS requests in this session. Next inspect measurable layout-shift risk in progressive selected-tour imagery and audit adjacent JS responsibilities/request cost before any bundling. Prefer small changes with unchanged B6 baseline evidence; do not guess image dimensions or alter protected analytics/lead contracts."
+    "next_action": "Continue B7 from the measured active request surface: v2/index.php references 20 CSS and 24 JS assets (44 local CSS/JS resources), down by two CSS requests in this session. Next measure layout shifts in progressive selected-tour/image states and audit adjacent JS responsibility/startup cost before any bundling. Prefer small evidence-backed changes with unchanged B6 baseline; do not guess image geometry or alter protected analytics/lead contracts."
   },
   "queue": [
     {"id":"B1","status":"DONE","title":"Visual foundation"},
@@ -19,7 +19,7 @@
     {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0","note":"Final B4 checkout PR #10 merged as 87a10fd10f10af293a591e17ec9e5ec3d96fcb05 after contract/security/general visual plus dedicated checkout/selected-tour gates. Production post-deploy visual run 33066545500 passed. SEO H1 regression was isolated and fixed in PR #12 as 8161feb64cc0d3e6346641368a35e1d132d879b4."},
     {"id":"B5","status":"DONE","title":"Trust and conversion UX","note":"PR #11 improved tour/flight/lead failure recovery and no-payment reassurance. PR #13 changed result CTA to 'Проверить тур' and added flight/baggage/final-price confidence cues; merged as 760d9c8c28c46ce769cd8ebf0a88cbb8bf8403af and production post-deploy run 33069724534 passed. PR #14 removed the zero-result dead end with preserved search parameters plus explicit edit/filter recovery actions and a five-viewport recovery gate; merged as fceaf4a1b049400031f7f9585b0b83155d1d6c0d and production post-deploy run 33070022638 passed."},
     {"id":"B6","status":"DONE","title":"Visual regression baseline","note":"PR #17 folded results conversion, checkout and recovery semantics into deterministic screenshots for 375/430/768/1024/1440 and fixed a comparator false-positive caused by product event dispatch during stage assertions; merged as 694d588487fa8fc80be107e4a14e4e6e426d2051. PR #18 retired four now-redundant specialized PR visual gates only after equivalent baseline coverage and zero unintended screenshot change were proven; merged as e5a153ff85269602716472ffdc1bb16b222c80d4. Production deploy 33072399106, post-deploy visual 33072469440 and main baseline 33072469294 passed."},
-    {"id":"B7","status":"IN_PROGRESS","title":"Performance and visual stability","note":"PR #20 moved flight-choice summary presentation from JS inline style ownership into the existing checkout stylesheet and shipped production-green as 6d504a3448cf2f4f61b059631c625f7402ec09f1. In the 2026-08-27 B7 request pass, PR #21 consolidated AnyTour checkout brand rules into checkout-experience-v1.css in identical cascade order and removed one stylesheet request; all PR contract/security/general visual/selected-tour/durable baseline gates passed and it merged as 048a033a73e3247f390945cdd3e3659ce253ab9e, with deploy 33074552891 and result-detail live 33074553035 green. PR #22 did the same for AnyTour results brand rules into results-experience-v1.css, removing a second stylesheet request; all PR gates passed and it merged as 68f0902a491fda91c4768da193c5b42a0c2df1eb, with deploy 33074813386, active contract 33074813410 and tour live 33074813385 green while final post-deploy/baseline evidence was still running when state was written. A transient curl exit 28 exposed a false-red in the live-tour workflow: rerun succeeded, and PR #23 hardened only idempotent status/results/tour/flights reads while deliberately leaving non-idempotent search_start unretried; PR live run 33074794356 passed, merged as 92de5263fc4eb09dd8fbba4c6b8aaa6916a05868, and main live run 33074920997 passed."},
+    {"id":"B7","status":"IN_PROGRESS","title":"Performance and visual stability","note":"PR #20 moved flight-choice summary presentation from JS inline style ownership into the existing checkout stylesheet and shipped production-green as 6d504a3448cf2f4f61b059631c625f7402ec09f1. In the 2026-08-27 B7 request pass, PR #21 consolidated AnyTour checkout brand rules into checkout-experience-v1.css in identical cascade order and removed one stylesheet request; all PR contract/security/general visual/selected-tour/durable baseline gates passed and it merged as 048a033a73e3247f390945cdd3e3659ce253ab9e, with deploy 33074552891 and result-detail live 33074553035 green. PR #22 did the same for AnyTour results brand rules into results-experience-v1.css, removing a second stylesheet request; all PR gates passed and it merged as 68f0902a491fda91c4768da193c5b42a0c2df1eb. Production deploy 33074813386, active contract 33074813410, tour live 33074813385, post-deploy visual 33074912434 and main durable baseline 33074912527 all passed. A transient curl exit 28 exposed a false-red in the live-tour workflow: direct rerun succeeded, and PR #23 hardened only idempotent status/results/tour/flights reads while deliberately leaving non-idempotent search_start unretried; PR live run 33074794356 passed, merged as 92de5263fc4eb09dd8fbba4c6b8aaa6916a05868, and main live run 33074920997 passed."},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
@@ -32,18 +32,14 @@
     {"id":"A9","status":"DONE","title":"Residual V2 generation and CI cleanup"}
   ],
   "last_ci": {
-    "workflow": "Validate V2 tour live",
-    "run_id": 33074920997,
-    "head_sha": "92de5263fc4eb09dd8fbba4c6b8aaa6916a05868",
-    "conclusion": "success",
-    "classification": "LIVE_TOUR_TIMEOUT_HARDENING_GREEN"
-  },
-  "last_verified_commit": "048a033a73e3247f390945cdd3e3659ce253ab9e",
-  "pending_verification": {
+    "workflow": "Visual V2 baseline",
+    "run_id": 33074912527,
     "head_sha": "68f0902a491fda91c4768da193c5b42a0c2df1eb",
-    "checks": ["Visual V2 post-deploy run 33074912434", "Visual V2 baseline run 33074912527"],
-    "note": "Deploy, active contract and live tour are already green; awaiting final production visual evidence."
+    "conclusion": "success",
+    "classification": "B7_TWO_CSS_REQUESTS_REMOVED_PRODUCTION_GREEN"
   },
+  "last_verified_commit": "68f0902a491fda91c4768da193c5b42a0c2df1eb",
+  "pending_verification": null,
   "blocked": [],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
