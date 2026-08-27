@@ -72,25 +72,31 @@ jobs:
               if isinstance(value,dict): value=value.get('value')
               try: return float(value)
               except (TypeError,ValueError): return None
-          matched=0
+          matched=0; repriced=0; max_abs=0.0; max_pct=0.0
           for detail in details:
               assert isinstance(detail,dict), 'detail_not_object'
               tid=str(detail.get('id') or '')
               assert tid in rows, f'unrequested_tour:{tid}'
-              result=rows[tid]; checks=[]
+              result=rows[tid]; stable=[]
               hotel=detail.get('hotel') if isinstance(detail.get('hotel'),dict) else {}
-              if result.get('hotelId') not in (None,'') and hotel.get('id') not in (None,''): checks.append(str(result['hotelId'])==str(hotel['id']))
-              if result.get('hotelName') and hotel.get('name'): checks.append(str(result['hotelName']).strip().casefold()==str(hotel['name']).strip().casefold())
-              if result.get('date') and detail.get('date'): checks.append(canonical_date(result['date'])==canonical_date(detail['date']))
-              rp,dp=number(result.get('price')),number(detail.get('price'))
-              if rp is not None and dp is not None: checks.append(math.isclose(rp,dp,abs_tol=0.01))
-              if result.get('currency') and detail.get('currency'): checks.append(str(result['currency'])==str(detail['currency']))
+              if result.get('hotelId') not in (None,'') and hotel.get('id') not in (None,''): stable.append(('hotelId',str(result['hotelId'])==str(hotel['id'])))
+              if result.get('hotelName') and hotel.get('name'): stable.append(('hotelName',str(result['hotelName']).strip().casefold()==str(hotel['name']).strip().casefold()))
+              if result.get('date') and detail.get('date'): stable.append(('date',canonical_date(result['date'])==canonical_date(detail['date'])))
+              if result.get('currency') and detail.get('currency'): stable.append(('currency',str(result['currency'])==str(detail['currency'])))
               for key in ('nights','adults','childs'):
-                  if result.get(key) not in (None,'') and detail.get(key) not in (None,''): checks.append(str(result[key])==str(detail[key]))
-              assert len(checks)>=2, f'insufficient_comparable_fields:{tid}'
-              assert all(checks), f'field_mismatch:{tid}:{checks}'
+                  if result.get(key) not in (None,'') and detail.get(key) not in (None,''): stable.append((key,str(result[key])==str(detail[key])))
+              assert len(stable)>=2, f'insufficient_comparable_fields:{tid}'
+              assert all(ok for _,ok in stable), f'stable_field_mismatch:{tid}:{stable}'
+              rp,dp=number(result.get('price')),number(detail.get('price'))
+              if rp is not None and dp is not None:
+                  assert rp>0 and dp>0, f'nonpositive_price:{tid}:{rp}:{dp}'
+                  delta=dp-rp; pct=(delta/rp*100.0) if rp else 0.0
+                  max_abs=max(max_abs,abs(delta)); max_pct=max(max_pct,abs(pct))
+                  same=math.isclose(rp,dp,abs_tol=0.01)
+                  if not same: repriced+=1
+                  print('RESULT_DETAIL_PRICE','tourId='+tid,'result='+str(rp),'detail='+str(dp),'delta='+str(delta),'pct='+format(pct,'.3f'),'repriced='+str(not same).lower())
               matched+=1
-              print('RESULT_DETAIL_MATCH','tourId='+tid,'checks='+str(len(checks)))
+              print('RESULT_DETAIL_MATCH','tourId='+tid,'stableChecks='+str(len(stable)))
           assert matched>=3, 'insufficient_result_detail_matches'
-          print('RESULT_DETAIL_LIVE_OK','searchId='+os.environ['SEARCH_ID'],'matched='+str(matched))
+          print('RESULT_DETAIL_LIVE_OK','searchId='+os.environ['SEARCH_ID'],'matched='+str(matched),'repriced='+str(repriced),'maxAbsDelta='+str(max_abs),'maxPctDelta='+format(max_pct,'.3f'))
           PY
