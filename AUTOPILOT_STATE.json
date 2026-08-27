@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T08:41:00+02:00",
+  "updated_at": "2026-08-27T08:51:00+02:00",
   "mode": "active_development",
   "phase": "Conversion readiness and visual stabilization before live traffic",
   "current_task": {
@@ -10,26 +10,26 @@
     "title": "Conversion readiness before live traffic",
     "status": "IN_PROGRESS",
     "objective": "Improve CTA hierarchy, selected-tour clarity, flight/price understanding, result-card comparison and lead-entry UX without changing protected analytics, Metrika goals or the lead-sending mechanism.",
-    "next_action": "Normalize partial/unexpected Tourvisor text shapes in the selected-tour presentation without changing lead payload semantics, then continue CTA/information hierarchy review. After A4 stabilizes, run the broader A5 live Tourvisor correctness pass."
+    "next_action": "Continue the selected-tour partial-data presentation audit, then review CTA/information hierarchy. After A4 stabilizes, run the broader A5 live Tourvisor correctness pass."
   },
   "queue": [
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass","note":"Removed proven inactive historical generations for results-renderer, search-continue, search-lifecycle, and tour-controller; final contract/isolation/live/deploy checks passed."},
     {"id":"A1","status":"DEFERRED","title":"Visual baseline and regression harness","note":"Automatic visual runs temporarily disabled by project decision; workflow remains available manually."},
     {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit","note":"Primary form ordering, stale-result invalidation, search retry/error recovery, mobile result-filter outcome preview, selected-tour progressive disclosure and lead entry/completion UX were fixed through the active V2 path."},
     {"id":"A3","status":"QUEUED","title":"Consolidate unstable visual cascade areas","note":"Concrete cascade conflicts in mobile result-card imagery and long-content wrapping were fixed during A4; broader consolidation remains incremental rather than wholesale."},
-    {"id":"A4","status":"IN_PROGRESS","title":"Conversion readiness before live traffic","note":"Selected-tour work includes lead CTA and field clarity, room-details progressive disclosure, secondary fact disclosure, compact mobile selected-tour image/fact hierarchy, compact unselected flight variants, stable mobile flight choice pricing layout, stronger flight-time hierarchy and separate baggage treatment. Result-card work fixed the narrow/tall mobile image cascade conflict, selected-hotel description nested scrolling, long Tourvisor content/price wrapping, hidden unusable CTA for variants without tourId, and object/array text normalization for roomType, placement, meal and operator so partial Tourvisor shapes cannot render as [object Object]. Results regression coverage was extended in 399237aa. Active contract, isolation, live Tourvisor, production Verify V2 and live search smoke passed on fdd87323."},
+    {"id":"A4","status":"IN_PROGRESS","title":"Conversion readiness before live traffic","note":"Selected-tour work includes lead CTA and field clarity, room-details progressive disclosure, secondary fact disclosure, compact mobile selected-tour image/fact hierarchy, compact unselected flight variants, stable mobile flight choice pricing layout, stronger flight-time hierarchy and separate baggage treatment. Result-card work fixed the narrow/tall mobile image cascade conflict, selected-hotel description nested scrolling, long Tourvisor content/price wrapping, hidden unusable CTA for variants without tourId, and object/array text normalization for roomType, placement, meal and operator. Selected-tour display now also normalizes roomType/placement objects and arrays without changing leadPayload semantics. Active contract, isolation, live Tourvisor, production Verify V2 and live search smoke passed on ba5a20ac."},
     {"id":"A5","status":"QUEUED","title":"Live Tourvisor correctness pass","note":"Live Tourvisor validations remain green through the recent selected-tour/flight/result UX work; broader correctness pass remains."},
     {"id":"A7","status":"QUEUED","title":"SEO foundation audit and incremental work"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop"}
   ],
   "last_ci": {
     "workflow": "Deploy V2 only",
-    "run_id": 33046611732,
-    "head_sha": "fdd87323bb0dfffe914873b05a06687ade071d5e",
+    "run_id": 33047271641,
+    "head_sha": "ba5a20ac467f8eefc7a43cb49f64fb7e833c9ca1",
     "conclusion": "success",
-    "classification": "PARTIAL_TOURVISOR_RESULT_TEXT_NORMALIZATION_VERIFIED"
+    "classification": "SELECTED_TOUR_PARTIAL_TEXT_NORMALIZATION_VERIFIED"
   },
-  "last_verified_commit": "fdd87323bb0dfffe914873b05a06687ade071d5e",
+  "last_verified_commit": "ba5a20ac467f8eefc7a43cb49f64fb7e833c9ca1",
   "pending_verification": null,
   "blocked": [],
   "protected": {
