@@ -82,6 +82,8 @@ jobs:
           placeholder_time=sum(1 for s in segments for point in (s.get('departure'),s.get('arrival')) if time_value(point) in ('','00:00','0:00'))
           missing_baggage=sum(1 for s in segments if s.get('baggage') in (None,''))
           missing_carry=sum(1 for s in segments if s.get('carryOn') in (None,''))
+          no_places=sum(1 for s in segments if s.get('noPlaces') is True)
+          on_demand=sum(1 for s in segments if s.get('onDemand') is True)
           missing_timezone=0
           for s in segments:
               for point in (s.get('departure'),s.get('arrival')):
@@ -92,5 +94,5 @@ jobs:
           largest_equal_price_group=max(counts.values()) if counts else 0
           assert default_count<=1, 'multiple_defaults'
           print('FLIGHTS_LIVE_OK','searchId='+os.environ['SEARCH_ID'],'tourId='+os.environ['TOUR_ID'],'variants='+str(len(variants)),'segments='+str(len(segments)))
-          print('FLIGHT_EDGE_PROFILE','placeholderTimes='+str(placeholder_time),'missingBaggage='+str(missing_baggage),'missingCarryOn='+str(missing_carry),'missingTimezone='+str(missing_timezone),'missingFuelVariants='+str(missing_fuel),'duplicatePriceVariants='+str(duplicate_price_variants),'largestEqualPriceGroup='+str(largest_equal_price_group),'defaultCount='+str(default_count))
+          print('FLIGHT_EDGE_PROFILE','placeholderTimes='+str(placeholder_time),'missingBaggage='+str(missing_baggage),'missingCarryOn='+str(missing_carry),'missingTimezone='+str(missing_timezone),'missingFuelVariants='+str(missing_fuel),'noPlacesSegments='+str(no_places),'onDemandSegments='+str(on_demand),'duplicatePriceVariants='+str(duplicate_price_variants),'largestEqualPriceGroup='+str(largest_equal_price_group),'defaultCount='+str(default_count))
           PY
