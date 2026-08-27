@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T00:17:00+02:00",
+  "updated_at": "2026-08-28T00:19:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "9.0 design roadmap active only where product direction is explicit; live conversion optimization still waits for evidence",
   "current_task": {
@@ -10,7 +10,7 @@
     "title": "Live conversion optimization",
     "status": "WAITING_FOR_TRAFFIC",
     "objective": "Use meaningful real production traffic and funnel behavior for conversion changes while preserving user-confirmed design contracts.",
-    "next_action": "First verify fresh main/deploy/live/visual health and inspect the privacy-safe recent 30-minute browser audit. Preserve PR #76 first-screen stars+meal and its delayed/on-demand meal catalog. PR #77 starts the agreed 9.0 Brand/Hero roadmap without changing the logo. Continue the 9.0 roadmap only for confirmed material design gaps; the current results/price hierarchy was re-audited and already has a strong photo→facts→best-offer price→tour CTA structure, so do not manufacture a results redesign without new evidence. Activate C7/B8/A8 only from meaningful real-browser evidence."
+    "next_action": "First verify fresh main/deploy/live/visual health and inspect the privacy-safe recent 30-minute browser audit. Preserve PR #76 first-screen stars+meal and its delayed/on-demand meal catalog. PR #77 Brand/Hero 9.0 is production-green and preserves the logo. Continue the 9.0 roadmap only for confirmed material design gaps; the current results/price hierarchy was re-audited and already has a strong photo→facts→best-offer price→tour CTA structure, so do not manufacture a results redesign without new evidence. Activate C7/B8/A8 only from meaningful real-browser evidence."
   },
   "queue": [
     {"id":"C1","status":"DONE","title":"Search Experience 3.0","note":"PR #76 additionally establishes stars/category and meal as first-screen primary controls."},
@@ -39,9 +39,9 @@
     {"id":"A9","status":"DONE","title":"Residual V2 generation and CI cleanup"}
   ],
   "design_9": {
-    "status": "STARTED_WITH_EXPLICIT_USER_DIRECTION",
+    "status": "PRIMARY_SEARCH_AND_BRAND_HERO_PRODUCTION_GREEN",
     "primary_search": "PR #76 keeps hotel category/stars and meal type on the first screen. Initial visual CI caught and forced fixes for wrong DOM order and clipped meal chips before baseline refresh was accepted.",
-    "brand_hero": "PR #77 preserves the logo and strengthens hero/header/travel-tech character. All six PR gates passed and V2 deploy 33121563417 passed; post-deploy visual/baseline follow-up was still running when this state was written.",
+    "brand_hero": "PR #77 preserves the logo and strengthens hero/header/travel-tech character. All six PR gates, V2 deploy 33121563417, post-deploy visual 33121635099 and baseline 33121635148 passed.",
     "results_price_hierarchy": "Re-audited after PR #77. Existing renderer already exposes hotel photo/title/facts, best-offer price+context, tour facts, tour price and orange Choose tour CTA with responsive rules. No material change justified yet.",
     "trust_inputs": "Four offices: Moscow, Saint Petersburg, Kaliningrad, Cheboksary. Yandex Maps reviews exist. Office/manager photos will arrive later. Payment/contract/support are trust themes but exact factual terms are not yet recorded; do not invent claims."
   },
@@ -52,14 +52,14 @@
     "protected_business_contracts": "Do not modify Metrika/goals or lead transport without explicit approval."
   },
   "last_ci": {
-    "workflow": "Deploy V2 only",
-    "run_id": 33121563417,
+    "workflow": "Visual V2 post-deploy",
+    "run_id": 33121635099,
     "head_sha": "f917db73e4ae03f7bc81aa59cd7b5525df825e0f",
     "conclusion": "success",
-    "classification": "BRAND_HERO_9_DEPLOY_GREEN_POST_DEPLOY_VISUAL_PENDING"
+    "classification": "BRAND_HERO_9_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "940758c08b9711a20d0429d124c941b6596bc710",
-  "pending_verification": "PR #77 main SHA f917db73e4ae03f7bc81aa59cd7b5525df825e0f has green PR gates and V2 deploy/live smoke; wait for post-deploy visual and baseline completion. Separately require a non-zero recent 30-minute real-browser sample before C7.",
+  "last_verified_commit": "f917db73e4ae03f7bc81aa59cd7b5525df825e0f",
+  "pending_verification": "Require a non-zero recent 30-minute real-browser sample before C7 or further live optimization; current funnel evidence remains insufficient.",
   "blocked": [],
   "deferred": [
     {"scope":"C7 conversion changes","reason":"Real-browser funnel evidence remains too small."},
@@ -88,9 +88,9 @@
     "visual_viewports": [375,430,768,1024,1440]
   },
   "continuation_policy": {
-    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_explicitly_deferred",
-    "on_ci_success": "collect_done_evidence_then_advance_queue",
-    "on_blocker": "record_blocker_and_continue independent safe work",
+    "on_ci_failure": "diagnose_failure_then_fix_or defer if external or explicitly deferred",
+    "on_ci_success": "collect done evidence then advance queue",
+    "on_blocker": "record blocker and continue independent safe work",
     "on_visual_change": "visual verification at required viewports before advancing",
     "on_user_facing_change": "preserve protected contracts and validate behavior before advancing",
     "on_live_traffic": "activate_C7_B8_A8_and_reprioritize_from_real_evidence"
