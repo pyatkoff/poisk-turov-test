@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           cat > "$RUNNER_TEMP/v2-live-audit.py" <<'PY'
-          import os,re,glob,collections,subprocess
+          import os,re,glob,collections,subprocess,time
           needle="/poisk-turov-test/v2"
           home=os.path.expanduser("~")
           def tail_lines(path,count):
@@ -46,6 +46,14 @@ jobs:
           for p in access_candidates:
               if p in seen or not os.path.isfile(p) or not os.access(p,os.R_OK): continue
               seen.add(p); access.append(p)
+          specific=[]
+          for p in access:
+              rel=os.path.relpath(p,home)
+              if "anytour.online" in rel.lower() or "anytour" in os.path.basename(p).lower():
+                  try: specific.append((rel,os.path.getsize(p),int(os.path.getmtime(p))))
+                  except OSError: pass
+          specific.sort(key=lambda x:x[2],reverse=True)
+          print("V2_ACCESS_DISCOVERY",specific[:20])
           status=collections.Counter(); actions=collections.Counter(); paths=collections.Counter(); methods=collections.Counter(); bad=collections.Counter(); total=0
           req_re=re.compile(r'"([A-Z]+)\s+([^\s"]+)\s+HTTP/[^"]+"\s+(\d{3})')
           for p in access:
