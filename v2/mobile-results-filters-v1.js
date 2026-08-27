@@ -10,7 +10,7 @@ function price(h){const n=Number(h&&h.price||0);return Number.isFinite(n)&&n>0?n
 function mealText(h){return (Array.isArray(h&&h.tours)?h.tours:[]).map(t=>[t&&t.meal&&t.meal.russianName,t&&t.meal&&t.meal.fullRussianName,t&&t.meal&&t.meal.name].filter(Boolean).join(' ')).join(' ');}
 function hasAllInclusive(h){return /вс[её]\s+включено|all\s+inclusive|(^|\s)ai($|\s)/i.test(mealText(h));}
 function activeCount(){return (state.stars?1:0)+(state.rating?1:0)+(state.meal?1:0)+(state.priceMax?1:0);}
-function matches(h,criteria){const s=criteria||state;if(s.stars&&Number(h&&h.category||0)<s.stars)return false;if(s.rating&&Number(h&&h.rating||0)<s.rating)return false;if(s.meal&&!hasAllInclusive(h))return false;if(s.priceMax&&price(h)>s.priceMax)return false;return true;}
+function matches(h,criteria){const s=criteria||state;if(s.stars&&Number(h&&h.category||0)<s.stars)return false;if(s.rating&&Number(h&&h.rating||0)<s.rating)return false;if(s.meal&&!hasAllInclusive(h))return false;if(s.priceMax){const p=price(h);if(!p||p>s.priceMax)return false;}return true;}
 function visibleItems(criteria){return items.filter(h=>matches(h,criteria));}
 function cloneState(src){return {stars:Number(src.stars||0),rating:Number(src.rating||0),meal:!!src.meal,priceMax:Number(src.priceMax||0)};}
 function updateApplyCount(){if(!ui)return;const apply=ui.sheet.querySelector('.mrf-apply');if(!apply)return;const count=items.length?visibleItems(draft).length:0;apply.textContent=items.length?'Показать '+count:'Показать';apply.setAttribute('aria-label',items.length?'Показать подходящие отели: '+count:'Показать результаты');}
