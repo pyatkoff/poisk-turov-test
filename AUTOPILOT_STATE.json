@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T01:56:00+02:00",
+  "updated_at": "2026-08-27T02:07:31+02:00",
   "mode": "active_development",
-  "phase": "technical refactor before UX/visual iteration",
+  "phase": "UX and visual iteration after technical refactor",
   "current_task": {
-    "id": "A6",
-    "category": "TECH_DEBT",
-    "title": "Focused whole-project refactor pass",
+    "id": "A2",
+    "category": "UX",
+    "title": "End-to-end search journey UX audit",
     "status": "IN_PROGRESS",
-    "objective": "Perform reference/ownership analysis across active V2, remove only proven dead generations, reduce runtime/CSS duplication, and strengthen risky-boundary tests without changing protected contracts or product behavior.",
-    "next_action": "Complete active-entrypoint/reference analysis, remove or isolate proven inactive V2 generations in small safe changes, run focused contract/live checks, then advance back to the UX/visual queue."
+    "objective": "Audit the live V2 search journey from initial form through results and tour details, identify friction and confusing states, and prioritize UX improvements without changing protected analytics, Metrika, or lead-sending contracts.",
+    "next_action": "Review the live V2 journey and active implementation, rank UX friction by impact, then implement the highest-value safe improvements. Keep automatic visual baseline runs deferred/manual while UX work proceeds."
   },
   "queue": [
-    {"id":"A6","status":"IN_PROGRESS","title":"Focused whole-project refactor pass"},
-    {"id":"A1","status":"DEFERRED","title":"Visual baseline and regression harness","note":"Automatic visual runs temporarily disabled; resume after technical refactor."},
-    {"id":"A2","status":"QUEUED","title":"End-to-end search journey UX audit"},
+    {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass","note":"Removed proven inactive historical generations for results-renderer, search-continue, search-lifecycle, and tour-controller; final contract/isolation/live/deploy checks passed."},
+    {"id":"A1","status":"DEFERRED","title":"Visual baseline and regression harness","note":"Automatic visual runs temporarily disabled; workflow remains available manually and will be revisited during later visual work."},
+    {"id":"A2","status":"IN_PROGRESS","title":"End-to-end search journey UX audit"},
     {"id":"A3","status":"QUEUED","title":"Consolidate unstable visual cascade areas"},
     {"id":"A4","status":"QUEUED","title":"Conversion readiness before live traffic"},
     {"id":"A5","status":"QUEUED","title":"Live Tourvisor correctness pass"},
@@ -23,13 +23,13 @@
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop"}
   ],
   "last_ci": {
-    "workflow": "Visual V2 baseline",
-    "run_id": 33024385752,
-    "head_sha": "3e4537ceb140d1095370fb0c33ad206914509435",
-    "conclusion": "failure",
-    "classification": "DEFERRED_VISUAL_FINDING_NO_LIVE_TRAFFIC"
+    "workflow": "Deploy V2 only",
+    "run_id": 33025628741,
+    "head_sha": "29efa73b2cdba5fbcd59c677029d4aad93a5210b",
+    "conclusion": "success",
+    "classification": "REFACTOR_PASS_VERIFIED"
   },
-  "last_verified_commit": "3e4537ceb140d1095370fb0c33ad206914509435",
+  "last_verified_commit": "29efa73b2cdba5fbcd59c677029d4aad93a5210b",
   "blocked": [],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
@@ -42,7 +42,7 @@
     "on_ci_success": "collect_done_evidence_then_advance_queue",
     "on_blocker": "record_blocker_and_continue_independent_work",
     "on_visual_change": "manual_visual_verification_while_visual_workflow_is_deferred",
-    "on_user_facing_change": "preserve_behavior_during_refactor_then_resume_ux_visual_work",
+    "on_user_facing_change": "preserve_protected_contracts_and_validate_behavior_before_advancing",
     "watchdog": "hourly_chat_automation"
   }
 }
