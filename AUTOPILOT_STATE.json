@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T11:40:00+02:00",
+  "updated_at": "2026-08-27T12:05:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
-    "id": "B1",
-    "category": "VISUAL_FOUNDATION",
-    "title": "Modernize the full AnyTour V2 product shell and first screen",
+    "id": "B2",
+    "category": "SEARCH_EXPERIENCE",
+    "title": "Search Experience 2.0",
     "status": "IN_PROGRESS",
-    "objective": "Make the full AnyTour V2 surface feel like one coherent modern travel product, starting with the global header, first screen, core visual tokens and responsive stability.",
-    "next_action": "Finish PR #3 on ux/b1-visual-foundation, run contract/live checks and visually inspect 375/430/768/1024/1440 before merge. Then advance to B2 Search Experience 2.0."
+    "objective": "Turn the working search form into a faster, clearer travel-search composer while preserving search lifecycle ownership and Tourvisor request semantics.",
+    "next_action": "Finish draft PR #4 on ux/b2-search-experience: validate date/guest picker behavior and five viewports with the GitHub-hosted PR visual gate, then complete advanced-filter/mobile-flow polish before merge/deploy."
   },
   "queue": [
-    {"id":"B1","status":"IN_PROGRESS","title":"Visual foundation","note":"Modernize site header/navigation within this project, branded first screen/hero, trust cues, product-shell tokens and responsive coherence. Current branch ux/b1-visual-foundation, PR #3."},
-    {"id":"B2","status":"QUEUED","title":"Search Experience 2.0","note":"Travel-search composer, stronger date UX, compact mobile flow, advanced filter sheet/panel, reduce JS layout shift while preserving search lifecycle semantics."},
+    {"id":"B1","status":"DONE","title":"Visual foundation","note":"Merged PR #3 and deployed. Production visual gate run 33060952362 passed at 375/430/768/1024/1440 with HTTP 200, no document overflow and no page errors."},
+    {"id":"B2","status":"IN_PROGRESS","title":"Search Experience 2.0","note":"Draft PR #4 on ux/b2-search-experience. Primary composer refined; dates/guests use intentional pickers/sheets; child ages stay inside guest sheet; date range UI mirrors existing <=21-day lifecycle rule. GitHub-hosted PR CI green; visual PR gate added."},
     {"id":"B3","status":"QUEUED","title":"Results Experience 2.0","note":"Decision-oriented hotel cards, stronger imagery/price hierarchy, hotel-vs-tour separation and improved post-search filtering."},
     {"id":"B4","status":"QUEUED","title":"Tour / Checkout Experience 2.0","note":"Selected-tour checkout summary, clearer travel/room/flight/price hierarchy, stronger flight timeline presentation and shorter path to conversion."},
     {"id":"B5","status":"QUEUED","title":"Trust and conversion UX","note":"Trust signals, stronger CTA hierarchy, empty/error recovery and conversion surfaces without changing lead transport."},
@@ -32,18 +32,18 @@
     {"id":"A9","status":"DONE","title":"Residual V2 generation and CI cleanup"}
   ],
   "last_ci": {
-    "workflow": "Full pending-head verification",
-    "run_id": 33056378060,
-    "head_sha": "cd342950305359267034550e20478502b234e5f6",
+    "workflow": "Visual V2 post-deploy",
+    "run_id": 33060952362,
+    "head_sha": "9aafc1a327965e16d9de9bf2a3dad1995836a1fa",
     "conclusion": "success",
-    "classification": "A9_FINAL_HEAD_FULL_GREEN"
+    "classification": "B1_PRODUCTION_VISUAL_5_VIEWPORTS_GREEN"
   },
-  "last_verified_commit": "cd342950305359267034550e20478502b234e5f6",
+  "last_verified_commit": "9aafc1a327965e16d9de9bf2a3dad1995836a1fa",
   "pending_verification": {
-    "branch": "ux/b1-visual-foundation",
-    "pr": 3,
-    "task": "B1",
-    "requirements": ["active_contract", "relevant_live_checks", "manual_visual_375_430_768_1024_1440"]
+    "branch": "ux/b2-search-experience",
+    "pr": 4,
+    "task": "B2",
+    "requirements": ["pr_contract_ci", "pr_visual_375_430_768_1024_1440", "production_checks_after_merge"]
   },
   "blocked": [],
   "protected": {
@@ -67,7 +67,7 @@
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_explicitly_deferred",
     "on_ci_success": "collect_done_evidence_then_advance_queue",
     "on_blocker": "record_blocker_and_continue_independent_work",
-    "on_visual_change": "manual_visual_verification_at_required_viewports_before_advancing",
+    "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
     "on_user_facing_change": "preserve_protected_contracts_and_validate_behavior_before_advancing",
     "on_live_traffic": "activate_A8_and_B8_and_reprioritize_from_real_evidence",
     "watchdog": "hourly_chat_automation"
