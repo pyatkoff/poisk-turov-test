@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T13:08:00+02:00",
+  "updated_at": "2026-08-27T13:30:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
@@ -10,14 +10,14 @@
     "title": "Trust and conversion UX",
     "status": "IN_PROGRESS",
     "objective": "Strengthen user confidence, recovery paths and conversion clarity across search, results and checkout without changing Tourvisor correctness, analytics configuration or the protected lead-sending mechanism.",
-    "next_action": "Audit current recovery/trust surfaces across search errors, empty results, flight-load errors and lead states; implement the highest-impact presentation/recovery fixes in a separate B5 branch with five-viewport evidence and protected contracts unchanged."
+    "next_action": "Verify PR #13 contract/security/general visual and dedicated five-viewport conversion gate. If green, merge/deploy, confirm production post-deploy behavior, then decide whether B5 has enough evidence to close or needs one final trust/recovery slice."
   },
   "queue": [
     {"id":"B1","status":"DONE","title":"Visual foundation"},
     {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
     {"id":"B3","status":"DONE","title":"Results Experience 2.0","note":"Hotel-level operator hotfix merged as 8c43c98b5e1581517f9a58379c538504ac904d68; operator remains only in concrete tour rows. Production post-deploy visual run 33064644452 passed."},
-    {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0","note":"Merged PR #9 as 3f4be3d8ebcc2b6df35812c633101304a0397403. Selected-tour hierarchy, mobile fact compaction, flight timeline and lead-entry presentation shipped without changing lead transport or Tourvisor/analytics contracts. PR validation/security/general visual and dedicated selected-tour five-viewport gate passed. Production deploy run 33065753691, active contract 33065753667, tour+flights live 33065753733, result-detail live 33065753620 and post-deploy visual 33065830449 all passed."},
-    {"id":"B5","status":"IN_PROGRESS","title":"Trust and conversion UX"},
+    {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0","note":"Final B4 checkout merge PR #10 landed as 87a10fd10f10af293a591e17ec9e5ec3d96fcb05 after contract/security/general visual plus dedicated checkout/selected-tour five-viewport gates passed. Production post-deploy visual run 33066545500 passed. The resulting SEO H1 regression was isolated to hero copy and fixed separately in PR #12 as 8161feb64cc0d3e6346641368a35e1d132d879b4."},
+    {"id":"B5","status":"IN_PROGRESS","title":"Trust and conversion UX","note":"First recovery/trust slice shipped in PR #11: actionable empty results, tour/flight retry UX, preserved lead data on error and explicit no-payment reassurance. Second slice is PR #13: result CTA becomes 'Проверить тур' and a concise confidence cue explains flight/baggage/final-price verification before the no-payment lead step."},
     {"id":"B6","status":"QUEUED","title":"Visual regression baseline"},
     {"id":"B7","status":"QUEUED","title":"Performance and visual stability"},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
@@ -33,13 +33,18 @@
   ],
   "last_ci": {
     "workflow": "Visual V2 post-deploy",
-    "run_id": 33065830449,
-    "head_sha": "3f4be3d8ebcc2b6df35812c633101304a0397403",
+    "run_id": 33066545500,
+    "head_sha": "87a10fd10f10af293a591e17ec9e5ec3d96fcb05",
     "conclusion": "success",
     "classification": "B4_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "3f4be3d8ebcc2b6df35812c633101304a0397403",
-  "pending_verification": null,
+  "last_verified_commit": "87a10fd10f10af293a591e17ec9e5ec3d96fcb05",
+  "pending_verification": {
+    "type": "PR_AND_PRODUCTION",
+    "pr": 13,
+    "head_sha": "f8b428fde0505f4bf1557b4c8ee4b4a27747bb71",
+    "note": "B5 result-to-checkout confidence cues and dedicated conversion visual gate"
+  },
   "blocked": [],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
