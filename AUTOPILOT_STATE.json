@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T12:39:00+02:00",
+  "updated_at": "2026-08-27T12:56:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
@@ -10,18 +10,18 @@
     "title": "Tour / Checkout Experience 2.0",
     "status": "IN_PROGRESS",
     "objective": "Turn the selected-tour flow into a clear checkout summary with stronger trip, room, flight and total-price hierarchy while preserving exact Tourvisor data, flight-price synchronization and the protected lead transport contract.",
-    "next_action": "Start B4 from main: audit selected-tour desktop/mobile states, restructure presentation around trip/hotel/room-flight-price decisions without changing lead transport, add selected-tour visual coverage, then open a draft PR with contract/security/visual evidence."
+    "next_action": "Review PR #9 selected-tour evidence from the new five-viewport gate; fix any responsive issues, then continue B4 hierarchy/flight/lead-entry presentation only if protected contracts remain unchanged."
   },
   "queue": [
-    {"id":"B1","status":"DONE","title":"Visual foundation","note":"Merged PR #3 and deployed. Production visual gate run 33060952362 passed at 375/430/768/1024/1440 with HTTP 200, no document overflow and no page errors."},
-    {"id":"B2","status":"DONE","title":"Search Experience 2.0","note":"Merged PR #4 as 112f1ea4b70fa3cca1a1419b598693bf68025606. PR contract/security/visual checks passed and production post-deploy visual run 33062455516 passed."},
-    {"id":"B3","status":"DONE","title":"Results Experience 2.0","note":"Merged PR #5 as bb54ff7b439f96f2c2d5bd16af2cc89485c8191e. Decision-oriented card hierarchy, mobile result-filter breakpoint/accessibility fix, and populated-results visual coverage shipped. Deploy run 33063715814, live tour/result-detail validations, and production post-deploy visual run 33063775862 passed; five production viewports rendered populated result fixtures with no overflow or page errors."},
-    {"id":"B4","status":"IN_PROGRESS","title":"Tour / Checkout Experience 2.0","note":"Next active product slice: selected-tour checkout summary, clearer travel/room/flight/price hierarchy, stronger flight timeline presentation and shorter path to conversion while preserving lead transport and price synchronization."},
-    {"id":"B5","status":"QUEUED","title":"Trust and conversion UX","note":"Trust signals, stronger CTA hierarchy, empty/error recovery and conversion surfaces without changing lead transport."},
-    {"id":"B6","status":"QUEUED","title":"Visual regression baseline","note":"Establish durable visual baselines at 375/430/768/1024/1440 after redesigned flow stabilizes; supersedes the old deferred A1 baseline decision."},
-    {"id":"B7","status":"QUEUED","title":"Performance and visual stability","note":"Consolidate CSS/tokens, reduce cascade complexity and layout shift, optimize images/lazy behavior and preserve responsive stability."},
-    {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization","note":"Use real searches, interactions, tour selections, mobile drop-offs and lead behavior to drive product iterations once advertising starts."},
-    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop","note":"Parallel safety loop retained from A-series. When traffic starts, prioritize production breakage, lead loss, incorrect data and user-flow regressions from real evidence."},
+    {"id":"B1","status":"DONE","title":"Visual foundation"},
+    {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
+    {"id":"B3","status":"DONE","title":"Results Experience 2.0","note":"Hotel-level operator hotfix merged as 8c43c98b5e1581517f9a58379c538504ac904d68; operator remains only in concrete tour rows. Production post-deploy visual run 33064644452 passed."},
+    {"id":"B4","status":"IN_PROGRESS","title":"Tour / Checkout Experience 2.0","note":"Draft PR #9 on ux/b4-checkout-experience. Existing selected-tour UX stylesheet now has stronger checkout hierarchy; dedicated selected-tour visual workflow added for 375/430/768/1024/1440 with facts, flights and lead-entry fixture. Awaiting PR evidence before further visual refinement."},
+    {"id":"B5","status":"QUEUED","title":"Trust and conversion UX"},
+    {"id":"B6","status":"QUEUED","title":"Visual regression baseline"},
+    {"id":"B7","status":"QUEUED","title":"Performance and visual stability"},
+    {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
+    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
     {"id":"A1","status":"DEFERRED_SUPERSEDED_BY_B6","title":"Visual baseline and regression harness"},
     {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit"},
@@ -33,16 +33,17 @@
   ],
   "last_ci": {
     "workflow": "Visual V2 post-deploy",
-    "run_id": 33063775862,
-    "head_sha": "bb54ff7b439f96f2c2d5bd16af2cc89485c8191e",
+    "run_id": 33064644452,
+    "head_sha": "8c43c98b5e1581517f9a58379c538504ac904d68",
     "conclusion": "success",
-    "classification": "B3_PRODUCTION_POPULATED_RESULTS_5_VIEWPORTS_GREEN"
+    "classification": "B3_OPERATOR_HOTFIX_PRODUCTION_VISUAL_GREEN"
   },
-  "last_verified_commit": "bb54ff7b439f96f2c2d5bd16af2cc89485c8191e",
+  "last_verified_commit": "8c43c98b5e1581517f9a58379c538504ac904d68",
   "pending_verification": {
-    "branch": null,
-    "pr": null,
+    "branch": "ux/b4-checkout-experience",
+    "pr": 9,
     "task": "B4",
+    "head_sha": "0b18347b4ef39af4877fde5a249c7e75d93a03ca",
     "requirements": ["selected_tour_contract_ci", "selected_tour_visual_375_430_768_1024_1440", "flight_price_sync_regression", "lead_transport_unchanged", "production_checks_after_merge"]
   },
   "blocked": [],
