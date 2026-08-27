@@ -2,7 +2,7 @@
 if(window.V2ResultsV5)return;
 const state={items:[],lastOptions:{}},expandedHotels=new Set(),INITIAL_TOURS=3;
 function initialTourLimit(){return window.matchMedia&&window.matchMedia('(max-width:430px)').matches?1:INITIAL_TOURS;}
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function money(v){const n=Number(v||0);return n>0?new Intl.NumberFormat('ru-RU').format(n):'';}
 function mealName(t){return t&&t.meal&&(t.meal.russianName||t.meal.fullRussianName||t.meal.name)||'';}
 function operatorName(t){return t&&t.operator&&(t.operator.russianName||t.operator.name)||'';}
