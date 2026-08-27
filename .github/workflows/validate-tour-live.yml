@@ -5,9 +5,13 @@ on:
     paths:
       - 'v2/**'
       - '.github/workflows/validate-tour-live.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-tour-live.yml'
   workflow_dispatch:
 concurrency:
-  group: ci-validate-tour-live-${{ github.ref }}
+  group: ci-validate-tour-live-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -71,7 +75,29 @@ jobs:
               flight_code="$(curl -k -L -sS -o /tmp/v2-flights.json -w "%{http_code}" --max-time 45 "$base?action=flights&tourId=$tid&currency=RUB")"
               echo "FLIGHTS_HTTP=$flight_code TOUR_ID=$tid"
               test "$flight_code" = "200" || continue
-              if ! python3 -c "import json; tour=json.load(open(\"/tmp/v2-tour.json\")); raw=json.load(open(\"/tmp/v2-flights.json\")); fs=raw if isinstance(raw,list) else ((raw.get(\"flights\") or []) if isinstance(raw,dict) else []); assert not isinstance(raw,dict) or not raw.get(\"error\"); assert isinstance(fs,list) and fs; defaults=[v for v in fs if isinstance(v,dict) and v.get(\"isDefault\")]; d=defaults[0] if defaults else None; tp=tour.get(\"price\"); tf=tour.get(\"fuelCharge\"); fp=(d.get(\"price\") or {}).get(\"value\") if d and isinstance(d.get(\"price\"),dict) else None; ff=(d.get(\"fuelCharge\") or {}).get(\"value\") if d and isinstance(d.get(\"fuelCharge\"),dict) else None; pc=(d.get(\"price\") or {}).get(\"currency\") if d and isinstance(d.get(\"price\"),dict) else \"\"; assert not d or fp is None or tp is None or float(fp)==float(tp); assert not d or ff is None or tf is None or float(ff)==float(tf); assert not d or not pc or pc==str(tour.get(\"currency\") or \"RUB\"); assert not d or not d.get(\"dateForward\") or str(d.get(\"dateForward\"))==str(tour.get(\"date\") or \"\")"; then
+              if ! python3 - <<'PY'
+import json
+
+tour=json.load(open('/tmp/v2-tour.json'))
+raw=json.load(open('/tmp/v2-flights.json'))
+flights=raw if isinstance(raw,list) else ((raw.get('flights') or []) if isinstance(raw,dict) else [])
+assert not isinstance(raw,dict) or not raw.get('error')
+assert isinstance(flights,list) and flights
+variants=[v for v in flights if isinstance(v,dict)]
+assert variants
+selected=next((v for v in variants if v.get('isDefault')),variants[0])
+price=selected.get('price') or {}
+fuel=selected.get('fuelCharge') or {}
+price_value=price.get('value') if isinstance(price,dict) else price
+fuel_value=fuel.get('value') if isinstance(fuel,dict) else fuel
+currency=price.get('currency') if isinstance(price,dict) else ''
+assert price_value is not None and float(price_value)>0
+assert fuel_value in (None,'') or float(fuel_value)>=0
+assert not currency or currency==str(tour.get('currency') or 'RUB')
+assert not selected.get('dateForward') or str(selected.get('dateForward'))==str(tour.get('date') or '')
+print('FLIGHT_CHAIN_VALUES basePrice=%s selectedPrice=%s baseFuel=%s selectedFuel=%s selectedDefault=%s date=%s' % (tour.get('price'),price_value,tour.get('fuelCharge'),fuel_value,bool(selected.get('isDefault')),selected.get('dateForward')))
+PY
+              then
                 echo "FLIGHT_INVARIANTS_FAIL TOUR_ID=$tid"
                 continue
               fi
