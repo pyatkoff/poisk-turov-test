@@ -4,7 +4,7 @@ This file documents the active UX layers for the V2 tour search and the contract
 
 ## Active search flow
 
-1. `index.php` owns the server-rendered initial state and script order.
+1. `index.php` owns the server-rendered initial state and explicit CSS/JS order.
 2. `catalogs-v2.js` owns Tourvisor catalog hydration and child-age controls.
 3. `search-filters-ux-v1.js` owns the primary form presentation for dates, nights, guests, stars, and the additional-filter summary/count/reset.
 4. `primary-meal-ux-v1.js` promotes meal selection into the primary form.
@@ -14,7 +14,7 @@ This file documents the active UX layers for the V2 tour search and the contract
 8. `mobile-results-filters-v1.js` owns client-side result filtering on mobile. Its sheet uses draft state and only applies on `Показать`.
 9. `search-dirty-ux-v1.js` presents stale/dirty UI only. Lifecycle remains the source of truth.
 10. `mobile-search-summary-v1.js` presents compact mobile search context only.
-11. `accessibility.js` decorates active UI and currently bootstraps several UX helper scripts. This bootstrap responsibility should be removed in the refactor below.
+11. `accessibility.js` decorates active UI with roles, live regions, busy state and disclosure accessibility; it does not load or own other UX modules.
 
 ## State ownership contracts
 
@@ -46,14 +46,15 @@ New UX layers should consume these events instead of reaching into polling/searc
 - Do not add a new visual workflow for a state already represented in the baseline. Extend the baseline or an existing materially distinct gate instead.
 - Retire a specialized gate only after equivalent baseline assertions are green at 375, 430, 768, 1024 and 1440 and the pixel comparator confirms no unintended screenshot change.
 
-## Refactor plan (behavior-preserving)
+## B7 refactor plan (behavior-preserving)
 
-1. Make all active UX scripts explicit in `index.php`; remove unrelated dynamic script loading from `accessibility.js`.
-2. Move inline style injection from JS UX modules into one search UX stylesheet, preserving selectors and visual output.
-3. Split `search-filters-ux-v1.js` by responsibility internally: primary controls, additional-filter summary/reset, panel close behavior. Keep one public facade until regression coverage exists.
+1. Measure active asset loading and script/style order before consolidating files; do not infer cost from file count alone.
+2. Move residual element-level style ownership from JS UX modules into the existing owning stylesheet when the exact visual result can be baseline-proven.
+3. Split `search-filters-ux-v1.js` by responsibility internally only when doing so reduces active complexity without introducing another public layer.
 4. Consolidate repeated mobile control tokens (44/48 px targets, radii, focus states, sheet spacing) into the existing brand/design CSS layer instead of per-module styles.
-5. Keep result filtering separate from search filtering, but document naming clearly as `search filters` vs `result filters` to avoid accidental state coupling.
-6. After each structural change: active V2 contract, isolation, live Tourvisor, then deploy. Do not combine behavior changes with refactor commits.
+5. Keep result filtering separate from search filtering, and keep naming clear as `search filters` vs `result filters` to avoid accidental state coupling.
+6. Audit intrinsic sizing/reserved space for images and progressive selected-tour states before changing layout; verify geometry rather than guessing dimensions.
+7. After each structural change: active V2 contract, B6 visual baseline, relevant live Tourvisor/tour-flight validation, then V2-only deploy when product assets changed.
 
 ## Guardrails
 
