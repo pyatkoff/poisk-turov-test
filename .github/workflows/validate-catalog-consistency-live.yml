@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Validate dependent Tourvisor catalogs
         shell: bash

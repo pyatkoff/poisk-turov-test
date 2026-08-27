@@ -10,7 +10,7 @@ on:
 
 jobs:
   seo-foundation:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Validate test-route SEO contract live
         shell: bash

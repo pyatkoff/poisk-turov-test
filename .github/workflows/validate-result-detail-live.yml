@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 jobs:
   validate-result-detail-live:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Compare live result cards with tour detail
         shell: bash

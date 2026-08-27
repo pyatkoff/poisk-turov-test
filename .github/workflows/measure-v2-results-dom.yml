@@ -8,7 +8,7 @@ on:
 
 jobs:
   measure:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Run live search and count hotel tour rows
         shell: bash
