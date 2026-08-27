@@ -51,6 +51,16 @@ jobs:
               if "python-requests" in l or "python/" in l: return "python"
               if "mozilla/" in l: return "browser"
               return "other"
+          def safe_signature(line):
+              core=line.split(", client:",1)[0]
+              core=re.sub(r'^.*?\]\s+\d+#\d+:\s+\*\d+\s+','',core)
+              core=re.sub(r'"[^"]*"', '<quoted>', core)
+              core=re.sub(r"'[^']*'", '<quoted>', core)
+              core=re.sub(r'(?<![A-Za-z0-9_])/(?:[^\s,;:()]+/?)+', '<path>', core)
+              core=re.sub(r'\b(?:\d{1,3}\.){3}\d{1,3}\b','<addr>',core)
+              core=re.sub(r'\b[0-9a-f]{2,}:[0-9a-f:]+\b','<addr>',core,flags=re.I)
+              core=re.sub(r'\b\d+\b','<n>',core)
+              return re.sub(r'\s+',' ',core).strip()[:180] or '(empty)'
           def summarize(lines,needle,label):
               req=re.compile(r'"([A-Z]+)\s+([^\s"]+)\s+HTTP/[^"]+"\s+(\d{3})')
               total=0; methods=collections.Counter(); status=collections.Counter(); paths=collections.Counter(); actions=collections.Counter(); bad=collections.Counter(); bad_actions=collections.Counter(); bad_actors=collections.Counter(); actors=collections.Counter(); browser_actions=collections.Counter()
@@ -84,7 +94,7 @@ jobs:
           root_total=summarize(lines,project,"PROJECT_LIVE")
           v2_total=summarize(lines,v2,"V2_LIVE")
           print("PROJECT_NON_V2_REQUESTS",max(0,root_total-v2_total))
-          err=collections.Counter(); severities=collections.Counter(); matched=0
+          err=collections.Counter(); severities=collections.Counter(); signatures=collections.Counter(); matched=0
           severity_rx=re.compile(r'\[(debug|info|notice|warn|error|crit|alert|emerg)\]',re.I)
           classes=[
               ("php_fatal",re.compile(r'PHP Fatal error|Uncaught',re.I)),
@@ -109,6 +119,7 @@ jobs:
               if project not in line: continue
               matched+=1
               sm=severity_rx.search(line); severities[(sm.group(1).lower() if sm else "unknown")]+=1
+              signatures[safe_signature(line)]+=1
               hit=False
               for name,rx in classes:
                   if rx.search(line): err[name]+=1; hit=True
@@ -117,6 +128,7 @@ jobs:
           print("PROJECT_ERROR_LINES",matched)
           print("PROJECT_ERROR_SEVERITIES",dict(severities))
           print("PROJECT_ERROR_CLASSES",dict(err))
+          print("PROJECT_ERROR_SAFE_SIGNATURES",signatures.most_common(15))
           PY
           python3 -m py_compile "$RUNNER_TEMP/v2-live-audit.py"
       - name: Aggregate exact vhost production signals
