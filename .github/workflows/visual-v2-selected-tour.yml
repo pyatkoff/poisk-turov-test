@@ -120,14 +120,17 @@ jobs:
                   window.V2FlightPriceSync.clarifyVariantChoices();
                 }
                 window.scrollTo(0,0);
+                const ctaNote=selected.querySelector('.selected-lead-cta-note');
+                const trust=selected.querySelector('.lead-trust-note');
                 return {
                   selected:!!selected,
                   facts:selected.querySelectorAll('.facts>div').length,
                   flights:selected.querySelectorAll('.flight-variant').length,
                   lead:!!selected.querySelector('.lead-form'),
                   leadCta:!!selected.querySelector('.selected-lead-cta'),
+                  ctaNote:!!ctaNote&&String(ctaNote.textContent||'').includes('Без оплаты'),
                   leadSummary:!!selected.querySelector('.lead-selection-summary'),
-                  trust:!!selected.querySelector('.lead-trust-note'),
+                  trust:!!trust&&String(trust.textContent||'').includes('не является оплатой'),
                   detailsToggle:!!selected.querySelector('.facts-secondary-toggle'),
                   descToggle:!!selected.querySelector('.hotel-desc-toggle'),
                   overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,
@@ -135,10 +138,25 @@ jobs:
               },fixture);
               await page.waitForTimeout(150);
               await page.screenshot({path:`visual-selected-tour-artifacts/${name}-selected-tour.png`,fullPage:true});
-              const item={name,width,height,http:response?response.status():0,pageErrors,state};
+              const errorState=await page.evaluate(()=>{
+                const selected=document.querySelector('#selectedTour');
+                if(window.V2LeadFormGuard)window.V2LeadFormGuard.syncLeadSubmitState('error',selected);
+                const msg=selected.querySelector('.lead-message'),btn=selected.querySelector('.lead-form button[type="submit"]');
+                return {
+                  message:String(msg&&msg.textContent||''),
+                  state:msg&&msg.dataset.state||'',
+                  role:msg&&msg.getAttribute('role')||'',
+                  button:String(btn&&btn.textContent||''),
+                  overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,
+                };
+              });
+              await page.waitForTimeout(100);
+              await page.screenshot({path:`visual-selected-tour-artifacts/${name}-lead-error.png`,fullPage:true});
+              const item={name,width,height,http:response?response.status():0,pageErrors,state,errorState};
               report.push(item);
-              if(item.http!==200||pageErrors.length||!state.selected||state.facts!==10||state.flights!==2||!state.lead||!state.leadCta||!state.leadSummary||!state.trust||!state.detailsToggle||!state.descToggle||state.overflow)failed=true;
-              console.log(`SELECTED_VISUAL ${name} http=${item.http} facts=${state.facts} flights=${state.flights} lead=${state.lead}/${state.leadCta}/${state.leadSummary} toggles=${state.detailsToggle}/${state.descToggle} overflow=${state.overflow} errors=${pageErrors.length}`);
+              const leadErrorBad=errorState.state!=='error'||errorState.role!=='alert'||!errorState.message.includes('Данные остались в форме')||!errorState.button.includes('Повторить')||errorState.overflow;
+              if(item.http!==200||pageErrors.length||!state.selected||state.facts!==10||state.flights!==2||!state.lead||!state.leadCta||!state.ctaNote||!state.leadSummary||!state.trust||!state.detailsToggle||!state.descToggle||state.overflow||leadErrorBad)failed=true;
+              console.log(`SELECTED_VISUAL ${name} http=${item.http} facts=${state.facts} flights=${state.flights} lead=${state.lead}/${state.leadCta}/${state.leadSummary} trust=${state.ctaNote}/${state.trust} recovery=${errorState.state}/${errorState.role} overflow=${state.overflow}/${errorState.overflow} errors=${pageErrors.length}`);
               await context.close();
             }
             fs.writeFileSync('visual-selected-tour-artifacts/report.json',JSON.stringify(report,null,2));
