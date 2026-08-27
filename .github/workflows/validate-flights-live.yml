@@ -41,58 +41,77 @@ jobs:
                   tid=str(tour['id'])
                   if tid not in ids:
                       ids.append(tid); print(tid)
-                  if len(ids)>=12: raise SystemExit
+                  if len(ids)>=15: raise SystemExit
           PY
           test -s /tmp/v2-flight-tour-ids.txt || fail no_tours
 
-          chosen=""
+          : >/tmp/v2-flights-sample.jsonl
+          sampled=0
           while IFS= read -r tid; do
             test -n "$tid" || continue
-            code="$(curl -k -L -sS -o /tmp/v2-flights.json -w "%{http_code}" --max-time 45 "$base?action=flights&tourId=$tid&currency=RUB")"
+            code="$(curl -k -L -sS -o /tmp/v2-flights-one.json -w "%{http_code}" --max-time 45 "$base?action=flights&tourId=$tid&currency=RUB")"
             test "$code" = "200" || continue
-            if python3 -c "import json; d=json.load(open('/tmp/v2-flights.json')); v=d if isinstance(d,list) else d.get('flights',[]) if isinstance(d,dict) else []; raise SystemExit(0 if v else 1)"; then chosen="$tid"; break; fi
+            if python3 -c "import json; d=json.load(open('/tmp/v2-flights-one.json')); v=d if isinstance(d,list) else d.get('flights',[]) if isinstance(d,dict) else []; raise SystemExit(0 if v else 1)"; then
+              TOUR_ID="$tid" python3 - <<'PY' >>/tmp/v2-flights-sample.jsonl
+          import json,os
+          raw=json.load(open('/tmp/v2-flights-one.json'))
+          print(json.dumps({'tourId':os.environ['TOUR_ID'],'raw':raw},ensure_ascii=False))
+          PY
+              sampled=$((sampled+1))
+              test "$sampled" -ge 3 && break
+            fi
           done </tmp/v2-flight-tour-ids.txt
-          test -n "$chosen" || fail no_tour_with_flights
+          test "$sampled" -ge 3 || fail insufficient_tours_with_flights
 
-          TOUR_ID="$chosen" SEARCH_ID="$search_id" python3 - <<'PY' || fail flights_shape
+          SEARCH_ID="$search_id" python3 - <<'PY' || fail flights_shape
           import json, os, collections
-          raw=json.load(open('/tmp/v2-flights.json'))
-          variants=raw if isinstance(raw,list) else raw.get('flights',[]) if isinstance(raw,dict) else []
-          assert variants, 'no_variants'
-          segments=[]
-          prices=[]
-          missing_fuel=0
-          default_count=0
-          for v in variants:
-              if not isinstance(v,dict): continue
-              default_count+=1 if v.get('isDefault') else 0
-              p=v.get('price')
-              p=p.get('value') if isinstance(p,dict) else p
-              try: prices.append(float(p))
-              except (TypeError,ValueError): pass
-              fuel=v.get('fuelCharge')
-              fv=fuel.get('value') if isinstance(fuel,dict) else fuel
-              if fv in (None,''): missing_fuel+=1
-              for key in ('forward','backward'):
-                  for seg in v.get(key) or []:
-                      if isinstance(seg,dict): segments.append(seg)
-          assert segments, 'no_segments'
-          def time_value(point):
-              return str((point or {}).get('time') or '').strip()
-          placeholder_time=sum(1 for s in segments for point in (s.get('departure'),s.get('arrival')) if time_value(point) in ('','00:00','0:00'))
-          missing_baggage=sum(1 for s in segments if s.get('baggage') in (None,''))
-          missing_carry=sum(1 for s in segments if s.get('carryOn') in (None,''))
-          no_places=sum(1 for s in segments if s.get('noPlaces') is True)
-          on_demand=sum(1 for s in segments if s.get('onDemand') is True)
-          missing_timezone=0
-          for s in segments:
-              for point in (s.get('departure'),s.get('arrival')):
-                  port=(point or {}).get('port') if isinstance(point,dict) else None
-                  if isinstance(port,dict) and not (port.get('timeZone') or port.get('timezone')): missing_timezone+=1
-          duplicate_price_variants=len(prices)-len(set(prices))
-          counts=collections.Counter(prices)
-          largest_equal_price_group=max(counts.values()) if counts else 0
-          assert default_count<=1, 'multiple_defaults'
-          print('FLIGHTS_LIVE_OK','searchId='+os.environ['SEARCH_ID'],'tourId='+os.environ['TOUR_ID'],'variants='+str(len(variants)),'segments='+str(len(segments)))
-          print('FLIGHT_EDGE_PROFILE','placeholderTimes='+str(placeholder_time),'missingBaggage='+str(missing_baggage),'missingCarryOn='+str(missing_carry),'missingTimezone='+str(missing_timezone),'missingFuelVariants='+str(missing_fuel),'noPlacesSegments='+str(no_places),'onDemandSegments='+str(on_demand),'duplicatePriceVariants='+str(duplicate_price_variants),'largestEqualPriceGroup='+str(largest_equal_price_group),'defaultCount='+str(default_count))
+          samples=[json.loads(line) for line in open('/tmp/v2-flights-sample.jsonl') if line.strip()]
+          assert len(samples)>=3, 'insufficient_samples'
+          totals=collections.Counter()
+          sampled_ids=[]
+          per_tour=[]
+          for sample in samples:
+              tid=str(sample.get('tourId') or '')
+              assert tid and tid not in sampled_ids, 'duplicate_sample_tour'
+              sampled_ids.append(tid)
+              raw=sample.get('raw')
+              variants=raw if isinstance(raw,list) else raw.get('flights',[]) if isinstance(raw,dict) else []
+              assert variants, 'no_variants:'+tid
+              segments=[]; prices=[]; missing_fuel=0; default_count=0
+              for v in variants:
+                  if not isinstance(v,dict): continue
+                  default_count+=1 if v.get('isDefault') else 0
+                  p=v.get('price'); p=p.get('value') if isinstance(p,dict) else p
+                  try: prices.append(float(p))
+                  except (TypeError,ValueError): pass
+                  fuel=v.get('fuelCharge'); fv=fuel.get('value') if isinstance(fuel,dict) else fuel
+                  if fv in (None,''): missing_fuel+=1
+                  for key in ('forward','backward'):
+                      for seg in v.get(key) or []:
+                          if isinstance(seg,dict): segments.append(seg)
+              assert segments, 'no_segments:'+tid
+              assert default_count<=1, 'multiple_defaults:'+tid
+              def time_value(point): return str((point or {}).get('time') or '').strip()
+              placeholder_time=sum(1 for s in segments for point in (s.get('departure'),s.get('arrival')) if time_value(point) in ('','00:00','0:00'))
+              missing_baggage=sum(1 for s in segments if s.get('baggage') in (None,''))
+              zero_baggage=sum(1 for s in segments if s.get('baggage') in (0,'0',0.0))
+              missing_carry=sum(1 for s in segments if s.get('carryOn') in (None,''))
+              no_places=sum(1 for s in segments if s.get('noPlaces') is True)
+              on_demand=sum(1 for s in segments if s.get('onDemand') is True)
+              missing_timezone=0
+              for s in segments:
+                  for point in (s.get('departure'),s.get('arrival')):
+                      port=(point or {}).get('port') if isinstance(point,dict) else None
+                      if isinstance(port,dict) and not (port.get('timeZone') or port.get('timezone')): missing_timezone+=1
+              counts=collections.Counter(prices)
+              duplicate_price_variants=len(prices)-len(set(prices))
+              largest_equal_price_group=max(counts.values()) if counts else 0
+              row={'variants':len(variants),'segments':len(segments),'placeholderTimes':placeholder_time,'missingBaggage':missing_baggage,'zeroBaggage':zero_baggage,'missingCarryOn':missing_carry,'missingTimezone':missing_timezone,'missingFuelVariants':missing_fuel,'noPlacesSegments':no_places,'onDemandSegments':on_demand,'duplicatePriceVariants':duplicate_price_variants,'largestEqualPriceGroup':largest_equal_price_group,'defaultCount':default_count}
+              per_tour.append((tid,row))
+              for k,v in row.items():
+                  if k!='largestEqualPriceGroup': totals[k]+=v
+              totals['largestEqualPriceGroup']=max(totals['largestEqualPriceGroup'],largest_equal_price_group)
+              print('FLIGHT_TOUR_PROFILE','tourId='+tid,*[k+'='+str(v) for k,v in row.items()])
+          print('FLIGHTS_LIVE_OK','searchId='+os.environ['SEARCH_ID'],'sampledTours='+str(len(samples)),'tourIds='+','.join(sampled_ids))
+          print('FLIGHT_EDGE_PROFILE_TOTAL',*[k+'='+str(v) for k,v in totals.items()])
           PY
