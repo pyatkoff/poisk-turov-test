@@ -26,9 +26,15 @@ jobs:
         shell: bash
         run: |
           cat > "$RUNNER_TEMP/v2-live-audit.py" <<'PY'
-          import os,re,glob,collections
+          import os,re,glob,collections,subprocess
           needle="/poisk-turov-test/v2"
           home=os.path.expanduser("~")
+          def tail_lines(path,count):
+              try:
+                  p=subprocess.run(["tail","-n",str(count),"--",path],capture_output=True,text=True,errors="ignore",timeout=20,check=False)
+                  return p.stdout.splitlines()
+              except Exception:
+                  return []
           access_candidates=[]
           for pattern in [
               os.path.join(home,"logs","*anytour.online*access*.log*"),
@@ -38,18 +44,12 @@ jobs:
               access_candidates.extend(glob.glob(pattern))
           seen=set(); access=[]
           for p in access_candidates:
-              if p in seen or not os.path.isfile(p) or not os.access(p,os.R_OK):
-                  continue
+              if p in seen or not os.path.isfile(p) or not os.access(p,os.R_OK): continue
               seen.add(p); access.append(p)
           status=collections.Counter(); actions=collections.Counter(); paths=collections.Counter(); methods=collections.Counter(); bad=collections.Counter(); total=0
           req_re=re.compile(r'"([A-Z]+)\s+([^\s"]+)\s+HTTP/[^"]+"\s+(\d{3})')
           for p in access:
-              try:
-                  with open(p,"r",errors="ignore") as f:
-                      lines=f.readlines()[-30000:]
-              except Exception:
-                  continue
-              for line in lines:
+              for line in tail_lines(p,30000):
                   if needle not in line: continue
                   m=req_re.search(line)
                   if not m: continue
@@ -58,11 +58,9 @@ jobs:
                   clean=target.split("?",1)[0]
                   paths[clean]+=1
                   if "?" in target:
-                      qs=target.split("?",1)[1]
-                      am=re.search(r'(?:^|&)action=([^&]+)',qs)
+                      am=re.search(r'(?:^|&)action=([^&]+)',target.split("?",1)[1])
                       if am: actions[am.group(1)]+=1
-                  if code.startswith(("4","5")):
-                      bad[(code,clean)]+=1
+                  if code.startswith(("4","5")): bad[(code,clean)]+=1
           print("V2_LIVE_ACCESS_FILES",len(access))
           print("V2_LIVE_REQUESTS",total)
           print("V2_LIVE_METHODS",dict(methods))
@@ -90,10 +88,7 @@ jobs:
           for p in error_candidates:
               if p in seen or not os.path.isfile(p) or not os.access(p,os.R_OK): continue
               seen.add(p); err_files+=1
-              try:
-                  with open(p,"r",errors="ignore") as f: lines=f.readlines()[-20000:]
-              except Exception: continue
-              for line in lines:
+              for line in tail_lines(p,20000):
                   if "poisk-turov-test" not in line and needle not in line: continue
                   matched+=1; hit=False
                   for name,rx in classes:
@@ -127,4 +122,4 @@ jobs:
           ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
           remote="/tmp/v2-live-audit-${GITHUB_RUN_ID}.py"
           scp "${ssh_opts[@]}" "$RUNNER_TEMP/v2-live-audit.py" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE:$remote"
-          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" "python3 '$remote'; rc=\$?; rm -f '$remote'; exit \$rc"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" "timeout 90s python3 '$remote'; rc=\$?; rm -f '$remote'; exit \$rc"
