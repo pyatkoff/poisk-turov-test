@@ -6,9 +6,9 @@ This file is the operational companion to `AGENTS.md`. `AGENTS.md` defines autho
 
 ## Current product phase
 
-**Product UX/visual development before and during live traffic.**
+**Production-ready V2 awaiting real traffic evidence.**
 
-The active product is `v2/`. Major correctness hardening, technical refactor, SEO foundation and B1–B6 product/visual work are complete. The active roadmap item is **B7 — Performance & Visual Stability (`IN PROGRESS`)**. A8/B8 remain `WAITING_FOR_TRAFFIC`; real advertising traffic immediately outranks speculative polish when it appears.
+The active product is `v2/`. Major correctness hardening, technical refactor, SEO foundation and B1–B7 product/visual/performance work are complete. **B8 Live Product Optimization** and **A8 Operational live traffic feedback loop** are `WAITING_FOR_TRAFFIC`; real advertising/live-user evidence immediately outranks speculative polish when it appears.
 
 Protected without explicit approval: Yandex Metrika configuration/goals and the existing lead-sending mechanism/external contract. Work stays inside `pyatkoff/poisk-turov-test`; production deployment stays V2-only.
 
@@ -22,6 +22,7 @@ Protected without explicit approval: Yandex Metrika configuration/goals and the 
 6. Preserve analytics and lead transport contracts.
 7. Do not bundle/combine assets or add workflow/CSS layers merely to reduce counts; require evidence of real cost or duplicated responsibility.
 8. When profiling disproves a suspected optimization, record/defer it and move on rather than adding complexity.
+9. While waiting for traffic, keep production stable and fix only confirmed regressions/correctness/UX issues; do not manufacture micro-work.
 
 ## Active architecture
 
@@ -31,8 +32,8 @@ Protected without explicit approval: Yandex Metrika configuration/goals and the 
 - `search-lifecycle-v6.js`: sole search state/start/status/results/dirty owner.
 - `search-progress-ux-v1.js`: waiting/progress/error/zero-result presentation.
 - `results-renderer-v5.js`: result rendering and sorting.
-- `search-continue-v6.js`: explicit continuation.
-- `catalogs-v2.js`: direct Tourvisor catalog bootstrap/change lifecycle.
+- `search-continue-v6.js`: explicit continuation with recoverable retry on failure.
+- `catalogs-v2.js`: direct Tourvisor catalog bootstrap/change lifecycle with critical catalog retry and stale-dependent-filter clearing.
 - Mobile/result-state UX: `mobile-results-filters-v1.js`, `search-dirty-ux-v1.js`, `mobile-search-summary-v1.js`.
 
 ### Selected tour / checkout
@@ -61,46 +62,50 @@ Presentation/recovery may improve; changing the sending mechanism or external co
 - B4 Tour / Checkout Experience 2.0 — **DONE**
 - B5 Trust & Conversion UX — **DONE**
 - B6 Visual regression baseline — **DONE**
-- B7 Performance & Visual Stability — **IN PROGRESS**
+- B7 Performance & Visual Stability — **DONE**
 - B8 Live Product Optimization — **WAITING FOR TRAFFIC**
 - A8 Operational live traffic feedback loop — **WAITING_FOR_TRAFFIC**
 
 Other A-series technical/product milestones are complete except A1, superseded by B6.
 
-## B7 — Performance & Visual Stability
+## B7 — Performance & Visual Stability — DONE
 
-Objective: reduce repeated client overhead, cascade complexity and layout instability without changing product behavior or weakening the B6 contract; during whole-flow re-audits, fix confirmed UX/recovery failures before lower-value micro-optimizations.
+B7 closed after evidence-backed performance/visual/recovery work and a final whole-flow audit found no remaining material issue worth speculative complexity.
 
 ### Completed evidence-backed work
 
 - CSS/result/checkout consolidation removed redundant blocking stylesheet requests while preserving cascade order and screenshots.
 - Live-read timeout hardening retries only safe idempotent reads; non-idempotent `search_start` is not auto-retried.
 - Selected-tour desktop image space is reserved to eliminate the confirmed 380 px checkout shift at 768/1024/1440.
-- Mobile-only search summary/results-filter DOM now initializes only on mobile widths.
+- Mobile-only search summary/results-filter DOM initializes only on mobile widths.
 - Hidden stale/confidence DOM and empty startup scans/listeners are deferred/lazy where lifecycle evidence proved the UI did not yet exist.
 - Search progress uses the exact rendered-result count instead of repeatedly scanning `.hotel-card`.
 - Results/hotel/room/accessibility startup work is event/lifecycle driven where safe.
 - PR #39 cached `Intl.NumberFormat('ru-RU')` in the hot results price path; production deploy/live/post-deploy/baseline passed.
 - PR #41 cached the search-status `minPrice` formatter used by repeated polling; production deploy/live/post-deploy/baseline passed.
-- Temporary diagnostic PR #40 sampled one real progressive search. It produced 25 hotels at 37% and 25 hotels at 100%; the material fingerprints differed (`changed_transitions=1`, `unchanged_transitions=0`). PR #40 was closed without merge. Current evidence therefore does **not** justify result-payload dedup or incremental-render complexity.
-- Whole-flow recovery audit found a dead end when selected-tour loading failed transiently. PR #42 added an in-place **«Повторить загрузку тура»** action routed through the existing guarded `selectTour()` path. All six PR gates passed; merged as `ad4f90aac263c7583d06e98b5c55efa5383869ae`. Production deploy `33091140734`, active contract `33091140572`, tour live `33091140613`, flights live `33091140661`, result-detail live `33091140648`, security `33091140856`, post-deploy visual `33091226239` and baseline `33091226226` all passed.
+- Temporary diagnostic PR #40 sampled one real progressive search. It produced 25 hotels at 37% and 25 hotels at 100%; the material fingerprints differed (`changed_transitions=1`, `unchanged_transitions=0`). PR #40 was closed without merge, so current evidence does not justify result-payload dedup or incremental-render complexity.
+- PR #42 fixed the selected-tour transient-load dead end with an in-place **«Повторить загрузку тура»** action through the existing guarded `selectTour()` path. Production deploy/live/post-deploy/baseline passed.
+- PR #43 fixed critical catalog recovery: initial departures/countries failures no longer leave indefinite “Загружаем…” placeholders; an on-page retry preserves dates/guest inputs; a countries failure after departure change clears stale country and dependent destination filters instead of allowing an invalid old combination to survive. A temporary jsdom fault-injection diagnostic emitted `CATALOG_RECOVERY_OK initial_failure_retry=1 stale_destination_cleared=1` and was closed without merge. PR #43 merged as `00a2c2d36b662ed18ecfecb06c3f8e86d48cb3da`; deploy `33092056581`, active contract `33092056592`, tour live `33092056594`, result-detail live `33092056633`, security `33092056598`, post-deploy visual `33092133320` and durable baseline `33092133372` all passed.
+- Final recovery audit confirmed `search-continue-v6.js` restores its action as **«Попробовать ещё раз»** after continue/status/results failure and guards stale operations; no extra change was justified.
+- Lead retry/success and flight/price paths were re-audited with no additional material dead end confirmed.
+- Obsolete/superseded B7 PRs #28, #31 and #34 were closed so they no longer appear as pending product work.
 
 ### Explicitly deferred / retained
 
 - `lead-form-guard-v1.js` selected-tour `MutationObserver` stays: public programmatic `V2TourController.selectTour()` can mutate `#selectedTour` before `v2:tour-selected`; click-only lazy observation would weaken recovery.
 - `primary-meal-ux-v1.js` observation stays because catalog options are replaced dynamically.
-- Per-card `initialTourLimit()` `matchMedia` allocation is real but too small relative to stronger targets.
-- Selected-tour/flight price formatter allocations are user-driven and lower-frequency; do not optimize without evidence.
-- Progressive result fingerprint dedup/incremental render is deferred because the live diagnostic found no unchanged transition.
+- Per-card `initialTourLimit()` `matchMedia` allocation is real but too small to justify change without profiling/traffic evidence.
+- Selected-tour/flight price formatter allocations are user-driven and low-frequency; do not optimize without interaction profiling evidence.
+- Progressive result fingerprint dedup/incremental render stays deferred because the live diagnostic found no unchanged transition.
 - No evidence justifies JS bundling by request count alone.
 
 ## Exact next work order
 
-1. Continue the whole V2 recovery/performance audit, starting with **catalog bootstrap/change failure UX** and **search-continue recovery**. Confirm whether users can get stuck or see indefinitely misleading loading states; fix only confirmed issues.
-2. Re-audit search → progress → stale results → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery at mobile and desktop widths.
-3. After that audit, reassess B7 honestly: if no material measured performance/visual/recovery issue remains, close B7 and leave further optimization to B8/A8 real-traffic evidence rather than manufacturing micro-work.
-4. Keep live Tourvisor/tour-flight validation green whenever search/tour/flight surfaces are touched.
-5. Activate A8/B8 immediately when real advertising traffic appears.
+1. On each autonomous run, first inspect production CI/deploy/live checks and the current V2 journey for confirmed regressions: search → progress → stale results → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery.
+2. If a production, correctness, lead-risk, UX or responsive issue is confirmed, fix it immediately with relevant regression/live/visual verification.
+3. If production remains healthy and there is no new evidence, keep V2 stable rather than creating speculative micro-optimizations.
+4. Activate B8 and A8 together as soon as meaningful real advertising/live-user evidence is available; prioritize observed funnel friction and live behavior before deferred performance micro-work.
+5. Keep live Tourvisor/tour-flight validation green whenever search/tour/flight surfaces are touched.
 
 ## Guardrails carried forward
 
