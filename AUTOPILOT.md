@@ -6,13 +6,13 @@ This file is the operational companion to `AGENTS.md`. `AGENTS.md` defines autho
 
 ## Current product phase
 
-**Phase: residual pre-traffic hardening.**
+**Phase: pre-traffic ready; waiting for live traffic.**
 
-The active product is `v2/`. The major technical refactor, end-to-end UX audit, visual cascade consolidation, conversion-readiness pass, live Tourvisor correctness pass and initial SEO-foundation work are complete. Real advertising traffic has not yet been launched, so the live-traffic feedback loop remains waiting while safe pre-traffic hardening continues.
+The active product is `v2/`. The major technical refactor, end-to-end UX audit, visual cascade consolidation, conversion-readiness pass, live Tourvisor correctness pass, initial SEO-foundation work and residual pre-traffic hardening are complete. Real advertising traffic has not yet been launched, so the next primary feedback loop is A8 once live traffic starts.
 
-Current task: **A9 — residual V2 generation and CI cleanup**.
+Current task: **A8 — live traffic feedback loop (`WAITING FOR TRAFFIC`)**.
 
-The objective is to reduce stale generations and redundant CI without weakening active search, data, UX, analytics or lead contracts. Yandex Metrika configuration/goals and the existing lead-sending mechanism remain protected and must not be changed without explicit approval.
+Until traffic begins, avoid speculative cleanup of protected or potentially externally callable residuals. Yandex Metrika configuration/goals and the existing lead-sending mechanism remain protected and must not be changed without explicit approval.
 
 ## Active architecture
 
@@ -62,24 +62,11 @@ The active page loads `analytics-v4.js`. Existing identifiers/configuration are 
 
 ## Quality and deployment infrastructure
 
-- GitHub Actions jobs now run on `[self-hosted, Linux, X64]`.
-- The temporary write-capable self-hosted migration workflow has been removed after migration completion; no `ubuntu-latest` jobs remain.
+- GitHub Actions jobs run on `[self-hosted, Linux, X64]`.
+- The temporary write-capable self-hosted migration workflow was removed after migration completion; no `ubuntu-latest` jobs remain.
 - Pushes affecting `v2/**` deploy only the V2 directory through `deploy.yml`.
-- `validate-v2-active.yml` is the consolidated static/contract validator. It currently covers:
-  - all active JS syntax and required active modules;
-  - results sorting and partial-data handling;
-  - retry-policy semantics;
-  - advanced search-filter UX ownership/contracts;
-  - hotel/room contracts;
-  - flight-price synchronization invariants;
-  - retired generation/static-asset guards;
-  - stale-response generation guards;
-  - active PHP syntax;
-  - content-based asset-version semantics;
-  - catalog-cache hit/TTL/parameter isolation;
-  - active dependency closure and forbidden cross-project dependencies;
-  - deployment isolation.
-- Dedicated live workflows remain for checks that are materially different from static contract validation: catalog consistency, result detail, rooms, tours, tour selection, flights and flight pricing.
+- `validate-v2-active.yml` is the consolidated static/contract validator and covers active JS/PHP, sorting/partial-data handling, retry semantics, search-filter UX ownership, hotel/room contracts, flight-price invariants, retired-generation/static guards, stale-response generation guards, asset-version semantics, catalog-cache semantics, dependency closure and deployment isolation.
+- Dedicated live workflows remain for materially distinct live checks such as result detail, tours and tour selection, plus the other specialized live validators retained by the repository.
 - Lead and analytics validators remain separate because their contracts are protected and commercially sensitive.
 - `validate-v2-user-journey.yml`, SEO validation and the manual visual baseline remain separate end-to-end/specialized checks.
 - `visual-v2-baseline.yml` remains manually runnable; automatic push execution stays deferred while there is no live advertising traffic.
@@ -116,22 +103,19 @@ Status: `DONE`
 
 Initial URL/state, metadata/indexability, architecture and future landing-page integration work was completed incrementally without creating a parallel product.
 
-## Current task
-
 ### A9 — HARDENING: residual V2 generation and CI cleanup
-Status: `IN PROGRESS`
+Status: `DONE`
 
-Completed so far:
+Completed:
 - removed 17 proven inactive JS generations/helpers;
 - removed 8 unused local static assets;
-- removed 3 obsolete V2 smoke/deploy marker files that had no remaining readers;
-- removed 14 stale, redundant or completed migration workflows in total;
+- removed 3 obsolete V2 smoke/deploy marker files with no remaining readers;
+- removed 14 stale, redundant or completed migration workflows;
 - consolidated unique generation, asset-version, hotel/room, flight-price, results, retry-policy, dependency-isolation, catalog-cache and search-filter UX checks into the active V2 contract instead of dropping coverage;
-- completed migration of Actions jobs to the self-hosted runner and removed the temporary mass-rewrite/push workflow afterward.
+- completed migration of Actions jobs to the self-hosted runner and removed the temporary mass-rewrite/push workflow afterward;
+- verified final cleanup head `cd342950305359267034550e20478502b234e5f6`: active contract `33056378037`, deploy/live-search `33056378060`, security guard `33056378038`, tour live `33056378046`, result-detail live `33056378047` and tour-selection live `33056378054` all completed successfully.
 
-Protected or externally callable residuals such as `api.php`, `phone-config.php`, historical analytics and lead adapters remain untouched unless separate evidence proves retirement is safe.
-
-Current verification state: the first new self-hosted consolidation block passed in active-contract run `33056151427`. Final marker-cleanup head `cd342950305359267034550e20478502b234e5f6` has active-contract, deploy and live checks queued behind the self-hosted runner; they are pending evidence, not failures. Exact resume state is recorded in `AUTOPILOT_STATE.json`.
+Protected or potentially externally callable residuals such as `api.php`, `phone-config.php`, historical analytics and lead adapters remain intentionally untouched because retirement has not been independently proven.
 
 ## Deferred / waiting
 
@@ -143,14 +127,14 @@ Harness exists and remains manually runnable. Automatic push execution remains p
 ### A8 — LIVE TRAFFIC FEEDBACK LOOP
 Status: `WAITING FOR TRAFFIC`
 
-When advertising traffic begins, real production errors, search behavior, UX drop-offs and lead evidence become the primary feedback loop. Do not change Metrika/goals to improve measurement without explicit approval.
+This is now the next primary workstream. When advertising traffic begins, real production errors, search behavior, UX drop-offs and lead evidence become the primary feedback loop. Prioritize production breakage, lead loss, incorrect data and user-flow regressions. Do not change Metrika/goals to improve measurement without explicit approval.
 
 ## Next work order
 
-1. Collect active-contract, deploy and live evidence for the current pending V2 head; diagnose any failure before further V2 changes.
-2. Continue A9 only where retirement/consolidation is demonstrably safe and does not weaken specialized live, lead, analytics, SEO, journey or visual coverage.
-3. Audit residual externally callable endpoints by evidence rather than by repository-reference absence; keep them when external use cannot be ruled out.
-4. Once A9 has no further justified safe cleanup and all pending evidence is green, close A9 and remain ready for A8/live traffic.
+1. Keep the verified production V2 stable until real traffic provides new evidence.
+2. When advertising starts, activate A8 and inspect real production/search/lead behavior first rather than making speculative refactors.
+3. Continue manual visual checks when user-facing changes are made while automatic visual push checks remain deferred.
+4. Audit protected or externally callable residual endpoints only when separate evidence can prove retirement is safe.
 
 ## Hard boundaries carried forward
 
