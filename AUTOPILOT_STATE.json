@@ -1,35 +1,35 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T09:31:00+02:00",
-  "mode": "active_development",
-  "phase": "Visual cascade consolidation and responsive stability",
+  "updated_at": "2026-08-27T09:35:00+02:00",
+  "mode": "waiting_for_traffic",
+  "phase": "Live traffic feedback loop",
   "current_task": {
-    "id": "A3",
-    "category": "UX/VISUAL_STABILITY",
-    "title": "Consolidate unstable visual cascade areas",
-    "status": "IN_PROGRESS",
-    "objective": "Reduce proven CSS cascade fragility in the active V2 experience while preserving the current conversion flow and protected analytics/lead contracts.",
-    "next_action": "Continue auditing the final active CSS cascade for proven narrow-screen conflicts, especially result-card actions, sticky search controls and selected-tour/flight content; consolidate only winning-layer conflicts and keep full active/isolation/live/deploy regression coverage."
+    "id": "A8",
+    "category": "LIVE_FEEDBACK",
+    "title": "Live traffic feedback loop",
+    "status": "WAITING_FOR_TRAFFIC",
+    "objective": "Use real production behavior and live traffic evidence to prioritize the next UX/correctness changes instead of making speculative visual changes.",
+    "next_action": "When sufficient live traffic evidence is available, inspect real search/selection/lead behavior and production errors, fix only evidenced issues, and rerun the protected contract/live/deploy regressions."
   },
   "queue": [
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass","note":"Removed proven inactive historical generations for results-renderer, search-continue, search-lifecycle, and tour-controller; final contract/isolation/live/deploy checks passed."},
     {"id":"A1","status":"DEFERRED","title":"Visual baseline and regression harness","note":"Automatic visual runs temporarily disabled by project decision; workflow remains available manually."},
     {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit","note":"Primary form ordering, stale-result invalidation, search retry/error recovery, mobile result-filter outcome preview, selected-tour progressive disclosure and lead entry/completion UX were fixed through the active V2 path."},
-    {"id":"A3","status":"IN_PROGRESS","title":"Consolidate unstable visual cascade areas","note":"Incremental cascade audit fixed two proven mobile winning-layer conflicts. Commit 383f1b65 stabilized selected-tour dynamic price wrapping/size. Commit 1fd69bc2 fixed mobile results-tools hidden-state precedence: the late .results-tools{display:grid!important} rule could override the earlier global [hidden]{display:none!important} because specificity was equal, exposing the results toolbar before search or after state reset. Added .results-tools[hidden]{display:none!important}. Active contract, isolation, security and deploy run 33049955396 passed; Verify V2 and Live search smoke were green."},
+    {"id":"A3","status":"DONE","title":"Consolidate unstable visual cascade areas","note":"Incremental cascade audit fixed two proven mobile winning-layer conflicts. Commit 383f1b65 stabilized selected-tour dynamic price wrapping/size. Commit 1fd69bc2 fixed mobile results-tools hidden-state precedence. Final audit confirmed sticky search controls and selected-tour/flight narrow breakpoints are consistent. Commit c24d38bd added CI regression coverage for sticky search CSS and the mobile hidden-state invariant; Validate V2 search filters UX run 33050212255 passed."},
     {"id":"A4","status":"DONE","title":"Conversion readiness before live traffic","note":"Selected-tour and result-card UX were hardened across CTA clarity, progressive disclosure, mobile imagery, long Tourvisor content, flight selection and lead-entry context; protected lead semantics remained unchanged."},
     {"id":"A5","status":"DONE","title":"Live Tourvisor correctness pass","note":"Completed live coverage across catalogs, search/result/detail identity, tour-flight/default-price consistency, room association, repricing observation and partial-flight edge data. Production user-facing flight presentation was hardened in f7b16d06/2ee6e52d so placeholder SU000/00:00/zero-baggage/empty carry-on data is not shown as false precision, and collapsed equal-price mobile flight variants now expose safe outbound/return flight-time summaries including transfer-safe labeling. Updated E2E journey c81187a9 passed run 33048842814. Multi-tour flight profile b88909ef passed run 33048909672 across 3 tours / 252 variants / 504 segments with no noPlaces/onDemand flags."},
     {"id":"A7","status":"DONE","title":"SEO foundation audit and incremental work","note":"Temporary /poisk-turov-test/v2/ now has description, one H1 and noindex,follow; canonical remains intentionally absent. Live SEO guard covers base and parameterized search-state URLs, valid prefill, invalid-value normalization, internal links and active markers. Run 33049366372 passed on e2788661. SEO_FOUNDATION.md records the promotion contract and the boundary that client-rendered live results are application state, while future indexable destination pages need stable server-visible editorial content and URLs."},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop"}
   ],
   "last_ci": {
-    "workflow": "Deploy V2 only",
-    "run_id": 33049955396,
-    "head_sha": "1fd69bc27a4120742b5d94e0216e24ffeedeb599",
+    "workflow": "Validate V2 search filters UX",
+    "run_id": 33050212255,
+    "head_sha": "c24d38bdba7e1eaf24b195895fb6da16d706a208",
     "conclusion": "success",
-    "classification": "MOBILE_RESULTS_HIDDEN_STATE_STABILIZED"
+    "classification": "A3_CASCADE_REGRESSION_GUARD_GREEN"
   },
-  "last_verified_commit": "1fd69bc27a4120742b5d94e0216e24ffeedeb599",
+  "last_verified_commit": "c24d38bdba7e1eaf24b195895fb6da16d706a208",
   "pending_verification": null,
   "blocked": [],
   "protected": {
