@@ -9,7 +9,7 @@ on:
       - '.github/workflows/validate-v2-seo-foundation.yml'
 
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-validate-v2-seo-foundation-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

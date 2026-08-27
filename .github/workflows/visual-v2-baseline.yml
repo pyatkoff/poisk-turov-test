@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-visual-v2-baseline-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

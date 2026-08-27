@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-validate-lead-idempotency-v1-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-measure-v2-results-dom-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

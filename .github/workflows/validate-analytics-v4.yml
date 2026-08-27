@@ -6,7 +6,7 @@ on:
       - 'v2/analytics-v4.js'
       - '.github/workflows/validate-analytics-v4.yml'
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-validate-analytics-v4-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

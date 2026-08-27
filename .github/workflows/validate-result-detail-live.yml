@@ -7,7 +7,7 @@ on:
       - '.github/workflows/validate-result-detail-live.yml'
   workflow_dispatch:
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-validate-result-detail-live-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

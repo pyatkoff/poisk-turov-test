@@ -6,7 +6,7 @@ on:
       - 'v2/lead-price-v1.php'
   workflow_dispatch:
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-validate-lead-price-v1-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

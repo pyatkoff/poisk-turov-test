@@ -6,7 +6,7 @@ on:
       - 'v2/lead-form-guard-v1.js'
       - '.github/workflows/validate-lead-form-guard-v1.yml'
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-validate-lead-form-guard-v1-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

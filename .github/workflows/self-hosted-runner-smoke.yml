@@ -1,14 +1,10 @@
 name: Self-hosted runner smoke
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/self-hosted-runner-smoke.yml'
   workflow_dispatch:
 
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-self-hosted-runner-smoke-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

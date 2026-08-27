@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-optimize-self-hosted-queue-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   optimize:
     runs-on: [self-hosted, Linux, X64]

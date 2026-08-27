@@ -8,7 +8,7 @@ on:
       - '.github/workflows/validate-rooms-live.yml'
   workflow_dispatch:
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-validate-rooms-live-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

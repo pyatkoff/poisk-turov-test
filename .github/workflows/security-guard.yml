@@ -5,7 +5,7 @@ on:
   pull_request:
 
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-security-guard-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

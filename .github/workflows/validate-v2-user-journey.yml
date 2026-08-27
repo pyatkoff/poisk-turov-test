@@ -7,7 +7,7 @@ on:
       - '.github/workflows/validate-v2-user-journey.yml'
 
 concurrency:
-  group: Optimize self-hosted CI queue-refs/heads/main
+  group: ci-validate-v2-user-journey-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
