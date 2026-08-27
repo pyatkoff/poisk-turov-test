@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T23:32:00+02:00",
+  "updated_at": "2026-08-28T00:12:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Conversion UX 3.0 complete; live optimization waiting for evidence",
   "current_task": {
@@ -10,16 +10,16 @@
     "title": "Live conversion optimization",
     "status": "WAITING_FOR_TRAFFIC",
     "objective": "Use meaningful real production traffic and funnel behavior to prioritize the next conversion improvements instead of speculative polish.",
-    "next_action": "Use the privacy-safe `Audit V2 recent browser traffic` 30-minute window added by PR #74. Its first validated run observed 0 real-browser V2 requests, 0 browser 4xx/5xx and 0 browser rate-limit delays, so there is still no post-PR-#72 user sample from which to judge the lazy advanced-catalog mitigation. Wait for a non-zero recent browser window, then compare startup actions/rate-limit delays against the prior browser signal. Keep C7 conversion changes waiting because the observed cumulative funnel remains only 2 search_start and 1 tour."
+    "next_action": "First inspect fresh main/deploy/live/visual health and the privacy-safe recent 30-minute browser audit. PR #76 is production-green and establishes the explicit first-screen contract that hotel category and meal remain primary search controls. Preserve that contract and the delayed/on-demand meal catalog load. Activate C7/B8/A8 only when a non-zero recent real-browser sample or another concrete production signal justifies further changes; otherwise keep re-auditing the full V2 journey without manufacturing micro-work."
   },
   "queue": [
-    {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
+    {"id":"C1","status":"DONE","title":"Search Experience 3.0","note":"PR #76 additionally keeps hotel category and meal visible in the primary search; this is a confirmed product contract, not a C7 traffic experiment."},
     {"id":"C2","status":"DONE","title":"Results Experience 3.0"},
     {"id":"C3","status":"DONE","title":"Selected Tour Experience 3.0"},
     {"id":"C4","status":"DONE","title":"Lead Experience 3.0"},
     {"id":"C5","status":"DONE","title":"Flight friction"},
-    {"id":"C6","status":"DONE","title":"Visual refinement","note":"PR #57 flattened the redundant outer flights-section card while preserving individual flight variants and recovery. PR #59 fixed a confirmed mobile selected-tour overlap where the C1 sticky search CTA could remain visible over checkout, including programmatic selection. PR #61 compacted selected-tour reassurance into a lightweight strip while preserving trust semantics. The analogous results-panel flattening remains intentionally rejected because it improves hotel-vs-tour hierarchy on desktop."},
-    {"id":"C7","status":"WAITING_FOR_TRAFFIC","title":"Live conversion optimization","note":"PRs #63-#65 established privacy-safe live actor/funnel evidence. PRs #67-#71 then classified the previously opaque nginx error log: the tail contained rate-limit delays plus filesystem symlink-loop warnings; actor/action attribution proved 106 rate-limit delays belonged to browsers, especially hidden startup catalogs (hotel_types 12/18 browser requests delayed, operators 12/18, meals 8/14). PR #72 moved advanced catalogs behind opening `Фильтры отдыха`; all six PR gates, V2 deploy 33117246904, live search smoke, post-deploy visual 33117341554 and baseline 33117341548 passed. PR #74 added a privacy-safe recent 30-minute browser window so post-deploy behavior is not mixed with the rolling tail; its first run was healthy but had 0 real-browser requests, so the performance effect is not yet measurable. Conversion evidence is still only 2 search_start and 1 tour, so C7 stays waiting."},
+    {"id":"C6","status":"DONE","title":"Visual refinement"},
+    {"id":"C7","status":"WAITING_FOR_TRAFFIC","title":"Live conversion optimization","note":"Privacy-safe live evidence remains too small for conversion changes. PR #72 mitigated browser startup catalog rate-limit pressure; PR #74 added the recent browser window. PR #76 is a user-confirmed search UX correction and is production-green, not evidence to activate C7."},
     {"id":"B1","status":"DONE","title":"Visual foundation"},
     {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
     {"id":"B3","status":"DONE","title":"Results Experience 2.0"},
@@ -27,8 +27,8 @@
     {"id":"B5","status":"DONE","title":"Trust and conversion UX"},
     {"id":"B6","status":"DONE","title":"Visual regression baseline"},
     {"id":"B7","status":"DONE","title":"Performance and visual stability"},
-    {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization","note":"A live-derived performance issue was fixed in PR #72: hidden advanced catalogs no longer contribute to initial browser request burst. PR #74 now supplies a recent 30-minute browser window; wait for a non-zero post-deploy sample before further optimization."},
-    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop","note":"PRs #67-#71 classify nginx severity/families, safe paths/actions and actor classes without exposing IPs/query strings/user payloads. PR #74 adds a separate recent 30-minute browser-only evidence window for post-deploy attribution. Continue using both evidence sources on each run."},
+    {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
+    {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
     {"id":"A1","status":"DEFERRED_SUPERSEDED_BY_B6","title":"Visual baseline and regression harness"},
     {"id":"A2","status":"DONE","title":"End-to-end search journey UX audit"},
@@ -40,40 +40,46 @@
   ],
   "conversion_ux_3": {
     "status": "C1_C6_DONE_C7_WAITING_FOR_TRAFFIC",
-    "c1": "PRs #46/#48 plus #50 active-contract alignment",
-    "c2": "PR #49 plus #52 post-deploy visual contract alignment",
+    "c1": "PRs #46/#48 plus #50; PR #76 keeps hotel category and meal on the first-screen primary search",
+    "c2": "PR #49 plus #52",
     "c3": "PR #51",
     "c4": "PRs #53 and #55",
-    "c5": "PR #54 measured fresh flight latency; PR #56 auto-loads flights after tour selection and is production-green",
-    "c6": "PR #57 flattened nested outer flight-section chrome; PR #59 fixed mobile sticky-search overlap on selected tour; PR #61 compacted selected-tour reassurance into a lightweight strip; all are production-green"
+    "c5": "PR #54 latency evidence plus PR #56 automatic flights",
+    "c6": "PRs #57/#59/#61 visual refinement"
+  },
+  "product_contracts": {
+    "logo": "DO_NOT_CHANGE",
+    "primary_search": "Hotel category/stars and meal type stay visible on the first screen. Other advanced destination/hotel/flight filters may remain behind All filters.",
+    "meal_catalog_performance": "Do not return meals to the immediate startup burst. PR #76 loads meals after a 2.2s visible-page delay or immediately on explicit user request, while preserving selection and existing Tourvisor contracts.",
+    "brand_context": "AnyTour has four offices: Moscow, Saint Petersburg, Kaliningrad and Cheboksary. Do not invent payment/contract/support promises; exact factual terms are still required before trust-copy expansion."
   },
   "last_ci": {
-    "workflow": "Visual V2 baseline",
-    "run_id": 33117341548,
-    "head_sha": "06edf5905a9290698a413efd11e1606a86a74a2c",
+    "workflow": "Visual V2 post-deploy",
+    "run_id": 33121280050,
+    "head_sha": "940758c08b9711a20d0429d124c941b6596bc710",
     "conclusion": "success",
-    "classification": "LIVE_BROWSER_STARTUP_CATALOG_RATE_LIMIT_MITIGATION_PRODUCTION_GREEN"
+    "classification": "PRIMARY_STARS_MEAL_FIRST_SCREEN_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "06edf5905a9290698a413efd11e1606a86a74a2c",
-  "pending_verification": "Non-zero recent 30-minute real-browser sample after PR #72; first PR #74 audit run contained 0 browser requests.",
+  "last_verified_commit": "940758c08b9711a20d0429d124c941b6596bc710",
+  "pending_verification": "Non-zero recent 30-minute real-browser sample after the startup-catalog mitigation; current conversion sample remains insufficient for C7.",
   "blocked": [],
   "deferred": [
-    {"scope":"C7 conversion changes from current live sample","reason":"Latest cumulative privacy-safe real-browser funnel still has only 2 search_start and 1 tour, while the first recent 30-minute window has 0 browser requests; insufficient evidence for conversion changes. Observed V2 5xx remains curl validation traffic, not real browsers."},
-    {"scope":"global /images symlink-loop used by V2","reason":"Nginx error attribution found `Too many levels of symbolic links` on /images/logo.svg, /images/pay_icons.png and /images/mir-logo-h229px.png; only 6 events mapped to real browsers and access responses remain HTTP 200. Those global assets live outside the allowed V2/repository write scope. Do not modify the neighboring/global site or server config; revisit only if user impact is confirmed or a safe V2-local source asset can be vendored."},
-    {"scope":"results variant outer panel flattening","reason":"Fresh mobile+desktop baseline review showed the panel materially separates hotel-level comparison from concrete tour choice on desktop; retain the hierarchy rather than mechanically flattening it."},
-    {"scope":"lead-form-guard-v1.js selectedTour MutationObserver","reason":"Public programmatic V2TourController.selectTour() can mutate #selectedTour before v2:tour-selected; lazy observation tied only to clicks/events would weaken recovery coverage."},
-    {"scope":"results-renderer-v5.js per-card initialTourLimit matchMedia allocation","reason":"Confirmed but small; defer until profiling or live traffic justifies it."},
-    {"scope":"tour-controller-v4.js and flight-price-sync-v1.js price formatter allocations","reason":"User-driven low-frequency work; defer unless profiling shows material interaction cost."},
-    {"scope":"progressive results payload fingerprint dedup/incremental render","reason":"Live diagnostic PR #40 observed only material changes; no unchanged transition to eliminate."}
+    {"scope":"C7 conversion changes from current live sample","reason":"Real-browser funnel evidence remains too small; require a meaningful recent browser sample before conversion changes."},
+    {"scope":"global /images symlink-loop used by V2","reason":"Global assets/server layer is outside allowed V2/repository write scope; sampled access still returned HTTP 200."},
+    {"scope":"trust claims for payment, contract and trip support","reason":"The business offers these areas but exact factual terms are not yet recorded; do not invent promises."},
+    {"scope":"results variant outer panel flattening","reason":"Five-viewport evidence showed it materially supports hotel-vs-tour hierarchy on desktop."},
+    {"scope":"lead-form selectedTour MutationObserver","reason":"Retain programmatic selectTour recovery coverage."},
+    {"scope":"small formatter/matchMedia/progressive-results micro-optimizations","reason":"Defer until profiling/live evidence justifies them."}
   ],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
+    "global_site_assets_and_server_config": "DO_NOT_MODIFY_OUTSIDE_ALLOWED_V2_SCOPE",
     "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "lead_sending_mechanism": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL"
   },
   "permissions": {
-    "design_within_project": "PROACTIVE_CHANGES_ALLOWED",
+    "design_within_project": "PROACTIVE_CHANGES_ALLOWED_EXCEPT_LOGO",
     "site_surface_within_project": "PROACTIVE_DESIGN_AND_UX_CHANGES_ALLOWED"
   },
   "quality_priorities": {
@@ -88,7 +94,7 @@
     "on_ci_success": "collect_done_evidence_then_advance_queue",
     "on_blocker": "record_blocker_and_continue_independent_work",
     "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
-    "on_user_facing_change": "preserve_protected_contracts_and_validate_behavior_before_advancing",
+    "on_user_facing_change": "preserve protected contracts and validate behavior before advancing",
     "on_live_traffic": "activate_C7_B8_A8_and_reprioritize_from_real_evidence"
   }
 }
