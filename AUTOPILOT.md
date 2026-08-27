@@ -8,9 +8,9 @@ This file is the operational companion to `AGENTS.md`. `AGENTS.md` defines autho
 
 **Phase: product UX/visual development before and during live traffic.**
 
-The active product is `v2/`. The major technical refactor, correctness hardening, SEO foundation and residual pre-traffic cleanup are complete. The next development phase is product-led: make the full AnyTour experience visually coherent, modern, fast and conversion-oriented, with UX and visual quality as first-class priorities.
+The active product is `v2/`. The major technical refactor, correctness hardening, SEO foundation and residual pre-traffic cleanup are complete. Development is now product-led: make the full AnyTour experience visually coherent, modern, fast and conversion-oriented, with UX and visual quality as first-class priorities.
 
-Current primary task: **B1 — Visual foundation (`IN PROGRESS`)**.
+Current primary task: **B2 — Search Experience 2.0 (`IN PROGRESS`)**.
 
 Parallel waiting task: **A8 — live traffic feedback loop (`WAITING FOR TRAFFIC`)**. Once advertising traffic starts, live production evidence must immediately influence prioritization without stopping safe B-series product work.
 
@@ -25,6 +25,7 @@ The user has explicitly approved redesign work across the whole site surface wit
 5. Prefer improving the complete user journey over adding isolated features.
 6. Do not add another CSS override layer merely to compensate for an existing override layer; consolidate toward a coherent design system.
 7. Preserve protected analytics and lead transport contracts while freely improving their presentation/entry UX.
+8. Normal CI and visual checks run on GitHub-hosted runners; production deployment remains V2-only and uses the repository deploy workflow.
 
 ## Active architecture
 
@@ -75,32 +76,37 @@ The active page loads `analytics-v4.js`. Existing identifiers/configuration are 
 ## B-series product roadmap
 
 ### B1 — VISUAL FOUNDATION
-Status: `IN PROGRESS`
+Status: `DONE`
 
-Objective: make the full AnyTour V2 surface feel like one modern travel product rather than a legacy site shell containing a newer search widget.
-
-Scope:
-- redesign global header/navigation within this project;
-- preserve logo/phone/navigation contracts while modernizing layout and responsive behavior;
-- create compact branded first-screen/hero and trust cues;
-- establish product-shell tokens for container widths, spacing, typography, radii, surfaces, shadows, buttons and chips;
-- eliminate the strongest visual conflict between legacy header styles and V2 cards/forms;
-- visually verify 375/430/768/1024/1440 before merge.
-
-Current implementation branch: `ux/b1-visual-foundation`, PR #3.
+Result:
+- global header/navigation and first-screen product shell were modernized in PR #3 without changing navigation, analytics, Tourvisor or lead contracts;
+- compact branded hero and trust cues were added;
+- product-shell visual tokens and responsive ownership were established;
+- B1 was merged and deployed to production;
+- production functional/live checks remained green;
+- GitHub-hosted visual post-deploy run `33060952362` passed at 375, 430, 768, 1024 and 1440 px with HTTP 200, no document-level overflow and no page errors.
 
 ### B2 — SEARCH EXPERIENCE 2.0
-Status: `QUEUED`
+Status: `IN PROGRESS`
 
 Objective: turn the working search form into a fast, intuitive travel-search composer.
 
-Scope:
-- improve date selection toward a proper travel calendar/range experience;
-- retain effective quick-night presets and guest steppers;
-- reduce mobile vertical friction before the primary CTA;
-- improve hierarchy of stars/meal/secondary filters;
+Current implementation: `ux/b2-search-experience`, draft PR #4.
+
+Completed in the current B2 iteration:
+- primary field hierarchy and density improved without changing search request semantics;
+- dates and tourists evolved into intentional desktop popovers / mobile sheets with explicit `Готово`, outside-click and Escape closing, and single-open-picker behavior;
+- quick-night presets and guest steppers retained;
+- child ages fixed to stay inside the guest sheet instead of expanding outside it on mobile;
+- departure date controls now mirror the existing lifecycle rule: no past dates and a maximum 21-day departure range;
+- normal PR validation and security checks run green on GitHub-hosted runners;
+- a GitHub-hosted visual PR gate was added to exercise PR V2 assets against the production shell at 375/430/768/1024/1440 before merge.
+
+Remaining B2 scope:
+- validate the current branch with the visual PR gate and fix any viewport/intermediate-state regression;
+- continue reducing mobile vertical friction and improve stars/meal/secondary-filter hierarchy;
 - evolve advanced filters toward an intentional sheet/panel experience;
-- reduce or eliminate initial JS-driven layout shift by rendering closer to the final component structure server-side;
+- reduce initial JS-driven layout shift where this can be done safely without creating a parallel form implementation;
 - preserve search lifecycle ownership and Tourvisor request semantics.
 
 ### B3 — RESULTS EXPERIENCE 2.0
@@ -146,7 +152,7 @@ Objective: lock the redesigned product into a repeatable visual safety net.
 Scope:
 - run and refine screenshot coverage at 375, 430, 768, 1024 and 1440;
 - cover initial search, opened filters, children, results and selected-tour states where practical;
-- promote the visual harness from deferred/manual-only usage once the new visual foundation is stable enough for meaningful baselines.
+- promote the visual harness from gate/evidence usage to durable baseline comparison once the redesign is stable enough for meaningful snapshots.
 
 ### B7 — PERFORMANCE & VISUAL STABILITY
 Status: `QUEUED`
@@ -213,7 +219,7 @@ Residual inactive generations, static assets, markers and redundant workflows we
 ### A1 — VISUAL / UX: baseline and regression harness
 Status: `DEFERRED -> superseded by B6 once redesign stabilizes`
 
-The existing harness remains available. B6 owns the decision to establish the new baseline after the redesign is stable enough that screenshots represent a durable visual contract.
+The visual harness is active for evidence/gating. B6 owns durable baseline comparison after the redesign is stable enough that screenshots represent a lasting visual contract.
 
 ### A8 — LIVE TRAFFIC FEEDBACK LOOP
 Status: `WAITING FOR TRAFFIC`
@@ -222,11 +228,11 @@ A8 remains the operational live-traffic safety loop. B8 is the product-optimizat
 
 ## Next work order
 
-1. Complete B1 on the isolated branch: header, first screen, core design tokens and viewport validation.
-2. Merge/deploy B1 only after active contract + relevant live checks + visual inspection are green.
-3. Advance to B2 search experience, then B3 results and B4 checkout/selected-tour.
+1. Complete B2 in draft PR #4: current search composer/picker work, advanced-filter/mobile-flow polish and five-viewport visual PR validation.
+2. Merge/deploy B2 only after PR contract/security/visual checks are green; then verify production and live search behavior.
+3. Advance to B3 results and B4 checkout/selected-tour.
 4. Implement B5 trust/conversion surfaces while preserving lead transport and analytics contracts.
-5. Establish B6 visual baselines after the redesigned flow is visually stable.
+5. Establish B6 durable visual baselines after the redesigned flow is visually stable.
 6. Perform B7 CSS/performance/CLS consolidation after behavior and design settle.
 7. Activate A8/B8 immediately when real advertising traffic starts and reprioritize from evidence.
 
