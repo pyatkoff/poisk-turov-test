@@ -33,6 +33,45 @@ jobs:
           grep -q "flight-price-sync-v1.js" v2/index.php
           grep -q "search-lifecycle-v6.js" v2/index.php
           grep -q "search-continue-v6.js" v2/index.php
+      - name: Validate results sorting and partial-data contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          global.document={readyState:'loading',getElementById:()=>({value:'price',dataset:{},addEventListener:()=>{}}),addEventListener:()=>{}};
+          global.window={addEventListener:()=>{},dispatchEvent:()=>{}};
+          global.CustomEvent=function(){};
+          require('./v2/results-renderer-v5.js');
+          const r=global.window.V2ResultsV5;
+          if(!r||r.version!==5)process.exit(1);
+          let list=r.sorted([{id:'unknown',price:0},{id:'expensive',price:90000},{id:'cheap',price:70000}],'price');
+          if(list.map(x=>x.id).join(',')!=='cheap,expensive,unknown')process.exit(2);
+          list=r.sorted([{id:'unknown',rating:4.8,price:0},{id:'priced',rating:4.8,price:80000}],'rating');
+          if(list.map(x=>x.id).join(',')!=='priced,unknown')process.exit(3);
+          if(r.textValue({russianName:'Стандарт'})!=='Стандарт')process.exit(4);
+          if(r.textValue([{name:'DBL'},{title:'SEA VIEW'}])!=='DBL, SEA VIEW')process.exit(5);
+          const row=r.tourRow({id:'x',roomType:{name:'Deluxe'},placement:{title:'2 ADL'},meal:{russianName:'Всё включено'},operator:{name:'Test operator'},price:100000});
+          if(row.includes('[object Object]')||!row.includes('Deluxe')||!row.includes('2 ADL')||!row.includes('Всё включено'))process.exit(6);
+          console.log('RESULTS_V5_OK');
+          NODE
+      - name: Validate runtime retry policy semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          global.window={};
+          require('./v2/runtime-retry-policy.js');
+          const p=window.V2RetryPolicy;
+          if(!p) process.exit(1);
+          if(!p.shouldRetry('search_status',{code:'HTTP_ERROR',status:502},0)) process.exit(2);
+          if(!p.shouldRetry('flights',{code:'NETWORK_ERROR'},0)) process.exit(3);
+          if(p.shouldRetry('search_status',{code:'HTTP_ERROR',status:400},0)) process.exit(4);
+          if(p.shouldRetry('search_start',{code:'HTTP_ERROR',status:502},0)) process.exit(5);
+          if(p.shouldRetry('search_continue',{code:'NETWORK_ERROR'},0)) process.exit(6);
+          if(p.shouldRetry('search_status',{code:'TIMEOUT'},0)) process.exit(7);
+          if(p.shouldRetry('search_status',{code:'HTTP_ERROR',status:503},1)) process.exit(8);
+          console.log('V2_RETRY_POLICY_OK');
+          NODE
       - name: Validate hotel and room module contracts
         shell: bash
         run: |
@@ -126,6 +165,37 @@ jobs:
           if(v2_asset_content_version($f)!=='0'){fwrite(STDERR,"missing file contract failed\n");exit(1);}
           echo "V2_ASSET_CONTENT_VERSION_OK\n";
           PHP
+      - name: Validate active V2 dependency closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import pathlib,re,sys
+          root=pathlib.Path('v2')
+          index=(root/'index.php').read_text(encoding='utf-8')
+          assets=re.findall(r"v2_asset\('([^']+)'\)",index)
+          missing=[x for x in assets if not (root/x).is_file()]
+          print('ACTIVE_ASSETS',len(assets),'MISSING',missing)
+          if missing: sys.exit(1)
+          active=['index.php','api-v2.php','lead-adapter-v2.php','assets.php','form-defaults.php','analytics-config.php','privacy-config.php']+assets
+          forbidden=[r'poisk-turov-test/anytour',r'\.\./anytour',r'/anytour/images',r'\bTvApi\b',r'tvapi\.php',r'/max-search/']
+          hits=[]
+          for rel in dict.fromkeys(active):
+              p=root/rel
+              if not p.is_file() or p.suffix.lower() in {'.png','.jpg','.jpeg','.gif','.webp','.svg'}: continue
+              text=p.read_text(encoding='utf-8',errors='ignore')
+              for pattern in forbidden:
+                  if re.search(pattern,text,re.I): hits.append((rel,pattern))
+          print('FORBIDDEN_HITS',hits)
+          if hits: sys.exit(2)
+          allowed=[]
+          for rel in ('index.php','lead-adapter-v2.php'):
+              text=(root/rel).read_text(encoding='utf-8',errors='ignore')
+              if 'bitrix/modules/main/include/prolog_before.php' in text: allowed.append(rel+':bitrix')
+              if 'site_conf.php' in text: allowed.append(rel+':site_conf')
+          print('ALLOWED_PLATFORM_DEPS',allowed)
+          print('V2_DEPENDENCY_CLOSURE_OK')
+          PY
       - name: Validate V2 deployment isolation
         shell: bash
         run: |
