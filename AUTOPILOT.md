@@ -97,18 +97,26 @@ A subsequent `Validate V2 tour live` failure was investigated before moving on. 
 ### B7 — PERFORMANCE & VISUAL STABILITY — `IN PROGRESS`
 Objective: reduce client overhead, CSS ownership/cascade complexity and layout instability without changing product behavior or weakening the B6 visual contract.
 
-Initial audit observations:
-- `v2/index.php` still loads many separate CSS/JS assets, so ownership and client overhead need measurement before consolidation;
-- result hotel images already use lazy loading;
+Completed evidence-backed work:
+- PR #20 moved `flight-choice-summary` presentation out of JS inline-style ownership into the existing checkout stylesheet with identical declarations. Contract/security/general visual/selected-tour/baseline checks passed; merged as `6d504a3448cf2f4f61b059631c625f7402ec09f1`. V2 deploy `33073307610`, post-deploy visual `33073391975` and main baseline `33073391983` passed.
+- The active page was statically measured at roughly 22 CSS + 24 JS local V2 references before request consolidation.
+- PR #21 concatenated the existing `anytour-checkout-brand.css` rules ahead of `checkout-experience-v1.css` in the same cascade order and removed the redundant stylesheet link. All PR gates, including the durable five-viewport baseline and selected-tour coverage, passed. It merged as `048a033a73e3247f390945cdd3e3659ce253ab9e`; V2 deploy `33074552891` and result-detail live `33074553035` passed.
+- PR #22 applied the same cascade-preserving ownership consolidation to `anytour-results-brand.css` + `results-experience-v1.css`, removing a second blocking stylesheet request. PR contract/security/general visual/selected-tour/durable baseline all passed; merged as `68f0902a491fda91c4768da193c5b42a0c2df1eb`. V2 deploy `33074813386`, active contract `33074813410` and live-tour `33074813385` passed; final main post-deploy/baseline evidence was still completing when this state was written.
+- Active `v2/index.php` now references 20 CSS + 24 JS local assets (44 CSS/JS resources), down by two CSS requests without intentional visual change.
+- A red live-tour run on the first consolidation was traced to a transient `curl` exit 28 on an idempotent status read. The old shell used `set -e`, so it aborted before its own retry/fallback logic. A direct rerun passed. PR #23 made only idempotent `search_status`, `search_results`, `tour` and `flights` reads tolerant of curl-level timeouts while deliberately leaving non-idempotent `search_start` unretried; PR live run `33074794356` passed, it merged as `92de5263fc4eb09dd8fbba4c6b8aaa6916a05868`, and main live run `33074920997` passed.
+
+Current audit observations:
+- result hotel images already reserve explicit height/min-height and use lazy loading, so they are a lower CLS risk;
+- selected-tour imagery has explicit aspect-ratio reservation on mobile but not yet on desktop; this is a measurement target, not an assumed bug, because source image geometry varies;
 - `accessibility.js` no longer dynamically bootstraps UX helper scripts, so older architecture text suggesting that responsibility is stale and should not drive refactoring;
 - header logo layout has explicit CSS dimensions, while further intrinsic-size/CLS work should only be done with verified asset geometry;
-- B7 changes should be isolated, compared against the B6 baseline, and followed by relevant live Tourvisor/tour-flight checks.
+- after the two request consolidations, the remaining 24 JS references should be audited by responsibility/startup cost before any bundling; request count alone is not sufficient justification for combining behavior modules.
 
 Next work:
-1. Measure active V2 asset loading and identify high-confidence redundant CSS/JS ownership before changing bundles/order.
-2. Audit layout-shift risks in header, results images and progressive selected-tour states; prefer intrinsic sizing/reserved space where evidence supports it.
-3. Consolidate repeated tokens/overrides incrementally rather than adding a new override layer.
-4. Preserve exact five-viewport screenshots unless an intentional visual improvement is separately justified and reviewed through baseline evidence.
+1. Complete/record the production post-deploy and main baseline evidence for `68f0902a...`.
+2. Measure layout shifts in progressive selected-tour/image states before changing geometry; only reserve desktop image space if evidence shows a meaningful shift and the chosen rule safely handles variable hotel-image ratios.
+3. Audit adjacent JS responsibilities and startup cost before considering request consolidation; preserve load order and protected analytics/lead contracts.
+4. Continue consolidating repeated CSS ownership only where original cascade order can be preserved exactly and B6 screenshots stay unchanged.
 
 ### B8 — LIVE PRODUCT OPTIMIZATION — `WAITING FOR TRAFFIC`
 Use real searches/errors/result interactions/tour selections/leads to reprioritize product work. Do not change Metrika goals/config merely for reporting convenience.
@@ -127,8 +135,8 @@ Use real searches/errors/result interactions/tour selections/leads to reprioriti
 
 ## Next work order
 
-1. B7: measure active client/CSS cost and layout stability before changing implementation.
-2. Apply small behavior-preserving performance/CLS/cascade improvements with B6 baseline comparison after each material visual change.
+1. B7: finish current production visual evidence, then measure progressive selected-tour CLS rather than guessing geometry.
+2. Audit JS responsibility/startup cost and continue only small, behavior-preserving consolidation with B6 baseline comparison.
 3. Keep live Tourvisor/tour-flight validation green whenever search/tour/flight surfaces are touched.
 4. Activate A8/B8 immediately when real advertising traffic appears.
 
