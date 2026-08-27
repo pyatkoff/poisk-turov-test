@@ -37,6 +37,30 @@ jobs:
           done
           echo V2_JS_OK
 
+      - name: Validate lazy advanced catalog contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const src=fs.readFileSync('v2/catalogs-v2.js','utf8');
+          const required=[
+            "extras=form&&form.querySelector('details.extras')",
+            "criticalReady=false,advancedKey='',mealsLoaded=false",
+            "function advancedOpen()",
+            "async function ensureAdvanced(token,force)",
+            "if(advancedOpen())await ensureAdvanced(token,true)",
+            "extras.addEventListener('toggle'",
+            "if(!extras.open||!criticalReady)return",
+            "get advancedLoaded(){return !!advancedKey;}"
+          ];
+          required.forEach(token=>{if(!src.includes(token))throw new Error('lazy catalog contract missing: '+token);});
+          const init=src.slice(src.indexOf('async function init()'),src.indexOf('function renderChildAges'));
+          if(!init.includes('await loadCountries(token)'))throw new Error('critical countries load missing from init');
+          if(init.includes('Promise.all([refreshDestination(token),loadMeals(token)])'))throw new Error('advanced catalogs leaked back into startup');
+          console.log('V2_LAZY_ADVANCED_CATALOGS_OK');
+          NODE
+
       - name: Validate C5 flight autoload contract
         shell: bash
         run: |
