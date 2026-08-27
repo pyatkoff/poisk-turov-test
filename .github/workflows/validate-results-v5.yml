@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Syntax and sorting smoke
+      - name: Syntax, sorting and partial-data smoke
         shell: bash
         run: |
           set -euo pipefail
@@ -26,5 +26,9 @@ jobs:
           if(list.map(x=>x.id).join(',')!=='cheap,expensive,unknown')process.exit(2);
           list=r.sorted([{id:'unknown',rating:4.8,price:0},{id:'priced',rating:4.8,price:80000}],'rating');
           if(list.map(x=>x.id).join(',')!=='priced,unknown')process.exit(3);
+          if(r.textValue({russianName:'Стандарт'})!=='Стандарт')process.exit(4);
+          if(r.textValue([{name:'DBL'},{title:'SEA VIEW'}])!=='DBL, SEA VIEW')process.exit(5);
+          const row=r.tourRow({id:'x',roomType:{name:'Deluxe'},placement:{title:'2 ADL'},meal:{russianName:'Всё включено'},operator:{name:'Test operator'},price:100000});
+          if(row.includes('[object Object]')||!row.includes('Deluxe')||!row.includes('2 ADL')||!row.includes('Всё включено'))process.exit(6);
           console.log('RESULTS_V5_OK');
           NODE
