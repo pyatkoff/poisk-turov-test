@@ -8,6 +8,10 @@ on:
       - '.github/workflows/validate-v2-active.yml'
   workflow_dispatch:
 
+concurrency:
+  group: Optimize self-hosted CI queue-refs/heads/main
+  cancel-in-progress: true
+
 jobs:
   validate-active-v2:
     runs-on: [self-hosted, Linux, X64]

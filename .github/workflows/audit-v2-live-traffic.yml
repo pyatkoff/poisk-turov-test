@@ -6,6 +6,10 @@ on:
       - '.github/workflows/audit-v2-live-traffic.yml'
   workflow_dispatch:
 
+concurrency:
+  group: Optimize self-hosted CI queue-refs/heads/main
+  cancel-in-progress: true
+
 jobs:
   audit:
     runs-on: [self-hosted, Linux, X64]

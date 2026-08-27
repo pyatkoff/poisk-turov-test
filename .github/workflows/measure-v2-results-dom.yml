@@ -6,6 +6,10 @@ on:
       - '.github/workflows/measure-v2-results-dom.yml'
   workflow_dispatch:
 
+concurrency:
+  group: Optimize self-hosted CI queue-refs/heads/main
+  cancel-in-progress: true
+
 jobs:
   measure:
     runs-on: [self-hosted, Linux, X64]

@@ -6,6 +6,10 @@ on:
       - 'v2/**'
       - '.github/workflows/validate-tour-live.yml'
   workflow_dispatch:
+concurrency:
+  group: Optimize self-hosted CI queue-refs/heads/main
+  cancel-in-progress: true
+
 jobs:
   validate-tour-live:
     runs-on: [self-hosted, Linux, X64]

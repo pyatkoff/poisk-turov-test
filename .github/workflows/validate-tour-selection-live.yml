@@ -5,6 +5,10 @@ on:
     paths:
       - 'v2/.tour-selection-smoke'
   workflow_dispatch:
+concurrency:
+  group: Optimize self-hosted CI queue-refs/heads/main
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: [self-hosted, Linux, X64]

@@ -6,6 +6,10 @@ on:
       - 'v2/**'
       - '.github/workflows/validate-result-detail-live.yml'
   workflow_dispatch:
+concurrency:
+  group: Optimize self-hosted CI queue-refs/heads/main
+  cancel-in-progress: true
+
 jobs:
   validate-result-detail-live:
     runs-on: [self-hosted, Linux, X64]

@@ -6,6 +6,10 @@ on:
     paths:
       - '.github/workflows/validate-v2-user-journey.yml'
 
+concurrency:
+  group: Optimize self-hosted CI queue-refs/heads/main
+  cancel-in-progress: true
+
 jobs:
   live-journey:
     runs-on: [self-hosted, Linux, X64]

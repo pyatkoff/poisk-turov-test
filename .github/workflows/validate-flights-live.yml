@@ -7,6 +7,10 @@ on:
       - 'v2/api-v2.php'
       - '.github/workflows/validate-flights-live.yml'
   workflow_dispatch:
+concurrency:
+  group: Optimize self-hosted CI queue-refs/heads/main
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: [self-hosted, Linux, X64]
