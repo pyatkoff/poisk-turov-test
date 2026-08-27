@@ -50,8 +50,10 @@
   .primary-step-1,.primary-step-2,.primary-step-3,.primary-step-4,.primary-step-5,.primary-step-6{grid-column:1/-1}
   .primary-search-flow>.field>span,.dates-ux>span,.nights-ux>span,.guests-ux>span{margin-bottom:5px}
   .primary-search-flow>.field>select,.primary-search-flow>.field>input,.dates-picker summary,.guests-picker summary{height:52px!important}
-  .stars-quick,.nights-quick{height:auto;grid-template-columns:repeat(5,minmax(92px,1fr));overflow-x:auto;padding:1px 0 4px;scrollbar-width:none}.stars-quick::-webkit-scrollbar,.nights-quick::-webkit-scrollbar{display:none}
+  .stars-quick{height:auto;grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible;padding:1px 0}
+  .nights-quick{height:auto;grid-template-columns:repeat(5,minmax(92px,1fr));overflow-x:auto;padding:1px 0 4px;scrollbar-width:none}.nights-quick::-webkit-scrollbar{display:none}
   .stars-choice,.nights-choice{min-height:46px}
+  .stars-choice{min-width:0;padding:0 4px;font-family:inherit;font-size:12px;white-space:nowrap}
   .dates-panel{grid-template-columns:1fr}.dates-hint{grid-column:1}
   .search-section-title small{display:none}
   .search-card{padding-bottom:22px}
@@ -69,3 +71,4 @@
   .extras-secondary[open] .service-picker{margin-top:12px}
   .extras-secondary[open] .search-filters-reset{width:100%;margin-top:14px}
 }
+@media(max-width:390px){.stars-choice{padding-inline:2px;font-size:11px}}
