@@ -134,7 +134,8 @@ jobs:
             test "$first" = "[" || fail search_results_json
             before_count="$(python3 -c "import json; print(len(json.load(open(\"/tmp/v2-search-results.json\"))))")"
             continue_code="$(curl -k -L -sS -o /tmp/v2-search-continue.json -w "%{http_code}" --max-time 50 "$base?action=search_continue&searchId=$search_id")"
-            test "$continue_code" = "200" || fail search_continue_http
+            echo "SEARCH_CONTINUE_HTTP=$continue_code"
+            if test "$continue_code" != "200"; then echo -n "SEARCH_CONTINUE_ERROR="; head -c 300 /tmp/v2-search-continue.json; echo; fail search_continue_http; fi
             continue_status=0
             continue_complete=0
             for attempt in 1 2 3 4 5 6 7 8 9 10; do
