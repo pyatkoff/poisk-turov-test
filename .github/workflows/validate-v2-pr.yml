@@ -1,0 +1,63 @@
+name: Validate V2 pull request
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/validate-v2-pr.yml'
+
+concurrency:
+  group: ci-validate-v2-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-v2-pr:
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in v2/*.php; do php -l "$file" >/dev/null; done
+          echo V2_PHP_OK
+
+      - name: Validate active JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t assets < <(grep -oE "v2_asset\('[^']+\.js'\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\1/" | sort -u)
+          test "${#assets[@]}" -gt 0
+          for asset in "${assets[@]}"; do
+            test -f "v2/$asset"
+            node --check "v2/$asset"
+          done
+          echo V2_JS_OK
+
+      - name: Validate active asset closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import pathlib,re,sys
+          root=pathlib.Path('v2')
+          text=(root/'index.php').read_text(encoding='utf-8')
+          assets=re.findall(r"v2_asset\('([^']+)'\)",text)
+          missing=[asset for asset in assets if not (root/asset).is_file()]
+          print('ACTIVE_ASSETS',len(assets),'MISSING',missing)
+          if missing: sys.exit(1)
+          PY
+
+      - name: Validate B1 product-shell contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s v2/product-shell-v1.css
+          grep -Fq "v2_asset('product-shell-v1.css')" v2/index.php
+          grep -Fq 'class="v2-product-hero"' v2/index.php
+          grep -Fq 'id="v2-search-title"' v2/index.php
+          grep -Fq '<img src="/images/logo.svg" alt="AnyTour">' v2/index.php
+          echo V2_B1_PRODUCT_SHELL_OK
