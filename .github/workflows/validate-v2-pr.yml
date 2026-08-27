@@ -61,3 +61,27 @@ jobs:
           grep -Fq 'id="v2-search-title"' v2/index.php
           grep -Fq '<img src="/images/logo.svg" alt="AnyTour">' v2/index.php
           echo V2_B1_PRODUCT_SHELL_OK
+
+      - name: Validate test-route SEO semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import html,pathlib,re,sys
+          text=pathlib.Path('v2/index.php').read_text(encoding='utf-8')
+          h1s=re.findall(r'<h1\b[^>]*>(.*?)</h1>',text,re.I|re.S)
+          if len(h1s)!=1:
+              print('V2_PR_SEO_FAIL:h1_count')
+              sys.exit(1)
+          h1=html.unescape(re.sub(r'<[^>]+>',' ',h1s[0])).strip().lower()
+          if 'поиск' not in h1 or 'тур' not in h1:
+              print('V2_PR_SEO_FAIL:h1_text')
+              sys.exit(2)
+          if '<title>Поиск туров — AnyTour</title>' not in text:
+              print('V2_PR_SEO_FAIL:title')
+              sys.exit(3)
+          if 'name="robots" content="noindex,follow' not in text:
+              print('V2_PR_SEO_FAIL:robots')
+              sys.exit(4)
+          print('V2_PR_SEO_OK')
+          PY
