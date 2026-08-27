@@ -37,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          retired=(runtime.js runtime-v2.js hotel-actions.js hotel-actions-v2.js hotel-actions-runtime.js room-details.js room-details-v2.js room-details-runtime.js direct-search.js direct-search-runtime.js catalogs-runtime.js)
+          retired=(runtime.js runtime-v2.js hotel-actions.js hotel-actions-v2.js hotel-actions-runtime.js room-details.js room-details-v2.js room-details-runtime.js direct-search.js direct-search-runtime.js catalogs-runtime.js tour-controller-runtime.js tour-price-sync-v2.js tour-selection-sync.js flight-autoload-v1.js flight-select-fix.js)
           for asset in "${retired[@]}"; do
             test ! -e "v2/$asset" || { echo "RETIRED_ASSET_PRESENT:$asset"; exit 1; }
           done
