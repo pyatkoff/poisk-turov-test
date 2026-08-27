@@ -78,10 +78,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in v2/index.php v2/api-v2.php v2/lead-adapter-v2.php v2/lead-price-v1.php v2/assets.php v2/form-defaults.php v2/analytics-config.php v2/privacy-config.php; do
+          for file in v2/index.php v2/api-v2.php v2/lead-adapter-v2.php v2/lead-price-v1.php v2/assets.php v2/asset-version-v1.php v2/form-defaults.php v2/analytics-config.php v2/privacy-config.php; do
             test -f "$file" || { echo "ACTIVE_PHP_MISSING:$file"; exit 1; }
             php -l "$file"
           done
+      - name: Validate asset content version semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          require 'v2/asset-version-v1.php';
+          $f=tempnam(sys_get_temp_dir(),'v2asset');
+          file_put_contents($f,'same-content');
+          $a=v2_asset_content_version($f);
+          touch($f,time()+20);
+          clearstatcache(true,$f);
+          $b=v2_asset_content_version($f);
+          if($a==='0'||$a!==$b){fwrite(STDERR,"mtime changed content version\n");exit(1);}
+          file_put_contents($f,'changed-content');
+          $c=v2_asset_content_version($f);
+          if($c==='0'||$c===$a){fwrite(STDERR,"content change did not change version\n");exit(1);}
+          @unlink($f);
+          if(v2_asset_content_version($f)!=='0'){fwrite(STDERR,"missing file contract failed\n");exit(1);}
+          echo "V2_ASSET_CONTENT_VERSION_OK\n";
+          PHP
       - name: Validate V2 deployment isolation
         shell: bash
         run: |
