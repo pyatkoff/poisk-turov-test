@@ -46,6 +46,16 @@ jobs:
           grep -q "room-detail-retry" "$room"
           grep -q "version:3" "$room"
           echo "HOTEL_ROOM_MODULE_CONTRACTS_OK"
+      - name: Validate flight price sync contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          flight=v2/flight-price-sync-v1.js
+          grep -q "v2:flight-selected" "$flight"
+          grep -q "Стоимость с выбранным рейсом" "$flight"
+          grep -q "flightPrice - basePrice" "$flight"
+          ! grep -q "basePrice + flightPrice" "$flight"
+          echo "FLIGHT_PRICE_SYNC_CONTRACT_OK"
       - name: Reject retired JavaScript generations
         shell: bash
         run: |
