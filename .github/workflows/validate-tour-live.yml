@@ -50,11 +50,12 @@ jobs:
             complete=0
             for attempt in $(seq 1 20); do
               sleep 2
-              status_code="$(curl -k -L -sS -o /tmp/v2-tour-search-status.json -w "%{http_code}" --max-time 45 "$base?action=search_status&searchId=$search_id")"
+              status_code="$(curl -k -L -sS -o /tmp/v2-tour-search-status.json -w "%{http_code}" --max-time 45 "$base?action=search_status&searchId=$search_id" || true)"
               if test "$status_code" = "200" && grep -Eq "\"progress\"[[:space:]]*:[[:space:]]*100|\"status\"[[:space:]]*:[[:space:]]*\"complete\"" /tmp/v2-tour-search-status.json; then complete=1; break; fi
+              echo "TOUR_LIVE_STATUS_RETRY attempt=$attempt http=${status_code:-curl_error}"
             done
             test "$complete" = "1" || fail search_not_complete
-            results_code="$(curl -k -L -sS -o /tmp/v2-tour-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25")"
+            results_code="$(curl -k -L -sS -o /tmp/v2-tour-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25" || true)"
             test "$results_code" = "200" || fail results_http
             python3 -c "import json; items=json.load(open(\"/tmp/v2-tour-results.json\")); ids=[]; [ids.append(str(t.get(\"id\"))) for h in (items if isinstance(items,list) else []) if isinstance(h,dict) for t in (h.get(\"tours\") or []) if isinstance(t,dict) and t.get(\"id\") is not None and str(t.get(\"id\")) not in ids]; print(\"\\n\".join(ids[:5]))" >/tmp/v2-tour-ids.txt
             test -s /tmp/v2-tour-ids.txt || fail no_tour_ids
@@ -63,8 +64,8 @@ jobs:
             verified_tour=""
             while IFS= read -r tid; do
               test -n "$tid" || continue
-              tour_code="$(curl -k -L -sS -o /tmp/v2-tour.json -w "%{http_code}" --max-time 45 "$base?action=tour&tourId=$tid&currency=RUB")"
-              echo "TOUR_HTTP=$tour_code TOUR_ID=$tid"
+              tour_code="$(curl -k -L -sS -o /tmp/v2-tour.json -w "%{http_code}" --max-time 45 "$base?action=tour&tourId=$tid&currency=RUB" || true)"
+              echo "TOUR_HTTP=${tour_code:-curl_error} TOUR_ID=$tid"
               test "$tour_code" = "200" || continue
               if ! FROM="$from" TILL="$till" TID="$tid" python3 -c "import json,os,datetime as dt; d=json.load(open(\"/tmp/v2-tour.json\")); assert isinstance(d,dict); assert str(d.get(\"id\") or \"\")==os.environ[\"TID\"]; dep=d.get(\"departure\") or {}; hotel=d.get(\"hotel\") or {}; country=hotel.get(\"country\") or {}; assert int(dep.get(\"id\") or 0)==1; assert int(country.get(\"id\") or 0)==4; assert int(d.get(\"adults\") or 0)==2; assert 7<=int(d.get(\"nights\") or 0)<=10; dd=dt.datetime.strptime(str(d.get(\"date\") or \"\"),\"%d.%m.%Y\").date(); lo=dt.datetime.strptime(os.environ[\"FROM\"],\"%Y-%m-%d\").date(); hi=dt.datetime.strptime(os.environ[\"TILL\"],\"%Y-%m-%d\").date(); assert lo<=dd<=hi; assert str(d.get(\"currency\") or \"RUB\")==\"RUB\"; assert float(d.get(\"price\") or 0)>0"; then
                 echo "TOUR_INVARIANTS_FAIL TOUR_ID=$tid"
@@ -72,8 +73,8 @@ jobs:
               fi
               tour_ok_count=$((tour_ok_count + 1))
               if test "$chain_ok" = "1"; then continue; fi
-              flight_code="$(curl -k -L -sS -o /tmp/v2-flights.json -w "%{http_code}" --max-time 45 "$base?action=flights&tourId=$tid&currency=RUB")"
-              echo "FLIGHTS_HTTP=$flight_code TOUR_ID=$tid"
+              flight_code="$(curl -k -L -sS -o /tmp/v2-flights.json -w "%{http_code}" --max-time 45 "$base?action=flights&tourId=$tid&currency=RUB" || true)"
+              echo "FLIGHTS_HTTP=${flight_code:-curl_error} TOUR_ID=$tid"
               test "$flight_code" = "200" || continue
               if ! python3 -c "import json; tour=json.load(open(\"/tmp/v2-tour.json\")); raw=json.load(open(\"/tmp/v2-flights.json\")); flights=raw if isinstance(raw,list) else ((raw.get(\"flights\") or []) if isinstance(raw,dict) else []); assert not isinstance(raw,dict) or not raw.get(\"error\"); assert isinstance(flights,list) and flights; variants=[v for v in flights if isinstance(v,dict)]; assert variants; selected=next((v for v in variants if v.get(\"isDefault\")),variants[0]); price=selected.get(\"price\") or {}; fuel=selected.get(\"fuelCharge\") or {}; pv=price.get(\"value\") if isinstance(price,dict) else price; fv=fuel.get(\"value\") if isinstance(fuel,dict) else fuel; pc=price.get(\"currency\") if isinstance(price,dict) else \"\"; assert pv is not None and float(pv)>0; assert fv in (None,\"\") or float(fv)>=0; assert not pc or pc==str(tour.get(\"currency\") or \"RUB\"); assert not selected.get(\"dateForward\") or str(selected.get(\"dateForward\"))==str(tour.get(\"date\") or \"\"); print(\"FLIGHT_CHAIN_VALUES basePrice=%s selectedPrice=%s baseFuel=%s selectedFuel=%s selectedDefault=%s date=%s\" % (tour.get(\"price\"),pv,tour.get(\"fuelCharge\"),fv,bool(selected.get(\"isDefault\")),selected.get(\"dateForward\")))"; then
                 echo "FLIGHT_INVARIANTS_FAIL TOUR_ID=$tid"
