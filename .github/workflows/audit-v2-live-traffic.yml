@@ -109,7 +109,7 @@ jobs:
           root_total=summarize(lines,project,"PROJECT_LIVE")
           v2_total=summarize(lines,v2,"V2_LIVE")
           print("PROJECT_NON_V2_REQUESTS",max(0,root_total-v2_total))
-          err=collections.Counter(); severities=collections.Counter(); signatures=collections.Counter(); class_paths=collections.Counter(); class_actions=collections.Counter(); class_actors=collections.Counter(); matched=0
+          err=collections.Counter(); severities=collections.Counter(); signatures=collections.Counter(); class_paths=collections.Counter(); class_actions=collections.Counter(); class_actors=collections.Counter(); class_actor_paths=collections.Counter(); class_actor_actions=collections.Counter(); matched=0
           severity_rx=re.compile(r'\[(debug|info|notice|warn|error|crit|alert|emerg)\]',re.I)
           client_rx=re.compile(r', client:\s*([^,\s]+)')
           classes=[
@@ -140,7 +140,7 @@ jobs:
               path,action=error_request(line); cm=client_rx.search(line); who=actor_by_ip.get(cm.group(1),'unknown') if cm else 'unknown'; hit=False
               for name,rx in classes:
                   if rx.search(line):
-                      err[name]+=1; class_paths[(name,path)]+=1; class_actions[(name,action)]+=1; class_actors[(name,who)]+=1; hit=True; break
+                      err[name]+=1; class_paths[(name,path)]+=1; class_actions[(name,action)]+=1; class_actors[(name,who)]+=1; class_actor_paths[(name,who,path)]+=1; class_actor_actions[(name,who,action)]+=1; hit=True; break
               if not hit: err["other_project_error_line"]+=1
           print("PROJECT_ERROR_SOURCE",os.path.relpath(error,home),os.path.getsize(error) if os.path.isfile(error) else 0)
           print("PROJECT_ERROR_LINES",matched)
@@ -150,6 +150,8 @@ jobs:
           print("PROJECT_ERROR_CLASS_PATHS",class_paths.most_common(20))
           print("PROJECT_ERROR_CLASS_ACTIONS",class_actions.most_common(20))
           print("PROJECT_ERROR_CLASS_ACTORS",class_actors.most_common(20))
+          print("PROJECT_ERROR_CLASS_ACTOR_PATHS",class_actor_paths.most_common(30))
+          print("PROJECT_ERROR_CLASS_ACTOR_ACTIONS",class_actor_actions.most_common(30))
           PY
           python3 -m py_compile "$RUNNER_TEMP/v2-live-audit.py"
       - name: Aggregate exact vhost production signals
