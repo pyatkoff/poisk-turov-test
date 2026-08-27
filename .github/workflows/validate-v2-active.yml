@@ -33,6 +33,24 @@ jobs:
           grep -q "flight-price-sync-v1.js" v2/index.php
           grep -q "search-lifecycle-v6.js" v2/index.php
           grep -q "search-continue-v6.js" v2/index.php
+      - name: Reject retired JavaScript generations
+        shell: bash
+        run: |
+          set -euo pipefail
+          retired=(
+            runtime.js
+            runtime-v2.js
+            hotel-actions.js
+            hotel-actions-v2.js
+            hotel-actions-runtime.js
+            room-details.js
+            room-details-v2.js
+            room-details-runtime.js
+          )
+          for asset in "${retired[@]}"; do
+            test ! -e "v2/$asset" || { echo "RETIRED_ASSET_PRESENT:$asset"; exit 1; }
+          done
+          echo "RETIRED_V2_GENERATIONS_ABSENT"
       - name: Validate dirty-search invalidation contract
         shell: bash
         run: |
