@@ -1,0 +1,77 @@
+name: B7 startup performance diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/b7-startup-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  startup-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Measure V2 startup cost
+        shell: bash
+        env:
+          V2_URL: https://anytour.online/poisk-turov-test/v2/
+        run: |
+          set -euo pipefail
+          mkdir -p b7-startup-artifacts
+          cat > b7-startup.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const viewports=[['mobile-375',375,812],['desktop-1440',1440,1000]];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const report=[];
+            for(const [name,width,height] of viewports){
+              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+              const page=await context.newPage();
+              const client=await context.newCDPSession(page);
+              await client.send('Network.setCacheDisabled',{cacheDisabled:true});
+              await client.send('Performance.enable');
+              await page.addInitScript(()=>{
+                window.__b7LongTasks=[];
+                try{new PerformanceObserver(list=>{for(const e of list.getEntries())window.__b7LongTasks.push({start:e.startTime,duration:e.duration});}).observe({type:'longtask',buffered:true});}catch(e){}
+              });
+              const started=Date.now();
+              const response=await page.goto(process.env.V2_URL,{waitUntil:'load',timeout:45000});
+              await page.waitForTimeout(1500);
+              const elapsed=Date.now()-started;
+              const data=await page.evaluate(()=>{
+                const nav=performance.getEntriesByType('navigation')[0];
+                const scripts=performance.getEntriesByType('resource').filter(r=>/\/poisk-turov-test\/v2\/[^/?]+\.js(?:\?|$)/.test(r.name)).map(r=>({name:r.name.split('/').pop().split('?')[0],startTime:r.startTime,duration:r.duration,transferSize:r.transferSize,encodedBodySize:r.encodedBodySize,decodedBodySize:r.decodedBodySize}));
+                return {navigation:nav?{domContentLoaded:nav.domContentLoadedEventEnd,loadEvent:nav.loadEventEnd,responseEnd:nav.responseEnd,transferSize:nav.transferSize}:null,scripts,longTasks:window.__b7LongTasks||[],readyState:document.readyState};
+              });
+              const metrics=(await client.send('Performance.getMetrics')).metrics.reduce((o,m)=>(o[m.name]=m.value,o),{});
+              const localScripts=data.scripts;
+              const summary={name,width,height,http:response?response.status():0,elapsedMs:elapsed,scriptCount:localScripts.length,scriptTransferBytes:localScripts.reduce((s,r)=>s+(r.transferSize||0),0),scriptDecodedBytes:localScripts.reduce((s,r)=>s+(r.decodedBodySize||0),0),scriptResourceDurationMs:localScripts.reduce((s,r)=>s+(r.duration||0),0),scriptDurationMs:(metrics.ScriptDuration||0)*1000,taskDurationMs:(metrics.TaskDuration||0)*1000,longTaskCount:data.longTasks.length,longTaskTotalMs:data.longTasks.reduce((s,r)=>s+r.duration,0),navigation:data.navigation,scripts:localScripts.sort((a,b)=>b.duration-a.duration),longTasks:data.longTasks};
+              report.push(summary);
+              console.log('B7_STARTUP',JSON.stringify(summary));
+              await context.close();
+            }
+            fs.writeFileSync('b7-startup-artifacts/report.json',JSON.stringify(report,null,2));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node b7-startup.cjs
+      - name: Upload startup evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b7-startup-diagnostic-${{ github.event.pull_request.number || 'manual' }}
+          path: b7-startup-artifacts/
+          retention-days: 7
