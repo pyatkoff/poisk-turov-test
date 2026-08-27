@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T01:03:00+02:00",
+  "updated_at": "2026-08-28T01:30:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "Search/Brand/Trust 9.0 production-green; live conversion optimization still waits for meaningful browser evidence",
+  "phase": "Search/Brand/Trust 9.0 mobile hardening production-green; live conversion optimization still waits for meaningful browser evidence",
   "current_task": {
     "id": "C7",
     "category": "LIVE_CONVERSION_OPTIMIZATION",
     "title": "Live conversion optimization",
     "status": "WAITING_FOR_TRAFFIC",
     "objective": "Use meaningful real production traffic and funnel behavior for conversion changes while preserving confirmed product contracts.",
-    "next_action": "Inspect fresh main/open PRs and the latest privacy-safe 30-minute browser audit. Preserve first-screen stars+meal and delayed/on-demand meals loading. Re-audit the full mobile+desktop journey. Do not manufacture Results 9.0 micro-work: PR #82 was closed because it duplicated meal information already present in best-offer context. Activate C7/B8/A8 only from meaningful real-browser evidence."
+    "next_action": "Inspect fresh main/open PRs and the latest privacy-safe 30-minute browser audit. Preserve first-screen stars+meal, all meal choices visible on mobile, bounded mobile search CTA, and delayed/on-demand meals loading. Re-audit the full mobile+desktop journey. Do not manufacture Results/Selected-Tour/Lead micro-work without confirmed friction. Activate C7/B8/A8 only from meaningful real-browser funnel evidence."
   },
   "queue": [
     {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
@@ -24,38 +24,53 @@
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"}
   ],
   "design_9": {
-    "status": "SEARCH_BRAND_TRUST_PRODUCTION_GREEN",
-    "primary_search": "PR #76 established desktop/tablet first-screen stars+meal; PR #79 corrected mobile so stars+meal remain primary there too while nights stay advanced for compactness.",
+    "status": "SEARCH_BRAND_TRUST_MOBILE_HARDENING_PRODUCTION_GREEN",
+    "primary_search": "PR #76 established desktop/tablet first-screen stars+meal; PR #79 kept stars+meal primary on mobile; PR #85 removed the hidden meal scroller so every primary meal choice is visible on <=700px.",
     "brand_hero": "PR #77 production-green; logo preserved.",
-    "trust": "PR #81 production-green with verified AnyTour agency proof and office review links. Head 252750e578848823bc5c27f80ad12186b14bef77 passed all six PR gates; merge 9309d965db5c1232e78b7f9514709c00f5507444 passed deploy/live/post-deploy visual.",
-    "results_price_hierarchy": "Retain current hierarchy. Meal already appears in best-offer price context; PR #82 was closed without merge because adding it again to decision facts duplicated information without a confirmed material gap."
+    "trust": "PR #81 added verified AnyTour agency proof and office review links. PR #84 raised undersized mobile trust/reassurance copy to a readable floor. Both production-green.",
+    "mobile_search_cta": "PR #86 bounds the fixed search CTA at the form end so it does not cover post-form trust content. PR #87 hardens the boundary so the fixed CTA cannot reappear after the user scrolls below the form; a dedicated Playwright regression gate now verifies 375/430 boundary and below-form behavior.",
+    "results_price_hierarchy": "Retain current hierarchy. Meal already appears in best-offer price context; PR #82 was closed without merge because adding it again to decision facts duplicated information without a confirmed material gap.",
+    "selected_tour_lead": "Fresh re-audit found no confirmed material gap: flight selection, price synchronization, lead reassurance/recovery and journey-stage progression remain coherent. Preserve current behavior until evidence justifies a change."
   },
   "product_contracts": {
     "logo": "DO_NOT_CHANGE",
-    "primary_search": "Stars/category and meal stay visible on first screen, including mobile. Other advanced resort/hotel/operator/flight-detail filters may remain behind All filters.",
+    "primary_search": "Stars/category and meal stay visible on first screen, including mobile. All primary meal choices remain discoverable without a hidden horizontal swipe. Other advanced resort/hotel/operator/flight-detail filters may remain behind All filters.",
+    "mobile_search_cta": "Keep a search CTA available while traversing the mobile form, but do not let the fixed CTA cover content after the form or reappear below the form boundary.",
     "meal_catalog_performance": "Do not return meals to the immediate startup burst. Keep delayed/on-demand loading from PR #76.",
     "protected_business_contracts": "Do not modify Metrika/goals or lead transport without explicit approval."
   },
   "last_ci": {
     "workflow": "Visual V2 post-deploy",
-    "run_id": 33122969392,
-    "head_sha": "9309d965db5c1232e78b7f9514709c00f5507444",
+    "run_id": 33126233365,
+    "head_sha": "eac3f5dafe3078f8f62e30e6664fb2d72a652b17",
     "conclusion": "success",
-    "classification": "TRUST_9_PRODUCTION_GREEN"
+    "classification": "DESIGN_9_MOBILE_HARDENING_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "9309d965db5c1232e78b7f9514709c00f5507444",
+  "last_verified_commit": "eac3f5dafe3078f8f62e30e6664fb2d72a652b17",
   "production_evidence": {
-    "deploy_v2": 33122903508,
-    "result_detail_live": 33122903548,
-    "tour_live": 33122903586,
-    "post_deploy_visual": 33122969392,
-    "visual_baseline": 33122969373
+    "deploy_v2": 33126181209,
+    "active_contract": 33126181270,
+    "result_detail_live": 33126181365,
+    "tour_live": 33126181200,
+    "post_deploy_visual": 33126233365,
+    "visual_baseline": 33126233434
   },
-  "pending_verification": "Require a non-zero useful recent 30-minute real-browser sample before C7/B8/A8 or further live optimization.",
+  "live_evidence": {
+    "recent_browser_window": "30m",
+    "browser_requests": 7,
+    "http_4xx_5xx": 0,
+    "rate_limit_delays": 2,
+    "observed_actions": {"departures":1,"countries":1,"meals":1},
+    "funnel_actions": {"search":0,"tour":0,"lead":0},
+    "interpretation": "Non-zero but still incomplete/tiny browser session. Two rate-limit delays were delays rather than failures; no funnel evidence yet supports C7 changes."
+  },
+  "pending_verification": "Require a non-zero useful recent 30-minute real-browser funnel sample before C7/B8/A8 or further live conversion optimization.",
   "blocked": [],
   "deferred": [
     {"scope":"C7 conversion changes","reason":"Real-browser funnel evidence remains insufficient."},
     {"scope":"additional results/price redesign","reason":"Current hierarchy remains materially strong; PR #82 confirmed that extra meal surfacing would duplicate existing context without evidence."},
+    {"scope":"selected-tour/lead redesign","reason":"Fresh whole-flow re-audit found current journey and reassurance/recovery coherent; wait for observed friction."},
+    {"scope":"startup/rate-limit architecture changes","reason":"Latest 30-minute sample had only 7 successful browser requests and 2 delay events; insufficient severity/funnel evidence for another startup rewrite."},
     {"scope":"global /images symlink-loop","reason":"Outside allowed V2/repository write scope while sampled access remains successful."},
     {"scope":"small formatter/matchMedia/progressive-results micro-optimizations","reason":"Defer until profiling/live evidence justifies them."}
   ],
