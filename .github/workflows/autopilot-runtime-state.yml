@@ -4,10 +4,12 @@ on:
   workflow_run:
     workflows:
       - "Deploy V2 only"
-      - "Validate active V2 contract"
-      - "Measure V2 results DOM"
     types: [completed]
   workflow_dispatch:
+
+concurrency:
+  group: autopilot-runtime-state
+  cancel-in-progress: true
 
 permissions:
   contents: read
