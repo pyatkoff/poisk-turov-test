@@ -1,0 +1,21 @@
+# Local/private configuration
+config.php
+v2/config.php
+.env
+.env.*
+!.env.example
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+deploy_key
+
+# Local secret material
+.secrets/
+secrets.local.*
