@@ -10,6 +10,5 @@ window.addEventListener('v2:search-dirty',mark);
 window.addEventListener('v2:search-started',clear);
 window.addEventListener('v2:search-reset',e=>{if(!(e.detail&&e.detail.dirty))clear();});
 window.addEventListener('v2:results-rendered',()=>{if(stale)mark();});
-ensureBanner();
 window.V2SearchDirtyUXV1={mark,clear,get stale(){return stale;},version:1};
 })();
