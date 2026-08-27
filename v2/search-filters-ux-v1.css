@@ -48,4 +48,7 @@
   .dates-panel{grid-template-columns:1fr}
   .dates-hint{grid-column:1}
   .search-section-title small{display:none}
+  .search-card{padding-bottom:82px}
+  .search-submit{position:sticky;bottom:max(8px,env(safe-area-inset-bottom));z-index:20;min-height:54px;margin-top:12px;box-shadow:0 12px 32px rgba(49,80,216,.35)}
+  .dates-panel,.guests-panel{position:fixed!important;left:10px!important;right:10px!important;top:auto!important;bottom:max(10px,env(safe-area-inset-bottom))!important;z-index:60!important;max-height:70vh;overflow:auto;border-radius:18px!important;box-shadow:0 22px 70px rgba(20,30,55,.28)!important}
 }
