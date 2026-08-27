@@ -1,0 +1,63 @@
+name: B7 branch startup performance diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/b7-startup-branch-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  startup-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install browser tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Measure branch V2 startup cost
+        shell: bash
+        env:
+          V2_URL: https://anytour.online/poisk-turov-test/v2/
+        run: |
+          set -euo pipefail
+          mkdir -p b7-startup-artifacts
+          cat > b7-startup-branch.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs=require('fs'),path=require('path'),zlib=require('zlib');
+          const viewports=[['mobile-375',375,812],['desktop-1440',1440,1000]];
+          const root=path.resolve('v2');
+          const asset=/\/poisk-turov-test\/v2\/([^/?]+\.js)(?:\?.*)?$/i;
+          (async()=>{
+            const browser=await chromium.launch({headless:true}); const report=[];
+            for(const [name,width,height] of viewports){
+              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+              const page=await context.newPage(); const client=await context.newCDPSession(page);
+              await client.send('Network.setCacheDisabled',{cacheDisabled:true}); await client.send('Performance.enable');
+              await page.addInitScript(()=>{window.__b7LongTasks=[];try{new PerformanceObserver(l=>{for(const e of l.getEntries())window.__b7LongTasks.push({start:e.startTime,duration:e.duration});}).observe({type:'longtask',buffered:true});}catch(e){}});
+              await page.route('**/*',async route=>{const u=new URL(route.request().url()),m=u.pathname.match(asset);if(!m)return route.continue();const file=path.join(root,path.basename(m[1]));if(!fs.existsSync(file))return route.continue();return route.fulfill({status:200,contentType:'application/javascript',body:fs.readFileSync(file)});});
+              const started=Date.now(); const response=await page.goto(process.env.V2_URL,{waitUntil:'load',timeout:45000}); await page.waitForTimeout(1500); const elapsed=Date.now()-started;
+              const data=await page.evaluate(()=>{const nav=performance.getEntriesByType('navigation')[0];const scripts=performance.getEntriesByType('resource').filter(r=>/\/poisk-turov-test\/v2\/[^/?]+\.js(?:\?|$)/.test(r.name)).map(r=>r.name.split('/').pop().split('?')[0]);return {navigation:nav?{domContentLoaded:nav.domContentLoadedEventEnd,loadEvent:nav.loadEventEnd,responseEnd:nav.responseEnd}:null,scripts,longTasks:window.__b7LongTasks||[]};});
+              const metrics=(await client.send('Performance.getMetrics')).metrics.reduce((o,m)=>(o[m.name]=m.value,o),{});
+              const unique=[...new Set(data.scripts)]; const details=unique.map(file=>{const p=path.join(root,file);if(!fs.existsSync(p))return {name:file,local:false};const b=fs.readFileSync(p);return {name:file,local:true,decodedBytes:b.length,gzipBytes:zlib.gzipSync(b,{level:6}).length};});
+              const summary={name,width,height,http:response?response.status():0,elapsedMs:elapsed,scriptCount:unique.length,scriptDecodedBytes:details.reduce((s,r)=>s+(r.decodedBytes||0),0),scriptGzipBytes:details.reduce((s,r)=>s+(r.gzipBytes||0),0),scriptDurationMs:(metrics.ScriptDuration||0)*1000,taskDurationMs:(metrics.TaskDuration||0)*1000,longTaskCount:data.longTasks.length,longTaskTotalMs:data.longTasks.reduce((s,r)=>s+r.duration,0),navigation:data.navigation,scripts:details};
+              report.push(summary); console.log('B7_BRANCH_STARTUP',JSON.stringify(summary)); await context.close();
+            }
+            fs.writeFileSync('b7-startup-artifacts/report.json',JSON.stringify(report,null,2)); await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node b7-startup-branch.cjs
+      - name: Upload startup evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b7-branch-startup-${{ github.event.pull_request.number }}
+          path: b7-startup-artifacts/
+          retention-days: 7
