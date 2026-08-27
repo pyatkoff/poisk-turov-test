@@ -1,0 +1,78 @@
+name: Diagnose progressive V2 results
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/diagnose-progressive-results.yml'
+
+jobs:
+  diagnose-progressive-results:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sample progressive live result changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://anytour.online/poisk-turov-test/v2/api-v2.php"
+          from="$(date -d '+2 day' +%Y-%m-%d)"
+          till="$(date -d '+9 day' +%Y-%m-%d)"
+          start_url="$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB"
+          curl -k -L -sS --max-time 50 "$start_url" -o /tmp/start.json
+          search_id="$(python3 - <<'PY'
+import json
+with open('/tmp/start.json', encoding='utf-8') as f:
+    print(int(json.load(f).get('searchId') or 0))
+PY
+          )"
+          test "$search_id" -gt 0
+          echo "SEARCH_ID=$search_id"
+          previous=""
+          samples=0
+          changed=0
+          unchanged=0
+          nonempty=0
+          for attempt in $(seq 1 36); do
+            sleep 2
+            curl -k -L -sS --max-time 45 "$base?action=search_status&searchId=$search_id" -o /tmp/status.json || true
+            progress="$(python3 - <<'PY'
+import json
+try:
+    with open('/tmp/status.json', encoding='utf-8') as f: d=json.load(f)
+    print(int(float(d.get('progress') or 0)))
+except Exception:
+    print(-1)
+PY
+            )"
+            curl -k -L -sS --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25" -o /tmp/results.json || true
+            read -r count sig <<<"$(python3 - <<'PY'
+import hashlib,json
+try:
+    with open('/tmp/results.json', encoding='utf-8') as f: d=json.load(f)
+    if not isinstance(d,list): d=[]
+except Exception:
+    d=[]
+compact=[]
+for h in d:
+    if not isinstance(h,dict): continue
+    tours=[]
+    for t in (h.get('tours') or []):
+      if not isinstance(t,dict): continue
+      tours.append({k:t.get(k) for k in ('id','date','nights','price','roomType','placement','isCharter','meal','operator')})
+    compact.append({
+      'id':h.get('id'),'name':h.get('name'),'price':h.get('price'),'rating':h.get('rating'),
+      'category':h.get('category'),'picturelink':h.get('picturelink'),'seaDistance':h.get('seaDistance'),'tours':tours
+    })
+raw=json.dumps(compact,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()
+print(len(d), hashlib.sha256(raw).hexdigest()[:16])
+PY
+            )"
+            samples=$((samples+1))
+            if test "$count" -gt 0; then nonempty=$((nonempty+1)); fi
+            state="FIRST"
+            if test -n "$previous"; then
+              if test "$sig" = "$previous"; then unchanged=$((unchanged+1)); state="UNCHANGED"; else changed=$((changed+1)); state="CHANGED"; fi
+            fi
+            echo "SAMPLE attempt=$attempt progress=$progress count=$count sig=$sig state=$state"
+            previous="$sig"
+            if test "$progress" -ge 100; then break; fi
+          done
+          echo "SUMMARY samples=$samples nonempty=$nonempty changed_transitions=$changed unchanged_transitions=$unchanged"
