@@ -1,0 +1,58 @@
+name: Fix self-hosted concurrency isolation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-self-hosted-concurrency.yml'
+  workflow_dispatch:
+
+jobs:
+  fix:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SELF_HOSTED_GH_TOKEN }}
+      - name: Isolate concurrency per workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('.github/workflows')
+          changed=[]
+          for p in root.glob('*.y*ml'):
+              if p.name in {'deploy.yml','fix-self-hosted-concurrency.yml'}:
+                  continue
+              text=p.read_text()
+              old=text
+              # Remove the broken globally shared optimizer group if present.
+              text=text.replace('concurrency:\n  group: Optimize self-hosted CI queue-refs/heads/main\n  cancel-in-progress: true\n\n','')
+              # Add isolated per-workflow concurrency only where a self-hosted job exists.
+              if 'runs-on: [self-hosted, Linux, X64]' in text and '\nconcurrency:\n' not in text:
+                  marker='\njobs:\n'
+                  if marker in text:
+                      expr='$'+'{{ github.ref }}'
+                      block=f'\nconcurrency:\n  group: ci-{p.stem}-{expr}\n  cancel-in-progress: true\n'
+                      text=text.replace(marker,block+marker,1)
+              # Smoke is diagnostic only now; no automatic push trigger.
+              if p.name=='self-hosted-runner-smoke.yml':
+                  text=re.sub(r"on:\n  push:\n    branches: \[main\]\n    paths:\n      - '\.github/workflows/self-hosted-runner-smoke\.yml'\n  workflow_dispatch:\n",'on:\n  workflow_dispatch:\n',text, count=1)
+              if text!=old:
+                  p.write_text(text)
+                  changed.append(str(p))
+          print('CHANGED',len(changed))
+          for x in changed: print(x)
+          PY
+          if git diff --quiet -- .github/workflows; then
+            echo 'No concurrency fixes needed'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows
+          git commit -m 'ci: isolate self-hosted workflow concurrency'
+          git push
