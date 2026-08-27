@@ -45,66 +45,14 @@ jobs:
             done
             test "$complete" = 1 || fail search_not_complete
             curl -k -L -fsS --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25" >/tmp/v2-rd-results.json || fail search_results
-            python3 - <<'PY'
-import json
-items=json.load(open('/tmp/v2-rd-results.json'))
-rows=[]
-if isinstance(items,list):
-  for h in items:
-    if not isinstance(h,dict): continue
-    hid=h.get('id') or h.get('hotelId')
-    hname=h.get('name') or h.get('hotelName')
-    for t in h.get('tours') or []:
-      if not isinstance(t,dict) or t.get('id') is None: continue
-      rows.append({
-        'id':str(t.get('id')),
-        'hotelId':t.get('hotelId') or hid,
-        'hotelName':t.get('hotelName') or hname,
-        'date':t.get('date') or t.get('dateFrom') or t.get('startDate'),
-        'price':t.get('price') if not isinstance(t.get('price'),dict) else t.get('price',{}).get('value'),
-        'currency':t.get('currency') or (t.get('price',{}).get('currency') if isinstance(t.get('price'),dict) else None),
-        'nights':t.get('nights'),
-      })
-json.dump(rows[:8],open('/tmp/v2-rd-map.json','w'),ensure_ascii=False)
-print('RESULT_SAMPLE_ROWS='+str(min(len(rows),8)))
-PY
+            python3 -c "import json; items=json.load(open('/tmp/v2-rd-results.json')); rows=[]; [(rows.append({'id':str(t.get('id')),'hotelId':t.get('hotelId') or h.get('id') or h.get('hotelId'),'hotelName':t.get('hotelName') or h.get('name') or h.get('hotelName'),'date':t.get('date') or t.get('dateFrom') or t.get('startDate'),'price':(t.get('price',{}).get('value') if isinstance(t.get('price'),dict) else t.get('price')),'currency':t.get('currency') or (t.get('price',{}).get('currency') if isinstance(t.get('price'),dict) else None),'nights':t.get('nights')}) for h in (items if isinstance(items,list) else []) if isinstance(h,dict) for t in (h.get('tours') or []) if isinstance(t,dict) and t.get('id') is not None]; json.dump(rows[:8],open('/tmp/v2-rd-map.json','w'),ensure_ascii=False); print('RESULT_SAMPLE_ROWS='+str(min(len(rows),8)))"
             test "$(python3 -c "import json; print(len(json.load(open('/tmp/v2-rd-map.json'))))")" -ge 3 || fail insufficient_result_rows
             compared=0
             matched=0
             while IFS= read -r tid; do
               test -n "$tid" || continue
               if ! curl -k -L -fsS --max-time 45 "$base?action=tour&tourId=$tid&currency=RUB" >/tmp/v2-rd-tour.json; then continue; fi
-              if TID="$tid" python3 - <<'PY'
-import json,os,sys,datetime as dt
-rows=json.load(open('/tmp/v2-rd-map.json'))
-r=next((x for x in rows if x['id']==os.environ['TID']),None)
-d=json.load(open('/tmp/v2-rd-tour.json'))
-assert r and isinstance(d,dict) and str(d.get('id') or '')==r['id']
-checks=0
-hotel=d.get('hotel') or {}
-if r.get('hotelId') not in (None,''):
-  checks+=1; assert str(hotel.get('id') or '')==str(r['hotelId'])
-if r.get('hotelName'):
-  checks+=1; assert str(hotel.get('name') or '').strip().casefold()==str(r['hotelName']).strip().casefold()
-if r.get('date'):
-  checks+=1
-  def norm(v):
-    s=str(v)
-    for f in ('%d.%m.%Y','%Y-%m-%d'):
-      try:return dt.datetime.strptime(s,f).date().isoformat()
-      except: pass
-    return s
-  assert norm(d.get('date'))==norm(r['date'])
-if r.get('price') not in (None,''):
-  checks+=1; assert float(d.get('price'))==float(r['price'])
-if r.get('currency'):
-  checks+=1; assert str(d.get('currency') or 'RUB')==str(r['currency'])
-if r.get('nights') not in (None,''):
-  checks+=1; assert int(d.get('nights'))==int(r['nights'])
-assert checks>=2
-print('RESULT_DETAIL_MATCH tourId='+r['id']+' checks='+str(checks))
-PY
-              then
+              if TID="$tid" python3 -c "import json,os,datetime as dt; rows=json.load(open('/tmp/v2-rd-map.json')); r=next((x for x in rows if x['id']==os.environ['TID']),None); d=json.load(open('/tmp/v2-rd-tour.json')); assert r and isinstance(d,dict) and str(d.get('id') or '')==r['id']; hotel=d.get('hotel') or {}; checks=[]; checks.append(str(hotel.get('id') or '')==str(r['hotelId'])) if r.get('hotelId') not in (None,'') else None; checks.append(str(hotel.get('name') or '').strip().casefold()==str(r['hotelName']).strip().casefold()) if r.get('hotelName') else None; norm=lambda v: next((dt.datetime.strptime(str(v),f).date().isoformat() for f in ('%d.%m.%Y','%Y-%m-%d') if __import__('contextlib')),str(v)); checks.append(str(d.get('date'))==str(r['date']) or norm(d.get('date'))==norm(r['date'])) if r.get('date') else None; checks.append(float(d.get('price'))==float(r['price'])) if r.get('price') not in (None,'') else None; checks.append(str(d.get('currency') or 'RUB')==str(r['currency'])) if r.get('currency') else None; checks.append(int(d.get('nights'))==int(r['nights'])) if r.get('nights') not in (None,'') else None; assert len(checks)>=2 and all(checks); print('RESULT_DETAIL_MATCH tourId='+r['id']+' checks='+str(len(checks)))"; then
                 matched=$((matched+1))
               else
                 echo "RESULT_DETAIL_MISMATCH tourId=$tid"
