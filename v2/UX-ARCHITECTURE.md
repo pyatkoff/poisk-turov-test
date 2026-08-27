@@ -38,6 +38,14 @@ This file documents the active UX layers for the V2 tour search and the contract
 
 New UX layers should consume these events instead of reaching into polling/search internals.
 
+## Visual regression ownership
+
+- `.github/workflows/visual-v2-baseline.yml` is the durable deterministic five-viewport owner for the complete redesigned journey: initial search, dates, guests, advanced filters, populated results, selected-tour checkout, and zero-result recovery.
+- The baseline also owns semantic assertions for the results conversion CTA/confidence copy, checkout structure/stages and recovery actions, in addition to screenshot comparison against the latest compatible green main baseline.
+- Specialized visual workflows may remain only when they prove materially different coverage. In particular, the broader selected-tour workflow still owns lead/trust/error presentation that is not yet equivalent to the baseline.
+- Do not add a new visual workflow for a state already represented in the baseline. Extend the baseline or an existing materially distinct gate instead.
+- Retire a specialized gate only after equivalent baseline assertions are green at 375, 430, 768, 1024 and 1440 and the pixel comparator confirms no unintended screenshot change.
+
 ## Refactor plan (behavior-preserving)
 
 1. Make all active UX scripts explicit in `index.php`; remove unrelated dynamic script loading from `accessibility.js`.
