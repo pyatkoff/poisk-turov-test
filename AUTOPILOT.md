@@ -32,7 +32,7 @@ PR #76 corrected it. Visual CI caught two real defects in the first implementati
 
 PR #77 starts the agreed 9.0 visual roadmap without touching the logo or search/lead/analytics contracts. It strengthens desktop hero hierarchy and travel-tech character, trust-chip treatment, header polish, search-card depth, mobile surface continuity and reduced-motion behavior. Existing primary stars/meal UX remains intact.
 
-All six PR gates for head `f01aa4a95dee599ec94d9b674fcef1a518d0dde1` passed. PR #77 merged as `f917db73e4ae03f7bc81aa59cd7b5525df825e0f`; V2 deploy/live smoke `33121563417` passed. Post-deploy visual/baseline follow-up was still running when this state was written and must finish green before marking #77 fully production-green.
+All six PR gates for head `f01aa4a95dee599ec94d9b674fcef1a518d0dde1` passed. PR #77 merged as `f917db73e4ae03f7bc81aa59cd7b5525df825e0f`. Production verification is fully green: V2 deploy/live smoke `33121563417`, post-deploy visual `33121635099` and baseline `33121635148` all passed.
 
 ### Results / price hierarchy reread
 
@@ -85,13 +85,12 @@ The next proposed 9.0 area was independently reread after #77. Current `results-
 ## Exact next work order
 
 1. Inspect fresh `main`, open PRs, deploy/live/security/visual results and the full V2 journey.
-2. Finish verification of PR #77 post-deploy visual and baseline. If either fails, diagnose and fix before further design work.
-3. Inspect the recent 30-minute real-browser audit. Require a non-zero useful sample before judging the post-#72 startup effect or activating C7/B8/A8.
-4. Preserve the #76 first-screen stars+meal contract and delayed/on-demand meal request.
-5. Re-audit search → progress → stale/zero results → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery on mobile and desktop.
-6. Continue the 9.0 design roadmap only when a material gap is confirmed. Results/price hierarchy is currently retained as-is after reread.
-7. If meaningful funnel evidence appears, activate C7/B8/A8 and prioritize observed friction from `search_started → search_complete → tour_selected → flight_selected → lead_started → lead_submitted`.
-8. If production is healthy and evidence is absent, keep V2 stable rather than manufacturing micro-work.
+2. Inspect the recent 30-minute real-browser audit. Require a non-zero useful sample before judging the post-#72 startup effect or activating C7/B8/A8.
+3. Preserve the #76 first-screen stars+meal contract and delayed/on-demand meal request.
+4. Re-audit search → progress → stale/zero results → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery on mobile and desktop.
+5. Continue the 9.0 design roadmap only when a material gap is confirmed. Results/price hierarchy is currently retained as-is after reread.
+6. If meaningful funnel evidence appears, activate C7/B8/A8 and prioritize observed friction from `search_started → search_complete → tour_selected → flight_selected → lead_started → lead_submitted`.
+7. If production is healthy and evidence is absent, keep V2 stable rather than manufacturing micro-work.
 
 ## Guardrails
 
