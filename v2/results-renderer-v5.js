@@ -2,7 +2,7 @@
 if(window.V2ResultsV5)return;
 const state={items:[],lastOptions:{}},expandedHotels=new Set(),INITIAL_TOURS=1,moneyFormatter=new Intl.NumberFormat('ru-RU');
 function initialTourLimit(){return INITIAL_TOURS;}
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));}
 function money(v){const n=Number(v||0);return n>0?moneyFormatter.format(n):'';}
 function textValue(v){if(v===null||v===undefined)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(textValue).filter(Boolean).join(', ');if(typeof v==='object')return textValue(v.russianName||v.fullRussianName||v.name||v.title||v.value||v.description||'');return'';}
 function mealName(t){return textValue(t&&t.meal);}
@@ -14,7 +14,7 @@ function priceRank(v){const n=Number(v||0);return Number.isFinite(n)&&n>0?n:Numb
 function representativeTour(h){const tours=Array.isArray(h&&h.tours)?h.tours:[];if(!tours.length)return{};const hotelPrice=priceRank(h&&h.price);if(Number.isFinite(hotelPrice)){const exact=tours.find(t=>priceRank(t&&t.price)===hotelPrice);if(exact)return exact;}return tours.reduce((best,t)=>priceRank(t&&t.price)<priceRank(best&&best.price)?t:best,tours[0]||{});}
 function collapsedTours(h,limit){const tours=Array.isArray(h&&h.tours)?h.tours:[];if(limit===1&&tours.length)return[representativeTour(h)];return tours.slice(0,limit);}
 function priceContext(h){const t=representativeTour(h),parts=[];if(t.date)parts.push(String(t.date));if(t.nights)parts.push(String(t.nights)+' ноч.');const meal=mealName(t);if(meal)parts.push(meal);return parts.join(' · ');}
-function decisionFacts(h){const facts=[],rating=Number(h&&h.rating||0),sea=Number(h&&h.seaDistance||0);if(rating>0)facts.push({className:'hotel-decision-rating',label:'★ '+rating});if(sea>0)facts.push({className:'hotel-decision-sea',label:'До моря '+sea+' м'});return facts;}
+function decisionFacts(h){const facts=[],rating=Number(h&&h.rating||0),sea=Number(h&&h.seaDistance||0),meal=mealName(representativeTour(h));if(rating>0)facts.push({className:'hotel-decision-rating',label:'★ '+rating});if(sea>0)facts.push({className:'hotel-decision-sea',label:'До моря '+sea+' м'});if(meal)facts.push({className:'hotel-decision-meal',label:meal});return facts;}
 function decisionFactsHtml(h){return decisionFacts(h).map(x=>'<span class="'+esc(x.className)+'">'+esc(x.label)+'</span>').join('');}
 function choiceHint(h){const tours=Array.isArray(h&&h.tours)?h.tours:[],extra=Math.max(0,tours.length-1);return extra?'Ещё '+tourCountLabel(extra)+' по другим датам и условиям':'';}
 function tourFact(label,value){return value?'<span class="tour-fact"><small>'+esc(label)+'</small><b>'+esc(value)+'</b></span>':'';}
