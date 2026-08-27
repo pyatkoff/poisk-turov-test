@@ -8,9 +8,9 @@ This file is the operational companion to `AGENTS.md`. `AGENTS.md` defines autho
 
 **Phase: product UX/visual development before and during live traffic.**
 
-The active product is `v2/`. The major technical refactor, correctness hardening, SEO foundation and residual pre-traffic cleanup are complete. B1-B5 product redesign/conversion work is now production-green. Development is moving into visual-regression hardening and then performance/visual-stability cleanup.
+The active product is `v2/`. The major technical refactor, correctness hardening, SEO foundation and B1-B6 product/visual work are complete. Development is now focused on performance and visual stability while the durable five-viewport visual contract protects the redesigned journey.
 
-Current primary task: **B6 — Visual Regression Baseline (`IN PROGRESS`)**.
+Current primary task: **B7 — Performance & Visual Stability (`IN PROGRESS`)**.
 
 Parallel waiting task: **A8/B8 — live traffic feedback loop (`WAITING FOR TRAFFIC`)**. When advertising traffic appears, production evidence immediately outranks speculative polish.
 
@@ -49,7 +49,7 @@ Existing Yandex Metrika configuration/goals and the existing lead-sending mechan
 - `tour-controller-v4.js`: selected-tour flow and stale-response guards.
 - `hotel-actions-v3.js`, `room-details-v3.js`, `selected-tour-description-v1.js`: detail presentation.
 - `checkout-experience-v1.js` / `.css`: selected-tour checkout hierarchy.
-- `flight-price-sync-v1.js`: selected flight and displayed/submitted price synchronization.
+- `flight-price-sync-v1.js`: selected flight and displayed/submitted price synchronization. A flight variant price may legitimately differ from the base tour price; the selected variant delta is reflected in the displayed/submitted selection.
 
 ### Lead path — protected transport contract
 - `lead-search-context.js`: search context included with the lead.
@@ -57,6 +57,12 @@ Existing Yandex Metrika configuration/goals and the existing lead-sending mechan
 - `lead-adapter-v2.php`, `lead-price-v1.php`, `lead-idempotency-v1.php`: active server lead support.
 
 Presentation/placement/CTA UX may improve; the mechanism/external contract that sends the lead must not change without explicit approval.
+
+### Visual regression ownership
+- `.github/workflows/visual-v2-baseline.yml` is the durable deterministic five-viewport owner for initial search, dates, guests, advanced filters, populated results, selected-tour checkout and zero-result recovery.
+- It also asserts conversion CTA/confidence copy, checkout structure/stages and recovery actions, then compares PR screenshots with the latest compatible green main baseline.
+- The broader selected-tour trust/error workflow remains separate because it still covers lead/error presentation that is not equivalent to the baseline.
+- Do not create a new visual gate for a state already represented by the baseline; extend the existing owner instead.
 
 ## B-series roadmap
 
@@ -76,24 +82,33 @@ Selected tour became a staged checkout summary with clearer facts, flight choice
 Result:
 - PR #11 strengthened tour/flight/lead error recovery, preserved lead data on failure and added explicit no-payment reassurance;
 - PR #13 changed the result CTA to `Проверить тур` and explains that flight, baggage and final price are checked before the no-payment contact step; merged as `760d9c8c28c46ce769cd8ebf0a88cbb8bf8403af`; production post-deploy visual run `33069724534` passed;
-- PR #14 removed the zero-result dead end: search parameters remain intact and the user can explicitly return to editing or open filters; a dedicated five-viewport recovery gate passed; merged as `fceaf4a1b049400031f7f9585b0b83155d1d6c0d`; production post-deploy visual run `33070022638` passed.
+- PR #14 removed the zero-result dead end: search parameters remain intact and the user can explicitly return to editing or open filters; merged as `fceaf4a1b049400031f7f9585b0b83155d1d6c0d`; production post-deploy visual run `33070022638` passed.
 
-### B6 — VISUAL REGRESSION BASELINE — `IN PROGRESS`
-Objective: lock the redesigned journey into a durable visual safety net.
+### B6 — VISUAL REGRESSION BASELINE — `DONE`
+Result:
+- PR #17 extended the existing baseline owner to deterministic initial/dates/guests/advanced/results/checkout/recovery states at 375/430/768/1024/1440 and folded conversion, checkout and recovery semantic assertions into the same owner;
+- a comparator false-positive was diagnosed: checkout stage assertions dispatched real product events and changed downstream presentation height; stage checks were isolated via the checkout public stage API, after which the comparator passed with no unintended screenshot changes;
+- PR #17 merged as `694d588487fa8fc80be107e4a14e4e6e426d2051`;
+- PR #18 retired four now-redundant PR visual workflows only after equivalent baseline coverage and green comparison evidence were proven, while preserving the broader selected-tour trust/error gate; merged as `e5a153ff85269602716472ffdc1bb16b222c80d4`;
+- V2 deploy run `33072399106`, production post-deploy visual run `33072469440` and main baseline run `33072469294` passed.
 
-Current evidence:
-- `visual-v2-pr.yml` already gates initial search, dates, guests, advanced filters and populated results across 375/430/768/1024/1440;
-- selected-tour, checkout, conversion and recovery states have dedicated visual workflows;
-- `visual-v2-baseline.yml` already exists, but currently captures only initial/filters/children as evidence and has no durable baseline comparison.
+A subsequent `Validate V2 tour live` failure was investigated before moving on. The old validator incorrectly required the selected flight price to always equal the base tour price, although active `flight-price-sync-v1.js` explicitly supports a variant price delta. PR #19 aligned the validator with product semantics, added PR execution for the live validator, and passed a fresh five-tour live sample. It merged as `0a91b36bacc6a7170282a86c01302c3a00e7f3a5`; main live-tour run `33072844638` passed.
+
+### B7 — PERFORMANCE & VISUAL STABILITY — `IN PROGRESS`
+Objective: reduce client overhead, CSS ownership/cascade complexity and layout instability without changing product behavior or weakening the B6 visual contract.
+
+Initial audit observations:
+- `v2/index.php` still loads many separate CSS/JS assets, so ownership and client overhead need measurement before consolidation;
+- result hotel images already use lazy loading;
+- `accessibility.js` no longer dynamically bootstraps UX helper scripts, so older architecture text suggesting that responsibility is stale and should not drive refactoring;
+- header logo layout has explicit CSS dimensions, while further intrinsic-size/CLS work should only be done with verified asset geometry;
+- B7 changes should be isolated, compared against the B6 baseline, and followed by relevant live Tourvisor/tour-flight checks.
 
 Next work:
-1. Keep `visual-v2-baseline.yml` as the single B6 baseline owner rather than create another harness.
-2. Expand baseline state coverage to populated results, selected tour/checkout and recovery at all five viewports.
-3. Establish a durable comparison strategy once the state set is deterministic enough for stable snapshots.
-4. Consolidate specialized visual workflows only after the baseline proves equivalent coverage; do not remove gates prematurely.
-
-### B7 — PERFORMANCE & VISUAL STABILITY — `QUEUED`
-After visual behavior is locked: consolidate CSS ownership/tokens, reduce cascade complexity and layout shifts, optimize image loading/client overhead, and retain responsive stability.
+1. Measure active V2 asset loading and identify high-confidence redundant CSS/JS ownership before changing bundles/order.
+2. Audit layout-shift risks in header, results images and progressive selected-tour states; prefer intrinsic sizing/reserved space where evidence supports it.
+3. Consolidate repeated tokens/overrides incrementally rather than adding a new override layer.
+4. Preserve exact five-viewport screenshots unless an intentional visual improvement is separately justified and reviewed through baseline evidence.
 
 ### B8 — LIVE PRODUCT OPTIMIZATION — `WAITING FOR TRAFFIC`
 Use real searches/errors/result interactions/tour selections/leads to reprioritize product work. Do not change Metrika goals/config merely for reporting convenience.
@@ -107,16 +122,15 @@ Use real searches/errors/result interactions/tour selections/leads to reprioriti
 - **A6 focused whole-project refactor — DONE**.
 - **A7 SEO foundation — DONE**.
 - **A9 residual V2 generation/CI cleanup — DONE**.
-- **A1 baseline harness — DEFERRED / superseded by B6**.
+- **A1 baseline harness — DEFERRED / superseded by completed B6**.
 - **A8 live traffic feedback — WAITING FOR TRAFFIC**.
 
 ## Next work order
 
-1. B6: expand the existing baseline owner to the complete redesigned journey and make its state fixtures deterministic.
-2. Add durable comparison only after deterministic state capture is proven; avoid snapshot noise.
-3. Consolidate redundant specialized visual gates only with equivalent baseline evidence.
-4. B7: CSS/performance/CLS consolidation after B6 locks the visual contract.
-5. Activate A8/B8 immediately when real advertising traffic appears.
+1. B7: measure active client/CSS cost and layout stability before changing implementation.
+2. Apply small behavior-preserving performance/CLS/cascade improvements with B6 baseline comparison after each material visual change.
+3. Keep live Tourvisor/tour-flight validation green whenever search/tour/flight surfaces are touched.
+4. Activate A8/B8 immediately when real advertising traffic appears.
 
 ## Hard boundaries carried forward
 
