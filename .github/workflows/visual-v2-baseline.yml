@@ -6,28 +6,39 @@ on:
     paths:
       - 'v2/**'
       - '.github/workflows/visual-v2-baseline.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/visual-v2-baseline.yml'
+  workflow_run:
+    workflows: ['Deploy V2 only']
+    types: [completed]
   workflow_dispatch:
 
 concurrency:
-  group: ci-visual-v2-baseline-${{ github.event.pull_request.number || github.ref }}
+  group: ci-visual-v2-baseline-${{ github.event.pull_request.number || github.event.workflow_run.head_sha || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   visual-baseline:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - name: Install Playwright Chromium
+      - name: Install visual tooling
         shell: bash
         run: |
           set -euo pipefail
           npm init -y >/dev/null 2>&1
-          npm install --no-save playwright@1.55.0 >/dev/null
+          npm install --no-save playwright@1.55.0 pixelmatch@6.0.0 pngjs@7.0.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
 
       - name: Capture deterministic V2 journey baseline
@@ -46,6 +57,9 @@ jobs:
           const url = process.env.V2_URL;
           const root = path.resolve('v2');
           const browserAsset = /\/poisk-turov-test\/v2\/([^/?]+\.(?:js|css))(?:\?.*)?$/i;
+          const fixedNow = Date.parse('2026-08-27T12:00:00Z');
+          const baselineFrom = '2026-09-01';
+          const baselineTo = '2026-09-14';
           const viewports = [
             ['mobile-375',375,812],
             ['mobile-430',430,932],
@@ -53,14 +67,26 @@ jobs:
             ['intermediate-1024',1024,900],
             ['desktop-1440',1440,1000],
           ];
-          const iso = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-          const plusDays = days => { const d=new Date(); d.setDate(d.getDate()+days); return iso(d); };
-          const hasOverflow = () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2 || document.body.scrollWidth > document.documentElement.clientWidth + 2;
 
           async function shot(page,name,state,hashes){
             const file=`visual-baseline-artifacts/${name}-${state}.png`;
-            await page.screenshot({path:file,fullPage:true});
+            await page.screenshot({path:file,fullPage:true,animations:'disabled'});
             hashes[`${name}-${state}`]=crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          }
+
+          async function normalize(page){
+            await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}html{scroll-behavior:auto!important}'});
+            await page.evaluate(({fromValue,toValue})=>{
+              const from=document.querySelector('input[name="dateFrom"]'),to=document.querySelector('input[name="dateTo"]');
+              if(from){from.value=fromValue;from.dispatchEvent(new Event('change',{bubbles:true}));}
+              if(to){to.value=toValue;to.dispatchEvent(new Event('change',{bubbles:true}));}
+              const departure=document.querySelector('select[name="from"]');
+              const country=document.querySelector('select[name="country"]');
+              if(departure&&departure.selectedIndex>=0)departure.options[departure.selectedIndex].text='Москва';
+              if(country&&country.selectedIndex>=0)country.options[country.selectedIndex].text='Турция';
+            },{fromValue:baselineFrom,toValue:baselineTo});
+            await page.evaluate(()=>document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve());
+            await page.waitForTimeout(100);
           }
 
           const selectedFixture = '<button type="button" class="back-results">← Вернуться к предложениям</button><div class="selected-head"><div><span class="eyebrow">ВЫБРАННЫЙ ТУР</span><h2>AnyTour Coast Resort</h2><p>Турция · Анталья · Лара</p></div><div class="selected-price"><small>Стоимость</small>125 000 ₽</div></div><div class="selected-picture"><div class="photo-placeholder">ANYTOUR</div></div><div class="facts"><div><span>Вылет из</span><b>Москва</b></div><div><span>Дата</span><b>10.09.2026</b></div><div><span>Ночей</span><b>7</b></div><div><span>Туристы</span><b>2 взр.</b></div><div><span>Питание</span><b>Все включено</b></div><div><span>Номер</span><b>Standard Sea View</b></div><div><span>Размещение</span><b>DBL</b></div><div><span>Оператор</span><b>ANEX</b></div><div><span>Перелёт</span><b>Чартер</b></div><div><span>Топливный сбор</span><b>—</b></div></div><div class="hotel-desc">Отель на первой береговой линии. Детерминированное описание для визуального baseline выбранного тура.</div><div class="tour-flights"><div class="section-heading"><strong>Авиарейсы</strong><span>Выберите подходящий вариант</span></div><div class="flight-variants"><div class="flight-variant is-selected"><label class="flight-choice"><input type="radio" checked><span>Вариант 1 · рекомендуемый</span><b>125 000 ₽</b></label><div class="flight-segment"><div class="flight-segment-title"><strong>Туда</strong><span>Southwind · 2S172 · Boeing 737-800</span></div><div class="flight-route"><div><b>Шереметьево (SVO)</b><span>10.09.2026 · 14:00</span></div><div class="flight-arrow">→</div><div><b>Даламан (DLM)</b><span>10.09.2026 · 18:05</span></div></div><div class="flight-baggage">Багаж: <b>10 кг</b> · Ручная кладь: <b>8 кг</b></div></div><div class="flight-segment"><div class="flight-segment-title"><strong>Обратно</strong><span>Southwind · 2S171 · Boeing 737-800</span></div><div class="flight-route"><div><b>Даламан (DLM)</b><span>17.09.2026 · 09:00</span></div><div class="flight-arrow">→</div><div><b>Шереметьево (SVO)</b><span>17.09.2026 · 13:10</span></div></div><div class="flight-baggage">Багаж: <b>10 кг</b> · Ручная кладь: <b>8 кг</b></div></div></div></div></div><form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер получит выбранный тур и рейс</span></div><div class="lead-fields"><label>Имя<input name="name"></label><label>Телефон<input name="phone" type="tel" required></label></div><label>Комментарий<textarea name="comment"></textarea></label><label class="lead-consent"><input type="checkbox" name="consent" value="1" required><span>Согласен на обработку персональных данных</span></label><button type="submit" class="primary">Отправить заявку</button><p class="lead-message"></p></form>';
@@ -72,6 +98,11 @@ jobs:
             let failed=false;
             for(const [name,width,height] of viewports){
               const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+              await context.addInitScript(({fixed})=>{
+                const NativeDate=Date;
+                class FixedDate extends NativeDate{constructor(...args){super(...(args.length?args:[fixed]));}static now(){return fixed;}}
+                globalThis.Date=FixedDate;
+              },{fixed:fixedNow});
               const page=await context.newPage();
               const pageErrors=[];
               page.on('pageerror',e=>pageErrors.push(String(e).slice(0,500)));
@@ -83,17 +114,13 @@ jobs:
                 return route.fulfill({status:200,contentType:path.extname(file).toLowerCase()==='.css'?'text/css':'application/javascript',body:fs.readFileSync(file)});
               });
               const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
-              await page.waitForTimeout(3500);
+              await page.waitForTimeout(3200);
+              await normalize(page);
 
-              const initial=await page.evaluate(()=>({
-                hero:!!document.querySelector('.v2-product-hero'),search:!!document.querySelector('.search-card'),
-                dates:!!document.querySelector('.dates-picker'),guests:!!document.querySelector('.guests-picker'),
-                resultsVisible:!!document.querySelector('#results .hotel-card'),selectedVisible:(()=>{const e=document.getElementById('selectedTour');return !!e&&!e.hidden;})(),overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)
-              }));
+              const initial=await page.evaluate(()=>({hero:!!document.querySelector('.v2-product-hero'),search:!!document.querySelector('.search-card'),dates:!!document.querySelector('.dates-picker'),guests:!!document.querySelector('.guests-picker'),resultsVisible:!!document.querySelector('#results .hotel-card'),selectedVisible:(()=>{const e=document.getElementById('selectedTour');return !!e&&!e.hidden;})(),overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)}));
               await shot(page,name,'initial',hashes);
 
               await page.locator('.dates-picker summary').click();
-              await page.evaluate(({fromValue,toValue})=>{const from=document.querySelector('input[name="dateFrom"]'),to=document.querySelector('input[name="dateTo"]');from.value=fromValue;from.dispatchEvent(new Event('change',{bubbles:true}));to.value=toValue;to.dispatchEvent(new Event('change',{bubbles:true}));},{fromValue:plusDays(5),toValue:plusDays(18)});
               await page.waitForTimeout(100);
               const dates=await page.evaluate(()=>({open:!!document.querySelector('.dates-picker')?.open,overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)}));
               await shot(page,name,'dates',hashes);
@@ -113,38 +140,24 @@ jobs:
               if(advanced.mobile)await page.locator('.search-filters-backdrop').click({position:{x:5,y:5}});else await page.locator('details.extras > summary').click();
 
               const results=await page.evaluate(()=>{
-                const fixture=[
-                  {id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[{id:'tour-901-a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'},roomType:'Standard Sea View',placement:'DBL',operator:{name:'ANEX'},isCharter:true},{id:'tour-901-b',date:'12.09.2026',nights:9,price:142000,meal:{name:'Ультра всё включено'},roomType:'Deluxe',placement:'DBL',operator:{name:'PEGAS'}}]},
-                  {id:902,name:'AnyTour Garden Hotel with a deliberately long responsive title',category:4,rating:4.4,seaDistance:650,price:98000,country:{name:'Турция'},region:{name:'Аланья'},tours:[{id:'tour-902-a',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'},roomType:'Family Room',placement:'2ADL',operator:{name:'Coral Travel'}}]}
-                ];
+                const fixture=[{id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[{id:'tour-901-a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'},roomType:'Standard Sea View',placement:'DBL',operator:{name:'ANEX'},isCharter:true},{id:'tour-901-b',date:'12.09.2026',nights:9,price:142000,meal:{name:'Ультра всё включено'},roomType:'Deluxe',placement:'DBL',operator:{name:'PEGAS'}}]},{id:902,name:'AnyTour Garden Hotel with a deliberately long responsive title',category:4,rating:4.4,seaDistance:650,price:98000,country:{name:'Турция'},region:{name:'Аланья'},tours:[{id:'tour-902-a',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'},roomType:'Family Room',placement:'2ADL',operator:{name:'Coral Travel'}}]}];
                 window.V2Results.render(fixture);
                 return {cards:document.querySelectorAll('.hotel-card').length,bestOffers:document.querySelectorAll('.hotel-best-offer').length,overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)};
               });
               await page.waitForTimeout(100);
               await shot(page,name,'results',hashes);
 
-              const checkout=await page.evaluate(html=>{
-                const selected=document.getElementById('selectedTour');selected.hidden=false;selected.innerHTML=html;
-                if(window.V2SelectedTourDescription)window.V2SelectedTourDescription.decorate(selected);
-                if(window.V2CheckoutExperienceV1)window.V2CheckoutExperienceV1.decorate(selected);
-                return {journey:selected.querySelectorAll('.checkout-journey span').length,facts:selected.querySelectorAll('.facts.checkout-facts>div').length,flights:!!selected.querySelector('.checkout-flights'),lead:!!selected.querySelector('.checkout-lead'),overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)};
-              },selectedFixture);
+              const checkout=await page.evaluate(html=>{const selected=document.getElementById('selectedTour');selected.hidden=false;selected.innerHTML=html;if(window.V2SelectedTourDescription)window.V2SelectedTourDescription.decorate(selected);if(window.V2CheckoutExperienceV1)window.V2CheckoutExperienceV1.decorate(selected);return {journey:selected.querySelectorAll('.checkout-journey span').length,facts:selected.querySelectorAll('.facts.checkout-facts>div').length,flights:!!selected.querySelector('.checkout-flights'),lead:!!selected.querySelector('.checkout-lead'),overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)};},selectedFixture);
               await page.waitForTimeout(100);
               await shot(page,name,'checkout',hashes);
 
-              const recovery=await page.evaluate(()=>{
-                const results=document.getElementById('results'),tools=document.getElementById('resultsTools'),selected=document.getElementById('selectedTour');
-                if(results)results.innerHTML='';if(tools)tools.hidden=true;if(selected){selected.hidden=true;selected.innerHTML='';}
-                window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items:[]}}));
-                const empty=document.querySelector('.search-progress-empty');
-                return {empty:!!empty,edit:!!empty?.querySelector('.search-progress-edit'),filters:!!empty?.querySelector('.search-progress-filters'),overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)};
-              });
+              const recovery=await page.evaluate(()=>{const results=document.getElementById('results'),tools=document.getElementById('resultsTools'),selected=document.getElementById('selectedTour');if(results)results.innerHTML='';if(tools)tools.hidden=true;if(selected){selected.hidden=true;selected.innerHTML='';}window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items:[]}}));const empty=document.querySelector('.search-progress-empty');return {empty:!!empty,edit:!!empty?.querySelector('.search-progress-edit'),filters:!!empty?.querySelector('.search-progress-filters'),overflow:(document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2)};});
               await page.waitForTimeout(100);
               await shot(page,name,'recovery',hashes);
 
               const item={name,width,height,http:response?response.status():0,pageErrors,initial,dates,guests,advanced,results,checkout,recovery};
               report.push(item);
-              const advancedBad=advanced.mobile?(!advanced.backdrop):advanced.backdrop;
+              const advancedBad=advanced.mobile?!advanced.backdrop:advanced.backdrop;
               const bad=item.http!==200||pageErrors.length||!initial.hero||!initial.search||!initial.dates||!initial.guests||initial.resultsVisible||initial.selectedVisible||initial.overflow||!dates.open||dates.overflow||!guests.open||guests.ages!==2||guests.overflow||!advanced.open||advancedBad||advanced.overflow||results.cards!==2||results.bestOffers<1||results.overflow||checkout.journey!==3||checkout.facts!==10||!checkout.flights||!checkout.lead||checkout.overflow||!recovery.empty||!recovery.edit||!recovery.filters||recovery.overflow;
               if(bad)failed=true;
               console.log('BASELINE',name,JSON.stringify(item));
@@ -158,10 +171,64 @@ jobs:
           JS
           node ./v2-visual-baseline.cjs
 
+      - name: Compare with latest green main baseline
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p reference-baseline
+          api="https://api.github.com/repos/${REPOSITORY}"
+          auth=(-H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json")
+          runs=$(curl -fsSL "${auth[@]}" "${api}/actions/workflows/visual-v2-baseline.yml/runs?branch=main&status=success&per_page=20")
+          artifact_id=''
+          reference_run=''
+          while read -r run_id; do
+            [ -n "$run_id" ] || continue
+            artifacts=$(curl -fsSL "${auth[@]}" "${api}/actions/runs/${run_id}/artifacts?per_page=100")
+            artifact_id=$(printf '%s' "$artifacts" | jq -r '.artifacts[] | select(.expired==false and (.name|startswith("v2-visual-baseline-v2-"))) | .id' | head -n1)
+            if [ -n "$artifact_id" ] && [ "$artifact_id" != "null" ]; then reference_run="$run_id"; break; fi
+            artifact_id=''
+          done < <(printf '%s' "$runs" | jq -r '.workflow_runs[].id')
+
+          if [ -z "$artifact_id" ]; then
+            printf '{"status":"bootstrap","reason":"no compatible main baseline yet"}\n' > visual-baseline-artifacts/comparison.json
+            echo 'No compatible main baseline yet; this PR is the bootstrap generation.'
+            exit 0
+          fi
+
+          curl -fsSL -L "${auth[@]}" "${api}/actions/artifacts/${artifact_id}/zip" -o /tmp/reference-baseline.zip
+          unzip -q /tmp/reference-baseline.zip -d reference-baseline
+          cat > ./compare-visual-baseline.cjs <<'JS'
+          const fs=require('fs'),path=require('path');
+          const {PNG}=require('pngjs');
+          const pixelmatch=require('pixelmatch');
+          const currentDir='visual-baseline-artifacts',referenceDir='reference-baseline';
+          function walk(dir){let out=[];for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,entry.name);out=out.concat(entry.isDirectory()?walk(p):[p]);}return out;}
+          const refs=new Map(walk(referenceDir).filter(p=>p.endsWith('.png')).map(p=>[path.basename(p),p]));
+          const current=walk(currentDir).filter(p=>p.endsWith('.png')&&!path.basename(p).startsWith('diff-'));
+          const report=[];let failed=false;
+          for(const file of current){const base=path.basename(file),ref=refs.get(base);if(!ref){report.push({file:base,status:'missing-reference'});failed=true;continue;}
+            const a=PNG.sync.read(fs.readFileSync(ref)),b=PNG.sync.read(fs.readFileSync(file));
+            if(a.width!==b.width||a.height!==b.height){report.push({file:base,status:'dimension-change',reference:[a.width,a.height],current:[b.width,b.height]});failed=true;continue;}
+            const diff=new PNG({width:a.width,height:a.height});
+            const changed=pixelmatch(a.data,b.data,diff.data,a.width,a.height,{threshold:0.12,includeAA:false});
+            const ratio=changed/(a.width*a.height);const status=ratio<=0.02?'ok':'changed';
+            report.push({file:base,status,changedPixels:changed,totalPixels:a.width*a.height,ratio});
+            if(status!=='ok'){failed=true;fs.writeFileSync(path.join(currentDir,'diff-'+base),PNG.sync.write(diff));}
+          }
+          const summary={status:failed?'changed':'ok',maxAllowedRatio:0.02,files:report};
+          fs.writeFileSync(path.join(currentDir,'comparison.json'),JSON.stringify(summary,null,2));
+          console.log(JSON.stringify(summary));if(failed)process.exit(1);
+          JS
+          REFERENCE_RUN="$reference_run" node ./compare-visual-baseline.cjs
+
       - name: Upload visual baseline evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v2-visual-baseline-${{ github.event.pull_request.number || github.sha }}
+          name: v2-visual-baseline-v2-${{ github.event.pull_request.number || github.event.workflow_run.head_sha || github.sha }}
           path: visual-baseline-artifacts/
-          retention-days: 30
+          retention-days: 90
