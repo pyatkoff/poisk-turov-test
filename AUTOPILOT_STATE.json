@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T02:57:00+02:00",
+  "updated_at": "2026-08-27T02:58:00+02:00",
   "mode": "active_development",
   "phase": "UX and visual iteration after technical refactor",
   "current_task": {
@@ -10,12 +10,12 @@
     "title": "End-to-end search journey UX audit",
     "status": "IN_PROGRESS",
     "objective": "Audit the live V2 search journey from initial form through results and tour details, identify friction and confusing states, and prioritize UX improvements without changing protected analytics, Metrika, or lead-sending contracts.",
-    "next_action": "Finish verification of the primary meal ordering race fix, then continue through waiting/progress, results comparison, selected-tour/flight-price clarity, and lead entry. Keep automatic visual baseline runs manual-only."
+    "next_action": "Continue through waiting/progress and stale-search transitions, then inspect results comparison, selected-tour/flight-price clarity, and lead entry. Keep automatic visual baseline runs manual-only."
   },
   "queue": [
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass","note":"Removed proven inactive historical generations for results-renderer, search-continue, search-lifecycle, and tour-controller; final contract/isolation/live/deploy checks passed."},
     {"id":"A1","status":"DEFERRED","title":"Visual baseline and regression harness","note":"Automatic visual runs temporarily disabled; workflow remains available manually."},
-    {"id":"A2","status":"IN_PROGRESS","title":"End-to-end search journey UX audit","note":"Primary meal ordering DOM race fixed in code; active contract and isolation checks passed, deploy/live verification in progress."},
+    {"id":"A2","status":"IN_PROGRESS","title":"End-to-end search journey UX audit","note":"Primary meal ordering DOM race fixed and verified by active contract, isolation, live checks and successful V2 deploy."},
     {"id":"A3","status":"QUEUED","title":"Consolidate unstable visual cascade areas"},
     {"id":"A4","status":"QUEUED","title":"Conversion readiness before live traffic"},
     {"id":"A5","status":"QUEUED","title":"Live Tourvisor correctness pass"},
@@ -23,11 +23,11 @@
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Live traffic feedback loop"}
   ],
   "last_ci": {
-    "workflow": "Validate active V2 contract",
-    "run_id": 33028485437,
+    "workflow": "Deploy V2 only",
+    "run_id": 33028485502,
     "head_sha": "4c52edfdcff26129f5ab57ff67d902c9b7615ba5",
     "conclusion": "success",
-    "classification": "UX_ORDERING_FIX_PARTIALLY_VERIFIED_DEPLOY_PENDING"
+    "classification": "UX_ORDERING_FIX_VERIFIED"
   },
   "last_verified_commit": "4c52edfdcff26129f5ab57ff67d902c9b7615ba5",
   "blocked": [],
