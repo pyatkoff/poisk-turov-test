@@ -1,0 +1,103 @@
+name: Visual V2 post-deploy
+
+on:
+  workflow_run:
+    workflows: ["Deploy V2 only"]
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-visual-v2-post-deploy
+  cancel-in-progress: true
+
+jobs:
+  visual-post-deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install chromium >/dev/null
+
+      - name: Audit production V2 viewports
+        shell: bash
+        env:
+          V2_URL: https://anytour.online/poisk-turov-test/v2/
+        run: |
+          set -euo pipefail
+          mkdir -p visual-artifacts
+          cat > ./v2-post-deploy-visual.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const url = process.env.V2_URL;
+          const viewports = [
+            ['mobile-375',375,812],
+            ['mobile-430',430,932],
+            ['tablet-768',768,1024],
+            ['intermediate-1024',1024,900],
+            ['desktop-1440',1440,1000],
+          ];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const report=[];
+            let failed=false;
+            for(const [name,width,height] of viewports){
+              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+              const page=await context.newPage();
+              const pageErrors=[];
+              page.on('pageerror',e=>pageErrors.push(String(e).slice(0,500)));
+              const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForTimeout(5000);
+              await page.screenshot({path:`visual-artifacts/${name}.png`,fullPage:true});
+              const state=await page.evaluate(()=>{
+                const root=document.documentElement,body=document.body;
+                const hero=document.querySelector('.v2-product-hero');
+                const header=document.querySelector('.at-site-header');
+                const search=document.querySelector('.search-card');
+                const visible=el=>!!el&&!el.hidden&&getComputedStyle(el).display!=='none';
+                const offenders=[...document.querySelectorAll('body *')].filter(el=>{
+                  const r=el.getBoundingClientRect();
+                  return r.right>innerWidth+2||r.left<-2;
+                }).slice(0,20).map(el=>({tag:el.tagName,id:el.id||'',class:String(el.className||'').slice(0,120),right:Math.round(el.getBoundingClientRect().right),x:Math.round(el.getBoundingClientRect().x)}));
+                return {
+                  overflow:root.scrollWidth>root.clientWidth+2||body.scrollWidth>root.clientWidth+2,
+                  offenders,
+                  heroVisible:visible(hero),
+                  headerVisible:visible(header),
+                  searchVisible:visible(search),
+                  resultsInitiallyVisible:visible(document.querySelector('#resultsTools'))||!!document.querySelector('#results .hotel-card'),
+                  selectedInitiallyVisible:visible(document.querySelector('#selectedTour')),
+                  heroBox:hero?{w:Math.round(hero.getBoundingClientRect().width),h:Math.round(hero.getBoundingClientRect().height)}:null,
+                  headerBox:header?{w:Math.round(header.getBoundingClientRect().width),h:Math.round(header.getBoundingClientRect().height)}:null
+                };
+              });
+              const item={name,width,height,http:response?response.status():0,pageErrors,state};
+              report.push(item);
+              if(item.http!==200||pageErrors.length||state.overflow||!state.heroVisible||!state.headerVisible||!state.searchVisible||state.resultsInitiallyVisible||state.selectedInitiallyVisible)failed=true;
+              console.log(`VISUAL ${name} http=${item.http} overflow=${state.overflow} hero=${state.heroVisible} header=${state.headerVisible} search=${state.searchVisible} pageErrors=${pageErrors.length}`);
+              if(state.offenders.length)console.log(`OFFENDERS ${name} ${JSON.stringify(state.offenders)}`);
+              await context.close();
+            }
+            fs.writeFileSync('visual-artifacts/report.json',JSON.stringify(report,null,2));
+            await browser.close();
+            if(failed)process.exit(1);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node ./v2-post-deploy-visual.cjs
+
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-post-deploy-visual
+          path: visual-artifacts/
+          retention-days: 14
