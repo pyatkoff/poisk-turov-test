@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   migrate:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,7 +23,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "migration-trigger=v2"
+          echo "migration-trigger=v3"
           changed=0
           while IFS= read -r -d '' file; do
             if [[ "$file" == ".github/workflows/deploy.yml" ]]; then
