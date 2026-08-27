@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'v2/**'
+      - '.github/workflows/validate-tour-live.yml'
   workflow_dispatch:
 jobs:
   validate-tour-live:
@@ -48,24 +49,29 @@ jobs:
             results_code="$(curl -k -L -sS -o /tmp/v2-tour-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25")"
             test "$results_code" = "200" || fail results_http
             python3 -c "import json; items=json.load(open(\"/tmp/v2-tour-results.json\")); ids=[]; [ids.append(str(t.get(\"id\"))) for h in (items if isinstance(items,list) else []) if isinstance(h,dict) for t in (h.get(\"tours\") or []) if isinstance(t,dict) and t.get(\"id\") is not None and str(t.get(\"id\")) not in ids]; print(\"\\n\".join(ids[:10]))" >/tmp/v2-tour-ids.txt
-            first_tour="$(head -1 /tmp/v2-tour-ids.txt)"
-            test -n "$first_tour" || fail no_tour_ids
-            tour_code="$(curl -k -L -sS -o /tmp/v2-tour.json -w "%{http_code}" --max-time 45 "$base?action=tour&tourId=$first_tour&currency=RUB")"
-            echo "TOUR_HTTP=$tour_code TOUR_ID=$first_tour"
-            cat /tmp/v2-tour.json
-            test "$tour_code" = "200" || fail tour_http
-            python3 -c "import json; d=json.load(open(\"/tmp/v2-tour.json\")); assert isinstance(d,dict) and str(d.get(\"id\") or \"\")" || fail tour_shape
-            flights_ok=0
+            test -s /tmp/v2-tour-ids.txt || fail no_tour_ids
+            chain_ok=0
+            verified_tour=""
             while IFS= read -r tid; do
               test -n "$tid" || continue
+              tour_code="$(curl -k -L -sS -o /tmp/v2-tour.json -w "%{http_code}" --max-time 45 "$base?action=tour&tourId=$tid&currency=RUB")"
+              echo "TOUR_HTTP=$tour_code TOUR_ID=$tid"
+              test "$tour_code" = "200" || continue
+              if ! FROM="$from" TILL="$till" TID="$tid" python3 -c "import json,os,datetime as dt; d=json.load(open(\"/tmp/v2-tour.json\")); assert isinstance(d,dict); assert str(d.get(\"id\") or \"\")==os.environ[\"TID\"]; dep=d.get(\"departure\") or {}; hotel=d.get(\"hotel\") or {}; country=hotel.get(\"country\") or {}; assert int(dep.get(\"id\") or 0)==1; assert int(country.get(\"id\") or 0)==4; assert int(d.get(\"adults\") or 0)==2; assert 7<=int(d.get(\"nights\") or 0)<=10; dd=dt.datetime.strptime(str(d.get(\"date\") or \"\"),\"%d.%m.%Y\").date(); lo=dt.datetime.strptime(os.environ[\"FROM\"],\"%Y-%m-%d\").date(); hi=dt.datetime.strptime(os.environ[\"TILL\"],\"%Y-%m-%d\").date(); assert lo<=dd<=hi; assert str(d.get(\"currency\") or \"RUB\")==\"RUB\"; assert float(d.get(\"price\") or 0)>0"; then
+                echo "TOUR_INVARIANTS_FAIL TOUR_ID=$tid"
+                continue
+              fi
               flight_code="$(curl -k -L -sS -o /tmp/v2-flights.json -w "%{http_code}" --max-time 45 "$base?action=flights&tourId=$tid&currency=RUB")"
               echo "FLIGHTS_HTTP=$flight_code TOUR_ID=$tid"
-              if test "$flight_code" = "200" && python3 -c "import json; d=json.load(open(\"/tmp/v2-flights.json\")); assert isinstance(d,list) or isinstance(d,dict)"; then
-                flights_ok=1
-                cat /tmp/v2-flights.json
-                break
+              test "$flight_code" = "200" || continue
+              if ! python3 -c "import json; tour=json.load(open(\"/tmp/v2-tour.json\")); raw=json.load(open(\"/tmp/v2-flights.json\")); fs=raw if isinstance(raw,list) else ((raw.get(\"flights\") or []) if isinstance(raw,dict) else []); assert not isinstance(raw,dict) or not raw.get(\"error\"); assert isinstance(fs,list) and fs; defaults=[v for v in fs if isinstance(v,dict) and v.get(\"isDefault\")]; d=defaults[0] if defaults else None; tp=tour.get(\"price\"); tf=tour.get(\"fuelCharge\"); fp=(d.get(\"price\") or {}).get(\"value\") if d and isinstance(d.get(\"price\"),dict) else None; ff=(d.get(\"fuelCharge\") or {}).get(\"value\") if d and isinstance(d.get(\"fuelCharge\"),dict) else None; pc=(d.get(\"price\") or {}).get(\"currency\") if d and isinstance(d.get(\"price\"),dict) else \"\"; assert not d or fp is None or tp is None or float(fp)==float(tp); assert not d or ff is None or tf is None or float(ff)==float(tf); assert not d or not pc or pc==str(tour.get(\"currency\") or \"RUB\"); assert not d or not d.get(\"dateForward\") or str(d.get(\"dateForward\"))==str(tour.get(\"date\") or \"\")"; then
+                echo "FLIGHT_INVARIANTS_FAIL TOUR_ID=$tid"
+                continue
               fi
+              chain_ok=1
+              verified_tour="$tid"
+              break
             done </tmp/v2-tour-ids.txt
-            test "$flights_ok" = "1" || fail no_working_flights_endpoint
-            echo "TOUR_LIVE_OK searchId=$search_id tourId=$first_tour"
+            test "$chain_ok" = "1" || fail no_consistent_tour_flight_chain
+            echo "TOUR_LIVE_OK searchId=$search_id tourId=$verified_tour"
           '
