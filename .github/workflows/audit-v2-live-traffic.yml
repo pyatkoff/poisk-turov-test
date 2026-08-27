@@ -1,0 +1,126 @@
+name: Audit V2 live traffic
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-v2-live-traffic.yml'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_file="$GITHUB_WORKSPACE/deploy_key"
+          raw="$DEPLOY_SSH_KEY_VALUE"
+          if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+      - name: Aggregate project-only production signals
+        env:
+          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" 'python3 - <<'"'"'PY'"'"'
+import os,re,glob,collections
+needle="/poisk-turov-test/v2"
+home=os.path.expanduser("~")
+access_candidates=[]
+for pattern in [
+    os.path.join(home,"logs","*anytour.online*access*.log*"),
+    os.path.join(home,"logs","*access*.log*"),
+    os.path.join(home,"www","anytour.online","logs","*access*.log*"),
+]:
+    access_candidates.extend(glob.glob(pattern))
+seen=set(); access=[]
+for p in access_candidates:
+    if p in seen or not os.path.isfile(p) or not os.access(p,os.R_OK):
+        continue
+    seen.add(p); access.append(p)
+
+status=collections.Counter(); actions=collections.Counter(); paths=collections.Counter(); methods=collections.Counter(); bad=collections.Counter(); total=0
+req_re=re.compile(r'"([A-Z]+)\s+([^\s"]+)\s+HTTP/[^"]+"\s+(\d{3})')
+for p in access:
+    try:
+        with open(p,"r",errors="ignore") as f:
+            lines=f.readlines()[-30000:]
+    except Exception:
+        continue
+    for line in lines:
+        if needle not in line: continue
+        m=req_re.search(line)
+        if not m: continue
+        method,target,code=m.groups(); total+=1
+        methods[method]+=1; status[code]+=1
+        clean=target.split("?",1)[0]
+        paths[clean]+=1
+        if "?" in target:
+            qs=target.split("?",1)[1]
+            am=re.search(r'(?:^|&)action=([^&]+)',qs)
+            if am: actions[am.group(1)]+=1
+        if code.startswith(("4","5")):
+            bad[(code,clean)]+=1
+print("V2_LIVE_ACCESS_FILES",len(access))
+print("V2_LIVE_REQUESTS",total)
+print("V2_LIVE_METHODS",dict(methods))
+print("V2_LIVE_STATUS",dict(status))
+print("V2_LIVE_TOP_PATHS",paths.most_common(12))
+print("V2_LIVE_TOP_ACTIONS",actions.most_common(20))
+print("V2_LIVE_4XX_5XX",bad.most_common(20))
+
+error_candidates=[]
+for pattern in [
+    os.path.join(home,"logs","*anytour.online*error*.log*"),
+    os.path.join(home,"www","anytour.online","logs","*error*.log*"),
+    os.path.join(home,"www","anytour.online","poisk-turov-test","**","*.log"),
+]:
+    error_candidates.extend(glob.glob(pattern,recursive=True))
+err_counts=collections.Counter(); matched=0; err_files=0
+classes=[
+    ("php_fatal",re.compile(r'PHP Fatal error|Uncaught',re.I)),
+    ("php_warning",re.compile(r'PHP Warning',re.I)),
+    ("php_notice",re.compile(r'PHP Notice|PHP Deprecated',re.I)),
+    ("timeout",re.compile(r'timed out|timeout',re.I)),
+    ("upstream",re.compile(r'upstream.*(?:error|failed|closed)',re.I)),
+    ("permission",re.compile(r'permission denied',re.I)),
+]
+seen=set()
+for p in error_candidates:
+    if p in seen or not os.path.isfile(p) or not os.access(p,os.R_OK): continue
+    seen.add(p); err_files+=1
+    try:
+        with open(p,"r",errors="ignore") as f: lines=f.readlines()[-20000:]
+    except Exception: continue
+    for line in lines:
+        if "poisk-turov-test" not in line and needle not in line: continue
+        matched+=1; hit=False
+        for name,rx in classes:
+            if rx.search(line): err_counts[name]+=1; hit=True
+        if not hit: err_counts["other_project_error_line"]+=1
+print("V2_LIVE_ERROR_FILES",err_files)
+print("V2_LIVE_ERROR_LINES",matched)
+print("V2_LIVE_ERROR_CLASSES",dict(err_counts))
+
+root=os.path.join(home,"www","anytour.online","poisk-turov-test")
+local=[]
+for dirpath,_,files in os.walk(root):
+    rel=os.path.relpath(dirpath,root)
+    if rel.count(os.sep)>3: continue
+    for fn in files:
+        low=fn.lower()
+        if low.endswith(".log") or "error" in low or "request" in low:
+            fp=os.path.join(dirpath,fn)
+            try: size=os.path.getsize(fp)
+            except OSError: continue
+            local.append((os.path.relpath(fp,root),size))
+print("V2_PROJECT_LOCAL_SIGNAL_FILES",sorted(local)[:50])
+PY'
