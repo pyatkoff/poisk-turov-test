@@ -53,6 +53,15 @@ jobs:
             ['intermediate-1024',1024,900],
             ['desktop-1440',1440,1000],
           ];
+          const fixture=[
+            {id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[
+              {id:'tour-901-a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'},roomType:'Standard Sea View',placement:'DBL',operator:{name:'ANEX'},isCharter:true},
+              {id:'tour-901-b',date:'12.09.2026',nights:9,price:142000,meal:{name:'Ультра всё включено'},roomType:'Deluxe',placement:'DBL',operator:{name:'PEGAS'}},
+            ]},
+            {id:902,name:'AnyTour Garden Hotel with a deliberately long responsive title',category:4,rating:4.4,seaDistance:650,price:98000,country:{name:'Турция'},region:{name:'Аланья'},tours:[
+              {id:'tour-902-a',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'},roomType:'Family Room',placement:'2ADL',operator:{name:'Coral Travel'}},
+            ]},
+          ];
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const report=[];
@@ -87,10 +96,30 @@ jobs:
                   headerBox:header?{w:Math.round(header.getBoundingClientRect().width),h:Math.round(header.getBoundingClientRect().height)}:null
                 };
               });
-              const item={name,width,height,http:response?response.status():0,pageErrors,state};
+              const resultState=await page.evaluate(fixture=>{
+                if(!window.V2Results||typeof window.V2Results.render!=='function')return{renderer:false};
+                window.V2Results.render(fixture);
+                const root=document.documentElement,body=document.body,cards=[...document.querySelectorAll('#results .hotel-card')],multi=cards.find(card=>card.dataset.hotelId==='901'),tools=document.querySelector('#resultsTools'),bar=document.querySelector('.mrf-bar');
+                return {
+                  renderer:true,
+                  cards:cards.length,
+                  toolsVisible:!!tools&&!tools.hidden&&getComputedStyle(tools).display!=='none',
+                  decisionFacts:multi?multi.querySelectorAll('.hotel-decision-line span').length:0,
+                  bestOffer:!!multi?.querySelector('.hotel-best-offer'),
+                  tourRows:multi?multi.querySelectorAll('.tour-row').length:0,
+                  moreToggle:!!multi?.querySelector('.tour-more-toggle'),
+                  mobileFilterVisible:!!bar&&!bar.hidden&&getComputedStyle(bar).display!=='none',
+                  overflow:root.scrollWidth>root.clientWidth+2||body.scrollWidth>root.clientWidth+2,
+                };
+              },fixture);
+              await page.waitForTimeout(150);
+              await page.screenshot({path:`visual-artifacts/${name}-results.png`,fullPage:true});
+              const item={name,width,height,http:response?response.status():0,pageErrors,state,resultState};
               report.push(item);
-              if(item.http!==200||pageErrors.length||state.overflow||!state.heroVisible||!state.headerVisible||!state.searchVisible||state.resultsInitiallyVisible||state.selectedInitiallyVisible)failed=true;
-              console.log(`VISUAL ${name} http=${item.http} overflow=${state.overflow} hero=${state.heroVisible} header=${state.headerVisible} search=${state.searchVisible} pageErrors=${pageErrors.length}`);
+              const expectedTourRows=width<=760?1:2;
+              const resultBad=!resultState.renderer||resultState.cards!==2||!resultState.toolsVisible||resultState.decisionFacts<2||!resultState.bestOffer||resultState.tourRows!==expectedTourRows||(width<=760&&!resultState.moreToggle)||(width>760&&resultState.moreToggle)||(width<=760&&!resultState.mobileFilterVisible)||(width>760&&resultState.mobileFilterVisible)||resultState.overflow;
+              if(item.http!==200||pageErrors.length||state.overflow||!state.heroVisible||!state.headerVisible||!state.searchVisible||state.resultsInitiallyVisible||state.selectedInitiallyVisible||resultBad)failed=true;
+              console.log(`VISUAL ${name} http=${item.http} overflow=${state.overflow}/${resultState.overflow} hero=${state.heroVisible} header=${state.headerVisible} search=${state.searchVisible} results=${resultState.cards}/${resultState.tourRows} more=${resultState.moreToggle} mrf=${resultState.mobileFilterVisible} pageErrors=${pageErrors.length}`);
               if(state.offenders.length)console.log(`OFFENDERS ${name} ${JSON.stringify(state.offenders)}`);
               await context.close();
             }
