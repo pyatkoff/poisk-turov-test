@@ -1,25 +1,32 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T19:18:00+03:00",
+  "updated_at": "2026-08-27T19:47:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "Live product optimization readiness",
+  "phase": "Conversion UX 3.0",
   "current_task": {
-    "id": "B8",
-    "category": "LIVE_PRODUCT_OPTIMIZATION",
-    "title": "Live product optimization",
-    "status": "WAITING_FOR_TRAFFIC",
-    "objective": "Use real traffic, live conversations and production behavior to prioritize the next product improvements instead of speculative micro-optimization.",
-    "next_action": "Wait for meaningful live traffic evidence, then activate B8 and A8 together. Prioritize production breakage, lead loss, incorrect data, user-flow friction and visual/responsive regressions from real sessions before lower-value performance work. Keep the deferred B7 micro-optimizations deferred unless profiling or live evidence makes them material."
+    "id": "C6",
+    "category": "VISUAL_REFINEMENT",
+    "title": "Conversion UX 3.0 visual refinement",
+    "status": "IN_PROGRESS",
+    "objective": "Reduce repeated trust copy and residual visual competition after the completed C1-C4 hierarchy changes while preserving the five-viewport contract, recovery UX and protected business contracts.",
+    "next_action": "Finish and production-verify PR #55 removing duplicated lead helper copy. Then continue a whole-flow C6 audit for confirmed nested-card/border/badge/font-weight competition only. Keep C5 flight auto-load deferred until multiple fresh live latency samples confirm the initial 739-1060 ms result is representative. Activate C7/B8/A8 when meaningful real traffic evidence is available."
   },
   "queue": [
+    {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
+    {"id":"C2","status":"DONE","title":"Results Experience 3.0"},
+    {"id":"C3","status":"DONE","title":"Selected Tour Experience 3.0"},
+    {"id":"C4","status":"DONE","title":"Lead Experience 3.0"},
+    {"id":"C5","status":"MEASURED_MORE_EVIDENCE_REQUIRED","title":"Flight friction"},
+    {"id":"C6","status":"IN_PROGRESS","title":"Visual refinement"},
+    {"id":"C7","status":"WAITING_FOR_TRAFFIC","title":"Live conversion optimization"},
     {"id":"B1","status":"DONE","title":"Visual foundation"},
     {"id":"B2","status":"DONE","title":"Search Experience 2.0"},
     {"id":"B3","status":"DONE","title":"Results Experience 2.0"},
     {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0"},
     {"id":"B5","status":"DONE","title":"Trust and conversion UX"},
     {"id":"B6","status":"DONE","title":"Visual regression baseline"},
-    {"id":"B7","status":"DONE","title":"Performance and visual stability","note":"B7 closed after the whole-flow recovery/performance audit found no remaining material evidence worth speculative optimization. Production-green work includes CSS request/cascade reduction, safe live-read timeout hardening, selected-tour desktop image CLS reservation, mobile-only lazy initialization, deferred hidden result-state DOM, removal/lazy-binding of empty startup scans/listeners, cached result counts, formatter reuse and recovery hardening. PR #39 cached the results renderer Intl.NumberFormat. PR #41 cached search-status minPrice formatting. Diagnostic PR #40 disproved progressive payload dedup as useful in the sampled real search. PR #42 added in-place selected-tour retry after transient tour API failure. PR #43 fixed critical catalog recovery: initial departures/countries failures no longer leave indefinite loading, stale dependent destination filters are cleared after countries failure, and an on-page retry preserves dates/guest inputs. PR #43 merged as 00a2c2d36b662ed18ecfecb06c3f8e86d48cb3da; its six PR gates passed, Visual V2 post-deploy run 33092133320 passed, and Visual V2 baseline job in run 33092133372 passed. Search-continue already restores its button as `Попробовать ещё раз`; hotel-details and room-details already expose recoverable retry paths. No further confirmed B7 dead ends remain."},
+    {"id":"B7","status":"DONE","title":"Performance and visual stability"},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
@@ -31,21 +38,44 @@
     {"id":"A7","status":"DONE","title":"SEO foundation audit and incremental work"},
     {"id":"A9","status":"DONE","title":"Residual V2 generation and CI cleanup"}
   ],
+  "conversion_ux_3": {
+    "c1": "DONE",
+    "c2": "DONE",
+    "c3": "DONE_PRODUCTION_GREEN",
+    "c4": "DONE_PRODUCTION_GREEN",
+    "c5": {
+      "status": "MEASURED_MORE_EVIDENCE_REQUIRED",
+      "workflow_run": 33099829356,
+      "samples": 3,
+      "min_ms": 739,
+      "median_ms": 868,
+      "p95_ms": 1060,
+      "max_ms": 1060,
+      "decision": "Do not auto-load yet from one three-tour sample; keep accumulating fresh live evidence."
+    },
+    "c6": "IN_PROGRESS",
+    "c7": "WAITING_FOR_TRAFFIC"
+  },
   "last_ci": {
     "workflow": "Visual V2 post-deploy",
-    "run_id": 33092133320,
-    "head_sha": "00a2c2d36b662ed18ecfecb06c3f8e86d48cb3da",
+    "run_id": 33099784883,
+    "head_sha": "403c5c0a897aae05110efd6bde418addb1de4bc3",
     "conclusion": "success",
-    "classification": "B7_CATALOG_RECOVERY_PRODUCTION_GREEN"
+    "classification": "C4_PHONE_FIRST_LEAD_PRODUCTION_GREEN"
   },
-  "last_verified_commit": "00a2c2d36b662ed18ecfecb06c3f8e86d48cb3da",
-  "pending_verification": null,
+  "last_verified_commit": "403c5c0a897aae05110efd6bde418addb1de4bc3",
+  "pending_verification": {
+    "pr": 55,
+    "head_sha": "16011ca6ddf26398a33e28b009e2becca6d9bedc",
+    "scope": "C4/C6 duplicated lead trust-copy removal"
+  },
   "blocked": [],
   "deferred": [
+    {"scope":"C5 automatic/preloaded flights","reason":"Initial fresh production sample is promising at 739/868/1060 ms, but three tours are insufficient for a durable p95/reliability decision. Keep explicit check/retry until repeated live samples confirm it."},
     {"scope":"lead-form-guard-v1.js selectedTour MutationObserver","reason":"Public programmatic V2TourController.selectTour() can mutate #selectedTour before v2:tour-selected; lazy observation tied only to clicks/events would weaken recovery coverage."},
     {"scope":"results-renderer-v5.js per-card initialTourLimit matchMedia allocation","reason":"Confirmed but small; defer until profiling justifies it."},
-    {"scope":"tour-controller-v4.js and flight-price-sync-v1.js price formatter allocations","reason":"User-driven low-frequency work compared with automatic search loops; defer unless profiling shows material interaction cost."},
-    {"scope":"progressive results payload fingerprint dedup/incremental render","reason":"Live diagnostic PR #40 observed only two snapshots and both materially differed; no unchanged transition to eliminate."}
+    {"scope":"tour-controller-v4.js and flight-price-sync-v1.js price formatter allocations","reason":"User-driven low-frequency work; defer unless profiling shows material interaction cost."},
+    {"scope":"progressive results payload fingerprint dedup/incremental render","reason":"Live diagnostic PR #40 observed only material snapshot changes; no unchanged transition to eliminate."}
   ],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
@@ -69,7 +99,7 @@
     "on_ci_success": "collect_done_evidence_then_advance_queue",
     "on_blocker": "record_blocker_and_continue_independent_work",
     "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
-    "on_user_facing_change": "preserve_protected_contracts_and_validate_behavior_before_advancing",
-    "on_live_traffic": "activate_A8_and_B8_and_reprioritize_from_real_evidence"
+    "on_user_facing_change": "preserve_protected_contracts_and validate_behavior_before_advancing",
+    "on_live_traffic": "activate_C7_B8_A8_and_reprioritize_from_real_evidence"
   }
 }
