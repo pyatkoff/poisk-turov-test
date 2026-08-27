@@ -72,6 +72,35 @@ jobs:
           if(p.shouldRetry('search_status',{code:'HTTP_ERROR',status:503},1)) process.exit(8);
           console.log('V2_RETRY_POLICY_OK');
           NODE
+      - name: Validate search filters UX contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s v2/search-filters-ux-v1.css
+          test -s v2/mobile-results-filters-v1.css
+          grep -Fq "v2_asset('search-filters-ux-v1.css')" v2/index.php
+          grep -Fq "v2_asset('mobile-results-filters-v1.css')" v2/index.php
+          grep -Fq 'id="v2-primary-search-ux-style"' v2/index.php
+          ! grep -Fq 'installStyles' v2/search-filters-ux-v1.js
+          ! grep -Fq "document.createElement('style')" v2/search-filters-ux-v1.js
+          ! grep -Fq '.style.marginTop' v2/search-filters-ux-v1.js
+          grep -Fq '.search-filters-reset{margin-top:14px}' v2/search-filters-ux-v1.css
+          grep -Fq '.search-submit{position:sticky;' v2/search-filters-ux-v1.css
+          grep -Fq '.results-tools[hidden]{display:none!important}' v2/mobile-results-filters-v1.css
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm');
+          const src=fs.readFileSync('v2/search-filters-ux-v1.js','utf8');
+          const match=src.match(/const defaults=(\{[^;]+\});/);
+          if(!match)throw new Error('advanced filter defaults contract missing');
+          const defaults=vm.runInNewContext('('+match[1]+')');
+          const required=['arrival','region','subregion','hotel','operator','hotel_type','rating','price_from','price_till','onlyDirect','onlyCharter'];
+          required.forEach(name=>{if(!Object.prototype.hasOwnProperty.call(defaults,name))throw new Error('advanced filter missing: '+name);});
+          if(Object.prototype.hasOwnProperty.call(defaults,'food'))throw new Error('primary meal leaked into advanced filter defaults');
+          if(!src.includes("Курорт, отель и перелёт"))throw new Error('advanced filter empty summary is stale');
+          if(!src.includes('Сбросить дополнительные фильтры'))throw new Error('advanced filter reset control missing');
+          if(!src.includes("summary.innerHTML='<strong>Все фильтры</strong>"))throw new Error('advanced filter summary label missing');
+          console.log('V2_SEARCH_FILTERS_UX_OK');
+          JS
       - name: Validate hotel and room module contracts
         shell: bash
         run: |
@@ -140,7 +169,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in v2/index.php v2/api-v2.php v2/lead-adapter-v2.php v2/lead-price-v1.php v2/assets.php v2/asset-version-v1.php v2/form-defaults.php v2/analytics-config.php v2/privacy-config.php; do
+          for file in v2/index.php v2/api-v2.php v2/lead-adapter-v2.php v2/lead-price-v1.php v2/assets.php v2/asset-version-v1.php v2/catalog-cache-v1.php v2/form-defaults.php v2/analytics-config.php v2/privacy-config.php; do
             test -f "$file" || { echo "ACTIVE_PHP_MISSING:$file"; exit 1; }
             php -l "$file"
           done
@@ -164,6 +193,41 @@ jobs:
           @unlink($f);
           if(v2_asset_content_version($f)!=='0'){fwrite(STDERR,"missing file contract failed\n");exit(1);}
           echo "V2_ASSET_CONTENT_VERSION_OK\n";
+          PHP
+      - name: Validate catalog cache semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          function query_string(array $params) {
+              $parts=[];
+              foreach ($params as $key=>$value) {
+                  if ($value===null || $value==='') continue;
+                  if (is_bool($value)) $value=$value?'true':'false';
+                  if (is_array($value)) foreach ($value as $item) $parts[]=rawurlencode($key).'='.rawurlencode((string)$item);
+                  else $parts[]=rawurlencode($key).'='.rawurlencode((string)$value);
+              }
+              return implode('&',$parts);
+          }
+          require 'v2/catalog-cache-v1.php';
+          $dir=v2_catalog_cache_dir();
+          if (is_dir($dir)) foreach (glob($dir.'/*.json') ?: [] as $f) @unlink($f);
+          $calls=0;
+          $loader=function($path,$params) use (&$calls){$calls++; return ['path'=>$path,'params'=>$params,'call'=>$calls];};
+          $a=v2_catalog_get('/countries',['departureId'=>1],900,$loader);
+          $b=v2_catalog_get('/countries',['departureId'=>1],900,$loader);
+          if ($calls!==1 || $a!==$b) {fwrite(STDERR,"cache hit contract failed\n"); exit(1);}
+          $c=v2_catalog_get('/countries',['departureId'=>2],900,$loader);
+          if ($calls!==2 || $c===$b) {fwrite(STDERR,"parameter isolation failed\n"); exit(1);}
+          $file=$dir.'/'.v2_catalog_cache_key('/countries',['departureId'=>1]).'.json';
+          if (!is_file($file)) {fwrite(STDERR,"cache file missing\n"); exit(1);}
+          touch($file,time()-5);
+          $d=v2_catalog_get('/countries',['departureId'=>1],1,$loader);
+          if ($calls!==3 || ($d['call'] ?? 0)!==3) {fwrite(STDERR,"ttl expiry failed\n"); exit(1);}
+          foreach (glob($dir.'/*.json') ?: [] as $f) @unlink($f);
+          @rmdir($dir); @rmdir(dirname($dir));
+          echo "V2_CATALOG_CACHE_OK\n";
           PHP
       - name: Validate active V2 dependency closure
         shell: bash
