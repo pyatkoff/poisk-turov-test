@@ -48,8 +48,9 @@ jobs:
             test "$complete" = "1" || fail search_not_complete
             results_code="$(curl -k -L -sS -o /tmp/v2-tour-results.json -w "%{http_code}" --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25")"
             test "$results_code" = "200" || fail results_http
-            python3 -c "import json; items=json.load(open(\"/tmp/v2-tour-results.json\")); ids=[]; [ids.append(str(t.get(\"id\"))) for h in (items if isinstance(items,list) else []) if isinstance(h,dict) for t in (h.get(\"tours\") or []) if isinstance(t,dict) and t.get(\"id\") is not None and str(t.get(\"id\")) not in ids]; print(\"\\n\".join(ids[:10]))" >/tmp/v2-tour-ids.txt
+            python3 -c "import json; items=json.load(open(\"/tmp/v2-tour-results.json\")); ids=[]; [ids.append(str(t.get(\"id\"))) for h in (items if isinstance(items,list) else []) if isinstance(h,dict) for t in (h.get(\"tours\") or []) if isinstance(t,dict) and t.get(\"id\") is not None and str(t.get(\"id\")) not in ids]; print(\"\\n\".join(ids[:5]))" >/tmp/v2-tour-ids.txt
             test -s /tmp/v2-tour-ids.txt || fail no_tour_ids
+            tour_ok_count=0
             chain_ok=0
             verified_tour=""
             while IFS= read -r tid; do
@@ -61,6 +62,8 @@ jobs:
                 echo "TOUR_INVARIANTS_FAIL TOUR_ID=$tid"
                 continue
               fi
+              tour_ok_count=$((tour_ok_count + 1))
+              if test "$chain_ok" = "1"; then continue; fi
               flight_code="$(curl -k -L -sS -o /tmp/v2-flights.json -w "%{http_code}" --max-time 45 "$base?action=flights&tourId=$tid&currency=RUB")"
               echo "FLIGHTS_HTTP=$flight_code TOUR_ID=$tid"
               test "$flight_code" = "200" || continue
@@ -70,8 +73,8 @@ jobs:
               fi
               chain_ok=1
               verified_tour="$tid"
-              break
             done </tmp/v2-tour-ids.txt
+            test "$tour_ok_count" -ge 3 || fail insufficient_consistent_tour_sample
             test "$chain_ok" = "1" || fail no_consistent_tour_flight_chain
-            echo "TOUR_LIVE_OK searchId=$search_id tourId=$verified_tour"
+            echo "TOUR_LIVE_OK searchId=$search_id sampledTours=$tour_ok_count flightTourId=$verified_tour"
           '
