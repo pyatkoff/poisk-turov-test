@@ -1,0 +1,48 @@
+name: Validate V2 SEO foundation
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/index.php'
+      - '.github/workflows/validate-v2-seo-foundation.yml'
+
+jobs:
+  seo-foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate test-route SEO contract live
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail(){ echo "SEO_FOUNDATION_FAIL:$1"; exit 1; }
+          url="https://anytour.online/poisk-turov-test/v2/"
+          code="$(curl -k -L -sS -o /tmp/v2-seo.html -w "%{http_code}" --max-time 45 "$url")"
+          test "$code" = "200" || fail page_http
+
+          python3 - <<'PY' || exit 1
+          import re, html
+          text=open('/tmp/v2-seo.html',encoding='utf-8').read()
+          def fail(msg):
+              print('SEO_FOUNDATION_FAIL:'+msg)
+              raise SystemExit(1)
+          titles=re.findall(r'<title\b[^>]*>(.*?)</title>',text,re.I|re.S)
+          if len(titles)!=1 or not re.sub(r'<[^>]+>','',titles[0]).strip(): fail('title')
+          descriptions=re.findall(r'<meta\b[^>]*name=["\']description["\'][^>]*>',text,re.I)
+          if len(descriptions)!=1 or not re.search(r'content=["\'][^"\']{20,}["\']',descriptions[0],re.I): fail('description')
+          robots=re.findall(r'<meta\b[^>]*name=["\']robots["\'][^>]*>',text,re.I)
+          if len(robots)!=1: fail('robots_count')
+          robot_tag=robots[0].lower()
+          if 'noindex' not in robot_tag or 'follow' not in robot_tag: fail('test_route_must_noindex_follow')
+          if re.search(r'<link\b[^>]*rel=["\']canonical["\']',text,re.I): fail('test_route_canonical_not_allowed')
+          h1s=re.findall(r'<h1\b[^>]*>(.*?)</h1>',text,re.I|re.S)
+          if len(h1s)!=1: fail('h1_count')
+          h1=html.unescape(re.sub(r'<[^>]+>',' ',h1s[0])).strip().lower()
+          if 'поиск' not in h1 or 'тур' not in h1: fail('h1_text')
+          required_links=['/country/','/poisk-turov/','/hot/','/contacts/']
+          for href in required_links:
+              if not re.search(r'href=["\']'+re.escape(href)+r'["\']',text,re.I): fail('internal_link_'+href)
+          for marker in ['results-renderer-v5.js','tour-controller-v4.js','lead-form-guard-v1.js']:
+              if marker not in text: fail('active_marker_'+marker)
+          print('V2_SEO_FOUNDATION_OK title=1 description=1 robots=noindex_follow h1=1 internalLinks='+str(len(required_links))+' canonical=absent')
+          PY
