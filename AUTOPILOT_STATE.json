@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-27T17:08:00+02:00",
+  "updated_at": "2026-08-27T17:10:00+02:00",
   "mode": "product_ux_visual_development",
   "phase": "Product UX and visual development before and during live traffic",
   "current_task": {
@@ -10,7 +10,7 @@
     "title": "Performance and visual stability",
     "status": "IN_PROGRESS",
     "objective": "Reduce client overhead, cascade complexity and layout instability while preserving the locked five-viewport product contract.",
-    "next_action": "Continue evidence-backed startup work by auditing lead-form-guard's always-on selectedTour MutationObserver and all direct/programmatic tour-selection and error/retry entry paths before changing it. The observer may be deferred only if it can always be installed before the first selected-tour mutation; otherwise leave it intact and continue another measurable startup target. Do not bundle JS merely to reduce request count."
+    "next_action": "Measure remaining startup/runtime cost before further edits. The lead-form-guard selectedTour MutationObserver cleanup is explicitly deferred: V2TourController exposes public programmatic selectTour(), which mutates selectedTour before v2:tour-selected, so click-only lazy observation would weaken programmatic/error recovery. Keep that observer intact unless a safe pre-mutation lifecycle contract is introduced and proven. Continue with another measured startup/DOM target; do not bundle JS merely to reduce request count."
   },
   "queue": [
     {"id":"B1","status":"DONE","title":"Visual foundation"},
@@ -19,7 +19,7 @@
     {"id":"B4","status":"DONE","title":"Tour / Checkout Experience 2.0"},
     {"id":"B5","status":"DONE","title":"Trust and conversion UX"},
     {"id":"B6","status":"DONE","title":"Visual regression baseline"},
-    {"id":"B7","status":"IN_PROGRESS","title":"Performance and visual stability","note":"PR #26 selected-tour desktop image reservation merged as f8b5afd8fe43f0c7025e221a06c8ba90b1af22fb and production visual evidence passed. PR #29 lazy-initialized mobile-search-summary only at <=700px; merged as 6a5dec89b4e365326dede1c26c85d11f22098df6 and post-deploy visual run 33081786159 passed. PR #30 lazy-initialized the heavier mobile results-filter UI only at <=760px while caching result data for desktop-to-mobile resize; merged as c0b1ab652db744b99801f12eb3e25bfe929e83c7, production post-deploy run 33085353476 and main baseline run 33085353432 passed. PR #32 deferred creation of hidden stale-results and conversion-confidence result DOM until those states exist; all six PR gates passed and it merged as a40ec76212cead4bada397cf267e9294fc9e53d3. PR #33 removed only the empty initial document-wide accessibility decoration scan while preserving initial ARIA state and event-driven decoration; all six PR gates passed and it merged as 6dbc441952a72fa57fcb7c59643d33322acaf7b5. Production deploy run 33085842973, live smoke, result-detail live, post-deploy visual run 33085959357 and main baseline run 33085959378 all passed. Static responsibility audit still does not justify bundling the 24 active JS references by request count alone."},
+    {"id":"B7","status":"IN_PROGRESS","title":"Performance and visual stability","note":"PR #26 selected-tour desktop image reservation merged as f8b5afd8fe43f0c7025e221a06c8ba90b1af22fb and production visual evidence passed. PR #29 lazy-initialized mobile-search-summary only at <=700px; merged as 6a5dec89b4e365326dede1c26c85d11f22098df6 and post-deploy visual run 33081786159 passed. PR #30 lazy-initialized the heavier mobile results-filter UI only at <=760px while caching result data for desktop-to-mobile resize; merged as c0b1ab652db744b99801f12eb3e25bfe929e83c7, production post-deploy run 33085353476 and main baseline run 33085353432 passed. PR #32 deferred creation of hidden stale-results and conversion-confidence result DOM until those states exist; all six PR gates passed and it merged as a40ec76212cead4bada397cf267e9294fc9e53d3. PR #33 removed only the empty initial document-wide accessibility decoration scan while preserving initial ARIA state and event-driven decoration; all six PR gates passed and it merged as 6dbc441952a72fa57fcb7c59643d33322acaf7b5. Production deploy run 33085842973, live smoke, result-detail live, post-deploy visual run 33085959357 and main baseline run 33085959378 all passed. The lead-form-guard always-on selectedTour observer was audited but not changed because public programmatic selectTour() can mutate the selected container before tour-selected; moving observation only to direct-tour clicks would weaken an existing recovery path. Static responsibility audit still does not justify bundling the 24 active JS references by request count alone."},
     {"id":"B8","status":"WAITING_FOR_TRAFFIC","title":"Live product optimization"},
     {"id":"A8","status":"WAITING_FOR_TRAFFIC","title":"Operational live traffic feedback loop"},
     {"id":"A6","status":"DONE","title":"Focused whole-project refactor pass"},
