@@ -220,7 +220,8 @@ jobs:
           cat > ./compare-visual-baseline.cjs <<'JS'
           const fs=require('fs'),path=require('path');
           const {PNG}=require('pngjs');
-          const pixelmatch=require('pixelmatch');
+          const pixelmatchModule=require('pixelmatch');
+          const pixelmatch=pixelmatchModule.default||pixelmatchModule;
           const currentDir='visual-baseline-artifacts',referenceDir='reference-baseline';
           function walk(dir){let out=[];for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const p=path.join(dir,entry.name);out=out.concat(entry.isDirectory()?walk(p):[p]);}return out;}
           const refs=new Map(walk(referenceDir).filter(p=>p.endsWith('.png')).map(p=>[path.basename(p),p]));
