@@ -26,7 +26,7 @@ function syncAdditionalSummary(){if(!details)return;var summary=details.querySel
 if(details)details.addEventListener('click',function(e){var target=e.target instanceof Element?e.target:null,reset=target&&target.closest('.search-filters-reset');if(!reset)return;var starValue=stars?String(stars.value||''):'',mealValue=String(select.value||'');setTimeout(function(){if(stars){stars.value=starValue;stars.dispatchEvent(new Event('change',{bubbles:true}));}select.value=mealValue;select.dispatchEvent(new Event('change',{bubbles:true}));syncAdditionalSummary();},0);},true);
 render();syncAdditionalSummary();
 setTimeout(function(){if(document.visibilityState==='visible')loadMeals();},2200);
-window.V2PrimaryMealUXV1={render:render,loadMeals:loadMeals,version:3};
+window.V2PrimaryMealUXV1={render:render,loadMeals:loadMeals,version:4};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
