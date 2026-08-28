@@ -1,0 +1,48 @@
+name: Diagnose legacy sessid roundtrip
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/diagnose-legacy-sessid-roundtrip.yml'
+  workflow_dispatch:
+
+jobs:
+  roundtrip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: GET legacy page and POST with same cookie jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          page='https://anytour.online/poisk-turov-test/v2/'
+          lead='https://anytour.online/poisk-turov-test/v2/lead-adapter-v2.php'
+          jar=/tmp/legacy-cookie.txt
+          curl -fsSL --max-time 45 -c "$jar" -b "$jar" "$page" -o /tmp/legacy.html
+          python3 - <<'PY'
+          import re
+          html=open('/tmp/legacy.html',encoding='utf-8',errors='replace').read()
+          pats=[r'name=["\']sessid["\'][^>]*value=["\']([^"\']+)["\']',r'value=["\']([^"\']+)["\'][^>]*name=["\']sessid["\']']
+          token=''
+          for p in pats:
+              m=re.search(p,html,re.I)
+              if m:
+                  token=m.group(1).strip(); break
+          print('SESSID_PRESENT='+('yes' if token else 'no'))
+          print('SESSID_LEN='+str(len(token)))
+          open('/tmp/sessid','w').write(token)
+          PY
+          echo "COOKIE_FILE_LINES=$(grep -cv '^#' "$jar" || true)"
+          echo "COOKIE_NAMES=$(awk 'BEGIN{ORS=","} !/^#/ && NF>=7 {print $6}' "$jar" | sed 's/,$//')"
+          sessid="$(cat /tmp/sessid)"
+          test -n "$sessid"
+          payload="$(python3 -c 'import json,sys;print(json.dumps({"consent":False,"sessid":sys.argv[1]},separators=(",",":")))' "$sessid")"
+          code="$(curl -sS --max-time 45 -c "$jar" -b "$jar" -o /tmp/post.json -w '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            -H 'Origin: https://anytour.online' \
+            -H 'Referer: https://anytour.online/poisk-turov-test/v2/' \
+            --data "$payload" "$lead")"
+          echo "ROUNDTRIP_HTTP=$code"
+          cat /tmp/post.json
+          echo
+          if test "$code" = 422 && grep -q 'Validation failed' /tmp/post.json; then echo ROUNDTRIP_OK; exit 0; fi
+          exit 1
