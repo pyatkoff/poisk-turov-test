@@ -24,6 +24,7 @@ function v2_bundle_manifest(): array
             'mobile-search-summary-v1.css',
             'search-filters-ux-v1.css',
             'product-shell-v1.css',
+            'br3-control-consistency-v1.css',
         ],
         'js' => [
             'header-current-site.js',
