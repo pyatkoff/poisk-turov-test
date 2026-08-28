@@ -20,8 +20,8 @@ function v2_seo_internal_link_groups(array $groups): array
         foreach ($links as $link) {
             if (!is_array($link)) continue;
             $label = trim((string)($link['label'] ?? ''));
-            $href = v2_seo_internal_href($link['href'] ?? '');
-            if ($label === '' || $href === null || str_contains($href, '?') || str_contains($href, '#') || isset($seenHrefs[$href])) continue;
+            $href = v2_seo_stable_internal_href($link['href'] ?? '');
+            if ($label === '' || $href === null || isset($seenHrefs[$href])) continue;
 
             $seenHrefs[$href] = true;
             $cleanLinks[] = ['label' => $label, 'href' => $href];
