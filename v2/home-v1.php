@@ -7,7 +7,7 @@ $homeDescription = 'AnyTour — удобный поиск туров с акту
 $homeCanonical = 'https://anytoour.ru/';
 $homeRobots = v2_seo_robots_content(v2_seo_indexable($homeSiteParams));
 $homeSchema = v2_seo_schema($homePhone, $homeDescription);
-$homeLegacyBase = 'https://anytour.online';
+$homeLegacyBase = '';
 function home_e($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 ?><!doctype html>
 <html lang="ru">
@@ -77,8 +77,8 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
     <div class="at-home-section__head"><h2>Разделы нового AnyTour</h2><p>Мы переносим текущие разделы сайта в единый новый дизайн. Поиск уже работает; страны, горящие туры и полезные страницы переносятся без потери старых маршрутов.</p></div>
     <div class="at-home-direction-grid">
       <a class="at-home-direction" href="/poisk-turov/"><strong>Поиск туров</strong><span>Полная форма, фильтры и актуальные предложения</span></a>
-      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/country/"><strong>Страны и курорты</strong><span>Направления и будущие SEO-подборки</span></a>
-      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/hot/"><strong>Горящие туры</strong><span>Раздел текущего сайта будет перенесён сюда</span></a>
+      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/country/"><strong>Страны и курорты</strong><span>Каталог направлений AnyTour</span></a>
+      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/hot/"><strong>Горящие туры</strong><span>Быстрый переход к актуальным предложениям</span></a>
       <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/how-to-buy/"><strong>Как купить тур</strong><span>Понятный путь от выбора до бронирования</span></a>
     </div>
   </section>
