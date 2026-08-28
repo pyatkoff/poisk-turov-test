@@ -23,7 +23,10 @@ function v2_seo_indexable(array $siteParams = []): bool
 function v2_seo_canonical_url(): string
 {
     if (v2_seo_is_anytoour_host()) {
-        return 'https://anytoour.ru/';
+        $path = defined('V2_CANONICAL_PATH') ? trim((string)V2_CANONICAL_PATH) : '/';
+        $path = '/' . trim($path, '/');
+        if ($path === '/') return 'https://anytoour.ru/';
+        return 'https://anytoour.ru' . $path . '/';
     }
 
     $host = trim((string)($_SERVER['HTTP_HOST'] ?? 'anytour.online'));
