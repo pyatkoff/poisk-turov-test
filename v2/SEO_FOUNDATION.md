@@ -32,7 +32,26 @@ The SEO live guard requires the semantic footer and its internal-link set after 
 - related-destination/internal-link groups restricted to first-party paths;
 - an allowlisted search-handoff URL builder so a stable landing page can prefill V2 search without turning arbitrary search state into the landing URL architecture.
 
-`.github/workflows/validate-v2-seo-primitives.yml` protects escaping, semantic markup, first-party link boundaries and the handoff allowlist. These helpers are intentionally not mounted into the current development route merely to manufacture SEO content.
+`seo-page-contract-v1.php` composes those primitives into a reusable landing-page data contract. `seo-page-types-v1.php` adds explicit country/resort/seasonal adapters while requiring a finished editorial H1 instead of trying to guess Russian inflection in code.
+
+`.github/workflows/validate-v2-seo-primitives.yml` protects escaping, semantic markup, first-party link boundaries, the handoff allowlist and page-type contracts. These helpers are intentionally not mounted into the current development route merely to manufacture SEO content.
+
+## Curated page registry boundary
+
+`seo-page-registry-v1.php` is the source boundary for future public SEO pages. A page can enter the registry only as an explicit editorial record with a clean first-party path, supported page type and valid page contract.
+
+The registry deliberately rejects:
+
+- URLs with query strings or fragments;
+- external/protocol-relative paths;
+- paths without the canonical trailing-slash shape;
+- duplicate public paths;
+- unsupported page types;
+- incomplete editorial records such as missing H1/description.
+
+This prevents arbitrary search requests, filters or user-entered state from becoming SEO pages by accident. Search state may exist only inside a registered page's allowlisted handoff payload; it never defines the page identity itself.
+
+The registry is architecture only. Adding a registry record does not create a route, canonical, sitemap entry or indexing permission. Those remain separate public-routing decisions.
 
 ## Dynamic result/detail boundary
 
@@ -60,7 +79,7 @@ Before promotion:
 
 SEO growth should use stable, editorially meaningful landing URLs rather than raw search-state permutations. Suitable page types include country, resort/region, seasonal and other curated destination pages where the page has unique intent and useful static content.
 
-The next BR4 layer after the generic primitives should define a reusable page data contract/template that composes metadata, breadcrumbs, editorial sections, related links and a search-prefill handoff, still without making the temporary V2 route indexable or choosing the final public mount point.
+The reusable foundation now has primitives, a page contract, page-type adapters, curated internal-link groups and an explicit registry boundary. The next safe layer is a route-independent content-source/registry implementation populated with controlled sample/editorial records and validation tooling, still without making the temporary V2 route indexable or choosing the final public mount point.
 
 An indexable landing page may deep-link or prefill the V2 search experience, but the landing URL and the transient search state are separate concepts. Do not create an indexable URL for every combination of dates, nights, adults, price, meal, hotel rating, operator or flight filters.
 
