@@ -37,7 +37,7 @@ jobs:
           done
           echo V2_JS_OK
 
-      - name: Validate inbound child-age hydration contract
+      - name: Validate inbound child composition hydration contract
         shell: bash
         run: |
           set -euo pipefail
@@ -51,11 +51,18 @@ jobs:
             "option.textContent='Проверьте возраст'",
             "option.dataset.invalidHydratedAge='1'",
             "setHydratedChildAge(el,ageValues[i])",
-            "some(age=>!Number.isInteger(age)||age<0||age>17)"
+            "some(age=>!Number.isInteger(age)||age<0||age>17)",
+            "function setHydratedChildCount(value)",
+            "el.dataset.invalidHydratedCount='1'",
+            "Количество детей должно быть от 0 до 3.",
+            "childCount!==(p.childs||[]).length",
+            "setHydratedChildCount(childCount!==''?childCount:String(ageValues.length))",
+            "delete e.target.dataset.invalidHydratedCount"
           ];
-          required.forEach(token=>{if(!src.includes(token))throw new Error('child-age hydration contract missing: '+token);});
+          required.forEach(token=>{if(!src.includes(token))throw new Error('child composition hydration contract missing: '+token);});
           if(src.includes("f.getAll('child_age[]').map(v=>Number(v)).filter(Number.isFinite)"))throw new Error('invalid child ages can still be silently dropped/coerced');
-          console.log('V2_CHILD_AGE_URL_HYDRATION_OK');
+          if(src.includes("setField('child_count',childCount!==''?childCount:String(ageValues.length))"))throw new Error('invalid child count can still bypass guarded hydration');
+          console.log('V2_CHILD_COMPOSITION_URL_HYDRATION_OK');
           NODE
 
       - name: Validate lazy advanced catalog contract
