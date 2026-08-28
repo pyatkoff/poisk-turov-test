@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T11:05:00+02:00",
+  "updated_at": "2026-08-28T12:06:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "PR #100 is merged, deployed and production-green: V2 now hydrates legacy/AI/MAX search URL parameters (including snake_case date/night aliases) and auto-starts only an explicit valid search link. The first non-zero real-browser sample after PR #97/#98 bundling contained 5 requests, all HTTP 200, no static-asset throttling, and one soft nginx delay on the departures API route. This validates the static request-collapse benefit while leaving the isolated API delay under observation rather than justifying a UX slowdown or global nginx change.",
+  "phase": "PR #103 is merged, deployed and production-green. Legacy/AI/MAX V2 URL entry now keeps the visible departure/country catalogs synchronized with the requested search context before lifecycle hydration, closing the remaining label/options mismatch after PR #100. A production browser diagnostic confirmed exact from/country/date/night/adult/hotel hydration, hotelIds=82567 and automatic search start. The post-deploy recent-browser audit is clean but contains no real-browser requests, so deeper conversion changes still wait for meaningful funnel evidence.",
   "current_task": {
     "id": "C7",
     "category": "LIVE_CONVERSION_OPTIMIZATION",
     "title": "Live conversion optimization",
     "status": "EVIDENCE_REVIEW",
-    "objective": "Continue conversion/UX work from observed real production funnel friction while preserving confirmed product contracts and the production-green legacy URL entry path.",
-    "next_action": "Inspect the next non-zero privacy-safe browser samples for repeated departures/API throttling and, more importantly, meaningful search -> tour -> lead behavior. Continue the full mobile+desktop V2 journey audit; change Results, Selected Tour or Lead hierarchy only when observed friction supports it."
+    "objective": "Continue conversion and UX work from observed production friction while preserving the production-green URL-entry, bundle, search, selected-tour, flight/price and lead contracts.",
+    "next_action": "Inspect the next non-zero privacy-safe browser sample for repeated departures/API throttling and meaningful search -> tour -> lead behavior. In parallel continue the full mobile+desktop V2 journey audit and fix only confirmed UX/data defects."
   },
   "queue": [
     {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
@@ -25,28 +25,39 @@
   ],
   "last_ci": {
     "workflow": "Visual V2 baseline",
-    "run_id": 33157609829,
+    "run_id": 33161849811,
     "attempt": 1,
-    "head_sha": "154eab24f27dd456e12c8b07002f3236b1686603",
+    "head_sha": "caef9c4946201130e55230b5015a949b0e2741b5",
     "conclusion": "success",
-    "classification": "PR100_PRODUCTION_POST_DEPLOY_VISUAL_GREEN"
+    "classification": "PR103_PRODUCTION_POST_DEPLOY_VISUAL_GREEN"
   },
-  "last_verified_commit": "154eab24f27dd456e12c8b07002f3236b1686603",
+  "last_verified_commit": "caef9c4946201130e55230b5015a949b0e2741b5",
   "production_evidence": {
     "startup_bundle_pr": 97,
-    "startup_bundle_merge": "e27b0ecaf481a0f8e35aca34783844d9822cafa7",
     "deploy_verification_fix_pr": 98,
-    "deploy_verification_fix_merge": "7073054b8d1dfb69c118357f5dacd09f1e4edf8e",
     "url_hydration_pr": 100,
-    "url_hydration_merge": "154eab24f27dd456e12c8b07002f3236b1686603",
-    "deploy_v2": 33157514891,
-    "active_contract": 33157514914,
-    "tour_live": 33157514902,
-    "result_detail_live": 33157514873,
-    "post_deploy_visual": 33157609853,
-    "post_deploy_baseline": 33157609829,
-    "post_deploy_recent_browser": 33157609848,
-    "note": "PR #100 is live and production-green. Legacy/AI/MAX search URLs can hydrate V2 form state using camelCase and supported snake_case aliases; explicit valid search URLs auto-start. PR #97/#98 bundling remains live and the first non-zero post-bundle browser sample shows no static-asset rate-limit delays."
+    "url_catalog_sync_pr": 103,
+    "url_catalog_sync_merge": "caef9c4946201130e55230b5015a949b0e2741b5",
+    "deploy_v2": 33161789679,
+    "active_contract": 33161789731,
+    "result_detail_live": 33161789762,
+    "post_deploy_visual": 33161849791,
+    "post_deploy_baseline": 33161849811,
+    "post_deploy_recent_browser": 33161849849,
+    "legacy_url_live_diagnostic_pr": 104,
+    "legacy_url_live_diagnostic_run": 33161717495,
+    "legacy_url_live_diagnostic_status": "SUCCESS_CLOSED_WITHOUT_MERGE",
+    "note": "PR #103 is live and production-green. URL-supplied departure/country now synchronize the visible primary catalogs before lifecycle hydration. Temporary PR #104 confirmed exact legacy URL hydration and automatic hotel-scoped search from production, then was closed without merge."
+  },
+  "url_entry_contract": {
+    "status": "PRODUCTION_GREEN",
+    "supports_snake_case_date_night_aliases": true,
+    "explicit_search_required_for_autostart": true,
+    "primary_catalog_sync": true,
+    "diagnostic_from": "1",
+    "diagnostic_country": "2",
+    "diagnostic_hotel": "82567",
+    "diagnostic_search_id": 13460825192
   },
   "startup_request_mitigation": {
     "status": "STATIC_ASSET_MITIGATION_VALIDATED_NONZERO_SAMPLE_API_DELAY_OBSERVE",
@@ -54,10 +65,8 @@
     "current_static_asset_requests": 2,
     "reduction": 42,
     "css_sources": 20,
-    "js_sources": 24,
+    "js_sources": 25,
     "order_preserved": true,
-    "bundle_validation_run": 33150164420,
-    "bundle_validation_conclusion": "success",
     "nonzero_validation_run": 33157609848,
     "nonzero_browser_requests": 5,
     "static_asset_rate_limit_delays": 0,
@@ -65,39 +74,30 @@
     "api_rate_limit_route": "departures"
   },
   "live_evidence": {
-    "original_nonzero_browser_sample": {
-      "audit_run_id": 33138875911,
-      "browser_requests": 9,
-      "http_status": {"200": 9},
-      "http_4xx_5xx": 0,
-      "rate_limit_delays": 4,
-      "observed_actions": {"departures":1,"meals":1,"countries":1},
-      "funnel_actions": {"search":0,"tour":0,"lead":0}
-    },
     "latest_post_bundle_nonzero_browser": {
       "audit_run_id": 33157609848,
-      "window_end_utc": "2026-08-28T09:01:02.749199+00:00",
       "browser_requests": 5,
       "http_status": {"200": 5},
       "http_4xx_5xx": 0,
       "rate_limit_delays": 1,
       "rate_limit_routes": {"departures":1},
       "observed_actions": {"departures":1,"meals":1,"countries":1},
+      "funnel_actions": {"search":0,"tour":0,"lead":0}
+    },
+    "latest_post_deploy_browser": {
+      "audit_run_id": 33161849849,
+      "window_end_utc": "2026-08-28T10:03:20.677894+00:00",
+      "browser_requests": 0,
+      "http_4xx_5xx": 0,
+      "rate_limit_delays": 0,
       "funnel_actions": {"search":0,"tour":0,"lead":0},
-      "interpretation": "No static bundle asset throttling was observed. One soft delay remains on departures; retain under observation unless repeated real-browser evidence shows material UX impact."
+      "interpretation": "Clean but zero-traffic sample; useful for health only, not conversion decisions."
     }
-  },
-  "live_audit_reliability": {
-    "status": "SCHEDULE_AND_WORKFLOW_RUN_VERIFIED",
-    "scheduled_live_audit_run": 33141756241,
-    "scheduled_recent_browser_run": 33145238161,
-    "post_deploy_workflow_run": 33157609848,
-    "interpretation": "Both scheduled audit workflows and the successful-deploy workflow_run path are observed working."
   },
   "blocked": [],
   "deferred": [
     {"scope":"C7 conversion hierarchy changes","reason":"No observed real-browser search/tour/lead funnel behavior identifies conversion friction yet."},
-    {"scope":"departures/API rate-limit mitigation","reason":"Only one soft departures delay is present in the first non-zero post-bundle sample; all five requests returned 200. Do not intentionally slow startup without repeated evidence of material user impact."},
+    {"scope":"departures/API rate-limit mitigation","reason":"Only one soft departures delay exists in the latest non-zero browser sample and it returned HTTP 200; require repetition/material impact before changing startup behavior."},
     {"scope":"global nginx/rate-limit configuration","reason":"Outside allowed V2/repository write scope."},
     {"scope":"global /images symlink-loop","reason":"Outside allowed V2/repository write scope while sampled access remains successful."}
   ],
@@ -116,6 +116,6 @@
     "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
     "on_live_traffic": "activate_C7_B8_A8_and_reprioritize_from_real_evidence",
     "on_rate_limit_signal": "require repeated real-browser API delay evidence before adding V2-local pacing; never modify global server config from this project",
-    "on_no_evidence": "keep_V2_stable_and_do_not_manufacture_micro_work"
+    "on_no_evidence": "continue_full_V2_audit_but_keep_product_stable_without_confirmed_defect"
   }
 }
