@@ -1,0 +1,62 @@
+name: Diagnostic V2 legacy URL live
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnostic-v2-url-live.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-url-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Verify legacy URL hydrates and auto-starts exact hotel search
+        env:
+          URL: https://anytour.online/poisk-turov-test/v2/?from=1&country=2&date_from=2026-12-05&date_till=2026-12-05&days_from=6&days_till=6&count_people=2&hotel=82567
+        run: |
+          cat > /tmp/url-live.cjs <<'JS'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({ignoreHTTPSErrors:true});
+            const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+            let searchRequest=null;
+            page.on('request',req=>{ if(req.url().includes('api-v2.php')&&req.url().includes('action=search_start')) searchRequest=req.url(); });
+            const res=await page.goto(process.env.URL,{waitUntil:'domcontentloaded',timeout:45000});
+            if(!res||res.status()!==200) throw new Error('page http '+(res&&res.status()));
+            await page.waitForFunction(()=>window.V2SearchLifecycle&&document.querySelector('select[name="from"]')?.value==='1'&&document.querySelector('select[name="country"]')?.value==='2',{timeout:45000});
+            await page.waitForTimeout(1500);
+            const state=await page.evaluate(()=>({
+              from:document.querySelector('[name="from"]')?.value,
+              country:document.querySelector('[name="country"]')?.value,
+              dateFrom:document.querySelector('[name="dateFrom"]')?.value,
+              dateTo:document.querySelector('[name="dateTo"]')?.value,
+              daysFrom:document.querySelector('[name="daysFrom"]')?.value,
+              daysTill:document.querySelector('[name="daysTill"]')?.value,
+              adults:document.querySelector('[name="count_people"]')?.value,
+              hotel:document.querySelector('[name="hotel"]')?.value,
+              params:window.V2SearchLifecycle.params(),
+              pending:window.V2SearchLifecycle.pending,
+              searchId:window.V2SearchLifecycle.searchId,
+            }));
+            console.log('HYDRATED',JSON.stringify(state));
+            console.log('SEARCH_REQUEST',searchRequest||'NONE');
+            if(errors.length) throw new Error('page errors '+errors.join(' | '));
+            if(state.from!=='1'||state.country!=='2'||state.dateFrom!=='2026-12-05'||state.dateTo!=='2026-12-05'||state.daysFrom!=='6'||state.daysTill!=='6'||state.adults!=='2'||state.hotel!=='82567') throw new Error('hydration mismatch');
+            if(!Array.isArray(state.params.hotelIds)||state.params.hotelIds[0]!=='82567') throw new Error('hotelIds mismatch');
+            if(!searchRequest && !state.pending && !state.searchId) throw new Error('auto-search did not start');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node /tmp/url-live.cjs
