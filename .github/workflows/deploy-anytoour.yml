@@ -22,7 +22,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in v2/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php; do
+          for f in v2/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/lead-receiver-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php; do
             php -l "$f" >/dev/null
           done
           mapfile -t assets < <(grep -oE "v2_asset\('[^']+\.js'\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\1/" | sort -u)
@@ -57,7 +57,7 @@ jobs:
           write_key "$NEW_KEY" "$RUNNER_TEMP/anytoour_key"
           write_key "$OLD_KEY" "$RUNNER_TEMP/legacy_key"
 
-      - name: Carry forward private runtime config
+      - name: Prepare legacy runtime and authenticated receiver
         env:
           OLD_HOST: ${{ secrets.DEPLOY_HOST }}
           OLD_USER: ${{ secrets.DEPLOY_USER }}
@@ -67,11 +67,30 @@ jobs:
           test -n "$OLD_HOST" && test -n "$OLD_USER"
           opts=(-i "$RUNNER_TEMP/legacy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$OLD_USER@$OLD_HOST"
+          old_root='~/www/anytour.online/poisk-turov-test/v2'
+
           ssh "${opts[@]}" "$remote" 'test -s "$HOME/www/anytour.online/poisk-turov-test/v2/config.php"'
-          scp "${opts[@]}" "$remote:~/www/anytour.online/poisk-turov-test/v2/config.php" "$RUNNER_TEMP/anytoour-config.php"
+          scp "${opts[@]}" "$remote:$old_root/config.php" "$RUNNER_TEMP/anytoour-config.php"
           chmod 600 "$RUNNER_TEMP/anytoour-config.php"
           php -l "$RUNNER_TEMP/anytoour-config.php" >/dev/null
-          echo "PRIVATE_CONFIG_READY"
+
+          scp "${opts[@]}" v2/lead-receiver-v1.php "$remote:$old_root/lead-receiver-v1.php"
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            root="$HOME/www/anytour.online/poisk-turov-test/v2"
+            php -l "$root/lead-receiver-v1.php" >/dev/null
+            chmod 644 "$root/lead-receiver-v1.php"
+            if ! test -s "$root/.anytoour-bridge-secret"; then
+              umask 077
+              openssl rand -hex 32 > "$root/.anytoour-bridge-secret"
+            fi
+            chmod 600 "$root/.anytoour-bridge-secret"
+          '
+          scp "${opts[@]}" "$remote:$old_root/.anytoour-bridge-secret" "$RUNNER_TEMP/anytoour-bridge-secret"
+          chmod 600 "$RUNNER_TEMP/anytoour-bridge-secret"
+          test -s "$RUNNER_TEMP/anytoour-bridge-secret"
+          curl -fsSL --max-time 30 https://anytour.online/poisk-turov-test/v2/lead-receiver-v1.php | grep -q 'anytoour-hmac-bitrix-session'
+          echo "LEGACY_RUNTIME_RECEIVER_READY"
 
       - name: Prepare shared brand asset
         shell: bash
@@ -95,12 +114,13 @@ jobs:
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/images"'
           scp "${opts[@]}" -r v2/. "$remote:$root/"
           scp "${opts[@]}" "$RUNNER_TEMP/anytoour-config.php" "$remote:$root/config.php"
+          scp "${opts[@]}" "$RUNNER_TEMP/anytoour-bridge-secret" "$remote:$root/.anytoour-bridge-secret"
           scp "${opts[@]}" "$RUNNER_TEMP/logo.svg" "$remote:$root/images/logo.svg"
           ssh "${opts[@]}" "$remote" '
             set -euo pipefail
             root="$HOME/www/anytoour.ru"
             cp "$root/lead-bridge-v1.php" "$root/lead-adapter-v2.php"
-            chmod 600 "$root/config.php"
+            chmod 600 "$root/config.php" "$root/.anytoour-bridge-secret"
             chmod 644 "$root/images/logo.svg"
             rm -f "$root/index.html"
             for f in index.php assets.php api-v2.php lead-adapter-v2.php bundle-v1.php analytics-config.php privacy-config.php; do php -l "$root/$f" >/dev/null; done
@@ -123,7 +143,7 @@ jobs:
           grep -q 'leadApi:"/lead-adapter-v2.php"' /tmp/anytoour.html
           grep -q 'bundle-v1.php?type=css' /tmp/anytoour.html
           grep -q 'tourvisor-direct' /tmp/anytoour-health.json
-          grep -q 'v2-session-bridge-bitrix-lead' /tmp/anytoour-lead-health.json
+          grep -q 'v2-hmac-bridge-bitrix-lead' /tmp/anytoour-lead-health.json
           curl -fsSL --max-time 30 https://anytoour.ru/images/logo.svg | grep -qi '<svg'
           echo "ANYTOOUR_PUBLIC_ROOT_OK"
 
