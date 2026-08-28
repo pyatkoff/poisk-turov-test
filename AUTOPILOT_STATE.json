@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T17:14:00+02:00",
+  "updated_at": "2026-08-28T17:19:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Pre-traffic product development. PX3 price confidence is production-green in PR #125. PX5 selected-tour grounded decision summary is fully production-green in PR #126: deploy, live search smoke, post-deploy viewport audit and deterministic visual baseline passed. Latest re-score makes visual quality/consistency (8.8) the weakest core area below 9, so BR3 is next.",
+  "phase": "Pre-traffic product development. PX3 (#125) and PX5 (#126) are production-green. BR3 has started: PR #128 removed a confirmed cross-generation visual mismatch where the blue primary search CTA carried an orange header-order shadow; branch-bundle protection, deploy/live smoke and production visual baselines are green. Visual quality/consistency remains 8.8 until the broader consistency audit justifies a re-score.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -28,14 +28,15 @@
     "id": "BR3",
     "category": "VISUAL_UX",
     "title": "Product-wide visual identity and consistency",
-    "status": "ACTIVE_NEXT",
+    "status": "ACTIVE",
     "objective": "Audit and consolidate material visual inconsistencies across the complete V2 flow without redesigning the logo, altering product contracts or doing cosmetic-only churn.",
-    "next_action": "Inspect fresh main/open PRs/CI, then audit search → progress/recovery → results/compare → selected tour/rooms → flights/price → lead at mobile/intermediate/desktop widths. Identify the highest-impact inconsistent component family and implement a bounded BR3 improvement with branch-bundle and visual regression coverage."
+    "progress": "PR #128 production-green: corrected the blue primary search CTA orange-shadow mismatch and added a responsive computed-style regression guard.",
+    "next_action": "Inspect fresh main/open PRs/CI, then continue the whole-flow BR3 audit across progress/recovery, results/compare, selected tour/rooms, flights/price, lead and remaining search controls at mobile/intermediate/desktop widths. Fix the next highest-impact confirmed cross-generation inconsistency with branch-bundle and visual coverage; keep visual_quality at 8.8 until enough evidence supports >=9."
   },
   "queue": [
     {"id":"BR1","status":"ACTIVE","title":"Branded first impression","progress":"Grounded AnyTour-specific first-screen proof shipped in PR #123."},
     {"id":"BR2","status":"ACTIVE","title":"Trust architecture","progress":"Grounded first-screen and selected-tour/lead reassurance shipped; remaining work should focus on cross-stage consistency."},
-    {"id":"BR3","status":"ACTIVE_NEXT","title":"Product-wide visual identity","progress":"Weakest core score is visual quality/consistency 8.8; perform bounded whole-flow consistency pass next."},
+    {"id":"BR3","status":"ACTIVE","title":"Product-wide visual identity","progress":"PR #128 fixed the first confirmed mixed-generation CTA styling defect; continue whole-flow audit before re-score."},
     {"id":"BR4","status":"QUEUED","title":"SEO-ready brand shell","progress":"Deferred until all core product areas reach 9."},
     {"id":"BR5","status":"QUEUED","title":"Social + app footer","progress":"Verify previously supplied MAX/Telegram/VK/App Store/Google Play URLs before implementation; keep secondary to primary conversion actions."},
     {"id":"PX1","status":"ACTIVE_9_LEVEL","title":"Decision support in results","progress":"Contextual badges, nearest-price context and lightweight compare shipped."},
@@ -53,13 +54,15 @@
     "price_confidence_deploy": 33182874015,
     "price_confidence_post_deploy_visual": 33182946157,
     "hotel_choice_pr": 126,
-    "last_verified_commit": "2ffe387f2d05ab99172533cf51cb42f04be85063",
-    "security": 33183567642,
-    "active_v2_contract": 33183567605,
-    "deploy_v2": 33183567573,
-    "deploy_live_search_smoke": 33183567573,
-    "post_deploy_visual": 33183656505,
-    "post_deploy_visual_baseline": 33183656489,
+    "hotel_choice_merge": "2ffe387f2d05ab99172533cf51cb42f04be85063",
+    "hotel_choice_deploy": 33183567573,
+    "hotel_choice_post_deploy_visual": 33183656505,
+    "br3_cta_pr": 128,
+    "last_verified_commit": "51fb4925e13cf7982e47f61c16e65a47a4ed9ff7",
+    "deploy_v2": 33184249233,
+    "deploy_live_search_smoke": 33184249233,
+    "post_deploy_visual": 33184352882,
+    "post_deploy_visual_baseline": 33184352963,
     "status": "PRODUCTION_GREEN"
   },
   "search_progress_contract": {

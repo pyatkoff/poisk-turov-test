@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28 17:14 +02:00
+Updated: 2026-08-28 17:19 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -16,13 +16,13 @@ Search UX; waiting/progress/recovery; results & comparison; selected tour; fligh
 
 Scores are product-quality assessments backed by functional and visual evidence, not traffic metrics. Re-score after material changes. A 9/10 score means ready for traffic-quality scrutiny, not “perfect forever”.
 
-Latest re-score after PX3/PX5: core areas now at or above 9 for Results/Comparison, Selected Tour, Flights/Price, Lead UX and Product Differentiation. Weakest core area is **Visual quality / consistency (8.8)**; Search, Waiting/Recovery, Mobile, Tablet/Desktop and Brand/Trust are at 8.9. SEO remains intentionally deferred at 7.2 until the core search product reaches the gate.
+Latest re-score after PX3/PX5: core areas now at or above 9 for Results/Comparison, Selected Tour, Flights/Price, Lead UX and Product Differentiation. Weakest core area remains **Visual quality / consistency (8.8)**; Search, Waiting/Recovery, Mobile, Tablet/Desktop and Brand/Trust are at 8.9. SEO remains intentionally deferred at 7.2 until the core search product reaches the gate.
 
 ## Active roadmap
 
 - BR1 Branded first impression — ACTIVE; grounded AnyTour-specific first-screen proof shipped in PR #123.
 - BR2 Trust architecture — ACTIVE; next after/alongside BR3 where consistency gaps are confirmed.
-- BR3 Product-wide visual identity — ACTIVE / NEXT; audit core flow for components from different visual generations and consolidate only material inconsistencies.
+- BR3 Product-wide visual identity — ACTIVE; first concrete cross-generation defect fixed in PR #128: the blue primary search CTA no longer carries the orange header-order shadow. Branch-bundle regression coverage now protects the blue primary-action styling at 375/768/1024/1440. Continue the whole-flow consistency audit before re-scoring above 8.8.
 - BR4 SEO-ready brand shell — QUEUED until all core product areas >= 9.
 - BR5 Social + app footer — QUEUED; add a polished lower-page/footer presence for AnyTour social channels (MAX, Telegram, VK) and mobile apps (App Store, Google Play), using verified real destination URLs only. Keep it secondary to search/lead conversion, responsive and touch-friendly; do not introduce new analytics goals or alter lead transport. Recover/verify the previously supplied links before implementation rather than guessing destinations.
 - PX1 Decision support in results — ACTIVE / 9-level; contextual badges, nearest-price context and compare support shipped.
@@ -39,19 +39,22 @@ PR #125 (`c8f14b459234596af3bbb9b6bc0ff4772bafa2a4`) shipped selected-tour price
 
 PR #126 (`2ffe387f2d05ab99172533cf51cb42f04be85063`) shipped the grounded selected-tour decision summary. PR branch-bundle validation exercised the new summary at 375/768/1024/1440 with no overflow, and all PR functional/security/visual gates passed. V2-only deploy `33183567573`, active contract/verification/live search smoke, post-deploy visual audit `33183656505` and deterministic visual baseline `33183656489` are green.
 
-Production is therefore fully green on `2ffe387f2d05ab99172533cf51cb42f04be85063`, with search/lead/pricing/Metrika contracts unchanged.
+PR #128 (`51fb4925e13cf7982e47f61c16e65a47a4ed9ff7`) started BR3 by correcting the mismatched orange shadow on the blue primary search CTA and adding a computed-style branch-bundle guard. All PR gates passed. V2-only deploy `33184249233`, verification/live search smoke, post-deploy visual audit `33184352882` and deterministic baseline `33184352963` are green.
+
+Production is therefore fully green on `51fb4925e13cf7982e47f61c16e65a47a4ed9ff7`, with search/lead/pricing/Metrika contracts unchanged.
 
 Earlier production contracts remain protected: V2 bundles, legacy/AI/MAX URL hydration, primary catalog sync, responsive meal visibility, bounded mobile CTA, selected-tour/flight/price behavior, structured continue-search progress ownership and lead transport.
 
 ## Exact next work order
 
 1. Inspect fresh `main`, open PRs and latest deploy/security/functional results for actual breakage.
-2. BR3 whole-flow visual consistency audit across mobile/intermediate/desktop: search → progress/recovery → results/compare → selected tour → rooms → flights/price → lead. Identify components from different visual generations, duplicated patterns, inconsistent spacing/type/control hierarchy, and only fix material inconsistencies.
+2. Continue BR3 whole-flow visual consistency audit across mobile/intermediate/desktop: progress/recovery → results/compare → selected tour → rooms → flights/price → lead, plus remaining search component families. Prioritize concrete mixed-generation component behavior, inconsistent control hierarchy, spacing/type or surface treatment; avoid cosmetic-only churn.
 3. Run full branch-bundle and relevant visual gates for each BR3 change; V2-only deploy only when green; smoke production and post-deploy viewports.
-4. Re-score affected areas. Once Visual quality reaches >=9, take the weakest confirmed 8.9 area rather than inventing features.
-5. Keep BR5 social/app footer queued; recover and verify exact external destinations before implementation.
-6. Keep SEO expansion deferred until all core product areas reach 9.
-7. Do not run traffic diagnostics or make conversion conclusions from owner/team usage until explicitly re-enabled.
+4. Re-score Visual quality only after enough material inconsistency is removed to justify >=9. Until then keep it at 8.8.
+5. Once Visual quality reaches >=9, take the weakest confirmed 8.9 area rather than inventing features.
+6. Keep BR5 social/app footer queued; recover and verify exact external destinations before implementation.
+7. Keep SEO expansion deferred until all core product areas reach 9.
+8. Do not run traffic diagnostics or make conversion conclusions from owner/team usage until explicitly re-enabled.
 
 ## Guardrails
 
