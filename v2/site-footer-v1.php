@@ -1,6 +1,12 @@
 <?php
 require_once __DIR__ . '/phone-value.php';
 
+// site_conf.php may expose PHONE as a nested Bitrix-style structure. Normalize it once
+// in request scope before v2/index.php copies $params into its local site parameters.
+if (isset($params) && is_array($params) && array_key_exists('PHONE', $params)) {
+    $params['PHONE'] = v2_site_phone($params, '8 (800) 100 - 61 - 50');
+}
+
 /** Reusable V2/public-page footer shell. External destinations below are explicit verified AnyTour properties. */
 function v2_render_site_footer(string $phone, string $phoneHref): void
 {
