@@ -1,12 +1,12 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28 12:06 +02:00
+Updated: 2026-08-28 12:08 +02:00
 
 This is the operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the exact machine-readable resume point.
 
 ## Current phase
 
-**PR #103 is merged, deployed and production-green. The remaining legacy/AI/MAX URL-entry mismatch is fixed: when a URL requests a departure/country different from the initial form state, the visible primary catalogs are now refreshed for that departure before search lifecycle hydration. A production browser diagnostic confirmed exact URL hydration and hotel-scoped auto-search. C7 remains in evidence review, B8 waits for meaningful real-browser funnel behavior, and A8 remains active.**
+**PR #103 is merged, deployed and production-green. The remaining legacy/AI/MAX URL-entry mismatch is fixed: when a URL requests a departure/country different from the initial form state, the visible primary catalogs are now refreshed for that departure before search lifecycle hydration. A direct production browser diagnostic specifically verified a non-default departure (Пермь → Египет), the real country label/options with no stale or synthetic values, and auto-search using the same IDs. C7 remains in evidence review, B8 waits for meaningful real-browser funnel behavior, and A8 remains active.**
 
 Work stays inside `pyatkoff/poisk-turov-test`; production deploy stays V2-only. Yandex Metrika configuration/goals and the existing lead-sending mechanism remain protected. The AnyTour logo is protected. Global nginx/server configuration is outside this project’s allowed write scope.
 
@@ -34,6 +34,8 @@ PR #103 (`caef9c4946201130e55230b5015a949b0e2741b5`) closes the primary catalog 
 Production verification for #103 is green: Deploy V2 only `33161789679` including predeploy validation, copy, HTTP/API/lead verification and live-search smoke; active contract `33161789731`; result-detail-live `33161789762`; Visual V2 post-deploy `33161849791`; Visual V2 baseline `33161849811`; post-deploy recent-browser audit `33161849849`.
 
 Temporary diagnostic PR #104 was intentionally not merged. Run `33161717495` against production confirmed `from=1`, `country=2`, exact `2026-12-05` dates, 6 nights, 2 adults and `hotel=82567`; `V2SearchLifecycle.params()` contained `hotelIds=["82567"]`; auto-search started and produced searchId `13460825192`. PR #104 was then closed without merge.
+
+A stronger temporary diagnostic PR #105 was also closed without merge after run `33161901657` passed. It dynamically selected a departure different from the default: `from=2` (Пермь), `country=1` (Египет). Production rendered the selected label as `Египет`, exposed the 33-country live catalog for Пермь with no stale/synthetic option IDs, kept `V2SearchLifecycle.params()` at departure 2 / country 1, and issued `search_start` with those same IDs (searchId `13460854706`). This is the direct production proof of the PR #103 catalog-sync behavior.
 
 ## Live evidence
 
@@ -65,7 +67,7 @@ Do not add client-side pacing or change nginx because of the single historical s
 - Search/Brand/Trust 9.0 + mobile hardening — **DONE / production-green**.
 - Startup static request collapse — **DONE / production-green / non-zero browser validation**.
 - Legacy/AI/MAX URL hydration + explicit auto-start — **DONE / production-green**.
-- URL primary catalog synchronization — **DONE / production-green**.
+- URL primary catalog synchronization — **DONE / production-green / direct non-default live verification**.
 - Scheduled and post-deploy live-audit paths — **DONE / verified**.
 - C7 Live Conversion Optimization — **EVIDENCE_REVIEW**.
 - B8 Live Product Optimization — **WAITING_FOR_MEANINGFUL_FUNNEL**.
