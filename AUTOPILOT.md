@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28 17:12 +02:00
+Updated: 2026-08-28 17:14 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -37,22 +37,21 @@ Latest re-score after PX3/PX5: core areas now at or above 9 for Results/Comparis
 
 PR #125 (`c8f14b459234596af3bbb9b6bc0ff4772bafa2a4`) shipped selected-tour price-confidence guidance. A startup-bundle CI contract had a stale hard-coded JS count (25 vs the legitimate new 26th asset); the CI expectation was corrected in the PR, after which all functional/security/visual gates passed. V2-only deploy `33182874015`, live search smoke and post-deploy visual audit `33182946157` are green.
 
-PR #126 (`2ffe387f2d05ab99172533cf51cb42f04be85063`) shipped the grounded selected-tour decision summary. PR branch-bundle validation exercised the new summary at 375/768/1024/1440 with no overflow, and all PR functional/security/visual gates passed. V2-only deploy `33183567573`, pre-deploy active contract, verification and live search smoke are green. Post-deploy visual verification must remain green before treating the visual evidence as fully closed.
+PR #126 (`2ffe387f2d05ab99172533cf51cb42f04be85063`) shipped the grounded selected-tour decision summary. PR branch-bundle validation exercised the new summary at 375/768/1024/1440 with no overflow, and all PR functional/security/visual gates passed. V2-only deploy `33183567573`, active contract/verification/live search smoke, post-deploy visual audit `33183656505` and deterministic visual baseline `33183656489` are green.
 
-Production baseline is therefore `2ffe387f2d05ab99172533cf51cb42f04be85063`, with search/lead/pricing/Metrika contracts unchanged.
+Production is therefore fully green on `2ffe387f2d05ab99172533cf51cb42f04be85063`, with search/lead/pricing/Metrika contracts unchanged.
 
 Earlier production contracts remain protected: V2 bundles, legacy/AI/MAX URL hydration, primary catalog sync, responsive meal visibility, bounded mobile CTA, selected-tour/flight/price behavior, structured continue-search progress ownership and lead transport.
 
 ## Exact next work order
 
-1. Confirm post-deploy visual/baseline workflows for PR #126 are green; if not, diagnose and fix before further visual work.
-2. Inspect fresh `main`, open PRs and latest deploy/security/functional results for actual breakage.
-3. BR3 whole-flow visual consistency audit across mobile/intermediate/desktop: search → progress/recovery → results/compare → selected tour → rooms → flights/price → lead. Identify components from different visual generations, duplicated patterns, inconsistent spacing/type/control hierarchy, and only fix material inconsistencies.
-4. Run full branch-bundle and relevant visual gates for each BR3 change; V2-only deploy only when green; smoke production and post-deploy viewports.
-5. Re-score affected areas. Once Visual quality reaches >=9, take the weakest confirmed 8.9 area rather than inventing features.
-6. Keep BR5 social/app footer queued; recover and verify exact external destinations before implementation.
-7. Keep SEO expansion deferred until all core product areas reach 9.
-8. Do not run traffic diagnostics or make conversion conclusions from owner/team usage until explicitly re-enabled.
+1. Inspect fresh `main`, open PRs and latest deploy/security/functional results for actual breakage.
+2. BR3 whole-flow visual consistency audit across mobile/intermediate/desktop: search → progress/recovery → results/compare → selected tour → rooms → flights/price → lead. Identify components from different visual generations, duplicated patterns, inconsistent spacing/type/control hierarchy, and only fix material inconsistencies.
+3. Run full branch-bundle and relevant visual gates for each BR3 change; V2-only deploy only when green; smoke production and post-deploy viewports.
+4. Re-score affected areas. Once Visual quality reaches >=9, take the weakest confirmed 8.9 area rather than inventing features.
+5. Keep BR5 social/app footer queued; recover and verify exact external destinations before implementation.
+6. Keep SEO expansion deferred until all core product areas reach 9.
+7. Do not run traffic diagnostics or make conversion conclusions from owner/team usage until explicitly re-enabled.
 
 ## Guardrails
 
