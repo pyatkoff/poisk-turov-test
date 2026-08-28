@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T01:05:00+02:00",
+  "updated_at": "2026-08-29T01:55:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru root stabilization is temporarily the highest priority because shell/link/consent and authenticated lead-handoff regressions were confirmed during migration. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
+  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru now has a dedicated homepage at / and full search at /poisk-turov/; stabilization of this split and newly migrated country/content routes is the highest priority. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -25,13 +25,13 @@
     "seo_site_foundation": 8.8
   },
   "current_task": {
-    "id": "ANYTOOUR_ROOT_STABILIZATION",
-    "category": "PRODUCTION_LEAD_UX",
-    "title": "Stabilize standalone anytoour.ru root without regressing legacy V2",
+    "id": "ANYTOOUR_STANDALONE_STABILIZATION",
+    "category": "PRODUCTION_UX_DATA",
+    "title": "Stabilize standalone homepage, search and migrated content routes",
     "status": "ACTIVE",
-    "objective": "Make the standalone root production-safe across public shell, authenticated lead handoff, consent/legal links and live search while preserving the legacy V2 route and all external contracts.",
-    "progress": "PR #188 fixed standalone runtime/site-shell paths and dead full-site root-relative navigation. PR #189 fixed the standalone privacy consent destination while preserving legacy behavior. Lead investigation moved the HMAC-authenticated receiver to an in-process adapter handoff; PR #192 fixes the remaining deployment mismatch by installing receiver, adapter and lead helpers together on the legacy V2 runtime. Previous deploy 33218815099 proved public root healthy but failed only the lead validation probe. Current standalone deployment for PR #192 is queued behind the preceding serialized deploy and must be verified before declaring production green.",
-    "next_action": "Verify the current-main Deploy anytoour.ru run after PR #192. Require public-root success, non-writing lead probe HTTP 422 Validation failed, then live Tourvisor search smoke. If green, perform root-specific responsive/full-flow audit; if red, inspect exact lead response/log and fix before unrelated roadmap work."
+    "objective": "Keep the new homepage/search split production-safe across data handoff, full tour-search journey, navigation, responsive layout, footer/legal shell and initial content routes while preserving legacy V2 and all external contracts.",
+    "progress": "PR #196 fixed exact homepage nights handoff, removed dead migration navigation, kept /poisk-turov/ local, repaired stale root-as-search CI assumptions and separated premerge checks from postdeploy live validation. It merged as 986b536c648de89b0e99cd209fa9815bd38f68b7 and Deploy anytoour.ru run 33221467704 succeeded. The postdeploy user journey completed through Tourvisor results/details/flights and non-writing lead-adapter health. Main has since advanced with canonical-footer and initial country-route/navigation migration commits.",
+    "next_action": "Verify the latest current-main standalone deploy and postdeploy live/visual/content checks after the newest migrated-route commits. Then audit new country/content routes for reachable navigation, query handoff into /poisk-turov/, noindex/canonical semantics, responsive layout and the one-canonical-footer plus compact-community-prefooter contract."
   },
   "queue": [
     {"id":"ROOT_STABILIZATION","status":"ACTIVE_HIGHEST_PRIORITY","title":"anytoour.ru standalone production stabilization"},
@@ -52,7 +52,6 @@
     "score": 8.8,
     "standalone_root_noindex": true,
     "legacy_route_noindex": true,
-    "canonical_absent_until_public_indexing_contract": true,
     "semantic_shell": true,
     "server_rendered_primitives": true,
     "page_contract": true,
@@ -65,33 +64,34 @@
     "controlled_editorial_content_catalog": true,
     "publication_review_manifest": true,
     "publication_manifest_side_effect_free": true,
-    "next_missing_layers": ["real_curated_production_content_inventory","explicit_indexing_and_public_url_contract","canonical_indexing_policy","sitemap_publication","structured_data_after_real_public_pages"]
+    "next_missing_layers": ["deliberate_public_indexing_contract","reviewed_real_content_inventory","sitemap_publication_policy","structured_data_after_indexable_pages"]
   },
   "production_baseline": {
     "last_verified_legacy_commit": "62be26153bf6ed8f57a2103cbbcdad0725eafdc8",
     "legacy_deploy_v2": 33214936774,
     "legacy_status": "PRODUCTION_GREEN",
     "standalone_target": "https://anytoour.ru/",
-    "standalone_current_main": "1dfac5f16a492d862ffa61968e0d7d41abfa7d0a",
-    "standalone_deploy_run": 33219141445,
-    "standalone_status": "VERIFYING_LEAD_HANDOFF_AND_LIVE_SEARCH"
+    "standalone_search": "https://anytoour.ru/poisk-turov/",
+    "last_verified_standalone_commit": "986b536c648de89b0e99cd209fa9815bd38f68b7",
+    "standalone_deploy_run": 33221467704,
+    "standalone_status": "DEPLOY_GREEN_USER_JOURNEY_GREEN_LATEST_MAIN_REVERIFYING"
   },
   "recent_material_fixes": [
-    {"pr":192,"scope":"atomic_lead_runtime_deploy","result":"Standalone deploy now installs compatible receiver, adapter, pricing helper and idempotency helper together before the HMAC bridge is verified."},
+    {"pr":196,"scope":"homepage_exact_nights_handoff","result":"The single homepage nights field now submits an exact duration instead of silently widening 7 nights to the default 7-10 range."},
+    {"pr":196,"scope":"standalone_navigation_split","result":"The deployed /poisk-turov/ route stays local while not-yet-migrated destinations remain reachable on the active legacy site."},
+    {"pr":196,"scope":"standalone_ci_architecture","result":"Standalone validation now distinguishes homepage, full-search and legacy routes and keeps live production journey/visual checks postdeploy."},
+    {"pr":192,"scope":"atomic_lead_runtime_deploy","result":"Standalone deploy installs compatible receiver, adapter, pricing helper and idempotency helper together before the HMAC bridge is verified."},
     {"pr":189,"scope":"standalone_privacy_consent_link","result":"anytoour.ru consent links reach the existing privacy page; legacy anytour.online keeps its relative privacy path."},
-    {"pr":188,"scope":"standalone_site_shell_paths","result":"Standalone V2 assets resolve from runtime config and full-site destinations not deployed on the new root no longer point at dead anytoour.ru paths."},
-    {"pr":183,"scope":"legacy_bitrix_sessid_output","result":"Legacy V2 again emits the Bitrix sessid required by the browser lead path."},
     {"pr":180,"scope":"mobile_trip_duration_visibility","result":"Trip duration stays in the primary mobile search flow and night presets no longer require horizontal scrolling."},
-    {"pr":180,"scope":"single_footer_contract","result":"V2 no longer renders a second full footer; social/app destinations remain in a compact community pre-footer before the canonical footer."},
+    {"pr":180,"scope":"single_footer_contract","result":"V2 does not render a second full footer; social/app destinations remain a compact community pre-footer before one canonical footer."},
     {"pr":174,"scope":"inbound_child_age_hydration","result":"Invalid child ages stay invalid and block search instead of being silently coerced or dropped."},
     {"pr":176,"scope":"inbound_child_count_hydration","result":"Unsupported child counts and child-count/age-control mismatches block search instead of sending a different tourist composition."}
   ],
   "blocked": [],
   "deferred": [
     {"scope":"traffic/conversion analysis","reason":"Explicitly disabled until owner launches traffic."},
-    {"scope":"public SEO canonical/indexing/sitemap promotion","reason":"Root deployment does not itself authorize indexing; requires deliberate indexing/publication contract and real curated content."},
-    {"scope":"real public SEO content inventory","reason":"Should be tied to reviewed factual pages rather than fabricated framework content."},
-    {"scope":"structured data","reason":"Add only after real indexable public page types and visible content exist."},
+    {"scope":"public SEO indexing/sitemap promotion","reason":"Live standalone routes do not themselves authorize indexing; requires a deliberate publication contract and reviewed content."},
+    {"scope":"structured data expansion","reason":"Add only after real indexable public page types and visible reviewed content exist."},
     {"scope":"PX7 price watch / proactive return intent","reason":"May require persistence/contact/product-contract decisions."},
     {"scope":"global nginx/server configuration","reason":"Outside allowed V2/repository write scope."}
   ],
@@ -110,7 +110,7 @@
     "on_blocker": "record_blocker_and_continue_independent_safe_work",
     "on_visual_change": "validate_required_viewports_before_advancing",
     "on_no_traffic": "ignore_as_expected_and_continue_product_development",
-    "on_score_below_9": "prioritize_weakest_material_area unless its remaining material work is explicitly product-blocked, then continue independent audits",
+    "on_score_below_9": "prioritize_weakest_material_area unless remaining material work is explicitly product-blocked, then continue independent audits",
     "on_score_at_least_9": "move_to_next_weakest_area"
   }
 }
