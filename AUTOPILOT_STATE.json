@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T00:10:00+02:00",
+  "updated_at": "2026-08-29T01:05:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains 9.0 across all eleven core areas. SEO/site foundation remains 8.8 with public mount/indexing explicitly deferred. PR #180 fixed owner-reported production UX regressions in mobile trip-duration visibility and duplicate footer rendering; whole-V2 production-surface audit remains active. Traffic analysis remains disabled.",
+  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru root stabilization is temporarily the highest priority because shell/link/consent and authenticated lead-handoff regressions were confirmed during migration. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -25,15 +25,16 @@
     "seo_site_foundation": 8.8
   },
   "current_task": {
-    "id": "WHOLE_V2_PRODUCTION_SURFACE_AUDIT",
-    "category": "TECHNICAL_HEALTH",
-    "title": "Continue full-flow production correctness and responsive audit",
+    "id": "ANYTOOUR_ROOT_STABILIZATION",
+    "category": "PRODUCTION_LEAD_UX",
+    "title": "Stabilize standalone anytoour.ru root without regressing legacy V2",
     "status": "ACTIVE",
-    "objective": "Inspect actual production state and screenshots across search, results/comparison, selected tour/rooms, flights/price and lead entry/recovery. Fix only confirmed defects while preserving external contracts.",
-    "progress": "PR #180 restored trip duration to the primary mobile search flow, removed horizontal scrolling from night presets, and replaced the duplicate full V2 footer with a compact social/app community pre-footer. It merged as 62be26153bf6ed8f57a2103cbbcdad0725eafdc8 and V2-only deploy 33214936774 is green. Results decision-support audit confirmed `Самая низкая цена` benchmarks the minimum displayed hotel price across the current result set and optionally shows the gap to the next distinct price; it is informational and does not alter sorting or pricing.",
-    "next_action": "Continue from production commit 62be26153bf6ed8f57a2103cbbcdad0725eafdc8. Prioritize the next confirmed incorrect-data, UX or responsive issue across the whole V2 flow; preserve primary mobile trip-duration visibility, the single-footer contract and the existing current-result price benchmark behavior."
+    "objective": "Make the standalone root production-safe across public shell, authenticated lead handoff, consent/legal links and live search while preserving the legacy V2 route and all external contracts.",
+    "progress": "PR #188 fixed standalone runtime/site-shell paths and dead full-site root-relative navigation. PR #189 fixed the standalone privacy consent destination while preserving legacy behavior. Lead investigation moved the HMAC-authenticated receiver to an in-process adapter handoff; PR #192 fixes the remaining deployment mismatch by installing receiver, adapter and lead helpers together on the legacy V2 runtime. Previous deploy 33218815099 proved public root healthy but failed only the lead validation probe. Current standalone deployment for PR #192 is queued behind the preceding serialized deploy and must be verified before declaring production green.",
+    "next_action": "Verify the current-main Deploy anytoour.ru run after PR #192. Require public-root success, non-writing lead probe HTTP 422 Validation failed, then live Tourvisor search smoke. If green, perform root-specific responsive/full-flow audit; if red, inspect exact lead response/log and fix before unrelated roadmap work."
   },
   "queue": [
+    {"id":"ROOT_STABILIZATION","status":"ACTIVE_HIGHEST_PRIORITY","title":"anytoour.ru standalone production stabilization"},
     {"id":"BR1","status":"SHIPPED_MAINTAIN_9","title":"Branded first impression"},
     {"id":"BR2","status":"SHIPPED_MAINTAIN_9","title":"Trust architecture"},
     {"id":"BR3","status":"SHIPPED_MAINTAIN_9","title":"Product-wide visual identity"},
@@ -49,8 +50,9 @@
   ],
   "seo_foundation": {
     "score": 8.8,
-    "temporary_route_noindex": true,
-    "canonical_absent_until_public_mount": true,
+    "standalone_root_noindex": true,
+    "legacy_route_noindex": true,
+    "canonical_absent_until_public_indexing_contract": true,
     "semantic_shell": true,
     "server_rendered_primitives": true,
     "page_contract": true,
@@ -63,32 +65,32 @@
     "controlled_editorial_content_catalog": true,
     "publication_review_manifest": true,
     "publication_manifest_side_effect_free": true,
-    "next_missing_layers": ["real_curated_production_content_inventory","final_public_mount_and_url","canonical_indexing_policy","sitemap_publication","structured_data_after_real_public_pages"]
+    "next_missing_layers": ["real_curated_production_content_inventory","explicit_indexing_and_public_url_contract","canonical_indexing_policy","sitemap_publication","structured_data_after_real_public_pages"]
   },
   "production_baseline": {
-    "last_verified_commit": "62be26153bf6ed8f57a2103cbbcdad0725eafdc8",
-    "deploy_v2": 33214936774,
-    "deploy_validate": true,
-    "deploy_copy": true,
-    "deploy_verify": true,
-    "live_search_smoke": true,
-    "postdeploy_baseline": 33215024256,
-    "status": "PRODUCTION_GREEN"
+    "last_verified_legacy_commit": "62be26153bf6ed8f57a2103cbbcdad0725eafdc8",
+    "legacy_deploy_v2": 33214936774,
+    "legacy_status": "PRODUCTION_GREEN",
+    "standalone_target": "https://anytoour.ru/",
+    "standalone_current_main": "1dfac5f16a492d862ffa61968e0d7d41abfa7d0a",
+    "standalone_deploy_run": 33219141445,
+    "standalone_status": "VERIFYING_LEAD_HANDOFF_AND_LIVE_SEARCH"
   },
   "recent_material_fixes": [
+    {"pr":192,"scope":"atomic_lead_runtime_deploy","result":"Standalone deploy now installs compatible receiver, adapter, pricing helper and idempotency helper together before the HMAC bridge is verified."},
+    {"pr":189,"scope":"standalone_privacy_consent_link","result":"anytoour.ru consent links reach the existing privacy page; legacy anytour.online keeps its relative privacy path."},
+    {"pr":188,"scope":"standalone_site_shell_paths","result":"Standalone V2 assets resolve from runtime config and full-site destinations not deployed on the new root no longer point at dead anytoour.ru paths."},
+    {"pr":183,"scope":"legacy_bitrix_sessid_output","result":"Legacy V2 again emits the Bitrix sessid required by the browser lead path."},
     {"pr":180,"scope":"mobile_trip_duration_visibility","result":"Trip duration stays in the primary mobile search flow and night presets no longer require horizontal scrolling."},
-    {"pr":180,"scope":"single_footer_contract","result":"V2 no longer renders a second full footer; social/app destinations remain in a compact community pre-footer before the host footer."},
+    {"pr":180,"scope":"single_footer_contract","result":"V2 no longer renders a second full footer; social/app destinations remain in a compact community pre-footer before the canonical footer."},
     {"pr":174,"scope":"inbound_child_age_hydration","result":"Invalid child ages stay invalid and block search instead of being silently coerced or dropped."},
-    {"pr":176,"scope":"inbound_child_count_hydration","result":"Unsupported child counts and child-count/age-control mismatches block search instead of sending a different tourist composition."},
-    {"pr":175,"scope":"selected_tour_postdeploy_coverage","result":"Selected tour, flights, lead summary/trust/recovery and overflow are audited on real production bundles after deploy at five viewports."},
-    {"pr":177,"scope":"mobile_zero_result_recovery_focus","result":"Recovery expands collapsed mobile search and focuses the effective visible sticky or inline search CTA without auto-submitting."},
-    {"pr":177,"scope":"search_recovery_postdeploy_coverage","result":"Progress, explicit zero-result date/night recovery, filters and error retry are audited on branch bundles before merge and real production bundles after deploy at five viewports."}
+    {"pr":176,"scope":"inbound_child_count_hydration","result":"Unsupported child counts and child-count/age-control mismatches block search instead of sending a different tourist composition."}
   ],
   "blocked": [],
   "deferred": [
     {"scope":"traffic/conversion analysis","reason":"Explicitly disabled until owner launches traffic."},
-    {"scope":"final public SEO route/canonical/indexing/sitemap promotion","reason":"Requires explicit final public URL/routing choice; current development search route must stay noindex."},
-    {"scope":"real public SEO content inventory","reason":"Should be tied to the chosen public page set and reviewed factual content rather than fabricated by framework code."},
+    {"scope":"public SEO canonical/indexing/sitemap promotion","reason":"Root deployment does not itself authorize indexing; requires deliberate indexing/publication contract and real curated content."},
+    {"scope":"real public SEO content inventory","reason":"Should be tied to reviewed factual pages rather than fabricated framework content."},
     {"scope":"structured data","reason":"Add only after real indexable public page types and visible content exist."},
     {"scope":"PX7 price watch / proactive return intent","reason":"May require persistence/contact/product-contract decisions."},
     {"scope":"global nginx/server configuration","reason":"Outside allowed V2/repository write scope."}
@@ -99,7 +101,7 @@
     "logo": "DO_NOT_CHANGE",
     "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "lead_sending_mechanism": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL"
+    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
   },
   "continuation_policy": {
     "priority": "production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > weakest_sub9_score > brand_product_roadmap > cosmetic_refactor",
