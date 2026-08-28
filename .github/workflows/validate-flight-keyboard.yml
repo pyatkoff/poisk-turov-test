@@ -41,11 +41,13 @@ jobs:
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage();
-            await page.setContent(`
+            const fixture=`
               <form id="tourSearch"><input name="sessid" value="test"></form>
               <div id="results"></div>
               <div id="selectedTour" hidden></div>
-            `);
+            `;
+            await page.route('http://keyboard.test/**',route=>route.fulfill({status:200,contentType:'text/html',body:fixture}));
+            await page.goto('http://keyboard.test/');
             await page.evaluate(()=>{
               const tour={
                 id:'tour-keyboard',price:142000,date:'12.09.2026',nights:9,adults:2,childs:0,
