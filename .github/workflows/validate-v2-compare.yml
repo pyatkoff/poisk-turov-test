@@ -25,7 +25,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Exercise compare flow at mobile and desktop widths
+      - name: Exercise branch compare flow at mobile and desktop widths
         shell: bash
         env:
           V2_URL: https://anytour.online/poisk-turov-test/v2/
@@ -33,9 +33,9 @@ jobs:
           set -euo pipefail
           cat > ./validate-v2-compare.cjs <<'JS'
           const {chromium}=require('playwright');
-          const fs=require('fs'),path=require('path');
-          const root=path.resolve('v2');
-          const asset=/\/poisk-turov-test\/v2\/([^/?]+\.(?:js|css))(?:\?.*)?$/i;
+          const path=require('path');
+          const cssFile=path.resolve('v2/conversion-confidence-v1.css');
+          const jsFile=path.resolve('v2/conversion-confidence-v1.js');
           const fixture=[
             {id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[{id:'a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'}}]},
             {id:902,name:'AnyTour Garden Hotel',category:4,rating:4.4,seaDistance:650,price:98000,country:{name:'Турция'},region:{name:'Аланья'},tours:[{id:'b',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'}}]},
@@ -48,11 +48,13 @@ jobs:
               const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
               const page=await context.newPage();
               const errors=[];page.on('pageerror',e=>errors.push(String(e)));
-              await page.route('**/*',async route=>{const m=new URL(route.request().url()).pathname.match(asset);if(!m)return route.continue();const file=path.join(root,path.basename(m[1]));if(!fs.existsSync(file))return route.continue();return route.fulfill({status:200,contentType:path.extname(file)==='.css'?'text/css':'application/javascript',body:fs.readFileSync(file)});});
               const response=await page.goto(process.env.V2_URL,{waitUntil:'domcontentloaded',timeout:45000});
               await page.waitForTimeout(3200);
+              await page.addStyleTag({path:cssFile});
+              await page.evaluate(()=>{window.V2ConversionConfidenceV1=null;delete document.documentElement.dataset.v2CompareBound;});
+              await page.addScriptTag({path:jsFile});
               await page.evaluate(rows=>window.V2Results.render(rows),fixture);
-              await page.waitForTimeout(100);
+              await page.waitForTimeout(150);
               const buttons=page.locator('.hotel-compare-toggle');
               if(await buttons.count()!==4)throw new Error(name+': expected 4 compare buttons');
               await buttons.nth(0).click();
