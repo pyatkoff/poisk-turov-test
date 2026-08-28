@@ -1,24 +1,26 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28 21:25 +02:00
+Updated: 2026-08-28 22:00 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
-## Current phase — CORE PRODUCT 9/10, SEO FOUNDATION 8.5
+## Current phase — CORE PRODUCT 9/10, SEO FOUNDATION 8.7
 
 Paid/real-user traffic is intentionally not running. Current visitors are the owner and team, so browser/funnel activity must **not** be treated as conversion evidence.
 
-Search, Waiting/Recovery, Results/Comparison, Selected Tour, Flights/Price, Lead UX, Mobile UX, Tablet/Desktop UX, Brand/Trust, Visual Quality and Product Differentiation are all assessed at 9.0 with functional/visual evidence.
+Search, Waiting/Recovery, Results/Comparison, Selected Tour, Flights/Price, Lead UX, Mobile UX, Tablet/Desktop UX, Brand/Trust, Visual Quality and Product Differentiation remain assessed at 9.0 with functional/visual evidence.
 
-SEO/site foundation has advanced from 7.2 to **8.5**. The route-independent foundation now includes:
+SEO/site foundation is now **8.7**. Route-independent groundwork includes:
 
-- reusable semantic AnyTour page shell/footer;
+- reusable semantic AnyTour shell/footer;
 - server-rendered SEO content primitives and page contract;
 - explicit country/resort/seasonal page types with editorial H1 ownership;
-- stable first-party internal/related-link boundaries excluding query/hash/search-state URLs;
+- stable first-party breadcrumbs/internal/related-link boundaries excluding query/hash/search-state URLs;
 - curated clean-path page registry;
 - structural publishability quality gate;
-- registered parent/related page graph with unknown-reference and cycle rejection.
+- registered parent/related graph with unknown-reference and cycle rejection;
+- controlled editorial catalog with draft/review/approved lifecycle and approved+publishable candidate gating;
+- review-only publication manifest that carries editorial/graph context but cannot enable routes, canonical, sitemap, schema or indexing by itself.
 
 The current `/poisk-turov-test/v2/` route remains `noindex,follow` with no canonical. Do not promote it or invent a public canonical.
 
@@ -27,31 +29,31 @@ The current `/poisk-turov-test/v2/` route remains `noindex,follow` with no canon
 - BR1 Branded first impression — 9-LEVEL / MAINTAIN.
 - BR2 Trust architecture — 9-LEVEL / MAINTAIN.
 - BR3 Product-wide visual identity — 9-LEVEL / MAINTAIN.
-- BR4 SEO-ready brand shell — ACTIVE at 8.5; next safe layer is a controlled editorial content-source/catalog workflow, then publication tooling independent of final route.
-- BR5 Social + app footer — QUEUED; add MAX, Telegram, VK, App Store and Google Play only after exact supplied destinations are recovered/verified.
+- BR4 SEO-ready brand shell — ACTIVE at 8.7. Safe infrastructure/tooling is mature; remaining material gap is real curated editorial inventory plus the explicit future public route/canonical/indexing/sitemap policy.
+- BR5 Social + app footer — SHIPPED / MAINTAIN. Verified AnyTour destinations are present for MAX, Telegram, VK, App Store and Google Play; responsive/touch regressions are covered.
 - PX1–PX6 — 9-LEVEL / MAINTAIN.
 - PX7 Price watch/return intent — RESEARCH pending persistence/contact/product-contract choices.
 
-## Latest BR4 evidence
+## Latest material evidence
 
-- PR #147–#149: semantic footer, SEO page primitives and reusable landing-page contract.
-- PR #151/#152/#156: stable internal/related-link boundaries.
-- PR #153: reusable country/resort/seasonal page types; CI caught and removed unsafe automatic Russian inflection.
-- PR #154: curated SEO page registry; query/hash/external/duplicate paths rejected.
-- PR #155: publishability gate; incomplete/thin candidates and transient search state rejected.
-- PR #157: registered parent/related relationship graph; unknown references and cycles rejected.
-- PR #157 commit `ebdb8d8e6240283e4b89c05d5e67ff4c5cc1c076` deployed successfully in V2-only run `33206695319`; validate, copy, verify and live search smoke are green.
+- PR #160 hardened publishability breadcrumbs so unstable/query/hash/external breadcrumb ancestry cannot become publishable.
+- PR #161 added the controlled editorial SEO content catalog; PR #163 integrated hardened publishability into catalog candidate regression.
+- PR #164 shipped BR5 social/app footer with MAX, Telegram, VK, App Store and Google Play destinations and responsive verification.
+- Post-deploy full-page evidence after #164 found a real production UX bug: structured `PHONE` from `site_conf.php` rendered as literal `Array` in the server footer.
+- PR #166 introduced shared structured-phone normalization and fixed the footer. V2-only deploy `33208316418` passed validate/copy/verify/live-search smoke; post-deploy visual run `33208386400` passed all audited viewports and evidence shows the real phone number instead of `Array`.
+- PR #168 completed the same structured-phone normalization for initial header state and repaired the main-only SEO live contract to validate the actual compiled stylesheet link rather than a source filename. Main SEO foundation run `33208779148` is green; V2-only deploy `33208778983` passed validate/copy/verify/live-search smoke.
+- PR #169 added the route-independent publication review manifest. All PR gates were green and V2-only deploy `33208974160` passed validate/copy/verify/live-search smoke.
+- Current production baseline commit: `29cc99b59e156d6ad2e6c7c64eff5eb8d2496caa`.
 
 ## Exact next work order
 
 1. Inspect fresh `main`, open PRs and latest deploy/security/functional/visual results for actual breakage.
-2. Continue BR4 with a **controlled editorial content-source/catalog layer** that feeds only the curated registry; do not derive pages from request/search parameters.
-3. Add validation that candidate content records satisfy registry, publishability and graph contracts before they can be considered publication candidates.
-4. Keep current V2 route `noindex,follow`; do **not** add canonical, sitemap publication, structured data or indexability until the final public mount/URL is explicitly chosen.
-5. After content-source/catalog tooling, reassess SEO/site foundation. The likely remaining blockers to 9 are real curated content inventory plus public route/canonical/indexing/sitemap policy.
-6. Periodically re-audit the whole V2 conversion flow; production/lead/data/UX regressions outrank BR4.
-7. Keep BR5 queued until exact external destinations are verified; do not guess URLs.
-8. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
+2. Re-audit the complete V2 journey periodically on mobile/intermediate/desktop: search → waiting/progress → stale/zero recovery → results/comparison → selected tour/rooms → flights/price → lead entry, with production/lead/data/UX regressions outranking roadmap work.
+3. Continue BR4 only with safe route-independent work. The highest-value remaining item is a **small, genuinely curated editorial content inventory** that passes catalog/publishability/graph review; do not synthesize page identity or copy from request/search state and do not mass-generate thin pages.
+4. Do **not** add public routing, canonical, sitemap publication, structured data or indexability until the final public mount/URL and publication policy are explicitly chosen. This is the remaining product/routing blocker to SEO 9.0, not a reason to stop independent maintenance/re-audit work.
+5. Maintain BR5 regressions: social/app URLs must remain explicit AnyTour destinations; footer/header phone must never render structured values as `Array`; mobile external controls stay touch-friendly and overflow-free.
+6. Re-score SEO only after real curated inventory or a resolved public-route/indexing policy materially changes readiness. Do not inflate to 9.0 from tooling alone.
+7. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
 
 ## Guardrails
 
