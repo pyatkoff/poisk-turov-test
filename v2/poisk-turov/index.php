@@ -12,4 +12,7 @@ if (!defined('V2_PUBLIC_BASE_PATH')) {
         define('V2_PUBLIC_BASE_PATH', $base === '/' ? '' : $base);
     }
 }
-require dirname(__DIR__) . '/index.php';
+$root = dirname(__DIR__);
+$searchEntry = $root . '/search-page-v2.php';
+if (!is_file($searchEntry)) $searchEntry = $root . '/index.php';
+require $searchEntry;
