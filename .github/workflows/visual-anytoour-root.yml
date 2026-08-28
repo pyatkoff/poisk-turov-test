@@ -1,0 +1,145 @@
+name: Visual anytoour.ru root
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/visual-anytoour-root.yml'
+  workflow_run:
+    workflows: ['Deploy anytoour.ru']
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: visual-anytoour-root-${{ github.event.pull_request.number || github.event.workflow_run.id || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  visual-root:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Audit standalone root at five viewports
+        shell: bash
+        env:
+          ROOT_URL: https://anytoour.ru/
+          PR_PREVIEW: ${{ github.event_name == 'pull_request' && '1' || '0' }}
+        run: |
+          set -euo pipefail
+          mkdir -p anytoour-root-visual
+          cat > ./visual-anytoour-root.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const viewports = [
+            ['mobile-375',375,812],
+            ['mobile-430',430,932],
+            ['tablet-768',768,1024],
+            ['intermediate-1024',1024,900],
+            ['desktop-1440',1440,1000],
+          ];
+          const url = process.env.ROOT_URL;
+          const prPreview = process.env.PR_PREVIEW === '1';
+          function fail(name, message){ throw new Error(`${name}: ${message}`); }
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const report=[];
+            try {
+              for(const [name,width,height] of viewports){
+                const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+                const page=await context.newPage();
+                const pageErrors=[];
+                page.on('pageerror',e=>pageErrors.push(String(e).slice(0,400)));
+                const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
+                if(!response || response.status()!==200) fail(name,`root HTTP ${response&&response.status()}`);
+                await page.waitForFunction(()=>window.V2_CONFIG && document.querySelector('.search-card') && document.querySelector('.main-fields .nights-ux'),null,{timeout:20000});
+                await page.waitForTimeout(1800);
+                if(prPreview) await page.addStyleTag({path:'v2/br3-control-consistency-v1.css'});
+                await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}html{scroll-behavior:auto!important}'});
+
+                const initial=await page.evaluate(()=>{
+                  const visible=el=>!!el&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden'&&el.getBoundingClientRect().width>0&&el.getBoundingClientRect().height>0;
+                  const nights=document.querySelector('.main-fields .nights-ux');
+                  const nightsQuick=nights&&nights.querySelector('.nights-quick');
+                  const nightNodes=[...(nights?.querySelectorAll('.nights-choice')||[])];
+                  const visibleNightChoices=nightNodes.filter(visible);
+                  const nightsFrom=document.querySelector('[name="daysFrom"]');
+                  const nightsTill=document.querySelector('[name="daysTill"]');
+                  const nonRootHeader=[...document.querySelectorAll('.at-site-header a[href^="/"]')].filter(a=>a.getAttribute('href')!=='/').map(a=>a.getAttribute('href'));
+                  const qStyle=nightsQuick?getComputedStyle(nightsQuick):null;
+                  const qRect=nightsQuick?nightsQuick.getBoundingClientRect():null;
+                  return {
+                    hero:visible(document.querySelector('.v2-product-hero')),
+                    search:visible(document.querySelector('.search-card')),
+                    nightsPrimary:visible(nights),
+                    nightChoices:visibleNightChoices.length,
+                    nightsOverflow:!!nightsQuick&&nightsQuick.scrollWidth>nightsQuick.clientWidth+2,
+                    nightsGeometry:nightsQuick?{display:qStyle.display,columns:qStyle.gridTemplateColumns,flow:qStyle.gridAutoFlow,width:qRect.width,height:qRect.height,clientWidth:nightsQuick.clientWidth,scrollWidth:nightsQuick.scrollWidth,clientHeight:nightsQuick.clientHeight,scrollHeight:nightsQuick.scrollHeight,overflowX:qStyle.overflowX}:null,
+                    nightButtons:nightNodes.map(el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return{text:String(el.textContent||'').trim(),display:s.display,position:s.position,gridColumn:s.gridColumn,width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom,clientWidth:el.clientWidth,scrollWidth:el.scrollWidth};}),
+                    nightValues:[nightsFrom&&nightsFrom.value,nightsTill&&nightsTill.value],
+                    community:document.querySelectorAll('.v2-site-community').length,
+                    canonicalFooter:document.querySelectorAll('.at-site-footer').length,
+                    privacy:String(window.V2_CONFIG&&window.V2_CONFIG.privacyUrl||''),
+                    staleRelativeHeader:nonRootHeader,
+                    overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
+                  };
+                });
+                console.log('ROOT_VISUAL_STATE',name,JSON.stringify(initial));
+                await page.screenshot({path:`anytoour-root-visual/${name}-initial.png`,fullPage:true,animations:'disabled'});
+                if(!initial.hero||!initial.search) fail(name,'hero/search not visible');
+                if(!initial.nightsPrimary||initial.nightChoices<5) fail(name,`primary duration control missing choices=${initial.nightChoices}`);
+                if(width<=430&&initial.nightsOverflow) fail(name,`trip duration overflows ${JSON.stringify(initial.nightsGeometry)}`);
+                if(initial.community!==1) fail(name,`community pre-footer count ${initial.community}`);
+                if(initial.canonicalFooter!==1) fail(name,`canonical footer count ${initial.canonicalFooter}`);
+                if(initial.privacy!=='https://anytour.online/politika-konfidentsialnosti/') fail(name,`privacy URL ${initial.privacy}`);
+                if(initial.staleRelativeHeader.length) fail(name,`dead standalone header paths ${initial.staleRelativeHeader.join(',')}`);
+                if(initial.overflow) fail(name,'horizontal overflow on initial root');
+
+                const extras=page.locator('details.extras > summary');
+                if(await extras.count()){
+                  await extras.click();
+                  await page.waitForTimeout(150);
+                  const advanced=await page.evaluate(()=>({
+                    open:!!document.querySelector('details.extras')?.open,
+                    overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
+                  }));
+                  if(!advanced.open) fail(name,'advanced filters did not open');
+                  if(advanced.overflow) fail(name,'horizontal overflow in advanced filters');
+                  await page.screenshot({path:`anytoour-root-visual/${name}-filters.png`,fullPage:true,animations:'disabled'});
+                }
+
+                if(pageErrors.length) fail(name,`page errors: ${pageErrors.join(' | ')}`);
+                report.push({name,width,height,initial,prPreview});
+                await context.close();
+              }
+            } finally { await browser.close(); }
+            fs.writeFileSync('anytoour-root-visual/report.json',JSON.stringify(report,null,2));
+            console.log('ANYTOOUR_ROOT_FIVE_VIEWPORT_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node ./visual-anytoour-root.cjs
+
+      - name: Upload root visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anytoour-root-visual-${{ github.run_id }}
+          path: anytoour-root-visual/
+          if-no-files-found: warn
+          retention-days: 7
