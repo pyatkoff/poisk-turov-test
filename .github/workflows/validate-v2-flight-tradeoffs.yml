@@ -76,8 +76,8 @@ jobs:
               if(!state.prices.every(p=>p.startsWith('Стоимость тура:')))throw new Error(name+': price clarification missing '+JSON.stringify(state));
               if(state.overflow)throw new Error(name+': overflow after tradeoffs');
               await page.evaluate(()=>window.V2FlightPriceSync.sync({price:100000,fuelCharge:0},{price:{value:107000},fuelCharge:{value:2500}},1));
-              state=await page.evaluate(()=>({price:document.querySelector('.selected-price')?.textContent.replace(/\s+/g,' ').trim(),fuel:document.querySelector('.facts b')?.textContent.trim(),lead:document.querySelector('.lead-form .section-heading span')?.textContent.trim()}));
-              if(!state.price.includes('+7 000 ₽')||state.fuel!=='2 500 ₽'||!state.lead.includes('выбранный рейс'))throw new Error(name+': price sync regression '+JSON.stringify(state));
+              state=await page.evaluate(()=>({price:document.querySelector('.selected-price')?.textContent.replace(/\s+/g,' ').trim(),fuelDigits:document.querySelector('.facts b')?.textContent.replace(/[^0-9]/g,''),lead:document.querySelector('.lead-form .section-heading span')?.textContent.trim()}));
+              if(!state.price.includes('+7 000 ₽')||state.fuelDigits!=='2500'||!state.lead.includes('выбранный рейс'))throw new Error(name+': price sync regression '+JSON.stringify(state));
               if((response&&response.status())!==200||errors.length)throw new Error(name+': page errors '+errors.join(' | '));
               console.log('FLIGHT_TRADEOFFS_OK',name);
               await context.close();
