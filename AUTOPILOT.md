@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28 15:18 +02:00
+Updated: 2026-08-28 17:12 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -8,7 +8,7 @@ Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-read
 
 Paid/real-user traffic is intentionally not running. Current visitors are the owner and team, so browser/funnel activity must **not** be treated as conversion evidence. Do not spend autonomous development time collecting, waiting for, interpreting or optimizing against traffic until the owner explicitly re-enables that phase.
 
-The product release gate is now: **every material area >= 9/10**. If production is healthy, audit the whole product, score the material areas, then improve the weakest sub-9 area. Never stop because traffic is absent.
+The product release gate remains: **every material area >= 9/10**. If production is healthy, audit the whole product, score the material areas, then improve the weakest sub-9 area. Never stop because traffic is absent.
 
 ## Scorecard areas
 
@@ -16,44 +16,43 @@ Search UX; waiting/progress/recovery; results & comparison; selected tour; fligh
 
 Scores are product-quality assessments backed by functional and visual evidence, not traffic metrics. Re-score after material changes. A 9/10 score means ready for traffic-quality scrutiny, not “perfect forever”.
 
+Latest re-score after PX3/PX5: core areas now at or above 9 for Results/Comparison, Selected Tour, Flights/Price, Lead UX and Product Differentiation. Weakest core area is **Visual quality / consistency (8.8)**; Search, Waiting/Recovery, Mobile, Tablet/Desktop and Brand/Trust are at 8.9. SEO remains intentionally deferred at 7.2 until the core search product reaches the gate.
+
 ## Active roadmap
 
 - BR1 Branded first impression — ACTIVE; grounded AnyTour-specific first-screen proof shipped in PR #123.
-- BR2 Trust architecture — ACTIVE
-- BR3 Product-wide visual identity — ACTIVE
-- BR4 SEO-ready brand shell — QUEUED
-- BR5 Social + app footer — QUEUED; add a polished lower-page/footer presence for AnyTour social channels (MAX, Telegram, VK) and mobile apps (App Store, Google Play), using the project's verified real destination URLs only. Keep it secondary to search/lead conversion, responsive and touch-friendly; do not introduce new analytics goals or alter lead transport. Recover/verify the previously supplied links before implementation rather than guessing destinations.
-- PX1 Decision support in results — ACTIVE; contextual lowest-price/best-rating and nearest-price context shipped.
-- PX2 Flexible search/recovery — ACTIVE; explicit zero-result date recovery shipped.
-- PX3 Price confidence — QUEUED
-- PX4 Flight decision quality — ACTIVE; grounded flight price/routing tradeoffs shipped.
-- PX5 Hotel choice depth — QUEUED
-- PX6 Save/compare/resume — ACTIVE; lightweight hotel comparison shipped.
-- PX7 Price watch/return intent — RESEARCH pending product-contract choices
+- BR2 Trust architecture — ACTIVE; next after/alongside BR3 where consistency gaps are confirmed.
+- BR3 Product-wide visual identity — ACTIVE / NEXT; audit core flow for components from different visual generations and consolidate only material inconsistencies.
+- BR4 SEO-ready brand shell — QUEUED until all core product areas >= 9.
+- BR5 Social + app footer — QUEUED; add a polished lower-page/footer presence for AnyTour social channels (MAX, Telegram, VK) and mobile apps (App Store, Google Play), using verified real destination URLs only. Keep it secondary to search/lead conversion, responsive and touch-friendly; do not introduce new analytics goals or alter lead transport. Recover/verify the previously supplied links before implementation rather than guessing destinations.
+- PX1 Decision support in results — ACTIVE / 9-level; contextual badges, nearest-price context and compare support shipped.
+- PX2 Flexible search/recovery — ACTIVE; explicit zero-result date recovery shipped; score 8.9 pending confirmed broader recovery friction.
+- PX3 Price confidence — SHIPPED; PR #125 clarifies search price vs selected-flight price and pre-payment reconfirmation.
+- PX4 Flight decision quality — ACTIVE / 9-level; grounded flight price/routing trade-offs shipped.
+- PX5 Hotel choice depth — SHIPPED; PR #126 adds grounded selected-tour category/rating/sea/meal/room decision summary.
+- PX6 Save/compare/resume — ACTIVE / 9-level; lightweight hotel comparison shipped.
+- PX7 Price watch/return intent — RESEARCH pending persistence/contact/product-contract choices.
 
 ## Production baseline
 
-PR #123 (`768f48b56f5cd692489f664fefec528b7e958964`) shipped a grounded first-screen AnyTour proof without changing search, analytics, lead transport or deployment scope. All PR functional/security/visual gates were green.
+PR #125 (`c8f14b459234596af3bbb9b6bc0ff4772bafa2a4`) shipped selected-tour price-confidence guidance. A startup-bundle CI contract had a stale hard-coded JS count (25 vs the legitimate new 26th asset); the CI expectation was corrected in the PR, after which all functional/security/visual gates passed. V2-only deploy `33182874015`, live search smoke and post-deploy visual audit `33182946157` are green.
 
-After merge, the main-only `Validate active V2 contract` correctly blocked the release because its flight-price grep expected spaced `flightPrice - basePrice` while the semantically identical implementation used `flightPrice-basePrice`. This was a CI contract-format false failure, not a production pricing defect. PR #124 (`5d078e7c89b84c3f20026f3f3e939496257dc14c`) restored the expected formatting only.
+PR #126 (`2ffe387f2d05ab99172533cf51cb42f04be85063`) shipped the grounded selected-tour decision summary. PR branch-bundle validation exercised the new summary at 375/768/1024/1440 with no overflow, and all PR functional/security/visual gates passed. V2-only deploy `33183567573`, pre-deploy active contract, verification and live search smoke are green. Post-deploy visual verification must remain green before treating the visual evidence as fully closed.
 
-PR #124 verification is green: Security `33173388430`; active V2 contract `33173388343`; tour live `33173388380`; result-detail live `33173388408`; V2-only deploy/live search smoke `33173388498`. Its PR gates were also fully green, including flight tradeoffs, branch/startup bundles and all visual suites.
-
-Production is therefore green on `5d078e7c89b84c3f20026f3f3e939496257dc14c`.
+Production baseline is therefore `2ffe387f2d05ab99172533cf51cb42f04be85063`, with search/lead/pricing/Metrika contracts unchanged.
 
 Earlier production contracts remain protected: V2 bundles, legacy/AI/MAX URL hydration, primary catalog sync, responsive meal visibility, bounded mobile CTA, selected-tour/flight/price behavior, structured continue-search progress ownership and lead transport.
 
 ## Exact next work order
 
-1. Inspect fresh `main`, open PRs and latest deploy/security/functional/visual results for actual breakage.
-2. Re-audit the complete V2 journey on mobile/intermediate/desktop: search → waiting/progress → stale/zero → results/comparison → selected tour → rooms/details → flights/price → lead/recovery.
-3. Re-score the 12-area quality scorecard now that PX1/PX2/PX4/PX6 and BR1 have materially advanced since the last scorecard snapshot.
-4. Take the weakest core product area below 9 and implement the highest-value safe improvement; likely candidates to inspect first are PX5 hotel choice depth, PX3 price confidence and remaining BR2/BR3 consistency gaps.
-5. Include BR5 social + app footer when brand/trust/site-shell work reaches that priority: verify the supplied MAX/Telegram/VK/App Store/Google Play destinations, then implement and visually validate it across mobile and desktop without distracting from primary conversion actions.
-6. Run relevant functional/regression/visual checks; deploy V2 only when green; smoke production after deploy.
-7. Re-score affected areas and immediately continue to the next weakest sub-9 area.
-8. Keep Brand and Product/competitor-gap queues active regardless of traffic availability.
-9. Do not run traffic diagnostics or make conversion conclusions from owner/team usage until explicitly re-enabled.
+1. Confirm post-deploy visual/baseline workflows for PR #126 are green; if not, diagnose and fix before further visual work.
+2. Inspect fresh `main`, open PRs and latest deploy/security/functional results for actual breakage.
+3. BR3 whole-flow visual consistency audit across mobile/intermediate/desktop: search → progress/recovery → results/compare → selected tour → rooms → flights/price → lead. Identify components from different visual generations, duplicated patterns, inconsistent spacing/type/control hierarchy, and only fix material inconsistencies.
+4. Run full branch-bundle and relevant visual gates for each BR3 change; V2-only deploy only when green; smoke production and post-deploy viewports.
+5. Re-score affected areas. Once Visual quality reaches >=9, take the weakest confirmed 8.9 area rather than inventing features.
+6. Keep BR5 social/app footer queued; recover and verify exact external destinations before implementation.
+7. Keep SEO expansion deferred until all core product areas reach 9.
+8. Do not run traffic diagnostics or make conversion conclusions from owner/team usage until explicitly re-enabled.
 
 ## Guardrails
 
