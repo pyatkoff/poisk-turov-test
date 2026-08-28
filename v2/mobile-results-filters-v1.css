@@ -3,7 +3,7 @@
 .results-tools{padding-bottom:8px}
 .mrf-bar{display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 0 10px;padding:0 2px}
 .mrf-bar::-webkit-scrollbar{display:none}
-.mrf-open,.mrf-chip{flex:0 0 auto;min-height:42px;border:1px solid #d7deeb;border-radius:999px;background:#fff;color:#344054;padding:0 14px;font:800 12px/1 Inter,Arial,sans-serif}
+.mrf-open,.mrf-chip{flex:0 0 auto;min-height:44px;border:1px solid #d7deeb;border-radius:999px;background:#fff;color:#344054;padding:0 14px;font:800 12px/1 Inter,Arial,sans-serif}
 .mrf-open{border-color:#9eafe6;color:#3154cf}
 .mrf-open b{display:inline-flex;min-width:20px;height:20px;align-items:center;justify-content:center;margin-left:5px;border-radius:999px;background:#3154cf;color:#fff;font-size:10px}
 .mrf-chip{background:#f5f7fb;padding-right:11px}
@@ -17,12 +17,12 @@
 .mrf-grab{width:42px;height:4px;border-radius:99px;background:#d7dce5;margin:0 auto 12px}
 .mrf-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .mrf-head h3{margin:0;font-size:20px}
-.mrf-close{width:42px;height:42px;border:0;border-radius:12px;background:#f2f4f8;font-size:24px}
+.mrf-close{width:44px;height:44px;border:0;border-radius:12px;background:#f2f4f8;font-size:24px}
 .mrf-section{padding:17px 0;border-top:1px solid #edf0f5}
 .mrf-section:first-of-type{border-top:0}
 .mrf-section strong{display:block;margin-bottom:10px;font-size:13px;color:#475467}
 .mrf-options{display:flex;flex-wrap:wrap;gap:8px}
-.mrf-choice{min-height:42px;border:1px solid #d7deeb;border-radius:11px;background:#fff;color:#475467;padding:0 13px;font-weight:800}
+.mrf-choice{min-height:44px;border:1px solid #d7deeb;border-radius:11px;background:#fff;color:#475467;padding:0 13px;font-weight:800}
 .mrf-choice.is-active{border-color:#6079d8;background:#edf2ff;color:#2442ad}
 .mrf-price{display:flex;align-items:center;gap:8px}
 .mrf-price input{height:46px;min-width:0;flex:1;border:1px solid #d7deeb;border-radius:11px;padding:0 12px;font-size:16px}
@@ -32,7 +32,7 @@
 .mrf-apply{border:0;background:#3154cf;color:#fff}
 .mrf-empty{margin:12px 0;padding:18px;border:1px dashed #b6c2e5;border-radius:15px;background:#fafbff;text-align:center}
 .mrf-empty strong{display:block;margin-bottom:5px}
-.mrf-empty button{margin-top:10px;min-height:42px;border:0;border-radius:11px;background:#3154cf;color:#fff;padding:0 16px;font-weight:900}
+.mrf-empty button{margin-top:10px;min-height:44px;border:0;border-radius:11px;background:#3154cf;color:#fff;padding:0 16px;font-weight:900}
 .results-tools{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(145px,42%);align-items:end!important;gap:10px!important;padding:13px 13px 12px!important}
 .results-tools[hidden]{display:none!important}
 .results-tools>div{display:block!important;min-width:0;margin:0!important}
