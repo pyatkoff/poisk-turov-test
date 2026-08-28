@@ -1,0 +1,56 @@
+name: Diagnose anytoour.ru live
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/diagnose-anytoour-live.yml'
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe lead bridge with non-writing payload
+        shell: bash
+        run: |
+          set -u
+          code="$(curl -sS -o /tmp/lead.json -w '%{http_code}' --max-time 45 \
+            -H 'Content-Type: application/json' \
+            -H 'Origin: https://anytoour.ru' \
+            --data '{"consent":false}' \
+            https://anytoour.ru/lead-adapter-v2.php)"
+          echo "LEAD_HTTP=$code"
+          echo -n 'LEAD_BODY='
+          cat /tmp/lead.json
+          echo
+
+      - name: Probe live search independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://anytoour.ru/api-v2.php'
+          from="$(date -d '+2 day' +%Y-%m-%d)"
+          till="$(date -d '+9 day' +%Y-%m-%d)"
+          curl -fsSL --max-time 45 "$base?action=departures" -o /tmp/departures.json
+          grep -q '"id"' /tmp/departures.json
+          curl -fsSL --max-time 45 "$base?action=countries&departureId=1" -o /tmp/countries.json
+          grep -q '"id"' /tmp/countries.json
+          curl -fsSL --max-time 50 "$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB" -o /tmp/start.json
+          search_id="$(grep -oE '"searchId"[[:space:]]*:[[:space:]]*[0-9]+' /tmp/start.json | head -1 | grep -oE '[0-9]+$')"
+          test -n "$search_id"
+          complete=0
+          for attempt in $(seq 1 36); do
+            sleep 2
+            curl -fsSL --max-time 45 "$base?action=search_status&searchId=$search_id" -o /tmp/status.json
+            if grep -Eq '"progress"[[:space:]]*:[[:space:]]*100|"status"[[:space:]]*:[[:space:]]*"complete"' /tmp/status.json; then complete=1; break; fi
+          done
+          test "$complete" = 1
+          curl -fsSL --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25" -o /tmp/results.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open('/tmp/results.json'))
+          assert isinstance(d,list) and d
+          ids=[str(x.get('id')) for x in d if isinstance(x,dict) and x.get('id') is not None]
+          assert len(ids)==len(set(ids))
+          print('SEARCH_OK',len(d))
+          PY
