@@ -1,0 +1,76 @@
+name: Visual anytoour.ru live results
+
+on:
+  workflow_run:
+    workflows: ["Deploy anytoour.ru"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  result-card:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Audit first live result card
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DATE_FROM="$(date -d '+2 day' +%Y-%m-%d)"
+          export DATE_TO="$(date -d '+9 day' +%Y-%m-%d)"
+          mkdir -p anytoour-results-visual
+          cat > /tmp/visual-results.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs=require('fs');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+            const u=new URL('https://anytoour.ru/poisk-turov/');
+            Object.entries({from:'1',country:'4',dateFrom:process.env.DATE_FROM,dateTo:process.env.DATE_TO,daysFrom:'7',daysTill:'7',count_people:'2'}).forEach(([k,v])=>u.searchParams.set(k,v));
+            const response=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000});
+            if(!response||response.status()!==200)throw new Error('search page HTTP '+(response&&response.status()));
+            await page.waitForSelector('.hotel-card',{timeout:90000});
+            await page.waitForTimeout(700);
+            const state=await page.evaluate(()=>{
+              const card=document.querySelector('.hotel-card'),photo=card?.querySelector('.hotel-photo'),img=photo?.querySelector('img'),badge=photo?.querySelector('.stars-badge'),body=card?.querySelector('.hotel-body');
+              const r=el=>el?el.getBoundingClientRect():null, css=el=>el?getComputedStyle(el):null;
+              const pr=r(photo),ir=r(img),br=r(badge),cr=r(card),bod=r(body),bc=css(badge);
+              return {card:cr&&{w:cr.width,h:cr.height},photo:pr&&{w:pr.width,h:pr.height},img:ir&&{w:ir.width,h:ir.height},body:bod&&{w:bod.width},badge:br&&{w:br.width,h:br.height},badgeWriting:bc&&bc.writingMode,badgeWhiteSpace:bc&&bc.whiteSpace,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+            });
+            console.log('RESULT_CARD_STATE',JSON.stringify(state));
+            await page.screenshot({path:'anytoour-results-visual/desktop-first-result.png',fullPage:true,animations:'disabled'});
+            fs.writeFileSync('anytoour-results-visual/state.json',JSON.stringify(state,null,2));
+            if(errors.length)throw new Error('page errors: '+errors.join(' | '));
+            if(!state.card||!state.photo||!state.body)throw new Error('result card structure missing');
+            if(state.photo.w<280)throw new Error('hotel photo too narrow: '+state.photo.w);
+            if(state.body.w<500)throw new Error('hotel body too narrow: '+state.body.w);
+            if(state.badge){
+              if(state.badge.w>90||state.badge.h>42)throw new Error('stars badge distorted: '+JSON.stringify(state.badge));
+              if(state.badgeWriting!=='horizontal-tb')throw new Error('stars badge writing mode '+state.badgeWriting);
+            }
+            if(state.overflow)throw new Error('page horizontal overflow');
+            await browser.close();
+            console.log('ANYTOOUR_RESULT_CARD_VISUAL_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node /tmp/visual-results.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: anytoour-results-visual-${{ github.run_id }}
+          path: anytoour-results-visual/
+          retention-days: 7
