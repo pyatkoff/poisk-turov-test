@@ -70,8 +70,17 @@ jobs:
               await page.waitForTimeout(120);
               state=await page.evaluate(()=>({cards:document.querySelectorAll('#results .hotel-card').length,direct:document.querySelectorAll('#results .direct-tour').length,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
               if(state.cards!==2||state.direct<2||state.overflow)throw new Error(name+': results branch bundle state '+JSON.stringify(state));
+              await page.evaluate(()=>{
+                const selected=document.getElementById('selectedTour');
+                selected.hidden=false;
+                selected.innerHTML='<div class="selected-head"><div><h2>AnyTour Coast Resort</h2></div><div class="selected-price">125 000 ₽</div></div><div class="facts"><div><span>Вылет</span><b>Москва</b></div><div><span>Дата</span><b>10.09.2026</b></div><div><span>Ночей</span><b>7</b></div><div><span>Туристы</span><b>2 взр.</b></div><div><span>Питание</span><b>Все включено</b></div></div>';
+                window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:{id:'decision-fixture',hotel:{name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120},meal:{name:'Все включено'},roomType:'Deluxe Sea View'}}}));
+              });
+              await page.waitForTimeout(80);
+              state=await page.evaluate(()=>({summary:!!document.querySelector('#selectedTour .selected-choice-summary'),summaryItems:document.querySelectorAll('#selectedTour .selected-choice-summary-item').length,summaryText:String(document.querySelector('#selectedTour .selected-choice-summary')?.textContent||''),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
+              if(!state.summary||state.summaryItems<4||!state.summaryText.includes('Рейтинг')||!state.summaryText.includes('До моря')||state.overflow)throw new Error(name+': selected decision summary state '+JSON.stringify(state));
               if(errors.length)throw new Error(name+': page errors '+errors.join(' | '));
-              console.log('BRANCH_BUNDLES_OK',name);
+              console.log('BRANCH_BUNDLES_OK',name,'selectedSummaryItems='+state.summaryItems);
               await context.close();
             }
             await browser.close();
