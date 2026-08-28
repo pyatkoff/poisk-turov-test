@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T14:11:00+02:00",
+  "updated_at": "2026-08-28T14:16:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Pre-traffic product development. Traffic/conversion analysis is disabled until explicitly re-enabled by the owner. Current visitors are owner/team and are not conversion evidence. PR #113 activated Brand/Product roadmap and shipped PX1.1. Continue by scoring and improving the weakest material product area below 9/10.",
+  "phase": "Pre-traffic product development. Traffic/conversion analysis is disabled until explicitly re-enabled by the owner. Current visitors are owner/team and are not conversion evidence. PR #113 activated Brand/Product roadmap and shipped PX1.1. PR #115 fixed continue-search progress ownership and is production-green with dedicated regression. Continue by scoring and improving the weakest material product area below 9/10.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -32,7 +32,25 @@
     {"id":"PX7","status":"RESEARCH","title":"Price watch and return intent"}
   ],
   "roadmap": {"file":"PRODUCT_ROADMAP.md","brand_active":true,"competitor_gap_active":true,"wait_for_funnel":false},
-  "production_baseline": {"decision_support_pr":113,"last_verified_commit":"87081d0aac971a0b84ba44602b47ea54819aef59","status":"PRODUCTION_GREEN"},
+  "production_baseline": {
+    "decision_support_pr":113,
+    "decision_support_merge":"87081d0aac971a0b84ba44602b47ea54819aef59",
+    "continue_search_progress_pr":115,
+    "last_verified_commit":"b7f505b8bfe4f751cc7a1f205a35e40a15f23fa7",
+    "continue_search_regression":33169870927,
+    "deploy_v2":33169989018,
+    "result_detail_live":33169989056,
+    "post_deploy_visual":33170048785,
+    "post_deploy_baseline":33170048715,
+    "status":"PRODUCTION_GREEN"
+  },
+  "search_progress_contract": {
+    "status":"PRODUCTION_GREEN_PRIMARY_AND_CONTINUE_SEARCH",
+    "progress_ux_owns_status_presentation":true,
+    "continue_search_direct_status_writes":false,
+    "continue_events":["v2:search-continue-started","v2:search-continue-requested","v2:search-continue-progress","v2:search-continued","v2:search-continue-error"],
+    "preserve_existing_results_during_continue":true
+  },
   "blocked": [],
   "deferred": [
     {"scope":"traffic/conversion analysis","reason":"Explicitly disabled until owner launches traffic after product reaches the required quality level."},
