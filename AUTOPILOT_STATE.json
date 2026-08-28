@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T05:58:00+02:00",
+  "updated_at": "2026-08-28T06:00:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "Search/Brand/Trust 9.0 mobile hardening and Selected Tour keyboard flight sync are production-green; post-deploy recent-browser workflow_run is verified; first non-zero live browser sample exposed rate-limit delays requiring follow-up evidence",
+  "phase": "Search/Brand/Trust 9.0 mobile hardening and Selected Tour keyboard flight sync are production-green; post-deploy recent-browser workflow_run is verified; one small browser visit showed rate-limit delays but an immediate later 30-minute resample had zero browser traffic and zero rate-limit events",
   "current_task": {
     "id": "C7",
     "category": "LIVE_CONVERSION_OPTIMIZATION",
     "title": "Live conversion optimization",
     "status": "EVIDENCE_REVIEW",
     "objective": "Use meaningful real production traffic and funnel behavior for conversion changes while preserving confirmed product contracts.",
-    "next_action": "Re-check the next privacy-safe wall-clock browser sample and prioritize whether browser rate limiting persists. The first useful sample (audit 33138875911) had 9 browser requests, all HTTP 200, with 4 browser rate-limit delay events affecting departures plus three V2 static assets. Do not alter global nginx/server config because it is outside allowed V2 scope. If repeated samples show user-facing delays, prefer safe V2 request/burst reduction backed by validation. Continue full mobile+desktop journey audit and activate conversion changes only from observed funnel friction."
+    "next_action": "Inspect the next non-zero privacy-safe browser sample. The first useful sample showed 9/9 HTTP 200 requests with 4 rate-limit delay events, but a rerun at 2026-08-28T03:59:51Z had 0 browser requests and 0 rate-limit events because that visit had aged out of the 30-minute window. Treat throttling as a signal to watch, not a confirmed persistent defect. If a later non-zero sample repeats it, quantify and reduce avoidable V2 request burst using the smallest validated repository-only change. Continue full mobile+desktop journey audit and require observed search/tour/lead friction for conversion hierarchy changes."
   },
   "queue": [
     {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
@@ -42,9 +42,10 @@
   "last_ci": {
     "workflow": "Audit V2 recent browser traffic",
     "run_id": 33138875911,
+    "attempt": 2,
     "head_sha": "215adb6428cbc3f2bc0ba3dcfd521a825e818fbf",
     "conclusion": "success",
-    "classification": "WORKFLOW_RUN_VERIFIED_NONZERO_BROWSER_WITH_RATE_LIMIT_DELAYS"
+    "classification": "IMMEDIATE_RESAMPLE_ZERO_BROWSER_TRAFFIC"
   },
   "last_verified_commit": "215adb6428cbc3f2bc0ba3dcfd521a825e818fbf",
   "production_evidence": {
@@ -53,45 +54,60 @@
     "result_detail_live": 33138817891,
     "tour_live": 33138817887,
     "post_deploy_recent_browser": 33138875911,
-    "note": "PR #93 merge is deployed and live contract/tour/result-detail checks are green. Existing post-deploy visual/baseline evidence from the preceding design-hardening release remains green; #93 changed interaction logic only and has a dedicated deterministic keyboard gate."
+    "note": "PR #93 merge is deployed and live contract/tour/result-detail checks are green. PR #94 only synchronized AUTOPILOT docs/state and therefore did not trigger a V2 deploy."
   },
   "live_evidence": {
-    "recent_browser_window": "30m wall-clock",
-    "audit_run_id": 33138875911,
-    "event": "workflow_run",
-    "window_end_utc": "2026-08-28T03:26:25.014078+00:00",
-    "access_log_latest": "2026-08-28T05:26:21+02:00",
-    "error_log_latest": "2026-08-28T05:26:21+02:00",
-    "browser_requests": 9,
-    "http_status": {"200":9},
-    "http_4xx_5xx": 0,
-    "rate_limit_delays": 4,
-    "rate_limit_routes": [
-      {"action":"departures","path":"/poisk-turov-test/v2/api-v2.php","count":1},
-      {"action":"(none)","path":"/poisk-turov-test/v2/mobile-search-summary-v1.js","count":1},
-      {"action":"(none)","path":"/poisk-turov-test/v2/mobile-search-summary-v1.css","count":1},
-      {"action":"(none)","path":"/poisk-turov-test/v2/anytour-brand.css","count":1}
-    ],
-    "observed_actions": {"departures":1,"meals":1,"countries":1},
-    "funnel_actions": {"search":0,"tour":0,"lead":0},
-    "interpretation": "This is the first useful non-zero recent browser sample. Requests all completed with HTTP 200, so no request failure is proven, but four browser rate-limit delay events are a real performance/UX signal. The sample is too small and contains no search/tour/lead action, so do not make conversion-flow changes yet; re-sample and investigate safe V2 burst reduction if delays persist."
+    "first_nonzero_sample": {
+      "audit_run_id": 33138875911,
+      "attempt": 1,
+      "event": "workflow_run",
+      "window_end_utc": "2026-08-28T03:26:25.014078+00:00",
+      "browser_requests": 9,
+      "http_status": {"200":9},
+      "http_4xx_5xx": 0,
+      "rate_limit_delays": 4,
+      "rate_limit_routes": [
+        {"action":"departures","path":"/poisk-turov-test/v2/api-v2.php","count":1},
+        {"action":"(none)","path":"/poisk-turov-test/v2/mobile-search-summary-v1.js","count":1},
+        {"action":"(none)","path":"/poisk-turov-test/v2/mobile-search-summary-v1.css","count":1},
+        {"action":"(none)","path":"/poisk-turov-test/v2/anytour-brand.css","count":1}
+      ],
+      "observed_actions": {"departures":1,"meals":1,"countries":1},
+      "funnel_actions": {"search":0,"tour":0,"lead":0}
+    },
+    "immediate_resample": {
+      "audit_run_id": 33138875911,
+      "attempt": 2,
+      "window_end_utc": "2026-08-28T03:59:51.557938+00:00",
+      "access_log_latest": "2026-08-28T05:59:50+02:00",
+      "error_log_latest": "2026-08-28T05:56:52+02:00",
+      "browser_requests": 0,
+      "http_status": {},
+      "http_4xx_5xx": 0,
+      "rate_limit_delays": 0,
+      "observed_actions": {},
+      "funnel_actions": {"search":0,"tour":0,"lead":0}
+    },
+    "interpretation": "The rate-limit signal came from one small real-browser visit and was not independently repeated because the next wall-clock sample contained no browser traffic. All requests in the non-zero sample still completed with HTTP 200. Keep the signal under observation and do not make a speculative architecture change until another non-zero sample confirms persistence or user-visible friction."
   },
   "live_audit_reliability": {
     "status": "WORKFLOW_RUN_VERIFIED",
-    "change": "PR #89 configured cron plus a successful Deploy V2 only workflow_run trigger. PR #91 anchored the audit to true wall clock. After PR #93 deployed successfully, audit 33138875911 actually ran with event=workflow_run and checked out the deployed SHA, proving the post-deploy path.",
+    "change": "PR #89 configured a successful Deploy V2 only workflow_run trigger and PR #91 anchored the audit to true wall clock. After PR #93, audit 33138875911 actually ran with event=workflow_run and checked out the deployed SHA. Attempt 2 also successfully re-sampled the current wall-clock window.",
     "observed_schedule_runs": 0,
     "observed_workflow_run_audit_runs": 1,
+    "manual_rerun_attempts": 1,
     "observed_push_audit_runs": 2,
-    "interpretation": "Audit logic, push path and post-deploy workflow_run path are now verified. GitHub schedule execution is still unobserved and remains a non-blocking deferred reliability item."
+    "interpretation": "Audit logic, push path, post-deploy workflow_run path and explicit rerun path are verified. GitHub schedule execution is still unobserved and remains non-blocking."
   },
-  "pending_verification": "Re-check fresh browser traffic for repeated rate-limit delays and obtain a non-zero search -> tour -> lead sample before making conversion hierarchy changes. Distinguish soft transient delay from sustained user-visible throttling using repeated privacy-safe evidence; do not change global server config outside V2 scope.",
+  "pending_verification": "Wait for the next non-zero privacy-safe browser sample. Check whether rate-limit delays repeat and obtain search -> tour -> lead behavior before making conversion hierarchy changes. Do not change global server config outside V2 scope.",
   "blocked": [],
   "deferred": [
-    {"scope":"C7 conversion hierarchy changes","reason":"Current non-zero sample has catalog/static activity but no search/tour/lead funnel actions; no evidence yet identifies conversion-flow friction."},
+    {"scope":"C7 conversion hierarchy changes","reason":"No observed search/tour/lead funnel activity identifies conversion friction yet."},
+    {"scope":"V2 request-burst/rate-limit mitigation","reason":"One small visit showed soft delay events but all requests were HTTP 200; the immediate later window had no browser traffic, so persistence is not established."},
     {"scope":"additional results/price redesign","reason":"Current hierarchy remains materially strong; PR #82 confirmed that extra meal surfacing would duplicate existing context without evidence."},
     {"scope":"selected-tour/lead redesign","reason":"PR #93 fixed the confirmed keyboard consistency defect; no broader redesign is justified without observed funnel friction."},
-    {"scope":"global nginx/rate-limit configuration","reason":"Outside allowed V2/repository write scope. Investigate and reduce avoidable V2 request bursts only if repeated evidence shows material user delay."},
-    {"scope":"schedule audit trigger verification","reason":"Repository Actions history still shows zero schedule-event runs. Post-deploy workflow_run is now verified, so this does not block fresh release evidence."},
+    {"scope":"global nginx/rate-limit configuration","reason":"Outside allowed V2/repository write scope."},
+    {"scope":"schedule audit trigger verification","reason":"Repository Actions history still shows zero schedule-event runs. Post-deploy workflow_run is verified, so this does not block release evidence."},
     {"scope":"global /images symlink-loop","reason":"Outside allowed V2/repository write scope while sampled access remains successful."},
     {"scope":"small formatter/matchMedia/progressive-results micro-optimizations","reason":"Defer until profiling/live evidence justifies them."}
   ],
@@ -116,7 +132,7 @@
     "on_blocker": "record_blocker_and_continue_independent_safe_work",
     "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
     "on_live_traffic": "activate_C7_B8_A8_and_reprioritize_from_real_evidence",
-    "on_rate_limit_signal": "re-sample_then_reduce_safe_V2_request_burst_if_repeated; never modify global server config from this project",
+    "on_rate_limit_signal": "require another non-zero sample before V2 mitigation; never modify global server config from this project",
     "on_no_evidence": "keep_V2_stable_and_do_not_manufacture_micro_work"
   }
 }
