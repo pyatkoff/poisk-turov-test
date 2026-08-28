@@ -1,0 +1,173 @@
+name: Deploy anytoour.ru
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/deploy-anytoour.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-anytoour-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate standalone release
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in v2/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php; do
+            php -l "$f" >/dev/null
+          done
+          mapfile -t assets < <(grep -oE "v2_asset\('[^']+\.js'\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\1/" | sort -u)
+          test "${#assets[@]}" -gt 0
+          for asset in "${assets[@]}"; do node --check "v2/$asset"; done
+          mkdir -p /tmp/empty-document-root
+          php -d display_errors=1 -r '
+            $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
+            $_SERVER["SCRIPT_NAME"]="/index.php";
+            $_SERVER["HTTP_HOST"]="anytoour.ru";
+            $_GET=[];
+            ob_start(); include "v2/index.php"; $html=ob_get_clean();
+            if (strpos($html, "api:\"/api-v2.php\"") === false) exit(11);
+            if (strpos($html, "leadApi:\"/lead-adapter-v2.php\"") === false) exit(12);
+          '
+          echo "ANYTOOUR_RELEASE_VALIDATE_OK"
+
+      - name: Prepare SSH keys
+        env:
+          NEW_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          OLD_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          write_key(){
+            local raw="$1" path="$2"
+            test -n "$raw"
+            if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$path"; else printf '%s' "$raw" | base64 --decode > "$path"; fi
+            chmod 600 "$path"
+            ssh-keygen -y -f "$path" >/dev/null
+          }
+          write_key "$NEW_KEY" "$RUNNER_TEMP/anytoour_key"
+          write_key "$OLD_KEY" "$RUNNER_TEMP/legacy_key"
+
+      - name: Carry forward private runtime config
+        env:
+          OLD_HOST: ${{ secrets.DEPLOY_HOST }}
+          OLD_USER: ${{ secrets.DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$OLD_HOST" && test -n "$OLD_USER"
+          opts=(-i "$RUNNER_TEMP/legacy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$OLD_USER@$OLD_HOST"
+          ssh "${opts[@]}" "$remote" 'test -s "$HOME/www/anytour.online/poisk-turov-test/v2/config.php"'
+          scp "${opts[@]}" "$remote:~/www/anytour.online/poisk-turov-test/v2/config.php" "$RUNNER_TEMP/anytoour-config.php"
+          chmod 600 "$RUNNER_TEMP/anytoour-config.php"
+          php -l "$RUNNER_TEMP/anytoour-config.php" >/dev/null
+          echo "PRIVATE_CONFIG_READY"
+
+      - name: Prepare shared brand asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 30 https://anytour.online/images/logo.svg -o "$RUNNER_TEMP/logo.svg"
+          grep -qi '<svg' "$RUNNER_TEMP/logo.svg"
+          echo "LOGO_READY"
+
+      - name: Copy release to anytoour.ru
+        env:
+          NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          NEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NEW_HOST" && test -n "$NEW_USER"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$NEW_USER@$NEW_HOST"
+          root='~/www/anytoour.ru'
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/images"'
+          scp "${opts[@]}" -r v2/. "$remote:$root/"
+          scp "${opts[@]}" "$RUNNER_TEMP/anytoour-config.php" "$remote:$root/config.php"
+          scp "${opts[@]}" "$RUNNER_TEMP/logo.svg" "$remote:$root/images/logo.svg"
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            root="$HOME/www/anytoour.ru"
+            cp "$root/lead-bridge-v1.php" "$root/lead-adapter-v2.php"
+            chmod 600 "$root/config.php"
+            chmod 644 "$root/images/logo.svg"
+            rm -f "$root/index.html"
+            for f in index.php assets.php api-v2.php lead-adapter-v2.php bundle-v1.php analytics-config.php privacy-config.php; do php -l "$root/$f" >/dev/null; done
+            echo "ANYTOOUR_FILES_ACTIVATED"
+          '
+
+      - name: Verify public root
+        shell: bash
+        run: |
+          set -euo pipefail
+          page_code="$(curl -fsSL -o /tmp/anytoour.html -w '%{http_code}' --max-time 45 https://anytoour.ru/)"
+          api_code="$(curl -fsSL -o /tmp/anytoour-health.json -w '%{http_code}' --max-time 50 'https://anytoour.ru/api-v2.php?action=health')"
+          lead_code="$(curl -fsSL -o /tmp/anytoour-lead-health.json -w '%{http_code}' --max-time 30 https://anytoour.ru/lead-adapter-v2.php)"
+          echo "PAGE=$page_code API=$api_code LEAD=$lead_code"
+          test "$page_code" = "200"
+          test "$api_code" = "200"
+          test "$lead_code" = "200"
+          grep -q 'Найти тур' /tmp/anytoour.html
+          grep -q 'api:"/api-v2.php"' /tmp/anytoour.html
+          grep -q 'leadApi:"/lead-adapter-v2.php"' /tmp/anytoour.html
+          grep -q 'bundle-v1.php?type=css' /tmp/anytoour.html
+          grep -q 'tourvisor-direct' /tmp/anytoour-health.json
+          grep -q 'v2-session-bridge-bitrix-lead' /tmp/anytoour-lead-health.json
+          curl -fsSL --max-time 30 https://anytoour.ru/images/logo.svg | grep -qi '<svg'
+          echo "ANYTOOUR_PUBLIC_ROOT_OK"
+
+      - name: Verify lead bridge reaches unchanged production adapter
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS -o /tmp/anytoour-lead-probe.json -w '%{http_code}' --max-time 45 \
+            -H 'Content-Type: application/json' \
+            -H 'Origin: https://anytoour.ru' \
+            --data '{"consent":false}' \
+            https://anytoour.ru/lead-adapter-v2.php)"
+          echo "LEAD_BRIDGE_PROBE_HTTP=$code"
+          test "$code" = "422"
+          grep -q 'Validation failed' /tmp/anytoour-lead-probe.json
+          echo "LEAD_BRIDGE_REACHED_PRODUCTION_VALIDATION"
+
+      - name: Live search smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://anytoour.ru/api-v2.php'
+          from="$(date -d '+2 day' +%Y-%m-%d)"
+          till="$(date -d '+9 day' +%Y-%m-%d)"
+          curl -fsSL --max-time 45 "$base?action=departures" -o /tmp/departures.json
+          grep -q '"id"' /tmp/departures.json
+          curl -fsSL --max-time 45 "$base?action=countries&departureId=1" -o /tmp/countries.json
+          grep -q '"id"' /tmp/countries.json
+          curl -fsSL --max-time 50 "$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB" -o /tmp/search-start.json
+          search_id="$(grep -oE '"searchId"[[:space:]]*:[[:space:]]*[0-9]+' /tmp/search-start.json | head -1 | grep -oE '[0-9]+$')"
+          test -n "$search_id"
+          complete=0
+          for attempt in $(seq 1 36); do
+            sleep 2
+            curl -fsSL --max-time 45 "$base?action=search_status&searchId=$search_id" -o /tmp/search-status.json
+            if grep -Eq '"progress"[[:space:]]*:[[:space:]]*100|"status"[[:space:]]*:[[:space:]]*"complete"' /tmp/search-status.json; then complete=1; break; fi
+          done
+          test "$complete" = "1"
+          curl -fsSL --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25" -o /tmp/search-results.json
+          python3 - <<'PY'
+          import json
+          data=json.load(open('/tmp/search-results.json'))
+          assert isinstance(data,list) and len(data)>0
+          ids=[str(x.get('id')) for x in data if isinstance(x,dict) and x.get('id') is not None]
+          assert len(ids)==len(set(ids))
+          print('ANYTOOUR_SEARCH_SMOKE_OK', len(data))
+          PY
