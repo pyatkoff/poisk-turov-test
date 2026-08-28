@@ -1,0 +1,91 @@
+name: Validate V2 SEO publication manifest
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-publication-manifest-v1.php'
+      - 'v2/seo-content-catalog-v1.php'
+      - 'v2/seo-publishability-v1.php'
+      - 'v2/seo-page-registry-v1.php'
+      - 'v2/seo-page-graph-v1.php'
+      - '.github/workflows/validate-v2-seo-publication-manifest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publication-manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate review-only manifest boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-publication-manifest-v1.php
+          php <<'PHP'
+          <?php
+          require 'v2/seo-publication-manifest-v1.php';
+          function fail($m){fwrite(STDERR,"SEO_MANIFEST_FAIL:$m\n"); exit(1);}
+          function page_data(string $name,string $h1,array $crumbs,array $links,array $state=[]): array {
+              return [
+                  'name'=>$name,
+                  'h1'=>$h1,
+                  'description'=>'Редакционная страница AnyTour с полезной информацией о направлении и переходом к актуальному поиску туров.',
+                  'intro'=>'Редакционное введение помогает туристу понять особенности направления до перехода к поиску.',
+                  'breadcrumbs'=>$crumbs,
+                  'sections'=>[
+                      ['title'=>'Как выбрать','paragraphs'=>['Сравните районы, формат отдыха и подходящий тип размещения.']],
+                      ['title'=>'Когда ехать','paragraphs'=>['Условия поездки зависят от сезона и ваших планов на отдых.']],
+                  ],
+                  'internal_links'=>[['title'=>'Другие направления','links'=>$links]],
+                  'search_state'=>$state,
+              ];
+          }
+          $records=[
+              [
+                  'id'=>'country.turkey','status'=>'approved','path'=>'/country/turkey/','type'=>'country',
+                  'data'=>page_data('Турция','Туры в Турцию',[
+                      ['label'=>'Главная','href'=>'/'],['label'=>'Турция']
+                  ],[['label'=>'Анталья','href'=>'/resort/antalya/']],['country'=>4]),
+              ],
+              [
+                  'id'=>'resort.antalya','status'=>'approved','path'=>'/resort/antalya/','type'=>'resort',
+                  'data'=>page_data('Анталья','Туры в Анталью',[
+                      ['label'=>'Главная','href'=>'/'],['label'=>'Турция','href'=>'/country/turkey/'],['label'=>'Анталья']
+                  ],[['label'=>'Турция','href'=>'/country/turkey/']],['country'=>4,'region'=>15]),
+              ],
+              [
+                  'id'=>'resort.alanya','status'=>'review','path'=>'/resort/alanya/','type'=>'resort',
+                  'data'=>page_data('Аланья','Туры в Аланью',[
+                      ['label'=>'Главная','href'=>'/'],['label'=>'Турция','href'=>'/country/turkey/'],['label'=>'Аланья']
+                  ],[['label'=>'Турция','href'=>'/country/turkey/']],['country'=>4,'region'=>16]),
+              ],
+          ];
+          $catalog=v2_seo_content_catalog($records,[
+              '/resort/antalya/'=>['parent'=>'/country/turkey/'],
+              '/resort/alanya/'=>['parent'=>'/country/turkey/'],
+              '/country/turkey/'=>['related'=>['/resort/antalya/']],
+          ]);
+          $manifest=v2_seo_publication_manifest($catalog);
+          if (array_column($manifest,'path')!==['/country/turkey/','/resort/antalya/']) fail('candidate_filter_or_sort');
+          if (($manifest[1]['parent']??null)!=='/country/turkey/') fail('parent_missing');
+          if (($manifest[0]['review_state']??'')!=='ready_for_publication_decision') fail('review_state');
+          foreach ($manifest as $entry) {
+              foreach (['canonical','index','sitemap','schema','structured_data','route'] as $forbidden) {
+                  if (array_key_exists($forbidden,$entry)) fail('publication_side_effect_field_'.$forbidden);
+              }
+          }
+          $json=v2_seo_publication_manifest_json($catalog);
+          if (!str_contains($json,'"country.turkey"') || str_contains($json,'resort.alanya')) fail('json_manifest');
+
+          $tampered=$catalog;
+          $tampered['publication_candidates'][]='/resort/alanya/';
+          try { v2_seo_publication_manifest($tampered); fail('tampered_candidate_allowed'); }
+          catch (InvalidArgumentException $e) {}
+
+          echo "V2_SEO_PUBLICATION_MANIFEST_OK approvedOnly=1 publishableOnly=1 graph=1 reviewOnly=1 deterministic=1\n";
+          PHP
