@@ -1,0 +1,84 @@
+name: Diagnostic V2 URL catalog sync live
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnostic-v2-url-catalog-sync-live.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  catalog-sync-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Verify non-default departure refreshes country catalog before auto-search
+        env:
+          BASE: https://anytour.online/poisk-turov-test/v2
+        run: |
+          cat > live.cjs <<'JS'
+          const {chromium}=require('playwright');
+          const base=process.env.BASE;
+          const api=base+'/api-v2.php';
+          async function json(url){const r=await fetch(url); if(!r.ok) throw new Error(url+' HTTP '+r.status); return r.json();}
+          (async()=>{
+            const departures=await json(api+'?action=departures');
+            if(!Array.isArray(departures)||departures.length<2) throw new Error('need at least two departures');
+            let chosen=null;
+            for(const dep of departures.slice(1)){
+              const countries=await json(api+'?action=countries&departureId='+encodeURIComponent(dep.id));
+              if(Array.isArray(countries)&&countries.length){ chosen={dep,country:countries[0],countries}; break; }
+            }
+            if(!chosen) throw new Error('no non-default departure with countries');
+            const today=new Date(); today.setUTCDate(today.getUTCDate()+14);
+            const iso=today.toISOString().slice(0,10);
+            const url=base+'/?from='+encodeURIComponent(chosen.dep.id)+'&country='+encodeURIComponent(chosen.country.id)+'&date_from='+iso+'&date_till='+iso+'&days_from=7&days_till=7&count_people=2';
+            console.log('TEST_URL',url);
+            console.log('EXPECTED',JSON.stringify({departure:chosen.dep,country:chosen.country,countryCount:chosen.countries.length}));
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({ignoreHTTPSErrors:true});
+            const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+            let searchRequest=null;
+            page.on('request',req=>{if(req.url().includes('api-v2.php')&&req.url().includes('action=search_start'))searchRequest=req.url();});
+            const res=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
+            if(!res||res.status()!==200) throw new Error('page HTTP '+(res&&res.status()));
+            await page.waitForFunction(({from,country})=>window.V2SearchLifecycle&&document.querySelector('[name="from"]')?.value===String(from)&&document.querySelector('[name="country"]')?.value===String(country),{from:chosen.dep.id,country:chosen.country.id},{timeout:45000});
+            await page.waitForTimeout(1500);
+            const state=await page.evaluate(()=>{
+              const country=document.querySelector('[name="country"]');
+              return {
+                from:document.querySelector('[name="from"]')?.value,
+                country:country?.value,
+                countryLabel:country?.selectedOptions?.[0]?.textContent?.trim()||'',
+                countryOptions:Array.from(country?.options||[]).map(o=>({value:o.value,label:o.textContent.trim()})),
+                params:window.V2SearchLifecycle.params(),
+                pending:window.V2SearchLifecycle.pending,
+                searchId:window.V2SearchLifecycle.searchId
+              };
+            });
+            console.log('STATE',JSON.stringify(state));
+            console.log('SEARCH_REQUEST',searchRequest||'NONE');
+            if(errors.length) throw new Error('page errors '+errors.join(' | '));
+            if(state.from!==String(chosen.dep.id)||state.country!==String(chosen.country.id)) throw new Error('hydration mismatch');
+            if(!state.countryLabel||/^ID\s+/i.test(state.countryLabel)) throw new Error('synthetic country label '+state.countryLabel);
+            const expected=new Set(chosen.countries.map(x=>String(x.id)));
+            const actual=new Set(state.countryOptions.map(x=>String(x.value)).filter(Boolean));
+            if(!actual.has(String(chosen.country.id))) throw new Error('selected country missing');
+            const unexpected=[...actual].filter(x=>!expected.has(x));
+            if(unexpected.length) throw new Error('stale country options '+unexpected.join(','));
+            if(String(state.params.departureId)!==String(chosen.dep.id)||String(state.params.countryId)!==String(chosen.country.id)) throw new Error('search params mismatch');
+            if(!searchRequest&&!state.pending&&!state.searchId) throw new Error('auto-search did not start');
+            await browser.close();
+            console.log('URL_CATALOG_SYNC_LIVE_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node live.cjs
