@@ -37,6 +37,27 @@ jobs:
           done
           echo V2_JS_OK
 
+      - name: Validate inbound child-age hydration contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const src=fs.readFileSync('v2/search-lifecycle-v6.js','utf8');
+          const required=[
+            "map(v=>String(v).trim()).filter(v=>v!=='').map(v=>Number(v))",
+            "function setHydratedChildAge(el,value)",
+            "Number.isInteger(age)&&age>=0&&age<=17",
+            "option.textContent='Проверьте возраст'",
+            "option.dataset.invalidHydratedAge='1'",
+            "setHydratedChildAge(el,ageValues[i])",
+            "some(age=>!Number.isInteger(age)||age<0||age>17)"
+          ];
+          required.forEach(token=>{if(!src.includes(token))throw new Error('child-age hydration contract missing: '+token);});
+          if(src.includes("f.getAll('child_age[]').map(v=>Number(v)).filter(Number.isFinite)"))throw new Error('invalid child ages can still be silently dropped/coerced');
+          console.log('V2_CHILD_AGE_URL_HYDRATION_OK');
+          NODE
+
       - name: Validate lazy advanced catalog contract
         shell: bash
         run: |
