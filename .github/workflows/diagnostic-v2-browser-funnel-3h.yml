@@ -1,0 +1,131 @@
+name: Diagnostic V2 browser funnel 3h
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/diagnostic-v2-browser-funnel-3h.yml'
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_file="$GITHUB_WORKSPACE/deploy_key"
+          raw="$DEPLOY_SSH_KEY_VALUE"
+          if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+      - name: Build privacy-safe three-hour funnel audit
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/v2-funnel-audit.py" <<'PY'
+          import os,re,collections,subprocess,datetime
+          home=os.path.expanduser('~')
+          access=os.path.join(home,'logs','anytour.online.access.log')
+          error=os.path.join(home,'logs','anytour.online.error.log')
+          project='/poisk-turov-test/v2'
+          window=datetime.timedelta(hours=3)
+          def tail(path,count):
+              if not os.path.isfile(path) or not os.access(path,os.R_OK): return []
+              p=subprocess.Popen(['tail','-n',str(count),'--',path],stdout=subprocess.PIPE,stderr=subprocess.PIPE,universal_newlines=True)
+              out,_=p.communicate(); return (out or '').splitlines()
+          def access_time(line):
+              m=re.search(r'\[([^\]]+)\]',line)
+              if not m:return None
+              try:return datetime.datetime.strptime(m.group(1),'%d/%b/%Y:%H:%M:%S %z')
+              except ValueError:return None
+          def error_time(line):
+              m=re.match(r'(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})',line)
+              if not m:return None
+              try:return datetime.datetime.strptime(m.group(1),'%Y/%m/%d %H:%M:%S')
+              except ValueError:return None
+          def actor(line):
+              l=line.lower()
+              if 'headlesschrome' in l or 'playwright' in l:return 'headless'
+              if 'bot' in l or 'spider' in l or 'crawler' in l:return 'bot'
+              if 'curl/' in l:return 'curl'
+              if 'python-requests' in l or 'python/' in l:return 'python'
+              if 'mozilla/' in l:return 'browser'
+              return 'other'
+          def action_from_target(target):
+              if '?' not in target:return '(none)'
+              m=re.search(r'(?:^|&)action=([^&]+)',target.split('?',1)[1]); return m.group(1) if m else '(none)'
+          now_utc=datetime.datetime.now(datetime.timezone.utc); cutoff=now_utc-window
+          req=re.compile(r'"([A-Z]+)\s+([^\s"]+)\s+HTTP/[^"]+"\s+(\d{3})')
+          lines=tail(access,180000)
+          rows=[]; actor_by_ip={}; latest=None
+          for line in lines:
+              ts=access_time(line)
+              if ts is None: continue
+              latest=ts if latest is None or ts>latest else latest
+              if ts<cutoff or project not in line: continue
+              ip=line.split(None,1)[0] if line.split(None,1) else ''
+              a=actor(line); actor_by_ip[ip]=a
+              if a!='browser': continue
+              m=req.search(line)
+              if not m: continue
+              method,target,code=m.groups(); action=action_from_target(target); path=target.split('?',1)[0]
+              rows.append((ts,ip,code,action,path))
+          status=collections.Counter(r[2] for r in rows)
+          actions=collections.Counter(r[3] for r in rows if r[3]!='(none)')
+          paths=collections.Counter(r[4] for r in rows)
+          bad=collections.Counter((r[2],r[3],r[4]) for r in rows if r[2].startswith(('4','5')))
+          sessions=collections.defaultdict(list)
+          for ts,ip,code,action,path in rows: sessions[ip].append((ts,action,path,code))
+          sequence_counts=collections.Counter()
+          funnel=collections.Counter()
+          for events in sessions.values():
+              events.sort()
+              seq=[]
+              for _,action,path,code in events:
+                  label=action if action!='(none)' else path.rsplit('/',1)[-1]
+                  if not seq or seq[-1]!=label: seq.append(label)
+              sequence_counts[' > '.join(seq[:16])]+=1
+              aset={x[1] for x in events}
+              if 'search_start' in aset: funnel['search_start_sessions']+=1
+              if 'search_results' in aset: funnel['search_results_sessions']+=1
+              if any(a in aset for a in ('tour','tour_detail','tour_info','hotel_info','actualize')): funnel['detail_sessions']+=1
+              if any(a in aset for a in ('lead','lead_submit','send_lead')): funnel['lead_sessions']+=1
+          print('V2_3H_WINDOW_END_UTC',now_utc.isoformat())
+          print('V2_3H_ACCESS_LATEST',latest.isoformat() if latest else '(none)')
+          print('V2_3H_BROWSER_REQUESTS',len(rows))
+          print('V2_3H_BROWSER_SESSIONS',len(sessions))
+          print('V2_3H_STATUS',dict(status))
+          print('V2_3H_ACTIONS',actions.most_common(40))
+          print('V2_3H_PATHS',paths.most_common(20))
+          print('V2_3H_4XX_5XX',bad.most_common(20))
+          print('V2_3H_FUNNEL',dict(funnel))
+          print('V2_3H_SEQUENCES',sequence_counts.most_common(20))
+          errs=tail(error,100000); delays=collections.Counter(); error_latest=None
+          client_rx=re.compile(r', client:\s*([^,\s]+)'); request_rx=re.compile(r'request:\s+"[A-Z]+\s+([^\s"]+)')
+          local_cutoff=datetime.datetime.now()-window
+          for line in errs:
+              ts=error_time(line)
+              if ts is None: continue
+              error_latest=ts if error_latest is None or ts>error_latest else error_latest
+              if ts<local_cutoff or project not in line or not re.search(r'limiting requests|limiting connections|delaying request, excess',line,re.I): continue
+              cm=client_rx.search(line); who=actor_by_ip.get(cm.group(1),'unknown') if cm else 'unknown'
+              if who!='browser': continue
+              rm=request_rx.search(line); target=rm.group(1) if rm else ''; action=action_from_target(target); path=target.split('?',1)[0] if target else '(none)'
+              delays[(action,path)]+=1
+          print('V2_3H_ERROR_LATEST',error_latest.isoformat() if error_latest else '(none)')
+          print('V2_3H_BROWSER_RATE_LIMIT',sum(delays.values()))
+          print('V2_3H_BROWSER_RATE_LIMIT_BY_ROUTE',delays.most_common(30))
+          PY
+          python3 -m py_compile "$RUNNER_TEMP/v2-funnel-audit.py"
+      - name: Aggregate production funnel signals
+        env:
+          DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER_VALUE: ${{ secrets.DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+          remote="/tmp/v2-funnel-audit-${GITHUB_RUN_ID}.py"
+          scp "${ssh_opts[@]}" "$RUNNER_TEMP/v2-funnel-audit.py" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE:$remote"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" "timeout 60s python3 '$remote'; rc=\$?; rm -f '$remote'; exit \$rc"
