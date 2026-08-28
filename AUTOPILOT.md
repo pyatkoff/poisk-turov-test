@@ -1,22 +1,22 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28
+Updated: 2026-08-28 05:58 +02:00
 
 This is the operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the exact machine-readable resume point.
 
 ## Current phase
 
-**Conversion UX 3.0 C1–C6 is production-green. Search/Brand/Trust 9.0 plus the latest mobile hardening are production-green. C7/B8/A8 still wait for meaningful real-browser funnel evidence. Continue 9.0 only where a fresh audit confirms a material UX/design gap; do not manufacture micro-redesigns.**
+**Search/Brand/Trust 9.0 plus mobile hardening are production-green. Selected Tour keyboard flight synchronization from PR #93 is production-green. The first useful non-zero real-browser sample now exists: all sampled requests completed with HTTP 200, but nginx rate-limit delays affected one catalog request and three V2 static assets. C7 is therefore in evidence review; B8 still waits for meaningful funnel behavior; A8 live feedback is active.**
 
-Work stays inside `pyatkoff/poisk-turov-test`; production deploy stays V2-only. Yandex Metrika configuration/goals and the existing lead-sending mechanism remain protected. The AnyTour logo is explicitly protected.
+Work stays inside `pyatkoff/poisk-turov-test`; production deploy stays V2-only. Yandex Metrika configuration/goals and the existing lead-sending mechanism remain protected. The AnyTour logo is protected. Global nginx/server configuration is outside this project’s allowed write scope.
 
-## Current confirmed product contracts
+## Confirmed product contracts
 
 - Hotel category/stars and meal type stay visible on the first search screen, including mobile.
-- On mobile, all primary meal choices stay discoverable without requiring a hidden horizontal swipe.
-- The fixed mobile search CTA may help while traversing the form, but must stop at the form boundary and stay hidden below it so post-form content is never covered.
+- On mobile, all primary meal choices stay discoverable without a hidden horizontal swipe.
+- The fixed mobile search CTA may help while traversing the form, but must stop at the form boundary and remain hidden below it.
 - Other resort/hotel/operator/flight-detail filters may remain behind `Все фильтры`.
-- Preserve delayed/on-demand meals loading from PR #76: do not return `meals` to the immediate startup burst.
+- Preserve delayed/on-demand meals loading from PR #76; do not return `meals` to the immediate startup burst.
 - AnyTour has four offices: Moscow, Saint Petersburg, Kaliningrad and Cheboksary.
 - Yandex Maps review links may be surfaced, but do not hardcode ratings/review counts unless freshly verified.
 - Do not redesign/replace the logo.
@@ -24,85 +24,77 @@ Work stays inside `pyatkoff/poisk-turov-test`; production deploy stays V2-only. 
 
 ## Material recent progress
 
-### PR #81 — Trust 9.0
+### Search / Brand / Trust 9.0
 
-PR #81 replaced generic trust copy with verified AnyTour agency proof: four office locations, office review links, and confirmed contract/payment/support reassurance. It did not touch search API, analytics/Metrika, pricing or lead transport. Merge `9309d965db5c1232e78b7f9514709c00f5507444` was production-green.
-
-### PR #82 — closed without merge
-
-A Results 9.0 branch proposed adding representative meal to hotel decision facts. Review found meal is already shown in the best-offer price context, so the change duplicated information without evidence of a material UX gap. Preserve the current results/price hierarchy until live or visual evidence justifies a change.
-
-### PR #84 — Trust 9.0 mobile readability
-
-Five-viewport review found trust/reassurance secondary copy dropping to roughly 9–10px on compact screens. PR #84 raised the mobile readability floor while preserving layout and meaning. Merged production-green.
-
-### PR #85 — Search 9.0 mobile meal discoverability
-
-Visual review at 375/430 found the primary meal selector still used a hidden horizontal scroller: `Всё включено` was visibly clipped and later options required an undisclosed swipe. PR #85 wraps the meal choices on `<=700px`, so every primary meal option remains visible. It passed all PR visual/functional gates and deployed green.
-
-### PR #86 + #87 — mobile sticky CTA boundary
-
-PR #86 fixed a confirmed 430px overlap where the fixed `Найти туры` CTA remained over content after the search form. The CTA now yields to the normal inline submit once the form end reaches the safe viewport area.
-
-A deeper audit immediately caught an edge-case: after the sentinel scrolled above the viewport, the first IntersectionObserver implementation could re-show the fixed CTA below the form. PR #87 hardens the rule: once the form end is reached or passed, the fixed CTA stays hidden. A dedicated Playwright gate now checks 375 and 430 at initial state, the form boundary and below-form/trust content.
-
-PR #87 head `d280a616fcdb19685369f86c21ce54a86ac1205d` passed security, validation, selected-tour, B5 trust, baseline, general visual and the new mobile sticky-boundary regression. Merge `eac3f5dafe3078f8f62e30e6664fb2d72a652b17` is production-green: V2 deploy `33126181209`, active contract `33126181270`, tour-live `33126181200`, result-detail-live `33126181365`, post-deploy visual `33126233365` and baseline `33126233434` all passed.
-
-### PR #89 — fresh browser audit trigger hardening
-
-Repository Actions history showed no `schedule`-event runs even though `audit-v2-recent-browser.yml` declares an hourly cron. PR #89 therefore retained the cron and configured an additional `workflow_run` trigger after successful `Deploy V2 only`, checking out the exact deployed SHA. This is CI/observability only: no V2 product code, Metrika/goals, lead transport or neighboring project changed.
-
-PR #89 passed Security Guard and merged as `b599e6269a421824ffa5bd370d82af9f81406e8e`. Its immediately following audit run `33134465815` was successful but the GitHub event is `push`, not `workflow_run`; therefore it verified the audit itself, not the post-deploy trigger path. Repository history still has no observed `schedule` or audit `workflow_run` event, so those trigger paths remain configured but unverified.
+PRs #76, #77, #79, #81, #84, #85, #86 and #87 established the current production-green search/brand/trust baseline: primary stars+meal remain visible, all primary meal choices are discoverable on mobile, trust copy has a readable mobile floor, and the mobile sticky search CTA cannot overlap or reappear below post-form content. PR #82 was closed without merge because the proposed Results meal duplication did not solve a confirmed material gap.
 
 ### PR #91 — true wall-clock recent audit
 
-A re-audit found a correctness bug in the privacy-safe “recent 30m” evidence: the cutoff was derived from the newest log line, which could make an old idle period look like a fresh 30-minute window. PR #91 anchors access-log filtering to current UTC wall clock and error-log filtering to current server-local wall clock, while printing the exact UTC window end for evidence.
+PR #91 corrected the privacy-safe recent-browser audit so its 30-minute window is anchored to actual current wall-clock time rather than the newest log line. This removed the possibility of an old idle interval being mistaken for fresh evidence.
 
-PR #91 passed Security Guard and merged as `555c303e3dff6aa5d77777fb9e9755099d61dab4`. Audit run `33137670977` passed on the merged code. Its actual window ended at `2026-08-28T03:01:53.839494+00:00`; access log latest was `2026-08-28T05:01:03+02:00`, error log latest `2026-08-28T04:53:18`, with **0 browser requests**, **0 browser 4xx/5xx** and **0 browser rate-limit events**. No product files changed, so no V2 production deploy was needed.
+### PR #93 — Selected Tour keyboard flight synchronization
 
-## Whole-flow re-audit
+A whole-flow re-audit found a confirmed consistency bug with native radio keyboard navigation. Arrow-key movement could change the checked flight radio while `.is-selected`, `selectedFlightIndex`, `v2:flight-selected`, price context and the eventual lead payload remained on the previous flight.
 
-- Search ownership remains coherent: `search-lifecycle-v6.js` owns request/search state; `search-progress-ux-v1.js` only presents waiting/progress/error/zero states; `search-dirty-ux-v1.js` only presents stale-results state.
-- The deterministic five-viewport baseline covers initial search, dates, guests, advanced filters, populated results, selected-tour checkout and zero-result recovery. Waiting/progress and stale presentation are currently contract-reviewed but are not explicit screenshot states in that baseline; extend the existing baseline rather than creating another overlapping visual workflow if a material regression or related product change appears.
-- Selected-tour flight selection still advances journey state through `v2:flight-selected`; automatic default-flight loading remains intact.
-- Price synchronization and lead context remain isolated contracts.
-- Lead guard still provides phone validation, no-payment reassurance, selected price/flight summary, recoverable errors and success state.
-- No confirmed material Search/Results/Selected Tour/Lead product defect was found in this pass, so no speculative product rewrite was made.
+PR #93 routes native radio `change` through the existing `selectFlight()` state/event path while preserving native activation. A deterministic Playwright regression uses `ArrowDown` and verifies that the second flight becomes the selected visual/state variant and that the mock lead payload contains that same flight and price. The external lead transport contract was not changed.
+
+Merge `215adb6428cbc3f2bc0ba3dcfd521a825e818fbf` is production-green: Deploy V2 only `33138817934`, active contract `33138817904`, tour-live `33138817887` and result-detail-live `33138817891` all passed.
 
 ## Live evidence
 
-- `audit-v2-live-traffic.yml`: privacy-safe rolling-tail context.
-- `audit-v2-recent-browser.yml`: privacy-safe true wall-clock recent 30-minute browser window after PR #91; cron and successful-deploy `workflow_run` triggers remain configured.
-- Fresh audit `33137670977`: window end `2026-08-28T03:01:53.839494+00:00`; access log latest `2026-08-28T05:01:03+02:00`; **0 real browser requests**, **0 browser 4xx/5xx**, **0 browser rate-limit events**, and therefore no `search`, `tour` or `lead` funnel signal in the actual current 30-minute window.
-- Current absence of traffic gives no evidence basis for C7/B8/A8 conversion changes or another startup/rate-limit architecture change.
-- GitHub cron and audit `workflow_run` execution remain unverified because repository Actions history exposes no matching events. The triggers stay configured and should be re-checked opportunistically; do not claim a trigger path proven until such a run is observed.
-- Global `/images/...` symlink-loop warnings remain outside allowed V2/repository write scope while sampled access remains successful.
+Post-deploy audit run `33138875911` is important for two reasons:
+
+1. It actually ran with GitHub event `workflow_run` after successful Deploy V2 only and checked out deployed SHA `215adb6428cbc3f2bc0ba3dcfd521a825e818fbf`. The post-deploy trigger path is therefore now verified.
+2. Its true wall-clock window ended at `2026-08-28T03:26:25.014078+00:00` and contained the first useful non-zero browser sample: **9 browser requests, all HTTP 200, 0 browser 4xx/5xx and 4 browser rate-limit delay events**.
+
+Observed browser API actions were `departures` x1, `meals` x1 and `countries` x1. Rate-limit events affected `departures` once plus `mobile-search-summary-v1.js`, `mobile-search-summary-v1.css` and `anytour-brand.css` once each. There was no `search`, `tour` or `lead` funnel action in this small sample.
+
+Interpretation: no failed request is proven because all nine completed with 200, but the delay events are a real performance/UX signal. One tiny sample is not enough to justify a broad startup rewrite or asset bundling. Re-sample first; if the signal repeats, prefer safe V2 request/burst reduction. Do not change global nginx/server configuration from this project.
+
+GitHub schedule-event execution is still unobserved: repository Actions history currently shows zero `schedule` runs. This is non-blocking because the successful-deploy `workflow_run` path is now proven.
+
+## Whole-flow re-audit
+
+- Search ownership remains coherent: `search-lifecycle-v6.js` owns request/search state; `search-progress-ux-v1.js` presents waiting/progress/error/zero; `search-dirty-ux-v1.js` presents stale-results state.
+- Catalog startup remains intentionally narrow: `catalogs-v2.js` loads `departures` then `countries`; advanced catalogs load after the advanced section is opened. `meals` remains delayed/on-demand. Do not regress this contract while investigating rate limiting.
+- The deterministic five-viewport baseline covers initial search, dates, guests, advanced filters, populated results, selected-tour checkout and zero-result recovery. Waiting/progress and stale presentation should be extended inside the existing baseline only when a material related regression/change appears.
+- Selected-tour keyboard and pointer flight selection now converge on the same state/event path. Automatic default-flight loading remains intact.
+- Price synchronization and lead context remain isolated contracts. Lead guard still provides validation, reassurance, selected price/flight summary, recoverable errors and success state.
+- No broader Results/Selected Tour/Lead redesign is justified by the current live sample.
 
 ## Status
 
 - C1 Search Experience 3.0 — **DONE**.
-- C2 Results Experience 3.0 — **DONE**; no justified Results 9.0 rewrite currently.
-- C3 Selected Tour Experience 3.0 — **DONE**.
+- C2 Results Experience 3.0 — **DONE**; current hierarchy intentionally retained.
+- C3 Selected Tour Experience 3.0 — **DONE**; PR #93 keyboard consistency fix production-green.
 - C4 Lead Experience 3.0 — **DONE**.
 - C5 Flight Friction — **DONE**.
 - C6 Visual Refinement — **DONE**.
-- Search 9.0 primary controls/mobile discoverability/sticky boundary — **DONE / production-green**.
-- Brand/Hero 9.0 — **DONE / production-green**.
-- Trust 9.0 + mobile readability — **DONE / production-green**.
-- Recent browser audit wall-clock correctness — **DONE / verified**.
-- Cron/post-deploy audit trigger execution — **CONFIGURED / not yet observed**.
-- C7 Live Conversion Optimization — **WAITING_FOR_TRAFFIC**.
-- B8/A8 — **WAITING_FOR_TRAFFIC**.
+- Search/Brand/Trust 9.0 + mobile hardening — **DONE / production-green**.
+- Recent-browser wall-clock correctness — **DONE / verified**.
+- Post-deploy recent-browser `workflow_run` — **DONE / verified**.
+- Scheduled audit execution — **CONFIGURED / not observed**.
+- C7 Live Conversion Optimization — **EVIDENCE_REVIEW**.
+- B8 Live Product Optimization — **WAITING_FOR_MEANINGFUL_FUNNEL**.
+- A8 Operational Live Feedback — **ACTIVE**.
 
 ## Exact next work order
 
 1. Inspect fresh `main`, open PRs and latest deploy/live/security/visual results.
-2. Inspect the latest privacy-safe true wall-clock 30-minute browser audit; require a non-zero useful funnel sample before C7/B8/A8. Re-check for actual `schedule` or audit `workflow_run` events without blocking other safe work.
-3. Re-audit the full V2 journey on mobile and desktop: search → waiting/progress → stale/zero → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery.
-4. Preserve first-screen stars+meal, mobile meal discoverability, bounded sticky CTA and delayed/on-demand meals loading.
-5. Continue 9.0 only for a confirmed material gap. Current results/price and selected-tour/lead hierarchies are intentionally retained until evidence says otherwise.
-6. If meaningful funnel evidence appears, activate C7/B8/A8 and prioritize observed friction from `search_started → search_complete → tour_selected → flight_selected → lead_started → lead_submitted`.
-7. If production is healthy and evidence is absent, keep V2 stable rather than manufacturing work.
+2. Re-sample the privacy-safe true wall-clock browser window. Determine whether browser rate-limit delays repeat, disappear or concentrate on specific V2 routes/assets.
+3. If repeated evidence shows material delay, reduce avoidable V2 request bursts inside the repository using the smallest validated change. Do not touch global nginx/server configuration.
+4. Continue the full V2 mobile+desktop audit: search → waiting/progress → stale/zero → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery.
+5. Preserve first-screen stars+meal, mobile meal discoverability, bounded sticky CTA and delayed/on-demand meals loading.
+6. Require meaningful `search → tour → lead` evidence before changing Results/Selected-Tour/Lead conversion hierarchy.
+7. Re-check schedule-event audit execution opportunistically; it is not a blocker now that post-deploy `workflow_run` is proven.
+8. If production remains healthy and evidence does not repeat, keep V2 stable rather than manufacturing micro-work.
+
+## Deferred / boundaries
+
+- Global nginx/rate-limit configuration: outside allowed V2/repository write scope.
+- Global `/images/...` symlink-loop warnings: outside allowed V2/repository write scope while sampled access remains successful.
+- Further Results/price or Selected-Tour/Lead redesign: deferred until observed funnel friction.
+- Small formatter/matchMedia/progressive-results micro-optimizations: deferred until profiling/live evidence justifies them.
 
 ## Guardrails
 
