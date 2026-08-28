@@ -63,7 +63,6 @@ jobs:
           const searchUrl = process.env.SEARCH_URL;
           const prPreview = process.env.PR_PREVIEW === '1';
           function fail(name, message){ throw new Error(`${name}: ${message}`); }
-          const visible = el => !!el && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden' && el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().height > 0;
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const report=[];
@@ -79,16 +78,19 @@ jobs:
                 await page.waitForSelector('[data-home-search]',{timeout:20000});
                 await page.waitForTimeout(900);
                 await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}html{scroll-behavior:auto!important}'});
-                const home=await page.evaluate(()=>({
-                  hero:visible(document.querySelector('.at-home-hero')),
-                  search:visible(document.querySelector('[data-home-search]')),
-                  searchAction:document.querySelector('[data-home-search]')?.getAttribute('action')||'',
-                  nights:document.querySelector('[data-home-nights]')?.value||'',
-                  nightsTill:document.querySelector('[data-home-nights-till]')?.value||'',
-                  community:document.querySelectorAll('.v2-site-community').length,
-                  canonicalFooter:document.querySelectorAll('.at-site-footer').length,
-                  overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
-                }));
+                const home=await page.evaluate(()=>{
+                  const visible=el=>!!el&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden'&&el.getBoundingClientRect().width>0&&el.getBoundingClientRect().height>0;
+                  return {
+                    hero:visible(document.querySelector('.at-home-hero')),
+                    search:visible(document.querySelector('[data-home-search]')),
+                    searchAction:document.querySelector('[data-home-search]')?.getAttribute('action')||'',
+                    nights:document.querySelector('[data-home-nights]')?.value||'',
+                    nightsTill:document.querySelector('[data-home-nights-till]')?.value||'',
+                    community:document.querySelectorAll('.v2-site-community').length,
+                    canonicalFooter:document.querySelectorAll('.at-site-footer').length,
+                    overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
+                  };
+                });
                 console.log('HOME_VISUAL_STATE',name,JSON.stringify(home));
                 await page.screenshot({path:`anytoour-root-visual/${name}-home.png`,fullPage:true,animations:'disabled'});
                 if(!home.hero||!home.search) fail(name,'homepage hero/search not visible');
@@ -104,6 +106,7 @@ jobs:
                 if(prPreview) await page.addStyleTag({path:'v2/br3-control-consistency-v1.css'});
                 await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}html{scroll-behavior:auto!important}'});
                 const search=await page.evaluate(()=>{
+                  const visible=el=>!!el&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden'&&el.getBoundingClientRect().width>0&&el.getBoundingClientRect().height>0;
                   const nights=document.querySelector('.main-fields .nights-ux');
                   const nightsQuick=nights&&nights.querySelector('.nights-quick');
                   const nightNodes=[...(nights?.querySelectorAll('.nights-choice')||[])];
