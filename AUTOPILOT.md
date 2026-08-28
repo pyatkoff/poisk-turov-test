@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28 15:03 +02:00
+Updated: 2026-08-28 15:18 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -22,6 +22,7 @@ Scores are product-quality assessments backed by functional and visual evidence,
 - BR2 Trust architecture — ACTIVE
 - BR3 Product-wide visual identity — ACTIVE
 - BR4 SEO-ready brand shell — QUEUED
+- BR5 Social + app footer — QUEUED; add a polished lower-page/footer presence for AnyTour social channels (MAX, Telegram, VK) and mobile apps (App Store, Google Play), using the project's verified real destination URLs only. Keep it secondary to search/lead conversion, responsive and touch-friendly; do not introduce new analytics goals or alter lead transport. Recover/verify the previously supplied links before implementation rather than guessing destinations.
 - PX1 Decision support in results — ACTIVE; contextual lowest-price/best-rating and nearest-price context shipped.
 - PX2 Flexible search/recovery — ACTIVE; explicit zero-result date recovery shipped.
 - PX3 Price confidence — QUEUED
@@ -48,10 +49,11 @@ Earlier production contracts remain protected: V2 bundles, legacy/AI/MAX URL hyd
 2. Re-audit the complete V2 journey on mobile/intermediate/desktop: search → waiting/progress → stale/zero → results/comparison → selected tour → rooms/details → flights/price → lead/recovery.
 3. Re-score the 12-area quality scorecard now that PX1/PX2/PX4/PX6 and BR1 have materially advanced since the last scorecard snapshot.
 4. Take the weakest core product area below 9 and implement the highest-value safe improvement; likely candidates to inspect first are PX5 hotel choice depth, PX3 price confidence and remaining BR2/BR3 consistency gaps.
-5. Run relevant functional/regression/visual checks; deploy V2 only when green; smoke production after deploy.
-6. Re-score affected areas and immediately continue to the next weakest sub-9 area.
-7. Keep Brand and Product/competitor-gap queues active regardless of traffic availability.
-8. Do not run traffic diagnostics or make conversion conclusions from owner/team usage until explicitly re-enabled.
+5. Include BR5 social + app footer when brand/trust/site-shell work reaches that priority: verify the supplied MAX/Telegram/VK/App Store/Google Play destinations, then implement and visually validate it across mobile and desktop without distracting from primary conversion actions.
+6. Run relevant functional/regression/visual checks; deploy V2 only when green; smoke production after deploy.
+7. Re-score affected areas and immediately continue to the next weakest sub-9 area.
+8. Keep Brand and Product/competitor-gap queues active regardless of traffic availability.
+9. Do not run traffic diagnostics or make conversion conclusions from owner/team usage until explicitly re-enabled.
 
 ## Guardrails
 
