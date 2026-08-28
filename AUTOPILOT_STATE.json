@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T21:25:00+02:00",
+  "updated_at": "2026-08-28T22:00:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains at 9.0 across all eleven core areas. SEO/site foundation advanced to 8.5 through route-independent shell, content primitives, page contracts/types, stable internal-link boundaries, curated registry, publishability gate and registered relationship graph. Temporary V2 route remains noindex with no canonical; traffic analysis remains disabled.",
+  "phase": "Core tour-search product remains at 9.0 across all eleven core areas. SEO/site foundation is 8.7 after controlled editorial catalog and review-only publication tooling. BR5 social/app footer is shipped. A production structured-PHONE rendering defect found in full-page evidence was fixed for footer and initial header state and verified after V2-only deploy. Temporary V2 route remains noindex with no canonical; traffic analysis remains disabled.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -22,23 +22,23 @@
     "brand_trust": 9.0,
     "visual_quality": 9.0,
     "product_differentiation": 9.0,
-    "seo_site_foundation": 8.5
+    "seo_site_foundation": 8.7
   },
   "current_task": {
-    "id": "BR4_SEO_SITE_FOUNDATION",
+    "id": "BR4_CURATED_CONTENT_INVENTORY",
     "category": "SEO_FOUNDATION",
-    "title": "Controlled editorial content catalog for future SEO pages",
-    "status": "ACTIVE",
-    "objective": "Build a route-independent editorial content-source/catalog layer that can feed only curated registered page candidates and can be validated against registry, publishability and graph contracts without changing current indexing policy.",
-    "progress": "PR #147-#149 established shell/primitives/page contract; PR #151/#152/#156 stabilized first-party link boundaries; PR #153 added explicit page types; PR #154 added curated registry; PR #155 added publishability gate; PR #157 added registered parent/related graph. PR #157 production deploy run 33206695319 passed validate/copy/verify/live-search smoke.",
-    "next_action": "Implement controlled editorial content-source/catalog tooling. Do not derive page identity from search/request parameters. After that, re-score SEO foundation and leave final public mount/canonical/indexing/sitemap decisions deferred until explicitly chosen."
+    "title": "Small curated editorial inventory for future SEO pages",
+    "status": "ACTIVE_WITH_PUBLIC_ROUTE_BLOCKER",
+    "objective": "Prepare a small genuinely curated editorial inventory that passes the existing catalog, publishability, stable-link and relationship-graph contracts without publishing routes or deriving page identity/copy from live search state.",
+    "progress": "PR #160 hardened publishable breadcrumb chains. PR #161 added controlled draft/review/approved catalog and PR #163 integrated hardened publishability. PR #169 added a review-only publication manifest for approved+publishable candidates. BR5 shipped in #164. Post-deploy evidence found structured PHONE rendering as Array; #166 fixed footer normalization and #168 completed initial-header normalization plus repaired the live SEO bundled-style contract. Production deploys 33208316418, 33208778983 and 33208974160 passed V2 validate/copy/verify/live-search smoke.",
+    "next_action": "First re-check fresh main and production. Then continue with only a small sourced/curated editorial inventory or independent full-flow maintenance/audit. Do not mass-generate thin content. Do not add route/canonical/indexing/sitemap/schema until the final public mount and policy are explicitly chosen."
   },
   "queue": [
     {"id":"BR1","status":"ACTIVE_9_LEVEL","title":"Branded first impression"},
     {"id":"BR2","status":"ACTIVE_9_LEVEL","title":"Trust architecture"},
     {"id":"BR3","status":"ACTIVE_9_LEVEL","title":"Product-wide visual identity"},
-    {"id":"BR4","status":"ACTIVE_8_5","title":"SEO-ready brand shell and site foundation"},
-    {"id":"BR5","status":"QUEUED","title":"Social + app footer","progress":"Verify exact MAX/Telegram/VK/App Store/Google Play destinations before implementation."},
+    {"id":"BR4","status":"ACTIVE_8_7","title":"SEO-ready brand shell and site foundation"},
+    {"id":"BR5","status":"SHIPPED_MAINTAIN","title":"Social + app footer","progress":"MAX, Telegram, VK, App Store and Google Play destinations shipped with responsive/touch regression coverage; structured phone rendering is guarded."},
     {"id":"PX1","status":"ACTIVE_9_LEVEL","title":"Decision support in results"},
     {"id":"PX2","status":"ACTIVE_9_LEVEL","title":"Flexible search and recovery"},
     {"id":"PX3","status":"ACTIVE_9_LEVEL","title":"Price confidence"},
@@ -48,7 +48,7 @@
     {"id":"PX7","status":"RESEARCH","title":"Price watch and return intent"}
   ],
   "seo_foundation": {
-    "score": 8.5,
+    "score": 8.7,
     "temporary_route_noindex": true,
     "canonical_absent_until_public_mount": true,
     "semantic_shell": true,
@@ -60,24 +60,29 @@
     "curated_registry": true,
     "publishability_gate": true,
     "registered_relationship_graph": true,
-    "next_missing_layers": ["controlled_editorial_content_catalog","final_public_mount_and_url","canonical_indexing_policy","sitemap_publication","structured_data_after_real_public_pages"]
+    "controlled_editorial_catalog": true,
+    "publication_review_manifest": true,
+    "next_missing_layers": ["real_curated_editorial_inventory","final_public_mount_and_url","canonical_indexing_policy","sitemap_publication","structured_data_after_real_public_pages"]
   },
   "production_baseline": {
-    "last_verified_commit": "ebdb8d8e6240283e4b89c05d5e67ff4c5cc1c076",
-    "deploy_v2": 33206695319,
+    "last_verified_commit": "29cc99b59e156d6ad2e6c7c64eff5eb8d2496caa",
+    "deploy_v2": 33208974160,
     "deploy_validate": true,
     "deploy_copy": true,
     "deploy_verify": true,
     "live_search_smoke": true,
+    "seo_live_contract": true,
+    "structured_phone_array_bug_fixed": true,
     "status": "PRODUCTION_GREEN"
   },
-  "blocked": [],
+  "blocked": [
+    {"scope":"SEO 9.0 public publication layer","reason":"Final public mount/URL and canonical/indexing/sitemap policy are unresolved product/routing choices and must not be inferred from the temporary noindex V2 route."}
+  ],
   "deferred": [
     {"scope":"traffic/conversion analysis","reason":"Explicitly disabled until owner launches traffic."},
     {"scope":"final public SEO route/canonical/indexing/sitemap promotion","reason":"Requires explicit final public URL/routing choice; current development route must stay noindex."},
     {"scope":"structured data","reason":"Add only after real indexable public page types and visible content exist."},
     {"scope":"PX7 price watch / proactive return intent","reason":"May require persistence/contact/product-contract decisions."},
-    {"scope":"BR5 app/social destinations","reason":"Exact external URLs must be recovered and verified; do not guess destinations."},
     {"scope":"global nginx/server configuration","reason":"Outside allowed V2/repository write scope."}
   ],
   "protected": {
