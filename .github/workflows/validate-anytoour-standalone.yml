@@ -55,3 +55,14 @@ jobs:
             if (strpos($html, "leadApi:\"/poisk-turov-test/v2/lead-adapter-v2.php\"") === false) exit(21);
             echo "LEGACY_PATH_COMPAT_OK\n";
           '
+      - name: Keep standalone shell assets and full-site links reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check v2/header-current-site.js
+          grep -Fq "runtimePath('phone-config.php')" v2/header-current-site.js
+          grep -Fq "runtimePath('footer-current-site.css')" v2/header-current-site.js
+          grep -Fq "legacyOrigin=standalone?'https://anytour.online':''" v2/header-current-site.js
+          if grep -Fq "fetch('/poisk-turov-test/v2/phone-config.php'" v2/header-current-site.js; then exit 31; fi
+          if grep -Fq "css.href='/poisk-turov-test/v2/footer-current-site.css'" v2/header-current-site.js; then exit 32; fi
+          echo "STANDALONE_SITE_SHELL_PATHS_OK"
