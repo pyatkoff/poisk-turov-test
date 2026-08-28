@@ -1,6 +1,7 @@
 <?php
 /** V2-only asset URL helper. Browser cache-busting follows file contents, not deploy mtime. */
 require_once __DIR__ . '/asset-version-v1.php';
+require_once __DIR__ . '/bundle-manifest-v1.php';
 
 function v2_asset(string $file): string
 {
@@ -11,4 +12,23 @@ function v2_asset(string $file): string
     $path = __DIR__ . '/' . $name;
     $version = v2_asset_content_version($path);
     return '/poisk-turov-test/v2/' . rawurlencode($name) . '?v=' . rawurlencode($version);
+}
+
+function v2_bundle_content_version(string $type): string
+{
+    $manifest = v2_bundle_manifest();
+    if (!isset($manifest[$type])) return '0';
+    $ctx = hash_init('sha256');
+    foreach ($manifest[$type] as $file) {
+        $path = __DIR__ . '/' . $file;
+        hash_update($ctx, $file . ':' . v2_asset_content_version($path) . ';');
+    }
+    return substr(hash_final($ctx), 0, 16);
+}
+
+function v2_bundle_asset(string $type): string
+{
+    $manifest = v2_bundle_manifest();
+    if (!isset($manifest[$type])) throw new InvalidArgumentException('Invalid V2 bundle type');
+    return '/poisk-turov-test/v2/bundle-v1.php?type=' . rawurlencode($type) . '&v=' . rawurlencode(v2_bundle_content_version($type));
 }
