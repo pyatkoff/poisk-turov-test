@@ -42,6 +42,7 @@ function v2_bundle_manifest(): array
             'lead-form-guard-v1.js',
             'flight-price-sync-v1.js',
             'catalogs-v2.js',
+            'url-primary-catalog-sync-v1.js',
             'search-filters-ux-v1.js',
             'search-lifecycle-v6.js',
             'mobile-results-filters-v1.js',
