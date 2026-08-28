@@ -1,53 +1,56 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 01:05 +02:00
+Updated: 2026-08-29 01:55 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
-## Current phase — CORE PRODUCT 9/10, STANDALONE ROOT STABILIZATION, SEO FOUNDATION 8.8
+## Current phase — CORE PRODUCT 9/10, STANDALONE SITE STABILIZATION, SEO FOUNDATION 8.8
 
 Paid/real-user traffic is intentionally not running. Current visitors are the owner and team, so browser/funnel activity must **not** be treated as conversion evidence.
 
 Search, Waiting/Recovery, Results/Comparison, Selected Tour, Flights/Price, Lead UX, Mobile UX, Tablet/Desktop UX, Brand/Trust, Visual Quality and Product Differentiation remain assessed at 9.0 with functional/visual evidence.
 
-A new standalone production mount at `https://anytoour.ru/` is now being stabilized while the legacy `/poisk-turov-test/v2/` route remains available. This migration is currently higher priority than roadmap work because defects in the standalone shell or authenticated lead handoff can affect navigation, legal/consent UX or lead delivery.
+Standalone architecture is now explicit: `https://anytoour.ru/` is the new homepage and `https://anytoour.ru/poisk-turov/` is the full tour search. The legacy `/poisk-turov-test/v2/` route remains compatibility-only and must not regress. Initial country/content routes are being migrated incrementally.
 
-SEO/site foundation remains **8.8**. The standalone root is still `noindex,follow`; do not enable canonical/indexing/sitemap/structured-data publication merely because the root mount now exists. The remaining material path to 9 still requires a deliberate public indexing contract and real curated content.
+SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,follow`; do not enable indexing/sitemap publication merely because routes are live. The remaining path to 9 requires deliberate publication/indexing policy and reviewed real content.
 
 ## Active roadmap
 
+- ROOT STABILIZATION — ACTIVE HIGHEST PRIORITY while the new standalone shell/routes are being migrated.
 - BR1–BR3 — SHIPPED / MAINTAIN at 9-level.
-- BR4 SEO-ready brand shell — ACTIVE at 8.8 with indexing/publication still deliberately deferred.
-- BR5 Social + app footer — SHIPPED / MAINTAIN. V2 contributes only a compact social/app community pre-footer and must not render a second full footer.
+- BR4 SEO-ready brand shell — ACTIVE at 8.8; publication/indexing policy remains deliberately deferred.
+- BR5 Social + app footer — SHIPPED / MAINTAIN. Community/social/app content is a compact pre-footer; there must be exactly one canonical full footer.
 - PX1–PX6 — SHIPPED / MAINTAIN at 9-level.
 - PX7 Price watch/return intent — RESEARCH pending persistence/contact/product-contract choices.
 
 ## Latest material evidence
 
-- PR #180 fixed the owner-reported mobile trip-duration and duplicate-footer regressions: nights remain primary mobile search controls and V2 contributes only the compact social/app pre-footer before the canonical full footer.
-- PR #182 introduced the standalone `anytoour.ru` root deployment while preserving the legacy V2 route and existing search/lead contracts.
-- PR #183 restored the hidden Bitrix `sessid` token on the legacy Bitrix-backed page after the standalone bootstrap work made that dependency optional.
-- Lead bridge investigation found two separate migration failures. First, nested HTTP forwarding could block on the PHP/Bitrix session lock; the receiver was moved to an authenticated in-process adapter handoff. Second, the standalone deploy updated only the receiver on the legacy host, which could pair it with an older incompatible adapter. PR #192 now deploys receiver + adapter + lead helpers as one compatible runtime. The production proof is not DONE until the queued standalone deploy passes the non-writing 422 validation probe and live-search smoke.
-- PR #188 fixed standalone shell routing: V2 runtime assets resolve from `V2_CONFIG`, while full-site navigation/legal destinations that are not deployed on `anytoour.ru` temporarily route to the existing AnyTour site instead of dead root-relative pages.
-- PR #189 fixed the lead-form privacy/consent destination on standalone root while preserving the legacy relative privacy URL.
-- Results decision-support audit confirmed that `Самая низкая цена` benchmarks the minimum hotel price across the current result set and optionally shows the next-price gap; it does not alter sorting, pricing or selection.
+- PR #196 fixed the new homepage → search contract. The single `Ночей` field had silently submitted the default range `7–10`; it now submits an exact duration and keeps `daysTill` synchronized with `daysFrom`.
+- PR #196 also removed dead standalone navigation during migration: `/poisk-turov/` stays local, while sections not yet migrated continue to the active legacy site. Header rewriting now preserves the valid local search route.
+- PR #196 repaired stale CI assumptions after the homepage/search split: standalone rendering, SEO semantics, startup bundle count, live user-journey checks and visual checks now distinguish pre-merge branch validation from post-deploy production validation.
+- PR #196 merged as `986b536c648de89b0e99cd209fa9815bd38f68b7`; Deploy anytoour.ru run `33221467704` completed successfully.
+- Post-deploy live user journey for #196 completed homepage → full search → Tourvisor search → unique results → hotel/tour details → optional room → flights → non-writing lead-adapter health. No lead write was performed and the lead external contract was not changed.
+- The first post-deploy visual run exposed a stale footer assertion rather than a product regression. Subsequent standalone commits added/standardized the canonical footer on migrated pages. Preserve exactly one `.at-site-footer` plus the compact `.v2-site-community` pre-footer.
+- Current main has advanced beyond #196 with initial migrated content routes and verified local homepage navigation; treat the latest `main` deploy/visual/content-live runs as the next resume point rather than re-testing the old root-as-search architecture.
+- PR #180 remains the regression baseline for visible mobile trip duration and the no-second-full-footer contract.
+- `Самая низкая цена` remains current-result-set decision support only; it does not alter sorting, tour pricing or selection.
 
 ## Exact next work order
 
-1. Finish standalone production stabilization first. Verify `Deploy anytoour.ru` for current `main` after PR #192: public root → authenticated non-writing lead probe must return production validation (HTTP 422) → live Tourvisor search smoke must complete with unique results.
-2. If the lead probe is still red, diagnose the exact response/log before touching unrelated UX. Do not weaken public CSRF/session validation, lead validation, field mapping, SOURCE, idempotency or Bitrix write behavior.
-3. Once standalone deploy is green, inspect the actual root across mobile/intermediate/desktop for search → waiting/recovery → results/comparison → selected tour/rooms → flights/price → lead entry/recovery. Preserve visible primary trip duration and the single-footer contract.
-4. Audit standalone-only links/assets as part of that pass: logo, phone fallback, header navigation, footer/legal links, privacy consent, social/app links and bundle/runtime paths must all remain reachable.
-5. Keep `Самая низкая цена` as current-result-set decision support unless a real UX problem is confirmed; do not add interaction merely for decoration.
-6. Preserve the legacy `/poisk-turov-test/v2/` behavior while stabilizing root. Standalone fixes must not break its relative runtime paths, privacy URL, Bitrix session behavior or existing lead contract.
-7. Re-audit BR4 publication only when real curated content and an explicit indexing/canonical/sitemap decision exist. Root deployment by itself is not permission to index.
+1. Verify the latest current-`main` standalone deploy after the newest migrated-route/navigation commits, not only #196. Require deploy success and post-deploy homepage/search/content live checks.
+2. Re-run/inspect the five-viewport standalone visual audit against the current contract: homepage and `/poisk-turov/` visible, no horizontal overflow, exact nights handoff, one compact community pre-footer and exactly one canonical full footer.
+3. Continue whole standalone user-journey audit: homepage → search → waiting/recovery → results/comparison → selected tour/rooms → flights/price → lead entry/recovery. No live lead submission is required for regression proof.
+4. Audit each newly migrated country/content route before promoting more routes: real route reachable, CTA/query handoff to `/poisk-turov/`, responsive layout, canonical/noindex semantics, and footer/navigation contract.
+5. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
+6. Keep `Самая низкая цена` unchanged unless a confirmed UX defect appears.
+7. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
 8. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
 
 ## Guardrails
 
-- Work only inside `pyatkoff/poisk-turov-test`; production deploy scope is V2 only.
+- Work only inside `pyatkoff/poisk-turov-test`; production deploy scope is the allowed V2/standalone scope only.
 - Do not redesign/replace the existing AnyTour logo.
-- Do not modify neighboring projects, global site assets or server config outside allowed V2 scope.
+- Do not modify neighboring projects, global site assets or server config outside allowed scope.
 - Do not change Yandex Metrika configuration/goals.
 - Do not change the existing lead-sending mechanism/external contract.
 - Production breakage → lead loss → incorrect data → poor UX → responsive/visual → weakest sub-9 score → roadmap → cosmetic/refactor.
