@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28 22:40 +02:00
+Updated: 2026-08-28 23:06 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -31,15 +31,18 @@ The current `/poisk-turov-test/v2/` route remains `noindex,follow` with no canon
 - PR #166 fixed a production footer defect where structured `PHONE` could render as literal `Array`.
 - PR #168 completed the same PHONE normalization for the header and repaired a false main-only SEO live check that expected a source CSS filename even though V2 serves a compiled bundle. All PR gates were green; V2-only deploy `33208778983` passed validate, copy, verify and live search smoke, and main SEO-foundation validation returned green.
 - PR #169 shipped a deterministic review-only publication manifest containing only approved + publishable registered editorial records while explicitly excluding route/canonical/index/sitemap/schema side effects.
+- PR #174 fixed an inbound-search data corruption edge case where an invalid `child_age` from a legacy/external URL could collapse to an empty `<select>` value and then be coerced to age `0`. Invalid ages are now preserved as explicit invalid state and search is blocked until corrected. All nine PR workflows completed with no failures; V2-only deploy `33210597000` passed validate, copy, verify and live search smoke.
+- PR #176 fixed the adjacent `child_count` mismatch where unsupported URL values such as `4`, `99` or text could remain visible while only three child-age controls were rendered and sent. Unsupported counts and child-count/age-control mismatches now block search until corrected. All nine PR workflows completed with no failures; V2-only deploy `33210944930` passed validate, copy, verify and live search smoke. Main failure count for the release SHA is zero.
 
 ## Exact next work order
 
-1. Verify the latest `main`/PR #169 V2-only deploy and live functional checks are green; repair any production regression before roadmap work.
-2. Re-audit BR4 against the 9/10 gate. Avoid adding more framework layers solely to raise the score: the remaining material gap is real curated public content + the explicit final public URL/mount/indexing contract.
-3. Keep the temporary V2 search route `noindex,follow`; do not invent canonical, sitemap publication, structured data or indexability.
-4. If the public-route decision remains deferred, record it and continue independent safe work: periodic whole-V2 flow audit and repository technical-health pass, prioritizing any confirmed production/data/UX/responsive defect.
-5. Maintain BR5 social/app footer and its phone/link/responsive regressions; do not alter Metrika/goals for those links.
-6. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
+1. Treat production on `d9d18840af8c3bf659f7b62447b513272a2275a6` as the current green baseline after PR #176; repair any new production regression before roadmap work.
+2. Continue the independent whole-V2 technical-health audit while BR4 public-route/indexing decisions remain deferred. Inspect remaining inbound/search-state hydration boundaries first, then re-walk search → progress/recovery → results/comparison → selected tour/rooms → flights/price → lead entry for incorrect-data or UX regressions.
+3. Preserve the newly guarded child composition contract: malformed child ages/counts must never be silently coerced, dropped or sent as a different tourist composition.
+4. Re-audit BR4 only when there is material route-independent work or when the final public URL/content inventory is available. Avoid framework-only SEO abstraction solely to raise the score.
+5. Keep the temporary V2 search route `noindex,follow`; do not invent canonical, sitemap publication, structured data or indexability.
+6. Maintain BR5 social/app footer and its phone/link/responsive regressions; do not alter Metrika/goals for those links.
+7. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
 
 ## Guardrails
 
