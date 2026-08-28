@@ -18,7 +18,7 @@ function lead_text($value,int $max=500){$value=trim(preg_replace('/\s+/u',' ',(s
 function lead_phone($value){$digits=preg_replace('/\D+/','',trim((string)$value));if(strlen($digits)===11&&$digits[0]==='8')$digits='7'.substr($digits,1);return $digits!==''?'+'.$digits:'';}
 function lead_money($value){if($value===null||$value==='')return null;$n=(int)round((float)$value);return $n>0?$n:null;}
 function lead_bool($value){return filter_var($value,FILTER_VALIDATE_BOOLEAN);}
-function lead_child_ages($value,&$error=null){$error=null;if($value===null||$value==='')return[];if(!is_array($value)){$error='childAges must be an array';return[];}if(count($value)>3){$error='No more than 3 child ages are allowed';return[];}$ages=[];foreach($value as $age){$v=filter_var($age,FILTER_VALIDATE_INT);if($v===false||(int)$v<0||(int)$v>17){$error='Child age must be between 0 and 17';return[];}$ages[]=(int)$v;}return$ages;}
+function lead_child_ages($value,&$error=null){$error=null;if($value===null||$value==='')return[];if(!is_array($value)){$error='childAges must be an array';return[];}if(count($value)>3){$error='No more than 3 child ages are allowed';return[];}foreach($value as $age){$v=filter_var($age,FILTER_VALIDATE_INT);if($v===false||(int)$v<0||(int)$v>17){$error='Child age must be between 0 and 17';return[];}$ages[]=(int)$v;}return$ages??[];}
 function lead_idempotency_key(array $lead){return v2_lead_idempotency_key($lead);}
 function lead_idempotency_cleanup($dir){if(mt_rand(1,50)!==1)return;$cutoff=time()-(V2_LEAD_IDEMPOTENCY_TTL*3);foreach((array)glob($dir.DIRECTORY_SEPARATOR.'*.json') as $file){if(is_file($file)&&@filemtime($file)<$cutoff)@unlink($file);}}
 function lead_idempotency_lock(string $key){$dir=rtrim(sys_get_temp_dir(),DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'anytour-v2-leads';if(!is_dir($dir)&&!@mkdir($dir,0700,true)&&!is_dir($dir))return['ok'=>false,'error'=>'Idempotency storage unavailable'];lead_idempotency_cleanup($dir);$path=$dir.DIRECTORY_SEPARATOR.$key.'.json';$fh=@fopen($path,'c+');if(!$fh)return['ok'=>false,'error'=>'Idempotency lock unavailable'];if(!flock($fh,LOCK_EX)){fclose($fh);return['ok'=>false,'error'=>'Idempotency lock failed'];}rewind($fh);$stored=json_decode((string)stream_get_contents($fh),true);if(is_array($stored)&&!empty($stored['leadId'])&&!empty($stored['time'])&&((int)$stored['time']+V2_LEAD_IDEMPOTENCY_TTL)>=time())return['ok'=>true,'duplicate'=>true,'leadId'=>(int)$stored['leadId'],'fh'=>$fh];return['ok'=>true,'duplicate'=>false,'fh'=>$fh];}
@@ -52,10 +52,14 @@ if(stripos((string)($_SERVER['CONTENT_TYPE']??''),'application/json')!==0)lead_o
 if((int)($_SERVER['CONTENT_LENGTH']??0)>V2_LEAD_MAX_BODY)lead_out(['ok'=>false,'error'=>'Request too large'],413);
 
 $boot=lead_bootstrap();if(empty($boot['ok']))lead_out(['ok'=>false,'error'=>$boot['error']??'Bitrix bootstrap failed'],500);
-$internalBody=(defined('V2_INTERNAL_LEAD_RECEIVER')&&V2_INTERNAL_LEAD_RECEIVER===true&&isset($GLOBALS['V2_INTERNAL_LEAD_BODY'])&&is_string($GLOBALS['V2_INTERNAL_LEAD_BODY']))?$GLOBALS['V2_INTERNAL_LEAD_BODY']:null;
+$internalReceiver=defined('V2_INTERNAL_LEAD_RECEIVER')&&V2_INTERNAL_LEAD_RECEIVER===true;
+$internalBody=($internalReceiver&&isset($GLOBALS['V2_INTERNAL_LEAD_BODY'])&&is_string($GLOBALS['V2_INTERNAL_LEAD_BODY']))?$GLOBALS['V2_INTERNAL_LEAD_BODY']:null;
 $raw=$internalBody!==null?$internalBody:file_get_contents('php://input');if(strlen((string)$raw)>V2_LEAD_MAX_BODY)lead_out(['ok'=>false,'error'=>'Request too large'],413);$data=json_decode((string)$raw,true);if(!is_array($data))lead_out(['ok'=>false,'error'=>'Invalid JSON'],400);
 $_REQUEST['sessid']=lead_text($data['sessid']??'',128);$_POST['sessid']=$_REQUEST['sessid'];
-if(!function_exists('check_bitrix_sessid')||!check_bitrix_sessid())lead_out(['ok'=>false,'error'=>'Session validation failed'],403);
+// Browser-originated requests keep the existing Bitrix CSRF/session check.
+// The only bypass is the in-process path entered after HMAC verification in
+// lead-receiver-v1.php; HTTP callers cannot define this PHP constant/global.
+if(!$internalReceiver&&(!function_exists('check_bitrix_sessid')||!check_bitrix_sessid()))lead_out(['ok'=>false,'error'=>'Session validation failed'],403);
 $built=lead_build($data);if(!empty($built['errors']))lead_out(['ok'=>false,'error'=>'Validation failed','fields'=>$built['errors']],422);
 $key=lead_idempotency_key($built['lead']);$lock=lead_idempotency_lock($key);if(empty($lock['ok']))lead_out(['ok'=>false,'error'=>$lock['error']??'Idempotency failure'],500);if(!empty($lock['duplicate'])){lead_idempotency_release($lock);lead_out(['ok'=>true,'mode'=>'live','writes'=>false,'duplicate'=>true,'leadId'=>(int)$lock['leadId'],'source'=>V2_LEAD_SOURCE_ID]);}
 $projectMarker=lead_project_marker();if($projectMarker!==null)$built['element']['PROPERTY_VALUES']['IS_ANYTOUR_ONLINE']=$projectMarker;
