@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T17:12:00+02:00",
+  "updated_at": "2026-08-28T17:14:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Pre-traffic product development. PX3 price confidence is production-green in PR #125. PX5 selected-tour grounded decision summary is merged/deployed in PR #126 with deploy/live search smoke green; post-deploy visual closure is being confirmed. Latest re-score makes visual quality/consistency (8.8) the weakest core area below 9, so BR3 is next after production closure.",
+  "phase": "Pre-traffic product development. PX3 price confidence is production-green in PR #125. PX5 selected-tour grounded decision summary is fully production-green in PR #126: deploy, live search smoke, post-deploy viewport audit and deterministic visual baseline passed. Latest re-score makes visual quality/consistency (8.8) the weakest core area below 9, so BR3 is next.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -28,21 +28,21 @@
     "id": "BR3",
     "category": "VISUAL_UX",
     "title": "Product-wide visual identity and consistency",
-    "status": "NEXT_AFTER_PX5_POST_DEPLOY_CLOSURE",
+    "status": "ACTIVE_NEXT",
     "objective": "Audit and consolidate material visual inconsistencies across the complete V2 flow without redesigning the logo, altering product contracts or doing cosmetic-only churn.",
-    "next_action": "First confirm PR #126 post-deploy visual/baseline workflows. If green, audit search → progress/recovery → results/compare → selected tour/rooms → flights/price → lead at mobile/intermediate/desktop widths; identify the highest-impact inconsistent component family and implement a bounded BR3 improvement with branch-bundle and visual regression coverage."
+    "next_action": "Inspect fresh main/open PRs/CI, then audit search → progress/recovery → results/compare → selected tour/rooms → flights/price → lead at mobile/intermediate/desktop widths. Identify the highest-impact inconsistent component family and implement a bounded BR3 improvement with branch-bundle and visual regression coverage."
   },
   "queue": [
     {"id":"BR1","status":"ACTIVE","title":"Branded first impression","progress":"Grounded AnyTour-specific first-screen proof shipped in PR #123."},
     {"id":"BR2","status":"ACTIVE","title":"Trust architecture","progress":"Grounded first-screen and selected-tour/lead reassurance shipped; remaining work should focus on cross-stage consistency."},
-    {"id":"BR3","status":"NEXT","title":"Product-wide visual identity","progress":"Weakest core score is visual quality/consistency 8.8; perform bounded whole-flow consistency pass next."},
+    {"id":"BR3","status":"ACTIVE_NEXT","title":"Product-wide visual identity","progress":"Weakest core score is visual quality/consistency 8.8; perform bounded whole-flow consistency pass next."},
     {"id":"BR4","status":"QUEUED","title":"SEO-ready brand shell","progress":"Deferred until all core product areas reach 9."},
     {"id":"BR5","status":"QUEUED","title":"Social + app footer","progress":"Verify previously supplied MAX/Telegram/VK/App Store/Google Play URLs before implementation; keep secondary to primary conversion actions."},
     {"id":"PX1","status":"ACTIVE_9_LEVEL","title":"Decision support in results","progress":"Contextual badges, nearest-price context and lightweight compare shipped."},
     {"id":"PX2","status":"ACTIVE","title":"Flexible search and recovery","progress":"Structured progress/recovery and explicit zero-result date recovery shipped; current score 8.9."},
     {"id":"PX3","status":"SHIPPED","title":"Price confidence","progress":"PR #125 distinguishes search price from selected-flight price and explains pre-payment reconfirmation; production green."},
     {"id":"PX4","status":"ACTIVE_9_LEVEL","title":"Flight decision quality","progress":"Grounded flight price and routing tradeoffs shipped."},
-    {"id":"PX5","status":"SHIPPED","title":"Hotel choice depth","progress":"PR #126 adds grounded category/rating/sea/meal/room selected-tour decision summary; deploy/live search smoke green."},
+    {"id":"PX5","status":"SHIPPED","title":"Hotel choice depth","progress":"PR #126 adds grounded category/rating/sea/meal/room selected-tour decision summary; production fully green."},
     {"id":"PX6","status":"ACTIVE_9_LEVEL","title":"Save compare resume","progress":"Lightweight hotel comparison shipped."},
     {"id":"PX7","status":"RESEARCH","title":"Price watch and return intent","progress":"Deferred because persistence/contact/product-contract choices are required."}
   ],
@@ -59,7 +59,8 @@
     "deploy_v2": 33183567573,
     "deploy_live_search_smoke": 33183567573,
     "post_deploy_visual": 33183656505,
-    "status": "PRODUCTION_GREEN_DEPLOY_LIVE_SMOKE_POST_DEPLOY_VISUAL_VERIFYING"
+    "post_deploy_visual_baseline": 33183656489,
+    "status": "PRODUCTION_GREEN"
   },
   "search_progress_contract": {
     "status":"PRODUCTION_GREEN_PRIMARY_AND_CONTINUE_SEARCH",
