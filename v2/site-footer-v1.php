@@ -1,7 +1,12 @@
 <?php
+require_once __DIR__ . '/phone-value.php';
+
 /** Reusable V2/public-page footer shell. External destinations below are explicit verified AnyTour properties. */
 function v2_render_site_footer(string $phone, string $phoneHref): void
 {
+    $phone = v2_phone_scalar($phone);
+    if ($phone === '') $phone = '8 (800) 100-61-50';
+    $phoneHref = v2_phone_href($phone);
     ?>
     <footer class="v2-site-footer" aria-label="Информация AnyTour">
       <div class="v2-site-footer__inner">
