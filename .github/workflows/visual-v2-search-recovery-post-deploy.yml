@@ -3,7 +3,10 @@ name: Visual V2 search recovery post-deploy
 on:
   pull_request:
     branches: [main]
-    paths: ['.github/workflows/visual-v2-search-recovery-post-deploy.yml']
+    paths:
+      - 'v2/search-progress-ux-v1.js'
+      - 'v2/mobile-search-summary-v1.js'
+      - '.github/workflows/visual-v2-search-recovery-post-deploy.yml'
   workflow_run:
     workflows: ["Deploy V2 only"]
     types: [completed]
@@ -25,38 +28,38 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Build PR bundles
+        if: github.event_name == 'pull_request'
+        run: |
+          php -r 'require "v2/bundle-manifest-v1.php"; foreach(v2_bundle_manifest()["css"] as $f){readfile("v2/".$f); echo "\n";}' > "$RUNNER_TEMP/v2-recovery-pr.css"
+          php -r 'require "v2/bundle-manifest-v1.php"; foreach(v2_bundle_manifest()["js"] as $f){readfile("v2/".$f); echo "\n";}' > "$RUNNER_TEMP/v2-recovery-pr.js"
       - name: Install Playwright Chromium
         run: |
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Audit production progress and explicit recovery
+      - name: Audit progress and explicit recovery
         env:
           V2_URL: https://anytour.online/poisk-turov-test/v2/
+          PR_MODE: ${{ github.event_name == 'pull_request' && '1' || '0' }}
         run: |
           mkdir -p search-recovery-postdeploy-artifacts
           cat > search-recovery-postdeploy.cjs <<'JS'
           const {chromium}=require('playwright'),fs=require('fs');
-          const url=process.env.V2_URL;
+          const url=process.env.V2_URL,prMode=process.env.PR_MODE==='1';
+          const css=prMode?fs.readFileSync(process.env.RUNNER_TEMP+'/v2-recovery-pr.css'):null,js=prMode?fs.readFileSync(process.env.RUNNER_TEMP+'/v2-recovery-pr.js'):null;
           const views=[['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000]];
           (async()=>{const browser=await chromium.launch({headless:true});const report=[];let failed=false;
-          for(const [name,width,height] of views){const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e).slice(0,500)));const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});await page.waitForTimeout(4500);
-          const state=await page.evaluate(async()=>{const form=document.getElementById('tourSearch'),status=document.getElementById('status');if(!form||!status||!window.V2SearchProgressUXV1)return{ready:false};const from=form.querySelector('[name="dateFrom"]'),to=form.querySelector('[name="dateTo"]'),nf=form.querySelector('[name="daysFrom"]'),nt=form.querySelector('[name="daysTill"]'),submit=form.querySelector('.search-submit');from.value='2026-09-10';to.value='2026-09-12';nf.value='7';nt.value='9';let starts=0;window.addEventListener('v2:search-started',()=>starts++);
-          dispatchEvent(new CustomEvent('v2:search-started'));const started={copy:String(status.textContent||'').replace(/\s+/g,' ').trim(),bar:!!status.querySelector('[role="progressbar"]'),now:status.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')};
-          dispatchEvent(new CustomEvent('v2:search-progress',{detail:{progress:47}}));const progress={now:status.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow'),copy:String(status.textContent||'').replace(/\s+/g,' ').trim()};
-          dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items:[]}}));const empty={buttons:[...status.querySelectorAll('button')].map(b=>b.className),copy:String(status.textContent||'').replace(/\s+/g,' ').trim()};starts=0;status.querySelector('.search-progress-relax-dates')?.click();await new Promise(r=>setTimeout(r,80));const dates={from:from.value,to:to.value,starts,focused:document.activeElement===submit,adjusted:String(status.textContent||'').includes('Даты расширены на 2 дня')};
-          from.value='2026-09-10';to.value='2026-09-12';nf.value='7';nt.value='9';dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items:[]}}));starts=0;status.querySelector('.search-progress-relax-nights')?.click();await new Promise(r=>setTimeout(r,80));const nights={from:nf.value,to:nt.value,starts,focused:document.activeElement===submit,adjusted:String(status.textContent||'').includes('Диапазон ночей расширен')};
-          dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items:[]}}));status.querySelector('.search-progress-filters')?.click();await new Promise(r=>setTimeout(r,80));const filters={open:!!form.querySelector('details.extras')?.open};
-          dispatchEvent(new CustomEvent('v2:search-error',{detail:{phase:'start',error:{code:'TEST'}}}));const error={role:status.querySelector('.search-progress-error')?.getAttribute('role')||'',retry:!!status.querySelector('.search-progress-retry'),copy:String(status.textContent||'').replace(/\s+/g,' ').trim()};
-          const overflow=document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2;return{ready:true,started,progress,empty,dates,nights,filters,error,overflow};});
-          await page.screenshot({path:`search-recovery-postdeploy-artifacts/${name}.png`,fullPage:true});const required=['search-progress-relax-dates','search-progress-relax-nights','search-progress-edit','search-progress-filters'];const bad=!state.ready||!state.started.bar||state.started.now!=='6'||!state.started.copy.includes('Ищем лучшие варианты')||state.progress.now!=='47'||!state.empty.copy.includes('туров не нашли')||required.some(c=>!state.empty.buttons.includes(c))||state.dates.from!=='2026-09-08'||state.dates.to!=='2026-09-14'||state.dates.starts!==0||!state.dates.focused||!state.dates.adjusted||state.nights.from!=='6'||state.nights.to!=='10'||state.nights.starts!==0||!state.nights.focused||!state.nights.adjusted||!state.filters.open||state.error.role!=='alert'||!state.error.retry||!state.error.copy.includes('Не получилось завершить поиск')||state.overflow;if((response?response.status():0)!==200||errors.length||bad)failed=true;report.push({name,http:response?response.status():0,errors,state});console.log('RECOVERY_POSTDEPLOY',name,JSON.stringify({http:response?response.status():0,errors:errors.length,state}));await context.close()}
+          for(const [name,width,height] of views){const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e).slice(0,500)));let cssHits=0,jsHits=0;if(prMode)await page.route('**/poisk-turov-test/v2/bundle-v1.php?**',async route=>{const type=new URL(route.request().url()).searchParams.get('type');if(type==='css'){cssHits++;return route.fulfill({status:200,contentType:'text/css',body:css})}if(type==='js'){jsHits++;return route.fulfill({status:200,contentType:'application/javascript',body:js})}return route.continue()});const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});await page.waitForTimeout(4500);
+          const state=await page.evaluate(async()=>{const form=document.getElementById('tourSearch'),status=document.getElementById('status');if(!form||!status||!window.V2SearchProgressUXV1)return{ready:false};const from=form.querySelector('[name="dateFrom"]'),to=form.querySelector('[name="dateTo"]'),nf=form.querySelector('[name="daysFrom"]'),nt=form.querySelector('[name="daysTill"]'),submit=form.querySelector('.search-submit');from.value='2026-09-10';to.value='2026-09-12';nf.value='7';nt.value='9';let starts=0;window.addEventListener('v2:search-started',()=>starts++);dispatchEvent(new CustomEvent('v2:search-started'));const started={copy:String(status.textContent||'').replace(/\s+/g,' ').trim(),bar:!!status.querySelector('[role="progressbar"]'),now:status.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')};dispatchEvent(new CustomEvent('v2:search-progress',{detail:{progress:47}}));const progress={now:status.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')};dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items:[]}}));const empty={buttons:[...status.querySelectorAll('button')].map(b=>b.className),copy:String(status.textContent||'').replace(/\s+/g,' ').trim()};starts=0;status.querySelector('.search-progress-relax-dates')?.click();await new Promise(r=>setTimeout(r,80));const dates={from:from.value,to:to.value,starts,focused:document.activeElement===submit,expanded:!form.classList.contains('mobile-search-collapsed'),adjusted:String(status.textContent||'').includes('Даты расширены на 2 дня')};from.value='2026-09-10';to.value='2026-09-12';nf.value='7';nt.value='9';dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items:[]}}));starts=0;status.querySelector('.search-progress-relax-nights')?.click();await new Promise(r=>setTimeout(r,80));const nights={from:nf.value,to:nt.value,starts,focused:document.activeElement===submit,expanded:!form.classList.contains('mobile-search-collapsed'),adjusted:String(status.textContent||'').includes('Диапазон ночей расширен')};dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items:[]}}));status.querySelector('.search-progress-filters')?.click();await new Promise(r=>setTimeout(r,80));const filters={open:!!form.querySelector('details.extras')?.open,expanded:!form.classList.contains('mobile-search-collapsed')};dispatchEvent(new CustomEvent('v2:search-error',{detail:{phase:'start',error:{code:'TEST'}}}));const error={role:status.querySelector('.search-progress-error')?.getAttribute('role')||'',retry:!!status.querySelector('.search-progress-retry')};return{ready:true,started,progress,empty,dates,nights,filters,error,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2};});
+          await page.screenshot({path:`search-recovery-postdeploy-artifacts/${name}.png`,fullPage:true});const required=['search-progress-relax-dates','search-progress-relax-nights','search-progress-edit','search-progress-filters'];const bad=!state.ready||!state.started.bar||state.started.now!=='6'||!state.started.copy.includes('Ищем лучшие варианты')||state.progress.now!=='47'||!state.empty.copy.includes('туров не нашли')||required.some(c=>!state.empty.buttons.includes(c))||state.dates.from!=='2026-09-08'||state.dates.to!=='2026-09-14'||state.dates.starts!==0||!state.dates.focused||!state.dates.expanded||!state.dates.adjusted||state.nights.from!=='6'||state.nights.to!=='10'||state.nights.starts!==0||!state.nights.focused||!state.nights.expanded||!state.nights.adjusted||!state.filters.open||!state.filters.expanded||state.error.role!=='alert'||!state.error.retry||state.overflow||(prMode&&(cssHits!==1||jsHits!==1));if((response?response.status():0)!==200||errors.length||bad)failed=true;report.push({name,http:response?response.status():0,errors,prMode,cssHits,jsHits,state});console.log('RECOVERY_AUDIT',name,JSON.stringify({http:response?response.status():0,errors:errors.length,prMode,cssHits,jsHits,state}));await context.close()}
           fs.writeFileSync('search-recovery-postdeploy-artifacts/report.json',JSON.stringify(report,null,2));await browser.close();if(failed)process.exit(1)})().catch(e=>{console.error(e);process.exit(1)});
           JS
           node search-recovery-postdeploy.cjs
-      - name: Upload production recovery evidence
+      - name: Upload recovery evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v2-search-recovery-postdeploy-${{ github.event.workflow_run.id || github.run_id }}
+          name: v2-search-recovery-${{ github.event.workflow_run.id || github.run_id }}
           path: search-recovery-postdeploy-artifacts/
           retention-days: 14
