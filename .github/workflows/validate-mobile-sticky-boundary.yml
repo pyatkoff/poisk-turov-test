@@ -6,6 +6,7 @@ on:
     paths:
       - 'v2/mobile-search-summary-v1.js'
       - 'v2/mobile-search-summary-v1.css'
+      - 'v2/search-progress-ux-v1.css'
       - '.github/workflows/validate-mobile-sticky-boundary.yml'
   workflow_dispatch:
 
@@ -18,6 +19,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Verify mobile summary/progress stacking contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F '.mobile-search-summary:not([hidden])+.status:has(.search-progress-ux:not(.search-progress-done)){top:max(68px,calc(64px + env(safe-area-inset-top)))}' v2/search-progress-ux-v1.css
       - name: Install Playwright Chromium
         shell: bash
         run: |
