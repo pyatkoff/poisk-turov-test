@@ -21,7 +21,7 @@ jobs:
       - name: PHP syntax
         run: |
           set -euo pipefail
-          for f in v2/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php; do
+          for f in v2/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php v2/seo-config.php; do
             php -l "$f"
           done
       - name: Render without Bitrix at domain root
@@ -40,6 +40,10 @@ jobs:
             if (strpos($html, "leadApi:\"/lead-adapter-v2.php\"") === false) exit(12);
             if (strpos($html, "bundle-v1.php?type=css") === false) exit(13);
             if (strpos($html, "privacyUrl:\"https://anytour.online/politika-konfidentsialnosti/\"") === false) exit(14);
+            if (strpos($html, "<link rel=\"canonical\" href=\"https://anytoour.ru/\"") === false) exit(15);
+            if (strpos($html, "content=\"noindex,follow,max-image-preview:large\"") === false) exit(16);
+            if (strpos($html, "https://schema.org") === false || strpos($html, "TravelAgency") === false || strpos($html, "WebSite") === false) exit(17);
+            if (strpos($html, "property=\"og:url\" content=\"https://anytoour.ru/\"") === false) exit(18);
             echo "STANDALONE_ROOT_RENDER_OK\n";
           '
       - name: Preserve legacy subdirectory paths
@@ -55,8 +59,21 @@ jobs:
             if (strpos($html, "api:\"/poisk-turov-test/v2/api-v2.php\"") === false) exit(20);
             if (strpos($html, "leadApi:\"/poisk-turov-test/v2/lead-adapter-v2.php\"") === false) exit(21);
             if (strpos($html, "privacyUrl:\"/politika-konfidentsialnosti/\"") === false) exit(22);
+            if (strpos($html, "content=\"noindex,follow,max-image-preview:large\"") === false) exit(23);
             echo "LEGACY_PATH_COMPAT_OK\n";
           '
+      - name: Validate SEO launch scaffold
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'Sitemap: https://anytoour.ru/sitemap.xml' v2/robots.txt
+          grep -Fq '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' v2/sitemap.xml
+          if grep -Fq '<url>' v2/sitemap.xml; then
+            echo 'Sitemap must stay empty while the site is noindex' >&2
+            exit 30
+          fi
+          grep -Fq "return !empty(\$siteParams['SEO_INDEXABLE']);" v2/seo-config.php
+          echo "SEO_LAUNCH_SCAFFOLD_OK"
       - name: Keep standalone shell assets and full-site links reachable
         shell: bash
         run: |
