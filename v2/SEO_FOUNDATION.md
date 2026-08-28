@@ -17,11 +17,22 @@ The live guard in `.github/workflows/validate-v2-seo-foundation.yml` protects th
 
 ## Reusable public-page shell
 
-BR4 now treats site chrome as reusable server-rendered architecture rather than one-off search-page markup. `site-footer-v1.php` is a route-independent semantic footer partial with verified first-party AnyTour navigation, contact access and purchase/help links; `site-footer-v1.css` owns its responsive presentation.
+BR4 treats site chrome as reusable server-rendered architecture rather than one-off search-page markup. `site-footer-v1.php` is a route-independent semantic footer partial with verified first-party AnyTour navigation, contact access and purchase/help links; `site-footer-v1.css` owns its responsive presentation.
 
 The footer deliberately contains no guessed social/app destinations. BR5 may extend it only after the exact supplied MAX/Telegram/VK/App Store/Google Play URLs are recovered and verified.
 
 The SEO live guard requires the semantic footer and its internal-link set after deployment. This creates a reusable page-shell boundary without changing the temporary route's indexing policy or coupling future landing pages to transient search state.
+
+## Reusable content primitives
+
+`seo-page-primitives-v1.php` defines route-independent, server-rendered building blocks for future indexable country/resort/seasonal pages without publishing any new route yet:
+
+- semantic breadcrumbs with first-party links only;
+- editorial H2 + paragraph sections with escaped text content;
+- related-destination/internal-link groups restricted to first-party paths;
+- an allowlisted search-handoff URL builder so a stable landing page can prefill V2 search without turning arbitrary search state into the landing URL architecture.
+
+`.github/workflows/validate-v2-seo-primitives.yml` protects escaping, semantic markup, first-party link boundaries and the handoff allowlist. These helpers are intentionally not mounted into the current development route merely to manufacture SEO content.
 
 ## Dynamic result/detail boundary
 
@@ -49,7 +60,7 @@ Before promotion:
 
 SEO growth should use stable, editorially meaningful landing URLs rather than raw search-state permutations. Suitable page types include country, resort/region, seasonal and other curated destination pages where the page has unique intent and useful static content.
 
-The next route-independent BR4 layer should define reusable server-visible content primitives for those page types (breadcrumbs, editorial intro/body sections, related-destination/internal-link groups and search-prefill handoff) without yet publishing indexable pages or deciding the final route mount.
+The next BR4 layer after the generic primitives should define a reusable page data contract/template that composes metadata, breadcrumbs, editorial sections, related links and a search-prefill handoff, still without making the temporary V2 route indexable or choosing the final public mount point.
 
 An indexable landing page may deep-link or prefill the V2 search experience, but the landing URL and the transient search state are separate concepts. Do not create an indexable URL for every combination of dates, nights, adults, price, meal, hotel rating, operator or flight filters.
 
