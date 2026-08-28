@@ -2,7 +2,7 @@
 if(window.V2SearchProgressUXV1)return;
 const status=document.getElementById('status');if(!status)return;
 let renderedCount=0;
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function countRendered(){return renderedCount;}
 function render(progress,title,note,done){const p=Math.max(0,Math.min(100,Number(progress)||0));status.hidden=false;status.innerHTML='<div class="search-progress-ux'+(done?' search-progress-done':'')+'"><div class="search-progress-head"><strong>'+esc(title)+'</strong><span>'+(done?'Готово':p+'%')+'</span></div><div class="search-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+p+'"><div class="search-progress-bar" style="width:'+p+'%"></div></div>'+(note?'<div class="search-progress-note">'+esc(note)+'</div>':'')+'</div>';}
 function renderEmpty(){status.hidden=false;status.innerHTML='<div class="search-progress-empty" role="status"><div class="search-progress-empty-copy"><strong>По этим условиям туров не нашли</strong><span>Попробуйте изменить даты, курорт, питание или дополнительные фильтры — ваши текущие параметры останутся на месте.</span></div><div class="search-progress-empty-actions"><button type="button" class="search-progress-edit">Изменить условия</button><button type="button" class="search-progress-filters">Открыть фильтры</button></div></div>';}
