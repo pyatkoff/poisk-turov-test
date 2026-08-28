@@ -3,6 +3,20 @@
 require_once __DIR__ . '/asset-version-v1.php';
 require_once __DIR__ . '/bundle-manifest-v1.php';
 
+function v2_public_base_path(): string
+{
+    $script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
+    $dir = str_replace('\\', '/', dirname($script));
+    if ($dir === '.' || $dir === '/' || $dir === '') return '';
+    return '/' . trim($dir, '/');
+}
+
+function v2_public_path(string $file): string
+{
+    $name = ltrim($file, '/');
+    return v2_public_base_path() . '/' . $name;
+}
+
 function v2_asset(string $file): string
 {
     $name = basename($file);
@@ -11,7 +25,7 @@ function v2_asset(string $file): string
     }
     $path = __DIR__ . '/' . $name;
     $version = v2_asset_content_version($path);
-    return '/poisk-turov-test/v2/' . rawurlencode($name) . '?v=' . rawurlencode($version);
+    return v2_public_path(rawurlencode($name)) . '?v=' . rawurlencode($version);
 }
 
 function v2_bundle_content_version(string $type): string
@@ -30,7 +44,7 @@ function v2_bundle_asset(string $type): string
 {
     $manifest = v2_bundle_manifest();
     if (!isset($manifest[$type])) throw new InvalidArgumentException('Invalid V2 bundle type');
-    $url = '/poisk-turov-test/v2/bundle-v1.php?type=' . rawurlencode($type) . '&v=' . rawurlencode(v2_bundle_content_version($type));
+    $url = v2_public_path('bundle-v1.php') . '?type=' . rawurlencode($type) . '&v=' . rawurlencode(v2_bundle_content_version($type));
     // Keep source-closure names visible to legacy production verification without creating requests.
     if ($type === 'js') $url .= '#' . implode(',', array_map('rawurlencode', $manifest['js']));
     return $url;

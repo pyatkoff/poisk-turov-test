@@ -1,0 +1,57 @@
+name: Validate anytoour.ru standalone
+
+on:
+  pull_request:
+    paths:
+      - 'v2/**'
+      - '.github/workflows/validate-anytoour-standalone.yml'
+      - '.github/workflows/deploy-anytoour.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/validate-anytoour-standalone.yml'
+      - '.github/workflows/deploy-anytoour.yml'
+
+jobs:
+  standalone:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          set -euo pipefail
+          for f in v2/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php; do
+            php -l "$f"
+          done
+      - name: Render without Bitrix at domain root
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/empty-document-root
+          php -d display_errors=1 -r '
+            $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
+            $_SERVER["SCRIPT_NAME"]="/index.php";
+            $_SERVER["HTTP_HOST"]="anytoour.ru";
+            $_GET=[];
+            ob_start(); include "v2/index.php"; $html=ob_get_clean();
+            if (strpos($html, "window.V2_CONFIG") === false) exit(10);
+            if (strpos($html, "api:\"/api-v2.php\"") === false) exit(11);
+            if (strpos($html, "leadApi:\"/lead-adapter-v2.php\"") === false) exit(12);
+            if (strpos($html, "bundle-v1.php?type=css") === false) exit(13);
+            echo "STANDALONE_ROOT_RENDER_OK\n";
+          '
+      - name: Preserve legacy subdirectory paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -d display_errors=1 -r '
+            $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
+            $_SERVER["SCRIPT_NAME"]="/poisk-turov-test/v2/index.php";
+            $_SERVER["HTTP_HOST"]="anytour.online";
+            $_GET=[];
+            ob_start(); include "v2/index.php"; $html=ob_get_clean();
+            if (strpos($html, "api:\"/poisk-turov-test/v2/api-v2.php\"") === false) exit(20);
+            if (strpos($html, "leadApi:\"/poisk-turov-test/v2/lead-adapter-v2.php\"") === false) exit(21);
+            echo "LEGACY_PATH_COMPAT_OK\n";
+          '
