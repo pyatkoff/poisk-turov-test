@@ -30,19 +30,33 @@ jobs:
           print('SESSID_PRESENT='+('yes' if token else 'no'))
           print('SESSID_LEN='+str(len(token)))
           open('/tmp/sessid','w').write(token)
+          count=0
+          for line in open('/tmp/legacy-cookie.txt',encoding='utf-8',errors='replace'):
+              raw=line.rstrip('\n')
+              httponly=False
+              if raw.startswith('#HttpOnly_'):
+                  raw=raw[len('#HttpOnly_'):]
+                  httponly=True
+              elif raw.startswith('#') or not raw.strip():
+                  continue
+              parts=raw.split('\t')
+              if len(parts) < 7:
+                  continue
+              domain,flag,path,secure,expires,name,value=parts[:7]
+              count+=1
+              print(f'COOKIE_META name={name} domain={domain} path={path} secure={secure} httponly={"yes" if httponly else "no"} value_len={len(value)}')
+          print('COOKIE_COUNT='+str(count))
           PY
-          echo "COOKIE_FILE_LINES=$(grep -cv '^#' "$jar" || true)"
-          echo "COOKIE_NAMES=$(awk 'BEGIN{ORS=","} !/^#/ && NF>=7 {print $6}' "$jar" | sed 's/,$//')"
           sessid="$(cat /tmp/sessid)"
           test -n "$sessid"
           payload="$(python3 -c 'import json,sys;print(json.dumps({"consent":False,"sessid":sys.argv[1]},separators=(",",":")))' "$sessid")"
-          code="$(curl -sS --max-time 45 -c "$jar" -b "$jar" -o /tmp/post.json -w '%{http_code}' \
+          code="$(curl -v -sS --max-time 45 -c "$jar" -b "$jar" -o /tmp/post.json -w '%{http_code}' \
             -H 'Content-Type: application/json' \
             -H 'Origin: https://anytour.online' \
             -H 'Referer: https://anytour.online/poisk-turov-test/v2/' \
-            --data "$payload" "$lead")"
+            --data "$payload" "$lead" 2>/tmp/curl-verbose.txt)"
+          echo "COOKIE_HEADER_SENT=$(grep -q '^> Cookie:' /tmp/curl-verbose.txt && echo yes || echo no)"
           echo "ROUNDTRIP_HTTP=$code"
-          cat /tmp/post.json
-          echo
+          cat /tmp/post.json; echo
           if test "$code" = 422 && grep -q 'Validation failed' /tmp/post.json; then echo ROUNDTRIP_OK; exit 0; fi
           exit 1
