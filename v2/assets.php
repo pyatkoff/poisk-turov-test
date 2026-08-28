@@ -5,6 +5,11 @@ require_once __DIR__ . '/bundle-manifest-v1.php';
 
 function v2_public_base_path(): string
 {
+    if (defined('V2_PUBLIC_BASE_PATH')) {
+        $override = trim((string)V2_PUBLIC_BASE_PATH);
+        return $override === '' || $override === '/' ? '' : '/' . trim($override, '/');
+    }
+
     $script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
     $dir = str_replace('\\', '/', dirname($script));
     if ($dir === '.' || $dir === '/' || $dir === '') return '';
