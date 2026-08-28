@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T22:42:00+02:00",
+  "updated_at": "2026-08-28T23:06:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains 9.0 across all eleven core areas. SEO/site foundation is 8.8 after controlled editorial catalog, hardened publication gates and a route-independent publication-review manifest. BR5 verified social/app footer is shipped. Temporary V2 route remains noindex with no canonical; traffic analysis remains disabled.",
+  "phase": "Core tour-search product remains 9.0 across all eleven core areas. SEO/site foundation remains 8.8 with its public-mount/indexing boundary explicitly deferred. Whole-V2 technical-health audit is active and has just hardened inbound tourist-composition hydration against silent child-age/count coercion. Traffic analysis remains disabled.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -25,19 +25,19 @@
     "seo_site_foundation": 8.8
   },
   "current_task": {
-    "id": "BR4_SEO_SITE_FOUNDATION_REASSESS",
-    "category": "SEO_FOUNDATION",
-    "title": "Reassess remaining material SEO gap after publication manifest",
-    "status": "ACTIVE_WITH_PRODUCT_BOUNDARY",
-    "objective": "Confirm whether any material route-independent SEO/site-foundation work remains. Avoid framework-only abstraction. Preserve current noindex search route and defer public canonical/index/sitemap/schema until a final public mount is explicitly chosen.",
-    "progress": "PR #160/#161/#163 hardened stable-path/publishability and shipped the controlled editorial catalog; #164 shipped verified social/app footer; #166/#168 fixed structured PHONE rendering in footer/header and restored the live SEO bundle contract; #169 added the approved+publishable-only publication review manifest. PR #168 V2-only deploy 33208778983 and PR #169 V2-only deploy 33208974160 both passed validate/copy/verify/live-search smoke.",
-    "next_action": "Re-audit BR4 against the 9/10 gate. If remaining gaps require the final public URL/mount or real production content inventory, keep them explicitly deferred and move immediately to an independent whole-V2/repository health audit for confirmed production/data/UX/responsive issues."
+    "id": "WHOLE_V2_INPUT_STATE_CORRECTNESS_AUDIT",
+    "category": "TECHNICAL_HEALTH",
+    "title": "Continue whole-V2 correctness and UX audit while BR4 public route is deferred",
+    "status": "ACTIVE",
+    "objective": "Audit remaining inbound/search-state hydration boundaries and then re-walk the full V2 journey for confirmed incorrect-data, UX or responsive defects. Preserve product behavior and external contracts; fix only evidence-backed issues.",
+    "progress": "PR #174 fixed invalid inbound child ages being silently coerced/dropped before validation and deployed green via V2-only run 33210597000. PR #176 fixed unsupported inbound child_count values causing visible-vs-sent tourist-composition mismatch and deployed green via V2-only run 33210944930. Both PRs completed all nine pull-request workflows with zero failures. Main release SHA d9d18840af8c3bf659f7b62447b513272a2275a6 has zero failed action runs.",
+    "next_action": "Inspect the remaining URL/search-state hydration parameters and data boundaries, then re-audit search → progress/recovery → results/comparison → selected tour/rooms → flights/price → lead entry. Fix the next confirmed production/data/UX/responsive issue; keep BR4 final public URL/canonical/indexing/content-inventory work deferred until its product boundary is resolved."
   },
   "queue": [
     {"id":"BR1","status":"SHIPPED_MAINTAIN_9","title":"Branded first impression"},
     {"id":"BR2","status":"SHIPPED_MAINTAIN_9","title":"Trust architecture"},
     {"id":"BR3","status":"SHIPPED_MAINTAIN_9","title":"Product-wide visual identity"},
-    {"id":"BR4","status":"ACTIVE_8_8","title":"SEO-ready brand shell and site foundation"},
+    {"id":"BR4","status":"ACTIVE_8_8_PRODUCT_BOUNDARY","title":"SEO-ready brand shell and site foundation"},
     {"id":"BR5","status":"SHIPPED_MAINTAIN","title":"Social + app footer","progress":"Verified MAX, Telegram, VK, App Store and Google Play destinations are live with responsive/link/phone regression coverage."},
     {"id":"PX1","status":"SHIPPED_MAINTAIN_9","title":"Decision support in results"},
     {"id":"PX2","status":"SHIPPED_MAINTAIN_9","title":"Flexible search and recovery"},
@@ -66,14 +66,28 @@
     "next_missing_layers": ["real_curated_production_content_inventory","final_public_mount_and_url","canonical_indexing_policy","sitemap_publication","structured_data_after_real_public_pages"]
   },
   "production_baseline": {
-    "last_verified_commit": "29cc99b59e156d6ad2e6c7c64eff5eb8d2496caa",
-    "deploy_v2": 33208974160,
+    "last_verified_commit": "d9d18840af8c3bf659f7b62447b513272a2275a6",
+    "deploy_v2": 33210944930,
     "deploy_validate": true,
     "deploy_copy": true,
     "deploy_verify": true,
     "live_search_smoke": true,
     "status": "PRODUCTION_GREEN"
   },
+  "recent_material_fixes": [
+    {
+      "pr": 174,
+      "scope": "inbound_child_age_hydration",
+      "result": "Invalid child ages are preserved as invalid state and blocked instead of being silently coerced to age 0 or dropped.",
+      "deploy_v2": 33210597000
+    },
+    {
+      "pr": 176,
+      "scope": "inbound_child_count_hydration",
+      "result": "Unsupported child counts and child-count/age-control mismatches are blocked instead of sending a different tourist composition than the URL/UI represents.",
+      "deploy_v2": 33210944930
+    }
+  ],
   "blocked": [],
   "deferred": [
     {"scope":"traffic/conversion analysis","reason":"Explicitly disabled until owner launches traffic."},
