@@ -51,9 +51,10 @@
   .primary-search-flow>.field>span,.dates-ux>span,.nights-ux>span,.guests-ux>span{margin-bottom:5px}
   .primary-search-flow>.field>select,.primary-search-flow>.field>input,.dates-picker summary,.guests-picker summary{height:52px!important}
   .stars-quick{height:auto;grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible;padding:1px 0}
-  .nights-quick{height:auto;grid-template-columns:repeat(5,minmax(92px,1fr));overflow-x:auto;padding:1px 0 4px;scrollbar-width:none}.nights-quick::-webkit-scrollbar{display:none}
+  .nights-quick{height:auto;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;padding:1px 0}
   .stars-choice,.nights-choice{min-height:46px}
   .stars-choice{min-width:0;padding:0 4px;font-family:inherit;font-size:12px;white-space:nowrap}
+  .nights-choice{min-width:0;padding:0 8px;font-family:inherit;font-size:12px;white-space:nowrap}
   .dates-panel{grid-template-columns:1fr}.dates-hint{grid-column:1}
   .search-section-title small{display:none}
   .search-card{padding-bottom:22px}
