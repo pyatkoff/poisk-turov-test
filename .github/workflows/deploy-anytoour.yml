@@ -22,7 +22,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in v2/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/lead-receiver-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php; do
+          for f in v2/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/lead-receiver-v1.php v2/lead-adapter-v2.php v2/lead-price-v1.php v2/lead-idempotency-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php; do
             php -l "$f" >/dev/null
           done
           mapfile -t assets < <(grep -oE "v2_asset\('[^']+\.js'\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\1/" | sort -u)
@@ -74,12 +74,23 @@ jobs:
           chmod 600 "$RUNNER_TEMP/anytoour-config.php"
           php -l "$RUNNER_TEMP/anytoour-config.php" >/dev/null
 
-          scp "${opts[@]}" v2/lead-receiver-v1.php "$remote:$old_root/lead-receiver-v1.php"
+          # The receiver includes the adapter in-process, so deploy the complete
+          # compatible lead runtime together. Updating only the receiver can pair
+          # it with an older adapter that still reads php://input and rejects the
+          # internally-added Bitrix sessid.
+          scp "${opts[@]}" \
+            v2/lead-receiver-v1.php \
+            v2/lead-adapter-v2.php \
+            v2/lead-price-v1.php \
+            v2/lead-idempotency-v1.php \
+            "$remote:$old_root/"
           ssh "${opts[@]}" "$remote" '
             set -euo pipefail
             root="$HOME/www/anytour.online/poisk-turov-test/v2"
-            php -l "$root/lead-receiver-v1.php" >/dev/null
-            chmod 644 "$root/lead-receiver-v1.php"
+            for f in lead-receiver-v1.php lead-adapter-v2.php lead-price-v1.php lead-idempotency-v1.php; do
+              php -l "$root/$f" >/dev/null
+              chmod 644 "$root/$f"
+            done
             if ! test -s "$root/.anytoour-bridge-secret"; then
               umask 077
               openssl rand -hex 32 > "$root/.anytoour-bridge-secret"
