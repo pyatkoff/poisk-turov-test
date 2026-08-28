@@ -7,6 +7,7 @@ on:
       - 'v2/home-v1.php'
       - 'v2/form-defaults.php'
       - 'v2/poisk-turov/**'
+      - 'v2/header-current-site.js'
       - '.github/workflows/validate-home-search-handoff.yml'
 
 permissions:
@@ -25,6 +26,7 @@ jobs:
           php -l v2/home-v1.php >/dev/null
           php -l v2/home-entry-v1.php >/dev/null
           php -l v2/poisk-turov/index.php >/dev/null
+          node --check v2/header-current-site.js
           mkdir -p /tmp/empty-document-root
           php -d display_errors=1 -r '
             $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
@@ -42,4 +44,5 @@ jobs:
             if (preg_match("~href=\\\"/(country|hot|contacts|how-to-buy)/~", $html)) exit(17);
           '
           grep -Fq "nightsTill.value=nights.value" v2/home-v1.php
+          grep -Fq "if(standalone&&path==='/poisk-turov/')return path;" v2/header-current-site.js
           echo HOME_SEARCH_HANDOFF_OK
