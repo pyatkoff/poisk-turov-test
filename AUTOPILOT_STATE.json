@@ -1,69 +1,29 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T18:12:00+02:00",
+  "updated_at": "2026-08-28T18:21:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Pre-traffic product development. BR3 PR #130 is production-green and provides sufficient whole-flow evidence to move visual_quality to 9.0. The next priority is the tied 8.9 UX group, starting with Waiting/progress/recovery because it has the clearest remaining explicit dead-end/recovery gap.",
-  "release_gate": {
-    "minimum_score_each_area": 9.0,
-    "traffic_required": false,
-    "traffic_analysis_enabled": false,
-    "areas": ["search_ux","waiting_progress_recovery","results_comparison","selected_tour","flights_price","lead_ux","mobile_ux","tablet_desktop_ux","brand_trust","visual_quality","product_differentiation","seo_site_foundation"]
-  },
-  "scores": {
-    "search_ux": 8.9,
-    "waiting_progress_recovery": 8.9,
-    "results_comparison": 9.0,
-    "selected_tour": 9.0,
-    "flights_price": 9.0,
-    "lead_ux": 9.0,
-    "mobile_ux": 8.9,
-    "tablet_desktop_ux": 8.9,
-    "brand_trust": 8.9,
-    "visual_quality": 9.0,
-    "product_differentiation": 9.0,
-    "seo_site_foundation": 7.2
-  },
-  "current_task": {
-    "id": "PX2",
-    "category": "UX_RECOVERY",
-    "title": "Waiting, progress and explicit recovery",
-    "status": "ACTIVE",
-    "objective": "Audit zero/stale-result dead ends and improve explicit user-controlled recovery without silently broadening criteria or changing external contracts.",
-    "progress": "Structured progress ownership and explicit zero-result date recovery are production-green. BR3 PR #130 also aligned recovery control hierarchy visually.",
-    "next_action": "Inspect fresh main/open PRs/CI, then audit zero/stale recovery on mobile/intermediate/desktop. Verify whether explicit nights/filter alternatives materially reduce dead ends. Implement only a confirmed safe recovery improvement; otherwise move immediately to the next tied 8.9 area."
-  },
+  "phase": "Pre-traffic product development. PX2 PR #132 is production-green and closes the explicit zero-result duration-recovery gap, moving waiting_progress_recovery to 9.0. The next tied 8.9 priority is Mobile UX with a complete 375/430 journey audit.",
+  "release_gate": {"minimum_score_each_area":9.0,"traffic_required":false,"traffic_analysis_enabled":false,"areas":["search_ux","waiting_progress_recovery","results_comparison","selected_tour","flights_price","lead_ux","mobile_ux","tablet_desktop_ux","brand_trust","visual_quality","product_differentiation","seo_site_foundation"]},
+  "scores": {"search_ux":8.9,"waiting_progress_recovery":9.0,"results_comparison":9.0,"selected_tour":9.0,"flights_price":9.0,"lead_ux":9.0,"mobile_ux":8.9,"tablet_desktop_ux":8.9,"brand_trust":8.9,"visual_quality":9.0,"product_differentiation":9.0,"seo_site_foundation":7.2},
+  "current_task": {"id":"MOBILE_AUDIT","category":"MOBILE_UX","title":"Full-flow mobile UX audit","status":"ACTIVE","objective":"Audit the complete V2 journey at 375/430 and fix only confirmed small-screen friction without changing protected contracts.","progress":"Mobile visual gates are repeatedly green; BR3 aligned sticky primary controls and PX2 recovery now has mobile 44px actions.","next_action":"Inspect fresh main/open PRs/CI, then audit search, progress/recovery, results/compare, selected tour/rooms, flights/price and lead at 375/430 for overflow, sticky collisions, weak touch targets, excessive vertical cost or unclear hierarchy. Fix confirmed issues only; if none, advance to Search UX."},
   "queue": [
     {"id":"BR1","status":"ACTIVE","title":"Branded first impression","progress":"Grounded AnyTour-specific first-screen proof shipped in PR #123."},
     {"id":"BR2","status":"ACTIVE","title":"Trust architecture","progress":"Grounded first-screen and selected-tour/lead reassurance shipped; remaining work should focus on confirmed cross-stage consistency gaps."},
-    {"id":"BR3","status":"ACTIVE_9_LEVEL","title":"Product-wide visual identity","progress":"PR #128 and PR #130 removed confirmed mixed-generation control defects across search, recovery, results/selected-tour and mobile; production visual evidence is green."},
+    {"id":"BR3","status":"ACTIVE_9_LEVEL","title":"Product-wide visual identity","progress":"PR #128 and #130 removed confirmed mixed-generation control defects; production visual evidence green."},
     {"id":"BR4","status":"QUEUED","title":"SEO-ready brand shell","progress":"Deferred until all core product areas reach 9."},
-    {"id":"BR5","status":"QUEUED","title":"Social + app footer","progress":"Verify previously supplied MAX/Telegram/VK/App Store/Google Play URLs before implementation; keep secondary to primary conversion actions."},
+    {"id":"BR5","status":"QUEUED","title":"Social + app footer","progress":"Verify previously supplied MAX/Telegram/VK/App Store/Google Play URLs before implementation."},
     {"id":"PX1","status":"ACTIVE_9_LEVEL","title":"Decision support in results","progress":"Contextual badges, nearest-price context and lightweight compare shipped."},
-    {"id":"PX2","status":"ACTIVE","title":"Flexible search and recovery","progress":"Structured progress/recovery and explicit zero-result date recovery shipped; current score 8.9 and current priority."},
-    {"id":"PX3","status":"SHIPPED","title":"Price confidence","progress":"PR #125 distinguishes search price from selected-flight price and explains pre-payment reconfirmation; production green."},
+    {"id":"PX2","status":"ACTIVE_9_LEVEL","title":"Flexible search and recovery","progress":"PR #132 adds explicit nights ±1 recovery alongside date ±2/edit/filter; no auto-submit or hidden broadening; production green."},
+    {"id":"PX3","status":"SHIPPED","title":"Price confidence","progress":"PR #125 production green."},
     {"id":"PX4","status":"ACTIVE_9_LEVEL","title":"Flight decision quality","progress":"Grounded flight price and routing tradeoffs shipped."},
-    {"id":"PX5","status":"SHIPPED","title":"Hotel choice depth","progress":"PR #126 adds grounded category/rating/sea/meal/room selected-tour decision summary; production fully green."},
+    {"id":"PX5","status":"SHIPPED","title":"Hotel choice depth","progress":"PR #126 production green."},
     {"id":"PX6","status":"ACTIVE_9_LEVEL","title":"Save compare resume","progress":"Lightweight hotel comparison shipped."},
     {"id":"PX7","status":"RESEARCH","title":"Price watch and return intent","progress":"Deferred because persistence/contact/product-contract choices are required."}
   ],
-  "roadmap": {"file":"PRODUCT_ROADMAP.md","brand_active":true,"competitor_gap_active":true,"wait_for_funnel":false},
-  "production_baseline": {
-    "br3_controls_pr": 130,
-    "last_verified_commit": "930ba5e8492f4e03d8caac80ac0aac60e849871c",
-    "deploy_v2": 33188516514,
-    "deploy_live_search_smoke": 33188516514,
-    "post_deploy_visual": 33188608918,
-    "post_deploy_visual_baseline": 33188608930,
-    "status": "PRODUCTION_GREEN"
-  },
-  "search_progress_contract": {
-    "status":"PRODUCTION_GREEN_PRIMARY_AND_CONTINUE_SEARCH",
-    "progress_ux_owns_status_presentation":true,
-    "continue_search_direct_status_writes":false,
-    "continue_events":["v2:search-continue-started","v2:search-continue-requested","v2:search-continue-progress","v2:search-continued","v2:search-continue-error"],
-    "preserve_existing_results_during_continue":true
-  },
+  "roadmap":{"file":"PRODUCT_ROADMAP.md","brand_active":true,"competitor_gap_active":true,"wait_for_funnel":false},
+  "production_baseline":{"px2_recovery_pr":132,"last_verified_commit":"d7cf26eaa611c4d6308d97b173ff3a01e3d433d0","deploy_v2":33189278816,"deploy_live_search_smoke":33189278816,"post_deploy_visual":33189352264,"post_deploy_visual_baseline":33189352279,"status":"PRODUCTION_GREEN"},
+  "search_progress_contract":{"status":"PRODUCTION_GREEN_PRIMARY_CONTINUE_AND_EXPLICIT_RECOVERY","progress_ux_owns_status_presentation":true,"continue_search_direct_status_writes":false,"continue_events":["v2:search-continue-started","v2:search-continue-requested","v2:search-continue-progress","v2:search-continued","v2:search-continue-error"],"preserve_existing_results_during_continue":true,"zero_result_recovery":{"date_expand_days":2,"night_expand_each_side":1,"auto_submit":false,"manual_edit":true,"filters":true}},
   "blocked": [],
   "deferred": [
     {"scope":"traffic/conversion analysis","reason":"Explicitly disabled until owner launches traffic after product reaches the required quality level."},
@@ -71,22 +31,6 @@
     {"scope":"BR5 app/social destinations","reason":"Implementation may proceed only after exact previously supplied external URLs are recovered and verified; do not guess destinations."},
     {"scope":"global nginx/server configuration","reason":"Outside allowed V2/repository write scope."}
   ],
-  "protected": {
-    "other_projects":"DO_NOT_MODIFY",
-    "global_site_assets_and_server_config":"DO_NOT_MODIFY_OUTSIDE_ALLOWED_V2_SCOPE",
-    "logo":"DO_NOT_CHANGE",
-    "metrika_configuration":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "metrika_goals":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "lead_sending_mechanism":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL"
-  },
-  "continuation_policy": {
-    "priority":"production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > weakest_sub9_score > brand_product_roadmap > cosmetic_refactor",
-    "on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success":"continue_to_next_safe_material_task",
-    "on_blocker":"record_blocker_and_continue_independent_safe_work",
-    "on_visual_change":"validate_required_viewports_before_advancing",
-    "on_no_traffic":"ignore_as_expected_and_continue_product_development",
-    "on_score_below_9":"prioritize_weakest_material_area",
-    "on_score_at_least_9":"move_to_next_weakest_area"
-  }
+  "protected":{"other_projects":"DO_NOT_MODIFY","global_site_assets_and_server_config":"DO_NOT_MODIFY_OUTSIDE_ALLOWED_V2_SCOPE","logo":"DO_NOT_CHANGE","metrika_configuration":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","metrika_goals":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","lead_sending_mechanism":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL"},
+  "continuation_policy":{"priority":"production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > weakest_sub9_score > brand_product_roadmap > cosmetic_refactor","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_ci_success":"continue_to_next_safe_material_task","on_blocker":"record_blocker_and_continue_independent_safe_work","on_visual_change":"validate_required_viewports_before_advancing","on_no_traffic":"ignore_as_expected_and_continue_product_development","on_score_below_9":"prioritize_weakest_material_area","on_score_at_least_9":"move_to_next_weakest_area"}
 }
