@@ -50,16 +50,17 @@ jobs:
           required_links=['/country/','/poisk-turov/','/hot/','/contacts/']
           for href in required_links:
               if not re.search(r'href=["\']'+re.escape(href)+r'["\']',text,re.I): fail('internal_link_'+href)
-          footer=re.search(r'<footer\b[^>]*class=["\'][^"\']*v2-site-footer[^"\']*["\'][^>]*>(.*?)</footer>',text,re.I|re.S)
-          if not footer: fail('semantic_footer')
-          footer_html=footer.group(1)
-          if not re.search(r'<nav\b[^>]*aria-label=["\']Разделы AnyTour["\']',footer_html,re.I): fail('footer_nav')
-          for href in ['/country/','/poisk-turov/','/hot/','/rb/','/how-to-buy/','/contacts/']:
-              if not re.search(r'href=["\']'+re.escape(href)+r'["\']',footer_html,re.I): fail('footer_link_'+href)
+          if re.search(r'<footer\b[^>]*class=["\'][^"\']*v2-site-footer',text,re.I): fail('duplicate_v2_footer')
+          community=re.search(r'<section\b[^>]*class=["\'][^"\']*v2-site-community[^"\']*["\'][^>]*>(.*?)</section>',text,re.I|re.S)
+          if not community: fail('community_block')
+          community_html=community.group(1)
+          for href in ['https://max.ru/anytour','https://t.me/+gGloLUt4d8s3NDcy','https://vk.com/anytour_online','https://play.google.com/store/apps/details?id=online.anytour']:
+              if href not in community_html: fail('community_link_'+href)
+          if 'apps.apple.com/ru/app/' not in community_html: fail('community_link_app_store')
           if not re.search(r'<link\b[^>]*id=["\']v2-primary-search-ux-style["\'][^>]*rel=["\']stylesheet["\']',text,re.I): fail('bundled_stylesheet_link')
           for marker in ['results-renderer-v5.js','tour-controller-v4.js','lead-form-guard-v1.js']:
               if marker not in text: fail('active_marker_'+marker)
-          print('V2_SEO_FOUNDATION_OK title=1 description=1 robots=noindex_follow h1=1 internalLinks='+str(len(required_links))+' semanticFooter=1 bundledStyle=1 canonical=absent')
+          print('V2_SEO_FOUNDATION_OK title=1 description=1 robots=noindex_follow h1=1 internalLinks='+str(len(required_links))+' duplicateV2Footer=0 communityBlock=1 bundledStyle=1 canonical=absent')
           PY
 
       - name: Validate search-state URLs stay non-indexable
