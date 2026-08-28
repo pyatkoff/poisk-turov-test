@@ -40,6 +40,7 @@ jobs:
         shell: bash
         env:
           ROOT_URL: https://anytoour.ru/
+          PR_PREVIEW: ${{ github.event_name == 'pull_request' && '1' || '0' }}
         run: |
           set -euo pipefail
           mkdir -p anytoour-root-visual
@@ -54,6 +55,7 @@ jobs:
             ['desktop-1440',1440,1000],
           ];
           const url = process.env.ROOT_URL;
+          const prPreview = process.env.PR_PREVIEW === '1';
           function fail(name, message){ throw new Error(`${name}: ${message}`); }
           (async()=>{
             const browser=await chromium.launch({headless:true});
@@ -68,6 +70,7 @@ jobs:
                 if(!response || response.status()!==200) fail(name,`root HTTP ${response&&response.status()}`);
                 await page.waitForFunction(()=>window.V2_CONFIG && document.querySelector('.search-card') && document.querySelector('.main-fields .nights-ux'),null,{timeout:20000});
                 await page.waitForTimeout(1800);
+                if(prPreview) await page.addStyleTag({path:'v2/br3-control-consistency-v1.css'});
                 await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}html{scroll-behavior:auto!important}'});
 
                 const initial=await page.evaluate(()=>{
@@ -116,7 +119,7 @@ jobs:
                 }
 
                 if(pageErrors.length) fail(name,`page errors: ${pageErrors.join(' | ')}`);
-                report.push({name,width,height,initial});
+                report.push({name,width,height,initial,prPreview});
                 await context.close();
               }
             } finally { await browser.close(); }
