@@ -20,7 +20,7 @@ function receiver_out(array $data, int $status = 200): void
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    receiver_out(['ok' => true, 'receiver' => 'anytoour-hmac-bitrix-session', 'version' => 1]);
+    receiver_out(['ok' => true, 'receiver' => 'anytoour-hmac-bitrix-session', 'version' => 2]);
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') receiver_out(['ok' => false, 'error' => 'Method not allowed'], 405);
 if (stripos((string)($_SERVER['CONTENT_TYPE'] ?? ''), 'application/json') !== 0) receiver_out(['ok' => false, 'error' => 'JSON request required'], 415);
@@ -59,8 +59,11 @@ $ch = curl_init(V2_RECEIVER_TARGET);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_FOLLOWLOCATION => false,
-    CURLOPT_CONNECTTIMEOUT => 10,
-    CURLOPT_TIMEOUT => 35,
+    CURLOPT_CONNECTTIMEOUT => 5,
+    CURLOPT_TIMEOUT => 20,
+    // Keep the canonical HTTPS hostname/SNI while avoiding a public hairpin
+    // from the legacy server back to itself.
+    CURLOPT_RESOLVE => ['anytour.online:443:127.0.0.1'],
     CURLOPT_POST => true,
     CURLOPT_POSTFIELDS => $forwardBody,
     CURLOPT_HTTPHEADER => [
@@ -70,7 +73,7 @@ curl_setopt_array($ch, [
         'Referer: ' . V2_RECEIVER_REFERER,
         'Cookie: ' . $sessionName . '=' . $sessionId,
     ],
-    CURLOPT_USERAGENT => 'AnytoourLeadReceiver/1.0',
+    CURLOPT_USERAGENT => 'AnytoourLeadReceiver/2.0',
 ]);
 $body = curl_exec($ch);
 $errno = curl_errno($ch);
