@@ -22,21 +22,32 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in v2/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/lead-receiver-v1.php v2/lead-adapter-v2.php v2/lead-price-v1.php v2/lead-idempotency-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php; do
+          for f in v2/index.php v2/home-entry-v1.php v2/home-v1.php v2/poisk-turov/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/lead-receiver-v1.php v2/lead-adapter-v2.php v2/lead-price-v1.php v2/lead-idempotency-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php v2/seo-config.php; do
             php -l "$f" >/dev/null
           done
           mapfile -t assets < <(grep -oE "v2_asset\('[^']+\.js'\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\1/" | sort -u)
           test "${#assets[@]}" -gt 0
           for asset in "${assets[@]}"; do node --check "v2/$asset"; done
+          grep -Fq "'results-layout-guard-v1.css'" v2/bundle-manifest-v1.php
           mkdir -p /tmp/empty-document-root
           php -d display_errors=1 -r '
             $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
             $_SERVER["SCRIPT_NAME"]="/index.php";
             $_SERVER["HTTP_HOST"]="anytoour.ru";
             $_GET=[];
-            ob_start(); include "v2/index.php"; $html=ob_get_clean();
-            if (strpos($html, "api:\"/api-v2.php\"") === false) exit(11);
-            if (strpos($html, "leadApi:\"/lead-adapter-v2.php\"") === false) exit(12);
+            ob_start(); include "v2/home-entry-v1.php"; $html=ob_get_clean();
+            if (strpos($html, "action=\"/poisk-turov/\"") === false) exit(10);
+            if (strpos($html, "AnyTour — поиск и подбор туров онлайн") === false) exit(11);
+          '
+          php -d display_errors=1 -r '
+            $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
+            $_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php";
+            $_SERVER["HTTP_HOST"]="anytoour.ru";
+            $_GET=[];
+            ob_start(); include "v2/poisk-turov/index.php"; $html=ob_get_clean();
+            if (strpos($html, "api:\"/api-v2.php\"") === false) exit(20);
+            if (strpos($html, "leadApi:\"/lead-adapter-v2.php\"") === false) exit(21);
+            if (strpos($html, "https://anytoour.ru/poisk-turov/") === false) exit(22);
           '
           echo "ANYTOOUR_RELEASE_VALIDATE_OK"
 
@@ -74,9 +85,6 @@ jobs:
           chmod 600 "$RUNNER_TEMP/anytoour-config.php"
           php -l "$RUNNER_TEMP/anytoour-config.php" >/dev/null
 
-          # Receiver and adapter now cooperate in-process. Deploy the complete
-          # compatible lead runtime together so the receiver can never include
-          # an older adapter that still reads the original php://input body.
           scp "${opts[@]}" \
             v2/lead-receiver-v1.php \
             v2/lead-adapter-v2.php \
@@ -121,7 +129,7 @@ jobs:
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$NEW_USER@$NEW_HOST"
           root='~/www/anytoour.ru'
-          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/images"'
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/images" "$HOME/www/anytoour.ru/poisk-turov"'
           scp "${opts[@]}" -r v2/. "$remote:$root/"
           scp "${opts[@]}" "$RUNNER_TEMP/anytoour-config.php" "$remote:$root/config.php"
           scp "${opts[@]}" "$RUNNER_TEMP/anytoour-bridge-secret" "$remote:$root/.anytoour-bridge-secret"
@@ -130,32 +138,39 @@ jobs:
             set -euo pipefail
             root="$HOME/www/anytoour.ru"
             cp "$root/lead-bridge-v1.php" "$root/lead-adapter-v2.php"
+            cp "$root/index.php" "$root/search-page-v2.php"
+            cp "$root/home-entry-v1.php" "$root/index.php"
             chmod 600 "$root/config.php" "$root/.anytoour-bridge-secret"
             chmod 644 "$root/images/logo.svg"
             rm -f "$root/index.html"
-            for f in index.php assets.php api-v2.php lead-adapter-v2.php bundle-v1.php analytics-config.php privacy-config.php; do php -l "$root/$f" >/dev/null; done
+            for f in index.php search-page-v2.php home-entry-v1.php home-v1.php poisk-turov/index.php assets.php api-v2.php lead-adapter-v2.php bundle-v1.php analytics-config.php privacy-config.php seo-config.php; do php -l "$root/$f" >/dev/null; done
             echo "ANYTOOUR_FILES_ACTIVATED"
           '
 
-      - name: Verify public root
+      - name: Verify public pages
         shell: bash
         run: |
           set -euo pipefail
-          page_code="$(curl -fsSL -o /tmp/anytoour.html -w '%{http_code}' --max-time 45 https://anytoour.ru/)"
+          home_code="$(curl -fsSL -o /tmp/anytoour-home.html -w '%{http_code}' --max-time 45 https://anytoour.ru/)"
+          search_code="$(curl -fsSL -o /tmp/anytoour-search.html -w '%{http_code}' --max-time 45 https://anytoour.ru/poisk-turov/)"
           api_code="$(curl -fsSL -o /tmp/anytoour-health.json -w '%{http_code}' --max-time 50 'https://anytoour.ru/api-v2.php?action=health')"
           lead_code="$(curl -fsSL -o /tmp/anytoour-lead-health.json -w '%{http_code}' --max-time 30 https://anytoour.ru/lead-adapter-v2.php)"
-          echo "PAGE=$page_code API=$api_code LEAD=$lead_code"
-          test "$page_code" = "200"
+          echo "HOME=$home_code SEARCH=$search_code API=$api_code LEAD=$lead_code"
+          test "$home_code" = "200"
+          test "$search_code" = "200"
           test "$api_code" = "200"
           test "$lead_code" = "200"
-          grep -q 'Найти тур' /tmp/anytoour.html
-          grep -q 'api:"/api-v2.php"' /tmp/anytoour.html
-          grep -q 'leadApi:"/lead-adapter-v2.php"' /tmp/anytoour.html
-          grep -q 'bundle-v1.php?type=css' /tmp/anytoour.html
+          grep -q 'action="/poisk-turov/"' /tmp/anytoour-home.html
+          grep -q 'AnyTour — поиск и подбор туров онлайн' /tmp/anytoour-home.html
+          grep -q 'Найти тур' /tmp/anytoour-search.html
+          grep -q 'api:"/api-v2.php"' /tmp/anytoour-search.html
+          grep -q 'leadApi:"/lead-adapter-v2.php"' /tmp/anytoour-search.html
+          grep -q 'https://anytoour.ru/poisk-turov/' /tmp/anytoour-search.html
+          grep -q 'bundle-v1.php?type=css' /tmp/anytoour-search.html
           grep -q 'tourvisor-direct' /tmp/anytoour-health.json
           grep -q 'v2-hmac-bridge-bitrix-lead' /tmp/anytoour-lead-health.json
           curl -fsSL --max-time 30 https://anytoour.ru/images/logo.svg | grep -qi '<svg'
-          echo "ANYTOOUR_PUBLIC_ROOT_OK"
+          echo "ANYTOOUR_PUBLIC_PAGES_OK"
 
       - name: Verify lead bridge reaches unchanged production adapter
         shell: bash
