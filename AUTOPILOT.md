@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28 14:11 +02:00
+Updated: 2026-08-28 14:16 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -32,7 +32,13 @@ Scores are product-quality assessments backed by functional and visual evidence,
 
 ## Production baseline
 
-PR #113 is merged/deployed/production-green and activated the Brand/Product roadmap. Earlier production contracts remain protected: V2 bundles, legacy/AI/MAX URL hydration, primary catalog sync, responsive meal visibility, bounded mobile CTA, selected-tour/flight/price behavior and lead transport.
+PR #113 is merged/deployed/production-green and activated the Brand/Product roadmap with PX1.1 contextual result badges.
+
+A subsequent whole-flow audit found a separate UX ownership defect in “Показать ещё варианты”: continue-search directly replaced `#status` with plain text and bypassed structured progress/error UX. PR #115 (`b7f505b8bfe4f751cc7a1f205a35e40a15f23fa7`) is merged/deployed/production-green. Continue-search now emits started/requested/progress/complete/error lifecycle events and `search-progress-ux` owns the presentation. Dedicated regression `33169870927` prevents direct status ownership from returning.
+
+PR #115 verification is green: Security `33169870873`; V2 PR validation `33169870844`; startup bundles `33169870841`; meal visual `33169870848`; trust visual `33169870859`; selected-tour visual `33169870839`; PR visual `33169870843`; baseline `33169870838`; production deploy/live search smoke `33169989018`; result-detail live `33169989056`; post-deploy visual `33170048785`; post-deploy baseline `33170048715`.
+
+Earlier production contracts remain protected: V2 bundles, legacy/AI/MAX URL hydration, primary catalog sync, responsive meal visibility, bounded mobile CTA, selected-tour/flight/price behavior and lead transport.
 
 ## Exact next work order
 
