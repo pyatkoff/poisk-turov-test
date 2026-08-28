@@ -1,0 +1,88 @@
+name: Validate V2 flight tradeoffs
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/flight-price-sync-v1.js'
+      - '.github/workflows/validate-v2-flight-tradeoffs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flight-tradeoffs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Exercise flight comparison at mobile and desktop widths
+        shell: bash
+        env:
+          V2_URL: https://anytour.online/poisk-turov-test/v2/
+        run: |
+          set -euo pipefail
+          cat > ./validate-flight-tradeoffs.cjs <<'JS'
+          const {chromium}=require('playwright');
+          const path=require('path');
+          const script=path.resolve('v2/flight-price-sync-v1.js');
+          const html=`
+            <div class="selected-price"><small>Стоимость</small>100 000 ₽</div>
+            <div class="facts"><div><span>Топливный сбор</span><b>—</b></div></div>
+            <div class="tour-flights"><div class="flight-variants">
+              <div class="flight-variant is-selected"><label class="flight-choice"><input type="radio"><span>Вариант 1</span><b>100 000 ₽</b></label>
+                <div class="flight-segment"><div class="flight-segment-title"><strong>Туда</strong><span>Southwind · 2S172 · B737</span></div><div class="flight-route"><div><span>10.09.2026 · 14:00</span></div></div></div>
+                <div class="flight-segment"><div class="flight-segment-title"><strong>Обратно</strong><span>Southwind · 2S171 · B737</span></div><div class="flight-route"><div><span>17.09.2026 · 09:00</span></div></div></div>
+              </div>
+              <div class="flight-variant"><label class="flight-choice"><input type="radio"><span>Вариант 2</span><b>107 000 ₽</b></label>
+                <div class="flight-segment"><div class="flight-segment-title"><strong>Туда</strong><span>Airline · AB101 · A320</span></div><div class="flight-route"><div><span>10.09.2026 · 08:15</span></div></div></div>
+                <div class="flight-segment"><div class="flight-segment-title"><strong>Пересадка туда</strong><span>Airline · AB202 · A320</span></div><div class="flight-route"><div><span>10.09.2026 · 12:40</span></div></div></div>
+                <div class="flight-segment"><div class="flight-segment-title"><strong>Обратно</strong><span>Airline · AB303 · A320</span></div><div class="flight-route"><div><span>17.09.2026 · 10:00</span></div></div></div>
+              </div>
+              <div class="flight-variant"><label class="flight-choice"><input type="radio"><span>Вариант 3</span><b>112 500 ₽</b></label>
+                <div class="flight-segment"><div class="flight-segment-title"><strong>Туда</strong><span>рейс уточняется</span></div><div class="flight-route"><div><span>время уточняется</span></div></div></div>
+                <div class="flight-segment"><div class="flight-segment-title"><strong>Обратно</strong><span>рейс уточняется</span></div><div class="flight-route"><div><span>время уточняется</span></div></div></div>
+              </div>
+            </div></div>
+            <form class="lead-form"><div class="section-heading"><span>Менеджер получит выбранный тур</span></div></form>`;
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const [name,width,height] of [['mobile',375,812],['desktop',1440,1000]]){
+              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+              const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+              const response=await page.goto(process.env.V2_URL,{waitUntil:'domcontentloaded',timeout:45000}); await page.waitForTimeout(2500);
+              await page.evaluate(markup=>{const root=document.getElementById('selectedTour');root.hidden=false;root.innerHTML=markup;window.V2FlightPriceSync=null;},html);
+              await page.addScriptTag({path:script});
+              await page.evaluate(()=>{window.V2FlightPriceSync.clarifyVariantPrices();window.V2FlightPriceSync.clarifyVariantChoices();});
+              let state=await page.evaluate(()=>({
+                version:window.V2FlightPriceSync.version,
+                facts:[...document.querySelectorAll('.flight-choice-tradeoffs')].map(n=>n.textContent.replace(/\s+/g,' ').trim()),
+                summaries:[...document.querySelectorAll('.flight-choice-summary')].map(n=>n.textContent.replace(/\s+/g,' ').trim()),
+                prices:[...document.querySelectorAll('.flight-choice>b')].map(n=>n.textContent.trim()),
+                overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2
+              }));
+              if(state.version!==2)throw new Error(name+': wrong module version '+state.version);
+              if(!state.facts[0]?.includes('Самая низкая цена')||!state.facts[0]?.includes('Прямой рейс'))throw new Error(name+': cheapest/direct missing '+JSON.stringify(state));
+              if(!state.facts[1]?.includes('+7 000 ₽ к минимальной')||!state.facts[1]?.includes('С пересадкой'))throw new Error(name+': delta/connection missing '+JSON.stringify(state));
+              if(state.facts[2]?.includes('Прямой рейс')||state.facts[2]?.includes('С пересадкой'))throw new Error(name+': unknown flight must not infer routing '+JSON.stringify(state));
+              if(!state.prices.every(p=>p.startsWith('Стоимость тура:')))throw new Error(name+': price clarification missing '+JSON.stringify(state));
+              if(state.overflow)throw new Error(name+': overflow after tradeoffs');
+              await page.evaluate(()=>window.V2FlightPriceSync.sync({price:100000,fuelCharge:0},{price:{value:107000},fuelCharge:{value:2500}},1));
+              state=await page.evaluate(()=>({price:document.querySelector('.selected-price')?.textContent.replace(/\s+/g,' ').trim(),fuelDigits:document.querySelector('.facts b')?.textContent.replace(/[^0-9]/g,''),lead:document.querySelector('.lead-form .section-heading span')?.textContent.trim()}));
+              if(!state.price.includes('+7 000 ₽')||state.fuelDigits!=='2500'||!state.lead.includes('выбранный рейс'))throw new Error(name+': price sync regression '+JSON.stringify(state));
+              if((response&&response.status())!==200||errors.length)throw new Error(name+': page errors '+errors.join(' | '));
+              console.log('FLIGHT_TRADEOFFS_OK',name);
+              await context.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node ./validate-flight-tradeoffs.cjs
