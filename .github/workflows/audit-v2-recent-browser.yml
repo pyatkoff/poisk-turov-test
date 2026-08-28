@@ -7,6 +7,9 @@ on:
       - '.github/workflows/audit-v2-recent-browser.yml'
   schedule:
     - cron: '42 * * * *'
+  workflow_run:
+    workflows: ["Deploy V2 only"]
+    types: [completed]
   workflow_dispatch:
 
 concurrency:
@@ -15,9 +18,12 @@ concurrency:
 
 jobs:
   audit:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Prepare SSH key
         env:
           DEPLOY_SSH_KEY_VALUE: ${{ secrets.DEPLOY_SSH_KEY }}
