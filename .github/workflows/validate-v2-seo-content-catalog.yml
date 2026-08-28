@@ -93,6 +93,13 @@ jobs:
           if (!in_array('missing_intro',$catalog['reports']['/season/new-year/']['errors']??[],true)) fail('thin_error');
           if (($catalog['graph']['/resort/antalya/']['parent']??null)!=='/country/turkey/') fail('graph_passthrough');
 
+          $unstable=$records[1];
+          $unstable['status']='approved';
+          $unstable['data']['breadcrumbs'][1]['href']='/country/turkey/?country=4';
+          $unstableCatalog=v2_seo_content_catalog([$unstable]);
+          if (v2_seo_content_candidate_paths($unstableCatalog)!==[]) fail('unstable_breadcrumb_candidate');
+          if (!in_array('breadcrumb_chain_invalid',$unstableCatalog['reports']['/resort/antalya/']['errors']??[],true)) fail('hardened_breadcrumb_not_applied');
+
           foreach (['Bad ID','x','_bad','bad/id'] as $badId) {
               try { v2_seo_content_id($badId); fail('bad_id_allowed'); }
               catch (InvalidArgumentException $e) {}
@@ -112,5 +119,5 @@ jobs:
               fail('unknown_graph_target_allowed');
           } catch (InvalidArgumentException $e) {}
 
-          echo "V2_SEO_CONTENT_CATALOG_OK ids=1 statuses=1 registry=1 publishability=1 graph=1 candidates=1\n";
+          echo "V2_SEO_CONTENT_CATALOG_OK ids=1 statuses=1 registry=1 publishability=1 stableBreadcrumbs=1 graph=1 candidates=1\n";
           PHP
