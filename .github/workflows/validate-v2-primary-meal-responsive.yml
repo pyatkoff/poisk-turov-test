@@ -60,6 +60,7 @@ jobs:
             console.log('MEAL_1024',JSON.stringify(state));
             await page.screenshot({path:'meal-1024.png',fullPage:true});
             if(state.documentOverflow)throw new Error('document horizontal overflow');
+            if(state.fieldWidth<800)throw new Error('meal block did not expand to the full intermediate row');
             if(state.flexWrap!=='wrap')throw new Error('meal row does not wrap at 1024');
             if(state.wrapScrollWidth>state.wrapClientWidth+2)throw new Error('meal row still horizontally scrolls');
             if(!state.last||state.last.text!=='Без питания'||!state.last.visible)throw new Error('last meal choice is not fully visible');
