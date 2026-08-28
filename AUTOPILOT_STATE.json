@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T23:19:00+02:00",
+  "updated_at": "2026-08-29T00:10:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains 9.0 across all eleven core areas. SEO/site foundation remains 8.8 with public mount/indexing explicitly deferred. Whole-V2 technical-health audit has added true post-deploy production-bundle coverage for selected-tour/flight/lead and search recovery, and fixed a confirmed mobile zero-result recovery focus defect. Traffic analysis remains disabled.",
+  "phase": "Core tour-search product remains 9.0 across all eleven core areas. SEO/site foundation remains 8.8 with public mount/indexing explicitly deferred. PR #180 fixed owner-reported production UX regressions in mobile trip-duration visibility and duplicate footer rendering; whole-V2 production-surface audit remains active. Traffic analysis remains disabled.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -29,16 +29,16 @@
     "category": "TECHNICAL_HEALTH",
     "title": "Continue full-flow production correctness and responsive audit",
     "status": "ACTIVE",
-    "objective": "Inspect actual production state and screenshots across results/comparison, selected tour/rooms, flights/price and lead entry/recovery. Fix only confirmed defects while preserving external contracts.",
-    "progress": "PR #175 added a five-viewport selected-tour/flight/lead post-deploy production-bundle audit. PR #177 added a PR+post-deploy five-viewport progress/zero/error recovery audit and fixed mobile recovery so the collapsed search expands and focus lands on the effective visible search CTA. PR #177 production deploy 33211774500, recovery production run 33211877630, selected-tour production run 33211877611, general visual run 33211877724 and baseline 33211877643 are green.",
-    "next_action": "Continue visual and state-boundary audit from production commit 85aee5bde49a14c53db3e1ec904c85ce387903a4. Prioritize the next confirmed incorrect-data, UX or responsive issue; keep BR4 public mount/canonical/indexing/content inventory deferred until its product boundary is resolved."
+    "objective": "Inspect actual production state and screenshots across search, results/comparison, selected tour/rooms, flights/price and lead entry/recovery. Fix only confirmed defects while preserving external contracts.",
+    "progress": "PR #180 restored trip duration to the primary mobile search flow, removed horizontal scrolling from night presets, and replaced the duplicate full V2 footer with a compact social/app community pre-footer. It merged as 62be26153bf6ed8f57a2103cbbcdad0725eafdc8 and V2-only deploy 33214936774 is green. Results decision-support audit confirmed `Самая низкая цена` benchmarks the minimum displayed hotel price across the current result set and optionally shows the gap to the next distinct price; it is informational and does not alter sorting or pricing.",
+    "next_action": "Continue from production commit 62be26153bf6ed8f57a2103cbbcdad0725eafdc8. Prioritize the next confirmed incorrect-data, UX or responsive issue across the whole V2 flow; preserve primary mobile trip-duration visibility, the single-footer contract and the existing current-result price benchmark behavior."
   },
   "queue": [
     {"id":"BR1","status":"SHIPPED_MAINTAIN_9","title":"Branded first impression"},
     {"id":"BR2","status":"SHIPPED_MAINTAIN_9","title":"Trust architecture"},
     {"id":"BR3","status":"SHIPPED_MAINTAIN_9","title":"Product-wide visual identity"},
     {"id":"BR4","status":"ACTIVE_8_8_PRODUCT_BOUNDARY","title":"SEO-ready brand shell and site foundation"},
-    {"id":"BR5","status":"SHIPPED_MAINTAIN","title":"Social + app footer"},
+    {"id":"BR5","status":"SHIPPED_MAINTAIN","title":"Social + app footer/community pre-footer"},
     {"id":"PX1","status":"SHIPPED_MAINTAIN_9","title":"Decision support in results"},
     {"id":"PX2","status":"SHIPPED_MAINTAIN_9","title":"Flexible search and recovery"},
     {"id":"PX3","status":"SHIPPED_MAINTAIN_9","title":"Price confidence"},
@@ -66,24 +66,23 @@
     "next_missing_layers": ["real_curated_production_content_inventory","final_public_mount_and_url","canonical_indexing_policy","sitemap_publication","structured_data_after_real_public_pages"]
   },
   "production_baseline": {
-    "last_verified_commit": "85aee5bde49a14c53db3e1ec904c85ce387903a4",
-    "deploy_v2": 33211774500,
+    "last_verified_commit": "62be26153bf6ed8f57a2103cbbcdad0725eafdc8",
+    "deploy_v2": 33214936774,
     "deploy_validate": true,
     "deploy_copy": true,
     "deploy_verify": true,
     "live_search_smoke": true,
-    "postdeploy_visual": 33211877724,
-    "postdeploy_baseline": 33211877643,
-    "postdeploy_search_recovery": 33211877630,
-    "postdeploy_selected_tour": 33211877611,
+    "postdeploy_baseline": 33215024256,
     "status": "PRODUCTION_GREEN"
   },
   "recent_material_fixes": [
+    {"pr":180,"scope":"mobile_trip_duration_visibility","result":"Trip duration stays in the primary mobile search flow and night presets no longer require horizontal scrolling."},
+    {"pr":180,"scope":"single_footer_contract","result":"V2 no longer renders a second full footer; social/app destinations remain in a compact community pre-footer before the host footer."},
     {"pr":174,"scope":"inbound_child_age_hydration","result":"Invalid child ages stay invalid and block search instead of being silently coerced or dropped."},
     {"pr":176,"scope":"inbound_child_count_hydration","result":"Unsupported child counts and child-count/age-control mismatches block search instead of sending a different tourist composition."},
-    {"pr":175,"scope":"selected_tour_postdeploy_coverage","result":"Selected tour, flights, lead summary/trust/recovery and overflow are now audited on real production bundles after deploy at five viewports."},
+    {"pr":175,"scope":"selected_tour_postdeploy_coverage","result":"Selected tour, flights, lead summary/trust/recovery and overflow are audited on real production bundles after deploy at five viewports."},
     {"pr":177,"scope":"mobile_zero_result_recovery_focus","result":"Recovery expands collapsed mobile search and focuses the effective visible sticky or inline search CTA without auto-submitting."},
-    {"pr":177,"scope":"search_recovery_postdeploy_coverage","result":"Progress, explicit zero-result date/night recovery, filters and error retry are now audited on branch bundles before merge and real production bundles after deploy at five viewports."}
+    {"pr":177,"scope":"search_recovery_postdeploy_coverage","result":"Progress, explicit zero-result date/night recovery, filters and error retry are audited on branch bundles before merge and real production bundles after deploy at five viewports."}
   ],
   "blocked": [],
   "deferred": [
