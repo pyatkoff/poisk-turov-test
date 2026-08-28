@@ -1,0 +1,80 @@
+name: Validate V2 SEO stable paths
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-page-primitives-v1.php'
+      - 'v2/seo-page-registry-v1.php'
+      - 'v2/seo-internal-links-v1.php'
+      - '.github/workflows/validate-v2-seo-stable-paths.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stable-paths:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate stable first-party path contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-page-primitives-v1.php
+          php -l v2/seo-page-registry-v1.php
+          php -l v2/seo-internal-links-v1.php
+          php <<'PHP'
+          <?php
+          require 'v2/seo-page-registry-v1.php';
+          function fail($m){fwrite(STDERR,"SEO_STABLE_PATH_FAIL:$m\n"); exit(1);}
+
+          if (v2_seo_stable_internal_href('/country/turkey/')!=='/country/turkey/') fail('stable_path_rejected');
+          foreach (['/country/turkey/?country=4','/country/turkey/#offers','https://example.com/','//example.com/'] as $unstable) {
+              if (v2_seo_stable_internal_href($unstable)!==null) fail('unstable_path_allowed');
+          }
+
+          $crumbs=v2_seo_render_breadcrumbs([
+              ['label'=>'Главная','href'=>'/'],
+              ['label'=>'Search state','href'=>'/country/turkey/?country=4'],
+              ['label'=>'External','href'=>'https://example.com/'],
+              ['label'=>'Анталья','href'=>'/resort/antalya/'],
+          ]);
+          if (str_contains($crumbs,'?country=4') || str_contains($crumbs,'example.com')) fail('breadcrumbs_unstable_link');
+          if (str_contains($crumbs,'href="/resort/antalya/"')) fail('breadcrumbs_current_self_link');
+          if (substr_count($crumbs,'aria-current="page"')!==1) fail('breadcrumbs_single_current');
+
+          $related=v2_seo_render_related_links('Популярные направления',[
+              ['label'=>'Турция','href'=>'/country/turkey/'],
+              ['label'=>'Search state','href'=>'/poisk-turov-test/v2/?country=4'],
+          ]);
+          if (!str_contains($related,'href="/country/turkey/"') || str_contains($related,'?country=4')) fail('related_boundary');
+
+          $groups=v2_seo_internal_link_groups([[
+              'title'=>'Направления',
+              'links'=>[
+                  ['label'=>'Турция','href'=>'/country/turkey/'],
+                  ['label'=>'Search state','href'=>'/poisk-turov-test/v2/?country=4'],
+              ],
+          ]]);
+          if (count($groups)!==1 || count($groups[0]['links'])!==1) fail('internal_group_boundary');
+
+          foreach (['/poisk-turov-test/v2/?country=4','/poisk-turov-test/v2/#results'] as $badSearchPath) {
+              try { v2_seo_search_handoff_url($badSearchPath,['country'=>4]); fail('unstable_handoff_allowed'); }
+              catch (InvalidArgumentException $e) {}
+          }
+
+          foreach (['/country/turkey/?country=4','/country/turkey/#offers'] as $badRegistryPath) {
+              try {
+                  v2_seo_page_registry([['path'=>$badRegistryPath,'type'=>'country','data'=>[
+                      'name'=>'Турция','h1'=>'Туры в Турцию',
+                      'description'=>'Достаточно длинное описание для проверки стабильного пути страницы.'
+                  ]]]);
+                  fail('unstable_registry_allowed');
+              } catch (InvalidArgumentException $e) {}
+          }
+
+          echo "V2_SEO_STABLE_PATHS_OK helper=1 breadcrumbs=1 related=1 groups=1 handoff=1 registry=1\n";
+          PHP
