@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28 23:06 +02:00
+Updated: 2026-08-28 23:19 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -10,38 +10,36 @@ Paid/real-user traffic is intentionally not running. Current visitors are the ow
 
 Search, Waiting/Recovery, Results/Comparison, Selected Tour, Flights/Price, Lead UX, Mobile UX, Tablet/Desktop UX, Brand/Trust, Visual Quality and Product Differentiation remain assessed at 9.0 with functional/visual evidence.
 
-SEO/site foundation is now **8.8**. The route-independent foundation includes semantic shell/footer, server-rendered content primitives, explicit country/resort/seasonal contracts, stable first-party link boundaries, curated registry, structural publishability gate, registered relationship graph, controlled editorial content catalog and a deterministic review-only publication manifest. Publication candidates cannot be generated from arbitrary search/request state.
-
-The current `/poisk-turov-test/v2/` route remains `noindex,follow` with no canonical. Final public route/canonical/indexing/sitemap policy remains intentionally deferred until the public mount is explicitly chosen.
+SEO/site foundation remains **8.8**. Its remaining material path to 9 is real curated public content plus the explicit final public mount/canonical/indexing/sitemap contract; do not add abstraction merely to raise the score. The temporary `/poisk-turov-test/v2/` route remains `noindex,follow` with no canonical.
 
 ## Active roadmap
 
-- BR1 Branded first impression — 9-LEVEL / MAINTAIN.
-- BR2 Trust architecture — 9-LEVEL / MAINTAIN.
-- BR3 Product-wide visual identity — 9-LEVEL / MAINTAIN.
-- BR4 SEO-ready brand shell — ACTIVE at 8.8; route-independent architecture is mature. Remaining path to 9 is dominated by the real public mount/indexing contract and curated production content inventory rather than more abstract plumbing.
-- BR5 Social + app footer — SHIPPED / MAINTAIN in PR #164 with verified MAX, Telegram, VK, App Store and Google Play destinations; responsive/touch regression coverage is active.
-- PX1–PX6 — 9-LEVEL / MAINTAIN.
+- BR1–BR3 — SHIPPED / MAINTAIN at 9-level.
+- BR4 SEO-ready brand shell — ACTIVE at 8.8 with a product/routing boundary; route-independent architecture is mature.
+- BR5 Social + app footer — SHIPPED / MAINTAIN with verified destinations and phone/link/responsive regressions.
+- PX1–PX6 — SHIPPED / MAINTAIN at 9-level.
 - PX7 Price watch/return intent — RESEARCH pending persistence/contact/product-contract choices.
 
 ## Latest material evidence
 
-- PR #160/#161/#163 hardened publishability and shipped the controlled editorial content catalog with integration coverage.
-- PR #164 shipped the verified social/app footer.
-- PR #166 fixed a production footer defect where structured `PHONE` could render as literal `Array`.
-- PR #168 completed the same PHONE normalization for the header and repaired a false main-only SEO live check that expected a source CSS filename even though V2 serves a compiled bundle. All PR gates were green; V2-only deploy `33208778983` passed validate, copy, verify and live search smoke, and main SEO-foundation validation returned green.
-- PR #169 shipped a deterministic review-only publication manifest containing only approved + publishable registered editorial records while explicitly excluding route/canonical/index/sitemap/schema side effects.
-- PR #174 fixed an inbound-search data corruption edge case where an invalid `child_age` from a legacy/external URL could collapse to an empty `<select>` value and then be coerced to age `0`. Invalid ages are now preserved as explicit invalid state and search is blocked until corrected. All nine PR workflows completed with no failures; V2-only deploy `33210597000` passed validate, copy, verify and live search smoke.
-- PR #176 fixed the adjacent `child_count` mismatch where unsupported URL values such as `4`, `99` or text could remain visible while only three child-age controls were rendered and sent. Unsupported counts and child-count/age-control mismatches now block search until corrected. All nine PR workflows completed with no failures; V2-only deploy `33210944930` passed validate, copy, verify and live search smoke. Main failure count for the release SHA is zero.
+- PR #174 fixed malformed inbound `child_age` hydration so invalid ages remain explicit invalid state instead of silently becoming age 0 or disappearing.
+- PR #176 fixed unsupported inbound `child_count` values and child-count/age-control mismatches so visible tourist composition cannot differ from the composition sent to search.
+- PR #175 added a true post-deploy five-viewport production-assets audit for selected tour → flights → lead recovery. It was proven green on the next real production deploy and again after PR #177.
+- PR #177 fixed a confirmed mobile zero-result recovery defect found by the new production audit. After a search had collapsed the mobile form, recovery now expands it and focuses the CTA that is actually visible: mobile sticky `Найти туры` on short screens or inline `Найти туры` when visible. Date ±2 / nights ±1 recovery remains explicit and never auto-starts search.
+- PR #177 also adds a five-viewport PR+post-deploy contract for progress/zero/error recovery, exact recovery values, no implicit search start, active CTA focus, filter handoff, alert/retry, page errors and horizontal overflow.
+- PR #177 production commit `85aee5bde49a14c53db3e1ec904c85ce387903a4` deployed successfully in V2-only run `33211774500`: validate, copy, verify and live search smoke are green.
+- Production recovery run `33211877630` is green on 375/430/768/1024/1440 using real production bundles.
+- Production selected-tour/flight/lead run `33211877611` is green on the same five viewports using real production bundles.
+- General post-deploy visual run `33211877724` and deterministic baseline run `33211877643` are green.
 
 ## Exact next work order
 
-1. Treat production on `d9d18840af8c3bf659f7b62447b513272a2275a6` as the current green baseline after PR #176; repair any new production regression before roadmap work.
-2. Continue the independent whole-V2 technical-health audit while BR4 public-route/indexing decisions remain deferred. Inspect remaining inbound/search-state hydration boundaries first, then re-walk search → progress/recovery → results/comparison → selected tour/rooms → flights/price → lead entry for incorrect-data or UX regressions.
-3. Preserve the newly guarded child composition contract: malformed child ages/counts must never be silently coerced, dropped or sent as a different tourist composition.
-4. Re-audit BR4 only when there is material route-independent work or when the final public URL/content inventory is available. Avoid framework-only SEO abstraction solely to raise the score.
-5. Keep the temporary V2 search route `noindex,follow`; do not invent canonical, sitemap publication, structured data or indexability.
-6. Maintain BR5 social/app footer and its phone/link/responsive regressions; do not alter Metrika/goals for those links.
+1. Treat production commit `85aee5bde49a14c53db3e1ec904c85ce387903a4` as the current green baseline.
+2. Continue the independent whole-V2 audit while BR4 public-route/indexing decisions remain deferred: inspect actual production screenshots and remaining state boundaries across results/comparison → selected tour/rooms → flights/price → lead entry/recovery.
+3. Fix only confirmed production/data/UX/responsive defects. Preserve the new recovery contract: recovery expands mobile search, focuses the effective visible CTA, changes only the explicitly requested date/night window and never submits automatically.
+4. Preserve post-deploy production-assets coverage for both recovery and selected-tour surfaces; a PR-only visual pass is not sufficient for DONE.
+5. Re-audit BR4 only when real curated content or the final public URL/mount decision is available. Keep current V2 `noindex,follow`; do not invent canonical, sitemap publication, structured data or indexability.
+6. Maintain BR5 social/app footer and do not alter Metrika/goals.
 7. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
 
 ## Guardrails
