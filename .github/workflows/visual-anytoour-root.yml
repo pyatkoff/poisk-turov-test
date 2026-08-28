@@ -43,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p anytoour-root-visual
-          cat > /tmp/visual-anytoour-root.cjs <<'JS'
+          cat > ./visual-anytoour-root.cjs <<'JS'
           const { chromium } = require('playwright');
           const fs = require('fs');
           const viewports = [
@@ -119,7 +119,7 @@ jobs:
             console.log('ANYTOOUR_ROOT_FIVE_VIEWPORT_OK');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node /tmp/visual-anytoour-root.cjs
+          node ./visual-anytoour-root.cjs
 
       - name: Upload root visual evidence
         if: always()
