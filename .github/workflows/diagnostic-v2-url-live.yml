@@ -25,7 +25,7 @@ jobs:
         env:
           URL: https://anytour.online/poisk-turov-test/v2/?from=1&country=2&date_from=2026-12-05&date_till=2026-12-05&days_from=6&days_till=6&count_people=2&hotel=82567
         run: |
-          cat > /tmp/url-live.cjs <<'JS'
+          cat > url-live.cjs <<'JS'
           const {chromium}=require('playwright');
           (async()=>{
             const browser=await chromium.launch({headless:true});
@@ -59,4 +59,4 @@ jobs:
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node /tmp/url-live.cjs
+          node url-live.cjs
