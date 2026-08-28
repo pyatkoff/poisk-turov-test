@@ -28,9 +28,11 @@ jobs:
           php -l v2/site-footer-v1.php
           php <<'PHP'
           <?php
+          $params=['PHONE'=>[['DISPLAY_VALUE'=>'8 (800) 100 - 61 - 50']]];
           require 'v2/site-footer-v1.php';
           function footer_fail($message){fwrite(STDERR,"V2_FOOTER_FAIL:$message\n");exit(1);}
 
+          if(($params['PHONE']??null)!=='8 (800) 100 - 61 - 50') footer_fail('request_phone_not_normalized');
           $nested=['PHONE'=>[['DISPLAY_VALUE'=>'8 (800) 100 - 61 - 50']]];
           if(v2_site_phone($nested)!=='8 (800) 100 - 61 - 50') footer_fail('nested_phone_not_resolved');
           if(v2_phone_href(v2_site_phone($nested))!=='88001006150') footer_fail('nested_phone_href');
@@ -52,7 +54,7 @@ jobs:
           if(substr_count($html,'rel="noopener noreferrer"')!==5) footer_fail('external_rel');
           if(str_contains($html,'ym(')||str_contains($html,'metrika')) footer_fail('analytics_leak');
           file_put_contents('/tmp/footer-fragment.html',$html);
-          echo "V2_SOCIAL_APP_FOOTER_URLS_OK phoneNormalization=1\n";
+          echo "V2_SOCIAL_APP_FOOTER_URLS_OK phoneNormalization=1 headerNormalization=1\n";
           PHP
       - name: Install Playwright Chromium
         shell: bash
