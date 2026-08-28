@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T14:04:00+02:00",
+  "updated_at": "2026-08-28T14:13:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "PR #113 is merged, deployed and production-green. Brand and safe/reversible Product experiments now run in parallel with live conversion evidence rather than waiting globally for meaningful funnel volume. PX1.1 contextual result badges are live: lowest valid price and best valid rating are derived only from the current multi-hotel result set, without new API traffic, sort changes, analytics changes or lead changes. All PR gates, V2 deploy/live search smoke, post-deploy visual audit and post-deploy baseline are green. Latest post-deploy browser audit is clean but zero-traffic.",
+  "phase": "PRs #113 and #115 are merged, deployed and production-green. Brand and safe/reversible Product experiments run in parallel with live conversion evidence rather than waiting globally for meaningful funnel volume. PX1.1 contextual result badges are live. A whole-flow audit then found continue-search bypassing structured progress UX by replacing #status with plain text; PR #115 moved that path to lifecycle events, restored progress/error UX ownership and added a dedicated regression. All PR gates, V2 deploy/live search smoke, result-detail live, post-deploy visual and post-deploy baseline are green. Latest browser audit is clean but zero-traffic.",
   "current_task": {
-    "id": "PX1",
-    "category": "PRODUCT_DECISION_SUPPORT",
-    "title": "Decision support and competitor-gap roadmap",
+    "id": "PX2_PX5",
+    "category": "PRODUCT_RECOVERY_DECISION_SUPPORT",
+    "title": "Explicit recovery and deeper tour-choice support",
     "status": "ACTIVE",
-    "objective": "Continue safe product and brand improvements that reduce tour-choice friction while preserving production-green search, URL hydration, responsive, selected-tour, flight/price and lead contracts.",
-    "next_action": "Re-audit the full V2 journey and continue PX1/PX5 decision support or PX2 explicit recovery where a clear user benefit can be implemented from existing data. Continue BR1/BR2 brand/trust work in parallel. Inspect every new non-zero live sample and let material production/funnel evidence interrupt roadmap ordering."
+    "objective": "Continue safe product and brand improvements that reduce search/recovery/comparison friction while preserving production-green search, URL hydration, responsive, selected-tour, flight/price and lead contracts.",
+    "next_action": "Re-audit zero/few-result recovery and hotel/result decision support using existing data. Implement only explicit/reversible relaxation or grounded comparison improvements. Continue BR1/BR2 brand/trust work in parallel and let material production/funnel evidence interrupt roadmap ordering."
   },
   "queue": [
     {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
@@ -22,10 +22,10 @@
     {"id":"BR1","status":"ACTIVE","title":"Branded first impression"},
     {"id":"BR2","status":"ACTIVE","title":"Trust architecture"},
     {"id":"PX1","status":"ACTIVE","title":"Decision support in results"},
-    {"id":"PX2","status":"QUEUED","title":"Flexible search and recovery"},
+    {"id":"PX2","status":"ACTIVE","title":"Flexible search and recovery"},
     {"id":"PX3","status":"QUEUED","title":"Price confidence"},
     {"id":"PX4","status":"QUEUED","title":"Flight decision quality"},
-    {"id":"PX5","status":"QUEUED","title":"Hotel choice depth"},
+    {"id":"PX5","status":"ACTIVE","title":"Hotel choice depth"},
     {"id":"PX6","status":"QUEUED","title":"Save compare resume"},
     {"id":"PX7","status":"RESEARCH","title":"Price watch and return intent"},
     {"id":"C7","status":"EVIDENCE_REVIEW","title":"Live conversion optimization"},
@@ -40,13 +40,13 @@
   },
   "last_ci": {
     "workflow": "Visual V2 baseline",
-    "run_id": 33169352930,
+    "run_id": 33170048715,
     "attempt": 1,
-    "head_sha": "87081d0aac971a0b84ba44602b47ea54819aef59",
+    "head_sha": "b7f505b8bfe4f751cc7a1f205a35e40a15f23fa7",
     "conclusion": "success",
-    "classification": "PR113_PRODUCTION_POST_DEPLOY_VISUAL_GREEN"
+    "classification": "PR115_PRODUCTION_POST_DEPLOY_VISUAL_GREEN"
   },
-  "last_verified_commit": "87081d0aac971a0b84ba44602b47ea54819aef59",
+  "last_verified_commit": "b7f505b8bfe4f751cc7a1f205a35e40a15f23fa7",
   "production_evidence": {
     "startup_bundle_pr": 97,
     "deploy_verification_fix_pr": 98,
@@ -56,19 +56,23 @@
     "meal_all_width_visibility_pr": 111,
     "decision_support_roadmap_pr": 113,
     "decision_support_merge": "87081d0aac971a0b84ba44602b47ea54819aef59",
-    "pr113_security": 33169149763,
-    "pr113_validate": 33169149760,
-    "pr113_bundles": 33169149813,
-    "pr113_trust_visual": 33169149768,
-    "pr113_selected_tour_visual": 33169149785,
-    "pr113_meal_visual": 33169149741,
-    "pr113_visual": 33169149839,
-    "pr113_baseline": 33169149744,
-    "deploy_v2": 33169273215,
-    "post_deploy_visual": 33169352847,
-    "post_deploy_baseline": 33169352930,
-    "post_deploy_recent_browser": 33169352897,
-    "note": "PR #113 activated PRODUCT_ROADMAP.md and shipped PX1.1 current-result decision badges. All PR gates and production V2 deploy/live/visual checks are green."
+    "continue_search_progress_pr": 115,
+    "continue_search_progress_merge": "b7f505b8bfe4f751cc7a1f205a35e40a15f23fa7",
+    "continue_search_regression": 33169870927,
+    "pr115_security": 33169870873,
+    "pr115_validate": 33169870844,
+    "pr115_bundles": 33169870841,
+    "pr115_meal_visual": 33169870848,
+    "pr115_trust_visual": 33169870859,
+    "pr115_selected_tour_visual": 33169870839,
+    "pr115_visual": 33169870843,
+    "pr115_baseline": 33169870838,
+    "deploy_v2": 33169989018,
+    "result_detail_live": 33169989056,
+    "post_deploy_visual": 33170048785,
+    "post_deploy_baseline": 33170048715,
+    "post_deploy_recent_browser": 33170048772,
+    "note": "PR #113 activated PRODUCT_ROADMAP.md and shipped PX1.1 current-result decision badges. PR #115 fixed continue-search progress ownership and added dedicated CI preventing direct status writes from returning. Both are production-green."
   },
   "decision_support_contract": {
     "status": "PRODUCTION_GREEN_PX1_1",
@@ -79,6 +83,14 @@
     "changes_sorting": false,
     "adds_api_requests": false,
     "clears_on_search_start_or_dirty": true
+  },
+  "search_progress_contract": {
+    "status": "PRODUCTION_GREEN_PRIMARY_AND_CONTINUE_SEARCH",
+    "progress_ux_owns_status_presentation": true,
+    "continue_search_direct_status_writes": false,
+    "continue_events": ["v2:search-continue-started","v2:search-continue-requested","v2:search-continue-progress","v2:search-continued","v2:search-continue-error"],
+    "preserve_existing_results_during_continue": true,
+    "regression_run": 33169870927
   },
   "responsive_meal_contract": {
     "status": "PRODUCTION_GREEN_ALL_TESTED_WIDTHS_VISIBLE",
@@ -124,8 +136,8 @@
       "interpretation": "Repeated soft limiting is real, but all requests succeeded and no measured user/funnel impact exists. Observe rather than add pacing."
     },
     "latest_post_deploy_browser": {
-      "audit_run_id": 33169352897,
-      "window_end_utc": "2026-08-28T12:01:06.688765+00:00",
+      "audit_run_id": 33170048772,
+      "window_end_utc": "2026-08-28T12:11:19.285220+00:00",
       "browser_requests": 0,
       "http_4xx_5xx": 0,
       "rate_limit_delays": 0,
