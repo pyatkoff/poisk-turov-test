@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T12:08:00+02:00",
+  "updated_at": "2026-08-28T13:10:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "PR #103 is merged, deployed and production-green. Legacy/AI/MAX V2 URL entry now keeps visible departure/country catalogs synchronized with the requested search context before lifecycle hydration. Production diagnostic #105 specifically verified a non-default departure: Perm (2) -> Egypt (1), a real Egypt label, country options matching Perm's live catalog with no stale/synthetic values, and search_start using departureId=2/countryId=1. The immediate post-deploy real-browser audit is clean but zero-traffic, so deeper conversion changes still wait for meaningful funnel evidence.",
+  "phase": "PRs #110 and #111 are merged, deployed and production-green. A full responsive audit found primary meal choices clipped inside an internal horizontal scroller at 1024px and again in a 1101px breakpoint gap. The meal row now wraps whenever width is insufficient, and a focused PR-bundle regression verifies all five choices without clipping/internal horizontal scrolling at 375/430/768/901/1024/1100/1101/1200/1440. Production deploy/live/visual checks are green. A privacy-safe 3h browser diagnostic found one real browser session with 12 successful HTTP 200 requests and repeated soft rate-limit signals on departures and the JS bundle, but no search/tour/lead activity or user-visible failure; pacing remains deferred pending material impact.",
   "current_task": {
     "id": "C7",
     "category": "LIVE_CONVERSION_OPTIMIZATION",
     "title": "Live conversion optimization",
     "status": "EVIDENCE_REVIEW",
-    "objective": "Continue conversion and UX work from observed production friction while preserving the production-green URL-entry, catalog-sync, bundle, search, selected-tour, flight/price and lead contracts.",
-    "next_action": "Inspect the next non-zero privacy-safe browser sample for repeated departures/API throttling and meaningful search -> tour -> lead behavior. In parallel continue the full mobile+desktop V2 journey audit and fix only confirmed UX/data defects."
+    "objective": "Continue conversion and UX work from observed production friction while preserving the production-green URL-entry, catalog-sync, bundle, responsive meal, search, selected-tour, flight/price and lead contracts.",
+    "next_action": "Inspect the next non-zero privacy-safe browser sample for meaningful search -> tour -> lead behavior and material API-delay impact. In parallel continue the full mobile+desktop V2 journey audit, including advanced URL hydration labels/options, and fix only confirmed UX/data defects."
   },
   "queue": [
     {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
@@ -25,41 +25,54 @@
   ],
   "last_ci": {
     "workflow": "Visual V2 baseline",
-    "run_id": 33161849811,
+    "run_id": 33165998190,
     "attempt": 1,
-    "head_sha": "caef9c4946201130e55230b5015a949b0e2741b5",
+    "head_sha": "ce7d5ebe6753407175d709fa59b902c97ff72996",
     "conclusion": "success",
-    "classification": "PR103_PRODUCTION_POST_DEPLOY_VISUAL_GREEN"
+    "classification": "PR111_PRODUCTION_POST_DEPLOY_VISUAL_GREEN"
   },
-  "last_verified_commit": "caef9c4946201130e55230b5015a949b0e2741b5",
+  "last_verified_commit": "ce7d5ebe6753407175d709fa59b902c97ff72996",
   "production_evidence": {
     "startup_bundle_pr": 97,
     "deploy_verification_fix_pr": 98,
     "url_hydration_pr": 100,
     "url_catalog_sync_pr": 103,
     "url_catalog_sync_merge": "caef9c4946201130e55230b5015a949b0e2741b5",
-    "deploy_v2": 33161789679,
-    "active_contract": 33161789731,
-    "result_detail_live": 33161789762,
-    "post_deploy_visual": 33161849791,
-    "post_deploy_baseline": 33161849811,
-    "post_deploy_recent_browser": 33161849849,
+    "meal_1024_visibility_pr": 110,
+    "meal_1024_visibility_merge": "82318973e1e76c0999e61bf92b0fab86efbc34df",
+    "meal_all_width_visibility_pr": 111,
+    "meal_all_width_visibility_merge": "ce7d5ebe6753407175d709fa59b902c97ff72996",
+    "deploy_v2": 33165919804,
+    "tour_live": 33165919773,
+    "result_detail_live": 33165919885,
+    "post_deploy_visual": 33165998159,
+    "post_deploy_baseline": 33165998190,
+    "post_deploy_recent_browser": 33165998169,
+    "meal_visibility_regression_run": 33165808709,
+    "live_3h_diagnostic_pr": 109,
+    "live_3h_diagnostic_run": 33164345519,
+    "live_3h_diagnostic_status": "SUCCESS_CLOSED_WITHOUT_MERGE",
     "legacy_url_live_diagnostic_pr": 104,
     "legacy_url_live_diagnostic_run": 33161717495,
     "legacy_url_live_diagnostic_status": "SUCCESS_CLOSED_WITHOUT_MERGE",
     "catalog_sync_live_diagnostic_pr": 105,
     "catalog_sync_live_diagnostic_run": 33161901657,
     "catalog_sync_live_diagnostic_status": "SUCCESS_CLOSED_WITHOUT_MERGE",
-    "note": "PR #103 is live and production-green. PR #104 confirmed exact legacy URL hydration and hotel-scoped auto-search. Stronger PR #105 then dynamically selected non-default departure 2 (Perm) and country 1 (Egypt), verified the visible country label/options matched Perm's live catalog with no stale/synthetic values, and observed search_start using departureId=2/countryId=1. Both diagnostics were closed without merge."
+    "note": "PR #110 fixed confirmed 1024px primary meal clipping. A focused regression then exposed a 1101px breakpoint gap; PR #111 replaced hidden horizontal meal scrolling with natural wrapping and added PR-bundle validation across nine widths. PR #111 deploy, tour-live, result-detail-live, post-deploy visual and baseline are green."
+  },
+  "responsive_meal_contract": {
+    "status": "PRODUCTION_GREEN_ALL_TESTED_WIDTHS_VISIBLE",
+    "all_primary_meal_choices_visible": true,
+    "hidden_horizontal_scroll": false,
+    "wrap_when_needed": true,
+    "validated_widths": [375,430,768,901,1024,1100,1101,1200,1440],
+    "regression_run": 33165808709
   },
   "url_entry_contract": {
     "status": "PRODUCTION_GREEN_DIRECT_NONDEFAULT_CATALOG_SYNC_VERIFIED",
     "supports_snake_case_date_night_aliases": true,
     "explicit_search_required_for_autostart": true,
     "primary_catalog_sync": true,
-    "legacy_diagnostic_from": "1",
-    "legacy_diagnostic_country": "2",
-    "legacy_diagnostic_hotel": "82567",
     "catalog_sync_diagnostic_from": "2",
     "catalog_sync_diagnostic_departure_label": "Пермь",
     "catalog_sync_diagnostic_country": "1",
@@ -68,33 +81,40 @@
     "catalog_sync_search_id": 13460854706
   },
   "startup_request_mitigation": {
-    "status": "STATIC_ASSET_MITIGATION_VALIDATED_NONZERO_SAMPLE_API_DELAY_OBSERVE",
+    "status": "STATIC_ASSET_MITIGATION_VALIDATED_REPEATED_SOFT_LIMIT_OBSERVE",
     "previous_static_asset_requests": 44,
     "current_static_asset_requests": 2,
     "reduction": 42,
     "css_sources": 20,
     "js_sources": 25,
     "order_preserved": true,
-    "nonzero_validation_run": 33157609848,
-    "nonzero_browser_requests": 5,
-    "static_asset_rate_limit_delays": 0,
-    "api_rate_limit_delays": 1,
-    "api_rate_limit_route": "departures"
+    "latest_nonzero_diagnostic_run": 33164345519,
+    "browser_requests": 12,
+    "http_200": 12,
+    "rate_limit_delays": 3,
+    "rate_limit_routes": {"departures":2,"bundle:js":1},
+    "departures_excess_min": 0.775,
+    "departures_excess_max": 1.0,
+    "bundle_js_excess": 0.925,
+    "material_user_impact_confirmed": false
   },
   "live_evidence": {
-    "latest_post_bundle_nonzero_browser": {
-      "audit_run_id": 33157609848,
-      "browser_requests": 5,
-      "http_status": {"200": 5},
+    "latest_nonzero_browser": {
+      "audit_run_id": 33164345519,
+      "window_hours": 3,
+      "browser_sessions": 1,
+      "browser_requests": 12,
+      "http_status": {"200":12},
       "http_4xx_5xx": 0,
-      "rate_limit_delays": 1,
-      "rate_limit_routes": {"departures":1},
-      "observed_actions": {"departures":1,"meals":1,"countries":1},
-      "funnel_actions": {"search":0,"tour":0,"lead":0}
+      "rate_limit_delays": 3,
+      "rate_limit_routes": {"departures":2,"bundle:js":1},
+      "observed_actions": {"departures":2,"meals":2,"countries":2},
+      "funnel_actions": {"search":0,"tour":0,"lead":0},
+      "interpretation": "Repeated soft limiting is real, but all requests succeeded and there is no measured funnel/user impact. Observe rather than add pacing."
     },
     "latest_post_deploy_browser": {
-      "audit_run_id": 33161849849,
-      "window_end_utc": "2026-08-28T10:03:20.677894+00:00",
+      "audit_run_id": 33165998169,
+      "window_end_utc": "2026-08-28T11:08:23.528352+00:00",
       "browser_requests": 0,
       "http_4xx_5xx": 0,
       "rate_limit_delays": 0,
@@ -105,7 +125,7 @@
   "blocked": [],
   "deferred": [
     {"scope":"C7 conversion hierarchy changes","reason":"No observed real-browser search/tour/lead funnel behavior identifies conversion friction yet."},
-    {"scope":"departures/API rate-limit mitigation","reason":"Only one soft departures delay exists in the latest non-zero browser sample and it returned HTTP 200; require repetition/material impact before changing startup behavior."},
+    {"scope":"departures/bundle API pacing","reason":"Soft rate limiting repeated in one real session, but all 12 requests were HTTP 200 and no material user/funnel impact is measured; require impact before adding client delays."},
     {"scope":"global nginx/rate-limit configuration","reason":"Outside allowed V2/repository write scope."},
     {"scope":"global /images symlink-loop","reason":"Outside allowed V2/repository write scope while sampled access remains successful."}
   ],
@@ -121,9 +141,9 @@
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
     "on_ci_success": "collect_done_evidence_then_continue",
     "on_blocker": "record_blocker_and_continue_independent_safe_work",
-    "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
+    "on_visual_change": "visual_verification_at required viewports before advancing",
     "on_live_traffic": "activate_C7_B8_A8_and_reprioritize_from_real_evidence",
-    "on_rate_limit_signal": "require repeated real-browser API delay evidence before adding V2-local pacing; never modify global server config from this project",
+    "on_rate_limit_signal": "require material real-browser impact before adding V2-local pacing; never modify global server config from this project",
     "on_no_evidence": "continue_full_V2_audit_but_keep_product_stable_without_confirmed_defect"
   }
 }
