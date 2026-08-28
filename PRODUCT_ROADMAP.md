@@ -6,14 +6,13 @@ This roadmap is the active pre-traffic product plan. Paid/real-user traffic anal
 
 The core tour-search product has reached the current **>= 9/10 pre-traffic gate** across Search, recovery, results/comparison, selected tour, flights/price, lead UX, mobile, tablet/desktop, Brand/Trust, visual consistency and product differentiation.
 
-The weakest remaining material area is **SEO / site foundation**, so BR4 is now the active development lane. Production breakage, lead loss, incorrect data and severe UX still interrupt roadmap work immediately.
+The weakest remaining material area is **SEO / site foundation**, now assessed at 8.8. Production breakage, lead loss, incorrect data and severe UX still interrupt roadmap work immediately.
 
 ## Brand roadmap
 
 ### BR1 — Branded first impression — SHIPPED / MAINTAIN
 - Existing AnyTour logo preserved.
-- Header/hero/search now read as one AnyTour product with grounded first-screen proof.
-- Improve only if a confirmed cross-stage brand inconsistency appears.
+- Header/hero/search read as one AnyTour product with grounded first-screen proof.
 
 ### BR2 — Trust architecture — SHIPPED / MAINTAIN
 - Grounded office/human-support, contract/payment and pre-payment verification language is present across the decision flow.
@@ -21,26 +20,25 @@ The weakest remaining material area is **SEO / site foundation**, so BR4 is now 
 
 ### BR3 — Product-wide visual identity — SHIPPED / MAINTAIN
 - Primary/secondary control hierarchy, CTA treatment, responsive touch targets and cross-stage consistency have dedicated regression coverage.
-- Continue regression maintenance rather than cosmetic churn.
 
-### BR4 — SEO-ready brand shell — ACTIVE
-- Reusable semantic site footer shipped in PR #147.
-- Route-independent server-rendered SEO content primitives shipped in PR #148.
-- Reusable landing-page data contract/composer shipped in PR #149.
-- Current `/poisk-turov-test/v2/` route must remain `noindex,follow` with no canonical until the final public URL/mount is explicitly chosen.
-- Continue building reusable country/resort/seasonal page architecture without duplicating search/results logic or publishing arbitrary search-state combinations.
+### BR4 — SEO-ready brand shell — ACTIVE 8.8
+- Reusable semantic site footer, content primitives and page contracts are shipped.
+- Country/resort/seasonal page types, stable first-party paths, curated registry, publishability quality gate and registered page graph are shipped.
+- Controlled editorial content catalog and integration guard are shipped.
+- Review-only publication manifest is shipped; it contains approved + publishable editorial candidates only and deliberately has no route/canonical/index/sitemap/schema side effects.
+- Current `/poisk-turov-test/v2/` route remains `noindex,follow` with no canonical until the final public URL/mount is explicitly chosen.
+- Remaining material work toward 9/10 is real curated production content plus the explicit public URL/mount/indexing contract; avoid inventing more abstraction to simulate completion.
 
-### BR5 — Social + app footer — DEFERRED / VERIFIED-URL DEPENDENCY
-- Add polished MAX / Telegram / VK and mobile-app destinations to the reusable footer only from exact verified destination URLs.
-- Verified social destinations can be retained for later integration; exact App Store and Google Play store URLs must be recovered/confirmed before shipping the complete block.
-- Keep this secondary to navigation/search/lead actions and do not add/change analytics goals.
+### BR5 — Social + app footer — SHIPPED / MAINTAIN
+- Verified AnyTour MAX, Telegram, VK, App Store and Google Play destinations are live in the reusable footer.
+- Dedicated regression covers destination integrity, nested phone normalization, 375/768/1440 layout, mobile touch targets and horizontal overflow.
+- Keep the block secondary to search/lead actions; do not add/change analytics goals.
 
 ## Product experiments / competitor-gap roadmap
 
 ### PX1 — Decision support in results — SHIPPED / MAINTAIN
 - Grounded lowest-price/best-rating badges and nearest-price context are shipped.
 - Lightweight comparison is shipped.
-- Sorting remains explicit and unchanged by badges.
 
 ### PX2 — Flexible search / recovery — SHIPPED / MAINTAIN
 - Explicit zero-result date ±2 and nights ±1 recovery is shipped.
@@ -62,15 +60,15 @@ The weakest remaining material area is **SEO / site foundation**, so BR4 is now 
 ### PX7 — Price watch / return intent — RESEARCH
 - Keep research-only until persistence, contact permission, notification channel and product-contract choices are explicit.
 
-## Current BR4 sequence
+## Current BR4 boundary
 
-1. Keep the temporary V2 route non-indexable and protect its search-state boundary.
-2. Build reusable route-independent page shell/content primitives.
-3. Define reusable page data contracts/templates for country/resort/seasonal pages.
-4. Define internal-linking and search-handoff patterns without making search-state URLs indexable.
-5. Choose the final public URL/mount only as a separate explicit routing/product decision.
-6. Add canonical/indexing/structured-data policy only after the real public page types and URLs exist.
-7. Re-run full search/conversion contracts before any public indexing change.
+1. Keep the temporary V2 search route non-indexable and protect search-state URLs.
+2. Maintain the route-independent shell, page contracts, curated editorial catalog and publication-review manifest.
+3. Do not derive page identities from arbitrary request/search parameters.
+4. Choose the final public URL/mount only as a separate explicit routing/product decision.
+5. Add canonical/indexing/sitemap/structured-data policy only after real public page types and URLs exist.
+6. Re-run full search/conversion contracts before any public indexing change.
+7. If the public-route decision remains deferred, continue independent whole-product audits rather than adding framework-only SEO layers.
 
 ## Evidence gates before traffic
 
