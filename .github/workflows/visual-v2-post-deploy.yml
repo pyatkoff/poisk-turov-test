@@ -5,13 +5,17 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/visual-v2-post-deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/visual-v2-post-deploy.yml'
   workflow_run:
     workflows: ["Deploy V2 only"]
     types: [completed]
   workflow_dispatch:
 
 concurrency:
-  group: ci-visual-v2-post-deploy
+  group: ci-visual-v2-post-deploy-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -79,7 +83,14 @@ jobs:
                 const hero=document.querySelector('.v2-product-hero');
                 const header=document.querySelector('.at-site-header');
                 const search=document.querySelector('.search-card');
+                const headerPhone=document.querySelector('.at-site-phone');
+                const footerPhone=document.querySelector('.v2-site-footer__phone');
                 const visible=el=>!!el&&!el.hidden&&getComputedStyle(el).display!=='none';
+                const phoneState=el=>{
+                  const text=(el?.textContent||'').trim();
+                  const href=(el?.getAttribute('href')||'').trim();
+                  return {text,href,valid:!!el&&text.toLowerCase()!=='array'&&/\d/.test(text)&&/^tel:\+?\d{7,}$/.test(href)};
+                };
                 const offenders=[...document.querySelectorAll('body *')].filter(el=>{
                   const r=el.getBoundingClientRect();
                   return r.right>innerWidth+2||r.left<-2;
@@ -92,6 +103,8 @@ jobs:
                   searchVisible:visible(search),
                   resultsInitiallyVisible:visible(document.querySelector('#resultsTools'))||!!document.querySelector('#results .hotel-card'),
                   selectedInitiallyVisible:visible(document.querySelector('#selectedTour')),
+                  headerPhone:phoneState(headerPhone),
+                  footerPhone:phoneState(footerPhone),
                   heroBox:hero?{w:Math.round(hero.getBoundingClientRect().width),h:Math.round(hero.getBoundingClientRect().height)}:null,
                   headerBox:header?{w:Math.round(header.getBoundingClientRect().width),h:Math.round(header.getBoundingClientRect().height)}:null
                 };
@@ -117,8 +130,9 @@ jobs:
               const item={name,width,height,http:response?response.status():0,pageErrors,state,resultState};
               report.push(item);
               const resultBad=!resultState.renderer||resultState.cards!==2||!resultState.toolsVisible||resultState.decisionFacts<2||!resultState.bestOffer||resultState.tourRows!==1||!resultState.moreToggle||(width<=760&&!resultState.mobileFilterVisible)||(width>760&&resultState.mobileFilterVisible)||resultState.overflow;
-              if(item.http!==200||pageErrors.length||state.overflow||!state.heroVisible||!state.headerVisible||!state.searchVisible||state.resultsInitiallyVisible||state.selectedInitiallyVisible||resultBad)failed=true;
-              console.log(`VISUAL ${name} http=${item.http} overflow=${state.overflow}/${resultState.overflow} hero=${state.heroVisible} header=${state.headerVisible} search=${state.searchVisible} results=${resultState.cards}/${resultState.tourRows} more=${resultState.moreToggle} mrf=${resultState.mobileFilterVisible} pageErrors=${pageErrors.length}`);
+              if(item.http!==200||pageErrors.length||state.overflow||!state.heroVisible||!state.headerVisible||!state.searchVisible||state.resultsInitiallyVisible||state.selectedInitiallyVisible||!state.headerPhone.valid||!state.footerPhone.valid||resultBad)failed=true;
+              console.log(`VISUAL ${name} http=${item.http} overflow=${state.overflow}/${resultState.overflow} hero=${state.heroVisible} header=${state.headerVisible} search=${state.searchVisible} phones=${state.headerPhone.valid}/${state.footerPhone.valid} results=${resultState.cards}/${resultState.tourRows} more=${resultState.moreToggle} mrf=${resultState.mobileFilterVisible} pageErrors=${pageErrors.length}`);
+              if(!state.headerPhone.valid||!state.footerPhone.valid)console.log(`PHONE_STATE ${name} ${JSON.stringify({header:state.headerPhone,footer:state.footerPhone})}`);
               if(state.offenders.length)console.log(`OFFENDERS ${name} ${JSON.stringify(state.offenders)}`);
               await context.close();
             }
