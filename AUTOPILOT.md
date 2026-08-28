@@ -48,11 +48,17 @@ A deeper audit immediately caught an edge-case: after the sentinel scrolled abov
 
 PR #87 head `d280a616fcdb19685369f86c21ce54a86ac1205d` passed security, validation, selected-tour, B5 trust, baseline, general visual and the new mobile sticky-boundary regression. Merge `eac3f5dafe3078f8f62e30e6664fb2d72a652b17` is production-green: V2 deploy `33126181209`, active contract `33126181270`, tour-live `33126181200`, result-detail-live `33126181365`, post-deploy visual `33126233365` and baseline `33126233434` all passed.
 
-### PR #89 — fresh browser audit reliability
+### PR #89 — fresh browser audit trigger hardening
 
-Repository Actions history showed no `schedule`-event runs even though `audit-v2-recent-browser.yml` declares an hourly cron. That made the supposedly fresh C7 evidence dependent on an unverified scheduler path. PR #89 keeps the cron but also runs the privacy-safe 30-minute browser audit after each successful `Deploy V2 only` workflow and checks out the exact deployed SHA. This is CI/observability only: no V2 product code, Metrika/goals, lead transport or neighboring project changed.
+Repository Actions history showed no `schedule`-event runs even though `audit-v2-recent-browser.yml` declares an hourly cron. PR #89 therefore retained the cron and configured an additional `workflow_run` trigger after successful `Deploy V2 only`, checking out the exact deployed SHA. This is CI/observability only: no V2 product code, Metrika/goals, lead transport or neighboring project changed.
 
-PR #89 passed Security Guard and merged as `b599e6269a421824ffa5bd370d82af9f81406e8e`. The immediately triggered audit run `33134465815` completed successfully, proving the fallback path works.
+PR #89 passed Security Guard and merged as `b599e6269a421824ffa5bd370d82af9f81406e8e`. Its immediately following audit run `33134465815` was successful but the GitHub event is `push`, not `workflow_run`; therefore it verified the audit itself, not the post-deploy trigger path. Repository history still has no observed `schedule` or audit `workflow_run` event, so those trigger paths remain configured but unverified.
+
+### PR #91 — true wall-clock recent audit
+
+A re-audit found a correctness bug in the privacy-safe “recent 30m” evidence: the cutoff was derived from the newest log line, which could make an old idle period look like a fresh 30-minute window. PR #91 anchors access-log filtering to current UTC wall clock and error-log filtering to current server-local wall clock, while printing the exact UTC window end for evidence.
+
+PR #91 passed Security Guard and merged as `555c303e3dff6aa5d77777fb9e9755099d61dab4`. Audit run `33137670977` passed on the merged code. Its actual window ended at `2026-08-28T03:01:53.839494+00:00`; access log latest was `2026-08-28T05:01:03+02:00`, error log latest `2026-08-28T04:53:18`, with **0 browser requests**, **0 browser 4xx/5xx** and **0 browser rate-limit events**. No product files changed, so no V2 production deploy was needed.
 
 ## Whole-flow re-audit
 
@@ -66,10 +72,10 @@ PR #89 passed Security Guard and merged as `b599e6269a421824ffa5bd370d82af9f8140
 ## Live evidence
 
 - `audit-v2-live-traffic.yml`: privacy-safe rolling-tail context.
-- `audit-v2-recent-browser.yml`: privacy-safe recent 30-minute browser window; after PR #89 it retains cron and also refreshes after every successful V2 deploy.
-- Fresh audit `33134465815`: access log latest `2026-08-28T03:57:15+02:00`; **0 real browser requests**, **0 browser 4xx/5xx**, **0 browser rate-limit events**, and therefore no `search`, `tour` or `lead` funnel signal in the current 30-minute window.
-- The previous tiny sample of 7 successful browser requests is superseded by this newer window. Current absence of traffic gives no evidence basis for C7/B8/A8 conversion changes or another startup/rate-limit architecture change.
-- GitHub cron execution itself remains externally unverified because repository Actions history exposed zero `schedule` runs. The after-deploy trigger now mitigates stale evidence after releases; re-check cron later rather than blocking product work.
+- `audit-v2-recent-browser.yml`: privacy-safe true wall-clock recent 30-minute browser window after PR #91; cron and successful-deploy `workflow_run` triggers remain configured.
+- Fresh audit `33137670977`: window end `2026-08-28T03:01:53.839494+00:00`; access log latest `2026-08-28T05:01:03+02:00`; **0 real browser requests**, **0 browser 4xx/5xx**, **0 browser rate-limit events**, and therefore no `search`, `tour` or `lead` funnel signal in the actual current 30-minute window.
+- Current absence of traffic gives no evidence basis for C7/B8/A8 conversion changes or another startup/rate-limit architecture change.
+- GitHub cron and audit `workflow_run` execution remain unverified because repository Actions history exposes no matching events. The triggers stay configured and should be re-checked opportunistically; do not claim a trigger path proven until such a run is observed.
 - Global `/images/...` symlink-loop warnings remain outside allowed V2/repository write scope while sampled access remains successful.
 
 ## Status
@@ -83,19 +89,20 @@ PR #89 passed Security Guard and merged as `b599e6269a421824ffa5bd370d82af9f8140
 - Search 9.0 primary controls/mobile discoverability/sticky boundary — **DONE / production-green**.
 - Brand/Hero 9.0 — **DONE / production-green**.
 - Trust 9.0 + mobile readability — **DONE / production-green**.
-- Fresh browser audit after V2 deploy — **DONE / verified**.
+- Recent browser audit wall-clock correctness — **DONE / verified**.
+- Cron/post-deploy audit trigger execution — **CONFIGURED / not yet observed**.
 - C7 Live Conversion Optimization — **WAITING_FOR_TRAFFIC**.
 - B8/A8 — **WAITING_FOR_TRAFFIC**.
 
 ## Exact next work order
 
 1. Inspect fresh `main`, open PRs and latest deploy/live/security/visual results.
-2. Inspect the latest privacy-safe 30-minute browser audit; require a non-zero useful funnel sample before C7/B8/A8. Prefer the newest cron sample when one exists; after V2 deploys the audit now refreshes automatically.
+2. Inspect the latest privacy-safe true wall-clock 30-minute browser audit; require a non-zero useful funnel sample before C7/B8/A8. Re-check for actual `schedule` or audit `workflow_run` events without blocking other safe work.
 3. Re-audit the full V2 journey on mobile and desktop: search → waiting/progress → stale/zero → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery.
 4. Preserve first-screen stars+meal, mobile meal discoverability, bounded sticky CTA and delayed/on-demand meals loading.
 5. Continue 9.0 only for a confirmed material gap. Current results/price and selected-tour/lead hierarchies are intentionally retained until evidence says otherwise.
 6. If meaningful funnel evidence appears, activate C7/B8/A8 and prioritize observed friction from `search_started → search_complete → tour_selected → flight_selected → lead_started → lead_submitted`.
-7. If production is healthy and evidence is absent, keep V2 stable rather than manufacturing work. Re-check the missing cron schedule signal opportunistically; the deploy-triggered fallback prevents it from blocking post-release evidence.
+7. If production is healthy and evidence is absent, keep V2 stable rather than manufacturing work.
 
 ## Guardrails
 
