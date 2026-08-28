@@ -15,10 +15,15 @@ function v2_seo_destination_page(string $type, array $data): array
     $name = trim((string)($data['name'] ?? ''));
     if ($name === '') throw new InvalidArgumentException('SEO destination name is required');
 
+    $h1 = trim((string)($data['h1'] ?? ''));
+    if ($h1 === '') {
+        throw new InvalidArgumentException('SEO destination H1 is required; do not auto-inflect place names');
+    }
+
     $page = [
         'title' => trim((string)($data['title'] ?? '')),
         'description' => trim((string)($data['description'] ?? '')),
-        'h1' => trim((string)($data['h1'] ?? '')),
+        'h1' => $h1,
         'eyebrow' => trim((string)($data['eyebrow'] ?? '')),
         'intro' => trim((string)($data['intro'] ?? '')),
         'breadcrumbs' => is_array($data['breadcrumbs'] ?? null) ? $data['breadcrumbs'] : [],
@@ -29,13 +34,6 @@ function v2_seo_destination_page(string $type, array $data): array
         'search_state' => is_array($data['search_state'] ?? null) ? $data['search_state'] : [],
     ];
 
-    if ($page['h1'] === '') {
-        $page['h1'] = match ($type) {
-            'country' => 'Туры в '.$name,
-            'resort' => 'Туры в '.$name,
-            'seasonal' => 'Туры: '.$name,
-        };
-    }
     if ($page['title'] === '') $page['title'] = $page['h1'].' — AnyTour';
 
     $contract = v2_seo_page_contract($page);
