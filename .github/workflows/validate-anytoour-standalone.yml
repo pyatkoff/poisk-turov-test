@@ -39,6 +39,7 @@ jobs:
             if (strpos($html, "api:\"/api-v2.php\"") === false) exit(11);
             if (strpos($html, "leadApi:\"/lead-adapter-v2.php\"") === false) exit(12);
             if (strpos($html, "bundle-v1.php?type=css") === false) exit(13);
+            if (strpos($html, "privacyUrl:\"https://anytour.online/politika-konfidentsialnosti/\"") === false) exit(14);
             echo "STANDALONE_ROOT_RENDER_OK\n";
           '
       - name: Preserve legacy subdirectory paths
@@ -53,6 +54,7 @@ jobs:
             ob_start(); include "v2/index.php"; $html=ob_get_clean();
             if (strpos($html, "api:\"/poisk-turov-test/v2/api-v2.php\"") === false) exit(20);
             if (strpos($html, "leadApi:\"/poisk-turov-test/v2/lead-adapter-v2.php\"") === false) exit(21);
+            if (strpos($html, "privacyUrl:\"/politika-konfidentsialnosti/\"") === false) exit(22);
             echo "LEGACY_PATH_COMPAT_OK\n";
           '
       - name: Keep standalone shell assets and full-site links reachable
