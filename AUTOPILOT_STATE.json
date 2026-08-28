@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T12:06:00+02:00",
+  "updated_at": "2026-08-28T12:08:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "PR #103 is merged, deployed and production-green. Legacy/AI/MAX V2 URL entry now keeps the visible departure/country catalogs synchronized with the requested search context before lifecycle hydration, closing the remaining label/options mismatch after PR #100. A production browser diagnostic confirmed exact from/country/date/night/adult/hotel hydration, hotelIds=82567 and automatic search start. The post-deploy recent-browser audit is clean but contains no real-browser requests, so deeper conversion changes still wait for meaningful funnel evidence.",
+  "phase": "PR #103 is merged, deployed and production-green. Legacy/AI/MAX V2 URL entry now keeps visible departure/country catalogs synchronized with the requested search context before lifecycle hydration. Production diagnostic #105 specifically verified a non-default departure: Perm (2) -> Egypt (1), a real Egypt label, country options matching Perm's live catalog with no stale/synthetic values, and search_start using departureId=2/countryId=1. The immediate post-deploy real-browser audit is clean but zero-traffic, so deeper conversion changes still wait for meaningful funnel evidence.",
   "current_task": {
     "id": "C7",
     "category": "LIVE_CONVERSION_OPTIMIZATION",
     "title": "Live conversion optimization",
     "status": "EVIDENCE_REVIEW",
-    "objective": "Continue conversion and UX work from observed production friction while preserving the production-green URL-entry, bundle, search, selected-tour, flight/price and lead contracts.",
+    "objective": "Continue conversion and UX work from observed production friction while preserving the production-green URL-entry, catalog-sync, bundle, search, selected-tour, flight/price and lead contracts.",
     "next_action": "Inspect the next non-zero privacy-safe browser sample for repeated departures/API throttling and meaningful search -> tour -> lead behavior. In parallel continue the full mobile+desktop V2 journey audit and fix only confirmed UX/data defects."
   },
   "queue": [
@@ -47,17 +47,25 @@
     "legacy_url_live_diagnostic_pr": 104,
     "legacy_url_live_diagnostic_run": 33161717495,
     "legacy_url_live_diagnostic_status": "SUCCESS_CLOSED_WITHOUT_MERGE",
-    "note": "PR #103 is live and production-green. URL-supplied departure/country now synchronize the visible primary catalogs before lifecycle hydration. Temporary PR #104 confirmed exact legacy URL hydration and automatic hotel-scoped search from production, then was closed without merge."
+    "catalog_sync_live_diagnostic_pr": 105,
+    "catalog_sync_live_diagnostic_run": 33161901657,
+    "catalog_sync_live_diagnostic_status": "SUCCESS_CLOSED_WITHOUT_MERGE",
+    "note": "PR #103 is live and production-green. PR #104 confirmed exact legacy URL hydration and hotel-scoped auto-search. Stronger PR #105 then dynamically selected non-default departure 2 (Perm) and country 1 (Egypt), verified the visible country label/options matched Perm's live catalog with no stale/synthetic values, and observed search_start using departureId=2/countryId=1. Both diagnostics were closed without merge."
   },
   "url_entry_contract": {
-    "status": "PRODUCTION_GREEN",
+    "status": "PRODUCTION_GREEN_DIRECT_NONDEFAULT_CATALOG_SYNC_VERIFIED",
     "supports_snake_case_date_night_aliases": true,
     "explicit_search_required_for_autostart": true,
     "primary_catalog_sync": true,
-    "diagnostic_from": "1",
-    "diagnostic_country": "2",
-    "diagnostic_hotel": "82567",
-    "diagnostic_search_id": 13460825192
+    "legacy_diagnostic_from": "1",
+    "legacy_diagnostic_country": "2",
+    "legacy_diagnostic_hotel": "82567",
+    "catalog_sync_diagnostic_from": "2",
+    "catalog_sync_diagnostic_departure_label": "Пермь",
+    "catalog_sync_diagnostic_country": "1",
+    "catalog_sync_diagnostic_country_label": "Египет",
+    "catalog_sync_diagnostic_country_count": 33,
+    "catalog_sync_search_id": 13460854706
   },
   "startup_request_mitigation": {
     "status": "STATIC_ASSET_MITIGATION_VALIDATED_NONZERO_SAMPLE_API_DELAY_OBSERVE",
