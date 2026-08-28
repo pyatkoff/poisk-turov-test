@@ -8,8 +8,8 @@ require_once __DIR__ . '/seo-page-types-v1.php';
  */
 function v2_seo_registry_path($value): string
 {
-    $path = v2_seo_internal_href($value);
-    if ($path === null || str_contains($path, '?') || str_contains($path, '#')) {
+    $path = v2_seo_stable_internal_href($value);
+    if ($path === null) {
         throw new InvalidArgumentException('SEO registry path must be a clean first-party path');
     }
     if ($path !== '/' && !str_ends_with($path, '/')) {

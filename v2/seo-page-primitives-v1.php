@@ -17,17 +17,36 @@ function v2_seo_internal_href($value): ?string
     return $href;
 }
 
+function v2_seo_stable_internal_href($value): ?string
+{
+    $href = v2_seo_internal_href($value);
+    if ($href === null || str_contains($href, '?') || str_contains($href, '#')) return null;
+    return $href;
+}
+
 function v2_seo_render_breadcrumbs(array $items): string
 {
-    $parts = [];
+    $normalized = [];
     foreach ($items as $item) {
         if (!is_array($item)) continue;
         $label = trim((string)($item['label'] ?? ''));
         if ($label === '') continue;
-        $href = v2_seo_internal_href($item['href'] ?? '');
-        $parts[] = $href
-            ? '<li><a href="'.v2_seo_escape($href).'">'.v2_seo_escape($label).'</a></li>'
-            : '<li aria-current="page">'.v2_seo_escape($label).'</li>';
+        $normalized[] = [
+            'label' => $label,
+            'href' => v2_seo_stable_internal_href($item['href'] ?? ''),
+        ];
+    }
+    if (!$normalized) return '';
+
+    $parts = [];
+    $lastIndex = array_key_last($normalized);
+    foreach ($normalized as $index => $item) {
+        if ($index === $lastIndex) {
+            $parts[] = '<li aria-current="page">'.v2_seo_escape($item['label']).'</li>';
+            continue;
+        }
+        if ($item['href'] === null) continue;
+        $parts[] = '<li><a href="'.v2_seo_escape($item['href']).'">'.v2_seo_escape($item['label']).'</a></li>';
     }
     if (!$parts) return '';
     return '<nav class="v2-seo-breadcrumbs" aria-label="Хлебные крошки"><ol>'.implode('', $parts).'</ol></nav>';
@@ -57,14 +76,8 @@ function v2_seo_render_related_links(string $title, array $links): string
     foreach ($links as $link) {
         if (!is_array($link)) continue;
         $label = trim((string)($link['label'] ?? ''));
-        $href = v2_seo_internal_href($link['href'] ?? '');
-        if (
-            $label === '' ||
-            $href === null ||
-            str_contains($href, '?') ||
-            str_contains($href, '#') ||
-            isset($seenHrefs[$href])
-        ) continue;
+        $href = v2_seo_stable_internal_href($link['href'] ?? '');
+        if ($label === '' || $href === null || isset($seenHrefs[$href])) continue;
         $seenHrefs[$href] = true;
         $items[] = '<li><a href="'.v2_seo_escape($href).'">'.v2_seo_escape($label).'</a></li>';
     }
@@ -74,8 +87,8 @@ function v2_seo_render_related_links(string $title, array $links): string
 
 function v2_seo_search_handoff_url(string $searchPath, array $state): string
 {
-    $path = v2_seo_internal_href($searchPath);
-    if ($path === null) throw new InvalidArgumentException('Search handoff path must be first-party');
+    $path = v2_seo_stable_internal_href($searchPath);
+    if ($path === null) throw new InvalidArgumentException('Search handoff path must be a stable first-party path');
 
     $allowed = [
         'from','country','dateFrom','dateTo','daysFrom','daysTill','count_people',
@@ -89,5 +102,5 @@ function v2_seo_search_handoff_url(string $searchPath, array $state): string
         $query[$key] = $value;
     }
     if (!$query) return $path;
-    return $path.(str_contains($path, '?') ? '&' : '?').http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+    return $path.'?'.http_build_query($query, '', '&', PHP_QUERY_RFC3986);
 }
