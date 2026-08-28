@@ -10,6 +10,23 @@ jobs:
   diagnose:
     runs-on: ubuntu-latest
     steps:
+      - name: Inspect legacy session markup
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 45 -c /tmp/legacy-cookies.txt -b /tmp/legacy-cookies.txt \
+            https://anytour.online/poisk-turov-test/v2/ -o /tmp/legacy.html
+          echo "LEGACY_BYTES=$(wc -c </tmp/legacy.html)"
+          echo "LEGACY_SESSID_OCCURRENCES=$(grep -oic 'sessid' /tmp/legacy.html || true)"
+          python3 - <<'PY'
+          import re
+          html=open('/tmp/legacy.html',encoding='utf-8',errors='replace').read()
+          for m in list(re.finditer('sessid',html,re.I))[:5]:
+              s=html[max(0,m.start()-180):m.start()+320]
+              s=re.sub(r'value=["\'][^"\']+["\']','value="[redacted]"',s,flags=re.I)
+              print('SESSID_CONTEXT=',s.replace('\n',' '))
+          PY
+
       - name: Probe lead bridge with non-writing payload
         shell: bash
         run: |
