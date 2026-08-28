@@ -74,11 +74,12 @@ jobs:
           stamped=[(access_time(x),x) for x in lines]
           stamped=[x for x in stamped if x[0] is not None]
           latest=max((x[0] for x in stamped),default=None)
-          cutoff=latest-window if latest else None
+          now_utc=datetime.datetime.now(datetime.timezone.utc)
+          cutoff=now_utc-window
           req=re.compile(r'"([A-Z]+)\s+([^\s"]+)\s+HTTP/[^"]+"\s+(\d{3})')
           status=collections.Counter(); actions=collections.Counter(); paths=collections.Counter(); bad=collections.Counter(); recent=[]; actor_by_ip={}
           for ts,line in stamped:
-              if cutoff and ts<cutoff:continue
+              if ts<cutoff:continue
               if project not in line:continue
               parts=line.split(None,1)
               if parts:actor_by_ip[parts[0]]=actor(line)
@@ -89,6 +90,7 @@ jobs:
               recent.append(line); status[code]+=1; paths[path]+=1
               if action!='(none)':actions[action]+=1
               if code.startswith(('4','5')):bad[(code,action,path)]+=1
+          print('RECENT_30M_WINDOW_END_UTC',now_utc.isoformat())
           print('RECENT_30M_ACCESS_LATEST',latest.isoformat() if latest else '(none)')
           print('RECENT_30M_BROWSER_REQUESTS',len(recent))
           print('RECENT_30M_BROWSER_STATUS',dict(status))
@@ -98,11 +100,12 @@ jobs:
           errs=tail(error,30000)
           estamp=[(error_time(x),x) for x in errs]
           estamp=[x for x in estamp if x[0] is not None]
-          elatest=max((x[0] for x in estamp),default=None); ecut=elatest-window if elatest else None
+          elatest=max((x[0] for x in estamp),default=None)
+          error_cutoff=datetime.datetime.now()-window
           client_rx=re.compile(r', client:\s*([^,\s]+)'); request_rx=re.compile(r'request:\s+"[A-Z]+\s+([^\s"]+)')
           delays=collections.Counter()
           for ts,line in estamp:
-              if ecut and ts<ecut:continue
+              if ts<error_cutoff:continue
               if project not in line or not re.search(r'limiting requests|limiting connections|delaying request, excess',line,re.I):continue
               cm=client_rx.search(line); who=actor_by_ip.get(cm.group(1),'unknown') if cm else 'unknown'
               if who!='browser':continue
