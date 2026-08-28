@@ -8,9 +8,9 @@ if (isset($params) && is_array($params) && array_key_exists('PHONE', $params)) {
 }
 
 /**
- * V2 owns only the social/app pre-footer block.
- * The host site already renders the canonical global footer after this page shell,
- * so duplicating logo/navigation/legal content here creates two visible footers.
+ * V2 owns the social/app pre-footer block. On the legacy host the surrounding site
+ * supplies its global footer; standalone anytoour pages explicitly render theirs via
+ * v2_render_standalone_canonical_footer() so the two environments never duplicate it.
  */
 function v2_render_site_footer(string $phone, string $phoneHref): void
 {
@@ -35,5 +35,23 @@ function v2_render_site_footer(string $phone, string $phoneHref): void
         </div>
       </div>
     </section>
+    <?php
+}
+
+function v2_render_standalone_canonical_footer(): void
+{
+    $legacy = 'https://anytour.online';
+    ?>
+    <footer class="at-site-footer">
+      <nav class="at-site-footer-menu" aria-label="Служебные ссылки">
+        <ul>
+          <li><a href="<?=$legacy?>/payment/">Оплата туров</a></li>
+          <li><a href="<?=$legacy?>/personal-data/">Согласие на обработку персональных данных</a></li>
+          <li><a href="<?=$legacy?>/politika-konfidentsialnosti/">Политика конфиденциальности</a></li>
+        </ul>
+      </nav>
+      <p class="at-site-footer-copy">© 2026 «ТУРАГЕНТСТВО ANYTour» Москва | Все права защищены.</p>
+      <span class="at-site-pay-icons" aria-label="Платёжные системы"><i>MasterCard</i><i>Visa</i><i>Мир</i></span>
+    </footer>
     <?php
 }
