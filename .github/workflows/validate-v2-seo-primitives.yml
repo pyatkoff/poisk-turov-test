@@ -64,6 +64,7 @@ jobs:
 
           $page=v2_seo_resort_page([
               'name'=>'Анталья',
+              'h1'=>'Туры в Анталью',
               'description'=>'Подбор туров в Анталью с удобным переходом к актуальному поиску AnyTour.',
               'eyebrow'=>'Турция',
               'intro'=>'Курортный регион на Средиземном море.',
@@ -92,12 +93,14 @@ jobs:
           if (!str_contains($html,'href="/resort/alanya/"') || str_contains($html,'?region=15">Search state')) fail('page_internal_link_render');
           if (!str_contains($html,'country=4') || !str_contains($html,'region=15') || str_contains($html,'unknown')) fail('page_handoff');
 
-          $country=v2_seo_country_page(['name'=>'Турция','description'=>'Полезная страница о турах в Турцию и переход к актуальному поиску предложений AnyTour.']);
+          $country=v2_seo_country_page(['name'=>'Турция','h1'=>'Туры в Турцию','description'=>'Полезная страница о турах в Турцию и переход к актуальному поиску предложений AnyTour.']);
           if ($country['page_type']!=='country' || $country['h1']!=='Туры в Турцию') fail('country_page');
-          $season=v2_seo_seasonal_page(['name'=>'на Новый год','description'=>'Сезонная подборка направлений на Новый год с переходом к актуальному поиску туров AnyTour.']);
-          if ($season['page_type']!=='seasonal' || $season['h1']!=='Туры: на Новый год') fail('seasonal_page');
-          try { v2_seo_destination_page('hotel',['name'=>'x','description'=>'Достаточно длинное описание для проверки неизвестного типа страницы.']); fail('unsupported_type_allowed'); }
+          $season=v2_seo_seasonal_page(['name'=>'Новый год','h1'=>'Туры на Новый год','description'=>'Сезонная подборка направлений на Новый год с переходом к актуальному поиску туров AnyTour.']);
+          if ($season['page_type']!=='seasonal' || $season['h1']!=='Туры на Новый год') fail('seasonal_page');
+          try { v2_seo_resort_page(['name'=>'Анталья','description'=>'Достаточно длинное описание, но без готового редакционного H1.']); fail('missing_h1_allowed'); }
+          catch (InvalidArgumentException $e) {}
+          try { v2_seo_destination_page('hotel',['name'=>'x','h1'=>'Отель','description'=>'Достаточно длинное описание для проверки неизвестного типа страницы.']); fail('unsupported_type_allowed'); }
           catch (InvalidArgumentException $e) {}
 
-          echo "V2_SEO_PRIMITIVES_OK breadcrumbs=1 internalLinks=1 handoff=1 pageContract=1 pageTypes=3\n";
+          echo "V2_SEO_PRIMITIVES_OK breadcrumbs=1 internalLinks=1 handoff=1 pageContract=1 pageTypes=3 editorialH1=1\n";
           PHP
