@@ -10,7 +10,7 @@ Release target: every material area >= 9/10 before paid traffic is enabled by th
 | Selected tour | 9.0 | Strong checkout hierarchy plus grounded category/rating/sea/meal/room decision summary; responsive selected-tour gates are green | Maintain; deepen only where Tourvisor data supports a clearer choice |
 | Flights & price confidence | 9.0 | Grounded price/routing trade-offs plus explicit search-price vs selected-flight-price explanation are shipped | Maintain price/flight contract and watch for real ambiguity |
 | Lead UX | 9.0 | Clear no-payment CTA, selected context, guarded submit/recovery and unchanged lead transport contract | Maintain; regressions only unless defect found |
-| Mobile UX | 8.9 | Repeated 375/430 checks are green and sticky primary search/recovery controls have coherent touch sizing; complete flow still warrants a focused small-screen audit | Full-flow mobile audit; fix only confirmed friction |
+| Mobile UX | 9.0 | Full 375/430 journey audit closed a real summary/progress sticky collision plus sub-44px touch targets in search filters, results filters, selected-tour text actions and flight choice. PR, live, deploy, deterministic baseline and post-deploy viewport checks are green | Maintain full-flow mobile regression coverage; fix only newly confirmed friction |
 | Tablet / desktop UX | 8.9 | Repeated 768/1024/1440 and intermediate-width gates are green; control hierarchy is coherent across core surfaces | Continue intermediate-width audits; fix confirmed friction only |
 | Brand & trust | 8.9 | Grounded AnyTour first-screen proof, offices/contract/payment reassurance and selected-tour confirmation language are present | BR2 consistency across stages; BR5 later after destination verification |
 | Visual quality / consistency | 9.0 | PR #128 aligned the main search CTA; PR #130 consolidated primary/secondary control hierarchy across recovery, results, selected tour and mobile sticky search. Production visual evidence is green | Maintain shared hierarchy; regressions only unless a concrete mixed-generation defect is found |
@@ -21,7 +21,7 @@ Release target: every material area >= 9/10 before paid traffic is enabled by th
 
 For the current product-first phase, choose the weakest **core tour-search product** area below 9 before SEO/site expansion. SEO/site foundation remains intentionally sequenced after the search product itself reaches 9 because V2 is the foundation for the later large SEO site.
 
-Current product priority: the tied **8.9 areas**, beginning with **Mobile UX**. Run a complete 375/430 flow audit (search → progress/recovery → results/compare → selected tour/rooms → flights/price → lead) and fix only confirmed material friction. If mobile is already 9-level, move immediately to Search UX, Tablet/Desktop or Brand/Trust rather than inventing features.
+Current product priority: the remaining tied **8.9 areas**, beginning with **Search UX**, then Tablet/Desktop and Brand/Trust. Improve only confirmed material friction rather than inventing features.
 
 ## Evidence behind this re-score
 
@@ -36,6 +36,12 @@ Current product priority: the tied **8.9 areas**, beginning with **Mobile UX**. 
 - PR #128: primary search CTA visual-system correction; production visual baseline green.
 - PR #130: unified primary/secondary control hierarchy; production deploy/live smoke/post-deploy visual/baseline green.
 - PR #132: explicit zero-result nights ±1 recovery within existing 1–28 bounds; no auto-submit or hidden broadening. All PR gates, V2-only deploy/live smoke, post-deploy visual and deterministic baseline are green.
+- PR #134: mobile search-summary/progress sticky collision fixed on <=560px.
+- PR #135: mobile advanced-filter toggles normalized from 40px to 44px with visible keyboard focus.
+- PR #136: dedicated sticky regression workflow now covers search-progress CSS and asserts the summary-aware stack offset at 375/430.
+- PR #138: mobile result-filter chips/choices/close/empty action normalized from 42px to 44px; production deploy green.
+- PR #139: selected-tour back/description text actions normalized to 44px on mobile.
+- PR #141: flight-choice row normalized from 34px to 44px on mobile; all PR gates, V2-only deploy `33190849173`, active contract/result-detail live checks, deterministic baseline `33190955983` and post-deploy viewport audit `33190955981` are green.
 
 ## Re-score rule
 
