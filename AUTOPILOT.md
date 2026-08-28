@@ -1,96 +1,86 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28 13:10 +02:00
+Updated: 2026-08-28 14:04 +02:00
 
-This is the operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the exact machine-readable resume point.
+This is the operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the exact machine-readable resume point. `PRODUCT_ROADMAP.md` is now the active Brand + Product experiments / competitor-gap roadmap.
 
 ## Current phase
 
-**PRs #110 and #111 are merged, deployed and production-green. A whole-flow responsive audit found a real primary-search UX defect: meal choices could be clipped inside their own horizontal scroller at 1024px, and a focused regression then exposed a second breakpoint gap at 1101px. The row now wraps naturally whenever the available width is insufficient, and the regression verifies all five choices with no clipping/internal horizontal scrolling at 375/430/768/901/1024/1100/1101/1200/1440. C7 remains in evidence review, B8 waits for meaningful real-browser funnel behavior, and A8 remains active.**
+**PR #113 is merged, deployed and production-green. The product is no longer globally waiting for meaningful funnel traffic before roadmap work: Brand and safe/reversible Product experiments run in parallel with C7/A8 live evidence. The first PX1 decision-support experiment is live: within a multi-hotel result set, cards can show truthful contextual badges for the current lowest valid price and best valid rating. These badges use only already-returned data, do not change sorting, add no API traffic, and are cleared on a new/dirty search.**
 
-Work stays inside `pyatkoff/poisk-turov-test`; production deploy stays V2-only. Yandex Metrika configuration/goals and the existing lead-sending mechanism remain protected. The AnyTour logo is protected. Global nginx/server configuration is outside this project’s allowed write scope.
+Production deploy stays V2-only. Yandex Metrika configuration/goals, the existing lead-sending mechanism, neighboring projects, global server configuration and the existing AnyTour logo remain protected.
+
+## Active roadmap lanes
+
+- **BR1 Branded first impression — ACTIVE.** Keep the existing AnyTour logo, strengthen the coherent AnyTour product impression/value proposition without pushing the primary search task down the page.
+- **BR2 Trust architecture — ACTIVE.** Real offices/reviews, human support, and clear verification/payment expectations at useful decision points; no unsupported claims or fake urgency.
+- **PX1 Decision support in results — ACTIVE.** PX1.1 contextual lowest-price / best-rating badges is production-green. Next candidates must reduce comparison effort without silently changing sort or data.
+- **PX2 Flexible search / recovery — QUEUED.** Explicit, user-visible relaxation only; never silently broaden criteria.
+- **PX3 Price confidence — QUEUED.** Improve clarity around shown/actualized price without altering pricing contracts.
+- **PX4 Flight decision quality — QUEUED.** Surface useful trade-offs while preserving existing flight-selection semantics.
+- **PX5 Hotel choice depth — QUEUED.** Use already-returned rating/location/sea/room/meal facts for better decisions.
+- **PX6 Save / compare / resume — QUEUED.** Research lightweight shortlist/compare without mandatory account creation.
+- **PX7 Price watch / return intent — RESEARCH.** This may require persistence/contact/product-contract choices and is not an autonomous implementation yet.
+- **C7 Live Conversion Optimization — EVIDENCE_REVIEW.** Funnel hierarchy/A-B-like decisions still require meaningful live evidence.
+- **A8 Operational Live Feedback — ACTIVE.** Production/live findings can interrupt roadmap work by priority.
 
 ## Confirmed product contracts
 
 - Hotel category/stars and meal type stay visible on the first search screen, including mobile and intermediate widths.
-- All primary meal choices must remain directly visible/discoverable without hidden horizontal scrolling; the row may wrap when width is insufficient.
-- The fixed mobile search CTA may help while traversing the form, but must stop at the form boundary and remain hidden below it.
-- Other resort/hotel/operator/flight-detail filters may remain behind the advanced filter disclosure.
-- Preserve delayed/on-demand meals loading; do not return `meals` to the immediate startup API burst.
-- Preserve ordered active CSS/JS source closure inside the V2 bundles; bundling is transport optimization, not a behavior rewrite.
-- Preserve legacy/AI/MAX V2 entry URLs: supported camelCase and snake_case search parameters hydrate the form; auto-start requires an explicit valid search URL rather than a bare/default page visit.
-- URL-requested departure/country must leave the visible primary catalogs consistent with the actual search IDs.
+- All primary meal choices remain directly visible/discoverable without hidden horizontal scrolling; wrapping is allowed when width is insufficient.
+- The fixed mobile search CTA stops at the form boundary and remains hidden below it.
+- Meals remain delayed/on-demand rather than returning to the immediate startup API burst.
+- Active CSS/JS bundle source order remains preserved; bundling is transport optimization, not a behavior rewrite.
+- Legacy/AI/MAX V2 entry URLs continue to hydrate supported camelCase/snake_case parameters; auto-start requires an explicit valid search URL.
+- URL-requested departure/country must leave visible primary catalogs consistent with actual search IDs.
+- Product experiments may annotate/assist decisions, but must not silently mutate user criteria, sorting, prices or lead behavior.
 - Do not redesign/replace the logo.
-- Do not change Metrika/goals or the lead transport/external contract without explicit approval.
+- Do not change Metrika/goals or lead transport/external contract without explicit approval.
 
 ## Material production baseline
 
-PR #97/#98 collapsed active startup static transport from 44 individual CSS/JS requests to one CSS bundle and one JS bundle while preserving source order.
+- PR #97/#98: startup browser transport collapsed from 44 CSS/JS requests to one CSS bundle + one JS bundle while preserving ordered source closure.
+- PR #100: legacy/AI/MAX V2 URL hydration and explicit valid-link auto-start restored.
+- PR #103: departure/country catalog consistency fixed and directly production-verified with non-default `Пермь (2) → Египет (1)`.
+- PR #110/#111: primary meal clipping fixed; regression green at 375/430/768/901/1024/1100/1101/1200/1440 with all five meal choices visible, no internal/document horizontal overflow.
+- PR #113 (`87081d0aac971a0b84ba44602b47ea54819aef59`): activated `PRODUCT_ROADMAP.md` and shipped PX1.1 contextual result decision badges.
 
-PR #100 restored legacy/AI/MAX V2 URL hydration, including supported snake_case date/night aliases and explicit valid-link auto-start. PR #103 (`caef9c4946201130e55230b5015a949b0e2741b5`) fixed primary departure/country catalog consistency. Temporary production diagnostic #105 directly verified non-default `Пермь (2) → Египет (1)`, real country options with no stale/synthetic IDs, and `search_start` using the same IDs.
+PR #113 PR gates are all green: Security guard `33169149763`; Validate V2 PR `33169149760`; startup bundles `33169149813`; B5 trust visual `33169149768`; selected-tour visual `33169149785`; meal visibility `33169149741`; V2 PR visual `33169149839`; full visual baseline `33169149744`.
 
-PR #110 (`82318973e1e76c0999e61bf92b0fab86efbc34df`) fixed confirmed clipping of the final primary meal option at 1024px by moving the meal block to a full row at the affected intermediate breakpoint. Deploy/live checks were green.
-
-A new focused regression then caught a separate 1101px gap that page-level overflow checks could not see because clipping occurred inside `.meal-quick`: at 1101px one of five options was outside the visible 582px row (`601px` content), while 1100px and 1440px were fine. PR #111 (`ce7d5ebe6753407175d709fa59b902c97ff72996`) removed hidden horizontal meal scrolling in favor of natural wrapping and added PR-bundle validation across nine widths.
-
-Final PR #111 regression run `33165808709` is green at **375/430/768/901/1024/1100/1101/1200/1440**: five meal choices at every width, `clipped=0`, no internal horizontal overflow, no document overflow, `flex-wrap=wrap`.
-
-Production verification for #111 is green: Deploy V2 only `33165919804`; tour-live `33165919773`; result-detail-live `33165919885`; Visual V2 post-deploy `33165998159`; Visual V2 baseline `33165998190`; post-deploy recent-browser audit `33165998169`.
+PR #113 production verification is green: Deploy V2 only `33169273215` including V2 verify + live search smoke; Visual V2 post-deploy `33169352847`; post-deploy Visual V2 baseline `33169352930`; recent-browser audit `33169352897`.
 
 ## Live evidence
 
-Temporary privacy-safe diagnostic PR #109 was intentionally closed without merge after run `33164345519`. In a 3-hour window it found **1 real browser session, 12 requests, all HTTP 200, 0 browser 4xx/5xx**, with API actions `departures` x2, `meals` x2 and `countries` x2. There was no real `search`, `tour` or `lead` action.
+The latest non-zero privacy-safe real-browser sample remains diagnostic #109 run `33164345519`: **1 browser session, 12 requests, all HTTP 200, 0 browser 4xx/5xx**, actions `departures` x2, `meals` x2, `countries` x2, and no real `search/tour/lead` action. Soft rate limiting occurred on `departures` x2 and JS bundle x1, but there is still no measured user/funnel impact; do not add client pacing or touch global nginx on that evidence alone.
 
-The same session had three soft rate-limit records: `departures` x2 and JS bundle x1. Recorded excess values were `0.775–1.0` for departures and `0.925` for the JS bundle. This confirms repetition of soft limiting, but not material UX failure: every request succeeded and no funnel action was observed. Do **not** add client pacing or modify nginx until real-browser evidence shows measurable impact.
-
-Post-#111 audit `33165998169`, ending `2026-08-28T11:08:23.528352+00:00`, is clean: **0 real-browser requests, 0 browser 4xx/5xx, 0 browser rate-limit events**. This is health evidence only, not conversion evidence.
+Post-#113 audit `33169352897`, ending `2026-08-28T12:01:06.688765+00:00`, is clean: **0 real-browser requests, 0 browser 4xx/5xx, 0 browser rate-limit events**. This is health evidence only, not conversion evidence.
 
 ## Whole-flow state
 
-- Search lifecycle owns request/search state; progress UX owns waiting/progress/error/zero; dirty UX owns stale-results state.
-- Catalog startup stays intentionally narrow; advanced catalogs are deferred and meals remain delayed/on-demand.
-- CSS/JS startup transport is two bundle requests; source execution order is preserved.
-- Legacy/AI/MAX query parameters hydrate V2 and explicit valid links auto-start; primary departure/country catalogs synchronize before hydration.
-- Deterministic visual coverage spans mobile, intermediate and desktop states and includes populated results, selected-tour checkout and zero-result recovery.
-- Primary meal visibility now has an explicit internal-overflow regression at 375/430/768/901/1024/1100/1101/1200/1440.
-- Pointer and keyboard flight selection converge on the same state/event path.
-- Flight price synchronization and lead context remain isolated contracts; the external lead mechanism is unchanged.
-- No broader Results/Selected Tour/Lead redesign is justified without real funnel evidence.
-
-## Status
-
-- C1 Search Experience 3.0 — **DONE**.
-- C2 Results Experience 3.0 — **DONE**.
-- C3 Selected Tour Experience 3.0 — **DONE / production-green**.
-- C4 Lead Experience 3.0 — **DONE**.
-- C5 Flight Friction — **DONE**.
-- C6 Visual Refinement — **DONE**.
-- Search/Brand/Trust 9.0 + mobile hardening — **DONE / production-green**.
-- Startup static request collapse — **DONE / production-green / non-zero browser validation**.
-- Legacy/AI/MAX URL hydration + explicit auto-start — **DONE / production-green**.
-- URL primary catalog synchronization — **DONE / production-green / direct non-default live verification**.
-- Primary meal responsive visibility — **DONE / production-green / nine-width regression**.
-- Scheduled and post-deploy live-audit paths — **DONE / verified**.
-- C7 Live Conversion Optimization — **EVIDENCE_REVIEW**.
-- B8 Live Product Optimization — **WAITING_FOR_MEANINGFUL_FUNNEL**.
-- A8 Operational Live Feedback — **ACTIVE**.
+- Search lifecycle owns search/request state; progress UX owns waiting/progress/error/zero; dirty UX owns stale-results state.
+- Deterministic visual coverage spans mobile/intermediate/desktop and populated results, selected-tour checkout and zero-result recovery.
+- Result cards now combine absolute decision facts (rating/sea distance) with truthful result-relative PX1 badges when a comparison exists.
+- Pointer/keyboard flight selection converge on the same event/state path.
+- Flight price synchronization and lead context remain isolated contracts; external lead transport is unchanged.
+- Safe Brand/Product roadmap work no longer waits for funnel volume. Changes to conversion hierarchy, silent criteria broadening, pricing semantics or lead behavior remain evidence/approval gated.
 
 ## Exact next work order
 
-1. Inspect fresh `main`, open PRs and latest deploy/live/security/visual results.
-2. Inspect the next non-zero privacy-safe browser samples. Repeated soft limiting is established; only implement V2-local pacing if evidence shows material load/UX/funnel impact.
-3. Prioritize the first meaningful real-browser `search → tour → lead` evidence and identify concrete funnel friction before changing conversion hierarchy.
-4. Continue the full V2 mobile+desktop audit: search → waiting/progress → stale/zero → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery, including intermediate widths and URL entry.
-5. Audit advanced URL hydration labels/options when advanced catalogs are deferred. Fix only if a confirmed visible/data mismatch can mislead users; do not broaden API startup merely for cosmetic completeness.
-6. Preserve first-screen stars+meal, meal visibility at every width, bounded sticky CTA, delayed meals loading, bundle order and URL compatibility.
-7. If production remains healthy and evidence does not identify friction, keep V2 stable rather than manufacturing micro-work.
+1. Inspect fresh `main`, open PRs and latest production/security/visual/live evidence; production/lead/data failures always interrupt roadmap work.
+2. Continue a whole-flow V2 audit: search → waiting/progress → stale/zero → results/comparison → selected tour → rooms/details → flights/price → lead entry/recovery, including mobile/intermediate/desktop and URL entry.
+3. Continue **PX1/PX5 decision support** from already-returned data; prefer comparison clarity over extra controls. Validate any experiment visually and functionally before release.
+4. Audit **PX2 recovery** for cases where exact search returns zero/few results; any relaxation must be explicit and reversible.
+5. Continue **BR1/BR2** where the AnyTour brand/trust presentation can improve without obscuring the primary task or replacing the logo.
+6. Inspect the next non-zero privacy-safe browser sample. Meaningful `search → tour → lead` evidence can reprioritize C7 and override roadmap ordering.
+7. Keep PX7 price-watch in research until persistence/contact/lead-contract implications are resolved; continue other independent work rather than blocking.
 
 ## Deferred / boundaries
 
-- Global nginx/rate-limit configuration: outside allowed V2/repository write scope.
+- Global nginx/rate-limit configuration: outside allowed scope.
 - Global `/images/...` symlink-loop warnings: outside allowed V2/repository write scope while sampled access remains successful.
-- Further Results/price or Selected-Tour/Lead redesign: deferred until observed funnel friction.
-- Client-side pacing for `departures`/bundle: repeated soft signal exists, but deferred until measured user/funnel impact because the sampled requests all returned HTTP 200.
+- Client-side pacing for departures/bundle: repeated soft signal exists but no measured user/funnel impact.
+- Conversion hierarchy/A-B-like conclusions: wait for meaningful live funnel evidence.
+- PX7 price watch / proactive return-intent capture: research only until persistence/contact/product-contract choices are safe and explicit.
 
 ## Guardrails
 

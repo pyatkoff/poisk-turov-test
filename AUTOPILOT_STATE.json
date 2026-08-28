@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T13:10:00+02:00",
+  "updated_at": "2026-08-28T14:04:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "PRs #110 and #111 are merged, deployed and production-green. A full responsive audit found primary meal choices clipped inside an internal horizontal scroller at 1024px and again in a 1101px breakpoint gap. The meal row now wraps whenever width is insufficient, and a focused PR-bundle regression verifies all five choices without clipping/internal horizontal scrolling at 375/430/768/901/1024/1100/1101/1200/1440. Production deploy/live/visual checks are green. A privacy-safe 3h browser diagnostic found one real browser session with 12 successful HTTP 200 requests and repeated soft rate-limit signals on departures and the JS bundle, but no search/tour/lead activity or user-visible failure; pacing remains deferred pending material impact.",
+  "phase": "PR #113 is merged, deployed and production-green. Brand and safe/reversible Product experiments now run in parallel with live conversion evidence rather than waiting globally for meaningful funnel volume. PX1.1 contextual result badges are live: lowest valid price and best valid rating are derived only from the current multi-hotel result set, without new API traffic, sort changes, analytics changes or lead changes. All PR gates, V2 deploy/live search smoke, post-deploy visual audit and post-deploy baseline are green. Latest post-deploy browser audit is clean but zero-traffic.",
   "current_task": {
-    "id": "C7",
-    "category": "LIVE_CONVERSION_OPTIMIZATION",
-    "title": "Live conversion optimization",
-    "status": "EVIDENCE_REVIEW",
-    "objective": "Continue conversion and UX work from observed production friction while preserving the production-green URL-entry, catalog-sync, bundle, responsive meal, search, selected-tour, flight/price and lead contracts.",
-    "next_action": "Inspect the next non-zero privacy-safe browser sample for meaningful search -> tour -> lead behavior and material API-delay impact. In parallel continue the full mobile+desktop V2 journey audit, including advanced URL hydration labels/options, and fix only confirmed UX/data defects."
+    "id": "PX1",
+    "category": "PRODUCT_DECISION_SUPPORT",
+    "title": "Decision support and competitor-gap roadmap",
+    "status": "ACTIVE",
+    "objective": "Continue safe product and brand improvements that reduce tour-choice friction while preserving production-green search, URL hydration, responsive, selected-tour, flight/price and lead contracts.",
+    "next_action": "Re-audit the full V2 journey and continue PX1/PX5 decision support or PX2 explicit recovery where a clear user benefit can be implemented from existing data. Continue BR1/BR2 brand/trust work in parallel. Inspect every new non-zero live sample and let material production/funnel evidence interrupt roadmap ordering."
   },
   "queue": [
     {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
@@ -19,46 +19,66 @@
     {"id":"C4","status":"DONE","title":"Lead Experience 3.0"},
     {"id":"C5","status":"DONE","title":"Flight friction"},
     {"id":"C6","status":"DONE","title":"Visual refinement"},
+    {"id":"BR1","status":"ACTIVE","title":"Branded first impression"},
+    {"id":"BR2","status":"ACTIVE","title":"Trust architecture"},
+    {"id":"PX1","status":"ACTIVE","title":"Decision support in results"},
+    {"id":"PX2","status":"QUEUED","title":"Flexible search and recovery"},
+    {"id":"PX3","status":"QUEUED","title":"Price confidence"},
+    {"id":"PX4","status":"QUEUED","title":"Flight decision quality"},
+    {"id":"PX5","status":"QUEUED","title":"Hotel choice depth"},
+    {"id":"PX6","status":"QUEUED","title":"Save compare resume"},
+    {"id":"PX7","status":"RESEARCH","title":"Price watch and return intent"},
     {"id":"C7","status":"EVIDENCE_REVIEW","title":"Live conversion optimization"},
-    {"id":"B8","status":"WAITING_FOR_MEANINGFUL_FUNNEL","title":"Live product optimization"},
     {"id":"A8","status":"ACTIVE","title":"Operational live traffic feedback loop"}
   ],
+  "roadmap": {
+    "file": "PRODUCT_ROADMAP.md",
+    "brand_and_product_wait_for_funnel": false,
+    "conversion_hierarchy_still_evidence_gated": true,
+    "silent_criteria_broadening_forbidden": true,
+    "price_watch_requires_product_contract_review": true
+  },
   "last_ci": {
     "workflow": "Visual V2 baseline",
-    "run_id": 33165998190,
+    "run_id": 33169352930,
     "attempt": 1,
-    "head_sha": "ce7d5ebe6753407175d709fa59b902c97ff72996",
+    "head_sha": "87081d0aac971a0b84ba44602b47ea54819aef59",
     "conclusion": "success",
-    "classification": "PR111_PRODUCTION_POST_DEPLOY_VISUAL_GREEN"
+    "classification": "PR113_PRODUCTION_POST_DEPLOY_VISUAL_GREEN"
   },
-  "last_verified_commit": "ce7d5ebe6753407175d709fa59b902c97ff72996",
+  "last_verified_commit": "87081d0aac971a0b84ba44602b47ea54819aef59",
   "production_evidence": {
     "startup_bundle_pr": 97,
     "deploy_verification_fix_pr": 98,
     "url_hydration_pr": 100,
     "url_catalog_sync_pr": 103,
-    "url_catalog_sync_merge": "caef9c4946201130e55230b5015a949b0e2741b5",
     "meal_1024_visibility_pr": 110,
-    "meal_1024_visibility_merge": "82318973e1e76c0999e61bf92b0fab86efbc34df",
     "meal_all_width_visibility_pr": 111,
-    "meal_all_width_visibility_merge": "ce7d5ebe6753407175d709fa59b902c97ff72996",
-    "deploy_v2": 33165919804,
-    "tour_live": 33165919773,
-    "result_detail_live": 33165919885,
-    "post_deploy_visual": 33165998159,
-    "post_deploy_baseline": 33165998190,
-    "post_deploy_recent_browser": 33165998169,
-    "meal_visibility_regression_run": 33165808709,
-    "live_3h_diagnostic_pr": 109,
-    "live_3h_diagnostic_run": 33164345519,
-    "live_3h_diagnostic_status": "SUCCESS_CLOSED_WITHOUT_MERGE",
-    "legacy_url_live_diagnostic_pr": 104,
-    "legacy_url_live_diagnostic_run": 33161717495,
-    "legacy_url_live_diagnostic_status": "SUCCESS_CLOSED_WITHOUT_MERGE",
-    "catalog_sync_live_diagnostic_pr": 105,
-    "catalog_sync_live_diagnostic_run": 33161901657,
-    "catalog_sync_live_diagnostic_status": "SUCCESS_CLOSED_WITHOUT_MERGE",
-    "note": "PR #110 fixed confirmed 1024px primary meal clipping. A focused regression then exposed a 1101px breakpoint gap; PR #111 replaced hidden horizontal meal scrolling with natural wrapping and added PR-bundle validation across nine widths. PR #111 deploy, tour-live, result-detail-live, post-deploy visual and baseline are green."
+    "decision_support_roadmap_pr": 113,
+    "decision_support_merge": "87081d0aac971a0b84ba44602b47ea54819aef59",
+    "pr113_security": 33169149763,
+    "pr113_validate": 33169149760,
+    "pr113_bundles": 33169149813,
+    "pr113_trust_visual": 33169149768,
+    "pr113_selected_tour_visual": 33169149785,
+    "pr113_meal_visual": 33169149741,
+    "pr113_visual": 33169149839,
+    "pr113_baseline": 33169149744,
+    "deploy_v2": 33169273215,
+    "post_deploy_visual": 33169352847,
+    "post_deploy_baseline": 33169352930,
+    "post_deploy_recent_browser": 33169352897,
+    "note": "PR #113 activated PRODUCT_ROADMAP.md and shipped PX1.1 current-result decision badges. All PR gates and production V2 deploy/live/visual checks are green."
+  },
+  "decision_support_contract": {
+    "status": "PRODUCTION_GREEN_PX1_1",
+    "lowest_price_badge": "Самая низкая цена",
+    "best_rating_badge": "Лучший рейтинг",
+    "minimum_results_for_comparison": 2,
+    "uses_existing_result_data_only": true,
+    "changes_sorting": false,
+    "adds_api_requests": false,
+    "clears_on_search_start_or_dirty": true
   },
   "responsive_meal_contract": {
     "status": "PRODUCTION_GREEN_ALL_TESTED_WIDTHS_VISIBLE",
@@ -72,13 +92,7 @@
     "status": "PRODUCTION_GREEN_DIRECT_NONDEFAULT_CATALOG_SYNC_VERIFIED",
     "supports_snake_case_date_night_aliases": true,
     "explicit_search_required_for_autostart": true,
-    "primary_catalog_sync": true,
-    "catalog_sync_diagnostic_from": "2",
-    "catalog_sync_diagnostic_departure_label": "Пермь",
-    "catalog_sync_diagnostic_country": "1",
-    "catalog_sync_diagnostic_country_label": "Египет",
-    "catalog_sync_diagnostic_country_count": 33,
-    "catalog_sync_search_id": 13460854706
+    "primary_catalog_sync": true
   },
   "startup_request_mitigation": {
     "status": "STATIC_ASSET_MITIGATION_VALIDATED_REPEATED_SOFT_LIMIT_OBSERVE",
@@ -93,9 +107,6 @@
     "http_200": 12,
     "rate_limit_delays": 3,
     "rate_limit_routes": {"departures":2,"bundle:js":1},
-    "departures_excess_min": 0.775,
-    "departures_excess_max": 1.0,
-    "bundle_js_excess": 0.925,
     "material_user_impact_confirmed": false
   },
   "live_evidence": {
@@ -110,22 +121,23 @@
       "rate_limit_routes": {"departures":2,"bundle:js":1},
       "observed_actions": {"departures":2,"meals":2,"countries":2},
       "funnel_actions": {"search":0,"tour":0,"lead":0},
-      "interpretation": "Repeated soft limiting is real, but all requests succeeded and there is no measured funnel/user impact. Observe rather than add pacing."
+      "interpretation": "Repeated soft limiting is real, but all requests succeeded and no measured user/funnel impact exists. Observe rather than add pacing."
     },
     "latest_post_deploy_browser": {
-      "audit_run_id": 33165998169,
-      "window_end_utc": "2026-08-28T11:08:23.528352+00:00",
+      "audit_run_id": 33169352897,
+      "window_end_utc": "2026-08-28T12:01:06.688765+00:00",
       "browser_requests": 0,
       "http_4xx_5xx": 0,
       "rate_limit_delays": 0,
       "funnel_actions": {"search":0,"tour":0,"lead":0},
-      "interpretation": "Clean but zero-traffic sample; useful for health only, not conversion decisions."
+      "interpretation": "Clean but zero-traffic sample; health evidence only."
     }
   },
   "blocked": [],
   "deferred": [
-    {"scope":"C7 conversion hierarchy changes","reason":"No observed real-browser search/tour/lead funnel behavior identifies conversion friction yet."},
-    {"scope":"departures/bundle API pacing","reason":"Soft rate limiting repeated in one real session, but all 12 requests were HTTP 200 and no material user/funnel impact is measured; require impact before adding client delays."},
+    {"scope":"C7 conversion hierarchy or A-B-like conclusions","reason":"No meaningful real-browser search/tour/lead funnel behavior yet; keep these evidence-gated while independent Brand/Product roadmap work continues."},
+    {"scope":"PX7 price watch / proactive return intent","reason":"May require persistence, contact capture and lead/product-contract choices; research only until those implications are explicit."},
+    {"scope":"departures/bundle API pacing","reason":"Soft rate limiting repeated in one real session, but all requests were HTTP 200 and no material user/funnel impact is measured."},
     {"scope":"global nginx/rate-limit configuration","reason":"Outside allowed V2/repository write scope."},
     {"scope":"global /images symlink-loop","reason":"Outside allowed V2/repository write scope while sampled access remains successful."}
   ],
@@ -141,9 +153,9 @@
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
     "on_ci_success": "collect_done_evidence_then_continue",
     "on_blocker": "record_blocker_and_continue_independent_safe_work",
-    "on_visual_change": "visual_verification_at required viewports before advancing",
-    "on_live_traffic": "activate_C7_B8_A8_and_reprioritize_from_real_evidence",
-    "on_rate_limit_signal": "require material real-browser impact before adding V2-local pacing; never modify global server config from this project",
-    "on_no_evidence": "continue_full_V2_audit_but_keep_product_stable_without_confirmed_defect"
+    "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
+    "on_live_traffic": "reprioritize_from_material_production_or_funnel_evidence",
+    "on_rate_limit_signal": "require_material_real_browser_impact_before_adding_v2_local_pacing_never_modify_global_server_config",
+    "on_no_funnel_evidence": "continue_safe_brand_product_roadmap_and_full_v2_audit_do_not_wait_globally"
   }
 }
