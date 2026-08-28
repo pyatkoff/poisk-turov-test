@@ -52,7 +52,8 @@ if(stripos((string)($_SERVER['CONTENT_TYPE']??''),'application/json')!==0)lead_o
 if((int)($_SERVER['CONTENT_LENGTH']??0)>V2_LEAD_MAX_BODY)lead_out(['ok'=>false,'error'=>'Request too large'],413);
 
 $boot=lead_bootstrap();if(empty($boot['ok']))lead_out(['ok'=>false,'error'=>$boot['error']??'Bitrix bootstrap failed'],500);
-$raw=file_get_contents('php://input');if(strlen((string)$raw)>V2_LEAD_MAX_BODY)lead_out(['ok'=>false,'error'=>'Request too large'],413);$data=json_decode((string)$raw,true);if(!is_array($data))lead_out(['ok'=>false,'error'=>'Invalid JSON'],400);
+$internalBody=(defined('V2_INTERNAL_LEAD_RECEIVER')&&V2_INTERNAL_LEAD_RECEIVER===true&&isset($GLOBALS['V2_INTERNAL_LEAD_BODY'])&&is_string($GLOBALS['V2_INTERNAL_LEAD_BODY']))?$GLOBALS['V2_INTERNAL_LEAD_BODY']:null;
+$raw=$internalBody!==null?$internalBody:file_get_contents('php://input');if(strlen((string)$raw)>V2_LEAD_MAX_BODY)lead_out(['ok'=>false,'error'=>'Request too large'],413);$data=json_decode((string)$raw,true);if(!is_array($data))lead_out(['ok'=>false,'error'=>'Invalid JSON'],400);
 $_REQUEST['sessid']=lead_text($data['sessid']??'',128);$_POST['sessid']=$_REQUEST['sessid'];
 if(!function_exists('check_bitrix_sessid')||!check_bitrix_sessid())lead_out(['ok'=>false,'error'=>'Session validation failed'],403);
 $built=lead_build($data);if(!empty($built['errors']))lead_out(['ok'=>false,'error'=>'Validation failed','fields'=>$built['errors']],422);
