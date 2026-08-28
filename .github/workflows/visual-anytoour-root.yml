@@ -77,16 +77,21 @@ jobs:
                   const visible=el=>!!el&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden'&&el.getBoundingClientRect().width>0&&el.getBoundingClientRect().height>0;
                   const nights=document.querySelector('.main-fields .nights-ux');
                   const nightsQuick=nights&&nights.querySelector('.nights-quick');
-                  const visibleNightChoices=[...(nights?.querySelectorAll('.nights-choice')||[])].filter(visible);
+                  const nightNodes=[...(nights?.querySelectorAll('.nights-choice')||[])];
+                  const visibleNightChoices=nightNodes.filter(visible);
                   const nightsFrom=document.querySelector('[name="daysFrom"]');
                   const nightsTill=document.querySelector('[name="daysTill"]');
                   const nonRootHeader=[...document.querySelectorAll('.at-site-header a[href^="/"]')].filter(a=>a.getAttribute('href')!=='/').map(a=>a.getAttribute('href'));
+                  const qStyle=nightsQuick?getComputedStyle(nightsQuick):null;
+                  const qRect=nightsQuick?nightsQuick.getBoundingClientRect():null;
                   return {
                     hero:visible(document.querySelector('.v2-product-hero')),
                     search:visible(document.querySelector('.search-card')),
                     nightsPrimary:visible(nights),
                     nightChoices:visibleNightChoices.length,
                     nightsOverflow:!!nightsQuick&&nightsQuick.scrollWidth>nightsQuick.clientWidth+2,
+                    nightsGeometry:nightsQuick?{display:qStyle.display,columns:qStyle.gridTemplateColumns,flow:qStyle.gridAutoFlow,width:qRect.width,height:qRect.height,clientWidth:nightsQuick.clientWidth,scrollWidth:nightsQuick.scrollWidth,clientHeight:nightsQuick.clientHeight,scrollHeight:nightsQuick.scrollHeight,overflowX:qStyle.overflowX}:null,
+                    nightButtons:nightNodes.map(el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return{text:String(el.textContent||'').trim(),display:s.display,position:s.position,gridColumn:s.gridColumn,width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom,clientWidth:el.clientWidth,scrollWidth:el.scrollWidth};}),
                     nightValues:[nightsFrom&&nightsFrom.value,nightsTill&&nightsTill.value],
                     community:document.querySelectorAll('.v2-site-community').length,
                     canonicalFooter:document.querySelectorAll('.at-site-footer').length,
@@ -95,10 +100,11 @@ jobs:
                     overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
                   };
                 });
+                console.log('ROOT_VISUAL_STATE',name,JSON.stringify(initial));
                 await page.screenshot({path:`anytoour-root-visual/${name}-initial.png`,fullPage:true,animations:'disabled'});
                 if(!initial.hero||!initial.search) fail(name,'hero/search not visible');
                 if(!initial.nightsPrimary||initial.nightChoices<5) fail(name,`primary duration control missing choices=${initial.nightChoices}`);
-                if(width<=430&&initial.nightsOverflow) fail(name,'trip duration requires horizontal scrolling on mobile');
+                if(width<=430&&initial.nightsOverflow) fail(name,`trip duration overflows ${JSON.stringify(initial.nightsGeometry)}`);
                 if(initial.community!==1) fail(name,`community pre-footer count ${initial.community}`);
                 if(initial.canonicalFooter!==1) fail(name,`canonical footer count ${initial.canonicalFooter}`);
                 if(initial.privacy!=='https://anytour.online/politika-konfidentsialnosti/') fail(name,`privacy URL ${initial.privacy}`);
