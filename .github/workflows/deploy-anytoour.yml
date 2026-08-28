@@ -137,6 +137,8 @@ jobs:
             --data '{"consent":false}' \
             https://anytoour.ru/lead-adapter-v2.php)"
           echo "LEAD_BRIDGE_PROBE_HTTP=$code"
+          cat /tmp/anytoour-lead-probe.json || true
+          echo
           test "$code" = "422"
           grep -q 'Validation failed' /tmp/anytoour-lead-probe.json
           echo "LEAD_BRIDGE_REACHED_PRODUCTION_VALIDATION"
