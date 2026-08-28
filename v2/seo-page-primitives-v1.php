@@ -53,11 +53,19 @@ function v2_seo_render_related_links(string $title, array $links): string
     $title = trim($title);
     if ($title === '') return '';
     $items = [];
+    $seenHrefs = [];
     foreach ($links as $link) {
         if (!is_array($link)) continue;
         $label = trim((string)($link['label'] ?? ''));
         $href = v2_seo_internal_href($link['href'] ?? '');
-        if ($label === '' || $href === null) continue;
+        if (
+            $label === '' ||
+            $href === null ||
+            str_contains($href, '?') ||
+            str_contains($href, '#') ||
+            isset($seenHrefs[$href])
+        ) continue;
+        $seenHrefs[$href] = true;
         $items[] = '<li><a href="'.v2_seo_escape($href).'">'.v2_seo_escape($label).'</a></li>';
     }
     if (!$items) return '';
