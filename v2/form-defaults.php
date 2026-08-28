@@ -20,19 +20,28 @@ function v2_date_value($value, DateTimeImmutable $fallback): string
     return $date->format('Y-m-d');
 }
 
+function v2_query_alias(array $query, array $keys, $fallback = null)
+{
+    foreach ($keys as $key) {
+        if (array_key_exists($key, $query) && $query[$key] !== '') return $query[$key];
+    }
+    return $fallback;
+}
+
 function v2_form_defaults(array $query = [], array $siteParams = []): array
 {
     $from = v2_positive_int($query['from'] ?? ($siteParams['TV_CITY'] ?? 1), 1);
     $country = v2_positive_int($query['country'] ?? 4, 4);
     $today = new DateTimeImmutable('today');
 
-    $dateFrom = v2_date_value($query['dateFrom'] ?? null, $today->modify('+1 day'));
-    $dateTill = v2_date_value($query['dateTo'] ?? null, $today->modify('+14 days'));
+    // Keep legacy public links working while preserving the active form field names.
+    $dateFrom = v2_date_value(v2_query_alias($query, ['date_from', 'dateFrom']), $today->modify('+1 day'));
+    $dateTill = v2_date_value(v2_query_alias($query, ['date_till', 'dateTo']), $today->modify('+14 days'));
     if ($dateTill < $dateFrom) $dateTill = $dateFrom;
 
     // Keep the first search on a compact common preset; explicit query values still win.
-    $nightsFrom = v2_positive_int($query['daysFrom'] ?? 7, 7, 28);
-    $nightsTill = v2_positive_int($query['daysTill'] ?? 10, 10, 28);
+    $nightsFrom = v2_positive_int(v2_query_alias($query, ['days_from', 'daysFrom'], 7), 7, 28);
+    $nightsTill = v2_positive_int(v2_query_alias($query, ['days_till', 'daysTill'], 10), 10, 28);
     if ($nightsTill < $nightsFrom) $nightsTill = $nightsFrom;
 
     return [
