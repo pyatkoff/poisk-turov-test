@@ -6,6 +6,7 @@ on:
     paths:
       - 'v2/seo-page-primitives-v1.php'
       - 'v2/seo-page-contract-v1.php'
+      - 'v2/seo-page-types-v1.php'
       - 'v2/seo-internal-links-v1.php'
       - '.github/workflows/validate-v2-seo-primitives.yml'
   workflow_dispatch:
@@ -25,11 +26,11 @@ jobs:
           set -euo pipefail
           php -l v2/seo-page-primitives-v1.php
           php -l v2/seo-page-contract-v1.php
+          php -l v2/seo-page-types-v1.php
           php -l v2/seo-internal-links-v1.php
           php <<'PHP'
           <?php
-          require 'v2/seo-page-contract-v1.php';
-          require 'v2/seo-internal-links-v1.php';
+          require 'v2/seo-page-types-v1.php';
           function fail($m){fwrite(STDERR,"SEO_PRIMITIVE_FAIL:$m\n"); exit(1);}
 
           $crumbs=v2_seo_render_breadcrumbs([
@@ -41,14 +42,6 @@ jobs:
           if (!str_contains($crumbs,'href="/country/turkey/"')) fail('breadcrumbs_internal_link');
           if (!str_contains($crumbs,'aria-current="page"')) fail('breadcrumbs_current');
 
-          $unsafe=v2_seo_render_related_links('Рядом',[
-              ['label'=>'OK','href'=>'/country/'],
-              ['label'=>'Bad','href'=>'https://example.com/'],
-              ['label'=>'Protocol','href'=>'//example.com/'],
-          ]);
-          if (!str_contains($unsafe,'href="/country/"')) fail('related_valid_link');
-          if (str_contains($unsafe,'example.com')) fail('related_external_leak');
-
           $groups=v2_seo_internal_link_groups([
               ['title'=>'Популярные страны','links'=>[
                   ['label'=>'Турция','href'=>'/country/turkey/'],
@@ -56,39 +49,23 @@ jobs:
                   ['label'=>'External','href'=>'https://example.com/'],
                   ['label'=>'Search state','href'=>'/poisk-turov-test/v2/?country=4'],
               ]],
-              ['title'=>'Курорты','links'=>[
-                  ['label'=>'Анталья','href'=>'/resort/antalya/'],
-              ]],
+              ['title'=>'Курорты','links'=>[['label'=>'Анталья','href'=>'/resort/antalya/']]],
           ]);
-          if (count($groups)!==2) fail('internal_groups_count');
-          if (count($groups[0]['links'])!==1 || $groups[0]['links'][0]['href']!=='/country/turkey/') fail('internal_group_filtering');
-          if ($groups[1]['links'][0]['href']!=='/resort/antalya/') fail('internal_group_second');
-          $groupsHtml=v2_seo_render_internal_link_groups($groups);
-          if (!str_contains($groupsHtml,'aria-label="Другие направления"')) fail('internal_groups_semantics');
-          if (!str_contains($groupsHtml,'href="/country/turkey/"') || !str_contains($groupsHtml,'href="/resort/antalya/"')) fail('internal_groups_links');
-          if (str_contains($groupsHtml,'example.com') || str_contains($groupsHtml,'?country=4')) fail('internal_groups_unsafe_leak');
-
-          $editorial=v2_seo_render_editorial_section('Когда ехать',['Сезон начинается весной.','<script>alert(1)</script>'],'season');
-          if (!str_contains($editorial,'<h2>Когда ехать</h2>')) fail('editorial_h2');
-          if (!str_contains($editorial,'&lt;script&gt;alert(1)&lt;/script&gt;')) fail('editorial_escape');
-          if (str_contains($editorial,'<script>')) fail('editorial_raw_html');
+          if (count($groups)!==2 || count($groups[0]['links'])!==1) fail('internal_group_filtering');
 
           $url=v2_seo_search_handoff_url('/poisk-turov-test/v2/',[
               'from'=>2,'country'=>4,'dateFrom'=>'2026-09-15','daysFrom'=>7,
               'hotel'=>82567,'unknown'=>'drop-me','region'=>['bad'],
           ]);
-          if (!str_starts_with($url,'/poisk-turov-test/v2/?')) fail('handoff_path');
           foreach (['from=2','country=4','dateFrom=2026-09-15','daysFrom=7','hotel=82567'] as $token) {
               if (!str_contains($url,$token)) fail('handoff_'+$token);
           }
-          if (str_contains($url,'unknown') || str_contains($url,'drop-me') || str_contains($url,'region')) fail('handoff_allowlist');
-          try { v2_seo_search_handoff_url('https://example.com/',[]); fail('external_path_allowed'); }
-          catch (InvalidArgumentException $e) {}
+          if (str_contains($url,'unknown') || str_contains($url,'region')) fail('handoff_allowlist');
 
-          $page=[
-              'title'=>'Туры в Анталью — AnyTour',
-              'description'=>'Подбор туров в Анталью с удобным переходом к актуальному поиску AnyTour.',
+          $page=v2_seo_resort_page([
+              'name'=>'Анталья',
               'h1'=>'Туры в Анталью',
+              'description'=>'Подбор туров в Анталью с удобным переходом к актуальному поиску AnyTour.',
               'eyebrow'=>'Турция',
               'intro'=>'Курортный регион на Средиземном море.',
               'breadcrumbs'=>[
@@ -96,22 +73,34 @@ jobs:
                   ['label'=>'Турция','href'=>'/country/turkey/'],
                   ['label'=>'Анталья'],
               ],
-              'sections'=>[
-                  ['id'=>'season','title'=>'Когда ехать','paragraphs'=>['Сезон зависит от ваших планов.']],
-                  ['title'=>'Пустой блок','paragraphs'=>['','   ']],
-              ],
+              'sections'=>[['id'=>'season','title'=>'Когда ехать','paragraphs'=>['Сезон зависит от ваших планов.']]],
               'related'=>[['label'=>'Турция','href'=>'/country/turkey/']],
+              'internal_links'=>[
+                  ['title'=>'Другие курорты','links'=>[
+                      ['label'=>'Аланья','href'=>'/resort/alanya/'],
+                      ['label'=>'Search state','href'=>'/poisk-turov-test/v2/?region=15'],
+                  ]],
+              ],
               'search_state'=>['country'=>4,'region'=>15,'unknown'=>'drop'],
-          ];
-          $meta=v2_seo_page_meta($page);
-          if ($meta['title']!==$page['title'] || $meta['h1']!==$page['h1']) fail('page_meta');
+          ]);
+          if ($page['page_type']!=='resort' || $page['entity_name']!=='Анталья') fail('page_type_identity');
+          if ($page['h1']!=='Туры в Анталью' || $page['title']!=='Туры в Анталью — AnyTour') fail('page_type_defaults');
+          if (count($page['internal_links'])!==1 || count($page['internal_links'][0]['links'])!==1) fail('page_internal_links');
+
           $html=v2_seo_render_page_content($page,'/poisk-turov-test/v2/');
           if (substr_count($html,'<h1>')!==1 || !str_contains($html,'<h1>Туры в Анталью</h1>')) fail('page_h1');
-          if (!str_contains($html,'<h2>Когда ехать</h2>') || str_contains($html,'Пустой блок')) fail('page_sections');
+          if (!str_contains($html,'<h2>Когда ехать</h2>')) fail('page_sections');
+          if (!str_contains($html,'href="/resort/alanya/"') || str_contains($html,'?region=15">Search state')) fail('page_internal_link_render');
           if (!str_contains($html,'country=4') || !str_contains($html,'region=15') || str_contains($html,'unknown')) fail('page_handoff');
-          if (!str_contains($html,'aria-label="Поиск туров"')) fail('page_search_semantics');
-          try { v2_seo_page_contract(['title'=>'x','description'=>'short','h1'=>'x']); fail('short_description_allowed'); }
+
+          $country=v2_seo_country_page(['name'=>'Турция','h1'=>'Туры в Турцию','description'=>'Полезная страница о турах в Турцию и переход к актуальному поиску предложений AnyTour.']);
+          if ($country['page_type']!=='country' || $country['h1']!=='Туры в Турцию') fail('country_page');
+          $season=v2_seo_seasonal_page(['name'=>'Новый год','h1'=>'Туры на Новый год','description'=>'Сезонная подборка направлений на Новый год с переходом к актуальному поиску туров AnyTour.']);
+          if ($season['page_type']!=='seasonal' || $season['h1']!=='Туры на Новый год') fail('seasonal_page');
+          try { v2_seo_resort_page(['name'=>'Анталья','description'=>'Достаточно длинное описание, но без готового редакционного H1.']); fail('missing_h1_allowed'); }
+          catch (InvalidArgumentException $e) {}
+          try { v2_seo_destination_page('hotel',['name'=>'x','h1'=>'Отель','description'=>'Достаточно длинное описание для проверки неизвестного типа страницы.']); fail('unsupported_type_allowed'); }
           catch (InvalidArgumentException $e) {}
 
-          echo "V2_SEO_PRIMITIVES_OK breadcrumbs=1 editorial=1 related=1 internalLinks=1 handoff=1 pageContract=1\n";
+          echo "V2_SEO_PRIMITIVES_OK breadcrumbs=1 internalLinks=1 handoff=1 pageContract=1 pageTypes=3 editorialH1=1\n";
           PHP

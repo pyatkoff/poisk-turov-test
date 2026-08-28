@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/seo-page-primitives-v1.php';
+require_once __DIR__ . '/seo-internal-links-v1.php';
 
 /**
  * Normalize and validate the data needed by future server-rendered SEO landing pages.
@@ -34,6 +35,7 @@ function v2_seo_page_contract(array $page): array
 
     $relatedTitle = trim((string)($page['related_title'] ?? 'Популярные направления'));
     $related = is_array($page['related'] ?? null) ? $page['related'] : [];
+    $internalLinks = v2_seo_internal_link_groups(is_array($page['internal_links'] ?? null) ? $page['internal_links'] : []);
     $searchState = is_array($page['search_state'] ?? null) ? $page['search_state'] : [];
 
     return [
@@ -46,6 +48,7 @@ function v2_seo_page_contract(array $page): array
         'sections' => $sections,
         'related_title' => $relatedTitle,
         'related' => $related,
+        'internal_links' => $internalLinks,
         'search_state' => $searchState,
     ];
 }
@@ -81,6 +84,9 @@ function v2_seo_render_page_content(array $page, string $searchPath): string
 
     $related = v2_seo_render_related_links($page['related_title'], $page['related']);
     if ($related !== '') $parts[] = $related;
+
+    $internalLinks = v2_seo_render_internal_link_groups($page['internal_links']);
+    if ($internalLinks !== '') $parts[] = $internalLinks;
 
     $handoff = v2_seo_search_handoff_url($searchPath, $page['search_state']);
     $parts[] = '<aside class="v2-seo-page__search-handoff" aria-label="Поиск туров"><a href="'.v2_seo_escape($handoff).'">Подобрать тур по этим параметрам</a></aside>';
