@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T01:30:00+02:00",
+  "updated_at": "2026-08-28T04:00:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "Search/Brand/Trust 9.0 mobile hardening production-green; live conversion optimization still waits for meaningful browser evidence",
+  "phase": "Search/Brand/Trust 9.0 mobile hardening production-green; fresh browser audit restored after V2 deploy; live conversion optimization still waits for meaningful traffic",
   "current_task": {
     "id": "C7",
     "category": "LIVE_CONVERSION_OPTIMIZATION",
     "title": "Live conversion optimization",
     "status": "WAITING_FOR_TRAFFIC",
     "objective": "Use meaningful real production traffic and funnel behavior for conversion changes while preserving confirmed product contracts.",
-    "next_action": "Inspect fresh main/open PRs and the latest privacy-safe 30-minute browser audit. Preserve first-screen stars+meal, all meal choices visible on mobile, bounded mobile search CTA, and delayed/on-demand meals loading. Re-audit the full mobile+desktop journey. Do not manufacture Results/Selected-Tour/Lead micro-work without confirmed friction. Activate C7/B8/A8 only from meaningful real-browser funnel evidence."
+    "next_action": "Inspect fresh main/open PRs and the latest privacy-safe 30-minute browser audit. The audit now also runs after each successful Deploy V2 only workflow because repository schedule runs were not observed. Preserve first-screen stars+meal, all meal choices visible on mobile, bounded mobile search CTA, and delayed/on-demand meals loading. Re-audit the full mobile+desktop journey. Do not manufacture Results/Selected-Tour/Lead micro-work without confirmed friction. Activate C7/B8/A8 only from meaningful real-browser funnel evidence."
   },
   "queue": [
     {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
@@ -40,13 +40,13 @@
     "protected_business_contracts": "Do not modify Metrika/goals or lead transport without explicit approval."
   },
   "last_ci": {
-    "workflow": "Visual V2 post-deploy",
-    "run_id": 33126233365,
-    "head_sha": "eac3f5dafe3078f8f62e30e6664fb2d72a652b17",
+    "workflow": "Audit V2 recent browser traffic",
+    "run_id": 33134465815,
+    "head_sha": "b599e6269a421824ffa5bd370d82af9f81406e8e",
     "conclusion": "success",
-    "classification": "DESIGN_9_MOBILE_HARDENING_PRODUCTION_GREEN"
+    "classification": "FRESH_LIVE_EVIDENCE_ZERO_BROWSER_TRAFFIC"
   },
-  "last_verified_commit": "eac3f5dafe3078f8f62e30e6664fb2d72a652b17",
+  "last_verified_commit": "b599e6269a421824ffa5bd370d82af9f81406e8e",
   "production_evidence": {
     "deploy_v2": 33126181209,
     "active_contract": 33126181270,
@@ -57,20 +57,30 @@
   },
   "live_evidence": {
     "recent_browser_window": "30m",
-    "browser_requests": 7,
+    "audit_run_id": 33134465815,
+    "access_log_latest": "2026-08-28T03:57:15+02:00",
+    "error_log_latest": "2026-08-28T03:52:55+02:00",
+    "browser_requests": 0,
     "http_4xx_5xx": 0,
-    "rate_limit_delays": 2,
-    "observed_actions": {"departures":1,"countries":1,"meals":1},
+    "rate_limit_delays": 0,
+    "observed_actions": {},
     "funnel_actions": {"search":0,"tour":0,"lead":0},
-    "interpretation": "Non-zero but still incomplete/tiny browser session. Two rate-limit delays were delays rather than failures; no funnel evidence yet supports C7 changes."
+    "interpretation": "Fresh successful audit found no real-browser V2 traffic in the latest 30-minute window, so there is no evidence basis for C7/B8/A8 conversion changes."
   },
-  "pending_verification": "Require a non-zero useful recent 30-minute real-browser funnel sample before C7/B8/A8 or further live conversion optimization.",
+  "live_audit_reliability": {
+    "status": "MITIGATED",
+    "change": "PR #89 added a successful Deploy V2 only workflow_run trigger and deployed-head checkout to audit-v2-recent-browser.yml while retaining the hourly cron.",
+    "observed_schedule_runs": 0,
+    "interpretation": "GitHub schedule runs were not observed through the repository Actions API, so deploy-triggered auditing now provides a reliable fresh sample after product releases. Cron-only freshness between deployments remains externally unverified."
+  },
+  "pending_verification": "Require a non-zero useful recent 30-minute real-browser funnel sample before C7/B8/A8 or further live conversion optimization. Re-check whether GitHub cron begins producing schedule runs; do not depend on it exclusively.",
   "blocked": [],
   "deferred": [
-    {"scope":"C7 conversion changes","reason":"Real-browser funnel evidence remains insufficient."},
+    {"scope":"C7 conversion changes","reason":"Fresh 30-minute audit has zero real-browser traffic; no funnel evidence supports a change."},
     {"scope":"additional results/price redesign","reason":"Current hierarchy remains materially strong; PR #82 confirmed that extra meal surfacing would duplicate existing context without evidence."},
     {"scope":"selected-tour/lead redesign","reason":"Fresh whole-flow re-audit found current journey and reassurance/recovery coherent; wait for observed friction."},
-    {"scope":"startup/rate-limit architecture changes","reason":"Latest 30-minute sample had only 7 successful browser requests and 2 delay events; insufficient severity/funnel evidence for another startup rewrite."},
+    {"scope":"startup/rate-limit architecture changes","reason":"Fresh audit has zero browser rate-limit events and no user traffic; no evidence supports another startup rewrite."},
+    {"scope":"hourly cron-only traffic freshness","reason":"Repository Actions API showed zero schedule-triggered runs. PR #89 mitigates this after successful V2 deploys; re-check cron later rather than blocking other work."},
     {"scope":"global /images symlink-loop","reason":"Outside allowed V2/repository write scope while sampled access remains successful."},
     {"scope":"small formatter/matchMedia/progressive-results micro-optimizations","reason":"Defer until profiling/live evidence justifies them."}
   ],
