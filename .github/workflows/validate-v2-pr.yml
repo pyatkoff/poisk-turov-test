@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t assets < <(grep -oE "v2_asset\('[^']+\.js'\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\1/" | sort -u)
+          mapfile -t assets < <(php -r 'require "v2/bundle-manifest-v1.php"; foreach(v2_bundle_manifest()["js"] as $x) echo $x,PHP_EOL;')
           test "${#assets[@]}" -gt 0
           for asset in "${assets[@]}"; do
             test -f "v2/$asset"
@@ -86,22 +86,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 <<'PY'
-          import pathlib,re,sys
-          root=pathlib.Path('v2')
-          text=(root/'index.php').read_text(encoding='utf-8')
-          assets=re.findall(r"v2_asset\('([^']+)'\)",text)
-          missing=[asset for asset in assets if not (root/asset).is_file()]
-          print('ACTIVE_ASSETS',len(assets),'MISSING',missing)
-          if missing: sys.exit(1)
-          PY
+          php <<'PHP'
+          <?php
+          require 'v2/bundle-manifest-v1.php';
+          foreach (v2_bundle_manifest() as $type=>$assets) {
+              foreach ($assets as $asset) {
+                  if (!is_file('v2/'.$asset)) {fwrite(STDERR,"ACTIVE_ASSET_MISSING:$asset\n"); exit(1);}
+              }
+          }
+          echo "ACTIVE_BUNDLE_ASSETS_OK\n";
+          PHP
 
       - name: Validate B1 product-shell contract
         shell: bash
         run: |
           set -euo pipefail
           test -s v2/product-shell-v1.css
-          grep -Fq "v2_asset('product-shell-v1.css')" v2/index.php
+          php -r 'require "v2/bundle-manifest-v1.php"; if(!in_array("product-shell-v1.css",v2_bundle_manifest()["css"],true)) exit(1);'
+          grep -Fq "v2_bundle_asset('css')" v2/index.php
           grep -Fq 'class="v2-product-hero"' v2/index.php
           grep -Fq 'id="v2-search-title"' v2/index.php
           grep -Fq '<img src="/images/logo.svg" alt="AnyTour">' v2/index.php
