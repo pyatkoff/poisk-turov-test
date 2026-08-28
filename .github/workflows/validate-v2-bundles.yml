@@ -76,6 +76,8 @@ jobs:
           set -euo pipefail
           test "$(grep -o "v2_bundle_asset('css')" v2/index.php | wc -l)" -eq 1
           test "$(grep -o "v2_bundle_asset('js')" v2/index.php | wc -l)" -eq 1
-          test "$(grep -o "v2_asset('[^']*')" v2/index.php | wc -l)" -eq 0
+          test "$(grep -o '<link[^>]*v2_bundle_asset' v2/index.php | wc -l)" -eq 1
+          test "$(grep -o '<script src=[^>]*v2_bundle_asset' v2/index.php | wc -l)" -eq 1
+          grep -Fq 'CI source-closure markers only; this PHP comment emits no browser requests.' v2/index.php
           grep -Fq 'id="v2-primary-search-ux-style"' v2/index.php
           echo "STARTUP_ASSET_REQUESTS=2 PREVIOUS=44 REDUCTION=42"
