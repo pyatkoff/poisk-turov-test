@@ -44,6 +44,16 @@ jobs:
           if (!str_contains($crumbs,'href="/country/turkey/"')) fail('breadcrumbs_internal_link');
           if (!str_contains($crumbs,'aria-current="page"')) fail('breadcrumbs_current');
 
+          $related=v2_seo_render_related_links('Популярные направления',[
+              ['label'=>'Турция','href'=>'/country/turkey/'],
+              ['label'=>'Дубль','href'=>'/country/turkey/'],
+              ['label'=>'Search state','href'=>'/poisk-turov-test/v2/?country=4'],
+              ['label'=>'Fragment','href'=>'/country/turkey/#offers'],
+              ['label'=>'External','href'=>'https://example.com/'],
+          ]);
+          if (substr_count($related,'href="/country/turkey/"')!==1) fail('related_dedupe');
+          if (str_contains($related,'?country=4') || str_contains($related,'#offers') || str_contains($related,'example.com')) fail('related_stable_path_boundary');
+
           $groups=v2_seo_internal_link_groups([
               ['title'=>'Популярные страны','links'=>[
                   ['label'=>'Турция','href'=>'/country/turkey/'],
@@ -76,7 +86,10 @@ jobs:
                   ['label'=>'Анталья'],
               ],
               'sections'=>[['id'=>'season','title'=>'Когда ехать','paragraphs'=>['Сезон зависит от ваших планов.']]],
-              'related'=>[['label'=>'Турция','href'=>'/country/turkey/']],
+              'related'=>[
+                  ['label'=>'Турция','href'=>'/country/turkey/'],
+                  ['label'=>'Search state','href'=>'/poisk-turov-test/v2/?country=4'],
+              ],
               'internal_links'=>[
                   ['title'=>'Другие курорты','links'=>[
                       ['label'=>'Аланья','href'=>'/resort/alanya/'],
@@ -93,6 +106,7 @@ jobs:
           if (substr_count($html,'<h1>')!==1 || !str_contains($html,'<h1>Туры в Анталью</h1>')) fail('page_h1');
           if (!str_contains($html,'<h2>Когда ехать</h2>')) fail('page_sections');
           if (!str_contains($html,'href="/resort/alanya/"') || str_contains($html,'?region=15">Search state')) fail('page_internal_link_render');
+          if (str_contains($html,'?country=4">Search state')) fail('page_related_search_state_render');
           if (!str_contains($html,'country=4') || !str_contains($html,'region=15') || str_contains($html,'unknown')) fail('page_handoff');
 
           $country=v2_seo_country_page(['name'=>'Турция','h1'=>'Туры в Турцию','description'=>'Полезная страница о турах в Турцию и переход к актуальному поиску предложений AnyTour.']);
@@ -151,5 +165,5 @@ jobs:
               fail('registry_duplicate_allowed');
           } catch (InvalidArgumentException $e) {}
 
-          echo "V2_SEO_PRIMITIVES_OK breadcrumbs=1 internalLinks=1 handoff=1 pageContract=1 pageTypes=3 editorialH1=1 registry=1\n";
+          echo "V2_SEO_PRIMITIVES_OK breadcrumbs=1 relatedLinks=1 internalLinks=1 handoff=1 pageContract=1 pageTypes=3 editorialH1=1 registry=1\n";
           PHP
