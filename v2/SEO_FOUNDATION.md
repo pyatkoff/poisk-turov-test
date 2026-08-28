@@ -15,6 +15,14 @@ Current contract:
 
 The live guard in `.github/workflows/validate-v2-seo-foundation.yml` protects this temporary-route contract. It also verifies that valid search-state parameters prefill predictably, invalid values are normalized, and parameterized variants remain non-indexable without canonical.
 
+## Reusable public-page shell
+
+BR4 now treats site chrome as reusable server-rendered architecture rather than one-off search-page markup. `site-footer-v1.php` is a route-independent semantic footer partial with verified first-party AnyTour navigation, contact access and purchase/help links; `site-footer-v1.css` owns its responsive presentation.
+
+The footer deliberately contains no guessed social/app destinations. BR5 may extend it only after the exact supplied MAX/Telegram/VK/App Store/Google Play URLs are recovered and verified.
+
+The SEO live guard requires the semantic footer and its internal-link set after deployment. This creates a reusable page-shell boundary without changing the temporary route's indexing policy or coupling future landing pages to transient search state.
+
 ## Dynamic result/detail boundary
 
 The live search result list is client-rendered application state, not durable SEO page content. Hotel result cards are rendered as `article` elements and the selected-tour view has a semantic `h2`, but this dynamic UI must not be treated as the source of indexable destination content.
@@ -40,6 +48,8 @@ Before promotion:
 ## Future SEO page architecture
 
 SEO growth should use stable, editorially meaningful landing URLs rather than raw search-state permutations. Suitable page types include country, resort/region, seasonal and other curated destination pages where the page has unique intent and useful static content.
+
+The next route-independent BR4 layer should define reusable server-visible content primitives for those page types (breadcrumbs, editorial intro/body sections, related-destination/internal-link groups and search-prefill handoff) without yet publishing indexable pages or deciding the final route mount.
 
 An indexable landing page may deep-link or prefill the V2 search experience, but the landing URL and the transient search state are separate concepts. Do not create an indexable URL for every combination of dates, nights, adults, price, meal, hotel rating, operator or flight filters.
 
