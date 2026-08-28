@@ -4,82 +4,73 @@ This roadmap is the active pre-traffic product plan. Paid/real-user traffic anal
 
 ## Release gate
 
-Do not wait for funnel volume. Keep developing until every material product area is independently assessed at **>= 9/10**:
+The core tour-search product has reached the current **>= 9/10 pre-traffic gate** across Search, recovery, results/comparison, selected tour, flights/price, lead UX, mobile, tablet/desktop, Brand/Trust, visual consistency and product differentiation.
 
-- Search UX
-- Waiting/progress/recovery
-- Results & comparison
-- Selected tour
-- Flights & price confidence
-- Lead UX
-- Mobile UX
-- Tablet/desktop UX
-- Brand & trust
-- Visual quality/consistency
-- Product differentiation / competitor gap
-- SEO/site foundation
-
-Production breakage, lead loss, incorrect data and severe UX always interrupt roadmap work. Otherwise take the weakest sub-9 area, improve it materially, validate mobile/intermediate/desktop, then reassess.
+The weakest remaining material area is **SEO / site foundation**, so BR4 is now the active development lane. Production breakage, lead loss, incorrect data and severe UX still interrupt roadmap work immediately.
 
 ## Brand roadmap
 
-### BR1 — Branded first impression — ACTIVE
-- Keep the existing AnyTour logo; do not redesign or replace it.
-- Make header/hero/search feel like one coherent AnyTour product rather than an embedded utility.
-- Strengthen value proposition, human assistance and purchase confidence without clutter or pushing search below the fold.
+### BR1 — Branded first impression — SHIPPED / MAINTAIN
+- Existing AnyTour logo preserved.
+- Header/hero/search now read as one AnyTour product with grounded first-screen proof.
+- Improve only if a confirmed cross-stage brand inconsistency appears.
 
-### BR2 — Trust architecture — ACTIVE
-- Real offices/reviews and clear human support where grounded in available data/assets.
-- Contract/payment expectations at decision points.
-- Explain what AnyTour verifies before payment: availability, flight, baggage and final price.
-- No fake urgency, invented review counts, unsupported guarantees or unverifiable claims.
+### BR2 — Trust architecture — SHIPPED / MAINTAIN
+- Grounded office/human-support, contract/payment and pre-payment verification language is present across the decision flow.
+- Keep factual; no fake urgency, invented counts, guarantees or unverifiable claims.
 
-### BR3 — Product-wide visual identity — ACTIVE
-- Consistent typography, spacing, chips/badges, cards, actions and trust language across search/results/selected-tour/lead.
-- Brand treatment remains subordinate to choosing a tour.
+### BR3 — Product-wide visual identity — SHIPPED / MAINTAIN
+- Primary/secondary control hierarchy, CTA treatment, responsive touch targets and cross-stage consistency have dedicated regression coverage.
+- Continue regression maintenance rather than cosmetic churn.
 
-### BR4 — SEO-ready brand shell — QUEUED
-- Keep V2 components reusable for destination/hotel/landing pages.
-- Avoid duplicating search/results logic for future SEO pages.
+### BR4 — SEO-ready brand shell — ACTIVE
+- Reusable semantic site footer shipped in PR #147.
+- Route-independent server-rendered SEO content primitives shipped in PR #148.
+- Reusable landing-page data contract/composer shipped in PR #149.
+- Current `/poisk-turov-test/v2/` route must remain `noindex,follow` with no canonical until the final public URL/mount is explicitly chosen.
+- Continue building reusable country/resort/seasonal page architecture without duplicating search/results logic or publishing arbitrary search-state combinations.
+
+### BR5 — Social + app footer — DEFERRED / VERIFIED-URL DEPENDENCY
+- Add polished MAX / Telegram / VK and mobile-app destinations to the reusable footer only from exact verified destination URLs.
+- Verified social destinations can be retained for later integration; exact App Store and Google Play store URLs must be recovered/confirmed before shipping the complete block.
+- Keep this secondary to navigation/search/lead actions and do not add/change analytics goals.
 
 ## Product experiments / competitor-gap roadmap
 
-### PX1 — Decision support in results — ACTIVE
-- Contextual badges from returned data only.
-- Next: useful price delta context, concise trade-off summaries and comparison shortlist.
-- Never invisibly change sort/order.
+### PX1 — Decision support in results — SHIPPED / MAINTAIN
+- Grounded lowest-price/best-rating badges and nearest-price context are shipped.
+- Lightweight comparison is shipped.
+- Sorting remains explicit and unchanged by badges.
 
-### PX2 — Flexible search / recovery — QUEUED
-- Better alternatives for few/no tours.
-- Explicit date/night/filter relaxation only; never silently broaden criteria.
+### PX2 — Flexible search / recovery — SHIPPED / MAINTAIN
+- Explicit zero-result date ±2 and nights ±1 recovery is shipped.
+- Criteria are never silently broadened and recovery never auto-submits.
 
-### PX3 — Price confidence — QUEUED
-- Explain shown price and what is confirmed before purchase.
-- Surface actualization/price changes clearly.
+### PX3 — Price confidence — SHIPPED / MAINTAIN
+- Search price vs selected-flight recalculation is explained and final manager confirmation before payment is explicit.
 
-### PX4 — Flight decision quality — QUEUED
-- Surface departure time, direct/charter, baggage and price delta trade-offs.
-- Preserve tested flight-selection semantics.
+### PX4 — Flight decision quality — SHIPPED / MAINTAIN
+- Grounded direct/connection and price-delta context is shipped while preserving selection/price synchronization.
 
-### PX5 — Hotel choice depth — QUEUED
-- Stronger grounded decision facts: rating, sea distance, location, room and meal context.
-- Compact “why choose / consider” summary only from actual data.
+### PX5 — Hotel choice depth — SHIPPED / MAINTAIN
+- Grounded selected-tour decision summary uses actual rating/category/sea/meal/room facts only.
 
-### PX6 — Save / compare / resume — QUEUED
-- Lightweight shortlist/compare without account creation.
-- Preserve URL/shareability where practical.
+### PX6 — Save / compare / resume — PARTIALLY SHIPPED / MAINTAIN
+- Lightweight 2–3 hotel comparison without registration is shipped.
+- Broader persistence/resume is intentionally not added until a durable product contract is justified.
 
 ### PX7 — Price watch / return intent — RESEARCH
-- Research only until persistence/contact/product-contract choices are explicit.
+- Keep research-only until persistence, contact permission, notification channel and product-contract choices are explicit.
 
-## Current shipped experiment
+## Current BR4 sequence
 
-PX1.1 contextual result decision badges:
-- “Самая низкая цена” for minimum valid hotel price in a multi-hotel result set.
-- “Лучший рейтинг” for maximum valid hotel rating.
-- May coexist on one hotel.
-- Suppressed for one-item result sets.
-- No API, analytics, sorting, lead or personalization changes.
+1. Keep the temporary V2 route non-indexable and protect its search-state boundary.
+2. Build reusable route-independent page shell/content primitives.
+3. Define reusable page data contracts/templates for country/resort/seasonal pages.
+4. Define internal-linking and search-handoff patterns without making search-state URLs indexable.
+5. Choose the final public URL/mount only as a separate explicit routing/product decision.
+6. Add canonical/indexing/structured-data policy only after the real public page types and URLs exist.
+7. Re-run full search/conversion contracts before any public indexing change.
 
 ## Evidence gates before traffic
 
