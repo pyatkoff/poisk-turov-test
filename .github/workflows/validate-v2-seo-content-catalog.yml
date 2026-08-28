@@ -1,0 +1,123 @@
+name: Validate V2 SEO content catalog
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-content-catalog-v1.php'
+      - 'v2/seo-publishability-v1.php'
+      - 'v2/seo-page-registry-v1.php'
+      - 'v2/seo-page-graph-v1.php'
+      - '.github/workflows/validate-v2-seo-content-catalog.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  content-catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate editorial catalog and candidate gating
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-content-catalog-v1.php
+          php <<'PHP'
+          <?php
+          require 'v2/seo-content-catalog-v1.php';
+          function fail($m){fwrite(STDERR,"SEO_CATALOG_FAIL:$m\n"); exit(1);}
+
+          function full_page(string $name,string $h1,string $description,array $crumbs,array $links,array $state=[]): array {
+              return [
+                  'name'=>$name,
+                  'h1'=>$h1,
+                  'description'=>$description,
+                  'intro'=>'Редакционное введение помогает понять назначение страницы до перехода к актуальному поиску туров.',
+                  'breadcrumbs'=>$crumbs,
+                  'sections'=>[
+                      ['id'=>'choice','title'=>'Как выбрать','paragraphs'=>['Сравните формат отдыха, район и подходящий тип размещения.']],
+                      ['id'=>'season','title'=>'Когда ехать','paragraphs'=>['Условия поездки зависят от сезона и ваших планов на отдых.']],
+                  ],
+                  'internal_links'=>[['title'=>'Другие направления','links'=>$links]],
+                  'search_state'=>$state,
+              ];
+          }
+
+          $records=[
+              [
+                  'id'=>'country.turkey',
+                  'status'=>'approved',
+                  'path'=>'/country/turkey/',
+                  'type'=>'country',
+                  'data'=>full_page('Турция','Туры в Турцию','Редакционная страница о турах в Турцию с полезной информацией и переходом к поиску AnyTour.',[
+                      ['label'=>'Главная','href'=>'/'],['label'=>'Турция']
+                  ],[['label'=>'Анталья','href'=>'/resort/antalya/']],['country'=>4]),
+              ],
+              [
+                  'id'=>'resort.antalya',
+                  'status'=>'review',
+                  'path'=>'/resort/antalya/',
+                  'type'=>'resort',
+                  'data'=>full_page('Анталья','Туры в Анталью','Редакционная страница о турах в Анталью с полезной информацией и переходом к поиску AnyTour.',[
+                      ['label'=>'Главная','href'=>'/'],['label'=>'Турция','href'=>'/country/turkey/'],['label'=>'Анталья']
+                  ],[['label'=>'Турция','href'=>'/country/turkey/']],['country'=>4,'region'=>15]),
+              ],
+              [
+                  'id'=>'season.new-year',
+                  'status'=>'approved',
+                  'path'=>'/season/new-year/',
+                  'type'=>'seasonal',
+                  'data'=>[
+                      'name'=>'Новый год','h1'=>'Туры на Новый год',
+                      'description'=>'Редакционная сезонная страница о новогодних турах с переходом к актуальному поиску AnyTour.',
+                      'intro'=>'',
+                      'breadcrumbs'=>[['label'=>'Главная','href'=>'/'],['label'=>'Новый год']],
+                      'sections'=>[['title'=>'Куда поехать','paragraphs'=>['Выбор зависит от желаемого климата и формата отдыха.']]],
+                      'internal_links'=>[['title'=>'Направления','links'=>[['label'=>'Турция','href'=>'/country/turkey/']]]],
+                  ],
+              ],
+          ];
+
+          $catalog=v2_seo_content_catalog($records,[
+              '/resort/antalya/'=>['parent'=>'/country/turkey/'],
+              '/season/new-year/'=>['related'=>['/country/turkey/']],
+          ]);
+
+          if (v2_seo_content_candidate_paths($catalog)!==['/country/turkey/']) fail('candidate_gate');
+          if (($catalog['reports']['/resort/antalya/']['publishable']??false)!==true) fail('review_quality');
+          if (($catalog['reports']['/resort/antalya/']['status']??'')!=='review') fail('review_status');
+          if (($catalog['reports']['/season/new-year/']['publishable']??true)!==false) fail('thin_approved_quality');
+          if (!in_array('missing_intro',$catalog['reports']['/season/new-year/']['errors']??[],true)) fail('thin_error');
+          if (($catalog['graph']['/resort/antalya/']['parent']??null)!=='/country/turkey/') fail('graph_passthrough');
+
+          $unstable=$records[1];
+          $unstable['status']='approved';
+          $unstable['data']['breadcrumbs'][1]['href']='/country/turkey/?country=4';
+          $unstableCatalog=v2_seo_content_catalog([$unstable]);
+          if (v2_seo_content_candidate_paths($unstableCatalog)!==[]) fail('unstable_breadcrumb_candidate');
+          if (!in_array('breadcrumb_chain_invalid',$unstableCatalog['reports']['/resort/antalya/']['errors']??[],true)) fail('hardened_breadcrumb_not_applied');
+
+          foreach (['Bad ID','x','_bad','bad/id'] as $badId) {
+              try { v2_seo_content_id($badId); fail('bad_id_allowed'); }
+              catch (InvalidArgumentException $e) {}
+          }
+          foreach (['published','ready',''] as $badStatus) {
+              try { v2_seo_content_status($badStatus); fail('bad_status_allowed'); }
+              catch (InvalidArgumentException $e) {}
+          }
+          try {
+              $dupe=$records[0];
+              $dupe['path']='/country/egypt/';
+              v2_seo_content_catalog([$records[0],$dupe]);
+              fail('duplicate_id_allowed');
+          } catch (InvalidArgumentException $e) {}
+          try {
+              v2_seo_content_catalog([$records[0]],['/country/turkey/'=>['related'=>['/country/egypt/']]]);
+              fail('unknown_graph_target_allowed');
+          } catch (InvalidArgumentException $e) {}
+
+          echo "V2_SEO_CONTENT_CATALOG_OK ids=1 statuses=1 registry=1 publishability=1 stableBreadcrumbs=1 graph=1 candidates=1\n";
+          PHP
