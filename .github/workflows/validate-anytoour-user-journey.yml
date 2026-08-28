@@ -1,0 +1,131 @@
+name: Validate anytoour.ru live user journey
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-anytoour-user-journey.yml'
+      - 'v2/home-v1.php'
+      - 'v2/poisk-turov/**'
+  workflow_run:
+    workflows: ['Deploy anytoour.ru']
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: validate-anytoour-user-journey-${{ github.event.pull_request.number || github.event.workflow_run.id || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  live-journey:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - name: Validate standalone tourist journey without lead write
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail(){ echo "ANYTOOUR_JOURNEY_FAIL:$1"; exit 1; }
+          root='https://anytoour.ru'
+          search_page="$root/poisk-turov/"
+          api="$root/api-v2.php"
+
+          home_code="$(curl -fsSL -o /tmp/root-home.html -w '%{http_code}' --max-time 45 "$root/")"
+          search_code="$(curl -fsSL -o /tmp/root-search.html -w '%{http_code}' --max-time 45 "$search_page")"
+          test "$home_code" = '200' || fail home_http
+          test "$search_code" = '200' || fail search_page_http
+          grep -q 'action="/poisk-turov/"' /tmp/root-home.html || fail home_search_action
+          grep -q 'api:"/api-v2.php"' /tmp/root-search.html || fail api_runtime_path
+          grep -q 'leadApi:"/lead-adapter-v2.php"' /tmp/root-search.html || fail lead_runtime_path
+          echo 'ANYTOOUR_JOURNEY_PAGES_OK'
+
+          curl -fsSL --max-time 45 "$api?action=departures" -o /tmp/root-departures.json
+          curl -fsSL --max-time 45 "$api?action=countries&departureId=1" -o /tmp/root-countries.json
+          python3 - <<'PY'
+          import json
+          assert len(json.load(open('/tmp/root-departures.json'))) > 0
+          assert len(json.load(open('/tmp/root-countries.json'))) > 0
+          PY
+
+          from="$(date -d '+2 day' +%Y-%m-%d)"
+          till="$(date -d '+9 day' +%Y-%m-%d)"
+          curl -fsSL --max-time 50 --get \
+            --data-urlencode 'action=search_start' \
+            --data-urlencode 'departureId=1' \
+            --data-urlencode 'countryId=4' \
+            --data-urlencode "dateFrom=$from" \
+            --data-urlencode "dateTo=$till" \
+            --data-urlencode 'nightsFrom=7' \
+            --data-urlencode 'nightsTo=7' \
+            --data-urlencode 'adults=2' \
+            --data-urlencode 'currency=RUB' "$api" -o /tmp/root-start.json
+          search_id="$(python3 -c "import json; d=json.load(open('/tmp/root-start.json')); print(d.get('searchId','') if isinstance(d,dict) else '')")"
+          test -n "$search_id" || fail search_id
+
+          complete=0
+          for attempt in $(seq 1 24); do
+            sleep 2
+            curl -fsSL --max-time 45 "$api?action=search_status&searchId=$search_id" -o /tmp/root-status.json
+            if python3 -c "import json,sys; d=json.load(open('/tmp/root-status.json')); sys.exit(0 if d.get('progress')==100 or d.get('status')=='complete' else 1)"; then complete=1; break; fi
+          done
+          test "$complete" = '1' || fail search_not_complete
+
+          curl -fsSL --max-time 45 "$api?action=search_results&searchId=$search_id&limit=100" -o /tmp/root-results.json
+          read hotel_id tour_id < <(python3 - <<'PY'
+          import json
+          data=json.load(open('/tmp/root-results.json'))
+          assert isinstance(data,list) and data
+          ids=[str(x.get('id')) for x in data if isinstance(x,dict) and x.get('id') is not None]
+          assert len(ids)==len(set(ids))
+          pairs=[(h.get('id'),t.get('id')) for h in data if isinstance(h,dict) for t in (h.get('tours') or []) if isinstance(t,dict) and h.get('id') and t.get('id')]
+          assert pairs
+          print(pairs[0][0],pairs[0][1])
+          PY
+          )
+          test -n "$hotel_id" && test -n "$tour_id" || fail result_identity
+          echo "ANYTOOUR_JOURNEY_RESULTS_OK searchId=$search_id hotelId=$hotel_id tourId=$tour_id"
+
+          curl -fsSL --max-time 45 "$api?action=hotel_details&hotelId=$hotel_id" -o /tmp/root-hotel.json
+          python3 -c "import json; d=json.load(open('/tmp/root-hotel.json')); assert isinstance(d,dict) and d" || fail hotel_details
+
+          curl -fsSL --max-time 45 --get --data-urlencode 'action=tour' --data-urlencode "tourId=$tour_id" --data-urlencode 'currency=RUB' "$api" -o /tmp/root-tour.json
+          python3 -c "import json; d=json.load(open('/tmp/root-tour.json')); assert isinstance(d,dict) and str(d.get('id',''))" || fail tour_details
+
+          room_id="$(python3 - <<'PY'
+          import json
+          t=json.load(open('/tmp/root-tour.json'))
+          vals=[t.get('roomId'),t.get('roomTypeId'),(t.get('room') or {}).get('id') if isinstance(t.get('room'),dict) else None]
+          print(next((str(int(float(v))) for v in vals if v and str(v).replace('.0','').isdigit() and int(float(v))>0),''))
+          PY
+          )"
+          if test -n "$room_id"; then
+            curl -fsSL --max-time 45 --get --data-urlencode 'action=rooms' --data-urlencode "ids=$room_id" "$api" -o /tmp/root-room.json
+            python3 -c "import json; d=json.load(open('/tmp/root-room.json')); rooms=d if isinstance(d,list) else d.get('rooms',[]) if isinstance(d,dict) else []; assert rooms" || fail room_details
+          fi
+
+          curl -fsSL --max-time 45 --get --data-urlencode 'action=flights' --data-urlencode "tourId=$tour_id" --data-urlencode 'currency=RUB' "$api" -o /tmp/root-flights.json
+          python3 - <<'PY' || fail flights
+          import json
+          d=json.load(open('/tmp/root-flights.json'))
+          flights=d if isinstance(d,list) else d.get('flights',[]) if isinstance(d,dict) else []
+          assert flights
+          assert isinstance(flights[0],dict) and (flights[0].get('forward') or flights[0].get('backward'))
+          PY
+
+          lead_code="$(curl -fsSL -o /tmp/root-lead-health.json -w '%{http_code}' --max-time 30 "$root/lead-adapter-v2.php")"
+          test "$lead_code" = '200' || fail lead_health_http
+          python3 - <<'PY' || fail lead_health
+          import json
+          d=json.load(open('/tmp/root-lead-health.json'))
+          assert d.get('ok') is True
+          assert d.get('adapter') == 'v2-hmac-bridge-bitrix-lead'
+          PY
+          echo "ANYTOOUR_USER_JOURNEY_OK searchId=$search_id hotelId=$hotel_id tourId=$tour_id roomId=${room_id:-optional_missing}"
