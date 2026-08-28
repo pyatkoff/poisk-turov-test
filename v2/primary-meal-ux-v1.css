@@ -11,6 +11,10 @@
 .meal-choice.is-active{border-color:#6079d8;background:#edf2ff;color:#2442ad}
 .meal-choice:disabled{cursor:wait;color:#8a94a6;background:#f7f8fb}
 .meal-choice:focus-visible{outline:3px solid rgba(64,92,199,.18);outline-offset:1px}
+@media(max-width:1100px){
+  .primary-search-flow>.primary-step-7.main-meal{grid-column:1/-1!important}
+  .meal-quick{flex-wrap:wrap;overflow-x:visible;scrollbar-width:auto}
+}
 @media(max-width:900px){
   .primary-search-flow>.primary-step-3{grid-column:1/7!important}
   .primary-search-flow>.primary-step-4{grid-column:7/13!important}
