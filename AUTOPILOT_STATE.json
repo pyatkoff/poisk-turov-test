@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T15:03:00+02:00",
+  "updated_at": "2026-08-28T16:02:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Pre-traffic product development. Traffic/conversion analysis is disabled until explicitly re-enabled by the owner. Recent product work advanced PX1/PX2/PX4/PX6 and BR1. PR #123 grounded first-screen AnyTour proof; PR #124 fixed a main-only flight-price CI contract false failure. Production is green on 5d078e7c89b84c3f20026f3f3e939496257dc14c. Next: re-audit full V2 and re-score all 12 areas before choosing the next weakest sub-9 product lane.",
+  "phase": "Pre-traffic product development. Production baseline remains green. PR #125 adds explicit selected-tour price confidence without changing pricing, analytics or lead transport. Ten PR checks are running; next run must inspect them first, merge only if fully green, then verify deploy/live behavior before advancing to the next weakest sub-9 lane.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -11,21 +11,22 @@
     "areas": ["search_ux","waiting_progress_recovery","results_comparison","selected_tour","flights_price","lead_ux","mobile_ux","tablet_desktop_ux","brand_trust","visual_quality","product_differentiation","seo_site_foundation"]
   },
   "current_task": {
-    "id": "QUALITY9",
-    "category": "PRETRAFFIC_PRODUCT_QUALITY",
-    "title": "Re-audit and re-score after PX1/PX2/PX4/PX6 + BR1",
-    "status": "ACTIVE",
-    "objective": "Re-audit the complete V2 journey across mobile/intermediate/desktop, update the 12-area scorecard for the newly shipped decision support/recovery/compare/flight/brand work, then improve the weakest core product area below 9.",
-    "next_action": "Inspect fresh main/open PRs/CI, then audit search → waiting/progress → stale/zero → results/comparison → selected tour → rooms/details → flights/price → lead/recovery. Re-score. Inspect PX5 hotel choice depth, PX3 price confidence and BR2/BR3 consistency first if they remain the weakest material gaps."
+    "id": "PX3",
+    "category": "PRODUCT_UX",
+    "title": "Selected-tour price confidence",
+    "status": "VERIFYING_PR_125",
+    "objective": "Make the transition from search price to selected-flight price explicit and explain that the final amount is reconfirmed before payment, without changing price calculation or lead transport.",
+    "next_action": "Inspect all PR #125 checks. If green, merge and verify V2-only deploy/live selected-tour flow on mobile and desktop. Re-score affected areas, then continue to PX5/BR2-BR3 or the next weakest core sub-9 lane."
   },
   "queue": [
     {"id":"BR1","status":"ACTIVE","title":"Branded first impression","progress":"Grounded AnyTour-specific first-screen proof shipped in PR #123."},
     {"id":"BR2","status":"ACTIVE","title":"Trust architecture"},
     {"id":"BR3","status":"ACTIVE","title":"Product-wide visual identity"},
     {"id":"BR4","status":"QUEUED","title":"SEO-ready brand shell"},
+    {"id":"BR5","status":"QUEUED","title":"Social + app footer","progress":"Verify previously supplied MAX/Telegram/VK/App Store/Google Play URLs before implementation; keep secondary to primary conversion actions."},
     {"id":"PX1","status":"ACTIVE","title":"Decision support in results","progress":"Contextual badges and nearest-price context shipped."},
     {"id":"PX2","status":"ACTIVE","title":"Flexible search and recovery","progress":"Explicit zero-result date recovery shipped."},
-    {"id":"PX3","status":"QUEUED","title":"Price confidence"},
+    {"id":"PX3","status":"VERIFYING_PR_125","title":"Price confidence","progress":"PR #125 distinguishes search price from selected-flight price and explains pre-payment reconfirmation."},
     {"id":"PX4","status":"ACTIVE","title":"Flight decision quality","progress":"Grounded flight price and routing tradeoffs shipped."},
     {"id":"PX5","status":"QUEUED","title":"Hotel choice depth"},
     {"id":"PX6","status":"ACTIVE","title":"Save compare resume","progress":"Lightweight hotel comparison shipped."},
@@ -56,6 +57,7 @@
   "deferred": [
     {"scope":"traffic/conversion analysis","reason":"Explicitly disabled until owner launches traffic after product reaches the required quality level."},
     {"scope":"PX7 price watch / proactive return intent","reason":"May require persistence/contact/product-contract decisions."},
+    {"scope":"BR5 app/social destinations","reason":"Implementation may proceed only after exact previously supplied external URLs are recovered and verified; do not guess destinations."},
     {"scope":"global nginx/server configuration","reason":"Outside allowed V2/repository write scope."}
   ],
   "protected": {
