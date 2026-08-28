@@ -6,6 +6,7 @@ on:
     paths:
       - 'v2/seo-page-primitives-v1.php'
       - 'v2/seo-page-contract-v1.php'
+      - 'v2/seo-internal-links-v1.php'
       - '.github/workflows/validate-v2-seo-primitives.yml'
   workflow_dispatch:
 
@@ -24,9 +25,11 @@ jobs:
           set -euo pipefail
           php -l v2/seo-page-primitives-v1.php
           php -l v2/seo-page-contract-v1.php
+          php -l v2/seo-internal-links-v1.php
           php <<'PHP'
           <?php
           require 'v2/seo-page-contract-v1.php';
+          require 'v2/seo-internal-links-v1.php';
           function fail($m){fwrite(STDERR,"SEO_PRIMITIVE_FAIL:$m\n"); exit(1);}
 
           $crumbs=v2_seo_render_breadcrumbs([
@@ -45,6 +48,25 @@ jobs:
           ]);
           if (!str_contains($unsafe,'href="/country/"')) fail('related_valid_link');
           if (str_contains($unsafe,'example.com')) fail('related_external_leak');
+
+          $groups=v2_seo_internal_link_groups([
+              ['title'=>'Популярные страны','links'=>[
+                  ['label'=>'Турция','href'=>'/country/turkey/'],
+                  ['label'=>'Дубль','href'=>'/country/turkey/'],
+                  ['label'=>'External','href'=>'https://example.com/'],
+                  ['label'=>'Search state','href'=>'/poisk-turov-test/v2/?country=4'],
+              ]],
+              ['title'=>'Курорты','links'=>[
+                  ['label'=>'Анталья','href'=>'/resort/antalya/'],
+              ]],
+          ]);
+          if (count($groups)!==2) fail('internal_groups_count');
+          if (count($groups[0]['links'])!==1 || $groups[0]['links'][0]['href']!=='/country/turkey/') fail('internal_group_filtering');
+          if ($groups[1]['links'][0]['href']!=='/resort/antalya/') fail('internal_group_second');
+          $groupsHtml=v2_seo_render_internal_link_groups($groups);
+          if (!str_contains($groupsHtml,'aria-label="Другие направления"')) fail('internal_groups_semantics');
+          if (!str_contains($groupsHtml,'href="/country/turkey/"') || !str_contains($groupsHtml,'href="/resort/antalya/"')) fail('internal_groups_links');
+          if (str_contains($groupsHtml,'example.com') || str_contains($groupsHtml,'?country=4')) fail('internal_groups_unsafe_leak');
 
           $editorial=v2_seo_render_editorial_section('Когда ехать',['Сезон начинается весной.','<script>alert(1)</script>'],'season');
           if (!str_contains($editorial,'<h2>Когда ехать</h2>')) fail('editorial_h2');
@@ -91,5 +113,5 @@ jobs:
           try { v2_seo_page_contract(['title'=>'x','description'=>'short','h1'=>'x']); fail('short_description_allowed'); }
           catch (InvalidArgumentException $e) {}
 
-          echo "V2_SEO_PRIMITIVES_OK breadcrumbs=1 editorial=1 related=1 handoff=1 pageContract=1\n";
+          echo "V2_SEO_PRIMITIVES_OK breadcrumbs=1 editorial=1 related=1 internalLinks=1 handoff=1 pageContract=1\n";
           PHP
