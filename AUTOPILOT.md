@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-28 14:16 +02:00
+Updated: 2026-08-28 15:03 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -18,34 +18,36 @@ Scores are product-quality assessments backed by functional and visual evidence,
 
 ## Active roadmap
 
-- BR1 Branded first impression — ACTIVE
+- BR1 Branded first impression — ACTIVE; grounded AnyTour-specific first-screen proof shipped in PR #123.
 - BR2 Trust architecture — ACTIVE
 - BR3 Product-wide visual identity — ACTIVE
 - BR4 SEO-ready brand shell — QUEUED
-- PX1 Decision support in results — ACTIVE; PX1.1 contextual lowest-price/best-rating badges shipped in PR #113.
-- PX2 Flexible search/recovery — QUEUED
+- PX1 Decision support in results — ACTIVE; contextual lowest-price/best-rating and nearest-price context shipped.
+- PX2 Flexible search/recovery — ACTIVE; explicit zero-result date recovery shipped.
 - PX3 Price confidence — QUEUED
-- PX4 Flight decision quality — QUEUED
+- PX4 Flight decision quality — ACTIVE; grounded flight price/routing tradeoffs shipped.
 - PX5 Hotel choice depth — QUEUED
-- PX6 Save/compare/resume — QUEUED
+- PX6 Save/compare/resume — ACTIVE; lightweight hotel comparison shipped.
 - PX7 Price watch/return intent — RESEARCH pending product-contract choices
 
 ## Production baseline
 
-PR #113 is merged/deployed/production-green and activated the Brand/Product roadmap with PX1.1 contextual result badges.
+PR #123 (`768f48b56f5cd692489f664fefec528b7e958964`) shipped a grounded first-screen AnyTour proof without changing search, analytics, lead transport or deployment scope. All PR functional/security/visual gates were green.
 
-A subsequent whole-flow audit found a separate UX ownership defect in “Показать ещё варианты”: continue-search directly replaced `#status` with plain text and bypassed structured progress/error UX. PR #115 (`b7f505b8bfe4f751cc7a1f205a35e40a15f23fa7`) is merged/deployed/production-green. Continue-search now emits started/requested/progress/complete/error lifecycle events and `search-progress-ux` owns the presentation. Dedicated regression `33169870927` prevents direct status ownership from returning.
+After merge, the main-only `Validate active V2 contract` correctly blocked the release because its flight-price grep expected spaced `flightPrice - basePrice` while the semantically identical implementation used `flightPrice-basePrice`. This was a CI contract-format false failure, not a production pricing defect. PR #124 (`5d078e7c89b84c3f20026f3f3e939496257dc14c`) restored the expected formatting only.
 
-PR #115 verification is green: Security `33169870873`; V2 PR validation `33169870844`; startup bundles `33169870841`; meal visual `33169870848`; trust visual `33169870859`; selected-tour visual `33169870839`; PR visual `33169870843`; baseline `33169870838`; production deploy/live search smoke `33169989018`; result-detail live `33169989056`; post-deploy visual `33170048785`; post-deploy baseline `33170048715`.
+PR #124 verification is green: Security `33173388430`; active V2 contract `33173388343`; tour live `33173388380`; result-detail live `33173388408`; V2-only deploy/live search smoke `33173388498`. Its PR gates were also fully green, including flight tradeoffs, branch/startup bundles and all visual suites.
 
-Earlier production contracts remain protected: V2 bundles, legacy/AI/MAX URL hydration, primary catalog sync, responsive meal visibility, bounded mobile CTA, selected-tour/flight/price behavior and lead transport.
+Production is therefore green on `5d078e7c89b84c3f20026f3f3e939496257dc14c`.
+
+Earlier production contracts remain protected: V2 bundles, legacy/AI/MAX URL hydration, primary catalog sync, responsive meal visibility, bounded mobile CTA, selected-tour/flight/price behavior, structured continue-search progress ownership and lead transport.
 
 ## Exact next work order
 
 1. Inspect fresh `main`, open PRs and latest deploy/security/functional/visual results for actual breakage.
 2. Re-audit the complete V2 journey on mobile/intermediate/desktop: search → waiting/progress → stale/zero → results/comparison → selected tour → rooms/details → flights/price → lead/recovery.
-3. Maintain a 12-area 9/10 scorecard and identify the weakest material area below 9.
-4. Implement the highest-value safe improvement in that area; continue through multiple independent tasks while time allows.
+3. Re-score the 12-area quality scorecard now that PX1/PX2/PX4/PX6 and BR1 have materially advanced since the last scorecard snapshot.
+4. Take the weakest core product area below 9 and implement the highest-value safe improvement; likely candidates to inspect first are PX5 hotel choice depth, PX3 price confidence and remaining BR2/BR3 consistency gaps.
 5. Run relevant functional/regression/visual checks; deploy V2 only when green; smoke production after deploy.
 6. Re-score affected areas and immediately continue to the next weakest sub-9 area.
 7. Keep Brand and Product/competitor-gap queues active regardless of traffic availability.
