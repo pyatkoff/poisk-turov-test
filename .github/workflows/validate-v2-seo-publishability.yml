@@ -76,15 +76,32 @@ jobs:
           $datedReport=v2_seo_publishability_report($dated);
           if (!in_array('transient_search_state',$datedReport['errors'],true)) fail('dated_state_allowed');
 
-          $badCrumb=$record;
-          $badCrumb['page']['breadcrumbs'][2]['href']='/resort/antalya/';
-          $crumbReport=v2_seo_publishability_report($badCrumb);
-          if (!in_array('breadcrumb_current_page_invalid',$crumbReport['errors'],true)) fail('linked_current_crumb_allowed');
+          $badCurrent=$record;
+          $badCurrent['page']['breadcrumbs'][2]['href']='/resort/antalya/';
+          $currentReport=v2_seo_publishability_report($badCurrent);
+          if (!in_array('breadcrumb_current_page_invalid',$currentReport['errors'],true)) fail('linked_current_crumb_allowed');
+
+          foreach ([
+              '/country/turkey/?country=4',
+              '/country/turkey/#offers',
+              'https://example.com/country/turkey/'
+          ] as $badHref) {
+              $badChain=$record;
+              $badChain['page']['breadcrumbs'][1]['href']=$badHref;
+              $chainReport=v2_seo_publishability_report($badChain);
+              if (!in_array('breadcrumb_chain_invalid',$chainReport['errors'],true)) fail('unstable_breadcrumb_allowed');
+              if ($chainReport['publishable']) fail('unstable_breadcrumb_publishable');
+          }
+
+          $duplicateCrumb=$record;
+          $duplicateCrumb['page']['breadcrumbs'][1]['href']='/';
+          $duplicateReport=v2_seo_publishability_report($duplicateCrumb);
+          if (!in_array('breadcrumb_chain_invalid',$duplicateReport['errors'],true)) fail('duplicate_breadcrumb_allowed');
 
           $duplicateSection=$record;
           $duplicateSection['page']['sections'][1]['title']='Когда ехать';
           $sectionReport=v2_seo_publishability_report($duplicateSection);
           if (!in_array('duplicate_or_empty_section_title',$sectionReport['errors'],true)) fail('duplicate_section_allowed');
 
-          echo "V2_SEO_PUBLISHABILITY_OK complete=1 thinRejected=1 transientRejected=1 breadcrumbs=1 sections=1\n";
+          echo "V2_SEO_PUBLISHABILITY_OK complete=1 thinRejected=1 transientRejected=1 breadcrumbs=1 stableBreadcrumbs=1 sections=1\n";
           PHP

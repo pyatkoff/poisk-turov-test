@@ -45,10 +45,27 @@ function v2_seo_publishability_report(array $record): array
     if (count($breadcrumbs) < 2) {
         $errors[] = 'insufficient_breadcrumbs';
     } else {
-        $last = $breadcrumbs[array_key_last($breadcrumbs)];
-        $lastLabel = is_array($last) ? trim((string)($last['label'] ?? '')) : '';
-        $lastHref = is_array($last) ? v2_seo_internal_href($last['href'] ?? '') : null;
-        if ($lastLabel === '' || $lastHref !== null) $errors[] = 'breadcrumb_current_page_invalid';
+        $lastIndex = array_key_last($breadcrumbs);
+        $seenBreadcrumbHrefs = [];
+        foreach ($breadcrumbs as $index => $crumb) {
+            if (!is_array($crumb)) {
+                $errors[] = 'breadcrumb_chain_invalid';
+                continue;
+            }
+            $label = trim((string)($crumb['label'] ?? ''));
+            if ($index === $lastIndex) {
+                $href = trim((string)($crumb['href'] ?? ''));
+                if ($label === '' || $href !== '') $errors[] = 'breadcrumb_current_page_invalid';
+                continue;
+            }
+
+            $href = v2_seo_stable_internal_href($crumb['href'] ?? '');
+            if ($label === '' || $href === null || isset($seenBreadcrumbHrefs[$href])) {
+                $errors[] = 'breadcrumb_chain_invalid';
+                continue;
+            }
+            $seenBreadcrumbHrefs[$href] = true;
+        }
     }
 
     $related = is_array($page['related'] ?? null) ? $page['related'] : [];
