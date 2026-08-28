@@ -1,161 +1,60 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T14:04:00+02:00",
-  "mode": "product_ux_visual_development",
-  "phase": "PR #113 is merged, deployed and production-green. Brand and safe/reversible Product experiments now run in parallel with live conversion evidence rather than waiting globally for meaningful funnel volume. PX1.1 contextual result badges are live: lowest valid price and best valid rating are derived only from the current multi-hotel result set, without new API traffic, sort changes, analytics changes or lead changes. All PR gates, V2 deploy/live search smoke, post-deploy visual audit and post-deploy baseline are green. Latest post-deploy browser audit is clean but zero-traffic.",
+  "updated_at": "2026-08-28T14:11:00+02:00",
+  "mode": "pretraffic_9_score_product_development",
+  "phase": "Pre-traffic product development. Traffic/conversion analysis is disabled until explicitly re-enabled by the owner. Current visitors are owner/team and are not conversion evidence. PR #113 activated Brand/Product roadmap and shipped PX1.1. Continue by scoring and improving the weakest material product area below 9/10.",
+  "release_gate": {
+    "minimum_score_each_area": 9.0,
+    "traffic_required": false,
+    "traffic_analysis_enabled": false,
+    "areas": ["search_ux","waiting_progress_recovery","results_comparison","selected_tour","flights_price","lead_ux","mobile_ux","tablet_desktop_ux","brand_trust","visual_quality","product_differentiation","seo_site_foundation"]
+  },
   "current_task": {
-    "id": "PX1",
-    "category": "PRODUCT_DECISION_SUPPORT",
-    "title": "Decision support and competitor-gap roadmap",
+    "id": "QUALITY9",
+    "category": "PRETRAFFIC_PRODUCT_QUALITY",
+    "title": "Bring every material V2 area to 9/10",
     "status": "ACTIVE",
-    "objective": "Continue safe product and brand improvements that reduce tour-choice friction while preserving production-green search, URL hydration, responsive, selected-tour, flight/price and lead contracts.",
-    "next_action": "Re-audit the full V2 journey and continue PX1/PX5 decision support or PX2 explicit recovery where a clear user benefit can be implemented from existing data. Continue BR1/BR2 brand/trust work in parallel. Inspect every new non-zero live sample and let material production/funnel evidence interrupt roadmap ordering."
+    "objective": "Re-audit the whole product, score material areas, then improve the weakest sub-9 area while preserving production contracts.",
+    "next_action": "Inspect current production/CI for breakage, then perform a whole-flow product/visual audit and scorecard. Take the weakest sub-9 area. Brand and Product/competitor-gap are active queues and do not wait for traffic."
   },
   "queue": [
-    {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
-    {"id":"C2","status":"DONE","title":"Results Experience 3.0"},
-    {"id":"C3","status":"DONE","title":"Selected Tour Experience 3.0"},
-    {"id":"C4","status":"DONE","title":"Lead Experience 3.0"},
-    {"id":"C5","status":"DONE","title":"Flight friction"},
-    {"id":"C6","status":"DONE","title":"Visual refinement"},
     {"id":"BR1","status":"ACTIVE","title":"Branded first impression"},
     {"id":"BR2","status":"ACTIVE","title":"Trust architecture"},
+    {"id":"BR3","status":"ACTIVE","title":"Product-wide visual identity"},
+    {"id":"BR4","status":"QUEUED","title":"SEO-ready brand shell"},
     {"id":"PX1","status":"ACTIVE","title":"Decision support in results"},
     {"id":"PX2","status":"QUEUED","title":"Flexible search and recovery"},
     {"id":"PX3","status":"QUEUED","title":"Price confidence"},
     {"id":"PX4","status":"QUEUED","title":"Flight decision quality"},
     {"id":"PX5","status":"QUEUED","title":"Hotel choice depth"},
     {"id":"PX6","status":"QUEUED","title":"Save compare resume"},
-    {"id":"PX7","status":"RESEARCH","title":"Price watch and return intent"},
-    {"id":"C7","status":"EVIDENCE_REVIEW","title":"Live conversion optimization"},
-    {"id":"A8","status":"ACTIVE","title":"Operational live traffic feedback loop"}
+    {"id":"PX7","status":"RESEARCH","title":"Price watch and return intent"}
   ],
-  "roadmap": {
-    "file": "PRODUCT_ROADMAP.md",
-    "brand_and_product_wait_for_funnel": false,
-    "conversion_hierarchy_still_evidence_gated": true,
-    "silent_criteria_broadening_forbidden": true,
-    "price_watch_requires_product_contract_review": true
-  },
-  "last_ci": {
-    "workflow": "Visual V2 baseline",
-    "run_id": 33169352930,
-    "attempt": 1,
-    "head_sha": "87081d0aac971a0b84ba44602b47ea54819aef59",
-    "conclusion": "success",
-    "classification": "PR113_PRODUCTION_POST_DEPLOY_VISUAL_GREEN"
-  },
-  "last_verified_commit": "87081d0aac971a0b84ba44602b47ea54819aef59",
-  "production_evidence": {
-    "startup_bundle_pr": 97,
-    "deploy_verification_fix_pr": 98,
-    "url_hydration_pr": 100,
-    "url_catalog_sync_pr": 103,
-    "meal_1024_visibility_pr": 110,
-    "meal_all_width_visibility_pr": 111,
-    "decision_support_roadmap_pr": 113,
-    "decision_support_merge": "87081d0aac971a0b84ba44602b47ea54819aef59",
-    "pr113_security": 33169149763,
-    "pr113_validate": 33169149760,
-    "pr113_bundles": 33169149813,
-    "pr113_trust_visual": 33169149768,
-    "pr113_selected_tour_visual": 33169149785,
-    "pr113_meal_visual": 33169149741,
-    "pr113_visual": 33169149839,
-    "pr113_baseline": 33169149744,
-    "deploy_v2": 33169273215,
-    "post_deploy_visual": 33169352847,
-    "post_deploy_baseline": 33169352930,
-    "post_deploy_recent_browser": 33169352897,
-    "note": "PR #113 activated PRODUCT_ROADMAP.md and shipped PX1.1 current-result decision badges. All PR gates and production V2 deploy/live/visual checks are green."
-  },
-  "decision_support_contract": {
-    "status": "PRODUCTION_GREEN_PX1_1",
-    "lowest_price_badge": "Самая низкая цена",
-    "best_rating_badge": "Лучший рейтинг",
-    "minimum_results_for_comparison": 2,
-    "uses_existing_result_data_only": true,
-    "changes_sorting": false,
-    "adds_api_requests": false,
-    "clears_on_search_start_or_dirty": true
-  },
-  "responsive_meal_contract": {
-    "status": "PRODUCTION_GREEN_ALL_TESTED_WIDTHS_VISIBLE",
-    "all_primary_meal_choices_visible": true,
-    "hidden_horizontal_scroll": false,
-    "wrap_when_needed": true,
-    "validated_widths": [375,430,768,901,1024,1100,1101,1200,1440],
-    "regression_run": 33165808709
-  },
-  "url_entry_contract": {
-    "status": "PRODUCTION_GREEN_DIRECT_NONDEFAULT_CATALOG_SYNC_VERIFIED",
-    "supports_snake_case_date_night_aliases": true,
-    "explicit_search_required_for_autostart": true,
-    "primary_catalog_sync": true
-  },
-  "startup_request_mitigation": {
-    "status": "STATIC_ASSET_MITIGATION_VALIDATED_REPEATED_SOFT_LIMIT_OBSERVE",
-    "previous_static_asset_requests": 44,
-    "current_static_asset_requests": 2,
-    "reduction": 42,
-    "css_sources": 20,
-    "js_sources": 25,
-    "order_preserved": true,
-    "latest_nonzero_diagnostic_run": 33164345519,
-    "browser_requests": 12,
-    "http_200": 12,
-    "rate_limit_delays": 3,
-    "rate_limit_routes": {"departures":2,"bundle:js":1},
-    "material_user_impact_confirmed": false
-  },
-  "live_evidence": {
-    "latest_nonzero_browser": {
-      "audit_run_id": 33164345519,
-      "window_hours": 3,
-      "browser_sessions": 1,
-      "browser_requests": 12,
-      "http_status": {"200":12},
-      "http_4xx_5xx": 0,
-      "rate_limit_delays": 3,
-      "rate_limit_routes": {"departures":2,"bundle:js":1},
-      "observed_actions": {"departures":2,"meals":2,"countries":2},
-      "funnel_actions": {"search":0,"tour":0,"lead":0},
-      "interpretation": "Repeated soft limiting is real, but all requests succeeded and no measured user/funnel impact exists. Observe rather than add pacing."
-    },
-    "latest_post_deploy_browser": {
-      "audit_run_id": 33169352897,
-      "window_end_utc": "2026-08-28T12:01:06.688765+00:00",
-      "browser_requests": 0,
-      "http_4xx_5xx": 0,
-      "rate_limit_delays": 0,
-      "funnel_actions": {"search":0,"tour":0,"lead":0},
-      "interpretation": "Clean but zero-traffic sample; health evidence only."
-    }
-  },
+  "roadmap": {"file":"PRODUCT_ROADMAP.md","brand_active":true,"competitor_gap_active":true,"wait_for_funnel":false},
+  "production_baseline": {"decision_support_pr":113,"last_verified_commit":"87081d0aac971a0b84ba44602b47ea54819aef59","status":"PRODUCTION_GREEN"},
   "blocked": [],
   "deferred": [
-    {"scope":"C7 conversion hierarchy or A-B-like conclusions","reason":"No meaningful real-browser search/tour/lead funnel behavior yet; keep these evidence-gated while independent Brand/Product roadmap work continues."},
-    {"scope":"PX7 price watch / proactive return intent","reason":"May require persistence, contact capture and lead/product-contract choices; research only until those implications are explicit."},
-    {"scope":"departures/bundle API pacing","reason":"Soft rate limiting repeated in one real session, but all requests were HTTP 200 and no material user/funnel impact is measured."},
-    {"scope":"global nginx/rate-limit configuration","reason":"Outside allowed V2/repository write scope."},
-    {"scope":"global /images symlink-loop","reason":"Outside allowed V2/repository write scope while sampled access remains successful."}
+    {"scope":"traffic/conversion analysis","reason":"Explicitly disabled until owner launches traffic after product reaches the required quality level."},
+    {"scope":"PX7 price watch / proactive return intent","reason":"May require persistence/contact/product-contract decisions."},
+    {"scope":"global nginx/server configuration","reason":"Outside allowed V2/repository write scope."}
   ],
   "protected": {
-    "other_projects": "DO_NOT_MODIFY",
-    "global_site_assets_and_server_config": "DO_NOT_MODIFY_OUTSIDE_ALLOWED_V2_SCOPE",
-    "logo": "DO_NOT_CHANGE",
-    "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "lead_sending_mechanism": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL"
+    "other_projects":"DO_NOT_MODIFY",
+    "global_site_assets_and_server_config":"DO_NOT_MODIFY_OUTSIDE_ALLOWED_V2_SCOPE",
+    "logo":"DO_NOT_CHANGE",
+    "metrika_configuration":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
+    "metrika_goals":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
+    "lead_sending_mechanism":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL"
   },
   "continuation_policy": {
-    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "collect_done_evidence_then_continue",
-    "on_blocker": "record_blocker_and_continue_independent_safe_work",
-    "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
-    "on_live_traffic": "reprioritize_from_material_production_or_funnel_evidence",
-    "on_rate_limit_signal": "require_material_real_browser_impact_before_adding_v2_local_pacing_never_modify_global_server_config",
-    "on_no_funnel_evidence": "continue_safe_brand_product_roadmap_and_full_v2_audit_do_not_wait_globally"
+    "priority":"production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > weakest_sub9_score > brand_product_roadmap > cosmetic_refactor",
+    "on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external",
+    "on_ci_success":"continue_to_next_safe_material_task",
+    "on_blocker":"record_blocker_and_continue_independent_safe_work",
+    "on_visual_change":"validate_required_viewports_before_advancing",
+    "on_no_traffic":"ignore_as_expected_and_continue_product_development",
+    "on_score_below_9":"prioritize_weakest_material_area",
+    "on_score_at_least_9":"move_to_next_weakest_area"
   }
 }
