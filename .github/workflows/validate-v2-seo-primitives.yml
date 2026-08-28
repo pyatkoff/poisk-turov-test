@@ -1,0 +1,66 @@
+name: Validate V2 SEO page primitives
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-page-primitives-v1.php'
+      - '.github/workflows/validate-v2-seo-primitives.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seo-primitives:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PHP and semantic contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-page-primitives-v1.php
+          php <<'PHP'
+          <?php
+          require 'v2/seo-page-primitives-v1.php';
+          function fail($m){fwrite(STDERR,"SEO_PRIMITIVE_FAIL:$m\n"); exit(1);}
+
+          $crumbs=v2_seo_render_breadcrumbs([
+              ['label'=>'Главная','href'=>'/'],
+              ['label'=>'Турция','href'=>'/country/turkey/'],
+              ['label'=>'Анталья'],
+          ]);
+          if (!str_contains($crumbs,'aria-label="Хлебные крошки"')) fail('breadcrumbs_semantics');
+          if (!str_contains($crumbs,'href="/country/turkey/"')) fail('breadcrumbs_internal_link');
+          if (!str_contains($crumbs,'aria-current="page"')) fail('breadcrumbs_current');
+
+          $unsafe=v2_seo_render_related_links('Рядом',[
+              ['label'=>'OK','href'=>'/country/'],
+              ['label'=>'Bad','href'=>'https://example.com/'],
+              ['label'=>'Protocol','href'=>'//example.com/'],
+          ]);
+          if (!str_contains($unsafe,'href="/country/"')) fail('related_valid_link');
+          if (str_contains($unsafe,'example.com')) fail('related_external_leak');
+
+          $editorial=v2_seo_render_editorial_section('Когда ехать',['Сезон начинается весной.','<script>alert(1)</script>'],'season');
+          if (!str_contains($editorial,'<h2>Когда ехать</h2>')) fail('editorial_h2');
+          if (!str_contains($editorial,'&lt;script&gt;alert(1)&lt;/script&gt;')) fail('editorial_escape');
+          if (str_contains($editorial,'<script>')) fail('editorial_raw_html');
+
+          $url=v2_seo_search_handoff_url('/poisk-turov-test/v2/',[
+              'from'=>2,'country'=>4,'dateFrom'=>'2026-09-15','daysFrom'=>7,
+              'hotel'=>82567,'unknown'=>'drop-me','region'=>['bad'],
+          ]);
+          if (!str_starts_with($url,'/poisk-turov-test/v2/?')) fail('handoff_path');
+          foreach (['from=2','country=4','dateFrom=2026-09-15','daysFrom=7','hotel=82567'] as $token) {
+              if (!str_contains($url,$token)) fail('handoff_'+$token);
+          }
+          if (str_contains($url,'unknown') || str_contains($url,'drop-me') || str_contains($url,'region')) fail('handoff_allowlist');
+
+          try { v2_seo_search_handoff_url('https://example.com/',[]); fail('external_path_allowed'); }
+          catch (InvalidArgumentException $e) {}
+
+          echo "V2_SEO_PRIMITIVES_OK breadcrumbs=1 editorial=1 related=1 handoff=1\n";
+          PHP
