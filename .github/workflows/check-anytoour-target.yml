@@ -1,0 +1,72 @@
+name: Check anytoour.ru target
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/check-anytoour-target.yml'
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare SSH key
+        env:
+          DEPLOY_SSH_KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_SSH_KEY_VALUE" || { echo "PREFLIGHT_FAIL: ANYTOOUR_DEPLOY_SSH_KEY is empty"; exit 1; }
+          key_file="$GITHUB_WORKSPACE/anytoour_deploy_key"
+          raw="$DEPLOY_SSH_KEY_VALUE"
+          if [[ "$raw" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$raw" | tr -d '\r' > "$key_file"
+          else
+            printf '%s' "$raw" | base64 --decode > "$key_file"
+          fi
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+
+      - name: Check target server
+        env:
+          DEPLOY_HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          DEPLOY_USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_HOST_VALUE" || { echo "PREFLIGHT_FAIL: ANYTOOUR_DEPLOY_HOST is empty"; exit 1; }
+          test -n "$DEPLOY_USER_VALUE" || { echo "PREFLIGHT_FAIL: ANYTOOUR_DEPLOY_USER is empty"; exit 1; }
+          ssh_opts=(-i "$GITHUB_WORKSPACE/anytoour_deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" '
+            set -euo pipefail
+            root="$HOME/www/anytoour.ru"
+            echo "PREFLIGHT_USER=$(whoami)"
+            echo "PREFLIGHT_HOME=$HOME"
+            echo "PREFLIGHT_ROOT=$root"
+            test -d "$root" || { echo "PREFLIGHT_FAIL: document root missing"; exit 1; }
+            test -w "$root" || { echo "PREFLIGHT_FAIL: document root is not writable"; exit 1; }
+            echo "PREFLIGHT_ROOT_WRITABLE=yes"
+            php -v | head -1
+            for ext in curl json mbstring openssl; do
+              php -m | grep -qi "^${ext}$" || { echo "PREFLIGHT_FAIL: php extension ${ext} missing"; exit 1; }
+              echo "PREFLIGHT_PHP_EXT_${ext}=yes"
+            done
+            if test -f "$root/bitrix/modules/main/include/prolog_before.php"; then
+              echo "PREFLIGHT_BITRIX=yes"
+            else
+              echo "PREFLIGHT_BITRIX=no"
+            fi
+            if test -f "$root/site_conf.php"; then
+              echo "PREFLIGHT_SITE_CONF=yes"
+            else
+              echo "PREFLIGHT_SITE_CONF=no"
+            fi
+            if test -f "$root/config.php"; then
+              echo "PREFLIGHT_ROOT_CONFIG=yes"
+            else
+              echo "PREFLIGHT_ROOT_CONFIG=no"
+            fi
+            if test -f "$root/index.html"; then echo "PREFLIGHT_PLACEHOLDER_INDEX=yes"; else echo "PREFLIGHT_PLACEHOLDER_INDEX=no"; fi
+            echo "PREFLIGHT_OK"
+          '
