@@ -67,9 +67,8 @@ jobs:
               await page.locator('.compare-remove').first().click();
               state=await page.evaluate(()=>({selected:window.V2ConversionConfidenceV1.compareState.selected.size,overlayHidden:document.getElementById('v2CompareOverlay').hidden}));
               if(state.selected!==1||!state.overlayHidden)throw new Error(name+': remove/close failed '+JSON.stringify(state));
-              await buttons.nth(1).click();
+              await buttons.nth(0).click();
               await buttons.nth(2).click();
-              await buttons.nth(3).click();
               state=await page.evaluate(()=>({selected:window.V2ConversionConfidenceV1.compareState.selected.size,disabled:[...document.querySelectorAll('.hotel-compare-toggle')].filter(b=>!b.classList.contains('is-selected')).every(b=>b.disabled)}));
               if(state.selected!==3||!state.disabled)throw new Error(name+': max-three guard failed '+JSON.stringify(state));
               await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:search-started')));
