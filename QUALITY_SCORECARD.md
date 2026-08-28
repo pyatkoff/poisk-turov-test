@@ -15,13 +15,13 @@ Release target: every material core tour-search area >= 9/10 before paid traffic
 | Brand & trust | 9.0 | Trust is now cross-stage rather than isolated: AnyTour-specific first-screen proof and office links, results reassurance before opening a tour, selected-tour no-payment/contract/price-check reassurance and lead CTA clarification are all present. Dedicated trust and selected-tour visual contracts cover 375/430/768/1024/1440 without overflow | Maintain factual trust language; BR5 social/app footer later after exact destination verification |
 | Visual quality / consistency | 9.0 | PR #128 aligned the main search CTA; PR #130 consolidated primary/secondary control hierarchy across recovery, results, selected tour and mobile sticky search | Maintain shared hierarchy |
 | Product differentiation / competitor gap | 9.0 | PX1/PX2/PX3/PX4/PX5/PX6 provide grounded decision support, recovery, compare, flight/price context and selected-tour depth without speculative data | Maintain; PX7 remains research because it changes persistence/return-intent contract |
-| SEO / site foundation | 7.2 | Reusable V2 exists and the temporary route has a protected noindex/search-state boundary, but the final public URL and indexable content architecture are not yet implemented | Begin BR4 architecture work that does not require choosing the final public route; defer route promotion/canonical/indexing policy until that product decision exists |
+| SEO / site foundation | 8.5 | Reusable semantic shell, server-rendered content primitives, country/resort/seasonal page contracts, stable first-party linking, curated registry, structural publishability gate and registered parent/related graph are now shipped. The temporary V2 route remains safely noindex. What is still missing is the real editorial content catalog plus the explicit public mount/canonical/indexing/sitemap policy | Build controlled editorial content-source/catalog tooling next; defer public route/canonical/indexing/sitemap promotion until the final mount decision exists |
 
 ## Active priority rule
 
-All core tour-search product areas are now at the pre-traffic 9/10 gate. The next weakest material area is **SEO / site foundation (7.2)**, so work may move to BR4 foundation while preserving the existing conversion/search contracts.
+All core tour-search product areas are at the pre-traffic 9/10 gate. The next weakest material area remains **SEO / site foundation (8.5)**, so BR4 continues while preserving every existing search/conversion contract.
 
-Do not make the current development route indexable. The final public URL/canonical decision remains a separate product/routing choice. Safe autonomous SEO work should focus on reusable page-shell/content architecture, semantic boundaries and regression protection that remain valid regardless of the final mount point.
+Do not make the current development route indexable. The final public URL/canonical decision remains a separate product/routing choice. Safe autonomous SEO work can continue on the controlled editorial content-source/catalog layer and publication tooling that remain valid regardless of the final mount point.
 
 ## Evidence behind this re-score
 
@@ -35,15 +35,20 @@ Do not make the current development route indexable. The final public URL/canoni
 - PR #128/#130: primary CTA and product-wide control consistency.
 - PR #134–#141: full mobile audit and touch/sticky fixes.
 - PR #142/#144: invalid-field recovery and single-owned date-window behavior.
-- Final Search-audit production commit `e656a364bde48b77267f535bff34aecea8f27969` completed production/workflow checks without failure, including post-deploy visual `33193311378` and deterministic baseline `33193311547`.
+- PR #147–#149: reusable semantic footer, SEO page primitives and landing-page contract.
+- PR #151/#152/#156: stable first-party internal/related-link boundaries with query/hash/search-state exclusion.
+- PR #153: explicit country/resort/seasonal page-type adapters with editorial H1 requirement rather than guessed Russian inflection.
+- PR #154: curated clean-path SEO page registry that rejects arbitrary request/search-state URL identity.
+- PR #155: structural publishability gate rejecting thin/incomplete page candidates and transient date/night/hotel/operator search state.
+- PR #157: registered parent/related page graph with unknown-reference and cycle rejection.
+- Production deploy for PR #157 commit `ebdb8d8e6240283e4b89c05d5e67ff4c5cc1c076` passed V2 validation, copy, verify and live search smoke in deploy run `33206695319`.
 - Current PR visual contract audits initial/search-picker/advanced-filter/results states at 375/430/768/1024/1440 and fails on overflow or broken interaction state.
 - Current selected-tour visual contract audits long-content facts, flights, lead form, trust/CTA, error recovery and overflow at the same five viewports.
-- Current B5 trust visual contract audits factual no-payment/price-check reassurance and CTA language at all five viewports.
 
 ## Re-score rule
 
-After every material user-facing release:
-1. verify functional/visual production state;
+After every material user-facing or architecture release:
+1. verify relevant functional/visual/production state;
 2. update only affected scores with concrete evidence;
 3. choose the weakest material area below 9;
 4. do not use traffic volume or conversion analysis as a gate until the owner explicitly enables paid traffic.
