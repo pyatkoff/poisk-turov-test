@@ -6,6 +6,9 @@ on:
     paths:
       - 'v2/index.php'
       - 'v2/form-defaults.php'
+      - 'v2/site-footer-v1.php'
+      - 'v2/site-footer-v1.css'
+      - 'v2/bundle-manifest-v1.php'
       - '.github/workflows/validate-v2-seo-foundation.yml'
 
 concurrency:
@@ -47,9 +50,16 @@ jobs:
           required_links=['/country/','/poisk-turov/','/hot/','/contacts/']
           for href in required_links:
               if not re.search(r'href=["\']'+re.escape(href)+r'["\']',text,re.I): fail('internal_link_'+href)
+          footer=re.search(r'<footer\b[^>]*class=["\'][^"\']*v2-site-footer[^"\']*["\'][^>]*>(.*?)</footer>',text,re.I|re.S)
+          if not footer: fail('semantic_footer')
+          footer_html=footer.group(1)
+          if not re.search(r'<nav\b[^>]*aria-label=["\']Разделы AnyTour["\']',footer_html,re.I): fail('footer_nav')
+          for href in ['/country/','/poisk-turov/','/hot/','/rb/','/how-to-buy/','/contacts/']:
+              if not re.search(r'href=["\']'+re.escape(href)+r'["\']',footer_html,re.I): fail('footer_link_'+href)
+          if 'site-footer-v1.css' not in text: fail('footer_style_bundle_marker')
           for marker in ['results-renderer-v5.js','tour-controller-v4.js','lead-form-guard-v1.js']:
               if marker not in text: fail('active_marker_'+marker)
-          print('V2_SEO_FOUNDATION_OK title=1 description=1 robots=noindex_follow h1=1 internalLinks='+str(len(required_links))+' canonical=absent')
+          print('V2_SEO_FOUNDATION_OK title=1 description=1 robots=noindex_follow h1=1 internalLinks='+str(len(required_links))+' semanticFooter=1 canonical=absent')
           PY
 
       - name: Validate search-state URLs stay non-indexable
