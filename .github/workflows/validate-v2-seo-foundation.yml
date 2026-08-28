@@ -1,22 +1,17 @@
 name: Validate V2 SEO foundation
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'v2/index.php'
-      - 'v2/form-defaults.php'
-      - 'v2/site-footer-v1.php'
-      - 'v2/site-footer-v1.css'
-      - 'v2/bundle-manifest-v1.php'
-      - '.github/workflows/validate-v2-seo-foundation.yml'
+  workflow_run:
+    workflows: ["Deploy V2 only"]
+    types: [completed]
 
 concurrency:
-  group: ci-validate-v2-seo-foundation-${{ github.ref }}
+  group: ci-validate-v2-seo-foundation-${{ github.event_name }}-${{ github.event.workflow_run.head_sha || github.ref }}
   cancel-in-progress: true
 
 jobs:
   seo-foundation:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Validate test-route SEO contract live
