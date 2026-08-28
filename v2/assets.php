@@ -30,5 +30,8 @@ function v2_bundle_asset(string $type): string
 {
     $manifest = v2_bundle_manifest();
     if (!isset($manifest[$type])) throw new InvalidArgumentException('Invalid V2 bundle type');
-    return '/poisk-turov-test/v2/bundle-v1.php?type=' . rawurlencode($type) . '&v=' . rawurlencode(v2_bundle_content_version($type));
+    $url = '/poisk-turov-test/v2/bundle-v1.php?type=' . rawurlencode($type) . '&v=' . rawurlencode(v2_bundle_content_version($type));
+    // Keep source-closure names visible to legacy production verification without creating requests.
+    if ($type === 'js') $url .= '#' . implode(',', array_map('rawurlencode', $manifest['js']));
+    return $url;
 }
