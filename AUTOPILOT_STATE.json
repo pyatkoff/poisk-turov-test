@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-28T09:59:00+02:00",
+  "updated_at": "2026-08-28T11:05:00+02:00",
   "mode": "product_ux_visual_development",
-  "phase": "V2 startup request-burst mitigation from PR #97 is deployed and production-green, with PR #98 restoring deploy verification for bundled assets. Startup static asset requests were collapsed from 44 to 2 while preserving the ordered 20 CSS + 24 JS source closure. The immediate post-deploy 30-minute browser audit contained no real browser traffic, errors or rate-limit events, so real-user effectiveness still requires the next non-zero browser sample.",
+  "phase": "PR #100 is merged, deployed and production-green: V2 now hydrates legacy/AI/MAX search URL parameters (including snake_case date/night aliases) and auto-starts only an explicit valid search link. The first non-zero real-browser sample after PR #97/#98 bundling contained 5 requests, all HTTP 200, no static-asset throttling, and one soft nginx delay on the departures API route. This validates the static request-collapse benefit while leaving the isolated API delay under observation rather than justifying a UX slowdown or global nginx change.",
   "current_task": {
     "id": "C7",
     "category": "LIVE_CONVERSION_OPTIMIZATION",
     "title": "Live conversion optimization",
     "status": "EVIDENCE_REVIEW",
-    "objective": "Validate the deployed startup request collapse against meaningful real production traffic and continue conversion/UX work only from observed funnel friction while preserving confirmed product contracts.",
-    "next_action": "Inspect the next non-zero privacy-safe browser sample after PR #97/#98. Verify whether browser rate-limit delays disappeared or moved to remaining API routes. Continue the full mobile+desktop V2 journey audit; require observed search -> tour -> lead friction before changing Results, Selected Tour or Lead conversion hierarchy."
+    "objective": "Continue conversion/UX work from observed real production funnel friction while preserving confirmed product contracts and the production-green legacy URL entry path.",
+    "next_action": "Inspect the next non-zero privacy-safe browser samples for repeated departures/API throttling and, more importantly, meaningful search -> tour -> lead behavior. Continue the full mobile+desktop V2 journey audit; change Results, Selected Tour or Lead hierarchy only when observed friction supports it."
   },
   "queue": [
     {"id":"C1","status":"DONE","title":"Search Experience 3.0"},
@@ -24,28 +24,32 @@
     {"id":"A8","status":"ACTIVE","title":"Operational live traffic feedback loop"}
   ],
   "last_ci": {
-    "workflow": "Audit V2 recent browser traffic",
-    "run_id": 33150370576,
+    "workflow": "Visual V2 baseline",
+    "run_id": 33157609829,
     "attempt": 1,
-    "head_sha": "7073054b8d1dfb69c118357f5dacd09f1e4edf8e",
+    "head_sha": "154eab24f27dd456e12c8b07002f3236b1686603",
     "conclusion": "success",
-    "classification": "POST_BUNDLE_WORKFLOW_RUN_ZERO_BROWSER_TRAFFIC"
+    "classification": "PR100_PRODUCTION_POST_DEPLOY_VISUAL_GREEN"
   },
-  "last_verified_commit": "7073054b8d1dfb69c118357f5dacd09f1e4edf8e",
+  "last_verified_commit": "154eab24f27dd456e12c8b07002f3236b1686603",
   "production_evidence": {
     "startup_bundle_pr": 97,
     "startup_bundle_merge": "e27b0ecaf481a0f8e35aca34783844d9822cafa7",
     "deploy_verification_fix_pr": 98,
     "deploy_verification_fix_merge": "7073054b8d1dfb69c118357f5dacd09f1e4edf8e",
-    "deploy_v2": 33150281686,
-    "active_contract": 33150281677,
-    "tour_live": 33150281694,
-    "post_deploy_visual": 33150370523,
-    "post_deploy_recent_browser": 33150370576,
-    "note": "PR #97 collapsed the V2 startup static asset load from 44 requests to two bundled requests without changing source order. PR #98 fixed deploy verification compatibility with the bundle contract. Current V2 deployment and post-deploy visual/live checks are green."
+    "url_hydration_pr": 100,
+    "url_hydration_merge": "154eab24f27dd456e12c8b07002f3236b1686603",
+    "deploy_v2": 33157514891,
+    "active_contract": 33157514914,
+    "tour_live": 33157514902,
+    "result_detail_live": 33157514873,
+    "post_deploy_visual": 33157609853,
+    "post_deploy_baseline": 33157609829,
+    "post_deploy_recent_browser": 33157609848,
+    "note": "PR #100 is live and production-green. Legacy/AI/MAX search URLs can hydrate V2 form state using camelCase and supported snake_case aliases; explicit valid search URLs auto-start. PR #97/#98 bundling remains live and the first non-zero post-bundle browser sample shows no static-asset rate-limit delays."
   },
   "startup_request_mitigation": {
-    "status": "DEPLOYED_PENDING_NONZERO_REAL_BROWSER_VALIDATION",
+    "status": "STATIC_ASSET_MITIGATION_VALIDATED_NONZERO_SAMPLE_API_DELAY_OBSERVE",
     "previous_static_asset_requests": 44,
     "current_static_asset_requests": 2,
     "reduction": 42,
@@ -53,7 +57,12 @@
     "js_sources": 24,
     "order_preserved": true,
     "bundle_validation_run": 33150164420,
-    "bundle_validation_conclusion": "success"
+    "bundle_validation_conclusion": "success",
+    "nonzero_validation_run": 33157609848,
+    "nonzero_browser_requests": 5,
+    "static_asset_rate_limit_delays": 0,
+    "api_rate_limit_delays": 1,
+    "api_rate_limit_route": "departures"
   },
   "live_evidence": {
     "original_nonzero_browser_sample": {
@@ -65,26 +74,30 @@
       "observed_actions": {"departures":1,"meals":1,"countries":1},
       "funnel_actions": {"search":0,"tour":0,"lead":0}
     },
-    "latest_post_bundle_recent_browser": {
-      "audit_run_id": 33150370576,
-      "window_end_utc": "2026-08-28T07:08:53.524135+00:00",
-      "browser_requests": 0,
-      "http_status": {},
+    "latest_post_bundle_nonzero_browser": {
+      "audit_run_id": 33157609848,
+      "window_end_utc": "2026-08-28T09:01:02.749199+00:00",
+      "browser_requests": 5,
+      "http_status": {"200": 5},
       "http_4xx_5xx": 0,
-      "rate_limit_delays": 0
+      "rate_limit_delays": 1,
+      "rate_limit_routes": {"departures":1},
+      "observed_actions": {"departures":1,"meals":1,"countries":1},
+      "funnel_actions": {"search":0,"tour":0,"lead":0},
+      "interpretation": "No static bundle asset throttling was observed. One soft delay remains on departures; retain under observation unless repeated real-browser evidence shows material UX impact."
     }
   },
   "live_audit_reliability": {
     "status": "SCHEDULE_AND_WORKFLOW_RUN_VERIFIED",
     "scheduled_live_audit_run": 33141756241,
     "scheduled_recent_browser_run": 33145238161,
-    "post_deploy_workflow_run": 33150370576,
+    "post_deploy_workflow_run": 33157609848,
     "interpretation": "Both scheduled audit workflows and the successful-deploy workflow_run path are observed working."
   },
   "blocked": [],
   "deferred": [
     {"scope":"C7 conversion hierarchy changes","reason":"No observed real-browser search/tour/lead funnel behavior identifies conversion friction yet."},
-    {"scope":"startup bundle effectiveness conclusion","reason":"The bundle mitigation is production-green, but the first post-deploy audit window had zero real-browser requests; wait for a non-zero sample before declaring the browser throttling issue resolved."},
+    {"scope":"departures/API rate-limit mitigation","reason":"Only one soft departures delay is present in the first non-zero post-bundle sample; all five requests returned 200. Do not intentionally slow startup without repeated evidence of material user impact."},
     {"scope":"global nginx/rate-limit configuration","reason":"Outside allowed V2/repository write scope."},
     {"scope":"global /images symlink-loop","reason":"Outside allowed V2/repository write scope while sampled access remains successful."}
   ],
@@ -102,7 +115,7 @@
     "on_blocker": "record_blocker_and_continue_independent_safe_work",
     "on_visual_change": "visual_verification_at_required_viewports_before_advancing",
     "on_live_traffic": "activate_C7_B8_A8_and_reprioritize_from_real_evidence",
-    "on_rate_limit_signal": "evaluate the next non-zero post-bundle browser sample before further V2 mitigation; never modify global server config from this project",
+    "on_rate_limit_signal": "require repeated real-browser API delay evidence before adding V2-local pacing; never modify global server config from this project",
     "on_no_evidence": "keep_V2_stable_and_do_not_manufacture_micro_work"
   }
 }
