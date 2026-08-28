@@ -51,6 +51,13 @@ $sessionName = session_name();
 $sessionId = session_id();
 if ($sessid === '' || $sessionName === '' || $sessionId === '') receiver_out(['ok' => false, 'error' => 'Bitrix session unavailable'], 500);
 
+// The target adapter re-opens this exact PHP session over HTTP. Persist and
+// release its lock before the nested request, otherwise the adapter blocks on
+// the session file and the receiver times out before validation is reached.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
 $data['sessid'] = $sessid;
 $forwardBody = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 if ($forwardBody === false) receiver_out(['ok' => false, 'error' => 'Lead payload encoding failed'], 500);
