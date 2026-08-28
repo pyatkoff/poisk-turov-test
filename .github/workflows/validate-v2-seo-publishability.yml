@@ -1,0 +1,90 @@
+name: Validate V2 SEO publishability
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-page-primitives-v1.php'
+      - 'v2/seo-page-contract-v1.php'
+      - 'v2/seo-page-types-v1.php'
+      - 'v2/seo-page-registry-v1.php'
+      - 'v2/seo-publishability-v1.php'
+      - 'v2/seo-internal-links-v1.php'
+      - '.github/workflows/validate-v2-seo-publishability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publishability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate structural publication quality contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-publishability-v1.php
+          php <<'PHP'
+          <?php
+          require 'v2/seo-publishability-v1.php';
+          function fail($m){fwrite(STDERR,"SEO_PUBLISHABILITY_FAIL:$m\n"); exit(1);}
+
+          $registry=v2_seo_page_registry([[
+              'path'=>'/resort/antalya/',
+              'type'=>'resort',
+              'data'=>[
+                  'name'=>'Анталья',
+                  'h1'=>'Туры в Анталью',
+                  'description'=>'Редакционная страница о турах в Анталью с полезной информацией и переходом к поиску AnyTour.',
+                  'intro'=>'Анталья подходит для разных форматов отдыха; перед выбором тура полезно сравнить сезон, район и формат отеля.',
+                  'breadcrumbs'=>[
+                      ['label'=>'Главная','href'=>'/'],
+                      ['label'=>'Турция','href'=>'/country/turkey/'],
+                      ['label'=>'Анталья'],
+                  ],
+                  'sections'=>[
+                      ['id'=>'season','title'=>'Когда ехать','paragraphs'=>['Сезон и погода влияют на формат поездки.']],
+                      ['id'=>'areas','title'=>'Как выбрать район','paragraphs'=>['Районы отличаются пляжами, городской инфраструктурой и расстоянием до аэропорта.']],
+                  ],
+                  'internal_links'=>[[
+                      'title'=>'Другие курорты Турции',
+                      'links'=>[['label'=>'Аланья','href'=>'/resort/alanya/']],
+                  ]],
+                  'search_state'=>['country'=>4,'region'=>15],
+              ],
+          ]]);
+          $record=$registry['/resort/antalya/'];
+          $report=v2_seo_publishability_report($record);
+          if (!$report['publishable'] || $report['errors']!==[]) fail('complete_page_rejected');
+
+          $thin=$record;
+          $thin['page']['intro']='';
+          $thin['page']['sections']=array_slice($thin['page']['sections'],0,1);
+          $thin['page']['internal_links']=[];
+          $thin['page']['related']=[];
+          $thinReport=v2_seo_publishability_report($thin);
+          foreach (['missing_intro','insufficient_editorial_sections','missing_curated_internal_links'] as $error) {
+              if (!in_array($error,$thinReport['errors'],true)) fail('thin_missing_'.$error);
+          }
+          if ($thinReport['publishable']) fail('thin_page_publishable');
+
+          $dated=$record;
+          $dated['page']['search_state']['dateFrom']='2026-12-29';
+          $datedReport=v2_seo_publishability_report($dated);
+          if (!in_array('transient_search_state',$datedReport['errors'],true)) fail('dated_state_allowed');
+
+          $badCrumb=$record;
+          $badCrumb['page']['breadcrumbs'][2]['href']='/resort/antalya/';
+          $crumbReport=v2_seo_publishability_report($badCrumb);
+          if (!in_array('breadcrumb_current_page_invalid',$crumbReport['errors'],true)) fail('linked_current_crumb_allowed');
+
+          $duplicateSection=$record;
+          $duplicateSection['page']['sections'][1]['title']='Когда ехать';
+          $sectionReport=v2_seo_publishability_report($duplicateSection);
+          if (!in_array('duplicate_or_empty_section_title',$sectionReport['errors'],true)) fail('duplicate_section_allowed');
+
+          echo "V2_SEO_PUBLISHABILITY_OK complete=1 thinRejected=1 transientRejected=1 breadcrumbs=1 sections=1\n";
+          PHP
