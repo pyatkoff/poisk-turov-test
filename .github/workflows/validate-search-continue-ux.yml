@@ -1,0 +1,42 @@
+name: Validate V2 continue-search UX
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/search-continue-v6.js'
+      - 'v2/search-progress-ux-v1.js'
+      - '.github/workflows/validate-search-continue-ux.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  continue-search-ux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JavaScript syntax
+        run: |
+          node --check v2/search-continue-v6.js
+          node --check v2/search-progress-ux-v1.js
+      - name: Validate progress ownership contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Fq "getElementById('status')" v2/search-continue-v6.js
+          ! grep -Fq 'status.textContent' v2/search-continue-v6.js
+          for event in \
+            v2:search-continue-started \
+            v2:search-continue-requested \
+            v2:search-continue-progress \
+            v2:search-continued \
+            v2:search-continue-error; do
+            grep -Fq "'$event'" v2/search-continue-v6.js
+            grep -Fq "'$event'" v2/search-progress-ux-v1.js
+          done
+          grep -Fq 'Уже найденные предложения остаются на месте.' v2/search-progress-ux-v1.js
+          grep -Fq 'Новых вариантов больше не найдено.' v2/search-progress-ux-v1.js
+          echo CONTINUE_SEARCH_PROGRESS_OWNERSHIP_OK
