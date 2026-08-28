@@ -1,8 +1,8 @@
 <?php
-require_once dirname(__DIR__) . '/assets.php';
-require_once dirname(__DIR__) . '/seo-config.php';
-require_once dirname(__DIR__) . '/site-footer-v1.php';
-require_once dirname(__DIR__) . '/phone-value.php';
+require_once __DIR__ . '/assets.php';
+require_once __DIR__ . '/seo-config.php';
+require_once __DIR__ . '/site-footer-v1.php';
+require_once __DIR__ . '/phone-value.php';
 function sp_e($v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 function sp_context(string $path,string $title,string $description): array {
   $docRoot=rtrim((string)($_SERVER['DOCUMENT_ROOT']??''),'/');
