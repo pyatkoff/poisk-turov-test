@@ -15,12 +15,12 @@ This file is the required migration checklist for the current public site. A leg
 | --- | --- | --- | --- |
 | `/poisk-turov-test/v2/` | `/poisk-turov/` | LIVE_NEW | Full Tourvisor search, results, tour detail and lead flow; live deploy/search/lead checks are green. |
 | current site home | `/` | LIVE_NEW | New full homepage with compact search that hands parameters to `/poisk-turov/`. |
-| `/country/` | `/country/` | LIVE_NEW | Country directory is live in the new shell; individual country pages remain legacy until migrated. |
-| `/country/turkey/` | `/country/turkey/` | LEGACY_ONLY | Turkey landing; later resort children. |
-| `/country/egypt/` | `/country/egypt/` | LEGACY_ONLY | Egypt landing. |
-| `/country/tailand/` | reviewed canonical route | LEGACY_ONLY | Preserve old typo route with redirect after canonical naming is chosen. |
-| `/country/oae/` | reviewed canonical route | LEGACY_ONLY | Preserve old route with redirect after canonical naming is chosen. |
-| `/country/russia/` | `/country/russia/` | LEGACY_ONLY | Russia landing. |
+| `/country/` | `/country/` | LIVE_NEW | Country directory is live in the new shell. |
+| `/country/turkey/` | `/country/turkey/` | LIVE_NEW | Local Turkey landing; CTA hands off authoritative Tourvisor country `4`. |
+| `/country/egypt/` | `/country/egypt/` | LIVE_NEW | Local Egypt landing; CTA hands off authoritative Tourvisor country `1`. |
+| `/country/tailand/` | `/country/tailand/` | LIVE_NEW | Compatibility spelling preserved locally; CTA hands off authoritative Tourvisor country `2`. Canonical rename may be reviewed later. |
+| `/country/oae/` | `/country/oae/` | LIVE_NEW | Compatibility route preserved locally; CTA hands off authoritative Tourvisor country `9`. Canonical rename may be reviewed later. |
+| `/country/russia/` | `/country/russia/` | LIVE_NEW | Local Russia landing; CTA hands off authoritative Tourvisor country `47`. |
 | `/country/tunis/` | `/country/tunis/` | LEGACY_ONLY | Tunisia landing. |
 | `/country/vetnam/` | reviewed canonical route | LEGACY_ONLY | Preserve old typo route with redirect after canonical naming is chosen. |
 | `/country/dominikana/` | reviewed canonical route | LEGACY_ONLY | Dominican Republic landing. |
@@ -31,7 +31,7 @@ This file is the required migration checklist for the current public site. A leg
 | `/country/sri-lanka/` | `/country/sri-lanka/` | LEGACY_ONLY | Sri Lanka landing. |
 | `/country/tanzania/` | `/country/tanzania/` | LEGACY_ONLY | Tanzania landing. |
 | `/hot/` | `/hot/` | LIVE_NEW | New fast-deal landing is live; live Tourvisor-powered deal blocks are a follow-up enhancement. |
-| `/rb/` | `/rb/` | LEGACY_ONLY | Early booking. |
+| `/rb/` | `/rb/` | LIVE_NEW | Early-booking landing is live and included in standalone content smoke. |
 | `/contacts/` | `/contacts/` | LIVE_NEW | Contacts page is live and passes production content smoke. |
 | `/how-to-buy/` | `/how-to-buy/` | LIVE_NEW | Buying / online booking explanation is live and passes production content smoke. |
 | `/personal/` | `/personal/` or reviewed external target | LEGACY_ONLY | Preserve working personal-account destination; do not break auth. |
