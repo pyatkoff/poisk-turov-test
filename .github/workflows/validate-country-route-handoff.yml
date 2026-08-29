@@ -1,0 +1,43 @@
+name: Validate standalone country route handoff
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/country/**'
+      - 'v2/country-page-v1.php'
+      - '.github/workflows/validate-country-route-handoff.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  country-handoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve authoritative Tourvisor country ids
+        shell: bash
+        run: |
+          set -euo pipefail
+          api='https://anytoour.ru/api-v2.php'
+          curl -fsSL --max-time 45 "$api?action=countries&departureId=1" -o /tmp/countries.json
+          python3 - <<'PY'
+          import json
+          rows=json.load(open('/tmp/countries.json'))
+          assert isinstance(rows,list) and rows
+          wanted=['Турция','Египет','ОАЭ','Таиланд','Россия']
+          by_name={str(x.get('name','')).strip():str(x.get('id','')) for x in rows if isinstance(x,dict)}
+          missing=[name for name in wanted if not by_name.get(name)]
+          assert not missing, 'missing countries: '+', '.join(missing)
+          print('COUNTRY_ROUTE_CATALOG_MAP', ' '.join(f'{name}={by_name[name]}' for name in wanted))
+          PY
+      - name: Keep country CTA implementation explicit
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/country-page-v1.php >/dev/null
+          for page in turkey egypt oae tailand russia; do php -l "v2/country/$page/index.php" >/dev/null; done
+          grep -Fq "?country=" v2/country-page-v1.php
+          echo COUNTRY_ROUTE_HANDOFF_STRUCTURE_OK
