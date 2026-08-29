@@ -21,7 +21,7 @@ jobs:
       - name: PHP syntax
         run: |
           set -euo pipefail
-          for f in v2/index.php v2/home-entry-v1.php v2/home-v1.php v2/poisk-turov/index.php v2/hot/index.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php v2/site-page-shell-v1.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php v2/seo-config.php; do
+          for f in v2/index.php v2/home-entry-v1.php v2/home-v1.php v2/poisk-turov/index.php v2/hot/index.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php v2/country/index.php v2/site-page-shell-v1.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php v2/seo-config.php; do
             php -l "$f"
           done
       - name: Render standalone homepage
@@ -58,6 +58,22 @@ jobs:
             if (strpos($html, "Старый раздел") !== false || strpos($html, "следующий этап") !== false) exit(18);
             if (strpos($html, "Искать на ближайшие даты") === false) exit(19);
             echo "STANDALONE_HOT_HANDOFF_OK\n";
+          '
+      - name: Render country catalog copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -d display_errors=1 -r '
+            $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
+            $_SERVER["SCRIPT_NAME"]="/country/index.php";
+            $_SERVER["HTTP_HOST"]="anytoour.ru";
+            $_GET=[];
+            ob_start(); include "v2/country/index.php"; $html=ob_get_clean();
+            foreach (["переносим", "старого сайта", "по мере переноса", "Пока открываем"] as $internal) {
+              if (mb_stripos($html, $internal, 0, "UTF-8") !== false) exit(43);
+            }
+            if (strpos($html, "Искать по всем странам") === false) exit(44);
+            echo "STANDALONE_COUNTRY_COPY_OK\n";
           '
       - name: Render standalone full search route
         shell: bash
