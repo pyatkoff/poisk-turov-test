@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 01:55 +02:00
+Updated: 2026-08-29 03:14 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -10,7 +10,7 @@ Paid/real-user traffic is intentionally not running. Current visitors are the ow
 
 Search, Waiting/Recovery, Results/Comparison, Selected Tour, Flights/Price, Lead UX, Mobile UX, Tablet/Desktop UX, Brand/Trust, Visual Quality and Product Differentiation remain assessed at 9.0 with functional/visual evidence.
 
-Standalone architecture is now explicit: `https://anytoour.ru/` is the new homepage and `https://anytoour.ru/poisk-turov/` is the full tour search. The legacy `/poisk-turov-test/v2/` route remains compatibility-only and must not regress. Country/content routes are being migrated incrementally.
+Standalone architecture is explicit: `https://anytoour.ru/` is the new homepage and `https://anytoour.ru/poisk-turov/` is the full tour search. The legacy `/poisk-turov-test/v2/` route remains compatibility-only and must not regress. Country/content routes are being migrated incrementally.
 
 SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,follow`; do not enable indexing/sitemap publication merely because routes are live. The remaining path to 9 requires deliberate publication/indexing policy and reviewed real content.
 
@@ -25,22 +25,22 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 
 ## Latest material evidence
 
-- PR #196 fixed the new homepage → search contract. The single `Ночей` field had silently submitted the default range `7–10`; it now submits an exact duration and keeps `daysTill` synchronized with `daysFrom`.
-- PR #196 also removed dead standalone navigation during migration: `/poisk-turov/` stays local, while sections not yet migrated continue to the active legacy site. Header rewriting now preserves the valid local search route.
-- PR #196 repaired stale CI assumptions after the homepage/search split: standalone rendering, SEO semantics, startup bundle count, live user-journey checks and visual checks now distinguish pre-merge branch validation from post-deploy production validation.
-- PR #196 merged as `986b536c648de89b0e99cd209fa9815bd38f68b7`; Deploy anytoour.ru run `33221467704` completed successfully.
-- Post-deploy live user journey completed homepage → full search → Tourvisor search → unique results → hotel/tour details → optional room → flights → non-writing lead-adapter health. No lead write was performed and the lead external contract was not changed.
-- The first post-deploy visual run exposed a stale footer assertion rather than a product regression. Subsequent standalone commits added/standardized the canonical footer on migrated pages. Preserve exactly one `.at-site-footer` plus the compact `.v2-site-community` pre-footer.
-- Main has since advanced beyond #196 with initial migrated country routes and verified local homepage navigation; verify the latest current-main deploy/visual/content-live runs before promoting additional routes.
-- PR #180 remains the regression baseline for visible mobile trip duration and the no-second-full-footer contract.
+- PR #198 repaired the standalone post-deploy result-card visual gate: Playwright is now executed from the checkout where it is installed instead of `/tmp`. The repaired production result-card audit run `33225740279` completed green against current standalone production.
+- PR #199 fixed migrated country → search handoff. The live Tourvisor catalogue for departure `1` confirms Turkey `4`, Egypt `1`, UAE `9`, Thailand `2`, Russia `47`; all five local country pages now send their authoritative `country=` value into `/poisk-turov/`.
+- PR #199 also routes the five actually migrated countries locally from `/country/`; undeployed country pages remain on the active legacy site so migration does not create 404s.
+- PR #199 closed the remaining mobile trip-duration overflow. Root cause was the more-specific old `.primary-search-flow .nights-quick` `!important` cascade overriding the earlier guard. The final guard now wins at the same specificity. Production five-viewport run `33225740311` reports `nightsOverflow:false` and page `overflow:false` at 375, 430, 768, 1024 and 1440; footer contract is one community pre-footer plus one canonical full footer at every width.
+- PR #199 merged as `0bb1d9a1d6c1237f3bf118f5e8ffd10e257c2dba`; Deploy anytoour.ru run `33225638355` completed successfully. Live user-journey run `33225740338` also completed green through the search/tour flow without a live lead write.
+- A dedicated source regression contract now cross-checks migrated country IDs against the live Tourvisor catalogue. The next live-content guard also verifies exact deployed `?country=` CTA handoff after deployment.
+- PR #196 remains the homepage exact-night baseline: one homepage `Ночей` value submits an exact duration, not a hidden range.
+- PR #180 remains the one-full-footer baseline.
 - `Самая низкая цена` remains current-result-set decision support only; it does not alter sorting, tour pricing or selection.
 
 ## Exact next work order
 
-1. Verify the latest current-`main` standalone deploy after the newest migrated-route/navigation commits, not only #196. Require deploy success and post-deploy homepage/search/content live checks.
-2. Inspect the five-viewport standalone visual audit against the current contract: homepage and `/poisk-turov/` visible, no horizontal overflow, exact nights handoff, one compact community pre-footer and exactly one canonical full footer.
+1. Finish/verify the live-content country-handoff guard on production, including exact deployed `country=` values for Turkey/Egypt/UAE/Thailand/Russia.
+2. Continue standalone content-route UX audit beyond the five initial countries: `/hot/` → `/contacts/` → `/how-to-buy/` → `/rb/`, checking mobile/tablet/desktop hierarchy, local/legacy navigation, CTA handoff, no 404s and one-footer contract.
 3. Continue whole standalone user-journey audit: homepage → search → waiting/recovery → results/comparison → selected tour/rooms → flights/price → lead entry/recovery. No live lead submission is required for regression proof.
-4. Audit each newly migrated country/content route before promoting more routes: real route reachable, CTA/query handoff to `/poisk-turov/`, responsive layout, canonical/noindex semantics, and footer/navigation contract.
+4. Promote additional country/content routes only when their page exists locally and route/search handoff is verified; otherwise preserve the valid legacy destination.
 5. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
 6. Keep `Самая низкая цена` unchanged unless a confirmed UX defect appears.
 7. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
