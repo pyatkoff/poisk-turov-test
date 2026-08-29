@@ -39,6 +39,7 @@ function v2_bundle_manifest(): array
             'search-continue-v6.js',
             'hotel-actions-v3.js',
             'room-details-v3.js',
+            'selected-tour-return-v1.js',
             'tour-controller-v4.js',
             'selected-tour-description-v1.js',
             'checkout-experience-v1.js',
