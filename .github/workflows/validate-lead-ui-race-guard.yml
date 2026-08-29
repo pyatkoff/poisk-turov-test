@@ -1,0 +1,43 @@
+name: Validate lead UI race guard
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/lead-ui-race-guard-v1.js'
+      - 'v2/bundle-manifest-v1.php'
+      - '.github/workflows/validate-lead-ui-race-guard.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  lead-ui-race:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Block stale lead UI events but preserve current-tour events
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm');
+          const listeners={};
+          const window={
+            V2TourController:{currentTour:{id:'tour-b'}},
+            addEventListener:(name,fn)=>{(listeners[name]||(listeners[name]=[])).push(fn);}
+          };
+          vm.runInNewContext(fs.readFileSync('v2/lead-ui-race-guard-v1.js','utf8'),{window,String});
+          const guard=window.V2LeadUiRaceGuardV1;
+          if(!guard)throw new Error('guard not loaded');
+          let stopped=0;
+          const stale={detail:{tourId:'tour-a'},stopImmediatePropagation:()=>{stopped++;}};
+          if(guard.protect(stale)!==false||stopped!==1)throw new Error('stale event was not blocked');
+          const current={detail:{tourId:'tour-b'},stopImmediatePropagation:()=>{throw new Error('current event blocked');}};
+          if(guard.protect(current)!==true)throw new Error('current event rejected');
+          window.V2TourController.currentTour=null;
+          const switching={detail:{tourId:'tour-a'},stopImmediatePropagation:()=>{stopped++;}};
+          if(guard.protect(switching)!==false||stopped!==2)throw new Error('event during tour switch was not blocked');
+          console.log('LEAD_UI_RACE_GUARD_OK');
+          JS

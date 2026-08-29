@@ -43,6 +43,7 @@ function v2_bundle_manifest(): array
             'selected-tour-description-v1.js',
             'checkout-experience-v1.js',
             'lead-search-context.js',
+            'lead-ui-race-guard-v1.js',
             'lead-form-guard-v1.js',
             'flight-price-sync-v1.js',
             'unpriced-flight-price-reset-v1.js',
