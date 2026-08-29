@@ -1,0 +1,72 @@
+name: Deploy AnyTour feeds
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'feed/**'
+      - '.github/workflows/deploy-feed.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-anytoour-feed-production
+  cancel-in-progress: false
+
+jobs:
+  deploy-feed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s feed/catalog_feed_any.yml
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          ET.parse('feed/catalog_feed_any.yml')
+          print('FEED_XML_OK')
+          PY
+          grep -Fq 'https://anytoour.ru/poisk-turov/' feed/catalog_feed_any.yml
+
+      - name: Prepare SSH key
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY"
+          key_file="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$key_file"; else printf '%s' "$KEY" | base64 --decode > "$key_file"; fi
+          chmod 600 "$key_file"
+          ssh-keygen -y -f "$key_file" >/dev/null
+
+      - name: Copy feed to anytoour.ru
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST" && test -n "$USER"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/feed"'
+          scp "${opts[@]}" feed/catalog_feed_any.yml "$remote:~/www/anytoour.ru/feed/catalog_feed_any.yml"
+          ssh "${opts[@]}" "$remote" 'chmod 644 "$HOME/www/anytoour.ru/feed/catalog_feed_any.yml" && test -s "$HOME/www/anytoour.ru/feed/catalog_feed_any.yml"'
+
+      - name: Verify public feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -fsSL -o /tmp/catalog_feed_any.yml -w '%{http_code}' --max-time 45 https://anytoour.ru/feed/catalog_feed_any.yml)"
+          echo "FEED_HTTP=$code"
+          test "$code" = "200"
+          grep -Fq '<yml_catalog' /tmp/catalog_feed_any.yml
+          grep -Fq 'https://anytoour.ru/poisk-turov/' /tmp/catalog_feed_any.yml
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          ET.parse('/tmp/catalog_feed_any.yml')
+          print('ANYTOOUR_PUBLIC_FEED_OK')
+          PY
