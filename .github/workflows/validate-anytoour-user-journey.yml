@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/validate-anytoour-user-journey.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-anytoour-user-journey.yml'
   workflow_run:
     workflows: ['Deploy anytoour.ru']
     types: [completed]
@@ -106,7 +110,16 @@ jobs:
           )"
           if test -n "$room_id"; then
             curl -fsSL --max-time 45 --get --data-urlencode 'action=rooms' --data-urlencode "ids=$room_id" "$api" -o /tmp/root-room.json
-            python3 -c "import json; d=json.load(open('/tmp/root-room.json')); rooms=d if isinstance(d,list) else d.get('rooms',[]) if isinstance(d,dict) else []; assert rooms" || fail room_details
+            python3 - <<'PY' || fail room_details_response
+          import json
+          d=json.load(open('/tmp/root-room.json'))
+          assert isinstance(d,(list,dict))
+          if isinstance(d,dict):
+              assert d.get('ok') is not False
+              assert not d.get('error')
+          rooms=d if isinstance(d,list) else d.get('rooms',[]) if isinstance(d,dict) else []
+          print('ANYTOOUR_JOURNEY_ROOM_DETAILS_OK' if rooms else 'ANYTOOUR_JOURNEY_ROOM_DETAILS_OPTIONAL_EMPTY')
+          PY
           fi
 
           curl -fsSL --max-time 45 --get --data-urlencode 'action=flights' --data-urlencode "tourId=$tour_id" --data-urlencode 'currency=RUB' "$api" -o /tmp/root-flights.json
