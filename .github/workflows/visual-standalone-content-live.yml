@@ -1,6 +1,10 @@
 name: Visual standalone content live
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/visual-standalone-content-live.yml'
   workflow_run:
     workflows: ['Deploy anytoour.ru']
     types: [completed]
@@ -40,7 +44,7 @@ jobs:
           const contrast=(a,b)=>{const l1=luminance(a),l2=luminance(b);return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05)};
           const checkCta=async(page,selector,label)=>{
             const cta=page.locator(selector).first();
-            if(!await cta.isVisible()) return;
+            if(!await cta.isVisible()) throw new Error(`${label}: primary CTA missing`);
             const colors=await cta.evaluate(el=>{const s=getComputedStyle(el);return {fg:s.color,bg:s.backgroundColor}});
             const ratio=contrast(rgb(colors.fg),rgb(colors.bg));
             if(ratio<4.5) throw new Error(`${label}: CTA contrast ${ratio.toFixed(2)} ${JSON.stringify(colors)}`);
@@ -63,9 +67,9 @@ jobs:
                   if(stats.docW>stats.clientW+2) throw new Error(`${vp}/${name}: page horizontal overflow ${stats.docW}/${stats.clientW}`);
                   if(stats.footer!==1||stats.community!==1) throw new Error(`${vp}/${name}: footer/community count ${stats.footer}/${stats.community}`);
                   if(name!=='search'&&stats.searchLinks<1) throw new Error(`${vp}/${name}: no search handoff`);
-                  if(name==='contacts') await checkCta(page,'.sp-card a.sp-primary',`${vp}/${name}`);
                   if(name==='home') await checkCta(page,'.at-home-search button',`${vp}/${name}`);
-                  if(name==='search') await checkCta(page,'.at-site-order',`${vp}/${name}`);
+                  else if(name==='search') await checkCta(page,'.at-site-order',`${vp}/${name}`);
+                  else await checkCta(page,'.sp-primary',`${vp}/${name}`);
                   console.log('PAGE_OK',vp,name,JSON.stringify(stats));
                   await context.close();
                 }
