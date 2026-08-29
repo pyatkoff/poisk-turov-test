@@ -1,0 +1,78 @@
+name: Validate room-details recovery
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/room-details-v3.js'
+      - '.github/workflows/validate-room-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  room-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify room empty/error/retry and stale response safety
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+          cat > room-recovery.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const path=require('path');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const width of [375,768,1440]){
+              const page=await browser.newPage({viewport:{width,height:900}});
+              await page.setContent('<section id="selectedTour"><div class="tour-flights"></div><form class="lead-form"></form></section>');
+              await page.evaluate(()=>{
+                let mode='error',pendingResolve=null;
+                window.__roomTest={setMode(v){mode=v},resolvePending(v){if(pendingResolve){pendingResolve(v);pendingResolve=null;}}};
+                window.V2Runtime={api(action,params){if(action!=='rooms')throw new Error('unexpected action');if(mode==='error')return Promise.reject(new Error('temporary'));if(mode==='empty')return Promise.resolve({rooms:[]});if(mode==='success')return Promise.resolve({rooms:[{id:params.ids[0],name:'DELUXE',description:'Описание номера'}]});if(mode==='pending')return new Promise(resolve=>pendingResolve=resolve);throw new Error('unexpected mode');}};
+              });
+              await page.addScriptTag({path:path.resolve('v2/room-details-v3.js')});
+              const emit=async(t)=>page.evaluate(t=>window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:t}})),t);
+              await emit({id:'tour-1',roomId:101,roomType:'DELUXE'});
+              await page.click('.room-detail-toggle');
+              await page.waitForSelector('.room-detail-retry');
+              let state=await page.evaluate(()=>({expanded:document.querySelector('.room-detail-toggle').getAttribute('aria-expanded'),hidden:document.querySelector('.room-detail-content').hidden,text:document.querySelector('.room-detail-content').textContent}));
+              if(state.expanded!=='true'||state.hidden||!state.text.includes('временно недоступно'))throw new Error(`error state failed ${width}: ${JSON.stringify(state)}`);
+
+              await page.evaluate(()=>window.__roomTest.setMode('empty'));
+              await page.click('.room-detail-retry');
+              await page.waitForFunction(()=>document.querySelector('.room-detail-content')?.dataset.loaded==='1');
+              state=await page.evaluate(()=>({text:document.querySelector('.room-detail-content').textContent,retry:!!document.querySelector('.room-detail-retry')}));
+              if(!state.text.includes('подробное описание не заполнено')||state.retry)throw new Error(`empty retry failed ${width}: ${JSON.stringify(state)}`);
+
+              await emit({id:'tour-2',roomId:202,roomType:'STANDARD'});
+              await page.evaluate(()=>window.__roomTest.setMode('pending'));
+              await page.click('.room-detail-toggle');
+              await page.waitForFunction(()=>document.querySelector('.room-detail-content')?.dataset.loading==='1');
+              await emit({id:'tour-3',roomId:303,roomType:'FAMILY'});
+              await page.evaluate(()=>window.__roomTest.resolvePending({rooms:[{id:202,name:'STALE ROOM',description:'stale'}]}));
+              await page.waitForTimeout(50);
+              state=await page.evaluate(()=>({tourId:document.querySelector('.room-details-host')?.dataset.tourId,text:document.querySelector('.room-details-host')?.textContent||'',roomName:document.querySelector('.room-detail-toggle small')?.textContent||''}));
+              if(state.tourId!=='tour-3'||state.text.includes('STALE ROOM')||state.text.includes('stale')||state.roomName!=='FAMILY')throw new Error(`stale room response mutated new tour ${width}: ${JSON.stringify(state)}`);
+
+              await page.evaluate(()=>window.__roomTest.setMode('success'));
+              await page.click('.room-detail-toggle');
+              await page.waitForFunction(()=>document.querySelector('.room-detail-content')?.dataset.loaded==='1');
+              state=await page.evaluate(()=>({text:document.querySelector('.room-detail-content').textContent,expanded:document.querySelector('.room-detail-toggle').getAttribute('aria-expanded')}));
+              if(!state.text.includes('DELUXE') && !state.text.includes('Описание номера')){
+                // Response uses requested id but the mocked name is intentionally stable; ensure useful content rendered.
+                if(!state.text.includes('Описание номера'))throw new Error(`success room render failed ${width}: ${JSON.stringify(state)}`);
+              }
+              console.log(`ROOM_RECOVERY_OK width=${width}`);
+              await page.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node room-recovery.cjs
