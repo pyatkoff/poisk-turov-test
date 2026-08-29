@@ -64,9 +64,9 @@ jobs:
               await page.waitForTimeout(3200);
               if((response&&response.status())!==200)throw new Error(name+': shell HTTP '+(response&&response.status()));
               if(cssHits!==1||jsHits!==1)throw new Error(name+': local bundle interception failed css='+cssHits+' js='+jsHits);
-              let state=await page.evaluate(()=>{const submit=document.querySelector('.search-submit'),submitStyle=submit?getComputedStyle(submit):null;return{runtime:!!window.V2Runtime,results:!!window.V2Results,search:!!document.getElementById('tourSearch'),hero:!!document.querySelector('.v2-product-hero'),searchSubmit:!!submit,searchSubmitShadow:submitStyle?submitStyle.boxShadow:'',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};});
-              const coherentSearchShadow=state.searchSubmit&&state.searchSubmitShadow.includes('39, 67, 203')&&!state.searchSubmitShadow.includes('255, 81, 12');
-              if(!state.runtime||!state.results||!state.search||!state.hero||!coherentSearchShadow||state.overflow)throw new Error(name+': initial branch bundle state '+JSON.stringify(state));
+              let state=await page.evaluate(()=>{const submit=document.querySelector('.search-submit'),submitStyle=submit?getComputedStyle(submit):null;return{runtime:!!window.V2Runtime,results:!!window.V2Results,search:!!document.getElementById('tourSearch'),hero:!!document.querySelector('.v2-product-hero'),searchSubmit:!!submit,searchSubmitBg:submitStyle?submitStyle.backgroundColor:'',searchSubmitShadow:submitStyle?submitStyle.boxShadow:'',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};});
+              const coherentSearchCta=state.searchSubmit&&state.searchSubmitBg==='rgb(216, 61, 0)'&&state.searchSubmitShadow.includes('216, 61, 0')&&!state.searchSubmitShadow.includes('255, 81, 12');
+              if(!state.runtime||!state.results||!state.search||!state.hero||!coherentSearchCta||state.overflow)throw new Error(name+': initial branch bundle state '+JSON.stringify(state));
               await page.evaluate(rows=>window.V2Results.render(rows),fixture);
               await page.waitForTimeout(120);
               state=await page.evaluate(()=>({cards:document.querySelectorAll('#results .hotel-card').length,direct:document.querySelectorAll('#results .direct-tour').length,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
