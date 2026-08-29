@@ -51,3 +51,64 @@ jobs:
           php -r '$pdo=new PDO(getenv("ANYTOOUR_DB_DSN"),getenv("ANYTOOUR_DB_USER"),getenv("ANYTOOUR_DB_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);$pdo->exec(file_get_contents("platform/seeds/reference_turkey.sql"));$pdo->exec(file_get_contents("platform/seeds/reference_turkey_seo.sql"));'
       - name: Validate integrated Turkey page
         run: php platform/tests/site-seo-integration-test.php
+      - name: Start isolated platform preview
+        run: |
+          php -S 127.0.0.1:8099 platform/public/router.php >/tmp/anytour-platform-preview.log 2>&1 &
+          echo $! > /tmp/anytour-platform-preview.pid
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8099/country/turkey/ >/tmp/turkey.html; then break; fi
+            sleep 1
+          done
+          grep -q '<h1>Туры в Турция</h1>' /tmp/turkey.html
+          grep -q 'noindex,follow' /tmp/turkey.html
+          curl -fsSI http://127.0.0.1:8099/country/turkey/ | grep -qi 'X-Robots-Tag: noindex, follow'
+      - name: Install Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Visual audit dynamic Turkey page
+        run: |
+          mkdir -p platform-visual
+          cat > /tmp/platform-visual.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          (async()=>{
+            const browser = await chromium.launch({headless:true});
+            const report=[];
+            for (const [name,width,height] of [['mobile-375',375,812],['desktop-1440',1440,1000]]) {
+              const page=await browser.newPage({viewport:{width,height}});
+              const response=await page.goto('http://127.0.0.1:8099/country/turkey/',{waitUntil:'domcontentloaded'});
+              if(!response || response.status()!==200) throw new Error(`${name}: HTTP failure`);
+              const state=await page.evaluate(()=>({
+                h1:document.querySelector('h1')?.textContent?.trim()||'',
+                robots:document.querySelector('meta[name="robots"]')?.content||'',
+                canonical:document.querySelector('link[rel="canonical"]')?.href||'',
+                resorts:document.querySelectorAll('.atp-resort').length,
+                searchHref:document.querySelector('.atp-primary')?.getAttribute('href')||'',
+                overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
+              }));
+              if(state.h1!=='Туры в Турция') throw new Error(`${name}: H1 ${state.h1}`);
+              if(state.robots!=='noindex,follow') throw new Error(`${name}: robots ${state.robots}`);
+              if(state.canonical!=='https://anytoour.ru/country/turkey/') throw new Error(`${name}: canonical ${state.canonical}`);
+              if(state.resorts<4) throw new Error(`${name}: resorts ${state.resorts}`);
+              if(state.searchHref!=='/poisk-turov/?country=4') throw new Error(`${name}: search href ${state.searchHref}`);
+              if(state.overflow) throw new Error(`${name}: horizontal overflow`);
+              await page.screenshot({path:`platform-visual/${name}.png`,fullPage:true});
+              report.push({name,width,height,state});
+              await page.close();
+            }
+            await browser.close();
+            fs.writeFileSync('platform-visual/report.json',JSON.stringify(report,null,2));
+            console.log('PLATFORM_COUNTRY_VISUAL_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node /tmp/platform-visual.cjs
+      - name: Upload platform visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-seo-platform-visual-${{ github.run_id }}
+          path: platform-visual/
+          if-no-files-found: warn
+          retention-days: 7
