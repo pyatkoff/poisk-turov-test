@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 11:15 +02:00
+Updated: 2026-08-29 11:17 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -30,17 +30,17 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 - #237 production is green: V2 deploy `33244832722` passed validate → copy → verify → live search smoke; standalone deploy `33244832726` passed release validation → copy → public pages → unchanged lead bridge → live search smoke; post-deploy visual run `33244905020` also succeeded.
 - After #237 merge, the push-only `Validate active V2 contract` exposed a pre-existing CI-contract mismatch from intentional Web Consultant release #234: the historical dependency closure rejected every literal `/max-search/`, while #234 intentionally loads the canonical `anytour.online/max-search/web-consultant/` scripts only on `anytoour.ru` / `www.anytoour.ru`.
 - PR #238 preserves the approved consultant and keeps the generic cross-project dependency guard strict. The runtime URL is unchanged but the approved path is composed explicitly, and a dedicated Web Consultant CI contract now asserts the exact host gate, canonical base and exactly three allowed scripts while every other literal `/max-search/` dependency remains rejected. All #238 PR gates were green, including the new consultant contract, PHP 8.3, startup/branch bundles, standalone, security and visual suites. It merged as `71876fbae02dbd8acd991b2764fd923728b8070f`.
-- The previously failing push-only active dependency-closure and deployment-isolation steps are green on #238 (`Validate active V2 contract` run `33244990290`). #238 V2 deploy `33244990295` and standalone deploy `33244990278` were in progress at this state update after passing release validation and reaching copy; production remains safely on already-green #237 until these finish.
+- The previously failing push-only active dependency-closure and deployment-isolation steps are green on #238 (`Validate active V2 contract` run `33244990290`). #238 is now production-green: V2 deploy `33244990295` passed validate → copy → verify → live search smoke; standalone deploy `33244990278` passed release validation → copy → public pages → unchanged lead bridge → live search smoke.
 - Same-tour lead submit/retry code was re-audited: failed submission re-enables submit, retry rebuilds payload from the still-current tour/selected flight, and normal/duplicate success transition to the sent state. No confirmed defect was found, so the external lead contract was not touched.
 - Earlier protections remain valid: #225 final-set-only decision badges; #226 comparison refresh coherence; #227 stale selected-flight price reset; #229 explicit pending flight-price label; #230 stale lead-response UI race guard; #217/#219/#221 progressive/final search recovery.
 - No Yandex Metrika configuration/goals, Tourvisor request contract, pricing contract or existing lead-sending mechanism/external field mapping changed in #235/#237/#238.
 
 ## Exact next work order
 
-1. Confirm #238 V2 and standalone deploys through verify/live-smoke and re-check post-deploy visual/journey runs; if green, record `71876f...` as the current production baseline.
-2. Finish return/resume behavior with repeated selection after returning and explicit source-card disappearance/fallback on the real V2 shell across mobile/tablet/desktop.
-3. Re-check room-details no-description/empty/error/retry and the remaining flight autoload/error/retry transitions now that the successful-empty case is covered; fix only confirmed issues.
-4. Complete same-tour lead recovery as a browser-state audit: failed submit → retry → success/duplicate success, ensuring form data and selected flight/price context remain coherent without touching the external lead contract.
+1. Finish return/resume behavior with repeated selection after returning and explicit source-card disappearance/fallback on the real V2 shell across mobile/tablet/desktop.
+2. Re-check room-details no-description/empty/error/retry and the remaining flight autoload/error/retry transitions now that the successful-empty case is covered; fix only confirmed issues.
+3. Complete same-tour lead recovery as a browser-state audit: failed submit → retry → success/duplicate success, ensuring form data and selected flight/price context remain coherent without touching the external lead contract.
+4. Re-run the full standalone live journey and responsive/selected-tour guards after the next material downstream UX/data fix.
 5. Continue periodic whole-V2 audit: search form → waiting/progress → stale/progressive/final results → comparison → selected tour → flights/price → lead entry/recovery.
 6. Promote additional country/content routes only when their page exists locally and route/search handoff is verified; otherwise preserve the valid legacy destination.
 7. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
