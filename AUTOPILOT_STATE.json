@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T06:42:00+02:00",
+  "updated_at": "2026-08-29T07:02:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru remains in production stabilization. Content-route UX audit is closed without new product defects, the full production journey is green again with optional room enrichment handled correctly, and a real primary-search CTA contrast regression found by the stronger responsive guard is fixed and production-verified. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
+  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru remains in production stabilization. A real progressive-results recovery defect is fixed and production-verified in V2: transient intermediate result refresh errors no longer abort an otherwise healthy Tourvisor status poll. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -30,8 +30,8 @@
     "title": "Stabilize standalone search and migrated content routes",
     "status": "ACTIVE",
     "objective": "Keep homepage/search/content migration production-safe across data handoff, full tour-search journey, navigation, responsive layout, footer/legal shell and local-to-search route contracts while preserving legacy V2 and all external contracts.",
-    "progress": "PR #211 aligned the full live journey with the actual optional room-enrichment client contract and production run 33233807572 passed. /contacts/, /how-to-buy/ and /rb/ were audited with no confirmed product/data defect. PRs #212-#214 expanded primary CTA responsive production coverage and exposed a real tablet/desktop search-submit contrast defect at 3.26:1. PR #215 changed the inline search CTA to accessible #D83D00 and aligned its branch regression gate; all 10 PR checks passed. It merged as dc62dc59798ca931e1fdf3e72f6cdf65a670d165. Standalone deploy 33234312261 and V2-only deploy 33234312259 passed; responsive content visual 33234379091 and full live user journey 33234379100 are green.",
-    "next_action": "Resume whole standalone/V2 flow audit at waiting/progress/recovery -> results/comparison -> selected tour/rooms -> flights/price -> lead entry/recovery, including progressive/stale results, sorting/comparison/lowest-price semantics and selected-flight price synchronization across mobile/tablet/desktop."
+    "progress": "PR #217 fixed a confirmed waiting/progressive-results reliability gap: an intermediate search_results failure no longer bubbles into status failure and stops polling. All 10 PR gates passed. It merged as 5e62e993ffb4096e68811352119b4f66c620a3f8. V2-only deploy 33235027491 passed validate/copy/verify/live-search smoke. Standalone deploy 33235027509 initially hit an external SSH connection reset during copy; a no-code failed-job retry passed release validation, copy, public-page verification, unchanged lead bridge verification and live-search smoke. Selected-tour/flight source audit found no confirmed stale flight-price or lead-context defect.",
+    "next_action": "Resume whole V2 recovery audit at final result-fetch failure and search-continue recovery, then results comparison/state transitions and browser-level selected-tour/flight/lead recovery across mobile/tablet/desktop."
   },
   "queue": [
     {"id":"ROOT_STABILIZATION","status":"ACTIVE_HIGHEST_PRIORITY","title":"anytoour.ru standalone production stabilization"},
@@ -67,19 +67,20 @@
     "next_missing_layers": ["deliberate_public_indexing_contract","reviewed_real_content_inventory","sitemap_publication_policy","structured_data_after_indexable_pages"]
   },
   "production_baseline": {
-    "last_verified_legacy_commit": "dc62dc59798ca931e1fdf3e72f6cdf65a670d165",
-    "legacy_deploy_v2": 33234312259,
-    "legacy_status": "PRODUCTION_GREEN",
+    "last_verified_legacy_commit": "5e62e993ffb4096e68811352119b4f66c620a3f8",
+    "legacy_deploy_v2": 33235027491,
+    "legacy_status": "PRODUCTION_GREEN_PROGRESSIVE_RESULTS_RECOVERY_LIVE_SMOKE_GREEN",
     "standalone_target": "https://anytoour.ru/",
     "standalone_search": "https://anytoour.ru/poisk-turov/",
-    "last_verified_standalone_commit": "dc62dc59798ca931e1fdf3e72f6cdf65a670d165",
-    "standalone_deploy_run": 33234312261,
+    "last_verified_standalone_commit": "5e62e993ffb4096e68811352119b4f66c620a3f8",
+    "standalone_deploy_run": 33235027509,
     "standalone_user_journey_run": 33234379100,
     "standalone_content_visual_run": 33234379091,
     "standalone_content_guard_last_result": "PRODUCTION_GREEN_PRIMARY_CTA_CONTRAST_FOCUS_RESPONSIVE",
-    "standalone_status": "DEPLOY_GREEN_CONTENT_VISUAL_GREEN_USER_JOURNEY_GREEN_SEARCH_AND_LEAD_BRIDGE_HEALTH_GREEN"
+    "standalone_status": "DEPLOY_GREEN_AFTER_TRANSIENT_SSH_RETRY_PUBLIC_PAGES_LEAD_BRIDGE_SEARCH_SMOKE_GREEN"
   },
   "recent_material_fixes": [
+    {"pr":217,"scope":"progressive_results_recovery","result":"Transient intermediate search_results refresh errors no longer abort healthy status polling; next cycle retries results while completed-search result loading stays strict."},
     {"pr":215,"scope":"primary_search_cta_contrast","result":"Tablet/desktop search submit moved from inaccessible #FF510C/white 3.26:1 to accessible #D83D00/white and is production-verified."},
     {"pr":214,"scope":"responsive_search_cta_guard","result":"Production visual audit validates whichever search submit is actually visible: inline on larger widths or sticky mobile CTA."},
     {"pr":212,"scope":"standalone_primary_cta_guard","result":"Standalone routes require visible primary CTA, >=4.5:1 text contrast and visible keyboard focus across responsive widths."},
