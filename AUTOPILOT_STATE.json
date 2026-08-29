@@ -1,32 +1,29 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T11:15:00+02:00",
+  "updated_at": "2026-08-29T11:17:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core product areas remain at 9.0. Standalone stabilization continues. Selected-tour return/resume and successful-empty flight recovery are protected; the intentional AnyTour Web Consultant dependency now has an explicit narrow CI contract while generic cross-project isolation remains strict. SEO/site foundation remains 8.8 and indexing/publication is deferred.",
+  "phase": "Core product areas remain at 9.0. Standalone stabilization continues. Selected-tour return/resume and successful-empty flight recovery are protected; the intentional AnyTour Web Consultant dependency has an explicit narrow CI contract while generic cross-project isolation remains strict. SEO/site foundation remains 8.8 and indexing/publication is deferred.",
   "scores": {"search_ux":9.0,"waiting_progress_recovery":9.0,"results_comparison":9.0,"selected_tour":9.0,"flights_price":9.0,"lead_ux":9.0,"mobile_ux":9.0,"tablet_desktop_ux":9.0,"brand_trust":9.0,"visual_quality":9.0,"product_differentiation":9.0,"seo_site_foundation":8.8},
   "current_task": {
     "id":"ANYTOOUR_STANDALONE_STABILIZATION",
     "category":"PRODUCTION_UX_DATA",
     "status":"ACTIVE",
-    "progress":"#235 return/resume is production green. #237 adds neutral successful-empty flight recovery with existing retry action and is production green: V2 33244832722, standalone 33244832726, post-deploy visual 33244905020. Push-only active-contract failure after #237 was traced to #234's intentional host-gated Web Consultant path versus the historical generic /max-search/ closure. #238 preserves the exact consultant runtime behavior, adds a narrow exact consultant contract, and restores the generic active dependency closure; run 33244990290 passes the formerly failing closure/isolation steps. #238 deploys 33244990295 and 33244990278 were still in progress after release validation/copy began at this update.",
-    "next_action":"First confirm #238 V2 and standalone verify/live-smoke and post-deploy checks. Then test repeated return/reselect with source disappearance fallback, room-details fallback/error/retry, remaining flight autoload/error/retry, and browser-state same-tour lead error/retry/success/duplicate-success."
+    "progress":"#235 return/resume is production green. #237 adds neutral successful-empty flight recovery with existing retry action and is production green: V2 33244832722, standalone 33244832726, post-deploy visual 33244905020. Push-only active-contract failure after #237 was traced to #234's intentional host-gated Web Consultant path versus the historical generic /max-search/ closure. #238 preserves the exact consultant runtime behavior, adds a narrow exact consultant contract, restores the generic active dependency closure, and is production green: active contract 33244990290, V2 deploy 33244990295, standalone deploy 33244990278 all passed including live search smoke and unchanged lead-bridge verification.",
+    "next_action":"Test repeated return/reselect with source disappearance fallback, then room-details fallback/error/retry, remaining flight autoload/error/retry, and browser-state same-tour lead error/retry/success/duplicate-success."
   },
   "production_baseline": {
-    "last_verified_legacy_commit":"7af64c649d23010bd9cff98df86364d29a8f1203",
-    "legacy_deploy_v2":33244832722,
-    "legacy_status":"PRODUCTION_GREEN_EMPTY_FLIGHT_RECOVERY_LIVE_SEARCH_SMOKE",
+    "last_verified_legacy_commit":"71876fbae02dbd8acd991b2764fd923728b8070f",
+    "legacy_deploy_v2":33244990295,
+    "legacy_status":"PRODUCTION_GREEN_ACTIVE_CONTRACT_AND_LIVE_SEARCH_SMOKE",
     "standalone_target":"https://anytoour.ru/",
     "standalone_search":"https://anytoour.ru/poisk-turov/",
-    "last_verified_standalone_commit":"7af64c649d23010bd9cff98df86364d29a8f1203",
-    "standalone_deploy_run":33244832726,
-    "standalone_status":"PRODUCTION_GREEN_PUBLIC_PAGES_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
-    "pending_main_commit":"71876fbae02dbd8acd991b2764fd923728b8070f",
-    "pending_v2_deploy":33244990295,
-    "pending_standalone_deploy":33244990278
+    "last_verified_standalone_commit":"71876fbae02dbd8acd991b2764fd923728b8070f",
+    "standalone_deploy_run":33244990278,
+    "standalone_status":"PRODUCTION_GREEN_PUBLIC_PAGES_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE"
   },
   "recent_material_fixes":[
-    {"pr":238,"scope":"intentional_web_consultant_dependency_ci_contract","result":"Preserves #234 canonical host-gated consultant runtime, adds exact three-script CI contract, and restores generic active dependency closure without weakening other cross-project isolation."},
+    {"pr":238,"scope":"intentional_web_consultant_dependency_ci_contract","result":"Preserves #234 canonical host-gated consultant runtime, adds exact three-script CI contract, restores generic active dependency closure, and is production green without weakening other cross-project isolation."},
     {"pr":237,"scope":"successful_empty_flight_recovery","result":"Empty successful flight response no longer dead-ends; neutral explanation plus existing retry action is available while lead form stays usable. Dedicated 375/1440 guard and production deploys green."},
     {"pr":235,"scope":"selected_tour_return_resume_focus_state","result":"Normal and post-success returns close checkout, preserve sort/comparison, and restore result focus/scroll with fallback."},
     {"pr":230,"scope":"stale_lead_response_selected_tour_ui_race","result":"Late lead response for a previous tour cannot mutate the current selected-tour form."},
