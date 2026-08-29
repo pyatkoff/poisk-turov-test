@@ -1,0 +1,77 @@
+name: Validate flight autoload and retry race
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/tour-controller-v4.js'
+      - '.github/workflows/validate-flight-autoload-race.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flight-autoload-race:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify stale flight isolation and error retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+          cat > flight-autoload-race.cjs <<'JS'
+          const {chromium}=require('playwright'); const path=require('path');
+          (async()=>{const browser=await chromium.launch({headless:true});
+          for(const width of [375,768,1440]){
+            const page=await browser.newPage({viewport:{width,height:900}});
+            await page.setContent('<form id="tourSearch"><input name="sessid" value="test"></form><div id="results"></div><section id="selectedTour" hidden></section>');
+            await page.evaluate(()=>{
+              let resolveA=null,t3FlightCalls=0,lastFlightTour='';
+              const tour=id=>({id,price:id==='t1'?100000:id==='t2'?120000:130000,hotel:{name:'Tour '+id},departure:{name:'Москва'},date:'10.09.2026',nights:7,adults:2,childs:0,meal:{name:'AI'},roomType:'STANDARD',placement:'DBL',operator:{name:'TEST'}});
+              window.__flightTest={resolveA(data){if(resolveA){resolveA(data);resolveA=null;}},get t3FlightCalls(){return t3FlightCalls;},get lastFlightTour(){return lastFlightTour;}};
+              window.V2_CONFIG={};
+              window.V2Runtime={state:{searchId:77},api(action,params){
+                if(action==='tour')return Promise.resolve(tour(String(params.tourId)));
+                if(action!=='flights')throw new Error('unexpected '+action);
+                const id=String(params.tourId);
+                if(id==='t1')return new Promise(resolve=>{resolveA=resolve;});
+                if(id==='t2')return Promise.resolve([{isDefault:true,price:{value:120000},fuelCharge:{value:0},forward:[],backward:[]}]);
+                if(id==='t3'){
+                  t3FlightCalls++;
+                  if(t3FlightCalls===1)return Promise.reject(new Error('temporary flights error'));
+                  return Promise.resolve([{isDefault:true,price:{value:131000},fuelCharge:{value:1500},forward:[],backward:[]}]);
+                }
+                return Promise.resolve([]);
+              }};
+              addEventListener('v2:flight-selected',e=>{lastFlightTour=String(e.detail?.tour?.id||'');});
+            });
+            await page.addScriptTag({path:path.resolve('v2/tour-controller-v4.js')});
+            await page.evaluate(()=>window.V2TourController.selectTour('t1'));
+            await page.waitForFunction(()=>window.V2TourController.currentTour?.id==='t1' && document.querySelector('.tour-flights .selected-loading'));
+            await page.evaluate(()=>window.V2TourController.selectTour('t2'));
+            await page.waitForFunction(()=>window.V2TourController.currentTour?.id==='t2' && !!document.querySelector('.tour-flights .flight-variant'));
+            let state=await page.evaluate(()=>({tour:window.V2TourController.currentTour?.id,lastFlightTour:window.__flightTest.lastFlightTour,title:document.querySelector('#selectedTour h2')?.textContent||'',price:document.querySelector('.flight-choice b')?.textContent||''}));
+            if(state.tour!=='t2'||state.lastFlightTour!=='t2'||!state.title.includes('t2')||!state.price.includes('120'))throw new Error(`t2 autoload failed ${width}: ${JSON.stringify(state)}`);
+            await page.evaluate(()=>window.__flightTest.resolveA([{isDefault:true,price:{value:999999},fuelCharge:{value:9999},forward:[],backward:[]}]))
+            await page.waitForTimeout(60);
+            state=await page.evaluate(()=>({tour:window.V2TourController.currentTour?.id,lastFlightTour:window.__flightTest.lastFlightTour,title:document.querySelector('#selectedTour h2')?.textContent||'',price:document.querySelector('.flight-choice b')?.textContent||''}));
+            if(state.tour!=='t2'||state.lastFlightTour!=='t2'||!state.title.includes('t2')||state.price.includes('999'))throw new Error(`stale t1 flight mutated t2 ${width}: ${JSON.stringify(state)}`);
+
+            await page.evaluate(()=>window.V2TourController.selectTour('t3'));
+            await page.waitForSelector('.tour-flights .flight-error');
+            state=await page.evaluate(()=>({calls:window.__flightTest.t3FlightCalls,error:document.querySelector('.flight-error')?.textContent||'',retry:!!document.querySelector('.load-flights')}));
+            if(state.calls!==1||!state.error.includes('temporary flights error')||!state.retry)throw new Error(`flight error state failed ${width}: ${JSON.stringify(state)}`);
+            await page.click('.load-flights');
+            await page.waitForFunction(()=>window.__flightTest.t3FlightCalls===2 && !!document.querySelector('.tour-flights .flight-variant'));
+            state=await page.evaluate(()=>({tour:window.V2TourController.currentTour?.id,lastFlightTour:window.__flightTest.lastFlightTour,calls:window.__flightTest.t3FlightCalls,error:!!document.querySelector('.flight-error'),price:document.querySelector('.flight-choice b')?.textContent||''}));
+            if(state.tour!=='t3'||state.lastFlightTour!=='t3'||state.calls!==2||state.error||!state.price.includes('131'))throw new Error(`flight retry failed ${width}: ${JSON.stringify(state)}`);
+            console.log(`FLIGHT_AUTOLOAD_RACE_OK width=${width}`); await page.close();
+          }
+          await browser.close();})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node flight-autoload-race.cjs
