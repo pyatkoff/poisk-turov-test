@@ -14,6 +14,9 @@ final class CountryHtmlRenderer
         $meta = $seo['metadata'];
         $resorts = $page['children']['resorts'] ?? [];
         $name = (string) $entity['name'];
+        $data = is_array($entity['data'] ?? null) ? $entity['data'] : [];
+        $nameAccusative = (string) ($data['name_accusative'] ?? $name);
+        $namePrepositional = (string) ($data['name_prepositional'] ?? $name);
         $intro = 'Сравните актуальные туры, курорты и отели. Выберите подходящий вариант и продолжите в живом поиске AnyTour.';
         foreach ($page['blocks'] as $block) {
             if (($block['key'] ?? '') === 'hero' && trim((string) ($block['content']['intro'] ?? '')) !== '') {
@@ -45,8 +48,8 @@ final class CountryHtmlRenderer
             . '<script type="application/ld+json">' . $schema . '</script>'
             . '<style>' . $this->css() . '</style></head><body>'
             . '<header class="atp-header"><a class="atp-logo" href="/">AnyTour</a><nav><a href="/poisk-turov/">Поиск туров</a><a href="/country/">Страны</a><a href="/hot/">Горящие туры</a><a href="/contacts/">Контакты</a></nav><a class="atp-header-cta" href="' . $e($page['search_url']) . '">Найти тур</a></header>'
-            . '<main><section class="atp-hero"><div class="atp-wrap"><div class="atp-kicker">AnyTour · направление</div><h1>' . $e($meta['h1']) . '</h1><p>' . $e($intro) . '</p><div class="atp-actions"><a class="atp-primary" href="' . $e($page['search_url']) . '">Найти туры в ' . $e($name) . '</a><a class="atp-secondary" href="/contacts/">Помощь менеджера</a></div></div></section>'
-            . '<section class="atp-section atp-wrap"><div class="atp-section-head"><div><div class="atp-kicker">Выберите курорт</div><h2>Популярные курорты ' . $e($name) . '</h2></div><p>Страница строится из данных платформы: курорты, контент и SEO-настройки можно менять без создания нового PHP-файла.</p></div><div class="atp-grid">' . $resortCards . '</div></section>'
+            . '<main><section class="atp-hero"><div class="atp-wrap"><div class="atp-kicker">AnyTour · направление</div><h1>' . $e($meta['h1']) . '</h1><p>' . $e($intro) . '</p><div class="atp-actions"><a class="atp-primary" href="' . $e($page['search_url']) . '">Найти туры в ' . $e($nameAccusative) . '</a><a class="atp-secondary" href="/contacts/">Помощь менеджера</a></div></div></section>'
+            . '<section class="atp-section atp-wrap"><div class="atp-section-head"><div><div class="atp-kicker">Выберите курорт</div><h2>Популярные курорты ' . $e($namePrepositional) . '</h2></div><p>Страница строится из данных платформы: курорты, контент и SEO-настройки можно менять без создания нового PHP-файла.</p></div><div class="atp-grid">' . $resortCards . '</div></section>'
             . '<section class="atp-section atp-wrap"><div class="atp-search-card"><div><div class="atp-kicker">Актуальные предложения</div><h2>Цены проверяем в живом поиске</h2><p>Не фиксируем устаревающие цены на SEO-странице. Перед выбором тура откроем поиск уже с выбранной страной.</p></div><a class="atp-primary" href="' . $e($page['search_url']) . '">Показать туры</a></div></section></main>'
             . '<footer class="atp-footer"><div><strong>AnyTour</strong><span>Поиск и подбор туров онлайн</span></div><div><a href="/contacts/">Контакты</a><a href="/how-to-buy/">Как купить</a></div></footer>'
             . '</body></html>';
