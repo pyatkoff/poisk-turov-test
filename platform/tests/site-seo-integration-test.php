@@ -90,7 +90,7 @@ if (($resortPage['search_url'] ?? null) !== '/poisk-turov/?country=4') {
 }
 
 $resortHtml = (new ResortHtmlRenderer())->render($resortPage);
-foreach (['<h1>Туры в Анталью</h1>', 'name="robots" content="noindex,follow"', 'href="https://anytoour.ru/country/turkey/antalya/"', 'href="/country/turkey/"', 'href="/poisk-turov/?country=4"', 'Что важно знать об Анталье', 'Туры в Анталью'] as $needle) {
+foreach (['<h1>Туры в Анталью</h1>', 'name="robots" content="noindex,follow"', 'href="https://anytoour.ru/country/turkey/antalya/"', 'href="/country/turkey/"', 'href="/poisk-turov/?country=4"', 'Смотреть туры в Турцию', 'Все курорты Турции', 'Что важно знать об Анталье', 'Туры в Анталью'] as $needle) {
     if (!str_contains($resortHtml, $needle)) {
         throw new RuntimeException('Rendered Antalya page is missing: ' . $needle);
     }
