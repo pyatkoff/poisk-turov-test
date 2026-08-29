@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T17:10:00+02:00",
+  "updated_at": "2026-08-29T18:15:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core product areas remain at 9.0. Empty-results broadening and completed-search final-results recovery are production verified. Standalone stabilization continues; SEO/site foundation remains 8.8 and indexing/publication is deferred.",
+  "phase": "Core product areas remain at 9.0. Empty-results broadening, completed-search final-results recovery, and post-recovery comparison/sort state are verified. Standalone stabilization continues; SEO/site foundation remains 8.8 and indexing/publication is deferred.",
   "scores": {"search_ux":9.0,"waiting_progress_recovery":9.0,"results_comparison":9.0,"selected_tour":9.0,"flights_price":9.0,"lead_ux":9.0,"mobile_ux":9.0,"tablet_desktop_ux":9.0,"brand_trust":9.0,"visual_quality":9.0,"product_differentiation":9.0,"seo_site_foundation":8.8},
   "current_task": {
     "id":"ANYTOOUR_STANDALONE_STABILIZATION",
     "category":"PRODUCTION_UX_DATA",
     "status":"ACTIVE",
-    "progress":"#261 fixed empty-result dependent-filter recovery and is production green with #262 regression protection. #264 fixed the status=complete final-results recovery edge so a completed Tourvisor search with non-100 numeric progress retries only search_results instead of restarting the search. #264 passed 17 PR checks; V2 deploy 33259402253 and standalone deploy 33259402295 are green, including unchanged lead-bridge verification and live search smoke.",
-    "next_action":"Continue the whole-V2 mobile/tablet/desktop pass from progressive/final results through filters/sort/comparison and the downstream selected-tour→room→flights→price/fuel→lead cycle. Explicitly re-check post-recovery sort/comparison and second-tour state after both empty-search broadening and results-only final-fetch retry, then continue safe non-legal standalone content UX."
+    "progress":"#261/#262 protect empty-result dependent-filter recovery; #264 production-verifies completed-search results-only retry. #266 now protects post-recovery sort/comparison state at 375/768/1440: sort rerenders preserve selected hotel ids, a removed hotel closes an invalid comparison, later result retry does not revive stale selection, and comparison can resume. Browser run 33261729363 and Security 33261729429 are green; no runtime patch was required.",
+    "next_action":"Continue the whole-V2 mobile/tablet/desktop pass from post-recovery results into the second selected-tour cycle: selected tour→room→flights/autoload/error/retry→priced/unpriced→price/fuel confidence→lead error/retry/success. Re-run the real-result return/reselection cycle with sort/comparison/scroll/focus preservation, then continue safe non-legal standalone content UX."
   },
   "production_baseline": {
     "last_verified_legacy_commit":"98eb4edf94c0c7626b094e3883a6571c6a882349",
@@ -33,6 +33,7 @@
     "feed_status":"PRODUCTION_GREEN_PUBLIC_XML"
   },
   "recent_material_fixes":[
+    {"pr":266,"scope":"post_recovery_sort_comparison_state_guard","result":"Browser coverage at 375/768/1440 verifies comparison membership survives sort rerenders by stable hotel id; a recovered/final result set removing a selected hotel closes the invalid dialog; later results retry does not resurrect stale selection; active sort persists and comparison can resume. Browser and Security green; no runtime change."},
     {"pr":264,"scope":"completed_status_final_results_recovery","result":"When lifecycle completion is signaled by status=complete without numeric progress=100, final search_results failure now keeps the completed searchId and shows results-only retry instead of restarting search. 17 PR checks green; V2 and standalone deploy/live checks green; lead bridge unchanged."},
     {"pr":262,"scope":"empty_result_relaxation_cascade_guard","result":"Focused workflow locks synchronous dependent-filter clearing before resubmit and verifies the real shared catalog handleChange dispatcher; corrected guard and Security runs green. No runtime change."},
     {"pr":261,"scope":"empty_result_relaxation_dependency_race","result":"Broadening arrival/region/subregion from an empty result cannot silently retain stale dependent hotel/subregion/service constraints; V2 and standalone deploys green, unchanged lead bridge verified."},
