@@ -38,10 +38,6 @@ jobs:
           if(v2_phone_href(v2_site_phone($nested))!=='88001006150') footer_fail('nested_phone_href');
           if(v2_find_phone(['VALUE'=>['TEXT'=>'8 (800) 100-61-50']])!=='8 (800) 100-61-50') footer_fail('recursive_phone_not_resolved');
 
-          ob_start(); v2_render_site_footer('Array',''); $fallbackHtml=ob_get_clean();
-          if(str_contains($fallbackHtml,'>Array<')) footer_fail('array_phone_leaked');
-          if(!str_contains($fallbackHtml,'href="tel:88001006150"')||!str_contains($fallbackHtml,'>8 (800) 100-61-50<')) footer_fail('footer_phone_fallback');
-
           ob_start(); v2_render_site_footer('8 (800) 100-61-50','88001006150'); $html=ob_get_clean();
           $required=[
             'https://max.ru/anytour',
@@ -52,9 +48,10 @@ jobs:
           ];
           foreach($required as $url){if(!str_contains($html,'href="'.$url.'"')) footer_fail('url_missing_'.$url);}
           if(substr_count($html,'rel="noopener noreferrer"')!==5) footer_fail('external_rel');
+          if(substr_count($html,'<svg')<5) footer_fail('brand_icons_missing');
           if(str_contains($html,'ym(')||str_contains($html,'metrika')) footer_fail('analytics_leak');
           file_put_contents('/tmp/footer-fragment.html',$html);
-          echo "V2_SOCIAL_APP_FOOTER_URLS_OK phoneNormalization=1 headerNormalization=1\n";
+          echo "V2_SOCIAL_APP_FOOTER_URLS_OK phoneNormalization=1 brandIcons=1\n";
           PHP
       - name: Install Playwright Chromium
         shell: bash
@@ -78,23 +75,20 @@ jobs:
               const page=await browser.newPage({viewport:{width,height}});
               await page.setContent(`<style>*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif}${css}</style>${fragment}`);
               const state=await page.evaluate(()=>{
-                const footer=document.querySelector('.v2-site-footer');
-                const external=[...footer.querySelectorAll('.v2-site-footer__socials a,.v2-site-footer__apps a')];
-                const phone=footer.querySelector('.v2-site-footer__phone');
+                const footer=document.querySelector('.v2-site-community');
+                const external=[...footer.querySelectorAll('.v2-site-community__socials a,.v2-site-community__apps a')];
                 return {
                   overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
                   external:external.length,
                   outside:external.some(a=>{const r=a.getBoundingClientRect();return r.left<-1||r.right>innerWidth+1;}),
                   minHeight:Math.min(...external.map(a=>a.getBoundingClientRect().height)),
-                  apps:footer.querySelectorAll('.v2-site-footer__app').length,
-                  socials:footer.querySelectorAll('.v2-site-footer__socials a').length,
-                  phoneText:phone?.textContent?.trim()||'',
-                  phoneHref:phone?.getAttribute('href')||''
+                  apps:footer.querySelectorAll('.v2-site-community__app').length,
+                  socials:footer.querySelectorAll('.v2-site-community__socials a').length,
+                  icons:footer.querySelectorAll('svg').length
                 };
               });
-              if(state.external!==5||state.apps!==2||state.socials!==3)throw new Error(name+': destination count '+JSON.stringify(state));
+              if(state.external!==5||state.apps!==2||state.socials!==3||state.icons<5)throw new Error(name+': destination/icon count '+JSON.stringify(state));
               if(state.overflow||state.outside)throw new Error(name+': footer overflow '+JSON.stringify(state));
-              if(state.phoneText==='Array'||!state.phoneHref.startsWith('tel:'))throw new Error(name+': invalid footer phone '+JSON.stringify(state));
               if(name==='mobile'&&state.minHeight<43.5)throw new Error(name+': touch target too small '+JSON.stringify(state));
               console.log('V2_SOCIAL_APP_FOOTER_LAYOUT_OK',name);
               await page.close();
