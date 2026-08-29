@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Validate mobile and desktop return behavior
+      - name: Validate repeated selection and fallback across breakpoints
         shell: bash
         run: |
           set -euo pipefail
@@ -30,22 +30,33 @@ jobs:
           const path = require('path');
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            for(const width of [375,1440]){
+            for(const width of [375,768,1440]){
               const page=await browser.newPage({viewport:{width,height:900}});
-              await page.setContent(`<select id="sortResults"><option value="price">price</option><option value="rating" selected>rating</option></select><div id="results"><button class="direct-tour" data-tid="t1">Выбрать</button><div id="comparisonTray" data-state="kept">compare</div></div><section id="selectedTour"><button class="back-results">Вернуться к предложениям</button><button class="lead-success-back">Вернуться после заявки</button></section>`);
+              await page.setContent(`<select id="sortResults"><option value="price">price</option><option value="rating" selected>rating</option></select><div id="results"><div class="result-card" data-card="one"><button class="direct-tour" data-tid="t1">Выбрать 1</button></div><div class="result-card" data-card="two"><button class="direct-tour" data-tid="t2">Выбрать 2</button></div><div id="comparisonTray" data-state="kept">compare</div></div><section id="selectedTour"><button class="back-results">Вернуться к предложениям</button><button class="lead-success-back">Вернуться после заявки</button></section>`);
               await page.addScriptTag({path:path.resolve('v2/selected-tour-return-v1.js')});
-              await page.click('.direct-tour');
+              await page.click('[data-tid="t1"]');
               await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:{id:'t1'}}})));
               await page.click('.back-results');
               await page.waitForTimeout(50);
-              let state=await page.evaluate(()=>({hidden:document.getElementById('selectedTour').hidden,aria:document.getElementById('selectedTour').getAttribute('aria-hidden'),sort:document.getElementById('sortResults').value,compare:document.getElementById('comparisonTray').dataset.state,focused:document.activeElement&&document.activeElement.classList.contains('direct-tour')}));
-              if(!state.hidden||state.aria!=='true'||state.sort!=='rating'||state.compare!=='kept'||!state.focused)throw new Error(`back state failed ${width}: ${JSON.stringify(state)}`);
-              await page.evaluate(()=>{const root=document.getElementById('selectedTour');root.hidden=false;root.removeAttribute('aria-hidden');});
+              let state=await page.evaluate(()=>({hidden:document.getElementById('selectedTour').hidden,aria:document.getElementById('selectedTour').getAttribute('aria-hidden'),sort:document.getElementById('sortResults').value,compare:document.getElementById('comparisonTray').dataset.state,focusTid:document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.tid}));
+              if(!state.hidden||state.aria!=='true'||state.sort!=='rating'||state.compare!=='kept'||state.focusTid!=='t1')throw new Error(`initial return failed ${width}: ${JSON.stringify(state)}`);
+
+              await page.click('[data-tid="t2"]');
+              await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:{id:'t2'}}})));
+              await page.evaluate(()=>{document.querySelector('[data-card="two"]').hidden=true;});
+              await page.click('.back-results');
+              await page.waitForTimeout(50);
+              state=await page.evaluate(()=>({hidden:document.getElementById('selectedTour').hidden,sort:document.getElementById('sortResults').value,compare:document.getElementById('comparisonTray').dataset.state,focusId:document.activeElement&&document.activeElement.id,source:window.V2SelectedTourReturnV1.sourceButton&&window.V2SelectedTourReturnV1.sourceButton.dataset.tid}));
+              if(!state.hidden||state.sort!=='rating'||state.compare!=='kept'||state.focusId!=='results'||state.source!=='t2')throw new Error(`hidden-source fallback failed ${width}: ${JSON.stringify(state)}`);
+
+              await page.evaluate(()=>{document.querySelector('[data-card="two"]').hidden=false;});
+              await page.click('[data-tid="t1"]');
+              await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:{id:'t1'}}})));
               await page.click('.lead-success-back');
               await page.waitForTimeout(50);
-              state=await page.evaluate(()=>({hidden:document.getElementById('selectedTour').hidden,sort:document.getElementById('sortResults').value,compare:document.getElementById('comparisonTray').dataset.state,focused:document.activeElement&&document.activeElement.classList.contains('direct-tour')}));
-              if(!state.hidden||state.sort!=='rating'||state.compare!=='kept'||!state.focused)throw new Error(`success-back state failed ${width}: ${JSON.stringify(state)}`);
-              console.log(`RETURN_STATE_OK width=${width} sort=${state.sort} compare=${state.compare} focused=${state.focused}`);
+              state=await page.evaluate(()=>({hidden:document.getElementById('selectedTour').hidden,focusTid:document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.tid,source:window.V2SelectedTourReturnV1.sourceButton&&window.V2SelectedTourReturnV1.sourceButton.dataset.tid}));
+              if(!state.hidden||state.focusTid!=='t1'||state.source!=='t1')throw new Error(`reselection success-return failed ${width}: ${JSON.stringify(state)}`);
+              console.log(`RETURN_STATE_OK width=${width} fallback=results reselection=${state.focusTid}`);
               await page.close();
             }
             await browser.close();
