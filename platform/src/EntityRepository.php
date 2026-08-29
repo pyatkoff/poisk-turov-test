@@ -28,6 +28,21 @@ final class EntityRepository
         return $row === false ? null : $this->hydrate($row);
     }
 
+    /** @return array<string,mixed>|null */
+    public function findById(int $entityId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT id, entity_key, entity_type, slug, name, parent_id, status, sort_order, data_json
+             FROM at_entities
+             WHERE id = :entity_id
+             LIMIT 1'
+        );
+        $stmt->execute(['entity_id' => $entityId]);
+        $row = $stmt->fetch();
+
+        return $row === false ? null : $this->hydrate($row);
+    }
+
     /** @return list<array<string,mixed>> */
     public function childrenOf(int $parentId, ?string $entityType = null): array
     {
