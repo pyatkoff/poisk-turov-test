@@ -1,0 +1,53 @@
+name: Validate Site SEO Platform integration
+
+on:
+  push:
+    branches:
+      - feature/site-seo-platform-integration
+    paths:
+      - 'platform/**'
+      - '.github/workflows/validate-site-seo-platform-integration.yml'
+  pull_request:
+    paths:
+      - 'platform/**'
+      - '.github/workflows/validate-site-seo-platform-integration.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_DATABASE: anytoour_ci
+          MARIADB_USER: ci
+          MARIADB_PASSWORD: ci
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      ANYTOOUR_DB_DSN: mysql:host=127.0.0.1;port=3306;dbname=anytoour_ci;charset=utf8mb4
+      ANYTOOUR_DB_USER: ci
+      ANYTOOUR_DB_PASSWORD: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql
+      - name: Lint platform PHP
+        run: find platform -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Apply Site and SEO migrations twice
+        run: |
+          php platform/bin/migrate.php
+          php platform/bin/migrate.php
+      - name: Seed reference vertical slice
+        run: |
+          php -r '$pdo=new PDO(getenv("ANYTOOUR_DB_DSN"),getenv("ANYTOOUR_DB_USER"),getenv("ANYTOOUR_DB_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);$pdo->exec(file_get_contents("platform/seeds/reference_turkey.sql"));$pdo->exec(file_get_contents("platform/seeds/reference_turkey_seo.sql"));'
+      - name: Validate integrated Turkey page
+        run: php platform/tests/site-seo-integration-test.php
