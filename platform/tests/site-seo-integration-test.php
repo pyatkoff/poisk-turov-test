@@ -7,7 +7,9 @@ use AnyTour\Platform\CountryHtmlRenderer;
 use AnyTour\Platform\Database;
 use AnyTour\Platform\EntityRepository;
 use AnyTour\Platform\IntegratedCountryPage;
+use AnyTour\Platform\IntegratedResortPage;
 use AnyTour\Platform\PageAssembler;
+use AnyTour\Platform\ResortHtmlRenderer;
 use AnyTour\Platform\RouteResolver;
 use AnyTour\Platform\SeoPageRepository;
 use AnyTour\Platform\Seo\MetadataResolver;
@@ -20,57 +22,78 @@ require_once $root . '/src/ContentRepository.php';
 require_once $root . '/src/PageAssembler.php';
 require_once $root . '/src/SeoPageRepository.php';
 require_once $root . '/src/IntegratedCountryPage.php';
+require_once $root . '/src/IntegratedResortPage.php';
 require_once $root . '/src/RouteResolver.php';
 require_once $root . '/src/CountryHtmlRenderer.php';
+require_once $root . '/src/ResortHtmlRenderer.php';
 require_once $root . '/seo/MetadataResolver.php';
 require_once $root . '/seo/SeoEligibilityPolicy.php';
 
 $pdo = Database::connectFromEnvironment();
 $pageTypes = require $root . '/seo/page-types.php';
 $metadataTemplates = require $root . '/seo/metadata-templates.php';
+$assembler = new PageAssembler(new EntityRepository($pdo), new ContentRepository($pdo));
+$seoPages = new SeoPageRepository($pdo);
+$metadata = new MetadataResolver();
+$eligibility = new SeoEligibilityPolicy($pageTypes);
+$resolver = new RouteResolver();
 
-$integrated = new IntegratedCountryPage(
-    new PageAssembler(new EntityRepository($pdo), new ContentRepository($pdo)),
-    new SeoPageRepository($pdo),
-    new MetadataResolver(),
-    new SeoEligibilityPolicy($pageTypes),
-    $pageTypes,
-    $metadataTemplates,
-);
-
-$route = (new RouteResolver())->resolve('/country/turkey/?utm_source=ci');
-if ($route !== ['page_type' => 'country', 'route_key' => 'country:turkey']) {
+$countryRoute = $resolver->resolve('/country/turkey/?utm_source=ci');
+if ($countryRoute !== ['page_type' => 'country', 'route_key' => 'country:turkey']) {
     throw new RuntimeException('Country route was not resolved.');
 }
-if ((new RouteResolver())->resolve('/country/turkey/hotel/') !== null) {
-    throw new RuntimeException('Country resolver must not swallow deeper routes.');
+$resortRoute = $resolver->resolve('/country/turkey/antalya/?utm_source=ci');
+if ($resortRoute !== ['page_type' => 'resort', 'route_key' => 'resort:turkey:antalya']) {
+    throw new RuntimeException('Resort route was not resolved.');
+}
+if ($resolver->resolve('/country/turkey/antalya/hotel/') !== null) {
+    throw new RuntimeException('Resort resolver must not swallow hotel routes.');
 }
 
-$page = $integrated->build($route['route_key'], true);
-if (($page['entity']['slug'] ?? null) !== 'turkey') {
-    throw new RuntimeException('Country entity was not assembled.');
-}
-if (($page['seo']['metadata']['canonical'] ?? null) !== '/country/turkey/') {
-    throw new RuntimeException('Canonical was not generated from SEO contract.');
-}
-if (($page['seo']['metadata']['h1'] ?? null) !== 'Туры в Турцию') {
+$countryPage = (new IntegratedCountryPage($assembler, $seoPages, $metadata, $eligibility, $pageTypes, $metadataTemplates))
+    ->build($countryRoute['route_key'], true);
+if (($countryPage['seo']['metadata']['h1'] ?? null) !== 'Туры в Турцию') {
     throw new RuntimeException('Country grammatical form was not applied to H1.');
 }
-if (($page['seo']['eligible'] ?? false) !== true) {
-    throw new RuntimeException('Reference Turkey page must pass SEO eligibility.');
+if (($countryPage['seo']['eligible'] ?? false) !== true || ($countryPage['seo']['robots'] ?? null) !== 'noindex,follow') {
+    throw new RuntimeException('Reference Turkey page SEO state is invalid.');
 }
-if (($page['seo']['index_status'] ?? null) !== 'noindex' || ($page['seo']['robots'] ?? null) !== 'noindex,follow') {
-    throw new RuntimeException('Registry noindex must control runtime robots.');
+if (($countryPage['search_url'] ?? null) !== '/poisk-turov/?country=4') {
+    throw new RuntimeException('Country search handoff must use confirmed Tourvisor country id.');
 }
-if (($page['search_url'] ?? null) !== '/poisk-turov/?country=4') {
-    throw new RuntimeException('Search handoff must use the confirmed Tourvisor country id.');
-}
-
-$html = (new CountryHtmlRenderer())->render($page);
-foreach (['<h1>Туры в Турцию</h1>', 'name="robots" content="noindex,follow"', 'href="https://anytoour.ru/country/turkey/"', 'href="/poisk-turov/?country=4"', 'Найти туры в Турцию', 'Популярные курорты Турции', 'Анталья', 'Белек', 'Кемер', 'Сиде'] as $needle) {
-    if (!str_contains($html, $needle)) {
+$countryHtml = (new CountryHtmlRenderer())->render($countryPage);
+foreach (['<h1>Туры в Турцию</h1>', 'href="https://anytoour.ru/country/turkey/"', 'Найти туры в Турцию', 'Анталья', 'Белек', 'Кемер', 'Сиде'] as $needle) {
+    if (!str_contains($countryHtml, $needle)) {
         throw new RuntimeException('Rendered Turkey page is missing: ' . $needle);
     }
 }
 
-fwrite(STDOUT, "SITE_SEO_RENDER_RUNTIME_OK\n");
+$resortPage = (new IntegratedResortPage($assembler, $seoPages, $metadata, $eligibility, $pageTypes, $metadataTemplates))
+    ->build($resortRoute['route_key'], true);
+if (($resortPage['entity']['slug'] ?? null) !== 'antalya' || ($resortPage['country']['slug'] ?? null) !== 'turkey') {
+    throw new RuntimeException('Antalya resort hierarchy was not assembled.');
+}
+if (($resortPage['seo']['metadata']['canonical'] ?? null) !== '/country/turkey/antalya/') {
+    throw new RuntimeException('Antalya canonical is invalid.');
+}
+if (($resortPage['seo']['metadata']['h1'] ?? null) !== 'Туры в Анталью') {
+    throw new RuntimeException('Resort grammatical form was not applied to H1.');
+}
+if (($resortPage['seo']['eligible'] ?? false) !== true || ($resortPage['seo']['robots'] ?? null) !== 'noindex,follow') {
+    throw new RuntimeException('Reference Antalya page SEO state is invalid.');
+}
+if (($resortPage['search_intent']['tourvisor_resort_id'] ?? null) !== null) {
+    throw new RuntimeException('Tourvisor resort id must not be guessed in the reference slice.');
+}
+if (($resortPage['search_url'] ?? null) !== '/poisk-turov/?country=4') {
+    throw new RuntimeException('Resort search handoff must only use verified country hydration for now.');
+}
+
+$resortHtml = (new ResortHtmlRenderer())->render($resortPage);
+foreach (['<h1>Туры в Анталью</h1>', 'name="robots" content="noindex,follow"', 'href="https://anytoour.ru/country/turkey/antalya/"', 'href="/country/turkey/"', 'href="/poisk-turov/?country=4"', 'Что важно знать об Анталье', 'Туры в Анталью'] as $needle) {
+    if (!str_contains($resortHtml, $needle)) {
+        throw new RuntimeException('Rendered Antalya page is missing: ' . $needle);
+    }
+}
+
+fwrite(STDOUT, "SITE_SEO_COUNTRY_RESORT_RUNTIME_OK\n");
