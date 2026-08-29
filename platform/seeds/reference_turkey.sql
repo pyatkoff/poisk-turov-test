@@ -2,7 +2,7 @@
 -- Safe to run repeatedly after 20260829_001_site_core.sql.
 
 INSERT INTO at_entities (entity_key, entity_type, slug, name, parent_id, status, sort_order, data_json)
-VALUES ('country:turkey', 'country', 'turkey', 'Турция', NULL, 'active', 10, JSON_OBJECT('name_prepositional', 'Турции'))
+VALUES ('country:turkey', 'country', 'turkey', 'Турция', NULL, 'active', 10, JSON_OBJECT('name_accusative', 'Турцию', 'name_prepositional', 'Турции'))
 ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status), sort_order = VALUES(sort_order), data_json = VALUES(data_json);
 
 SET @turkey_id := (SELECT id FROM at_entities WHERE entity_key = 'country:turkey' LIMIT 1);
