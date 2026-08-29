@@ -1,0 +1,53 @@
+name: Validate standalone content UX
+
+on:
+  pull_request:
+    paths:
+      - 'v2/site-page-v1.css'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/contacts/**'
+      - 'v2/how-to-buy/**'
+      - 'v2/rb/**'
+      - '.github/workflows/validate-standalone-content-ux.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/site-page-v1.css'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/contacts/**'
+      - 'v2/how-to-buy/**'
+      - 'v2/rb/**'
+      - '.github/workflows/validate-standalone-content-ux.yml'
+
+jobs:
+  content-ux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate content routes and CTA contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in v2/site-page-shell-v1.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php; do php -l "$f" >/dev/null; done
+          grep -Fq '.sp-card a.sp-primary{color:#fff}' v2/site-page-v1.css
+          grep -Fq '.sp-header a:focus-visible,.sp-main a:focus-visible' v2/site-page-v1.css
+          mkdir -p /tmp/empty-document-root
+          php -d display_errors=1 -r '
+            $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
+            $_SERVER["HTTP_HOST"]="anytoour.ru";
+            $pages=[
+              ["v2/contacts/index.php","/contacts/index.php","/poisk-turov/","Свяжитесь с AnyTour"],
+              ["v2/how-to-buy/index.php","/how-to-buy/index.php","/poisk-turov/","Как купить тур онлайн"],
+              ["v2/rb/index.php","/rb/index.php","/poisk-turov/","Раннее бронирование без спешки"],
+            ];
+            foreach($pages as [$file,$script,$searchHref,$heading]){
+              $_SERVER["SCRIPT_NAME"]=$script;
+              ob_start(); include $file; $html=ob_get_clean();
+              if(substr_count($html,"<footer class=\"at-site-footer\">")!==1) exit(10);
+              if(substr_count($html,"class=\"v2-site-community\"")!==1) exit(11);
+              if(strpos($html,"href=\"$searchHref\"")===false) exit(12);
+              if(strpos($html,$heading)===false) exit(13);
+              foreach(["переносим","старого сайта","следующий этап"] as $internal){ if(stripos($html,$internal)!==false) exit(14); }
+            }
+            echo "STANDALONE_CONTENT_UX_OK\n";
+          '
