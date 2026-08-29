@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 05:08 +02:00
+Updated: 2026-08-29 06:29 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -25,23 +25,22 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 
 ## Latest material evidence
 
-- PR #204 removed internal migration/roadmap language from customer-facing homepage, `/hot/` and `/country/`; the public copy now describes traveler choices rather than implementation state.
-- `/hot/` now hands off to `/poisk-turov/` with a useful nearest-two-weeks date window instead of a generic search CTA, while keeping dates editable in the full search.
-- Homepage now exposes already-live `/rb/` as a journey card without crowding the primary header/navigation; the five-card layout remains responsive.
-- PR #204 merged as `8cfe1de254f9f5b5cb2efe3ab751151b92151dbb`. Deploy anytoour.ru run `33230329189` completed successfully, including public-page verification, unchanged lead-bridge verification and live search smoke.
-- Post-deploy full live user journey run `33230425740` and root visual run `33230425748` completed green.
-- Post-deploy migrated-content run `33230425725` exposed a second guard-only defect: fetched country pages and handoff assertions used different `/tmp` filenames. PR #205 unified both through one `page_out()` helper.
-- PR #206 made the migrated-content live guard self-validating when its own workflow changes. Production validation run `33230550373` completed green, confirming all migrated routes and country → `/poisk-turov/?country=…` handoffs with the corrected guard.
-- PR #202 remains the responsive navigation baseline: production navigation is visible at 375/768/1024/1440, `/rb/` is discoverable from internal navigation and no page-level overflow was found.
-- PR #199 remains the country handoff/data baseline: Turkey `4`, Egypt `1`, UAE `9`, Thailand `2`, Russia `47` are verified against the live Tourvisor catalogue.
+- PR #208 fixed a confirmed standalone CTA accessibility/visual regression: primary orange CTAs now meet text contrast and expose a visible keyboard focus indicator.
+- PR #209 identified that standalone content routes could not rely on root static CSS delivery; PR #210 closed the live styling break by inlining the trusted local shared-shell CSS. `Deploy anytoour.ru` run `33233481410` completed green.
+- Post-#210 production visual content run `33233571681` passed across 375/768/1440 for homepage, search, contacts, how-to-buy, early booking, hot tours, country catalog and Turkey. It confirmed no page overflow, exactly one canonical footer + one compact community pre-footer and valid search handoffs.
+- The first post-#210 full journey run `33233571698` failed only because its regression test treated enriched room description as mandatory. The real V2 client already treats an absent `/rooms` description as optional and renders fallback copy.
+- PR #211 aligned the live guard with actual product behavior: a room-details response must be valid/non-error, but enrichment may legitimately be empty. The self-validating full production journey run `33233807572` then passed through homepage → search → Tourvisor results → selected tour → optional room enrichment → flights → lead-adapter health without creating a lead.
+- `/contacts/`, `/how-to-buy/` and `/rb/` source/product audit is complete: all have a clear primary handoff to `/poisk-turov/`, secondary manager/contact paths where appropriate, no migration/implementation language and no confirmed data/product defect.
+- PR #212 expands the responsive production visual guard so every standalone content route, not only Contacts, must retain a visible primary CTA with >=4.5:1 text contrast and keyboard focus. The guard self-validates when its own workflow changes.
+- PR #206 remains the migrated-content live baseline; country → `/poisk-turov/?country=…` handoffs are verified for Turkey `4`, Egypt `1`, UAE `9`, Thailand `2`, Russia `47`.
 - PR #196 remains the homepage exact-night baseline; PR #180 remains the one-full-footer baseline.
 - `Самая низкая цена` remains current-result-set decision support only; it does not alter sorting, tour pricing or selection.
 
 ## Exact next work order
 
-1. Continue standalone content-route UX audit on `/contacts/` → `/how-to-buy/` → `/rb/`; `/hot/` customer copy/search handoff and homepage `/rb/` discoverability are now closed by PR #204.
-2. Continue whole standalone user-journey audit: homepage → search → waiting/recovery → results/comparison → selected tour/rooms → flights/price → lead entry/recovery. No live lead submission is required for regression proof.
-3. Re-audit user-facing content for any remaining migration/implementation language or weak route-to-search handoffs; keep technical migration state in repository docs, not public copy.
+1. Resume the whole standalone/V2 user-journey audit at search waiting/recovery → results/comparison → selected tour/rooms → flights/price → lead entry/recovery, looking for user-visible or data defects beyond the already-green live smoke path.
+2. Re-audit the search form and URL/restored state across mobile/desktop, then results card comparison/lowest-price semantics and selected-tour state transitions; prioritize confirmed UX/data issues over framework work.
+3. Re-audit user-facing content for any remaining migration/implementation language or weak route-to-search handoffs; `/contacts/`, `/how-to-buy/`, `/rb/`, `/hot/` are currently closed unless new evidence appears.
 4. Promote additional country/content routes only when their page exists locally and route/search handoff is verified; otherwise preserve the valid legacy destination.
 5. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
 6. Keep `Самая низкая цена` unchanged unless a confirmed UX defect appears.
