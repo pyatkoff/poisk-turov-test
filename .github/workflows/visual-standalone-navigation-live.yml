@@ -3,6 +3,8 @@ name: Visual standalone navigation live
 on:
   pull_request:
     paths:
+      - 'v2/site-header-v2.php'
+      - 'v2/site-header-v2.css'
       - '.github/workflows/visual-standalone-navigation-live.yml'
   workflow_run:
     workflows: ['Deploy anytoour.ru']
@@ -21,48 +23,66 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Verify responsive navigation on production
+      - name: Verify shared responsive navigation on production
         shell: bash
         run: |
           set -euo pipefail
           cat > ./standalone-navigation-live.cjs <<'JS'
           const { chromium } = require('playwright');
           const cases = [
-            ['mobile',375,812],
-            ['tablet',768,1024],
-            ['intermediate',1024,900],
-            ['desktop',1440,1000],
+            ['mobile-375',375,812],
+            ['mobile-430',430,932],
+            ['tablet-768',768,1024],
+            ['intermediate-1024',1024,900],
+            ['desktop-1440',1440,1000],
           ];
           const pages = [
-            ['home','https://anytoour.ru/','.at-home-nav',false],
-            ['hot','https://anytoour.ru/hot/','.sp-nav',true],
+            ['home','https://anytoour.ru/'],
+            ['search','https://anytoour.ru/poisk-turov/'],
+            ['hot','https://anytoour.ru/hot/'],
+            ['country','https://anytoour.ru/country/'],
+            ['contacts','https://anytoour.ru/contacts/'],
           ];
-          const visible = async (page, selector) => page.locator(selector).evaluate(el => {
-            const s=getComputedStyle(el), r=el.getBoundingClientRect();
-            return s.display!=='none' && s.visibility!=='hidden' && r.width>0 && r.height>0;
-          });
+          const isVisible = async locator => {
+            if(await locator.count()!==1) return false;
+            return locator.evaluate(el=>{const s=getComputedStyle(el),r=el.getBoundingClientRect();return s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0;});
+          };
           (async()=>{
             const browser=await chromium.launch({headless:true});
             try{
               for(const [vp,w,h] of cases){
-                for(const [name,url,selector,expectRb] of pages){
+                for(const [name,url] of pages){
                   const context=await browser.newContext({viewport:{width:w,height:h},ignoreHTTPSErrors:true});
                   const page=await context.newPage();
                   const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
-                  if(!response || response.status()!==200) throw new Error(`${vp}/${name}: HTTP ${response&&response.status()}`);
-                  await page.waitForSelector(selector,{timeout:15000});
-                  if(!(await visible(page,selector))) throw new Error(`${vp}/${name}: navigation hidden`);
-                  const state=await page.locator(selector).evaluate(el=>({scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,links:[...el.querySelectorAll('a')].map(a=>({href:a.getAttribute('href'),text:(a.textContent||'').trim()}))}));
-                  if(w<=1024 && state.scrollWidth < state.clientWidth) console.log(`${vp}/${name}: navigation fits without scrolling`);
-                  if(expectRb && !state.links.some(x=>x.href==='/rb/' && x.text.includes('Раннее'))) throw new Error(`${vp}/${name}: early-booking link missing`);
+                  if(!response||response.status()!==200) throw new Error(`${vp}/${name}: HTTP ${response&&response.status()}`);
+                  await page.waitForSelector('.at-global-header',{timeout:15000});
+                  const headers=await page.locator('.at-global-header').count();
+                  if(headers!==1) throw new Error(`${vp}/${name}: shared header count ${headers}`);
+                  const desktopNav=page.locator('.at-global-header__nav');
+                  const mobileMenu=page.locator('.at-global-header__mobile');
+                  if(w<=900){
+                    if(await isVisible(desktopNav)) throw new Error(`${vp}/${name}: desktop nav should be hidden`);
+                    if(!(await isVisible(mobileMenu))) throw new Error(`${vp}/${name}: mobile menu missing`);
+                    await mobileMenu.locator('summary').click();
+                    const panel=mobileMenu.locator('.at-global-header__mobile-panel');
+                    if(!(await isVisible(panel))) throw new Error(`${vp}/${name}: mobile panel did not open`);
+                    const links=await panel.locator('a').evaluateAll(as=>as.map(a=>({href:a.getAttribute('href'),text:(a.textContent||'').trim()})));
+                    if(!links.some(x=>x.href==='/rb/'&&x.text.includes('Раннее'))) throw new Error(`${vp}/${name}: early-booking link missing in mobile menu`);
+                  }else{
+                    if(!(await isVisible(desktopNav))) throw new Error(`${vp}/${name}: desktop nav hidden`);
+                    if(await isVisible(mobileMenu)) throw new Error(`${vp}/${name}: mobile menu should be hidden`);
+                    const links=await desktopNav.locator('a').evaluateAll(as=>as.map(a=>({href:a.getAttribute('href'),text:(a.textContent||'').trim()})));
+                    if(!links.some(x=>x.href==='/rb/'&&x.text.includes('Раннее'))) throw new Error(`${vp}/${name}: early-booking link missing in desktop nav`);
+                  }
                   const pageOverflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2);
                   if(pageOverflow) throw new Error(`${vp}/${name}: page horizontal overflow`);
-                  console.log('NAV_OK',vp,name,JSON.stringify(state));
+                  console.log('NAV_OK',vp,name);
                   await context.close();
                 }
               }
             } finally { await browser.close(); }
-            console.log('STANDALONE_NAVIGATION_LIVE_OK');
+            console.log('SHARED_NAVIGATION_LIVE_OK');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node ./standalone-navigation-live.cjs
