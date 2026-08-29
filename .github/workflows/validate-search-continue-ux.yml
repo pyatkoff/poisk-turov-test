@@ -40,3 +40,15 @@ jobs:
           grep -Fq 'Уже найденные предложения остаются на месте.' v2/search-progress-ux-v1.js
           grep -Fq 'Новых вариантов больше не найдено.' v2/search-progress-ux-v1.js
           echo CONTINUE_SEARCH_PROGRESS_OWNERSHIP_OK
+      - name: Validate result-fetch recovery contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "btn.dataset.continueCompleted='1'" v2/search-continue-v6.js
+          grep -Fq "btn.dataset.retryResults='1'" v2/search-continue-v6.js
+          grep -Fq "retryResultsOnly=btn.dataset.retryResults==='1'" v2/search-continue-v6.js
+          grep -Fq "if(!retryResultsOnly){const d=await rt.api('search_continue'" v2/search-continue-v6.js
+          grep -Fq "rt.api('search_results',{searchId:id,limit:25})" v2/search-progress-ux-v1.js
+          grep -Fq 'Загрузить результаты ещё раз' v2/search-progress-ux-v1.js
+          grep -Fq 'Повторно запускать поиск не нужно.' v2/search-progress-ux-v1.js
+          echo RESULT_FETCH_RECOVERY_OK
