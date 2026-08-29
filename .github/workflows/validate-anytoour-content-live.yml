@@ -26,6 +26,11 @@ jobs:
             grep -Fq 'name="robots" content="noindex,follow' "$out"
             grep -Fq '/images/logo.svg' "$out"
           }
+          check_country_handoff(){
+            local slug="$1" country_id="$2" out="/tmp/page__country_${slug}_.html"
+            grep -Eq "href=['\"]\/poisk-turov\/\?country=${country_id}['\"]" "$out"
+            echo "/country/$slug/ -> /poisk-turov/?country=$country_id OK"
+          }
           check_page '/contacts/' 'Свяжитесь с AnyTour' 'https://anytoour.ru/contacts/'
           check_page '/how-to-buy/' 'Как купить тур онлайн' 'https://anytoour.ru/how-to-buy/'
           check_page '/hot/' 'Горящие туры без рекламной магии' 'https://anytoour.ru/hot/'
@@ -36,4 +41,9 @@ jobs:
           check_page '/country/oae/' 'Туры в ОАЭ' 'https://anytoour.ru/country/oae/'
           check_page '/country/tailand/' 'Туры в Таиланд' 'https://anytoour.ru/country/tailand/'
           check_page '/country/russia/' 'Туры в Россию' 'https://anytoour.ru/country/russia/'
+          check_country_handoff turkey 4
+          check_country_handoff egypt 1
+          check_country_handoff oae 9
+          check_country_handoff tailand 2
+          check_country_handoff russia 47
           echo 'ANYTOOUR_MIGRATED_CONTENT_OK'
