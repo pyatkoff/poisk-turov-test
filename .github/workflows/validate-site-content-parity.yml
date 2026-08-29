@@ -1,0 +1,71 @@
+name: Validate site content parity
+
+on:
+  push:
+    branches:
+      - feature/site-product
+    paths:
+      - 'v2/contacts/**'
+      - 'v2/how-to-buy/**'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/site-footer-v1.php'
+      - 'v2/site-footer-v1.css'
+      - 'v2/favicon.svg'
+      - 'v2/CONTENT_PARITY_AUDIT.md'
+      - '.github/workflows/validate-site-content-parity.yml'
+  pull_request:
+    paths:
+      - 'v2/contacts/**'
+      - 'v2/how-to-buy/**'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/site-footer-v1.php'
+      - 'v2/site-footer-v1.css'
+      - 'v2/favicon.svg'
+      - 'v2/CONTENT_PARITY_AUDIT.md'
+      - '.github/workflows/validate-site-content-parity.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Lint migrated content PHP
+        run: |
+          php -l v2/site-page-shell-v1.php
+          php -l v2/site-footer-v1.php
+          php -l v2/contacts/index.php
+          php -l v2/how-to-buy/index.php
+      - name: Assert contacts parity
+        run: |
+          grep -Fq '<h3>Москва</h3>' v2/contacts/index.php
+          grep -Fq '<h3>Санкт-Петербург</h3>' v2/contacts/index.php
+          grep -Fq '<h3>Калининград</h3>' v2/contacts/index.php
+          grep -Fq '<h3>Чебоксары</h3>' v2/contacts/index.php
+          grep -Fq 'Бутырская ул., 86Б' v2/contacts/index.php
+          ! grep -Fq 'Троилинский' v2/contacts/index.php
+      - name: Assert purchase guide parity
+        run: |
+          grep -Fq 'Передайте данные для оформления' v2/how-to-buy/index.php
+          grep -Fq 'Дождитесь проверки тура' v2/how-to-buy/index.php
+          grep -Fq 'Получите договор и ссылку на оплату' v2/how-to-buy/index.php
+          grep -Fq 'Дождитесь подтверждения бронирования' v2/how-to-buy/index.php
+          grep -Fq 'Получите документы на поездку' v2/how-to-buy/index.php
+      - name: Assert favicon and branded community links
+        run: |
+          test -s v2/favicon.svg
+          grep -Fq 'rel="icon" href="/favicon.svg"' v2/site-page-shell-v1.php
+          grep -Fq 'https://max.ru/anytour' v2/site-footer-v1.php
+          grep -Fq 'https://t.me/+gGloLUt4d8s3NDcy' v2/site-footer-v1.php
+          grep -Fq 'https://vk.com/anytour_online' v2/site-footer-v1.php
+          grep -Fq 'apps.apple.com' v2/site-footer-v1.php
+          grep -Fq 'play.google.com' v2/site-footer-v1.php
+          test "$(grep -o '<svg' v2/site-footer-v1.php | wc -l)" -ge 5
+      - name: Render contacts and purchase pages standalone
+        run: |
+          mkdir -p /tmp/empty-document-root
+          php -d display_errors=1 -r '$_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";$_SERVER["HTTP_HOST"]="anytoour.ru";$_SERVER["SCRIPT_NAME"]="/contacts/index.php";ob_start();include "v2/contacts/index.php";$h=ob_get_clean();if(strpos($h,"Санкт-Петербург")===false||strpos($h,"Бутырская")===false||strpos($h,"<svg")===false)exit(11);'
+          php -d display_errors=1 -r '$_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";$_SERVER["HTTP_HOST"]="anytoour.ru";$_SERVER["SCRIPT_NAME"]="/how-to-buy/index.php";ob_start();include "v2/how-to-buy/index.php";$h=ob_get_clean();if(strpos($h,"Получите документы на поездку")===false||strpos($h,"favicon.svg")===false)exit(12);'
+          echo SITE_CONTENT_PARITY_OK
