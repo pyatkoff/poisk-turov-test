@@ -35,6 +35,7 @@ final class IntegratedCountryPage
         $data = is_array($entity['data'] ?? null) ? $entity['data'] : [];
         $variables = [
             'country_name' => (string) $entity['name'],
+            'country_name_accusative' => (string) ($data['name_accusative'] ?? $entity['name']),
             'country_name_prepositional' => (string) ($data['name_prepositional'] ?? $entity['name']),
             'country_slug' => (string) $entity['slug'],
             'year' => date('Y'),
