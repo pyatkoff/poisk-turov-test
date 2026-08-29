@@ -1,6 +1,14 @@
 name: Visual standalone content live
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/site-page-v1.css'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/home-v1.css'
+      - 'v2/site-header-v2.css'
+      - '.github/workflows/visual-standalone-content-live.yml'
   push:
     branches: [main]
     paths:
@@ -26,9 +34,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p standalone-content-artifacts
           cat > ./standalone-content-live.cjs <<'JS'
           const { chromium } = require('playwright');
-          const cases=[['mobile',375,812],['tablet',768,1024],['desktop',1440,1000]];
+          const fs=require('fs'),path=require('path');
+          const cases=[['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000]];
           const pages=[
             ['home','https://anytoour.ru/','.at-home-main'],
             ['search','https://anytoour.ru/poisk-turov/','.v2-shell'],
@@ -39,6 +49,7 @@ jobs:
             ['country-catalog','https://anytoour.ru/country/','.sp-main'],
             ['country-turkey','https://anytoour.ru/country/turkey/','.sp-main'],
           ];
+          const branchCss=path.resolve('v2/site-page-v1.css');
           const rgb=s=>(s.match(/\d+/g)||[]).slice(0,3).map(Number);
           const luminance=([r,g,b])=>{const f=x=>{x/=255;return x<=.03928?x/12.92:((x+.055)/1.055)**2.4};return .2126*f(r)+.7152*f(g)+.0722*f(b)};
           const contrast=(a,b)=>{const l1=luminance(a),l2=luminance(b);return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05)};
@@ -51,7 +62,6 @@ jobs:
             await cta.focus();
             const outline=await cta.evaluate(el=>{const s=getComputedStyle(el);return {style:s.outlineStyle,width:s.outlineWidth}});
             if(outline.style==='none'||parseFloat(outline.width)<2) throw new Error(`${label}: focus indicator missing ${JSON.stringify(outline)}`);
-            console.log('CTA_OK',label,ratio.toFixed(2),JSON.stringify(colors),JSON.stringify(outline));
           };
           (async()=>{
             const browser=await chromium.launch({headless:true});
@@ -60,16 +70,20 @@ jobs:
                 for(const [name,url,mainSelector] of pages){
                   const context=await browser.newContext({viewport:{width:w,height:h},ignoreHTTPSErrors:true});
                   const page=await context.newPage();
+                  if(name!=='home'&&name!=='search') await page.route('**/site-page-v1.css*',route=>route.fulfill({status:200,contentType:'text/css',body:fs.readFileSync(branchCss)}));
                   const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
                   if(!response||response.status()!==200) throw new Error(`${vp}/${name}: HTTP ${response&&response.status()}`);
                   await page.waitForSelector(mainSelector,{timeout:15000});
-                  const stats=await page.evaluate(()=>({docW:document.documentElement.scrollWidth,clientW:document.documentElement.clientWidth,footer:document.querySelectorAll('footer.at-site-footer').length,community:document.querySelectorAll('.v2-site-community').length,searchLinks:[...document.querySelectorAll('a[href^="/poisk-turov/"]')].length}));
+                  await page.evaluate(()=>document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve());
+                  const stats=await page.evaluate(()=>({docW:document.documentElement.scrollWidth,clientW:document.documentElement.clientWidth,footer:document.querySelectorAll('footer.at-site-footer').length,community:document.querySelectorAll('.v2-site-community').length,searchLinks:[...document.querySelectorAll('a[href^="/poisk-turov/"]')].length,hero:!!document.querySelector('.sp-hero,.at-home-hero,.v2-product-hero')}));
                   if(stats.docW>stats.clientW+2) throw new Error(`${vp}/${name}: page horizontal overflow ${stats.docW}/${stats.clientW}`);
                   if(stats.footer!==1||stats.community!==1) throw new Error(`${vp}/${name}: footer/community count ${stats.footer}/${stats.community}`);
+                  if(!stats.hero) throw new Error(`${vp}/${name}: hero missing`);
                   if(name!=='search'&&stats.searchLinks<1) throw new Error(`${vp}/${name}: no search handoff`);
                   if(name==='home') await checkCta(page,'.at-home-search button',`${vp}/${name}`);
                   else if(name==='search') await checkCta(page,'.search-submit:visible, .mobile-search-sticky-submit:visible',`${vp}/${name}`);
                   else await checkCta(page,'.sp-primary',`${vp}/${name}`);
+                  if(['home','contacts','hot','country-catalog','country-turkey'].includes(name)) await page.screenshot({path:`standalone-content-artifacts/${vp}-${name}.png`,fullPage:true,animations:'disabled'});
                   console.log('PAGE_OK',vp,name,JSON.stringify(stats));
                   await context.close();
                 }
@@ -79,3 +93,9 @@ jobs:
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node ./standalone-content-live.cjs
+      - name: Upload standalone visual evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-content-${{ github.event.pull_request.number || github.run_id }}
+          path: standalone-content-artifacts/
+          retention-days: 30
