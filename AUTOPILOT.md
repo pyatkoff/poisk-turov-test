@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 05:08 +02:00
+Updated: 2026-08-29 06:42 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -25,28 +25,26 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 
 ## Latest material evidence
 
-- PR #204 removed internal migration/roadmap language from customer-facing homepage, `/hot/` and `/country/`; the public copy now describes traveler choices rather than implementation state.
-- `/hot/` now hands off to `/poisk-turov/` with a useful nearest-two-weeks date window instead of a generic search CTA, while keeping dates editable in the full search.
-- Homepage now exposes already-live `/rb/` as a journey card without crowding the primary header/navigation; the five-card layout remains responsive.
-- PR #204 merged as `8cfe1de254f9f5b5cb2efe3ab751151b92151dbb`. Deploy anytoour.ru run `33230329189` completed successfully, including public-page verification, unchanged lead-bridge verification and live search smoke.
-- Post-deploy full live user journey run `33230425740` and root visual run `33230425748` completed green.
-- Post-deploy migrated-content run `33230425725` exposed a second guard-only defect: fetched country pages and handoff assertions used different `/tmp` filenames. PR #205 unified both through one `page_out()` helper.
-- PR #206 made the migrated-content live guard self-validating when its own workflow changes. Production validation run `33230550373` completed green, confirming all migrated routes and country → `/poisk-turov/?country=…` handoffs with the corrected guard.
-- PR #202 remains the responsive navigation baseline: production navigation is visible at 375/768/1024/1440, `/rb/` is discoverable from internal navigation and no page-level overflow was found.
-- PR #199 remains the country handoff/data baseline: Turkey `4`, Egypt `1`, UAE `9`, Thailand `2`, Russia `47` are verified against the live Tourvisor catalogue.
-- PR #196 remains the homepage exact-night baseline; PR #180 remains the one-full-footer baseline.
-- `Самая низкая цена` remains current-result-set decision support only; it does not alter sorting, tour pricing or selection.
+- PR #211 fixed a false production-journey regression: Tourvisor may return a valid empty optional room-enrichment response, matching the existing client fallback contract. Full production journey run `33233807572` passed afterward.
+- `/contacts/`, `/how-to-buy/` and `/rb/` were re-audited for CTA, trust and search handoff. No confirmed product/data defect remains on those routes.
+- PRs #212–#214 expanded the production responsive guard to validate the actual visible primary CTA on every standalone route across mobile/tablet/desktop, including the mobile sticky search submit.
+- That stronger guard exposed a real tablet/desktop defect: white text on the main orange `Найти туры` button had only 3.26:1 contrast.
+- PR #215 changed the inline search CTA to accessible AnyTour dark orange `#D83D00`, preserved the blue mobile sticky hierarchy and added/retained visible keyboard focus. All 10 PR gates passed.
+- PR #215 merged as `dc62dc59798ca931e1fdf3e72f6cdf65a670d165`. Standalone deploy `33234312261` passed release validation, copy, public-page verification, unchanged lead-bridge verification and live search smoke. V2-only deploy `33234312259` also passed validation, copy, verify and live search smoke.
+- Post-deploy responsive content visual run `33234379091` passed at 375/768/1440, confirming the corrected primary CTA plus one canonical full footer and compact community pre-footer.
+- Post-deploy full live user journey run `33234379100` passed homepage → search → Tourvisor results → selected tour → optional room enrichment → flights → lead-adapter health without creating a lead.
+- URL/restored-state, child composition and stale-results logic were re-read during this pass. Current validation blocks invalid dates/nights/adults/child composition/price ranges; stale results are explicitly marked as belonging to previous conditions and require refresh. No new confirmed data defect was found there.
+- `Самая низкая цена` remains current-result-set decision support: it is assigned only to the minimum-priced result, optionally shows the gap to the next distinct price, and does not alter sorting, tour pricing or selection.
 
 ## Exact next work order
 
-1. Continue standalone content-route UX audit on `/contacts/` → `/how-to-buy/` → `/rb/`; `/hot/` customer copy/search handoff and homepage `/rb/` discoverability are now closed by PR #204.
-2. Continue whole standalone user-journey audit: homepage → search → waiting/recovery → results/comparison → selected tour/rooms → flights/price → lead entry/recovery. No live lead submission is required for regression proof.
-3. Re-audit user-facing content for any remaining migration/implementation language or weak route-to-search handoffs; keep technical migration state in repository docs, not public copy.
+1. Continue the whole standalone/V2 audit at waiting/progress/recovery → results/comparison → selected tour/rooms → flights/price → lead entry/recovery, looking for user-visible or data defects beyond the green smoke journey.
+2. Re-audit results decision-support semantics and state transitions on mobile/tablet/desktop, including progressive/stale results, sorting, comparison and `Самая низкая цена` presentation.
+3. Re-audit selected-tour transitions: room fallback, flight autoload/retry, selected-flight price synchronization and lead context, without changing the external lead contract.
 4. Promote additional country/content routes only when their page exists locally and route/search handoff is verified; otherwise preserve the valid legacy destination.
 5. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
-6. Keep `Самая низкая цена` unchanged unless a confirmed UX defect appears.
-7. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
-8. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
+6. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
+7. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
 
 ## Guardrails
 
