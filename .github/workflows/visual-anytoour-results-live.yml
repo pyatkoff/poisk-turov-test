@@ -32,7 +32,7 @@ jobs:
           export DATE_FROM="$(date -d '+2 day' +%Y-%m-%d)"
           export DATE_TO="$(date -d '+9 day' +%Y-%m-%d)"
           mkdir -p anytoour-results-visual
-          cat > /tmp/visual-results.cjs <<'JS'
+          cat > visual-results.cjs <<'JS'
           const { chromium } = require('playwright');
           const fs=require('fs');
           (async()=>{
@@ -67,7 +67,7 @@ jobs:
             console.log('ANYTOOUR_RESULT_CARD_VISUAL_OK');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node /tmp/visual-results.cjs
+          node visual-results.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
