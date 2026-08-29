@@ -1,0 +1,125 @@
+name: Validate anytoour.ru second-tour live journey
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-anytoour-second-tour-live.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-anytoour-second-tour-live.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: validate-anytoour-second-tour-live-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  second-tour-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate two distinct real tours without lead write
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail(){ echo "ANYTOOUR_SECOND_TOUR_FAIL:$1"; exit 1; }
+          api='https://anytoour.ru/api-v2.php'
+          from="$(date -d '+2 day' +%Y-%m-%d)"
+          till="$(date -d '+9 day' +%Y-%m-%d)"
+
+          curl -fsSL --max-time 50 --get \
+            --data-urlencode 'action=search_start' \
+            --data-urlencode 'departureId=1' \
+            --data-urlencode 'countryId=4' \
+            --data-urlencode "dateFrom=$from" \
+            --data-urlencode "dateTo=$till" \
+            --data-urlencode 'nightsFrom=7' \
+            --data-urlencode 'nightsTo=7' \
+            --data-urlencode 'adults=2' \
+            --data-urlencode 'currency=RUB' "$api" -o /tmp/second-start.json
+          search_id="$(python3 -c "import json; d=json.load(open('/tmp/second-start.json')); print(d.get('searchId','') if isinstance(d,dict) else '')")"
+          test -n "$search_id" || fail search_id
+
+          complete=0
+          for attempt in $(seq 1 24); do
+            sleep 2
+            curl -fsSL --max-time 45 "$api?action=search_status&searchId=$search_id" -o /tmp/second-status.json
+            if python3 -c "import json,sys; d=json.load(open('/tmp/second-status.json')); sys.exit(0 if d.get('progress')==100 or d.get('status')=='complete' else 1)"; then complete=1; break; fi
+          done
+          test "$complete" = '1' || fail search_not_complete
+
+          curl -fsSL --max-time 45 "$api?action=search_results&searchId=$search_id&limit=100" -o /tmp/second-results.json
+          python3 - <<'PY' > /tmp/second-pairs.txt
+          import json
+          rows=json.load(open('/tmp/second-results.json'))
+          assert isinstance(rows,list) and rows
+          pairs=[]
+          seen_tours=set()
+          seen_hotels=set()
+          for hotel in rows:
+              if not isinstance(hotel,dict): continue
+              hid=str(hotel.get('id') or '')
+              for tour in hotel.get('tours') or []:
+                  if not isinstance(tour,dict): continue
+                  tid=str(tour.get('id') or '')
+                  if not hid or not tid or tid in seen_tours: continue
+                  # Prefer a second hotel when possible so the live guard exercises a genuinely different result path.
+                  if not pairs or hid not in seen_hotels:
+                      pairs.append((hid,tid))
+                      seen_hotels.add(hid)
+                      seen_tours.add(tid)
+                  if len(pairs)==2: break
+              if len(pairs)==2: break
+          if len(pairs)<2:
+              # Fall back to two distinct tours from the same hotel if the live result set is unusually narrow.
+              pairs=[]; seen_tours=set()
+              for hotel in rows:
+                  if not isinstance(hotel,dict): continue
+                  hid=str(hotel.get('id') or '')
+                  for tour in hotel.get('tours') or []:
+                      if not isinstance(tour,dict): continue
+                      tid=str(tour.get('id') or '')
+                      if hid and tid and tid not in seen_tours:
+                          pairs.append((hid,tid)); seen_tours.add(tid)
+                      if len(pairs)==2: break
+                  if len(pairs)==2: break
+          assert len(pairs)==2, 'need two distinct real tours'
+          assert pairs[0][1] != pairs[1][1]
+          for hid,tid in pairs: print(hid,tid)
+          PY
+          mapfile -t pairs < /tmp/second-pairs.txt
+          test "${#pairs[@]}" = '2' || fail two_result_pairs
+
+          first_tour=''
+          for idx in 0 1; do
+            read -r hotel_id tour_id <<< "${pairs[$idx]}"
+            test -n "$hotel_id" && test -n "$tour_id" || fail result_identity
+            if test "$idx" = '0'; then first_tour="$tour_id"; else test "$tour_id" != "$first_tour" || fail distinct_tour_identity; fi
+
+            curl -fsSL --max-time 45 --get --data-urlencode 'action=hotel_details' --data-urlencode "hotelId=$hotel_id" "$api" -o "/tmp/second-hotel-$idx.json"
+            curl -fsSL --max-time 45 --get --data-urlencode 'action=tour' --data-urlencode "tourId=$tour_id" --data-urlencode 'currency=RUB' "$api" -o "/tmp/second-tour-$idx.json"
+            curl -fsSL --max-time 45 --get --data-urlencode 'action=flights' --data-urlencode "tourId=$tour_id" --data-urlencode 'currency=RUB' "$api" -o "/tmp/second-flights-$idx.json"
+
+            IDX="$idx" EXPECTED_TOUR="$tour_id" python3 - <<'PY' || fail second_tour_payload
+          import json,os
+          i=os.environ['IDX']; expected=os.environ['EXPECTED_TOUR']
+          h=json.load(open(f'/tmp/second-hotel-{i}.json'))
+          t=json.load(open(f'/tmp/second-tour-{i}.json'))
+          f=json.load(open(f'/tmp/second-flights-{i}.json'))
+          assert isinstance(h,dict) and h
+          assert isinstance(t,dict) and str(t.get('id','')) == expected
+          assert float(t.get('price') or 0) > 0
+          flights=f if isinstance(f,list) else f.get('flights',[]) if isinstance(f,dict) else []
+          assert flights and isinstance(flights[0],dict)
+          assert flights[0].get('forward') or flights[0].get('backward')
+          PY
+            echo "ANYTOOUR_SECOND_TOUR_ITEM_OK index=$idx hotelId=$hotel_id tourId=$tour_id"
+          done
+
+          echo "ANYTOOUR_SECOND_TOUR_LIVE_OK searchId=$search_id firstTour=$first_tour secondTour=$(awk 'NR==2{print $2}' /tmp/second-pairs.txt)"
