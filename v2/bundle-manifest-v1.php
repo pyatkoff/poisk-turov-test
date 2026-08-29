@@ -41,6 +41,7 @@ function v2_bundle_manifest(): array
             'room-details-v3.js',
             'selected-tour-return-v1.js',
             'tour-controller-v4.js',
+            'flight-empty-recovery-v1.js',
             'selected-tour-description-v1.js',
             'checkout-experience-v1.js',
             'lead-search-context.js',
