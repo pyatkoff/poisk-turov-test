@@ -24,7 +24,7 @@ final class IntegratedCountryPage
     {
         $page = $this->assembler->country($entityKey);
         $entity = $page['entity'];
-        $blocks = array_values(array_map(static fn (array $block): string => (string) $block['block_key'], $page['blocks']));
+        $blocks = array_values(array_map(static fn (array $block): string => (string) $block['key'], $page['blocks']));
         $data = is_array($entity['data'] ?? null) ? $entity['data'] : [];
 
         $variables = [
