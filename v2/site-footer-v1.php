@@ -6,9 +6,11 @@ function v2_render_site_footer(string $phone, string $phoneHref): void {
     $phoneHref = trim($phoneHref);
     if ($phone === '' || $phone === 'Array') { $phone = '8 (800) 100-61-50'; }
     if ($phoneHref === '') { $phoneHref = v2_phone_href($phone); }
+    $safePhone = htmlspecialchars($phone, ENT_QUOTES, 'UTF-8');
+    $safePhoneHref = htmlspecialchars($phoneHref, ENT_QUOTES, 'UTF-8');
     ?>
 <section class="v2-site-community" aria-labelledby="v2-site-community-title"><div class="v2-site-community__inner">
-<div class="v2-site-community__copy"><span class="v2-site-community__eyebrow">AnyTour всегда рядом</span><h2 id="v2-site-community-title">Подписывайтесь и берите поиск туров с собой</h2><p>Каналы AnyTour — для идей и выгодных предложений. Приложение — чтобы искать туры с телефона.</p></div>
+<div class="v2-site-community__copy"><span class="v2-site-community__eyebrow">AnyTour всегда рядом</span><h2 id="v2-site-community-title">Подписывайтесь и берите поиск туров с собой</h2><p>Каналы AnyTour — для идей и выгодных предложений. Приложение — чтобы искать туры с телефона.</p><p class="v2-site-community__phone"><a href="tel:<?=$safePhoneHref?>"><?=$safePhone?></a></p></div>
 <div class="v2-site-community__actions"><div class="v2-site-community__socials" aria-label="Социальные сети AnyTour">
 <a href="https://max.ru/anytour" target="_blank" rel="noopener noreferrer" aria-label="AnyTour в MAX"><span class="v2-site-community__icon v2-site-community__icon--max" aria-hidden="true"><svg viewBox="0 0 32 32" focusable="false"><rect x="3" y="3" width="26" height="26" rx="8" fill="currentColor"/><path d="M9 21V11h3.1l3.9 5.1 3.9-5.1H23v10h-3v-5.6L16 20.2l-4-4.8V21H9Z" fill="#fff"/></svg></span><span>MAX</span></a>
 <a href="https://t.me/+gGloLUt4d8s3NDcy" target="_blank" rel="noopener noreferrer" aria-label="AnyTour в Telegram"><span class="v2-site-community__icon v2-site-community__icon--telegram" aria-hidden="true"><svg viewBox="0 0 32 32" focusable="false"><circle cx="16" cy="16" r="13" fill="currentColor"/><path d="m8.6 15.7 15-5.8c.7-.3 1.3.2 1 1l-2.6 12.3c-.2.9-.8 1.1-1.5.7l-4-3-1.9 1.9c-.2.2-.4.4-.8.4l.3-4.1 7.5-6.8c.3-.3-.1-.4-.5-.1l-9.3 5.8-4-1.3c-.9-.3-.9-.9.2-1.3Z" fill="#fff"/></svg></span><span>Telegram</span></a>
