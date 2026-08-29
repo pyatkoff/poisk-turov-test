@@ -8,5 +8,5 @@ $c=sp_context('/contacts/','Контакты AnyTour','Контакты тура
 <article><h3>Чебоксары</h3><p><a href="tel:+79625998616">+7 (962) 599-86-16</a><br>просп. Максима Горького, 26</p></article>
 </div></section>
 <section class="sp-grid" style="margin-top:18px"><section class="sp-card"><h2>Единый телефон</h2><p><a href="tel:<?=sp_e($c['phoneHref'])?>"><?=sp_e($c['phone'])?></a></p></section><section class="sp-card"><h2>Подбор тура</h2><p>Начните с поиска — менеджер увидит выбранные параметры и конкретный вариант.</p><div class="sp-actions"><a class="sp-primary" href="/poisk-turov/">Найти тур</a></div></section></section>
-<section class="sp-card" style="margin-top:18px"><h2>Юридическая информация</h2><p>ООО «Туризм плюс»<br>ИНН 9704048781 · ОГРН 1217700065934 · КПП 770401001<br>Юридический адрес: 119002, г. Москва, Троилинский переулок 3, офис 204.</p></section>
+<section class="sp-card" style="margin-top:18px"><h2>Юридическая информация</h2><p>ООО «Туризм плюс»<br>ИНН 9704048781 · ОГРН 1217700065934 · КПП 770401001<br>Юридический адрес: г. Москва, Бутырская ул., 86Б.</p></section>
 </main><?php sp_end($c);
