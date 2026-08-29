@@ -1,0 +1,59 @@
+name: Validate mobile duration cascade
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/results-layout-guard-v1.css'
+      - '.github/workflows/validate-mobile-duration-cascade.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-duration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Verify branch guard contains production mobile duration
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > check-duration.cjs <<'JS'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            try {
+              for(const width of [375,430]){
+                const page=await browser.newPage({viewport:{width,height:900}});
+                const r=await page.goto('https://anytoour.ru/poisk-turov/',{waitUntil:'domcontentloaded',timeout:45000});
+                if(!r||r.status()!==200)throw new Error(`${width}: HTTP ${r&&r.status()}`);
+                await page.waitForFunction(()=>document.querySelector('.main-fields .nights-quick'),null,{timeout:20000});
+                await page.addStyleTag({path:'v2/results-layout-guard-v1.css'});
+                await page.waitForTimeout(100);
+                const state=await page.evaluate(()=>{
+                  const q=document.querySelector('.main-fields .nights-quick');
+                  const nodes=[...q.querySelectorAll('.nights-choice')];
+                  const s=getComputedStyle(q), rect=q.getBoundingClientRect();
+                  return {display:s.display,overflowX:s.overflowX,scrollSnap:s.scrollSnapType,clientWidth:q.clientWidth,scrollWidth:q.scrollWidth,width:rect.width,buttons:nodes.map(n=>{const r=n.getBoundingClientRect(),c=getComputedStyle(n);return{w:r.width,flex:c.flex,scrollSnap:c.scrollSnapAlign};}),pageOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+                });
+                console.log('MOBILE_DURATION_STATE',width,JSON.stringify(state));
+                if(state.display!=='grid')throw new Error(`${width}: display ${state.display}`);
+                if(state.scrollWidth>state.clientWidth+2)throw new Error(`${width}: internal overflow ${state.scrollWidth}/${state.clientWidth}`);
+                if(state.buttons.some(b=>b.w>state.width+2))throw new Error(`${width}: choice exceeds grid`);
+                if(state.pageOverflow)throw new Error(`${width}: page overflow`);
+                await page.close();
+              }
+            } finally { await browser.close(); }
+            console.log('MOBILE_DURATION_CASCADE_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node check-duration.cjs

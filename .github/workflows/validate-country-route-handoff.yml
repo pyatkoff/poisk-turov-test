@@ -1,0 +1,55 @@
+name: Validate standalone country route handoff
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/country/**'
+      - 'v2/country-page-v1.php'
+      - '.github/workflows/validate-country-route-handoff.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  country-handoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate migrated routes against live Tourvisor catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          api='https://anytoour.ru/api-v2.php'
+          curl -fsSL --max-time 45 "$api?action=countries&departureId=1" -o /tmp/countries.json
+          python3 - <<'PY'
+          import json,re,pathlib
+          rows=json.load(open('/tmp/countries.json'))
+          assert isinstance(rows,list) and rows
+          expected={'turkey':('Турция','4'),'egypt':('Египет','1'),'oae':('ОАЭ','9'),'tailand':('Таиланд','2'),'russia':('Россия','47')}
+          by_name={str(x.get('name','')).strip():str(x.get('id','')) for x in rows if isinstance(x,dict)}
+          for slug,(name,country_id) in expected.items():
+              assert by_name.get(name)==country_id, f'{name}: live id {by_name.get(name)!r} != {country_id}'
+              text=pathlib.Path(f'v2/country/{slug}/index.php').read_text(encoding='utf-8')
+              m=re.search(r"'countryId'\s*=>\s*(\d+)",text)
+              assert m and m.group(1)==country_id, f'{slug}: route id mismatch'
+          print('COUNTRY_ROUTE_CATALOG_MAP', ' '.join(f'{name}={country_id}' for name,country_id in expected.values()))
+          PY
+      - name: Validate local catalogue routing and CTA contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/country-page-v1.php >/dev/null
+          php -l v2/country/index.php >/dev/null
+          for page in turkey egypt oae tailand russia; do php -l "v2/country/$page/index.php" >/dev/null; done
+          grep -Fq "?country=" v2/country-page-v1.php
+          python3 - <<'PY'
+          import pathlib
+          text=pathlib.Path('v2/country/index.php').read_text(encoding='utf-8')
+          for slug in ('turkey','egypt','oae','tailand','russia'):
+              assert f"'/country/{slug}/'" in text, f'{slug}: local catalogue link missing'
+          for slug in ('tunis','vetnam','dominikana','cyprus','cuba','maldives','mexico','sri-lanka','tanzania'):
+              assert f"$legacy.'/country/{slug}/'" in text, f'{slug}: undeployed route must stay legacy'
+          PY
+          echo COUNTRY_ROUTE_HANDOFF_OK
