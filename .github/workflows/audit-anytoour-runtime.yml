@@ -1,11 +1,12 @@
 name: Audit anytoour production runtime
 
 on:
+  workflow_dispatch:
   push:
-    branches: [feature/search-core]
+    branches: [main]
     paths:
       - '.github/workflows/audit-anytoour-runtime.yml'
-  workflow_dispatch:
+      - '.github/workflows/deploy-anytoour.yml'
 
 jobs:
   runtime-audit:
