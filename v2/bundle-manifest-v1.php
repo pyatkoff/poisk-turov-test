@@ -57,6 +57,7 @@ function v2_bundle_manifest(): array
             'mobile-results-filters-v1.js',
             'primary-meal-ux-v1.js',
             'search-progress-ux-v1.js',
+            'search-complete-recovery-v1.js',
             'search-dirty-ux-v1.js',
             'mobile-search-summary-v1.js',
             'accessibility.js',
