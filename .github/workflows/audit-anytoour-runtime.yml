@@ -1,0 +1,91 @@
+name: Audit anytoour production runtime
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-anytoour-runtime.yml'
+      - '.github/workflows/deploy-anytoour.yml'
+
+jobs:
+  runtime-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare SSH key
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY" | tr -d '\r' > "$RUNNER_TEMP/anytoour_key"
+          else
+            printf '%s' "$KEY" | base64 --decode > "$RUNNER_TEMP/anytoour_key"
+          fi
+          chmod 600 "$RUNNER_TEMP/anytoour_key"
+          ssh-keygen -y -f "$RUNNER_TEMP/anytoour_key" >/dev/null
+
+      - name: Audit production PHP runtime
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST" && test -n "$USER"
+          ssh -i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 "$USER@$HOST" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          root="$HOME/www/anytoour.ru"
+          test -f "$root/api-v2.php"
+
+          echo '=== Host/runtime ==='
+          php -v | head -n 1
+          php-fpm8.3 -v | head -n 1
+          nginx -v 2>&1 || true
+          mysql --version 2>/dev/null || true
+          echo "CPU_LOGICAL=$(nproc 2>/dev/null || echo unknown)"
+          free -m 2>/dev/null || true
+
+          echo '=== FPM settings ==='
+          php-fpm8.3 -i 2>/dev/null | grep -E '^(memory_limit|max_execution_time|max_input_time|max_input_vars|post_max_size|upload_max_filesize|default_socket_timeout|realpath_cache_size|realpath_cache_ttl|opcache.enable|opcache.memory_consumption|opcache.interned_strings_buffer|opcache.max_accelerated_files|opcache.validate_timestamps|opcache.revalidate_freq) =>' || true
+          grep -RHnE '^[[:space:]]*(\[[^]]+\]|listen[[:space:]]*=|pm([.]|[[:space:]]*=))' /etc/php/8.3/fpm/pool.d 2>/dev/null || true
+          ps -eo pid,rss,comm,args 2>/dev/null | awk '$3 ~ /^php-fpm/ {print}' || true
+
+          echo '=== Web runtime ==='
+          probe=".runtime-audit-$(openssl rand -hex 16).php"
+          probe_path="$root/$probe"
+          cleanup(){ rm -f "$probe_path"; }
+          trap cleanup EXIT
+          cat > "$probe_path" <<'PHP'
+          <?php
+          header('Content-Type: application/json; charset=utf-8');
+          echo json_encode([
+            'php_version' => PHP_VERSION,
+            'sapi' => PHP_SAPI,
+            'memory_limit' => ini_get('memory_limit'),
+            'max_execution_time' => ini_get('max_execution_time'),
+            'opcache' => extension_loaded('Zend OPcache') && (bool)ini_get('opcache.enable'),
+            'curl' => extension_loaded('curl'),
+            'mbstring' => extension_loaded('mbstring'),
+            'openssl' => extension_loaded('openssl'),
+            'intl' => extension_loaded('intl'),
+          ], JSON_UNESCAPED_SLASHES);
+          PHP
+          chmod 644 "$probe_path"
+          result="$(curl -fsS --max-time 20 "https://anytoour.ru/$probe")"
+          printf '%s\n' "$result"
+          WEB_RUNTIME="$result" php -r '
+            $d=json_decode(getenv("WEB_RUNTIME"),true);
+            if(!is_array($d)) exit(40);
+            if(!isset($d["php_version"]) || !str_starts_with((string)$d["php_version"],"8.3.")) exit(41);
+            foreach(["curl","mbstring","openssl","opcache"] as $key) if(empty($d[$key])) exit(42);
+            echo "WEB_PHP83_OK ",$d["php_version"]," SAPI=",($d["sapi"]??"unknown"),"\n";
+          '
+          cleanup
+          trap - EXIT
+
+          php -l "$root/api-v2.php" >/dev/null
+          echo 'ANYTOOUR_RUNTIME_AUDIT_OK'
+          REMOTE
