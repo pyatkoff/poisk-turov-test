@@ -1,0 +1,51 @@
+name: Validate selected-flight fuel fallback
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/flight-price-sync-v1.js'
+      - '.github/workflows/validate-flight-fuel-fallback.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fuel-fallback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify flight-specific, tour fallback and explicit-zero fuel states
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+          cat > fuel-fallback.cjs <<'JS'
+          const { chromium }=require('playwright'); const path=require('path');
+          (async()=>{const browser=await chromium.launch({headless:true});
+          for(const width of [375,768,1440]){
+            const page=await browser.newPage({viewport:{width,height:900}});
+            await page.setContent(`<section id="selectedTour"><div class="selected-head"><div class="selected-price"><small>Стоимость</small>100 000 ₽</div></div><div class="facts"><div><span>Топливный сбор</span><b>1 500 ₽</b></div></div><div class="lead-form"><div class="section-heading"><span></span></div></div></section>`);
+            await page.addScriptTag({path:path.resolve('v2/flight-price-sync-v1.js')});
+            const states=await page.evaluate(()=>{
+              const sync=window.V2FlightPriceSync,tour={price:100000,fuelCharge:1500};let eventFuel=null;
+              addEventListener('v2:tour-price-updated',e=>eventFuel=e.detail.fuelCharge);
+              sync.reset(tour);
+              sync.sync(tour,{price:110000,fuelCharge:5000},0);
+              const specific=document.querySelector('.facts b').textContent;
+              sync.sync(tour,{price:112000},1);
+              const fallback=document.querySelector('.facts b').textContent, fallbackEvent=eventFuel;
+              sync.sync(tour,{price:113000,fuelCharge:0},2);
+              const explicitZero=document.querySelector('.facts b').textContent, zeroEvent=eventFuel;
+              return {specific,fallback,fallbackEvent,explicitZero,zeroEvent,version:sync.version};
+            });
+            if(!states.specific.includes('5')||!states.fallback.includes('1')||states.fallbackEvent!==1500||states.explicitZero!=='—'||states.zeroEvent!==0||states.version<3)throw new Error(`fuel fallback failed ${width}: ${JSON.stringify(states)}`);
+            console.log(`FLIGHT_FUEL_FALLBACK_OK width=${width} ${JSON.stringify(states)}`); await page.close();
+          }
+          await browser.close();})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node fuel-fallback.cjs
