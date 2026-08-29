@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 23:15 +02:00
+Updated: 2026-08-29 23:56 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -10,10 +10,10 @@ Paid/real-user traffic is intentionally not running. Current visitors are the ow
 
 The previous 9.0 scores describe the mature **tour-search product flow**, not the visual quality of the entire public anytoour.ru site. Owner review on 2026-08-29 identified the material cross-page defect: the search experience and the rest of the public site use visibly different headers, composition, spacing and visual language; migrated pages feel uneven and the site does not yet read as one coherent AnyTour product.
 
-Use this honest site-wide baseline until visual evidence justifies a re-score:
+Use this honest site-wide baseline until production visual evidence across all required viewports justifies a re-score:
 - whole public site / coherent product impression: **6.5/10**
 - cross-page visual consistency: **5.5/10**
-- header/navigation consistency: **5.5/10**
+- header/navigation consistency: **5.5/10** baseline before the first unification release
 - homepage: **6.5/10**
 - country pages: **6.0/10**
 - `/hot/`: **6.0–6.5/10**
@@ -27,6 +27,15 @@ Use this honest site-wide baseline until visual evidence justifies a re-score:
 
 The next milestone is **site-wide 8.5+ without regressing the search flow**, then 9.0+ after a complete cross-page visual audit. Do not claim the whole site is 9/10 merely because search-flow engineering guards are green.
 
+## Latest material progress
+
+- PR #276 shipped the first Design System 1.0 slice. It added `SITE_QUALITY_SCORECARD.md`, a shared `site-header-v2.php` + `site-header-v2.css`, moved the homepage and all `site-page-shell-v1.php` pages onto the shared header, and visually aligned the search header to the same one-row system without changing search mechanics.
+- During the rollout, stale CI contracts still expected duplicated `.at-home-nav` / `.sp-nav` headers and old legacy homepage links. Those guards were updated to validate the new shared header architecture instead of reintroducing old duplicated markup.
+- A real cross-page routing defect was also fixed: on `anytoour.ru` the search header still rewrote migrated public sections back to `anytour.online`. Migrated standalone routes now stay local; unresolved legal/payment and undeployed destinations continue to fall back to legacy destinations.
+- PR #276 head `a079521389021cb5f6441cbdca99fda1a1eb2e77` passed all 14 PR workflows including standalone navigation/home handoff, PHP 8.3, security, search visual baseline, selected-tour and trust checks.
+- Squash merge `ec00bcde39fed67be4df88371fbfebcd9048ce10` is deployed to `anytoour.ru` in run `33277124959`: validate → copy → public page verification → unchanged lead bridge → live search smoke all passed.
+- **Do not raise site-wide scores yet.** The next step is a production cross-page responsive visual audit after this first shared-header release.
+
 ## Primary product objective
 
 Make `https://anytoour.ru/` feel like one modern AnyTour product across:
@@ -36,16 +45,15 @@ The search experience is the visual/interaction reference, but do not blindly co
 
 ## Exact next work order — Visual Unification / Design System 1.0
 
-1. **Audit before redesign.** Capture/inspect the current production pages at 375/430/768/1024/1440: `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative Turkey/Egypt/UAE/Thailand/Russia pages. Record concrete header, grid, typography, spacing, card, footer, overflow and responsive inconsistencies. Do not rely on the old search-only scorecard.
-2. **Create a site-wide quality scorecard.** Track every public page plus cross-page visual consistency, header/navigation, typography, grid/spacing, responsive behavior, brand coherence, trust and search handoff. Re-score only from production/visual evidence.
-3. **Design System 1.0.** Consolidate reusable tokens/primitives inside this repository: container widths, spacing scale, type hierarchy, colors, borders/radii, shadows, buttons, links, chips, cards, section spacing, breadcrumbs, focus/hover states and responsive rules. Reuse existing AnyTour brand assets; **do not redesign or replace the logo**.
-4. **One shared header/navigation.** Build a single coherent header behavior for public standalone pages and search where technically safe. Same logo treatment, container, navigation hierarchy, mobile menu behavior, active states and CTA language. Avoid parallel page-specific header copies.
-5. **One shared footer.** Keep the verified MAX/Telegram/VK/App Store/Google Play destinations and existing safe legal destinations, but normalize spacing, typography and composition across all pages. No duplicate footer/pre-footer structures.
-6. **Homepage rebuild on the shared shell.** Improve hierarchy and visual composition, then add useful travel discovery blocks that hand off into the existing search rather than duplicate search logic. Favor useful destination/category entry points and trust over decorative filler.
-7. **Migrate weak public pages onto the shared shell:** `/hot/`, `/country/` and country pages, `/contacts/`, `/how-to-buy/`, `/rb/`. Preserve valid content/routes while fixing layout, hierarchy, cards, spacing and responsive behavior. Do not migrate unresolved legal/payment content.
-8. **Search-shell alignment.** Bring `/poisk-turov/` header/footer/shell into the same public-site system without weakening the mature search form/results/selected-tour UX or changing Tourvisor behavior.
-9. **Cross-page journey audit.** Verify `homepage → country → hot/search → results → tour → lead` feels visually continuous at 375/430/768/1024/1440. Check that returning/navigation does not jump between visibly different shells.
-10. **Only after visual unification:** deepen homepage/country/hot-tour content, real-price discovery modules and SEO inventory. Content blocks must route to the shared search/API rather than fork business logic.
+1. **Production cross-page audit now.** Inspect the newly deployed `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative Turkey/Egypt/UAE/Thailand/Russia pages at 375/430/768/1024/1440. Record concrete remaining header, grid, typography, spacing, card, footer, overflow and responsive inconsistencies.
+2. **Shared design tokens/primitives.** Consolidate container widths, spacing scale, type hierarchy, colors, borders/radii, shadows, buttons, links, chips, cards, section spacing, breadcrumbs, focus/hover states and responsive rules. Reuse existing AnyTour brand assets; **do not redesign or replace the logo**.
+3. **Finish one shared header/navigation contract.** The first shared header is live; now close production-visible differences between search and content pages, including active states, mobile menu behavior, vertical rhythm and any remaining legacy-only search-header markup where changing it is safe.
+4. **One shared footer.** Keep verified MAX/Telegram/VK/App Store/Google Play destinations and existing safe legal destinations, normalize spacing/typography/composition across all pages, and eliminate duplicate footer/pre-footer structures.
+5. **Homepage hierarchy rebuild.** Improve composition and travel discovery while routing useful blocks into the existing search instead of duplicating search logic.
+6. **Weak-page visual rebuild on shared primitives:** `/hot/`, `/country/` + country pages, `/contacts/`, `/how-to-buy/`, `/rb/`. Preserve valid routes/content while fixing layout, hierarchy, cards, spacing and responsive behavior. Do not migrate unresolved legal/payment content.
+7. **Search-shell alignment.** Keep the mature search form/results/selected-tour UX intact while matching public-site shell, typography and rhythm.
+8. **Cross-page journey audit.** Verify `homepage → country → hot/search → results → tour → lead` feels continuous at 375/430/768/1024/1440.
+9. **Only after visual unification:** deepen homepage/country/hot-tour content, real-price discovery modules and SEO inventory. Content blocks must route to the shared search/API rather than fork business logic.
 
 ## Design principles
 
