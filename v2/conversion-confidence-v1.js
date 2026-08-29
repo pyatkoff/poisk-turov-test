@@ -9,7 +9,7 @@ const officeLinks=[
   {city:'Калининград',href:'https://yandex.ru/maps/org/anytour/119654141019/'},
   {city:'Чебоксары',href:'https://yandex.ru/maps/org/anytour/234943832611/'}
 ];
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function textValue(v){if(v===null||v===undefined)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(textValue).filter(Boolean).join(', ');if(typeof v==='object')return textValue(v.russianName||v.fullRussianName||v.name||v.title||v.value||v.description||'');return'';}
 function decorateTourButtons(root){(root||document).querySelectorAll('.direct-tour').forEach(btn=>{if(btn.dataset.v2Confidence==='1')return;btn.dataset.v2Confidence='1';btn.textContent='Проверить тур';const row=btn.closest('.tour-row'),date=row&&row.querySelector('.tour-meta>strong');const dateText=String(date&&date.textContent||'').trim();btn.setAttribute('aria-label',dateText?'Проверить тур на '+dateText:'Проверить выбранный тур');});}
 function numericPrice(item){const n=Number(item&&item.price||0);return Number.isFinite(n)&&n>0?n:0;}
