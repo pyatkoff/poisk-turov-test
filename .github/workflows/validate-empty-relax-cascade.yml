@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           catalogs=v2/catalogs-v2.js
-          grep -Fq "arrival.addEventListener('change'" "$catalogs"
-          grep -Fq "region.addEventListener('change'" "$catalogs"
-          grep -Fq "subregion.addEventListener('change'" "$catalogs"
+          grep -Fq "if(e.target.name==='arrival'){token=++revision;advancedKey='';await loadRegions(token);if(active(token))await loadSubregions(token);if(active(token))await Promise.all([loadHotels(token),loadHotelServices(token)]);return true;}" "$catalogs"
+          grep -Fq "if(e.target.name==='region'){token=++revision;advancedKey='';await loadSubregions(token);if(active(token))await Promise.all([loadHotels(token),loadHotelServices(token)]);return true;}" "$catalogs"
+          grep -Fq "if(e.target.name==='subregion'){token=++revision;await loadHotels(token);return true;}" "$catalogs"
           echo EMPTY_RELAX_CATALOG_REFRESH_OK
