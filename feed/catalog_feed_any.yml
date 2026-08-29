@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<yml_catalog date="2026-01-01 09:03">
+  <shop>
+    <name>AnyTour</name>
+    <company>AnyTour</company>
+    <url>https://anytoour.ru/</url>
+
+    <offers>
+      <!-- empty: this feed is for catalog pages (collections) -->
+    </offers>
+
+    <collections>    
+
+
+      <collection id="country_turkey5">
+        <url>https://anytoour.ru/poisk-turov/?country=4</url>
+        <picture>https://anytoour.ru/images_any/turk5.PNG</picture>
+        <name>Горящие туры в Турцию от AnyTour</name>
+        <description>Большой выбор горящих туров в Турцию. Сравните туры и отели.</description>
+      </collection>
+  <collection id="country_turkey1">
+        <url>https://anytoour.ru/poisk-turov/?country=4</url>
+        <picture>https://anytoour.ru/images_any/turk1.PNG</picture>
+        <name>Горящие туры в Турцию от AnyTour</name>
+        <description>Большой выбор горящих туров в Турцию. Сравните туры и отели.</description>
+      </collection>
+<collection id="country_turkey2">
+        <url>https://anytoour.ru/poisk-turov/?country=4</url>
+        <picture>https://anytoour.ru/images_any/turk2.PNG</picture>
+        <name>Горящие туры в Турцию от AnyTour</name>
+        <description>Большой выбор горящих туров в Турцию. Сравните туры и отели.</description>
+      </collection>
+<collection id="country_turkey3">
+        <url>https://anytoour.ru/poisk-turov/?country=4</url>
+        <picture>https://anytoour.ru/images_any/turk3.PNG</picture>
+        <name>Горящие туры в Турцию от AnyTour</name>
+        <description>Большой выбор горящих туров в Турцию. Сравните туры и отели.</description>
+      </collection>
+<collection id="country_turkey4">
+        <url>https://anytoour.ru/poisk-turov/?country=4</url>
+        <picture>https://anytoour.ru/images_any/turk4.PNG</picture>
+        <name>Горящие туры в Турцию от AnyTour</name>
+        <description>Большой выбор горящих туров в Турцию. Сравните туры и отели.</description>
+      </collection>
+   <collection id="country_turkey6">
+        <url>https://anytoour.ru/poisk-turov/?country=4</url>
+        <picture>https://anytoour.ru/images_any/turk6.PNG</picture>
+        <name>Горящие туры в Турцию от AnyTour</name>
+        <description>Большой выбор горящих туров в Турцию. Сравните туры и отели.</description>
+      </collection>
+      <collection id="country_egypt5">
+        <url>https://anytoour.ru/poisk-turov/?country=1</url>
+        <picture>https://anytoour.ru/images_any/egyp5.PNG</picture>
+        <name>Горящие туры в Египет от AnyTour</name>
+        <description>Большой выбор горящих туров в Египет. Сравните туры и отели.</description>
+      </collection>
+  <collection id="country_egypt1">
+        <url>https://anytoour.ru/poisk-turov/?country=1</url>
+        <picture>https://anytoour.ru/images_any/egyp1.PNG</picture>
+        <name>Горящие туры в Египет от AnyTour</name>
+        <description>Большой выбор горящих туров в Египет. Сравните туры и отели.</description>
+      </collection>
+  <collection id="country_egypt2">
+        <url>https://anytoour.ru/poisk-turov/?country=1</url>
+        <picture>https://anytoour.ru/images_any/egyp2.PNG</picture>
+        <name>Горящие туры в Египет от AnyTour</name>
+        <description>Большой выбор горящих туров в Египет. Сравните туры и отели.</description>
+      </collection>
+  <collection id="country_egypt3">
+        <url>https://anytoour.ru/poisk-turov/?country=1</url>
+        <picture>https://anytoour.ru/images_any/egyp3.PNG</picture>
+        <name>Горящие туры в Египет от AnyTour</name>
+        <description>Большой выбор горящих туров в Египет. Сравните туры и отели.</description>
+      </collection>
+  <collection id="country_egypt4">
+        <url>https://anytoour.ru/poisk-turov/?country=1</url>
+        <picture>https://anytoour.ru/images_any/egyp4.PNG</picture>
+        <name>Горящие туры в Египет от AnyTour</name>
+        <description>Большой выбор горящих туров в Египет. Сравните туры и отели.</description>
+      </collection>
+     <collection id="country_egypt6">
+        <url>https://anytoour.ru/poisk-turov/?country=1</url>
+        <picture>https://anytoour.ru/images_any/egyp6.PNG</picture>
+        <name>Горящие туры в Египет от AnyTour</name>
+        <description>Большой выбор горящих туров в Египет. Сравните туры и отели.</description>
+      </collection>
+      <collection id="country_tailand5">
+        <url>https://anytoour.ru/poisk-turov/?country=2</url>
+        <picture>https://anytoour.ru/images_any/tai5.PNG</picture>
+        <name>Горящие туры в Таиланд от AnyTour</name>
+        <description>Большой выбор горящих туров в Таиланд. Сравните туры и отели.</description>
+      </collection>
+  <collection id="country_tailand1">
+        <url>https://anytoour.ru/poisk-turov/?country=2</url>
+        <picture>https://anytoour.ru/images_any/tai1.PNG</picture>
+        <name>Горящие туры в Таиланд от AnyTour</name>
+        <description>Большой выбор горящих туров в Таиланд. Сравните туры и отели.</description>
+      </collection>
+<collection id="country_tailand2">
+        <url>https://anytoour.ru/poisk-turov/?country=2</url>
+        <picture>https://anytoour.ru/images_any/tai2.PNG</picture>
+        <name>Горящие туры в Таиланд от AnyTour</name>
+        <description>Большой выбор горящих туров в Таиланд. Сравните туры и отели.</description>
+      </collection>
+<collection id="country_tailand3">
+        <url>https://anytoour.ru/poisk-turov/?country=2</url>
+        <picture>https://anytoour.ru/images_any/tai3.PNG</picture>
+        <name>Горящие туры в Таиланд от AnyTour</name>
+        <description>Большой выбор горящих туров в Таиланд. Сравните туры и отели.</description>
+      </collection>
+<collection id="country_tailand4">
+        <url>https://anytoour.ru/poisk-turov/?country=2</url>
+        <picture>https://anytoour.ru/images_any/tai4.PNG</picture>
+        <name>Горящие туры в Таиланд от AnyTour</name>
+        <description>Большой выбор горящих туров в Таиланд. Сравните туры и отели.</description>
+      </collection>
+ 
+   <collection id="country_tailand6">
+        <url>https://anytoour.ru/poisk-turov/?country=2</url>
+        <picture>https://anytoour.ru/images_any/tai6.PNG</picture>
+        <name>Горящие туры в Таиланд от AnyTour</name>
+        <description>Большой выбор горящих туров в Таиланд. Сравните туры и отели.</description>
+      </collection>
+
+      <collection id="country_srilanka5">
+        <url>https://anytoour.ru/poisk-turov/?country=17</url>
+        <picture>https://anytoour.ru/images_any/sri5.PNG</picture>
+        <name>Горящие туры на Шри-Ланку от AnyTour</name>
+        <description>Большой выбор горящих туров на Шри-Ланку. Сравните туры и отели.</description>
+      </collection>
+     <collection id="country_srilanka1">
+        <url>https://anytoour.ru/poisk-turov/?country=17</url>
+        <picture>https://anytoour.ru/images_any/sri1.PNG</picture>
+        <name>Горящие туры на Шри-Ланку от AnyTour</name>
+        <description>Большой выбор горящих туров на Шри-Ланку. Сравните туры и отели.</description>
+      </collection>
+  <collection id="country_srilanka2">
+        <url>https://anytoour.ru/poisk-turov/?country=17</url>
+        <picture>https://anytoour.ru/images_any/sri2.PNG</picture>
+        <name>Горящие туры на Шри-Ланку от AnyTour</name>
+        <description>Большой выбор горящих туров на Шри-Ланку. Сравните туры и отели.</description>
+      </collection>
+  <collection id="country_srilanka3">
+        <url>https://anytoour.ru/poisk-turov/?country=17</url>
+        <picture>https://anytoour.ru/images_any/sri3.PNG</picture>
+        <name>Горящие туры на Шри-Ланку от AnyTour</name>
+        <description>Большой выбор горящих туров на Шри-Ланку. Сравните туры и отели.</description>
+      </collection>
+  <collection id="country_srilanka4">
+        <url>https://anytoour.ru/poisk-turov/?country=17</url>
+        <picture>https://anytoour.ru/images_any/sri4.PNG</picture>
+        <name>Горящие туры на Шри-Ланку от AnyTour</name>
+        <description>Большой выбор горящих туров на Шри-Ланку. Сравните туры и отели.</description>
+      </collection>
+     <collection id="country_srilanka6">
+        <url>https://anytoour.ru/poisk-turov/?country=17</url>
+        <picture>https://anytoour.ru/images_any/sri6.PNG</picture>
+        <name>Горящие туры на Шри-Ланку от AnyTour</name>
+        <description>Большой выбор горящих туров на Шри-Ланку. Сравните туры и отели.</description>
+      </collection>
+      <collection id="country_vietnam5">
+        <url>https://anytoour.ru/poisk-turov/?country=16</url>
+        <picture>https://anytoour.ru/images_any/viet5.PNG</picture>
+        <name>Горящие туры во Вьетнам от AnyTour</name>
+        <description>Большой выбор горящих туров во Вьетнам. Сравните туры и отели.</description>
+      </collection>
+   <collection id="country_vietnam1">
+        <url>https://anytoour.ru/poisk-turov/?country=16</url>
+        <picture>https://anytoour.ru/images_any/viet1.PNG</picture>
+        <name>Горящие туры во Вьетнам от AnyTour</name>
+        <description>Большой выбор горящих туров во Вьетнам. Сравните туры и отели.</description>
+      </collection>
+ <collection id="country_vietnam2">
+        <url>https://anytoour.ru/poisk-turov/?country=16</url>
+        <picture>https://anytoour.ru/images_any/viet2.PNG</picture>
+        <name>Горящие туры во Вьетнам от AnyTour</name>
+        <description>Большой выбор горящих туров во Вьетнам. Сравните туры и отели.</description>
+      </collection>
+ <collection id="country_vietnam3">
+        <url>https://anytoour.ru/poisk-turov/?country=16</url>
+        <picture>https://anytoour.ru/images_any/viet3.PNG</picture>
+        <name>Горящие туры во Вьетнам от AnyTour</name>
+        <description>Большой выбор горящих туров во Вьетнам. Сравните туры и отели.</description>
+      </collection>
+ <collection id="country_vietnam4">
+        <url>https://anytoour.ru/poisk-turov/?country=16</url>
+        <picture>https://anytoour.ru/images_any/viet4.PNG</picture>
+        <name>Горящие туры во Вьетнам от AnyTour</name>
+        <description>Большой выбор горящих туров во Вьетнам. Сравните туры и отели.</description>
+      </collection>
+      <collection id="country_vietnam6">
+        <url>https://anytoour.ru/poisk-turov/?country=16</url>
+        <picture>https://anytoour.ru/images_any/viet6.PNG</picture>
+        <name>Горящие туры во Вьетнам от AnyTour</name>
+        <description>Большой выбор горящих туров во Вьетнам. Сравните туры и отели.</description>
+      </collection>
+     
+      <collection id="country_maldives6">
+        <url>https://anytoour.ru/poisk-turov/?country=8</url>
+        <picture>https://anytoour.ru/images_any/mald6.PNG</picture>
+        <name>Горящие туры на Мальдивы от AnyTour</name>
+        <description>Большой выбор горящих туров на Мальдивы. Сравните туры и отели.</description>   
+ </collection>
+<collection id="country_maldives1">
+        <url>https://anytoour.ru/poisk-turov/?country=8</url>
+        <picture>https://anytoour.ru/images_any/mald1.PNG</picture>
+        <name>Горящие туры на Мальдивы от AnyTour</name>
+        <description>Большой выбор горящих туров на Мальдивы. Сравните туры и отели.</description>
+ </collection>
+<collection id="country_maldives2">
+        <url>https://anytoour.ru/poisk-turov/?country=8</url>
+        <picture>https://anytoour.ru/images_any/mald2.PNG</picture>
+        <name>Горящие туры на Мальдивы от AnyTour</name>
+        <description>Большой выбор горящих туров на Мальдивы. Сравните туры и отели.</description>
+ </collection>
+<collection id="country_maldives3">
+        <url>https://anytoour.ru/poisk-turov/?country=8</url>
+        <picture>https://anytoour.ru/images_any/mald3.PNG</picture>
+        <name>Горящие туры на Мальдивы от AnyTour</name>
+        <description>Большой выбор горящих туров на Мальдивы. Сравните туры и отели.</description>
+ </collection>
+<collection id="country_maldives4">
+        <url>https://anytoour.ru/poisk-turov/?country=8</url>
+        <picture>https://anytoour.ru/images_any/mald4.PNG</picture>
+        <name>Горящие туры на Мальдивы от AnyTour</name>
+        <description>Большой выбор горящих туров на Мальдивы. Сравните туры и отели.</description>
+ </collection>
+<collection id="country_maldives5">
+        <url>https://anytoour.ru/poisk-turov/?country=8</url>
+        <picture>https://anytoour.ru/images_any/mald5.PNG</picture>
+        <name>Горящие туры на Мальдивы от AnyTour</name>
+        <description>Большой выбор горящих туров на Мальдивы. Сравните туры и отели.</description>
+      </collection>
+ 
+    </collections>
+  </shop>
+</yml_catalog>
