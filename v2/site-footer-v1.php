@@ -36,6 +36,25 @@ function v2_render_site_footer(string $phone, string $phoneHref): void
       </div>
     </section>
     <?php
+    v2_render_web_consultant_widget();
+}
+
+/**
+ * Load the canonical Web Consultant only on the Anytoour production host.
+ * The consultant backend stays in max-search-bot; this site only embeds its public assets.
+ */
+function v2_render_web_consultant_widget(): void
+{
+    $host = strtolower(trim((string)($_SERVER['HTTP_HOST'] ?? '')));
+    $host = preg_replace('/:\d+$/', '', $host) ?: $host;
+    if (!in_array($host, ['anytoour.ru', 'www.anytoour.ru'], true)) return;
+
+    $base = 'https://anytour.online/max-search/web-consultant/';
+    ?>
+    <script src="<?=$base?>widget.js" defer data-anytour-webchat="1"></script>
+    <script src="<?=$base?>widget-a11y.js" defer data-anytour-webchat-a11y="1"></script>
+    <script src="<?=$base?>widget-context.js" defer data-anytour-webchat-context="1"></script>
+    <?php
 }
 
 function v2_render_standalone_canonical_footer(): void
