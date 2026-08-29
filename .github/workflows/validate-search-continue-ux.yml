@@ -22,6 +22,8 @@ jobs:
         run: |
           node --check v2/search-continue-v6.js
           node --check v2/search-progress-ux-v1.js
+          node --check diagnostics/search_results_recovery_test.cjs
+          node diagnostics/search_results_recovery_test.cjs
       - name: Validate progress ownership contract
         shell: bash
         run: |
