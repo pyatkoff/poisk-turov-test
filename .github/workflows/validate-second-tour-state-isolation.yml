@@ -1,0 +1,79 @@
+name: Validate second-tour state isolation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/selected-tour-return-v1.js'
+      - 'v2/room-details-v3.js'
+      - 'v2/flight-price-sync-v1.js'
+      - 'v2/unpriced-flight-price-reset-v1.js'
+      - 'v2/price-confidence-v1.js'
+      - '.github/workflows/validate-second-tour-state-isolation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  second-tour-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate first-tour state cannot leak into second selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+          cat > second-tour-state.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const path = require('path');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const width of [375,768,1440]){
+              const page=await browser.newPage({viewport:{width,height:900}});
+              await page.setContent(`<div id="results"><button class="direct-tour" data-tid="t1">Тур 1</button><button class="direct-tour" data-tid="t2">Тур 2</button></div><section id="selectedTour"></section>`);
+              await page.evaluate(()=>{window.V2Runtime={api:async()=>[]};});
+              for(const file of ['v2/selected-tour-return-v1.js','v2/room-details-v3.js','v2/flight-price-sync-v1.js','v2/unpriced-flight-price-reset-v1.js','v2/price-confidence-v1.js'])await page.addScriptTag({path:path.resolve(file)});
+              const renderSelected=async(tour)=>page.evaluate(t=>{
+                const root=document.getElementById('selectedTour');
+                root.hidden=false;root.removeAttribute('aria-hidden');
+                root.innerHTML=`<button type="button" class="back-results">← Вернуться к предложениям</button><div class="selected-head"><div><h2>${t.name}</h2></div><div class="selected-price"><small>Стоимость</small>${t.price} ₽</div></div><div class="facts"><div><span>Топливный сбор</span><b>${t.fuelCharge||'—'} ₽</b></div></div><div class="tour-flights"></div><form class="lead-form"><div class="section-heading"><strong>Заявка</strong><span>base</span></div></form>`;
+                window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:t}}));
+              },tour);
+
+              const tour1={id:'t1',name:'Первый',price:100000,fuelCharge:5000,roomType:'STANDARD',roomId:11};
+              const tour2={id:'t2',name:'Второй',price:90000,fuelCharge:2000,roomType:'DELUXE',roomId:22};
+              await page.click('[data-tid="t1"]');
+              await renderSelected(tour1);
+              await page.evaluate(t=>window.dispatchEvent(new CustomEvent('v2:flight-selected',{detail:{tour:t,flight:{price:120000,fuelCharge:7000},index:0}})),tour1);
+              let state=await page.evaluate(()=>({price:document.querySelector('.selected-price').textContent.replace(/\s+/g,' ').trim(),fuel:Array.from(document.querySelectorAll('.facts>div')).find(x=>x.querySelector('span')?.textContent.trim()==='Топливный сбор')?.querySelector('b')?.textContent.trim(),lead:document.querySelector('.lead-form .section-heading span')?.textContent.trim(),room:document.querySelector('.room-details-host')?.dataset.tourId}));
+              if(!/120[\s\u00a0]?000/.test(state.price)||!/^7[\s\u00a0]?000 ₽$/.test(state.fuel)||!/выбранный рейс/.test(state.lead)||state.room!=='t1')throw new Error(`tour1 setup failed ${width}: ${JSON.stringify(state)}`);
+
+              await page.click('.back-results');
+              await page.waitForTimeout(30);
+              await page.click('[data-tid="t2"]');
+              await renderSelected(tour2);
+              state=await page.evaluate(()=>({price:document.querySelector('.selected-price').textContent.replace(/\s+/g,' ').trim(),fuel:Array.from(document.querySelectorAll('.facts>div')).find(x=>x.querySelector('span')?.textContent.trim()==='Топливный сбор')?.querySelector('b')?.textContent.trim(),lead:document.querySelector('.lead-form .section-heading span')?.textContent.trim(),room:document.querySelector('.room-details-host')?.dataset.tourId,confidence:document.querySelector('.selected-price-confidence')?.textContent.replace(/\s+/g,' ').trim()}));
+              if(!/90[\s\u00a0]?000/.test(state.price)||!/^2[\s\u00a0]?000 ₽$/.test(state.fuel)||!/рейс можно выбрать выше/.test(state.lead)||state.room!=='t2'||!/Цена из поиска/.test(state.confidence))throw new Error(`tour2 reset leaked tour1 state ${width}: ${JSON.stringify(state)}`);
+
+              let priceEvent=null;
+              await page.evaluate(()=>window.addEventListener('v2:tour-price-updated',e=>{window.__lastPriceEvent=e.detail;}));
+              await page.evaluate(t=>window.dispatchEvent(new CustomEvent('v2:flight-selected',{detail:{tour:t,flight:{price:0},index:1}})),tour2);
+              state=await page.evaluate(()=>({price:document.querySelector('.selected-price').textContent.replace(/\s+/g,' ').trim(),fuel:Array.from(document.querySelectorAll('.facts>div')).find(x=>x.querySelector('span')?.textContent.trim()==='Топливный сбор')?.querySelector('b')?.textContent.trim(),lead:document.querySelector('.lead-form .section-heading span')?.textContent.trim(),confidence:document.querySelector('.selected-price-confidence')?.textContent.replace(/\s+/g,' ').trim(),event:window.__lastPriceEvent}));
+              if(!/90[\s\u00a0]?000/.test(state.price)||!/^2[\s\u00a0]?000 ₽$/.test(state.fuel)||!/стоимость рейса уточнит менеджер/.test(state.lead)||!/Цена выбранного рейса уточняется/.test(state.confidence)||state.event?.tour?.id!=='t2'||state.event?.fuelCharge!==2000||state.event?.pricePending!==true)throw new Error(`tour2 pending state incoherent ${width}: ${JSON.stringify(state)}`);
+
+              await page.click('.back-results');
+              await page.waitForTimeout(30);
+              state=await page.evaluate(()=>({focusTid:document.activeElement?.dataset?.tid,sourceTid:window.V2SelectedTourReturnV1.sourceTourId,hidden:document.getElementById('selectedTour').hidden}));
+              if(!state.hidden||state.focusTid!=='t2'||state.sourceTid!=='t2')throw new Error(`tour2 return target failed ${width}: ${JSON.stringify(state)}`);
+              console.log(`SECOND_TOUR_STATE_OK width=${width}`);
+              await page.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node second-tour-state.cjs
