@@ -1,0 +1,40 @@
+name: Validate Web Consultant contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/index.php'
+      - '.github/workflows/validate-web-consultant-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/index.php'
+      - '.github/workflows/validate-web-consultant-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  consultant-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate exact host-gated consultant dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          index=v2/index.php
+          php -l "$index"
+          grep -Fq "in_array(\$webConsultantHost, ['anytoour.ru', 'www.anytoour.ru'], true)" "$index"
+          grep -Fq "\$webConsultantBase = 'https://anytour.online/' . 'max-search/web-consultant/';" "$index"
+          test "$(grep -Fc "data-anytour-webchat=\"1\"" "$index")" -eq 1
+          test "$(grep -Fc "data-anytour-webchat-a11y=\"1\"" "$index")" -eq 1
+          test "$(grep -Fc "data-anytour-webchat-context=\"1\"" "$index")" -eq 1
+          grep -Fq "\$webConsultantBase . 'widget.js'" "$index"
+          grep -Fq "\$webConsultantBase . 'widget-a11y.js'" "$index"
+          grep -Fq "\$webConsultantBase . 'widget-context.js'" "$index"
+          ! grep -Fq '/max-search/' "$index"
+          test "$(grep -Fc 'https://anytour.online/' "$index")" -eq 1
+          echo WEB_CONSULTANT_CONTRACT_OK
