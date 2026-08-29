@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T07:02:00+02:00",
+  "updated_at": "2026-08-29T07:12:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru remains in production stabilization. A real progressive-results recovery defect is fixed and production-verified in V2: transient intermediate result refresh errors no longer abort an otherwise healthy Tourvisor status poll. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
+  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru remains in production stabilization. Progressive-results polling recovery and empty-search near-term date recovery are both fixed and production-verified. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -30,7 +30,7 @@
     "title": "Stabilize standalone search and migrated content routes",
     "status": "ACTIVE",
     "objective": "Keep homepage/search/content migration production-safe across data handoff, full tour-search journey, navigation, responsive layout, footer/legal shell and local-to-search route contracts while preserving legacy V2 and all external contracts.",
-    "progress": "PR #217 fixed a confirmed waiting/progressive-results reliability gap: an intermediate search_results failure no longer bubbles into status failure and stops polling. All 10 PR gates passed. It merged as 5e62e993ffb4096e68811352119b4f66c620a3f8. V2-only deploy 33235027491 passed validate/copy/verify/live-search smoke. Standalone deploy 33235027509 initially hit an external SSH connection reset during copy; a no-code failed-job retry passed release validation, copy, public-page verification, unchanged lead bridge verification and live-search smoke. Selected-tour/flight source audit found no confirmed stale flight-price or lead-context defect.",
+    "progress": "PR #217 fixed a confirmed waiting/progressive-results reliability gap: intermediate search_results failures no longer abort healthy status polling. PR #219 fixed a confirmed empty-search recovery edge: widening dates can no longer put a today/tomorrow departure into the past. #219 also extends the five-width recovery guard with a dynamic near-term clamp case. It merged as ab0f517517adb17d7d21b64e39b499024fbc8a06. V2 deploy 33235437042, standalone deploy 33235437074 and production recovery visual 33235485531 passed. Selected-tour/flight source audit found no confirmed stale flight-price or lead-context defect.",
     "next_action": "Resume whole V2 recovery audit at final result-fetch failure and search-continue recovery, then results comparison/state transitions and browser-level selected-tour/flight/lead recovery across mobile/tablet/desktop."
   },
   "queue": [
@@ -67,19 +67,21 @@
     "next_missing_layers": ["deliberate_public_indexing_contract","reviewed_real_content_inventory","sitemap_publication_policy","structured_data_after_indexable_pages"]
   },
   "production_baseline": {
-    "last_verified_legacy_commit": "5e62e993ffb4096e68811352119b4f66c620a3f8",
-    "legacy_deploy_v2": 33235027491,
-    "legacy_status": "PRODUCTION_GREEN_PROGRESSIVE_RESULTS_RECOVERY_LIVE_SMOKE_GREEN",
+    "last_verified_legacy_commit": "ab0f517517adb17d7d21b64e39b499024fbc8a06",
+    "legacy_deploy_v2": 33235437042,
+    "legacy_status": "PRODUCTION_GREEN_PROGRESSIVE_AND_EMPTY_RECOVERY_LIVE_SMOKE_AND_FIVE_WIDTH_GUARD_GREEN",
     "standalone_target": "https://anytoour.ru/",
     "standalone_search": "https://anytoour.ru/poisk-turov/",
-    "last_verified_standalone_commit": "5e62e993ffb4096e68811352119b4f66c620a3f8",
-    "standalone_deploy_run": 33235027509,
+    "last_verified_standalone_commit": "ab0f517517adb17d7d21b64e39b499024fbc8a06",
+    "standalone_deploy_run": 33235437074,
     "standalone_user_journey_run": 33234379100,
     "standalone_content_visual_run": 33234379091,
+    "search_recovery_visual_run": 33235485531,
     "standalone_content_guard_last_result": "PRODUCTION_GREEN_PRIMARY_CTA_CONTRAST_FOCUS_RESPONSIVE",
-    "standalone_status": "DEPLOY_GREEN_AFTER_TRANSIENT_SSH_RETRY_PUBLIC_PAGES_LEAD_BRIDGE_SEARCH_SMOKE_GREEN"
+    "standalone_status": "DEPLOY_GREEN_PUBLIC_PAGES_LEAD_BRIDGE_SEARCH_SMOKE_GREEN"
   },
   "recent_material_fixes": [
+    {"pr":219,"scope":"empty_search_date_recovery_clamp","result":"Date widening now clamps departure start to local today for near-term searches; five-width guard covers today/tomorrow recovery and production is verified."},
     {"pr":217,"scope":"progressive_results_recovery","result":"Transient intermediate search_results refresh errors no longer abort healthy status polling; next cycle retries results while completed-search result loading stays strict."},
     {"pr":215,"scope":"primary_search_cta_contrast","result":"Tablet/desktop search submit moved from inaccessible #FF510C/white 3.26:1 to accessible #D83D00/white and is production-verified."},
     {"pr":214,"scope":"responsive_search_cta_guard","result":"Production visual audit validates whichever search submit is actually visible: inline on larger widths or sticky mobile CTA."},
