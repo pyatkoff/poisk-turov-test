@@ -41,9 +41,9 @@ jobs:
               const fallback=document.querySelector('.facts b').textContent, fallbackEvent=eventFuel;
               sync.sync(tour,{price:113000,fuelCharge:0},2);
               const explicitZero=document.querySelector('.facts b').textContent, zeroEvent=eventFuel;
-              return {specific,fallback,fallbackEvent,explicitZero,zeroEvent,version:sync.version};
+              return {specific,fallback,fallbackEvent,explicitZero,zeroEvent,hasSelectedFuelValue:typeof sync.selectedFuelValue==='function'};
             });
-            if(!states.specific.includes('5')||!states.fallback.includes('1')||states.fallbackEvent!==1500||states.explicitZero!=='—'||states.zeroEvent!==0||states.version<3)throw new Error(`fuel fallback failed ${width}: ${JSON.stringify(states)}`);
+            if(!states.specific.includes('5')||!states.fallback.includes('1')||states.fallbackEvent!==1500||states.explicitZero!=='—'||states.zeroEvent!==0||!states.hasSelectedFuelValue)throw new Error(`fuel fallback failed ${width}: ${JSON.stringify(states)}`);
             console.log(`FLIGHT_FUEL_FALLBACK_OK width=${width} ${JSON.stringify(states)}`); await page.close();
           }
           await browser.close();})().catch(e=>{console.error(e);process.exit(1)});
