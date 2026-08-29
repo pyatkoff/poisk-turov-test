@@ -70,7 +70,7 @@ jobs:
       - name: Visual audit dynamic Turkey page
         run: |
           mkdir -p platform-visual
-          cat > /tmp/platform-visual.cjs <<'JS'
+          cat > ./platform-visual.cjs <<'JS'
           const { chromium } = require('playwright');
           const fs = require('fs');
           (async()=>{
@@ -103,7 +103,7 @@ jobs:
             console.log('PLATFORM_COUNTRY_VISUAL_OK');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node /tmp/platform-visual.cjs
+          node ./platform-visual.cjs
       - name: Upload platform visual evidence
         if: always()
         uses: actions/upload-artifact@v4
