@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 07:02 +02:00
+Updated: 2026-08-29 07:12 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -27,9 +27,11 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 
 - Whole-flow recovery audit found a real reliability defect in progressive search rendering: a transient `search_results` refresh failure during an otherwise healthy Tourvisor search escaped into the outer status-poll catch and stopped polling completely.
 - PR #217 isolates only intermediate progressive-result refresh failures: status polling continues, the next cycle retries results, and final result loading at completed search remains strict. No Tourvisor request contract, pricing, Metrika, goals or lead contract changed.
-- All 10 PR #217 gates passed, including branch-bundle execution, selected-tour visual coverage, startup bundles, standalone validation and security.
-- PR #217 merged as `5e62e993ffb4096e68811352119b4f66c620a3f8`. V2-only deploy `33235027491` passed validate → copy → verify → live search smoke.
-- Standalone deploy `33235027509` initially hit an external SSH `connection reset by peer` during copy. The failed job was retried without code changes and passed release validation, copy, public-page verification, unchanged lead-bridge verification and live search smoke.
+- All 10 PR #217 gates passed. PR #217 merged as `5e62e993ffb4096e68811352119b4f66c620a3f8`; V2-only deploy `33235027491` passed validate → copy → verify → live search smoke.
+- Standalone deploy `33235027509` initially hit an external SSH `connection reset by peer` during copy. The failed job was retried without code changes and then passed release validation, copy, public-page verification, unchanged lead-bridge verification and live search smoke.
+- The same recovery audit found a second user-visible edge case: `Расширить даты ±2 дня` could move `dateFrom` into the past for departures today/tomorrow, so the next search immediately failed normal date validation.
+- PR #219 clamps recovered `dateFrom` to local today, preserves the widened end date, displays the actual adjusted range and strengthens the five-width recovery guard with a near-term date case. All 12 PR checks passed.
+- PR #219 merged as `ab0f517517adb17d7d21b64e39b499024fbc8a06`. V2 deploy `33235437042` passed validate/copy/verify/live search smoke; standalone deploy `33235437074` passed release validation/copy/public pages/unchanged lead bridge/live search smoke; production search-recovery audit `33235485531` passed.
 - Selected-tour/flight-price source audit confirms tour-switch generation guards prevent stale flight responses, flight retry is available, selected flight data is taken at lead-submit time, and no confirmed stale-price/lead-context defect was found in that pass.
 - Earlier production evidence remains valid: PR #215 fixed the 3.26:1 tablet/desktop primary CTA contrast regression; responsive content visual `33234379091` and full live user journey `33234379100` passed afterward.
 - URL/restored-state, child composition and stale-results validation remain guarded; `Самая низкая цена` remains current-result-set decision support and does not alter sorting or actual tour pricing.
