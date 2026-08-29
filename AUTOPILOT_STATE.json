@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T07:12:00+02:00",
+  "updated_at": "2026-08-29T08:05:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru remains in production stabilization. Progressive-results polling recovery and empty-search near-term date recovery are both fixed and production-verified. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
+  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru remains in production stabilization. Progressive result refresh, near-term empty-search date recovery, and completed-search/final-result-fetch recovery are fixed and production-verified. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -30,8 +30,8 @@
     "title": "Stabilize standalone search and migrated content routes",
     "status": "ACTIVE",
     "objective": "Keep homepage/search/content migration production-safe across data handoff, full tour-search journey, navigation, responsive layout, footer/legal shell and local-to-search route contracts while preserving legacy V2 and all external contracts.",
-    "progress": "PR #217 fixed a confirmed waiting/progressive-results reliability gap: intermediate search_results failures no longer abort healthy status polling. PR #219 fixed a confirmed empty-search recovery edge: widening dates can no longer put a today/tomorrow departure into the past. #219 also extends the five-width recovery guard with a dynamic near-term clamp case. It merged as ab0f517517adb17d7d21b64e39b499024fbc8a06. V2 deploy 33235437042, standalone deploy 33235437074 and production recovery visual 33235485531 passed. Selected-tour/flight source audit found no confirmed stale flight-price or lead-context defect.",
-    "next_action": "Resume whole V2 recovery audit at final result-fetch failure and search-continue recovery, then results comparison/state transitions and browser-level selected-tour/flight/lead recovery across mobile/tablet/desktop."
+    "progress": "PR #217 keeps healthy status polling alive across transient progressive search_results failures. PR #219 prevents empty-search date widening from placing near-term departure in the past. PR #221 fixes completed-search final-result recovery and completed continue-search result recovery: both now retry only search_results against the existing searchId and do not unnecessarily restart search_start/search_continue. #221 merged as 25e628777e2157d9859b01fdb6ade012a92e2049. V2 deploy 33237509401 and standalone deploy 33237509375 both passed production verification and live search smoke. No Tourvisor request, Metrika/goals, pricing, or external lead contract changed.",
+    "next_action": "Re-audit results decision-support/state transitions on mobile/tablet/desktop, then browser-level selected-tour room/flight/price/lead recovery while preserving the external lead contract."
   },
   "queue": [
     {"id":"ROOT_STABILIZATION","status":"ACTIVE_HIGHEST_PRIORITY","title":"anytoour.ru standalone production stabilization"},
@@ -67,20 +67,21 @@
     "next_missing_layers": ["deliberate_public_indexing_contract","reviewed_real_content_inventory","sitemap_publication_policy","structured_data_after_indexable_pages"]
   },
   "production_baseline": {
-    "last_verified_legacy_commit": "ab0f517517adb17d7d21b64e39b499024fbc8a06",
-    "legacy_deploy_v2": 33235437042,
-    "legacy_status": "PRODUCTION_GREEN_PROGRESSIVE_AND_EMPTY_RECOVERY_LIVE_SMOKE_AND_FIVE_WIDTH_GUARD_GREEN",
+    "last_verified_legacy_commit": "25e628777e2157d9859b01fdb6ade012a92e2049",
+    "legacy_deploy_v2": 33237509401,
+    "legacy_status": "PRODUCTION_GREEN_FINAL_RESULTS_AND_CONTINUE_RECOVERY_LIVE_SMOKE_GREEN",
     "standalone_target": "https://anytoour.ru/",
     "standalone_search": "https://anytoour.ru/poisk-turov/",
-    "last_verified_standalone_commit": "ab0f517517adb17d7d21b64e39b499024fbc8a06",
-    "standalone_deploy_run": 33235437074,
+    "last_verified_standalone_commit": "25e628777e2157d9859b01fdb6ade012a92e2049",
+    "standalone_deploy_run": 33237509375,
     "standalone_user_journey_run": 33234379100,
     "standalone_content_visual_run": 33234379091,
-    "search_recovery_visual_run": 33235485531,
+    "search_recovery_visual_run": 33237424928,
     "standalone_content_guard_last_result": "PRODUCTION_GREEN_PRIMARY_CTA_CONTRAST_FOCUS_RESPONSIVE",
     "standalone_status": "DEPLOY_GREEN_PUBLIC_PAGES_LEAD_BRIDGE_SEARCH_SMOKE_GREEN"
   },
   "recent_material_fixes": [
+    {"pr":221,"scope":"completed_search_final_results_recovery","result":"Completed main search and completed continue-search now recover transient final search_results failures by re-fetching results against the existing searchId, without repeating search_start or search_continue; production deploys are green."},
     {"pr":219,"scope":"empty_search_date_recovery_clamp","result":"Date widening now clamps departure start to local today for near-term searches; five-width guard covers today/tomorrow recovery and production is verified."},
     {"pr":217,"scope":"progressive_results_recovery","result":"Transient intermediate search_results refresh errors no longer abort healthy status polling; next cycle retries results while completed-search result loading stays strict."},
     {"pr":215,"scope":"primary_search_cta_contrast","result":"Tablet/desktop search submit moved from inaccessible #FF510C/white 3.26:1 to accessible #D83D00/white and is production-verified."},
