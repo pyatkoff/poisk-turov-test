@@ -74,11 +74,12 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   </section>
 
   <section class="at-home-section">
-    <div class="at-home-section__head"><h2>Разделы нового AnyTour</h2><p>Мы переносим текущие разделы сайта в единый новый дизайн. Поиск уже работает; страны, горящие туры и полезные страницы переносятся без потери старых маршрутов.</p></div>
+    <div class="at-home-section__head"><h2>Спланируйте поездку с AnyTour</h2><p>Ищите тур по своим параметрам, выбирайте направление или начните со сценария, который ближе к вашей поездке.</p></div>
     <div class="at-home-direction-grid">
       <a class="at-home-direction" href="/poisk-turov/"><strong>Поиск туров</strong><span>Полная форма, фильтры и актуальные предложения</span></a>
-      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/country/"><strong>Страны и курорты</strong><span>Каталог направлений AnyTour</span></a>
-      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/hot/"><strong>Горящие туры</strong><span>Быстрый переход к актуальным предложениям</span></a>
+      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/country/"><strong>Страны и курорты</strong><span>Выберите направление и перейдите к актуальным турам</span></a>
+      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/hot/"><strong>Горящие туры</strong><span>Поиск вариантов на ближайшие даты</span></a>
+      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/rb/"><strong>Раннее бронирование</strong><span>Сравните варианты заранее без спешки</span></a>
       <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/how-to-buy/"><strong>Как купить тур</strong><span>Понятный путь от выбора до бронирования</span></a>
     </div>
   </section>
