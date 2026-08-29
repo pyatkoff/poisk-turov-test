@@ -1,0 +1,74 @@
+/* Production guard for the legacy search-header markup.
+   Keep the logo, nav and actions in one 78px row even when earlier/later V2 styles
+   contain generic navigation rules. Mobile continues to use the existing menu. */
+@media (min-width:901px){
+  body .at-site-header{
+    position:relative;
+    min-height:78px;
+    height:78px;
+    overflow:visible;
+  }
+  body .at-site-header>.at-site-header__top{
+    position:relative;
+    display:block;
+    width:min(var(--at-shell),calc(100% - 40px));
+    height:78px;
+    min-height:78px;
+    margin:0 auto;
+    padding:0;
+  }
+  body .at-site-header>.at-site-nav-wrap{
+    position:absolute;
+    inset:0;
+    display:block;
+    height:78px;
+    margin:0;
+    padding:0;
+    background:transparent;
+    pointer-events:none;
+  }
+  body .at-site-header>.at-site-nav-wrap>.at-site-nav{
+    position:relative;
+    display:flex;
+    align-items:center;
+    width:min(var(--at-shell),calc(100% - 40px));
+    height:78px;
+    min-height:78px;
+    margin:0 auto;
+    padding:0 335px 0 205px;
+    pointer-events:none;
+  }
+  body .at-site-header>.at-site-nav-wrap>.at-site-nav>ul{
+    position:relative;
+    display:flex;
+    align-items:center;
+    width:auto;
+    height:auto;
+    margin:0;
+    padding:0;
+    gap:4px;
+    pointer-events:auto;
+  }
+  body .at-site-header .at-site-logo{
+    top:20px;
+    bottom:auto;
+    left:0;
+  }
+  body .at-site-header .at-site-phone{
+    top:29px;
+    bottom:auto;
+  }
+  body .at-site-header .at-site-order{
+    top:17px;
+    bottom:auto;
+  }
+}
+@media (min-width:901px) and (max-width:1100px){
+  body .at-site-header>.at-site-header__top,
+  body .at-site-header>.at-site-nav-wrap>.at-site-nav{width:calc(100% - 28px)}
+  body .at-site-header>.at-site-nav-wrap>.at-site-nav{padding-left:174px;padding-right:300px}
+  body .at-site-header>.at-site-nav-wrap>.at-site-nav>ul{gap:1px}
+}
+@media (max-width:900px){
+  body .at-site-header>.at-site-nav-wrap{display:none}
+}
