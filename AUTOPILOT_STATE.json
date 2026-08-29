@@ -1,36 +1,37 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T12:07:00+02:00",
+  "updated_at": "2026-08-29T12:15:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core product areas remain at 9.0. Selected-tour return/resume, room recovery, and same-tour lead recovery now have explicit mobile/tablet/desktop browser evidence. Standalone stabilization continues; SEO/site foundation remains 8.8 and indexing/publication is deferred.",
+  "phase": "Core product areas remain at 9.0. Selected-tour return, room recovery, same-tour lead recovery, flight autoload/retry races, and selected-flight fuel coherence now have explicit browser evidence. Standalone stabilization continues; SEO/site foundation remains 8.8 and indexing/publication is deferred.",
   "scores": {"search_ux":9.0,"waiting_progress_recovery":9.0,"results_comparison":9.0,"selected_tour":9.0,"flights_price":9.0,"lead_ux":9.0,"mobile_ux":9.0,"tablet_desktop_ux":9.0,"brand_trust":9.0,"visual_quality":9.0,"product_differentiation":9.0,"seo_site_foundation":8.8},
   "current_task": {
     "id":"ANYTOOUR_STANDALONE_STABILIZATION",
     "category":"PRODUCTION_UX_DATA",
     "status":"ACTIVE",
-    "progress":"#241 fixed hidden/unrendered source-card fallback for selected-tour return and is production green: V2 33246743154, standalone 33246743138. #242 added a 375/768/1440 browser guard confirming room error→retry→empty fallback, stale-response isolation and success; no room runtime defect was found. Latest standalone live journey 33246833160 and migrated-content/navigation/results/content/root visual checks are green. #243 added a 375/768/1440 same-tour lead error→retry→normal/duplicate-success browser guard; existing runtime passed without changing the lead endpoint/payload.",
-    "next_action":"Audit remaining flight autoload/error/retry and in-flight tour-switch transitions, then priced/unpriced/fuel/lead-summary coherence; fix only confirmed defects and repeat the whole V2 flow after any material runtime change."
+    "progress":"#245 fixed stale selected-flight fuel data and is production green: V2 33247195974, standalone 33247195969, full live journey 33247259847, live results visual 33247259844, five-width root/search visual 33247259957. #246 confirms flight autoload stale-response isolation and error→retry→success at 375/768/1440; no further flight runtime defect was found.",
+    "next_action":"Re-audit priced↔unpriced price-confidence/fuel/lead-summary coherence, then perform another whole-V2 mobile/tablet/desktop browser pass from search through lead recovery; fix only confirmed defects."
   },
   "production_baseline": {
-    "last_verified_legacy_commit":"1b966e41fd2dc83ff90b100966779683dcaf7207",
-    "legacy_deploy_v2":33246743154,
+    "last_verified_legacy_commit":"ce895bf1d2648677bd6ca3f905e98f0ca48c204e",
+    "legacy_deploy_v2":33247195974,
     "legacy_status":"PRODUCTION_GREEN_LIVE_SEARCH_SMOKE",
     "standalone_target":"https://anytoour.ru/",
     "standalone_search":"https://anytoour.ru/poisk-turov/",
-    "last_verified_standalone_commit":"1b966e41fd2dc83ff90b100966779683dcaf7207",
-    "standalone_deploy_run":33246743138,
+    "last_verified_standalone_commit":"ce895bf1d2648677bd6ca3f905e98f0ca48c204e",
+    "standalone_deploy_run":33247195969,
     "standalone_status":"PRODUCTION_GREEN_PUBLIC_PAGES_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
-    "latest_live_validation_head":"89f2ccb874b25695298b6450869122b32b404c6b",
-    "latest_live_user_journey":33246833160,
-    "latest_root_visual":33246833166,
-    "latest_results_visual":33246833181
+    "latest_live_validation_head":"ce895bf1d2648677bd6ca3f905e98f0ca48c204e",
+    "latest_live_user_journey":33247259847,
+    "latest_root_visual":33247259957,
+    "latest_results_visual":33247259844
   },
   "recent_material_fixes":[
+    {"pr":246,"scope":"flight_autoload_stale_response_and_retry_guard","result":"Confirms late old-tour flight responses cannot mutate the current tour and flight error→retry→success works at 375/768/1440; runtime unchanged."},
+    {"pr":245,"scope":"selected_flight_fuel_fallback","result":"Prevents stale previous-flight fuel amount when the newly selected priced flight omits fuelCharge; falls back to tour fuel while explicit zero remains explicit; production green."},
     {"pr":243,"scope":"same_tour_lead_recovery_browser_guard","result":"Confirms form data survives error and retry, and normal/duplicate success reaches the correct success panel with lead number at 375/768/1440; external lead contract unchanged."},
     {"pr":242,"scope":"room_details_recovery_browser_guard","result":"Confirms room error/retry/empty fallback, stale response isolation and successful recovery at 375/768/1440; no runtime defect found."},
     {"pr":241,"scope":"selected_tour_hidden_source_return_fallback","result":"Hidden/unrendered originating result controls are no longer focused on return; results-region fallback plus repeated selection are protected and production green."},
-    {"pr":238,"scope":"intentional_web_consultant_dependency_ci_contract","result":"Preserves canonical host-gated consultant runtime while generic cross-project isolation remains strict."},
     {"pr":237,"scope":"successful_empty_flight_recovery","result":"Empty successful flight response explains missing data and offers existing retry while lead form stays usable."},
     {"pr":230,"scope":"stale_lead_response_selected_tour_ui_race","result":"Late lead response for a previous tour cannot mutate the current selected-tour form."},
     {"pr":229,"scope":"pending_flight_price_label","result":"Pending flight variants explicitly say Цена уточняется."},
@@ -47,5 +48,5 @@
     {"scope":"global nginx/server configuration","reason":"Outside allowed repository/V2 scope."}
   ],
   "protected":{"other_projects":"DO_NOT_MODIFY","global_site_assets_and_server_config":"DO_NOT_MODIFY_OUTSIDE_ALLOWED_V2_SCOPE","logo":"DO_NOT_CHANGE","metrika_configuration":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","metrika_goals":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"},
-  "continuation_policy":{"priority":"production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > weakest_sub9_score > roadmap > cosmetic_refactor","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_ci_success":"continue_to_next_safe_material_task","on_blocker":"record_blocker_and_continue_independent_safe_work","on_visual_change":"validate_required_viewports_before_advancing","on_no_traffic":"ignore_as_expected_and continue_product_development"}
+  "continuation_policy":{"priority":"production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > weakest_sub9_score > roadmap > cosmetic_refactor","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_ci_success":"continue_to_next_safe_material_task","on_blocker":"record_blocker_and_continue_independent_safe_work","on_visual_change":"validate_required_viewports_before_advancing","on_no_traffic":"ignore_as expected and continue_product_development"}
 }
