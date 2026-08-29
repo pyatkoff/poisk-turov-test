@@ -59,7 +59,7 @@ jobs:
             if curl -fsS http://127.0.0.1:8099/country/turkey/ >/tmp/turkey.html; then break; fi
             sleep 1
           done
-          grep -q '<h1>Туры в Турция</h1>' /tmp/turkey.html
+          grep -q '<h1>Туры в Турцию</h1>' /tmp/turkey.html
           grep -q 'noindex,follow' /tmp/turkey.html
           curl -fsSI http://127.0.0.1:8099/country/turkey/ | grep -qi 'X-Robots-Tag: noindex, follow'
       - name: Install Chromium
@@ -88,7 +88,7 @@ jobs:
                 searchHref:document.querySelector('.atp-primary')?.getAttribute('href')||'',
                 overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
               }));
-              if(state.h1!=='Туры в Турция') throw new Error(`${name}: H1 ${state.h1}`);
+              if(state.h1!=='Туры в Турцию') throw new Error(`${name}: H1 ${state.h1}`);
               if(state.robots!=='noindex,follow') throw new Error(`${name}: robots ${state.robots}`);
               if(state.canonical!=='https://anytoour.ru/country/turkey/') throw new Error(`${name}: canonical ${state.canonical}`);
               if(state.resorts<4) throw new Error(`${name}: resorts ${state.resorts}`);
