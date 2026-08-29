@@ -41,7 +41,7 @@ jobs:
               if (!str_contains($url,'bundle-v1.php?type='.$type.'&v='.$a)) {fwrite(STDERR,"bad $type url: $url\n"); exit(5);}
           }
           if (count($manifest['css'])!==23) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
-          if (count($manifest['js'])!==29) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
+          if (count($manifest['js'])!==30) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
           echo 'BUNDLE_MANIFEST_OK css='.count($manifest['css']).' js='.count($manifest['js'])."\n";
           PHP
       - name: Validate bundled JavaScript syntax
@@ -53,6 +53,7 @@ jobs:
           node --check "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'window.V2Runtime=runtime' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'window.V2SearchLifecycle=' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'window.V2SelectedTourReturnV1=' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'window.V2TourController=' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'window.V2LeadUiRaceGuardV1=' "$RUNNER_TEMP/v2-active-bundle.js"
           echo "BUNDLED_JS_SYNTAX_OK"
