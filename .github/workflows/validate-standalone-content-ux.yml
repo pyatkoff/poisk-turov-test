@@ -5,6 +5,7 @@ on:
     paths:
       - 'v2/home-v1.css'
       - 'v2/site-page-v1.css'
+      - 'v2/product-shell-v1.css'
       - 'v2/site-page-shell-v1.php'
       - 'v2/contacts/**'
       - 'v2/how-to-buy/**'
@@ -15,6 +16,7 @@ on:
     paths:
       - 'v2/home-v1.css'
       - 'v2/site-page-v1.css'
+      - 'v2/product-shell-v1.css'
       - 'v2/site-page-shell-v1.php'
       - 'v2/contacts/**'
       - 'v2/how-to-buy/**'
@@ -36,6 +38,8 @@ jobs:
           grep -Fq '.sp-header a:focus-visible,.sp-main a:focus-visible' v2/site-page-v1.css
           grep -Fq -- '--at-orange:#D83D00' v2/home-v1.css
           grep -Fq '.at-home-header a:focus-visible,.at-home-search button:focus-visible' v2/home-v1.css
+          grep -Fq 'background:#D83D00!important;color:#fff!important' v2/product-shell-v1.css
+          grep -Fq '.at-site-header a:focus-visible,.at-mobile-menu-button:focus-visible' v2/product-shell-v1.css
           mkdir -p /tmp/empty-document-root
           php -d display_errors=1 -r '
             $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
