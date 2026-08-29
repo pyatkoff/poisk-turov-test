@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 12:15 +02:00
+Updated: 2026-08-29 13:00 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -14,22 +14,20 @@ Standalone architecture remains explicit: `https://anytoour.ru/` is the new home
 
 ## Latest material evidence
 
-- #241 fixed selected-tour return to a result whose source card became hidden/unrendered; fallback now targets the results region. Return/reselection is protected at 375/768/1440 and production green.
-- #242 added room-details error → retry → empty/success and stale-response isolation coverage at 375/768/1440; no room runtime defect was found.
-- #243 added same-tour lead error → retry → normal/duplicate-success browser coverage at 375/768/1440; entered data survives error and the external lead contract is unchanged.
-- #245 fixed a confirmed flight data bug: after selecting a flight with a flight-specific fuel charge, selecting another priced flight that omitted `fuelCharge` could leave the previous flight's fuel amount visible. The UI and `v2:tour-price-updated` context now fall back to the tour-level fuel charge when the selected flight omits it, while explicit `fuelCharge: 0` remains explicit `—`. The dedicated 375/768/1440 regression, existing flight-tradeoff guard, selected-tour visual, V2 visual, bundle/startup, standalone and security checks are green.
-- #245 production is green at commit `ce895bf1d2648677bd6ca3f905e98f0ca48c204e`: V2 deploy `33247195974` passed validate → copy → verify → live search smoke; standalone deploy `33247195969` passed release validation → public-page verification → unchanged lead bridge → live search smoke. Post-deploy full tourist journey `33247259847`, live result-card visual `33247259844`, and five-width root/search visual `33247259957` are green.
-- #246 added browser evidence for remaining flight recovery races. At 375/768/1440 a late flight response for a previously selected tour cannot mutate the new selected tour; the new tour autoloads flights; explicit flight error → retry → success works. Guard `33247263720` and Security `33247263669` are green; #246 merged as `b3af7b4695f799066e47ec9fa49fc994d877fb05` with no runtime change.
-- Earlier protections remain valid: #237 successful-empty flight recovery; #238 narrow approved Web Consultant dependency contract; #230 stale lead-response UI race guard; #229 pending flight-price label; #227 stale selected-flight price reset; #226 comparison refresh coherence; #225 final-set-only decision badges; #217/#219/#221 progressive/final search recovery.
-- No Yandex Metrika configuration/goals, Tourvisor request contract or existing lead-sending mechanism/external field mapping changed in #241–#246.
+- #250 fixed a confirmed pending-flight context mismatch. When an unpriced selected flight omitted `fuelCharge`, the UI correctly fell back to the tour fuel but `v2:tour-price-updated` incorrectly emitted `fuelCharge: 0`. Pending and priced flight paths now share the same selected-fuel fallback semantics, while an explicit flight `fuelCharge: 0` remains explicit. The browser guard covers priced → pending-specific-fuel → pending-tour-fallback transitions at 375/768/1440, including price reset, `pricePending`, lead selection text and overflow.
+- #250 merged as `42cd3b76ee4de9d0d379c79b41137b371fc95334` after all 12 PR checks completed without failure. Production is green: V2 deploy `33249002281` passed validate → copy → verify → live search smoke; standalone deploy `33249002273` passed release validation → public-page verification → unchanged lead bridge → live search smoke. Push live-tour/result-detail/standalone validation also passed.
+- The newer feed work on main was preserved: `80b1969e89ef63f253f9dc3f7ca9d1308eb8655e` published the AnyTour catalog feed and `21e48625b279ac678dc77e0919c9c8f7839ee1ee` added its production deploy; feed deployment `33248750721` and Security were green before #250.
+- #245 remains the priced-flight fuel protection: selecting a priced flight that omits `fuelCharge` cannot retain the previous flight's fuel; the tour-level fuel is used instead. #246 protects flight autoload/retry races at 375/768/1440.
+- Earlier protections remain valid: #243 same-tour lead error/retry/success; #242 room error/retry/stale-response isolation; #241 selected-tour return/focus fallback; #237 successful-empty flight recovery; #230 stale lead-response UI race; #229 pending flight-price label; #227 stale selected-flight price reset; #226 comparison refresh coherence; #225 final-set-only decision badges; #217/#219/#221 progressive/final search recovery.
+- No Yandex Metrika configuration/goals, Tourvisor request contract or existing lead-sending mechanism/external field mapping changed in #250.
 
 ## Exact next work order
 
-1. Re-audit the complete priced ↔ unpriced selected-flight transition together with price-confidence text, fuel-charge fact and lead selection summary/payload display so no stale amount/status survives any flight or tour change. Fix only confirmed defects.
-2. Run the next periodic whole-V2 browser audit end-to-end: search form → waiting/progress → stale/progressive/final results → comparison/sort → selected tour → room fallback → flight autoload/error/retry → price/fuel → lead entry/error/retry/success, across mobile/tablet/desktop.
-3. Re-check return/reselection state after a complete real-result journey, including sort/comparison/scroll/focus preservation.
+1. Run the next periodic whole-V2 browser audit end-to-end: search form → waiting/progress → stale/progressive/final results → comparison/sort → selected tour → room fallback → flight autoload/error/retry → priced/unpriced transitions → price/fuel confidence → lead entry/error/retry/success, across mobile/tablet/desktop. Fix only confirmed defects.
+2. Re-check return/reselection state after a complete real-result journey, including sort/comparison/scroll/focus preservation and a second selected-tour cycle.
+3. Audit downstream consumers of `v2:tour-price-updated`/selected-flight context for any remaining stale price/fuel/pending status, without changing the external lead contract.
 4. Continue standalone content UX stabilization and promote additional country/content routes only when the local page exists and its `/poisk-turov/` handoff is verified; otherwise preserve the valid legacy destination.
-5. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and the existing lead contract.
+5. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior, feed deployment and the existing lead contract.
 6. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
 7. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
 
