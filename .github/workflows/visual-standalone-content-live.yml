@@ -1,6 +1,14 @@
 name: Visual standalone content live
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/site-page-v1.css'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/home-v1.css'
+      - 'v2/site-header-v2.css'
+      - '.github/workflows/visual-standalone-content-live.yml'
   push:
     branches: [main]
     paths:
@@ -24,58 +32,39 @@ jobs:
           npx playwright install --with-deps chromium >/dev/null
       - name: Verify standalone routes across responsive widths
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
+          mkdir -p standalone-content-artifacts
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            php -S 127.0.0.1:8099 -t v2 >"$RUNNER_TEMP/standalone-php.log" 2>&1 &
+            php_pid=$!
+            trap 'kill $php_pid >/dev/null 2>&1 || true' EXIT
+            for _ in {1..30}; do curl -fsS http://127.0.0.1:8099/contacts/ >/dev/null && break; sleep .2; done
+          fi
           cat > ./standalone-content-live.cjs <<'JS'
           const { chromium } = require('playwright');
-          const cases=[['mobile',375,812],['tablet',768,1024],['desktop',1440,1000]];
-          const pages=[
-            ['home','https://anytoour.ru/','.at-home-main'],
-            ['search','https://anytoour.ru/poisk-turov/','.v2-shell'],
-            ['contacts','https://anytoour.ru/contacts/','.sp-main'],
-            ['how-to-buy','https://anytoour.ru/how-to-buy/','.sp-main'],
-            ['early-booking','https://anytoour.ru/rb/','.sp-main'],
-            ['hot','https://anytoour.ru/hot/','.sp-main'],
-            ['country-catalog','https://anytoour.ru/country/','.sp-main'],
-            ['country-turkey','https://anytoour.ru/country/turkey/','.sp-main'],
+          const cases=[['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000]];
+          const local=process.env.EVENT_NAME==='pull_request';
+          const base=local?'http://127.0.0.1:8099':'https://anytoour.ru';
+          const pages=local?[
+            ['contacts','/contacts/','.sp-main'],['how-to-buy','/how-to-buy/','.sp-main'],['early-booking','/rb/','.sp-main'],['hot','/hot/','.sp-main'],['country-catalog','/country/','.sp-main'],['country-turkey','/country/turkey/','.sp-main']
+          ]:[
+            ['home','/','.at-home-main'],['search','/poisk-turov/','.v2-shell'],['contacts','/contacts/','.sp-main'],['how-to-buy','/how-to-buy/','.sp-main'],['early-booking','/rb/','.sp-main'],['hot','/hot/','.sp-main'],['country-catalog','/country/','.sp-main'],['country-turkey','/country/turkey/','.sp-main']
           ];
           const rgb=s=>(s.match(/\d+/g)||[]).slice(0,3).map(Number);
-          const luminance=([r,g,b])=>{const f=x=>{x/=255;return x<=.03928?x/12.92:((x+.055)/1.055)**2.4};return .2126*f(r)+.7152*f(g)+.0722*f(b)};
-          const contrast=(a,b)=>{const l1=luminance(a),l2=luminance(b);return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05)};
-          const checkCta=async(page,selector,label)=>{
-            const cta=page.locator(selector).first();
-            if(!await cta.isVisible()) throw new Error(`${label}: primary CTA missing`);
-            const colors=await cta.evaluate(el=>{const s=getComputedStyle(el);return {fg:s.color,bg:s.backgroundColor}});
-            const ratio=contrast(rgb(colors.fg),rgb(colors.bg));
-            if(ratio<4.5) throw new Error(`${label}: CTA contrast ${ratio.toFixed(2)} ${JSON.stringify(colors)}`);
-            await cta.focus();
-            const outline=await cta.evaluate(el=>{const s=getComputedStyle(el);return {style:s.outlineStyle,width:s.outlineWidth}});
-            if(outline.style==='none'||parseFloat(outline.width)<2) throw new Error(`${label}: focus indicator missing ${JSON.stringify(outline)}`);
-            console.log('CTA_OK',label,ratio.toFixed(2),JSON.stringify(colors),JSON.stringify(outline));
-          };
-          (async()=>{
-            const browser=await chromium.launch({headless:true});
-            try{
-              for(const [vp,w,h] of cases){
-                for(const [name,url,mainSelector] of pages){
-                  const context=await browser.newContext({viewport:{width:w,height:h},ignoreHTTPSErrors:true});
-                  const page=await context.newPage();
-                  const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
-                  if(!response||response.status()!==200) throw new Error(`${vp}/${name}: HTTP ${response&&response.status()}`);
-                  await page.waitForSelector(mainSelector,{timeout:15000});
-                  const stats=await page.evaluate(()=>({docW:document.documentElement.scrollWidth,clientW:document.documentElement.clientWidth,footer:document.querySelectorAll('footer.at-site-footer').length,community:document.querySelectorAll('.v2-site-community').length,searchLinks:[...document.querySelectorAll('a[href^="/poisk-turov/"]')].length}));
-                  if(stats.docW>stats.clientW+2) throw new Error(`${vp}/${name}: page horizontal overflow ${stats.docW}/${stats.clientW}`);
-                  if(stats.footer!==1||stats.community!==1) throw new Error(`${vp}/${name}: footer/community count ${stats.footer}/${stats.community}`);
-                  if(name!=='search'&&stats.searchLinks<1) throw new Error(`${vp}/${name}: no search handoff`);
-                  if(name==='home') await checkCta(page,'.at-home-search button',`${vp}/${name}`);
-                  else if(name==='search') await checkCta(page,'.search-submit:visible, .mobile-search-sticky-submit:visible',`${vp}/${name}`);
-                  else await checkCta(page,'.sp-primary',`${vp}/${name}`);
-                  console.log('PAGE_OK',vp,name,JSON.stringify(stats));
-                  await context.close();
-                }
-              }
-            } finally { await browser.close(); }
-            console.log('STANDALONE_CONTENT_LIVE_OK');
-          })().catch(e=>{console.error(e);process.exit(1)});
+          const lum=([r,g,b])=>{const f=x=>{x/=255;return x<=.03928?x/12.92:((x+.055)/1.055)**2.4};return .2126*f(r)+.7152*f(g)+.0722*f(b)};
+          const contrast=(a,b)=>{const x=lum(a),y=lum(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+          async function checkCta(page,selector,label){const c=page.locator(selector).first();if(!await c.isVisible())throw new Error(`${label}: CTA missing`);const s=await c.evaluate(el=>{const x=getComputedStyle(el);return{fg:x.color,bg:x.backgroundColor}});if(contrast(rgb(s.fg),rgb(s.bg))<4.5)throw new Error(`${label}: CTA contrast`);await c.focus();const o=await c.evaluate(el=>getComputedStyle(el).outlineWidth);if(parseFloat(o)<2)throw new Error(`${label}: focus missing`);}
+          (async()=>{const browser=await chromium.launch({headless:true});try{for(const [vp,w,h] of cases){for(const [name,path,sel] of pages){const ctx=await browser.newContext({viewport:{width:w,height:h},ignoreHTTPSErrors:true});const page=await ctx.newPage();const r=await page.goto(base+path,{waitUntil:'domcontentloaded',timeout:45000});if(!r||r.status()!==200)throw new Error(`${vp}/${name}: HTTP ${r&&r.status()}`);await page.waitForSelector(sel,{state:'attached',timeout:15000});await page.evaluate(()=>document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve());const st=await page.evaluate(()=>({docW:document.documentElement.scrollWidth,clientW:document.documentElement.clientWidth,footer:document.querySelectorAll('footer.at-site-footer').length,community:document.querySelectorAll('.v2-site-community').length,searchLinks:document.querySelectorAll('a[href^="/poisk-turov/"]').length,hero:!!document.querySelector('.sp-hero,.at-home-hero,.v2-product-hero')}));if(st.docW>st.clientW+2)throw new Error(`${vp}/${name}: overflow ${st.docW}/${st.clientW}`);if(st.footer!==1||st.community!==1||!st.hero)throw new Error(`${vp}/${name}: shell ${JSON.stringify(st)}`);if(name!=='search'&&st.searchLinks<1)throw new Error(`${vp}/${name}: no search handoff`);if(name==='home')await checkCta(page,'.at-home-search button',`${vp}/${name}`);else if(name==='search')await checkCta(page,'.search-submit:visible, .mobile-search-sticky-submit:visible',`${vp}/${name}`);else await checkCta(page,'.sp-primary',`${vp}/${name}`);if(['contacts','hot','country-catalog','country-turkey'].includes(name))await page.screenshot({path:`standalone-content-artifacts/${vp}-${name}.png`,fullPage:true,animations:'disabled'});console.log('PAGE_OK',vp,name,JSON.stringify(st));await ctx.close();}}}finally{await browser.close();}console.log('STANDALONE_CONTENT_LIVE_OK');})().catch(e=>{console.error(e);process.exit(1)});
           JS
           node ./standalone-content-live.cjs
+      - name: Upload standalone visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: standalone-content-${{ github.event.pull_request.number || github.run_id }}
+          path: standalone-content-artifacts/
+          if-no-files-found: warn
+          retention-days: 30
