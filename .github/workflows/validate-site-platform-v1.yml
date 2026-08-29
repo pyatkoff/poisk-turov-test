@@ -1,0 +1,38 @@
+name: Validate Site Platform v1
+
+on:
+  push:
+    branches:
+      - feature/site-product
+    paths:
+      - 'platform/src/**'
+      - 'platform/bin/**'
+      - 'platform/tests/site-platform-contract-test.php'
+      - 'platform/migrations/20260829_001_site_core.sql'
+      - 'platform/seeds/reference_turkey.sql'
+      - '.github/workflows/validate-site-platform-v1.yml'
+  pull_request:
+    paths:
+      - 'platform/src/**'
+      - 'platform/bin/**'
+      - 'platform/tests/site-platform-contract-test.php'
+      - 'platform/migrations/20260829_001_site_core.sql'
+      - 'platform/seeds/reference_turkey.sql'
+      - '.github/workflows/validate-site-platform-v1.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Lint Site Platform PHP
+        run: |
+          find platform/src platform/bin platform/tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Run Site Platform contract test
+        run: php platform/tests/site-platform-contract-test.php
+      - name: Assert production credentials are not embedded
+        run: |
+          ! grep -RniE '(password\s*=\s*["'"'][^"'"']+|mysql:host=[^$])' platform/src platform/bin
