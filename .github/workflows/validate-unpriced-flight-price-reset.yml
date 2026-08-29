@@ -76,7 +76,7 @@ jobs:
               if(!/1.?500/.test(state.fallbackFuel)||state.lastFuel!==1500)throw new Error(name+': pending flight without fuel did not keep tour fallback context '+JSON.stringify(state));
               if(state.pricePending!==true)throw new Error(name+': pending-price event flag missing '+JSON.stringify(state));
               if(!/выбранный рейс/.test(state.leadNote)||!/стоимость рейса уточнит/.test(state.leadNote))throw new Error(name+': pending-price lead context unclear '+JSON.stringify(state));
-              if(state.confidence&&!/Цена из поиска/.test(state.confidence))throw new Error(name+': price confidence still claims selected-flight price '+JSON.stringify(state));
+              if(state.confidence&&!/цена(?: тура)? из поиска/i.test(state.confidence))throw new Error(name+': price confidence still claims selected-flight price '+JSON.stringify(state));
               if(state.overflow)throw new Error(name+': horizontal overflow');
               if((response&&response.status())!==200||errors.length)throw new Error(name+': page errors '+errors.join(';'));
               console.log('UNPRICED_FLIGHT_PRICE_RESET_OK',name);
