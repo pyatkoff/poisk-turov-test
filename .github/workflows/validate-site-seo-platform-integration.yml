@@ -49,7 +49,7 @@ jobs:
       - name: Seed reference vertical slice
         run: |
           php -r '$pdo=new PDO(getenv("ANYTOOUR_DB_DSN"),getenv("ANYTOOUR_DB_USER"),getenv("ANYTOOUR_DB_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);$pdo->exec(file_get_contents("platform/seeds/reference_turkey.sql"));$pdo->exec(file_get_contents("platform/seeds/reference_turkey_seo.sql"));'
-      - name: Validate integrated Turkey page
+      - name: Validate integrated country and resort pages
         run: php platform/tests/site-seo-integration-test.php
       - name: Start isolated platform preview
         run: |
@@ -59,15 +59,19 @@ jobs:
             if curl -fsS http://127.0.0.1:8099/country/turkey/ >/tmp/turkey.html; then break; fi
             sleep 1
           done
+          curl -fsS http://127.0.0.1:8099/country/turkey/antalya/ >/tmp/antalya.html
           grep -q '<h1>Туры в Турцию</h1>' /tmp/turkey.html
+          grep -q '<h1>Туры в Анталью</h1>' /tmp/antalya.html
           grep -q 'noindex,follow' /tmp/turkey.html
+          grep -q 'noindex,follow' /tmp/antalya.html
           curl -fsSI http://127.0.0.1:8099/country/turkey/ | grep -qi 'X-Robots-Tag: noindex, follow'
+          curl -fsSI http://127.0.0.1:8099/country/turkey/antalya/ | grep -qi 'X-Robots-Tag: noindex, follow'
       - name: Install Chromium
         run: |
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Visual audit dynamic Turkey page
+      - name: Visual audit dynamic country and resort pages
         run: |
           mkdir -p platform-visual
           cat > ./platform-visual.cjs <<'JS'
@@ -76,31 +80,38 @@ jobs:
           (async()=>{
             const browser = await chromium.launch({headless:true});
             const report=[];
-            for (const [name,width,height] of [['mobile-375',375,812],['desktop-1440',1440,1000]]) {
-              const page=await browser.newPage({viewport:{width,height}});
-              const response=await page.goto('http://127.0.0.1:8099/country/turkey/',{waitUntil:'domcontentloaded'});
-              if(!response || response.status()!==200) throw new Error(`${name}: HTTP failure`);
-              const state=await page.evaluate(()=>({
-                h1:document.querySelector('h1')?.textContent?.trim()||'',
-                robots:document.querySelector('meta[name="robots"]')?.content||'',
-                canonical:document.querySelector('link[rel="canonical"]')?.href||'',
-                resorts:document.querySelectorAll('.atp-resort').length,
-                searchHref:document.querySelector('.atp-primary')?.getAttribute('href')||'',
-                overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
-              }));
-              if(state.h1!=='Туры в Турцию') throw new Error(`${name}: H1 ${state.h1}`);
-              if(state.robots!=='noindex,follow') throw new Error(`${name}: robots ${state.robots}`);
-              if(state.canonical!=='https://anytoour.ru/country/turkey/') throw new Error(`${name}: canonical ${state.canonical}`);
-              if(state.resorts<4) throw new Error(`${name}: resorts ${state.resorts}`);
-              if(state.searchHref!=='/poisk-turov/?country=4') throw new Error(`${name}: search href ${state.searchHref}`);
-              if(state.overflow) throw new Error(`${name}: horizontal overflow`);
-              await page.screenshot({path:`platform-visual/${name}.png`,fullPage:true});
-              report.push({name,width,height,state});
-              await page.close();
+            const targets=[
+              {key:'turkey',url:'http://127.0.0.1:8099/country/turkey/',h1:'Туры в Турцию',canonical:'https://anytoour.ru/country/turkey/',selector:'.atp-resort',minItems:4},
+              {key:'antalya',url:'http://127.0.0.1:8099/country/turkey/antalya/',h1:'Туры в Анталью',canonical:'https://anytoour.ru/country/turkey/antalya/',selector:'.atp-facts article',minItems:3},
+            ];
+            for (const target of targets) {
+              for (const [viewport,width,height] of [['mobile-375',375,812],['desktop-1440',1440,1000]]) {
+                const name=`${target.key}-${viewport}`;
+                const page=await browser.newPage({viewport:{width,height}});
+                const response=await page.goto(target.url,{waitUntil:'domcontentloaded'});
+                if(!response || response.status()!==200) throw new Error(`${name}: HTTP failure`);
+                const state=await page.evaluate((selector)=>({
+                  h1:document.querySelector('h1')?.textContent?.trim()||'',
+                  robots:document.querySelector('meta[name="robots"]')?.content||'',
+                  canonical:document.querySelector('link[rel="canonical"]')?.href||'',
+                  items:document.querySelectorAll(selector).length,
+                  searchHref:document.querySelector('.atp-primary')?.getAttribute('href')||'',
+                  overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
+                }),target.selector);
+                if(state.h1!==target.h1) throw new Error(`${name}: H1 ${state.h1}`);
+                if(state.robots!=='noindex,follow') throw new Error(`${name}: robots ${state.robots}`);
+                if(state.canonical!==target.canonical) throw new Error(`${name}: canonical ${state.canonical}`);
+                if(state.items<target.minItems) throw new Error(`${name}: content items ${state.items}`);
+                if(state.searchHref!=='/poisk-turov/?country=4') throw new Error(`${name}: search href ${state.searchHref}`);
+                if(state.overflow) throw new Error(`${name}: horizontal overflow`);
+                await page.screenshot({path:`platform-visual/${name}.png`,fullPage:true});
+                report.push({name,width,height,state});
+                await page.close();
+              }
             }
             await browser.close();
             fs.writeFileSync('platform-visual/report.json',JSON.stringify(report,null,2));
-            console.log('PLATFORM_COUNTRY_VISUAL_OK');
+            console.log('PLATFORM_COUNTRY_RESORT_VISUAL_OK');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node ./platform-visual.cjs
