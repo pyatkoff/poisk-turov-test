@@ -35,6 +35,7 @@ function v2_bundle_manifest(): array
             'analytics-v4.js',
             'results-renderer-v5.js',
             'conversion-confidence-v1.js',
+            'compare-refresh-guard-v1.js',
             'search-continue-v6.js',
             'hotel-actions-v3.js',
             'room-details-v3.js',
