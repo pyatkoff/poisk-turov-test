@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 04:08 +02:00
+Updated: 2026-08-29 05:08 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -25,28 +25,28 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 
 ## Latest material evidence
 
-- PR #201 fixed a confirmed standalone responsive regression: homepage navigation had disappeared below 1050px and internal content navigation below 900px. Navigation now remains available as a touch-friendly horizontally scrollable row on mobile/tablet, with no page-level horizontal overflow.
-- PR #201 also exposes the already-live `/rb/` early-booking page from internal content navigation and aligns `SITE_MIGRATION_MAP.md` with actually-live country/content routes.
-- PR #201 merged as `0001bfa7e8989fa5525bd3e365ec2caaa27e28ae`. Deploy anytoour.ru run `33227812050` completed successfully, including public-page verification, unchanged lead-bridge verification and live search smoke.
-- Post-deploy root/search five-viewport visual run `33227911794` completed green.
-- The migrated-content post-deploy run `33227911753` initially failed after all ten checked routes returned HTTP 200. The failure was in the guard itself: Bash `set -u` expanded `slug` inside the same `local` declaration before assignment. PR #202 fixes that nounset defect.
-- PR #202 adds a dedicated live responsive navigation guard at 375/768/1024/1440. Production navigation is visible on homepage and `/hot/` at every audited width; `/hot/` exposes `/rb/`; no page-level overflow was found. The PR live run completed green.
-- PR #199 remains the country handoff/data baseline: Turkey `4`, Egypt `1`, UAE `9`, Thailand `2`, Russia `47` are verified against the live Tourvisor catalogue and handed into `/poisk-turov/`.
-- PR #196 remains the homepage exact-night baseline: one homepage `Ночей` value submits an exact duration, not a hidden range.
-- PR #180 remains the one-full-footer baseline.
+- PR #204 removed internal migration/roadmap language from customer-facing homepage, `/hot/` and `/country/`; the public copy now describes traveler choices rather than implementation state.
+- `/hot/` now hands off to `/poisk-turov/` with a useful nearest-two-weeks date window instead of a generic search CTA, while keeping dates editable in the full search.
+- Homepage now exposes already-live `/rb/` as a journey card without crowding the primary header/navigation; the five-card layout remains responsive.
+- PR #204 merged as `8cfe1de254f9f5b5cb2efe3ab751151b92151dbb`. Deploy anytoour.ru run `33230329189` completed successfully, including public-page verification, unchanged lead-bridge verification and live search smoke.
+- Post-deploy full live user journey run `33230425740` and root visual run `33230425748` completed green.
+- Post-deploy migrated-content run `33230425725` exposed a second guard-only defect: fetched country pages and handoff assertions used different `/tmp` filenames. PR #205 unified both through one `page_out()` helper.
+- PR #206 made the migrated-content live guard self-validating when its own workflow changes. Production validation run `33230550373` completed green, confirming all migrated routes and country → `/poisk-turov/?country=…` handoffs with the corrected guard.
+- PR #202 remains the responsive navigation baseline: production navigation is visible at 375/768/1024/1440, `/rb/` is discoverable from internal navigation and no page-level overflow was found.
+- PR #199 remains the country handoff/data baseline: Turkey `4`, Egypt `1`, UAE `9`, Thailand `2`, Russia `47` are verified against the live Tourvisor catalogue.
+- PR #196 remains the homepage exact-night baseline; PR #180 remains the one-full-footer baseline.
 - `Самая низкая цена` remains current-result-set decision support only; it does not alter sorting, tour pricing or selection.
 
 ## Exact next work order
 
-1. Confirm the corrected migrated-content post-deploy guard on the next standalone deployment; its previous failure was test-code-only and all checked production routes were HTTP 200.
-2. Continue standalone content-route UX audit: `/hot/` → `/contacts/` → `/how-to-buy/` → `/rb/`, checking responsive hierarchy, CTA/search handoff, trust clarity, no 404s and the one-full-footer contract.
-3. Audit discoverability from the homepage, including whether already-live `/rb/` deserves a first-class home navigation/card entry without crowding primary search conversion.
-4. Continue whole standalone user-journey audit: homepage → search → waiting/recovery → results/comparison → selected tour/rooms → flights/price → lead entry/recovery. No live lead submission is required for regression proof.
-5. Promote additional country/content routes only when their page exists locally and route/search handoff is verified; otherwise preserve the valid legacy destination.
-6. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
-7. Keep `Самая низкая цена` unchanged unless a confirmed UX defect appears.
-8. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
-9. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
+1. Continue standalone content-route UX audit on `/contacts/` → `/how-to-buy/` → `/rb/`; `/hot/` customer copy/search handoff and homepage `/rb/` discoverability are now closed by PR #204.
+2. Continue whole standalone user-journey audit: homepage → search → waiting/recovery → results/comparison → selected tour/rooms → flights/price → lead entry/recovery. No live lead submission is required for regression proof.
+3. Re-audit user-facing content for any remaining migration/implementation language or weak route-to-search handoffs; keep technical migration state in repository docs, not public copy.
+4. Promote additional country/content routes only when their page exists locally and route/search handoff is verified; otherwise preserve the valid legacy destination.
+5. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
+6. Keep `Самая низкая цена` unchanged unless a confirmed UX defect appears.
+7. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
+8. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
 
 ## Guardrails
 
