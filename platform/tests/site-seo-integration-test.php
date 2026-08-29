@@ -53,6 +53,9 @@ if (($page['entity']['slug'] ?? null) !== 'turkey') {
 if (($page['seo']['metadata']['canonical'] ?? null) !== '/country/turkey/') {
     throw new RuntimeException('Canonical was not generated from SEO contract.');
 }
+if (($page['seo']['metadata']['h1'] ?? null) !== 'Туры в Турцию') {
+    throw new RuntimeException('Country grammatical form was not applied to H1.');
+}
 if (($page['seo']['eligible'] ?? false) !== true) {
     throw new RuntimeException('Reference Turkey page must pass SEO eligibility.');
 }
@@ -64,7 +67,7 @@ if (($page['search_url'] ?? null) !== '/poisk-turov/?country=4') {
 }
 
 $html = (new CountryHtmlRenderer())->render($page);
-foreach (['<h1>Туры в Турция</h1>', 'name="robots" content="noindex,follow"', 'href="https://anytoour.ru/country/turkey/"', 'href="/poisk-turov/?country=4"', 'Анталья', 'Белек', 'Кемер', 'Сиде'] as $needle) {
+foreach (['<h1>Туры в Турцию</h1>', 'name="robots" content="noindex,follow"', 'href="https://anytoour.ru/country/turkey/"', 'href="/poisk-turov/?country=4"', 'Найти туры в Турцию', 'Популярные курорты Турции', 'Анталья', 'Белек', 'Кемер', 'Сиде'] as $needle) {
     if (!str_contains($html, $needle)) {
         throw new RuntimeException('Rendered Turkey page is missing: ' . $needle);
     }
