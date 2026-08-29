@@ -29,11 +29,9 @@ function v2_seo_canonical_url(): string
         return 'https://anytoour.ru' . $path . '/';
     }
 
-    $host = trim((string)($_SERVER['HTTP_HOST'] ?? 'anytour.online'));
-    $script = (string)($_SERVER['SCRIPT_NAME'] ?? '/');
-    $path = rtrim(str_replace('\\', '/', dirname($script)), '/.');
-    $path = $path === '' ? '/' : $path . '/';
-    return 'https://' . $host . $path;
+    // The anytour.online V2 route is compatibility-only. Keep it noindex,
+    // but consolidate any accidental discovery toward the standalone search.
+    return 'https://anytoour.ru/poisk-turov/';
 }
 
 function v2_seo_robots_content(bool $indexable): string
