@@ -1,52 +1,85 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 20:14 +02:00
+Updated: 2026-08-29 23:15 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
-## Current phase — CORE PRODUCT 9/10, STANDALONE SITE STABILIZATION, SEO FOUNDATION 8.8
+## Current phase — SITE-WIDE VISUAL UNIFICATION / ANYTOUR DESIGN SYSTEM 1.0
 
 Paid/real-user traffic is intentionally not running. Current visitors are the owner and team, so browser/funnel activity must **not** be treated as conversion evidence.
 
-Search, Waiting/Recovery, Results/Comparison, Selected Tour, Flights/Price, Lead UX, Mobile UX, Tablet/Desktop UX, Brand/Trust, Visual Quality and Product Differentiation remain assessed at 9.0 with functional/visual evidence.
+The previous 9.0 scores describe the mature **tour-search product flow**, not the visual quality of the entire public anytoour.ru site. Owner review on 2026-08-29 identified the material cross-page defect: the search experience and the rest of the public site use visibly different headers, composition, spacing and visual language; migrated pages feel uneven and the site does not yet read as one coherent AnyTour product.
 
-Standalone architecture remains explicit: `https://anytoour.ru/` is the new homepage and `https://anytoour.ru/poisk-turov/` is the full tour search. The legacy `/poisk-turov-test/v2/` route remains compatibility-only and `noindex,follow`; it now canonically consolidates to the standalone search. SEO/site foundation remains **8.8** and public indexing still requires a separate deliberate decision.
+Use this honest site-wide baseline until visual evidence justifies a re-score:
+- whole public site / coherent product impression: **6.5/10**
+- cross-page visual consistency: **5.5/10**
+- header/navigation consistency: **5.5/10**
+- homepage: **6.5/10**
+- country pages: **6.0/10**
+- `/hot/`: **6.0–6.5/10**
+- `/how-to-buy/`: **6.0/10**
+- `/contacts/`: **6.0/10**
+- public-site mobile consistency: **6.5–7.0/10**
+- typography: **6.5/10**
+- grid/spacing: **6.0/10**
+- brand coherence: **6.5/10**
+- tour search itself remains the strongest reference surface at approximately **8.5–9.0/10**.
 
-## Latest material evidence
+The next milestone is **site-wide 8.5+ without regressing the search flow**, then 9.0+ after a complete cross-page visual audit. Do not claim the whole site is 9/10 merely because search-flow engineering guards are green.
 
-- A full post-deploy audit of the previous #269 production head found one real missed failure: `Validate V2 SEO foundation` run `33264609190`. Runtime/search deploys were green, but the compatibility route still self-canonicalized while the old live guard expected no canonical. This was fixed before further product rollout rather than ignored as CI noise.
-- #272 is production-green. The legacy anytour.online V2 remains `noindex,follow` but now canonically points to `https://anytoour.ru/poisk-turov/`. The SEO workflow now validates candidate `seo-config.php` locally on PR and reserves live compatibility/search-state checks for post-merge runs, avoiding pre-deploy false failures. All 12 PR checks were green. Production commit `04a6348d16f2564f322f98b5175f7d295604db2d`: V2 deploy `33267217252` and standalone deploy `33267217286` green; live SEO run `33267217242` attempt 2 green after deploy.
-- #273 is production-green. Flight comparison no longer claims `Самая низкая цена` or `+… к минимальной` while any displayed flight variant still has unresolved pricing (`Цена уточняется`). Route facts such as direct/connection remain independent. Browser coverage verifies resolved → pending → resolved transitions at 375/768/1440 and preserves price/fuel/lead synchronization. All 13 PR checks were green. Production commit `c8f4410435e914bbc84afe913be35d57e9ae1cf3`: V2 deploy `33267473947` passed validate → V2-only copy → verify → live search smoke; standalone deploy `33267473950` passed successfully; live tour `33267473896` and result→detail `33267473953` are green. Old #271 was closed as superseded instead of forcing a stale baseline merge.
-- #269 remains the footer/site baseline beneath these fixes: safe branded social/app footer, responsive 375/768/1440 guard aligned to `.v2-site-community`, and startup-bundle guard synchronized to the active 23 CSS + 32 JS manifest.
-- #266 remains the post-recovery comparison browser guard across 375/768/1440: sort rerenders preserve comparison membership by stable hotel id; a recovered/final result set removing one selected hotel closes the invalid dialog; later result retry does not resurrect stale selection; active sort persists and comparison can resume.
-- #264 remains the completed-search recovery fix: `status=complete` without numeric progress=100 preserves the completed `searchId` and results-only retry instead of restarting search.
-- #259 remains the production-safe real-data second-tour integration guard: live Tourvisor search resolves two distinct tour IDs and validates hotel/tour/price/flights independently without creating a lead.
-- Existing downstream protections remain valid: #257 second-tour state isolation; #255 selected-tour return after rerender; #252 pending selected-flight confidence; #250 pending-flight fuel context; #246 flight autoload/retry races; #245 priced-flight fuel fallback; #243 same-tour lead recovery; #242 room recovery/stale response; #241 return/focus fallback; #237 empty-flight retry; #230 stale lead-response race; #227 stale flight-price reset; #226 comparison refresh; #225 final-set decision badges; #217/#219/#221 search recovery.
-- Standalone country handoff remains correct for Turkey/Egypt/UAE/Thailand/Russia through `/poisk-turov/?country=...`; undeployed country routes intentionally remain on valid legacy destinations. `/hot/` continues to reuse the shared search flow.
-- Legal/payment footer destinations remain intentionally legacy-only because source content is not reconciled. PR #254 remains deferred: despite useful content work it introduces a separate DB/platform architecture and therefore is not a safe autonomous merge into the current search baseline. #248/#249 remain stale/overlapping and deferred.
+## Primary product objective
 
-## Exact next work order
+Make `https://anytoour.ru/` feel like one modern AnyTour product across:
+`homepage → country/destination → hot tours → search → results → selected tour → lead`, plus `/contacts/`, `/how-to-buy/` and `/rb/`.
 
-1. Finish checking the remaining workflow-run fan-out for production head `c8f4410435e914bbc84afe913be35d57e9ae1cf3`; fix any confirmed post-deploy regression before roadmap work. Initial V2/standalone deploy, live tour and live result-detail evidence are green.
-2. Continue the whole-V2 mobile/tablet/desktop browser audit from post-recovery results into the second selected-tour cycle: selected tour → room → flights/autoload/error/retry → priced/unpriced → price/fuel confidence → lead error/retry/success. Fix only confirmed defects.
-3. Re-run the complete real-result cycle after return to results, preserving sort/comparison/scroll/focus while selecting a different tour; extend guards only for an uncovered transition.
-4. Continue safe non-legal standalone content UX stabilization and `/hot/`/country handoff auditing where pages reuse the existing search/API rather than duplicate logic.
-5. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior, feed deployment, existing Tourvisor request contract, Metrika/goals and the existing lead contract.
-6. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist. Do not run traffic diagnostics until owner explicitly launches traffic.
+The search experience is the visual/interaction reference, but do not blindly copy search-only density into editorial pages. Build a shared AnyTour design system and shared site shell.
+
+## Exact next work order — Visual Unification / Design System 1.0
+
+1. **Audit before redesign.** Capture/inspect the current production pages at 375/430/768/1024/1440: `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative Turkey/Egypt/UAE/Thailand/Russia pages. Record concrete header, grid, typography, spacing, card, footer, overflow and responsive inconsistencies. Do not rely on the old search-only scorecard.
+2. **Create a site-wide quality scorecard.** Track every public page plus cross-page visual consistency, header/navigation, typography, grid/spacing, responsive behavior, brand coherence, trust and search handoff. Re-score only from production/visual evidence.
+3. **Design System 1.0.** Consolidate reusable tokens/primitives inside this repository: container widths, spacing scale, type hierarchy, colors, borders/radii, shadows, buttons, links, chips, cards, section spacing, breadcrumbs, focus/hover states and responsive rules. Reuse existing AnyTour brand assets; **do not redesign or replace the logo**.
+4. **One shared header/navigation.** Build a single coherent header behavior for public standalone pages and search where technically safe. Same logo treatment, container, navigation hierarchy, mobile menu behavior, active states and CTA language. Avoid parallel page-specific header copies.
+5. **One shared footer.** Keep the verified MAX/Telegram/VK/App Store/Google Play destinations and existing safe legal destinations, but normalize spacing, typography and composition across all pages. No duplicate footer/pre-footer structures.
+6. **Homepage rebuild on the shared shell.** Improve hierarchy and visual composition, then add useful travel discovery blocks that hand off into the existing search rather than duplicate search logic. Favor useful destination/category entry points and trust over decorative filler.
+7. **Migrate weak public pages onto the shared shell:** `/hot/`, `/country/` and country pages, `/contacts/`, `/how-to-buy/`, `/rb/`. Preserve valid content/routes while fixing layout, hierarchy, cards, spacing and responsive behavior. Do not migrate unresolved legal/payment content.
+8. **Search-shell alignment.** Bring `/poisk-turov/` header/footer/shell into the same public-site system without weakening the mature search form/results/selected-tour UX or changing Tourvisor behavior.
+9. **Cross-page journey audit.** Verify `homepage → country → hot/search → results → tour → lead` feels visually continuous at 375/430/768/1024/1440. Check that returning/navigation does not jump between visibly different shells.
+10. **Only after visual unification:** deepen homepage/country/hot-tour content, real-price discovery modules and SEO inventory. Content blocks must route to the shared search/API rather than fork business logic.
+
+## Design principles
+
+- One product, not a collection of migrated pages.
+- Shared primitives before page-specific CSS patches.
+- Search remains fast, information-dense and conversion-oriented; editorial pages may be more visual/emotional but must share the same brand system.
+- Prefer strong photography/content only where it materially helps travel discovery; do not make core search slower or visually noisy.
+- Every responsive visual change must be checked at 375/430/768/1024/1440.
+- Fix confirmed crooked spacing, wrapping, overflow, duplicated shell, inconsistent header/footer and hierarchy defects before cosmetic flourishes.
+- Avoid framework-only abstraction that produces no visible improvement.
+
+## Existing search-product protections remain mandatory
+
+Search, Waiting/Recovery, Results/Comparison, Selected Tour, Flights/Price, Lead UX and their existing regression guards remain protected. Previous production fixes for completed-search recovery, second-tour isolation, room/flight recovery, pending/priced flight confidence, fuel fallback, comparison, return/focus and lead recovery must remain green.
+
+Standalone architecture remains explicit: `https://anytoour.ru/` is the homepage and `https://anytoour.ru/poisk-turov/` is the full search. Legacy `/poisk-turov-test/v2/` remains compatibility-only, `noindex,follow`, canonically consolidating to the standalone search.
 
 ## Guardrails
 
 - Work only inside `pyatkoff/poisk-turov-test`; production deploy scope is the allowed V2/standalone scope only.
 - Do not redesign/replace the existing AnyTour logo.
 - Do not modify neighboring projects, global site assets or server config outside allowed scope.
-- Do not change Yandex Metrika configuration/goals.
+- Do not change Yandex Metrika configuration/goals or analytics contract.
 - Do not change the existing lead-sending mechanism/external contract.
-- Production breakage → lead loss → incorrect data → poor UX → responsive/visual → weakest sub-9 score → roadmap → cosmetic/refactor.
+- Do not change the Tourvisor request/data contract merely for visual work.
+- Preserve valid social/app destinations.
+- Legal/payment migration remains deferred until source content/requisites are reconciled.
+- PR #254 remains deferred unless freshly reassessed; do not auto-merge its separate DB/platform architecture.
+- Production breakage → lead loss → incorrect data → site-wide visual incoherence/poor UX → responsive stability → content/SEO → cosmetic/refactor.
 - CI green alone is not DONE; require relevant functional/production/visual evidence.
-- If one item is blocked, record/defer it and continue independent safe work.
+- If one task is blocked, record/defer it and immediately continue independent safe work.
 
 ## Explicitly inactive until owner launches traffic
 
-Live conversion optimization/C7; live product optimization/B8; operational traffic feedback/A8; browser-session funnel analysis; waiting for `search → tour → lead` samples; traffic-based A/B-like conclusions.
+Live conversion optimization; traffic-based product conclusions; browser-session funnel analysis; waiting for `search → tour → lead` samples; A/B-like conclusions from owner/team visits.
 
-Absence of traffic is expected and is never a blocker in the current phase.
+Absence of traffic is expected and is never a blocker. Visual/product development continues.
