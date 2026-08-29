@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T10:06:00+02:00",
+  "updated_at": "2026-08-29T11:06:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains 9.0 across all core product areas. Standalone anytoour.ru remains in production stabilization. Pending-flight price labels and stale lead-response UI races are fixed and production-verified. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
+  "phase": "Core tour-search product remains 9.0 across all core product areas. Standalone anytoour.ru remains in production stabilization. Selected-tour return/resume now closes checkout and restores result focus while preserving sort/comparison state; pending-flight price labels and stale lead-response UI races remain protected. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -30,8 +30,8 @@
     "title": "Stabilize standalone search and migrated content routes",
     "status": "ACTIVE",
     "objective": "Keep homepage/search/content migration production-safe across the full tour-search journey while preserving legacy V2 and all protected external contracts.",
-    "progress": "PR #229 labels flight variants with no calculated price as 'Цена уточняется' instead of a bare currency symbol. PR #230 prevents late lead success/error events from tour A from mutating the selected-tour form for tour B after a tour switch, without changing lead transport. #229 merged as 8650c08d4c1bffafc92c28f00b07db578274adb9; #230 merged as 929d11b82cb04f52dccf376f7c156bab158dd947. All PR gates passed. V2 deploy 33242169768 and standalone deploy 33242169786 passed; commit-scoped post-deploy checks completed without failures. No Tourvisor request, Metrika/goals, pricing contract or external lead contract changed.",
-    "next_action": "Audit selected-tour back-to-results/resume coherence first: sort/result/comparison state, scroll/focus and repeated selection; then finish same-tour lead error/retry/success and room/flight empty-error recovery audits."
+    "progress": "PR #235 fixes selected-tour return/resume: normal and post-lead-success return actions now hide checkout and restore focus/scroll to the originating result when available, with fallback to the results region and preserved sort/comparison DOM state. The dedicated 375/1440 browser guard and all relevant PR visual/runtime gates passed. #235 merged as 30eefbda00c307699691915e72a06cea3c4c75d6. V2 deploy 33244554798 and standalone deploy 33244554775 both passed including live search smoke; standalone also verified the unchanged lead bridge. Same-tour lead retry code was re-audited with no confirmed defect. No Tourvisor request, Metrika/goals, pricing contract or external lead contract changed.",
+    "next_action": "Finish repeated return/reselect browser behavior and fallback-source handling, then audit room-details and flight empty/error/retry/autoload states, followed by browser-state lead error/retry/success/duplicate-success recovery."
   },
   "queue": [
     {"id": "ROOT_STABILIZATION", "status": "ACTIVE_HIGHEST_PRIORITY", "title": "anytoour.ru standalone production stabilization"},
@@ -56,16 +56,17 @@
     "next_missing_layers": ["deliberate_public_indexing_contract", "reviewed_real_content_inventory", "sitemap_publication_policy", "structured_data_after_indexable_pages"]
   },
   "production_baseline": {
-    "last_verified_legacy_commit": "929d11b82cb04f52dccf376f7c156bab158dd947",
-    "legacy_deploy_v2": 33242169768,
-    "legacy_status": "PRODUCTION_GREEN_PENDING_FLIGHT_LABEL_AND_LEAD_UI_RACE_GUARD",
+    "last_verified_legacy_commit": "30eefbda00c307699691915e72a06cea3c4c75d6",
+    "legacy_deploy_v2": 33244554798,
+    "legacy_status": "PRODUCTION_GREEN_SELECTED_TOUR_RETURN_AND_LIVE_SEARCH_SMOKE",
     "standalone_target": "https://anytoour.ru/",
     "standalone_search": "https://anytoour.ru/poisk-turov/",
-    "last_verified_standalone_commit": "929d11b82cb04f52dccf376f7c156bab158dd947",
-    "standalone_deploy_run": 33242169786,
-    "standalone_status": "PRODUCTION_GREEN_DEPLOY_AND_POST_DEPLOY_VISUAL_NAV_RESULTS"
+    "last_verified_standalone_commit": "30eefbda00c307699691915e72a06cea3c4c75d6",
+    "standalone_deploy_run": 33244554775,
+    "standalone_status": "PRODUCTION_GREEN_PUBLIC_PAGES_LEAD_BRIDGE_AND_LIVE_SEARCH_SMOKE"
   },
   "recent_material_fixes": [
+    {"pr": 235, "scope": "selected_tour_return_resume_focus_state", "result": "Normal and post-success return actions close selected-tour checkout, restore focus/scroll to the originating result or results fallback, and preserve sort/comparison state. Dedicated mobile/desktop browser regression plus all relevant visual/runtime gates and both production deploys passed."},
     {"pr": 230, "scope": "stale_lead_response_selected_tour_ui_race", "result": "Late lead success/error for a previous tour no longer changes the newly selected tour form; current-tour outcomes remain visible and the external lead mechanism is unchanged. All 15 PR gates and both production deploys passed."},
     {"pr": 229, "scope": "pending_flight_price_label", "result": "Flight variants without a calculated price now say 'Цена уточняется' instead of rendering a bare currency symbol; priced variants are unchanged. All 12 PR gates passed."},
     {"pr": 227, "scope": "unpriced_selected_flight_price_reset", "result": "Switching from a priced flight to a pending-price flight no longer leaves the previous flight amount visible; base tour/search price and pending-price context are restored."},
