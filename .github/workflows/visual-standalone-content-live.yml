@@ -18,7 +18,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Verify content routes across responsive widths
+      - name: Verify standalone routes across responsive widths
         shell: bash
         run: |
           set -euo pipefail
@@ -26,47 +26,42 @@ jobs:
           const { chromium } = require('playwright');
           const cases=[['mobile',375,812],['tablet',768,1024],['desktop',1440,1000]];
           const pages=[
-            ['contacts','https://anytoour.ru/contacts/'],
-            ['how-to-buy','https://anytoour.ru/how-to-buy/'],
-            ['early-booking','https://anytoour.ru/rb/'],
+            ['home','https://anytoour.ru/','.at-home-main'],
+            ['contacts','https://anytoour.ru/contacts/','.sp-main'],
+            ['how-to-buy','https://anytoour.ru/how-to-buy/','.sp-main'],
+            ['early-booking','https://anytoour.ru/rb/','.sp-main'],
           ];
-          const rgb = s => (s.match(/\d+/g)||[]).slice(0,3).map(Number);
-          const luminance = ([r,g,b]) => {
-            const f=x=>{x/=255;return x<=.03928?x/12.92:((x+.055)/1.055)**2.4};
-            return .2126*f(r)+.7152*f(g)+.0722*f(b);
-          };
+          const rgb=s=>(s.match(/\d+/g)||[]).slice(0,3).map(Number);
+          const luminance=([r,g,b])=>{const f=x=>{x/=255;return x<=.03928?x/12.92:((x+.055)/1.055)**2.4};return .2126*f(r)+.7152*f(g)+.0722*f(b)};
           const contrast=(a,b)=>{const l1=luminance(a),l2=luminance(b);return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05)};
+          const checkCta=async(page,selector,label)=>{
+            const cta=page.locator(selector).first();
+            await cta.waitFor({state:'visible'});
+            const colors=await cta.evaluate(el=>{const s=getComputedStyle(el);return {fg:s.color,bg:s.backgroundColor}});
+            const ratio=contrast(rgb(colors.fg),rgb(colors.bg));
+            if(ratio<4.5) throw new Error(`${label}: CTA contrast ${ratio.toFixed(2)} ${JSON.stringify(colors)}`);
+            await cta.focus();
+            const outline=await cta.evaluate(el=>{const s=getComputedStyle(el);return {style:s.outlineStyle,width:s.outlineWidth}});
+            if(outline.style==='none'||parseFloat(outline.width)<2) throw new Error(`${label}: focus indicator missing ${JSON.stringify(outline)}`);
+            console.log('CTA_OK',label,ratio.toFixed(2),JSON.stringify(colors),JSON.stringify(outline));
+          };
           (async()=>{
             const browser=await chromium.launch({headless:true});
             try{
               for(const [vp,w,h] of cases){
-                for(const [name,url] of pages){
+                for(const [name,url,mainSelector] of pages){
                   const context=await browser.newContext({viewport:{width:w,height:h},ignoreHTTPSErrors:true});
                   const page=await context.newPage();
                   const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
-                  if(!response || response.status()!==200) throw new Error(`${vp}/${name}: HTTP ${response&&response.status()}`);
-                  await page.waitForSelector('.sp-main',{timeout:15000});
-                  const stats=await page.evaluate(()=>({
-                    docW:document.documentElement.scrollWidth,clientW:document.documentElement.clientWidth,
-                    footer:document.querySelectorAll('footer.at-site-footer').length,
-                    community:document.querySelectorAll('.v2-site-community').length,
-                    searchLinks:[...document.querySelectorAll('a[href^="/poisk-turov/"]')].length,
-                  }));
+                  if(!response||response.status()!==200) throw new Error(`${vp}/${name}: HTTP ${response&&response.status()}`);
+                  await page.waitForSelector(mainSelector,{timeout:15000});
+                  const stats=await page.evaluate(()=>({docW:document.documentElement.scrollWidth,clientW:document.documentElement.clientWidth,footer:document.querySelectorAll('footer.at-site-footer').length,community:document.querySelectorAll('.v2-site-community').length,searchLinks:[...document.querySelectorAll('a[href^="/poisk-turov/"]')].length}));
                   if(stats.docW>stats.clientW+2) throw new Error(`${vp}/${name}: page horizontal overflow ${stats.docW}/${stats.clientW}`);
-                  if(stats.footer!==1 || stats.community!==1) throw new Error(`${vp}/${name}: footer/community count ${stats.footer}/${stats.community}`);
+                  if(stats.footer!==1||stats.community!==1) throw new Error(`${vp}/${name}: footer/community count ${stats.footer}/${stats.community}`);
                   if(stats.searchLinks<1) throw new Error(`${vp}/${name}: no search handoff`);
-                  if(name==='contacts'){
-                    const cta=page.locator('.sp-card a.sp-primary');
-                    await cta.waitFor({state:'visible'});
-                    const colors=await cta.evaluate(el=>{const s=getComputedStyle(el);return {fg:s.color,bg:s.backgroundColor}});
-                    const ratio=contrast(rgb(colors.fg),rgb(colors.bg));
-                    if(ratio<4.5) throw new Error(`${vp}/${name}: CTA contrast ${ratio.toFixed(2)} ${JSON.stringify(colors)}`);
-                    await cta.focus();
-                    const outline=await cta.evaluate(el=>{const s=getComputedStyle(el);return {style:s.outlineStyle,width:s.outlineWidth}});
-                    if(outline.style==='none' || parseFloat(outline.width)<2) throw new Error(`${vp}/${name}: focus indicator missing ${JSON.stringify(outline)}`);
-                    console.log('CONTACT_CTA_OK',vp,ratio.toFixed(2),JSON.stringify(colors),JSON.stringify(outline));
-                  }
-                  console.log('CONTENT_PAGE_OK',vp,name,JSON.stringify(stats));
+                  if(name==='contacts') await checkCta(page,'.sp-card a.sp-primary',`${vp}/${name}`);
+                  if(name==='home') await checkCta(page,'.at-home-search button',`${vp}/${name}`);
+                  console.log('PAGE_OK',vp,name,JSON.stringify(stats));
                   await context.close();
                 }
               }
