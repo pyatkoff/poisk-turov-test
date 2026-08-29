@@ -26,18 +26,29 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
+      - name: Build branch bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '$_GET=["type"=>"css"]; include "v2/bundle-v1.php";' > "$RUNNER_TEMP/branch-bundle.css"
+          php -r '$_GET=["type"=>"js"]; include "v2/bundle-v1.php";' > "$RUNNER_TEMP/branch-bundle.js"
+          test -s "$RUNNER_TEMP/branch-bundle.css"
+          test -s "$RUNNER_TEMP/branch-bundle.js"
+          grep -Fq 'search-header-layout-guard-v1.css' "$RUNNER_TEMP/branch-bundle.css"
       - name: Verify one-row desktop header and mobile collapse
         shell: bash
         env:
           V2_URL: https://anytour.online/poisk-turov-test/v2/
+          BRANCH_CSS: ${{ runner.temp }}/branch-bundle.css
+          BRANCH_JS: ${{ runner.temp }}/branch-bundle.js
         run: |
           set -euo pipefail
           mkdir -p header-layout-artifacts
           cat > search-header-layout.cjs <<'JS'
           const {chromium}=require('playwright');
-          const fs=require('fs'),path=require('path');
-          const root=path.resolve('v2');
-          const asset=/\/poisk-turov-test\/v2\/([^/?]+\.(?:css|js))(?:\?.*)?$/i;
+          const fs=require('fs');
+          const css=fs.readFileSync(process.env.BRANCH_CSS);
+          const js=fs.readFileSync(process.env.BRANCH_JS);
           const sizes=[['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000]];
           const close=(a,b,t=3)=>Math.abs(a-b)<=t;
           (async()=>{
@@ -46,11 +57,13 @@ jobs:
               const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
               const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
               await page.route('**/*',async route=>{
-                const m=new URL(route.request().url()).pathname.match(asset);
-                if(!m)return route.continue();
-                const file=path.join(root,path.basename(m[1]));
-                if(!fs.existsSync(file))return route.continue();
-                return route.fulfill({status:200,contentType:path.extname(file)==='.css'?'text/css':'application/javascript',body:fs.readFileSync(file)});
+                const u=new URL(route.request().url());
+                if(u.pathname.endsWith('/bundle-v1.php')){
+                  const type=u.searchParams.get('type');
+                  if(type==='css')return route.fulfill({status:200,contentType:'text/css; charset=UTF-8',body:css});
+                  if(type==='js')return route.fulfill({status:200,contentType:'application/javascript; charset=UTF-8',body:js});
+                }
+                return route.continue();
               });
               const response=await page.goto(process.env.V2_URL,{waitUntil:'domcontentloaded',timeout:45000});
               await page.waitForTimeout(1800);
