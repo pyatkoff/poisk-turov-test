@@ -3,6 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS at_entities (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  entity_key VARCHAR(255) NOT NULL,
   entity_type VARCHAR(40) NOT NULL,
   slug VARCHAR(190) NOT NULL,
   name VARCHAR(255) NOT NULL,
@@ -13,8 +14,9 @@ CREATE TABLE IF NOT EXISTS at_entities (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_entity_type_slug_parent (entity_type, slug, parent_id),
+  UNIQUE KEY uq_entity_key (entity_key),
   KEY idx_entity_parent (parent_id),
+  KEY idx_entity_type_slug_parent (entity_type, slug, parent_id),
   KEY idx_entity_type_status (entity_type, status),
   CONSTRAINT fk_entity_parent FOREIGN KEY (parent_id) REFERENCES at_entities(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
