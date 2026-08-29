@@ -1,103 +1,48 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T11:06:00+02:00",
+  "updated_at": "2026-08-29T11:15:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains 9.0 across all core product areas. Standalone anytoour.ru remains in production stabilization. Selected-tour return/resume now closes checkout and restores result focus while preserving sort/comparison state; pending-flight price labels and stale lead-response UI races remain protected. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
-  "release_gate": {
-    "minimum_score_each_area": 9.0,
-    "traffic_required": false,
-    "traffic_analysis_enabled": false,
-    "areas": ["search_ux", "waiting_progress_recovery", "results_comparison", "selected_tour", "flights_price", "lead_ux", "mobile_ux", "tablet_desktop_ux", "brand_trust", "visual_quality", "product_differentiation", "seo_site_foundation"]
-  },
-  "scores": {
-    "search_ux": 9.0,
-    "waiting_progress_recovery": 9.0,
-    "results_comparison": 9.0,
-    "selected_tour": 9.0,
-    "flights_price": 9.0,
-    "lead_ux": 9.0,
-    "mobile_ux": 9.0,
-    "tablet_desktop_ux": 9.0,
-    "brand_trust": 9.0,
-    "visual_quality": 9.0,
-    "product_differentiation": 9.0,
-    "seo_site_foundation": 8.8
-  },
+  "phase": "Core product areas remain at 9.0. Standalone stabilization continues. Selected-tour return/resume and successful-empty flight recovery are protected; the intentional AnyTour Web Consultant dependency now has an explicit narrow CI contract while generic cross-project isolation remains strict. SEO/site foundation remains 8.8 and indexing/publication is deferred.",
+  "scores": {"search_ux":9.0,"waiting_progress_recovery":9.0,"results_comparison":9.0,"selected_tour":9.0,"flights_price":9.0,"lead_ux":9.0,"mobile_ux":9.0,"tablet_desktop_ux":9.0,"brand_trust":9.0,"visual_quality":9.0,"product_differentiation":9.0,"seo_site_foundation":8.8},
   "current_task": {
-    "id": "ANYTOOUR_STANDALONE_STABILIZATION",
-    "category": "PRODUCTION_UX_DATA",
-    "title": "Stabilize standalone search and migrated content routes",
-    "status": "ACTIVE",
-    "objective": "Keep homepage/search/content migration production-safe across the full tour-search journey while preserving legacy V2 and all protected external contracts.",
-    "progress": "PR #235 fixes selected-tour return/resume: normal and post-lead-success return actions now hide checkout and restore focus/scroll to the originating result when available, with fallback to the results region and preserved sort/comparison DOM state. The dedicated 375/1440 browser guard and all relevant PR visual/runtime gates passed. #235 merged as 30eefbda00c307699691915e72a06cea3c4c75d6. V2 deploy 33244554798 and standalone deploy 33244554775 both passed including live search smoke; standalone also verified the unchanged lead bridge. Same-tour lead retry code was re-audited with no confirmed defect. No Tourvisor request, Metrika/goals, pricing contract or external lead contract changed.",
-    "next_action": "Finish repeated return/reselect browser behavior and fallback-source handling, then audit room-details and flight empty/error/retry/autoload states, followed by browser-state lead error/retry/success/duplicate-success recovery."
-  },
-  "queue": [
-    {"id": "ROOT_STABILIZATION", "status": "ACTIVE_HIGHEST_PRIORITY", "title": "anytoour.ru standalone production stabilization"},
-    {"id": "BR1", "status": "SHIPPED_MAINTAIN_9", "title": "Branded first impression"},
-    {"id": "BR2", "status": "SHIPPED_MAINTAIN_9", "title": "Trust architecture"},
-    {"id": "BR3", "status": "SHIPPED_MAINTAIN_9", "title": "Product-wide visual identity"},
-    {"id": "BR4", "status": "ACTIVE_8_8_PRODUCT_BOUNDARY", "title": "SEO-ready brand shell and site foundation"},
-    {"id": "BR5", "status": "SHIPPED_MAINTAIN", "title": "Social + app footer/community pre-footer"},
-    {"id": "PX1", "status": "SHIPPED_MAINTAIN_9", "title": "Decision support in results"},
-    {"id": "PX2", "status": "SHIPPED_MAINTAIN_9", "title": "Flexible search and recovery"},
-    {"id": "PX3", "status": "SHIPPED_MAINTAIN_9", "title": "Price confidence"},
-    {"id": "PX4", "status": "SHIPPED_MAINTAIN_9", "title": "Flight decision quality"},
-    {"id": "PX5", "status": "SHIPPED_MAINTAIN_9", "title": "Hotel choice depth"},
-    {"id": "PX6", "status": "SHIPPED_MAINTAIN_9", "title": "Save compare resume"},
-    {"id": "PX7", "status": "RESEARCH", "title": "Price watch and return intent"}
-  ],
-  "seo_foundation": {
-    "score": 8.8,
-    "standalone_root_noindex": true,
-    "legacy_route_noindex": true,
-    "publication_review_required": true,
-    "next_missing_layers": ["deliberate_public_indexing_contract", "reviewed_real_content_inventory", "sitemap_publication_policy", "structured_data_after_indexable_pages"]
+    "id":"ANYTOOUR_STANDALONE_STABILIZATION",
+    "category":"PRODUCTION_UX_DATA",
+    "status":"ACTIVE",
+    "progress":"#235 return/resume is production green. #237 adds neutral successful-empty flight recovery with existing retry action and is production green: V2 33244832722, standalone 33244832726, post-deploy visual 33244905020. Push-only active-contract failure after #237 was traced to #234's intentional host-gated Web Consultant path versus the historical generic /max-search/ closure. #238 preserves the exact consultant runtime behavior, adds a narrow exact consultant contract, and restores the generic active dependency closure; run 33244990290 passes the formerly failing closure/isolation steps. #238 deploys 33244990295 and 33244990278 were still in progress after release validation/copy began at this update.",
+    "next_action":"First confirm #238 V2 and standalone verify/live-smoke and post-deploy checks. Then test repeated return/reselect with source disappearance fallback, room-details fallback/error/retry, remaining flight autoload/error/retry, and browser-state same-tour lead error/retry/success/duplicate-success."
   },
   "production_baseline": {
-    "last_verified_legacy_commit": "30eefbda00c307699691915e72a06cea3c4c75d6",
-    "legacy_deploy_v2": 33244554798,
-    "legacy_status": "PRODUCTION_GREEN_SELECTED_TOUR_RETURN_AND_LIVE_SEARCH_SMOKE",
-    "standalone_target": "https://anytoour.ru/",
-    "standalone_search": "https://anytoour.ru/poisk-turov/",
-    "last_verified_standalone_commit": "30eefbda00c307699691915e72a06cea3c4c75d6",
-    "standalone_deploy_run": 33244554775,
-    "standalone_status": "PRODUCTION_GREEN_PUBLIC_PAGES_LEAD_BRIDGE_AND_LIVE_SEARCH_SMOKE"
+    "last_verified_legacy_commit":"7af64c649d23010bd9cff98df86364d29a8f1203",
+    "legacy_deploy_v2":33244832722,
+    "legacy_status":"PRODUCTION_GREEN_EMPTY_FLIGHT_RECOVERY_LIVE_SEARCH_SMOKE",
+    "standalone_target":"https://anytoour.ru/",
+    "standalone_search":"https://anytoour.ru/poisk-turov/",
+    "last_verified_standalone_commit":"7af64c649d23010bd9cff98df86364d29a8f1203",
+    "standalone_deploy_run":33244832726,
+    "standalone_status":"PRODUCTION_GREEN_PUBLIC_PAGES_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
+    "pending_main_commit":"71876fbae02dbd8acd991b2764fd923728b8070f",
+    "pending_v2_deploy":33244990295,
+    "pending_standalone_deploy":33244990278
   },
-  "recent_material_fixes": [
-    {"pr": 235, "scope": "selected_tour_return_resume_focus_state", "result": "Normal and post-success return actions close selected-tour checkout, restore focus/scroll to the originating result or results fallback, and preserve sort/comparison state. Dedicated mobile/desktop browser regression plus all relevant visual/runtime gates and both production deploys passed."},
-    {"pr": 230, "scope": "stale_lead_response_selected_tour_ui_race", "result": "Late lead success/error for a previous tour no longer changes the newly selected tour form; current-tour outcomes remain visible and the external lead mechanism is unchanged. All 15 PR gates and both production deploys passed."},
-    {"pr": 229, "scope": "pending_flight_price_label", "result": "Flight variants without a calculated price now say 'Цена уточняется' instead of rendering a bare currency symbol; priced variants are unchanged. All 12 PR gates passed."},
-    {"pr": 227, "scope": "unpriced_selected_flight_price_reset", "result": "Switching from a priced flight to a pending-price flight no longer leaves the previous flight amount visible; base tour/search price and pending-price context are restored."},
-    {"pr": 226, "scope": "comparison_refresh_minimum_selection", "result": "An open comparison closes if refreshed results prune the selection below two hotels while the remaining tray selection is preserved."},
-    {"pr": 225, "scope": "result_decision_badge_finality", "result": "Lowest-price and best-rating badges are suppressed during progressive search and computed only against completed result sets."},
-    {"pr": 221, "scope": "completed_search_final_results_recovery", "result": "Completed main/continue searches retry result fetching against the existing searchId without restarting Tourvisor work."},
-    {"pr": 219, "scope": "empty_search_date_recovery_clamp", "result": "Date widening clamps departure start to local today for near-term searches."},
-    {"pr": 217, "scope": "progressive_results_recovery", "result": "Transient intermediate result-fetch errors no longer abort healthy status polling."}
+  "recent_material_fixes":[
+    {"pr":238,"scope":"intentional_web_consultant_dependency_ci_contract","result":"Preserves #234 canonical host-gated consultant runtime, adds exact three-script CI contract, and restores generic active dependency closure without weakening other cross-project isolation."},
+    {"pr":237,"scope":"successful_empty_flight_recovery","result":"Empty successful flight response no longer dead-ends; neutral explanation plus existing retry action is available while lead form stays usable. Dedicated 375/1440 guard and production deploys green."},
+    {"pr":235,"scope":"selected_tour_return_resume_focus_state","result":"Normal and post-success returns close checkout, preserve sort/comparison, and restore result focus/scroll with fallback."},
+    {"pr":230,"scope":"stale_lead_response_selected_tour_ui_race","result":"Late lead response for a previous tour cannot mutate the current selected-tour form."},
+    {"pr":229,"scope":"pending_flight_price_label","result":"Pending flight variants explicitly say Цена уточняется."},
+    {"pr":227,"scope":"unpriced_selected_flight_price_reset","result":"Switching to pending-price flight clears stale prior-flight amount."},
+    {"pr":226,"scope":"comparison_refresh_minimum_selection","result":"Comparison closes coherently when refreshed selection falls below two hotels."},
+    {"pr":225,"scope":"result_decision_badge_finality","result":"Lowest-price/best-rating claims are final-set-only."},
+    {"pr":221,"scope":"completed_search_final_results_recovery","result":"Result-fetch retry reuses completed searchId instead of restarting search."}
   ],
-  "blocked": [],
-  "deferred": [
-    {"scope": "traffic/conversion analysis", "reason": "Explicitly disabled until owner launches traffic."},
-    {"scope": "public SEO indexing/sitemap promotion", "reason": "Requires deliberate publication contract and reviewed content."},
-    {"scope": "structured data expansion", "reason": "Add only after real indexable public page types exist."},
-    {"scope": "PX7 price watch / proactive return intent", "reason": "May require persistence/contact/product-contract decisions."},
-    {"scope": "global nginx/server configuration", "reason": "Outside allowed V2/repository write scope."}
+  "blocked":[],
+  "deferred":[
+    {"scope":"traffic/conversion analysis","reason":"Disabled until owner launches traffic."},
+    {"scope":"public SEO indexing/sitemap promotion","reason":"Requires deliberate publication contract and reviewed content."},
+    {"scope":"PX7 price watch / proactive return intent","reason":"Requires persistence/contact/product-contract decisions."},
+    {"scope":"global nginx/server configuration","reason":"Outside allowed repository/V2 scope."}
   ],
-  "protected": {
-    "other_projects": "DO_NOT_MODIFY",
-    "global_site_assets_and_server_config": "DO_NOT_MODIFY_OUTSIDE_ALLOWED_V2_SCOPE",
-    "logo": "DO_NOT_CHANGE",
-    "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
-  },
-  "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > weakest_sub9_score > brand_product_roadmap > cosmetic_refactor",
-    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_task",
-    "on_blocker": "record_blocker_and_continue_independent_safe_work",
-    "on_visual_change": "validate_required_viewports_before_advancing",
-    "on_no_traffic": "ignore_as_expected_and continue_product_development"
-  }
+  "protected":{"other_projects":"DO_NOT_MODIFY","global_site_assets_and_server_config":"DO_NOT_MODIFY_OUTSIDE_ALLOWED_V2_SCOPE","logo":"DO_NOT_CHANGE","metrika_configuration":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","metrika_goals":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"},
+  "continuation_policy":{"priority":"production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > weakest_sub9_score > roadmap > cosmetic_refactor","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_ci_success":"continue_to_next_safe_material_task","on_blocker":"record_blocker_and_continue_independent_safe_work","on_visual_change":"validate_required_viewports_before_advancing","on_no_traffic":"ignore_as_expected_and continue_product_development"}
 }

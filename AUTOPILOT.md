@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 11:06 +02:00
+Updated: 2026-08-29 11:15 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -25,21 +25,22 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 
 ## Latest material evidence
 
-- PR #235 fixes a confirmed selected-tour return-state defect without changing search, pricing, analytics or lead transport. Both the normal `Вернуться к предложениям` action and the post-success return now close the selected-tour/checkout surface, restore keyboard focus and scroll to the originating result card when it still exists, and fall back to the results region when it does not.
-- The return guard deliberately preserves the existing result DOM, selected sort order and comparison state. A dedicated browser regression verifies those properties at 375 and 1440 px for both normal return and lead-success return.
-- #235 passed the dedicated return-state browser guard plus V2 startup/branch bundles, PHP 8.3, comparison, lead-race, pending-flight-price, standalone, selected-tour visual, full V2 visual, trust/meal visual and deterministic visual-baseline gates. It merged as `30eefbda00c307699691915e72a06cea3c4c75d6`.
-- V2-only deploy `33244554798` completed successfully through validate → copy → verify → live search smoke. Standalone deploy `33244554775` also completed successfully through release validation, copy, public-page verification, unchanged lead-bridge verification and live search smoke.
-- Same-tour lead submit/retry code was re-audited after #235: failed submission re-enables the submit action, retry rebuilds payload from the still-current tour/selected flight, and normal/duplicate success both transition to the sent state. No confirmed defect was found, so the external lead contract was not touched.
-- The freshly merged Web Consultant integration from #234 was included in the current-main inspection. Its earlier post-deploy journey/content checks were green; no confirmed selected-tour/return regression attributable to the widget was found in this pass.
-- Earlier protections remain valid: #225 keeps lowest-price/best-rating claims final-set-only; #226 keeps comparison coherent after result refresh; #227 resets stale selected-flight price when the newly selected flight price is pending; #229 labels pending flight prices explicitly; #230 blocks stale lead-response UI mutations; #217/#219/#221 protect progressive/final search recovery.
-- No Yandex Metrika configuration/goals, Tourvisor request contract, pricing contract or existing lead-sending mechanism/external field mapping changed in #235.
+- PR #235 fixed selected-tour return/resume: normal and post-lead-success `Вернуться к предложениям` now close the checkout surface, preserve result/sort/comparison state and restore keyboard focus/scroll to the originating result, with results-region fallback when the source no longer exists. Its 375/1440 browser guard and all relevant visual/runtime gates passed; V2 deploy `33244554798` and standalone deploy `33244554775` were green through live search smoke.
+- PR #237 fixed a confirmed flight empty-state dead end. A successful flights response with no variants now explains that flight data has not yet been received and offers `Проверить рейсы ещё раз` through the controller's existing retry path while keeping the lead form available. Real flight variants and explicit error handling remain untouched. Its dedicated 375/1440 browser regression plus selected-tour/full-V2/baseline/startup/standalone/security gates passed. It merged as `7af64c649d23010bd9cff98df86364d29a8f1203`.
+- #237 production is green: V2 deploy `33244832722` passed validate → copy → verify → live search smoke; standalone deploy `33244832726` passed release validation → copy → public pages → unchanged lead bridge → live search smoke; post-deploy visual run `33244905020` also succeeded.
+- After #237 merge, the push-only `Validate active V2 contract` exposed a pre-existing CI-contract mismatch from intentional Web Consultant release #234: the historical dependency closure rejected every literal `/max-search/`, while #234 intentionally loads the canonical `anytour.online/max-search/web-consultant/` scripts only on `anytoour.ru` / `www.anytoour.ru`.
+- PR #238 preserves the approved consultant and keeps the generic cross-project dependency guard strict. The runtime URL is unchanged but the approved path is composed explicitly, and a dedicated Web Consultant CI contract now asserts the exact host gate, canonical base and exactly three allowed scripts while every other literal `/max-search/` dependency remains rejected. All #238 PR gates were green, including the new consultant contract, PHP 8.3, startup/branch bundles, standalone, security and visual suites. It merged as `71876fbae02dbd8acd991b2764fd923728b8070f`.
+- The previously failing push-only active dependency-closure and deployment-isolation steps are green on #238 (`Validate active V2 contract` run `33244990290`). #238 V2 deploy `33244990295` and standalone deploy `33244990278` were in progress at this state update after passing release validation and reaching copy; production remains safely on already-green #237 until these finish.
+- Same-tour lead submit/retry code was re-audited: failed submission re-enables submit, retry rebuilds payload from the still-current tour/selected flight, and normal/duplicate success transition to the sent state. No confirmed defect was found, so the external lead contract was not touched.
+- Earlier protections remain valid: #225 final-set-only decision badges; #226 comparison refresh coherence; #227 stale selected-flight price reset; #229 explicit pending flight-price label; #230 stale lead-response UI race guard; #217/#219/#221 progressive/final search recovery.
+- No Yandex Metrika configuration/goals, Tourvisor request contract, pricing contract or existing lead-sending mechanism/external field mapping changed in #235/#237/#238.
 
 ## Exact next work order
 
-1. Finish the return/resume audit with repeated selection after returning, including source-card disappearance/fallback and mobile/tablet/desktop browser behavior on the real V2 shell.
-2. Re-check room-details fallback/no-description/error/retry and flight empty/error/retry/autoload states for misleading confidence or dead-end UX; fix only confirmed issues.
-3. Complete same-tour lead recovery as a browser-state audit: failed submit → retry → success/duplicate success, ensuring form data and selected flight/price context remain coherent without touching the external lead contract.
-4. Re-run the full standalone live journey and responsive/selected-tour guards after the next material downstream UX/data fix.
+1. Confirm #238 V2 and standalone deploys through verify/live-smoke and re-check post-deploy visual/journey runs; if green, record `71876f...` as the current production baseline.
+2. Finish return/resume behavior with repeated selection after returning and explicit source-card disappearance/fallback on the real V2 shell across mobile/tablet/desktop.
+3. Re-check room-details no-description/empty/error/retry and the remaining flight autoload/error/retry transitions now that the successful-empty case is covered; fix only confirmed issues.
+4. Complete same-tour lead recovery as a browser-state audit: failed submit → retry → success/duplicate success, ensuring form data and selected flight/price context remain coherent without touching the external lead contract.
 5. Continue periodic whole-V2 audit: search form → waiting/progress → stale/progressive/final results → comparison → selected tour → flights/price → lead entry/recovery.
 6. Promote additional country/content routes only when their page exists locally and route/search handoff is verified; otherwise preserve the valid legacy destination.
 7. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
