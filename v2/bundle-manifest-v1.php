@@ -29,6 +29,7 @@ function v2_bundle_manifest(): array
             'site-footer-v1.css',
             'results-layout-guard-v1.css',
             'search-header-layout-guard-v1.css',
+            'search-footer-rhythm-v1.css',
         ],
         'js' => [
             'header-current-site.js',
