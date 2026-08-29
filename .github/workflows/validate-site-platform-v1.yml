@@ -23,11 +23,31 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_DATABASE: anytoour_ci
+          MARIADB_USER: ci
+          MARIADB_PASSWORD: ci
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      ANYTOOUR_DB_DSN: mysql:host=127.0.0.1;port=3306;dbname=anytoour_ci;charset=utf8mb4
+      ANYTOOUR_DB_USER: ci
+      ANYTOOUR_DB_PASSWORD: ci
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
+          extensions: pdo_mysql
       - name: Lint Site Platform PHP
         run: |
           find platform/src platform/bin platform/tests -name '*.php' -print0 | xargs -0 -n1 php -l
@@ -36,3 +56,16 @@ jobs:
       - name: Assert production credentials are not embedded
         run: |
           ! grep -RniE '(password\s*=\s*["'"'][^"'"']+|mysql:host=[^$])' platform/src platform/bin
+      - name: Check MariaDB connection
+        run: php platform/bin/doctor.php
+      - name: Apply migrations twice for idempotency
+        run: |
+          php platform/bin/migrate.php
+          php platform/bin/migrate.php
+      - name: Seed Turkey reference vertical slice
+        run: |
+          php -r '$pdo=new PDO(getenv("ANYTOOUR_DB_DSN"),getenv("ANYTOOUR_DB_USER"),getenv("ANYTOOUR_DB_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);$pdo->exec(file_get_contents("platform/seeds/reference_turkey.sql"));'
+      - name: Assemble Turkey page from database
+        run: |
+          php platform/bin/preview-country.php country:turkey > /tmp/turkey-page.json
+          php -r '$p=json_decode(file_get_contents("/tmp/turkey-page.json"),true,512,JSON_THROW_ON_ERROR); if (($p["entity"]["slug"]??null)!=="turkey") throw new RuntimeException("Turkey entity missing"); if (($p["search_intent"]["tourvisor_country_id"]??null)!=="4") throw new RuntimeException("Tourvisor mapping missing"); if (count($p["children"]["resorts"]??[])<4) throw new RuntimeException("Reference resorts missing"); echo "TURKEY_VERTICAL_SLICE_OK\n";'
