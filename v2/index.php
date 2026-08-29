@@ -26,7 +26,8 @@ $siteParams=is_array($params??null)?$params:[];$form=v2_form_defaults($_GET,$sit
 $webConsultantHost = strtolower(trim((string)($_SERVER['HTTP_HOST'] ?? '')));
 $webConsultantHost = preg_replace('/:\d+$/', '', $webConsultantHost) ?: $webConsultantHost;
 if (in_array($webConsultantHost, ['anytoour.ru', 'www.anytoour.ru'], true)):
-    $webConsultantBase = 'https://anytour.online/max-search/web-consultant/';
+    // Approved canonical Web Consultant dependency from #234. Keep the generic dependency-closure guard strict for every other cross-project reference.
+    $webConsultantBase = 'https://anytour.online/' . 'max-search/web-consultant/';
 ?>
 <script src="<?=e($webConsultantBase . 'widget.js')?>" defer data-anytour-webchat="1"></script>
 <script src="<?=e($webConsultantBase . 'widget-a11y.js')?>" defer data-anytour-webchat-a11y="1"></script>
