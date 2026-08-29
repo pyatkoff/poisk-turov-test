@@ -30,7 +30,25 @@ jobs:
   seo-foundation:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - name: Validate candidate SEO config contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '
+            $_SERVER["HTTP_HOST"]="anytour.online";
+            $_SERVER["SCRIPT_NAME"]="/poisk-turov-test/v2/index.php";
+            require "v2/seo-config.php";
+            if (v2_seo_indexable([]) !== false) { fwrite(STDERR,"SEO_SOURCE_FAIL:legacy_indexable\n"); exit(1); }
+            if (v2_seo_canonical_url() !== "https://anytoour.ru/poisk-turov/") { fwrite(STDERR,"SEO_SOURCE_FAIL:legacy_canonical\n"); exit(1); }
+            $_SERVER["HTTP_HOST"]="anytoour.ru";
+            if (v2_seo_canonical_url() !== "https://anytoour.ru/") { fwrite(STDERR,"SEO_SOURCE_FAIL:standalone_canonical\n"); exit(1); }
+            if (v2_seo_robots_content(false) !== "noindex,follow,max-image-preview:large") { fwrite(STDERR,"SEO_SOURCE_FAIL:robots\n"); exit(1); }
+            echo "V2_SEO_SOURCE_OK legacy=noindex canonical=standalone_search\n";
+          '
+
       - name: Validate test-route SEO contract live
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
@@ -78,6 +96,7 @@ jobs:
           PY
 
       - name: Validate search-state URLs stay non-indexable
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
