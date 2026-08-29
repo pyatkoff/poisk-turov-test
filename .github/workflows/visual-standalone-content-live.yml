@@ -68,7 +68,7 @@ jobs:
                   if(stats.footer!==1||stats.community!==1) throw new Error(`${vp}/${name}: footer/community count ${stats.footer}/${stats.community}`);
                   if(name!=='search'&&stats.searchLinks<1) throw new Error(`${vp}/${name}: no search handoff`);
                   if(name==='home') await checkCta(page,'.at-home-search button',`${vp}/${name}`);
-                  else if(name==='search') await checkCta(page,'.at-site-order',`${vp}/${name}`);
+                  else if(name==='search') await checkCta(page,'.search-submit',`${vp}/${name}`);
                   else await checkCta(page,'.sp-primary',`${vp}/${name}`);
                   console.log('PAGE_OK',vp,name,JSON.stringify(stats));
                   await context.close();
