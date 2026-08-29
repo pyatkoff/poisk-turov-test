@@ -10,9 +10,9 @@ return [
         'canonical' => '/country/{country_slug}/',
     ],
     'resort' => [
-        'title' => 'Туры в {resort_name} — цены {year} | AnyTour',
-        'description' => 'Туры в {resort_name}: актуальные предложения, отели и цены. Подберите подходящий тур онлайн в AnyTour.',
-        'h1' => 'Туры в {resort_name}',
+        'title' => 'Туры в {resort_name_accusative} — цены {year} | AnyTour',
+        'description' => 'Туры в {resort_name_accusative}: актуальные предложения, отели и цены. Подберите подходящий тур онлайн в AnyTour.',
+        'h1' => 'Туры в {resort_name_accusative}',
         'canonical' => '/country/{country_slug}/{resort_slug}/',
     ],
     'departure_country' => [
