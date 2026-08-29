@@ -1,0 +1,30 @@
+name: Validate pending flight label
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/unpriced-flight-price-reset-v1.js'
+      - '.github/workflows/validate-pending-flight-label.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  pending-flight-label:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate explicit pending price label
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          const fs=require('fs');
+          const src=fs.readFileSync('v2/unpriced-flight-price-reset-v1.js','utf8');
+          if(!src.includes("label.textContent='Цена уточняется'")) throw new Error('pending price label missing');
+          if(!src.includes('clarifyPendingLabels();')) throw new Error('pending label normalization not invoked on flight-selected');
+          if(!src.includes("/[0-9]/.test(text)")) throw new Error('priced variants are not protected');
+          console.log('PENDING_FLIGHT_LABEL_OK');
+          JS
