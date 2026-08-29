@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 09:16 +02:00
+Updated: 2026-08-29 10:06 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -25,24 +25,24 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 
 ## Latest material evidence
 
-- PR #225 fixes definitive result benchmarking during progressive search. `Самая низкая цена` and `Лучший рейтинг` are now hidden while the main or continued Tourvisor search is still active and are recomputed only after the current result set completes. The dedicated mobile/tablet/desktop finality guard passed.
-- PR #226 fixes comparison state after a result refresh: if refreshed results remove enough selected hotels that fewer than two remain, an already-open comparison dialog closes instead of presenting an invalid one-hotel comparison; the one-hotel tray stays available so another hotel can be selected. Standalone deploy `33240182570`, live journey `33240245892` and migrated-content verification `33240245930` passed.
-- PR #227 fixes a confirmed price-consistency defect in selected-tour flight choice. If a priced flight was selected and the user then switched to a flight variant whose price is pending, the UI previously retained the previous flight's amount. It now resets to the base tour/search price, refreshes selected-flight fuel when present and clearly says the selected flight price will be confirmed. The selected flight itself and the existing lead payload/transport contract remain unchanged.
-- #227 passed the dedicated unpriced-flight browser regression on mobile/desktop, selected-tour visual, full V2 visual, baseline, startup/branch bundles, PHP 8.3, standalone validation and security gates. It merged as `2c537ea1bacf90a14d793e77e9eb65376544c0ed`.
-- V2-only deploy `33240311682` passed validate → copy → verify → live search smoke. Standalone deploy `33240311680` passed release validation → copy → public-page verification → unchanged lead-bridge verification → live search smoke.
-- Earlier recovery protections remain valid: #217 keeps status polling alive across transient progressive result-fetch failures; #219 clamps near-term date widening to today; #221 retries completed main/continue result fetches against the existing searchId instead of restarting Tourvisor work.
-- Result sorting/pricing contracts were not changed. The lowest-price badge remains decision support only and does not alter the actual tour price or sorting.
-- No Yandex Metrika configuration/goals, Tourvisor request contract or existing lead-sending mechanism/external field mapping changed in #225–#227.
+- PR #229 fixes a selected-flight price-confidence defect: a flight variant whose price is not yet calculated no longer renders as a bare `₽`; it is explicitly labelled `Цена уточняется`, while calculated variants retain their real amounts. The existing pending-price reset behavior from #227 remains intact.
+- #229 passed all 12 PR gates, including the dedicated pending-price label regression, unpriced-flight reset regression, selected-tour visual, full V2 visual, baseline, bundle, standalone and security checks, then merged as `8650c08d4c1bffafc92c28f00b07db578274adb9`.
+- PR #230 fixes a confirmed selected-tour lead UI race without changing lead transport. If a lead response for tour A arrives after the visitor has switched to tour B or while B is loading, stale `lead-success` / `lead-error` events can no longer mutate B's form. Current-tour events still decorate normally, and analytics remains earlier in event order so the real outcome is still observed.
+- #230 passed all 15 PR gates, including a deterministic stale/current-tour race regression, selected-tour visual, full V2 visual, PHP 8.3, bundle, standalone, comparison, unpriced-flight and security checks, then merged as `929d11b82cb04f52dccf376f7c156bab158dd947`.
+- V2-only deploy `33242169768` completed successfully. Standalone deploy `33242169786` completed successfully. The subsequent commit-scoped post-deploy suite completed with no failure/in-progress runs; standalone navigation and live results visual checks were explicitly green.
+- Earlier protections remain valid: #225 keeps lowest-price/best-rating claims final-set-only; #226 keeps comparison coherent after result refresh; #227 resets stale selected-flight price when the newly selected flight price is pending; #217/#219/#221 protect progressive/final search recovery.
+- No Yandex Metrika configuration/goals, Tourvisor request contract, pricing contract or existing lead-sending mechanism/external field mapping changed in #229–#230.
 
 ## Exact next work order
 
-1. Continue browser-level selected-tour recovery audit on mobile/tablet/desktop: room fallback → flight autoload/error/retry → priced/unpriced flight transitions → price/fuel confidence → lead entry/error/retry/success, without changing the external lead contract.
-2. Audit selected-tour → back-to-results/resume transitions after comparison/search refreshes, including whether result/sort/comparison state remains coherent.
-3. Re-run the full standalone live journey and responsive/selected-tour guards after the next material downstream UX/data fix.
-4. Promote additional country/content routes only when their page exists locally and route/search handoff is verified; otherwise preserve the valid legacy destination.
-5. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
-6. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
-7. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
+1. Audit selected-tour → back-to-results/resume transitions on mobile/tablet/desktop, including preserved sort order, result set, comparison tray/modal state, scroll/focus behavior and repeated tour selection after returning.
+2. Continue same-tour lead recovery audit: failed submit → retry → success/duplicate success, ensuring form data and selected flight/price context remain coherent without touching the external lead contract.
+3. Re-check room fallback and flight empty/error/retry states for misleading confidence or dead-end UX; fix only confirmed issues.
+4. Re-run the full standalone live journey and responsive/selected-tour guards after the next material downstream UX/data fix.
+5. Promote additional country/content routes only when their page exists locally and route/search handoff is verified; otherwise preserve the valid legacy destination.
+6. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
+7. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
+8. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
 
 ## Guardrails
 
