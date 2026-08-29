@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'v2/home-v1.php'
+      - 'v2/site-header-v2.php'
       - 'v2/form-defaults.php'
       - 'v2/poisk-turov/**'
       - 'v2/header-current-site.js'
@@ -25,6 +26,7 @@ jobs:
           set -euo pipefail
           php -l v2/home-v1.php >/dev/null
           php -l v2/home-entry-v1.php >/dev/null
+          php -l v2/site-header-v2.php >/dev/null
           php -l v2/poisk-turov/index.php >/dev/null
           node --check v2/header-current-site.js
           mkdir -p /tmp/empty-document-root
@@ -37,12 +39,15 @@ jobs:
             if (strpos($html, "action=\"/poisk-turov/\"") === false) exit(10);
             if (strpos($html, "name=\"daysFrom\"") === false || strpos($html, "name=\"daysTill\"") === false) exit(11);
             if (strpos($html, "data-home-nights") === false || strpos($html, "data-home-nights-till") === false) exit(12);
-            if (strpos($html, "https://anytour.online/country/") === false) exit(13);
-            if (strpos($html, "https://anytour.online/hot/") === false) exit(14);
-            if (strpos($html, "https://anytour.online/contacts/") === false) exit(15);
-            if (strpos($html, "https://anytour.online/how-to-buy/") === false) exit(16);
-            if (preg_match("~href=\\\"/(country|hot|contacts|how-to-buy)/~", $html)) exit(17);
+            foreach (["/country/","/hot/","/contacts/","/how-to-buy/","/rb/"] as $path) {
+              if (strpos($html, "href=\"".$path."\"") === false) exit(13);
+            }
+            if (strpos($html, "https://anytour.online/country/") !== false) exit(14);
           '
           grep -Fq "nightsTill.value=nights.value" v2/home-v1.php
-          grep -Fq "if(standalone&&path==='/poisk-turov/')return path;" v2/header-current-site.js
+          grep -Fq "'/country/'" v2/header-current-site.js
+          grep -Fq "'/hot/'" v2/header-current-site.js
+          grep -Fq "'/contacts/'" v2/header-current-site.js
+          grep -Fq "'/how-to-buy/'" v2/header-current-site.js
+          grep -Fq "'/payment/'" v2/header-current-site.js
           echo HOME_SEARCH_HANDOFF_OK

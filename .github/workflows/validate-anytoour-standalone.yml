@@ -21,7 +21,7 @@ jobs:
       - name: PHP syntax
         run: |
           set -euo pipefail
-          for f in v2/index.php v2/home-entry-v1.php v2/home-v1.php v2/poisk-turov/index.php v2/hot/index.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php v2/country/index.php v2/site-page-shell-v1.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php v2/seo-config.php; do
+          for f in v2/index.php v2/home-entry-v1.php v2/home-v1.php v2/poisk-turov/index.php v2/hot/index.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php v2/country/index.php v2/site-page-shell-v1.php v2/site-header-v2.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php v2/seo-config.php; do
             php -l "$f"
           done
       - name: Render standalone homepage
@@ -131,7 +131,12 @@ jobs:
           grep -Fq "runtimePath('phone-config.php')" v2/header-current-site.js
           grep -Fq "runtimePath('footer-current-site.css')" v2/header-current-site.js
           grep -Fq "legacyOrigin=standalone?'https://anytour.online':''" v2/header-current-site.js
-          grep -Fq "if(standalone&&path==='/poisk-turov/')return path;" v2/header-current-site.js
+          grep -Fq "standalonePaths=['/poisk-turov/','/country/'" v2/header-current-site.js
+          grep -Fq "'/hot/'" v2/header-current-site.js
+          grep -Fq "'/rb/'" v2/header-current-site.js
+          grep -Fq "'/contacts/'" v2/header-current-site.js
+          grep -Fq "'/how-to-buy/'" v2/header-current-site.js
+          grep -Fq "return legacyOrigin+path" v2/header-current-site.js
           if grep -Fq "fetch('/poisk-turov-test/v2/phone-config.php'" v2/header-current-site.js; then exit 41; fi
           if grep -Fq "css.href='/poisk-turov-test/v2/footer-current-site.css'" v2/header-current-site.js; then exit 42; fi
           echo "STANDALONE_SITE_SHELL_PATHS_OK"

@@ -1,8 +1,9 @@
 <?php
+require_once __DIR__ . '/site-header-v2.php';
 $homeSiteParams = is_array($params ?? null) ? $params : [];
 $homeForm = v2_form_defaults($_GET, $homeSiteParams);
-$homePhone = trim((string)($homeSiteParams['PHONE'] ?? '8 (800) 100 - 61 - 50'));
-$homePhoneHref = preg_replace('/[^0-9+]/', '', $homePhone);
+$homePhone = v2_site_phone($homeSiteParams, '8 (800) 100 - 61 - 50');
+$homePhoneHref = v2_phone_href($homePhone);
 $homeDescription = 'AnyTour — удобный поиск туров с актуальными ценами, перелётами и помощью менеджера. Начните с короткого поиска и сравните предложения туроператоров.';
 $homeCanonical = 'https://anytoour.ru/';
 $homeRobots = v2_seo_robots_content(v2_seo_indexable($homeSiteParams));
@@ -18,6 +19,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   <meta name="description" content="<?=home_e($homeDescription)?>">
   <meta name="robots" content="<?=home_e($homeRobots)?>">
   <link rel="canonical" href="<?=$homeCanonical?>">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="AnyTour">
   <meta property="og:title" content="AnyTour — поиск и подбор туров онлайн">
@@ -25,23 +27,12 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   <meta property="og:url" content="<?=$homeCanonical?>">
   <meta property="og:locale" content="ru_RU">
   <script type="application/ld+json"><?=json_encode($homeSchema,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?></script>
+  <link rel="stylesheet" href="<?=home_e(v2_asset('site-header-v2.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('home-v1.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('site-footer-v1.css'))?>">
 </head>
 <body>
-<header class="at-home-header">
-  <div class="at-home-header__inner">
-    <a class="at-home-logo" href="/" aria-label="AnyTour"><img src="/images/logo.svg" alt="AnyTour"></a>
-    <nav class="at-home-nav" aria-label="Основное меню">
-      <a href="/poisk-turov/">Поиск туров</a>
-      <a href="<?=home_e($homeLegacyBase)?>/country/">Страны</a>
-      <a href="<?=home_e($homeLegacyBase)?>/hot/">Горящие туры</a>
-      <a href="<?=home_e($homeLegacyBase)?>/contacts/">Контакты</a>
-    </nav>
-    <a class="at-home-phone" href="tel:<?=home_e($homePhoneHref)?>"><?=home_e($homePhone)?></a>
-    <a class="at-home-cta" href="/poisk-turov/">Найти тур</a>
-  </div>
-</header>
+<?php v2_render_site_header($homePhone, $homePhoneHref, '/'); ?>
 <main class="at-home-main">
   <section class="at-home-hero">
     <div class="at-home-hero__inner">

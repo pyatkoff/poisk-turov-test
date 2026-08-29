@@ -2,7 +2,8 @@
 var cfg=window.V2_CONFIG||{},apiPath=String(cfg.api||''),runtimeBase=apiPath.replace(/\/api-v2\.php(?:\?.*)?$/,'').replace(/\/$/,'');
 function runtimePath(file){return (runtimeBase||'')+'/'+String(file||'').replace(/^\//,'');}
 var standalone=String(window.location.hostname||'').toLowerCase()==='anytoour.ru',legacyOrigin=standalone?'https://anytour.online':'';
-function siteHref(path){if(standalone&&path==='/poisk-turov/')return path;return legacyOrigin+path;}
+var standalonePaths=['/poisk-turov/','/country/','/country/turkey/','/country/egypt/','/country/tailand/','/country/oae/','/country/russia/','/hot/','/rb/','/contacts/','/how-to-buy/'];
+function siteHref(path){if(standalone&&standalonePaths.indexOf(path)!==-1)return path;return legacyOrigin+path;}
 if(standalone){Array.prototype.forEach.call(document.querySelectorAll('.at-site-header a[href^="/"]'),function(link){var href=link.getAttribute('href')||'';if(href&&href!=='/')link.setAttribute('href',siteHref(href));});}
 var phone=document.querySelector('.at-site-phone');
 if(phone&&(!phone.textContent||phone.textContent.trim()==='Array')){
