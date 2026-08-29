@@ -1,0 +1,45 @@
+name: Validate V2 empty-result relaxation cascade
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/results-renderer-v5.js'
+      - 'v2/catalogs-v2.js'
+      - '.github/workflows/validate-empty-relax-cascade.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  empty-relax-cascade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JavaScript syntax
+        run: |
+          node --check v2/results-renderer-v5.js
+          node --check v2/catalogs-v2.js
+      - name: Validate synchronous dependent-filter clearing
+        shell: bash
+        run: |
+          set -euo pipefail
+          renderer=v2/results-renderer-v5.js
+          grep -Fq "name==='arrival'?['region','subregion','hotel']" "$renderer"
+          grep -Fq "name==='region'?['subregion','hotel']" "$renderer"
+          grep -Fq "name==='subregion'?['hotel']" "$renderer"
+          grep -Fq "if(name==='arrival'||name==='region')form.querySelectorAll('input[name=\"hotel_service[]\"]:checked')" "$renderer"
+          grep -Fq "clearRelaxDependents(form,name);el.dispatchEvent(new Event('change',{bubbles:true}));" "$renderer"
+          grep -Fq "window.V2SearchLifecycle.submit()" "$renderer"
+          echo EMPTY_RELAX_CASCADE_OK
+      - name: Validate catalog refresh remains event-driven
+        shell: bash
+        run: |
+          set -euo pipefail
+          catalogs=v2/catalogs-v2.js
+          grep -Fq "arrival.addEventListener('change'" "$catalogs"
+          grep -Fq "region.addEventListener('change'" "$catalogs"
+          grep -Fq "subregion.addEventListener('change'" "$catalogs"
+          echo EMPTY_RELAX_CATALOG_REFRESH_OK
