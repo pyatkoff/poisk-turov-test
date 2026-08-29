@@ -137,6 +137,32 @@ Maintain work mentally or in project tracking under these categories:
 - `TECH DEBT` — architecture, tests, reliability and maintainability;
 - `SEO FOUNDATION` — architecture/performance/indexability work needed for the future large site.
 
+## Codex execution protocol
+
+Codex is an implementation agent, not the product owner. Before changing code, read `AGENTS.md`, `AUTOPILOT.md`, `AUTOPILOT_STATE.json` and the relevant code/tests for the assigned area.
+
+For every assigned task:
+- restate the concrete failure, expected behavior and affected user flow before editing;
+- keep the diff narrowly scoped to the task and avoid unrelated cleanup;
+- prefer extending an existing test/workflow over creating another overlapping one;
+- identify the smallest relevant validation set first, then run broader regression checks when the change can affect shared state or UI;
+- for user-facing changes, verify at least mobile and desktop behavior and inspect screenshots/artifacts where available;
+- for search/result/tour changes, preserve restored-search behavior and stale/async response protections;
+- for lead-related work, test invocation and UX without changing the external lead contract unless explicitly authorized;
+- never change Metrika/goals, neighboring projects, server-wide configuration or production secrets;
+- never weaken, skip or delete a failing guard merely to make CI green;
+- if a required check cannot run, report the exact blocker and preserve the task as not fully DONE;
+- before merge/deploy, summarize changed files, tests run, remaining risk and rollback surface.
+
+Parallel Codex work must avoid editing the same functional area at the same time. Prefer one active task per area: `search-core`, `results-tour`, `conversion-lead`, or `ux-qa`. If another active branch/PR overlaps materially, finish or rebase one stream before continuing the other.
+
+Risk classes:
+- **SAFE** — isolated copy/CSS/test/docs changes with no business-data or lead impact; normal CI + visual checks where applicable.
+- **MEDIUM** — search state, Tourvisor mapping, results rendering, rooms/flights, restored-state behavior; require targeted tests plus relevant end-to-end/visual evidence.
+- **HIGH** — lead transport, pricing contract, production deploy logic, credentials/secrets, Metrika/analytics contract; do not change autonomously unless explicitly authorized, and require production-safe verification/rollback planning.
+
+Codex should use existing GitHub Actions and Playwright coverage as the primary executable contract. The repository already contains dedicated validation, visual, live-user-journey, deployment and security workflows; do not duplicate them unless a concrete coverage gap is demonstrated.
+
 ## Reporting
 
 During initial active development, provide approximately hourly summaries when work is actively progressing. Reports should focus on outcomes, not commit activity:
