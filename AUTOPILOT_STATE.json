@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T00:05:00+02:00",
+  "updated_at": "2026-08-30T00:07:00+02:00",
   "mode": "pretraffic_site_visual_unification",
-  "phase": "AnyTour Design System 1.0 shared tokens/primitives are now merged and standalone-production-green. Continue with production cross-page responsive audit before any site-wide re-score.",
+  "phase": "AnyTour Design System 1.0 shared tokens/primitives are merged and both standalone/V2 production deploys are green. Continue with production cross-page responsive audit before any site-wide re-score.",
   "scores": {
     "whole_public_site": 6.5,
     "cross_page_visual_consistency": 5.5,
@@ -28,13 +28,15 @@
     "id": "ANYTOUR_DESIGN_SYSTEM_1_AND_SITE_VISUAL_UNIFICATION",
     "category": "SITE_WIDE_UX_VISUAL",
     "status": "ACTIVE",
-    "progress": "PR #278 added design-system-v1.css with shared AnyTour tokens/primitives, loaded it on homepage, standalone content shell and the V2/search bundle, removed duplicated standalone shell tokens/obsolete header CSS, normalized content-page grid/card/button rhythm and mobile footer stacking, and updated stale CI contracts. Final PR head f9ec3e3559b252b231dc57e899e9b7cfc87d6fb3 passed all latest functional and visual checks, including V2 visual baseline, selected-tour, meal visibility, comparison, flight recovery, unpriced-flight, lead/race, bundles, footer, navigation and standalone guards. Squash merge 26f17595f4b87ee925e4238e89b20bf9696f461f deployed successfully to anytoour.ru in run 33277570431 with public-page verification, unchanged lead bridge and live search smoke green. The unpriced-flight CI false-negative was corrected to accept the existing grounded 'цена тура из поиска' wording; product flight/price logic was not changed.",
+    "progress": "PR #278 added design-system-v1.css with shared AnyTour tokens/primitives, loaded it on homepage, standalone content shell and the V2/search bundle, removed duplicated standalone shell tokens/obsolete header CSS, normalized content-page grid/card/button rhythm and mobile footer stacking, and updated stale CI contracts. Final PR head f9ec3e3559b252b231dc57e899e9b7cfc87d6fb3 passed all latest functional and visual checks, including V2 visual baseline, selected-tour, meal visibility, comparison, flight recovery, unpriced-flight, lead/race, bundles, footer, navigation and standalone guards. Squash merge 26f17595f4b87ee925e4238e89b20bf9696f461f deployed successfully to anytoour.ru in run 33277570431 with public-page verification, unchanged lead bridge and live search smoke green; V2 deploy run 33277570466 also completed green with V2 verification and live search smoke. The unpriced-flight CI false-negative was corrected to accept the existing grounded 'цена тура из поиска' wording; product flight/price logic was not changed.",
     "next_action": "Audit deployed /, /poisk-turov/, /hot/, /contacts/, /how-to-buy/, /rb/, /country/ and representative Turkey/Egypt/UAE/Thailand/Russia pages at 375/430/768/1024/1440. Fix confirmed header/grid/typography/spacing/card/footer/wrapping/overflow inconsistencies, then migrate the weakest pages onto shared primitives. Do not re-score from CI alone."
   },
   "production_baseline": {
     "standalone_commit": "26f17595f4b87ee925e4238e89b20bf9696f461f",
     "standalone_deploy_run": 33277570431,
     "standalone_status": "PRODUCTION_GREEN_PUBLIC_PAGES_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
+    "v2_deploy_run": 33277570466,
+    "v2_status": "PRODUCTION_GREEN_VERIFY_AND_LIVE_SEARCH_SMOKE",
     "design_system_release": "PR #278 shared tokens/primitives + responsive content/footer rhythm",
     "scores_revalidated": false
   },
