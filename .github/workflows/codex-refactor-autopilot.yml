@@ -1,0 +1,96 @@
+name: Codex Refactor Autopilot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+
+concurrency:
+  group: codex-refactor-autopilot
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Require configured OpenAI key
+        id: key
+        shell: bash
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "OPENAI_API_KEY is not configured; skipping Codex run."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for existing autopilot PR
+        if: steps.key.outputs.configured == 'true'
+        id: gate
+        shell: bash
+        run: |
+          count="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --json headRefName \
+            --jq '[.[] | select(.headRefName | startswith("codex-autopilot-"))] | length')"
+          if [ "$count" -gt 0 ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "An autopilot PR is already open; skipping this cycle."
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout main
+        if: steps.key.outputs.configured == 'true' && steps.gate.outputs.run == 'true'
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Run Codex refactor slice
+        if: steps.key.outputs.configured == 'true' && steps.gate.outputs.run == 'true'
+        id: codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/prompts/refactor-autopilot.md
+          sandbox: workspace-write
+          safety-strategy: drop-sudo
+          output-file: codex-refactor-report.md
+
+      - name: Remove generated report from proposed code changes
+        if: steps.key.outputs.configured == 'true' && steps.gate.outputs.run == 'true'
+        shell: bash
+        run: rm -f codex-refactor-report.md
+
+      - name: Create branch and pull request when Codex changed files
+        if: steps.key.outputs.configured == 'true' && steps.gate.outputs.run == 'true'
+        shell: bash
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "Codex produced no repository changes."
+            exit 0
+          fi
+
+          branch="codex-autopilot-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add -A
+          git commit -m "chore: Codex refactor autopilot slice"
+          git push origin "$branch"
+
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --base main \
+            --head "$branch" \
+            --title "Codex refactor autopilot slice" \
+            --body "Automated low-risk technical refactor slice produced by the Codex Refactor Autopilot. Review CI and the diff before merge. Hard boundaries remain in AGENTS.md and the committed autopilot prompt."
