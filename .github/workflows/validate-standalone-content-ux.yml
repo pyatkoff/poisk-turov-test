@@ -3,6 +3,7 @@ name: Validate standalone content UX
 on:
   pull_request:
     paths:
+      - 'v2/design-system-v1.css'
       - 'v2/home-v1.css'
       - 'v2/site-page-v1.css'
       - 'v2/product-shell-v1.css'
@@ -14,6 +15,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'v2/design-system-v1.css'
       - 'v2/home-v1.css'
       - 'v2/site-page-v1.css'
       - 'v2/product-shell-v1.css'
@@ -33,9 +35,11 @@ jobs:
         run: |
           set -euo pipefail
           for f in v2/site-page-shell-v1.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php; do php -l "$f" >/dev/null; done
-          grep -Fq -- '--o:#D83D00' v2/site-page-v1.css
+          grep -Fq -- '--at-accent:#D83D00' v2/design-system-v1.css
+          grep -Fq -- '--at-shell:1180px' v2/design-system-v1.css
           grep -Fq '.sp-card a.sp-primary{color:#fff}' v2/site-page-v1.css
-          grep -Fq '.sp-header a:focus-visible,.sp-main a:focus-visible' v2/site-page-v1.css
+          grep -Fq '.sp-main a:focus-visible' v2/site-page-v1.css
+          ! grep -Fq '.sp-header' v2/site-page-v1.css
           grep -Fq -- '--at-orange:#D83D00' v2/home-v1.css
           grep -Fq '.at-home-header a:focus-visible,.at-home-search button:focus-visible' v2/home-v1.css
           grep -Fq 'background:#D83D00!important;color:#fff!important' v2/product-shell-v1.css
@@ -56,8 +60,10 @@ jobs:
               if(substr_count($html,"class=\"v2-site-community\"")!==1) exit(11);
               if(strpos($html,"href=\"$searchHref\"")===false) exit(12);
               if(strpos($html,$heading)===false) exit(13);
+              if(substr_count($html,"<style id=\"sp-design-system-css\">")!==1) exit(20);
               if(substr_count($html,"<style id=\"sp-page-css\">")!==1) exit(15);
               if(substr_count($html,"<style id=\"sp-footer-css\">")!==1) exit(16);
+              if(strpos($html,"--at-accent:#D83D00")===false) exit(21);
               if(strpos($html,".sp-card a.sp-primary{color:#fff}")===false) exit(17);
               if(strpos($html,".v2-site-community")===false) exit(18);
               if(strpos($html,"/contacts/site-page-v1.css")!==false||strpos($html,"/how-to-buy/site-page-v1.css")!==false||strpos($html,"/rb/site-page-v1.css")!==false) exit(19);

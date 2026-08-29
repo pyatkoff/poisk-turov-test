@@ -40,7 +40,8 @@ jobs:
               $url=v2_bundle_asset($type);
               if (!str_contains($url,'bundle-v1.php?type='.$type.'&v='.$a)) {fwrite(STDERR,"bad $type url: $url\n"); exit(5);}
           }
-          if (count($manifest['css'])!==23) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
+          if (count($manifest['css'])!==24) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
+          if (($manifest['css'][0]??'')!=='design-system-v1.css') {fwrite(STDERR,"design system must load first\n"); exit(8);}
           if (count($manifest['js'])!==32) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
           echo 'BUNDLE_MANIFEST_OK css='.count($manifest['css']).' js='.count($manifest['js'])."\n";
           PHP
@@ -72,6 +73,7 @@ jobs:
           grep -iq '^Content-Type: text/css' "$RUNNER_TEMP/headers"
           grep -iq '^Cache-Control: public, max-age=31536000, immutable' "$RUNNER_TEMP/headers"
           grep -Fq '.search-submit' "$RUNNER_TEMP/bundle.css"
+          grep -Fq -- '--at-shell:1180px' "$RUNNER_TEMP/bundle.css"
           echo "BUNDLE_HTTP_CACHE_OK"
       - name: Validate startup request collapse
         shell: bash
