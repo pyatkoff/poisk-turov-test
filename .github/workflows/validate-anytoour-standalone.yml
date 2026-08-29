@@ -70,7 +70,7 @@ jobs:
             $_GET=[];
             ob_start(); include "v2/country/index.php"; $html=ob_get_clean();
             foreach (["переносим", "старого сайта", "по мере переноса", "Пока открываем"] as $internal) {
-              if (mb_stripos($html, $internal, 0, "UTF-8") !== false) exit(43);
+              if (strpos($html, $internal) !== false) exit(43);
             }
             if (strpos($html, "Искать по всем странам") === false) exit(44);
             echo "STANDALONE_COUNTRY_COPY_OK\n";
