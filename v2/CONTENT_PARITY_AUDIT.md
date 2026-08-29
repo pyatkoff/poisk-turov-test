@@ -12,6 +12,7 @@ Statuses: `restored`, `intentional-replacement`, `missing`, `needs-review`, `not
 | Social networks | Links plus recognizable social destinations | MAX, Telegram, VK links present | restored; branded inline SVG marks added |
 | Mobile apps | App Store and Google Play links | Both links present | restored; visual store marks added |
 | `/hot/` | Live cards with hotel, resort/country, departure, dates, nights, old price/new price and discount | Only explanatory content + handoff to search | missing: build live hot-tour block from current search/API; never copy stale prices |
+| `/country/` catalog | Legacy catalog exposed roughly 70 countries/destinations | Current static catalog exposes only 14 | missing: build full catalog from Platform country entities/current catalog source; routes without SEO landing should safely hand off to search rather than 404 |
 | Country pages | Search form preselected to country + live hot tours for that country | Current legacy-migration pages and new Platform country renderer are much thinner | missing: dynamic search/LiveTours block belongs in platform, actual search hydration stays Search-owned |
 | `/poisk-turov/` | Full search, resort filters, prices, lead form | Replaced by newer search product | intentional-replacement; preserve useful capabilities, not old UI |
 | `/payment/` | Cash/card in office and online-payment explanation | Footer still points to legacy site | missing/needs-review: migrate after current payment process is confirmed |
