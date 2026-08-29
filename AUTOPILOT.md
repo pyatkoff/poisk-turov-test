@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-29 18:15 +02:00
+Updated: 2026-08-29 19:07 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -14,27 +14,25 @@ Standalone architecture remains explicit: `https://anytoour.ru/` is the new home
 
 ## Latest material evidence
 
-- #266 extends the post-recovery comparison browser guard across 375/768/1440. It verifies that sort-triggered DOM rerenders preserve comparison membership by stable hotel id, a recovered/final result set removing one selected hotel closes the now-invalid dialog, a later results retry does not resurrect the removed selection, the active sort remains intact, and comparison can then be resumed with a current hotel. PR browser run `33261729363` and Security run `33261729429` are green. Runtime code did not need a patch.
-- #264 fixed a confirmed final-results recovery edge. The lifecycle already considers `status=complete` a completed Tourvisor search even when numeric progress is absent or below 100, but the recovery UI previously keyed only off numeric 100 and could offer a full search restart after a final `search_results` fetch failure. The UI now remembers both completion signals and restores the existing results-only retry, preserving the completed `searchId` and avoiding an unnecessary second search.
-- #264 passed the full 17-check PR bundle. Production is green: V2 deploy `33259402253` passed active-contract validation, copy, verify and live search smoke; standalone deploy `33259402295` passed standalone validation, public-page verification, verification that the lead bridge still reaches the unchanged production adapter, and live search smoke.
-- #261 fixed the empty-results relaxation dependency race: arrival/region/subregion recovery clears dependent region/subregion/hotel constraints synchronously before catalog refresh and resubmit; arrival/region also clear destination-specific hotel services. V2 deploy `33259024852` and standalone deploy `33259024876` are green.
-- #262 added a dedicated regression workflow for #261. The first workflow draft failed only because it assumed separate select listeners while catalogs use the shared `handleChange` dispatcher; the guard was corrected to the real dispatcher and run `33259182392` plus Security run `33259182439` are green. Runtime code was not changed by #262.
-- #259 remains the production-safe real-data second-tour integration guard. It starts a live Tourvisor search on `anytoour.ru`, resolves two distinct real tour IDs, then independently validates hotel details, tour payload/price and flights for both without creating a lead. PR run `33256610100` and post-merge live run `33256645565` are green.
-- #257 remains the focused browser state-isolation protection at 375/768/1440: tour-1 priced-flight price/fuel/lead-summary/room state resets before tour 2; pending-price fallback and final return target stay tied to tour 2.
-- Standalone country handoff remains correct for Turkey/Egypt/UAE/Thailand/Russia through `/poisk-turov/?country=...`; undeployed country routes intentionally remain on valid legacy destinations. `/hot/` continues to reuse the shared `/poisk-turov/` flow with supported `dateFrom/dateTo` aliases for a near-term date handoff; no confirmed runtime defect was found there in the latest audit.
-- Legal/payment footer destinations remain intentionally legacy-only because current source content is not reconciled. Older open PRs #248/#249/#254 remain deferred because they are stale/overlapping and #254 additionally introduces a separate DB/platform architecture.
-- Existing downstream protections remain valid: #255 selected-tour return after rerender; #252 pending selected-flight confidence; #250 pending-flight fuel context; #246 flight autoload/retry races; #245 priced-flight fuel fallback; #243 same-tour lead recovery; #242 room recovery/stale response; #241 return/focus fallback; #237 empty-flight retry; #230 stale lead-response race; #227 stale flight-price reset; #226 comparison refresh; #225 final-set decision badges; #217/#219/#221 search recovery.
+- #269 is production-green. It safely improves the existing standalone social/app footer with inline brand/store icons while preserving all five verified destinations and the existing footer/search/lead contracts. The responsive footer guard now tests the DOM production actually renders (`.v2-site-community`) instead of the obsolete `.v2-site-footer` contract, and covers 375/768/1440 without horizontal overflow or undersized mobile targets.
+- During #269 a separate baseline CI defect was confirmed and fixed: the active bundle manifest contains 23 CSS + 32 legitimate JS assets, while the startup-bundle guard still hard-coded 31 JS. The guard is now synchronized to 32; bundle syntax/cache/request-collapse coverage remains intact.
+- #269 passed all 12 PR checks, including standalone, PHP 8.3, startup/branch bundles, dedicated footer responsive validation, Security and the complete V2 visual set. The superseded #268 footer hotfix was closed rather than merged because it removed part of the current footer contract.
+- Production on commit `d03322511a18c7a6b0150ef2444222004e92cef7` is verified: V2 deploy `33264609173` passed active validation → V2-only copy → verify → live search smoke; standalone deploy `33264609196` passed release validation → public-page verification → verification that the lead bridge still reaches the unchanged production adapter → live search smoke. Live tour/flights `33264609187` and result→detail `33264609169` are also green. Post-deploy visual/content workflows are running on the same head and must be checked at the next resume point before another visual release if any failure appears.
+- #266 remains the post-recovery comparison browser guard across 375/768/1440: sort rerenders preserve comparison membership by stable hotel id; a recovered/final result set removing one selected hotel closes the invalid dialog; later result retry does not resurrect stale selection; active sort persists and comparison can resume.
+- #264 remains the completed-search recovery fix: `status=complete` without numeric progress=100 preserves the completed `searchId` and results-only retry instead of restarting search.
+- #259 remains the production-safe real-data second-tour integration guard: live Tourvisor search resolves two distinct tour IDs and validates hotel/tour/price/flights independently without creating a lead.
+- Existing downstream protections remain valid: #257 second-tour state isolation; #255 selected-tour return after rerender; #252 pending selected-flight confidence; #250 pending-flight fuel context; #246 flight autoload/retry races; #245 priced-flight fuel fallback; #243 same-tour lead recovery; #242 room recovery/stale response; #241 return/focus fallback; #237 empty-flight retry; #230 stale lead-response race; #227 stale flight-price reset; #226 comparison refresh; #225 final-set decision badges; #217/#219/#221 search recovery.
+- Standalone country handoff remains correct for Turkey/Egypt/UAE/Thailand/Russia through `/poisk-turov/?country=...`; undeployed country routes intentionally remain on valid legacy destinations. `/hot/` continues to reuse the shared search flow.
+- Legal/payment footer destinations remain intentionally legacy-only because source content is not reconciled. PR #254 remains deferred: despite useful content work it introduces a separate DB/platform architecture and therefore is not a safe autonomous merge into the current search baseline. #248/#249 remain stale/overlapping and deferred.
 
 ## Exact next work order
 
-1. Continue the whole-V2 mobile/tablet/desktop browser audit from post-recovery results into the second selected-tour cycle: selected tour → room → flights/autoload/error/retry → priced/unpriced → price/fuel confidence → lead error/retry/success. Fix only confirmed defects.
-2. Re-run the complete real-result cycle after return to results, preserving sort/comparison/scroll/focus while selecting a different tour, and extend guards only where an uncovered state transition is found.
-3. Continue standalone content UX stabilization. Prioritize missing non-legal content/live-value gaps that can be verified safely; do not copy stale prices, legal text or payment instructions.
-4. Continue `/hot/` and country/content-page handoff audits only where they reuse the existing search/API rather than duplicating search logic.
-5. Continue auditing selected-tour/flight/lead consumers for stale wording/state while preserving the external lead contract.
-6. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior, feed deployment and the existing lead contract.
-7. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
-8. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
+1. First check the post-deploy workflow-run fan-out for production head `d03322511a18c7a6b0150ef2444222004e92cef7` (standalone live visual/results/content/navigation/user-journey checks). If any confirmed regression exists, fix it before roadmap work.
+2. Continue the whole-V2 mobile/tablet/desktop browser audit from post-recovery results into the second selected-tour cycle: selected tour → room → flights/autoload/error/retry → priced/unpriced → price/fuel confidence → lead error/retry/success. Fix only confirmed defects.
+3. Re-run the complete real-result cycle after return to results, preserving sort/comparison/scroll/focus while selecting a different tour; extend guards only for an uncovered transition.
+4. Continue safe non-legal standalone content UX stabilization and `/hot/`/country handoff auditing where pages reuse the existing search/API rather than duplicate logic.
+5. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior, feed deployment, existing Tourvisor request contract, Metrika/goals and the existing lead contract.
+6. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist. Do not run traffic diagnostics until owner explicitly launches traffic.
 
 ## Guardrails
 
