@@ -16,7 +16,7 @@ jobs:
         run: |
           set -euo pipefail
           check_page(){
-            local path="$1" marker="$2" canonical="$3" out
+            local path="$1" marker="$2" canonical="$3" out code
             out="/tmp/page-$(echo "$path" | tr '/-' '__').html"
             code="$(curl -fsSL -o "$out" -w '%{http_code}' --max-time 45 "https://anytoour.ru$path")"
             echo "$path HTTP=$code"
@@ -27,7 +27,8 @@ jobs:
             grep -Fq '/images/logo.svg' "$out"
           }
           check_country_handoff(){
-            local slug="$1" country_id="$2" out="/tmp/page__country_${slug}_.html"
+            local slug="$1" country_id="$2" out
+            out="/tmp/page__country_${slug}_.html"
             grep -Eq "href=['\"]\/poisk-turov\/\?country=${country_id}['\"]" "$out"
             echo "/country/$slug/ -> /poisk-turov/?country=$country_id OK"
           }
