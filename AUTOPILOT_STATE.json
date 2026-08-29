@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T15:03:00+02:00",
+  "updated_at": "2026-08-29T16:00:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core product areas remain at 9.0. Selected-tour return now survives result-list rerenders by resolving the recreated source control through stable tour id. Standalone stabilization continues; SEO/site foundation remains 8.8 and indexing/publication is deferred.",
+  "phase": "Core product areas remain at 9.0. Selected-tour return survives result-list rerenders and the second-tour cycle is now explicitly guarded against stale price/fuel/room/lead state after return. Standalone stabilization continues; SEO/site foundation remains 8.8 and indexing/publication is deferred.",
   "scores": {"search_ux":9.0,"waiting_progress_recovery":9.0,"results_comparison":9.0,"selected_tour":9.0,"flights_price":9.0,"lead_ux":9.0,"mobile_ux":9.0,"tablet_desktop_ux":9.0,"brand_trust":9.0,"visual_quality":9.0,"product_differentiation":9.0,"seo_site_foundation":8.8},
   "current_task": {
     "id":"ANYTOOUR_STANDALONE_STABILIZATION",
     "category":"PRODUCTION_UX_DATA",
     "status":"ACTIVE",
-    "progress":"#255 fixed return/reselection focus loss after results rerender. All 11 PR checks passed at 375/768/1440 coverage; V2 deploy 33253836915 and standalone deploy 33253836942 are production green. Active V2 contract 33253836814, result-detail live 33253836918, tour live 33253836917 and Security 33253836893 are green.",
-    "next_action":"Continue the whole-V2 mobile/tablet/desktop browser pass, emphasizing second-tour selection after a real-result return plus room/flight/price/lead state isolation; then continue standalone content UX. Fix only confirmed defects."
+    "progress":"#257 added a 375/768/1440 browser guard for return → second tour isolation. It confirms tour-1 priced/fuel/lead-summary/room state resets before tour 2, pending-price/fuel context stays on tour 2, and return focus targets tour 2. Dedicated run 33256379305 and post-merge Security 33256406686 are green. No runtime defect was confirmed, so production code was unchanged and no deploy was needed.",
+    "next_action":"Continue the whole-V2 mobile/tablet/desktop browser pass with a real-result second-tour journey to catch integration-only state/render/focus defects; then continue standalone content UX and route promotion only where the local page and search handoff are verified."
   },
   "production_baseline": {
     "last_verified_legacy_commit":"4503bb7db97727256f1ad6c69ed241187ce99f6d",
@@ -32,6 +32,7 @@
     "feed_status":"PRODUCTION_GREEN_PUBLIC_XML"
   },
   "recent_material_fixes":[
+    {"pr":257,"scope":"second_tour_state_isolation_guard","result":"Focused browser coverage proves first-tour priced/fuel/room/lead-summary state does not leak into the second tour after return; pending-price context/fuel fallback and final return target stay tied to tour 2 at 375/768/1440. No runtime defect found."},
     {"pr":255,"scope":"selected_tour_return_after_results_rerender","result":"Return/reselection now stores stable tour id and resolves the recreated current .direct-tour control after sort/refresh before falling back to the results region; initial, hidden-source, rerender and repeated-success return protected at 375/768/1440 and production green."},
     {"pr":252,"scope":"pending_selected_flight_price_confidence","result":"An already-selected flight with pending recalculated price explicitly says its price is being clarified and that the search price is temporarily shown; base/priced/pending transitions protected at 375/768/1440 and production green."},
     {"pr":250,"scope":"pending_flight_fuel_context_fallback","result":"Pending flight without fuelCharge uses the same tour-fuel fallback in UI and v2:tour-price-updated context; priced→pending-specific→pending-fallback protected at 375/768/1440 and production green."},
