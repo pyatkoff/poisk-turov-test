@@ -13,15 +13,20 @@ ON DUPLICATE KEY UPDATE entity_id = VALUES(entity_id), external_id = VALUES(exte
 
 INSERT INTO at_entities (entity_key, entity_type, slug, name, parent_id, status, sort_order, data_json)
 VALUES
-  ('resort:turkey:antalya', 'resort', 'antalya', 'Анталья', @turkey_id, 'active', 10, JSON_OBJECT()),
+  ('resort:turkey:antalya', 'resort', 'antalya', 'Анталья', @turkey_id, 'active', 10, JSON_OBJECT('name_accusative', 'Анталью', 'name_prepositional', 'Анталье', 'name_genitive', 'Антальи')),
   ('resort:turkey:belek', 'resort', 'belek', 'Белек', @turkey_id, 'active', 20, JSON_OBJECT()),
   ('resort:turkey:kemer', 'resort', 'kemer', 'Кемер', @turkey_id, 'active', 30, JSON_OBJECT()),
   ('resort:turkey:side', 'resort', 'side', 'Сиде', @turkey_id, 'active', 40, JSON_OBJECT())
-ON DUPLICATE KEY UPDATE name = VALUES(name), parent_id = VALUES(parent_id), status = VALUES(status), sort_order = VALUES(sort_order);
+ON DUPLICATE KEY UPDATE name = VALUES(name), parent_id = VALUES(parent_id), status = VALUES(status), sort_order = VALUES(sort_order), data_json = VALUES(data_json);
+
+SET @antalya_id := (SELECT id FROM at_entities WHERE entity_key = 'resort:turkey:antalya' LIMIT 1);
 
 INSERT INTO at_content_blocks (owner_type, owner_id, block_type, block_key, sort_order, enabled, source, content_json)
 VALUES
   ('entity', @turkey_id, 'hero', 'hero', 10, 1, 'generated', JSON_OBJECT('eyebrow', 'Туры в Турцию', 'search_intent', JSON_OBJECT('country', 'turkey'))),
   ('entity', @turkey_id, 'resort_grid', 'popular_resorts', 20, 1, 'generated', JSON_OBJECT('title', 'Популярные курорты Турции')),
-  ('entity', @turkey_id, 'live_tours', 'live_tours', 30, 1, 'generated', JSON_OBJECT('title', 'Актуальные туры в Турцию'))
+  ('entity', @turkey_id, 'live_tours', 'live_tours', 30, 1, 'generated', JSON_OBJECT('title', 'Актуальные туры в Турцию')),
+  ('entity', @antalya_id, 'hero', 'hero', 10, 1, 'generated', JSON_OBJECT('eyebrow', 'Туры в Анталью', 'intro', 'Анталья — один из главных курортов Турции. Сравните даты, формат отдыха и актуальные предложения перед выбором тура.')),
+  ('entity', @antalya_id, 'hotel_grid', 'hotels', 20, 1, 'generated', JSON_OBJECT('title', 'Отели Антальи')),
+  ('entity', @antalya_id, 'live_tours', 'live_tours', 30, 1, 'generated', JSON_OBJECT('title', 'Актуальные туры в Анталью'))
 ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order), enabled = VALUES(enabled), source = VALUES(source), content_json = VALUES(content_json);
