@@ -7,6 +7,7 @@ on:
       - 'v2/mobile-search-summary-v1.js'
       - 'v2/mobile-search-summary-v1.css'
       - 'v2/search-progress-ux-v1.css'
+      - 'v2/bundle-manifest-v1.php'
       - '.github/workflows/validate-mobile-sticky-boundary.yml'
   workflow_dispatch:
 
@@ -31,31 +32,39 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
+      - name: Build branch bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '$_GET=["type"=>"css"]; include "v2/bundle-v1.php";' > "$RUNNER_TEMP/branch-bundle.css"
+          php -r '$_GET=["type"=>"js"]; include "v2/bundle-v1.php";' > "$RUNNER_TEMP/branch-bundle.js"
+          test -s "$RUNNER_TEMP/branch-bundle.css"
+          test -s "$RUNNER_TEMP/branch-bundle.js"
       - name: Verify sticky CTA stops at form boundary
         shell: bash
         env:
           V2_URL: https://anytour.online/poisk-turov-test/v2/
+          BRANCH_CSS: ${{ runner.temp }}/branch-bundle.css
+          BRANCH_JS: ${{ runner.temp }}/branch-bundle.js
         run: |
           set -euo pipefail
           cat > mobile-sticky-boundary.cjs <<'JS'
           const {chromium}=require('playwright');
-          const fs=require('fs'),path=require('path');
-          const root=path.resolve('v2'),url=process.env.V2_URL;
-          const assetRe=/\/poisk-turov-test\/v2\/([^/?]+\.(?:js|css))(?:\?.*)?$/i;
+          const fs=require('fs'),url=process.env.V2_URL;
+          const css=fs.readFileSync(process.env.BRANCH_CSS),js=fs.readFileSync(process.env.BRANCH_JS);
           const viewports=[['mobile-375',375,812],['mobile-430',430,932]];
-          const visible=el=>!!el&&!el.hidden&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden';
           (async()=>{
             const browser=await chromium.launch({headless:true});let failed=false;
             for(const [name,width,height] of viewports){
               const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
               const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(String(e)));
-              await page.route('**/*',route=>{const match=new URL(route.request().url()).pathname.match(assetRe);if(!match)return route.continue();const file=path.join(root,path.basename(match[1]));if(!fs.existsSync(file))return route.continue();return route.fulfill({status:200,contentType:path.extname(file)==='.css'?'text/css':'application/javascript',body:fs.readFileSync(file)});});
+              await page.route('**/*',route=>{const u=new URL(route.request().url());if(u.pathname.endsWith('/bundle-v1.php')){const type=u.searchParams.get('type');if(type==='css')return route.fulfill({status:200,contentType:'text/css; charset=UTF-8',body:css});if(type==='js')return route.fulfill({status:200,contentType:'application/javascript; charset=UTF-8',body:js});}return route.continue();});
               const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});await page.waitForTimeout(4500);
-              const state=()=>page.evaluate(()=>{const source=document.querySelector('.search-submit'),sticky=document.querySelector('.mobile-search-sticky'),sentinel=document.querySelector('.mobile-search-submit-sentinel');const isVisible=el=>!!el&&!el.hidden&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden';return{sticky:isVisible(sticky),inline:isVisible(source),sentinel:!!sentinel,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,scrollY:scrollY};});
+              const state=()=>page.evaluate(()=>{const source=document.querySelector('.search-submit'),sticky=document.querySelector('.mobile-search-sticky'),sentinel=document.querySelector('.mobile-search-submit-sentinel');const isVisible=el=>!!el&&!el.hidden&&getComputedStyle(el).display!=='none'&&getComputedStyle(el).visibility!=='hidden';const rect=sticky?.getBoundingClientRect();return{sticky:isVisible(sticky),inline:isVisible(source),sentinel:!!sentinel,stickyHeight:rect?.height||0,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,scrollY:scrollY};});
               const initial=await state();
               await page.evaluate(()=>document.querySelector('.mobile-search-submit-sentinel')?.scrollIntoView({block:'center'}));await page.waitForTimeout(250);const atBoundary=await state();
               await page.evaluate(()=>{const trust=document.getElementById('v2AgencyTrust');if(trust)trust.scrollIntoView({block:'start'});else scrollTo(0,document.documentElement.scrollHeight);});await page.waitForTimeout(250);const belowForm=await state();
-              const bad=(response?.status()||0)!==200||errors.length||!initial.sentinel||initial.overflow||(!initial.sticky&&!initial.inline)||atBoundary.sticky||!atBoundary.inline||belowForm.sticky;
+              const bad=(response?.status()||0)!==200||errors.length||!initial.sentinel||initial.overflow||(!initial.sticky&&!initial.inline)||initial.stickyHeight>64||atBoundary.sticky||!atBoundary.inline||belowForm.sticky;
               console.log('MOBILE_STICKY_BOUNDARY',name,JSON.stringify({initial,atBoundary,belowForm,errors}));if(bad)failed=true;await context.close();
             }
             await browser.close();if(failed)process.exit(1);
