@@ -1,0 +1,36 @@
+name: Validate SEO Platform v1
+
+on:
+  push:
+    branches:
+      - feature/seo-foundation
+    paths:
+      - 'platform/seo/**'
+      - 'platform/tests/seo-policy-test.php'
+      - 'platform/migrations/20260829_002_seo_registry.sql'
+      - '.github/workflows/validate-seo-platform-v1.yml'
+  pull_request:
+    paths:
+      - 'platform/seo/**'
+      - 'platform/tests/seo-policy-test.php'
+      - 'platform/migrations/20260829_002_seo_registry.sql'
+      - '.github/workflows/validate-seo-platform-v1.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+      - name: Lint SEO Platform PHP
+        run: |
+          find platform/seo platform/tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Run SEO policy contract test
+        run: php platform/tests/seo-policy-test.php
+      - name: Assert registry safety defaults
+        run: |
+          grep -q "DEFAULT 'draft'" platform/migrations/20260829_002_seo_registry.sql
+          grep -q "UNIQUE KEY uq_seo_url_path" platform/migrations/20260829_002_seo_registry.sql
+          grep -q "preserve_query" platform/migrations/20260829_002_seo_registry.sql
