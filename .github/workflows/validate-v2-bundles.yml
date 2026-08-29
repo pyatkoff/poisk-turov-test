@@ -40,9 +40,10 @@ jobs:
               $url=v2_bundle_asset($type);
               if (!str_contains($url,'bundle-v1.php?type='.$type.'&v='.$a)) {fwrite(STDERR,"bad $type url: $url\n"); exit(5);}
           }
-          if (count($manifest['css'])!==25) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
+          if (count($manifest['css'])!==26) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
           if (($manifest['css'][0]??'')!=='design-system-v1.css') {fwrite(STDERR,"design system must load first\n"); exit(8);}
-          if (($manifest['css'][count($manifest['css'])-1]??'')!=='search-header-layout-guard-v1.css') {fwrite(STDERR,"search header layout guard must load last\n"); exit(9);}
+          if (($manifest['css'][count($manifest['css'])-2]??'')!=='search-header-layout-guard-v1.css') {fwrite(STDERR,"search header layout guard must stay directly before footer rhythm\n"); exit(9);}
+          if (($manifest['css'][count($manifest['css'])-1]??'')!=='search-footer-rhythm-v1.css') {fwrite(STDERR,"search footer rhythm must load last\n"); exit(10);}
           if (count($manifest['js'])!==32) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
           echo 'BUNDLE_MANIFEST_OK css='.count($manifest['css']).' js='.count($manifest['js'])."\n";
           PHP
@@ -76,6 +77,7 @@ jobs:
           grep -Fq '.search-submit' "$RUNNER_TEMP/bundle.css"
           grep -Fq -- '--at-shell:1180px' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Production guard for the legacy search-header markup' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'Search-page footer rhythm guard' "$RUNNER_TEMP/bundle.css"
           echo "BUNDLE_HTTP_CACHE_OK"
       - name: Validate startup request collapse
         shell: bash
