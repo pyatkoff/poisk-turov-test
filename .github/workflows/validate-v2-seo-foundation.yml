@@ -1,11 +1,22 @@
 name: Validate V2 SEO foundation
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/index.php'
+      - 'v2/form-defaults.php'
+      - 'v2/seo-config.php'
+      - 'v2/site-footer-v1.php'
+      - 'v2/site-footer-v1.css'
+      - 'v2/bundle-manifest-v1.php'
+      - '.github/workflows/validate-v2-seo-foundation.yml'
   push:
     branches: [main]
     paths:
       - 'v2/index.php'
       - 'v2/form-defaults.php'
+      - 'v2/seo-config.php'
       - 'v2/site-footer-v1.php'
       - 'v2/site-footer-v1.css'
       - 'v2/bundle-manifest-v1.php'
@@ -25,12 +36,14 @@ jobs:
           set -euo pipefail
           fail(){ echo "SEO_FOUNDATION_FAIL:$1"; exit 1; }
           base="https://anytour.online/poisk-turov-test/v2/"
+          canonical="https://anytoour.ru/poisk-turov/"
           code="$(curl -k -L -sS -o /tmp/v2-seo.html -w "%{http_code}" --max-time 45 "$base")"
           test "$code" = "200" || fail page_http
 
-          python3 - <<'PY' || exit 1
-          import re, html
+          CANONICAL="$canonical" python3 - <<'PY' || exit 1
+          import os, re, html
           text=open('/tmp/v2-seo.html',encoding='utf-8').read()
+          canonical=os.environ['CANONICAL']
           def fail(msg):
               print('SEO_FOUNDATION_FAIL:'+msg)
               raise SystemExit(1)
@@ -42,7 +55,8 @@ jobs:
           if len(robots)!=1: fail('robots_count')
           robot_tag=robots[0].lower()
           if 'noindex' not in robot_tag or 'follow' not in robot_tag: fail('test_route_must_noindex_follow')
-          if re.search(r'<link\b[^>]*rel=["\']canonical["\']',text,re.I): fail('test_route_canonical_not_allowed')
+          canonicals=re.findall(r'<link\b[^>]*rel=["\']canonical["\'][^>]*>',text,re.I)
+          if len(canonicals)!=1 or ('href="'+canonical+'"') not in canonicals[0] and ("href='"+canonical+"'") not in canonicals[0]: fail('compatibility_canonical')
           h1s=re.findall(r'<h1\b[^>]*>(.*?)</h1>',text,re.I|re.S)
           if len(h1s)!=1: fail('h1_count')
           h1=html.unescape(re.sub(r'<[^>]+>',' ',h1s[0])).strip().lower()
@@ -60,7 +74,7 @@ jobs:
           if not re.search(r'<link\b[^>]*id=["\']v2-primary-search-ux-style["\'][^>]*rel=["\']stylesheet["\']',text,re.I): fail('bundled_stylesheet_link')
           for marker in ['results-renderer-v5.js','tour-controller-v4.js','lead-form-guard-v1.js']:
               if marker not in text: fail('active_marker_'+marker)
-          print('V2_SEO_FOUNDATION_OK title=1 description=1 robots=noindex_follow h1=1 internalLinks='+str(len(required_links))+' duplicateV2Footer=0 communityBlock=1 bundledStyle=1 canonical=absent')
+          print('V2_SEO_FOUNDATION_OK title=1 description=1 robots=noindex_follow h1=1 internalLinks='+str(len(required_links))+' duplicateV2Footer=0 communityBlock=1 bundledStyle=1 canonical=standalone_search')
           PY
 
       - name: Validate search-state URLs stay non-indexable
@@ -69,6 +83,7 @@ jobs:
           set -euo pipefail
           fail(){ echo "SEO_SEARCH_STATE_FAIL:$1"; exit 1; }
           base="https://anytour.online/poisk-turov-test/v2/"
+          canonical="https://anytoour.ru/poisk-turov/"
 
           curl -k -L -sS --max-time 45 --get \
             --data-urlencode 'from=2' \
@@ -90,15 +105,17 @@ jobs:
             --data-urlencode 'count_people=99' \
             "$base" -o /tmp/v2-seo-invalid-state.html
 
-          python3 - <<'PY' || exit 1
-          import re
+          CANONICAL="$canonical" python3 - <<'PY' || exit 1
+          import os, re
+          canonical=os.environ['CANONICAL']
           def fail(msg):
               print('SEO_SEARCH_STATE_FAIL:'+msg)
               raise SystemExit(1)
           def check_policy(text,label):
               robots=re.findall(r'<meta\b[^>]*name=["\']robots["\'][^>]*>',text,re.I)
               if len(robots)!=1 or 'noindex' not in robots[0].lower() or 'follow' not in robots[0].lower(): fail(label+'_robots')
-              if re.search(r'<link\b[^>]*rel=["\']canonical["\']',text,re.I): fail(label+'_canonical')
+              canonicals=re.findall(r'<link\b[^>]*rel=["\']canonical["\'][^>]*>',text,re.I)
+              if len(canonicals)!=1 or ('href="'+canonical+'"') not in canonicals[0] and ("href='"+canonical+"'") not in canonicals[0]: fail(label+'_canonical')
               if len(re.findall(r'<h1\b[^>]*>',text,re.I))!=1: fail(label+'_h1')
           valid=open('/tmp/v2-seo-valid-state.html',encoding='utf-8').read()
           invalid=open('/tmp/v2-seo-invalid-state.html',encoding='utf-8').read()
@@ -118,5 +135,5 @@ jobs:
           if 'name="from" data-v2-catalog="departures"><option value="-5" selected>' in invalid: fail('invalid_from_leaked')
           if 'name="country" data-v2-catalog="countries"><option value="abc" selected>' in invalid: fail('invalid_country_leaked')
           if 'value="not-a-date"' in invalid or 'value="999"' in invalid or '<option value="99" selected>' in invalid: fail('invalid_value_leaked')
-          print('V2_SEO_SEARCH_STATE_OK valid_prefill=7 invalid_normalized=1 robots=noindex_follow canonical=absent')
+          print('V2_SEO_SEARCH_STATE_OK valid_prefill=7 invalid_normalized=1 robots=noindex_follow canonical=standalone_search')
           PY
