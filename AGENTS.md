@@ -24,6 +24,31 @@ The agent may independently:
 
 Do not stop after every intermediate step to ask whether to continue. Continue through the roadmap until a genuine blocker is reached.
 
+## Codex execution protocol
+
+Codex is an execution lane inside this autopilot, not a separate product owner or source of priorities.
+
+When a task is delegated to Codex:
+- the task prompt supplied to Codex is authoritative;
+- first read `AGENTS.md`, `AUTOPILOT.md` and `AUTOPILOT_STATE.json`, then inspect the active implementation and existing tests before editing;
+- do not depend on GitHub Issues/API access from the Codex sandbox;
+- an empty `git remote -v`, missing GitHub credentials or a local branch named `work` is acceptable and is not a repository mismatch by itself;
+- verify repository identity from the checked-out project files and the explicit task prompt;
+- do not stop merely because GitHub network/API access is unavailable when the coding task can be completed from the prepared checkout;
+- keep each task narrowly scoped and avoid unrelated cleanup/refactoring;
+- do not invent a defect merely to produce a commit; if the audited behavior is correct, make no production code change and close the most important confirmed test/coverage gap only when useful;
+- prefer existing workflows/diagnostics over duplicating infrastructure;
+- run the narrowest relevant checks first, then the broader regression/visual checks required by this file;
+- for user-facing changes, verify relevant mobile/desktop widths and inspect visual evidence;
+- report root cause or audit conclusion, exact changed files, checks run/results and remaining risk.
+
+Parallel Codex lanes must have non-overlapping responsibility whenever practical. A higher-priority production, lead-loss or data-correctness problem may interrupt a lower-priority Codex task.
+
+Risk handling:
+- **SAFE** — tests/docs/local guards and small isolated fixes with no external contract change; may proceed through PR/CI autonomously.
+- **MEDIUM** — search/results/recovery/UI behavior changes; require focused regression evidence plus relevant broader CI before merge.
+- **HIGH** — Metrika/goals, lead external contract, Tourvisor external contract, server/platform architecture, irreversible data/schema changes or cross-project scope; stop for explicit review unless the user has already approved that exact change.
+
 ## Hard boundaries
 
 This repository/project is isolated from neighboring projects.
