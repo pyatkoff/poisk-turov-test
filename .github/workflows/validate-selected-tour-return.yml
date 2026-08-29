@@ -52,11 +52,19 @@ jobs:
               await page.evaluate(()=>{document.querySelector('[data-card="two"]').hidden=false;});
               await page.click('[data-tid="t1"]');
               await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:{id:'t1'}}})));
+              await page.evaluate(()=>{const results=document.getElementById('results');results.innerHTML='<div class="result-card" data-card="one-rerendered"><button class="direct-tour" data-tid="t1">Выбрать 1 после обновления</button></div><div class="result-card" data-card="two-rerendered"><button class="direct-tour" data-tid="t2">Выбрать 2 после обновления</button></div><div id="comparisonTray" data-state="kept">compare</div>';});
+              await page.click('.back-results');
+              await page.waitForTimeout(50);
+              state=await page.evaluate(()=>({hidden:document.getElementById('selectedTour').hidden,focusTid:document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.tid,sourceTid:window.V2SelectedTourReturnV1.sourceTourId,sourceConnected:document.contains(window.V2SelectedTourReturnV1.sourceButton)}));
+              if(!state.hidden||state.focusTid!=='t1'||state.sourceTid!=='t1'||!state.sourceConnected)throw new Error(`rerendered-source restore failed ${width}: ${JSON.stringify(state)}`);
+
+              await page.click('[data-tid="t1"]');
+              await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:{id:'t1'}}})));
               await page.click('.lead-success-back');
               await page.waitForTimeout(50);
               state=await page.evaluate(()=>({hidden:document.getElementById('selectedTour').hidden,focusTid:document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.tid,source:window.V2SelectedTourReturnV1.sourceButton&&window.V2SelectedTourReturnV1.sourceButton.dataset.tid}));
               if(!state.hidden||state.focusTid!=='t1'||state.source!=='t1')throw new Error(`reselection success-return failed ${width}: ${JSON.stringify(state)}`);
-              console.log(`RETURN_STATE_OK width=${width} fallback=results reselection=${state.focusTid}`);
+              console.log(`RETURN_STATE_OK width=${width} rerender=${state.focusTid} reselection=${state.focusTid}`);
               await page.close();
             }
             await browser.close();
