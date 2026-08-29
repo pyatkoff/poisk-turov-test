@@ -37,17 +37,13 @@ foreach ($files as $file) {
     }
 
     fwrite(STDOUT, "APPLY {$name}\n");
-    $pdo->beginTransaction();
-    try {
-        $pdo->exec($sql);
-        $insert->execute(['migration' => $name]);
-        $pdo->commit();
-    } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            $pdo->rollBack();
-        }
-        throw $e;
-    }
+
+    // MariaDB/MySQL implicitly commits around DDL, so wrapping schema migrations
+    // in a PDO transaction is misleading and can leave no active transaction.
+    // Migrations are additive/idempotent; record them only after the SQL succeeds.
+    $pdo->exec($sql);
+    $insert->execute(['migration' => $name]);
+    $appliedMap[$name] = true;
 }
 
 fwrite(STDOUT, "DONE\n");
