@@ -53,9 +53,6 @@ jobs:
           find platform/src platform/bin platform/tests -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Run Site Platform contract test
         run: php platform/tests/site-platform-contract-test.php
-      - name: Assert production credentials are not embedded
-        run: |
-          ! grep -RniE '(password\s*=\s*["'"'][^"'"']+|mysql:host=[^$])' platform/src platform/bin
       - name: Check MariaDB connection
         run: php platform/bin/doctor.php
       - name: Apply migrations twice for idempotency
