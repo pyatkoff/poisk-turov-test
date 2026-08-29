@@ -1,69 +1,199 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T19:07:00+02:00",
+  "updated_at": "2026-08-29T20:14:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core product areas remain at 9.0. Post-recovery comparison and second-tour protections remain verified; standalone footer UX and its CI contracts are now production-green. Standalone stabilization continues; SEO/site foundation remains 8.8 and indexing/publication is deferred.",
-  "scores": {"search_ux":9.0,"waiting_progress_recovery":9.0,"results_comparison":9.0,"selected_tour":9.0,"flights_price":9.0,"lead_ux":9.0,"mobile_ux":9.0,"tablet_desktop_ux":9.0,"brand_trust":9.0,"visual_quality":9.0,"product_differentiation":9.0,"seo_site_foundation":8.8},
+  "phase": "Core product areas remain at 9.0. Compatibility-route SEO consolidation and pending-flight price-confidence are production-green. Standalone stabilization and the cyclic V2 browser audit continue; SEO/site foundation remains 8.8 and public indexing is deferred.",
+  "scores": {
+    "search_ux": 9.0,
+    "waiting_progress_recovery": 9.0,
+    "results_comparison": 9.0,
+    "selected_tour": 9.0,
+    "flights_price": 9.0,
+    "lead_ux": 9.0,
+    "mobile_ux": 9.0,
+    "tablet_desktop_ux": 9.0,
+    "brand_trust": 9.0,
+    "visual_quality": 9.0,
+    "product_differentiation": 9.0,
+    "seo_site_foundation": 8.8
+  },
   "current_task": {
-    "id":"ANYTOOUR_STANDALONE_STABILIZATION_AND_V2_CYCLIC_AUDIT",
-    "category":"PRODUCTION_UX_DATA",
-    "status":"ACTIVE",
-    "progress":"#269 shipped a safe branded social/app footer from current main, fixed the stale footer responsive guard to the actual v2-site-community DOM, and synchronized the startup-bundle guard from 31 to the active 32 JS assets. All 12 PR checks green. Production commit d03322511a18c7a6b0150ef2444222004e92cef7: V2 deploy 33264609173 and standalone deploy 33264609196 green; standalone verifies public pages, unchanged lead bridge and live search; live tour/flights 33264609187 and result-detail 33264609169 green. #268 closed superseded.",
-    "next_action":"First inspect all post-deploy workflow_run checks for d03322511a18c7a6b0150ef2444222004e92cef7 and fix any confirmed regression. Then continue whole-V2 mobile/tablet/desktop second-tour cycle: post-recovery results→selected tour→room→flight autoload/error/retry→priced/unpriced→price/fuel confidence→lead error/retry/success; follow with the real-result return/reselection cycle preserving sort/comparison/scroll/focus and then safe non-legal standalone UX."
+    "id": "ANYTOOUR_STANDALONE_STABILIZATION_AND_V2_CYCLIC_AUDIT",
+    "category": "PRODUCTION_UX_DATA",
+    "status": "ACTIVE",
+    "progress": "Post-deploy audit of #269 found the missed V2 SEO-foundation failure 33264609190. #272 fixed the compatibility-route canonical contract: legacy V2 remains noindex,follow and canonically consolidates to https://anytoour.ru/poisk-turov/; PR/local-vs-live SEO checks are correctly separated. #272 production commit 04a6348d16f2564f322f98b5175f7d295604db2d: V2 deploy 33267217252, standalone deploy 33267217286 and live SEO 33267217242 attempt 2 green. #273 then fixed flight price-confidence so minimum-price claims disappear whenever any displayed flight price is unresolved while route facts remain; resolved→pending→resolved is guarded at 375/768/1440. 13 PR checks green. Production commit c8f4410435e914bbc84afe913be35d57e9ae1cf3: V2 deploy 33267473947, standalone deploy 33267473950, live tour 33267473896 and result-detail 33267473953 green. #271 closed superseded.",
+    "next_action": "Finish checking all remaining workflow_run fan-out for c8f4410435e914bbc84afe913be35d57e9ae1cf3 and fix any confirmed regression. Then continue whole-V2 mobile/tablet/desktop second-tour cycle: post-recovery results→selected tour→room→flight autoload/error/retry→priced/unpriced→price/fuel confidence→lead error/retry/success; follow with real-result return/reselection preserving sort/comparison/scroll/focus and then safe non-legal standalone UX."
   },
   "production_baseline": {
-    "last_verified_legacy_commit":"d03322511a18c7a6b0150ef2444222004e92cef7",
-    "legacy_deploy_v2":33264609173,
-    "legacy_status":"PRODUCTION_GREEN_DEPLOY_VERIFY_LIVE_SEARCH_SMOKE",
-    "standalone_target":"https://anytoour.ru/",
-    "standalone_search":"https://anytoour.ru/poisk-turov/",
-    "last_verified_standalone_commit":"d03322511a18c7a6b0150ef2444222004e92cef7",
-    "standalone_deploy_run":33264609196,
-    "standalone_status":"PRODUCTION_GREEN_DEPLOY_PUBLIC_VALIDATION_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
-    "latest_live_validation_head":"d03322511a18c7a6b0150ef2444222004e92cef7",
-    "latest_live_result_detail":33264609169,
-    "latest_live_tour":33264609187,
-    "latest_live_user_journey":33251390940,
-    "latest_live_second_tour":33256645565,
-    "latest_root_visual":33247259957,
-    "latest_results_visual":33251390909,
-    "feed_commit":"21e48625b279ac678dc77e0919c9c8f7839ee1ee",
-    "feed_deploy_run":33248750721,
-    "feed_status":"PRODUCTION_GREEN_PUBLIC_XML"
+    "last_verified_legacy_commit": "c8f4410435e914bbc84afe913be35d57e9ae1cf3",
+    "legacy_deploy_v2": 33267473947,
+    "legacy_status": "PRODUCTION_GREEN_DEPLOY_VERIFY_LIVE_SEARCH_SMOKE",
+    "standalone_target": "https://anytoour.ru/",
+    "standalone_search": "https://anytoour.ru/poisk-turov/",
+    "last_verified_standalone_commit": "c8f4410435e914bbc84afe913be35d57e9ae1cf3",
+    "standalone_deploy_run": 33267473950,
+    "standalone_status": "PRODUCTION_GREEN_DEPLOY_PUBLIC_VALIDATION_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
+    "latest_live_validation_head": "c8f4410435e914bbc84afe913be35d57e9ae1cf3",
+    "latest_live_result_detail": 33267473953,
+    "latest_live_tour": 33267473896,
+    "latest_live_user_journey": 33251390940,
+    "latest_live_second_tour": 33256645565,
+    "latest_root_visual": 33247259957,
+    "latest_results_visual": 33251390909,
+    "latest_live_seo": 33267217242,
+    "feed_commit": "21e48625b279ac678dc77e0919c9c8f7839ee1ee",
+    "feed_deploy_run": 33248750721,
+    "feed_status": "PRODUCTION_GREEN_PUBLIC_XML"
   },
-  "recent_material_fixes":[
-    {"pr":269,"scope":"standalone_social_app_footer_and_ci_contracts","result":"Existing community footer now has inline brand/store icons with unchanged destinations; responsive guard validates actual v2-site-community DOM at 375/768/1440; startup bundle guard now matches the active 23 CSS/32 JS manifest. 12 PR checks green; V2 and standalone deploys green; standalone unchanged lead bridge and live search verified."},
-    {"pr":266,"scope":"post_recovery_sort_comparison_state_guard","result":"Browser coverage at 375/768/1440 verifies comparison membership survives sort rerenders by stable hotel id; a removed hotel closes an invalid comparison; later results retry does not resurrect stale selection; active sort persists and comparison can resume. No runtime change."},
-    {"pr":264,"scope":"completed_status_final_results_recovery","result":"When lifecycle completion is signaled by status=complete without numeric progress=100, final search_results failure keeps completed searchId and results-only retry instead of restarting search."},
-    {"pr":262,"scope":"empty_result_relaxation_cascade_guard","result":"Focused workflow locks synchronous dependent-filter clearing before resubmit and verifies the real shared catalog handleChange dispatcher. No runtime change."},
-    {"pr":261,"scope":"empty_result_relaxation_dependency_race","result":"Broadening arrival/region/subregion from an empty result cannot silently retain stale dependent hotel/subregion/service constraints."},
-    {"pr":259,"scope":"live_second_tour_real_data_guard","result":"Production-safe live search validates two distinct real tour IDs, hotel/tour payloads, positive tour prices and flights independently without lead write."},
-    {"pr":257,"scope":"second_tour_state_isolation_guard","result":"Focused browser coverage proves first-tour priced/fuel/room/lead-summary state does not leak into the second tour after return at 375/768/1440."},
-    {"pr":255,"scope":"selected_tour_return_after_results_rerender","result":"Return/reselection stores stable tour id and resolves the recreated current direct-tour after sort/refresh before falling back to results."},
-    {"pr":252,"scope":"pending_selected_flight_price_confidence","result":"Selected flight with pending recalculated price explicitly says its price is being clarified and search price is temporarily shown."},
-    {"pr":250,"scope":"pending_flight_fuel_context_fallback","result":"Pending flight without fuelCharge uses the same tour-fuel fallback in UI and v2:tour-price-updated."},
-    {"pr":246,"scope":"flight_autoload_stale_response_and_retry_guard","result":"Late old-tour flight responses cannot mutate current tour and error→retry→success is guarded at 375/768/1440."},
-    {"pr":245,"scope":"selected_flight_fuel_fallback","result":"Prevents stale previous-flight fuel when a newly selected priced flight omits fuelCharge."},
-    {"pr":243,"scope":"same_tour_lead_recovery_browser_guard","result":"Form data survives error/retry and normal/duplicate success reaches correct success panel; external lead contract unchanged."},
-    {"pr":242,"scope":"room_details_recovery_browser_guard","result":"Room error/retry/empty fallback and stale-response isolation guarded at 375/768/1440."},
-    {"pr":241,"scope":"selected_tour_hidden_source_return_fallback","result":"Hidden/unrendered source controls are not focused on return; results fallback protected."},
-    {"pr":237,"scope":"successful_empty_flight_recovery","result":"Empty successful flight response explains missing data and offers retry while lead form remains usable."},
-    {"pr":230,"scope":"stale_lead_response_selected_tour_ui_race","result":"Late lead response for a previous tour cannot mutate current selected-tour form."},
-    {"pr":227,"scope":"unpriced_selected_flight_price_reset","result":"Switching to pending-price flight clears stale prior-flight amount."},
-    {"pr":226,"scope":"comparison_refresh_minimum_selection","result":"Comparison closes coherently when refreshed selection falls below two hotels."},
-    {"pr":225,"scope":"result_decision_badge_finality","result":"Lowest-price/best-rating claims are final-set-only."},
-    {"pr":221,"scope":"completed_search_final_results_recovery","result":"Result-fetch retry reuses completed searchId instead of restarting search."}
+  "recent_material_fixes": [
+    {
+      "pr": 273,
+      "scope": "flight_minimum_price_confidence",
+      "result": "Minimum-price and delta-to-minimum claims are hidden while any displayed flight variant has unresolved pricing; route facts stay available. Resolved→pending→resolved transitions are guarded at 375/768/1440. 13 PR checks green; V2 and standalone deploys plus live tour/result-detail green."
+    },
+    {
+      "pr": 272,
+      "scope": "compatibility_route_seo_canonical_contract",
+      "result": "Legacy anytour.online V2 stays noindex,follow but canonicalizes to https://anytoour.ru/poisk-turov/. SEO PR checks validate candidate config locally; live compatibility/search-state checks run post-merge. V2/standalone deploy and post-deploy live SEO green."
+    },
+    {
+      "pr": 269,
+      "scope": "standalone_social_app_footer_and_ci_contracts",
+      "result": "Existing community footer has inline brand/store icons with unchanged destinations; responsive guard validates actual v2-site-community DOM at 375/768/1440; startup bundle guard matches the active 23 CSS/32 JS manifest."
+    },
+    {
+      "pr": 266,
+      "scope": "post_recovery_sort_comparison_state_guard",
+      "result": "Browser coverage at 375/768/1440 verifies comparison membership survives sort rerenders by stable hotel id; removed hotels close invalid comparison; later retry does not resurrect stale selection; active sort persists."
+    },
+    {
+      "pr": 264,
+      "scope": "completed_status_final_results_recovery",
+      "result": "When lifecycle completion is signaled by status=complete without numeric progress=100, final results failure keeps completed searchId and results-only retry instead of restarting search."
+    },
+    {
+      "pr": 259,
+      "scope": "live_second_tour_real_data_guard",
+      "result": "Production-safe live search validates two distinct real tour IDs, hotel/tour payloads, positive tour prices and flights independently without lead write."
+    },
+    {
+      "pr": 257,
+      "scope": "second_tour_state_isolation_guard",
+      "result": "Focused browser coverage proves first-tour priced/fuel/room/lead-summary state does not leak into the second tour after return at 375/768/1440."
+    },
+    {
+      "pr": 255,
+      "scope": "selected_tour_return_after_results_rerender",
+      "result": "Return/reselection stores stable tour id and resolves the recreated current direct-tour after sort/refresh before falling back to results."
+    },
+    {
+      "pr": 252,
+      "scope": "pending_selected_flight_price_confidence",
+      "result": "Selected flight with pending recalculated price explicitly says its price is being clarified and search price is temporarily shown."
+    },
+    {
+      "pr": 250,
+      "scope": "pending_flight_fuel_context_fallback",
+      "result": "Pending flight without fuelCharge uses the same tour-fuel fallback in UI and v2:tour-price-updated."
+    },
+    {
+      "pr": 246,
+      "scope": "flight_autoload_stale_response_and_retry_guard",
+      "result": "Late old-tour flight responses cannot mutate current tour and error→retry→success is guarded at 375/768/1440."
+    },
+    {
+      "pr": 245,
+      "scope": "selected_flight_fuel_fallback",
+      "result": "Prevents stale previous-flight fuel when a newly selected priced flight omits fuelCharge."
+    },
+    {
+      "pr": 243,
+      "scope": "same_tour_lead_recovery_browser_guard",
+      "result": "Form data survives error/retry and normal/duplicate success reaches correct success panel; external lead contract unchanged."
+    },
+    {
+      "pr": 242,
+      "scope": "room_details_recovery_browser_guard",
+      "result": "Room error/retry/empty fallback and stale-response isolation guarded at 375/768/1440."
+    },
+    {
+      "pr": 241,
+      "scope": "selected_tour_hidden_source_return_fallback",
+      "result": "Hidden/unrendered source controls are not focused on return; results fallback protected."
+    },
+    {
+      "pr": 237,
+      "scope": "successful_empty_flight_recovery",
+      "result": "Empty successful flight response explains missing data and offers retry while lead form remains usable."
+    },
+    {
+      "pr": 230,
+      "scope": "stale_lead_response_selected_tour_ui_race",
+      "result": "Late lead response for a previous tour cannot mutate current selected-tour form."
+    },
+    {
+      "pr": 227,
+      "scope": "unpriced_selected_flight_price_reset",
+      "result": "Switching to pending-price flight clears stale prior-flight amount."
+    },
+    {
+      "pr": 226,
+      "scope": "comparison_refresh_minimum_selection",
+      "result": "Comparison closes coherently when refreshed selection falls below two hotels."
+    },
+    {
+      "pr": 225,
+      "scope": "result_decision_badge_finality",
+      "result": "Lowest-price/best-rating claims are final-set-only."
+    },
+    {
+      "pr": 221,
+      "scope": "completed_search_final_results_recovery",
+      "result": "Result-fetch retry reuses completed searchId instead of restarting search."
+    }
   ],
-  "blocked":[],
-  "deferred":[
-    {"scope":"traffic/conversion analysis","reason":"Disabled until owner launches traffic."},
-    {"scope":"public SEO indexing/sitemap promotion","reason":"Requires deliberate publication contract and reviewed content."},
-    {"scope":"legal/payment route migration","reason":"Current legacy legal/payment content is not reconciled; preserve working legacy destinations until verified."},
-    {"scope":"open PRs 248/249/254","reason":"248/249 are stale/overlapping; #254 introduces a separate DB/platform architecture despite useful content work, so do not auto-merge it into the fresh search/standalone baseline."},
-    {"scope":"PX7 price watch / proactive return intent","reason":"Requires persistence/contact/product-contract decisions."},
-    {"scope":"global nginx/server configuration","reason":"Outside allowed repository/V2 scope."}
+  "blocked": [],
+  "deferred": [
+    {
+      "scope": "traffic/conversion analysis",
+      "reason": "Disabled until owner launches traffic."
+    },
+    {
+      "scope": "public SEO indexing/sitemap promotion",
+      "reason": "Requires deliberate publication contract and reviewed content."
+    },
+    {
+      "scope": "legal/payment route migration",
+      "reason": "Current legacy legal/payment content is not reconciled; preserve working legacy destinations until verified."
+    },
+    {
+      "scope": "open PRs 248/249/254",
+      "reason": "248/249 are stale/overlapping; #254 introduces a separate DB/platform architecture despite useful content work, so do not auto-merge it into the fresh search/standalone baseline."
+    },
+    {
+      "scope": "PX7 price watch / proactive return intent",
+      "reason": "Requires persistence/contact/product-contract decisions."
+    },
+    {
+      "scope": "global nginx/server configuration",
+      "reason": "Outside allowed repository/V2 scope."
+    }
   ],
-  "protected":{"other_projects":"DO_NOT_MODIFY","global_site_assets_and_server_config":"DO_NOT_MODIFY_OUTSIDE_ALLOWED_V2_SCOPE","logo":"DO_NOT_CHANGE","metrika_configuration":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","metrika_goals":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"},
-  "continuation_policy":{"priority":"production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > weakest_sub9_score > roadmap > cosmetic_refactor","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_ci_success":"continue_to_next_safe_material_task","on_blocker":"record_blocker_and_continue_independent_safe_work","on_visual_change":"validate_required_viewports_before_advancing","on_no_traffic":"ignore_as expected and continue_product_development"}
+  "protected": {
+    "other_projects": "DO_NOT_MODIFY",
+    "global_site_assets_and_server_config": "DO_NOT_MODIFY_OUTSIDE_ALLOWED_V2_SCOPE",
+    "logo": "DO_NOT_CHANGE",
+    "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
+    "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
+    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
+  },
+  "continuation_policy": {
+    "priority": "production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > weakest_sub9_score > roadmap > cosmetic_refactor",
+    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
+    "on_ci_success": "continue_to_next_safe_material_task",
+    "on_blocker": "record_blocker_and_continue_independent_safe_work",
+    "on_visual_change": "validate_required_viewports_before_advancing",
+    "on_no_traffic": "ignore_as expected and continue_product_development"
+  }
 }
