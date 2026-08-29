@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T04:08:00+02:00",
+  "updated_at": "2026-08-29T05:08:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru homepage/search/content routes are in production stabilization. Responsive navigation has been repaired and live-verified. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
+  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru homepage/search/content routes are in production stabilization. Public migration language has been removed from homepage/hot/country surfaces, hot-tour search handoff is useful, and the migrated-content live guard is repaired and production-verified. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
   "release_gate": {
     "minimum_score_each_area": 9.0,
     "traffic_required": false,
@@ -30,8 +30,8 @@
     "title": "Stabilize standalone search and migrated content routes",
     "status": "ACTIVE",
     "objective": "Keep homepage/search/content migration production-safe across data handoff, full tour-search journey, navigation, responsive layout, footer/legal shell and local-to-search route contracts while preserving legacy V2 and all external contracts.",
-    "progress": "PR #201 repaired hidden homepage/content navigation below desktop, exposed the live early-booking route from internal navigation, aligned the migration map, and deployed green as 0001bfa7e8989fa5525bd3e365ec2caaa27e28ae. Deploy run 33227812050 passed public-page, unchanged lead-bridge and live search smoke. Root/search five-viewport run 33227911794 passed. PR #202 added a production responsive-navigation audit at 375/768/1024/1440 and fixed a nounset bug in the migrated-content guard; the previous content run had reached HTTP 200 on all ten routes before failing inside the guard itself.",
-    "next_action": "Confirm the corrected migrated-content guard on the next standalone deployment, then continue /hot/ -> /contacts/ -> /how-to-buy/ -> /rb/ UX/CTA/trust audit and the whole homepage -> search -> waiting -> results -> tour -> flights -> lead journey."
+    "progress": "PR #204 removed implementation/migration copy from homepage, /hot/ and /country/, added a nearest-two-weeks /hot/ -> search handoff and exposed /rb/ from the homepage. It deployed green as 8cfe1de254f9f5b5cb2efe3ab751151b92151dbb in run 33230329189; live journey 33230425740 and root visual 33230425748 passed. PR #205 fixed a second test-only migrated-content guard defect by unifying temp filenames. PR #206 made that guard self-validating; production live-content run 33230550373 passed and confirms migrated routes plus country IDs 4/1/9/2/47 hand off correctly.",
+    "next_action": "Continue /contacts/ -> /how-to-buy/ -> /rb/ UX/CTA/trust audit, then re-audit the whole homepage -> search -> waiting/recovery -> results -> selected tour/rooms -> flights/price -> lead journey and remaining public content for internal implementation language or weak search handoffs."
   },
   "queue": [
     {"id":"ROOT_STABILIZATION","status":"ACTIVE_HIGHEST_PRIORITY","title":"anytoour.ru standalone production stabilization"},
@@ -72,27 +72,26 @@
     "legacy_status": "PRODUCTION_GREEN",
     "standalone_target": "https://anytoour.ru/",
     "standalone_search": "https://anytoour.ru/poisk-turov/",
-    "last_verified_standalone_commit": "0001bfa7e8989fa5525bd3e365ec2caaa27e28ae",
-    "standalone_deploy_run": 33227812050,
-    "standalone_root_visual_run": 33227911794,
-    "standalone_result_visual_run": 33225740279,
-    "standalone_user_journey_run": 33225740338,
+    "last_verified_standalone_commit": "8cfe1de254f9f5b5cb2efe3ab751151b92151dbb",
+    "standalone_deploy_run": 33230329189,
+    "standalone_root_visual_run": 33230425748,
+    "standalone_user_journey_run": 33230425740,
     "standalone_navigation_live_run": 33228002770,
-    "standalone_content_guard_last_run": 33227911753,
-    "standalone_content_guard_last_result": "TEST_CODE_FAILURE_AFTER_ALL_ROUTES_HTTP_200_FIXED_IN_PR_202",
-    "standalone_status": "DEPLOY_GREEN_ROOT_VISUAL_GREEN_NAVIGATION_LIVE_GREEN_SEARCH_AND_LEAD_BRIDGE_SMOKE_GREEN"
+    "standalone_content_guard_last_run": 33230550373,
+    "standalone_content_guard_last_result": "PRODUCTION_GREEN_AFTER_SHARED_TEMP_PATH_FIX",
+    "standalone_status": "DEPLOY_GREEN_ROOT_VISUAL_GREEN_USER_JOURNEY_GREEN_CONTENT_ROUTES_GREEN_SEARCH_AND_LEAD_BRIDGE_SMOKE_GREEN"
   },
   "recent_material_fixes": [
+    {"pr":206,"scope":"migrated_content_guard_self_validation","result":"Live content validation now runs when its own workflow changes on main and production run 33230550373 is green."},
+    {"pr":205,"scope":"migrated_content_guard_temp_paths","result":"Country page downloads and handoff assertions now share one page_out() temp-path builder, eliminating the false post-deploy failure."},
+    {"pr":204,"scope":"public_content_copy","result":"Homepage, hot-tour and country catalog no longer expose migration/implementation language to travelers."},
+    {"pr":204,"scope":"hot_search_handoff","result":"Hot tours open full search with a nearest-two-weeks date window instead of a generic unassisted CTA."},
+    {"pr":204,"scope":"early_booking_home_discoverability","result":"The live /rb/ route is exposed as a homepage journey card while the primary header remains focused."},
     {"pr":202,"scope":"live_navigation_regression_guard","result":"Production homepage and content navigation are checked at 375/768/1024/1440 for visibility, early-booking discoverability and page overflow."},
-    {"pr":202,"scope":"migrated_content_guard_nounset","result":"The post-deploy country handoff check no longer references slug before assignment under Bash set -u; the preceding failed run had already verified HTTP 200 for all ten routes."},
-    {"pr":201,"scope":"responsive_standalone_navigation","result":"Homepage navigation no longer disappears below 1050px and content-page navigation no longer disappears below 900px; both become touch-friendly responsive navigation rows."},
-    {"pr":201,"scope":"early_booking_discoverability","result":"The live /rb/ route is exposed from internal content navigation and the migration map now reflects actually-live routes."},
+    {"pr":201,"scope":"responsive_standalone_navigation","result":"Homepage and content-page navigation remain accessible on tablet/mobile as touch-friendly responsive rows."},
     {"pr":199,"scope":"country_search_handoff","result":"Turkey/Egypt/UAE/Thailand/Russia local pages pass live-catalog country IDs 4/1/9/2/47 into /poisk-turov/."},
-    {"pr":199,"scope":"mobile_trip_duration_cascade","result":"The final mobile duration grid wins over the old higher-specificity scroll rule; production is overflow-free at the audited viewports."},
     {"pr":196,"scope":"homepage_exact_nights_handoff","result":"The single homepage nights field submits an exact duration instead of silently widening the stay."},
-    {"pr":180,"scope":"single_footer_contract","result":"V2/standalone keep one canonical full footer; social/app destinations remain a compact community pre-footer."},
-    {"pr":174,"scope":"inbound_child_age_hydration","result":"Invalid child ages block search instead of being silently coerced or dropped."},
-    {"pr":176,"scope":"inbound_child_count_hydration","result":"Unsupported child counts and count/age mismatches block search instead of sending a different tourist composition."}
+    {"pr":180,"scope":"single_footer_contract","result":"V2/standalone keep one canonical full footer; social/app destinations remain a compact community pre-footer."}
   ],
   "blocked": [],
   "deferred": [
