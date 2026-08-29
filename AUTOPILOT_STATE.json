@@ -1,27 +1,27 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T17:05:00+02:00",
+  "updated_at": "2026-08-29T17:10:00+02:00",
   "mode": "pretraffic_9_score_product_development",
-  "phase": "Core product areas remain at 9.0. Empty-results broadening now synchronously clears dependent catalog constraints before resubmit and is production verified with a dedicated regression guard. Standalone stabilization continues; SEO/site foundation remains 8.8 and indexing/publication is deferred.",
+  "phase": "Core product areas remain at 9.0. Empty-results broadening and completed-search final-results recovery are production verified. Standalone stabilization continues; SEO/site foundation remains 8.8 and indexing/publication is deferred.",
   "scores": {"search_ux":9.0,"waiting_progress_recovery":9.0,"results_comparison":9.0,"selected_tour":9.0,"flights_price":9.0,"lead_ux":9.0,"mobile_ux":9.0,"tablet_desktop_ux":9.0,"brand_trust":9.0,"visual_quality":9.0,"product_differentiation":9.0,"seo_site_foundation":8.8},
   "current_task": {
     "id":"ANYTOOUR_STANDALONE_STABILIZATION",
     "category":"PRODUCTION_UX_DATA",
     "status":"ACTIVE",
-    "progress":"#261 fixed a confirmed empty-results recovery race: arrival/region/subregion relaxation clears dependent region/subregion/hotel constraints synchronously before existing catalog refresh and lifecycle resubmit; arrival/region also clear destination-specific hotel services. V2 deploy 33259024852 and standalone deploy 33259024876 are green, with standalone public-page, unchanged lead-bridge and live-search checks green. #262 adds a focused regression guard; corrected run 33259182392 and Security 33259182439 are green.",
-    "next_action":"Continue the periodic whole-V2 mobile/tablet/desktop browser pass from waiting/progressive/final results through filters/sort/comparison and the downstream selected-tour→room→flights→price/fuel→lead cycle. Re-check result/filter state immediately after empty-search broadening, then continue safe non-legal standalone content UX including hot/country handoff audits."
+    "progress":"#261 fixed empty-result dependent-filter recovery and is production green with #262 regression protection. #264 fixed the status=complete final-results recovery edge so a completed Tourvisor search with non-100 numeric progress retries only search_results instead of restarting the search. #264 passed 17 PR checks; V2 deploy 33259402253 and standalone deploy 33259402295 are green, including unchanged lead-bridge verification and live search smoke.",
+    "next_action":"Continue the whole-V2 mobile/tablet/desktop pass from progressive/final results through filters/sort/comparison and the downstream selected-tour→room→flights→price/fuel→lead cycle. Explicitly re-check post-recovery sort/comparison and second-tour state after both empty-search broadening and results-only final-fetch retry, then continue safe non-legal standalone content UX."
   },
   "production_baseline": {
-    "last_verified_legacy_commit":"840b5004958945bc0ef7c0e86b13ca14c32d727f",
-    "legacy_deploy_v2":33259024852,
+    "last_verified_legacy_commit":"98eb4edf94c0c7626b094e3883a6571c6a882349",
+    "legacy_deploy_v2":33259402253,
     "legacy_status":"PRODUCTION_GREEN_DEPLOY_VERIFY_LIVE_SEARCH_SMOKE",
     "standalone_target":"https://anytoour.ru/",
     "standalone_search":"https://anytoour.ru/poisk-turov/",
-    "last_verified_standalone_commit":"840b5004958945bc0ef7c0e86b13ca14c32d727f",
-    "standalone_deploy_run":33259024876,
+    "last_verified_standalone_commit":"98eb4edf94c0c7626b094e3883a6571c6a882349",
+    "standalone_deploy_run":33259402295,
     "standalone_status":"PRODUCTION_GREEN_DEPLOY_PUBLIC_VALIDATION_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
-    "latest_live_validation_head":"840b5004958945bc0ef7c0e86b13ca14c32d727f",
+    "latest_live_validation_head":"98eb4edf94c0c7626b094e3883a6571c6a882349",
     "latest_live_result_detail":33253836918,
     "latest_live_tour":33253836917,
     "latest_live_user_journey":33251390940,
@@ -33,6 +33,7 @@
     "feed_status":"PRODUCTION_GREEN_PUBLIC_XML"
   },
   "recent_material_fixes":[
+    {"pr":264,"scope":"completed_status_final_results_recovery","result":"When lifecycle completion is signaled by status=complete without numeric progress=100, final search_results failure now keeps the completed searchId and shows results-only retry instead of restarting search. 17 PR checks green; V2 and standalone deploy/live checks green; lead bridge unchanged."},
     {"pr":262,"scope":"empty_result_relaxation_cascade_guard","result":"Focused workflow locks synchronous dependent-filter clearing before resubmit and verifies the real shared catalog handleChange dispatcher; corrected guard and Security runs green. No runtime change."},
     {"pr":261,"scope":"empty_result_relaxation_dependency_race","result":"Broadening arrival/region/subregion from an empty result cannot silently retain stale dependent hotel/subregion/service constraints; V2 and standalone deploys green, unchanged lead bridge verified."},
     {"pr":259,"scope":"live_second_tour_real_data_guard","result":"Production-safe live search validates two distinct real tour IDs, hotel/tour payloads, positive tour prices and flights independently without lead write; PR and post-merge live runs green."},
