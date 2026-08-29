@@ -7,8 +7,14 @@ catalogs.init=async function(){
   await originalInit();
   if(typeof URLSearchParams!=='function')return;
   const sp=new URLSearchParams(window.location.search||''),desiredFrom=sp.get('from'),desiredCountry=sp.get('country');
-  if(!desiredFrom||!desiredCountry)return;
-  const from=form.elements.from,country=form.elements.country;if(!from||!country||!hasOption(from,desiredFrom))return;
+  if(!desiredCountry)return;
+  const from=form.elements.from,country=form.elements.country;if(!country)return;
+  // Country-only landing links are supported for feeds/ads: keep the current/default departure city.
+  if(!desiredFrom){
+    if(hasOption(country,desiredCountry))country.value=String(desiredCountry);
+    return;
+  }
+  if(!from||!hasOption(from,desiredFrom))return;
   if(String(from.value)===String(desiredFrom)){
     if(hasOption(country,desiredCountry))country.value=String(desiredCountry);
     return;
