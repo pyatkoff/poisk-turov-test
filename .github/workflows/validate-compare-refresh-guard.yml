@@ -25,7 +25,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Close comparison if refreshed results leave fewer than two selected hotels
+      - name: Preserve comparison through sort and close stale comparison after refreshed results shrink
         shell: bash
         env:
           V2_URL: https://anytour.online/poisk-turov-test/v2/
@@ -36,13 +36,13 @@ jobs:
           const path=require('path');
           const guard=path.resolve('v2/compare-refresh-guard-v1.js');
           const rows=[
-            {id:801,name:'Compare One',category:5,rating:4.8,price:100000,tours:[{id:'a',date:'10.09.2026',nights:7,price:100000}]},
-            {id:802,name:'Compare Two',category:4,rating:4.5,price:110000,tours:[{id:'b',date:'11.09.2026',nights:7,price:110000}]},
+            {id:801,name:'Compare One',category:5,rating:4.2,price:100000,tours:[{id:'a',date:'10.09.2026',nights:7,price:100000}]},
+            {id:802,name:'Compare Two',category:4,rating:4.9,price:110000,tours:[{id:'b',date:'11.09.2026',nights:7,price:110000}]},
             {id:803,name:'Compare Three',category:4,rating:4.4,price:120000,tours:[{id:'c',date:'12.09.2026',nights:8,price:120000}]},
           ];
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            for(const [name,width,height] of [['mobile',375,812],['desktop',1440,1000]]){
+            for(const [name,width,height] of [['mobile',375,812],['tablet',768,900],['desktop',1440,1000]]){
               const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
               const page=await context.newPage();
               const errors=[];page.on('pageerror',e=>errors.push(String(e)));
@@ -50,17 +50,59 @@ jobs:
               await page.waitForTimeout(3000);
               await page.addScriptTag({path:guard});
               await page.evaluate(items=>window.V2Results.render(items),rows);
+
               const buttons=page.locator('.hotel-compare-toggle');
               await buttons.nth(0).click();
               await buttons.nth(1).click();
               await page.locator('.compare-open').click();
-              let state=await page.evaluate(()=>({selected:window.V2ConversionConfidenceV1.compareState.selected.size,overlay:!document.getElementById('v2CompareOverlay').hidden,locked:document.body.classList.contains('v2-compare-dialog-open')}));
-              if(state.selected!==2||!state.overlay||!state.locked)throw new Error(name+': comparison did not open '+JSON.stringify(state));
+              let state=await page.evaluate(()=>({
+                selected:Array.from(window.V2ConversionConfidenceV1.compareState.selected),
+                cards:Array.from(document.querySelectorAll('.compare-card')).map(x=>x.dataset.compareId),
+                overlay:!document.getElementById('v2CompareOverlay').hidden,
+                locked:document.body.classList.contains('v2-compare-dialog-open')
+              }));
+              if(state.selected.join(',')!=='801,802'||state.cards.join(',')!=='801,802'||!state.overlay||!state.locked)throw new Error(name+': comparison did not open coherently '+JSON.stringify(state));
+
+              // A sort rerenders every result card. Comparison membership and dialog content must survive by stable hotel id.
+              await page.selectOption('#sortResults','rating');
+              await page.dispatchEvent('#sortResults','change');
+              await page.waitForTimeout(50);
+              state=await page.evaluate(()=>({
+                selected:Array.from(window.V2ConversionConfidenceV1.compareState.selected),
+                cards:Array.from(document.querySelectorAll('.compare-card')).map(x=>x.dataset.compareId),
+                resultOrder:Array.from(document.querySelectorAll('#results .hotel-card')).map(x=>x.dataset.hotelId),
+                overlay:!document.getElementById('v2CompareOverlay').hidden
+              }));
+              if(state.selected.join(',')!=='801,802'||state.cards.join(',')!=='801,802'||state.resultOrder[0]!=='802'||!state.overlay)throw new Error(name+': sort leaked comparison state '+JSON.stringify(state));
+
+              // A final/recovered result set can legitimately remove one selected hotel. The stale two-card dialog must close.
               await page.evaluate(items=>window.V2Results.render(items),[rows[0],rows[2]]);
-              state=await page.evaluate(()=>({selected:window.V2ConversionConfidenceV1.compareState.selected.size,overlayHidden:document.getElementById('v2CompareOverlay').hidden,locked:document.body.classList.contains('v2-compare-dialog-open'),trayHidden:document.getElementById('v2CompareTray').hidden,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
-              if(state.selected!==1||!state.overlayHidden||state.locked||state.trayHidden||state.overflow)throw new Error(name+': invalid one-item modal survived refresh '+JSON.stringify(state));
+              state=await page.evaluate(()=>({
+                selected:Array.from(window.V2ConversionConfidenceV1.compareState.selected),
+                overlayHidden:document.getElementById('v2CompareOverlay').hidden,
+                locked:document.body.classList.contains('v2-compare-dialog-open'),
+                trayHidden:document.getElementById('v2CompareTray').hidden,
+                openDisabled:document.querySelector('.compare-open').disabled,
+                overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2
+              }));
+              if(state.selected.join(',')!=='801'||!state.overlayHidden||state.locked||state.trayHidden||!state.openDisabled||state.overflow)throw new Error(name+': invalid one-item modal survived refresh '+JSON.stringify(state));
+
+              // A later final retry can restore/add hotels. Existing valid selection should remain, stale removed selection must not return.
+              await page.evaluate(items=>window.V2Results.render(items),[rows[2],rows[0],rows[1]]);
+              state=await page.evaluate(()=>({
+                selected:Array.from(window.V2ConversionConfidenceV1.compareState.selected),
+                pressed:Array.from(document.querySelectorAll('.hotel-compare-toggle[aria-pressed="true"]')).map(x=>x.dataset.compareId),
+                sort:document.getElementById('sortResults').value
+              }));
+              if(state.selected.join(',')!=='801'||state.pressed.join(',')!=='801'||state.sort!=='rating')throw new Error(name+': retry restored stale comparison/sort state '+JSON.stringify(state));
+
+              await page.locator('.hotel-compare-toggle[data-compare-id="803"]').click();
+              await page.locator('.compare-open').click();
+              state=await page.evaluate(()=>({selected:Array.from(window.V2ConversionConfidenceV1.compareState.selected),cards:Array.from(document.querySelectorAll('.compare-card')).map(x=>x.dataset.compareId),overlay:!document.getElementById('v2CompareOverlay').hidden}));
+              if(state.selected.join(',')!=='801,803'||state.cards.join(',')!=='801,803'||!state.overlay)throw new Error(name+': comparison could not resume after recovery '+JSON.stringify(state));
+
               if((response&&response.status())!==200||errors.length)throw new Error(name+': page errors '+errors.join(';'));
-              console.log('COMPARE_REFRESH_GUARD_OK',name);
+              console.log('COMPARE_RECOVERY_STATE_OK',name);
               await context.close();
             }
             await browser.close();
