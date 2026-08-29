@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T23:16:00+02:00",
+  "updated_at": "2026-08-29T23:57:00+02:00",
   "mode": "pretraffic_site_visual_unification",
-  "phase": "AnyTour Design System 1.0 and site-wide visual unification are now priority #1. Search remains the strongest reference surface, but the whole public site is explicitly not rated 9/10 until cross-page visual consistency is proven.",
+  "phase": "AnyTour Design System 1.0 is active. First shared-header release is production-green; next priority is production cross-page responsive audit and shared typography/grid/footer primitives. Site-wide scores stay at baseline until visual evidence justifies a change.",
   "scores": {
     "whole_public_site": 6.5,
     "cross_page_visual_consistency": 5.5,
@@ -28,18 +28,24 @@
     "id": "ANYTOUR_DESIGN_SYSTEM_1_AND_SITE_VISUAL_UNIFICATION",
     "category": "SITE_WIDE_UX_VISUAL",
     "status": "ACTIVE",
-    "progress": "Owner identified a material site-wide defect: search and other public pages use visibly different headers/composition/spacing and the migrated pages do not feel like one coherent product. Previous search-only 9.0 scorecard must not be used as a whole-site visual score.",
-    "next_action": "Audit production /, /poisk-turov/, /hot/, /contacts/, /how-to-buy/, /rb/, /country/ and representative country pages at 375/430/768/1024/1440; create/maintain a site-wide scorecard; then implement shared design tokens/primitives, one header/navigation and one footer before migrating weak pages onto the shared shell. Continue through multiple safe pages/tasks per run rather than stopping after one cosmetic fix."
+    "progress": "PR #276 added SITE_QUALITY_SCORECARD.md and shared site-header-v2.php/site-header-v2.css, moved homepage plus site-page-shell pages onto the shared header, aligned the search header visually, fixed migrated anytoour.ru header links that still jumped back to anytour.online, and updated stale CI contracts. All 14 PR workflows passed. Squash merge ec00bcde39fed67be4df88371fbfebcd9048ce10 deployed successfully to anytoour.ru in run 33277124959 with public-page verification, unchanged lead bridge and live search smoke green.",
+    "next_action": "Audit the deployed /, /poisk-turov/, /hot/, /contacts/, /how-to-buy/, /rb/, /country/ and representative Turkey/Egypt/UAE/Thailand/Russia pages at 375/430/768/1024/1440. Fix confirmed header/grid/typography/spacing/card/footer/overflow inconsistencies, then consolidate shared typography/grid/card/footer primitives. Do not re-score the site until production visual evidence supports it."
+  },
+  "production_baseline": {
+    "standalone_commit": "ec00bcde39fed67be4df88371fbfebcd9048ce10",
+    "standalone_deploy_run": 33277124959,
+    "standalone_status": "PRODUCTION_GREEN_PUBLIC_PAGES_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
+    "design_system_release": "PR #276 shared header v1",
+    "scores_revalidated": false
   },
   "work_order": [
     "production cross-page visual audit at 375/430/768/1024/1440",
-    "site-wide quality scorecard based on actual public pages",
-    "shared AnyTour design tokens and primitives",
-    "single shared header/navigation",
-    "single shared footer with existing verified destinations",
+    "shared AnyTour typography/grid/spacing/card primitives",
+    "finish search/content header behavioral alignment from production evidence",
+    "single shared footer rhythm with existing verified destinations and no duplicate structures",
     "homepage visual/hierarchy rebuild",
-    "migrate /hot/, /country/ + country pages, /contacts/, /how-to-buy/, /rb/ to shared shell",
-    "align /poisk-turov/ shell without regressing mature search UX",
+    "rebuild /hot/, /country/ + country pages, /contacts/, /how-to-buy/, /rb/ on shared primitives",
+    "align /poisk-turov/ outer shell without regressing mature search UX",
     "cross-page homepage→country→search→results→tour→lead visual continuity audit",
     "after unification, deepen discovery/content/SEO modules without duplicating search business logic"
   ],
