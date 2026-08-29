@@ -1,74 +1,105 @@
 /* Production guard for the legacy search-header markup.
-   Keep the logo, nav and actions in one 78px row even when earlier/later V2 styles
-   contain generic navigation rules. Mobile continues to use the existing menu. */
+   The live standalone/search page can also inherit older global header rules with
+   higher specificity. These declarations intentionally win that cascade so the
+   logo, navigation and actions stay in one desktop row. Mobile keeps its existing
+   compact menu below 901px. */
 @media (min-width:901px){
-  body .at-site-header{
-    position:relative;
-    min-height:78px;
-    height:78px;
-    overflow:visible;
+  html body .at-site-header{
+    position:relative!important;
+    display:block!important;
+    box-sizing:border-box!important;
+    min-height:78px!important;
+    height:78px!important;
+    overflow:visible!important;
   }
-  body .at-site-header>.at-site-header__top{
-    position:relative;
-    display:block;
-    width:min(var(--at-shell),calc(100% - 40px));
-    height:78px;
-    min-height:78px;
-    margin:0 auto;
-    padding:0;
+  html body .at-site-header>.at-site-header__top{
+    position:relative!important;
+    display:block!important;
+    box-sizing:border-box!important;
+    width:min(var(--at-shell),calc(100% - 40px))!important;
+    height:77px!important;
+    min-height:77px!important;
+    margin:0 auto!important;
+    padding:0!important;
   }
-  body .at-site-header>.at-site-nav-wrap{
-    position:absolute;
-    inset:0;
-    display:block;
-    height:78px;
-    margin:0;
-    padding:0;
-    background:transparent;
-    pointer-events:none;
+  html body .at-site-header>.at-site-nav-wrap{
+    position:absolute!important;
+    inset:0!important;
+    display:block!important;
+    box-sizing:border-box!important;
+    width:100%!important;
+    height:77px!important;
+    min-height:77px!important;
+    margin:0!important;
+    padding:0!important;
+    background:transparent!important;
+    pointer-events:none!important;
   }
-  body .at-site-header>.at-site-nav-wrap>.at-site-nav{
-    position:relative;
-    display:flex;
-    align-items:center;
-    width:min(var(--at-shell),calc(100% - 40px));
-    height:78px;
-    min-height:78px;
-    margin:0 auto;
-    padding:0 335px 0 205px;
-    pointer-events:none;
+  html body .at-site-header>.at-site-nav-wrap>.at-site-nav{
+    position:relative!important;
+    inset:auto!important;
+    display:flex!important;
+    align-items:center!important;
+    box-sizing:border-box!important;
+    width:min(var(--at-shell),calc(100% - 40px))!important;
+    height:77px!important;
+    min-height:77px!important;
+    margin:0 auto!important;
+    padding:0 335px 0 205px!important;
+    pointer-events:none!important;
   }
-  body .at-site-header>.at-site-nav-wrap>.at-site-nav>ul{
-    position:relative;
-    display:flex;
-    align-items:center;
-    width:auto;
-    height:auto;
-    margin:0;
-    padding:0;
-    gap:4px;
-    pointer-events:auto;
+  html body .at-site-header>.at-site-nav-wrap>.at-site-nav>ul{
+    position:relative!important;
+    display:flex!important;
+    align-items:center!important;
+    width:auto!important;
+    height:auto!important;
+    margin:0!important;
+    padding:0!important;
+    gap:4px!important;
+    pointer-events:auto!important;
   }
-  body .at-site-header .at-site-logo{
-    top:20px;
-    bottom:auto;
-    left:0;
+  html body .at-site-header .at-site-logo{
+    position:absolute!important;
+    top:19px!important;
+    bottom:auto!important;
+    left:0!important;
+    width:176px!important;
+    margin:0!important;
+    float:none!important;
   }
-  body .at-site-header .at-site-phone{
-    top:29px;
-    bottom:auto;
+  html body .at-site-header .at-site-phone{
+    position:absolute!important;
+    top:28px!important;
+    right:154px!important;
+    bottom:auto!important;
+    margin:0!important;
   }
-  body .at-site-header .at-site-order{
-    top:17px;
-    bottom:auto;
+  html body .at-site-header .at-site-order{
+    position:absolute!important;
+    top:16px!important;
+    right:0!important;
+    bottom:auto!important;
+    margin:0!important;
+  }
+  html body .at-site-header .at-mobile-menu-wrap{
+    display:none!important;
   }
 }
 @media (min-width:901px) and (max-width:1100px){
-  body .at-site-header>.at-site-header__top,
-  body .at-site-header>.at-site-nav-wrap>.at-site-nav{width:calc(100% - 28px)}
-  body .at-site-header>.at-site-nav-wrap>.at-site-nav{padding-left:174px;padding-right:300px}
-  body .at-site-header>.at-site-nav-wrap>.at-site-nav>ul{gap:1px}
+  html body .at-site-header>.at-site-header__top,
+  html body .at-site-header>.at-site-nav-wrap>.at-site-nav{
+    width:calc(100% - 28px)!important;
+  }
+  html body .at-site-header>.at-site-nav-wrap>.at-site-nav{
+    padding-left:174px!important;
+    padding-right:300px!important;
+  }
+  html body .at-site-header>.at-site-nav-wrap>.at-site-nav>ul{gap:1px!important}
+  html body .at-site-header .at-site-logo{width:150px!important;top:20px!important}
+  html body .at-site-header .at-site-phone{right:142px!important;font-size:14px!important}
+  html body .at-site-header .at-site-order{right:0!important}
 }
 @media (max-width:900px){
-  body .at-site-header>.at-site-nav-wrap{display:none}
+  html body .at-site-header>.at-site-nav-wrap{display:none!important}
 }
