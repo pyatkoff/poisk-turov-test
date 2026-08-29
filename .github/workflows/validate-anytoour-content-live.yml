@@ -15,9 +15,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          page_out(){
+            local path="$1"
+            printf '/tmp/page-%s.html' "$(echo "$path" | tr '/-' '__')"
+          }
           check_page(){
             local path="$1" marker="$2" canonical="$3" out code
-            out="/tmp/page-$(echo "$path" | tr '/-' '__').html"
+            out="$(page_out "$path")"
             code="$(curl -fsSL -o "$out" -w '%{http_code}' --max-time 45 "https://anytoour.ru$path")"
             echo "$path HTTP=$code"
             test "$code" = "200"
@@ -28,7 +32,7 @@ jobs:
           }
           check_country_handoff(){
             local slug="$1" country_id="$2" out
-            out="/tmp/page__country_${slug}_.html"
+            out="$(page_out "/country/$slug/")"
             grep -Eq "href=['\"]\/poisk-turov\/\?country=${country_id}['\"]" "$out"
             echo "/country/$slug/ -> /poisk-turov/?country=$country_id OK"
           }
