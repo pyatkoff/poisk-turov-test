@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-30 00:05 +02:00
+Updated: 2026-08-30 01:07 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -10,19 +10,19 @@ Paid/real-user traffic is intentionally not running. Current visitors are the ow
 
 The previous 9.0 scores describe the mature **tour-search product flow**, not the visual quality of the entire public anytoour.ru site. Owner review on 2026-08-29 identified the material cross-page defect: the search experience and the rest of the public site use visibly different composition, spacing and visual language; migrated pages still need to read as one coherent AnyTour product.
 
-Use this honest site-wide baseline until production visual evidence across all required viewports justifies a re-score:
-- whole public site / coherent product impression: **6.5/10**
-- cross-page visual consistency: **5.5/10**
-- header/navigation consistency: **5.5/10** baseline before the first unification releases
-- homepage: **6.5/10**
-- country pages: **6.0/10**
-- `/hot/`: **6.0–6.5/10**
-- `/how-to-buy/`: **6.0/10**
-- `/contacts/`: **6.0/10**
-- public-site mobile consistency: **6.5–7.0/10**
-- typography: **6.5/10**
-- grid/spacing: **6.0/10**
-- brand coherence: **6.5/10**
+Production visual evidence after PR #285 now justifies a cautious site-wide re-score:
+- whole public site / coherent product impression: **7.0/10**
+- cross-page visual consistency: **6.75/10**
+- header/navigation consistency: **6.5/10** — content/home are unified, but `/poisk-turov/` still uses the legacy search header
+- homepage: **6.75/10**
+- country pages: **7.0/10**
+- `/hot/`: **7.0/10**
+- `/how-to-buy/`: **6.75/10**
+- `/contacts/`: **7.0/10**
+- public-site mobile consistency: **7.25/10**
+- typography: **7.0/10**
+- grid/spacing: **7.0/10**
+- brand coherence: **7.0/10**
 - tour search itself remains the strongest reference surface at approximately **8.5–9.0/10**.
 
 The next milestone is **site-wide 8.5+ without regressing the search flow**, then 9.0+ after a complete cross-page visual audit. Do not claim the whole site is 9/10 merely because search-flow engineering guards are green.
@@ -31,14 +31,16 @@ The next milestone is **site-wide 8.5+ without regressing the search flow**, the
 
 - PR #276 shipped the first shared-shell slice: `SITE_QUALITY_SCORECARD.md`, shared `site-header-v2.php` / `site-header-v2.css`, homepage and standalone content pages on the same header, and search-header visual alignment. It also fixed migrated anytoour.ru navigation that incorrectly jumped back to anytour.online. Release `ec00bcde39fed67be4df88371fbfebcd9048ce10` was production-green.
 - PR #278 shipped the next Design System 1.0 slice. New `design-system-v1.css` establishes shared brand/text/line/surface colors, 1180px shell, radii, shadows, spacing, section rhythm, focus treatment, type/container/card/button/breadcrumb primitives and responsive defaults.
-- The shared token layer now loads on the homepage, the standalone content shell and first in the V2/search CSS bundle. Search JavaScript and business logic were not changed.
-- `site-page-v1.css` no longer carries a duplicate root palette or obsolete `.sp-header/.sp-nav` shell left behind after the shared-header migration. Content hero/type/card/button/grid rhythm now uses shared tokens; grids collapse predictably at 1024/768/560 instead of page-specific ad-hoc behavior.
-- The shared community/footer styling now uses the same shell/tokens and has safer narrow-screen stacking: social and app buttons become single-column at phone widths, while legal/payment rows can wrap without forcing horizontal overflow. Existing verified destinations and legal/payment content were not changed.
-- Two CI guards still encoded the previous duplicated architecture (legacy standalone header selectors and a hard-coded 23-file CSS bundle). They were updated to validate the new shared Design System contract instead of forcing duplication back in.
-- The unpriced-flight guard exposed a separate stale test expectation: production correctly says `цена тура из поиска`, while the test required exact `Цена из поиска`. The guard now accepts the grounded wording semantically. Flight price reset, fuel fallback, pending-price lead context and product code were not changed.
-- PR #278 final head `f9ec3e3559b252b231dc57e899e9b7cfc87d6fb3` passed the latest functional and visual suite: V2 visual baseline, PR visual, selected tour, meal visibility, B5 trust, startup/branch bundles, PHP 8.3, security, standalone navigation/content/home handoff, footer, SEO, comparison, flight recovery, unpriced-flight, selected-tour return and lead/race guards.
-- Squash merge `26f17595f4b87ee925e4238e89b20bf9696f461f` deployed successfully to `anytoour.ru` in run `33277570431`: standalone validation → copy → public-page verification → unchanged lead bridge → live search smoke all passed.
-- **Do not raise site-wide scores yet.** The architecture and responsive guards improved materially, but the scorecard requires production cross-page visual evidence at all required widths before score movement.
+- The shared token layer loads on the homepage, standalone content shell and first in the V2/search CSS bundle. Search JavaScript and business logic were not changed.
+- `site-page-v1.css` no longer carries a duplicate root palette or obsolete `.sp-header/.sp-nav` shell left behind after the shared-header migration. Content hero/type/card/button/grid rhythm uses shared tokens; grids collapse predictably at 1024/768/560 instead of page-specific ad-hoc behavior.
+- The shared community/footer styling uses the same shell/tokens and has safer narrow-screen stacking. Existing verified destinations and legal/payment content were not changed.
+- PR #285 completed the first meaningful production visual-unification pass for standalone/content pages. It strengthened the shared content hero, normalized page background/spacing/card radius/shadows/type hierarchy and clearer country/office card treatment without changing content routes, Tourvisor, Metrika, lead contract, logo or legal/payment behavior.
+- PR #285 squash merge `83a85e358c288f40a8ff2ad8444423d338fa161d` deployed successfully in `Deploy anytoour.ru` run `33279683684`. Public pages, unchanged lead bridge and live search smoke were green.
+- Production visual evidence after #285 passed at **375/430/768/1024/1440** across homepage, search, contacts, how-to-buy, early booking, hot tours, country catalog and Turkey. Representative full-page captures showed the content shell materially more coherent, with no confirmed horizontal overflow/wrapping defect in the audited pages.
+- The post-deploy navigation workflow exposed a stale test contract and, more importantly, a real remaining architecture seam: homepage/content pages use shared `.at-global-header`, while `/poisk-turov/` still renders the older `.at-site-header` and its separate navigation/mobile-menu implementation.
+- PR #287 repaired the stale navigation guard instead of hiding that seam. It now validates both current contracts honestly across 375/430/768/1024/1440 and expands production visual evidence to `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` plus Turkey/Egypt/UAE/Thailand/Russia.
+- Latest PR #287 content-live, navigation-live and security checks passed. Squash merge `17656f37a01bc85ce45249d521415ef5046a9e1b` landed on main. #287 is CI/visual-guard work only; it did not alter product code or require a product deploy.
+- This production evidence supports moving the honest whole-site score from **6.5 → 7.0**, not higher. The largest visible structural gap is now the search-header split; editorial pages also remain lighter/less developed than the mature search experience.
 
 ## Primary product objective
 
@@ -49,15 +51,13 @@ The search experience is the visual/interaction reference, but do not blindly co
 
 ## Exact next work order — Visual Unification / Design System 1.0
 
-1. **Production cross-page audit now.** Inspect deployed `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative Turkey/Egypt/UAE/Thailand/Russia pages at 375/430/768/1024/1440. Record concrete remaining header, grid, typography, spacing, card, footer, overflow and responsive inconsistencies.
-2. **Migrate confirmed weak pages onto shared primitives.** Use `design-system-v1.css`, shared header and shared footer rather than adding new page-local palettes/shells. Reuse existing AnyTour brand assets; **do not redesign or replace the logo**.
-3. **Finish one shared header/navigation contract.** Close production-visible differences between search and content pages, including active states, mobile menu behavior, vertical rhythm and any remaining legacy-only search-header markup where changing it is safe.
-4. **One shared footer.** Keep verified MAX/Telegram/VK/App Store/Google Play destinations and existing safe legal destinations, normalize composition across all pages, and eliminate duplicate footer/pre-footer structures.
-5. **Homepage hierarchy rebuild.** Improve composition and travel discovery while routing useful blocks into the existing search instead of duplicating search logic.
-6. **Weak-page visual rebuild on shared primitives:** `/hot/`, `/country/` + country pages, `/contacts/`, `/how-to-buy/`, `/rb/`. Preserve valid routes/content while fixing layout, hierarchy, cards, spacing and responsive behavior. Do not migrate unresolved legal/payment content.
-7. **Search-shell alignment.** Keep the mature search form/results/selected-tour UX intact while matching public-site shell, typography and rhythm.
-8. **Cross-page journey audit.** Verify `homepage → country → hot/search → results → tour → lead` feels continuous at 375/430/768/1024/1440.
-9. **Only after visual unification:** deepen homepage/country/hot-tour content, real-price discovery modules and SEO inventory. Content blocks must route to the shared search/API rather than fork business logic.
+1. **Migrate the remaining search header safely.** `/poisk-turov/` still has a separate `at-site-header`/`at-site-nav`/mobile-menu implementation. Map required legacy affordances first (including personal/order links), then migrate only the outer header/navigation onto `site-header-v2` where safe. Preserve the mature search form/results/selected-tour behavior and keep all search/flight/price/comparison/lead regressions green.
+2. **Re-run the cross-page journey audit.** Verify `homepage → country → hot/search → results → tour → lead` at 375/430/768/1024/1440 after any shell change.
+3. **Shared orientation primitives.** Add/normalize breadcrumbs and editorial hierarchy where production evidence shows weak orientation, using existing Design System primitives rather than page-local shell CSS.
+4. **Homepage hierarchy/discovery improvement.** Improve composition and travel discovery while routing useful blocks into the existing search instead of duplicating search logic.
+5. **Country/hot discovery depth.** Improve `/country/`, representative country pages and `/hot/` on shared primitives; useful discovery modules must hand off to the common search/API.
+6. **Polish supporting pages only where evidence warrants it.** `/contacts/`, `/how-to-buy/`, `/rb/` are now structurally coherent; prioritize remaining hierarchy/spacing weaknesses over decorative flourishes.
+7. **Only after shell unification:** deepen content, real-price discovery modules and SEO inventory. Do not fork search business logic.
 
 ## Design principles
 
