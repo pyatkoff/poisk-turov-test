@@ -26,7 +26,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: curl, mbstring, intl, xml, zip, gd, mysqli, pdo_mysql, openssl
+          extensions: curl, mbstring, xml, zip, gd, mysqli, pdo_mysql, openssl
           coverage: none
 
       - name: Verify runtime baseline and required extensions
@@ -35,7 +35,7 @@ jobs:
           set -euo pipefail
           php -r 'if (PHP_MAJOR_VERSION !== 8 || PHP_MINOR_VERSION !== 3) { fwrite(STDERR, "Expected PHP 8.3, got ".PHP_VERSION."\n"); exit(1); }'
           php -r '
-            $required = ["curl", "mbstring", "json", "openssl", "intl", "libxml", "zip", "gd", "mysqli", "pdo_mysql", "Zend OPcache"];
+            $required = ["curl", "mbstring", "json", "openssl", "libxml", "zip", "gd", "mysqli", "pdo_mysql", "Zend OPcache"];
             $missing = [];
             foreach ($required as $ext) {
               if (!extension_loaded($ext)) $missing[] = $ext;
