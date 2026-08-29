@@ -31,6 +31,9 @@ jobs:
             ['contacts','https://anytoour.ru/contacts/','.sp-main'],
             ['how-to-buy','https://anytoour.ru/how-to-buy/','.sp-main'],
             ['early-booking','https://anytoour.ru/rb/','.sp-main'],
+            ['hot','https://anytoour.ru/hot/','.sp-main'],
+            ['country-catalog','https://anytoour.ru/country/','.sp-main'],
+            ['country-turkey','https://anytoour.ru/country/turkey/','.sp-main'],
           ];
           const rgb=s=>(s.match(/\d+/g)||[]).slice(0,3).map(Number);
           const luminance=([r,g,b])=>{const f=x=>{x/=255;return x<=.03928?x/12.92:((x+.055)/1.055)**2.4};return .2126*f(r)+.7152*f(g)+.0722*f(b)};
