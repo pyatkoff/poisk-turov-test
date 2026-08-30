@@ -26,20 +26,21 @@ Emergency/product safety still overrides this phase in the order defined by `AGE
 ## Current progress
 
 - Shared PHP footer ownership is consolidated across standalone/search consumers.
-- Search navigation order/labels and responsive header geometry are visually aligned with the public shared header while preserving the mature search DOM/runtime.
 - Editorial CTA callout background regression on `/hot/` and `/rb/` is fixed and verified through CI/live visual workflow.
 - Representative country related-destination cards balance correctly at 561–768px via PR #369.
-- PR #374 removed page-level negative spacing exceptions so editorial top-level cards/sections now use the canonical `--at-content-gap`; deploy, five-width standalone content/navigation/root visuals, live user journey and V2 search/selected-tour/recovery checks are green.
+- PR #374 removed page-level negative spacing exceptions so editorial top-level cards/sections use the canonical `--at-content-gap`; deploy, five-width standalone content/navigation/root visuals, live user journey and V2 search/selected-tour/recovery checks are green.
 - Fresh five-width artifacts for `/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/`, Turkey, Tunisia and Maldives show no new confirmed overflow, broken CTA or duplicated shell after #374.
-- The cross-surface visual gate now needs to protect the compatibility boundary explicitly: `/poisk-turov/` intentionally keeps the mature `.at-site-header` DOM, but its measured height/logo geometry must match `.at-global-header` at 375/430/768/1024/1440 and search-header CSS/index changes must trigger that gate.
+- PR #375 closed the search/public-header regression gap without replacing the mature search DOM: the shared five-width visual suite now runs for search-header CSS/index changes and verifies `/poisk-turov/` header height/logo width against the public shell at 375/430/768/1024/1440. PR and post-merge live runs are green.
+- PR #376 extends that boundary to runtime navigation: `header-current-site.js` changes now trigger the shared visual suite, search labels/paths are compared with the homepage reference, and `/poisk-turov/` must retain its active navigation state. PR and post-merge live runs are green.
+- The compatibility boundary is therefore explicit and guarded: `/poisk-turov/` may retain its mature `.at-site-header` DOM while presenting the same measured header geometry and runtime navigation contract as `.at-global-header`.
 
 ## Exact next work order
 
-1. Land and verify the cross-surface header-geometry regression gate for `/poisk-turov/` versus the shared public shell.
-2. Continue page-by-page five-width audit of `/rb/`, `/hot/`, `/contacts/`, `/country/` and representative country pages for confirmed spacing, wrapping, hierarchy and shared-shell drift.
-3. Move remaining weak editorial primitives onto shared Design System tokens/components where safe.
-4. Recheck homepage → country/destination → hot/search → results → selected tour → lead as one visual journey while preserving mature search behavior.
-5. Continue independent safe visual slices per run; merge/deploy only after relevant checks are green and verify live behavior after release.
+1. Continue five-width page-by-page audit of `/rb/`, `/hot/`, `/contacts/`, `/country/` and representative country pages, fixing only confirmed spacing, wrapping, hierarchy or shared-primitive drift.
+2. Consolidate remaining weak editorial primitives onto shared Design System tokens/components where the visual audit proves a real inconsistency; avoid cosmetic token churn without user-visible benefit.
+3. Recheck homepage → country/destination → hot/search → results → selected tour → lead as one visual journey, including header/footer continuity between editorial and mature search surfaces.
+4. Preserve the search/recovery/results/comparison/flight/price/fuel/lead regression suite while continuing independent safe visual slices.
+5. Merge/deploy only after relevant checks are green and verify live behavior after release.
 
 ## Mandatory protections
 
