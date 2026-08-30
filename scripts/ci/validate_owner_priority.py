@@ -7,11 +7,36 @@ owner = json.loads((root / "OWNER_PRIORITY.json").read_text(encoding="utf-8"))
 state = json.loads((root / "AUTOPILOT_STATE.json").read_text(encoding="utf-8"))
 autopilot = (root / "AUTOPILOT.md").read_text(encoding="utf-8")
 
+# Current explicit owner policy baseline. This is intentionally separate from
+# OWNER_PRIORITY.json so a coherent autonomous rewrite of owner/state/docs does
+# not silently redefine the policy and make this guard self-fulfilling.
+BASELINE_MODE = "technical_refactor_pass"
+BASELINE_PHASE = "TECHNICAL REFACTOR PASS"
+BASELINE_ORDER = [
+    "technical_refactor",
+    "ux_visual",
+    "content_seo",
+    "cosmetic_cleanup",
+]
+
 expected_mode = owner["active_mode"]
 expected_phase = owner["active_phase"]
 priority_order = owner.get("priority_after_emergency_overrides") or []
 
 errors = []
+if expected_mode != BASELINE_MODE:
+    errors.append(
+        f"OWNER_PRIORITY active_mode={expected_mode!r}, explicit-owner baseline is {BASELINE_MODE!r}"
+    )
+if expected_phase != BASELINE_PHASE:
+    errors.append(
+        f"OWNER_PRIORITY active_phase={expected_phase!r}, explicit-owner baseline is {BASELINE_PHASE!r}"
+    )
+if priority_order != BASELINE_ORDER:
+    errors.append(
+        "OWNER_PRIORITY priority order differs from explicit-owner baseline: "
+        + " → ".join(BASELINE_ORDER)
+    )
 if state.get("mode") != expected_mode:
     errors.append(f"AUTOPILOT_STATE mode={state.get('mode')!r}, expected {expected_mode!r}")
 lock = state.get("owner_priority_lock") or {}
@@ -36,4 +61,4 @@ if errors:
         print(f"- {error}")
     raise SystemExit(1)
 
-print(f"OWNER_PRIORITY_GUARD_OK mode={expected_mode}")
+print(f"OWNER_PRIORITY_GUARD_OK mode={expected_mode} baseline={BASELINE_MODE}")
