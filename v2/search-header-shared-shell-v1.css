@@ -1,4 +1,33 @@
-/* Search-header compatibility layer: make the legacy /poisk-turov/ mobile header visually match site-header-v2 without replacing the mature search shell. Loaded last in the V2 CSS bundle so historical search styles cannot repaint the menu trigger. */
+/* Search-header compatibility layer: make the legacy /poisk-turov/ header visually match site-header-v2 without replacing the mature search shell. Loaded last in the V2 CSS bundle so historical search styles cannot repaint the shared geometry. */
+@media(min-width:901px){
+  html body .at-site-header>.at-site-header__top,
+  html body .at-site-header .at-site-nav{
+    width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))!important;
+  }
+  html body .at-site-header>.at-site-header__top,
+  html body .at-site-header .at-site-nav-wrap,
+  html body .at-site-header .at-site-nav{
+    height:var(--at-header-height,78px)!important;
+    min-height:var(--at-header-height,78px)!important;
+  }
+  html body .at-site-header .at-site-logo{
+    top:50%!important;
+    width:var(--at-header-logo-width,176px)!important;
+    transform:translateY(-50%)!important;
+  }
+  html body .at-site-header .at-site-phone,
+  html body .at-site-header .at-site-order{
+    top:50%!important;
+    transform:translateY(-50%)!important;
+  }
+  html body .at-site-header .at-site-nav>ul{gap:8px!important}
+  html body .at-site-header .at-site-nav>ul>li>a{padding-inline:11px!important}
+}
+@media(min-width:901px) and (max-width:1100px){
+  html body .at-site-header .at-site-logo{width:var(--at-header-logo-tablet-width,152px)!important}
+  html body .at-site-header .at-site-nav>ul{gap:2px!important}
+  html body .at-site-header .at-site-nav>ul>li>a{padding-inline:8px!important}
+}
 @media(max-width:900px){
   html body .at-site-header{
     min-height:var(--at-header-mobile-height,68px)!important;
