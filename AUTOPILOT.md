@@ -25,23 +25,21 @@ Emergency/product safety still overrides this phase in the order defined by `AGE
 
 ## Current resume point
 
-The current Design System pass has now closed several site-wide coherence gaps:
+Material Design System progress in the latest pass:
 
-- #356: representative country fact-card rows balanced across tablet/intermediate widths and production/live verified;
-- #359: mature search header geometry aligned with shared shell tokens at 375/430/768/1024/1440 and production/live verified;
-- #360: `/country/` 14-card catalog balanced at 769–1024px;
-- #361: obsolete runtime request for missing `footer-current-site.css` removed; shared `site-footer-v1.css` remains the active footer style source and production/live is green;
-- #362: `/contacts/` two-card action row now uses a balanced two-column primitive instead of leaving an empty third column;
-- #363: homepage, editorial pages and search now use one PHP footer markup owner; the duplicate JS footer implementation is removed. All PR responsive/regression checks are green and the production deploy/live gate is running.
+- #363 is fully production/live green: homepage, editorial pages and search now use one PHP footer markup owner; duplicate JS footer markup is gone while verified social/app/legal destinations remain unchanged.
+- #365 aligns the mature search header's top-level desktop/mobile navigation with the shared public header — Search, Countries, Hot, Early booking, Contacts — and passed the dedicated 375/430/768/1024/1440 search-header gate before merge.
+- Direct review of full-page visual artifacts exposed a severe common primitive regression on `/hot/` and `/rb/`: the late generic `.sp-card` background painted blue CTA callouts white while their copy stayed white. #367 restores the blue callout variant in the final shared primitive layer. The complete PR visual/regression suite is green, and new desktop/mobile screenshots confirm the callouts are readable and visually coherent again. Final standalone production deploy is still running.
+- #366 was refreshed on top of current `main` after the shared-CSS conflict so it preserves the callout repair while balancing the third related-destination card at 561–768px.
 
-Whole-site coherence remains conservatively **6.8/10** until the footer consolidation completes production verification. This is a site-wide product score, not the stronger search-only engineering score.
+Whole-site coherence remains conservatively **6.8/10** until the newest production gate closes. This is a site-wide product score, not the stronger search-only engineering score.
 
 Next work order:
 
-1. Finish production/live verification of #363, including public-page, footer and search/lead regression gates.
-2. Audit the remaining duplicated search header/navigation implementation against `site-header-v2` and choose the smallest compatibility-preserving migration slice; do not replace mature search markup blindly.
-3. Re-audit `/how-to-buy/`, `/rb/`, `/hot/`, `/country/`, `/contacts/` and representative country pages at 375/430/768/1024/1440 and fix only confirmed defects.
-4. Consolidate only proven duplicated visual primitives into the shared Design System layer.
+1. Finish #367 production/live verification, including public pages, unchanged lead bridge and live search smoke.
+2. Take refreshed #366 through fresh CI/visual evidence and merge only if the callout repair remains intact.
+3. Continue screenshot-driven audit of `/how-to-buy/`, `/rb/`, `/hot/`, `/country/`, `/contacts/` and representative country pages at 375/430/768/1024/1440; fix only confirmed defects.
+4. After visible defects are cleared, choose the next smallest compatibility-preserving step toward one shared header implementation rather than blindly replacing the mature search shell.
 5. Keep mature search/recovery/results/comparison/flight/price/fuel/lead regressions green throughout.
 
 ## Mandatory protections
@@ -58,4 +56,4 @@ Preserve the AnyTour logo, verified destinations and mature search/recovery/resu
 
 ## Execution policy
 
-Work in narrow independent PR-sized slices. At the start of each run inspect current `main`, open PRs, fresh CI/deploy and live production evidence. Do not invent visual defects merely to produce commits. If one visual item is blocked, record/defer it and continue another safe page/component. Deploy only after relevant checks are green, then verify production/live behavior.
+Work in narrow independent PR-sized slices. At the start of each run inspect current `main`, open PRs, fresh CI/deploy and live production evidence. Use visual artifacts instead of inferring appearance from CSS when available. Do not invent visual defects merely to produce commits. If one visual item is blocked, record/defer it and continue another safe page/component. Deploy only after relevant checks are green, then verify production/live behavior.
