@@ -22,6 +22,7 @@ function v2_render_site_header(string $phone, string $phoneHref, string $activeP
         ['/country/', 'Страны'],
         ['/hot/', 'Горящие туры'],
         ['/rb/', 'Раннее бронирование'],
+        ['/how-to-buy/', 'Как купить'],
         ['/contacts/', 'Контакты'],
     ];
     ?>
@@ -44,7 +45,6 @@ function v2_render_site_header(string $phone, string $phoneHref, string $activeP
         <?php foreach ($nav as [$href, $label]): $isActive = v2_header_path_is_active($activePath, $href); ?>
           <a href="<?=v2_header_e($href)?>"<?=$isActive?' aria-current="page"':''?>><?=v2_header_e($label)?></a>
         <?php endforeach; ?>
-        <a class="at-global-header__mobile-buy" href="/how-to-buy/">Как купить тур</a>
       </div>
     </details>
   </div>
