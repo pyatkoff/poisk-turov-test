@@ -56,8 +56,8 @@ jobs:
           const css=fs.readFileSync(process.env.BRANCH_CSS);
           const js=fs.readFileSync(process.env.BRANCH_JS);
           const sizes=[['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000]];
-          const expectedOrder=['/poisk-turov/','/country/','/hot/','/rb/','/contacts/'];
-          const expectedLabels=['Поиск туров','Страны','Горящие туры','Раннее бронирование','Контакты'];
+          const expectedOrder=['/poisk-turov/','/country/','/hot/','/rb/','/how-to-buy/','/contacts/'];
+          const expectedLabels=['Поиск туров','Страны','Горящие туры','Раннее бронирование','Как купить','Контакты'];
           const close=(a,b,t=3)=>Math.abs(a-b)<=t;
           const center=e=>(e.top+e.bottom)/2;
           const isPainted=s=>s&&s!=='transparent'&&s!=='rgba(0, 0, 0, 0)';
@@ -85,12 +85,12 @@ jobs:
                 const root=getComputedStyle(document.documentElement);
                 const navData=selector=>Array.from(document.querySelectorAll(selector)).map(a=>({path:new URL(a.href,location.origin).pathname,label:(a.textContent||'').trim()}));
                 const desktopItems=navData('.at-site-nav>ul>li>a');
-                const mobileItems=navData('.at-mobile-menu>li>a').filter(x=>x.path!=='/how-to-buy/');
+                const mobileItems=navData('.at-mobile-menu>li>a');
                 return {header:r(document.querySelector('.at-site-header')),top:r(document.querySelector('.at-site-header__top')),navWrap:r(document.querySelector('.at-site-nav-wrap')),nav:r(document.querySelector('.at-site-nav')),logo:r(document.querySelector('.at-site-logo')),phone:r(document.querySelector('.at-site-phone')),order:r(document.querySelector('.at-site-order')),mobile:r(document.querySelector('.at-mobile-menu-wrap')),currentDesktop:painted(document.querySelector('.at-site-nav>ul>li>a[href="/poisk-turov/"]')),currentMobile:painted(document.querySelector('.at-mobile-menu a[href="/poisk-turov/"]')),desktopOrder:desktopItems.map(x=>x.path),desktopLabels:desktopItems.map(x=>x.label),mobileOrder:mobileItems.map(x=>x.path),mobileLabels:mobileItems.map(x=>x.label),tokens:{desktop:root.getPropertyValue('--at-header-height').trim(),mobile:root.getPropertyValue('--at-header-mobile-height').trim(),compact:root.getPropertyValue('--at-header-compact-height').trim()},overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2};
               });
               await page.screenshot({path:`header-layout-artifacts/${name}.png`,fullPage:false,animations:'disabled'});
               let bad=!response||response.status()!==200||errors.length||state.overflow||!state.header||!state.logo||state.tokens.desktop!=='78px'||state.tokens.mobile!=='68px'||state.tokens.compact!=='64px'||!same(state.desktopOrder,expectedOrder)||!same(state.desktopLabels,expectedLabels)||!same(state.mobileOrder,expectedOrder)||!same(state.mobileLabels,expectedLabels);
-              if(width>=901){
+              if(width>1024){
                 bad ||= !state.currentDesktop || !isPainted(state.currentDesktop.background) || !close(state.header.height,78,2) || !state.navWrap || state.navWrap.display==='none' || !state.nav || state.nav.display==='none' || !close(state.navWrap.top,state.header.top,2) || !close(state.navWrap.bottom,state.header.bottom,2) || state.logo.top<state.header.top-1 || state.logo.bottom>state.header.bottom+1 || !state.order || state.order.top<state.header.top-1 || state.order.bottom>state.header.bottom+1 || !close(center(state.logo),center(state.header),2) || !close(center(state.phone),center(state.header),2) || !close(center(state.order),center(state.header),2) || (state.mobile&&state.mobile.display!=='none');
               } else {
                 const expectedHeight=width<=520?64:68;

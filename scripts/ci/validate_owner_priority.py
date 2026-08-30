@@ -10,12 +10,13 @@ autopilot = (root / "AUTOPILOT.md").read_text(encoding="utf-8")
 # Current explicit owner policy baseline. This is intentionally separate from
 # OWNER_PRIORITY.json so a coherent autonomous rewrite of owner/state/docs does
 # not silently redefine the policy and make this guard self-fulfilling.
-BASELINE_MODE = "technical_refactor_pass"
-BASELINE_PHASE = "TECHNICAL REFACTOR PASS"
+BASELINE_MODE = "design_system_1_0"
+BASELINE_PHASE = "ANYTOUR DESIGN SYSTEM 1.0"
 BASELINE_ORDER = [
-    "technical_refactor",
+    "design_system_site_unification",
     "ux_visual",
     "content_seo",
+    "technical_refactor",
     "cosmetic_cleanup",
 ]
 
