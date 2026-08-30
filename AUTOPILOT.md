@@ -25,12 +25,14 @@ Emergency/product safety still overrides this phase in the order defined by `AGE
 
 ## Current resume point
 
-Recent production-verified slices already improved the homepage, `/hot/`, `/rb/`, `/country/` and representative country-page responsive grids, plus shared editorial primitives and mobile iOS shell regressions.
+Recent production-verified slices improved the homepage, `/hot/`, `/rb/`, `/country/` and representative country-page responsive grids, shared editorial primitives and mobile iOS shell regressions. PR #356 is now fully production/live green after a successful rerun through public-page, lead-bridge and live-search smoke. PR #359 aligned the mature search header's desktop/intermediate geometry with the shared Design System tokens and passed the dedicated 375/430/768/1024/1440 header check plus the wider search visual/regression suite before merge.
+
+A confirmed remaining duplication is the search runtime's obsolete request for `footer-current-site.css`, a file no longer present in the repository. The shared `site-footer-v1.css` already owns `.at-site-footer`; remove the dead request without changing footer destinations or lead/search behavior, then continue the page re-audit.
 
 Next work order:
 
-1. Verify the latest country-page balanced-three release is fully production/live green.
-2. Audit the remaining visual discontinuity between the shared public-site shell and `/poisk-turov/`, especially header/nav geometry and mobile/desktop parity, without replacing mature search behavior.
+1. Finish production/live verification of the merged search-header geometry parity release.
+2. Remove the obsolete search-only `footer-current-site.css` request and keep `site-footer-v1.css` as the single active footer style source.
 3. Re-audit `/contacts/`, `/how-to-buy/`, `/rb/`, `/hot/`, `/country/` and representative country pages at 375/430/768/1024/1440 for confirmed spacing/wrapping/overflow issues.
 4. Consolidate only proven duplicated visual primitives into the shared Design System layer.
 5. Continue through multiple independent safe visual tasks while preserving all search and lead regressions.

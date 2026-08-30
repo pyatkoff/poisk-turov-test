@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T17:51:00+03:00",
+  "updated_at": "2026-08-30T16:59:00+02:00",
   "mode": "anytour_design_system_1_0",
   "phase": "Owner-directed AnyTour Design System 1.0: site-wide visual unification across homepage, editorial/destination pages, hot/search, results, selected tour and lead journey while preserving mature search regressions and protected external contracts.",
   "owner_priority_source": "OWNER_PRIORITY.json",
@@ -14,18 +14,18 @@
     "id": "DESIGN_SYSTEM_SEARCH_SHELL_PARITY",
     "category": "VISUAL_UX_SITE_WIDE",
     "status": "ACTIVE",
-    "progress": "PRs #348/#349/#351/#352/#355/#356 delivered shared/mobile/editorial/home/hot/country visual slices. Current main temporarily drifted to a technical-refactor owner lock in #357 despite the latest explicit Design System direction; the owner-priority source and guard are being corrected generically.",
-    "next_action": "Verify #356 production/live completion, then audit and safely improve the remaining shared-site vs /poisk-turov/ header/navigation parity at 375/430/768/1024/1440 without changing mature search behavior."
+    "progress": "PR #356 is fully production/live green after successful public-page, unchanged lead-bridge and live-search smoke rerun. PR #359 merged after dedicated 375/430/768/1024/1440 search-header geometry validation and broader V2 visual/regression checks. A confirmed obsolete search runtime request still targets missing footer-current-site.css even though site-footer-v1.css is the active footer style source.",
+    "next_action": "Finish #359 production/live verification, remove the obsolete footer-current-site.css request without changing footer destinations, then continue the representative editorial-page responsive re-audit."
   },
   "site_wide_score": {
     "owner_baseline": 6.5,
-    "current_estimate": 6.7,
-    "status": "MODEST_CONFIRMED_MOVEMENT",
-    "note": "Whole-site coherence score, not a search-only engineering score. Increase only after broader production-verified site-wide improvement."
+    "current_estimate": 6.8,
+    "status": "CONFIRMED_INCREMENTAL_MOVEMENT",
+    "note": "Whole-site coherence score, not a search-only engineering score. The increase reflects production-verified homepage/hot/country balancing plus shared search-header geometry parity; broader shell duplication remains."
   },
   "work_order": [
-    "verify latest country-page balanced-three release fully production/live green",
-    "audit and improve shared public-site vs search header/nav parity without replacing mature search behavior",
+    "finish merged search-header geometry release production live verification",
+    "remove obsolete footer-current-site.css runtime request and keep shared footer styles canonical",
     "re-audit contacts how-to-buy rb hot country and representative country pages at 375 430 768 1024 1440",
     "consolidate only proven duplicated visual primitives into shared Design System",
     "keep mature search recovery results comparison flight price fuel lead regressions green"
