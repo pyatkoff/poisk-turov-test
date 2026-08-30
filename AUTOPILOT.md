@@ -22,6 +22,9 @@ Production breakage, lead loss, incorrect data and broken user journeys may pree
 - The active V2 contract guard now validates the physical shared header rather than requiring duplicated logo markup in `v2/index.php`.
 - `/contacts/` office cards now use the actual shared `sp-card` surface/radius/border/shadow instead of a legacy local surface override.
 - Representative country pages place the existing live-search callout before related-destination alternatives, improving the mobile country → search journey without changing Tourvisor/search data contracts.
+- `/hot/` and `/rb/` now put the existing live-search CTA directly after the hero so destination/offer intent continues into the same mature search instead of being buried after explanatory content.
+- `/hot/` presents quick duration choices before educational cards, reducing the number of editorial steps before entering live search while preserving the existing date/night query contract.
+- `/country/` catalog cards and related-destination cards now expose the same explicit `Открыть направление` affordance, using the shared card surface and responsive spacing rather than relying on an unlabeled arrow alone.
 
 ## Design-system objectives
 
@@ -34,12 +37,11 @@ Production breakage, lead loss, incorrect data and broken user journeys may pree
 
 ## Exact next work order
 
-1. Deepen `/country/` catalog and representative country-page hierarchy without inventing unavailable prices, ratings or destination data.
-2. Audit `/hot/` information hierarchy and CTA continuity into live search.
-3. Audit `/how-to-buy/` and `/rb/` against the same shared card/button/breadcrumb/section rhythm and fix confirmed inconsistencies.
-4. Verify the search outer shell remains visually continuous with editorial pages without changing search/recovery/results/comparison/flight/price/fuel/lead contracts.
-5. Re-run the cross-page journey audit: homepage → destination/hot → search → results → selected tour → lead at 375/430/768/1024/1440.
-6. Raise `SITE_QUALITY_SCORECARD.md` only after production visual evidence supports a material movement.
+1. Audit `/how-to-buy/` against the now-established hero → primary action/content rhythm and fix only confirmed hierarchy or responsive inconsistencies; do not duplicate CTAs merely for symmetry.
+2. Verify the search outer shell remains visually continuous with editorial pages without changing search/recovery/results/comparison/flight/price/fuel/lead contracts.
+3. Re-run the cross-page journey audit: homepage → destination/hot → search → results → selected tour → lead at 375/430/768/1024/1440.
+4. Revisit `/contacts/` and representative country pages only for evidence-backed spacing/wrapping/overflow issues found in that five-width sweep.
+5. Raise `SITE_QUALITY_SCORECARD.md` only after production visual evidence supports a material movement; do not convert search-only quality into a whole-site score increase.
 
 ## Mandatory protections
 
