@@ -21,15 +21,15 @@ This file is the required migration checklist for the current public site. A leg
 | `/country/tailand/` | `/country/tailand/` | LIVE_NEW | Compatibility spelling preserved locally; CTA hands off authoritative Tourvisor country `2`. Canonical rename may be reviewed later. |
 | `/country/oae/` | `/country/oae/` | LIVE_NEW | Compatibility route preserved locally; CTA hands off authoritative Tourvisor country `9`. Canonical rename may be reviewed later. |
 | `/country/russia/` | `/country/russia/` | LIVE_NEW | Local Russia landing; CTA hands off authoritative Tourvisor country `47`. |
-| `/country/tunis/` | `/country/tunis/` | LEGACY_ONLY | Tunisia landing. |
-| `/country/vetnam/` | reviewed canonical route | LEGACY_ONLY | Preserve old typo route with redirect after canonical naming is chosen. |
-| `/country/dominikana/` | reviewed canonical route | LEGACY_ONLY | Dominican Republic landing. |
-| `/country/cyprus/` | `/country/cyprus/` | LEGACY_ONLY | Cyprus landing. |
-| `/country/cuba/` | `/country/cuba/` | LEGACY_ONLY | Cuba landing. |
-| `/country/maldives/` | `/country/maldives/` | LEGACY_ONLY | Maldives landing. |
-| `/country/mexico/` | `/country/mexico/` | LEGACY_ONLY | Mexico landing. |
-| `/country/sri-lanka/` | `/country/sri-lanka/` | LEGACY_ONLY | Sri Lanka landing. |
-| `/country/tanzania/` | `/country/tanzania/` | LEGACY_ONLY | Tanzania landing. |
+| `/country/tunis/` | `/country/tunis/` | LIVE_NEW | Local Tunisia landing is implemented in the shared country shell; until an authoritative Tourvisor country id is mapped, CTA falls back to general search. |
+| `/country/vetnam/` | `/country/vetnam/` | LIVE_NEW | Compatibility spelling is implemented locally; canonical rename may be reviewed later. Until an authoritative Tourvisor country id is mapped, CTA falls back to general search. |
+| `/country/dominikana/` | `/country/dominikana/` | LIVE_NEW | Compatibility route is implemented locally; canonical naming may be reviewed later. Until an authoritative Tourvisor country id is mapped, CTA falls back to general search. |
+| `/country/cyprus/` | `/country/cyprus/` | LIVE_NEW | Local Cyprus landing is implemented in the shared country shell; CTA falls back to general search until authoritative Tourvisor mapping is added. |
+| `/country/cuba/` | `/country/cuba/` | LIVE_NEW | Local Cuba landing is implemented in the shared country shell; CTA falls back to general search until authoritative Tourvisor mapping is added. |
+| `/country/maldives/` | `/country/maldives/` | LIVE_NEW | Local Maldives landing is implemented in the shared country shell; CTA falls back to general search until authoritative Tourvisor mapping is added. |
+| `/country/mexico/` | `/country/mexico/` | LIVE_NEW | Local Mexico landing is implemented in the shared country shell; CTA falls back to general search until authoritative Tourvisor mapping is added. |
+| `/country/sri-lanka/` | `/country/sri-lanka/` | LIVE_NEW | Local Sri Lanka landing is implemented in the shared country shell; CTA falls back to general search until authoritative Tourvisor mapping is added. |
+| `/country/tanzania/` | `/country/tanzania/` | LIVE_NEW | Local Tanzania landing is implemented in the shared country shell; CTA falls back to general search until authoritative Tourvisor mapping is added. |
 | `/hot/` | `/hot/` | LIVE_NEW | New fast-deal landing is live; live Tourvisor-powered deal blocks are a follow-up enhancement. |
 | `/rb/` | `/rb/` | LIVE_NEW | Early-booking landing is live and included in standalone content smoke. |
 | `/contacts/` | `/contacts/` | LIVE_NEW | Contacts page is live and passes production content smoke. |
