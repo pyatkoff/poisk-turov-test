@@ -30,6 +30,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   <link rel="stylesheet" href="<?=home_e(v2_asset('design-system-v1.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('site-header-v2.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('home-v1.css'))?>">
+  <link rel="stylesheet" href="<?=home_e(v2_asset('home-journey-v1.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('site-footer-v1.css'))?>">
 </head>
 <body>
