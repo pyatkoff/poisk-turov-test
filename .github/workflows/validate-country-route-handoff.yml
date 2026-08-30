@@ -42,14 +42,22 @@ jobs:
           set -euo pipefail
           php -l v2/country-page-v1.php >/dev/null
           php -l v2/country/index.php >/dev/null
-          for page in turkey egypt oae tailand russia; do php -l "v2/country/$page/index.php" >/dev/null; done
+          local_pages='turkey egypt oae tailand russia tunis vetnam dominikana cyprus cuba maldives mexico sri-lanka tanzania'
+          for page in $local_pages; do php -l "v2/country/$page/index.php" >/dev/null; done
           grep -Fq "?country=" v2/country-page-v1.php
+          grep -Fq "Открыть поиск туров" v2/country-page-v1.php
           python3 - <<'PY'
-          import pathlib
-          text=pathlib.Path('v2/country/index.php').read_text(encoding='utf-8')
-          for slug in ('turkey','egypt','oae','tailand','russia'):
-              assert f"'/country/{slug}/'" in text, f'{slug}: local catalogue link missing'
-          for slug in ('tunis','vetnam','dominikana','cyprus','cuba','maldives','mexico','sri-lanka','tanzania'):
-              assert f"$legacy.'/country/{slug}/'" in text, f'{slug}: undeployed route must stay legacy'
+          import pathlib,re
+          catalogue=pathlib.Path('v2/country/index.php').read_text(encoding='utf-8')
+          local=('turkey','egypt','oae','tailand','russia','tunis','vetnam','dominikana','cyprus','cuba','maldives','mexico','sri-lanka','tanzania')
+          verified_ids={'turkey','egypt','oae','tailand','russia'}
+          for slug in local:
+              assert f"'/country/{slug}/'" in catalogue, f'{slug}: local catalogue link missing'
+              route=pathlib.Path(f'v2/country/{slug}/index.php')
+              assert route.is_file(), f'{slug}: local route missing'
+              text=route.read_text(encoding='utf-8')
+              if slug not in verified_ids:
+                  assert not re.search(r"'countryId'\s*=>",text), f'{slug}: unverified Tourvisor countryId must not be guessed'
+          assert 'https://anytour.online/country/' not in catalogue, 'legacy country jump remains in catalogue'
           PY
           echo COUNTRY_ROUTE_HANDOFF_OK
