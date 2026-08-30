@@ -69,7 +69,7 @@ function cp_render(array $page): void
       <?php if ($facts): ?>
       <section aria-labelledby="country-guide-title">
         <div class="sp-section-head"><h2 id="country-guide-title">Что важно при выборе</h2><p>Короткие ориентиры перед тем, как перейти к актуальным ценам и доступным вариантам.</p></div>
-        <div class="sp-grid">
+        <div class="sp-grid sp-grid--balanced-three">
           <?php foreach ($facts as $fact): ?>
             <article class="sp-card"><h3><?=sp_e((string)($fact['title'] ?? 'Важно знать'))?></h3><p><?=sp_e((string)($fact['text'] ?? ''))?></p></article>
           <?php endforeach; ?>
