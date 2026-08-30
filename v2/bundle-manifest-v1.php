@@ -17,6 +17,7 @@ function v2_bundle_manifest(): array
             'results-experience-v1.css',
             'conversion-confidence-v1.css',
             'checkout-experience-v1.css',
+            'site-header-v2.css',
             'header-current-site.css',
             'primary-meal-ux-v1.css',
             'mobile-results-filters-v1.css',
