@@ -4,6 +4,9 @@ Status: verified batch 3 companion to `CI_WORKFLOW_AUDIT.md` and `TEST_MATRIX.md
 
 | Workflow | Trigger / scope | Tier | Protected behavior | Disposition |
 | --- | --- | --- | --- | --- |
+| `validate-room-recovery.yml` | PR to `main` for `v2/room-details-v3.js`; manual | PR BROWSER | room-details error state, retry, empty-data fallback, stale async response isolation and successful render at 375/768/1440 | KEEP; isolated local behavioral guard, share Playwright setup later |
+| `validate-flight-autoload-race.yml` | PR to `main` for `v2/tour-controller-v4.js`; manual | PR BROWSER | automatic flight loading, stale flight response isolation between selected tours, error state and manual retry at 375/768/1440 | KEEP; request lifecycle/race ownership is distinct |
+| `validate-flight-empty-recovery.yml` | PR to `main` for `v2/flight-empty-recovery-v1.js`, bundle manifest; manual | PR BROWSER | completed empty-flight state becomes one retry affordance, preserves lead form, and does not interfere once real flight variants exist at 375/1440 | KEEP; decorator/empty-state behavior is distinct from autoload race |
 | `validate-flight-keyboard.yml` | PR to `main` for `v2/tour-controller-v4.js`; manual | PR BROWSER | native radio keyboard selection, selected-card state, `v2:flight-selected` event and lead payload stay on the same chosen flight | KEEP; accessibility + lead-boundary behavior is distinct |
 | `validate-v2-flight-tradeoffs.yml` | PR to `main` for `v2/flight-price-sync-v1.js`; manual | PR BROWSER | cheapest/direct/connection facts, pending-price confidence, ranking recovery, fuel/lead copy and overflow at 375/768/1440 | KEEP; share browser harness later |
 | `validate-flight-fuel-fallback.yml` | PR to `main` for `v2/flight-price-sync-v1.js`; manual | PR BROWSER | flight-specific fuel, tour fallback fuel and explicit zero remain distinct and emit coherent update state | KEEP; narrow deterministic edge-case contract |
@@ -13,7 +16,11 @@ Status: verified batch 3 companion to `CI_WORKFLOW_AUDIT.md` and `TEST_MATRIX.md
 
 ## Confirmed findings
 
-The three PR flight guards overlap by asset, not by behavior. Keyboard selection protects accessibility and lead payload synchronization; tradeoffs protect decision-support and pending-price confidence; fuel fallback protects missing-vs-zero semantics. They are not deletion candidates. Shared Playwright installation/bootstrap and fixture helpers are the safe consolidation target.
+The local room/flight browser guards are strong refactor anchors: `validate-room-recovery.yml`, `validate-flight-autoload-race.yml` and `validate-flight-empty-recovery.yml` all load branch-local modules into isolated DOM fixtures and assert observable behavior. Unlike several older V2 browser workflows, these three do not depend on the legacy `anytour.online/poisk-turov-test/v2/` shell.
+
+The flight PR guards overlap by asset/domain, not by protected behavior. Autoload/race owns selected-tour request lifecycle and stale/error/retry safety; empty recovery owns the later empty-state decorator; keyboard selection protects accessibility and lead payload synchronization; tradeoffs protect decision-support and pending-price confidence; fuel fallback protects missing-vs-zero semantics. They are not deletion candidates. Shared Playwright installation/bootstrap and fixture helpers are the safe consolidation target.
+
+`validate-room-recovery.yml` follows the same isolated local Playwright pattern as the strongest flight guards but protects room-details API state. Its setup is a duplication candidate; its room error/empty/stale/success assertions are not.
 
 `validate-flights-live.yml` and `validate-rooms-live.yml` independently start the same Moscow→Turkey fresh search, poll it to completion and sample tours. The duplicated bootstrap is infrastructure overlap; the endpoint verdicts are independent. The safe future direction is one reusable fresh-live-search sampler under `scripts/ci/`, consumed by both workflows while preserving both verdicts.
 
@@ -21,8 +28,8 @@ The three PR flight guards overlap by asset, not by behavior. Keyboard selection
 
 ## Next safe steps
 
-1. Finish remaining room-recovery and flight autoload/empty/pending/unpriced workflow inventory.
-2. Audit the lead family before touching lead-related workflows.
+1. Finish remaining flight pending/unpriced/price-sync workflow inventory.
+2. Audit any remaining lead/mobile/UI families before touching their workflows.
 3. Extract a reusable fresh-search sampler only after all live consumers are mapped.
 4. Extract shared Playwright setup/fixture helpers without combining behavioral assertions.
 5. Change triggers or remove workflows only after equivalent coverage is green.
