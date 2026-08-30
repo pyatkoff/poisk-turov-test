@@ -3,8 +3,6 @@ name: Validate PHP 8.3 runtime
 on:
   pull_request:
     paths:
-      - 'v2/**/*.php'
-      - 'v2/*.php'
       - '.github/workflows/validate-php83-runtime.yml'
       - '.github/workflows/deploy-anytoour.yml'
   push:
