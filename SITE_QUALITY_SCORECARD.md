@@ -1,6 +1,6 @@
 # AnyTour — site-wide quality scorecard
 
-Updated: 2026-08-29
+Updated: 2026-08-30
 
 This scorecard evaluates the **whole public anytoour.ru experience**, not only the mature tour-search flow. A green search regression suite is not evidence that the entire site is visually 9/10.
 
@@ -8,24 +8,34 @@ This scorecard evaluates the **whole public anytoour.ru experience**, not only t
 
 | Area | Current | First target | Main gap |
 |---|---:|---:|---|
-| Whole public site / coherent product impression | 6.5 | 8.5 | Pages still feel like different shells rather than one AnyTour product |
-| Cross-page visual consistency | 5.5 | 8.5 | Different header composition, spacing, typography and page rhythm |
-| Header / navigation consistency | 5.5 | 9.0 | Search header is a legacy two-row pattern while standalone pages use newer one-row headers |
-| Homepage | 6.5 | 8.5 | Stronger than migrated pages, but still not yet the reference shell for the whole site |
-| Search product reference | 8.75 | 9.0 | Mature product flow; preserve while aligning outer shell |
-| `/hot/` | 6.25 | 8.5 | Useful handoff but visually generic and content-light |
-| Country index + country pages | 6.0 | 8.5 | Functional route/content foundation; weak destination-product presentation |
-| `/contacts/` | 6.0 | 8.5 | Needs stronger hierarchy, office/trust presentation and shared shell |
-| `/how-to-buy/` | 6.0 | 8.5 | Content works but page presentation is basic |
-| `/rb/` | 6.25 | 8.5 | Needs shared visual hierarchy and stronger discovery handoff |
-| Typography | 6.5 | 9.0 | Similar fonts but inconsistent scale/hierarchy between shells |
-| Grid / spacing | 6.0 | 9.0 | Different container widths, header heights and section rhythm |
-| Mobile site consistency | 6.75 | 8.5 | Search and content/header behavior differ materially |
-| Brand coherence | 6.5 | 9.0 | Logo/colors exist but do not yet form one unmistakable interface system |
+| Whole public site / coherent product impression | 7.0 | 8.5 | Shared shell now exists, but homepage and destination/editorial hierarchy still need another refinement pass |
+| Cross-page visual consistency | 7.0 | 8.5 | Header, footer, page gutter, cards and controls are unified; route-specific hierarchy still varies |
+| Header / navigation consistency | 7.5 | 9.0 | Shared header composition is now used across standalone and search shells; remaining work is hierarchy/polish rather than a split shell |
+| Homepage | 6.75 | 8.5 | Uses the shared system but still needs section hierarchy and discovery-flow refinement |
+| Search product reference | 8.75 | 9.0 | Mature product flow preserved while outer shell is aligned |
+| `/hot/` | 6.75 | 8.5 | Shared shell/rhythm is stronger; page remains content-light and visually generic |
+| Country index + country pages | 6.75 | 8.5 | Shared shell is coherent now; destination-product presentation remains the main gap |
+| `/contacts/` | 6.75 | 8.5 | Shared cards/spacing improve consistency; office/trust presentation can still be stronger |
+| `/how-to-buy/` | 6.75 | 8.5 | Shared hierarchy is cleaner; content presentation still needs a richer guided journey |
+| `/rb/` | 6.75 | 8.5 | Shared shell is coherent; discovery handoff remains the main visual/product gap |
+| Typography | 7.0 | 9.0 | Shared type hierarchy is materially more consistent, but route-specific headings still need tuning |
+| Grid / spacing | 7.25 | 9.0 | One shell/gutter/spacing token layer now controls public pages and footer/header rhythm |
+| Mobile site consistency | 7.25 | 8.5 | Shared responsive header, shell and footer are verified across required widths; content density still varies by route |
+| Brand coherence | 7.25 | 9.0 | Shared colors, surfaces, controls, header/footer and spacing now read as one AnyTour system; destination storytelling is still weak |
 
-## Required evidence for raising scores
+## Evidence supporting the 2026-08-30 score movement
 
-- Inspect public pages at 375, 430, 768, 1024 and 1440 px.
+- AnyTour Design System 1.0 central tokens now own shell surfaces, lines, shadows, controls, hero spacing, page gutters and responsive rhythm.
+- The shared header/navigation consumes that common token layer across standalone pages and the search outer shell.
+- `/contacts/`, `/how-to-buy/`, `/rb/`, `/hot/`, `/country/` and country pages now share common page/card/button/breadcrumb/grid geometry without rewriting unresolved content.
+- The community/pre-footer and footer now use the same common shell width, page gutter, spacing, radius, surface, focus and control tokens while preserving verified destinations.
+- PR visual checks passed for 375, 430, 768, 1024 and 1440 px across homepage, search, target editorial routes and current country pages, including overflow, header/nav geometry, footer, actions/focus and shell continuity.
+- Production deploy completed successfully with public-page verification, unchanged lead-bridge validation and live search smoke.
+- Post-deploy production checks passed for responsive navigation and the full standalone route sweep at the required widths; live tour-card/flights and result-detail regressions also remained green.
+
+## Required evidence for further score increases
+
+- Inspect public pages at 375, 430, 768, 1024 and 1440 px after every material shell change.
 - Check header, navigation, first-screen hierarchy, cards, actions, footer and long-content states.
 - Check overflow, wrapping, touch targets and page-to-page shell continuity.
 - Preserve search/recovery/results/selected-tour/flight/lead functional regressions.
@@ -33,10 +43,9 @@ This scorecard evaluates the **whole public anytoour.ru experience**, not only t
 
 ## Current design-system work order
 
-1. Shared AnyTour tokens and primitives.
-2. Shared modern header/navigation for standalone pages; align the search header to the same composition.
-3. Shared footer rhythm and no duplicated footer/pre-footer structures.
-4. Homepage hierarchy refinement.
-5. Move `/hot/`, country pages, `/contacts/`, `/how-to-buy/`, `/rb/` onto the common shell.
-6. Cross-page journey audit: homepage → destination/hot → search → results → selected tour → lead.
-7. Only then deepen destination content, live-price discovery modules and SEO inventory.
+1. Refine homepage section hierarchy and discovery flow inside the shared shell.
+2. Strengthen country/destination presentation and handoff into hot/search without making editorial pages dense.
+3. Refine `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/` route-specific hierarchy now that shell geometry is common.
+4. Run cross-page journey audit: homepage → destination/hot → search → results → selected tour → lead.
+5. Continue responsive fixes before decorative flourishes.
+6. Only then deepen destination content, live-price discovery modules and SEO inventory.
