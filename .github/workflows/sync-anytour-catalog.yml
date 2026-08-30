@@ -1,6 +1,10 @@
 name: Sync AnyTour catalog
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-anytour-catalog.yml'
   workflow_dispatch:
     inputs:
       country:
@@ -21,15 +25,16 @@ jobs:
 
       - name: Validate catalog tooling
         shell: bash
+        env:
+          COUNTRY_VALUE: ${{ inputs.country || '4' }}
         run: |
           set -euo pipefail
           for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/sync-catalog-v1.php v2/data/db-doctor-v1.php; do
             php -l "$f" >/dev/null
           done
           test -s v2/data/schema-v1.sql
-          country='${{ inputs.country }}'
-          [[ "$country" =~ ^[0-9]+(,[0-9]+)*$ ]]
-          echo "ANYTOUR_CATALOG_TOOLING_OK country=$country"
+          [[ "$COUNTRY_VALUE" =~ ^[0-9]+(,[0-9]+)*$ ]]
+          echo "ANYTOUR_CATALOG_TOOLING_OK country=$COUNTRY_VALUE"
 
       - name: Prepare SSH key
         env:
@@ -51,7 +56,7 @@ jobs:
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          COUNTRY_VALUE: ${{ inputs.country }}
+          COUNTRY_VALUE: ${{ inputs.country || '4' }}
         shell: bash
         run: |
           set -euo pipefail
