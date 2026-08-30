@@ -1,60 +1,54 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30",
-  "mode": "technical_refactor_pass",
-  "phase": "Owner-directed technical refactor: canonical architecture/source of truth, dependency inventory, exhaustive CI audit, safe directory ownership, then shared template consolidation before broader UX/visual work.",
+  "updated_at": "2026-08-30T14:58:00+02:00",
+  "mode": "anytour_design_system_1_0",
+  "phase": "Owner-directed site-wide visual unification across homepage, editorial/destination pages, hot/search, results, selected tour and lead journey while preserving mature search regressions and protected external contracts.",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "technical_refactor_pass",
-    "rule": "Keep technical refactor as the autonomous priority after emergency overrides. Successful visual releases or score changes do not switch the phase back to Design System-first unless the owner explicitly changes direction."
+    "planned_phase": "anytour_design_system_1_0",
+    "rule": "Keep Design System 1.0 as autonomous priority after emergency overrides unless the owner explicitly changes direction again."
   },
   "current_task": {
-    "id": "TECH_REFACTOR_CI_AND_DEPENDENCY_INVENTORY",
-    "category": "TECH_DEBT_ARCHITECTURE_CI",
-    "status": "ACTIVE",
-    "progress": "Architecture/test/dependency sources of truth exist; CI_WORKFLOW_AUDIT classifies core V2, comparison/results/recovery, selected-tour and pending/unpriced flight families. Exact source-string guards remain protected until behavioral replacement coverage exists. Latest mobile iOS production fix has green post-deploy migrated-content and live-user-journey evidence.",
-    "next_action": "Finish exhaustive workflow inventory/classification, then complete non-manifest/PHP/deploy-consumer dependency mapping before extracting shared CI/bootstrap infrastructure or moving runtime modules."
+    "id": "DESIGN_SYSTEM_COUNTRY_RB_UNIFICATION_V2",
+    "category": "VISUAL_UX_EDITORIAL_SYSTEM",
+    "status": "PR_PREPARED",
+    "progress": "PR #348 mobile iOS fixes are merged/production-green. PR #349 shared editorial primitives merged after green CI. Current-main slice moves /rb/ to shared numbered steps and representative country pages to a balanced 3/2/1 related-destination grid while preserving search and external contracts.",
+    "next_action": "Run/inspect complete PR CI and five-width visual evidence for the /rb/ and country-page slice; merge/deploy if green, verify live, then audit /country/ catalog and homepage-country-hot/search continuity."
   },
-  "source_of_truth": {
-    "architecture": "ARCHITECTURE.md",
-    "test_policy": "TEST_MATRIX.md",
-    "dependency_generations": "DEPENDENCY_MAP.md",
-    "workflow_inventory": "CI_WORKFLOW_AUDIT.md",
-    "codex_queue": "CODEX_QUEUE.md",
-    "rule": "one concept -> one implementation"
+  "site_wide_score": {
+    "owner_baseline": 6.5,
+    "current_estimate": 6.7,
+    "status": "MODEST_CONFIRMED_MOVEMENT",
+    "note": "Whole-site coherence score, not a search-only engineering score. Do not increase until broader country/editorial improvements are production-verified."
   },
   "work_order": [
-    "finish exhaustive GitHub Actions trigger/path/assertion inventory into PR FAST PR BROWSER POST DEPLOY SCHEDULED-LIVE",
-    "finish active compatibility deprecated dead-candidate dependency inventory including non-manifest PHP endpoints helpers and deploy consumers",
-    "extract repeated deterministic CI/bootstrap infrastructure only after equivalent coverage and consumer compatibility are proven",
-    "replace high-cost exact source-string guards with behavioral diagnostics before deleting those assertions",
-    "prepare allowlisted nested asset/path ownership and target shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates structure without behavior change",
-    "consolidate one header one footer one navigation one design system only after dependency/regression evidence is sufficient",
-    "resume broader UX/visual work after technical consolidation"
+    "finish current rb and representative country-page shared-hierarchy slice with 375 430 768 1024 1440 validation",
+    "audit country catalog final-row balance and hierarchy on current main",
+    "reassess homepage to country to hot/search visual continuity and shared shell rhythm",
+    "consolidate remaining duplicated editorial spacing/button/card/breadcrumb rules into shared primitives where evidence warrants",
+    "keep mature search recovery results comparison flight price fuel lead regressions green"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
     "other_projects": "DO_NOT_MODIFY",
+    "logo": "DO_NOT_REDESIGN_OR_REPLACE",
     "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "analytics_contract": "PRESERVE",
     "tourvisor_contract": "PRESERVE",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
-    "logo": "PRESERVE",
     "verified_social_app_destinations": "PRESERVE",
-    "server_platform_architecture": "HIGH_RISK_REQUIRES_EXPLICIT_REVIEW",
+    "legal_payment_migration": "DEFER_UNTIL_RECONCILED",
     "pr_248": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
     "pr_249": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
-    "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE",
-    "open_visual_prs": "DO_NOT_TREAT_AS_ACTIVE_PRIORITY_UNLESS_CONFIRMED_REGRESSION_OR_DIRECT_TECHNICAL_CONSOLIDATION_VALUE"
+    "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
+  "superseded_open_prs": [345,346,347],
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_site_wide_visual_unification > supporting_technical_consolidation > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
-    "on_blocker": "record_blocker_and_continue_independent_safe_technical_work",
-    "one_concept_one_implementation": true,
-    "delete_guard_only_after_equivalent_coverage": true
+    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
+    "on_blocker": "record_blocker_and_continue_independent_safe_work"
   }
 }
