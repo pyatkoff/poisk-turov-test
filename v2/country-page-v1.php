@@ -85,7 +85,7 @@ function cp_render(array $page): void
         <div class="sp-section-head"><h2 id="country-related-title">Сравните похожие направления</h2><p>Если даты или формат отдыха ещё не окончательные, посмотрите несколько альтернатив и затем сравните живые предложения в общем поиске.</p></div>
         <div class="sp-country-grid sp-country-grid--related">
           <?php foreach ($relatedDestinations as [$relatedName,$relatedHref,$relatedNote]): ?>
-            <a class="sp-country" href="<?=sp_e($relatedHref)?>"><span><?=sp_e($relatedName)?></span><small><?=sp_e($relatedNote)?></small></a>
+            <a class="sp-country" href="<?=sp_e($relatedHref)?>"><span><?=sp_e($relatedName)?></span><small><?=sp_e($relatedNote)?></small><span class="sp-country-action">Открыть направление</span></a>
           <?php endforeach; ?>
         </div>
       </section>
