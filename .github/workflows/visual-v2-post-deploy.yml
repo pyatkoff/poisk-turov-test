@@ -81,9 +81,9 @@ jobs:
               const state=await page.evaluate(()=>{
                 const root=document.documentElement,body=document.body;
                 const hero=document.querySelector('.v2-product-hero');
-                const header=document.querySelector('.at-site-header');
+                const header=document.querySelector('.at-global-header');
                 const search=document.querySelector('.search-card');
-                const headerPhone=document.querySelector('.at-site-phone');
+                const headerPhone=document.querySelector('.at-global-header__phone');
                 const community=document.querySelector('.v2-site-community');
                 const nights=document.querySelector('.main-fields .nights-ux');
                 const visible=el=>!!el&&!el.hidden&&getComputedStyle(el).display!=='none';
@@ -101,6 +101,8 @@ jobs:
                   offenders,
                   heroVisible:visible(hero),
                   headerVisible:visible(header),
+                  sharedHeaders:document.querySelectorAll('.at-global-header').length,
+                  legacyHeaders:document.querySelectorAll('.at-site-header').length,
                   searchVisible:visible(search),
                   nightsPrimaryVisible:visible(nights),
                   communityVisible:visible(community),
@@ -133,8 +135,8 @@ jobs:
               const item={name,width,height,http:response?response.status():0,pageErrors,state,resultState};
               report.push(item);
               const resultBad=!resultState.renderer||resultState.cards!==2||!resultState.toolsVisible||resultState.decisionFacts<2||!resultState.bestOffer||resultState.tourRows!==1||!resultState.moreToggle||(width<=760&&!resultState.mobileFilterVisible)||(width>760&&resultState.mobileFilterVisible)||resultState.overflow;
-              if(item.http!==200||pageErrors.length||state.overflow||!state.heroVisible||!state.headerVisible||!state.searchVisible||!state.nightsPrimaryVisible||!state.communityVisible||state.duplicateV2Footers!==0||state.resultsInitiallyVisible||state.selectedInitiallyVisible||!state.headerPhone.valid||resultBad)failed=true;
-              console.log(`VISUAL ${name} http=${item.http} overflow=${state.overflow}/${resultState.overflow} hero=${state.heroVisible} header=${state.headerVisible} search=${state.searchVisible} nights=${state.nightsPrimaryVisible} community=${state.communityVisible} duplicateV2Footers=${state.duplicateV2Footers} phone=${state.headerPhone.valid} results=${resultState.cards}/${resultState.tourRows} more=${resultState.moreToggle} mrf=${resultState.mobileFilterVisible} pageErrors=${pageErrors.length}`);
+              if(item.http!==200||pageErrors.length||state.overflow||!state.heroVisible||!state.headerVisible||state.sharedHeaders!==1||state.legacyHeaders!==0||!state.searchVisible||!state.nightsPrimaryVisible||!state.communityVisible||state.duplicateV2Footers!==0||state.resultsInitiallyVisible||state.selectedInitiallyVisible||!state.headerPhone.valid||resultBad)failed=true;
+              console.log(`VISUAL ${name} http=${item.http} overflow=${state.overflow}/${resultState.overflow} hero=${state.heroVisible} header=${state.headerVisible} shared=${state.sharedHeaders} legacy=${state.legacyHeaders} search=${state.searchVisible} nights=${state.nightsPrimaryVisible} community=${state.communityVisible} duplicateV2Footers=${state.duplicateV2Footers} phone=${state.headerPhone.valid} results=${resultState.cards}/${resultState.tourRows} more=${resultState.moreToggle} mrf=${resultState.mobileFilterVisible} pageErrors=${pageErrors.length}`);
               if(!state.headerPhone.valid)console.log(`PHONE_STATE ${name} ${JSON.stringify({header:state.headerPhone})}`);
               if(state.offenders.length)console.log(`OFFENDERS ${name} ${JSON.stringify(state.offenders)}`);
               await context.close();
