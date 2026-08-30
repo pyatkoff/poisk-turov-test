@@ -8,6 +8,7 @@ on:
       - 'v2/site-page-shell-v1.php'
       - 'v2/home-v1.php'
       - 'v2/home-v1.css'
+      - 'v2/home-journey-v1.css'
       - 'v2/site-header-v2.css'
       - 'v2/hot/index.php'
       - 'v2/contacts/index.php'
@@ -68,7 +69,7 @@ jobs:
           const rgb=s=>(s.match(/\d+/g)||[]).slice(0,3).map(Number);
           const lum=([r,g,b])=>{const f=x=>{x/=255;return x<=.03928?x/12.92:((x+.055)/1.055)**2.4};return .2126*f(r)+.7152*f(g)+.0722*f(b)};
           const contrast=(a,b)=>{const x=lum(a),y=lum(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
-          async function checkCta(page,selector,label){const c=page.locator(selector).first();if(!await c.isVisible())throw new Error(`${label}: CTA missing`);const s=await c.evaluate(el=>{const x=getComputedStyle(el);return{fg:x.color,bg:x.backgroundColor}});if(contrast(rgb(s.fg),rgb(s.bg))<4.5)throw new Error(`${label}: CTA contrast`);await c.focus();const o=await c.evaluate(el=>getComputedStyle(el).outlineWidth);if(parseFloat(o)<2)throw new Error(`${label}: focus missing`);}
+          async function checkCta(page,selector,label){const c=page.locator(selector).first();if(!await c.isVisible())throw new Error(`${label}: CTA missing`);const s=await c.evaluate(el=>{const x=getComputedStyle(el);return{fg:x.color,bg:x.backgroundColor}});if(contrast(rgb(s.fg),rgb(s.bg))<4.5)throw new Error(`${label}: CTA contrast`);await c.focus();const o=await c.evaluate(el=>getComputedStyle(el).outlineWidth);if(parseFloat(o)<2)throw new Error(`${label}: focus missing`);await c.blur();}
           async function waitForHomeSearchReady(page,label){
             await page.waitForFunction(()=>{const c=document.querySelector('[data-home-countries]');if(!c||c.disabled||!c.options.length)return false;const t=String(c.options[c.selectedIndex]?.textContent||'');return !/Загружаем|Не удалось|Страны не найдены/i.test(t);},null,{timeout:15000}).catch(()=>{throw new Error(`${label}: home countries did not reach ready state`);});
           }
