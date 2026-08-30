@@ -27,17 +27,17 @@ Production breakage, lead loss, incorrect data and broken user journeys may pree
 - Shared header/footer/navigation parity and five-width visual guards are established.
 - Legacy-domain links were removed from the new shared footer while unresolved legal/payment content remains deferred.
 - `/rb/`, `/how-to-buy/` and `/contacts/` received hierarchy/spacing fixes.
-- `/country/` mobile catalog density fix is merged via #386 after green visual/regression gates.
+- `/country/` mobile catalog density fix is merged via #386 after green visual/regression gates; deploy is green and five-width artifacts confirm the compact 375/430 layout without tablet/desktop regression.
 - Country migration map is synchronized with the actual V2 runtime via #387.
-- Whole-site coherence baseline remains 7.1/10 pending fresh production verification of #386 and the next user-visible slices.
+- Owner-priority guard drift introduced by #388 was corrected through #389 so the explicit Design System 1.0 phase is canonical again.
+- Whole-site coherence is now 7.2/10 after the live-verified country catalog improvement.
 
 ## Exact next work order
 
-1. Verify #386 post-merge deploy/live behavior on `/country/` at 375/430 and confirm tablet/desktop remain unchanged.
-2. Continue representative country-page visual audit at 375/430/768/1024/1440; fix only confirmed spacing/wrapping/overflow/hierarchy defects.
-3. Re-audit `/hot/`, `/contacts/`, `/rb/` and `/how-to-buy/` after shared-shell changes for regressions.
-4. Run the full homepage → destination → search → results → selected tour → lead visual journey and address the highest-impact confirmed defect.
-5. Continue shared Design System token/primitive consolidation only where it reduces actual cross-page divergence safely.
+1. Continue representative country-page visual audit at 375/430/768/1024/1440; fix only confirmed spacing/wrapping/overflow/hierarchy defects.
+2. Re-audit `/hot/`, `/contacts/`, `/rb/` and `/how-to-buy/` after shared-shell changes for regressions.
+3. Run the full homepage → destination → search → results → selected tour → lead visual journey and address the highest-impact confirmed defect.
+4. Continue shared Design System token/primitive consolidation only where it reduces actual cross-page divergence safely.
 
 ## Mandatory protections
 
