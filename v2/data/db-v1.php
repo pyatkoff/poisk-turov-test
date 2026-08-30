@@ -10,14 +10,38 @@ declare(strict_types=1);
 
 function v2_data_db_config(): array
 {
-    $dsn = trim((string)getenv('ANYTOUR_DATA_DSN'));
-    $user = trim((string)getenv('ANYTOUR_DATA_DB_USER'));
+    $privateConfig = dirname(__DIR__) . '/config.php';
+    if (is_file($privateConfig)) require_once $privateConfig;
+
+    $env = static function (string $name): string {
+        return trim((string)getenv($name));
+    };
+    $constant = static function (string $name): string {
+        return defined($name) ? trim((string)constant($name)) : '';
+    };
+
+    $dsn = $env('ANYTOUR_DATA_DSN');
+    if ($dsn === '') $dsn = $constant('ANYTOUR_DATA_DSN');
+
+    $user = $env('ANYTOUR_DATA_DB_USER');
+    if ($user === '') $user = $constant('ANYTOUR_DATA_DB_USER');
+
     $password = (string)getenv('ANYTOUR_DATA_DB_PASSWORD');
+    if ($password === '' && defined('ANYTOUR_DATA_DB_PASSWORD')) {
+        $password = (string)constant('ANYTOUR_DATA_DB_PASSWORD');
+    }
 
     if ($dsn === '') {
-        $host = trim((string)getenv('ANYTOUR_DATA_DB_HOST'));
-        $name = trim((string)getenv('ANYTOUR_DATA_DB_NAME'));
-        $port = trim((string)getenv('ANYTOUR_DATA_DB_PORT')) ?: '3306';
+        $host = $env('ANYTOUR_DATA_DB_HOST');
+        if ($host === '') $host = $constant('ANYTOUR_DATA_DB_HOST');
+
+        $name = $env('ANYTOUR_DATA_DB_NAME');
+        if ($name === '') $name = $constant('ANYTOUR_DATA_DB_NAME');
+
+        $port = $env('ANYTOUR_DATA_DB_PORT');
+        if ($port === '') $port = $constant('ANYTOUR_DATA_DB_PORT');
+        if ($port === '') $port = '3306';
+
         if ($host !== '' && $name !== '') {
             $dsn = sprintf(
                 'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
