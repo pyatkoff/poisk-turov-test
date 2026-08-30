@@ -13,7 +13,7 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
 <main class="sp-main">
 <section>
   <div class="sp-section-head"><h2>Как искать горящий тур</h2><p>Главное — гибкость и проверка конкретного доступного варианта, а не рекламной цены «от».</p></div>
-  <div class="sp-grid">
+  <div class="sp-grid sp-grid--balanced-three">
     <section class="sp-card"><h3>Ближайшие даты</h3><p>Для горящих предложений важнее всего гибкость по датам. Поиск откроется на ближайшие две недели — диапазон можно сразу изменить под себя.</p></section>
     <section class="sp-card"><h3>Смотрите итоговый вариант</h3><p>Низкая цена имеет смысл только вместе с конкретным рейсом, питанием, размещением и доступностью.</p></section>
     <section class="sp-card"><h3>Проверяем перед заявкой</h3><p>Откройте конкретный тур — покажем детали и итоговую стоимость до передачи менеджеру.</p></section>
@@ -21,7 +21,7 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
 </section>
 <section>
   <div class="sp-section-head"><h2>Быстрый старт по длительности</h2><p>Выберите привычный формат отдыха — откроем общий поиск на ближайшие даты с уже заданным количеством ночей.</p></div>
-  <div class="sp-grid">
+  <div class="sp-grid sp-grid--balanced-three">
     <?php foreach($hotScenarios as $scenario): $href='/poisk-turov/?'.http_build_query($hotBase+['daysFrom'=>$scenario['days'],'daysTill'=>$scenario['days']]); ?>
       <a class="sp-country" href="<?=sp_e($href)?>"><strong><?=sp_e($scenario['title'])?></strong><small><?=sp_e($scenario['note'])?></small></a>
     <?php endforeach; ?>
