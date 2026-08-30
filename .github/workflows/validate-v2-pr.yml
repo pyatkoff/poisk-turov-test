@@ -130,11 +130,14 @@ jobs:
         run: |
           set -euo pipefail
           test -s v2/product-shell-v1.css
-          php -r 'require "v2/bundle-manifest-v1.php"; if(!in_array("product-shell-v1.css",v2_bundle_manifest()["css"],true)) exit(1);'
+          php -r 'require "v2/bundle-manifest-v1.php"; if(!in_array("product-shell-v1.css",v2_bundle_manifest()["css"],true)) exit(1); if(!in_array("site-header-v2.css",v2_bundle_manifest()["css"],true)) exit(2);'
           grep -Fq "v2_bundle_asset('css')" v2/index.php
           grep -Fq 'class="v2-product-hero"' v2/index.php
           grep -Fq 'id="v2-search-title"' v2/index.php
-          grep -Fq '<img src="/images/logo.svg" alt="AnyTour">' v2/index.php
+          grep -Fq "require_once(__DIR__.'/site-header-v2.php');" v2/index.php
+          grep -Fq "v2_render_site_header(\$sitePhone, \$phoneHref, '/poisk-turov/');" v2/index.php
+          grep -Fq '<img src="/images/logo.svg" alt="AnyTour">' v2/site-header-v2.php
+          ! grep -Fq '<header class="at-site-header"' v2/index.php
           echo V2_B1_PRODUCT_SHELL_OK
 
       - name: Validate search-route SEO semantics
