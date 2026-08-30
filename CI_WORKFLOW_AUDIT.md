@@ -19,6 +19,17 @@ For every workflow, record: trigger, path scope, proposed tier, protected behavi
 | `audit-v2-live-traffic.yml` | manual only | SCHEDULED / LIVE (currently disabled) | paid/public traffic analysis entrypoint | disabled stub only | COMPATIBILITY/DORMANT while pre-traffic; do not treat a successful run as traffic evidence |
 | `audit-v2-recent-browser.yml` | manual only | SCHEDULED / LIVE (currently disabled) | recent-browser traffic analysis entrypoint | disabled stub only | COMPATIBILITY/DORMANT while pre-traffic; implementation is currently identical to `audit-v2-live-traffic.yml` except name/text |
 
+## Verified batch 2 — search/results/recovery/comparison
+
+| Workflow | Trigger / scope | Tier | What it protects | Assertion style | Audit disposition |
+| --- | --- | --- | --- | --- | --- |
+| `validate-v2-compare.yml` | PR to `main` when comparison JS/CSS changes; manual | PR BROWSER | compare tray, two-item enablement, modal, remove, max-three guard, search-reset behavior at 375/1440 | Playwright behavior over fixture results, but against legacy remote V2 shell with local JS/CSS injection | KEEP; strong behavioral coverage, but share browser harness/setup later |
+| `validate-compare-refresh-guard.yml` | PR to `main` for renderer/comparison/recovery assets; manual | PR BROWSER | compare membership and sort survive rerender, stale modal closes when result set shrinks, retry does not resurrect stale selection | Playwright behavior at 375/768/1440 against legacy remote V2 shell | KEEP; distinct lifecycle coverage from base compare workflow, not a duplicate |
+| `validate-results-decision-finality.yml` | PR to `main` for `conversion-confidence-v1.js`; manual | PR BROWSER | decision badges only appear for completed result sets and reset during continue-search | Playwright behavior at 375/768/1440 against legacy remote V2 shell | KEEP; narrow, valuable business-state guard; candidate to share browser harness only |
+| `validate-search-continue-ux.yml` | PR to `main` for continue/progress JS; manual | PR FAST | result-only retry diagnostic plus ownership of continue-search progress events/messages | mixed: JS syntax + deterministic Node diagnostic + extensive exact `grep` source-string assertions | KEEP; strongest candidate in this family to migrate implementation-string contracts into diagnostics |
+| `validate-second-tour-state-isolation.yml` | PR to `main` for selected-tour/room/flight-price assets; manual | PR BROWSER | first selected tour state cannot leak into second selection; pending price/fuel/lead messaging and return target remain coherent | isolated local Playwright DOM harness at 375/768/1440; no remote dependency | KEEP; high-value cross-module behavioral regression, not duplicate of selected-tour return |
+| `validate-selected-tour-return.yml` | PR to `main` for selected-tour return module/manifest; manual | PR BROWSER | return from selected tour/lead preserves sort/comparison state and restores focus across rerenders/fallbacks | isolated local Playwright DOM harness at 375/768/1440 | KEEP; focused accessibility/state coverage; partial overlap with second-tour workflow is intentional defense in depth |
+
 ## Confirmed findings
 
 ### PR FAST has refactor-hostile implementation-string guards
@@ -27,13 +38,31 @@ For every workflow, record: trigger, path scope, proposed tier, protected behavi
 
 Disposition: retain them now. During technical refactor, migrate each high-value source-text contract to a deterministic behavioral diagnostic first; only then remove the corresponding `src.includes()`/`grep` assertion.
 
+### Search-continue workflow proves the same problem in a narrower family
+
+`validate-search-continue-ux.yml` already runs `diagnostics/search_results_recovery_test.cjs`, which is the preferred refactor-safe pattern, but then repeats several guarantees as exact `grep` checks for event names, dataset assignments and Russian UI strings.
+
+Disposition: do not remove those guards yet. Extend the deterministic recovery diagnostic until it proves the same contracts, then collapse the duplicated source-text assertions. This is the first concrete candidate for `scripts/ci/`/diagnostic consolidation because the behavioral diagnostic already exists.
+
 ### Browser PR validation still depends on a legacy host/path
 
-`visual-v2-pr.yml` runs Playwright against `https://anytour.online/poisk-turov-test/v2/` and intercepts local `v2` JS/CSS. This was a pragmatic historical harness, but the canonical public search is now `https://anytoour.ru/poisk-turov/`.
+`visual-v2-pr.yml`, `validate-v2-compare.yml`, `validate-compare-refresh-guard.yml` and `validate-results-decision-finality.yml` all exercise local branch assets on top of `https://anytour.online/poisk-turov-test/v2/`.
 
-Risk: a PR browser guard can stay green against a compatibility shell while the canonical route evolves separately.
+Risk: several independent guards can all stay green against a compatibility shell while the canonical `anytoour.ru/poisk-turov/` outer route evolves separately.
 
-Disposition: KEEP until a replacement harness proves equivalent search-form/results/tour coverage on the canonical route. Modernization is a separate MEDIUM CI slice, not a blind URL replacement.
+Disposition: KEEP until a canonical-route harness proves equivalent behavior. Do not replace URLs one workflow at a time; first extract a shared browser-harness contract so all of these workflows move together.
+
+### Comparison workflows overlap by module, not by behavior
+
+`validate-v2-compare.yml` protects direct compare interaction and reset semantics. `validate-compare-refresh-guard.yml` protects state persistence across sort/progressive rerender and stale-selection cleanup during recovered/final result refreshes.
+
+Disposition: both remain ACTIVE. They are not deletion candidates. Consolidation should mean shared setup/fixtures/helper code, not loss of either behavior suite.
+
+### Selected-tour workflows intentionally overlap at the boundary
+
+`validate-selected-tour-return.yml` is narrowly about return/focus/sort/comparison preservation. `validate-second-tour-state-isolation.yml` spans selected-tour, room, flight-price, pending-price and lead-message state to prove that the first tour cannot contaminate the second.
+
+Disposition: KEEP both. Their shared return assertion is useful boundary overlap; factor common local Playwright bootstrap later, but preserve both behavioral contracts.
 
 ### The two traffic-audit workflows are currently proven duplicate stubs
 
@@ -57,7 +86,6 @@ Disposition: map the actual active `deploy.yml` vs `deploy-anytoour.yml` relatio
 
 The repository contains additional workflow families that must be audited before any deletion:
 
-- search/results/recovery/comparison: `validate-v2-compare`, `validate-compare-refresh-guard`, `validate-results-decision-finality`, `validate-search-continue-ux`, `validate-second-tour-state-isolation`, `validate-selected-tour-return`;
 - rooms/flights/price: `validate-room-recovery`, flight autoload/empty/fuel/keyboard/pending/unpriced/live workflows;
 - lead: form/idempotency/price/recovery/search-context/UI-race guards;
 - mobile/UI: duration/sticky/meal and focused visual workflows;
@@ -72,8 +100,9 @@ These families remain authoritative guards until their trigger/path/behavior ove
 
 1. Finish exhaustive trigger/path/assertion inventory without modifying workflows.
 2. Extract repeated non-browser syntax/asset/render checks into reusable `scripts/ci/` commands.
-3. Convert the highest-cost `src.includes()`/`grep` guards to behavioral diagnostics.
-4. Reconcile canonical `anytoour.ru/poisk-turov/` browser coverage with legacy V2 compatibility harnesses.
-5. Only after equivalent coverage is green, consolidate superseded workflows one family at a time.
+3. Convert the highest-cost `src.includes()`/`grep` guards to behavioral diagnostics, starting with search-continue where a recovery diagnostic already exists.
+4. Extract shared Playwright bootstrap/fixture helpers for comparison/results/selected-tour browser workflows without weakening coverage.
+5. Reconcile canonical `anytoour.ru/poisk-turov/` browser coverage with legacy V2 compatibility harnesses.
+6. Only after equivalent coverage is green, consolidate superseded workflows one family at a time.
 
 Protected boundaries remain unchanged: no Metrika/goals, lead external contract, Tourvisor external contract, neighboring project or production behavior changes are part of this audit.
