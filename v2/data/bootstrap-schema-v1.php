@@ -51,6 +51,7 @@ try {
     }
 
     $required = [
+        'catalog_departures',
         'catalog_countries',
         'catalog_regions',
         'catalog_subregions',
