@@ -1,39 +1,34 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T16:45:00+02:00",
-  "mode": "technical_refactor_pass",
-  "phase": "Owner-directed technical refactor pass: canonical architecture/source of truth, dependency inventory, exhaustive CI classification, safe directory ownership preparation, then shared-template consolidation before UX/visual work.",
+  "updated_at": "2026-08-30T17:51:00+03:00",
+  "mode": "anytour_design_system_1_0",
+  "phase": "Owner-directed AnyTour Design System 1.0: site-wide visual unification across homepage, editorial/destination pages, hot/search, results, selected tour and lead journey while preserving mature search regressions and protected external contracts.",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "technical_refactor_pass",
-    "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Successful visual releases, score changes, autonomous state refreshes or unrelated PRs must not change this phase."
-  },
-  "source_of_truth": {
-    "owner_priority": "OWNER_PRIORITY.json",
-    "architecture": "ARCHITECTURE.md",
-    "test_policy": "TEST_MATRIX.md",
-    "dependency_inventory": "DEPENDENCY_MAP.md",
-    "workflow_inventory": "CI_WORKFLOW_AUDIT.md",
-    "execution_queue": "CODEX_QUEUE.md",
-    "product_roadmap": "PRODUCT_ROADMAP.md"
+    "planned_phase": "anytour_design_system_1_0",
+    "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Successful releases, score changes, autonomous state refreshes or unrelated PRs must not change this phase."
   },
   "current_task": {
-    "id": "TECHNICAL_REFACTOR_CI_INVENTORY",
-    "category": "TECH_DEBT_ARCHITECTURE_CI",
+    "id": "DESIGN_SYSTEM_SEARCH_SHELL_PARITY",
+    "category": "VISUAL_UX_SITE_WIDE",
     "status": "ACTIVE",
-    "progress": "Canonical owner-priority guard is being added after repeated autonomous Design System resume-point drift. Runtime/operations CI batch is already audited. Pending/unpriced, rooms/flights, search/results/recovery and lead audit companions provide partial family coverage.",
-    "next_action": "Finish exhaustive GitHub Actions inventory across remaining mobile/UI, live journey/content/catalog/search/tour, SEO/content, visual production and deploy/feed/runtime families; record explicit PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE tier and disposition before consolidation."
+    "progress": "PRs #348/#349/#351/#352/#355/#356 delivered shared/mobile/editorial/home/hot/country visual slices. Current main temporarily drifted to a technical-refactor owner lock in #357 despite the latest explicit Design System direction; the owner-priority source and guard are being corrected generically.",
+    "next_action": "Verify #356 production/live completion, then audit and safely improve the remaining shared-site vs /poisk-turov/ header/navigation parity at 375/430/768/1024/1440 without changing mature search behavior."
+  },
+  "site_wide_score": {
+    "owner_baseline": 6.5,
+    "current_estimate": 6.7,
+    "status": "MODEST_CONFIRMED_MOVEMENT",
+    "note": "Whole-site coherence score, not a search-only engineering score. Increase only after broader production-verified site-wide improvement."
   },
   "work_order": [
-    "finish exhaustive CI workflow inventory and tier classification without deleting coverage",
-    "finish dependency map for non-manifest JS CSS PHP endpoints helpers and deploy consumers",
-    "define safe directory ownership migration plan and v2_asset subdirectory prerequisite",
-    "extract only proven duplicate CI bootstrap while preserving distinct behavioral verdicts",
-    "migrate low-risk implementation families toward canonical ownership one at a time",
-    "consolidate one header one footer one navigation one design system after consumer mapping",
-    "return to UX and visual phase after technical consolidation"
+    "verify latest country-page balanced-three release fully production/live green",
+    "audit and improve shared public-site vs search header/nav parity without replacing mature search behavior",
+    "re-audit contacts how-to-buy rb hot country and representative country pages at 375 430 768 1024 1440",
+    "consolidate only proven duplicated visual primitives into shared Design System",
+    "keep mature search recovery results comparison flight price fuel lead regressions green"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -51,11 +46,9 @@
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_site_wide_visual_unification > supporting_technical_consolidation > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
-    "on_blocker": "record_blocker_and_continue_independent_safe_work",
-    "one_concept_one_implementation": true,
-    "delete_guard_only_after_equivalent_coverage": true
+    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
+    "on_blocker": "record_blocker_and_continue_independent_safe_work"
   }
 }
