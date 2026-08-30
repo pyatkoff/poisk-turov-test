@@ -4,6 +4,7 @@
 .at-home-section__head p,.sp-section-head p{max-width:var(--at-copy-measure);color:var(--at-muted);font-size:15px;line-height:1.6}
 .at-home-benefit,.at-home-direction,.sp-card,.sp-row,.sp-step,.sp-country{border:1px solid var(--at-line);border-radius:var(--at-radius-lg);box-shadow:var(--at-shadow-sm)}
 .at-home-benefit,.sp-card{background:linear-gradient(180deg,var(--at-surface),#fbfcff)}
+.sp-card.sp-search-callout{background:linear-gradient(135deg,#172a86,#2743cb 58%,#5679ed);border-color:transparent}
 .sp-row,.sp-step{background:var(--at-surface)}
 .at-home-search button,.sp-primary,.sp-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding-inline:19px;border-radius:12px;font-weight:850;text-decoration:none}
 .at-home-search button,.sp-primary{background:var(--at-accent);color:#fff;box-shadow:0 10px 22px rgba(216,61,0,.16)}
