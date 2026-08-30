@@ -1,55 +1,45 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T11:48:00+02:00",
-  "mode": "technical_refactor_pass",
-  "phase": "Technical consolidation is the owner-approved active phase before further UX/visual expansion. Production, lead-loss, incorrect-data and broken-user-journey defects still preempt planned refactor work.",
+  "updated_at": "2026-08-30T12:00:00+02:00",
+  "mode": "anytour_design_system_1_0",
+  "phase": "Owner-directed site-wide visual unification across homepage, editorial/destination pages, hot/search, results, selected tour and lead journey, while preserving mature search regressions and protected external contracts.",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "technical_refactor_pass",
-    "rule": "Do not switch the autonomous resume point away from technical_refactor_pass because of visual score updates, Design System releases or cosmetic findings. Only a new explicit owner instruction or a higher-priority production/lead/data/journey defect may change the active phase."
-  },
-  "canonical_sources": {
-    "rules": "AGENTS.md",
-    "architecture": "ARCHITECTURE.md",
-    "tests_ci": "TEST_MATRIX.md",
-    "dependencies": "DEPENDENCY_MAP.md",
-    "codex_queue": "CODEX_QUEUE.md",
-    "roadmap": "PRODUCT_ROADMAP.md"
+    "planned_phase": "anytour_design_system_1_0",
+    "rule": "The newest explicit owner instruction supersedes the previous technical-refactor lock. Keep Design System 1.0 as the autonomous priority unless production, lead-loss, incorrect-data or broken-user-journey evidence preempts it, or the owner explicitly changes direction again."
   },
   "current_task": {
-    "id": "TECHNICAL_REFACTOR_PASS_1",
-    "category": "ARCHITECTURE_CI_DEPENDENCY_REFACTOR",
-    "status": "ACTIVE",
-    "progress": "Canonical architecture/test/dependency sources exist. PR #316 extracted deterministic lead contracts into scripts/ci/lead. PR #323 established evidence-backed dependency/deprecation classification and removal gates. PR #329 classified room recovery, flight autoload-race and flight empty-recovery as independent Playwright behavior guards whose setup may be consolidated without merging behavioral verdicts. Recent Design System releases remain production-green regression baselines only.",
-    "next_action": "Finish the remaining CI inventory, starting with pending/unpriced/price-sync and unmapped search/results/mobile/live families; then continue non-manifest JS/CSS, PHP endpoint/helper and deploy-consumer dependency mapping before any file deletion or broad directory move."
+    "id": "DESIGN_SYSTEM_1_0_GUTTERS_AND_SHELL",
+    "category": "VISUAL_UX_SHARED_SHELL",
+    "status": "MERGED_AWAITING_PRODUCTION_VERIFICATION",
+    "progress": "PR #337 merged. Added --at-page-gutter responsive token and shared standalone shell alignment primitive so .sp-main and breadcrumbs use one horizontal grid across desktop/tablet/mobile. PR visual/browser coverage passed at 375/430/768/1024/1440.",
+    "next_action": "Finish post-merge deploy/live verification for PR #337, then audit remaining hero/breadcrumb/main/footer alignment and migrate duplicated button/card/breadcrumb geometry into shared Design System primitives before the next weak-page slice."
   },
-  "work_order": [
-    "finish exhaustive GitHub Actions inventory and classify every workflow PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE",
-    "complete dependency inventory for non-manifest JS/CSS, PHP endpoints/helpers and deploy consumers with ACTIVE / COMPATIBILITY / DEPRECATED / DEAD-CANDIDATE evidence",
-    "extract repeated deterministic CI/bootstrap infrastructure into scripts/ci without merging distinct behavioral assertions or weakening trigger coverage",
-    "refactor asset resolution for controlled allowlisted relative subdirectories with unchanged public URLs, load order and cache behavior",
-    "migrate one low-risk module family into shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates as a proof slice",
-    "consolidate shared template ownership toward one header, footer, navigation and design system only after dependency and CI coverage makes the move atomic",
-    "resume UX/responsive/visual expansion after the technical checkpoint"
-  ],
-  "technical_rules": {
-    "one_concept_one_implementation": true,
-    "delete_guard_only_after_equivalent_coverage": true,
-    "delete_file_only_after_consumer_deploy_ci_proof": true,
-    "prefer_behavior_guards_over_source_string_guards": true,
-    "no_refactor_for_style": true,
-    "no_invented_defects": true
+  "site_wide_score": {
+    "owner_baseline": 6.5,
+    "current_estimate": 6.6,
+    "status": "PENDING_PRODUCTION_VERIFICATION",
+    "note": "Whole-site coherence score, not a search-only engineering/UX score. Movement is intentionally modest for one systemic gutter/alignment slice."
   },
   "production_baseline": {
-    "latest_design_system_release": "PR #334 shared header geometry and nested navigation state",
-    "commit": "1863b2ab0287a4385dfc96f170db1d88a062bf98",
-    "deploy_run": 33304575562,
-    "production_navigation_run": 33304679660,
-    "production_live_journey_run": 33304679697,
-    "status": "GREEN_REGRESSION_BASELINE_RETAINED_DURING_TECHNICAL_REFACTOR",
+    "previous_release": "PR #334 shared header geometry and nested navigation state",
+    "previous_commit": "1863b2ab0287a4385dfc96f170db1d88a062bf98",
+    "candidate_release": "PR #337 shared responsive page gutters and standalone shell alignment",
+    "candidate_commit": "9c89b81688354f3f2c72b960182b0904069b7edb",
+    "status": "POST_MERGE_CI_DEPLOY_LIVE_CHECKS_IN_PROGRESS",
     "required_visual_viewports": [375, 430, 768, 1024, 1440]
   },
+  "work_order": [
+    "verify PR #337 post-merge deploy and live standalone content/navigation checks",
+    "audit hero breadcrumbs main footer alignment and navigation wrapping at 375/430/768/1024/1440",
+    "unify remaining duplicated button card breadcrumb spacing/geometry behind Design System tokens/primitives",
+    "improve contacts and how-to-buy hierarchy/spacing in narrow safe slices",
+    "improve rb and hot editorial hierarchy while keeping live search handoff clear",
+    "improve country catalog and representative country pages without over-densifying editorial content",
+    "reassess homepage to country to hot/search visual continuity",
+    "keep mature search/recovery/results/comparison/flight/price/fuel/lead regressions green throughout"
+  ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
     "other_projects": "DO_NOT_MODIFY",
@@ -67,15 +57,14 @@
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
   "deferred": [
-    {"scope": "/poisk-turov/ full shared-header component migration", "reason": "Wait for dependency/CI checkpoint and an atomic swap with equivalent browser coverage."},
-    {"scope": "broader UX/visual expansion", "reason": "Resume after technical consolidation checkpoint unless a severe user-facing defect preempts refactor work."},
-    {"scope": "public SEO indexing/sitemap promotion", "reason": "Requires deliberate publication/indexing contract."},
-    {"scope": "legal/payment route migration", "reason": "Legacy legal/payment content/requisites are unresolved."}
+    {"scope": "PR #254 DB/platform architecture", "reason": "Still deferred unless a fresh separate review proves the architecture safe."},
+    {"scope": "legal/payment route migration", "reason": "Legacy legal/payment content/requisites remain unresolved."},
+    {"scope": "deep /poisk-turov/ shared-header replacement", "reason": "Only perform atomically with equivalent browser coverage; preserve mature search behavior."}
   ],
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor_source_of_truth_ci_dependency_cleanup > UX_responsive_visual > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_site_wide_visual_unification > supporting_technical_consolidation > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
+    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
     "on_blocker": "record_blocker_and_continue_independent_safe_work"
   }
 }
