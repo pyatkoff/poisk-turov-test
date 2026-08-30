@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T01:22:00+02:00",
+  "updated_at": "2026-08-31T01:26:00+02:00",
   "mode": "design_system_1_site_unification",
   "phase": "AnyTour Design System 1.0: whole-site visual unification across homepage, search shell and standalone/editorial pages.",
   "owner_priority_source": "OWNER_PRIORITY.json",
@@ -14,15 +14,14 @@
     "id": "DESIGN_SYSTEM_1_PAGE_HIERARCHY_PASS",
     "category": "UX_VISUAL",
     "status": "ACTIVE",
-    "progress": "Owner priority is re-locked to Design System 1.0. Production deploys now preserve the private anytoour.ru config. Homepage search/editorial sections use the shared shell gutter, contact office cards use the common card surface, and representative country pages prioritize live search before alternative destinations. The active V2 shared-header guard is aligned with the physical shared header and green.",
-    "next_action": "Deepen /country/ catalog and representative country-page hierarchy, then audit /hot/, /how-to-buy/ and /rb/ against the same card/button/breadcrumb/section rhythm and re-run the five-width cross-page journey."
+    "progress": "Design System 1.0 remains the owner priority. Production deploys preserve private anytoour.ru config and protected lead/search contracts. Homepage, contacts and country pages already use shared shell/card hierarchy; PR #419 moved live-search actions to the top of /hot/ and /rb/ and PR #420 added an explicit shared country-card navigation affordance across /country/ and related destinations.",
+    "next_action": "Audit /how-to-buy/ for confirmed hierarchy/responsive inconsistencies, verify search outer-shell continuity, then run the full homepage → destination/hot → search → results → selected tour → lead sweep at 375/430/768/1024/1440 before considering a whole-site score increase."
   },
   "work_order": [
-    "audit and strengthen /country/ catalog card hierarchy and representative country pages without inventing data",
-    "audit /hot/ information hierarchy and CTA continuity into live search",
-    "audit /how-to-buy/ and /rb/ against shared card button breadcrumb and section rhythm",
+    "audit /how-to-buy/ against the established shared hero action content rhythm and fix only confirmed issues",
     "verify search outer shell remains visually continuous with editorial pages without functional contract changes",
     "verify cross-page journey homepage destination hot search results selected tour lead at 375 430 768 1024 1440",
+    "revisit contacts and representative country pages only for evidence-backed spacing wrapping or overflow issues found in the sweep",
     "raise site-wide score only after production visual evidence supports a material movement"
   ],
   "recent_material_progress": [
@@ -31,7 +30,9 @@
     "PR #410 aligned homepage search and editorial sections to the shared Design System shell gutter",
     "PR #413 repaired the active V2 guard to validate the physical shared header without duplicating logo markup in index.php",
     "PR #414 and #416 unified /contacts/ office cards with the actual shared card surface instead of a legacy override",
-    "PR #415 moved the country live-search callout ahead of related destinations to fix mobile journey hierarchy"
+    "PR #415 moved the country live-search callout ahead of related destinations to fix mobile journey hierarchy",
+    "PR #419 moved existing live-search CTAs directly below the hero on /hot/ and /rb/ and prioritized /hot/ quick-duration choices before explanatory cards; production deploy, public pages, lead bridge and live search smoke passed",
+    "PR #420 added explicit shared country-card navigation affordances to /country/ and representative related-destination cards without changing country data or search parameters"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
