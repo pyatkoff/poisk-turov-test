@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T21:54:00+02:00",
+  "updated_at": "2026-08-30T22:03:00+02:00",
   "mode": "design_system_1_0",
   "phase": "AnyTour Design System 1.0 and site-wide visual unification.",
   "owner_priority_source": "OWNER_PRIORITY.json",
@@ -14,12 +14,11 @@
     "id": "ANYTOUR_DESIGN_SYSTEM_1_0",
     "category": "UX_VISUAL",
     "status": "ACTIVE",
-    "progress": "Shared shell parity is established; footer legacy-domain links, editorial hierarchy/spacing and mobile country catalog density have been corrected. PRs #386 and #387 are merged after green gates.",
-    "next_action": "Verify #386 live at 375/430 and continue representative country-page five-width audit, then run the full homepage-to-lead visual journey."
+    "progress": "Shared shell parity is established; footer legacy-domain links, editorial hierarchy/spacing and mobile country catalog density have been corrected. PRs #386/#387 are merged, deploy is green, and five-width artifacts confirm the compact country catalog without tablet/desktop regression.",
+    "next_action": "Continue representative country-page five-width audit, then re-audit hot/editorial pages and run the full homepage-to-lead visual journey."
   },
-  "site_wide_score": 7.1,
+  "site_wide_score": 7.2,
   "work_order": [
-    "verify country catalog mobile density in production at 375 and 430 and confirm 768 1024 1440 unchanged",
     "audit representative country pages at 375 430 768 1024 1440 and fix confirmed spacing wrapping overflow hierarchy defects",
     "re-audit hot contacts rb how-to-buy after shared-shell changes",
     "run homepage destination search results selected-tour lead visual journey",
