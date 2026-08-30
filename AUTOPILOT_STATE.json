@@ -1,39 +1,29 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T18:42:00+02:00",
-  "mode": "technical_refactor_pass",
-  "phase": "Owner-directed technical refactor pass: canonical architecture/source of truth, dependency inventory, exhaustive CI classification, safe directory ownership preparation, then shared-template consolidation before UX/visual work.",
+  "updated_at": "2026-08-30T18:54:00+02:00",
+  "mode": "design_system_1_0",
+  "phase": "Owner-directed AnyTour Design System 1.0 and site-wide visual unification across public editorial/search surfaces.",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "technical_refactor_pass",
-    "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Successful visual releases, score changes, autonomous state refreshes or unrelated PRs must not change this phase."
-  },
-  "source_of_truth": {
-    "owner_priority": "OWNER_PRIORITY.json",
-    "architecture": "ARCHITECTURE.md",
-    "test_policy": "TEST_MATRIX.md",
-    "dependency_inventory": "DEPENDENCY_MAP.md",
-    "workflow_inventory": "CI_WORKFLOW_AUDIT.md",
-    "execution_queue": "CODEX_QUEUE.md",
-    "product_roadmap": "PRODUCT_ROADMAP.md"
+    "planned_phase": "design_system_1_0",
+    "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Emergency production, lead-loss, incorrect-data and broken-user-journey findings may preempt temporarily without changing the lock."
   },
   "current_task": {
-    "id": "TECHNICAL_REFACTOR_CI_INVENTORY",
-    "category": "TECH_DEBT_ARCHITECTURE_CI",
+    "id": "DESIGN_SYSTEM_SITE_WIDE_UNIFICATION",
+    "category": "UX_VISUAL",
     "status": "ACTIVE",
-    "progress": "Technical-refactor-first owner priority restored after PR #371 introduced Design System-first drift. Existing runtime/operations, pending/unpriced, rooms/flights, search/results/recovery and lead audit companions provide partial workflow-family coverage.",
-    "next_action": "Finish exhaustive GitHub Actions inventory across remaining mobile/UI, live journey/content/catalog/search/tour, SEO/content, visual production and deploy/feed/runtime families; record explicit PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE tier and disposition before consolidation."
+    "progress": "PR #369 passed its PR gates and was merged. Current production crawl confirms the target public routes are reachable. This run corrected a later owner-priority drift introduced by #372 so autonomous work again follows the latest explicit Design System 1.0 directive. Shared footer ownership, search-nav parity, editorial CTA repair and country tablet balance remain the current foundation.",
+    "next_action": "Continue five-width browser-driven audit of /rb/, /hot/, /contacts/, /country/ and representative country pages, then recheck / and /poisk-turov/ together. Fix only confirmed spacing, wrapping, overflow, hierarchy or shared-shell defects; keep #254/legal/payment/external contracts deferred."
   },
   "work_order": [
-    "finish exhaustive CI workflow inventory and tier classification without deleting coverage",
-    "finish dependency map for non-manifest JS CSS PHP endpoints helpers and deploy consumers",
-    "define safe directory ownership migration plan and v2_asset subdirectory prerequisite",
-    "extract only proven duplicate CI bootstrap while preserving distinct behavioral verdicts",
-    "migrate low-risk implementation families toward canonical ownership one at a time",
-    "consolidate one header one footer one navigation one design system after consumer mapping",
-    "return to UX and visual phase after technical consolidation"
+    "verify merged country related-destination tablet balance in production visual workflow",
+    "audit and improve rb hot contacts country and representative country pages",
+    "migrate remaining weak editorial primitives to shared Design System tokens and components",
+    "recheck homepage and poisk-turov shell parity across five target widths",
+    "preserve mature search recovery results comparison flight price fuel and lead regressions",
+    "continue independent safe visual slices with CI then live verification"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -46,16 +36,17 @@
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
     "verified_social_app_destinations": "PRESERVE",
     "legal_payment_migration": "DEFER_UNTIL_RECONCILED",
-    "pr_248": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
-    "pr_249": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
+  "site_wide_score": {
+    "current": 6.8,
+    "note": "Whole-site coherence score remains conservative until the merged country-page change and next editorial slices have fresh production visual evidence; do not substitute search-only engineering score."
+  },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > technical_refactor > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
+    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
     "on_blocker": "record_blocker_and_continue_independent_safe_work",
-    "one_concept_one_implementation": true,
-    "delete_guard_only_after_equivalent_coverage": true
+    "validate_widths": [375, 430, 768, 1024, 1440]
   }
 }
