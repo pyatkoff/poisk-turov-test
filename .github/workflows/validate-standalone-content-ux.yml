@@ -80,7 +80,8 @@ jobs:
             if(substr_count($country,"data-related-destinations")!==1) exit(30);
             if(substr_count($country,"class=\"sp-country\"")!==3) exit(31);
             if(strpos($country,"href=\"/country/turkey/\"")!==false) exit(32);
-            foreach(["/country/egypt/","/country/tunis/","/country/cyprus/"] as $href){ if(strpos($country,"href=\"$href\"")===false) exit(33); }
+            foreach(["/country/egypt/","/country/oae/","/country/tailand/"] as $href){ if(strpos($country,"href=\"$href\"")===false) exit(33); }
+            foreach(["/country/tunis/","/country/cyprus/"] as $href){ if(strpos($country,"href=\"$href\"")!==false) exit(35); }
             if(strpos($country,"href=\"/poisk-turov/?country=4\"")===false) exit(34);
             echo "STANDALONE_CONTENT_UX_OK\n";
           '
