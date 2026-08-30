@@ -4,6 +4,8 @@ Status: canonical test/CI ownership map for `pyatkoff/poisk-turov-test`.
 
 This document defines what each test tier is for. The existing workflow set is intentionally not deleted or renamed by this documentation-only slice. Consolidation comes later, one proven-equivalent replacement at a time.
 
+Verified workflow-by-workflow evidence is maintained in `CI_WORKFLOW_AUDIT.md`. This file remains the canonical policy/source-of-truth for test tiers and protected coverage.
+
 ## Test tiers
 
 ### PR FAST
@@ -94,7 +96,7 @@ The repository currently has many narrow workflows. Known families include:
 - production/live content/search/tour validation;
 - measurements such as results DOM/performance.
 
-The next CI audit must enumerate every workflow from `.github/workflows/`, record trigger/path filters, runtime dependencies, behavior protected, overlap and proposed tier. Do not infer dead/duplicate status solely from a similar filename.
+The workflow audit must enumerate every workflow from `.github/workflows/`, record trigger/path filters, runtime dependencies, behavior protected, overlap and proposed tier. Do not infer dead/duplicate status solely from a similar filename. The verified audit companion is `CI_WORKFLOW_AUDIT.md`.
 
 ## Consolidation rules
 
@@ -116,7 +118,7 @@ The next CI audit must enumerate every workflow from `.github/workflows/`, recor
 
 ## Audit backlog
 
-The exhaustive workflow inventory is the next technical-refactor slice. For every workflow, capture:
+Continue the exhaustive workflow inventory in `CI_WORKFLOW_AUDIT.md`. For every workflow, capture:
 
 `workflow → trigger → paths → tier → behavior protected → implementation/source-text assertions → overlap → keep/consolidate/supersede candidate → replacement evidence required`.
 
