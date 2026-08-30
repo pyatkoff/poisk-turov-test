@@ -1,23 +1,23 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T10:38:00+03:00",
-  "mode": "technical_refactor_pass",
-  "phase": "Technical refactor pass remains ACTIVE, with P0/P1 production and broken-user-journey defects allowed to preempt it. Two confirmed mobile search-shell defects from real iPhone production evidence were fixed in safe compatibility slices: search hamburger visual mismatch (PR #320) and floating-consultant overlap with the primary sticky search CTA (PR #321). Broad UX expansion remains secondary to the technical pass, but confirmed production usability defects continue to override it.",
+  "updated_at": "2026-08-30T10:12:00+02:00",
+  "mode": "design_system_1_sitewide_unification",
+  "phase": "AnyTour Design System 1.0 and site-wide visual unification are now priority #1. The technical refactor inventory remains important but is secondary to making the public site read as one coherent product. Production, lead-loss, incorrect-data and broken-user-journey defects still preempt all planned work. Search remains the protected product reference and must not regress while weaker editorial/public pages are migrated onto shared tokens, shell and rhythm.",
   "scores": {
-    "whole_public_site": 8.1,
-    "cross_page_visual_consistency": 8.0,
+    "whole_public_site": 8.2,
+    "cross_page_visual_consistency": 8.2,
     "header_navigation_consistency": 7.4,
     "homepage": 7.6,
-    "country_pages": 8.0,
-    "hot_tours": 7.7,
-    "how_to_buy": 7.5,
-    "contacts": 7.55,
-    "early_booking": 7.55,
-    "public_site_mobile_consistency": 8.2,
-    "typography": 7.6,
-    "grid_spacing": 7.7,
-    "brand_coherence": 8.0,
+    "country_pages": 8.1,
+    "hot_tours": 7.9,
+    "how_to_buy": 7.8,
+    "contacts": 7.8,
+    "early_booking": 7.8,
+    "public_site_mobile_consistency": 8.3,
+    "typography": 7.8,
+    "grid_spacing": 8.1,
+    "brand_coherence": 8.1,
     "search_product_reference": 8.75
   },
   "target": {
@@ -27,42 +27,39 @@
     "rule": "Do not raise product/visual scores from CI or refactor work alone; require production and representative visual evidence."
   },
   "current_task": {
-    "id": "TECHNICAL_REFACTOR_PASS_1",
-    "category": "ARCHITECTURE_CI_REFACTOR_WITH_PRODUCTION_P1_PREEMPTION",
+    "id": "DESIGN_SYSTEM_1_SITEWIDE",
+    "category": "SITEWIDE_VISUAL_UNIFICATION",
     "status": "ACTIVE",
-    "progress": "Canonical ARCHITECTURE.md and TEST_MATRIX.md exist and lead diagnostics remain consolidated. Real iPhone evidence then exposed two P1 mobile shell defects, so refactor work was safely preempted: PR #320 added a final compatibility CSS layer that makes the legacy search hamburger match the shared site shell without replacing v2/index.php; PR #321 reserved a support-widget lane so the floating consultant cannot cover the primary mobile search CTA. PR #321 also strengthened the 375/430 sticky visual guard and corrected the stale V2 bundle guard after the new shared-shell asset increased the CSS manifest from 26 to 27 assets. All PR checks were green; production deploy 33299532124 passed public-page verification, unchanged lead bridge verification and live search smoke, and live user journey was green. Metrika, Tourvisor, lead contract and logo were untouched.",
-    "next_action": "Resume the technical refactor inventory/consolidation after completing post-deploy observation of the mobile search shell. Continue to fix only confirmed P0/P1 visual/user-journey defects immediately. Next UX audit should inspect the full mobile path header → search form → sticky CTA → results → selected tour → lead at 375/430, while the broader five-width Design System baseline remains protected."
+    "progress": "PR #325 introduced one shared editorial rhythm layer through the canonical site-page shell instead of per-page fixes. It increases section separation, normalizes card/step/action rhythm and constrains long copy to a readable measure across /hot/, /contacts/, /how-to-buy/, /rb/, /country/ and representative country pages. All PR guards were green, production deploy 33300567702 passed public-page verification, unchanged lead-bridge verification and live search smoke, and production Visual standalone content live 33300650073 passed every covered route at 375/430/768/1024/1440. Representative production screenshots for mobile contacts/hot and desktop how-to-buy/country catalog were manually reviewed and showed coherent hierarchy without overflow or shell duplication. PR #326 then promoted the responsive content gap and readable copy measure into canonical Design System tokens; all PR checks were green, V2 deploy 33300796925 and standalone deploy 33300796910 were green, with search smoke preserved. Metrika, Tourvisor, lead contract, logo and legal/payment content were untouched.",
+    "next_action": "Continue Design System 1.0 through the weakest remaining cross-page seams: audit homepage versus shared public-page primitives, header/navigation geometry and footer density across 375/430/768/1024/1440; then improve one shared primitive or weak page family at a time. Preserve the mature search/results/tour/lead path and use it as the interaction-quality reference without making editorial pages unnecessarily dense."
   },
   "production_baseline": {
-    "standalone_commit": "9eb6d3dceed32e5191fba65b2f6768a7c52f8298",
-    "standalone_deploy_run": 33298269348,
-    "standalone_status": "PRODUCTION_GREEN_SHARED_SHELL_COUNTRY_DISCOVERY_HOT_QUICK_STARTS_HEADING_HIERARCHY_AND_HOMEPAGE_JOURNEY_HERO",
-    "v2_commit": "5a5007ca8a13c8cab367d7910aa85d3a142dceb8",
-    "v2_deploy_run": 33299532124,
-    "v2_status": "PRODUCTION_GREEN_SEARCH_HEADER_SHARED_VISUAL_LANGUAGE_AND_MOBILE_STICKY_CTA_SUPPORT_WIDGET_CLEARANCE_WITH_LIVE_SEARCH_SMOKE",
-    "design_system_release": "PR #320 search hamburger shared-shell compatibility plus PR #321 mobile sticky CTA/support-widget collision fix",
-    "visual_audit_guard_pr": 321,
+    "standalone_commit": "e008dcc11a835ce5f534c2d2658e66e0455cbd9c",
+    "standalone_deploy_run": 33300796910,
+    "standalone_status": "PRODUCTION_GREEN_SHARED_EDITORIAL_RHYTHM_AND_CONTENT_TOKENS_ACROSS_PUBLIC_PAGE_FAMILY",
+    "v2_commit": "e008dcc11a835ce5f534c2d2658e66e0455cbd9c",
+    "v2_deploy_run": 33300796925,
+    "v2_status": "PRODUCTION_GREEN_SEARCH_PRESERVED_AFTER_SHARED_CONTENT_TOKEN_RELEASE",
+    "design_system_release": "PR #325 shared editorial rhythm plus PR #326 canonical responsive content-gap and copy-measure tokens",
+    "visual_audit_guard_pr": 325,
     "required_viewports_revalidated_premerge": true,
     "required_viewports_revalidated_production": true,
-    "production_visual_run": 33298337155,
-    "production_navigation_run": 33294016413,
-    "production_migrated_content_run": 33299603436,
-    "production_live_results_visual_run": 33294016407,
-    "mobile_sticky_premerge_visual_run": 33299442574,
-    "mobile_sticky_boundary_run": 33299442590,
-    "production_user_journey_run": 33299603432,
-    "post_deploy_visual_guard_status": "DEPLOY_GREEN_AND_LIVE_USER_JOURNEY_GREEN; POST_DEPLOY_VISUAL_FAMILY_CONTINUING_AFTER_MOBILE_FIX",
+    "production_visual_run": 33300650073,
+    "production_navigation_run": 33300567696,
+    "production_migrated_content_run": 33300902384,
+    "production_live_results_visual_run": 33300650017,
+    "production_user_journey_run": 33300650125,
+    "post_deploy_visual_guard_status": "GREEN_EDITORIAL_FAMILY_AT_375_430_768_1024_1440_WITH_SEARCH_AND_LEAD_SMOKE_PRESERVED",
     "scores_revalidated": true
   },
   "work_order": [
-    "complete post-deploy observation of PR #321 mobile shell and investigate any failed live/visual guard before further work",
-    "finish exhaustive CI workflow inventory and classify PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE ownership",
-    "extract repeated deterministic CI checks into scripts/ci without weakening coverage",
-    "replace brittle src.includes/grep contracts with equivalent behavioral diagnostics one contract at a time",
-    "complete dependency/deprecation map for versioned assets, APIs, analytics and lead adapters as ACTIVE / COMPATIBILITY / DEPRECATED / DEAD-CANDIDATE",
-    "refactor the asset helper to support controlled subdirectories and begin gradual shared/search/results/tour/checkout/integrations/site/seo ownership moves",
-    "reconcile legacy anytour.online deployment/test dependencies only in proven-safe slices; protected lead bridge migration remains HIGH risk",
-    "continue shared-shell/UX fixes only for confirmed production defects during refactor, preserving 375/430/768/1024/1440 evidence"
+    "audit homepage, shared editorial shell and search shell side-by-side at 375/430/768/1024/1440; fix repeated visual seams through shared primitives first",
+    "converge header/navigation geometry and active-state treatment without replacing the mature search header component until an atomic safe path exists",
+    "audit footer/community density and wrapping across public pages; fix only confirmed spacing, wrapping or hierarchy issues",
+    "continue migrating weak page families onto shared typography, spacing, card, button and breadcrumb primitives instead of page-specific overrides",
+    "audit homepage → country/destination → hot/search → results → selected tour → lead continuity and fix broken hierarchy or handoff seams",
+    "continue CI/dependency refactor in parallel only where it directly improves safe Design System iteration or removes verified duplication",
+    "preserve search/recovery/results/comparison/flight/price/fuel/lead regressions and verify every user-visible slice before deploy"
   ],
   "required_viewports": [375, 430, 768, 1024, 1440],
   "protected": {
@@ -80,12 +77,8 @@
   },
   "deferred": [
     {
-      "scope": "aggressive UX/visual expansion",
-      "reason": "Technical refactor remains active; only confirmed production/user-journey defects preempt it."
-    },
-    {
       "scope": "/poisk-turov/ full shared-header component migration",
-      "reason": "Visual compatibility is now substantially aligned through isolated CSS, but a full component swap remains deferred until an atomic extraction path and equivalent browser coverage make it safe."
+      "reason": "Visual compatibility is substantially aligned, but a full component swap remains deferred until an atomic extraction path and equivalent browser coverage make it safe."
     },
     {
       "scope": "traffic/conversion analysis",
@@ -101,16 +94,16 @@
     },
     {
       "scope": "PR #254",
-      "reason": "Separate DB/platform architecture; do not auto-merge during the technical refactor pass."
+      "reason": "Separate DB/platform architecture; do not auto-merge without a fresh safety review."
     }
   ],
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor_source_of_truth_ci_dependency_cleanup > UX_responsive_visual > content_seo > cosmetic_refactor",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_sitewide_visual_unification > technical_refactor > content_seo > cosmetic_refactor",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_refactor_slice",
+    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
     "on_blocker": "record_blocker_and_continue_independent_safe_work",
     "on_visual_change": "validate_375_430_768_1024_1440_before_advancing",
-    "on_no_traffic": "ignore_as expected and continue technical refactor/product development",
+    "on_no_traffic": "ignore_as expected and continue product/design development",
     "one_concept_one_implementation": true,
     "delete_guard_only_after_equivalent_coverage": true
   }
