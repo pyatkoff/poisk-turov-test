@@ -95,8 +95,11 @@ try {
     $rows = v2_data_tv_get('/tours/hots', $params);
     $pdo->beginTransaction();
 
-    $delete = $pdo->prepare('DELETE FROM hot_tours_current WHERE departure_id = :departure_id');
-    $delete->execute(['departure_id' => $departureId]);
+    // Do not delete an entire departure snapshot before a filtered refresh. Upsert
+    // returned rows and let stale rows age out, so a failed/partial request cannot
+    // blank `/hot/` or erase unrelated countries/filters.
+    $deleteExpired = $pdo->prepare('DELETE FROM hot_tours_current WHERE expires_at < :now_value');
+    $deleteExpired->execute(['now_value' => $fetchedAt->format('Y-m-d H:i:s')]);
 
     $insert = $pdo->prepare("INSERT INTO hot_tours_current (
         snapshot_key,tour_id,departure_id,departure_name,country_id,country_name,region_id,region_name,
@@ -106,7 +109,12 @@ try {
         :snapshot_key,:tour_id,:departure_id,:departure_name,:country_id,:country_name,:region_id,:region_name,
         :subregion_id,:subregion_name,:hotel_id,:hotel_name,:hotel_category,:hotel_rating,:picture_url,
         :departure_date,:nights,:meal_id,:meal_name,:operator_id,:operator_name,:price,:old_price,:currency,:fetched_at,:expires_at
-    )");
+    ) ON DUPLICATE KEY UPDATE
+        departure_name=VALUES(departure_name),country_name=VALUES(country_name),region_id=VALUES(region_id),region_name=VALUES(region_name),
+        subregion_id=VALUES(subregion_id),subregion_name=VALUES(subregion_name),hotel_name=VALUES(hotel_name),hotel_category=VALUES(hotel_category),
+        hotel_rating=VALUES(hotel_rating),picture_url=VALUES(picture_url),meal_id=VALUES(meal_id),meal_name=VALUES(meal_name),
+        operator_id=VALUES(operator_id),operator_name=VALUES(operator_name),price=VALUES(price),old_price=VALUES(old_price),
+        currency=VALUES(currency),fetched_at=VALUES(fetched_at),expires_at=VALUES(expires_at)");
 
     $written = 0;
     foreach ($rows as $row) {
@@ -114,13 +122,14 @@ try {
         $departure = is_array($row['departure'] ?? null) ? $row['departure'] : [];
         $country = is_array($row['country'] ?? null) ? $row['country'] : [];
         $hotel = is_array($row['hotel'] ?? null) ? $row['hotel'] : [];
+        $hotelCountry = is_array($hotel['country'] ?? null) ? $hotel['country'] : [];
         $region = is_array($hotel['region'] ?? null) ? $hotel['region'] : [];
         $subregion = is_array($hotel['subRegion'] ?? null) ? $hotel['subRegion'] : [];
         $mealData = is_array($row['meal'] ?? null) ? $row['meal'] : [];
         $operator = is_array($row['operator'] ?? null) ? $row['operator'] : [];
         $tourId = trim((string)($row['tourId'] ?? ''));
         $hotelId = (int)($hotel['id'] ?? 0);
-        $countryId = (int)($country['id'] ?? ($hotel['country']['id'] ?? 0));
+        $countryId = (int)($country['id'] ?? ($hotelCountry['id'] ?? 0));
         $date = hot_date((string)($row['date'] ?? ''));
         $price = (float)($row['price'] ?? 0);
         if ($tourId === '' || $hotelId <= 0 || $countryId <= 0 || $date === null || $price <= 0) continue;
@@ -132,7 +141,7 @@ try {
             'departure_id'=>(int)($departure['id'] ?? $departureId),
             'departure_name'=>(string)($departure['name'] ?? ''),
             'country_id'=>$countryId,
-            'country_name'=>(string)($country['name'] ?? ($hotel['country']['name'] ?? '')),
+            'country_name'=>(string)($country['name'] ?? ($hotelCountry['name'] ?? '')),
             'region_id'=>isset($region['id']) ? (int)$region['id'] : null,
             'region_name'=>$region['name'] ?? null,
             'subregion_id'=>isset($subregion['id']) ? (int)$subregion['id'] : null,
