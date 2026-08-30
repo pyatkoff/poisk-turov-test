@@ -21,9 +21,9 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
 </section>
 <section>
   <div class="sp-section-head"><h2>Быстрый старт по длительности</h2><p>Выберите привычный формат отдыха — откроем общий поиск на ближайшие даты с уже заданным количеством ночей.</p></div>
-  <div class="sp-quick-grid">
+  <div class="sp-grid">
     <?php foreach($hotScenarios as $scenario): $href='/poisk-turov/?'.http_build_query($hotBase+['daysFrom'=>$scenario['days'],'daysTill'=>$scenario['days']]); ?>
-      <a class="sp-quick-card" href="<?=sp_e($href)?>"><strong><?=sp_e($scenario['title'])?></strong><span><?=sp_e($scenario['note'])?></span><b aria-hidden="true">→</b></a>
+      <a class="sp-country" href="<?=sp_e($href)?>"><strong><?=sp_e($scenario['title'])?></strong><small><?=sp_e($scenario['note'])?></small></a>
     <?php endforeach; ?>
   </div>
 </section>
