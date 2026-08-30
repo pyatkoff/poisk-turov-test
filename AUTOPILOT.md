@@ -14,6 +14,15 @@ Canonical priority after emergency overrides:
 
 Production breakage, lead loss, incorrect data and broken user journeys may preempt temporarily under `AGENTS.md`.
 
+## Material progress in the current pass
+
+- The Design System 1.0 owner-priority lock is restored and independently guarded; the stale technical-refactor-first lock is explicitly superseded.
+- Normal `anytoour.ru` deploys preserve an existing private production `config.php`; legacy config is only a first-seed fallback. Production verification confirmed `ANYTOOUR_CONFIG_PRESERVED`, unchanged lead validation and a live search smoke with results.
+- Homepage search/editorial sections now use the shared shell and page-gutter geometry instead of page-specific mobile horizontal drift.
+- The active V2 contract guard now validates the physical shared header rather than requiring duplicated logo markup in `v2/index.php`.
+- `/contacts/` office cards now use the actual shared `sp-card` surface/radius/border/shadow instead of a legacy local surface override.
+- Representative country pages place the existing live-search callout before related-destination alternatives, improving the mobile country → search journey without changing Tourvisor/search data contracts.
+
 ## Design-system objectives
 
 1. Establish one shared AnyTour token/primitives layer for typography, spacing, surfaces, radii, controls, cards, breadcrumbs and responsive rhythm.
@@ -25,12 +34,12 @@ Production breakage, lead loss, incorrect data and broken user journeys may pree
 
 ## Exact next work order
 
-1. Continue the page-hierarchy pass across homepage → country/destination → hot/search, starting with homepage and country layers where shell consistency is established but hierarchy still feels flatter than mature search.
-2. Normalize remaining hard-coded homepage/content geometry onto Design System 1.0 shell/gutter/spacing primitives where visual evidence shows drift.
-3. Improve country catalog and representative country-page information hierarchy without inventing unavailable prices, ratings or destination data.
-4. Audit `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/` against the same shared card/button/breadcrumb/section rhythm and fix confirmed inconsistencies.
+1. Deepen `/country/` catalog and representative country-page hierarchy without inventing unavailable prices, ratings or destination data.
+2. Audit `/hot/` information hierarchy and CTA continuity into live search.
+3. Audit `/how-to-buy/` and `/rb/` against the same shared card/button/breadcrumb/section rhythm and fix confirmed inconsistencies.
+4. Verify the search outer shell remains visually continuous with editorial pages without changing search/recovery/results/comparison/flight/price/fuel/lead contracts.
 5. Re-run the cross-page journey audit: homepage → destination/hot → search → results → selected tour → lead at 375/430/768/1024/1440.
-6. Raise `SITE_QUALITY_SCORECARD.md` only after production visual evidence supports the movement.
+6. Raise `SITE_QUALITY_SCORECARD.md` only after production visual evidence supports a material movement.
 
 ## Mandatory protections
 
