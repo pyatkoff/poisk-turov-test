@@ -1,34 +1,39 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T17:20:00+02:00",
-  "mode": "anytour_design_system_1_0",
-  "phase": "Owner-directed AnyTour Design System 1.0: site-wide visual unification across homepage, editorial/destination pages, hot/search, results, selected tour and lead journey while preserving mature search regressions and protected external contracts.",
+  "updated_at": "2026-08-30T17:43:00+02:00",
+  "mode": "technical_refactor_pass",
+  "phase": "Owner-directed technical refactor pass: canonical architecture/source of truth, dependency inventory, exhaustive CI classification, safe directory ownership preparation, then shared-template consolidation before UX/visual work.",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "anytour_design_system_1_0",
-    "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Successful releases, score changes, autonomous state refreshes or unrelated PRs must not change this phase."
+    "planned_phase": "technical_refactor_pass",
+    "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Successful visual releases, score changes, autonomous state refreshes or unrelated PRs must not change this phase."
+  },
+  "source_of_truth": {
+    "owner_priority": "OWNER_PRIORITY.json",
+    "architecture": "ARCHITECTURE.md",
+    "test_policy": "TEST_MATRIX.md",
+    "dependency_inventory": "DEPENDENCY_MAP.md",
+    "workflow_inventory": "CI_WORKFLOW_AUDIT.md",
+    "execution_queue": "CODEX_QUEUE.md",
+    "product_roadmap": "PRODUCT_ROADMAP.md"
   },
   "current_task": {
-    "id": "DESIGN_SYSTEM_RESPONSIVE_SHELL_AUDIT",
-    "category": "VISUAL_UX_SITE_WIDE",
+    "id": "TECHNICAL_REFACTOR_CI_INVENTORY",
+    "category": "TECH_DEBT_ARCHITECTURE_CI",
     "status": "ACTIVE",
-    "progress": "#363 single PHP footer ownership is fully production/live green. #365 aligned mature search navigation order and labels with the shared public header and passed the dedicated 375/430/768/1024/1440 gate before merge. Screenshot review exposed a severe shared-primitive regression where blue editorial CTA callouts on /hot/ and /rb/ were painted white while retaining white text; #367 restored the variant at the final Design System layer, passed the full visual/regression suite, and screenshot artifacts now show correct blue callouts on desktop and mobile. Its final standalone production deploy is still running. #366 was refreshed onto current main after the shared CSS conflict and now preserves #367 while balancing three related-destination cards at 561-768px.",
-    "next_action": "Finish #367 production/live gate, then take #366 through fresh CI/visual verification and continue screenshot-driven audit for remaining cross-page spacing, wrapping, overflow and shell inconsistencies."
-  },
-  "site_wide_score": {
-    "owner_baseline": 6.5,
-    "current_estimate": 6.8,
-    "status": "CONFIRMED_INCREMENTAL_MOVEMENT",
-    "note": "Whole-site coherence score, not a search-only engineering score. Footer ownership and navigation parity are materially improved, and the broken CTA callouts are fixed in main with direct screenshot proof; keep 6.8 until the latest production deploy closes."
+    "progress": "Owner priority was found drifted back to Design System-first on current main despite the latest explicit technical-refactor instruction. This slice restores the canonical technical lock before further CI/dependency work. Runtime/operations, pending/unpriced, rooms/flights, search/results/recovery and lead audit companions already provide partial workflow coverage.",
+    "next_action": "Finish exhaustive GitHub Actions inventory across remaining mobile/UI, live journey/content/catalog/search/tour, SEO/content, visual production and deploy/feed/runtime families; record explicit PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE tier and disposition before consolidation."
   },
   "work_order": [
-    "finish editorial callout production live verification",
-    "verify and merge refreshed narrow-tablet related-destination balance without losing callout fix",
-    "continue screenshot-driven audit of how-to-buy rb hot country contacts representative country pages at 375 430 768 1024 1440",
-    "choose the next smallest compatibility-preserving shared-header consolidation slice only after visual defects are cleared",
-    "keep mature search recovery results comparison flight price fuel lead regressions green"
+    "finish exhaustive CI workflow inventory and tier classification without deleting coverage",
+    "finish dependency map for non-manifest JS CSS PHP endpoints helpers and deploy consumers",
+    "define safe directory ownership migration plan and v2_asset subdirectory prerequisite",
+    "extract only proven duplicate CI bootstrap while preserving distinct behavioral verdicts",
+    "migrate low-risk implementation families toward canonical ownership one at a time",
+    "consolidate one header one footer one navigation one design system after consumer mapping",
+    "return to UX and visual phase after technical consolidation"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -43,12 +48,15 @@
     "legal_payment_migration": "DEFER_UNTIL_RECONCILED",
     "pr_248": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
     "pr_249": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
-    "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
+    "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE",
+    "pr_369": "DEFER_WHILE_TECHNICAL_REFACTOR_OWNER_PRIORITY_IS_ACTIVE_UNLESS_PRODUCTION_REGRESSION_JUSTIFIES_PREEMPTION"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_site_wide_visual_unification > supporting_technical_consolidation > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
-    "on_blocker": "record_blocker_and_continue_independent_safe_work"
+    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
+    "on_blocker": "record_blocker_and_continue_independent_safe_work",
+    "one_concept_one_implementation": true,
+    "delete_guard_only_after_equivalent_coverage": true
   }
 }
