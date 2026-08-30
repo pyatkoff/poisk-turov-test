@@ -2,35 +2,42 @@
 
 Updated: 2026-08-30
 
-Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority lock. `AUTOPILOT_STATE.json` is the machine-readable resume point. Technical sources of truth are `ARCHITECTURE.md`, `TEST_MATRIX.md`, `DEPENDENCY_MAP.md`, `CI_WORKFLOW_AUDIT.md`, `CODEX_QUEUE.md` and `PRODUCT_ROADMAP.md`.
+Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority lock. `AUTOPILOT_STATE.json` is the machine-readable resume point. Technical sources of truth remain `ARCHITECTURE.md`, `TEST_MATRIX.md`, `DEPENDENCY_MAP.md`, `CI_WORKFLOW_AUDIT.md`, `CODEX_QUEUE.md` and `PRODUCT_ROADMAP.md`.
 
-## Current phase — TECHNICAL REFACTOR PASS
+## Current phase — ANYTOUR DESIGN SYSTEM 1.0
 
-The owner's latest explicit direction is technical-refactor-first. Autonomous visual/design-system progress must not replace this lock.
+The owner's latest explicit direction is Design System 1.0/site-wide visual unification first. Technical refactoring may support this work but must not replace the active UX/visual priority.
 
 Canonical priority after emergency overrides:
 
-`technical_refactor → ux_visual → content_seo → cosmetic_cleanup`
+`ux_visual → technical_refactor → content_seo → cosmetic_cleanup`
 
 Production breakage, lead loss, incorrect data and broken user journeys may preempt temporarily under `AGENTS.md`, but do not rewrite `OWNER_PRIORITY.json`.
 
-## Refactor objectives
+## Current Design System objectives
 
-1. Keep one canonical architecture/source of truth and enforce `one concept → one implementation`.
-2. Complete inventory/dependency mapping for ACTIVE, COMPATIBILITY, DEPRECATED and DEAD candidates before moving or deleting files.
-3. Complete GitHub Actions audit into `PR FAST`, `PR BROWSER`, `POST DEPLOY`, `SCHEDULED/LIVE`; remove duplication only after equivalent coverage is proven.
-4. Prepare safe ownership structure for `shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates` without user-visible behavior changes.
-5. Consolidate shared template ownership to one header, one footer, one navigation and one design system after dependency/CI evidence makes migrations safe.
-6. Return to UX/visual work after technical consolidation, except when higher-priority production/user-journey regressions preempt the phase.
+1. Make `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages feel like one product.
+2. Keep one coherent header/navigation/footer, typography, grid/spacing, buttons, cards, breadcrumbs and responsive behavior.
+3. Use the mature search experience as the reference without making editorial pages unnecessarily dense.
+4. Validate material visual changes at 375/430/768/1024/1440 and preserve search/recovery/results/comparison/flight/price/fuel/lead regressions.
+5. Fix confirmed spacing, wrapping, overflow, duplicated shell and hierarchy issues before cosmetic flourishes.
+
+## Material progress
+
+- Shared header/footer/navigation parity and five-width visual guards are established.
+- Legacy-domain links were removed from the new shared footer while unresolved legal/payment content remains deferred.
+- `/rb/`, `/how-to-buy/` and `/contacts/` received hierarchy/spacing fixes.
+- `/country/` mobile catalog density fix is merged via #386 after green visual/regression gates.
+- Country migration map is synchronized with the actual V2 runtime via #387.
+- Whole-site coherence baseline remains 7.1/10 pending fresh production verification of #386 and the next user-visible slices.
 
 ## Exact next work order
 
-1. Finish exhaustive `CI_WORKFLOW_AUDIT.md`, including remaining meal/visual/live workflow families and explicit trigger/tier/disposition for every workflow.
-2. Finish `DEPENDENCY_MAP.md` for non-manifest JS/CSS, PHP endpoints/helpers and deploy consumers; distinguish ACTIVE/COMPATIBILITY from deletion candidates with concrete references.
-3. Define the directory ownership migration plan and prerequisites, including the current `v2_asset()` subdirectory restriction; do not physically move runtime assets until loader/tests prove compatibility.
-4. Extract only proven duplicated CI/bootstrap infrastructure while preserving distinct behavioral assertions.
-5. Migrate one low-risk implementation family at a time toward canonical ownership, with regression evidence before deletion of old paths.
-6. Consolidate shared template layer only after its consumers and compatibility obligations are fully mapped.
+1. Verify #386 post-merge deploy/live behavior on `/country/` at 375/430 and confirm tablet/desktop remain unchanged.
+2. Continue representative country-page visual audit at 375/430/768/1024/1440; fix only confirmed spacing/wrapping/overflow/hierarchy defects.
+3. Re-audit `/hot/`, `/contacts/`, `/rb/` and `/how-to-buy/` after shared-shell changes for regressions.
+4. Run the full homepage → destination → search → results → selected tour → lead visual journey and address the highest-impact confirmed defect.
+5. Continue shared Design System token/primitive consolidation only where it reduces actual cross-page divergence safely.
 
 ## Mandatory protections
 
@@ -41,8 +48,8 @@ Do not modify without explicit approval:
 - neighboring projects;
 - server/platform architecture outside the allowed repository/deploy scope.
 
-Preserve the AnyTour logo, verified social/app destinations and mature search/recovery/results/comparison/flight/price/fuel/lead behavior. Legal/payment migration remains deferred. PRs #248/#249/#254 remain excluded from automatic merge without fresh scope-specific review.
+Preserve the AnyTour logo, verified social/app destinations and mature search/recovery/results/comparison/flight/price/fuel/lead behavior. Legal/payment migration remains deferred. PR #254 remains deferred unless a fresh scope review proves its separate DB/platform architecture safe.
 
 ## Execution policy
 
-Work in narrow independent PR-sized slices. At the start of each run inspect current `main`, open PRs and fresh CI, then choose the highest-value independent technical slice. Do not refactor for style or invent defects. Do not delete a guard or implementation until equivalent consumers/coverage are proven. If one technical item is blocked, record the blocker and continue another independent safe slice.
+Work in narrow independent PR-sized slices. At the start of each run inspect current `main`, open PRs, fresh CI/deploy and live visual behavior. Prefer confirmed user-visible Design System defects over speculative cleanup. If one task is blocked, record/defer it and continue another independent safe visual slice.
