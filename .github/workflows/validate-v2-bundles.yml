@@ -40,10 +40,11 @@ jobs:
               $url=v2_bundle_asset($type);
               if (!str_contains($url,'bundle-v1.php?type='.$type.'&v='.$a)) {fwrite(STDERR,"bad $type url: $url\n"); exit(5);}
           }
-          if (count($manifest['css'])!==26) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
+          if (count($manifest['css'])!==27) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
           if (($manifest['css'][0]??'')!=='design-system-v1.css') {fwrite(STDERR,"design system must load first\n"); exit(8);}
-          if (($manifest['css'][count($manifest['css'])-2]??'')!=='search-header-layout-guard-v1.css') {fwrite(STDERR,"search header layout guard must stay directly before footer rhythm\n"); exit(9);}
-          if (($manifest['css'][count($manifest['css'])-1]??'')!=='search-footer-rhythm-v1.css') {fwrite(STDERR,"search footer rhythm must load last\n"); exit(10);}
+          if (($manifest['css'][count($manifest['css'])-3]??'')!=='search-header-layout-guard-v1.css') {fwrite(STDERR,"search header layout guard must stay before footer rhythm and shared-shell override\n"); exit(9);}
+          if (($manifest['css'][count($manifest['css'])-2]??'')!=='search-footer-rhythm-v1.css') {fwrite(STDERR,"search footer rhythm must stay directly before shared-shell override\n"); exit(10);}
+          if (($manifest['css'][count($manifest['css'])-1]??'')!=='search-header-shared-shell-v1.css') {fwrite(STDERR,"search shared-shell override must load last\n"); exit(11);}
           if (count($manifest['js'])!==32) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
           echo 'BUNDLE_MANIFEST_OK css='.count($manifest['css']).' js='.count($manifest['js'])."\n";
           PHP
@@ -66,18 +67,26 @@ jobs:
         run: |
           set -euo pipefail
           version=$(php -r 'require "v2/assets.php"; echo v2_bundle_content_version("css");')
-          php -S 127.0.0.1:8099 -t v2 >"$RUNNER_TEMP/php-server.log" 2>&1 &
+          port=18099
+          php -S "127.0.0.1:$port" -t "$PWD/v2" >"$RUNNER_TEMP/php-server.log" 2>&1 &
           pid=$!
           trap 'kill $pid >/dev/null 2>&1 || true' EXIT
-          for _ in {1..30}; do curl -fsS "http://127.0.0.1:8099/bundle-v1.php?type=css&v=$version" -o "$RUNNER_TEMP/bundle.css" && break; sleep .2; done
+          ready=0
+          for _ in {1..40}; do
+            if curl -fsS "http://127.0.0.1:$port/bundle-v1.php?type=css&v=$version" -o "$RUNNER_TEMP/bundle.css"; then ready=1; break; fi
+            if ! kill -0 "$pid" >/dev/null 2>&1; then cat "$RUNNER_TEMP/php-server.log" >&2 || true; exit 12; fi
+            sleep .25
+          done
+          if [ "$ready" -ne 1 ]; then cat "$RUNNER_TEMP/php-server.log" >&2 || true; exit 13; fi
           test -s "$RUNNER_TEMP/bundle.css"
-          curl -fsSI "http://127.0.0.1:8099/bundle-v1.php?type=css&v=$version" > "$RUNNER_TEMP/headers"
+          curl -fsSI "http://127.0.0.1:$port/bundle-v1.php?type=css&v=$version" > "$RUNNER_TEMP/headers"
           grep -iq '^Content-Type: text/css' "$RUNNER_TEMP/headers"
           grep -iq '^Cache-Control: public, max-age=31536000, immutable' "$RUNNER_TEMP/headers"
           grep -Fq '.search-submit' "$RUNNER_TEMP/bundle.css"
           grep -Fq -- '--at-shell:1180px' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Production guard for the legacy search-header markup' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Search-page footer rhythm guard' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'Search-header compatibility layer' "$RUNNER_TEMP/bundle.css"
           echo "BUNDLE_HTTP_CACHE_OK"
       - name: Validate startup request collapse
         shell: bash
