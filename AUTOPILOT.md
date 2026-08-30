@@ -25,17 +25,24 @@ Emergency/product safety still overrides this phase in the order defined by `AGE
 
 ## Current resume point
 
-Recent production-verified slices improved the homepage, `/hot/`, `/rb/`, `/country/` and representative country-page responsive grids, shared editorial primitives and mobile iOS shell regressions. PR #356 is now fully production/live green after a successful rerun through public-page, lead-bridge and live-search smoke. PR #359 aligned the mature search header's desktop/intermediate geometry with the shared Design System tokens and passed the dedicated 375/430/768/1024/1440 header check plus the wider search visual/regression suite before merge.
+The current Design System pass has now closed several site-wide coherence gaps:
 
-A confirmed remaining duplication is the search runtime's obsolete request for `footer-current-site.css`, a file no longer present in the repository. The shared `site-footer-v1.css` already owns `.at-site-footer`; remove the dead request without changing footer destinations or lead/search behavior, then continue the page re-audit.
+- #356: representative country fact-card rows balanced across tablet/intermediate widths and production/live verified;
+- #359: mature search header geometry aligned with shared shell tokens at 375/430/768/1024/1440 and production/live verified;
+- #360: `/country/` 14-card catalog balanced at 769–1024px;
+- #361: obsolete runtime request for missing `footer-current-site.css` removed; shared `site-footer-v1.css` remains the active footer style source and production/live is green;
+- #362: `/contacts/` two-card action row now uses a balanced two-column primitive instead of leaving an empty third column;
+- #363: homepage, editorial pages and search now use one PHP footer markup owner; the duplicate JS footer implementation is removed. All PR responsive/regression checks are green and the production deploy/live gate is running.
+
+Whole-site coherence remains conservatively **6.8/10** until the footer consolidation completes production verification. This is a site-wide product score, not the stronger search-only engineering score.
 
 Next work order:
 
-1. Finish production/live verification of the merged search-header geometry parity release.
-2. Remove the obsolete search-only `footer-current-site.css` request and keep `site-footer-v1.css` as the single active footer style source.
-3. Re-audit `/contacts/`, `/how-to-buy/`, `/rb/`, `/hot/`, `/country/` and representative country pages at 375/430/768/1024/1440 for confirmed spacing/wrapping/overflow issues.
+1. Finish production/live verification of #363, including public-page, footer and search/lead regression gates.
+2. Audit the remaining duplicated search header/navigation implementation against `site-header-v2` and choose the smallest compatibility-preserving migration slice; do not replace mature search markup blindly.
+3. Re-audit `/how-to-buy/`, `/rb/`, `/hot/`, `/country/`, `/contacts/` and representative country pages at 375/430/768/1024/1440 and fix only confirmed defects.
 4. Consolidate only proven duplicated visual primitives into the shared Design System layer.
-5. Continue through multiple independent safe visual tasks while preserving all search and lead regressions.
+5. Keep mature search/recovery/results/comparison/flight/price/fuel/lead regressions green throughout.
 
 ## Mandatory protections
 
