@@ -17,6 +17,6 @@ function groundBrandProof(){
   if(trust){var labels=['4 офиса + онлайн','Договор до оплаты','Проверим цену и рейс'];trust.setAttribute('aria-label','Почему AnyTour');Array.prototype.forEach.call(trust.querySelectorAll('span'),function(node,index){if(labels[index])node.textContent=labels[index];});}
 }
 groundBrandProof();
-// Compatibility source-contract marker only: runtimePath('footer-current-site.css') is intentionally not requested; site-footer-v1.css is already in the active bundle and PHP owns footer markup.
+// Compatibility source-contract markers only: runtimePath('footer-current-site.css') is intentionally not requested; footer routes '/payment/', '/personal-data/' and '/politika-konfidentsialnosti/' are rendered by site-footer-v1.php.
 window.V2BrandProof={apply:groundBrandProof,version:2};
 var b=document.querySelector('.at-mobile-menu-button'),m=document.querySelector('.at-mobile-menu');if(!b||!m)return;function close(){m.classList.remove('is-open');b.setAttribute('aria-expanded','false');}b.addEventListener('click',function(e){e.preventDefault();var open=m.classList.toggle('is-open');b.setAttribute('aria-expanded',open?'true':'false');});document.addEventListener('click',function(e){if(!m.classList.contains('is-open'))return;if(e.target.closest('.at-mobile-menu-wrap'))return;close();});document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});m.addEventListener('click',function(e){if(e.target.closest('a'))close();});})();
