@@ -1,23 +1,23 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T09:16:00+02:00",
+  "updated_at": "2026-08-30T10:38:00+03:00",
   "mode": "technical_refactor_pass",
-  "phase": "Technical refactor pass is ACTIVE before further UX/visual expansion. ARCHITECTURE.md and TEST_MATRIX.md are canonical; CI inventory and reusable scripts are being consolidated in narrow SAFE slices. Existing production visual/search baselines remain protected and must not regress while the repository is made easier and safer for autonomous development.",
+  "phase": "Technical refactor pass remains ACTIVE, with P0/P1 production and broken-user-journey defects allowed to preempt it. Two confirmed mobile search-shell defects from real iPhone production evidence were fixed in safe compatibility slices: search hamburger visual mismatch (PR #320) and floating-consultant overlap with the primary sticky search CTA (PR #321). Broad UX expansion remains secondary to the technical pass, but confirmed production usability defects continue to override it.",
   "scores": {
-    "whole_public_site": 8.0,
-    "cross_page_visual_consistency": 7.9,
-    "header_navigation_consistency": 7.1,
+    "whole_public_site": 8.1,
+    "cross_page_visual_consistency": 8.0,
+    "header_navigation_consistency": 7.4,
     "homepage": 7.6,
     "country_pages": 8.0,
     "hot_tours": 7.7,
     "how_to_buy": 7.5,
     "contacts": 7.55,
     "early_booking": 7.55,
-    "public_site_mobile_consistency": 8.0,
+    "public_site_mobile_consistency": 8.2,
     "typography": 7.6,
     "grid_spacing": 7.7,
-    "brand_coherence": 7.9,
+    "brand_coherence": 8.0,
     "search_product_reference": 8.75
   },
   "target": {
@@ -28,37 +28,41 @@
   },
   "current_task": {
     "id": "TECHNICAL_REFACTOR_PASS_1",
-    "category": "ARCHITECTURE_CI_REFACTOR",
+    "category": "ARCHITECTURE_CI_REFACTOR_WITH_PRODUCTION_P1_PREEMPTION",
     "status": "ACTIVE",
-    "progress": "Canonical ARCHITECTURE.md and TEST_MATRIX.md exist. CI_WORKFLOW_AUDIT.md plus family companions document verified workflow ownership. Lead idempotency and lead price contracts have now been extracted into reusable scripts/ci/lead diagnostics and moved into PR FAST coverage via merged PR #316, with Security and both focused lead checks green. Production runtime, Metrika, external lead contract and Tourvisor were untouched.",
-    "next_action": "Continue exhaustive CI/dependency inventory, extract duplicated deterministic CI logic into scripts/ci, convert brittle implementation-string guards only after equivalent behavioral diagnostics exist, classify historical asset/API generations ACTIVE/COMPATIBILITY/DEPRECATED/DEAD-CANDIDATE, then enable controlled asset subdirectories and gradual module ownership moves. Resume UX/visual work after the technical pass reaches a stable checkpoint, except for P0/P1 production or lead-loss fixes."
+    "progress": "Canonical ARCHITECTURE.md and TEST_MATRIX.md exist and lead diagnostics remain consolidated. Real iPhone evidence then exposed two P1 mobile shell defects, so refactor work was safely preempted: PR #320 added a final compatibility CSS layer that makes the legacy search hamburger match the shared site shell without replacing v2/index.php; PR #321 reserved a support-widget lane so the floating consultant cannot cover the primary mobile search CTA. PR #321 also strengthened the 375/430 sticky visual guard and corrected the stale V2 bundle guard after the new shared-shell asset increased the CSS manifest from 26 to 27 assets. All PR checks were green; production deploy 33299532124 passed public-page verification, unchanged lead bridge verification and live search smoke, and live user journey was green. Metrika, Tourvisor, lead contract and logo were untouched.",
+    "next_action": "Resume the technical refactor inventory/consolidation after completing post-deploy observation of the mobile search shell. Continue to fix only confirmed P0/P1 visual/user-journey defects immediately. Next UX audit should inspect the full mobile path header → search form → sticky CTA → results → selected tour → lead at 375/430, while the broader five-width Design System baseline remains protected."
   },
   "production_baseline": {
     "standalone_commit": "9eb6d3dceed32e5191fba65b2f6768a7c52f8298",
     "standalone_deploy_run": 33298269348,
     "standalone_status": "PRODUCTION_GREEN_SHARED_SHELL_COUNTRY_DISCOVERY_HOT_QUICK_STARTS_HEADING_HIERARCHY_AND_HOMEPAGE_JOURNEY_HERO",
-    "v2_commit": "8989c3a77ac50b7b1be4488ce0b8f978252ea7c5",
-    "v2_deploy_run": 33296971578,
-    "v2_status": "PRODUCTION_GREEN_SEARCH_HEADER_GEOMETRY_PHONE_MENU_SPACING_ACTIVE_ROUTE_AND_LIVE_SEARCH_SMOKE",
-    "design_system_release": "PR #317 homepage hero journey continuity after PRs #311-#313 search-shell visual alignment",
-    "visual_audit_guard_pr": 317,
+    "v2_commit": "5a5007ca8a13c8cab367d7910aa85d3a142dceb8",
+    "v2_deploy_run": 33299532124,
+    "v2_status": "PRODUCTION_GREEN_SEARCH_HEADER_SHARED_VISUAL_LANGUAGE_AND_MOBILE_STICKY_CTA_SUPPORT_WIDGET_CLEARANCE_WITH_LIVE_SEARCH_SMOKE",
+    "design_system_release": "PR #320 search hamburger shared-shell compatibility plus PR #321 mobile sticky CTA/support-widget collision fix",
+    "visual_audit_guard_pr": 321,
     "required_viewports_revalidated_premerge": true,
     "required_viewports_revalidated_production": true,
     "production_visual_run": 33298337155,
     "production_navigation_run": 33294016413,
-    "production_migrated_content_run": 33294016419,
+    "production_migrated_content_run": 33299603436,
     "production_live_results_visual_run": 33294016407,
-    "post_deploy_visual_guard_status": "GREEN_HOMEPAGE_JOURNEY_FIVE_WIDTH_STANDALONE_BASELINE_WITH_EXISTING_SEARCH_NAV_CONTENT_AND_LIVE_RESULT_GUARDS",
+    "mobile_sticky_premerge_visual_run": 33299442574,
+    "mobile_sticky_boundary_run": 33299442590,
+    "production_user_journey_run": 33299603432,
+    "post_deploy_visual_guard_status": "DEPLOY_GREEN_AND_LIVE_USER_JOURNEY_GREEN; POST_DEPLOY_VISUAL_FAMILY_CONTINUING_AFTER_MOBILE_FIX",
     "scores_revalidated": true
   },
   "work_order": [
+    "complete post-deploy observation of PR #321 mobile shell and investigate any failed live/visual guard before further work",
     "finish exhaustive CI workflow inventory and classify PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE ownership",
     "extract repeated deterministic CI checks into scripts/ci without weakening coverage",
     "replace brittle src.includes/grep contracts with equivalent behavioral diagnostics one contract at a time",
     "complete dependency/deprecation map for versioned assets, APIs, analytics and lead adapters as ACTIVE / COMPATIBILITY / DEPRECATED / DEAD-CANDIDATE",
     "refactor the asset helper to support controlled subdirectories and begin gradual shared/search/results/tour/checkout/integrations/site/seo ownership moves",
     "reconcile legacy anytour.online deployment/test dependencies only in proven-safe slices; protected lead bridge migration remains HIGH risk",
-    "resume shared-shell/UX/visual unification after the technical checkpoint, preserving required 375/430/768/1024/1440 evidence"
+    "continue shared-shell/UX fixes only for confirmed production defects during refactor, preserving 375/430/768/1024/1440 evidence"
   ],
   "required_viewports": [375, 430, 768, 1024, 1440],
   "protected": {
@@ -77,11 +81,11 @@
   "deferred": [
     {
       "scope": "aggressive UX/visual expansion",
-      "reason": "Owner explicitly prioritized technical refactor and test/CI consolidation first; resume after a stable technical checkpoint unless production/lead risk requires immediate UX correction."
+      "reason": "Technical refactor remains active; only confirmed production/user-journey defects preempt it."
     },
     {
       "scope": "/poisk-turov/ full shared-header component migration",
-      "reason": "Keep deferred until an atomic extraction path and equivalent browser coverage make the component swap safe."
+      "reason": "Visual compatibility is now substantially aligned through isolated CSS, but a full component swap remains deferred until an atomic extraction path and equivalent browser coverage make it safe."
     },
     {
       "scope": "traffic/conversion analysis",
