@@ -1,3 +1,4 @@
 .sp-main,.sp-breadcrumbs .sp-wrap{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))}
+.sp-hero{padding-left:var(--at-page-edge);padding-right:var(--at-page-edge)}
 @media(max-width:900px){.sp-main,.sp-breadcrumbs .sp-wrap{width:min(calc(100% - var(--at-page-gutter)),760px)}}
 @media(max-width:560px){.sp-main,.sp-breadcrumbs .sp-wrap{width:calc(100% - var(--at-page-gutter))}}
