@@ -1,18 +1,19 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T11:03:00+02:00",
+  "updated_at": "2026-08-30T11:12:00+02:00",
   "mode": "design_system_1_sitewide_unification",
-  "phase": "Explicit owner direction makes AnyTour Design System 1.0 and whole-site visual unification Priority #1. Do not confuse the mature search-product engineering score with public-site coherence. Production, lead-loss and incorrect-data defects still preempt planned visual work.",
+  "phase": "AnyTour Design System 1.0 and whole-site visual unification remain Priority #1. Production, lead-loss and incorrect-data defects still preempt planned visual work. Search quality is a reference, not the whole-site score.",
   "owner_priority_lock": {
     "active": true,
     "planned_phase": "design_system_1_sitewide_visual_unification",
-    "rule": "Keep Design System 1.0/site-wide visual unification first until the owner explicitly changes priority. Technical refactor continues only as supporting work or when it removes a concrete blocker."
+    "rule": "Keep Design System 1.0/site-wide visual unification first until the owner explicitly changes priority. Technical refactor is supporting work only."
   },
   "scores": {
     "whole_public_site_coherence_baseline": 6.5,
+    "whole_public_site_coherence_current": 6.8,
     "search_product_reference": 8.75,
-    "rule": "Whole-site score may move only after representative production visual evidence; never inherit search-only scores."
+    "rule": "Whole-site score moves only after representative production visual evidence; never inherit search-only scores."
   },
   "target": {
     "first_sitewide_gate": 8.0,
@@ -23,15 +24,14 @@
     "id": "DESIGN_SYSTEM_1_SITEWIDE_UNIFICATION",
     "category": "VISUAL_UX_PRODUCT_SHELL",
     "status": "ACTIVE",
-    "progress": "Shared editorial rhythm and content tokens are production baseline from PRs #325/#326. PR #330 unifies section-heading, copy, surface/card and action geometry between the homepage and shell-based editorial pages through one final shared-content primitive layer; pre-merge standalone/search/selected-tour/security/browser regressions are green and production verification is the current release gate.",
-    "next_action": "After PR #330 production five-width evidence, audit shared header/footer wrapping and density across /, /poisk-turov/, /hot/, /contacts/, /how-to-buy/, /rb/, /country/ and representative countries; fix the weakest confirmed cross-page inconsistency, then continue through destination → search → results → selected tour → lead continuity."
+    "progress": "PR #330 is production-green and provides shared homepage/editorial heading, copy, surface/card and action primitives. PR #332 is production-green and compacts the shared 375/430 community/footer actions into a safe two-column layout while preserving 44px+ targets and verified destinations. Five-width root/search evidence and live tourist journey are green after the footer release.",
+    "next_action": "Audit and unify shared header/navigation active state, wrapping and geometry across /, /poisk-turov/, /hot/, /contacts/, /how-to-buy/, /rb/, /country/ and representative country pages. Fix the weakest confirmed cross-page header inconsistency without replacing the mature search shell."
   },
   "work_order": [
-    "verify PR #330 production deploy and 375/430/768/1024/1440 evidence",
-    "audit and unify shared header/navigation active state, wrapping and geometry across public/search pages",
-    "audit shared footer/community density, wrapping and spacing across all public page families",
+    "audit shared header/navigation active state, wrapping and geometry at 375/430/768/1024/1440 across public/search routes",
+    "fix confirmed header/menu/phone drift through shared primitives or compatibility layer, not a risky component swap",
+    "re-audit representative /country/ pages and /hot/ against homepage/search hierarchy and card language",
     "continue shared typography, section, card, button and breadcrumb primitives where page-specific drift remains",
-    "audit representative country and hot pages against homepage/search visual language",
     "verify end-to-end homepage → destination/hot → search → results → selected tour → lead visual continuity",
     "run technical refactor only where it directly supports safer Design System migration or after the visual gate"
   ],
@@ -51,22 +51,10 @@
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
   "deferred": [
-    {
-      "scope": "/poisk-turov/ full shared-header component migration",
-      "reason": "Keep compatibility-layer approach until an atomic swap has equivalent browser coverage."
-    },
-    {
-      "scope": "public SEO indexing/sitemap promotion",
-      "reason": "Requires deliberate publication/indexing contract; not part of visual unification."
-    },
-    {
-      "scope": "legal/payment route migration",
-      "reason": "Legacy legal/payment content/requisites are unresolved."
-    },
-    {
-      "scope": "PR #254",
-      "reason": "Separate DB/platform architecture; keep deferred without fresh safety review."
-    }
+    {"scope": "/poisk-turov/ full shared-header component migration", "reason": "Keep compatibility-layer approach until an atomic swap has equivalent browser coverage."},
+    {"scope": "public SEO indexing/sitemap promotion", "reason": "Requires deliberate publication/indexing contract; not part of visual unification."},
+    {"scope": "legal/payment route migration", "reason": "Legacy legal/payment content/requisites are unresolved."},
+    {"scope": "PR #254", "reason": "Separate DB/platform architecture; keep deferred without fresh safety review."}
   ],
   "continuation_policy": {
     "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_sitewide_visual > supporting_technical_refactor > content_seo > cosmetic_cleanup",
