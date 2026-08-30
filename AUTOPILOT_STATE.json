@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T18:54:00+02:00",
+  "updated_at": "2026-08-30T19:18:00+02:00",
   "mode": "design_system_1_0",
   "phase": "Owner-directed AnyTour Design System 1.0 and site-wide visual unification across public editorial/search surfaces.",
   "owner_priority_source": "OWNER_PRIORITY.json",
@@ -14,14 +14,14 @@
     "id": "DESIGN_SYSTEM_SITE_WIDE_UNIFICATION",
     "category": "UX_VISUAL",
     "status": "ACTIVE",
-    "progress": "PR #369 passed its PR gates and was merged. Current production crawl confirms the target public routes are reachable. This run corrected a later owner-priority drift introduced by #372 so autonomous work again follows the latest explicit Design System 1.0 directive. Shared footer ownership, search-nav parity, editorial CTA repair and country tablet balance remain the current foundation.",
-    "next_action": "Continue five-width browser-driven audit of /rb/, /hot/, /contacts/, /country/ and representative country pages, then recheck / and /poisk-turov/ together. Fix only confirmed spacing, wrapping, overflow, hierarchy or shared-shell defects; keep #254/legal/payment/external contracts deferred."
+    "progress": "PR #374 is deployed and production-verified: canonical editorial top-level spacing is active, and fresh five-width standalone content/navigation/root plus live user-journey and V2 search/selected-tour/recovery checks are green. Current five-width artifacts for home, hot, contacts, how-to-buy, rb, country catalog and representative Turkey/Tunisia/Maldives pages show no new confirmed overflow, broken CTA or duplicated shell. A confirmed coverage gap remains at the search-header compatibility boundary: /poisk-turov/ intentionally preserves the mature legacy DOM but its shared geometry was not compared automatically against the global header on PRs.",
+    "next_action": "Land the cross-surface header geometry gate so search-header CSS/index changes run the five-width Design System visual suite and /poisk-turov/ header height/logo width are compared with the shared public header. Then continue confirmed-defect audit across remaining editorial hierarchy/primitives and the full homepage-to-lead journey."
   },
   "work_order": [
-    "verify merged country related-destination tablet balance in production visual workflow",
-    "audit and improve rb hot contacts country and representative country pages",
+    "land and live-verify cross-surface search/global header geometry gate at 375 430 768 1024 1440",
+    "continue audit of rb hot contacts country and representative country pages for confirmed visual defects",
     "migrate remaining weak editorial primitives to shared Design System tokens and components",
-    "recheck homepage and poisk-turov shell parity across five target widths",
+    "recheck homepage country destination hot search results selected-tour lead as one visual journey",
     "preserve mature search recovery results comparison flight price fuel and lead regressions",
     "continue independent safe visual slices with CI then live verification"
   ],
@@ -39,8 +39,8 @@
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
   "site_wide_score": {
-    "current": 6.8,
-    "note": "Whole-site coherence score remains conservative until the merged country-page change and next editorial slices have fresh production visual evidence; do not substitute search-only engineering score."
+    "current": 7.0,
+    "note": "Whole-site coherence score moves from 6.8 to 7.0 after #374 received fresh production visual evidence across the target five widths and representative public routes. This remains a whole-site score, not a search engineering score."
   },
   "continuation_policy": {
     "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > technical_refactor > content_seo > cosmetic_cleanup",
