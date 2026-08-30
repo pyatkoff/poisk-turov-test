@@ -1,40 +1,42 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T12:00:00+02:00",
+  "updated_at": "2026-08-30T12:08:00+02:00",
   "mode": "anytour_design_system_1_0",
   "phase": "Owner-directed site-wide visual unification across homepage, editorial/destination pages, hot/search, results, selected tour and lead journey, while preserving mature search regressions and protected external contracts.",
   "owner_priority_lock": {
     "active": true,
     "planned_phase": "anytour_design_system_1_0",
-    "rule": "The newest explicit owner instruction supersedes the previous technical-refactor lock. Keep Design System 1.0 as the autonomous priority unless production, lead-loss, incorrect-data or broken-user-journey evidence preempts it, or the owner explicitly changes direction again."
+    "rule": "Keep Design System 1.0 as the autonomous priority unless production, lead-loss, incorrect-data or broken-user-journey evidence preempts it, or the owner explicitly changes direction again."
   },
   "current_task": {
-    "id": "DESIGN_SYSTEM_1_0_GUTTERS_AND_SHELL",
+    "id": "DESIGN_SYSTEM_1_0_SHARED_SHELL_AND_CONTACTS",
     "category": "VISUAL_UX_SHARED_SHELL",
-    "status": "MERGED_AWAITING_PRODUCTION_VERIFICATION",
-    "progress": "PR #337 merged. Added --at-page-gutter responsive token and shared standalone shell alignment primitive so .sp-main and breadcrumbs use one horizontal grid across desktop/tablet/mobile. PR visual/browser coverage passed at 375/430/768/1024/1440.",
-    "next_action": "Finish post-merge deploy/live verification for PR #337, then audit remaining hero/breadcrumb/main/footer alignment and migrate duplicated button/card/breadcrumb geometry into shared Design System primitives before the next weak-page slice."
+    "status": "MULTI_SLICE_IN_PROGRESS",
+    "progress": "PR #337 is fully production green. PR #339 passed the full PR suite and merged, adding --at-page-edge and exact hero/breadcrumb/main horizontal alignment across the required viewports; its post-merge deploy/live gate is running. PR #340 rebalances the four-office /contacts/ layout from 3+1 to 2x2 on wider screens, preserves single-column mobile behavior, was rebased onto the #339 main baseline and is in fresh CI/visual verification.",
+    "next_action": "Finish #339 deploy/live verification; then merge/deploy #340 only if its rebased visual/browser suite is green. Continue with button/card/breadcrumb primitive consolidation and the next weak editorial page."
   },
   "site_wide_score": {
     "owner_baseline": 6.5,
     "current_estimate": 6.6,
-    "status": "PENDING_PRODUCTION_VERIFICATION",
-    "note": "Whole-site coherence score, not a search-only engineering/UX score. Movement is intentionally modest for one systemic gutter/alignment slice."
+    "status": "MODEST_CONFIRMED_MOVEMENT",
+    "note": "Whole-site coherence score, not a search-only score. Do not inflate further until broader page hierarchy/content migrations land."
   },
   "production_baseline": {
-    "previous_release": "PR #334 shared header geometry and nested navigation state",
-    "previous_commit": "1863b2ab0287a4385dfc96f170db1d88a062bf98",
-    "candidate_release": "PR #337 shared responsive page gutters and standalone shell alignment",
-    "candidate_commit": "9c89b81688354f3f2c72b960182b0904069b7edb",
-    "status": "POST_MERGE_CI_DEPLOY_LIVE_CHECKS_IN_PROGRESS",
+    "verified_release": "PR #337 shared responsive page gutters and standalone shell alignment",
+    "verified_commit": "9c89b81688354f3f2c72b960182b0904069b7edb",
+    "verified_status": "DEPLOY_PUBLIC_PAGES_LEAD_BRIDGE_LIVE_SEARCH_POST_DEPLOY_VISUAL_AND_SEARCH_RECOVERY_GREEN",
+    "candidate_release": "PR #339 shared page-edge token and hero alignment",
+    "candidate_commit": "5807ab0220b8091047e8811b3baf21019359c9f4",
+    "candidate_status": "MERGED_POST_MERGE_DEPLOY_LIVE_GATE_RUNNING",
     "required_visual_viewports": [375, 430, 768, 1024, 1440]
   },
   "work_order": [
-    "verify PR #337 post-merge deploy and live standalone content/navigation checks",
+    "finish PR #339 post-merge deploy and live visual/search verification",
+    "finish PR #340 rebased CI/visual verification then merge/deploy/live-check only if green",
     "audit hero breadcrumbs main footer alignment and navigation wrapping at 375/430/768/1024/1440",
     "unify remaining duplicated button card breadcrumb spacing/geometry behind Design System tokens/primitives",
-    "improve contacts and how-to-buy hierarchy/spacing in narrow safe slices",
+    "improve how-to-buy hierarchy/spacing in a narrow safe slice",
     "improve rb and hot editorial hierarchy while keeping live search handoff clear",
     "improve country catalog and representative country pages without over-densifying editorial content",
     "reassess homepage to country to hot/search visual continuity",
