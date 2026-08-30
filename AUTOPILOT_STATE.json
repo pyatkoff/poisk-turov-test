@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T19:18:00+02:00",
+  "updated_at": "2026-08-30T19:32:00+02:00",
   "mode": "design_system_1_0",
   "phase": "Owner-directed AnyTour Design System 1.0 and site-wide visual unification across public editorial/search surfaces.",
   "owner_priority_source": "OWNER_PRIORITY.json",
@@ -14,13 +14,12 @@
     "id": "DESIGN_SYSTEM_SITE_WIDE_UNIFICATION",
     "category": "UX_VISUAL",
     "status": "ACTIVE",
-    "progress": "PR #374 is deployed and production-verified: canonical editorial top-level spacing is active, and fresh five-width standalone content/navigation/root plus live user-journey and V2 search/selected-tour/recovery checks are green. Current five-width artifacts for home, hot, contacts, how-to-buy, rb, country catalog and representative Turkey/Tunisia/Maldives pages show no new confirmed overflow, broken CTA or duplicated shell. A confirmed coverage gap remains at the search-header compatibility boundary: /poisk-turov/ intentionally preserves the mature legacy DOM but its shared geometry was not compared automatically against the global header on PRs.",
-    "next_action": "Land the cross-surface header geometry gate so search-header CSS/index changes run the five-width Design System visual suite and /poisk-turov/ header height/logo width are compared with the shared public header. Then continue confirmed-defect audit across remaining editorial hierarchy/primitives and the full homepage-to-lead journey."
+    "progress": "PR #374 is deployed and production-verified with canonical editorial top-level spacing and green five-width public-route evidence. PR #375 is merged and post-merge live-verified: the shared visual suite now includes the mature /poisk-turov/ shell and proves its legacy-compatible header height/logo width match the public global header at 375/430/768/1024/1440. PR #376 is also merged and post-merge live-verified: runtime search navigation labels/paths and current-page state are guarded against the shared homepage navigation contract. Fresh editorial artifacts continue to show no confirmed overflow, broken CTA or duplicated shell on the audited target pages.",
+    "next_action": "Resume confirmed-defect visual audit across rb, hot, contacts, country catalog and representative country pages, then recheck the complete homepage-to-country-to-search-to-results-to-selected-tour-to-lead journey. Consolidate shared primitives only where the audit proves user-visible drift; preserve mature search behavior and external contracts."
   },
   "work_order": [
-    "land and live-verify cross-surface search/global header geometry gate at 375 430 768 1024 1440",
-    "continue audit of rb hot contacts country and representative country pages for confirmed visual defects",
-    "migrate remaining weak editorial primitives to shared Design System tokens and components",
+    "audit rb hot contacts country and representative country pages at 375 430 768 1024 1440 for confirmed spacing wrapping hierarchy or primitive drift",
+    "migrate only visually confirmed weak editorial primitives to shared Design System tokens and components",
     "recheck homepage country destination hot search results selected-tour lead as one visual journey",
     "preserve mature search recovery results comparison flight price fuel and lead regressions",
     "continue independent safe visual slices with CI then live verification"
@@ -40,7 +39,7 @@
   },
   "site_wide_score": {
     "current": 7.0,
-    "note": "Whole-site coherence score moves from 6.8 to 7.0 after #374 received fresh production visual evidence across the target five widths and representative public routes. This remains a whole-site score, not a search engineering score."
+    "note": "Whole-site coherence remains 7.0. The move from 6.8 was earned by #374 production visual evidence across the target five widths; #375/#376 materially harden cross-surface consistency but do not by themselves justify another visual-quality score increase."
   },
   "continuation_policy": {
     "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > technical_refactor > content_seo > cosmetic_cleanup",
