@@ -1,0 +1,15 @@
+/* AnyTour Design System 1.0 — homepage shell alignment.
+ * Keep the hero/search/content journey on the same horizontal grid at every
+ * supported viewport instead of carrying page-specific 8/10/12px gutters.
+ */
+.at-home-search,
+.at-home-section {
+  width: min(var(--at-shell), calc(100% - var(--at-page-gutter)));
+}
+
+@media (max-width: 700px) {
+  .at-home-search,
+  .at-home-section {
+    width: min(var(--at-shell), calc(100% - var(--at-page-gutter)));
+  }
+}
