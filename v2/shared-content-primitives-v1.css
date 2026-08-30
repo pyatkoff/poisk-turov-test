@@ -4,20 +4,21 @@
 .at-home-section__head p,.sp-section-head p{max-width:var(--at-copy-measure);color:var(--at-muted);font-size:15px;line-height:1.6}
 .at-home-benefit,.at-home-direction,.sp-card,.sp-row,.sp-step,.sp-country,.sp-office-card{border:1px solid var(--at-line);border-radius:var(--at-radius-lg);box-shadow:var(--at-shadow-sm)}
 .at-home-benefit,.sp-card,.sp-office-card{background:linear-gradient(180deg,var(--at-surface),#fbfcff)}
-.sp-card.sp-search-callout{background:linear-gradient(135deg,#172a86,#2743cb 58%,#5679ed);border-color:transparent}
+.sp-card.sp-search-callout{background:var(--at-hero-bg);border-color:transparent}
 .sp-row,.sp-step{background:var(--at-surface)}
-.at-home-search button,.sp-primary,.sp-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding-inline:19px;border-radius:12px;font-weight:850;text-decoration:none}
+.at-home-search button,.sp-primary,.sp-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding-inline:19px;border-radius:var(--at-control-radius);font-weight:850;text-decoration:none;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
 .at-home-search button,.sp-primary{background:var(--at-accent);color:#fff;box-shadow:0 10px 22px rgba(216,61,0,.16)}
 .sp-secondary{border:1px solid var(--at-line-strong);background:var(--at-surface);color:var(--at-brand)}
+.at-home-search button:hover,.sp-primary:hover,.sp-secondary:hover{transform:translateY(-1px)}
 .sp-breadcrumbs{border-bottom:1px solid var(--at-line);background:rgba(255,255,255,.92)}
-.sp-breadcrumbs .sp-wrap{color:#8a95a8;font-size:13px;font-weight:700}
-.sp-breadcrumbs a{color:#58657a;text-decoration:none}
+.sp-breadcrumbs .sp-wrap{color:var(--at-subtle);font-size:13px;font-weight:700}
+.sp-breadcrumbs a{color:var(--at-text);text-decoration:none}
 .at-home-section,.sp-main{--at-local-section-gap:var(--at-content-gap)}
 .sp-grid.sp-offices{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--at-space-4)}
 .sp-office-card{display:flex;min-height:188px;padding:var(--at-space-5);flex-direction:column;align-items:flex-start}
 .sp-office-card h3{margin:0 0 var(--at-space-2);font-size:20px;line-height:1.2;letter-spacing:-.018em}
 .sp-office-address{margin:0;color:var(--at-muted);line-height:1.58}
-.sp-office-phone{display:inline-flex;align-items:center;min-height:40px;margin-top:auto;padding:0 12px;border-radius:10px;background:var(--at-soft-blue);color:var(--at-brand)!important;font-size:14px;font-weight:850;text-decoration:none}
+.sp-office-phone{display:inline-flex;align-items:center;min-height:40px;margin-top:auto;padding:0 12px;border-radius:var(--at-radius-sm);background:var(--at-soft-blue);color:var(--at-brand)!important;font-size:14px;font-weight:850;text-decoration:none}
 .sp-office-phone:hover{background:#e5ebff}
 .sp-country-grid--related{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(min-width:1025px){.sp-country-grid--catalog>.sp-country:nth-last-child(2),.sp-country-grid--catalog>.sp-country:last-child{grid-column:span 2}}
