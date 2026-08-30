@@ -1,14 +1,13 @@
 {
   "schema_version": 1,
-  "active_mode": "design_system_1_0",
-  "active_phase": "ANYTOUR DESIGN SYSTEM 1.0",
+  "active_mode": "technical_refactor_pass",
+  "active_phase": "TECHNICAL REFACTOR PASS",
   "priority_after_emergency_overrides": [
-    "design_system_site_unification",
+    "technical_refactor",
     "ux_visual",
     "content_seo",
-    "technical_refactor",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_30_design_system_1_0",
-  "rule": "AnyTour Design System 1.0 and site-wide visual unification are the active owner priority. Production breakage, lead loss, incorrect data and broken user journeys may preempt temporarily. Preserve search, Tourvisor, analytics and lead contracts while consolidating one shared shell across public pages."
+  "source": "explicit_owner_direction_2026_08_30_technical_refactor_pass",
+  "rule": "Technical refactor is the active owner priority after emergency production, lead-loss, incorrect-data and broken-user-journey overrides. Complete architecture/source-of-truth, dependency inventory, exhaustive CI classification, safe directory ownership, and shared template consolidation before returning to UX/visual work. Preserve Metrika/goals, analytics, Tourvisor and external lead contracts and stay inside pyatkoff/poisk-turov-test."
 }
