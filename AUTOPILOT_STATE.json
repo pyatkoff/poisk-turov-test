@@ -1,29 +1,30 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T20:09:00+02:00",
-  "mode": "design_system_1_0",
-  "phase": "Owner-directed AnyTour Design System 1.0 and site-wide visual unification across public editorial/search surfaces.",
+  "updated_at": "2026-08-30T20:43:00+02:00",
+  "mode": "technical_refactor_pass",
+  "phase": "Owner-directed technical refactor pass before UX/visual continuation.",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "design_system_1_0",
-    "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Emergency production, lead-loss, incorrect-data and broken-user-journey findings may preempt temporarily without changing the lock."
+    "planned_phase": "technical_refactor_pass",
+    "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Emergency production, lead-loss, incorrect-data and broken-user-journey findings may preempt temporarily without changing the lock. Autonomous visual progress must not replace the lock."
   },
   "current_task": {
-    "id": "DESIGN_SYSTEM_SITE_WIDE_UNIFICATION",
-    "category": "UX_VISUAL",
+    "id": "TECHNICAL_REFACTOR_PASS",
+    "category": "TECH_DEBT",
     "status": "ACTIVE",
-    "progress": "PR #379 is merged after green gates and corrects flattened numbered-step hierarchy on /rb/ and /how-to-buy/ by making step titles subordinate h3 headings while preserving their shared visual treatment. PR #380 is merged and deployed after green gates and removes a confirmed redundant 18px office-grid top inset inside the padded /contacts/ card. Fresh post-deploy live-journey and visual-root checks are green, alongside search/result/selected-tour regression coverage from the same merged state. Earlier #374-#376 Design System spacing/header/navigation guards remain intact.",
-    "next_action": "Continue confirmed-defect five-width visual audit on /hot/, /country/ and representative country pages. Recheck the complete homepage-to-country-to-hot/search-to-results-to-selected-tour-to-lead journey and consolidate shared primitives only where fresh evidence proves user-visible drift."
+    "progress": "Architecture/source-of-truth documents and dependency-map foundations exist; CI audit has verified search/results/recovery/comparison, pending/unpriced price, rooms/flights, runtime/operations and mobile UI families. Owner-priority drift is being corrected back to the explicit technical-refactor-first directive.",
+    "next_action": "Continue exhaustive CI workflow inventory across remaining meal, visual production/root/results/selected-tour/sticky/footer and live journey/content/catalog/search/tour families; then finish non-manifest/PHP/deploy dependency mapping before physical directory moves."
   },
   "work_order": [
-    "audit hot country and representative country pages at 375 430 768 1024 1440 for confirmed spacing wrapping hierarchy or primitive drift",
-    "recheck contacts rb and how-to-buy only if fresh visual evidence exposes another concrete defect",
-    "migrate only visually confirmed weak editorial primitives to shared Design System tokens and components",
-    "recheck homepage country destination hot search results selected-tour lead as one visual journey",
-    "preserve mature search recovery results comparison flight price fuel and lead regressions",
-    "continue independent safe visual slices with CI then live verification"
+    "finish exhaustive CI workflow inventory and classify every workflow as PR FAST PR BROWSER POST DEPLOY or SCHEDULED LIVE",
+    "finish dependency map for non-manifest JS CSS PHP endpoints helpers deploy and workflow consumers",
+    "define safe directory ownership migration with v2_asset subdirectory compatibility prerequisite",
+    "extract only proven duplicated CI bootstrap while preserving distinct behavioral verdicts",
+    "migrate one low-risk implementation family at a time toward canonical ownership",
+    "consolidate shared header footer navigation and design system only after consumer mapping is complete",
+    "resume UX visual work after technical consolidation"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -36,17 +37,15 @@
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
     "verified_social_app_destinations": "PRESERVE",
     "legal_payment_migration": "DEFER_UNTIL_RECONCILED",
-    "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
-  },
-  "site_wide_score": {
-    "current": 7.1,
-    "note": "Whole-site coherence moves from 7.0 to 7.1 because this run shipped two user-visible Design System corrections rather than guard-only work: clearer parent/child editorial heading hierarchy on /rb/ and /how-to-buy/, and balanced office-card inner spacing on /contacts/. The merged state is backed by green post-deploy live journey/root visual evidence; further score movement requires additional visible page-level improvements."
+    "pr_248": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
+    "pr_249": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
+    "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE",
+    "pr_381": "DO_NOT_ADVANCE_DURING_TECHNICAL_REFACTOR_WITHOUT_HIGHER_PRIORITY EVIDENCE"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > technical_refactor > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
-    "on_blocker": "record_blocker_and_continue_independent_safe_work",
-    "validate_widths": [375, 430, 768, 1024, 1440]
+    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
+    "on_blocker": "record_blocker_and_continue_independent_safe_work"
   }
 }
