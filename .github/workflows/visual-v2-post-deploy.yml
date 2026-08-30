@@ -5,10 +5,6 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/visual-v2-post-deploy.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/visual-v2-post-deploy.yml'
   workflow_run:
     workflows: ["Deploy V2 only"]
     types: [completed]
