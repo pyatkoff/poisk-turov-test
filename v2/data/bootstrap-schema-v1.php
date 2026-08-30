@@ -20,15 +20,35 @@ if (!is_file($schemaFile)) {
     exit(2);
 }
 
-$schema = file_get_contents($schemaFile);
-if ($schema === false || trim($schema) === '') {
+$lines = file($schemaFile, FILE_IGNORE_NEW_LINES);
+if ($lines === false || $lines === []) {
     fwrite(STDERR, "Schema file is empty or unreadable\n");
+    exit(3);
+}
+
+$statements = [];
+$buffer = '';
+foreach ($lines as $line) {
+    $trimmed = trim($line);
+    if ($trimmed === '' || str_starts_with($trimmed, '--')) continue;
+    $buffer .= ($buffer === '' ? '' : "\n") . $line;
+    if (str_ends_with(rtrim($line), ';')) {
+        $statement = trim($buffer);
+        if ($statement !== '') $statements[] = $statement;
+        $buffer = '';
+    }
+}
+if (trim($buffer) !== '') $statements[] = trim($buffer);
+if ($statements === []) {
+    fwrite(STDERR, "Schema contains no executable statements\n");
     exit(3);
 }
 
 try {
     $pdo = v2_data_db();
-    $pdo->exec($schema);
+    foreach ($statements as $statement) {
+        $pdo->exec($statement);
+    }
 
     $required = [
         'catalog_countries',
