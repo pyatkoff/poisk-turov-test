@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-30 05:05 +02:00
+Updated: 2026-08-30 06:07 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -8,22 +8,22 @@ Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-read
 
 Paid/real-user traffic is intentionally not running. Current visitors are the owner and team, so browser/funnel activity must not be treated as conversion evidence.
 
-The mature tour-search flow remains the strongest product surface at approximately **8.5–9.0/10**, but that is not the score of the whole public site. After PR #300 production deployment and five-width production visual review, the honest whole-site score is now **7.6/10**. The country/discovery journey is already coherent and `/hot/` now has useful direct search-entry scenarios rather than only explanatory content; the remaining largest structural seam is still the separate legacy header on `/poisk-turov/`.
+The mature tour-search flow remains the strongest product surface at approximately **8.5–9.0/10**, but that is not the score of the whole public site. After PR #303 production deployment and five-width production visual review, the honest whole-site score is now **7.7/10**. Country pages now form a coherent local discovery layer with related alternatives before the handoff to common search; the remaining largest structural seam is still the separate legacy header on `/poisk-turov/`.
 
 Current scorecard:
-- whole public site / coherent product impression: **7.6/10**
-- cross-page visual consistency: **7.5/10**
+- whole public site / coherent product impression: **7.7/10**
+- cross-page visual consistency: **7.6/10**
 - header/navigation consistency: **6.5/10** — homepage/content use shared `.at-global-header`; `/poisk-turov/` still uses `.at-site-header`
 - homepage: **7.25/10**
-- country pages: **7.8/10**
+- country pages: **8.0/10**
 - `/hot/`: **7.7/10**
 - `/how-to-buy/`: **7.25/10**
 - `/contacts/`: **7.4/10**
 - `/rb/`: **7.4/10**
-- public-site mobile consistency: **7.7/10**
+- public-site mobile consistency: **7.8/10**
 - typography: **7.4/10**
-- grid/spacing: **7.5/10**
-- brand coherence: **7.6/10**
+- grid/spacing: **7.6/10**
+- brand coherence: **7.7/10**
 - tour search reference surface: **8.75/10**
 
 The next milestone remains **site-wide 8.5+ without regressing search**, then 9.0+ after a complete cross-page visual audit.
@@ -40,10 +40,12 @@ The next milestone remains **site-wide 8.5+ without regressing search**, then 9.
 - PR #295 added architecture/test source-of-truth documentation only; no runtime behavior changed.
 - PR #296 applied the shared breadcrumb, section-heading and branded search-callout primitives to `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/`, removed ad-hoc spacing hacks and made the path into the common search visually consistent without duplicating search logic.
 - PR #298 removed the remaining country-catalog jumps to `anytour.online` and added local shared-shell destination pages for Tunisia, Vietnam, Dominican Republic, Cyprus, Cuba, Maldives, Mexico, Sri Lanka and Tanzania. The visible catalog now keeps all 14 directions inside one AnyTour product before handing off to the common live search. New country pages reuse the canonical renderer and existing Design System primitives; verified Tourvisor IDs remain only on Turkey/Egypt/UAE/Thailand/Russia and no IDs were guessed for the nine editorial routes.
-- **PR #300 is DONE in production.** `/hot/` now offers direct quick starts for 7, 10 and 14 nights inside the already defined nearest-two-weeks range. Each card hands off to the mature common search using only existing date/night query parameters and shared Design System cards; no forked search/Tourvisor logic, static prices or page-specific component system was added.
-- PR #300 squash merge is `c78dd3d385312a6dc3b4c8a914029fea349dc091`. Production deploy run `33289214945` completed successfully: standalone release validation, public-page checks, unchanged production lead bridge validation and live search smoke were all green.
-- Production visual run `33289286436` passed at 375/430/768/1024/1440. Production navigation run `33289286327`, root/search five-width run `33289286344` and live first-result-card audit `33289286371` also passed after deploy.
-- Representative production screenshots were reviewed directly at desktop 1440 and mobile 375: the new `/hot/` quick starts preserve hierarchy, use the same card language as the rest of the standalone shell, stack cleanly on mobile and show no horizontal overflow, broken wrapping or shell duplication.
+- PR #300 added direct `/hot/` quick starts for 7, 10 and 14 nights inside the existing nearest-two-weeks range, reusing common search parameters and shared cards with no forked search/Tourvisor logic or fake static prices.
+- **PR #303 is DONE in production.** Every country page now includes a compact “Сравните похожие направления” section built from the existing `.sp-country` Design System primitive. The links stay inside the local 14-country AnyTour catalog and then hand off to the same common search; no Tourvisor IDs were invented and no price/search business logic was duplicated.
+- PR #303 also fixed a confirmed CI coverage gap: `Validate standalone content UX` now triggers for `v2/country-page-v1.php`, `v2/country/**` and `v2/hot/**`, syntax-checks those surfaces and explicitly verifies the Turkey related-destination set plus the existing `/poisk-turov/?country=4` handoff.
+- PR #303 squash merge is `ec3f25bf98327e9072ac6cd2a51f598e98ac8cdb`. Production deploy run `33291566057` completed successfully: standalone release validation, public-page checks, unchanged production lead bridge validation and live search smoke were all green.
+- Production visual run `33291636538` passed the required 375/430/768/1024/1440 audit. Production navigation run `33291636484` and migrated-content validation `33291636528` also passed after deploy.
+- Representative production screenshots were reviewed directly: Turkey at desktop 1440 and Turkey/Maldives at mobile 375. The new related-destination cards preserve hierarchy, stack cleanly on mobile, retain the primary search CTA and show no horizontal overflow, broken wrapping or duplicated shell.
 - The existing production guards still explicitly track the known search-header seam rather than pretending the search page has already migrated.
 
 ## Current blocker / deferred search-header slice
@@ -54,8 +56,8 @@ Therefore the header migration is **deferred for tooling/safe-patching reasons, 
 
 ## Exact next work order — Design System 1.0
 
-1. **Audit the full production journey handoff** `homepage → country/hot → search → results → selected tour → lead` at 375/430/768/1024/1440, concentrating on the visual seam when a user enters the mature search surface from the unified standalone discovery pages.
-2. **Deepen destination discovery with useful, honest modules**, reusing existing country/catalog and common-search handoff; do not fork Tourvisor/search business logic and do not publish fake static prices.
+1. **Audit and tighten the full production journey handoff** `homepage → country/hot → search → results → selected tour → lead` at 375/430/768/1024/1440, concentrating on shell-side spacing/hierarchy around the visible transition into the mature search surface.
+2. **Raise weaker standalone surfaces** — homepage, `/how-to-buy/`, `/contacts/`, `/rb/` — with existing Design System primitives where there is a confirmed hierarchy/spacing gap; do not add density for its own sake.
 3. **Safely resolve the search-header seam** when an atomic patch path is available. Preserve personal/order affordances and all mature search regressions.
 4. **After shell unification**, deepen reviewed content/SEO inventory and real-price discovery modules.
 
