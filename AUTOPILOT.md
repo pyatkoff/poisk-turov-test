@@ -1,45 +1,44 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-30 13:52 +03:00
+Updated: 2026-08-30
 
-Operational companion to `AGENTS.md`. `AUTOPILOT_STATE.json` is the machine-readable resume point. `ARCHITECTURE.md`, `TEST_MATRIX.md` and `DEPENDENCY_MAP.md` remain the canonical technical references and continue to protect the mature search flow while the active product phase is visual unification.
+Operational companion to `AGENTS.md`. `AUTOPILOT_STATE.json` is the machine-readable resume point. `ARCHITECTURE.md` owns architecture/source-of-truth rules, `TEST_MATRIX.md` owns CI/test policy, `DEPENDENCY_MAP.md` owns implementation generations and deprecation evidence, `CI_WORKFLOW_AUDIT.md` owns workflow inventory evidence, and `CODEX_QUEUE.md` owns prepared Codex execution slices.
 
-## Current phase — ANYTOUR DESIGN SYSTEM 1.0
+## Current phase — TECHNICAL REFACTOR PASS
 
-The owner's newest explicit direction supersedes the previous technical-refactor priority lock.
+The owner's newest explicit direction supersedes the previous Design System-first resume point.
 
 Priority after emergency overrides:
 
-`production broken → lead loss → incorrect data → broken user journey → Design System 1.0 / site-wide visual unification → UX/responsive visual fixes → supporting technical consolidation → content/SEO → cosmetic flourishes`
+`production broken → lead loss → incorrect data → broken user journey → technical refactor/source-of-truth consolidation → UX/visual → content/SEO → cosmetic cleanup`
 
-Do not confuse the strong tour-search implementation with whole-site product coherence. Whole-site baseline is approximately **6.5/10**; current estimate is approximately **6.7/10** after the shared-shell, contacts and first editorial-hierarchy slices. This is a site-wide coherence score, not a search-only score.
+The technical phase must complete the highest-value architecture/inventory/CI/structure work before autonomous visual roadmap work resumes. A successful visual release or visual score change must not silently switch the phase back to Design System-first.
 
-## Design System 1.0 goals
+## Technical refactor goals
 
-1. One shared visual language across `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages.
-2. Shared design tokens/primitives for shell width, responsive gutters, typography, spacing, buttons, cards, breadcrumbs and responsive behavior.
-3. One coherent header/navigation and footer without duplicated shell implementations.
-4. Migrate weak/editorial pages onto the mature shared shell without making them as dense as the search experience.
-5. Fix confirmed crooked spacing, wrapping, overflow, duplicated shell and inconsistent hierarchy before cosmetic additions.
-6. Preserve search/recovery/results/comparison/flight/price/fuel/lead behavior and all protected external contracts.
+1. Keep one canonical architecture and source of truth: `ARCHITECTURE.md`, `TEST_MATRIX.md`, `DEPENDENCY_MAP.md`, `CI_WORKFLOW_AUDIT.md`, plus the rule `one concept → one implementation`.
+2. Complete inventory/dependency mapping of ACTIVE, COMPATIBILITY, DEPRECATED and DEAD-CANDIDATE files before moving or deleting implementations.
+3. Complete GitHub Actions audit into `PR FAST`, `PR BROWSER`, `POST DEPLOY`, `SCHEDULED/LIVE`; remove duplication only after equivalent behavioral coverage is proven.
+4. Prepare a safe directory structure for `shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates` without changing user-visible behavior or external contracts.
+5. Then consolidate the shared template layer toward one header, one footer, one navigation and one design system.
+6. Resume broader UX/visual work after technical consolidation, except when a confirmed production/UX regression preempts refactor work.
 
 ## Current evidence and resume point
 
-- PR #334 remains the production-green shared header geometry/navigation baseline.
-- PR #337 added shared responsive page gutters and aligned standalone main content/breadcrumbs; production deploy, public pages, unchanged lead bridge, live search, post-deploy visual and search-recovery checks are green.
-- PR #339 added semantic page-edge geometry and aligned standalone heroes with breadcrumbs/main across 375/430/768/1024/1440; merged release checks are complete.
-- PR #340 rebalanced the four-office `/contacts/` layout from 3+1 to 2×2 on wider screens while retaining one-column mobile behavior; merged production/live validation is complete.
-- PR #343 improves `/how-to-buy/` hierarchy by rendering the eight-step purchase journey as a balanced two-column flow on wider screens and a single sequential column at `<=768px`. The complete PR suite passed with zero failures. Production deploy is green, including public-page verification, unchanged lead bridge and live search smoke; post-deploy workflow fanout completed with zero failures for the release SHA.
-- `/hot/` was re-audited after these shared-shell changes. Its current hierarchy (explanation → duration shortcuts → live-search CTA) has no confirmed material visual defect, so no cosmetic-only change was made.
+- `CI_WORKFLOW_AUDIT.md` already classifies core V2, comparison/results/recovery, selected-tour and pending/unpriced flight workflows. Source-string-only guards are explicitly retained until behavioral diagnostics replace them.
+- `DEPENDENCY_MAP.md` is the canonical implementation-generation/deprecation map. No candidate is deleted solely from filename/version similarity.
+- The latest production release includes the mobile iOS layout fix and its post-deploy migrated-content/live-user-journey checks are green.
+- Open Design System PRs #345/#346/#347/#349 are not automatic priority work during this phase; reassess them only if they materially support consolidation or fix a confirmed regression.
+- PRs #248/#249/#254 remain excluded from automatic merge without fresh scope-specific review.
 
 ## Exact next work order
 
-1. Audit and improve `/rb/` only where hierarchy/spacing evidence warrants a material change.
-2. Consolidate remaining duplicated button/card/breadcrumb spacing and geometry behind Design System tokens/primitives, with five-width visual coverage.
-3. Audit `/country/` and representative country pages for hierarchy, card density, wrapping and responsive rhythm without over-densifying editorial content.
-4. Reassess homepage → country → hot/search continuity after the editorial migrations.
-5. Continue checking hero ↔ breadcrumbs ↔ main ↔ footer alignment and navigation wrapping at 375/430/768/1024/1440 as pages migrate.
-6. Keep `/poisk-turov/` search/recovery/results/comparison/flight/price/fuel/lead regressions green; any deeper shared-header replacement must be atomic with equivalent browser coverage.
+1. Finish exhaustive GitHub Actions trigger/path/assertion inventory and classify every remaining workflow family.
+2. Finish non-manifest/PHP/deploy-consumer dependency inventory so ACTIVE/COMPATIBILITY/DEPRECATED/DEAD-CANDIDATE labels have evidence.
+3. Extract repeated deterministic CI/bootstrap infrastructure only where inventory proves equivalent inputs/consumers; preserve independent behavioral verdicts.
+4. Replace highest-cost exact `src.includes()`/`grep` guards with deterministic behavioral diagnostics before removing those source-text assertions.
+5. Prepare the allowlisted nested asset/path strategy and target directory ownership map before physically moving runtime modules.
+6. Consolidate shared template primitives only after dependency and regression coverage is sufficient for safe migration.
 
 ## Mandatory protections
 
@@ -51,8 +50,8 @@ Do not modify without explicit approval:
 - neighboring projects;
 - server/platform architecture outside the allowed repository/deploy scope.
 
-Preserve verified social/app destinations and the existing AnyTour logo. Do not migrate unresolved legal/payment content. PR #254 remains deferred unless a fresh scope-specific review proves its separate DB/platform architecture safe. PRs #248/#249 also remain excluded from automatic merge without fresh review.
+Preserve the AnyTour logo, verified social/app destinations and mature search/recovery/results/comparison/flight/price/fuel/lead behavior. Legal/payment migration remains deferred.
 
 ## Execution policy
 
-Work in narrow, independent PR-sized slices. Read current `main`, open PRs and fresh CI before choosing work. For user-facing changes, validate 375/430/768/1024/1440 and inspect visual evidence. Deploy only after relevant checks are green, then verify live behavior. If one page/task is blocked, record/defer it and continue another safe independent visual slice.
+Work in narrow, independent PR-sized slices. Before each slice inspect current `main`, open PRs and fresh CI. Prefer documentation/inventory/tests before runtime relocation. Never refactor for style or invent a defect. Do not delete a guard or implementation until equivalent coverage/consumer evidence is green. If one technical item is blocked, record the blocker and continue another independent technical slice.
