@@ -79,7 +79,9 @@ jobs:
             for marker in runtime-v3.js analytics-v4.js results-renderer-v5.js search-continue-v6.js hotel-actions-v3.js room-details-v3.js tour-controller-v4.js lead-form-guard-v1.js flight-price-sync-v1.js catalogs-v2.js search-lifecycle-v6.js accessibility.js; do
               grep -q "$marker" /tmp/v2.html || fail "active_$marker"
             done
-            grep -Fq "class=\"at-site-logo\"" /tmp/v2.html || fail active_logo
+            grep -Fq "class=\"at-global-header\"" /tmp/v2.html || fail active_shared_header
+            grep -Fq "class=\"at-global-header__logo\"" /tmp/v2.html || fail active_logo
+            ! grep -Fq "class=\"at-site-header\"" /tmp/v2.html || fail legacy_header_present
             grep -Fq "src=\"/images/logo.svg\"" /tmp/v2.html || fail active_logo_source
             if grep -Eq "metrikaCounter[[:space:]]*:[[:space:]]*[1-9][0-9]*" /tmp/v2.html; then
               echo "METRIKA_COUNTER=configured"
