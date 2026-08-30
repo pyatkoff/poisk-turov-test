@@ -1,0 +1,5 @@
+/* Design System 1.0: balance the 14-card country catalog on wide layouts without changing tablet/mobile columns. */
+@media (min-width:1025px){
+  .sp-country-grid--catalog>.sp-country:nth-last-child(2),
+  .sp-country-grid--catalog>.sp-country:last-child{grid-column:span 2}
+}
