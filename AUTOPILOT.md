@@ -2,56 +2,55 @@
 
 Updated: 2026-08-30
 
-Operational companion to `AGENTS.md`. `AUTOPILOT_STATE.json` is the machine-readable resume point. `ARCHITECTURE.md`, `TEST_MATRIX.md`, `DEPENDENCY_MAP.md` and `CI_WORKFLOW_AUDIT.md` remain technical sources of truth while the active product phase is site-wide visual unification.
+Operational companion to `AGENTS.md`. `AUTOPILOT_STATE.json` is the machine-readable resume point. Technical sources of truth are:
 
-## Current phase — ANYTOUR DESIGN SYSTEM 1.0
+- `ARCHITECTURE.md` — canonical architecture and ownership boundaries;
+- `TEST_MATRIX.md` — CI/test policy and required coverage;
+- `DEPENDENCY_MAP.md` — active/compatibility/deprecated/dead dependency inventory;
+- `CI_WORKFLOW_AUDIT.md` — exhaustive GitHub Actions classification;
+- `CODEX_QUEUE.md` — narrow execution slices;
+- `PRODUCT_ROADMAP.md` — product/UX roadmap after the refactor phase.
 
-The owner's newest explicit direction supersedes the temporary technical-refactor-first resume point.
+## Current phase — TECHNICAL REFACTOR PASS
+
+The owner's latest explicit direction is technical-refactor-first. This supersedes visual/design-system resume points introduced by later visual PRs.
 
 Priority after emergency overrides:
 
-`production broken → lead loss → incorrect data → broken user journey → Design System 1.0 / site-wide visual unification → supporting technical consolidation → content/SEO → cosmetic cleanup`
+`production broken → lead loss → incorrect data → broken user journey → technical refactor → UX/visual → content/SEO → cosmetic cleanup`
 
-Do not confuse the mature tour-search engineering quality with whole-site coherence. Whole-site baseline is approximately **6.5/10**; current estimate remains approximately **6.7/10** until broader country/editorial continuity is production-verified.
+Successful visual releases, score changes or new visual findings must not change this phase automatically. Only a new explicit owner direction may replace the technical-refactor-first lock.
 
-## Design System 1.0 goals
+## Refactor objectives
 
-1. One coherent product across `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages.
-2. Shared tokens/primitives for shell width, responsive gutters, typography, spacing, buttons, cards, breadcrumbs and responsive behavior.
-3. One coherent header/navigation and footer, preserving the existing AnyTour logo and verified destinations.
-4. Migrate weak/editorial pages onto the shared shell without making them unnecessarily dense.
-5. Fix confirmed spacing, wrapping, overflow, duplicated shell and hierarchy defects before cosmetic flourishes.
-6. Preserve search/recovery/results/comparison/flight/price/fuel/lead behavior and protected external contracts.
-
-## Current evidence and resume point
-
-- PR #348 mobile iOS layout hotfix is merged and production-green.
-- PR #349 shared editorial primitive consolidation is merged after a green PR suite.
-- `/hot/` was re-audited previously and had no confirmed material hierarchy defect.
-- Current active slice moves `/rb/` onto the shared numbered-step hierarchy and gives representative country pages a dedicated balanced three-item related-destination grid.
-- Older country/rb visual PRs #345/#346/#347 are superseded by the current-main consolidated slice and should not be merged independently.
-- PRs #248/#249/#254 remain excluded from automatic merge without fresh scope-specific review; legal/payment migration remains deferred.
+1. Keep one canonical architecture/source of truth and enforce `one concept → one implementation`.
+2. Complete inventory/dependency mapping for ACTIVE, COMPATIBILITY, DEPRECATED and DEAD candidates before moving or deleting files.
+3. Complete GitHub Actions audit into `PR FAST`, `PR BROWSER`, `POST DEPLOY`, `SCHEDULED/LIVE`; remove duplication only after equivalent coverage is proven.
+4. Prepare safe ownership structure for `shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates` without user-visible behavior changes.
+5. Consolidate shared template ownership to one header, one footer, one navigation and one design system after dependency/CI evidence makes migrations safe.
+6. Return to UX/visual work after technical consolidation, except when production/user-journey regressions preempt the phase.
 
 ## Exact next work order
 
-1. Finish CI and five-width visual verification for the current `/rb/` + representative country-page slice; merge/deploy only if green and verify live.
-2. Audit `/country/` catalog final-row balance and hierarchy on current main, implementing only evidence-backed changes.
-3. Reassess homepage → country → hot/search continuity and shared header/footer rhythm at 375/430/768/1024/1440.
-4. Audit remaining standalone/editorial pages for duplicated spacing/button/card/breadcrumb rules and fold safe improvements into shared primitives.
-5. Keep mature search/recovery/results/comparison/flight/price/fuel/lead regressions green throughout.
+1. Finish exhaustive `CI_WORKFLOW_AUDIT.md`, including remaining price/search/results/mobile/live workflow families and explicit trigger/tier/disposition for every workflow.
+2. Finish `DEPENDENCY_MAP.md` for non-manifest JS/CSS, PHP endpoints/helpers and deploy consumers; distinguish ACTIVE/COMPATIBILITY from deletion candidates with concrete references.
+3. Define the directory ownership migration plan and prerequisites, including the current `v2_asset()` subdirectory restriction; do not physically move runtime assets until loader/tests prove compatibility.
+4. Extract only proven duplicated CI/bootstrap infrastructure while preserving distinct behavioral assertions.
+5. Migrate one low-risk implementation family at a time toward canonical ownership, with regression evidence before deletion of old paths.
+6. Consolidate shared template layer only after its consumers and compatibility obligations are fully mapped.
 
 ## Mandatory protections
 
 Do not modify without explicit approval:
 
-- Yandex Metrika configuration, goals or analytics external contract;
+- Yandex Metrika configuration, goals/events or analytics external contract;
 - external lead-sending contract or field mapping;
 - Tourvisor external contract;
 - neighboring projects;
 - server/platform architecture outside the allowed repository/deploy scope.
 
-Preserve the AnyTour logo, verified social/app destinations and mature search behavior. Legal/payment migration remains deferred. PR #254 stays deferred unless a fresh architecture review proves it safe.
+Preserve the AnyTour logo, verified destinations and mature search/recovery/results/comparison/flight/price/fuel/lead behavior. Legal/payment migration remains deferred. PRs #248/#249/#254 are not automatic merge candidates without fresh scope-specific review.
 
 ## Execution policy
 
-Work in narrow, independent PR-sized slices. Inspect current `main`, open PRs and fresh CI before choosing work. For user-facing changes validate 375/430/768/1024/1440 and inspect visual evidence. Deploy only after relevant checks are green, then verify live behavior. If one page/task is blocked, record/defer it and continue another safe independent Design System slice.
+Work in narrow independent PR-sized slices. At the start of each run inspect current `main`, open PRs and fresh CI, then choose the highest-value independent technical slice. Do not refactor for style or invent defects. Do not delete a guard or implementation until equivalent consumers/coverage are proven. If a technical item is blocked, record the blocker and continue the next independent slice.
