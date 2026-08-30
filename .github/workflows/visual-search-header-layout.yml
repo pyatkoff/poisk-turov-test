@@ -37,12 +37,14 @@ jobs:
           grep -qi '<svg' v2/images/logo.svg
           php -S 127.0.0.1:8098 -t v2 >"$RUNNER_TEMP/search-header-php.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/search-header-php.pid"
+          ready=0
           for _ in {1..30}; do
-            if curl -fsS http://127.0.0.1:8098/index.php >/dev/null; then break; fi
+            if curl -fsS http://127.0.0.1:8098/index.php -o "$RUNNER_TEMP/search-header.html"; then ready=1; break; fi
             sleep .2
           done
-          curl -fsS http://127.0.0.1:8098/index.php | grep -Fq 'class="at-global-header"'
-          ! curl -fsS http://127.0.0.1:8098/index.php | grep -Fq 'class="at-site-header"'
+          if [ "$ready" -ne 1 ]; then cat "$RUNNER_TEMP/search-header-php.log" >&2 || true; exit 12; fi
+          grep -Fq 'class="at-global-header"' "$RUNNER_TEMP/search-header.html"
+          ! grep -Fq 'class="at-site-header"' "$RUNNER_TEMP/search-header.html"
       - name: Verify canonical header across responsive widths
         shell: bash
         run: |
