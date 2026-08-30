@@ -3,4 +3,7 @@
 /* Visual unification pass: keep the mobile CTA available without letting it visually dominate the form. */
 @media(max-width:700px){body{padding-bottom:max(76px,calc(66px + env(safe-area-inset-bottom)))}.mobile-search-sticky{left:10px;right:10px;bottom:max(6px,env(safe-area-inset-bottom));gap:8px;padding:6px 6px 6px 10px;border-radius:14px;box-shadow:0 10px 28px rgba(20,35,91,.16)}.mobile-search-sticky-copy strong{font-size:10px;line-height:1.18}.mobile-search-sticky-context{margin-top:1px;font-size:8.5px}.mobile-search-sticky-submit{min-height:44px;padding:0 14px;border-radius:11px;font-size:13px}}
 @media(max-width:430px){.mobile-search-sticky{padding-left:9px}.mobile-search-sticky-context{display:none}.mobile-search-sticky-submit{min-height:44px;padding:0 13px}}
+/* Reserve a bottom-right support-widget lane so the floating consultant never covers the primary search action. */
+@media(max-width:700px){.mobile-search-sticky{right:82px}}
+@media(max-width:430px){.mobile-search-sticky{right:76px}}
 /* C1 visual baseline reviewed at 375/430/768/1024/1440. */
