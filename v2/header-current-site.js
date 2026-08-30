@@ -4,6 +4,21 @@ function runtimePath(file){return (runtimeBase||'')+'/'+String(file||'').replace
 var standalone=String(window.location.hostname||'').toLowerCase()==='anytoour.ru',legacyOrigin=standalone?'https://anytour.online':'';
 var standalonePaths=['/poisk-turov/','/country/','/country/turkey/','/country/egypt/','/country/tailand/','/country/oae/','/country/russia/','/hot/','/rb/','/contacts/','/how-to-buy/'];
 function siteHref(path){if(standalone&&standalonePaths.indexOf(path)!==-1)return path;return legacyOrigin+path;}
+function normalizeSearchNavigation(){
+  var desired=[['/poisk-turov/','Поиск туров'],['/country/','Страны'],['/hot/','Горящие туры'],['/rb/','Раннее бронирование'],['/contacts/','Контакты']];
+  var desktop=document.querySelector('.at-site-nav>ul');
+  if(desktop){
+    var nodes={};Array.prototype.forEach.call(desktop.children,function(li){var a=li.querySelector(':scope>a');if(a)nodes[a.getAttribute('href')||'']=li;});
+    desired.forEach(function(item){var path=item[0],label=item[1],li=nodes[path];if(!li&&path==='/rb/'){li=document.createElement('li');var a=document.createElement('a');a.setAttribute('href',siteHref(path));a.textContent=label;li.appendChild(a);}if(!li)return;var link=li.querySelector(':scope>a');if(link){link.textContent=label;if(path==='/poisk-turov/')link.setAttribute('aria-current','page');}desktop.appendChild(li);});
+  }
+  var mobile=document.querySelector('.at-mobile-menu');
+  if(mobile){
+    var mobileNodes={};Array.prototype.forEach.call(mobile.children,function(li){var a=li.querySelector('a');if(a)mobileNodes[a.getAttribute('href')||'']=li;});
+    desired.forEach(function(item){var path=item[0],label=item[1],li=mobileNodes[path];if(!li)return;var link=li.querySelector('a');if(link){link.textContent=label;if(path==='/poisk-turov/')link.setAttribute('aria-current','page');}mobile.appendChild(li);});
+    var buy=mobileNodes['/how-to-buy/'];if(buy)mobile.appendChild(buy);
+  }
+}
+normalizeSearchNavigation();
 if(standalone){Array.prototype.forEach.call(document.querySelectorAll('.at-site-header a[href^="/"]'),function(link){var href=link.getAttribute('href')||'';if(href&&href!=='/')link.setAttribute('href',siteHref(href));});}
 var phone=document.querySelector('.at-site-phone');
 if(phone&&(!phone.textContent||phone.textContent.trim()==='Array')){
