@@ -2,43 +2,38 @@
 
 Updated: 2026-08-30
 
-Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority lock. `AUTOPILOT_STATE.json` is the machine-readable resume point. Technical sources of truth are:
+Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority lock. `AUTOPILOT_STATE.json` is the machine-readable resume point. Technical sources of truth remain `ARCHITECTURE.md`, `TEST_MATRIX.md`, `DEPENDENCY_MAP.md`, `CI_WORKFLOW_AUDIT.md`, `CODEX_QUEUE.md` and `PRODUCT_ROADMAP.md`.
 
-- `OWNER_PRIORITY.json` — explicit owner-priority lock; autonomous work must not override it;
-- `ARCHITECTURE.md` — canonical architecture and ownership boundaries;
-- `TEST_MATRIX.md` — CI/test policy and required coverage;
-- `DEPENDENCY_MAP.md` — active/compatibility/deprecated/dead dependency inventory;
-- `CI_WORKFLOW_AUDIT.md` — exhaustive GitHub Actions classification;
-- `CODEX_QUEUE.md` — narrow execution slices;
-- `PRODUCT_ROADMAP.md` — product/UX roadmap after the refactor phase.
+## Current phase — ANYTOUR DESIGN SYSTEM 1.0
 
-## Current phase — TECHNICAL REFACTOR PASS
+The owner's latest explicit direction is site-wide visual unification. Search engineering remains mature and protected, but whole-site product coherence is the active product priority.
 
-The owner's latest explicit direction is technical-refactor-first. This supersedes later autonomous visual/design-system resume-point changes.
+Canonical priority after emergency overrides:
 
-Priority after emergency overrides:
+`design_system_site_wide_visual_unification → supporting_technical_consolidation → content_seo → cosmetic_cleanup`
 
-`production broken → lead loss → incorrect data → broken user journey → technical refactor → UX/visual → content/SEO → cosmetic cleanup`
+Emergency/product safety still overrides this phase in the order defined by `AGENTS.md`: production broken → lead loss → incorrect data → broken visual/user journey. Successful unrelated releases or autonomous state refreshes must not replace the owner phase. Only a new explicit owner direction may change `OWNER_PRIORITY.json`.
 
-Successful visual releases, score changes, autonomous state refreshes or unrelated PRs must not change this phase. Only a new explicit owner direction may change `OWNER_PRIORITY.json` and replace the technical-refactor-first lock.
+## Design System 1.0 objectives
 
-## Refactor objectives
+1. Make `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages feel like one product.
+2. Keep one coherent header/navigation, one footer, shared typography, spacing/grid, buttons, cards, breadcrumbs and responsive rules.
+3. Use the mature search experience as the quality reference without making editorial pages unnecessarily dense.
+4. Fix confirmed overflow, wrapping, crooked spacing, duplicated shell and hierarchy problems before cosmetic flourishes.
+5. Validate user-facing changes at 375/430/768/1024/1440 where relevant.
+6. Preserve mature search/recovery/results/comparison/flight/price/fuel/lead behavior and all protected external contracts.
 
-1. Keep one canonical architecture/source of truth and enforce `one concept → one implementation`.
-2. Complete inventory/dependency mapping for ACTIVE, COMPATIBILITY, DEPRECATED and DEAD candidates before moving or deleting files.
-3. Complete GitHub Actions audit into `PR FAST`, `PR BROWSER`, `POST DEPLOY`, `SCHEDULED/LIVE`; remove duplication only after equivalent coverage is proven.
-4. Prepare safe ownership structure for `shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates` without user-visible behavior changes.
-5. Consolidate shared template ownership to one header, one footer, one navigation and one design system after dependency/CI evidence makes migrations safe.
-6. Return to UX/visual work after technical consolidation, except when production/user-journey regressions preempt the phase.
+## Current resume point
 
-## Exact next work order
+Recent production-verified slices already improved the homepage, `/hot/`, `/rb/`, `/country/` and representative country-page responsive grids, plus shared editorial primitives and mobile iOS shell regressions.
 
-1. Finish exhaustive `CI_WORKFLOW_AUDIT.md`, including remaining price/search/results/mobile/live workflow families and explicit trigger/tier/disposition for every workflow.
-2. Finish `DEPENDENCY_MAP.md` for non-manifest JS/CSS, PHP endpoints/helpers and deploy consumers; distinguish ACTIVE/COMPATIBILITY from deletion candidates with concrete references.
-3. Define the directory ownership migration plan and prerequisites, including the current `v2_asset()` subdirectory restriction; do not physically move runtime assets until loader/tests prove compatibility.
-4. Extract only proven duplicated CI/bootstrap infrastructure while preserving distinct behavioral assertions.
-5. Migrate one low-risk implementation family at a time toward canonical ownership, with regression evidence before deletion of old paths.
-6. Consolidate shared template layer only after its consumers and compatibility obligations are fully mapped.
+Next work order:
+
+1. Verify the latest country-page balanced-three release is fully production/live green.
+2. Audit the remaining visual discontinuity between the shared public-site shell and `/poisk-turov/`, especially header/nav geometry and mobile/desktop parity, without replacing mature search behavior.
+3. Re-audit `/contacts/`, `/how-to-buy/`, `/rb/`, `/hot/`, `/country/` and representative country pages at 375/430/768/1024/1440 for confirmed spacing/wrapping/overflow issues.
+4. Consolidate only proven duplicated visual primitives into the shared Design System layer.
+5. Continue through multiple independent safe visual tasks while preserving all search and lead regressions.
 
 ## Mandatory protections
 
@@ -54,4 +49,4 @@ Preserve the AnyTour logo, verified destinations and mature search/recovery/resu
 
 ## Execution policy
 
-Work in narrow independent PR-sized slices. At the start of each run inspect current `main`, open PRs and fresh CI, then choose the highest-value independent technical slice. Do not refactor for style or invent defects. Do not delete a guard or implementation until equivalent consumers/coverage are proven. If a technical item is blocked, record the blocker and continue the next independent slice.
+Work in narrow independent PR-sized slices. At the start of each run inspect current `main`, open PRs, fresh CI/deploy and live production evidence. Do not invent visual defects merely to produce commits. If one visual item is blocked, record/defer it and continue another safe page/component. Deploy only after relevant checks are green, then verify production/live behavior.
