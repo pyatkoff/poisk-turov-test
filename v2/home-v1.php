@@ -30,6 +30,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   <link rel="stylesheet" href="<?=home_e(v2_asset('design-system-v1.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('site-header-v2.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('home-v1.css'))?>">
+  <link rel="stylesheet" href="<?=home_e(v2_asset('home-journey-v1.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('site-footer-v1.css'))?>">
 </head>
 <body>
@@ -37,9 +38,17 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
 <main class="at-home-main">
   <section class="at-home-hero">
     <div class="at-home-hero__inner">
-      <span class="at-home-kicker">AnyTour · путешествия без лишней сложности</span>
-      <h1>Найдите отдых, который подходит именно вам</h1>
-      <p>Сравниваем актуальные туры по датам, отелям, питанию и перелёту. Начните с нескольких параметров — полный поиск откроется уже с вашими условиями.</p>
+      <div class="at-home-hero__copy">
+        <span class="at-home-kicker">AnyTour · путешествия без лишней сложности</span>
+        <h1>Найдите отдых, который подходит именно вам</h1>
+        <p>Сравниваем актуальные туры по датам, отелям, питанию и перелёту. Начните с нескольких параметров — полный поиск откроется уже с вашими условиями.</p>
+      </div>
+      <div class="at-home-journey" aria-hidden="true">
+        <div class="at-home-journey__eyebrow">Путь к подходящему туру</div>
+        <div class="at-home-journey__step"><span>01</span><b>Задайте параметры</b></div>
+        <div class="at-home-journey__step"><span>02</span><b>Сравните варианты</b></div>
+        <div class="at-home-journey__step"><span>03</span><b>Проверьте детали</b></div>
+      </div>
     </div>
   </section>
 
