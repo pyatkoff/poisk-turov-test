@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-30 07:12 +02:00
+Updated: 2026-08-30 07:20 +02:00
 
 Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
 
@@ -8,7 +8,7 @@ Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-read
 
 Paid/real-user traffic is intentionally not running. Current visitors are the owner and team, so browser/funnel activity must not be treated as conversion evidence.
 
-The mature tour-search flow remains the strongest product surface at approximately **8.5–9.0/10**, but that is not the score of the whole public site. After PR #306 production deployment and five-width production visual review, the honest whole-site score is now **7.8/10**. The shared standalone shell now has corrected heading hierarchy in addition to the local country discovery layer; the remaining largest structural seam is still the separate legacy header on `/poisk-turov/`.
+The mature tour-search flow remains the strongest product surface at approximately **8.5–9.0/10**, but that is not the score of the whole public site. After PR #306 production deployment and five-width production visual review, the honest whole-site score is now **7.8/10**. The shared standalone shell now has corrected heading hierarchy in addition to the local country discovery layer. PR #308 also corrected the visual evidence pipeline so homepage captures are taken only after the country selector reaches its stable loaded state. The remaining largest structural seam is still the separate legacy header on `/poisk-turov/`.
 
 Current scorecard:
 - whole public site / coherent product impression: **7.8/10**
@@ -47,6 +47,8 @@ The next milestone remains **site-wide 8.5+ without regressing search**, then 9.
 - PR #306 squash merge is `1f452e5bcef200d924cebc50d726e59187296bb4`. Production deploy run `33293939846` completed successfully: standalone release validation, public-page checks, unchanged production lead bridge validation and live search smoke were all green.
 - Production visual run `33294016417` passed the required 375/430/768/1024/1440 audit. Production navigation run `33294016413`, migrated-content validation `33294016419`, and live-results visual run `33294016407` also passed after deploy.
 - Representative **production** screenshots were reviewed directly: `/how-to-buy/` at desktop 1440 and mobile 375 plus `/contacts/` at desktop 1440 and mobile 375. Step/card headings now have the intended hierarchy, CTA prominence is preserved, mobile stacking is clean, and there is no horizontal overflow, clipping, broken wrapping or duplicated shell.
+- **PR #308 fixed a confirmed visual-QA gap on the homepage.** The content visual workflow had been taking screenshots directly after DOM/font readiness, repeatedly capturing the transient `Загружаем страны…` state instead of the stable form. Production audits now wait for `[data-home-countries]` to become enabled with a non-loading/non-error selected option before CTA validation and screenshots.
+- PR #308 merge `b67b52ae18070db59469526b97cf396ca73ffde6` triggered production visual run `33294316825`, which passed all 375/430/768/1024/1440 routes. The new desktop 1440 homepage screenshot was reviewed directly and correctly shows the populated country `Турция` rather than the loading placeholder. This is evidence-quality hardening only, so the product score was not raised from it.
 - The existing production guards still explicitly track the known search-header seam rather than pretending the search page has already migrated.
 
 ## Current blocker / deferred search-header slice
@@ -57,7 +59,7 @@ Therefore the header migration is **deferred for tooling/safe-patching reasons, 
 
 ## Exact next work order — Design System 1.0
 
-1. **Continue the full production journey audit** `homepage → country/hot → search → results → selected tour → lead` at 375/430/768/1024/1440, concentrating on shell-side spacing/hierarchy around the visible transition into the mature search surface.
+1. **Continue the full production journey audit** `homepage → country/hot → search → results → selected tour → lead` at 375/430/768/1024/1440 using the now-stable homepage search-state screenshots, concentrating on shell-side spacing/hierarchy around the visible transition into the mature search surface.
 2. **Prioritize the homepage as the weakest safe standalone surface**, then reassess `/how-to-buy/`, `/contacts/` and `/rb/` after the shared hierarchy correction before adding any more density. Use existing Design System primitives and only fix confirmed gaps.
 3. **Safely resolve the search-header seam** when an atomic patch path is available. Preserve personal/order affordances and all mature search regressions.
 4. **After shell unification**, deepen reviewed content/SEO inventory and real-price discovery modules.
