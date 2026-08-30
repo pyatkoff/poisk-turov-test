@@ -1,29 +1,30 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T22:57:00+02:00",
-  "mode": "design_system_1_0",
-  "phase": "AnyTour Design System 1.0: site-wide shell, tokens, typography, navigation, footer and responsive unification across public pages while preserving mature search behavior and external contracts.",
+  "updated_at": "2026-08-30T23:45:00+02:00",
+  "mode": "technical_refactor_pass",
+  "phase": "Technical refactor pass: architecture/source-of-truth, exhaustive dependency inventory, complete CI classification, safe directory ownership and shared template consolidation before UX/visual work.",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "design_system_1_0",
-    "rule": "The latest explicit owner direction makes Design System 1.0 and site-wide visual unification the active priority after emergency production/lead/data overrides."
+    "planned_phase": "technical_refactor_pass",
+    "rule": "Keep technical refactor as the active owner priority after emergency production/lead/data/user-journey overrides unless the owner explicitly changes direction."
   },
   "current_task": {
-    "id": "DESIGN_SYSTEM_1_0_SHARED_SHELL",
-    "category": "VISUAL_UX_ARCHITECTURE",
+    "id": "TECHNICAL_REFACTOR_PASS_CI_INVENTORY",
+    "category": "TECH_DEBT_ARCHITECTURE",
     "status": "ACTIVE",
-    "progress": "Editorial pages already use site-page-shell-v1.php with site-header-v2.php and the shared footer. Shared desktop/mobile navigation has been normalized in the active slice. The search route remains the main duplicated-header exception and is the next migration target.",
-    "next_action": "Merge the shared navigation normalization after green relevant checks, then replace the search route legacy header with the canonical shared header and validate 375/430/768/1024/1440 without changing search/results/lead behavior."
+    "progress": "Architecture/test/dependency/CI source-of-truth documents exist; several workflow families are already audited. A later autonomous visual phase drift was detected and is being corrected before continuing technical inventory.",
+    "next_action": "Finish exhaustive CI inventory for remaining meal/visual/live/content/catalog/search/tour families, then continue non-manifest/PHP/deploy dependency mapping."
   },
   "work_order": [
-    "replace the search route legacy header with canonical site-header-v2.php and shared header CSS without changing search behavior",
-    "audit and align homepage country hot contacts how-to-buy rb and representative country pages against one token spacing typography card and breadcrumb system",
-    "fix confirmed wrapping overflow spacing hierarchy and shell duplication before decorative work",
-    "validate shared shell and changed pages at 375 430 768 1024 1440",
-    "deploy only after relevant checks are green and verify live behavior",
-    "continue page-by-page migration while preserving search recovery results comparison flights price fuel analytics Tourvisor and lead contracts"
+    "finish exhaustive CI_WORKFLOW_AUDIT classification into PR FAST PR BROWSER POST DEPLOY SCHEDULED LIVE",
+    "finish DEPENDENCY_MAP for non-manifest JS CSS PHP helpers endpoints and deploy consumers with ACTIVE COMPATIBILITY DEPRECATED DEAD evidence",
+    "define safe shared search results tour checkout integrations site seo tests scripts templates directory ownership without behavior changes",
+    "extract only proven duplicated CI bootstrap infrastructure while preserving distinct behavioral assertions",
+    "migrate one low-risk implementation family at a time toward canonical ownership with regression evidence",
+    "consolidate one header one footer one navigation one design system after dependencies and compatibility obligations are mapped",
+    "return to UX and visual work after technical consolidation"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -41,9 +42,9 @@
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_site_unification > ux_visual > content_seo > technical_refactor > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
+    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
     "on_blocker": "record_blocker_and_continue_independent_safe_work"
   }
 }
