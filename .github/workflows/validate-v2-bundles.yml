@@ -86,7 +86,7 @@ jobs:
           grep -Fq -- '--at-shell:1180px' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Production guard for the legacy search-header markup' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Search-page footer rhythm guard' "$RUNNER_TEMP/bundle.css"
-          grep -Fq 'Unify the legacy search-header trigger with the shared site-header visual language' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'Search-header compatibility layer' "$RUNNER_TEMP/bundle.css"
           echo "BUNDLE_HTTP_CACHE_OK"
       - name: Validate startup request collapse
         shell: bash
