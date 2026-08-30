@@ -33,14 +33,17 @@ Emergency/product safety still overrides this phase in the order defined by `AGE
 - PR #375 closed the search/public-header regression gap without replacing the mature search DOM: the shared five-width visual suite now runs for search-header CSS/index changes and verifies `/poisk-turov/` header height/logo width against the public shell at 375/430/768/1024/1440. PR and post-merge live runs are green.
 - PR #376 extends that boundary to runtime navigation: `header-current-site.js` changes now trigger the shared visual suite, search labels/paths are compared with the homepage reference, and `/poisk-turov/` must retain its active navigation state. PR and post-merge live runs are green.
 - The compatibility boundary is therefore explicit and guarded: `/poisk-turov/` may retain its mature `.at-site-header` DOM while presenting the same measured header geometry and runtime navigation contract as `.at-global-header`.
+- PR #379 fixes flattened editorial hierarchy on `/rb/` and `/how-to-buy/`: numbered step-card titles are subordinate `h3` headings under their section `h2`, while the shared 20px step-title treatment preserves the intended visual rhythm. All PR gates passed before merge.
+- PR #380 fixes a confirmed `/contacts/` spacing defect: the office grid no longer adds a redundant 18px top margin inside an already padded shared card, restoring balanced inner spacing. All PR gates passed; the merged state is deployed and fresh live journey/root visual/search regression checks are green.
 
 ## Exact next work order
 
-1. Continue five-width page-by-page audit of `/rb/`, `/hot/`, `/contacts/`, `/country/` and representative country pages, fixing only confirmed spacing, wrapping, hierarchy or shared-primitive drift.
-2. Consolidate remaining weak editorial primitives onto shared Design System tokens/components where the visual audit proves a real inconsistency; avoid cosmetic token churn without user-visible benefit.
-3. Recheck homepage → country/destination → hot/search → results → selected tour → lead as one visual journey, including header/footer continuity between editorial and mature search surfaces.
-4. Preserve the search/recovery/results/comparison/flight/price/fuel/lead regression suite while continuing independent safe visual slices.
-5. Merge/deploy only after relevant checks are green and verify live behavior after release.
+1. Continue five-width page-by-page audit of `/hot/`, `/country/` and representative country pages, fixing only confirmed spacing, wrapping, hierarchy or shared-primitive drift.
+2. Re-audit `/contacts/`, `/rb/` and `/how-to-buy/` only when fresh artifacts expose another concrete defect; do not churn already-aligned primitives.
+3. Consolidate remaining weak editorial primitives onto shared Design System tokens/components where the visual audit proves a real inconsistency; avoid cosmetic token churn without user-visible benefit.
+4. Recheck homepage → country/destination → hot/search → results → selected tour → lead as one visual journey, including header/footer continuity between editorial and mature search surfaces.
+5. Preserve the search/recovery/results/comparison/flight/price/fuel/lead regression suite while continuing independent safe visual slices.
+6. Merge/deploy only after relevant checks are green and verify live behavior after release.
 
 ## Mandatory protections
 
