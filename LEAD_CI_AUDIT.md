@@ -4,6 +4,8 @@ Status: verified lead-family inventory companion to `CI_WORKFLOW_AUDIT.md` and `
 
 This document records the current lead-specific workflow contracts on `main` without changing runtime behavior or the protected external lead-sending contract. It exists as a narrow audit slice so the lead family can be consolidated later only after equivalent coverage is proven.
 
+Tier mapping follows the canonical four buckets from `TEST_MATRIX.md`: cheap deterministic lead-contract checks belong in **PR FAST**, browser-visible recovery belongs in **PR BROWSER**, production lead bridge/invocation verification belongs in **POST DEPLOY**, and no lead-specific workflow audited here currently belongs in **SCHEDULED / LIVE**. A workflow may currently trigger only after merge while still being classified by its intended ownership tier; those trigger gaps are recorded explicitly below rather than silently treating post-merge validation as adequate PR protection.
+
 ## Verified lead workflows
 
 | Workflow | Current trigger / scope | Target tier | Protected behavior | Assertion style | Disposition |
