@@ -9,6 +9,7 @@ autopilot = (root / "AUTOPILOT.md").read_text(encoding="utf-8")
 
 expected_mode = owner["active_mode"]
 expected_phase = owner["active_phase"]
+priority_order = owner.get("priority_after_emergency_overrides") or []
 
 errors = []
 if state.get("mode") != expected_mode:
@@ -22,8 +23,12 @@ if lock.get("planned_phase") != expected_mode:
     )
 if f"## Current phase — {expected_phase}" not in autopilot:
     errors.append(f"AUTOPILOT.md must declare current phase {expected_phase!r}")
-if "technical refactor → UX/visual" not in autopilot:
-    errors.append("AUTOPILOT.md must keep technical refactor ahead of UX/visual after emergency overrides")
+if not priority_order:
+    errors.append("OWNER_PRIORITY priority_after_emergency_overrides must not be empty")
+else:
+    declared = " → ".join(priority_order)
+    if declared not in autopilot:
+        errors.append("AUTOPILOT.md must contain the canonical owner priority order")
 
 if errors:
     print("OWNER_PRIORITY_GUARD_FAIL")
