@@ -1,30 +1,29 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T20:43:00+02:00",
-  "mode": "technical_refactor_pass",
-  "phase": "Owner-directed technical refactor pass before UX/visual continuation.",
+  "updated_at": "2026-08-30T20:56:00+02:00",
+  "mode": "design_system_1_0",
+  "phase": "AnyTour Design System 1.0 and site-wide visual unification.",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "technical_refactor_pass",
-    "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Emergency production, lead-loss, incorrect-data and broken-user-journey findings may preempt temporarily without changing the lock. Autonomous visual progress must not replace the lock."
+    "planned_phase": "design_system_1_0",
+    "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Emergency production, lead-loss and incorrect-data findings may preempt temporarily without changing the lock. Technical refactoring must not replace the active Design System priority."
   },
   "current_task": {
-    "id": "TECHNICAL_REFACTOR_PASS",
-    "category": "TECH_DEBT",
+    "id": "ANYTOUR_DESIGN_SYSTEM_1_0",
+    "category": "VISUAL",
     "status": "ACTIVE",
-    "progress": "Architecture/source-of-truth documents and dependency-map foundations exist; CI audit has verified search/results/recovery/comparison, pending/unpriced price, rooms/flights, runtime/operations and mobile UI families. Owner-priority drift is being corrected back to the explicit technical-refactor-first directive.",
-    "next_action": "Continue exhaustive CI workflow inventory across remaining meal, visual production/root/results/selected-tour/sticky/footer and live journey/content/catalog/search/tour families; then finish non-manifest/PHP/deploy dependency mapping before physical directory moves."
+    "progress": "Shared header/navigation/footer and editorial primitives are established; recent shipped fixes aligned search/public header parity, editorial spacing, step hierarchy and contacts inner spacing. PR #381 removed visible anytour.online footer links after green PR gates.",
+    "site_wide_score": 7.1,
+    "next_action": "Verify #381 post-merge/live behavior, then audit and fix confirmed visual defects on /hot/, /country/ and representative country pages at 375/430/768/1024/1440; continue through the full homepage-to-lead journey."
   },
   "work_order": [
-    "finish exhaustive CI workflow inventory and classify every workflow as PR FAST PR BROWSER POST DEPLOY or SCHEDULED LIVE",
-    "finish dependency map for non-manifest JS CSS PHP endpoints helpers deploy and workflow consumers",
-    "define safe directory ownership migration with v2_asset subdirectory compatibility prerequisite",
-    "extract only proven duplicated CI bootstrap while preserving distinct behavioral verdicts",
-    "migrate one low-risk implementation family at a time toward canonical ownership",
-    "consolidate shared header footer navigation and design system only after consumer mapping is complete",
-    "resume UX visual work after technical consolidation"
+    "verify shared footer no longer exposes old-domain links in production/live evidence",
+    "audit /hot/ at 375 430 768 1024 1440 and fix confirmed spacing wrapping overflow hierarchy defects",
+    "audit /country/ and representative country pages at the same widths and fix confirmed defects",
+    "revalidate homepage destination hot/search results selected-tour lead visual journey",
+    "continue migrating weak editorial surfaces onto shared design primitives without increasing density unnecessarily"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -37,15 +36,12 @@
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
     "verified_social_app_destinations": "PRESERVE",
     "legal_payment_migration": "DEFER_UNTIL_RECONCILED",
-    "pr_248": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
-    "pr_249": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
-    "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE",
-    "pr_381": "DO_NOT_ADVANCE_DURING_TECHNICAL_REFACTOR_WITHOUT_HIGHER_PRIORITY EVIDENCE"
+    "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > technical_refactor > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
+    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
     "on_blocker": "record_blocker_and_continue_independent_safe_work"
   }
 }
