@@ -1,0 +1,12 @@
+/* Design System 1.0: shared content primitives for homepage and editorial pages. Loaded after page-specific CSS so cross-page geometry has one final source of truth. */
+.at-home-section__head,.sp-section-head{gap:var(--at-content-gap);margin-bottom:var(--at-space-5)}
+.at-home-section__head h2,.sp-section-head h2{font-size:clamp(28px,2.8vw,38px);line-height:1.08;letter-spacing:-.03em;color:var(--at-ink)}
+.at-home-section__head p,.sp-section-head p{max-width:var(--at-copy-measure);color:var(--at-muted);font-size:15px;line-height:1.6}
+.at-home-benefit,.at-home-direction,.sp-card,.sp-row,.sp-step,.sp-country{border-color:var(--at-line);border-radius:var(--at-radius-lg);box-shadow:var(--at-shadow-sm)}
+.at-home-benefit,.sp-card{background:linear-gradient(180deg,var(--at-surface),#fbfcff)}
+.at-home-search button,.sp-primary,.sp-secondary{min-height:48px;border-radius:12px;font-weight:850}
+.at-home-search button,.sp-primary{background:var(--at-accent);color:#fff}
+.sp-secondary{border-color:var(--at-line-strong);background:var(--at-surface);color:var(--at-brand)}
+.at-home-section,.sp-main{--at-local-section-gap:var(--at-content-gap)}
+@media(max-width:768px){.at-home-section__head,.sp-section-head{gap:var(--at-space-3);margin-bottom:var(--at-space-4)}}
+@media(max-width:560px){.at-home-section__head h2,.sp-section-head h2{font-size:28px}.at-home-section__head p,.sp-section-head p{font-size:14px}.at-home-benefit,.at-home-direction,.sp-card,.sp-row,.sp-step,.sp-country{border-radius:18px}}
