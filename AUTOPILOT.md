@@ -1,35 +1,46 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-30 11:43 +02:00
+Updated: 2026-08-30 11:48 +02:00
 
-Operational companion to `AGENTS.md`. `AUTOPILOT_STATE.json` is the machine-readable resume point, `ARCHITECTURE.md` remains the canonical architecture source of truth, `TEST_MATRIX.md` owns CI/test policy, and `PRODUCT_ROADMAP.md` owns the broader product roadmap.
+Operational companion to `AGENTS.md`. `AUTOPILOT_STATE.json` is the machine-readable resume point. `ARCHITECTURE.md` is the canonical architecture source of truth, `TEST_MATRIX.md` owns CI/test policy, `DEPENDENCY_MAP.md` owns implementation-generation/deprecation status, `CODEX_QUEUE.md` owns prepared Codex execution slices, and `PRODUCT_ROADMAP.md` owns the broader product roadmap.
 
-## Current phase — DESIGN SYSTEM 1.0 / SITE-WIDE VISUAL UNIFICATION
+## Current phase — TECHNICAL REFACTOR PASS
 
-The owner's current explicit direction makes **AnyTour Design System 1.0 and whole-site visual unification Priority #1**. The mature tour-search flow is the quality reference, not the score of the entire public site.
+The owner's current explicit direction is technical consolidation before further UX/visual expansion.
 
-Priority order:
+Priority after emergency overrides:
 
-`production broken → lead loss → incorrect data → broken user journey → Design System/site-wide visual coherence → supporting technical refactor → content/SEO → cosmetic cleanup`
+`production broken → lead loss → incorrect data → broken user journey → technical refactor/source-of-truth/CI/dependency cleanup → UX/responsive/visual → content/SEO → cosmetic cleanup`
 
-## Current production baseline
+This priority is owner-locked. Autonomous state refreshes, visual score updates, successful Design System releases or newly found cosmetic opportunities must not switch the project back to visual-first. Only a new explicit owner instruction or a higher-priority production/lead/data/journey defect may change the active phase.
 
-- PRs #325/#326 established shared editorial rhythm and canonical content-gap/readable-measure tokens.
-- PR #330 is production-green: homepage and shell-based editorial pages share one final layer for section heading/copy geometry, card/surface treatment and primary/secondary action geometry.
-- PR #332 is production-green: the shared 375/430 community/footer block uses a compact safe grid while preserving verified destinations and 44px+ interaction targets.
-- PR #334 is production-green: shared editorial header and the mature legacy search header now consume one canonical Design System geometry contract for **78px desktop / 68px mobile / 64px compact** shells plus shared logo/menu sizes. The search compatibility layer uses true vertical centering instead of separate top offsets; mature search markup was not replaced.
-- PR #334 also fixes section navigation on nested destination pages: `/country/.../` keeps **Страны** current in desktop and mobile navigation instead of losing active state below `/country/`.
-- Five-width search-header checks passed before merge. Deploy run **33304575562** passed public-page verification, unchanged lead-bridge verification and live search smoke. Production responsive navigation run **33304679660** and live tourist journey run **33304679697** are green.
-- Whole-site coherence moves cautiously from the owner's **6.5/10 baseline to ~6.9/10** based on production shell evidence. Search remains materially stronger (~8.75 reference) and is not used as the whole-site score.
+## Technical refactor goals
+
+1. Keep one architecture/source of truth and enforce **one concept → one implementation**.
+2. Complete evidence-backed inventory/dependency classification: `ACTIVE`, `COMPATIBILITY`, `DEPRECATED`, `DEAD-CANDIDATE`.
+3. Complete GitHub Actions inventory and classify checks as `PR FAST`, `PR BROWSER`, `POST DEPLOY`, `SCHEDULED/LIVE`; remove/consolidate only after equivalent behavior coverage is proven green.
+4. Prepare controlled ownership structure for `shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates` without changing user behavior.
+5. Only after that, consolidate shared template ownership toward one header, one footer, one navigation and one design system.
+6. Resume broader UX/visual work after the technical checkpoint.
+
+## Current evidence and resume point
+
+- `ARCHITECTURE.md`, `TEST_MATRIX.md`, `DEPENDENCY_MAP.md` and `CODEX_QUEUE.md` exist as canonical technical references.
+- PR #316 moved lead idempotency/price deterministic contracts into reusable `scripts/ci/lead/` diagnostics without changing the external lead contract.
+- PR #323 established the dependency/deprecation map and hardened removal gates. Historical generations remain non-removable until consumer/deploy/CI proof exists.
+- PR #329 extended room/flight CI inventory: room recovery, flight autoload-race and flight empty-recovery are independent branch-local Playwright behavior guards. Their repeated setup is a consolidation candidate; their behavioral verdicts are not duplicates.
+- Recent Design System PRs #325/#326/#330/#332/#334 are production-green and remain regression baselines only. They do not change the active technical-refactor priority.
+- Full `/poisk-turov/` shared-header component replacement remains deferred until an atomic migration has equivalent browser coverage.
 
 ## Exact next work order
 
-1. **Finish shared header/navigation audit.** Re-check remaining wrapping, 1024px desktop density and utility-route consistency across `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative countries.
-2. Keep `/poisk-turov/` on its mature search shell; use the compatibility layer for safe visual alignment rather than attempting the deferred full component swap.
-3. Re-audit representative `/country/` pages and `/hot/` against homepage/search hierarchy, cards, breadcrumbs and CTA geometry/language.
-4. Continue moving confirmed page-specific drift into shared typography/grid/section/card/button/breadcrumb primitives.
-5. Validate the full visual journey: homepage → destination/hot → search → results → selected tour → lead.
-6. Use technical refactor slices only where they remove a concrete Design System blocker or after the visual coherence gate is materially stronger.
+1. Finish remaining CI inventory, especially pending/unpriced/price-sync and unmapped search/results/mobile/live families.
+2. Complete dependency inventory for non-manifest JS/CSS, PHP endpoints/helpers and deploy consumers; upgrade candidate labels only with evidence.
+3. Extract repeated deterministic CI/bootstrap infrastructure into `scripts/ci/` without merging distinct assertions or weakening triggers.
+4. Refactor asset resolution to support controlled allowlisted relative subdirectories, with tests and unchanged public URLs/load order/cache behavior.
+5. Migrate one low-risk module family into the target ownership structure as proof before wider moves.
+6. Consolidate shared template ownership only after dependency/CI coverage makes each move atomic and reversible.
+7. Resume UX/visual expansion after the technical checkpoint; retain 375/430/768/1024/1440 production visual evidence as a guardrail.
 
 ## Mandatory protections
 
@@ -42,8 +53,8 @@ Do not modify without explicit approval:
 - neighboring projects;
 - server/platform architecture outside the allowed repository/deploy scope.
 
-Preserve verified social/app destinations. Do not redesign or replace the AnyTour logo. Legal/payment migration and PR #254 remain deferred. Full `/poisk-turov/` shared-header component replacement remains deferred until an atomic swap has equivalent browser coverage.
+Preserve verified social/app destinations and the AnyTour logo. Legal/payment migration and PR #254 remain deferred. PRs #248/#249/#254 must not be auto-merged as part of this refactor pass without a fresh, scope-specific reassessment.
 
 ## Execution policy
 
-Work through multiple independent SAFE visual/UX tasks per session while time allows. Fix confirmed spacing, wrapping, overflow, duplicate-shell, hierarchy and responsive problems before decorative flourishes. For each user-facing slice, run focused checks, preserve mature search/lead regressions, validate 375/430/768/1024/1440, deploy only after relevant checks are green, and inspect post-deploy live evidence before treating the slice as DONE.
+Work in narrow, independent PR-sized slices. Read current `main`, open PRs and fresh CI before choosing work. Prefer behavior-backed diagnostics over source-string guards. Do not delete a workflow/file merely because another check touches the same asset. Do not refactor for style or invent defects. SAFE changes may merge after relevant green checks; MEDIUM changes require focused regression plus relevant broader evidence. If a slice is blocked, record it and continue the next independent technical task.
