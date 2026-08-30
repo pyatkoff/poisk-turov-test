@@ -1,46 +1,48 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T22:03:00+02:00",
-  "mode": "design_system_1_0",
-  "phase": "AnyTour Design System 1.0 and site-wide visual unification.",
+  "updated_at": "2026-08-30T22:43:00+02:00",
+  "mode": "technical_refactor_pass",
+  "phase": "Technical refactor pass: architecture/source-of-truth, exhaustive inventory/dependency map, CI classification, safe directory ownership plan, then shared template consolidation before UX/visual work.",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "design_system_1_0",
+    "planned_phase": "technical_refactor_pass",
     "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Emergency production, lead-loss, incorrect-data and broken-user-journey findings may preempt temporarily without changing the lock."
   },
   "current_task": {
-    "id": "ANYTOUR_DESIGN_SYSTEM_1_0",
-    "category": "UX_VISUAL",
+    "id": "TECHNICAL_REFACTOR_PASS",
+    "category": "TECH_DEBT_ARCHITECTURE",
     "status": "ACTIVE",
-    "progress": "Shared shell parity is established; footer legacy-domain links, editorial hierarchy/spacing and mobile country catalog density have been corrected. PRs #386/#387 are merged, deploy is green, and five-width artifacts confirm the compact country catalog without tablet/desktop regression.",
-    "next_action": "Continue representative country-page five-width audit, then re-audit hot/editorial pages and run the full homepage-to-lead visual journey."
+    "progress": "Architecture/test/dependency/CI sources of truth exist; CI families are being exhaustively classified before any deletion or consolidation. Owner-priority drift found on main and corrected in this slice.",
+    "next_action": "Finish remaining GitHub Actions inventory, then complete non-manifest/PHP/deploy dependency mapping and safe directory ownership prerequisites."
   },
-  "site_wide_score": 7.2,
   "work_order": [
-    "audit representative country pages at 375 430 768 1024 1440 and fix confirmed spacing wrapping overflow hierarchy defects",
-    "re-audit hot contacts rb how-to-buy after shared-shell changes",
-    "run homepage destination search results selected-tour lead visual journey",
-    "continue safe shared design token primitive consolidation where real divergence is confirmed"
+    "finish exhaustive CI workflow audit with explicit PR FAST PR BROWSER POST DEPLOY SCHEDULED LIVE tier and disposition for every workflow",
+    "finish dependency map for non-manifest JS CSS PHP endpoints helpers deploy consumers and classify ACTIVE COMPATIBILITY DEPRECATED DEAD candidates with concrete references",
+    "define safe directory ownership plan for shared search results tour checkout integrations site seo tests scripts templates without changing behavior",
+    "extract only proven duplicated CI bootstrap infrastructure after equivalent coverage is demonstrated",
+    "migrate one low-risk implementation family at a time toward canonical ownership",
+    "consolidate shared template layer to one header one footer one navigation one design system after dependency and CI evidence is complete",
+    "return to UX visual work after technical consolidation except emergency regressions"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
     "other_projects": "DO_NOT_MODIFY",
-    "logo": "DO_NOT_REDESIGN_OR_REPLACE",
     "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "analytics_contract": "PRESERVE",
     "tourvisor_contract": "PRESERVE",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
-    "verified_social_app_destinations": "PRESERVE",
     "legal_payment_migration": "DEFER_UNTIL_RECONCILED",
+    "pr_248": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
+    "pr_249": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > technical_refactor > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
+    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
     "on_blocker": "record_blocker_and_continue_independent_safe_work"
   }
 }
