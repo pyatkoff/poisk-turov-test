@@ -1,66 +1,60 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T13:52:00+03:00",
-  "mode": "anytour_design_system_1_0",
-  "phase": "Owner-directed site-wide visual unification across homepage, editorial/destination pages, hot/search, results, selected tour and lead journey, while preserving mature search regressions and protected external contracts.",
+  "updated_at": "2026-08-30",
+  "mode": "technical_refactor_pass",
+  "phase": "Owner-directed technical refactor: canonical architecture/source of truth, dependency inventory, exhaustive CI audit, safe directory ownership, then shared template consolidation before broader UX/visual work.",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "anytour_design_system_1_0",
-    "rule": "Keep Design System 1.0 as the autonomous priority unless production, lead-loss, incorrect-data or broken-user-journey evidence preempts it, or the owner explicitly changes direction again."
+    "planned_phase": "technical_refactor_pass",
+    "rule": "Keep technical refactor as the autonomous priority after emergency overrides. Successful visual releases or score changes do not switch the phase back to Design System-first unless the owner explicitly changes direction."
   },
   "current_task": {
-    "id": "DESIGN_SYSTEM_1_0_EDITORIAL_AND_PRIMITIVES",
-    "category": "VISUAL_UX_EDITORIAL_SYSTEM",
-    "status": "MULTI_SLICE_IN_PROGRESS",
-    "progress": "PRs #337, #339 and #340 are merged and production/live green. PR #343 is merged and production green, improving /how-to-buy/ from one long eight-step column to a balanced two-column purchase flow on wider screens with a single sequential column at <=768px. Its complete PR suite and post-deploy workflow fanout have zero failures; public pages, unchanged lead bridge and live search smoke passed. /hot/ was re-audited and no material hierarchy defect was confirmed, so no cosmetic-only patch was made.",
-    "next_action": "Audit /rb/ for material hierarchy/spacing issues, then consolidate duplicated button/card/breadcrumb geometry behind Design System tokens/primitives and continue into /country/ plus representative country pages."
+    "id": "TECH_REFACTOR_CI_AND_DEPENDENCY_INVENTORY",
+    "category": "TECH_DEBT_ARCHITECTURE_CI",
+    "status": "ACTIVE",
+    "progress": "Architecture/test/dependency sources of truth exist; CI_WORKFLOW_AUDIT classifies core V2, comparison/results/recovery, selected-tour and pending/unpriced flight families. Exact source-string guards remain protected until behavioral replacement coverage exists. Latest mobile iOS production fix has green post-deploy migrated-content and live-user-journey evidence.",
+    "next_action": "Finish exhaustive workflow inventory/classification, then complete non-manifest/PHP/deploy-consumer dependency mapping before extracting shared CI/bootstrap infrastructure or moving runtime modules."
   },
-  "site_wide_score": {
-    "owner_baseline": 6.5,
-    "current_estimate": 6.7,
-    "status": "MODEST_CONFIRMED_MOVEMENT",
-    "note": "Whole-site coherence score, not a search-only score. Increase is intentionally cautious and reflects shared-shell alignment, contacts balancing and the first broader editorial hierarchy migration."
-  },
-  "production_baseline": {
-    "verified_release": "PR #343 how-to-buy responsive purchase-flow hierarchy on top of Design System shared shell",
-    "verified_commit": "b04233b5d49c00bd521f3264ee5912030a4ee058",
-    "verified_status": "PR_SUITE_ZERO_FAILURES_DEPLOY_PUBLIC_PAGES_LEAD_BRIDGE_LIVE_SEARCH_AND_POST_DEPLOY_FANOUT_ZERO_FAILURES",
-    "required_visual_viewports": [375, 430, 768, 1024, 1440]
+  "source_of_truth": {
+    "architecture": "ARCHITECTURE.md",
+    "test_policy": "TEST_MATRIX.md",
+    "dependency_generations": "DEPENDENCY_MAP.md",
+    "workflow_inventory": "CI_WORKFLOW_AUDIT.md",
+    "codex_queue": "CODEX_QUEUE.md",
+    "rule": "one concept -> one implementation"
   },
   "work_order": [
-    "audit and improve rb hierarchy/spacing only where evidence warrants a material change",
-    "unify remaining duplicated button card breadcrumb spacing/geometry behind Design System tokens/primitives",
-    "audit country catalog and representative country pages for hierarchy card density wrapping and responsive rhythm",
-    "reassess homepage to country to hot/search visual continuity",
-    "continue five-width hero breadcrumbs main footer and navigation wrapping checks as pages migrate",
-    "keep mature search/recovery/results/comparison/flight/price/fuel/lead regressions green throughout"
+    "finish exhaustive GitHub Actions trigger/path/assertion inventory into PR FAST PR BROWSER POST DEPLOY SCHEDULED-LIVE",
+    "finish active compatibility deprecated dead-candidate dependency inventory including non-manifest PHP endpoints helpers and deploy consumers",
+    "extract repeated deterministic CI/bootstrap infrastructure only after equivalent coverage and consumer compatibility are proven",
+    "replace high-cost exact source-string guards with behavioral diagnostics before deleting those assertions",
+    "prepare allowlisted nested asset/path ownership and target shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates structure without behavior change",
+    "consolidate one header one footer one navigation one design system only after dependency/regression evidence is sufficient",
+    "resume broader UX/visual work after technical consolidation"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
     "other_projects": "DO_NOT_MODIFY",
-    "logo": "DO_NOT_REDESIGN_OR_REPLACE",
     "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "analytics_contract": "PRESERVE",
     "tourvisor_contract": "PRESERVE",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
+    "logo": "PRESERVE",
     "verified_social_app_destinations": "PRESERVE",
     "server_platform_architecture": "HIGH_RISK_REQUIRES_EXPLICIT_REVIEW",
-    "legal_payment_migration": "DEFER_UNTIL_RECONCILED",
     "pr_248": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
     "pr_249": "DO_NOT_AUTO_MERGE_WITHOUT_FRESH_SCOPE_REVIEW",
-    "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
+    "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE",
+    "open_visual_prs": "DO_NOT_TREAT_AS_ACTIVE_PRIORITY_UNLESS_CONFIRMED_REGRESSION_OR_DIRECT_TECHNICAL_CONSOLIDATION_VALUE"
   },
-  "deferred": [
-    {"scope": "PR #254 DB/platform architecture", "reason": "Still deferred unless a fresh separate review proves the architecture safe."},
-    {"scope": "legal/payment route migration", "reason": "Legacy legal/payment content/requisites remain unresolved."},
-    {"scope": "deep /poisk-turov/ shared-header replacement", "reason": "Only perform atomically with equivalent browser coverage; preserve mature search behavior."}
-  ],
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_site_wide_visual_unification > supporting_technical_consolidation > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
-    "on_blocker": "record_blocker_and_continue_independent_safe_work"
+    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
+    "on_blocker": "record_blocker_and_continue_independent_safe_technical_work",
+    "one_concept_one_implementation": true,
+    "delete_guard_only_after_equivalent_coverage": true
   }
 }
