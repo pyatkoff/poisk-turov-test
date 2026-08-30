@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T09:08:00+02:00",
-  "mode": "pretraffic_site_visual_unification",
-  "phase": "AnyTour Design System 1.0: shared standalone shell and local discovery surfaces are production-green. PR #317 strengthened the homepage hero with an explicit visual journey while preserving the existing search handoff. The search header remains a separate legacy implementation; isolated CSS alignment is safe, but full component migration remains deferred until an atomic patch/extraction path exists.",
+  "updated_at": "2026-08-30T09:16:00+02:00",
+  "mode": "technical_refactor_pass",
+  "phase": "Technical refactor pass is ACTIVE before further UX/visual expansion. ARCHITECTURE.md and TEST_MATRIX.md are canonical; CI inventory and reusable scripts are being consolidated in narrow SAFE slices. Existing production visual/search baselines remain protected and must not regress while the repository is made easier and safer for autonomous development.",
   "scores": {
     "whole_public_site": 8.0,
     "cross_page_visual_consistency": 7.9,
@@ -21,16 +21,17 @@
     "search_product_reference": 8.75
   },
   "target": {
+    "developer_ergonomics": 8.5,
     "first_sitewide_gate": 8.5,
-    "next_gate": 9.0,
-    "rule": "Do not raise site-wide scores from CI/tooling alone; require production and representative visual evidence."
+    "next_sitewide_gate": 9.0,
+    "rule": "Do not raise product/visual scores from CI or refactor work alone; require production and representative visual evidence."
   },
   "current_task": {
-    "id": "ANYTOUR_DESIGN_SYSTEM_1_AND_SITE_VISUAL_UNIFICATION",
-    "category": "SITE_WIDE_UX_VISUAL",
+    "id": "TECHNICAL_REFACTOR_PASS_1",
+    "category": "ARCHITECTURE_CI_REFACTOR",
     "status": "ACTIVE",
-    "progress": "PR #317 is DONE in production. The confirmed weak desktop homepage hero had a large empty rotated glass decoration that read as unfinished. It was replaced with a compact decorative three-step journey (set parameters, compare variants, check details) using an isolated home-journey-v1.css layer; the journey is hidden at <=820px so tablet/mobile remain intentionally simple. The existing form, search handoff and business logic were unchanged. PR #317 passed Security, standalone navigation/home handoff, PHP runtime, V2 validation/startup/branch-bundle, selected-tour, meal, trust and visual suites, plus the standalone 375/430/768/1024/1440 visual run. Squash merge 9eb6d3dceed32e5191fba65b2f6768a7c52f8298 deployed successfully in standalone run 33298269348; public pages, unchanged lead bridge and live search smoke were green. Production standalone visual run 33298337155 passed at all five required widths. Direct production review of desktop 1440 showed the new journey balanced against the hero copy and ready-state search form; mobile 375 remained clean and unchanged with no overflow. The visual guard also now blurs the CTA after focus verification so screenshots no longer preserve an artificial focus state. No Tourvisor, Metrika, analytics, lead, search/results/recovery or comparison contract changed.",
-    "next_action": "Continue the full production journey audit country/hot→search→results→selected tour→lead at 375/430/768/1024/1440. Reassess the weaker /how-to-buy/, /contacts/ and /rb/ standalone hierarchy before adding new density. Continue isolated header-current-site.css alignment only for confirmed legacy search-shell defects; keep full component migration deferred until an atomic edit/extraction path exists."
+    "progress": "Canonical ARCHITECTURE.md and TEST_MATRIX.md exist. CI_WORKFLOW_AUDIT.md plus family companions document verified workflow ownership. Lead idempotency and lead price contracts have now been extracted into reusable scripts/ci/lead diagnostics and moved into PR FAST coverage via merged PR #316, with Security and both focused lead checks green. Production runtime, Metrika, external lead contract and Tourvisor were untouched.",
+    "next_action": "Continue exhaustive CI/dependency inventory, extract duplicated deterministic CI logic into scripts/ci, convert brittle implementation-string guards only after equivalent behavioral diagnostics exist, classify historical asset/API generations ACTIVE/COMPATIBILITY/DEPRECATED/DEAD-CANDIDATE, then enable controlled asset subdirectories and gradual module ownership moves. Resume UX/visual work after the technical pass reaches a stable checkpoint, except for P0/P1 production or lead-loss fixes."
   },
   "production_baseline": {
     "standalone_commit": "9eb6d3dceed32e5191fba65b2f6768a7c52f8298",
@@ -51,11 +52,13 @@
     "scores_revalidated": true
   },
   "work_order": [
-    "audit country/hot→search→results→tour→lead continuity at 375/430/768/1024/1440 and fix safe shell-side seams",
-    "reassess /how-to-buy/, /contacts/ and /rb/ hierarchy and spacing before adding more content density",
-    "continue isolated legacy search-shell alignment via header-current-site.css for confirmed defects while preserving all search behavior",
-    "migrate /poisk-turov/ to the shared site-header-v2 component only when an atomic safe patch/extraction path is available",
-    "after shell unification, deepen reviewed discovery/content/SEO modules with live search handoff"
+    "finish exhaustive CI workflow inventory and classify PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE ownership",
+    "extract repeated deterministic CI checks into scripts/ci without weakening coverage",
+    "replace brittle src.includes/grep contracts with equivalent behavioral diagnostics one contract at a time",
+    "complete dependency/deprecation map for versioned assets, APIs, analytics and lead adapters as ACTIVE / COMPATIBILITY / DEPRECATED / DEAD-CANDIDATE",
+    "refactor the asset helper to support controlled subdirectories and begin gradual shared/search/results/tour/checkout/integrations/site/seo ownership moves",
+    "reconcile legacy anytour.online deployment/test dependencies only in proven-safe slices; protected lead bridge migration remains HIGH risk",
+    "resume shared-shell/UX/visual unification after the technical checkpoint, preserving required 375/430/768/1024/1440 evidence"
   ],
   "required_viewports": [375, 430, 768, 1024, 1440],
   "protected": {
@@ -67,13 +70,18 @@
     "analytics_contract": "PRESERVE",
     "tourvisor_contract": "PRESERVE",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
+    "server_platform_architecture": "HIGH_RISK_REQUIRES_EXPLICIT_REVIEW",
     "legal_payment_migration": "DEFER_UNTIL_RECONCILED",
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
   "deferred": [
     {
+      "scope": "aggressive UX/visual expansion",
+      "reason": "Owner explicitly prioritized technical refactor and test/CI consolidation first; resume after a stable technical checkpoint unless production/lead risk requires immediate UX correction."
+    },
+    {
       "scope": "/poisk-turov/ full shared-header component migration",
-      "reason": "The mature search page is concentrated in large/minified v2/index.php and the available connector replaces whole files. Isolated CSS shell alignment is proven safe, but the full component swap remains deferred until an atomic patch/extraction path exists."
+      "reason": "Keep deferred until an atomic extraction path and equivalent browser coverage make the component swap safe."
     },
     {
       "scope": "traffic/conversion analysis",
@@ -89,15 +97,17 @@
     },
     {
       "scope": "PR #254",
-      "reason": "Separate DB/platform architecture; do not auto-merge during visual-unification work."
+      "reason": "Separate DB/platform architecture; do not auto-merge during the technical refactor pass."
     }
   ],
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > sitewide_visual_incoherence_and_poor_ux > responsive_stability > content_seo > cosmetic_refactor",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor_source_of_truth_ci_dependency_cleanup > UX_responsive_visual > content_seo > cosmetic_refactor",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_task",
+    "on_ci_success": "continue_to_next_safe_material_refactor_slice",
     "on_blocker": "record_blocker_and_continue_independent_safe_work",
     "on_visual_change": "validate_375_430_768_1024_1440_before_advancing",
-    "on_no_traffic": "ignore_as expected and continue visual/product development"
+    "on_no_traffic": "ignore_as expected and continue technical refactor/product development",
+    "one_concept_one_implementation": true,
+    "delete_guard_only_after_equivalent_coverage": true
   }
 }
