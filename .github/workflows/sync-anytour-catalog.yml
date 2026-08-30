@@ -1,0 +1,77 @@
+name: Sync AnyTour catalog
+
+on:
+  workflow_dispatch:
+    inputs:
+      country:
+        description: 'Tourvisor country id(s), comma-separated; default Turkey=4'
+        required: true
+        default: '4'
+        type: string
+
+concurrency:
+  group: anytour-catalog-sync
+  cancel-in-progress: false
+
+jobs:
+  sync-catalog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate catalog tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/sync-catalog-v1.php v2/data/db-doctor-v1.php; do
+            php -l "$f" >/dev/null
+          done
+          test -s v2/data/schema-v1.sql
+          country='${{ inputs.country }}'
+          [[ "$country" =~ ^[0-9]+(,[0-9]+)*$ ]]
+          echo "ANYTOUR_CATALOG_TOOLING_OK country=$country"
+
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Sync catalog on production
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          COUNTRY_VALUE: ${{ inputs.country }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          [[ "$COUNTRY_VALUE" =~ ^[0-9]+(,[0-9]+)*$ ]]
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          root='~/www/anytoour.ru'
+
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data" && test -s "$HOME/www/anytoour.ru/config.php"'
+          scp "${opts[@]}" -r v2/data/. "$remote:$root/data/"
+          ssh "${opts[@]}" "$remote" "
+            set -euo pipefail
+            root=\"\$HOME/www/anytoour.ru\"
+            chmod 600 \"\$root/config.php\"
+            php -l \"\$root/data/db-v1.php\" >/dev/null
+            php -l \"\$root/data/tourvisor-client-v1.php\" >/dev/null
+            php -l \"\$root/data/sync-catalog-v1.php\" >/dev/null
+            php \"\$root/data/db-doctor-v1.php\"
+            php \"\$root/data/sync-catalog-v1.php\" --country='$COUNTRY_VALUE'
+            php \"\$root/data/db-doctor-v1.php\"
+          "
+          echo "ANYTOUR_CATALOG_SYNC_OK country=$COUNTRY_VALUE"
