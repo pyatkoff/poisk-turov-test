@@ -30,6 +30,14 @@ For every workflow, record: trigger, path scope, proposed tier, protected behavi
 | `validate-second-tour-state-isolation.yml` | PR to `main` for selected-tour/room/flight-price assets; manual | PR BROWSER | first selected tour state cannot leak into second selection; pending price/fuel/lead messaging and return target remain coherent | isolated local Playwright DOM harness at 375/768/1440; no remote dependency | KEEP; high-value cross-module behavioral regression, not duplicate of selected-tour return |
 | `validate-selected-tour-return.yml` | PR to `main` for selected-tour return module/manifest; manual | PR BROWSER | return from selected tour/lead preserves sort/comparison state and restores focus across rerenders/fallbacks | isolated local Playwright DOM harness at 375/768/1440 | KEEP; focused accessibility/state coverage; partial overlap with second-tour workflow is intentional defense in depth |
 
+## Verified batch 3 — pending / unpriced flight price state
+
+| Workflow | Trigger / scope | Tier | What it protects | Assertion style | Audit disposition |
+| --- | --- | --- | --- | --- | --- |
+| `validate-pending-flight-confidence.yml` | PR to `main` for `price-confidence-v1.js`, `unpriced-flight-price-reset-v1.js`; manual | PR BROWSER | base → priced → pending selected-flight confidence copy, pending state must not regress to pre-selection copy, no horizontal overflow at 375/768/1440 | isolated local Playwright DOM harness with branch-local module | KEEP; strong refactor-safe behavioral coverage, candidate only for shared Playwright bootstrap |
+| `validate-pending-flight-label.yml` | PR to `main` for `unpriced-flight-price-reset-v1.js` | PR FAST | explicit `Цена уточняется` label, pending-label normalization invocation, protection of already-priced labels | exact Node `src.includes()` implementation-string assertions | KEEP temporarily; REPLACE-AFTER-COVERAGE candidate because behavior is not yet tested independently of implementation text |
+| `validate-unpriced-flight-price-reset.yml` | PR to `main` for `unpriced-flight-price-reset-v1.js` and bundle manifest; manual | PR BROWSER | selecting an unpriced flight after a priced one resets stale price, refreshes/falls back fuel correctly, emits `pricePending`, updates lead/confidence copy and avoids overflow at 375/768/1440 | Playwright behavior using local branch guard over legacy remote V2 shell | KEEP; high-value state-transition guard, modernize shared shell/harness later without weakening assertions |
+
 ## Confirmed findings
 
 ### PR FAST has refactor-hostile implementation-string guards
@@ -37,6 +45,18 @@ For every workflow, record: trigger, path scope, proposed tier, protected behavi
 `validate-v2-pr.yml` performs useful real checks (PHP lint, active JS syntax, asset closure and server-rendered SEO semantics), but several important contracts are asserted by exact JavaScript/PHP source strings. Examples include child-composition hydration, lazy catalog loading, C5 flight autoload and product-shell markup. These guards can fail when behavior is preserved but code is reorganized.
 
 Disposition: retain them now. During technical refactor, migrate each high-value source-text contract to a deterministic behavioral diagnostic first; only then remove the corresponding `src.includes()`/`grep` assertion.
+
+### Pending-flight label is another proven source-text-only guard
+
+`validate-pending-flight-label.yml` verifies three useful contracts, but all three are coupled to exact source text in `unpriced-flight-price-reset-v1.js`. The neighboring `validate-pending-flight-confidence.yml` and `validate-unpriced-flight-price-reset.yml` already demonstrate the preferred pattern: execute the branch-local module and assert observable DOM/event state.
+
+Disposition: do not delete the label workflow yet. First add a deterministic local diagnostic that proves pending labels are normalized while already-priced labels remain unchanged; then replace the source-string assertions or fold the diagnostic into an existing pending/unpriced workflow with equivalent path coverage.
+
+### Pending/unpriced browser checks overlap by state boundary, not by verdict
+
+`validate-pending-flight-confidence.yml` owns user-facing confidence copy for base/priced/pending states. `validate-unpriced-flight-price-reset.yml` owns the cross-selection stale-price reset plus fuel/event/lead context after moving from a priced to an unpriced flight. Their shared pending-state assertions are intentional boundary overlap.
+
+Disposition: KEEP both. Consolidation should target Playwright install/bootstrap and, later, a canonical-route harness—not removal of either behavioral contract.
 
 ### Search-continue workflow proves the same problem in a narrower family
 
@@ -86,7 +106,7 @@ Disposition: map the actual active `deploy.yml` vs `deploy-anytoour.yml` relatio
 
 The repository contains additional workflow families that must be audited before any deletion:
 
-- rooms/flights/price: `validate-room-recovery`, flight autoload/empty/fuel/keyboard/pending/unpriced/live workflows;
+- rooms/flights/price: remaining live/price workflows beyond the verified room/flight companion and pending/unpriced batch;
 - lead: form/idempotency/price/recovery/search-context/UI-race guards;
 - mobile/UI: duration/sticky/meal and focused visual workflows;
 - SEO/content: SEO foundation/page graph/stable paths/publishability/publication manifest/content catalog/primitives plus standalone content/navigation/handoff;
@@ -100,8 +120,8 @@ These families remain authoritative guards until their trigger/path/behavior ove
 
 1. Finish exhaustive trigger/path/assertion inventory without modifying workflows.
 2. Extract repeated non-browser syntax/asset/render checks into reusable `scripts/ci/` commands.
-3. Convert the highest-cost `src.includes()`/`grep` guards to behavioral diagnostics, starting with search-continue where a recovery diagnostic already exists.
-4. Extract shared Playwright bootstrap/fixture helpers for comparison/results/selected-tour browser workflows without weakening coverage.
+3. Convert the highest-cost `src.includes()`/`grep` guards to behavioral diagnostics, with `validate-pending-flight-label.yml` now an explicit low-risk candidate alongside search-continue.
+4. Extract shared Playwright bootstrap/fixture helpers for comparison/results/selected-tour/pending-flight browser workflows without weakening coverage.
 5. Reconcile canonical `anytoour.ru/poisk-turov/` browser coverage with legacy V2 compatibility harnesses.
 6. Only after equivalent coverage is green, consolidate superseded workflows one family at a time.
 
