@@ -30,6 +30,7 @@ function v2_bundle_manifest(): array
             'results-layout-guard-v1.css',
             'search-header-layout-guard-v1.css',
             'search-footer-rhythm-v1.css',
+            'search-header-shared-shell-v1.css',
         ],
         'js' => [
             'header-current-site.js',
