@@ -1,13 +1,6 @@
 name: Visual standalone navigation live
 
 on:
-  pull_request:
-    paths:
-      - 'v2/site-header-v2.php'
-      - 'v2/site-header-v2.css'
-      - 'v2/header-current-site.css'
-      - 'v2/header-current-site.js'
-      - '.github/workflows/visual-standalone-navigation-live.yml'
   workflow_run:
     workflows: ['Deploy anytoour.ru']
     types: [completed]
