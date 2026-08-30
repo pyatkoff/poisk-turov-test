@@ -4,7 +4,16 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'v2/**'
+      - 'v2/primary-meal-ux-v1.css'
+      - 'v2/primary-meal-ux-v1.js'
+      - 'v2/app.css'
+      - 'v2/design-system-v1.css'
+      - 'v2/design-v1.css'
+      - 'v2/product-shell-v1.css'
+      - 'v2/br3-control-consistency-v1.css'
+      - 'v2/mobile-results-filters-v1.css'
+      - 'v2/bundle-manifest-v1.php'
+      - 'v2/index.php'
       - '.github/workflows/visual-v2-meal-visibility.yml'
   workflow_dispatch:
 
