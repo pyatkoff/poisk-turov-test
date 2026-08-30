@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
-  "active_mode": "technical_refactor_pass",
-  "active_phase": "TECHNICAL REFACTOR PASS",
+  "active_mode": "design_system_1_0",
+  "active_phase": "ANYTOUR DESIGN SYSTEM 1.0 / SITE-WIDE VISUAL UNIFICATION",
   "priority_after_emergency_overrides": [
-    "technical_refactor",
     "ux_visual",
+    "technical_refactor",
     "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_30_technical_refactor",
-  "rule": "Only a new explicit owner direction may change active_mode. Successful visual releases, score changes, autonomous state refreshes, or unrelated PRs must not change it."
+  "source": "explicit_owner_direction_2026_08_30_design_system_1_0",
+  "rule": "Only a new explicit owner direction may change active_mode. Emergency production, lead-loss, incorrect-data and broken-user-journey findings may preempt temporarily without changing the owner priority lock."
 }
