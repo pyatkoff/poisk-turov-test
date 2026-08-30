@@ -1,54 +1,45 @@
 # poisk-turov-test — Autopilot State
 
-Updated: 2026-08-30 10:12 +02:00
+Updated: 2026-08-30 09:44 +02:00
 
-Operational companion to `AGENTS.md`. `AUTOPILOT_STATE.json` is the machine-readable resume point, `ARCHITECTURE.md` is the canonical architecture source of truth, `TEST_MATRIX.md` owns CI/test policy, and `PRODUCT_ROADMAP.md` owns product/brand roadmap.
+Operational companion to `AGENTS.md`. `AUTOPILOT_STATE.json` is the machine-readable resume point, `ARCHITECTURE.md` is the canonical architecture source of truth, `TEST_MATRIX.md` owns CI/test policy, `CODEX_QUEUE.md` owns prepared Codex execution slices, and `PRODUCT_ROADMAP.md` owns product/brand roadmap.
 
-## Current phase — DESIGN SYSTEM 1.0 / SITE-WIDE UNIFICATION
+## Current phase — TECHNICAL REFACTOR PASS
 
-Design System 1.0 and whole-site visual coherence are now priority #1. The technical refactor pass remains useful, but it no longer outranks visible product consistency. Production breakage, lead loss, incorrect data and broken user journeys still override planned Design System work immediately.
+The owner-approved current phase is **technical refactor first, then UX/visual**, with the normal emergency overrides preserved:
 
-The objective is to make the public AnyTour site feel like one product across:
+`production broken → lead loss → incorrect data → broken user journey → technical refactor → UX/visual → content/SEO → cosmetic cleanup`
 
-`homepage → country/destination → hot/search → results → selected tour → lead`
+Do not switch the planned phase back to Design System/visual-first merely because a visual PR was merged or production screenshots improved. A phase change requires an explicit owner decision or a higher-priority production/lead/data/journey defect.
 
-Search remains the stronger product reference. It must not regress while weaker editorial pages inherit shared design tokens, shell geometry, typography, spacing, cards, buttons, breadcrumbs and responsive behavior.
+Recent Design System releases #325/#326 are valid production improvements and remain part of the green baseline, but they do not change the current execution priority.
 
-## Latest material progress
+## Refactor goals
 
-- **PR #325** added one shared editorial rhythm layer through the canonical public-page shell instead of accumulating page-specific spacing patches.
-- The new layer increases section separation, gives cards/steps/actions a consistent rhythm, and constrains long editorial copy to a readable measure across `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages.
-- All PR #325 checks were green. Production deploy **33300567702** passed public-page verification, the unchanged lead bridge and live search smoke.
-- Production visual run **33300650073** passed the full public route family at **375 / 430 / 768 / 1024 / 1440**, including homepage, search, contacts, how-to-buy, early booking, hot tours, country catalog and representative destination pages. It also checks overflow, single-shell ownership, logo rendering, search handoff and CTA contrast/focus.
-- Representative production screenshots were manually reviewed after deploy: mobile `/contacts/` and `/hot/`, plus desktop `/how-to-buy/` and `/country/`. Hierarchy and spacing are materially cleaner, with no visible overflow or duplicated shell.
-- **PR #326** promoted the responsive public-content gap and readable copy measure into canonical `design-system-v1.css` tokens. The editorial layer now consumes those shared tokens rather than owning duplicate values.
-- All PR #326 checks were green. V2 deploy **33300796925** and standalone deploy **33300796910** are green; V2 verification and live search smoke passed after the token release. Post-deploy V2 visual **33300851477** and migrated-content check **33300902384** are green.
-- Metrika, goals/events, Tourvisor, the external lead contract, the AnyTour logo and unresolved legal/payment content were not changed.
+1. Finish exhaustive CI/workflow inventory and classify every guard into `PR FAST`, `PR BROWSER`, `POST DEPLOY`, or `SCHEDULED/LIVE`.
+2. Build the evidence-backed dependency generations map (`ACTIVE`, `COMPATIBILITY`, `DEPRECATED`, `DEAD-CANDIDATE`).
+3. Extract duplicated deterministic CI/bootstrap logic into reusable `scripts/ci/` helpers without weakening behavioral coverage.
+4. Make code ownership/folder boundaries safer for Codex and parallel development; do not mass-move runtime files.
+5. Reduce order-dependent/historical layers only after consumer mapping and equivalent tests.
+6. Then resume shared-shell, UX and visual unification from the already-green production baseline.
 
-## Current product baseline
+## Codex execution order
 
-Whole-site coherence is now approximately **8.2/10**, moved cautiously from 8.1 only after production deployment plus representative five-width visual evidence and manual screenshot review. Search remains the stronger product reference at about **8.75/10**.
+Use `CODEX_QUEUE.md` as the prepared execution queue.
 
-Current weaker areas are no longer basic shell breakage. The next gaps are subtler cross-page differences: homepage-specific primitives versus the shared editorial system, header/navigation geometry, footer/community density, and continuity between editorial discovery and the transactional search/results journey.
+- C1 / QA-INFRA — complete CI inventory.
+- C2 / ARCHITECTURE — dependency generations map.
+- C3 / QA-INFRA — reusable live-search bootstrap after C1.
+- C4 / STRUCTURE — nested asset ownership only after C1/C2.
+- Full shared search-header migration remains deferred until an atomic safe path exists.
 
-## Exact next work order
-
-1. **Audit homepage vs shared public-page primitives** at 375/430/768/1024/1440. Remove repeated visual concepts only where the shared primitive can preserve or improve the current homepage result.
-2. **Converge header/navigation geometry and active states.** Keep the mature `/poisk-turov/` header component in place until a full replacement is proven atomic and safe; isolated compatibility alignment remains acceptable.
-3. **Audit footer/community density and wrapping.** Fix confirmed spacing, hierarchy or wrapping problems through the shared footer rather than per-page overrides.
-4. **Continue page-family migration onto shared primitives.** Prefer one shared typography/spacing/card/button/breadcrumb implementation over page-specific copies.
-5. **Audit the full discovery-to-lead continuity:** homepage → country/hot → search → results → selected tour → lead. Fix real hierarchy or handoff seams while keeping the mature search interaction density appropriate only where needed.
-6. **Keep technical refactor work parallel and subordinate** where it directly enables safer Design System iteration, removes verified duplication, or improves regression coverage.
+Parallel Codex lanes must not edit overlapping ownership zones unless coordinated.
 
 ## Production baseline that must not regress
 
-- public AnyTour product is one site on `anytoour.ru`;
-- `/poisk-turov/` remains the transactional search application;
-- legacy `/poisk-turov-test/v2/` is compatibility-only;
-- the required visual baseline is 375 / 430 / 768 / 1024 / 1440;
-- public editorial pages use the canonical shared shell and shared editorial rhythm;
-- mature search/recovery/results/comparison/selected-tour/flight/price/fuel/lead flows remain protected;
-- mobile search header and sticky CTA fixes from PRs #320/#321 remain protected.
+The recent shared editorial rhythm/content-token work is production-green. Preserve the current public site, search, results, comparison, selected-tour, room/flight/price/fuel and lead behavior while refactoring infrastructure around it.
+
+Required responsive evidence for future user-facing work remains 375 / 430 / 768 / 1024 / 1440.
 
 ## Mandatory protections
 
@@ -61,14 +52,10 @@ Do not modify without explicit approval:
 - neighboring projects;
 - server/platform architecture outside the allowed repository/deploy scope.
 
-The AnyTour logo must not be redesigned or replaced. Verified social/app destinations must be preserved. Legal/payment migration remains deferred. PR #254 remains deferred unless freshly reassessed and proven safe.
-
-Full replacement of the `/poisk-turov/` legacy header component remains deferred until an atomic migration path and equivalent browser coverage exist.
+Do not redesign/replace the AnyTour logo. Legal/payment migration and PR #254 remain deferred unless freshly reassessed and explicitly proven safe.
 
 ## Execution policy
 
-Priority order:
+Work in narrow material slices. Prefer behavior-preserving extraction over rewrites. Never delete a workflow/guard until equivalent coverage is green. Never delete a historical implementation because of its name/version alone. If one refactor slice is blocked, record it and continue the next independent SAFE task.
 
-`production broken → lead loss → incorrect data → broken user journey → Design System/site-wide visual unification → technical refactor → content/SEO → cosmetic refactor`
-
-Work in narrow but material slices. Inspect current implementation and production evidence, fix one shared concept or weak page family, run the narrowest relevant checks first, then the broader five-width visual/search regressions. Do not create a second implementation when the canonical shared one can be extended. Do not delete a guard until replacement coverage is green. If blocked, record the blocker and continue the next independent safe Design System task.
+A visual/product improvement may still be made immediately when it fixes a confirmed production/broken-journey defect; otherwise visual polish waits behind the current technical refactor pass.
