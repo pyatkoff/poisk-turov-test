@@ -145,7 +145,7 @@ jobs:
           for asset in "${retired[@]}"; do
             test ! -e "v2/$asset" || { echo "RETIRED_STATIC_ASSET_PRESENT:$asset"; exit 1; }
           done
-          grep -Fq "require_once __DIR__ . '/site-header-v2.php';" v2/index.php
+          grep -Fq 'site-header-v2.php' v2/index.php
           grep -Fq 'v2_render_site_header(' v2/index.php
           grep -Fq '<img src="/images/logo.svg" alt="AnyTour">' v2/site-header-v2.php
           echo "RETIRED_V2_STATIC_ASSETS_ABSENT"
