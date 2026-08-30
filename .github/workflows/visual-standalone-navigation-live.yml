@@ -64,7 +64,7 @@ jobs:
                     if(headers!==1) throw new Error(`${vp}/${name}: shared header count ${headers}`);
                     const desktopNav=page.locator('.at-global-header__nav');
                     const mobileMenu=page.locator('.at-global-header__mobile');
-                    if(w<=900){
+                    if(w<=1024){
                       if(await isVisible(desktopNav)) throw new Error(`${vp}/${name}: desktop nav should be hidden`);
                       if(!(await isVisible(mobileMenu))) throw new Error(`${vp}/${name}: mobile menu missing`);
                       await mobileMenu.locator('summary').click();
@@ -72,11 +72,13 @@ jobs:
                       if(!(await isVisible(panel))) throw new Error(`${vp}/${name}: mobile panel did not open`);
                       const links=await panel.locator('a').evaluateAll(as=>as.map(a=>({href:a.getAttribute('href'),text:(a.textContent||'').trim()})));
                       if(!links.some(x=>x.href==='/rb/'&&x.text.includes('Раннее'))) throw new Error(`${vp}/${name}: early-booking link missing in mobile menu`);
+                      if(!links.some(x=>x.href==='/how-to-buy/'&&x.text.includes('Как купить'))) throw new Error(`${vp}/${name}: purchase-guide link missing in mobile menu`);
                     }else{
                       if(!(await isVisible(desktopNav))) throw new Error(`${vp}/${name}: desktop nav hidden`);
                       if(await isVisible(mobileMenu)) throw new Error(`${vp}/${name}: mobile menu should be hidden`);
                       const links=await desktopNav.locator('a').evaluateAll(as=>as.map(a=>({href:a.getAttribute('href'),text:(a.textContent||'').trim()})));
                       if(!links.some(x=>x.href==='/rb/'&&x.text.includes('Раннее'))) throw new Error(`${vp}/${name}: early-booking link missing in desktop nav`);
+                      if(!links.some(x=>x.href==='/how-to-buy/'&&x.text.includes('Как купить'))) throw new Error(`${vp}/${name}: purchase-guide link missing in desktop nav`);
                     }
                   }else{
                     await page.waitForSelector('.at-site-header',{timeout:15000});
