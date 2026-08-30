@@ -131,7 +131,12 @@ jobs:
           root='~/www/anytoour.ru'
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/images" "$HOME/www/anytoour.ru/poisk-turov"'
           scp "${opts[@]}" -r v2/. "$remote:$root/"
-          scp "${opts[@]}" "$RUNNER_TEMP/anytoour-config.php" "$remote:$root/config.php"
+          if ssh "${opts[@]}" "$remote" 'test -s "$HOME/www/anytoour.ru/config.php"'; then
+            echo "ANYTOOUR_CONFIG_PRESERVED"
+          else
+            scp "${opts[@]}" "$RUNNER_TEMP/anytoour-config.php" "$remote:$root/config.php"
+            echo "ANYTOOUR_CONFIG_SEEDED_FROM_LEGACY"
+          fi
           scp "${opts[@]}" "$RUNNER_TEMP/anytoour-bridge-secret" "$remote:$root/.anytoour-bridge-secret"
           scp "${opts[@]}" "$RUNNER_TEMP/logo.svg" "$remote:$root/images/logo.svg"
           ssh "${opts[@]}" "$remote" '
@@ -140,6 +145,8 @@ jobs:
             cp "$root/lead-bridge-v1.php" "$root/lead-adapter-v2.php"
             cp "$root/index.php" "$root/search-page-v2.php"
             cp "$root/home-entry-v1.php" "$root/index.php"
+            test -s "$root/config.php"
+            php -l "$root/config.php" >/dev/null
             chmod 600 "$root/config.php" "$root/.anytoour-bridge-secret"
             chmod 644 "$root/images/logo.svg"
             rm -f "$root/index.html"
