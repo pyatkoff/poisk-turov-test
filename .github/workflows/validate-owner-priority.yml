@@ -1,0 +1,29 @@
+name: Validate owner priority
+
+on:
+  pull_request:
+    paths:
+      - 'OWNER_PRIORITY.json'
+      - 'AUTOPILOT.md'
+      - 'AUTOPILOT_STATE.json'
+      - 'scripts/ci/validate_owner_priority.py'
+      - '.github/workflows/validate-owner-priority.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'OWNER_PRIORITY.json'
+      - 'AUTOPILOT.md'
+      - 'AUTOPILOT_STATE.json'
+      - 'scripts/ci/validate_owner_priority.py'
+      - '.github/workflows/validate-owner-priority.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate owner priority source of truth
+        run: python3 scripts/ci/validate_owner_priority.py
