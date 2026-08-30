@@ -47,9 +47,17 @@ try {
         $params['region_id'] = $regionId;
     }
 
-    $params['exact'] = $q;
-    $params['prefix'] = $q . '%';
-    $params['contains'] = '%' . $q . '%';
+    $params += [
+        'exact_hotel' => $q,
+        'prefix_hotel' => $q . '%',
+        'exact_alias' => $q,
+        'prefix_alias' => $q . '%',
+        'contains_hotel' => '%' . $q . '%',
+        'contains_alias_rank' => '%' . $q . '%',
+        'contains_hotel_where' => '%' . $q . '%',
+        'contains_key_where' => '%' . $q . '%',
+        'contains_alias_where' => '%' . $q . '%',
+    ];
 
     $sql = "
         SELECT DISTINCT
@@ -64,21 +72,21 @@ try {
             h.category,
             h.rating,
             CASE
-                WHEN h.normalized_name = :exact THEN 0
-                WHEN h.normalized_name LIKE :prefix THEN 1
-                WHEN a.normalized_alias = :exact THEN 2
-                WHEN a.normalized_alias LIKE :prefix THEN 3
-                WHEN h.normalized_name LIKE :contains THEN 4
-                WHEN a.normalized_alias LIKE :contains THEN 5
+                WHEN h.normalized_name = :exact_hotel THEN 0
+                WHEN h.normalized_name LIKE :prefix_hotel THEN 1
+                WHEN a.normalized_alias = :exact_alias THEN 2
+                WHEN a.normalized_alias LIKE :prefix_alias THEN 3
+                WHEN h.normalized_name LIKE :contains_hotel THEN 4
+                WHEN a.normalized_alias LIKE :contains_alias_rank THEN 5
                 ELSE 9
             END AS rank_group
         FROM catalog_hotels h
         LEFT JOIN hotel_aliases a ON a.hotel_id = h.id
         WHERE " . implode(' AND ', $where) . "
           AND (
-                h.normalized_name LIKE :contains
-                OR h.search_key LIKE :contains
-                OR a.normalized_alias LIKE :contains
+                h.normalized_name LIKE :contains_hotel_where
+                OR h.search_key LIKE :contains_key_where
+                OR a.normalized_alias LIKE :contains_alias_where
           )
         ORDER BY rank_group ASC, h.rating DESC, h.name ASC
         LIMIT " . $limit;
