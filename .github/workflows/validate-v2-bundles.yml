@@ -40,8 +40,9 @@ jobs:
               $url=v2_bundle_asset($type);
               if (!str_contains($url,'bundle-v1.php?type='.$type.'&v='.$a)) {fwrite(STDERR,"bad $type url: $url\n"); exit(5);}
           }
-          if (count($manifest['css'])!==27) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
+          if (count($manifest['css'])!==28) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
           if (($manifest['css'][0]??'')!=='design-system-v1.css') {fwrite(STDERR,"design system must load first\n"); exit(8);}
+          if (!in_array('site-header-v2.css',$manifest['css'],true)) {fwrite(STDERR,"canonical site header css missing\n"); exit(12);}
           if (($manifest['css'][count($manifest['css'])-3]??'')!=='search-header-layout-guard-v1.css') {fwrite(STDERR,"search header layout guard must stay before footer rhythm and shared-shell override\n"); exit(9);}
           if (($manifest['css'][count($manifest['css'])-2]??'')!=='search-footer-rhythm-v1.css') {fwrite(STDERR,"search footer rhythm must stay directly before shared-shell override\n"); exit(10);}
           if (($manifest['css'][count($manifest['css'])-1]??'')!=='search-header-shared-shell-v1.css') {fwrite(STDERR,"search shared-shell override must load last\n"); exit(11);}
@@ -84,6 +85,7 @@ jobs:
           grep -iq '^Cache-Control: public, max-age=31536000, immutable' "$RUNNER_TEMP/headers"
           grep -Fq '.search-submit' "$RUNNER_TEMP/bundle.css"
           grep -Fq -- '--at-shell:1180px' "$RUNNER_TEMP/bundle.css"
+          grep -Fq '.at-global-header' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Production guard for the legacy search-header markup' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Search-page footer rhythm guard' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Search-header compatibility layer' "$RUNNER_TEMP/bundle.css"
