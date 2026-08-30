@@ -6,6 +6,9 @@ on:
     paths:
       - 'v2/site-page-v1.css'
       - 'v2/site-page-shell-v1.php'
+      - 'v2/shared-content-primitives-v1.css'
+      - 'v2/editorial-rhythm-v1.css'
+      - 'v2/site-shell-alignment-v1.css'
       - 'v2/home-v1.php'
       - 'v2/home-v1.css'
       - 'v2/home-journey-v1.css'
