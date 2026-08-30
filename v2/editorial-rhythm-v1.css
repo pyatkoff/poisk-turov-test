@@ -3,8 +3,6 @@
 .sp-main>section,.sp-main>div{margin-top:0!important}
 .sp-main>section:has(.sp-section-head){display:grid;gap:18px}
 .sp-main>section>.sp-section-head{margin-bottom:0}
-.sp-main>.sp-card+.sp-card{margin-top:-8px!important}
-.sp-main>.sp-card.sp-search-callout{margin-top:2px!important}
 .sp-section-head{align-items:start}
 .sp-section-head h2{max-width:620px}
 .sp-section-head p{font-size:15px}
@@ -15,4 +13,4 @@
 .sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:var(--at-copy-measure,74ch)}
 .sp-actions{margin-top:24px}
 @media(max-width:768px){.sp-main>section:has(.sp-section-head){gap:15px}.sp-section-head p{font-size:14px}.sp-steps{gap:12px}.sp-step{min-height:0}.sp-purchase-flow{grid-template-columns:1fr}}
-@media(max-width:560px){.sp-main>.sp-card+.sp-card{margin-top:-2px!important}.sp-main>.sp-card.sp-search-callout{margin-top:0!important}.sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:none}.sp-actions{margin-top:20px}.sp-grid--balanced-two{grid-template-columns:1fr}}
+@media(max-width:560px){.sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:none}.sp-actions{margin-top:20px}.sp-grid--balanced-two{grid-template-columns:1fr}}
