@@ -1,0 +1,28 @@
+(function(){'use strict';
+const form=document.getElementById('tourSearch');if(!form)return;
+const hotelSelect=form.elements.hotel;if(!hotelSelect||hotelSelect.tagName!=='SELECT')return;
+const field=hotelSelect.closest('.field');if(!field)return;
+const mainFields=form.querySelector('.main-fields'),countryField=form.elements.country&&form.elements.country.closest('.field');
+field.classList.add('field-wide','hotel-autocomplete-field');
+if(mainFields){if(countryField&&countryField.parentElement===mainFields)countryField.insertAdjacentElement('afterend',field);else mainFields.appendChild(field);}
+hotelSelect.hidden=true;hotelSelect.setAttribute('aria-hidden','true');hotelSelect.tabIndex=-1;
+const label=field.querySelector(':scope > span');if(label)label.textContent='Отель (необязательно)';
+const box=document.createElement('div');box.className='hotel-autocomplete';box.innerHTML='<input type="search" data-v2-hotel-query autocomplete="off" placeholder="Например Rixos Premium Belek" aria-label="Отель, если знаете название" aria-autocomplete="list" aria-controls="hotelAutocompleteList"><div id="hotelAutocompleteList" class="hotel-autocomplete__list" role="listbox" hidden></div>';
+hotelSelect.insertAdjacentElement('afterend',box);
+const input=box.querySelector('[data-v2-hotel-query]'),list=box.querySelector('#hotelAutocompleteList');
+const endpoint=(window.V2_CONFIG&&window.V2_CONFIG.hotelSearchApi)||'/data/hotel-search-v1.php';let timer=0,controller=null,items=[];
+function clearList(){items=[];list.innerHTML='';list.hidden=true;input.setAttribute('aria-expanded','false');}
+function clearSelection(emit){const had=!!hotelSelect.value;hotelSelect.value='';input.value='';delete input.dataset.selectedHotelId;delete input.dataset.selectedHotelName;if(emit&&had)hotelSelect.dispatchEvent(new Event('change',{bubbles:true}));}
+function meta(item){const bits=[];if(item.region&&item.region.name)bits.push(item.region.name);if(item.subRegion&&item.subRegion.name)bits.push(item.subRegion.name);if(item.category)bits.push(item.category+'★');if(item.rating)bits.push('рейтинг '+item.rating);return bits.join(' · ');}
+function ensureOption(item){const id=String(item.id);let option=Array.from(hotelSelect.options||[]).find(o=>String(o.value)===id);if(!option){option=document.createElement('option');option.value=id;hotelSelect.appendChild(option);}option.textContent=item.name;return option;}
+function choose(item){ensureOption(item);hotelSelect.value=String(item.id);input.value=item.name;input.dataset.selectedHotelId=String(item.id);input.dataset.selectedHotelName=item.name;clearList();hotelSelect.dispatchEvent(new Event('change',{bubbles:true}));input.focus();}
+function render(rows){items=Array.isArray(rows)?rows:[];list.innerHTML='';if(!items.length){list.innerHTML='<div class="hotel-autocomplete__empty">Отели не найдены</div>';list.hidden=false;input.setAttribute('aria-expanded','true');return;}items.forEach((item,i)=>{const b=document.createElement('button');b.type='button';b.className='hotel-autocomplete__option';b.setAttribute('role','option');b.id='hotelAutocompleteOption'+i;const m=meta(item);b.innerHTML='<strong></strong>'+(m?'<span></span>':'');b.querySelector('strong').textContent=item.name;if(m)b.querySelector('span').textContent=m;b.addEventListener('mousedown',e=>e.preventDefault());b.addEventListener('click',()=>choose(item));list.appendChild(b);});list.hidden=false;input.setAttribute('aria-expanded','true');}
+async function search(){const q=input.value.trim();if(q.length<2){clearList();return;}if(controller)controller.abort();controller=new AbortController();const country=form.elements.country?String(form.elements.country.value||''):'';const region=form.elements.region?String(form.elements.region.value||''):'';const qs=new URLSearchParams({q,limit:'10'});if(country)qs.set('countryId',country);if(region)qs.set('regionId',region);try{const r=await fetch(endpoint+'?'+qs.toString(),{signal:controller.signal,credentials:'same-origin'});if(!r.ok)throw new Error('hotel catalog '+r.status);const d=await r.json();render(d.items||[]);}catch(e){if(e.name!=='AbortError'){clearList();console.warn('hotel autocomplete',e);}}}
+input.setAttribute('aria-expanded','false');
+input.addEventListener('input',()=>{if(input.dataset.selectedHotelId&&input.value!==input.dataset.selectedHotelName){hotelSelect.value='';delete input.dataset.selectedHotelId;delete input.dataset.selectedHotelName;hotelSelect.dispatchEvent(new Event('change',{bubbles:true}));}clearTimeout(timer);timer=setTimeout(search,180);});
+input.addEventListener('keydown',e=>{if(e.key==='Escape'){clearList();return;}if(e.key==='Enter'&&items.length&&!list.hidden){e.preventDefault();choose(items[0]);}});
+input.addEventListener('blur',()=>setTimeout(clearList,150));
+hotelSelect.addEventListener('change',()=>{if(!hotelSelect.value&&input.dataset.selectedHotelId){input.value='';delete input.dataset.selectedHotelId;delete input.dataset.selectedHotelName;}});
+form.addEventListener('change',e=>{if(!e.target)return;if(['country','region','subregion'].includes(e.target.name)&&input.dataset.selectedHotelId)clearSelection(false);});
+window.addEventListener('v2:hotel-selected',e=>{const d=e.detail||{};if(!d.id)return;choose({id:d.id,name:String(d.name||('Отель #'+d.id)),region:d.region||null,subRegion:d.subRegion||null,category:d.category||null,rating:d.rating||null});});
+})();
