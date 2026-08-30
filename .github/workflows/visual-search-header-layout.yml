@@ -77,7 +77,7 @@ jobs:
               if(width>=901){
                 bad ||= !close(state.header.height,78,2) || !state.navWrap || state.navWrap.display==='none' || !state.nav || state.nav.display==='none' || !close(state.navWrap.top,state.header.top,2) || !close(state.navWrap.bottom,state.header.bottom,2) || state.logo.top<state.header.top-1 || state.logo.bottom>state.header.bottom+1 || !state.order || state.order.top<state.header.top-1 || state.order.bottom>state.header.bottom+1 || (state.mobile&&state.mobile.display!=='none');
               } else {
-                bad ||= state.navWrap?.display!=='none' || !state.mobile || state.mobile.display==='none' || state.logo.top<state.header.top-1 || state.logo.bottom>state.header.bottom+1 || state.mobile.left<=state.logo.right || state.mobile.right>state.header.right+1;
+                bad ||= state.navWrap?.display!=='none' || !state.mobile || state.mobile.display==='none' || !state.phone || state.phone.display==='none' || state.logo.top<state.header.top-1 || state.logo.bottom>state.header.bottom+1 || state.mobile.left<=state.logo.right || state.mobile.right>state.header.right+1 || state.phone.left<=state.logo.right+4 || state.phone.right>=state.mobile.left-4;
               }
               report.push({name,width,http:response?.status()||0,errors,state,bad}); if(bad)failed=true;
               console.log(name,JSON.stringify({bad,state})); await context.close();
