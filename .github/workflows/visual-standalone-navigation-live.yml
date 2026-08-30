@@ -32,11 +32,11 @@ jobs:
             ['desktop-1440',1440,1000],
           ];
           const pages = [
-            ['home','https://anytoour.ru/','shared'],
-            ['search','https://anytoour.ru/poisk-turov/','search-legacy'],
-            ['hot','https://anytoour.ru/hot/','shared'],
-            ['country','https://anytoour.ru/country/','shared'],
-            ['contacts','https://anytoour.ru/contacts/','shared'],
+            ['home','https://anytoour.ru/'],
+            ['search','https://anytoour.ru/poisk-turov/'],
+            ['hot','https://anytoour.ru/hot/'],
+            ['country','https://anytoour.ru/country/'],
+            ['contacts','https://anytoour.ru/contacts/'],
           ];
           const isVisible = async locator => {
             if(await locator.count()!==1) return false;
@@ -46,44 +46,38 @@ jobs:
             const browser=await chromium.launch({headless:true});
             try{
               for(const [vp,w,h] of cases){
-                for(const [name,url,kind] of pages){
+                for(const [name,url] of pages){
                   const context=await browser.newContext({viewport:{width:w,height:h},ignoreHTTPSErrors:true});
                   const page=await context.newPage();
                   const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
                   if(!response||response.status()!==200) throw new Error(`${vp}/${name}: HTTP ${response&&response.status()}`);
-                  if(kind==='shared'){
-                    await page.waitForSelector('.at-global-header',{timeout:15000});
-                    const headers=await page.locator('.at-global-header').count();
-                    if(headers!==1) throw new Error(`${vp}/${name}: shared header count ${headers}`);
-                    const desktopNav=page.locator('.at-global-header__nav');
-                    const mobileMenu=page.locator('.at-global-header__mobile');
-                    if(w<=1024){
-                      if(await isVisible(desktopNav)) throw new Error(`${vp}/${name}: desktop nav should be hidden`);
-                      if(!(await isVisible(mobileMenu))) throw new Error(`${vp}/${name}: mobile menu missing`);
-                      await mobileMenu.locator('summary').click();
-                      const panel=mobileMenu.locator('.at-global-header__mobile-panel');
-                      if(!(await isVisible(panel))) throw new Error(`${vp}/${name}: mobile panel did not open`);
-                      const links=await panel.locator('a').evaluateAll(as=>as.map(a=>({href:a.getAttribute('href'),text:(a.textContent||'').trim()})));
-                      if(!links.some(x=>x.href==='/rb/'&&x.text.includes('Раннее'))) throw new Error(`${vp}/${name}: early-booking link missing in mobile menu`);
-                      if(!links.some(x=>x.href==='/how-to-buy/'&&x.text.includes('Как купить'))) throw new Error(`${vp}/${name}: purchase-guide link missing in mobile menu`);
-                    }else{
-                      if(!(await isVisible(desktopNav))) throw new Error(`${vp}/${name}: desktop nav hidden`);
-                      if(await isVisible(mobileMenu)) throw new Error(`${vp}/${name}: mobile menu should be hidden`);
-                      const links=await desktopNav.locator('a').evaluateAll(as=>as.map(a=>({href:a.getAttribute('href'),text:(a.textContent||'').trim()})));
-                      if(!links.some(x=>x.href==='/rb/'&&x.text.includes('Раннее'))) throw new Error(`${vp}/${name}: early-booking link missing in desktop nav`);
-                      if(!links.some(x=>x.href==='/how-to-buy/'&&x.text.includes('Как купить'))) throw new Error(`${vp}/${name}: purchase-guide link missing in desktop nav`);
-                    }
+                  await page.waitForSelector('.at-global-header',{timeout:15000});
+                  const headers=await page.locator('.at-global-header').count();
+                  const legacyHeaders=await page.locator('.at-site-header').count();
+                  if(headers!==1||legacyHeaders!==0) throw new Error(`${vp}/${name}: shared/legacy header count ${headers}/${legacyHeaders}`);
+                  const desktopNav=page.locator('.at-global-header__nav');
+                  const mobileMenu=page.locator('.at-global-header__mobile');
+                  if(w<=1024){
+                    if(await isVisible(desktopNav)) throw new Error(`${vp}/${name}: desktop nav should be hidden`);
+                    if(!(await isVisible(mobileMenu))) throw new Error(`${vp}/${name}: mobile menu missing`);
+                    await mobileMenu.locator('summary').click();
+                    const panel=mobileMenu.locator('.at-global-header__mobile-panel');
+                    if(!(await isVisible(panel))) throw new Error(`${vp}/${name}: mobile panel did not open`);
+                    const links=await panel.locator('a').evaluateAll(as=>as.map(a=>({href:a.getAttribute('href'),text:(a.textContent||'').trim(),current:a.getAttribute('aria-current')})));
+                    if(!links.some(x=>x.href==='/rb/'&&x.text.includes('Раннее'))) throw new Error(`${vp}/${name}: early-booking link missing in mobile menu`);
+                    if(!links.some(x=>x.href==='/how-to-buy/'&&x.text.includes('Как купить'))) throw new Error(`${vp}/${name}: purchase-guide link missing in mobile menu`);
+                    if(name==='search'&&!links.some(x=>x.href==='/poisk-turov/'&&x.current==='page')) throw new Error(`${vp}/${name}: current search state missing in mobile menu`);
                   }else{
-                    await page.waitForSelector('.at-site-header',{timeout:15000});
-                    const headers=await page.locator('.at-site-header').count();
-                    if(headers!==1) throw new Error(`${vp}/${name}: search header count ${headers}`);
-                    const links=await page.locator('.at-site-header a').evaluateAll(as=>as.map(a=>({href:a.getAttribute('href'),text:(a.textContent||'').trim()})));
-                    if(!links.some(x=>x.href==='/rb/'&&x.text.includes('Раннее'))) throw new Error(`${vp}/${name}: early-booking link missing`);
-                    if(!links.some(x=>x.href==='/country/'&&x.text.includes('стран'))) throw new Error(`${vp}/${name}: country link missing`);
+                    if(!(await isVisible(desktopNav))) throw new Error(`${vp}/${name}: desktop nav hidden`);
+                    if(await isVisible(mobileMenu)) throw new Error(`${vp}/${name}: mobile menu should be hidden`);
+                    const links=await desktopNav.locator('a').evaluateAll(as=>as.map(a=>({href:a.getAttribute('href'),text:(a.textContent||'').trim(),current:a.getAttribute('aria-current')})));
+                    if(!links.some(x=>x.href==='/rb/'&&x.text.includes('Раннее'))) throw new Error(`${vp}/${name}: early-booking link missing in desktop nav`);
+                    if(!links.some(x=>x.href==='/how-to-buy/'&&x.text.includes('Как купить'))) throw new Error(`${vp}/${name}: purchase-guide link missing in desktop nav`);
+                    if(name==='search'&&!links.some(x=>x.href==='/poisk-turov/'&&x.current==='page')) throw new Error(`${vp}/${name}: current search state missing in desktop nav`);
                   }
                   const pageOverflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2);
                   if(pageOverflow) throw new Error(`${vp}/${name}: page horizontal overflow`);
-                  console.log('NAV_OK',vp,name,kind);
+                  console.log('NAV_OK',vp,name,'shared');
                   await context.close();
                 }
               }
