@@ -85,7 +85,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
     </div>
   </section>
 </main>
-<?php v2_render_site_footer($homePhone, $homePhoneHref); v2_render_standalone_canonical_footer(); ?>
+<?php v2_render_site_footer($homePhone, $homePhoneHref); ?>
 <script>
 (function(){
   const dep=document.querySelector('[data-home-departures]'),country=document.querySelector('[data-home-countries]');
