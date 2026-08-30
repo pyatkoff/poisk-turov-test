@@ -1,33 +1,39 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T09:44:00+02:00",
-  "mode": "technical_refactor_pass",
-  "phase": "Owner-approved technical refactor first, then UX/visual. Production, lead-loss, incorrect-data and broken-user-journey defects still preempt planned refactor work. Recent Design System releases remain part of the green production baseline but do not change the current execution priority.",
+  "updated_at": "2026-08-30T11:03:00+02:00",
+  "mode": "design_system_1_sitewide_unification",
+  "phase": "Explicit owner direction makes AnyTour Design System 1.0 and whole-site visual unification Priority #1. Do not confuse the mature search-product engineering score with public-site coherence. Production, lead-loss and incorrect-data defects still preempt planned visual work.",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "technical_refactor_before_ux_visual",
-    "rule": "Do not switch back to visual-first from autonomous state refreshes or successful visual releases. Change only on explicit owner direction or emergency priority override."
+    "planned_phase": "design_system_1_sitewide_visual_unification",
+    "rule": "Keep Design System 1.0/site-wide visual unification first until the owner explicitly changes priority. Technical refactor continues only as supporting work or when it removes a concrete blocker."
+  },
+  "scores": {
+    "whole_public_site_coherence_baseline": 6.5,
+    "search_product_reference": 8.75,
+    "rule": "Whole-site score may move only after representative production visual evidence; never inherit search-only scores."
   },
   "target": {
-    "developer_ergonomics": 8.5,
-    "first_sitewide_gate": 8.5,
-    "next_sitewide_gate": 9.0
+    "first_sitewide_gate": 8.0,
+    "next_sitewide_gate": 8.5,
+    "design_system_goal": "one coherent product from homepage through destination/search/results/tour/lead"
   },
   "current_task": {
-    "id": "TECHNICAL_REFACTOR_PASS",
-    "category": "TECH_DEBT_QA_ARCHITECTURE",
+    "id": "DESIGN_SYSTEM_1_SITEWIDE_UNIFICATION",
+    "category": "VISUAL_UX_PRODUCT_SHELL",
     "status": "ACTIVE",
-    "progress": "Canonical ARCHITECTURE.md, TEST_MATRIX.md and CODEX_QUEUE.md exist. PR #316 extracted lead idempotency/price checks into reusable scripts/ci/lead diagnostics. CI audit has verified search/results/comparison, rooms/flights/price and lead families in part. PR #323 corrected active manifest inventory/removal gates. Recent visual PRs #325/#326 remain production-green but are now baseline rather than the primary roadmap.",
-    "next_action": "Execute CODEX_QUEUE C1: finish exhaustive CI workflow inventory. Then C2 dependency generations map, C3 reusable live-search bootstrap, and only after C1/C2 consider controlled nested asset ownership."
+    "progress": "Shared editorial rhythm and content tokens are production baseline from PRs #325/#326. PR #330 unifies section-heading, copy, surface/card and action geometry between the homepage and shell-based editorial pages through one final shared-content primitive layer; pre-merge standalone/search/selected-tour/security/browser regressions are green and production verification is the current release gate.",
+    "next_action": "After PR #330 production five-width evidence, audit shared header/footer wrapping and density across /, /poisk-turov/, /hot/, /contacts/, /how-to-buy/, /rb/, /country/ and representative countries; fix the weakest confirmed cross-page inconsistency, then continue through destination → search → results → selected tour → lead continuity."
   },
   "work_order": [
-    "C1 finish exhaustive CI/workflow inventory and classify all remaining guards",
-    "C2 build evidence-backed ACTIVE/COMPATIBILITY/DEPRECATED/DEAD-CANDIDATE dependency generations map",
-    "C3 extract reusable live-search bootstrap only after C1 confirms compatible consumers",
-    "reduce duplicated deterministic CI/setup through scripts/ci without weakening behavioral coverage",
-    "enable controlled module/folder ownership only after dependency evidence; no mass runtime moves",
-    "resume shared-shell UX/visual unification after technical refactor gate, unless a production journey defect preempts it"
+    "verify PR #330 production deploy and 375/430/768/1024/1440 evidence",
+    "audit and unify shared header/navigation active state, wrapping and geometry across public/search pages",
+    "audit shared footer/community density, wrapping and spacing across all public page families",
+    "continue shared typography, section, card, button and breadcrumb primitives where page-specific drift remains",
+    "audit representative country and hot pages against homepage/search visual language",
+    "verify end-to-end homepage → destination/hot → search → results → selected tour → lead visual continuity",
+    "run technical refactor only where it directly supports safer Design System migration or after the visual gate"
   ],
   "required_viewports": [375, 430, 768, 1024, 1440],
   "protected": {
@@ -39,6 +45,7 @@
     "analytics_contract": "PRESERVE",
     "tourvisor_contract": "PRESERVE",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
+    "verified_social_app_destinations": "PRESERVE",
     "server_platform_architecture": "HIGH_RISK_REQUIRES_EXPLICIT_REVIEW",
     "legal_payment_migration": "DEFER_UNTIL_RECONCILED",
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
@@ -46,25 +53,25 @@
   "deferred": [
     {
       "scope": "/poisk-turov/ full shared-header component migration",
-      "reason": "Wait for atomic extraction path and equivalent browser coverage; visual compatibility fixes are not the current planned phase."
+      "reason": "Keep compatibility-layer approach until an atomic swap has equivalent browser coverage."
     },
     {
       "scope": "public SEO indexing/sitemap promotion",
-      "reason": "Requires deliberate publication contract and reviewed content after the current technical refactor foundation."
+      "reason": "Requires deliberate publication/indexing contract; not part of visual unification."
     },
     {
       "scope": "legal/payment route migration",
-      "reason": "Legacy legal/payment content/requisites are not reconciled."
+      "reason": "Legacy legal/payment content/requisites are unresolved."
     },
     {
       "scope": "PR #254",
-      "reason": "Separate DB/platform architecture; do not auto-merge without a fresh safety review."
+      "reason": "Separate DB/platform architecture; keep deferred without fresh safety review."
     }
   ],
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_refactor",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_sitewide_visual > supporting_technical_refactor > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_technical_refactor_slice",
+    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
     "on_blocker": "record_blocker_and_continue_independent_safe_work",
     "on_visual_change": "validate_375_430_768_1024_1440_before_advancing",
     "one_concept_one_implementation": true,
