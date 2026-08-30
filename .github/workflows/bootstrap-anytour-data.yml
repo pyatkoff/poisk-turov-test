@@ -1,5 +1,6 @@
 name: Bootstrap AnyTour data database
 
+# Idempotent production schema bootstrap for the private AnyTour data database.
 on:
   push:
     branches: [main]
