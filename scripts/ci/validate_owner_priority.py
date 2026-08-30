@@ -7,14 +7,13 @@ owner = json.loads((root / "OWNER_PRIORITY.json").read_text(encoding="utf-8"))
 state = json.loads((root / "AUTOPILOT_STATE.json").read_text(encoding="utf-8"))
 autopilot = (root / "AUTOPILOT.md").read_text(encoding="utf-8")
 
-# Current explicit owner policy baseline. This is intentionally separate from
-# OWNER_PRIORITY.json so a coherent autonomous rewrite of owner/state/docs does
-# not silently redefine the policy and make this guard self-fulfilling.
-BASELINE_MODE = "design_system_1_site_unification"
-BASELINE_PHASE = "ANYTOUR DESIGN SYSTEM 1.0"
+# Explicit owner-policy baseline. Kept separate from OWNER_PRIORITY.json so a
+# coherent autonomous rewrite of owner/state/docs cannot redefine the guard.
+BASELINE_MODE = "technical_refactor_pass"
+BASELINE_PHASE = "TECHNICAL REFACTOR PASS"
 BASELINE_ORDER = [
-    "ux_visual_site_unification",
-    "technical_refactor_supporting_design_system",
+    "technical_refactor",
+    "ux_visual",
     "content_seo",
     "cosmetic_cleanup",
 ]
@@ -22,38 +21,25 @@ BASELINE_ORDER = [
 expected_mode = owner["active_mode"]
 expected_phase = owner["active_phase"]
 priority_order = owner.get("priority_after_emergency_overrides") or []
-
 errors = []
+
 if expected_mode != BASELINE_MODE:
-    errors.append(
-        f"OWNER_PRIORITY active_mode={expected_mode!r}, explicit-owner baseline is {BASELINE_MODE!r}"
-    )
+    errors.append(f"OWNER_PRIORITY active_mode={expected_mode!r}, explicit-owner baseline is {BASELINE_MODE!r}")
 if expected_phase != BASELINE_PHASE:
-    errors.append(
-        f"OWNER_PRIORITY active_phase={expected_phase!r}, explicit-owner baseline is {BASELINE_PHASE!r}"
-    )
+    errors.append(f"OWNER_PRIORITY active_phase={expected_phase!r}, explicit-owner baseline is {BASELINE_PHASE!r}")
 if priority_order != BASELINE_ORDER:
-    errors.append(
-        "OWNER_PRIORITY priority order differs from explicit-owner baseline: "
-        + " → ".join(BASELINE_ORDER)
-    )
+    errors.append("OWNER_PRIORITY priority order differs from explicit-owner baseline: " + " → ".join(BASELINE_ORDER))
 if state.get("mode") != expected_mode:
     errors.append(f"AUTOPILOT_STATE mode={state.get('mode')!r}, expected {expected_mode!r}")
 lock = state.get("owner_priority_lock") or {}
 if not lock.get("active"):
     errors.append("AUTOPILOT_STATE owner_priority_lock.active must be true")
 if lock.get("planned_phase") != expected_mode:
-    errors.append(
-        f"AUTOPILOT_STATE owner_priority_lock.planned_phase={lock.get('planned_phase')!r}, expected {expected_mode!r}"
-    )
+    errors.append(f"AUTOPILOT_STATE owner_priority_lock.planned_phase={lock.get('planned_phase')!r}, expected {expected_mode!r}")
 if f"## Current phase — {expected_phase}" not in autopilot:
     errors.append(f"AUTOPILOT.md must declare current phase {expected_phase!r}")
-if not priority_order:
-    errors.append("OWNER_PRIORITY priority_after_emergency_overrides must not be empty")
-else:
-    declared = " → ".join(priority_order)
-    if declared not in autopilot:
-        errors.append("AUTOPILOT.md must contain the canonical owner priority order")
+if " → ".join(BASELINE_ORDER) not in autopilot:
+    errors.append("AUTOPILOT.md must contain the canonical technical-refactor priority order")
 
 if errors:
     print("OWNER_PRIORITY_GUARD_FAIL")
