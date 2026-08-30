@@ -4,8 +4,11 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'v2/design-system-v1.css'
+      - 'v2/site-header-v2.css'
       - 'v2/header-current-site.css'
       - 'v2/search-header-layout-guard-v1.css'
+      - 'v2/search-header-shared-shell-v1.css'
       - 'v2/bundle-manifest-v1.php'
       - '.github/workflows/visual-search-header-layout.yml'
   workflow_dispatch:
@@ -35,6 +38,7 @@ jobs:
           test -s "$RUNNER_TEMP/branch-bundle.css"
           test -s "$RUNNER_TEMP/branch-bundle.js"
           grep -Fq 'search-header-layout-guard-v1.css' "$RUNNER_TEMP/branch-bundle.css"
+          grep -Fq -- '--at-header-height:78px' "$RUNNER_TEMP/branch-bundle.css"
       - name: Verify one-row desktop header and mobile collapse
         shell: bash
         env:
@@ -51,6 +55,7 @@ jobs:
           const js=fs.readFileSync(process.env.BRANCH_JS);
           const sizes=[['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000]];
           const close=(a,b,t=3)=>Math.abs(a-b)<=t;
+          const center=e=>(e.top+e.bottom)/2;
           const isPainted=s=>s&&s!=='transparent'&&s!=='rgba(0, 0, 0, 0)';
           (async()=>{
             const browser=await chromium.launch({headless:true}); let failed=false; const report=[];
@@ -72,14 +77,16 @@ jobs:
               const state=await page.evaluate(()=>{
                 const r=e=>e?(()=>{const x=e.getBoundingClientRect();return {top:x.top,bottom:x.bottom,left:x.left,right:x.right,width:x.width,height:x.height,display:getComputedStyle(e).display,position:getComputedStyle(e).position}})():null;
                 const painted=e=>e?(()=>{const s=getComputedStyle(e);return {background:s.backgroundColor,color:s.color}})():null;
-                return {header:r(document.querySelector('.at-site-header')),top:r(document.querySelector('.at-site-header__top')),navWrap:r(document.querySelector('.at-site-nav-wrap')),nav:r(document.querySelector('.at-site-nav')),logo:r(document.querySelector('.at-site-logo')),phone:r(document.querySelector('.at-site-phone')),order:r(document.querySelector('.at-site-order')),mobile:r(document.querySelector('.at-mobile-menu-wrap')),currentDesktop:painted(document.querySelector('.at-site-nav>ul>li>a[href="/poisk-turov/"]')),currentMobile:painted(document.querySelector('.at-mobile-menu a[href="/poisk-turov/"]')),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2};
+                const root=getComputedStyle(document.documentElement);
+                return {header:r(document.querySelector('.at-site-header')),top:r(document.querySelector('.at-site-header__top')),navWrap:r(document.querySelector('.at-site-nav-wrap')),nav:r(document.querySelector('.at-site-nav')),logo:r(document.querySelector('.at-site-logo')),phone:r(document.querySelector('.at-site-phone')),order:r(document.querySelector('.at-site-order')),mobile:r(document.querySelector('.at-mobile-menu-wrap')),currentDesktop:painted(document.querySelector('.at-site-nav>ul>li>a[href="/poisk-turov/"]')),currentMobile:painted(document.querySelector('.at-mobile-menu a[href="/poisk-turov/"]')),tokens:{desktop:root.getPropertyValue('--at-header-height').trim(),mobile:root.getPropertyValue('--at-header-mobile-height').trim(),compact:root.getPropertyValue('--at-header-compact-height').trim()},overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2};
               });
               await page.screenshot({path:`header-layout-artifacts/${name}.png`,fullPage:false,animations:'disabled'});
-              let bad=!response||response.status()!==200||errors.length||state.overflow||!state.header||!state.logo;
+              let bad=!response||response.status()!==200||errors.length||state.overflow||!state.header||!state.logo||state.tokens.desktop!=='78px'||state.tokens.mobile!=='68px'||state.tokens.compact!=='64px';
               if(width>=901){
-                bad ||= !state.currentDesktop || !isPainted(state.currentDesktop.background) || !close(state.header.height,78,2) || !state.navWrap || state.navWrap.display==='none' || !state.nav || state.nav.display==='none' || !close(state.navWrap.top,state.header.top,2) || !close(state.navWrap.bottom,state.header.bottom,2) || state.logo.top<state.header.top-1 || state.logo.bottom>state.header.bottom+1 || !state.order || state.order.top<state.header.top-1 || state.order.bottom>state.header.bottom+1 || (state.mobile&&state.mobile.display!=='none');
+                bad ||= !state.currentDesktop || !isPainted(state.currentDesktop.background) || !close(state.header.height,78,2) || !state.navWrap || state.navWrap.display==='none' || !state.nav || state.nav.display==='none' || !close(state.navWrap.top,state.header.top,2) || !close(state.navWrap.bottom,state.header.bottom,2) || state.logo.top<state.header.top-1 || state.logo.bottom>state.header.bottom+1 || !state.order || state.order.top<state.header.top-1 || state.order.bottom>state.header.bottom+1 || !close(center(state.logo),center(state.header),2) || !close(center(state.phone),center(state.header),2) || !close(center(state.order),center(state.header),2) || (state.mobile&&state.mobile.display!=='none');
               } else {
-                bad ||= !state.currentMobile || !isPainted(state.currentMobile.background) || state.navWrap?.display!=='none' || !state.mobile || state.mobile.display==='none' || !state.phone || state.phone.display==='none' || state.logo.top<state.header.top-1 || state.logo.bottom>state.header.bottom+1 || state.mobile.left<=state.logo.right || state.mobile.right>state.header.right+1 || state.phone.left<=state.logo.right+4 || state.phone.right>=state.mobile.left-4;
+                const expectedHeight=width<=520?64:68;
+                bad ||= !state.currentMobile || !isPainted(state.currentMobile.background) || !close(state.header.height,expectedHeight,2) || state.navWrap?.display!=='none' || !state.mobile || state.mobile.display==='none' || !state.phone || state.phone.display==='none' || state.logo.top<state.header.top-1 || state.logo.bottom>state.header.bottom+1 || state.mobile.left<=state.logo.right || state.mobile.right>state.header.right+1 || state.phone.left<=state.logo.right+4 || state.phone.right>=state.mobile.left-4 || !close(center(state.logo),center(state.header),2) || !close(center(state.phone),center(state.header),2) || !close(center(state.mobile),center(state.header),2);
               }
               report.push({name,width,http:response?.status()||0,errors,state,bad}); if(bad)failed=true;
               console.log(name,JSON.stringify({bad,state})); await context.close();
