@@ -1,15 +1,17 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T15:58:00+02:00",
-  "mode": "anytour_design_system_1_0",
-  "phase": "Owner-directed site-wide visual unification across homepage, editorial/destination pages, hot/search, results, selected tour and lead journey while preserving mature search regressions and protected external contracts.",
+  "updated_at": "2026-08-30T16:45:00+02:00",
+  "mode": "technical_refactor_pass",
+  "phase": "Owner-directed technical refactor pass: canonical architecture/source of truth, dependency inventory, exhaustive CI classification, safe directory ownership preparation, then shared-template consolidation before UX/visual work.",
+  "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "anytour_design_system_1_0",
-    "rule": "Keep Design System 1.0 as autonomous priority after emergency overrides unless the owner explicitly changes direction again."
+    "planned_phase": "technical_refactor_pass",
+    "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Successful visual releases, score changes, autonomous state refreshes or unrelated PRs must not change this phase."
   },
   "source_of_truth": {
+    "owner_priority": "OWNER_PRIORITY.json",
     "architecture": "ARCHITECTURE.md",
     "test_policy": "TEST_MATRIX.md",
     "dependency_inventory": "DEPENDENCY_MAP.md",
@@ -18,24 +20,20 @@
     "product_roadmap": "PRODUCT_ROADMAP.md"
   },
   "current_task": {
-    "id": "DESIGN_SYSTEM_COUNTRY_FACTS_BALANCE_V1",
-    "category": "VISUAL_UX_EDITORIAL_SYSTEM",
-    "status": "PR_PREPARATION",
-    "progress": "PR #355 balanced both three-card /hot/ grids using the shared balanced-three primitive and merged after all PR checks passed. Current follow-up applies the same primitive to representative-country fact cards, removing their 2+1 tablet/intermediate-width imbalance. AUTOPILOT priority was restored to the owner's latest explicit Design System 1.0 direction after temporary technical-refactor state drift.",
-    "next_action": "Finish PR checks for the country-fact slice; merge/deploy if green, verify #355 and the country pages live, then audit homepage-country-hot/search continuity and remaining shared-shell mismatches at 375/430/768/1024/1440."
-  },
-  "site_wide_score": {
-    "owner_baseline": 6.5,
-    "current_estimate": 6.7,
-    "status": "MODEST_CONFIRMED_MOVEMENT",
-    "note": "Whole-site coherence score, not a search-only engineering score. Keep conservative until the broader country/hot/home continuity slices are production-verified."
+    "id": "TECHNICAL_REFACTOR_CI_INVENTORY",
+    "category": "TECH_DEBT_ARCHITECTURE_CI",
+    "status": "ACTIVE",
+    "progress": "Canonical owner-priority guard is being added after repeated autonomous Design System resume-point drift. Runtime/operations CI batch is already audited. Pending/unpriced, rooms/flights, search/results/recovery and lead audit companions provide partial family coverage.",
+    "next_action": "Finish exhaustive GitHub Actions inventory across remaining mobile/UI, live journey/content/catalog/search/tour, SEO/content, visual production and deploy/feed/runtime families; record explicit PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE tier and disposition before consolidation."
   },
   "work_order": [
-    "verify PR #355 production/live and finish representative-country fact-grid balancing",
-    "audit homepage to country directory to representative country to hot/search visual continuity at 375 430 768 1024 1440",
-    "inspect contacts how-to-buy rb and hot for remaining confirmed header footer breadcrumb spacing or hierarchy mismatches",
-    "consolidate remaining duplicated editorial geometry into shared primitives only where multiple consumers justify it",
-    "keep mature search recovery results comparison flight price fuel lead regressions green"
+    "finish exhaustive CI workflow inventory and tier classification without deleting coverage",
+    "finish dependency map for non-manifest JS CSS PHP endpoints helpers and deploy consumers",
+    "define safe directory ownership migration plan and v2_asset subdirectory prerequisite",
+    "extract only proven duplicate CI bootstrap while preserving distinct behavioral verdicts",
+    "migrate low-risk implementation families toward canonical ownership one at a time",
+    "consolidate one header one footer one navigation one design system after consumer mapping",
+    "return to UX and visual phase after technical consolidation"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -53,9 +51,11 @@
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_site_wide_visual_unification > supporting_technical_consolidation > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
-    "on_blocker": "record_blocker_and_continue_independent_safe_work"
+    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
+    "on_blocker": "record_blocker_and_continue_independent_safe_work",
+    "one_concept_one_implementation": true,
+    "delete_guard_only_after_equivalent_coverage": true
   }
 }
