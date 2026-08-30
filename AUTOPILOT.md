@@ -2,43 +2,35 @@
 
 Updated: 2026-08-31
 
-Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority lock. `AUTOPILOT_STATE.json` is the machine-readable resume point. Technical sources of truth are:
+Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority lock. `AUTOPILOT_STATE.json` is the machine-readable resume point. Technical source-of-truth documents remain available for supporting refactors, but they do not override the current explicit owner priority.
 
-- `OWNER_PRIORITY.json` — explicit owner-priority lock;
-- `ARCHITECTURE.md` — canonical architecture and ownership boundaries;
-- `TEST_MATRIX.md` — canonical CI/test policy and required coverage;
-- `DEPENDENCY_MAP.md` — ACTIVE / COMPATIBILITY / DEPRECATED / DEAD inventory and dependency evidence;
-- `CI_WORKFLOW_AUDIT.md` — exhaustive GitHub Actions classification;
-- `CODEX_QUEUE.md` — narrow execution slices;
-- `PRODUCT_ROADMAP.md` — product/UX roadmap after the technical refactor phase.
+## Current phase — ANYTOUR DESIGN SYSTEM 1.0
 
-## Current phase — TECHNICAL REFACTOR PASS
-
-The owner's latest explicit direction is technical-refactor-first. Successful visual releases, autonomous state refreshes, score changes or unrelated PRs must not replace this phase. Only a new explicit owner direction may change `OWNER_PRIORITY.json`.
+The owner's latest explicit direction is whole-site visual unification. The mature search product remains the functional/UX reference, but the whole public site must be judged as one product rather than by search-only engineering quality.
 
 Canonical priority after emergency overrides:
 
-`technical_refactor → ux_visual → content_seo → cosmetic_cleanup`
+`ux_visual_site_unification → technical_refactor_supporting_design_system → content_seo → cosmetic_cleanup`
 
 Production breakage, lead loss, incorrect data and broken user journeys may preempt temporarily under `AGENTS.md`.
 
-## Refactor objectives
+## Design-system objectives
 
-1. Keep one canonical architecture/source of truth and enforce `one concept → one implementation`.
-2. Complete repository inventory/dependency mapping for ACTIVE, COMPATIBILITY, DEPRECATED and DEAD candidates before moving or deleting files.
-3. Complete GitHub Actions audit into `PR FAST`, `PR BROWSER`, `POST DEPLOY`, `SCHEDULED/LIVE`; remove duplication only after equivalent coverage is proven.
-4. Prepare safe ownership structure for `shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates` without user-visible behavior changes.
-5. Consolidate shared template ownership to one header, one footer, one navigation and one design system only after dependency and CI evidence make migrations safe.
-6. Return to UX/visual work after technical consolidation, except when emergency/user-journey regressions preempt the phase.
+1. Establish one shared AnyTour token/primitives layer for typography, spacing, surfaces, radii, controls, cards, breadcrumbs and responsive rhythm.
+2. Maintain one coherent header/navigation and one footer across `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages.
+3. Migrate weak standalone/editorial pages to the common shell without making them as dense as search/results UI.
+4. Fix confirmed crooked spacing, wrapping, overflow, duplicated shell, inconsistent hierarchy and mobile/desktop discontinuity before decorative flourishes.
+5. Preserve mature search/recovery/results/comparison/flight/price/fuel/lead regressions while aligning its outer shell.
+6. Validate visual behavior at 375, 430, 768, 1024 and 1440 px and verify production after deploy.
 
 ## Exact next work order
 
-1. Finish exhaustive `CI_WORKFLOW_AUDIT.md`, including remaining meal/visual/live/content/catalog/search/tour workflow families and explicit trigger/tier/disposition for every workflow.
-2. Finish `DEPENDENCY_MAP.md` for non-manifest JS/CSS, PHP endpoints/helpers and deploy consumers; distinguish ACTIVE/COMPATIBILITY from deletion candidates with concrete references.
-3. Define the directory ownership migration plan and prerequisites, including loader/path restrictions; do not physically move runtime assets until loaders/tests prove compatibility.
-4. Extract only proven duplicated CI/bootstrap infrastructure while preserving distinct behavioral assertions.
-5. Migrate one low-risk implementation family at a time toward canonical ownership, with regression evidence before deleting old paths.
-6. Consolidate shared template layer only after its consumers and compatibility obligations are fully mapped.
+1. Continue the page-hierarchy pass across homepage → country/destination → hot/search, starting with homepage and country layers where shell consistency is established but hierarchy still feels flatter than mature search.
+2. Normalize remaining hard-coded homepage/content geometry onto Design System 1.0 shell/gutter/spacing primitives where visual evidence shows drift.
+3. Improve country catalog and representative country-page information hierarchy without inventing unavailable prices, ratings or destination data.
+4. Audit `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/` against the same shared card/button/breadcrumb/section rhythm and fix confirmed inconsistencies.
+5. Re-run the cross-page journey audit: homepage → destination/hot → search → results → selected tour → lead at 375/430/768/1024/1440.
+6. Raise `SITE_QUALITY_SCORECARD.md` only after production visual evidence supports the movement.
 
 ## Mandatory protections
 
@@ -49,8 +41,10 @@ Do not modify without explicit approval:
 - neighboring projects;
 - server/platform architecture outside the allowed repository/deploy scope.
 
-Preserve mature search/recovery/results/comparison/flight/price/fuel/lead behavior. Do not redesign or replace the AnyTour logo. Preserve verified social/app destinations. Legal/payment migration remains deferred. PRs #248/#249/#254 are not automatic merge candidates without fresh scope-specific review.
+Preserve mature search/recovery/results/comparison/flight/price/fuel/lead behavior. Do not redesign or replace the AnyTour logo. Preserve verified social/app destinations. Legal/payment migration remains deferred. PR #254 remains deferred unless a fresh review proves its separate DB/platform architecture safe.
+
+Supporting technical sources of truth remain `ARCHITECTURE.md`, `TEST_MATRIX.md`, `DEPENDENCY_MAP.md`, `CI_WORKFLOW_AUDIT.md`, `CODEX_QUEUE.md` and `PRODUCT_ROADMAP.md`. Apply technical refactors only when they directly support the design-system migration or emergency correctness work, and retain `one concept → one implementation` where consolidation is proven safe.
 
 ## Execution policy
 
-Work in narrow independent PR-sized slices. At the start of each run inspect current `main`, open PRs and fresh CI, then choose the highest-value independent technical slice. Do not refactor for style or invent defects. Do not remove a guard or implementation until equivalent consumers/coverage are proven. If one technical item is blocked, record/defer it and continue another independent safe technical slice.
+Work in narrow independent PR-sized slices. At the start of each run inspect current `main`, fresh CI/deploy state and production evidence. Prefer shared primitives and shell fixes that improve multiple pages at once, then migrate weak pages in safe batches. Do not invent defects. If one item is blocked, record/defer it and continue another independent safe visual slice.
