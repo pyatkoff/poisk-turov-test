@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "active_mode": "technical_refactor_pass",
+  "active_phase": "TECHNICAL REFACTOR PASS",
+  "priority_after_emergency_overrides": [
+    "technical_refactor",
+    "ux_visual",
+    "content_seo",
+    "cosmetic_cleanup"
+  ],
+  "authority": "explicit owner instruction",
+  "scope": "pyatkoff/poisk-turov-test",
+  "required_sequence": [
+    "architecture_source_of_truth",
+    "inventory_dependency_map",
+    "github_actions_audit",
+    "safe_directory_ownership",
+    "shared_template_consolidation",
+    "ux_visual_after_technical_consolidation"
+  ],
+  "protected_contracts": [
+    "yandex_metrika_configuration_and_goals",
+    "external_lead_contract",
+    "tourvisor_contract",
+    "neighboring_projects"
+  ],
+  "rule": "Autonomous visual, scorecard, content or state updates must not replace this phase. Change this lock only after a new explicit owner instruction supersedes technical-refactor-first."
+}
