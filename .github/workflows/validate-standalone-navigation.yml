@@ -40,4 +40,24 @@ jobs:
           grep -Fq '.at-global-header__mobile{display:block' v2/site-header-v2.css
           grep -Fq '.at-global-header__nav,.at-global-header__cta{display:none}' v2/site-header-v2.css
           grep -Fq '.at-mobile-menu.is-open{display:block}' v2/header-current-site.css
+          php <<'PHP'
+          <?php
+          require 'v2/site-header-v2.php';
+          ob_start();
+          v2_render_site_header('8 (800) 100-61-50', '+78001006150', '/country/turkey/');
+          $html = ob_get_clean();
+          if (substr_count($html, 'href="/country/" aria-current="page"') !== 2) {
+              fwrite(STDERR, "nested country page must mark Countries in desktop and mobile navigation\n");
+              exit(1);
+          }
+          if (str_contains($html, 'href="/poisk-turov/" aria-current="page"')) {
+              fwrite(STDERR, "nested country page must not mark Search as current\n");
+              exit(2);
+          }
+          if (!v2_header_path_is_active('/country/turkey/', '/country/') || v2_header_path_is_active('/contacts/', '/country/')) {
+              fwrite(STDERR, "section active-state helper contract failed\n");
+              exit(3);
+          }
+          echo "NESTED_NAVIGATION_STATE_OK\n";
+          PHP
           echo 'STANDALONE_NAVIGATION_OK'
