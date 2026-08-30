@@ -1,23 +1,23 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T07:20:00+02:00",
+  "updated_at": "2026-08-30T08:35:00+02:00",
   "mode": "pretraffic_site_visual_unification",
-  "phase": "AnyTour Design System 1.0: shared content shell, homepage, full local country catalog, related-destination discovery, /hot/ quick-start discovery and corrected standalone heading hierarchy are production-green. Visual evidence now waits for the homepage country selector to reach its stable loaded state before screenshots. The largest remaining structural seam is the legacy /poisk-turov/ header; its migration is deferred until it can be patched atomically without replacing the mature minified search index.",
+  "phase": "AnyTour Design System 1.0: shared standalone shell and local discovery surfaces are production-green. The search header remains a separate legacy implementation, but PRs #311-#313 safely aligned its mobile geometry, phone/menu spacing and current-route state through isolated CSS without touching the mature search index. Full component migration remains deferred until an atomic patch/extraction path exists.",
   "scores": {
-    "whole_public_site": 7.8,
-    "cross_page_visual_consistency": 7.7,
-    "header_navigation_consistency": 6.5,
+    "whole_public_site": 7.9,
+    "cross_page_visual_consistency": 7.8,
+    "header_navigation_consistency": 7.1,
     "homepage": 7.25,
     "country_pages": 8.0,
     "hot_tours": 7.7,
     "how_to_buy": 7.5,
     "contacts": 7.55,
     "early_booking": 7.55,
-    "public_site_mobile_consistency": 7.85,
+    "public_site_mobile_consistency": 8.0,
     "typography": 7.6,
-    "grid_spacing": 7.65,
-    "brand_coherence": 7.7,
+    "grid_spacing": 7.7,
+    "brand_coherence": 7.8,
     "search_product_reference": 8.75
   },
   "target": {
@@ -29,29 +29,32 @@
     "id": "ANYTOUR_DESIGN_SYSTEM_1_AND_SITE_VISUAL_UNIFICATION",
     "category": "SITE_WIDE_UX_VISUAL",
     "status": "ACTIVE",
-    "progress": "PR #306 is production-complete. A confirmed shared CSS specificity bug made nested `.sp-card h2` and `.sp-step h2` headings inherit oversized section-heading scale from the generic `.sp-main section>h2` rule, flattening hierarchy on /how-to-buy/, /contacts/, /rb/ and other standalone cards. The fix removed the broad section descendant override and leaves section-level scale to `.sp-section-head h2`, card scale to `.sp-card h2` and step scale to `.sp-step h2`. Squash merge 1f452e5bcef200d924cebc50d726e59187296bb4 deployed in run 33293939846 with release validation, public pages, unchanged lead bridge and live search smoke green. Production five-width visual run 33294016417, navigation 33294016413, migrated content 33294016419 and live-results visual 33294016407 all passed, and production screenshots for /how-to-buy/ and /contacts/ were directly reviewed. PR #308 then fixed a separate confirmed visual-QA defect: homepage screenshots were captured in the transient `Загружаем страны…` state. The production audit now waits for a ready non-error country selector before taking homepage evidence. Post-merge production audit run 33294316825 passed all 375/430/768/1024/1440 routes; its desktop 1440 homepage screenshot was directly reviewed and now shows the stable populated country value `Турция` instead of the loading placeholder. PR #308 changed workflow evidence only, so product scores remain unchanged from the PR #306 production review.",
-    "next_action": "Continue the full production journey audit homepage→country/hot→search→results→selected tour→lead using the now-correct stable homepage screenshots. Treat the homepage as the weakest safe standalone visual surface, but change it only for confirmed hierarchy/spacing issues. Reassess /how-to-buy/, /contacts/ and /rb/ after the hierarchy correction before adding any density."
+    "progress": "PR #311 aligned the mobile legacy search header geometry to the shared shell through header-current-site.css only. PR #312 fixed the confirmed phone/menu collision risk and strengthened the dedicated 375/430/768/1024/1440 layout guard. PR #313 then closed the confirmed current-route continuity seam: desktop and mobile legacy search navigation now mark /poisk-turov/ with the same soft-blue current-page treatment as the shared header. PR #313 passed Security, standalone navigation, V2 validation, branch-bundle, selected-tour, meal, trust, visual baseline and dedicated search-header checks. Squash merge 8989c3a77ac50b7b1be4488ce0b8f978252ea7c5 deployed successfully in V2 run 33296971578 with live search smoke green. Production visual baseline 33297023194 passed and its desktop 1440 screenshot was directly reviewed: active-route styling is present, one-row header geometry is clean and the mature search form remains intact. No Tourvisor, Metrika, analytics, lead, search/results/recovery or comparison contract changed.",
+    "next_action": "Continue the full production journey audit homepage→country/hot→search→results→selected tour→lead at 375/430/768/1024/1440. Treat homepage as the weakest safe standalone surface. Continue isolated header-current-site.css alignment only for confirmed legacy search-shell defects; keep full component migration deferred until an atomic edit/extraction path exists."
   },
   "production_baseline": {
     "standalone_commit": "1f452e5bcef200d924cebc50d726e59187296bb4",
     "standalone_deploy_run": 33293939846,
-    "standalone_status": "PRODUCTION_GREEN_PUBLIC_PAGES_LEAD_BRIDGE_LIVE_SEARCH_SMOKE_CORRECTED_CONTENT_HEADING_HIERARCHY_AND_FIVE_WIDTH_VISUAL",
-    "v2_status": "SEARCH_PRODUCT_GREEN_AND_UNCHANGED_BY_STANDALONE_DESIGN_SYSTEM_WORK",
-    "design_system_release": "PR #306 standalone card/step heading hierarchy specificity correction",
-    "visual_audit_guard_pr": 308,
+    "standalone_status": "PRODUCTION_GREEN_SHARED_CONTENT_SHELL_COUNTRY_DISCOVERY_HOT_QUICK_STARTS_AND_CORRECTED_HEADING_HIERARCHY",
+    "v2_commit": "8989c3a77ac50b7b1be4488ce0b8f978252ea7c5",
+    "v2_deploy_run": 33296971578,
+    "v2_status": "PRODUCTION_GREEN_SEARCH_HEADER_GEOMETRY_PHONE_MENU_SPACING_ACTIVE_ROUTE_AND_LIVE_SEARCH_SMOKE",
+    "design_system_release": "PR #313 legacy search current-route visual alignment after PRs #311/#312 mobile geometry alignment",
+    "visual_audit_guard_pr": 312,
     "required_viewports_revalidated_premerge": true,
     "required_viewports_revalidated_production": true,
-    "production_visual_run": 33294316825,
+    "production_visual_run": 33297023194,
     "production_navigation_run": 33294016413,
     "production_migrated_content_run": 33294016419,
     "production_live_results_visual_run": 33294016407,
-    "post_deploy_visual_guard_status": "GREEN_STABLE_HOMEPAGE_SEARCH_DATA_STANDALONE_HIERARCHY_SITE_NAV_MIGRATED_CONTENT_AND_LIVE_RESULTS_WITH_KNOWN_SEARCH_HEADER_SEAM_EXPLICITLY_GUARDED",
+    "post_deploy_visual_guard_status": "GREEN_SEARCH_BASELINE_WITH_ACTIVE_ROUTE_AND_EXISTING_STANDALONE_NAV_CONTENT_LIVE_RESULT_GUARDS",
     "scores_revalidated": true
   },
   "work_order": [
     "audit homepage→country/hot→search→results→tour→lead continuity at 375/430/768/1024/1440 and fix safe shell-side seams",
     "raise the homepage and any still-confirmed weak standalone hierarchy using shared Design System primitives without adding density for its own sake",
-    "migrate /poisk-turov/ legacy header to shared site-header-v2 when an atomic safe patch path is available",
+    "continue isolated legacy search-shell alignment via header-current-site.css for confirmed defects while preserving all search behavior",
+    "migrate /poisk-turov/ to the shared site-header-v2 component only when an atomic safe patch/extraction path is available",
     "after shell unification, deepen reviewed discovery/content/SEO modules with live search handoff"
   ],
   "required_viewports": [375, 430, 768, 1024, 1440],
@@ -68,11 +71,26 @@
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
   "deferred": [
-    {"scope":"/poisk-turov/ shared-header migration","reason":"Current mature search page is concentrated in large/minified v2/index.php and the available connector replaces whole files; defer until an atomic patch path is available rather than risk search regressions."},
-    {"scope":"traffic/conversion analysis","reason":"Disabled until owner launches traffic."},
-    {"scope":"public SEO indexing/sitemap promotion","reason":"Requires deliberate publication contract and reviewed content."},
-    {"scope":"legal/payment route migration","reason":"Legacy legal/payment content/requisites are not reconciled."},
-    {"scope":"PR #254","reason":"Separate DB/platform architecture; do not auto-merge during visual-unification work."}
+    {
+      "scope": "/poisk-turov/ full shared-header component migration",
+      "reason": "The mature search page is concentrated in large/minified v2/index.php and the available connector replaces whole files. Isolated CSS shell alignment is now proven safe, but the full component swap remains deferred until an atomic patch/extraction path exists."
+    },
+    {
+      "scope": "traffic/conversion analysis",
+      "reason": "Disabled until owner launches traffic."
+    },
+    {
+      "scope": "public SEO indexing/sitemap promotion",
+      "reason": "Requires deliberate publication contract and reviewed content."
+    },
+    {
+      "scope": "legal/payment route migration",
+      "reason": "Legacy legal/payment content/requisites are not reconciled."
+    },
+    {
+      "scope": "PR #254",
+      "reason": "Separate DB/platform architecture; do not auto-merge during visual-unification work."
+    }
   ],
   "continuation_policy": {
     "priority": "production_broken > lead_loss > incorrect_data > sitewide_visual_incoherence_and_poor_ux > responsive_stability > content_seo > cosmetic_refactor",
