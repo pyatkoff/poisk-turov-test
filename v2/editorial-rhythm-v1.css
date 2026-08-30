@@ -1,5 +1,5 @@
 /* Design System 1.0 editorial rhythm: shared hierarchy for public content pages without changing search/runtime contracts. */
-.sp-main{display:grid;gap:30px}
+.sp-main{display:grid;gap:var(--at-content-gap,30px)}
 .sp-main>section,.sp-main>div{margin-top:0!important}
 .sp-main>section:has(.sp-section-head){display:grid;gap:18px}
 .sp-main>section>.sp-section-head{margin-bottom:0}
@@ -11,7 +11,7 @@
 .sp-steps{gap:16px}
 .sp-step{min-height:96px;padding-top:23px;padding-bottom:23px}
 .sp-card{min-height:100%}
-.sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:74ch}
+.sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:var(--at-copy-measure,74ch)}
 .sp-actions{margin-top:24px}
-@media(max-width:768px){.sp-main{gap:24px}.sp-main>section:has(.sp-section-head){gap:15px}.sp-section-head p{font-size:14px}.sp-steps{gap:12px}.sp-step{min-height:0}}
-@media(max-width:560px){.sp-main{gap:20px}.sp-main>.sp-card+.sp-card{margin-top:-2px!important}.sp-main>.sp-card.sp-search-callout{margin-top:0!important}.sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:none}.sp-actions{margin-top:20px}}
+@media(max-width:768px){.sp-main>section:has(.sp-section-head){gap:15px}.sp-section-head p{font-size:14px}.sp-steps{gap:12px}.sp-step{min-height:0}}
+@media(max-width:560px){.sp-main>.sp-card+.sp-card{margin-top:-2px!important}.sp-main>.sp-card.sp-search-callout{margin-top:0!important}.sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:none}.sp-actions{margin-top:20px}}
