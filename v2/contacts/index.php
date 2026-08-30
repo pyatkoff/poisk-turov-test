@@ -1,12 +1,12 @@
 <?php require_once dirname(__DIR__).'/site-page-shell-v1.php';
-$c=sp_context('/contacts/','Контакты AnyTour','Контакты турагентства AnyTour: офисы в Москве, Санкт-Петербурге, Калининграде и Чебоксарах, телефоны и юридическая информация.');sp_head($c);sp_header($c);sp_hero('AnyTour · контакты','Свяжитесь с AnyTour','Поможем подобрать тур, проверить конкретное предложение и ответим на вопросы по бронированию.'); ?>
+$c=sp_context('/contacts/','Контакты AnyTour','Контакты турагентства AnyTour: офисы в Москве, Санкт-Петербурге, Калининграде и Чебоксарах, телефоны и юридическая информация.');sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'],['label'=>'Контакты','href'=>'']]);sp_hero('AnyTour · контакты','Свяжитесь с AnyTour','Поможем подобрать тур, проверить конкретное предложение и ответим на вопросы по бронированию.'); ?>
 <main class="sp-main">
-<section class="sp-card"><h2>Наши офисы</h2><div class="sp-grid sp-offices">
+<section><div class="sp-section-head"><h2>Офисы AnyTour</h2><p>Выберите удобный офис или начните с онлайн-поиска — менеджер увидит параметры и выбранный тур.</p></div><section class="sp-card"><div class="sp-grid sp-offices">
 <article><h3>Москва</h3><p><a href="tel:+79309147792">+7 (930) 914-77-92</a><br>Бутырская ул., 86Б, 2-й этаж<br>м. «Дмитровская»</p></article>
 <article><h3>Санкт-Петербург</h3><p><a href="tel:+79219870009">+7 (921) 987-00-09</a><br>ул. Белы Куна, 3</p></article>
 <article><h3>Калининград</h3><p><a href="tel:+79052471946">+7 (905) 247-19-46</a><br>Нарвская ул., 10А</p></article>
 <article><h3>Чебоксары</h3><p><a href="tel:+79625998616">+7 (962) 599-86-16</a><br>просп. Максима Горького, 26</p></article>
-</div></section>
-<section class="sp-grid" style="margin-top:18px"><section class="sp-card"><h2>Единый телефон</h2><p><a href="tel:<?=sp_e($c['phoneHref'])?>"><?=sp_e($c['phone'])?></a></p></section><section class="sp-card"><h2>Подбор тура</h2><p>Начните с поиска — менеджер увидит выбранные параметры и конкретный вариант.</p><div class="sp-actions"><a class="sp-primary" href="/poisk-turov/">Найти тур</a></div></section></section>
-<section class="sp-card" style="margin-top:18px"><h2>Юридическая информация</h2><p>ООО «Туризм плюс»<br>ИНН 9704048781 · ОГРН 1217700065934 · КПП 770401001<br>Юридический адрес: г. Москва, Бутырская ул., 86Б.</p></section>
+</div></section></section>
+<section class="sp-grid"><section class="sp-card"><h2>Единый телефон</h2><p><a href="tel:<?=sp_e($c['phoneHref'])?>"><?=sp_e($c['phone'])?></a></p></section><section class="sp-card sp-search-callout"><h2>Подбор тура</h2><p>Начните с поиска — менеджер увидит выбранные параметры и конкретный вариант.</p><div class="sp-actions"><a class="sp-primary" href="/poisk-turov/">Найти тур</a></div></section></section>
+<section class="sp-card"><h2>Юридическая информация</h2><p>ООО «Туризм плюс»<br>ИНН 9704048781 · ОГРН 1217700065934 · КПП 770401001<br>Юридический адрес: г. Москва, Бутырская ул., 86Б.</p></section>
 </main><?php sp_end($c);
