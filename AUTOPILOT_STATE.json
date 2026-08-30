@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T08:35:00+02:00",
+  "updated_at": "2026-08-30T09:08:00+02:00",
   "mode": "pretraffic_site_visual_unification",
-  "phase": "AnyTour Design System 1.0: shared standalone shell and local discovery surfaces are production-green. The search header remains a separate legacy implementation, but PRs #311-#313 safely aligned its mobile geometry, phone/menu spacing and current-route state through isolated CSS without touching the mature search index. Full component migration remains deferred until an atomic patch/extraction path exists.",
+  "phase": "AnyTour Design System 1.0: shared standalone shell and local discovery surfaces are production-green. PR #317 strengthened the homepage hero with an explicit visual journey while preserving the existing search handoff. The search header remains a separate legacy implementation; isolated CSS alignment is safe, but full component migration remains deferred until an atomic patch/extraction path exists.",
   "scores": {
-    "whole_public_site": 7.9,
-    "cross_page_visual_consistency": 7.8,
+    "whole_public_site": 8.0,
+    "cross_page_visual_consistency": 7.9,
     "header_navigation_consistency": 7.1,
-    "homepage": 7.25,
+    "homepage": 7.6,
     "country_pages": 8.0,
     "hot_tours": 7.7,
     "how_to_buy": 7.5,
@@ -17,7 +17,7 @@
     "public_site_mobile_consistency": 8.0,
     "typography": 7.6,
     "grid_spacing": 7.7,
-    "brand_coherence": 7.8,
+    "brand_coherence": 7.9,
     "search_product_reference": 8.75
   },
   "target": {
@@ -29,30 +29,30 @@
     "id": "ANYTOUR_DESIGN_SYSTEM_1_AND_SITE_VISUAL_UNIFICATION",
     "category": "SITE_WIDE_UX_VISUAL",
     "status": "ACTIVE",
-    "progress": "PR #311 aligned the mobile legacy search header geometry to the shared shell through header-current-site.css only. PR #312 fixed the confirmed phone/menu collision risk and strengthened the dedicated 375/430/768/1024/1440 layout guard. PR #313 then closed the confirmed current-route continuity seam: desktop and mobile legacy search navigation now mark /poisk-turov/ with the same soft-blue current-page treatment as the shared header. PR #313 passed Security, standalone navigation, V2 validation, branch-bundle, selected-tour, meal, trust, visual baseline and dedicated search-header checks. Squash merge 8989c3a77ac50b7b1be4488ce0b8f978252ea7c5 deployed successfully in V2 run 33296971578 with live search smoke green. Production visual baseline 33297023194 passed and its desktop 1440 screenshot was directly reviewed: active-route styling is present, one-row header geometry is clean and the mature search form remains intact. No Tourvisor, Metrika, analytics, lead, search/results/recovery or comparison contract changed.",
-    "next_action": "Continue the full production journey audit homepage→country/hot→search→results→selected tour→lead at 375/430/768/1024/1440. Treat homepage as the weakest safe standalone surface. Continue isolated header-current-site.css alignment only for confirmed legacy search-shell defects; keep full component migration deferred until an atomic edit/extraction path exists."
+    "progress": "PR #317 is DONE in production. The confirmed weak desktop homepage hero had a large empty rotated glass decoration that read as unfinished. It was replaced with a compact decorative three-step journey (set parameters, compare variants, check details) using an isolated home-journey-v1.css layer; the journey is hidden at <=820px so tablet/mobile remain intentionally simple. The existing form, search handoff and business logic were unchanged. PR #317 passed Security, standalone navigation/home handoff, PHP runtime, V2 validation/startup/branch-bundle, selected-tour, meal, trust and visual suites, plus the standalone 375/430/768/1024/1440 visual run. Squash merge 9eb6d3dceed32e5191fba65b2f6768a7c52f8298 deployed successfully in standalone run 33298269348; public pages, unchanged lead bridge and live search smoke were green. Production standalone visual run 33298337155 passed at all five required widths. Direct production review of desktop 1440 showed the new journey balanced against the hero copy and ready-state search form; mobile 375 remained clean and unchanged with no overflow. The visual guard also now blurs the CTA after focus verification so screenshots no longer preserve an artificial focus state. No Tourvisor, Metrika, analytics, lead, search/results/recovery or comparison contract changed.",
+    "next_action": "Continue the full production journey audit country/hot→search→results→selected tour→lead at 375/430/768/1024/1440. Reassess the weaker /how-to-buy/, /contacts/ and /rb/ standalone hierarchy before adding new density. Continue isolated header-current-site.css alignment only for confirmed legacy search-shell defects; keep full component migration deferred until an atomic edit/extraction path exists."
   },
   "production_baseline": {
-    "standalone_commit": "1f452e5bcef200d924cebc50d726e59187296bb4",
-    "standalone_deploy_run": 33293939846,
-    "standalone_status": "PRODUCTION_GREEN_SHARED_CONTENT_SHELL_COUNTRY_DISCOVERY_HOT_QUICK_STARTS_AND_CORRECTED_HEADING_HIERARCHY",
+    "standalone_commit": "9eb6d3dceed32e5191fba65b2f6768a7c52f8298",
+    "standalone_deploy_run": 33298269348,
+    "standalone_status": "PRODUCTION_GREEN_SHARED_SHELL_COUNTRY_DISCOVERY_HOT_QUICK_STARTS_HEADING_HIERARCHY_AND_HOMEPAGE_JOURNEY_HERO",
     "v2_commit": "8989c3a77ac50b7b1be4488ce0b8f978252ea7c5",
     "v2_deploy_run": 33296971578,
     "v2_status": "PRODUCTION_GREEN_SEARCH_HEADER_GEOMETRY_PHONE_MENU_SPACING_ACTIVE_ROUTE_AND_LIVE_SEARCH_SMOKE",
-    "design_system_release": "PR #313 legacy search current-route visual alignment after PRs #311/#312 mobile geometry alignment",
-    "visual_audit_guard_pr": 312,
+    "design_system_release": "PR #317 homepage hero journey continuity after PRs #311-#313 search-shell visual alignment",
+    "visual_audit_guard_pr": 317,
     "required_viewports_revalidated_premerge": true,
     "required_viewports_revalidated_production": true,
-    "production_visual_run": 33297023194,
+    "production_visual_run": 33298337155,
     "production_navigation_run": 33294016413,
     "production_migrated_content_run": 33294016419,
     "production_live_results_visual_run": 33294016407,
-    "post_deploy_visual_guard_status": "GREEN_SEARCH_BASELINE_WITH_ACTIVE_ROUTE_AND_EXISTING_STANDALONE_NAV_CONTENT_LIVE_RESULT_GUARDS",
+    "post_deploy_visual_guard_status": "GREEN_HOMEPAGE_JOURNEY_FIVE_WIDTH_STANDALONE_BASELINE_WITH_EXISTING_SEARCH_NAV_CONTENT_AND_LIVE_RESULT_GUARDS",
     "scores_revalidated": true
   },
   "work_order": [
-    "audit homepage→country/hot→search→results→tour→lead continuity at 375/430/768/1024/1440 and fix safe shell-side seams",
-    "raise the homepage and any still-confirmed weak standalone hierarchy using shared Design System primitives without adding density for its own sake",
+    "audit country/hot→search→results→tour→lead continuity at 375/430/768/1024/1440 and fix safe shell-side seams",
+    "reassess /how-to-buy/, /contacts/ and /rb/ hierarchy and spacing before adding more content density",
     "continue isolated legacy search-shell alignment via header-current-site.css for confirmed defects while preserving all search behavior",
     "migrate /poisk-turov/ to the shared site-header-v2 component only when an atomic safe patch/extraction path is available",
     "after shell unification, deepen reviewed discovery/content/SEO modules with live search handoff"
@@ -73,7 +73,7 @@
   "deferred": [
     {
       "scope": "/poisk-turov/ full shared-header component migration",
-      "reason": "The mature search page is concentrated in large/minified v2/index.php and the available connector replaces whole files. Isolated CSS shell alignment is now proven safe, but the full component swap remains deferred until an atomic patch/extraction path exists."
+      "reason": "The mature search page is concentrated in large/minified v2/index.php and the available connector replaces whole files. Isolated CSS shell alignment is proven safe, but the full component swap remains deferred until an atomic patch/extraction path exists."
     },
     {
       "scope": "traffic/conversion analysis",
