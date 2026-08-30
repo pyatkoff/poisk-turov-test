@@ -12,6 +12,7 @@ function cp_render(array $page): void
     $facts = array_values(array_filter((array)($page['facts'] ?? [])));
     $countryId = isset($page['countryId']) ? (int)$page['countryId'] : 0;
     $searchHref = '/poisk-turov/' . ($countryId > 0 ? '?country=' . $countryId : '');
+    $searchLabel = $countryId > 0 ? ('Найти туры в ' . $name) : 'Открыть поиск туров';
     $c = sp_context('/country/' . $slug . '/', $title, $description);
     sp_head($c);
     sp_header($c);
@@ -36,7 +37,7 @@ function cp_render(array $page): void
       <?php if ($resorts): ?>
       <section class="sp-card"><h2>Популярные курорты</h2><p>Используйте их как ориентир, а затем сравните доступные отели, даты и перелёты в общем поиске.</p><div class="sp-resort-list"><?php foreach ($resorts as $resort): ?><span class="sp-resort-chip"><?=sp_e($resort)?></span><?php endforeach; ?></div></section>
       <?php endif; ?>
-      <section class="sp-card sp-search-callout"><h2>Найдите актуальный тур</h2><p>Цены и доступность меняются, поэтому страница направления не подменяет живой поиск статичной витриной. Выберите даты и параметры — покажем актуальные варианты и дадим открыть конкретный тур перед заявкой.</p><div class="sp-actions"><a class="sp-primary" href="<?=sp_e($searchHref)?>">Найти туры в <?=sp_e($name)?></a><a class="sp-secondary" href="/contacts/">Помощь менеджера</a></div></section>
+      <section class="sp-card sp-search-callout"><h2>Найдите актуальный тур</h2><p>Цены и доступность меняются, поэтому страница направления не подменяет живой поиск статичной витриной. Выберите даты и параметры — покажем актуальные варианты и дадим открыть конкретный тур перед заявкой.</p><div class="sp-actions"><a class="sp-primary" href="<?=sp_e($searchHref)?>"><?=sp_e($searchLabel)?></a><a class="sp-secondary" href="/contacts/">Помощь менеджера</a></div></section>
     </main>
     <?php
     sp_end($c);
