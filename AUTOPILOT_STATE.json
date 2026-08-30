@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T16:59:00+02:00",
+  "updated_at": "2026-08-30T17:12:00+02:00",
   "mode": "anytour_design_system_1_0",
   "phase": "Owner-directed AnyTour Design System 1.0: site-wide visual unification across homepage, editorial/destination pages, hot/search, results, selected tour and lead journey while preserving mature search regressions and protected external contracts.",
   "owner_priority_source": "OWNER_PRIORITY.json",
@@ -11,22 +11,22 @@
     "rule": "Only a new explicit owner direction may change OWNER_PRIORITY.json. Successful releases, score changes, autonomous state refreshes or unrelated PRs must not change this phase."
   },
   "current_task": {
-    "id": "DESIGN_SYSTEM_SEARCH_SHELL_PARITY",
+    "id": "DESIGN_SYSTEM_HEADER_CONSOLIDATION",
     "category": "VISUAL_UX_SITE_WIDE",
     "status": "ACTIVE",
-    "progress": "PR #356 is fully production/live green after successful public-page, unchanged lead-bridge and live-search smoke rerun. PR #359 merged after dedicated 375/430/768/1024/1440 search-header geometry validation and broader V2 visual/regression checks. A confirmed obsolete search runtime request still targets missing footer-current-site.css even though site-footer-v1.css is the active footer style source.",
-    "next_action": "Finish #359 production/live verification, remove the obsolete footer-current-site.css request without changing footer destinations, then continue the representative editorial-page responsive re-audit."
+    "progress": "PR #356 is fully production/live green. PR #359 aligned search-header geometry with shared Design System tokens and is production/live green. PR #360 balanced the country catalog at 1024px. PR #361 removed the obsolete missing footer CSS request and is production/live green. PR #362 balanced the two contacts action cards. PR #363 removed duplicate JS/footer composition so homepage, editorial pages and search now share one PHP footer owner; all PR responsive/regression checks are green and production deploy is running.",
+    "next_action": "Finish #363 production/live verification, then audit the remaining duplicated search header/navigation implementation against site-header-v2 and choose the smallest compatibility-preserving migration slice before further cosmetic work."
   },
   "site_wide_score": {
     "owner_baseline": 6.5,
     "current_estimate": 6.8,
     "status": "CONFIRMED_INCREMENTAL_MOVEMENT",
-    "note": "Whole-site coherence score, not a search-only engineering score. The increase reflects production-verified homepage/hot/country balancing plus shared search-header geometry parity; broader shell duplication remains."
+    "note": "Whole-site coherence score, not a search-only engineering score. Visible responsive balancing and shared shell geometry are production-proven; footer ownership is consolidated in main but its final production gate is still running, so the score remains conservatively unchanged."
   },
   "work_order": [
-    "finish merged search-header geometry release production live verification",
-    "remove obsolete footer-current-site.css runtime request and keep shared footer styles canonical",
-    "re-audit contacts how-to-buy rb hot country and representative country pages at 375 430 768 1024 1440",
+    "finish canonical footer production live verification",
+    "audit search legacy header navigation against site-header-v2 and define smallest safe shared-header migration slice",
+    "re-audit how-to-buy rb hot country contacts and representative country pages at 375 430 768 1024 1440 for remaining confirmed defects",
     "consolidate only proven duplicated visual primitives into shared Design System",
     "keep mature search recovery results comparison flight price fuel lead regressions green"
   ],
