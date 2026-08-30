@@ -23,17 +23,27 @@ function sync_catalog_arg(array $argv, string $name): ?string
 
 function sync_catalog_state(PDO $pdo, string $key, string $status, int $seen = 0, int $changed = 0, ?string $error = null): void
 {
+    $startedAt = $status === 'running' ? (new DateTimeImmutable('now'))->format('Y-m-d H:i:s') : null;
+    $finishedAt = in_array($status, ['success', 'failure'], true) ? (new DateTimeImmutable('now'))->format('Y-m-d H:i:s') : null;
     $sql = "INSERT INTO catalog_sync_state (sync_key,status,started_at,finished_at,rows_seen,rows_changed,last_error)
-            VALUES (:k,:s,IF(:s='running',NOW(),NULL),IF(:s IN ('success','failure'),NOW(),NULL),:seen,:changed,:err)
+            VALUES (:sync_key,:status_value,:started_at,:finished_at,:rows_seen,:rows_changed,:last_error)
             ON DUPLICATE KEY UPDATE
               status=VALUES(status),
-              started_at=IF(VALUES(status)='running',NOW(),started_at),
-              finished_at=IF(VALUES(status) IN ('success','failure'),NOW(),finished_at),
+              started_at=IF(VALUES(status)='running',VALUES(started_at),started_at),
+              finished_at=IF(VALUES(status) IN ('success','failure'),VALUES(finished_at),finished_at),
               rows_seen=VALUES(rows_seen),
               rows_changed=VALUES(rows_changed),
               last_error=VALUES(last_error)";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute(['k'=>$key,'s'=>$status,'seen'=>$seen,'changed'=>$changed,'err'=>$error]);
+    $stmt->execute([
+        'sync_key'=>$key,
+        'status_value'=>$status,
+        'started_at'=>$startedAt,
+        'finished_at'=>$finishedAt,
+        'rows_seen'=>$seen,
+        'rows_changed'=>$changed,
+        'last_error'=>$error,
+    ]);
 }
 
 function sync_catalog_countries(PDO $pdo, array $rows, string $now): int
