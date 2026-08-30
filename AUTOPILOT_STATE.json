@@ -1,54 +1,52 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-30T01:07:00+02:00",
+  "updated_at": "2026-08-30T02:05:00+02:00",
   "mode": "pretraffic_site_visual_unification",
-  "phase": "AnyTour Design System 1.0 content shell is production-green and visually revalidated across required public routes/viewports. The next highest-priority visual gap is the remaining legacy search header on /poisk-turov/.",
+  "phase": "AnyTour Design System 1.0: shared content shell, homepage and country discovery are production-green. The largest remaining structural seam is the legacy /poisk-turov/ header; its migration is deferred until it can be patched atomically without replacing the mature minified search index.",
   "scores": {
-    "whole_public_site": 7.0,
-    "cross_page_visual_consistency": 6.75,
+    "whole_public_site": 7.2,
+    "cross_page_visual_consistency": 7.0,
     "header_navigation_consistency": 6.5,
-    "homepage": 6.75,
-    "country_pages": 7.0,
+    "homepage": 7.25,
+    "country_pages": 7.5,
     "hot_tours": 7.0,
     "how_to_buy": 6.75,
     "contacts": 7.0,
-    "public_site_mobile_consistency": 7.25,
-    "typography": 7.0,
-    "grid_spacing": 7.0,
-    "brand_coherence": 7.0,
+    "public_site_mobile_consistency": 7.4,
+    "typography": 7.2,
+    "grid_spacing": 7.2,
+    "brand_coherence": 7.25,
     "search_product_reference": 8.75
   },
   "target": {
     "first_sitewide_gate": 8.5,
     "next_gate": 9.0,
-    "rule": "Do not raise site-wide scores from CI/tooling alone; require production visual evidence across public pages and required viewports."
+    "rule": "Do not raise site-wide scores from CI/tooling alone; require production and representative visual evidence."
   },
   "current_task": {
     "id": "ANYTOUR_DESIGN_SYSTEM_1_AND_SITE_VISUAL_UNIFICATION",
     "category": "SITE_WIDE_UX_VISUAL",
     "status": "ACTIVE",
-    "progress": "PR #285 unified the standalone/content visual shell and was squash-merged as 83a85e358c288f40a8ff2ad8444423d338fa161d. Deploy anytoour.ru run 33279683684 completed green, including public-page verification, unchanged lead bridge and live search smoke. Production visual evidence then passed at 375/430/768/1024/1440 across homepage, search, contacts, how-to-buy, early booking, hot tours, country catalog and Turkey; captured evidence showed materially improved shared hero/card/footer rhythm with no confirmed horizontal overflow. PR #287 repaired stale navigation visual guards, expanded production visual coverage to the required routes plus Turkey/Egypt/UAE/Thailand/Russia, and explicitly tracks the current split between shared .at-global-header on homepage/content pages and the still-legacy .at-site-header on /poisk-turov/. Latest content-live, navigation-live and security checks passed; PR #287 was squash-merged as 17656f37a01bc85ce45249d521415ef5046a9e1b. No product/Tourvisor/Metrika/lead behavior was changed by #287.",
-    "next_action": "Safely migrate /poisk-turov/ outer header/navigation onto the shared site-header-v2 contract, preserving mature search form/results/selected-tour behavior and any necessary personal/order affordances. Treat this as a high-regression-risk shell change: first map legacy header functions, then change only outer shell, run full search/flight/price/comparison/lead regressions plus 375/430/768/1024/1440 visual checks. If the header migration cannot be proven safe in one slice, continue shared breadcrumbs/content hierarchy improvements without touching search business logic."
+    "progress": "PR #293 added shared breadcrumbs, section-heading, resort-chip and branded search-callout primitives; applied them to /country/ and representative country pages; and improved handoff into the existing common search without changing search business logic. PR #293 squash merge cb248e603ccd3725f335a1ff11a0c782a33405a0 deployed successfully in run 33282245828 with public pages, unchanged lead bridge and live search smoke green. Pre-merge visual/functional CI was green across required responsive widths. Post-deploy visual guard then exposed its stale assumption that /poisk-turov/ already used .at-global-header; production correctly still has exactly one legacy .at-site-header there. A follow-up CI slice makes the guard explicitly enforce the known split until migration, rather than hiding it or failing every deploy.",
+    "next_action": "When an atomic patch/edit path is available, migrate only the /poisk-turov/ outer header/navigation onto site-header-v2 while preserving personal/order affordances and all mature search regressions. Until then continue safe shared-orientation/hierarchy improvements on /hot/, /contacts/, /how-to-buy/ and /rb/ where visual evidence warrants them, followed by 375/430/768/1024/1440 journey validation."
   },
   "production_baseline": {
-    "standalone_commit": "83a85e358c288f40a8ff2ad8444423d338fa161d",
-    "standalone_deploy_run": 33279683684,
+    "standalone_commit": "cb248e603ccd3725f335a1ff11a0c782a33405a0",
+    "standalone_deploy_run": 33282245828,
     "standalone_status": "PRODUCTION_GREEN_PUBLIC_PAGES_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
-    "v2_status": "SEARCH_PRODUCT_GREEN_AND_UNCHANGED_BY_CONTENT_SHELL_WORK",
-    "design_system_release": "PR #285 shared content-page visual shell on top of PR #278 Design System 1.0 tokens/primitives",
-    "visual_audit_guard_commit": "17656f37a01bc85ce45249d521415ef5046a9e1b",
+    "v2_status": "SEARCH_PRODUCT_GREEN_AND_UNCHANGED_BY_COUNTRY_DESIGN_SYSTEM_WORK",
+    "design_system_release": "PR #293 country discovery/orientation primitives on top of shared Design System 1.0",
     "visual_audit_guard_pr": 287,
-    "required_viewports_revalidated": true,
+    "required_viewports_revalidated_premerge": true,
+    "post_deploy_visual_guard_status": "KNOWN_SEARCH_HEADER_CONTRACT_MISMATCH_FOUND_AND_GUARD_FIX_IN_PROGRESS",
     "scores_revalidated": true
   },
   "work_order": [
-    "migrate /poisk-turov/ legacy header to shared site-header-v2 without search regressions",
+    "migrate /poisk-turov/ legacy header to shared site-header-v2 when an atomic safe patch path is available",
+    "continue shared orientation/hierarchy improvements on /hot/, /contacts/, /how-to-buy/ and /rb/ where evidence warrants",
     "revalidate homepage→country→hot/search→results→tour→lead continuity at 375/430/768/1024/1440",
-    "add/normalize shared breadcrumbs and editorial hierarchy where production evidence shows weak orientation",
-    "homepage visual/hierarchy and discovery improvement on shared primitives",
     "deepen /country/ + country pages and /hot/ discovery without duplicating search business logic",
-    "polish /contacts/, /how-to-buy/, /rb/ only where evidence shows remaining hierarchy/spacing weaknesses",
     "after shell unification, deepen discovery/content/SEO modules with live search handoff"
   ],
   "required_viewports": [375, 430, 768, 1024, 1440],
@@ -65,6 +63,7 @@
     "pr_254": "DEFER_UNLESS_FRESH_REASSESSMENT_PROVES_SAFE"
   },
   "deferred": [
+    {"scope":"/poisk-turov/ shared-header migration","reason":"Current mature search page is concentrated in large/minified v2/index.php and the available connector replaces whole files; defer until an atomic patch path is available rather than risk search regressions."},
     {"scope":"traffic/conversion analysis","reason":"Disabled until owner launches traffic."},
     {"scope":"public SEO indexing/sitemap promotion","reason":"Requires deliberate publication contract and reviewed content."},
     {"scope":"legal/payment route migration","reason":"Legacy legal/payment content/requisites are not reconciled."},
