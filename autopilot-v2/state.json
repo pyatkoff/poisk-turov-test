@@ -3,7 +3,7 @@
   "mode": "active_pilot",
   "active_task": {
     "id": "PILOT_ROOT_STABILIZATION_REAUDIT",
-    "title": "Re-audit standalone results and selected-tour transitions",
+    "title": "Re-audit search results through selected-tour and lead transitions",
     "area": "ux-qa",
     "risk": "SAFE",
     "state": "qa",
@@ -15,22 +15,22 @@
       "Deploy + Production smoke only if released"
     ],
     "evidence": [
-      "Imported from AUTOPILOT_STATE.json current next_action.",
-      "Pilot 1 proved task selection, minimal gates and external-blocker classification.",
-      "Active pilot confirmed first product DEFECT: completed search depth was capped at the first 25 hotels while the gateway supports up to 100.",
-      "Developer child task PR #656 merged as 8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d: keep fast first 25, then expand to 100 on the same completed searchId with stale-state guards and fallback to existing results.",
-      "Fast CI and Security guard passed after correcting a stale literal-path assertion in the lean Fast CI contract.",
-      "Child fix is DONE / awaiting production evidence; parent QA audit remains active.",
+      "Active pilot confirmed completed-search depth defect and fixed it in PR #656: fast first 25 hotels, then expand to up to 100 on the same searchId.",
+      "PR #658 added instant local narrowing for stars, rating and price over already loaded results while preserving server re-search when widening beyond the source query.",
+      "Fast CI and Security guard passed for both product cycles.",
+      "Production evidence for the new results-depth/filter behavior is still required when a working live-probe environment is available.",
+      "Parent QA audit remains active through hotel/tour/room/flight/price/lead recovery.",
       "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
     ],
     "parent_task": null
   },
   "queue": [
     {
-      "id": "PILOT_ROOT_STABILIZATION_REAUDIT",
+      "id": "SEARCH_RESULTS_FILTER_ARCHITECTURE",
       "priority": 1,
-      "source": "AUTOPILOT_STATE.json",
-      "reason": "Current highest-priority stabilization task"
+      "status": "ACTIVE",
+      "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
+      "reason": "Finish instant filtering over the loaded result set without unnecessary Tourvisor re-search; verify which meal/resort/operator/flight attributes are complete enough for local filtering."
     },
     {
       "id": "RESULTS_DEPTH_100",
@@ -39,26 +39,85 @@
       "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
       "pr": 656,
       "merge_sha": "8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d",
-      "reason": "Confirmed completed-search result depth defect fixed without restarting Tourvisor search"
+      "reason": "Completed search now expands from fast first 25 to up to 100 hotels without restarting Tourvisor search."
+    },
+    {
+      "id": "RESULTS_LOCAL_FILTERS_CORE",
+      "priority": 1,
+      "status": "DONE_AWAITING_PRODUCTION_EVIDENCE",
+      "parent": "SEARCH_RESULTS_FILTER_ARCHITECTURE",
+      "pr": 658,
+      "merge_sha": "4a04a6b93c7b7f5d67c86dfad49446b26c688e86",
+      "reason": "Stars, rating and price narrow loaded results instantly; widening beyond source constraints falls back to server search."
+    },
+    {
+      "id": "SELECTED_TOUR_END_TO_END",
+      "priority": 1,
+      "status": "READY_AFTER_FILTER_AUDIT",
+      "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
+      "reason": "Verify results -> hotel -> tour -> room -> flight -> price -> selected tour -> lead form -> recovery while preserving the external lead contract."
+    },
+    {
+      "id": "PRODUCTION_RESULTS_EVIDENCE",
+      "priority": 1,
+      "status": "BLOCKED_EXTERNAL",
+      "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
+      "reason": "Narrow live verification for result depth and local-filter behavior; previous execution environment could not resolve anytoour.ru."
+    },
+    {
+      "id": "DESIGN_SYSTEM_2_UNIFICATION",
+      "priority": 2,
+      "status": "QUEUED",
+      "reason": "Unify shared header/footer/controls/cards/spacing and eliminate obsolete or parallel UI implementations under AnyTour Design System 2.0."
+    },
+    {
+      "id": "SEARCH_STATE_PERFORMANCE",
+      "priority": 2,
+      "status": "QUEUED",
+      "reason": "Improve progressive results, loading/error/recovery states and stale-state behavior without discarding useful results."
+    },
+    {
+      "id": "FULL_SEARCH_UX_REAUDIT",
+      "priority": 2,
+      "status": "QUEUED",
+      "reason": "Periodic whole-search mobile/tablet/desktop audit rather than only recently changed files."
+    },
+    {
+      "id": "FEED_DATA_FACTORY",
+      "priority": 3,
+      "status": "QUEUED",
+      "reason": "Daily Tourvisor price monitoring, scalable Yandex feeds and reusable country/resort/hotel data for the site."
+    },
+    {
+      "id": "SEO_FACTORY",
+      "priority": 3,
+      "status": "QUEUED_AFTER_PRODUCT_STABILITY",
+      "reason": "Build scalable country/resort/hotel SEO pages and internal linking on the shared Design System 2.0 and reusable tour data."
     },
     {
       "id": "PX7_PRICE_WATCH_RESEARCH",
-      "priority": 2,
-      "source": "AUTOPILOT_STATE.json",
-      "reason": "Deferred product research; requires product-contract decisions before coding"
+      "priority": 3,
+      "status": "DEFERRED_RESEARCH",
+      "reason": "Price-watch product research requires product-contract decisions before coding."
+    },
+    {
+      "id": "AUTOPILOT_V2_STATE_CONSOLIDATION",
+      "priority": 4,
+      "status": "QUEUED",
+      "reason": "Remove stale Autopilot 1.x state/document contradictions, define one authoritative queue and inspect legacy deploy workflow only after product-critical work."
     }
   ],
   "last_signal": {
-    "source": "active_pilot_product_cycle_1",
-    "status": "CHILD_FIX_MERGED_AWAITING_PRODUCTION_EVIDENCE",
-    "sha": "8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"
+    "source": "priority_queue_refresh_after_pr_658",
+    "status": "CONTINUE_SEARCH_RESULTS_FILTER_ARCHITECTURE",
+    "sha": "4a04a6b93c7b7f5d67c86dfad49446b26c688e86"
   },
   "blocked": [
     {
-      "scope": "pilot targeted production verification",
+      "scope": "targeted production verification",
       "type": "external_environment",
       "reason": "Previous execution environment could not resolve anytoour.ru DNS before first HTTP request.",
-      "action": "Retry only the narrow live probe from an environment with working DNS; do not restore broad regression matrix."
+      "action": "Retry only the narrow live probe from an environment with working DNS; continue independent safe product work meanwhile."
     }
   ]
 }
