@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'v2/**'
+      - '!v2/data/**'
       - '.github/workflows/visual-v2-b5-trust-pr.yml'
   workflow_dispatch:
 
