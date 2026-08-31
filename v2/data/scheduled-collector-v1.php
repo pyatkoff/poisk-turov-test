@@ -61,10 +61,10 @@ function scheduled_collector_rows(array $payload): array
 function scheduled_collector_fetch_results(int $searchId): array
 {
     // Result retrieval does not start/continue a Tourvisor search and therefore
-    // does not consume another search request. The current API documents limit
-    // as number of hotels with tours but does not publish an upper bound. Try a
-    // wide fetch first and fall back for compatibility with stricter gateways.
-    $limits = [1000, 500, 100];
+    // does not consume another search request. The legacy parser successfully
+    // requested 10k rows, so probe the current API from that ceiling downward
+    // before falling back to the already proven 1000/500/100 compatibility set.
+    $limits = [10000, 5000, 2000, 1000, 500, 100];
     $lastError = null;
     foreach ($limits as $limit) {
         try {
