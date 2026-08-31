@@ -29,7 +29,7 @@ jobs:
           COUNTRY_VALUE: ${{ inputs.country || '4' }}
         run: |
           set -euo pipefail
-          for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/migrate-departures-v1.php v2/data/sync-departures-v1.php v2/data/sync-catalog-v1.php v2/data/db-doctor-v1.php; do
+          for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/migrate-departures-v1.php v2/data/sync-departures-v1.php v2/data/validate-departures-v1.php v2/data/sync-catalog-v1.php v2/data/db-doctor-v1.php; do
             php -l "$f" >/dev/null
           done
           test -s v2/data/schema-v1.sql
@@ -76,10 +76,12 @@ jobs:
             php -l \"\$root/data/tourvisor-client-v1.php\" >/dev/null
             php -l \"\$root/data/migrate-departures-v1.php\" >/dev/null
             php -l \"\$root/data/sync-departures-v1.php\" >/dev/null
+            php -l \"\$root/data/validate-departures-v1.php\" >/dev/null
             php -l \"\$root/data/sync-catalog-v1.php\" >/dev/null
             php \"\$root/data/migrate-departures-v1.php\"
             php \"\$root/data/db-doctor-v1.php\"
             php \"\$root/data/sync-departures-v1.php\"
+            php \"\$root/data/validate-departures-v1.php\"
             php \"\$root/data/sync-catalog-v1.php\" --country='$COUNTRY_VALUE'
             php \"\$root/data/db-doctor-v1.php\"
           "
