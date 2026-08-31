@@ -1,10 +1,10 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "active": false,
-  "mode": "tour_data_platform",
-  "phase": "TOUR DATA PLATFORM",
+  "mode": "design_system_1",
+  "phase": "ANYTOUR DESIGN SYSTEM 1.0",
   "status": "INACTIVE_OWNER_DIRECTION_CHANGED",
-  "authority": "explicit owner instruction 2026-08-31 tour data platform priority",
+  "authority": "explicit owner instruction 2026-08-31 Design System 1.0 priority",
   "scope": "pyatkoff/poisk-turov-test",
   "protected_contracts": [
     "yandex_metrika_configuration_and_goals",
@@ -12,5 +12,5 @@
     "tourvisor_contract",
     "neighboring_projects"
   ],
-  "rule": "Technical refactor must not preempt Tour Data Platform work. Use refactoring only when required to safely deliver catalog coverage, collection, normalization, history, aggregates or downstream data products."
+  "rule": "Technical refactor must not preempt AnyTour Design System 1.0 and site-wide visual unification. Refactor only when required to safely deliver the shared visual shell or preserve correctness."
 }

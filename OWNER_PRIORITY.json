@@ -1,16 +1,16 @@
 {
-  "schema_version": 4,
-  "active_mode": "tour_data_platform",
-  "active_phase": "TOUR DATA PLATFORM",
-  "current_stage": "SCHEDULED_COLLECTION_AND_COVERAGE",
+  "schema_version": 5,
+  "active_mode": "design_system_1",
+  "active_phase": "ANYTOUR DESIGN SYSTEM 1.0",
+  "current_stage": "SITE_WIDE_VISUAL_UNIFICATION",
   "priority_after_emergency_overrides": [
+    "design_system_1",
+    "site_wide_visual_unification",
+    "responsive_shell_and_hierarchy",
+    "cross_page_journey_visual_audit",
     "tour_data_platform",
-    "collector_normalization_history",
-    "price_intelligence",
-    "hot_tours_price_calendar_seo_search",
-    "ux_visual",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_tour_data_platform",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize accumulation of trustworthy tour data: catalog coverage, bounded collectors, normalization/deduplication, observation history and aggregates. Use that layer for hot tours, price calendar/intelligence, SEO pages and search recommendations. Technical refactor is supporting work only when required by this path. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring projects."
+  "source": "explicit_owner_direction_2026_08_31_design_system_1",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize AnyTour Design System 1.0 and whole-site visual unification across homepage, country/destination, hot/search, results, selected tour and lead. Fix shared shell, spacing, wrapping, overflow, duplicated header/footer and hierarchy before cosmetic flourishes. Preserve the mature search flow and all Metrika, Tourvisor and lead contracts."
 }

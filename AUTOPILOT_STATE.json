@@ -1,42 +1,46 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T10:51:00+02:00",
-  "mode": "tour_data_platform",
-  "phase": "TOUR DATA PLATFORM",
+  "updated_at": "2026-08-31T11:10:00+02:00",
+  "mode": "design_system_1",
+  "phase": "ANYTOUR DESIGN SYSTEM 1.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "tour_data_platform",
-    "rule": "Keep Tour Data Platform first after emergency correctness overrides until the owner explicitly changes direction."
+    "planned_phase": "design_system_1",
+    "rule": "Keep AnyTour Design System 1.0 and site-wide visual unification first after emergency correctness overrides until the owner explicitly changes direction."
   },
   "current_stage": {
-    "id": "SCHEDULED_COLLECTION_AND_COVERAGE",
-    "name": "Accumulated tour coverage and observation history",
+    "id": "SITE_WIDE_VISUAL_UNIFICATION",
+    "name": "Shared shell, hierarchy and responsive continuity",
     "status": "ACTIVE",
-    "next_action": "Verify the first bounded scheduled-monitor runs, improve coverage selection from real attempt evidence, then grow independent search/day coverage for price history without weakening live Tourvisor price validation."
+    "next_action": "Align editorial tablet geometry to the canonical shared grid, then audit homepage, country/destination, hot, contacts, how-to-buy and rb at 375/430/768/1024/1440 before the full production journey."
   },
   "current_work_order": [
-    "catalog and departure-country coverage",
-    "bounded scheduled collection across real markets",
-    "normalization deduplication freshness and attempt ledger",
-    "independent search and observation-day history",
-    "price aggregates and confidence",
-    "hot tours price calendar price recommendations",
-    "SEO and search ranking from accumulated data",
-    "UX visual packaging after data products are real"
+    "shared design tokens and primitives",
+    "one header navigation and canonical footer",
+    "crooked spacing wrapping overflow and duplicated shell",
+    "editorial and destination hierarchy",
+    "cross-page responsive journey audit",
+    "preserve mature search and lead regressions",
+    "tour data platform after visual owner phase"
   ],
+  "site_wide_visual_baseline": 6.5,
   "protected": {
-    "repository_scope": "pyatkoff/poisk-turov-test only",
+    "repository_scope": "pyatkoff/poisk-turov-test and allowed V2/standalone production scope only",
     "other_projects": "DO_NOT_MODIFY",
+    "anytour_logo": "PRESERVE_EXISTING_LOGO",
     "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "tourvisor_contract": "PRESERVE_LIVE_SOURCE_AND_FINAL_PRICE_VALIDATION",
-    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
+    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
+    "social_app_destinations": "PRESERVE_VERIFIED_DESTINATIONS",
+    "legal_payment_content": "DEFER_UNRESOLVED_MIGRATION",
+    "pr_254": "DEFER_UNLESS_FRESH_ARCHITECTURE_REVIEW_PROVES_SAFE"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > tour_data_platform > price_intelligence > downstream_data_products > ux_visual > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_1 > site_wide_visual > tour_data_platform > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record/defer blocker and continue an independent safe Tour Data Platform task"
+    "on_blocker": "record/defer blocker and continue an independent safe Design System task"
   }
 }
