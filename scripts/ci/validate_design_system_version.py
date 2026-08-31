@@ -2,7 +2,8 @@
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[2]
-needles = ("Design System 1.0", "DESIGN SYSTEM 1.0", "design_system_1_0")
+legacy = "1" + ".0"
+needles = (f"Design System {legacy}", f"DESIGN SYSTEM {legacy}", "design_system_" + "1_0")
 skip = {".git"}
 violations = []
 for path in root.rglob("*"):
