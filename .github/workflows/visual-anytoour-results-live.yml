@@ -29,15 +29,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          slot=$((10#$(date +%j) % 3))
-          case "$slot" in
-            0) offset=2; nights=7 ;;
-            1) offset=4; nights=8 ;;
-            2) offset=6; nights=9 ;;
-          esac
-          export DATE_FROM="$(date -d "+${offset} day" +%Y-%m-%d)"
-          export DATE_TO="$(date -d "+$((offset + 7)) day" +%Y-%m-%d)"
-          export TEST_NIGHTS="$nights"
+          export DATE_FROM="$(date -d "+2 day" +%Y-%m-%d)"
+          export DATE_TO="$(date -d "+22 day" +%Y-%m-%d)"
+          export TEST_NIGHTS="7"
           mkdir -p anytoour-results-visual
           cat > visual-results.cjs <<'JS'
           const { chromium } = require('playwright');
@@ -62,7 +56,7 @@ jobs:
               count_people:'2',
               ci_test:'1'
             }).forEach(([k,v])=>u.searchParams.set(k,v));
-            console.log('CI_SEARCH_CONTEXT',JSON.stringify({dateFrom:process.env.DATE_FROM,dateTo:process.env.DATE_TO,nights:process.env.TEST_NIGHTS,marker:'ci_test=1'}));
+            console.log('CI_SEARCH_CONTEXT',JSON.stringify({dateFrom:process.env.DATE_FROM,dateTo:process.env.DATE_TO,departureWindowDays:21,nights:process.env.TEST_NIGHTS,marker:'ci_test=1'}));
             const response=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000});
             if(!response||response.status()!==200)throw new Error('search page HTTP '+(response&&response.status()));
             await page.waitForSelector('.hotel-card',{timeout:90000});
