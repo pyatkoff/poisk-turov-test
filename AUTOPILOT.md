@@ -20,11 +20,11 @@ Structural DS2 convergence is now present across the main search journey. The ho
 
 The production live journey is also green after correcting the smoke for real Tourvisor inventory volatility. A result can become sold between search results and the flights call; the smoke now checks a bounded set of returned tours and skips only the documented stale/sold `error.code=2` case. Malformed flight responses, unexpected errors, broken tour/hotel data, missing viable inventory and lead-health failures still fail the journey. Runtime Tourvisor, Metrika and lead contracts were not changed.
 
-The selected-tour DS2 detail-state is implemented on PR #577 as a CSS-only presentation layer. Its dedicated selected-tour regression is green. Generic visual checks are being refreshed after the newly merged results layout changed the expected desktop results baseline; do not merge #577 until those checks are green.
+The selected-tour DS2 detail-state is now merged after all eight PR checks passed, including dedicated selected-tour, generic visual and refreshed baseline validation. The chosen offer now becomes the primary detail surface with a lighter image/title/price/facts/flight/lead hierarchy while the existing search, flight, price and lead mechanics remain unchanged.
 
 ## Ordered work
 
-1. Finish selected hotel/tour DS2 convergence and live verification.
+1. Verify selected hotel/tour DS2 deploy and live behavior.
 2. Bring country, hot and editorial pages onto the same DS2 language.
 3. Replace the homepage/country scenic placeholder with an approved repository/local travel image when one is available; do not hotlink an arbitrary external asset.
 4. Continue shared-shell consistency for header/footer, typography, spacing, buttons, cards and breadcrumbs.
@@ -32,7 +32,7 @@ The selected-tour DS2 detail-state is implemented on PR #577 as a CSS-only prese
 
 ## Current resume point
 
-Finish PR #577 only after its refreshed generic visual checks are green, then deploy and verify the selected-tour detail state. Next audit and align `/country/` plus a representative destination, then `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/`. Keep the dark shared footer as the site-wide endpoint. A photography-led homepage/country hero remains intentionally deferred until an approved local/repository travel image exists; do not regress into oversized blue heroes or substitute an unapproved external image.
+Verify deploy/live for the merged selected-tour detail state, then audit and align `/country/` plus a representative destination, followed by `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/`. Keep the dark shared footer as the site-wide endpoint. A photography-led homepage/country hero remains intentionally deferred until an approved local/repository travel image exists; do not regress into oversized blue heroes or substitute an unapproved external image.
 
 ## Mandatory protections
 
