@@ -1,14 +1,16 @@
 {
-  "schema_version": 3,
-  "active_mode": "technical_refactor_pass",
-  "active_phase": "TECHNICAL REFACTOR PASS",
-  "current_stage": "CI_AND_DEPENDENCY_INVENTORY",
+  "schema_version": 4,
+  "active_mode": "tour_data_platform",
+  "active_phase": "TOUR DATA PLATFORM",
+  "current_stage": "SCHEDULED_COLLECTION_AND_COVERAGE",
   "priority_after_emergency_overrides": [
-    "technical_refactor",
+    "tour_data_platform",
+    "collector_normalization_history",
+    "price_intelligence",
+    "hot_tours_price_calendar_seo_search",
     "ux_visual",
-    "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_technical_refactor_pass",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize the technical refactor pass: architecture/source-of-truth, active/compatibility/dead inventory, GitHub Actions classification and evidence-based consolidation, safe directory ownership, then shared template consolidation before UX/visual work. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring projects."
+  "source": "explicit_owner_direction_2026_08_31_tour_data_platform",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize accumulation of trustworthy tour data: catalog coverage, bounded collectors, normalization/deduplication, observation history and aggregates. Use that layer for hot tours, price calendar/intelligence, SEO pages and search recommendations. Technical refactor is supporting work only when required by this path. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring projects."
 }

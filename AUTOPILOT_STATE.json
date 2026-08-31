@@ -1,41 +1,42 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T10:43:00+02:00",
-  "mode": "technical_refactor_pass",
-  "phase": "TECHNICAL REFACTOR PASS",
+  "updated_at": "2026-08-31T10:51:00+02:00",
+  "mode": "tour_data_platform",
+  "phase": "TOUR DATA PLATFORM",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "technical_refactor_pass",
-    "rule": "Keep technical refactor first after emergency correctness overrides until the owner explicitly changes direction."
+    "planned_phase": "tour_data_platform",
+    "rule": "Keep Tour Data Platform first after emergency correctness overrides until the owner explicitly changes direction."
   },
   "current_stage": {
-    "id": "CI_AND_DEPENDENCY_INVENTORY",
-    "name": "Architecture, CI and dependency consolidation",
+    "id": "SCHEDULED_COLLECTION_AND_COVERAGE",
+    "name": "Accumulated tour coverage and observation history",
     "status": "ACTIVE",
-    "next_action": "Complete exhaustive GitHub Actions inventory/classification and evidence-based overlap analysis, then continue the active/compatibility/dead dependency map before safe directory ownership and shared-template consolidation."
+    "next_action": "Verify the first bounded scheduled-monitor runs, improve coverage selection from real attempt evidence, then grow independent search/day coverage for price history without weakening live Tourvisor price validation."
   },
   "current_work_order": [
-    "architecture source of truth and one concept one implementation",
-    "active compatibility dead inventory and dependency map",
-    "PR FAST PR BROWSER POST DEPLOY SCHEDULED-LIVE workflow classification",
-    "evidence-based CI consolidation only after equivalent coverage",
-    "safe shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates ownership",
-    "single header footer navigation design system template layer",
-    "ux_visual only after technical consolidation"
+    "catalog and departure-country coverage",
+    "bounded scheduled collection across real markets",
+    "normalization deduplication freshness and attempt ledger",
+    "independent search and observation-day history",
+    "price aggregates and confidence",
+    "hot tours price calendar price recommendations",
+    "SEO and search ranking from accumulated data",
+    "UX visual packaging after data products are real"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
     "other_projects": "DO_NOT_MODIFY",
     "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "tourvisor_contract": "PRESERVE",
+    "tourvisor_contract": "PRESERVE_LIVE_SOURCE_AND_FINAL_PRICE_VALIDATION",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > tour_data_platform > price_intelligence > downstream_data_products > ux_visual > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record/defer blocker and continue an independent safe technical-refactor task"
+    "on_blocker": "record/defer blocker and continue an independent safe Tour Data Platform task"
   }
 }
