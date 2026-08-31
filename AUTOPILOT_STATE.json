@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T03:47:00+02:00",
+  "updated_at": "2026-08-31T03:55:00+02:00",
   "mode": "anytour_2_0_site_9_0",
   "phase": "ANYTOUR 2.0 → SITE 9.0/10",
   "north_star": {
@@ -20,8 +20,8 @@
     "id": "DESIGN_2_0_FOUNDATION",
     "name": "Design 2.0 / Design System foundation",
     "status": "ACTIVE",
-    "progress": "Restoring the newer AnyTour 2.0 owner direction after stale PR #433 unexpectedly rewrote the autopilot back to technical-refactor-first. Country Design 2.0 PR #442 is merged and deployed: live country search plus manager-help now follows the hero, resort guidance is consolidated, focused five-width visual evidence passed, and the post-deploy live user journey is green. A visual artifact also exposed that search critical catalogs can be captured in an error state without failing the visual workflow; direct live API/search validation is healthy, so the next safe slice is to make search visual readiness explicit and then diagnose any reproduced UI failure.",
-    "next_action": "Finish restoring AnyTour 2.0 priority guards, then add a production search critical-catalog readiness assertion to the five-width visual workflow. If that guard fails live, treat it as a confirmed search UX/correctness bug and fix the catalog path before continuing deeper Design 2.0."
+    "progress": "AnyTour 2.0 owner priority has been restored after stale PR #433 unexpectedly rewrote the autopilot. Country Design 2.0 PR #442 is merged/deployed and the live user journey is green. PR #445 added a dedicated five-width production guard for critical search departure/country catalogs; its live production check passed on 375/430/768/1024/1440, so the earlier screenshot with failed catalogs was transient or timing-related rather than a currently reproducible production failure. The guard now prevents that state from silently passing future visual evidence.",
+    "next_action": "Continue the production Design 2.0 audit through search → results → selected tour → lead on the five target widths and fix the next weakest confirmed user-facing surface. Keep the new critical-catalog readiness guard as a regression gate for search/catalog changes."
   },
   "roadmap": [
     {"order":1,"id":"FOUNDATION_ARCHITECTURE","name":"Foundation and architecture","status":"ACTIVE_CONTINUOUS"},
@@ -39,11 +39,10 @@
     {"order":13,"id":"FINAL_9_0_AUDIT","name":"Final whole-site 9.0 audit","status":"PLANNED"}
   ],
   "current_work_order": [
-    "restore AnyTour 2.0 owner priority after stale conflicting PR 433 merge",
-    "add search critical-catalog readiness guard to production five-width visual evidence",
-    "if the new guard fails reproduce and fix the search catalog UI path",
-    "audit remaining search results selected-tour lead journey on 375 430 768 1024 1440",
-    "fix the next weakest confirmed Design 2.0 surface",
+    "audit search results selected-tour lead journey on 375 430 768 1024 1440",
+    "fix the next weakest confirmed Design 2.0 user-facing surface",
+    "preserve live search critical-catalog readiness as a regression gate",
+    "continue shared primitive adoption only where production surfaces still visibly diverge",
     "advance automatically to Search Experience 2.0 when the Design 2.0 quality gate is satisfied"
   ],
   "quality_dimensions": [
