@@ -18,7 +18,8 @@
       "Imported from AUTOPILOT_STATE.json current next_action.",
       "First orchestrator dry run selected the existing highest-priority stabilization audit.",
       "QA handoff recorded in autopilot-v2/runs/2026-09-01-pilot-1.md.",
-      "No product runtime code changed during orchestration."
+      "No product runtime code changed during orchestration.",
+      "Targeted live QA attempt was blocked before HTTP by execution-environment DNS resolution failure for anytoour.ru; not classified as product defect."
     ]
   },
   "queue": [
@@ -36,9 +37,16 @@
     }
   ],
   "last_signal": {
-    "source": "orchestrator_dry_run",
-    "status": "QA_HANDOFF_READY",
-    "sha": "bd0cf4f7a91a4ef0bf6c5e15227013159af74288"
+    "source": "qa_targeted_live_probe",
+    "status": "BLOCKED_EXTERNAL_DNS",
+    "sha": "a11e13a43f005c63ae159c0f742dbd4f30c77748"
   },
-  "blocked": []
+  "blocked": [
+    {
+      "scope": "pilot targeted production verification",
+      "type": "external_environment",
+      "reason": "Execution environment could not resolve anytoour.ru DNS before first HTTP request.",
+      "action": "Retry only the narrow live probe from an environment with working DNS; do not restore broad regression matrix."
+    }
+  ]
 }
