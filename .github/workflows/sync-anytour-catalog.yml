@@ -5,6 +5,12 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/sync-anytour-catalog.yml'
+      - 'v2/data/departures-v1.php'
+      - 'v2/data/sync-departures-v1.php'
+      - 'v2/data/validate-departures-v1.php'
+      - 'v2/data/schema-departures-v1.sql'
+  schedule:
+    - cron: '20 2 * * *'
   workflow_dispatch:
     inputs:
       country:
