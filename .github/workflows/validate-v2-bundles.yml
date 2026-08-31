@@ -45,20 +45,21 @@ jobs:
               $url=v2_bundle_asset($type);
               if (!str_contains($url,'bundle-v1.php?type='.$type.'&v='.$a)) {fwrite(STDERR,"bad $type url: $url\n"); exit(5);}
           }
-          if (count($manifest['css'])!==35) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
+          if (count($manifest['css'])!==36) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
           if (($manifest['css'][0]??'')!=='design-system-v1.css') {fwrite(STDERR,"design system must load first\n"); exit(8);}
           if (!in_array('site-header-v2.css',$manifest['css'],true)) {fwrite(STDERR,"canonical site header css missing\n"); exit(12);}
           if (!in_array('hotel-autocomplete-v1.css',$manifest['css'],true)) {fwrite(STDERR,"hotel autocomplete css missing\n"); exit(13);}
           if (!in_array('search-shell-grid-v1.css',$manifest['css'],true)) {fwrite(STDERR,"shared search shell grid css missing\n"); exit(16);}
           if (!in_array('current-price-calendar-v1.css',$manifest['css'],true)) {fwrite(STDERR,"current price calendar css missing\n"); exit(18);}
           if (!in_array('sales-leader-ui-v1.css',$manifest['css'],true)) {fwrite(STDERR,"sales leader css missing\n"); exit(23);}
+          if (!in_array('search-params-filter-rail-v1.css',$manifest['css'],true)) {fwrite(STDERR,"parameter/filter split css missing\n"); exit(27);}
           if (($manifest['css'][count($manifest['css'])-6]??'')!=='search-header-layout-guard-v1.css') {fwrite(STDERR,"search header layout guard must stay before footer rhythm and shared-shell override\n"); exit(9);}
           if (($manifest['css'][count($manifest['css'])-5]??'')!=='search-footer-rhythm-v1.css') {fwrite(STDERR,"search footer rhythm must stay directly before shared-shell override\n"); exit(10);}
           if (($manifest['css'][count($manifest['css'])-4]??'')!=='search-header-shared-shell-v1.css') {fwrite(STDERR,"search shared-shell override must stay directly before DS2 overrides\n"); exit(11);}
           if (($manifest['css'][count($manifest['css'])-3]??'')!=='ds2-search-intro-v1.css') {fwrite(STDERR,"DS2 search intro override must stay directly before tablet and selected-tour convergence\n"); exit(21);}
           if (($manifest['css'][count($manifest['css'])-2]??'')!=='ds2-search-tablet-filters-v1.css') {fwrite(STDERR,"DS2 tablet filters must stay directly before selected-tour convergence\n"); exit(26);}
           if (($manifest['css'][count($manifest['css'])-1]??'')!=='ds2-selected-tour-convergence-v1.css') {fwrite(STDERR,"DS2 selected-tour convergence must load last\n"); exit(25);}
-          if (count($manifest['js'])!==39) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
+          if (count($manifest['js'])!==40) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
           if (!in_array('catalog-local-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"local catalog router missing\n"); exit(15);}
           if (!in_array('country-matrix-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"country matrix router missing\n"); exit(20);}
           if (!in_array('hotel-autocomplete-v1.js',$manifest['js'],true)) {fwrite(STDERR,"hotel autocomplete js missing\n"); exit(14);}
@@ -66,6 +67,7 @@ jobs:
           if (!in_array('current-price-calendar-v1.js',$manifest['js'],true)) {fwrite(STDERR,"current price calendar js missing\n"); exit(19);}
           if (!in_array('results-filter-autorefresh-v1.js',$manifest['js'],true)) {fwrite(STDERR,"results filter autorefresh missing\n"); exit(22);}
           if (!in_array('sales-leader-ui-v1.js',$manifest['js'],true)) {fwrite(STDERR,"sales leader js missing\n"); exit(24);}
+          if (!in_array('search-params-filter-rail-v1.js',$manifest['js'],true)) {fwrite(STDERR,"parameter/filter split js missing\n"); exit(28);}
           echo 'BUNDLE_MANIFEST_OK css='.count($manifest['css']).' js='.count($manifest['js'])."\n";
           PHP
       - name: Validate bundled JavaScript syntax
@@ -88,6 +90,7 @@ jobs:
           grep -Fq 'data-v2-hotel-query' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'v2:results-filter-autorefresh' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'sales-leader-badge' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'Фильтры результатов' "$RUNNER_TEMP/v2-active-bundle.js"
           echo "BUNDLED_JS_SYNTAX_OK"
       - name: Validate bundle HTTP cache contract
         shell: bash
@@ -115,6 +118,7 @@ jobs:
           grep -Fq '.hotel-autocomplete__option' "$RUNNER_TEMP/bundle.css"
           grep -Fq '.current-price-calendar__day' "$RUNNER_TEMP/bundle.css"
           grep -Fq '.sales-leader-badge' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'DS2 semantic split' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'AnyTour Design System 2.0: keep the mature search surface' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Production guard for the legacy search-header markup' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Search-page footer rhythm guard' "$RUNNER_TEMP/bundle.css"
