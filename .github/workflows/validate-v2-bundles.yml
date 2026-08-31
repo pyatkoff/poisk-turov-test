@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'v2/**'
+      - '!v2/data/**'
+      - 'v2/data/destinations-v1.php'
       - '.github/workflows/validate-v2-bundles.yml'
   workflow_dispatch:
 
