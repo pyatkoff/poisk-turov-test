@@ -9,6 +9,9 @@
   .results .hotel-card .hotel-bottom{gap:22px!important}
   .results .hotel-card .hotel-choice-hint{max-width:300px!important}
 }
+@media(min-width:1360px){
+  .results .hotel-card .hotel-photo{min-width:280px!important}
+}
 @media(max-width:859px){
   .results .hotel-card .hotel-main{display:block!important}
   .results .hotel-card .hotel-photo{width:100%!important;height:220px!important;min-height:0!important;border-radius:0!important}
