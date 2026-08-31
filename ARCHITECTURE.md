@@ -10,6 +10,21 @@ A product concept must have one canonical implementation whenever practical. Do 
 
 When historical generations coexist, classify them as `ACTIVE`, `COMPATIBILITY`, `DEPRECATED` or `DEAD-CANDIDATE`; migrate consumers toward the canonical implementation before removal. Never delete compatibility/contract code based only on naming or age.
 
+### Canonical implementation registry
+
+Every architectural concept must resolve to exactly one of these states during the refactor pass:
+
+| State | Meaning | Allowed action |
+| --- | --- | --- |
+| `CANONICAL` | implementation new work must extend | add consumers here; do not fork |
+| `COMPATIBILITY` | still required by a proven legacy route/contract | preserve until consumers are migrated and replacement evidence exists |
+| `DEPRECATED` | superseded and intentionally not used for new work | migrate remaining proven consumers; no feature additions |
+| `DEAD-CANDIDATE` | no required consumer has been proven | do not delete until repository/runtime/CI/deploy evidence confirms absence of required use |
+
+For each concept under consolidation, `DEPENDENCY_MAP.md` or the relevant inventory evidence must identify: canonical implementation, known consumers, compatibility consumers, protected contract boundary, and tests/CI that own the behavior. Two `CANONICAL` implementations for the same concept are an architecture defect unless this document explicitly records a temporary seam and migration owner.
+
+A file name, version suffix, age, or absence from the browser bundle is not sufficient evidence that an implementation is deprecated or dead. Removal requires dependency evidence plus equivalent behavioral coverage where behavior is protected.
+
 ## Public product model
 
 The public product is one AnyTour website on the canonical `anytoour.ru` domain.
