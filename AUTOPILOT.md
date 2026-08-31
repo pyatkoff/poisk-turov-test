@@ -2,36 +2,34 @@
 
 Updated: 2026-08-31
 
-Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source and `AUTOPILOT_STATE.json` is the machine-readable resume point.
+Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` locks the active technical-refactor phase, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
 
-## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 1.0
+## Current owner-directed phase — CI COST AUDIT AND TECHNICAL REFACTOR
 
-After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is site-wide visual unification. The public site should feel like one coherent AnyTour product across homepage → destination/country → hot/search → results → selected tour → lead, rather than a strong search experience surrounded by visually inconsistent editorial pages.
+After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is technical consolidation and GitHub Actions cost reduction. The objective is to cut duplicate runner/browser work without weakening the critical contracts around search, prices, tours, flights, recovery and lead submission.
 
-The whole-site visual score is tracked separately from search-only engineering quality. Current baseline is approximately 6.5/10 for coherent public-site product quality; shared-shell/editorial work has moved this to roughly 7.0/10.
+AnyTour Design System 2.0 is the canonical design-system generation. Legacy Design System generation terminology must not be reintroduced. Implementation filenames such as `*-v1.js` / `*-v1.css` are independent module-generation identifiers and must not be mass-renamed without dependency-mapped migration.
 
 ## Ordered work
 
-1. Audit `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages as one product journey.
-2. Keep one shared header/navigation, one footer, shared typography, width/grid/spacing, buttons, cards, breadcrumbs and responsive behavior.
-3. Fix confirmed crooked spacing, wrapping, overflow, duplicated shell, inconsistent header/footer and hierarchy before cosmetic flourishes.
-4. Use the mature search experience as the quality reference without making editorial pages unnecessarily dense.
-5. Validate user-facing changes at 375/430/768/1024/1440 and preserve search/recovery/results/comparison/flight/price/fuel/lead regressions.
-6. Continue through multiple independent safe pages/tasks per development run where checks and production evidence allow it.
-7. Keep CI-cost/refactor work deferred unless it fixes an emergency or directly enables the active visual work.
+1. Audit workflows by actual dependency and classify them as PR FAST, PR BROWSER, POST DEPLOY, SCHEDULED-LIVE or consolidate/delete-after-coverage.
+2. Reduce repeated runner starts, `npm init`, Playwright installation and Chromium dependency installation before deleting any unique behavioral coverage.
+3. Consolidate overlapping checks into one domain owner; do not create one workflow per bug/string/selector.
+4. Narrow broad `v2/**` triggers where a workflow does not consume `v2/data/**` or other changed subtrees.
+5. Fold tiny source-string guards into an existing cheap owner where equivalent failure visibility is preserved.
+6. Keep architecture/source-of-truth files synchronized and periodically re-audit the whole search product rather than only recently changed files.
+7. Resume UX/visual work under AnyTour Design System 2.0 after the technical CI phase or when required to preserve a critical user journey.
 
 ## Current resume point
 
-Shared shell/header/footer primitives already cover the migrated standalone pages; contacts/how-to-buy use the stronger editorial hierarchy, tablet shell/footer grid alignment is corrected, and `/rb/` now uses the same balanced search/supporting-card hierarchy. Responsive standalone checks and V2 search/selected-tour/baseline visual regressions passed, and the Design System 1.0 source-of-truth fix is deployed with a green live search smoke.
+Completed cost reductions include data-only exclusions for several unrelated V2 visual/browser owners, consolidation of the duplicate primary-meal responsive workflow, removal of dormant manual traffic-audit stubs, and consolidation of the pending-flight label source guard into the existing pending-flight confidence owner.
 
-The next safe continuation is `/country/` plus representative destination pages. Audit their hierarchy, spacing, wrapping, overflow, cards and shared-shell consistency, then run the complete production journey at 375/430/768/1024/1440.
-
-The repeated priority rollback was traced to hard-coded CI guards that forced the superseded technical-refactor / Design System 2.0 state. Those guards now validate consistency with `OWNER_PRIORITY.json` instead of embedding an obsolete owner direction.
+Continue with the broad expensive owners first: `visual-v2-baseline.yml`, then dependency filtering for `validate-v2-pr.yml` / standalone owners, and further browser-suite consolidation where exact coverage overlap is proven. Maintain the target of at least a 2x reduction in routinely triggered PR jobs without weakening money/lead/search/price/tour/flight/recovery protection.
 
 ## Mandatory protections
 
-Work only inside `pyatkoff/poisk-turov-test`. Do not redesign or replace the AnyTour logo. Do not modify Yandex Metrika configuration/goals, the Tourvisor contract, the existing lead-sending external contract/field mapping, neighboring projects, or verified social/app destinations. Do not migrate unresolved legal/payment content. Keep PR #254 deferred unless a fresh separate review proves its DB/platform architecture safe.
+Work only inside `pyatkoff/poisk-turov-test`. Do not modify Yandex Metrika configuration or goals. Preserve the Tourvisor contract and the external lead-sending contract/field mapping. Do not modify neighboring projects. Keep GitHub as source of truth.
 
 ## Execution policy
 
-At the start of each run inspect fresh `main`, open/recent PRs, CI/deploy evidence, production/live behavior where accessible and the current resume point. Prefer SAFE/MEDIUM visual-unification slices with focused regression and responsive evidence. Merge/deploy only after relevant checks are green, then verify production/live behavior. If blocked, record/defer the blocker and continue another independent safe Design System 1.0 task.
+At the start of each run inspect fresh `main`, open PRs, recent CI/deploy evidence and the source-of-truth files. Prefer narrow SAFE/MEDIUM consolidation PRs and merge autonomously after green evidence. If blocked, record/defer the blocker and continue another independent technical-refactor or CI-cost task. Do not let visual/design work silently preempt the active technical phase.
