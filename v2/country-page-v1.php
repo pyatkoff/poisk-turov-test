@@ -63,7 +63,7 @@ function cp_render(array $page): void
         ['label' => 'Страны', 'href' => '/country/'],
         ['label' => 'Туры в ' . $name],
     ]);
-    sp_hero('AnyTour · ' . $name, 'Туры в ' . $name, $intro);
+    sp_hero('AnyTour · направление', 'Туры в ' . $name, $intro);
     ?>
     <main class="sp-main sp-country-page">
       <section class="sp-country-intent" aria-labelledby="country-intent-title">
@@ -71,6 +71,11 @@ function cp_render(array $page): void
           <span class="sp-country-intent__eyebrow">Живой поиск AnyTour</span>
           <h2 id="country-intent-title">Сразу к актуальным турам</h2>
           <p>Выберите даты, длительность и состав туристов — поиск покажет доступные отели, варианты перелёта и итоговую цену.</p>
+          <ul class="sp-country-intent__signals" aria-label="Что можно проверить в поиске">
+            <li>Актуальные предложения</li>
+            <li>Перелёт и багаж, когда доступны</li>
+            <li>Цена перед заявкой</li>
+          </ul>
           <div class="sp-actions"><a class="sp-primary" href="<?=sp_e($searchHref)?>"><?=sp_e($searchLabel)?></a><a class="sp-secondary" href="/contacts/">Помочь с выбором</a></div>
         </div>
         <?php if ($resorts): ?>
