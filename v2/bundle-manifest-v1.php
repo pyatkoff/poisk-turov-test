@@ -33,6 +33,7 @@ function v2_bundle_manifest(): array
             'runtime-retry-policy.js',
             'runtime-v3.js',
             'analytics-v4.js',
+            'direct-offer-retargeting-v1.js',
             'results-renderer-v5.js',
             'conversion-confidence-v1.js',
             'search-continue-v6.js',
