@@ -65,6 +65,12 @@ Typical coverage:
 
 These checks must distinguish "no paid traffic" from a production defect.
 
+## Synthetic live-search traffic policy
+
+Synthetic browser searches must be identifiable without changing Yandex Metrika configuration or goals. Canonical live-search workflows should add a test marker such as `ci_test=1` and a request header such as `X-AnyTour-CI: 1` so server-side logs can distinguish test traffic. Browser-driven synthetic checks should block Metrika network requests inside the test harness rather than modifying production analytics code.
+
+When a synthetic search is intentionally allowed to reach the normal passive price observer, rotate safe search dimensions across runs (for example departure dates and nights) instead of replaying one identical query forever. This lets valid Tourvisor observations improve price-history coverage while keeping the synthetic visit out of Metrika. Do not vary parameters so aggressively that the regression becomes flaky; use a small predefined set of known-valid segments.
+
 ## Protected behavioral areas
 
 The following must retain explicit regression ownership during CI consolidation:
@@ -89,7 +95,7 @@ The following must retain explicit regression ownership during CI consolidation:
 The repository currently has many narrow workflows. Known families include:
 
 - runtime/live audits (`audit-anytoour-runtime`, `audit-v2-live-traffic`, `audit-v2-recent-browser`);
-- release/deploy (`deploy-anytoour`, legacy `deploy`, feed deploy);
+- release/deploy (`deploy-anytoour`, legacy `deploy`, feed deploy`);
 - PR validation (`validate-v2-pr`, security guards, PHP/runtime/source-contract guards);
 - focused search/results/flight/price/lead/mobile validation workflows;
 - Playwright/visual workflows for V2, standalone pages and production;
@@ -107,6 +113,12 @@ The workflow audit must enumerate every workflow from `.github/workflows/`, reco
 5. Path filters must include every module that can change the protected behavior; otherwise the guard is only apparently present.
 6. A workflow that is obsolete because a route/implementation was intentionally replaced should first be marked/documented as superseded, then removed in a separate SAFE PR with replacement evidence.
 7. CI consolidation must not change Metrika/goals, lead external contract, Tourvisor external contract or production behavior.
+8. Do not create a dedicated workflow for a single string/single selector/single version label when the same assertion can run inside an existing fast owner workflow.
+9. Prefer one runner per behavioral domain over many tiny workflows when equivalent path coverage and failure visibility can be preserved.
+
+## Resource target
+
+The audit should reduce routinely triggered PR jobs by at least 2x where equivalent coverage can be proved. Optimize runner startups, repeated Playwright/Chromium installation and duplicate live searches first; preserving lead/search/price/tour/flight correctness takes priority over raw workflow-count reduction.
 
 ## Required evidence before merging refactor slices
 
