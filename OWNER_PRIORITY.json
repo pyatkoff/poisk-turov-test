@@ -1,23 +1,20 @@
 {
-  "schema_version": 10,
-  "active_mode": "ux_visual",
-  "active_phase": "ANYTOUR_DESIGN_SYSTEM_2_SITE_UNIFICATION",
-  "current_stage": "DS2_REFERENCE_CONVERGENCE",
+  "schema_version": 11,
+  "active_mode": "technical_refactor",
+  "active_phase": "ARCHITECTURE_INVENTORY_AND_CI_CONSOLIDATION",
+  "current_stage": "ARCHITECTURE_SOURCE_OF_TRUTH",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
-  "canonical_visual_reference": "owner-confirmed composite AnyTour DS2 desktop/mobile mockup supplied 2026-08-31",
   "priority_after_emergency_overrides": [
+    "architecture_source_of_truth",
+    "inventory_dependency_map",
+    "ci_tiering_and_consolidation",
+    "safe_directory_structure",
+    "shared_template_consolidation",
     "ux_visual",
-    "ds2_reference_convergence",
-    "shared_header_footer",
-    "homepage_hero_search",
-    "search_results",
-    "selected_hotel_tour",
-    "destination_hot_editorial",
     "tour_data_platform",
     "content_seo",
-    "technical_refactor",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_design_system_2_reference_mockup",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, converge the public product toward the owner-confirmed AnyTour Design System 2.0 mockup rather than polishing contradictory legacy compositions. Technical refactor may support this work but must not preempt the active DS2 visual convergence. Preserve Metrika, Tourvisor and lead contracts, verified destinations and the existing AnyTour logo."
+  "source": "explicit_owner_direction_2026_08_31_technical_refactor_pass",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize the technical refactor pass: establish canonical architecture/source of truth and one concept -> one implementation; complete active/compatibility/dead inventory and dependency mapping; classify GitHub Actions into PR FAST, PR BROWSER, POST DEPLOY and SCHEDULED-LIVE and consolidate only with proven equivalent coverage; prepare behavior-preserving shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates ownership structure; then consolidate shared header/footer/navigation/design-system implementations; only after technical consolidation resume UX/visual work. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring project boundaries."
 }
