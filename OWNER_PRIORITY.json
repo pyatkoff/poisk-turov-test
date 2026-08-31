@@ -1,15 +1,14 @@
 {
   "schema_version": 3,
-  "active_mode": "design_system_1_0_site_unification",
-  "active_phase": "ANYTOUR DESIGN SYSTEM 1.0 / SITE-WIDE VISUAL UNIFICATION",
-  "current_stage": "DESIGN_SYSTEM_1_0_SITE_UNIFICATION",
+  "active_mode": "technical_refactor_pass",
+  "active_phase": "TECHNICAL REFACTOR PASS",
+  "current_stage": "TECHNICAL_REFACTOR_CONSOLIDATION",
   "priority_after_emergency_overrides": [
-    "design_system_1_0_site_unification",
-    "search_results_selected_tour_regression_preservation",
     "technical_refactor",
+    "ux_visual",
     "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_design_system_1_0_site_unification",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize AnyTour Design System 1.0 and whole-site visual unification across /, /poisk-turov/, /hot/, /contacts/, /how-to-buy/, /rb/, /country/ and representative country pages. Use the mature search experience as reference, fix confirmed spacing/wrapping/overflow/duplicated-shell/header/footer/hierarchy regressions first, validate 375/430/768/1024/1440, and preserve search/recovery/results/comparison/flight/price/fuel/lead behavior. Keep work inside pyatkoff/poisk-turov-test; preserve logo, verified social/app destinations, Yandex Metrika/goals/analytics, Tourvisor and the external lead contract; defer unresolved legal/payment content and PR #254 unless separately proven safe."
+  "source": "explicit_owner_direction_2026_08_31_technical_refactor_pass",
+  "rule": "Complete the technical refactor pass before resuming UX/visual work: architecture/source-of-truth, full file/dependency inventory, exhaustive CI classification and proof-based deduplication, safe directory ownership, then shared template consolidation. Preserve Yandex Metrika/goals, analytics, Tourvisor and the external lead contract; stay inside pyatkoff/poisk-turov-test."
 }
