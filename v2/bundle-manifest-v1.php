@@ -50,6 +50,7 @@ function v2_bundle_manifest(): array
             'url-primary-catalog-sync-v1.js',
             'search-filters-ux-v1.js',
             'search-lifecycle-v6.js',
+            'results-depth-v1.js',
             'results-filter-autorefresh-v1.js',
             'mobile-results-filters-v1.js',
             'primary-meal-ux-v1.js',

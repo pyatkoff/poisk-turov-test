@@ -45,8 +45,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq 'api:"/api-v2.php"' v2/index.php
-          grep -Fq 'leadApi:"/lead-adapter-v2.php"' v2/index.php
+          grep -Fq "v2_public_path('api-v2.php')" v2/index.php
+          grep -Fq "v2_public_path('lead-adapter-v2.php')" v2/index.php
+          test -f v2/api-v2.php
           test -f v2/lead-adapter-v2.php
           test -f v2/analytics-config.php
           echo 'FAST_CONTRACT_OK'
