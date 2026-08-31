@@ -4,28 +4,28 @@ Updated: 2026-08-31
 
 Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` records that the old refactor-first lock is inactive, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
 
-## Current owner-directed phase — TOUR DATA PLATFORM
+## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 1.0
 
-After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is accumulating trustworthy tour data. Technical refactor is supporting work only when it is required to deliver this path safely.
+After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is whole-site visual unification. The public site must read as one coherent AnyTour product from homepage through destination/hot/search, results, selected tour and lead. Search-only engineering quality must not be used as the whole-site visual score.
 
 ## Ordered work
 
-1. Keep the Tourvisor catalog and real departure→country availability matrix fresh.
-2. Accumulate tour observations across real markets with bounded broad searches, never one paid/search request per hotel.
-3. Preserve normalization, deduplication, observation timestamps, attempt history and independent search/day evidence.
-4. Build reliable daily minima, hotel minima, price history, confidence and percentile/baseline aggregates.
-5. Power hot tours, the price calendar and price recommendations from those aggregates while verifying current/final bookable price through live Tourvisor.
-6. Use accumulated catalog/offer data for SEO country/resort/hotel pages and search ranking/recommendations.
-7. Finish UX/Design System 2.0 packaging after the underlying data products are real enough to justify the final surfaces.
+1. Keep one shared token/primitives layer for typography, shell width, gutters, spacing, cards, controls, breadcrumbs and responsive behavior.
+2. Keep one coherent header/navigation and one canonical footer across `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages.
+3. Fix confirmed crooked spacing, wrapping, overflow, duplicated shell and inconsistent hierarchy before decorative polish.
+4. Migrate weak editorial/destination pages onto the mature shared shell while keeping them lighter than the dense search product.
+5. Validate material visual changes at 375, 430, 768, 1024 and 1440 px and audit the full homepage → destination/hot → search → results → selected tour → lead journey.
+6. Preserve all search/recovery/results/comparison/flight/price/fuel/lead regressions while changing the outer visual system.
+7. Resume Tour Data Platform work after the owner-directed Design System phase or when needed to support an already-approved visual/product surface.
 
 ## Current resume point
 
-The production departure-country matrix contains real market coverage and the bounded scheduled-monitor collector is the active stage. Verify its first production attempts, use the attempt ledger and coverage reports to improve target selection, then grow independent search/day history safely. Do not spend autonomous cycles on spacing/alignment/cosmetic cleanup unless it fixes a correctness or conversion regression.
+The shared token/header/footer/page-shell foundation already exists and the prior tablet footer-grid mismatch was fixed. Continue from cross-page geometry and hierarchy: align the 769–900 px editorial shell to the same 760 px tablet grid used by shared header/footer, then audit homepage, country/destination, `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/` for route-specific hierarchy and overflow. Run the production journey at all required widths after relevant checks are green.
 
 ## Mandatory protections
 
-Work only inside `pyatkoff/poisk-turov-test`. Do not modify Yandex Metrika configuration/goals, the external lead contract or field mapping, Tourvisor contract, or neighboring projects. The accumulated database is a knowledge layer; current availability and lead/purchase-critical price remain live Tourvisor truth.
+Work only inside `pyatkoff/poisk-turov-test` and allowed V2/standalone production scope. Do not redesign or replace the AnyTour logo. Do not modify Yandex Metrika configuration/goals, Tourvisor contract, external lead contract/field mapping, verified social/app destinations or neighboring projects. Do not migrate unresolved legal/payment content. Keep PR #254 deferred unless a fresh review proves its separate DB/platform architecture safe.
 
 ## Execution policy
 
-At the start of each run inspect fresh `main`, open PRs, recent CI, production coverage/collector evidence and these source-of-truth files. Choose the highest-value independent Tour Data Platform slice and carry it through a narrow PR and relevant CI. SAFE/MEDIUM changes may be merged autonomously after green evidence. If blocked, record/defer the blocker and continue another independent data-platform task.
+At the start of each run inspect fresh `main`, open PRs, recent CI/deploy evidence, live behavior where accessible and these source-of-truth files. Choose multiple independent safe Design System slices where time permits and carry each through focused regression/visual evidence. SAFE/MEDIUM changes may be merged autonomously after green evidence. If blocked, record/defer the blocker and continue another independent visual-unification task.
