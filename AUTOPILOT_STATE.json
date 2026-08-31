@@ -1,55 +1,49 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "project": "pyatkoff/poisk-turov-test",
   "updated_at": "2026-08-31T11:45:00+02:00",
-  "mode": "design_system_1",
-  "phase": "ANYTOUR DESIGN SYSTEM 1.0",
+  "mode": "technical_refactor",
+  "phase": "CI_COST_AUDIT_AND_CONSOLIDATION",
+  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "design_system_1",
-    "rule": "Keep AnyTour Design System 1.0 and site-wide visual unification first after emergency correctness overrides until the owner explicitly changes direction."
+    "planned_phase": "technical_refactor",
+    "rule": "Keep technical refactor and CI-cost consolidation first after emergency correctness overrides until the owner explicitly changes direction. Design System 2.0 remains canonical terminology but is not the active execution phase."
   },
   "current_stage": {
-    "id": "SITE_WIDE_VISUAL_UNIFICATION",
-    "name": "Shared shell, hierarchy and responsive continuity",
+    "id": "CI_RESOURCE_CONSOLIDATION",
+    "name": "Reduce duplicate GitHub Actions work without losing critical coverage",
     "status": "ACTIVE",
-    "next_action": "Audit /contacts/ hierarchy and responsive rhythm, then run the full production homepage -> destination/hot -> search -> results -> selected tour -> lead journey using the exact 375/430/768/1024/1440 visual matrix."
+    "next_action": "Continue the verified workflow-by-workflow audit: remove duplicate runners, narrow broad triggers by real dependencies, consolidate related Playwright checks, and preserve critical search/lead/price/tour/flight/recovery coverage."
   },
   "current_work_order": [
-    "contacts hierarchy and responsive rhythm",
-    "cross-page exact-width production visual matrix",
-    "full homepage destination hot search results selected-tour lead journey",
-    "preserve mature search and lead regressions",
-    "tour data platform after visual owner phase"
+    "audit broad PR browser triggers and data-only exclusions",
+    "consolidate overlapping browser workflows into domain owners",
+    "fold tiny source-string guards into existing PR FAST owners",
+    "classify PR FAST PR BROWSER POST DEPLOY and SCHEDULED LIVE",
+    "maintain architecture and dependency source of truth",
+    "resume UX and Design System 2.0 visual work after the technical CI phase"
   ],
-  "site_wide_visual_baseline": 6.5,
-  "site_wide_visual_current_estimate": 6.8,
   "material_progress": [
-    "editorial shell, breadcrumbs and shared header/footer share the canonical tablet grid",
-    "homepage hero, quick search and content sections consume the same shared page gutter/tablet cap",
-    "country catalog and representative destination cards keep equal-width centered remainder rows instead of accidental oversized final cards",
-    "country and hot-tour cards align their actions despite different copy lengths",
-    "how-to-buy uses one readable column through the narrow 769-900 editorial tablet shell and returns to two columns above it",
-    "early-booking uses a lighter three-card wide-screen summary while preserving the mobile/tablet flow",
-    "balanced three-card editorial grids center odd remainder cards instead of stretching them into false full-width emphasis",
-    "production deploy and post-deploy visual checks passed at 375, 430, 768, 1024 and 1440 while lead bridge and live search smoke remained green"
+    "data-only changes no longer start several unrelated visual browser workflows",
+    "duplicate primary-meal browser coverage was consolidated into one owner workflow",
+    "dormant manual traffic-audit stubs were removed",
+    "pending-flight label source assertions were folded into the existing pending-flight confidence owner"
   ],
   "protected": {
-    "repository_scope": "pyatkoff/poisk-turov-test and allowed V2/standalone production scope only",
+    "repository_scope": "pyatkoff/poisk-turov-test only",
     "other_projects": "DO_NOT_MODIFY",
-    "anytour_logo": "PRESERVE_EXISTING_LOGO",
-    "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "tourvisor_contract": "PRESERVE_LIVE_SOURCE_AND_FINAL_PRICE_VALIDATION",
+    "metrika_configuration": "DO_NOT_MODIFY",
+    "metrika_goals": "DO_NOT_MODIFY",
+    "tourvisor_contract": "PRESERVE",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
-    "social_app_destinations": "PRESERVE_VERIFIED_DESTINATIONS",
-    "legal_payment_content": "DEFER_UNRESOLVED_MIGRATION",
-    "pr_254": "DEFER_UNLESS_FRESH_ARCHITECTURE_REVIEW_PROVES_SAFE"
+    "design_system_generation": "ANYTOUR DESIGN SYSTEM 2.0",
+    "implementation_v1_suffixes": "DO_NOT_MASS_RENAME_WITHOUT_DEPENDENCY_MIGRATION"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_1 > site_wide_visual > tour_data_platform > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ci_cost_audit > ux_visual > tour_data_platform > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record/defer blocker and continue an independent safe Design System task"
+    "on_blocker": "record/defer blocker and continue an independent safe technical-refactor or CI-cost task"
   }
 }
