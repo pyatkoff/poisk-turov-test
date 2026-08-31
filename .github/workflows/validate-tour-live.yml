@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'v2/**'
+      - '!v2/data/**'
       - '.github/workflows/validate-tour-live.yml'
   pull_request:
     branches: [main]
