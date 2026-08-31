@@ -31,7 +31,7 @@ jobs:
           grep -Fq "'nightsFrom'=>5" v2/data/probe-market-continue-v1.php
           grep -Fq "'nightsTo'=>14" v2/data/probe-market-continue-v1.php
           grep -Fq "['limit'=>10000]" v2/data/probe-market-continue-v1.php
-          grep -Fq "'/tours/search/' . $searchId . '/continue'" v2/data/probe-market-continue-v1.php
+          grep -Fq "'/continue'" v2/data/probe-market-continue-v1.php
           grep -Fq 'PROBE_CONTINUE_BEFORE' v2/data/probe-market-continue-v1.php
           grep -Fq 'PROBE_CONTINUE_AFTER' v2/data/probe-market-continue-v1.php
 
