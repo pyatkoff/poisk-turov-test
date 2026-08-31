@@ -36,7 +36,7 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
       $where=array_values(array_filter([(string)($offer['country_name']??''),(string)($offer['region_name']??'')]));
       $departure=trim((string)($offer['departure_name']??''));
       $meta=implode(' · ',array_filter([implode(', ',$where),$departure!==''?'из '.$departure:'',hot_date_label($date),$nights.' ноч.'])); ?>
-      <section class="sp-card">
+      <section class="sp-card sp-hot-offer-card">
         <h3><?=sp_e((string)$offer['hotel_name'])?><?php if((int)($offer['hotel_category']??0)>0): ?> <?=str_repeat('★',(int)$offer['hotel_category'])?><?php endif; ?></h3>
         <p><?=sp_e($meta)?></p>
         <p><strong><?=sp_e(hot_price($offer['price'],$offer['currency']??'RUB'))?></strong> · за двоих</p>
