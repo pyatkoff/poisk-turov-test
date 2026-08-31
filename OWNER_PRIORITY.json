@@ -1,20 +1,19 @@
 {
-  "schema_version": 14,
-  "active_mode": "search_ux_ds2",
-  "active_phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
-  "current_stage": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
+  "schema_version": 15,
+  "active_mode": "technical_refactor",
+  "active_phase": "ARCHITECTURE_INVENTORY_AND_CI_CONSOLIDATION",
+  "current_stage": "ARCHITECTURE_SOURCE_OF_TRUTH",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "priority_after_emergency_overrides": [
-    "search_user_journey",
-    "results_filters_full_search",
-    "hotel_tour_cards_and_selected_tour",
-    "desktop_mobile_visual_consistency",
-    "shared_header_navigation_footer_ds2",
-    "site_visual_convergence_ds2",
-    "technical_refactor_deferred",
+    "architecture_source_of_truth",
+    "inventory_dependency_map",
+    "ci_tiering_and_consolidation",
+    "safe_directory_structure",
+    "shared_template_consolidation",
+    "ux_visual",
     "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_pause_technical_refactor_update_design_and_search_ds2",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize the tour-search UX and user-facing visual layer using ANYTOUR DESIGN SYSTEM 2.0 as the only canonical design system. Improve search form, full-search filters, results, hotel/tour cards, selected-tour UX and desktop/mobile visual consistency; converge shared header/navigation/footer and broader site visuals on DS2 where required by user-facing work. Keep technical_refactor deferred until a new explicit owner direction. Do not introduce or restore Design System 1.0. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring project boundaries."
+  "source": "explicit_owner_direction_2026_08_31_resume_technical_refactor_pass",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, resume the technical refactor pass. First enforce ARCHITECTURE.md and TEST_MATRIX.md as source of truth with one concept -> one implementation; complete active/compatibility/dead inventory and dependency mapping; classify GitHub Actions into PR FAST, PR BROWSER, POST DEPLOY and SCHEDULED-LIVE and consolidate only after proven equivalent coverage; prepare behavior-preserving shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates ownership; then consolidate one header, one footer, one navigation and one canonical AnyTour Design System 2.0. Only after technical consolidation resume UX/visual work. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring project boundaries."
 }
