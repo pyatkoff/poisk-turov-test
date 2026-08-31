@@ -81,7 +81,7 @@ jobs:
           test "$complete" = '1' || fail search_not_complete
 
           curl -fsSL --max-time 45 "$api?action=search_results&searchId=$search_id&limit=100" -o /tmp/root-results.json
-          read hotel_id tour_id < <(python3 - <<'PY'
+          python3 - <<'PY' > /tmp/root-pairs.tsv
           import json
           data=json.load(open('/tmp/root-results.json'))
           assert isinstance(data,list) and data
@@ -89,17 +89,65 @@ jobs:
           assert len(ids)==len(set(ids))
           pairs=[(h.get('id'),t.get('id')) for h in data if isinstance(h,dict) for t in (h.get('tours') or []) if isinstance(t,dict) and h.get('id') and t.get('id')]
           assert pairs
-          print(pairs[0][0],pairs[0][1])
+          for hotel_id,tour_id in pairs[:8]:
+              print(f'{hotel_id}\t{tour_id}')
           PY
-          )
-          test -n "$hotel_id" && test -n "$tour_id" || fail result_identity
-          echo "ANYTOOUR_JOURNEY_RESULTS_OK searchId=$search_id hotelId=$hotel_id tourId=$tour_id"
 
-          curl -fsSL --max-time 45 "$api?action=hotel_details&hotelId=$hotel_id" -o /tmp/root-hotel.json
-          python3 -c "import json; d=json.load(open('/tmp/root-hotel.json')); assert isinstance(d,dict) and d" || fail hotel_details
+          hotel_id=''
+          tour_id=''
+          viable=0
+          sold=0
+          while IFS=$'\t' read -r candidate_hotel candidate_tour; do
+            test -n "$candidate_hotel" && test -n "$candidate_tour" || continue
+            curl -fsSL --max-time 45 "$api?action=hotel_details&hotelId=$candidate_hotel" -o /tmp/root-hotel.json
+            python3 -c "import json; d=json.load(open('/tmp/root-hotel.json')); assert isinstance(d,dict) and d" || fail hotel_details
 
-          curl -fsSL --max-time 45 --get --data-urlencode 'action=tour' --data-urlencode "tourId=$tour_id" --data-urlencode 'currency=RUB' "$api" -o /tmp/root-tour.json
-          python3 -c "import json; d=json.load(open('/tmp/root-tour.json')); assert isinstance(d,dict) and str(d.get('id',''))" || fail tour_details
+            curl -fsSL --max-time 45 --get --data-urlencode 'action=tour' --data-urlencode "tourId=$candidate_tour" --data-urlencode 'currency=RUB' "$api" -o /tmp/root-tour.json
+            if ! python3 -c "import json; d=json.load(open('/tmp/root-tour.json')); assert isinstance(d,dict) and str(d.get('id',''))"; then
+              echo "ANYTOOUR_JOURNEY_SKIP_STALE_TOUR tourId=$candidate_tour stage=tour"
+              sold=$((sold+1))
+              continue
+            fi
+
+            curl -fsSL --max-time 45 --get --data-urlencode 'action=flights' --data-urlencode "tourId=$candidate_tour" --data-urlencode 'currency=RUB' "$api" -o /tmp/root-flights.json
+            set +e
+            python3 - <<'PY'
+          import json,sys
+          d=json.load(open('/tmp/root-flights.json'))
+          assert isinstance(d,(list,dict))
+          if isinstance(d,dict):
+              assert d.get('ok') is not False
+              error=d.get('error')
+              if isinstance(error,dict):
+                  try: code=int(error.get('code',0) or 0)
+                  except (TypeError,ValueError): raise AssertionError('invalid flight error code')
+                  if code == 2:
+                      print(f"ANYTOOUR_JOURNEY_STALE_SOLD reason={error.get('reason','')}")
+                      sys.exit(2)
+                  assert code == 0, f"flight error code={code} reason={error.get('reason','')}"
+              elif error:
+                  raise AssertionError(f"unexpected flight error={error}")
+          flights=d if isinstance(d,list) else d.get('flights',[]) if isinstance(d,dict) else []
+          if flights:
+              assert isinstance(flights[0],dict) and (flights[0].get('forward') or flights[0].get('backward'))
+              print('ANYTOOUR_JOURNEY_FLIGHTS_OK')
+          else:
+              print('ANYTOOUR_JOURNEY_FLIGHTS_OPTIONAL_EMPTY')
+          PY
+            flight_status=$?
+            set -e
+            if test "$flight_status" = '2'; then
+              sold=$((sold+1))
+              continue
+            fi
+            test "$flight_status" = '0' || fail flights_response
+            hotel_id="$candidate_hotel"
+            tour_id="$candidate_tour"
+            viable=1
+            break
+          done < /tmp/root-pairs.tsv
+          test "$viable" = '1' || fail no_viable_tour_after_stale_retry
+          echo "ANYTOOUR_JOURNEY_RESULTS_OK searchId=$search_id hotelId=$hotel_id tourId=$tour_id staleSoldSkipped=$sold"
 
           room_id="$(python3 - <<'PY'
           import json
@@ -122,29 +170,6 @@ jobs:
           PY
           fi
 
-          curl -fsSL --max-time 45 --get --data-urlencode 'action=flights' --data-urlencode "tourId=$tour_id" --data-urlencode 'currency=RUB' "$api" -o /tmp/root-flights.json
-          python3 - <<'PY' || fail flights_response
-          import json
-          d=json.load(open('/tmp/root-flights.json'))
-          assert isinstance(d,(list,dict))
-          if isinstance(d,dict):
-              assert d.get('ok') is not False
-              error=d.get('error')
-              if isinstance(error,dict):
-                  code=error.get('code',0)
-                  try: code=int(code or 0)
-                  except (TypeError,ValueError): raise AssertionError('invalid flight error code')
-                  assert code == 0, f"flight error code={code} reason={error.get('reason','')}"
-              elif error:
-                  raise AssertionError(f"unexpected flight error={error}")
-          flights=d if isinstance(d,list) else d.get('flights',[]) if isinstance(d,dict) else []
-          if flights:
-              assert isinstance(flights[0],dict) and (flights[0].get('forward') or flights[0].get('backward'))
-              print('ANYTOOUR_JOURNEY_FLIGHTS_OK')
-          else:
-              print('ANYTOOUR_JOURNEY_FLIGHTS_OPTIONAL_EMPTY')
-          PY
-
           lead_code="$(curl -fsSL -o /tmp/root-lead-health.json -w '%{http_code}' --max-time 30 "$root/lead-adapter-v2.php")"
           test "$lead_code" = '200' || fail lead_health_http
           python3 - <<'PY' || fail lead_health
@@ -153,4 +178,4 @@ jobs:
           assert d.get('ok') is True
           assert d.get('adapter') == 'v2-hmac-bridge-bitrix-lead'
           PY
-          echo "ANYTOOUR_USER_JOURNEY_OK searchId=$search_id hotelId=$hotel_id tourId=$tour_id roomId=${room_id:-optional_missing}"
+          echo "ANYTOOUR_USER_JOURNEY_OK searchId=$search_id hotelId=$hotel_id tourId=$tour_id roomId=${room_id:-optional_missing} staleSoldSkipped=$sold"
