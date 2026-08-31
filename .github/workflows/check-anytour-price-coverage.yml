@@ -1,0 +1,68 @@
+name: Check AnyTour price coverage
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/data/price-coverage-doctor-v1.php'
+      - '.github/workflows/check-anytour-price-coverage.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/data/price-coverage-doctor-v1.php'
+      - '.github/workflows/check-anytour-price-coverage.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate coverage doctor
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/price-coverage-doctor-v1.php >/dev/null
+          grep -Fq 'groups_5_plus' v2/data/price-coverage-doctor-v1.php
+          grep -Fq 'groups_15_plus' v2/data/price-coverage-doctor-v1.php
+          grep -Fq 'groups_30_plus' v2/data/price-coverage-doctor-v1.php
+          grep -Fq 'COUNT(DISTINCT CASE WHEN observed_at' v2/data/price-coverage-doctor-v1.php
+          if grep -Eqi 'phone|email|yclid|client_id|max_user' v2/data/price-coverage-doctor-v1.php; then
+            echo 'coverage doctor must stay aggregate-only' >&2; exit 1
+          fi
+          echo 'PRICE_COVERAGE_DOCTOR_CONTRACT_OK'
+
+  production:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Measure production coverage
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          root='~/www/anytoour.ru'
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data" && test -s "$HOME/www/anytoour.ru/config.php"'
+          scp "${opts[@]}" v2/data/db-v1.php v2/data/price-coverage-doctor-v1.php "$remote:$root/data/"
+          ssh "${opts[@]}" "$remote" "php \"\$HOME/www/anytoour.ru/data/price-coverage-doctor-v1.php\""
