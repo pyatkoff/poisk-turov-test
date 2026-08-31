@@ -8,6 +8,20 @@ Build a modern, visually polished and highly convenient tour search product with
 ### Long-term goal
 Use the tour search product as the foundation for a large SEO-driven travel website. Decisions made now should avoid unnecessarily blocking future SEO architecture, performance, landing pages, destination/hotel pages, internal linking and scalable content.
 
+## Official AnyTour brand assets
+
+The user has supplied the canonical AnyTour logo artwork for this project. Treat these files as immutable brand assets: do not redraw, reinterpret, regenerate or replace the logo with AI-generated approximations. For generated hotel cards/creatives, generate only the surrounding composition and place the original logo artwork unchanged.
+
+Canonical supplied variants from 2026-08-31:
+- `Layer_1-3(1).png`
+- `Layer_1-2.png`
+- `Layer_1(1).jpeg`
+- `Layer_1(1).png`
+
+Logo identity: lowercase `anytour`, with the airplane/infinity mark integrated into `tour`. Supplied variants include white/monochrome and full-color artwork. Full-color brand palette from the AnyTour guide: blue `#2743CB`, light blue `#6F99FF`, orange `#FF510C`. Typography from the guide: Aeroport Bold / Medium / Light. On SMM-style cards, use the monochrome logo where appropriate, preferably in the upper-right corner, following the brand guide.
+
+Do not ask the user to re-supply the logo merely because a new creative/card is being made. First use these documented canonical assets / repository brand assets. If a required original binary is not available in the current runtime, recover it from the project/library rather than inventing a replacement.
+
 ## Autonomy
 
 Autonomy level: **C — high autonomy**.
