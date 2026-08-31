@@ -30,6 +30,7 @@ jobs:
           if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$key_file"; else printf '%s' "$raw" | base64 --decode > "$key_file"; fi
           chmod 600 "$key_file"
           ssh-keygen -y -f "$key_file" >/dev/null
+
       - name: Validate live tour card API and flights
         env:
           DEPLOY_HOST_VALUE: ${{ secrets.DEPLOY_HOST }}
@@ -38,7 +39,8 @@ jobs:
         run: |
           set -euo pipefail
           ssh_opts=(-i "$GITHUB_WORKSPACE/deploy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
-          ssh "${ssh_opts[@]}" "$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE" '
+          remote="$DEPLOY_USER_VALUE@$DEPLOY_HOST_VALUE"
+          ssh "${ssh_opts[@]}" "$remote" '
             set -euo pipefail
             fail(){ echo "TOUR_LIVE_FAIL:$1"; exit 1; }
             base="https://anytour.online/poisk-turov-test/v2/api-v2.php"
@@ -88,3 +90,68 @@ jobs:
             test "$chain_ok" = "1" || fail no_consistent_tour_flight_chain
             echo "TOUR_LIVE_OK searchId=$search_id sampledTours=$tour_ok_count flightTourId=$verified_tour"
           '
+          scp "${ssh_opts[@]}" "$remote:/tmp/v2-tour-search-start.json" "$RUNNER_TEMP/v2-tour-search-start.json"
+          scp "${ssh_opts[@]}" "$remote:/tmp/v2-tour-results.json" "$RUNNER_TEMP/v2-tour-results.json"
+
+      - name: Compare the same live results with tour detail
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail(){ echo "RESULT_DETAIL_LIVE_FAIL:$1"; exit 1; }
+          base="https://anytour.online/poisk-turov-test/v2/api-v2.php"
+          search_id="$(python3 -c "import json; d=json.load(open('$RUNNER_TEMP/v2-tour-search-start.json')); print(d.get('searchId') or '')")"
+          test -n "$search_id" || fail search_id
+          test -s "$RUNNER_TEMP/v2-tour-results.json" || fail missing_shared_results
+          RESULTS_FILE="$RUNNER_TEMP/v2-tour-results.json" MAP_FILE="$RUNNER_TEMP/v2-rd-map.json" python3 -c "import json,os; items=json.load(open(os.environ['RESULTS_FILE'])); rows=[]; [(rows.append({'id':str(t.get('id')),'hotelId':t.get('hotelId') or h.get('id') or h.get('hotelId'),'hotelName':t.get('hotelName') or h.get('name') or h.get('hotelName'),'date':t.get('date') or t.get('dateFrom') or t.get('startDate'),'price':(t.get('price') or {}).get('value') if isinstance(t.get('price'),dict) else t.get('price'),'currency':t.get('currency') or ((t.get('price') or {}).get('currency') if isinstance(t.get('price'),dict) else None),'nights':t.get('nights'),'adults':t.get('adults'),'childs':t.get('childs')}) if len(rows)<8 else None) for h in (items if isinstance(items,list) else []) if isinstance(h,dict) for t in (h.get('tours') or []) if isinstance(t,dict) and t.get('id') is not None]; json.dump(rows[:8],open(os.environ['MAP_FILE'],'w'),ensure_ascii=False); print('RESULT_SAMPLE_ROWS='+str(len(rows[:8]))); assert len(rows[:8])>=3"
+          : >"$RUNNER_TEMP/v2-rd-details.jsonl"
+          while IFS= read -r tid; do
+            test -n "$tid" || continue
+            if curl -k -L -fsS --max-time 45 "$base?action=tour&tourId=$tid&currency=RUB" >"$RUNNER_TEMP/v2-rd-tour.json"; then
+              python3 -c "import json; d=json.load(open('$RUNNER_TEMP/v2-rd-tour.json')); print(json.dumps(d,ensure_ascii=False))" >>"$RUNNER_TEMP/v2-rd-details.jsonl"
+            fi
+            test "$(wc -l <"$RUNNER_TEMP/v2-rd-details.jsonl")" -ge 5 && break
+          done < <(python3 -c "import json; print('\n'.join(x['id'] for x in json.load(open('$RUNNER_TEMP/v2-rd-map.json'))))")
+          test "$(wc -l <"$RUNNER_TEMP/v2-rd-details.jsonl")" -ge 3 || fail insufficient_detail_responses
+          SEARCH_ID="$search_id" MAP_FILE="$RUNNER_TEMP/v2-rd-map.json" DETAILS_FILE="$RUNNER_TEMP/v2-rd-details.jsonl" python3 -c "import json,os,math,datetime; rows={x['id']:x for x in json.load(open(os.environ['MAP_FILE']))}; details=[json.loads(line) for line in open(os.environ['DETAILS_FILE']) if line.strip()]; cd=lambda v: next((datetime.datetime.strptime(str(v or '').strip(),f).date().isoformat() for f in ('%Y-%m-%d','%d.%m.%Y','%d-%m-%Y') if __import__('contextlib')),str(v or '').strip())" >/dev/null 2>&1 || true
+          SEARCH_ID="$search_id" MAP_FILE="$RUNNER_TEMP/v2-rd-map.json" DETAILS_FILE="$RUNNER_TEMP/v2-rd-details.jsonl" python3 - <<'PY' || fail result_detail_mismatch
+          import json, os, math, datetime
+          rows={x['id']:x for x in json.load(open(os.environ['MAP_FILE']))}
+          details=[json.loads(line) for line in open(os.environ['DETAILS_FILE']) if line.strip()]
+          def canonical_date(value):
+              text=str(value or '').strip()
+              for fmt in ('%Y-%m-%d','%d.%m.%Y','%d-%m-%Y'):
+                  try: return datetime.datetime.strptime(text,fmt).date().isoformat()
+                  except ValueError: pass
+              return text
+          def number(value):
+              if isinstance(value,dict): value=value.get('value')
+              try: return float(value)
+              except (TypeError,ValueError): return None
+          matched=0; repriced=0; max_abs=0.0; max_pct=0.0
+          for detail in details:
+              assert isinstance(detail,dict), 'detail_not_object'
+              tid=str(detail.get('id') or '')
+              assert tid in rows, f'unrequested_tour:{tid}'
+              result=rows[tid]; stable=[]
+              hotel=detail.get('hotel') if isinstance(detail.get('hotel'),dict) else {}
+              if result.get('hotelId') not in (None,'') and hotel.get('id') not in (None,''): stable.append(('hotelId',str(result['hotelId'])==str(hotel['id'])))
+              if result.get('hotelName') and hotel.get('name'): stable.append(('hotelName',str(result['hotelName']).strip().casefold()==str(hotel['name']).strip().casefold()))
+              if result.get('date') and detail.get('date'): stable.append(('date',canonical_date(result['date'])==canonical_date(detail['date'])))
+              if result.get('currency') and detail.get('currency'): stable.append(('currency',str(result['currency'])==str(detail['currency'])))
+              for key in ('nights','adults','childs'):
+                  if result.get(key) not in (None,'') and detail.get(key) not in (None,''): stable.append((key,str(result[key])==str(detail[key])))
+              assert len(stable)>=2, f'insufficient_comparable_fields:{tid}'
+              assert all(ok for _,ok in stable), f'stable_field_mismatch:{tid}:{stable}'
+              rp,dp=number(result.get('price')),number(detail.get('price'))
+              if rp is not None and dp is not None:
+                  assert rp>0 and dp>0, f'nonpositive_price:{tid}:{rp}:{dp}'
+                  delta=dp-rp; pct=(delta/rp*100.0) if rp else 0.0
+                  max_abs=max(max_abs,abs(delta)); max_pct=max(max_pct,abs(pct))
+                  same=math.isclose(rp,dp,abs_tol=0.01)
+                  if not same: repriced+=1
+                  print('RESULT_DETAIL_PRICE','tourId='+tid,'result='+str(rp),'detail='+str(dp),'delta='+str(delta),'pct='+format(pct,'.3f'),'repriced='+str(not same).lower())
+              matched+=1
+              print('RESULT_DETAIL_MATCH','tourId='+tid,'stableChecks='+str(len(stable)))
+          assert matched>=3, 'insufficient_result_detail_matches'
+          print('RESULT_DETAIL_LIVE_OK','searchId='+os.environ['SEARCH_ID'],'matched='+str(matched),'repriced='+str(repriced),'maxAbsDelta='+str(max_abs),'maxPctDelta='+format(max_pct,'.3f'))
+          PY
