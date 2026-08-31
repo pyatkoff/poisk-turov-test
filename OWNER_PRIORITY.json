@@ -1,14 +1,14 @@
 {
   "schema_version": 3,
-  "active_mode": "technical_refactor_pass",
-  "active_phase": "TECHNICAL REFACTOR PASS",
-  "current_stage": "TECHNICAL_REFACTOR_CONSOLIDATION",
+  "active_mode": "design_system_1",
+  "active_phase": "ANYTOUR DESIGN SYSTEM 1.0",
+  "current_stage": "SITE_WIDE_VISUAL_UNIFICATION",
   "priority_after_emergency_overrides": [
-    "technical_refactor",
     "ux_visual",
+    "technical_refactor",
     "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_technical_refactor_pass",
-  "rule": "Complete the technical refactor pass before resuming UX/visual work: architecture/source-of-truth, full file/dependency inventory, exhaustive CI classification and proof-based deduplication, safe directory ownership, then shared template consolidation. Preserve Yandex Metrika/goals, analytics, Tourvisor and the external lead contract; stay inside pyatkoff/poisk-turov-test."
+  "source": "explicit_owner_direction_2026_08_31_design_system_1",
+  "rule": "Priority #1 is AnyTour Design System 1.0 and site-wide visual unification. Audit and improve homepage, search, hot, contacts, how-to-buy, rb, country index and representative country pages as one coherent product. Preserve search regressions, logo, Yandex Metrika/goals/analytics contract, Tourvisor contract, lead-sending mechanism, verified social/app destinations and unresolved legal/payment content. Work only inside pyatkoff/poisk-turov-test and allowed V2/standalone production scope."
 }
