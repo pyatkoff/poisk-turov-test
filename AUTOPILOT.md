@@ -16,22 +16,23 @@ Target language: compact unified white header; light travel-first canvas; large 
 
 ## Material progress
 
-The first structural convergence slices are now on `main`: the homepage heavy blue first screen was replaced by a light travel-first composition with search as the primary object; the shared white header was compacted across desktop/mobile while preserving the logo and navigation contract; and `/poisk-turov/` now replaces the oversized decorative blue search hero with a compact light DS2 intro while leaving the mature search/results/selected-tour mechanics untouched. Relevant PR visual/regression checks passed at the protected search widths.
+Structural DS2 convergence is now present across the main search journey. The homepage first screen is light/travel-first with search as the primary object; the shared white header is compact across desktop/mobile; `/poisk-turov/` uses the compact light DS2 intro; and desktop live results now switch into a two-column DS2 composition with a compact sticky search/filter rail and a lighter hotel-card column while widths at and below 1024px retain the established one-column flow. The results slice passed all PR regressions, deployed successfully to anytoour.ru and passed post-deploy visual validation.
 
-The post-deploy live journey also exposed a test-contract defect around Tourvisor flight responses. The official flights envelope can contain structured `error` metadata together with a flight list; the live guard is being aligned to validate the documented error code instead of treating the mere presence of the envelope as a failure. Runtime/Tourvisor behavior is unchanged.
+The production live journey is also green after correcting the smoke for real Tourvisor inventory volatility. A result can become sold between search results and the flights call; the smoke now checks a bounded set of returned tours and skips only the documented stale/sold `error.code=2` case. Malformed flight responses, unexpected errors, broken tour/hotel data, missing viable inventory and lead-health failures still fail the journey. Runtime Tourvisor, Metrika and lead contracts were not changed.
+
+The selected-tour DS2 detail-state is now merged after all eight PR checks passed, including dedicated selected-tour, generic visual and refreshed baseline validation. The chosen offer now becomes the primary detail surface with a lighter image/title/price/facts/flight/lead hierarchy while the existing search, flight, price and lead mechanics remain unchanged.
 
 ## Ordered work
 
-1. Align one shared header and one shared footer with the DS2 reference.
-2. Align homepage hero + search composition with the reference instead of polishing contradictory legacy hero compositions.
-3. Align `/poisk-turov/` search shell and results hierarchy.
-4. Align selected hotel/tour experience.
-5. Bring country, hot and editorial pages onto the same DS2 language.
-6. Validate each slice at 375/430/768/1024/1440 and preserve search/recovery/results/lead regressions.
+1. Verify selected hotel/tour DS2 deploy and live behavior.
+2. Bring country, hot and editorial pages onto the same DS2 language.
+3. Replace the homepage/country scenic placeholder with an approved repository/local travel image when one is available; do not hotlink an arbitrary external asset.
+4. Continue shared-shell consistency for header/footer, typography, spacing, buttons, cards and breadcrumbs.
+5. Validate each slice at 375/430/768/1024/1440 and preserve search/recovery/results/flight/price/lead regressions.
 
 ## Current resume point
 
-Finish post-merge deploy/live verification for the compact shared header and light search intro, then continue structural DS2 convergence in this order: replace the homepage CSS scenic placeholder with an approved repository/local travel image and align hero copy/search placement more closely to the reference; next refine the light results hierarchy/filter rail/cards; then selected hotel/tour; then country/hot/editorial pages. Keep the dark shared footer as the site-wide endpoint and avoid returning to oversized blue product heroes.
+Verify deploy/live for the merged selected-tour detail state, then audit and align `/country/` plus a representative destination, followed by `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/`. Keep the dark shared footer as the site-wide endpoint. A photography-led homepage/country hero remains intentionally deferred until an approved local/repository travel image exists; do not regress into oversized blue heroes or substitute an unapproved external image.
 
 ## Mandatory protections
 
