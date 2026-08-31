@@ -58,6 +58,28 @@ function scheduled_collector_rows(array $payload): array
     return [];
 }
 
+function scheduled_collector_fetch_results(int $searchId): array
+{
+    // Result retrieval does not start/continue a Tourvisor search and therefore
+    // does not consume another search request. The current API documents limit
+    // as number of hotels with tours but does not publish an upper bound. Try a
+    // wide fetch first and fall back for compatibility with stricter gateways.
+    $limits = [1000, 500, 100];
+    $lastError = null;
+    foreach ($limits as $limit) {
+        try {
+            $payload = v2_data_tv_get('/tours/search/' . $searchId, ['limit'=>$limit]);
+            $rows = scheduled_collector_rows($payload);
+            echo "COLLECT_RESULT_FETCH search={$searchId} limit={$limit} hotels=" . count($rows) . "\n";
+            return $rows;
+        } catch (Throwable $e) {
+            $lastError = $e;
+            fwrite(STDERR, "COLLECT_RESULT_FETCH_RETRY search={$searchId} limit={$limit} " . mb_substr($e->getMessage(), 0, 300) . "\n");
+        }
+    }
+    throw new RuntimeException('Tourvisor result fetch failed for all safe limits', 0, $lastError);
+}
+
 function scheduled_collector_candidates(PDO $pdo): array
 {
     $sql = "SELECT
@@ -294,8 +316,7 @@ foreach ($targets as $target) {
             continue;
         }
 
-        $raw = v2_data_tv_get('/tours/search/' . $searchId, ['limit'=>100]);
-        $rows = scheduled_collector_rows($raw);
+        $rows = scheduled_collector_fetch_results($searchId);
         $trusted = [];
         foreach ($rows as $hotel) {
             if (!is_array($hotel)) continue;
