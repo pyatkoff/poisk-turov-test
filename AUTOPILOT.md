@@ -10,11 +10,11 @@ After emergency overrides (`production_broken → lead_loss → incorrect_data �
 
 ## Material progress
 
-The shared shell/header/footer/cards/buttons/breadcrumbs/page gutters are established. Country pages use one neutral destination hierarchy and a compact live-search handoff with clear availability/flight/price signals; responsive PR visual evidence is green across 375/430/768/1024/1440 and production deploy/search/lead smoke passed.
+The shared shell/header/footer/cards/buttons/breadcrumbs/page gutters are established. Country pages use one neutral destination hierarchy and a compact live-search handoff with clear availability/flight/price signals. The `/hot/` live-offer cards now keep equal-height rhythm with bottom-aligned CTAs and safe long-name wrapping. The homepage five-card discovery grid is balanced at tablet/small-desktop widths instead of leaving orphan cards or empty grid slots. Relevant PR visual/regression checks remained green.
 
 ## Current resume point
 
-Run and refine the full journey `homepage → country/destination → hot/search → results → selected tour → lead` at 375/430/768/1024/1440 under Design System 2.0. Fix the next confirmed hierarchy, wrapping, overflow or spacing inconsistency, then continue homepage/hot/editorial hierarchy improvements before cosmetic flourishes.
+Continue the full journey `homepage → country/destination → hot/search → results → selected tour → lead` at 375/430/768/1024/1440 under Design System 2.0. The next confirmed inconsistency is the search-shell horizontal gutter at 561–768px: align `.v2-shell` with the shared DS2 24px page gutter while preserving the 20px mobile gutter at 560px and below. Then continue through search results → selected tour → lead and fix the next confirmed hierarchy, wrapping, overflow or spacing mismatch before cosmetic flourishes.
 
 ## Mandatory protections
 
