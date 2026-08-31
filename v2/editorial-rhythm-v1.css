@@ -1,16 +1,18 @@
-/* Design System 2.0 editorial rhythm: shared hierarchy for public content pages without changing search/runtime contracts. */
+/* Design System 1.0 editorial rhythm: shared hierarchy for public content pages without changing search/runtime contracts. */
 .sp-main{display:grid;gap:var(--at-content-gap,30px)}
 .sp-main>section,.sp-main>div{margin-top:0!important}
 .sp-main>section:has(.sp-section-head){display:grid;gap:18px}
 .sp-main>section>.sp-section-head{margin-bottom:0}
 .sp-section-head{align-items:start}
 .sp-section-head h2{max-width:620px}
-.sp-section-head p{font-size:15px}
+.sp-section-head p{max-width:640px;margin:0;font-size:15px}
 .sp-steps{gap:16px}
 .sp-step{min-height:96px;padding-top:23px;padding-bottom:23px}
 .sp-purchase-flow,.sp-grid--balanced-two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .sp-card{min-height:100%}
 .sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:var(--at-copy-measure,74ch)}
+.sp-search-callout p{max-width:760px}
 .sp-actions{margin-top:24px}
+@media(min-width:901px){.sp-section-head{display:grid;grid-template-columns:minmax(0,.82fr) minmax(360px,1fr);justify-content:stretch;column-gap:clamp(28px,4vw,56px)}.sp-section-head p{justify-self:start}}
 @media(max-width:768px){.sp-main>section:has(.sp-section-head){gap:15px}.sp-section-head p{font-size:14px}.sp-steps{gap:12px}.sp-step{min-height:0}.sp-purchase-flow{grid-template-columns:1fr}}
 @media(max-width:560px){.sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:none}.sp-actions{margin-top:20px}.sp-grid--balanced-two{grid-template-columns:1fr}}
