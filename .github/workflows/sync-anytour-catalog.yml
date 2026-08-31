@@ -48,8 +48,8 @@ jobs:
         run: |
           set -euo pipefail
           for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/migrate-departures-v1.php v2/data/migrate-departure-countries-v1.php v2/data/migrate-departure-flight-matrices-v1.php v2/data/sync-departures-v1.php v2/data/sync-departure-flight-matrices-v1.php v2/data/validate-departures-v1.php v2/data/sync-catalog-v1.php v2/data/catalog-hotel-sync-plan-v1.php v2/data/db-doctor-v1.php v2/data/destinations-v1.php; do php -l "$f" >/dev/null; done
-          grep -Fq "'onlyCharter' => $onlyCharter" v2/data/sync-departure-flight-matrices-v1.php
-          grep -Fq "'onlyDirect' => $onlyDirect" v2/data/sync-departure-flight-matrices-v1.php
+          grep -Fq "'onlyCharter' => \$onlyCharter" v2/data/sync-departure-flight-matrices-v1.php
+          grep -Fq "'onlyDirect' => \$onlyDirect" v2/data/sync-departure-flight-matrices-v1.php
           test -s v2/data/schema-v1.sql
           grep -Fq 'catalog_departure_countries' v2/data/catalog-hotel-sync-plan-v1.php
           grep -Fq "CONCAT('hotels:country:'" v2/data/catalog-hotel-sync-plan-v1.php
