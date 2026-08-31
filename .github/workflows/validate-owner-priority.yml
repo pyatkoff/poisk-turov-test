@@ -1,21 +1,27 @@
-name: Validate owner priority
+name: Validate owner policy
 
 on:
   pull_request:
     paths:
       - 'OWNER_PRIORITY.json'
+      - 'TECHNICAL_REFACTOR_LOCK.json'
       - 'AUTOPILOT.md'
       - 'AUTOPILOT_STATE.json'
       - 'scripts/ci/validate_owner_priority.py'
+      - 'scripts/ci/validate_technical_refactor_lock.py'
       - '.github/workflows/validate-owner-priority.yml'
+      - '.github/workflows/validate-technical-refactor-lock.yml'
   push:
     branches: [main]
     paths:
       - 'OWNER_PRIORITY.json'
+      - 'TECHNICAL_REFACTOR_LOCK.json'
       - 'AUTOPILOT.md'
       - 'AUTOPILOT_STATE.json'
       - 'scripts/ci/validate_owner_priority.py'
+      - 'scripts/ci/validate_technical_refactor_lock.py'
       - '.github/workflows/validate-owner-priority.yml'
+      - '.github/workflows/validate-technical-refactor-lock.yml'
   workflow_dispatch:
 
 jobs:
@@ -27,3 +33,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate owner priority source of truth
         run: python3 scripts/ci/validate_owner_priority.py
+      - name: Validate technical refactor phase lock
+        run: python3 scripts/ci/validate_technical_refactor_lock.py
