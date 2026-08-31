@@ -1,10 +1,10 @@
 {
   "schema_version": 3,
-  "active": true,
+  "active": false,
   "mode": "technical_refactor_pass",
   "phase": "TECHNICAL REFACTOR PASS",
-  "status": "ACTIVE_EXPLICIT_OWNER_DIRECTION",
-  "authority": "explicit owner instruction 2026-08-31",
+  "status": "SUPERSEDED_BY_NEWER_EXPLICIT_OWNER_DIRECTION",
+  "authority": "explicit owner instruction 2026-08-31 Design System 1.0",
   "scope": "pyatkoff/poisk-turov-test",
   "protected_contracts": [
     "yandex_metrika_configuration_and_goals",
@@ -12,13 +12,5 @@
     "tourvisor_contract",
     "neighboring_projects"
   ],
-  "required_sequence": [
-    "architecture_and_source_of_truth",
-    "file_inventory_and_dependency_map",
-    "ci_workflow_audit_and_proof_based_deduplication",
-    "safe_directory_ownership",
-    "shared_template_consolidation",
-    "ux_visual"
-  ],
-  "rule": "Technical refactor remains the active owner-directed phase until its consolidation sequence is completed or the owner explicitly changes direction. Production, lead-loss and data-correctness emergencies may interrupt it temporarily."
+  "rule": "The former technical-refactor-first lock is inactive. The current explicit owner direction makes AnyTour Design System 1.0 and site-wide visual unification the active priority after emergency correctness overrides. Technical refactor remains allowed only when it directly supports that work or a higher-priority production/correctness issue."
 }
