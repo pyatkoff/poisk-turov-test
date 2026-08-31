@@ -24,9 +24,9 @@ PR #456 restored Design System 1.0 as the canonical owner priority after a later
 
 PR #457 fixed a confirmed shared-grid inconsistency on editorial/country breadcrumbs. The breadcrumb wrapper used the full viewport at intermediate widths while `.sp-main` already used `--at-page-gutter`, so at 1024px breadcrumbs sat outside the content grid. Breadcrumbs now consume the same shell + page-gutter width contract as the page body. The complete relevant PR suite passed, including five-width standalone visual coverage at 375 / 430 / 768 / 1024 / 1440, V2 baseline, selected-tour, B5 trust, standalone, startup/bundle and security checks. Visual evidence for representative country pages was inspected at 375 and 1024 with no confirmed overflow or wrapping regression.
 
-PR #457 deployed successfully in production run `33359258585`. Public-page verification, the unchanged production lead bridge and live search smoke all passed. Post-deploy visual/runtime workflows were triggered and are the next evidence to consume before raising the whole-site score.
+PR #457 deployed successfully in production run `33359258585`. Public-page verification, the unchanged production lead bridge and live search smoke passed. Post-deploy evidence is now complete and green: standalone content (`33359380971`), standalone navigation (`33359381035`), root (`33359380964`), live results (`33359381018`), migrated content (`33359381024`), live user journey (`33359380997`), catalog readiness (`33359380967`), V2 baseline (`33359382197`), search recovery (`33359382202`), V2 post-deploy (`33359382208`) and selected tour (`33359382173`).
 
-Next work remains the complete production journey `/ → country/hot → /poisk-turov/ → results → selected tour → lead` at the five target widths, followed by only confirmed layout/hierarchy fixes. The whole-site score remains 7.0/10 until broader end-to-end production evidence supports a move.
+Next work is the complete production journey `/ → country/hot → /poisk-turov/ → results → selected tour → lead` at the five target widths, followed by only confirmed layout/hierarchy fixes. The whole-site score remains 7.0/10 until broader end-to-end production evidence supports a move.
 
 ## Mandatory protections
 
