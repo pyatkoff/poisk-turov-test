@@ -10,6 +10,7 @@ on:
       - 'v2/data/migrate-matrix-collection-v1.php'
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
+      - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/rollup-price-daily-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
   push:
@@ -21,6 +22,7 @@ on:
       - 'v2/data/migrate-matrix-collection-v1.php'
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
+      - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/rollup-price-daily-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
   schedule:
@@ -61,6 +63,7 @@ jobs:
           php -l v2/data/migrate-collection-attempts-v1.php
           php -l v2/data/migrate-matrix-collection-v1.php
           php -l v2/data/top-hotels-v1.php
+          php -l v2/data/top500-coverage-v1.php
           php -l v2/data/matrix-collector-v1.php
           php -l v2/data/rollup-price-daily-v1.php
           grep -Fq "['user_search', 'scheduled_monitor', 'hot_tours']" v2/data/price-observer-v1.php
@@ -73,6 +76,9 @@ jobs:
           grep -Fq "modify('+20 days')" v2/data/matrix-collector-v1.php
           grep -Fq "'maxHotels'=>5000" v2/data/matrix-collector-v1.php
           grep -Fq "'maxTours'=>50000" v2/data/matrix-collector-v1.php
+          grep -Fq 'TOP500_COVERAGE' v2/data/matrix-collector-v1.php
+          grep -Fq 'MATRIX_EMPTY' v2/data/matrix-collector-v1.php
+          grep -Fq 'TOP500_UNSEARCHED_IDS' v2/data/top500-coverage-v1.php
           grep -Fq 'PRICE_DAILY_ROLLUP_OK' v2/data/rollup-price-daily-v1.php
           php -r "require 'v2/data/top-hotels-v1.php'; \$ids=v2_priority_hotel_ids(); if (count(\$ids)!==492 || count(array_unique(\$ids))!==492 || \$ids[0]!==22879 || end(\$ids)!==42155) exit(1);"
           php -r "require 'v2/data/price-observer-v1.php'; if (v2_price_observer_source('scheduled_monitor') !== 'scheduled_monitor' || v2_price_observer_limit(99999,100,5000)!==5000) exit(1);"
@@ -127,6 +133,7 @@ jobs:
             v2/data/scheduled-collector-v1.php \
             v2/data/migrate-matrix-collection-v1.php \
             v2/data/top-hotels-v1.php \
+            v2/data/top500-coverage-v1.php \
             v2/data/matrix-collector-v1.php \
             v2/data/rollup-price-daily-v1.php \
             "$remote:$remote_dir/"
@@ -137,11 +144,14 @@ jobs:
             php -l \"\$root/price-observer-v1.php\" >/dev/null
             php -l \"\$root/scheduled-collector-v1.php\" >/dev/null
             php -l \"\$root/top-hotels-v1.php\" >/dev/null
+            php -l \"\$root/top500-coverage-v1.php\" >/dev/null
             php -l \"\$root/matrix-collector-v1.php\" >/dev/null
             php -l \"\$root/rollup-price-daily-v1.php\" >/dev/null
             php \"\$root/migrate-collection-attempts-v1.php\"
             php \"\$root/migrate-matrix-collection-v1.php\"
+            php \"\$root/top500-coverage-v1.php\"
             php \"\$root/scheduled-collector-v1.php\" --scheduled-search-budget='$BUDGET_VALUE'
             php \"\$root/matrix-collector-v1.php\" --budget='$MATRIX_BUDGET_VALUE' --months='$MATRIX_MONTHS_VALUE'
+            php \"\$root/top500-coverage-v1.php\"
             php \"\$root/rollup-price-daily-v1.php\" --days=31
           "
