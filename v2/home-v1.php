@@ -82,6 +82,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
     <div class="at-home-benefits">
       <article class="at-home-benefit"><b>Актуальные предложения</b><p>Поиск получает доступные варианты напрямую и помогает сравнивать условия, а не только рекламную цену.</p></article>
       <article class="at-home-benefit"><b>Проверка конкретного тура</b><p>Перед заявкой можно открыть выбранный вариант и проверить детали рейса, багажа и размещения.</p></article>
+      <article class="at-home-benefit"><b>Цена до заявки</b><p>Итоговая стоимость выбранного варианта видна до передачи контактов менеджеру.</p></article>
       <article class="at-home-benefit"><b>Менеджер рядом</b><p>Если нужен совет, менеджер подключится уже с параметрами вашего поиска и выбранного предложения.</p></article>
     </div>
   </section>
