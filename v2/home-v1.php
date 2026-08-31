@@ -40,9 +40,9 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   <section class="at-home-hero">
     <div class="at-home-hero__inner">
       <div class="at-home-hero__copy">
-        <span class="at-home-kicker">AnyTour · путешествия без лишней сложности</span>
-        <h1>Найдите отдых, который подходит именно вам</h1>
-        <p>Сравниваем актуальные туры по датам, отелям, питанию и перелёту. Начните с нескольких параметров — полный поиск откроется уже с вашими условиями.</p>
+        <span class="at-home-kicker">AnyTour · путешествия для вашего отдыха</span>
+        <h1>Путешествия, которые делают вас счастливее</h1>
+        <p>Подберите тур по направлению, датам и длительности, сравните актуальные варианты и переходите к конкретному предложению с понятной ценой и деталями поездки.</p>
       </div>
       <div class="at-home-journey" aria-hidden="true">
         <div class="at-home-journey__eyebrow">Путь к подходящему туру</div>
