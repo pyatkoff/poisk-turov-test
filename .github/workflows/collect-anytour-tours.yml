@@ -48,6 +48,10 @@ jobs:
           grep -Fq "'source'=>'scheduled_monitor'" v2/data/scheduled-collector-v1.php
           grep -Fq "v2_data_tv_get('/tours/search'" v2/data/scheduled-collector-v1.php
           grep -Fq '$limits = [10000, 5000, 2000, 1000, 500, 100];' v2/data/scheduled-collector-v1.php
+          grep -Fq "'nightsFrom'=>5" v2/data/scheduled-collector-v1.php
+          grep -Fq "'nightsTo'=>14" v2/data/scheduled-collector-v1.php
+          grep -Fq 'AND nights_from=5 AND nights_to=14' v2/data/scheduled-collector-v1.php
+          grep -Fq 'nights=5-14' v2/data/scheduled-collector-v1.php
           grep -Fq 'scheduled_collector_fetch_results($searchId)' v2/data/scheduled-collector-v1.php
           grep -Fq 'COLLECT_RESULT_FETCH' v2/data/scheduled-collector-v1.php
           grep -Fq 'tour_collection_attempts' v2/data/scheduled-collector-v1.php
