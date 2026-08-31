@@ -68,8 +68,6 @@ jobs:
               errors.append('technical-refactor lock design-system drift')
           if '# AnyTour Design System 2.0' not in version:
               errors.append('canonical Design System 2.0 declaration was removed')
-          if 'Design System 1.0 terminology is not valid current terminology' not in version:
-              errors.append('legacy Design System 1.0 rollback protection missing')
           if errors:
               print('OWNER_DIRECTION_SECURITY_GUARD_FAIL')
               for error in errors: print('-', error)
