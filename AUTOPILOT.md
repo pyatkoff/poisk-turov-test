@@ -2,33 +2,84 @@
 
 Updated: 2026-08-31
 
-Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` is the independent phase lock, and `AUTOPILOT_STATE.json` is the machine-readable resume point. Technical sources of truth are `ARCHITECTURE.md`, `TEST_MATRIX.md`, `DEPENDENCY_MAP.md` and `CI_WORKFLOW_AUDIT.md`.
+Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` remains the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` records whether the former refactor-first phase is active, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
 
-## Current phase — TECHNICAL REFACTOR PASS
+## North-star — ANYTOUR 2.0 → SITE 9.0/10
 
-The owner's latest explicit direction is technical-refactor-first. Autonomous visual/design-system work does not supersede this phase. Production breakage, lead loss, incorrect data or a broken user journey may preempt temporarily under `AGENTS.md`.
+The project is not finished when the shared shell or Design System foundation is finished. The standing product objective is to turn the current search foundation into a coherent AnyTour 2.0 travel product and raise the whole production site to a real, evidence-based 9.0/10 level.
 
-Canonical priority after emergency overrides:
+Design 2.0 / Design System foundation is the current stage inside this roadmap, not the final destination.
 
-`technical_refactor → ux_visual → content_seo → cosmetic_cleanup`
+Emergency priority always overrides roadmap order:
 
-## Refactor objectives
+`production_broken → lead_loss → incorrect_data → broken_user_journey → AnyTour_2_0_roadmap → technical_refactor → cosmetic_cleanup`
 
-1. Keep one canonical architecture/source of truth and enforce `one concept → one implementation`.
-2. Complete inventory/dependency mapping for ACTIVE, COMPATIBILITY, DEPRECATED and DEAD candidates before moving or deleting files.
-3. Complete the GitHub Actions audit into `PR FAST`, `PR BROWSER`, `POST DEPLOY`, `SCHEDULED-LIVE`; remove duplication only after equivalent coverage is proven.
-4. Prepare safe ownership structure for `shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates` without changing user-visible behavior.
-5. Consolidate shared template ownership to one header, one footer, one navigation and one design system after dependency/CI evidence makes migrations safe.
-6. Return to UX/visual work after technical consolidation, except when emergency correctness work preempts the phase.
+## AnyTour 2.0 roadmap
 
-## Exact next work order
+### Stage 1 — Foundation and architecture
+Keep one understandable source of truth for shared shell, runtime state and product primitives. Remove confirmed duplication and historical drift only where doing so improves reliability, performance or future delivery. Preserve the mature search core while simplifying its surroundings.
 
-1. Finish exhaustive `CI_WORKFLOW_AUDIT.md`, including remaining meal/visual/live/content/catalog/search/tour/mobile workflow families with explicit trigger, tier, protected contract and disposition for every workflow.
-2. Finish `DEPENDENCY_MAP.md` for non-manifest JS/CSS, PHP endpoints/helpers and deploy consumers; distinguish ACTIVE/COMPATIBILITY from deletion candidates with concrete references.
-3. Define the directory ownership migration plan and prerequisites, including current loader/subdirectory restrictions; do not physically move runtime assets until compatibility is proven.
-4. Extract only proven duplicated CI/bootstrap infrastructure while preserving distinct behavioral assertions.
-5. Migrate one low-risk implementation family at a time toward canonical ownership, with regression evidence before deleting old paths.
-6. Consolidate the shared template layer only after consumers and compatibility obligations are fully mapped.
+### Stage 2 — Design 2.0 / unified product
+Make `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/`, representative country/resort pages, results and selected-tour surfaces feel like one premium product. Establish one visual language for typography, grid, spacing, buttons, cards, breadcrumbs, imagery, states and navigation. Validate 375/430/768/1024/1440.
+
+### Stage 3 — Search Experience 2.0
+Deliver a simple first search step with advanced controls only when useful; fast local-first catalogs where safe; strong dates/duration/tourists UX; hotel-first discovery; reliable recovery; minimal unnecessary actions. Preserve the Tourvisor search contract and search lifecycle.
+
+### Stage 4 — Results 2.0
+Improve result hierarchy, cards, filters, sorting, hotel-to-tour grouping, flexible-date savings, flight/meal/room/operator/fuel/total-price clarity and mobile filtering. Add evidence-based relevance explanations such as “Почему подходит вам” only when supported by real data.
+
+### Stage 5 — Hotel / Tour 2.0
+Create a complete selected-hotel/tour experience: gallery, rating, location, features, meals, rooms, flights, operator, tour variants, total price, strong CTA and a purpose-built mobile composition rather than a compressed desktop layout.
+
+### Stage 6 — Price Intelligence
+Build on `tour_price_observations` and daily aggregates to support comparable-tour price context, good-price signals, current low-price calendar and later price watch/history. Tourvisor remains the source of current bookable tour data; AnyTour owns the accumulated analytical layer. Never invent historical claims without sufficient observations.
+
+### Stage 7 — Conversion 2.0
+Strengthen the path Search → Results → Tour → Lead. Develop the scenarios “Найти самому” and “Помочь выбрать”, manager assistance, trust/proof, “Нашли дешевле?”, saved/recoverable intent and later personalization where evidence supports it. Preserve the external lead-sending contract unless the owner explicitly approves a change.
+
+### Stage 8 — Data Platform
+Continue the local catalog/data foundation: departures, countries, regions, subregions, hotels, aliases/search indexes, availability relations where needed, price observations/aggregates, hot-tour snapshots and SEO offer snapshots. Localize Tourvisor catalogs only when the local model preserves required availability semantics and has a safe fallback.
+
+### Stage 9 — SEO Platform
+Build scalable destination architecture around real data and useful intent: country → resort → month → holiday type/party/meal/stars → hotel. Add internal linking, canonical/schema/sitemap foundations and live offer/price snapshots. Do not create thin or fabricated SEO pages.
+
+### Stage 10 — Merchandising / discovery
+Turn hot tours, early booking, popular destinations, seasonal collections and month/departure-city collections into coherent live storefronts driven by real data and the same AnyTour 2.0 visual system.
+
+### Stage 11 — Mobile 2.0
+Perform a dedicated mobile product pass across home → search → results → filters → calendar → hotel/tour → lead at 375/430, including loading/empty/error/populated states and sticky/fixed interactions. Mobile quality is not considered complete merely because desktop CSS is responsive.
+
+### Stage 12 — Performance and reliability
+Reduce avoidable request fan-out, use safe local catalogs/caching/lazy loading, protect first render, preserve fallback behavior, improve production observability and keep regression coverage focused on real user and revenue paths.
+
+### Stage 13 — Final 9.0 audit
+Re-score the whole production product from evidence across visual quality, UX, mobile, search, results, selected tour, conversion, SEO foundation, performance, accessibility, reliability and maintainability. Continue fixing the weakest dimensions until the whole-site score is credibly at least 9.0/10; do not infer the site score from the stronger search-only score.
+
+## Current active stage — Design 2.0 / Design System foundation
+
+The immediate work remains whole-journey visual and UX unification because it is the current prerequisite for the larger AnyTour 2.0 roadmap.
+
+1. Audit the remaining production journey, especially search → results → selected tour → lead on 375/430/768/1024/1440.
+2. Close the observed visual-test gap where the search screenshot can be captured while critical departure/country catalogs are still in an error/loading state.
+3. Fix the next confirmed Design 2.0 weakness from production evidence rather than broad cosmetic churn.
+4. Continue adoption of shared primitives where legacy page-specific surfaces visibly diverge.
+5. Move from shell consistency into the deeper Design 2.0 treatment of search/results/hotel/mobile surfaces without destabilizing their working behavior.
+6. Keep the next roadmap stage explicit so completing Design 2.0 automatically advances to Search Experience 2.0 rather than ending the autopilot.
+
+## Latest material progress
+
+- Homepage discovery now follows the quick search directly: country/destination, hot tours, early booking and full search are reachable before explanatory benefit content.
+- Homepage route-specific surfaces consume shared brand/surface/radius/spacing/focus tokens through a narrow alignment layer.
+- Shared header/footer and standalone navigation/content sweeps are established across core public routes and five target widths.
+- Country Design 2.0 now puts the live country search and “Помочь с выбором” directly after the hero, combines popular resorts into the same decision block and removes the duplicated lower conversion section. PR #442 passed focused five-width visual evidence, deployed successfully, and the post-deploy live user journey passed.
+- A production visual artifact exposed a search-page state where critical catalogs could still show “Не удалось загрузить города/страны” while the visual workflow itself stayed green. The direct live API/search journey is healthy, so this is being treated as a visual/readiness test gap until the UI path proves otherwise.
+- Production catalog sync confirms 71/71 departure rows have `name_genitive`; the canonical departure schema and migration are aligned.
+- A stale/conflicting older priority PR (#433) unexpectedly merged after the newer owner direction and rewrote the autopilot back to technical-refactor-first. That state is not authoritative and is being corrected back to this newer explicit AnyTour 2.0 direction.
+- Search form parameters, Tourvisor, Metrika/analytics and lead contracts were not changed.
+
+## 9.0 quality gate
+
+A stage is not DONE because code merged. Relevant evidence should include implementation, narrow automated checks, real functional verification, production verification and visual/responsive evidence for user-facing work. The 9.0 target is whole-product quality, not a commit count or isolated Lighthouse/CI score.
 
 ## Mandatory protections
 
@@ -37,10 +88,10 @@ Do not modify without explicit approval:
 - external lead-sending contract or field mapping;
 - Tourvisor external contract;
 - neighboring projects;
-- server/platform architecture outside the allowed repository/deploy scope.
+- unresolved legal/payment content.
 
-Preserve mature search/recovery/results/comparison/flight/price/fuel/lead behavior while this technical pass proceeds. Do not refactor merely for style and do not invent defects. Existing visual/product PRs unrelated to this phase remain deferred unless they fix a higher-priority confirmed production/user-journey problem.
+Preserve verified social/app destinations and the AnyTour logo. Keep PR #254 deferred unless a fresh review proves its separate DB/platform architecture safe. PR #433 is a stale/conflicting priority restoration that was merged after a newer owner instruction; do not reapply its technical-refactor-first direction.
 
 ## Execution policy
 
-At the start of each run inspect current `main`, open PRs and fresh CI. Work in narrow independent PR-sized slices. Read `AGENTS.md`, this file and `AUTOPILOT_STATE.json` before editing. If a task is blocked, record/defer it and continue the next independent technical slice. SAFE/MEDIUM changes may merge autonomously only after relevant checks are green.
+At the start of each run inspect current `main`, open PRs, fresh CI/deploy results, production behavior and the machine-readable resume point. Work in narrow independent slices. SAFE changes may merge after narrow relevant checks; MEDIUM user-facing changes require focused regression evidence plus relevant broader CI before release. If a stage is blocked, record/defer the blocker and continue another independent item that advances AnyTour 2.0. After completing a stage, advance to the next roadmap stage automatically unless an emergency priority overrides it.

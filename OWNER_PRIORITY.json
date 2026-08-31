@@ -1,13 +1,13 @@
 {
   "schema_version": 2,
-  "active_mode": "technical_refactor_pass",
-  "active_phase": "TECHNICAL REFACTOR PASS",
+  "active_mode": "anytour_2_0_site_9_0",
+  "active_phase": "ANYTOUR 2.0 → SITE 9.0/10",
+  "current_stage": "DESIGN_2_0_FOUNDATION",
   "priority_after_emergency_overrides": [
+    "anytour_2_0_roadmap",
     "technical_refactor",
-    "ux_visual",
-    "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_technical_refactor_pass",
-  "rule": "Technical refactor is the active owner priority after emergency production, lead-loss, incorrect-data and broken-user-journey overrides. First maintain canonical architecture/source-of-truth, complete dependency and GitHub Actions inventories, prepare safe directory ownership, then consolidate the shared template layer before returning to UX/visual work. Preserve Yandex Metrika/goals, analytics, Tourvisor and external lead contracts and stay inside pyatkoff/poisk-turov-test."
+  "source": "explicit_owner_direction_2026_08_31_anytour_2_0_site_9_0",
+  "rule": "AnyTour 2.0 and a real whole-production-site 9.0/10 quality target are the owner north-star after emergency production, lead-loss, incorrect-data and broken-user-journey overrides. Design 2.0 / Design System foundation is the current stage, not the finish line. Continue automatically through Search Experience 2.0, Results 2.0, Hotel/Tour 2.0, Price Intelligence, Conversion 2.0, Data Platform, SEO Platform, merchandising/discovery, Mobile 2.0, performance/reliability and the final evidence-based 9.0 audit. Preserve Yandex Metrika/goals, analytics, Tourvisor and external lead contracts and stay inside pyatkoff/poisk-turov-test."
 }
