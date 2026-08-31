@@ -10,10 +10,10 @@ function isResultFilter(target){return !!(desktop.matches&&target&&target.name&&
 function hasActiveSearch(lc){return !!(lc&&(lc.pending||Number(lc.searchId||0)>0||results.querySelector('.hotel-card')));}
 function showRefreshing(){if(!status)return;status.hidden=false;status.textContent='Фильтры изменены · обновляем предложения по всем доступным турам…';}
 function schedule(target){const lc=lifecycle();if(!lc||!hasActiveSearch(lc))return;lastTargetName=String(target&&target.name||'');if(timer)clearTimeout(timer);showRefreshing();timer=setTimeout(()=>{timer=0;const current=lifecycle();if(!current||typeof current.submit!=='function')return;if(!current.dirty&&!results.querySelector('.hotel-card'))return;current.submit();window.dispatchEvent(new CustomEvent('v2:results-filter-autorefresh',{detail:{name:lastTargetName}}));},650);}
-function onPotentialFilterChange(event){const target=event.target;if(!isResultFilter(target))return;schedule(target);}
+function onPotentialFilterChange(event){const target=event.target;if(!isResultFilter(target))return;const type=String(target.type||'').toLowerCase();if(event.type==='change'&&(type==='number'||type==='text'||type==='search'||type==='range'))return;schedule(target);}
 form.addEventListener('input',onPotentialFilterChange,true);
 form.addEventListener('change',onPotentialFilterChange,true);
 window.addEventListener('v2:search-started',()=>{if(timer){clearTimeout(timer);timer=0;}});
 if(desktop.addEventListener)desktop.addEventListener('change',e=>{if(!e.matches&&timer){clearTimeout(timer);timer=0;}});
-window.V2ResultsFilterAutorefreshV1={schedule,filterNames:Array.from(filterNames),version:1};
+window.V2ResultsFilterAutorefreshV1={schedule,filterNames:Array.from(filterNames),version:2};
 })();
