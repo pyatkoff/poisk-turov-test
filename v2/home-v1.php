@@ -27,7 +27,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   <meta property="og:url" content="<?=$homeCanonical?>">
   <meta property="og:locale" content="ru_RU">
   <script type="application/ld+json"><?=json_encode($homeSchema,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?></script>
-  <link rel="stylesheet" href="<?=home_e(v2_asset('design-system-v1.css'))?>">
+  <link rel="stylesheet" href="<?=home_e(v2_asset('design-system-v2.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('site-header-v2.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('home-v1.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('home-journey-v1.css'))?>">
