@@ -24,9 +24,9 @@ PR #462 restored Design System 1.0 as the canonical owner priority after PR #460
 
 PR #461 fixed a confirmed shared-grid inconsistency on the mature search surface. `.v2-shell` still used hard-coded horizontal gutters, which diverged from the shared site/header grid at tablet width. The search shell now consumes the canonical `--at-shell` and `--at-page-gutter` Design System tokens while preserving all search behavior. The first CI pass exposed only an expected bundle-count guard mismatch after adding the CSS asset; the guard was updated, then the complete relevant suite passed, including V2 baseline, V2 PR visual, selected-tour visual, search header/footer/mobile checks, startup/bundle, standalone, comparison, flight and lead guards.
 
-PR #461 merged as `e887eda5d87a1daa1bf1cc1b029c2d31d8b68a51`. Standalone production deploy run `33362874549` is currently in progress; release validation passed and the release copy is running. Do not claim production verification until public-page, unchanged lead-bridge and live-search steps finish green.
+PR #461 merged as `e887eda5d87a1daa1bf1cc1b029c2d31d8b68a51`. Standalone production deploy run `33362874549` completed successfully: release validation, production copy, public-page verification, unchanged lead-bridge verification and live search smoke all passed.
 
-Next work is to consume that deployment evidence, then continue the complete production journey `/ → country/hot → /poisk-turov/ → results → selected tour → lead` at 375 / 430 / 768 / 1024 / 1440, fixing only confirmed layout/hierarchy defects. The whole-site score remains 7.0/10 until broader end-to-end production evidence supports a move.
+Next work is the complete production journey `/ → country/hot → /poisk-turov/ → results → selected tour → lead` at 375 / 430 / 768 / 1024 / 1440, followed by only confirmed layout/hierarchy fixes. The whole-site score remains 7.0/10 until broader end-to-end production evidence supports a move.
 
 ## Mandatory protections
 
