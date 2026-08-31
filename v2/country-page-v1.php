@@ -65,10 +65,25 @@ function cp_render(array $page): void
     ]);
     sp_hero('AnyTour · ' . $name, 'Туры в ' . $name, $intro);
     ?>
-    <main class="sp-main">
+    <main class="sp-main sp-country-page">
+      <section class="sp-country-intent" aria-labelledby="country-intent-title">
+        <div class="sp-country-intent__copy">
+          <span class="sp-country-intent__eyebrow">Живой поиск AnyTour</span>
+          <h2 id="country-intent-title">Сразу к актуальным турам</h2>
+          <p>Выберите даты, длительность и состав туристов — поиск покажет доступные отели, варианты перелёта и итоговую цену.</p>
+          <div class="sp-actions"><a class="sp-primary" href="<?=sp_e($searchHref)?>"><?=sp_e($searchLabel)?></a><a class="sp-secondary" href="/contacts/">Помочь с выбором</a></div>
+        </div>
+        <?php if ($resorts): ?>
+        <div class="sp-country-intent__resorts" aria-label="Популярные курорты">
+          <span class="sp-country-intent__label">Популярные курорты</span>
+          <div class="sp-resort-list"><?php foreach ($resorts as $resort): ?><span class="sp-resort-chip"><?=sp_e($resort)?></span><?php endforeach; ?></div>
+          <p>Можно начать со страны целиком, а курорт уточнить в фильтрах поиска.</p>
+        </div>
+        <?php endif; ?>
+      </section>
       <?php if ($facts): ?>
       <section aria-labelledby="country-guide-title">
-        <div class="sp-section-head"><h2 id="country-guide-title">Что важно при выборе</h2><p>Короткие ориентиры перед тем, как перейти к актуальным ценам и доступным вариантам.</p></div>
+        <div class="sp-section-head"><h2 id="country-guide-title">Что важно при выборе</h2><p>Короткие ориентиры перед тем, как сравнивать отели, даты и конкретные варианты тура.</p></div>
         <div class="sp-grid sp-grid--balanced-three">
           <?php foreach ($facts as $fact): ?>
             <article class="sp-card"><h3><?=sp_e((string)($fact['title'] ?? 'Важно знать'))?></h3><p><?=sp_e((string)($fact['text'] ?? ''))?></p></article>
@@ -76,10 +91,6 @@ function cp_render(array $page): void
         </div>
       </section>
       <?php endif; ?>
-      <?php if ($resorts): ?>
-      <section class="sp-card"><h2>Популярные курорты</h2><p>Используйте их как ориентир, а затем сравните доступные отели, даты и перелёты в общем поиске.</p><div class="sp-resort-list"><?php foreach ($resorts as $resort): ?><span class="sp-resort-chip"><?=sp_e($resort)?></span><?php endforeach; ?></div></section>
-      <?php endif; ?>
-      <section class="sp-card sp-search-callout"><h2>Найдите актуальный тур</h2><p>Цены и доступность меняются, поэтому страница направления не подменяет живой поиск статичной витриной. Выберите даты и параметры — покажем актуальные варианты и дадим открыть конкретный тур перед заявкой.</p><div class="sp-actions"><a class="sp-primary" href="<?=sp_e($searchHref)?>"><?=sp_e($searchLabel)?></a><a class="sp-secondary" href="/contacts/">Помощь менеджера</a></div></section>
       <?php if ($relatedDestinations): ?>
       <section aria-labelledby="country-related-title" data-related-destinations>
         <div class="sp-section-head"><h2 id="country-related-title">Сравните похожие направления</h2><p>Если даты или формат отдыха ещё не окончательные, посмотрите несколько альтернатив и затем сравните живые предложения в общем поиске.</p></div>
