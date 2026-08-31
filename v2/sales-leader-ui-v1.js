@@ -1,0 +1,5 @@
+(function(){'use strict';
+function hotelKey(h){return String(h&&h.id!==undefined&&h.id!==null?h.id:'');}
+function apply(detail){const items=Array.isArray(detail&&detail.items)?detail.items:[],results=detail&&detail.results;if(!results||!items.length)return;const byId=new Map(items.map(h=>[hotelKey(h),h]));results.querySelectorAll('.hotel-card').forEach(card=>{card.classList.remove('is-sales-leader');card.querySelectorAll('.sales-leader-badge').forEach(el=>el.remove());const hotel=byId.get(String(card.dataset.hotelId||''));if(!hotel||hotel.salesLeader!==true)return;const title=card.querySelector('.hotel-title');if(!title)return;const badge=document.createElement('span');badge.className='sales-leader-badge';badge.textContent='Лидер продаж';badge.setAttribute('aria-label','Лидер продаж AnyTour');title.before(badge);card.classList.add('is-sales-leader');});}
+window.addEventListener('v2:results-rendered',e=>apply(e.detail||{}));
+})();
