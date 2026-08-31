@@ -41,6 +41,7 @@ function keepFilterLabel(){
   const strong=summary.querySelector('strong');
   if(strong&&strong.textContent!=='Фильтры результатов')strong.textContent='Фильтры результатов';
 }
+// Star/meal enhancers also initialize on DOMContentLoaded; defer one task so this layer is the final owner of search-vs-filter placement.
 function scheduleNormalize(){setTimeout(()=>{normalizePrimaryLayout();keepFilterLabel();},0);}
 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scheduleNormalize,{once:true});else scheduleNormalize();
