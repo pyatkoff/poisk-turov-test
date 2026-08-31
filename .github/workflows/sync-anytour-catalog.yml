@@ -33,6 +33,7 @@ jobs:
             php -l "$f" >/dev/null
           done
           test -s v2/data/schema-v1.sql
+          grep -Fq 'name_genitive VARCHAR(180) DEFAULT NULL' v2/data/schema-v1.sql
           [[ "$COUNTRY_VALUE" =~ ^[0-9]+(,[0-9]+)*$ ]]
           echo "ANYTOUR_CATALOG_TOOLING_OK country=$COUNTRY_VALUE"
 

@@ -7,6 +7,7 @@ SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS catalog_departures (
     id INT UNSIGNED NOT NULL,
     name VARCHAR(180) NOT NULL,
+    name_genitive VARCHAR(180) DEFAULT NULL,
     slug VARCHAR(200) DEFAULT NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     synced_at DATETIME NOT NULL,
