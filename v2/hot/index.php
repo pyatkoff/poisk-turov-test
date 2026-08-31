@@ -27,7 +27,7 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
   <div class="sp-actions"><a class="sp-primary" href="<?=sp_e($hotSearch)?>">Искать на ближайшие даты</a><a class="sp-secondary" href="/contacts/">Помощь менеджера</a></div>
 </section>
 <?php if($hotOffers): ?>
-<section aria-labelledby="hot-live-title">
+<section aria-labelledby="hot-live-title" class="sp-hot-live-section">
   <div class="sp-section-head"><h2 id="hot-live-title">Свежие предложения из базы AnyTour</h2><p>Это цены, недавно полученные в реальных поисках на 2 взрослых без детей. Они помогают быстро найти интересный вариант, но не заменяют финальную проверку доступности и цены.</p></div>
   <div class="sp-grid sp-grid--balanced-three">
     <?php foreach($hotOffers as $offer):
@@ -38,8 +38,8 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
       $meta=implode(' · ',array_filter([implode(', ',$where),$departure!==''?'из '.$departure:'',hot_date_label($date),$nights.' ноч.'])); ?>
       <section class="sp-card sp-hot-offer-card">
         <h3><?=sp_e((string)$offer['hotel_name'])?><?php if((int)($offer['hotel_category']??0)>0): ?> <?=str_repeat('★',(int)$offer['hotel_category'])?><?php endif; ?></h3>
-        <p><?=sp_e($meta)?></p>
-        <p><strong><?=sp_e(hot_price($offer['price'],$offer['currency']??'RUB'))?></strong> · за двоих</p>
+        <p class="sp-hot-offer-meta"><?=sp_e($meta)?></p>
+        <p class="sp-hot-offer-price"><strong><?=sp_e(hot_price($offer['price'],$offer['currency']??'RUB'))?></strong><span>за двоих</span></p>
         <div class="sp-actions"><a class="sp-primary" href="<?=sp_e($href)?>">Проверить варианты</a></div>
       </section>
     <?php endforeach; ?>
