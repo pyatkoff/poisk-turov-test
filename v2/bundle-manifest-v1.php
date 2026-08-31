@@ -37,6 +37,7 @@ function v2_bundle_manifest(): array
             'search-footer-rhythm-v1.css',
             'search-header-shared-shell-v1.css',
             'ds2-search-intro-v1.css',
+            'ds2-selected-tour-convergence-v1.css',
         ],
         'js' => [
             'header-current-site.js',
