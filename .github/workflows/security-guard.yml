@@ -61,7 +61,7 @@ jobs:
           if lock.get('active') is not False or lock.get('status') != 'INACTIVE_SUPERSEDED_BY_OWNER_DIRECTION': errors.append('superseded technical-refactor lock was reactivated')
           if lock.get('canonical_design_system') != expected_ds: errors.append('technical-refactor lock design-system drift')
           if '# AnyTour Design System 2.0' not in version: errors.append('canonical Design System 2.0 declaration was removed')
-          if 'Design System 1.0 terminology is not valid current terminology' not in version: errors.append('legacy Design System 1.0 rollback protection missing')
+          if 'Any pre-2.0 design-system terminology is obsolete' not in version: errors.append('pre-2.0 rollback protection missing')
           if errors:
               print('OWNER_DIRECTION_SECURITY_GUARD_FAIL')
               for error in errors: print('-', error)

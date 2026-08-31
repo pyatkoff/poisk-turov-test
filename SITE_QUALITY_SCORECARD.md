@@ -25,7 +25,7 @@ This scorecard evaluates the **whole public anytoour.ru experience**, not only t
 
 ## Evidence supporting the 2026-08-31 movement
 
-- AnyTour Design System 1.0 remains the current owner-directed visual generation.
+- AnyTour Design System 2.0 is the current owner-directed visual generation and the owner-confirmed composite desktop/mobile mockup is the canonical implementation reference.
 - Country pages now use one neutral destination kicker and one shared live-search handoff with explicit current-offer, flight/baggage-when-available and price-before-lead signals.
 - PR checks for the country change passed at 375, 430, 768, 1024 and 1440 px, including overflow/header/footer/navigation/action checks.
 - Production deployment succeeded with public-page verification, unchanged lead-bridge validation and live search smoke.
