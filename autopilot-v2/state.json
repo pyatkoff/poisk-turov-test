@@ -1,0 +1,34 @@
+{
+  "schema_version": 2,
+  "mode": "dry_run",
+  "active_task": {
+    "id": "PILOT_ROOT_STABILIZATION_REAUDIT",
+    "title": "Re-audit standalone results and selected-tour transitions",
+    "area": "ux-qa",
+    "risk": "SAFE",
+    "state": "triaged",
+    "owner": "orchestrator",
+    "required_gates": ["Fast CI", "targeted functional evidence", "visual QA if user-facing diff exists"],
+    "evidence": ["Imported from AUTOPILOT_STATE.json current next_action; no product code changes in MVP scaffold."]
+  },
+  "queue": [
+    {
+      "id": "PILOT_ROOT_STABILIZATION_REAUDIT",
+      "priority": 1,
+      "source": "AUTOPILOT_STATE.json",
+      "reason": "Current highest-priority stabilization task"
+    },
+    {
+      "id": "PX7_PRICE_WATCH_RESEARCH",
+      "priority": 2,
+      "source": "AUTOPILOT_STATE.json",
+      "reason": "Deferred product research; requires product-contract decisions before coding"
+    }
+  ],
+  "last_signal": {
+    "source": "migration",
+    "status": "READY_FOR_DRY_RUN",
+    "sha": ""
+  },
+  "blocked": []
+}

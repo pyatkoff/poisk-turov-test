@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "project": "pyatkoff/poisk-turov-test",
+  "product": "AnyTour",
+  "production": {
+    "root": "https://anytoour.ru/",
+    "search": "https://anytoour.ru/poisk-turov/"
+  },
+  "design_system": {
+    "active": "AnyTour Design System 2.0",
+    "obsolete": ["AnyTour Design System 1.0"],
+    "rule": "Do not introduce parallel headers, footers, buttons, cards or shared shell variants when an active Design System 2.0 primitive exists."
+  },
+  "hard_boundaries": {
+    "other_projects": "DO_NOT_MODIFY",
+    "yandex_metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
+    "yandex_metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
+    "lead_sending_external_contract": "PRESERVE",
+    "logo": "DO_NOT_REDESIGN"
+  },
+  "priority_order": [
+    "production_broken",
+    "lead_or_money_loss",
+    "incorrect_data",
+    "severe_user_flow_or_visual_breakage",
+    "agreed_product_roadmap",
+    "performance_or_seo_foundation",
+    "cosmetic_or_refactor"
+  ],
+  "ci_policy": {
+    "normal_development": ["Fast CI"],
+    "production": ["Deploy anytoour.ru", "Production smoke"],
+    "deep_checks": "ON_DEMAND_ONLY",
+    "rule": "Do not launch retired or broad regression matrices unless the task risk specifically requires them."
+  },
+  "done_policy": {
+    "developer_may_self_close": false,
+    "required_gate_owner": "qa",
+    "visual_gate_required_for_user_facing_change": true,
+    "production_evidence_required_after_release_when_applicable": true
+  }
+}
