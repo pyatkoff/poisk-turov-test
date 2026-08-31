@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T09:08:00+02:00",
+  "updated_at": "2026-08-31T10:05:00+02:00",
   "mode": "design_system_1_0",
   "phase": "ANYTOUR DESIGN SYSTEM 1.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
@@ -14,7 +14,7 @@
     "id": "SITE_WIDE_VISUAL_UNIFICATION",
     "name": "Shared shell and full-journey visual unification",
     "status": "ACTIVE",
-    "next_action": "Run the production journey homepage -> country/hot -> search -> results -> selected tour -> lead at 375/430/768/1024/1440 and fix only confirmed hierarchy, spacing, wrapping, overflow or duplicated-shell regressions."
+    "next_action": "Verify PR #472 production deployment/live checks, then run homepage -> country/representative country -> hot -> search -> results -> selected tour -> lead at 375/430/768/1024/1440 and fix only confirmed hierarchy, spacing, wrapping, overflow or duplicated-shell regressions; then audit contacts/how-to-buy/rb."
   },
   "current_work_order": [
     "shared design tokens primitives header footer typography grid spacing buttons cards breadcrumbs responsive behavior",
