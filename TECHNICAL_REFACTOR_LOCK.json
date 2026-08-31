@@ -1,17 +1,16 @@
 {
-  "schema_version": 6,
-  "active": true,
-  "mode": "technical_refactor",
-  "phase": "CI_COST_AUDIT_AND_CONSOLIDATION",
-  "status": "ACTIVE_OWNER_DIRECTION",
-  "authority": "explicit owner instruction 2026-08-31 CI resource audit priority",
+  "schema_version": 5,
+  "active": false,
+  "mode": "design_system_1",
+  "phase": "ANYTOUR DESIGN SYSTEM 1.0",
+  "status": "INACTIVE_OWNER_DIRECTION_CHANGED",
+  "authority": "explicit owner instruction 2026-08-31 Design System 1.0 priority",
   "scope": "pyatkoff/poisk-turov-test",
-  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "protected_contracts": [
     "yandex_metrika_configuration_and_goals",
     "external_lead_contract",
     "tourvisor_contract",
     "neighboring_projects"
   ],
-  "rule": "Technical refactor and CI-cost consolidation are the active non-emergency phase. Do not let visual/design work preempt it. Keep Design System 2.0 terminology canonical, and do not mass-rename implementation -v1 module filenames without a dependency-mapped migration."
+  "rule": "Technical refactor must not preempt AnyTour Design System 1.0 and site-wide visual unification. Refactor only when required to safely deliver the shared visual shell or preserve correctness."
 }
