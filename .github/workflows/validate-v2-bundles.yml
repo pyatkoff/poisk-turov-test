@@ -57,7 +57,7 @@ jobs:
           if (($manifest['css'][count($manifest['css'])-3]??'')!=='search-header-shared-shell-v1.css') {fwrite(STDERR,"search shared-shell override must stay directly before DS2 overrides\n"); exit(11);}
           if (($manifest['css'][count($manifest['css'])-2]??'')!=='ds2-search-intro-v1.css') {fwrite(STDERR,"DS2 search intro override must stay directly before selected-tour convergence\n"); exit(21);}
           if (($manifest['css'][count($manifest['css'])-1]??'')!=='ds2-selected-tour-convergence-v1.css') {fwrite(STDERR,"DS2 selected-tour convergence must load last\n"); exit(25);}
-          if (count($manifest['js'])!==39) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
+          if (count($manifest['js'])!==40) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
           if (!in_array('catalog-local-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"local catalog router missing\n"); exit(15);}
           if (!in_array('country-matrix-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"country matrix router missing\n"); exit(20);}
           if (!in_array('hotel-autocomplete-v1.js',$manifest['js'],true)) {fwrite(STDERR,"hotel autocomplete js missing\n"); exit(14);}
@@ -65,6 +65,7 @@ jobs:
           if (!in_array('current-price-calendar-v1.js',$manifest['js'],true)) {fwrite(STDERR,"current price calendar js missing\n"); exit(19);}
           if (!in_array('results-filter-autorefresh-v1.js',$manifest['js'],true)) {fwrite(STDERR,"results filter autorefresh missing\n"); exit(22);}
           if (!in_array('sales-leader-ui-v1.js',$manifest['js'],true)) {fwrite(STDERR,"sales leader js missing\n"); exit(24);}
+          if (!in_array('direct-offer-retargeting-v1.js',$manifest['js'],true)) {fwrite(STDERR,"Direct offer retargeting bridge missing\n"); exit(26);}
           echo 'BUNDLE_MANIFEST_OK css='.count($manifest['css']).' js='.count($manifest['js'])."\n";
           PHP
       - name: Validate bundled JavaScript syntax
@@ -84,6 +85,8 @@ jobs:
           grep -Fq 'window.V2TourController=' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'window.V2FlightEmptyRecoveryV1=' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'window.V2LeadUiRaceGuardV1=' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'window.V2DirectOfferRetargeting=' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq "return id?'hotel_'+id:''" "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'data-v2-hotel-query' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'v2:results-filter-autorefresh' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'sales-leader-badge' "$RUNNER_TEMP/v2-active-bundle.js"
