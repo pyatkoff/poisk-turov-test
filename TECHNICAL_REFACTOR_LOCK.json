@@ -1,12 +1,12 @@
 {
-  "schema_version": 9,
-  "active": true,
+  "schema_version": 10,
+  "active": false,
   "mode": "technical_refactor",
   "phase": "CI_COST_AUDIT_AND_CONSOLIDATION",
-  "status": "ACTIVE_OWNER_DIRECTION",
-  "authority": "explicit owner instruction 2026-08-31 technical refactor pass",
+  "status": "INACTIVE_SUPERSEDED_BY_OWNER_DIRECTION",
+  "authority": "superseded by explicit owner instruction 2026-08-31 AnyTour Design System 2.0 reference convergence",
   "scope": "pyatkoff/poisk-turov-test",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "protected_contracts": ["yandex_metrika_configuration_and_goals","external_lead_contract","tourvisor_contract","neighboring_projects"],
-  "rule": "Technical refactor is the active phase. First unify architecture/source of truth, then inventory/dependency mapping, CI classification and proven-equivalent consolidation, safe target directory structure and shared template consolidation. UX/visual work follows technical consolidation."
+  "rule": "Technical and CI-cost work may support reliability but must not preempt the current owner-confirmed AnyTour Design System 2.0 reference-convergence phase."
 }
