@@ -15,6 +15,7 @@ on:
       - 'v2/bundle-manifest-v1.php'
       - 'v2/index.php'
       - '.github/workflows/visual-v2-meal-visibility.yml'
+      - '.github/workflows/validate-v2-primary-meal-responsive.yml'
   workflow_dispatch:
 
 permissions:
@@ -38,12 +39,13 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Verify every primary meal choice is visible without horizontal scrolling
+      - name: Verify primary meal visibility and intermediate-width contract
         env:
           V2_URL: https://anytour.online/poisk-turov-test/v2/
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p meal-visibility-artifacts
           cat > ./v2-meal-visibility.cjs <<'JS'
           const { chromium } = require('playwright');
           const fs = require('fs');
@@ -62,18 +64,33 @@ jobs:
               const response=await page.goto(process.env.V2_URL,{waitUntil:'domcontentloaded',timeout:45000});
               await page.waitForFunction(()=>document.querySelectorAll('.meal-quick .meal-choice').length>=5,{timeout:15000});
               const state=await page.evaluate(()=>{
+                const field=document.querySelector('.main-meal');
                 const row=document.querySelector('.meal-quick');
                 const buttons=[...document.querySelectorAll('.meal-quick .meal-choice')];
                 if(!row)return {exists:false,count:buttons.length};
+                const fr=field?.getBoundingClientRect();
                 const rr=row.getBoundingClientRect();
-                const clipped=buttons.filter(btn=>{const r=btn.getBoundingClientRect();return r.left<rr.left-2||r.right>rr.right+2;}).length;
-                return {exists:true,count:buttons.length,scrollWidth:row.scrollWidth,clientWidth:row.clientWidth,clipped,overflowX:getComputedStyle(row).overflowX,flexWrap:getComputedStyle(row).flexWrap,documentOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+                const info=buttons.map(btn=>{const r=btn.getBoundingClientRect();return{text:(btn.textContent||'').trim(),visible:r.left>=rr.left-2&&r.right<=rr.right+2};});
+                const clipped=info.filter(x=>!x.visible).length;
+                return {exists:true,count:buttons.length,fieldWidth:fr?.width||0,scrollWidth:row.scrollWidth,clientWidth:row.clientWidth,clipped,last:info[info.length-1]||null,overflowX:getComputedStyle(row).overflowX,flexWrap:getComputedStyle(row).flexWrap,documentOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
               });
-              console.log(`MEAL_VISIBILITY width=${width} http=${response?.status()||0} count=${state.count} clipped=${state.clipped} scroll=${state.scrollWidth}/${state.clientWidth} overflowX=${state.overflowX} flexWrap=${state.flexWrap} documentOverflow=${state.documentOverflow}`);
-              if(response?.status()!==200||!state.exists||state.count<5||state.clipped||state.scrollWidth>state.clientWidth+2||state.documentOverflow||state.flexWrap!=='wrap')process.exitCode=1;
+              console.log(`MEAL_VISIBILITY width=${width} http=${response?.status()||0} count=${state.count} field=${state.fieldWidth||0} clipped=${state.clipped} scroll=${state.scrollWidth}/${state.clientWidth} overflowX=${state.overflowX} flexWrap=${state.flexWrap} documentOverflow=${state.documentOverflow} last=${state.last?.text||''}`);
+              let bad=response?.status()!==200||!state.exists||state.count<5||state.clipped||state.scrollWidth>state.clientWidth+2||state.documentOverflow||state.flexWrap!=='wrap';
+              if(width===1024){
+                await page.screenshot({path:'meal-visibility-artifacts/meal-1024.png',fullPage:true});
+                bad ||= state.fieldWidth<800||!state.last||state.last.text!=='Без питания'||!state.last.visible;
+              }
+              if(bad)process.exitCode=1;
               await context.close();
             }
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node ./v2-meal-visibility.cjs
+      - name: Upload consolidated 1024 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-meal-visibility-${{ github.event.pull_request.number || github.sha }}
+          path: meal-visibility-artifacts/
+          retention-days: 14
