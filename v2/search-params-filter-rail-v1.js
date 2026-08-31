@@ -22,10 +22,20 @@ function moveFilter(name,beforeName,fieldClass,quickSelector,selectClasses){
   const before=form.elements[beforeName],beforeField=before&&before.closest('.field');
   if(beforeField&&beforeField.parentElement===extraGrid)extraGrid.insertBefore(field,beforeField);else extraGrid.appendChild(field);
 }
+function markPriorityFilter(name){const control=form.elements[name],field=control&&control.closest('.field');if(field)field.classList.add('result-filter-priority');}
+function prioritizeResultFilters(){
+  ['stars','rating','food','price_from','price_till'].forEach(markPriorityFilter);
+  const flight=form.elements.onlyDirect,flightField=flight&&flight.closest('.field');if(flightField)flightField.classList.add('result-filter-priority');
+  if(servicePicker&&extraGrid&&servicePicker.parentElement===extraGrid.parentElement){
+    servicePicker.classList.add('result-filter-services-first');
+    extraGrid.parentElement.insertBefore(servicePicker,extraGrid);
+  }
+}
 function normalizePrimaryLayout(){
   if(!main||!extraGrid)return;
   moveFilter('stars','rating','result-filter-stars','.stars-quick',['ux-native-hidden']);
   moveFilter('food','price_from','result-filter-meal','.meal-quick',['meal-native-select','ux-native-hidden']);
+  prioritizeResultFilters();
   [...main.querySelectorAll('.primary-step')].forEach((field,i)=>{
     field.classList.remove('primary-step-1','primary-step-2','primary-step-3','primary-step-4','primary-step-5','primary-step-6','primary-step-7');
     field.classList.add('primary-step-'+(i+1));
