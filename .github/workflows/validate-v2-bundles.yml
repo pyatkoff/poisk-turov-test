@@ -45,17 +45,18 @@ jobs:
               $url=v2_bundle_asset($type);
               if (!str_contains($url,'bundle-v1.php?type='.$type.'&v='.$a)) {fwrite(STDERR,"bad $type url: $url\n"); exit(5);}
           }
-          if (count($manifest['css'])!==33) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
+          if (count($manifest['css'])!==34) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
           if (($manifest['css'][0]??'')!=='design-system-v1.css') {fwrite(STDERR,"design system must load first\n"); exit(8);}
           if (!in_array('site-header-v2.css',$manifest['css'],true)) {fwrite(STDERR,"canonical site header css missing\n"); exit(12);}
           if (!in_array('hotel-autocomplete-v1.css',$manifest['css'],true)) {fwrite(STDERR,"hotel autocomplete css missing\n"); exit(13);}
           if (!in_array('search-shell-grid-v1.css',$manifest['css'],true)) {fwrite(STDERR,"shared search shell grid css missing\n"); exit(16);}
           if (!in_array('current-price-calendar-v1.css',$manifest['css'],true)) {fwrite(STDERR,"current price calendar css missing\n"); exit(18);}
           if (!in_array('sales-leader-ui-v1.css',$manifest['css'],true)) {fwrite(STDERR,"sales leader css missing\n"); exit(23);}
-          if (($manifest['css'][count($manifest['css'])-4]??'')!=='search-header-layout-guard-v1.css') {fwrite(STDERR,"search header layout guard must stay before footer rhythm and shared-shell override\n"); exit(9);}
-          if (($manifest['css'][count($manifest['css'])-3]??'')!=='search-footer-rhythm-v1.css') {fwrite(STDERR,"search footer rhythm must stay directly before shared-shell override\n"); exit(10);}
-          if (($manifest['css'][count($manifest['css'])-2]??'')!=='search-header-shared-shell-v1.css') {fwrite(STDERR,"search shared-shell override must stay directly before DS2 search intro\n"); exit(11);}
-          if (($manifest['css'][count($manifest['css'])-1]??'')!=='ds2-search-intro-v1.css') {fwrite(STDERR,"DS2 search intro override must load last\n"); exit(21);}
+          if (($manifest['css'][count($manifest['css'])-5]??'')!=='search-header-layout-guard-v1.css') {fwrite(STDERR,"search header layout guard must stay before footer rhythm and shared-shell override\n"); exit(9);}
+          if (($manifest['css'][count($manifest['css'])-4]??'')!=='search-footer-rhythm-v1.css') {fwrite(STDERR,"search footer rhythm must stay directly before shared-shell override\n"); exit(10);}
+          if (($manifest['css'][count($manifest['css'])-3]??'')!=='search-header-shared-shell-v1.css') {fwrite(STDERR,"search shared-shell override must stay directly before DS2 overrides\n"); exit(11);}
+          if (($manifest['css'][count($manifest['css'])-2]??'')!=='ds2-search-intro-v1.css') {fwrite(STDERR,"DS2 search intro override must stay directly before selected-tour convergence\n"); exit(21);}
+          if (($manifest['css'][count($manifest['css'])-1]??'')!=='ds2-selected-tour-convergence-v1.css') {fwrite(STDERR,"DS2 selected-tour convergence must load last\n"); exit(25);}
           if (count($manifest['js'])!==39) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
           if (!in_array('catalog-local-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"local catalog router missing\n"); exit(15);}
           if (!in_array('country-matrix-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"country matrix router missing\n"); exit(20);}
@@ -118,6 +119,7 @@ jobs:
           grep -Fq 'Search-page footer rhythm guard' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Search-header compatibility layer' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Owner-confirmed AnyTour Design System 2.0 search composition' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'AnyTour Design System 2.0 selected-tour convergence' "$RUNNER_TEMP/bundle.css"
           echo "BUNDLE_HTTP_CACHE_OK"
       - name: Validate startup request collapse
         shell: bash
