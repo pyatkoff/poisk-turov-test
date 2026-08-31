@@ -59,6 +59,7 @@ jobs:
           const close=(a,b,t=3)=>Math.abs(a-b)<=t;
           const center=e=>(e.top+e.bottom)/2;
           const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+          const px=v=>parseFloat(v)||0;
           (async()=>{
             const browser=await chromium.launch({headless:true}); let failed=false; const report=[];
             for(const [name,width,height] of sizes){
@@ -93,11 +94,12 @@ jobs:
               await page.screenshot({path:`header-layout-artifacts/${name}.png`,fullPage:false,animations:'disabled'});
               let bad=!response||response.status()!==200||errors.length||state.overflow||state.globalCount!==1||state.legacyCount!==0||!state.header||!state.logo||!same(state.desktopOrder,expectedOrder)||!same(state.desktopLabels,expectedLabels)||!same(state.mobileOrder,expectedOrder)||!same(state.mobileLabels,expectedLabels)||state.currentDesktop!=='page'||state.currentMobile!=='page';
               if(width>1024){
-                bad ||= !close(state.header.height,78,2)||!state.nav||state.nav.display==='none'||!state.cta||state.cta.display==='none'||(state.mobile&&state.mobile.display!=='none')||!close(center(state.logo),center(state.header),3)||!close(center(state.phone),center(state.header),3);
+                const expectedHeight=px(state.tokens.desktop);
+                bad ||= !expectedHeight||!close(state.header.height,expectedHeight,2)||!state.nav||state.nav.display==='none'||!state.cta||state.cta.display==='none'||(state.mobile&&state.mobile.display!=='none')||!close(center(state.logo),center(state.header),3)||!close(center(state.phone),center(state.header),3);
               } else {
-                const expectedHeight=width<=520?64:68;
-                const expectedEdge=parseFloat(state.tokens.pageEdge)||0;
-                bad ||= !close(state.header.height,expectedHeight,2)||state.nav?.display!=='none'||state.cta?.display!=='none'||!state.mobile||state.mobile.display==='none'||!state.phone||state.phone.display==='none'||state.mobile.left<=state.logo.right||!close(center(state.logo),center(state.header),3)||!close(center(state.phone),center(state.header),3)||!close(center(state.mobile),center(state.header),3)||!close(state.logo.left,expectedEdge,1)||!close(width-state.mobile.right,expectedEdge,1);
+                const expectedHeight=px(width<=520?state.tokens.compact:state.tokens.mobile);
+                const expectedEdge=px(state.tokens.pageEdge);
+                bad ||= !expectedHeight||!close(state.header.height,expectedHeight,2)||state.nav?.display!=='none'||state.cta?.display!=='none'||!state.mobile||state.mobile.display==='none'||!state.phone||state.phone.display==='none'||state.mobile.left<=state.logo.right||!close(center(state.logo),center(state.header),3)||!close(center(state.phone),center(state.header),3)||!close(center(state.mobile),center(state.header),3)||!close(state.logo.left,expectedEdge,1)||!close(width-state.mobile.right,expectedEdge,1);
               }
               report.push({name,width,http:response?.status()||0,errors,state,bad}); if(bad)failed=true;
               console.log(name,JSON.stringify({bad,state})); await context.close();
