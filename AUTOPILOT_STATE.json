@@ -1,64 +1,29 @@
 {
   "schema_version": 2,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T03:15:00+02:00",
-  "mode": "anytour_2_0_site_9_0",
-  "phase": "ANYTOUR 2.0 → SITE 9.0/10",
-  "north_star": {
-    "id": "ANYTOUR_2_0_SITE_9_0",
-    "target_score": 9.0,
-    "scope": "whole production product",
-    "rule": "Design System 1.0 is a stage, not the finish line. Continue through search, results, selected tour, conversion, data, SEO, mobile, performance and final evidence-based 9.0 audit."
-  },
+  "updated_at": "2026-08-31T03:43:00+02:00",
+  "mode": "technical_refactor_pass",
+  "phase": "TECHNICAL REFACTOR PASS",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "anytour_2_0_site_9_0",
-    "rule": "Keep AnyTour 2.0 and whole-site 9.0/10 as the roadmap north-star after emergency production, lead-loss, incorrect-data and broken-user-journey overrides unless the owner explicitly changes direction."
+    "planned_phase": "technical_refactor_pass",
+    "rule": "Keep technical-refactor-first active after emergency production, lead-loss, incorrect-data and broken-user-journey overrides unless the owner explicitly changes direction."
   },
-  "current_stage": {
-    "id": "DESIGN_2_0_FOUNDATION",
-    "name": "Design 2.0 / Design System foundation",
+  "current_task": {
+    "id": "TECH_REFACTOR_SOURCE_OF_TRUTH_RECOVERY",
+    "category": "TECH_DEBT",
     "status": "ACTIVE",
-    "progress": "Shared physical header/footer and core shell are production-verified across five target widths. Homepage discovery has been strengthened. Local catalog/data foundation is active, including 71/71 departure genitive names. The next work is deeper whole-journey visual unification, not treating shell completion as project completion.",
-    "next_action": "Verify the latest homepage slice on production, audit the complete home → country/destination → hot/search → results → selected tour → lead journey at 375/430/768/1024/1440, then fix the weakest confirmed Design 2.0 surfaces before advancing into Search Experience 2.0."
+    "progress": "Restored explicit technical-refactor-first owner priority on the latest main after autonomous AnyTour/Design roadmap drift. Runtime, Metrika, lead and Tourvisor contracts are untouched.",
+    "next_action": "Finish exhaustive CI_WORKFLOW_AUDIT.md for remaining workflow families, then continue DEPENDENCY_MAP.md for non-manifest JS/CSS, PHP endpoints/helpers and deploy consumers."
   },
-  "roadmap": [
-    {"order":1,"id":"FOUNDATION_ARCHITECTURE","name":"Foundation and architecture","status":"ACTIVE_CONTINUOUS"},
-    {"order":2,"id":"DESIGN_2_0","name":"Design 2.0 / unified product","status":"ACTIVE"},
-    {"order":3,"id":"SEARCH_EXPERIENCE_2_0","name":"Search Experience 2.0","status":"PLANNED"},
-    {"order":4,"id":"RESULTS_2_0","name":"Results 2.0","status":"PLANNED"},
-    {"order":5,"id":"HOTEL_TOUR_2_0","name":"Hotel / Tour 2.0","status":"PLANNED"},
-    {"order":6,"id":"PRICE_INTELLIGENCE","name":"Price Intelligence","status":"FOUNDATION_STARTED"},
-    {"order":7,"id":"CONVERSION_2_0","name":"Conversion 2.0","status":"PLANNED"},
-    {"order":8,"id":"DATA_PLATFORM","name":"Data Platform","status":"FOUNDATION_STARTED"},
-    {"order":9,"id":"SEO_PLATFORM","name":"SEO Platform","status":"FOUNDATION_STARTED"},
-    {"order":10,"id":"MERCHANDISING_DISCOVERY","name":"Merchandising / discovery","status":"PLANNED"},
-    {"order":11,"id":"MOBILE_2_0","name":"Mobile 2.0","status":"PLANNED"},
-    {"order":12,"id":"PERFORMANCE_RELIABILITY","name":"Performance and reliability","status":"ACTIVE_CONTINUOUS"},
-    {"order":13,"id":"FINAL_9_0_AUDIT","name":"Final whole-site 9.0 audit","status":"PLANNED"}
-  ],
-  "current_work_order": [
-    "verify latest homepage Design 2.0 slice on production and five target widths",
-    "audit complete production journey on 375 430 768 1024 1440",
-    "fix weakest confirmed country destination editorial shell and hierarchy issues",
-    "deepen Design 2.0 on search results selected-tour and mobile surfaces while preserving working contracts",
-    "advance automatically to Search Experience 2.0 when Design 2.0 quality gate is satisfied",
-    "continue data price SEO and performance foundations when they safely support the active product stage"
-  ],
-  "quality_dimensions": [
-    "visual_quality",
-    "ux",
-    "mobile",
-    "search",
-    "results",
-    "selected_tour",
-    "conversion",
-    "seo_foundation",
-    "performance",
-    "accessibility",
-    "reliability",
-    "maintainability"
+  "work_order": [
+    "finish exhaustive GitHub Actions inventory and classify every workflow as PR FAST PR BROWSER POST DEPLOY or SCHEDULED LIVE",
+    "finish dependency map for active compatibility deprecated and dead candidates with concrete consumers",
+    "define safe directory ownership migration for shared search results tour checkout integrations site seo tests scripts templates",
+    "consolidate only proven equivalent CI bootstrap or implementation duplication",
+    "consolidate one shared header footer navigation and design system after consumers are mapped",
+    "return to UX and visual work after technical consolidation"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -67,18 +32,12 @@
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "analytics_contract": "PRESERVE",
     "tourvisor_contract": "PRESERVE",
-    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
-    "logo": "PRESERVE",
-    "verified_social_app_destinations": "PRESERVE",
-    "unresolved_legal_payment_content": "DEFER",
-    "pr_254": "DEFER_UNLESS_FRESH_REVIEW_PROVES_SAFE",
-    "pr_433": "STALE_CONFLICTING_PRIORITY_RESTORE_DO_NOT_MERGE"
+    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > anytour_2_0_roadmap > technical_refactor > cosmetic_cleanup",
-    "on_stage_done": "advance automatically to the next roadmap stage unless an emergency priority overrides it",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record_blocker_and_continue_independent roadmap work",
-    "score_rule": "Do not claim 9.0 until production evidence supports the whole-product score across the listed quality dimensions."
+    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
+    "on_blocker": "record_blocker_and_continue_independent_safe_work"
   }
 }
