@@ -1,0 +1,49 @@
+name: Validate current price calendar
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/current-price-calendar-v1.js'
+      - 'v2/current-price-calendar-v1.css'
+      - 'v2/bundle-manifest-v1.php'
+      - '.github/workflows/validate-current-price-calendar.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/current-price-calendar-v1.js'
+      - 'v2/current-price-calendar-v1.css'
+      - 'v2/bundle-manifest-v1.php'
+      - '.github/workflows/validate-current-price-calendar.yml'
+  workflow_dispatch:
+
+jobs:
+  calendar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate current inventory calendar behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check v2/current-price-calendar-v1.js
+          test -s v2/current-price-calendar-v1.css
+          node <<'NODE'
+          global.window={addEventListener(){}};
+          global.document={addEventListener(){},getElementById(){return null;}};
+          require('./v2/current-price-calendar-v1.js');
+          const c=window.V2CurrentPriceCalendar;
+          if(!c||c.version!==1)throw new Error('calendar API missing');
+          const rows=c.collect([
+            {tours:[{date:'01.09.2026',price:150000},{date:'2026-09-02',price:140000}]},
+            {tours:[{date:'01.09.2026',price:125000},{date:'03.09.2026',price:0},{date:'bad',price:90000}]}
+          ]);
+          const expected=JSON.stringify([{date:'2026-09-01',price:125000},{date:'2026-09-02',price:140000}]);
+          if(JSON.stringify(rows)!==expected)throw new Error('wrong daily minima '+JSON.stringify(rows));
+          if(c.dateValue('05.10.2026')!=='2026-10-05')throw new Error('ru date normalization failed');
+          console.log('CURRENT_PRICE_CALENDAR_OK '+JSON.stringify(rows));
+          NODE
+          grep -Fq "window.addEventListener('v2:search-complete'" v2/current-price-calendar-v1.js
+          grep -Fq "window.addEventListener('v2:search-reset'" v2/current-price-calendar-v1.js
+          grep -Fq "window.V2SearchLifecycle.submit" v2/current-price-calendar-v1.js
+          echo 'CURRENT_PRICE_CALENDAR_CONTRACT_OK'
