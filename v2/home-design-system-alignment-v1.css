@@ -1,4 +1,4 @@
-/* Homepage Design System 1.0 alignment: keep route-specific composition while consuming shared brand/surface/radius/spacing primitives. */
+/* Homepage Design System 2.0 alignment: keep route-specific composition while consuming shared brand/surface/radius/spacing primitives. */
 .at-home-main{color:var(--at-ink);font-family:var(--at-font)}
 .at-home-hero{padding-inline:var(--at-page-edge);background:var(--at-hero-bg)}
 .at-home-search{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)));border-color:var(--at-line);background:var(--at-surface);border-radius:var(--at-radius-xl)}

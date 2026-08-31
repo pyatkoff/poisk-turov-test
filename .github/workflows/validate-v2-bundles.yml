@@ -102,7 +102,7 @@ jobs:
           grep -Fq '.at-global-header' "$RUNNER_TEMP/bundle.css"
           grep -Fq '.hotel-autocomplete__option' "$RUNNER_TEMP/bundle.css"
           grep -Fq '.current-price-calendar__day' "$RUNNER_TEMP/bundle.css"
-          grep -Fq 'AnyTour Design System 1.0: keep the mature search surface' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'AnyTour Design System 2.0: keep the mature search surface' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Production guard for the legacy search-header markup' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Search-page footer rhythm guard' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Search-header compatibility layer' "$RUNNER_TEMP/bundle.css"
