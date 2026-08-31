@@ -8,7 +8,7 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical own
 
 After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is site-wide visual unification. The public site should feel like one coherent AnyTour product across homepage → destination/country → hot/search → results → selected tour → lead, rather than a strong search experience surrounded by visually inconsistent editorial pages.
 
-The whole-site visual score is tracked separately from search-only engineering quality. Current baseline is approximately 6.5/10 for coherent public-site product quality; recent shared-shell work has moved this to roughly 6.9/10.
+The whole-site visual score is tracked separately from search-only engineering quality. Current baseline is approximately 6.5/10 for coherent public-site product quality; shared-shell/editorial work has moved this to roughly 7.0/10.
 
 ## Ordered work
 
@@ -22,9 +22,11 @@ The whole-site visual score is tracked separately from search-only engineering q
 
 ## Current resume point
 
-Shared shell/header/footer primitives already cover the migrated standalone pages; contacts/how-to-buy have stronger editorial hierarchy, and tablet shell/footer grid alignment has been corrected. The current safe continuation is `/rb/`, then `/country/` plus representative destination pages, followed by the complete production visual journey at 375/430/768/1024/1440.
+Shared shell/header/footer primitives already cover the migrated standalone pages; contacts/how-to-buy use the stronger editorial hierarchy, tablet shell/footer grid alignment is corrected, and `/rb/` now uses the same balanced search/supporting-card hierarchy. Responsive standalone checks and V2 search/selected-tour/baseline visual regressions passed, and the Design System 1.0 source-of-truth fix is deployed with a green live search smoke.
 
-A repeated priority rollback was traced to hard-coded CI guards that still forced the superseded technical-refactor / Design System 2.0 state. Those guards must validate consistency with `OWNER_PRIORITY.json` rather than embed an obsolete owner direction.
+The next safe continuation is `/country/` plus representative destination pages. Audit their hierarchy, spacing, wrapping, overflow, cards and shared-shell consistency, then run the complete production journey at 375/430/768/1024/1440.
+
+The repeated priority rollback was traced to hard-coded CI guards that forced the superseded technical-refactor / Design System 2.0 state. Those guards now validate consistency with `OWNER_PRIORITY.json` instead of embedding an obsolete owner direction.
 
 ## Mandatory protections
 
