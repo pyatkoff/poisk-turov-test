@@ -1,34 +1,35 @@
 {
-  "schema_version": 7,
+  "schema_version": 6,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T13:58:00+02:00",
-  "mode": "ux_visual",
-  "phase": "ANYTOUR_DESIGN_SYSTEM_1_SITE_UNIFICATION",
-  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 1.0",
+  "updated_at": "2026-08-31T11:45:00+02:00",
+  "mode": "technical_refactor",
+  "phase": "CI_COST_AUDIT_AND_CONSOLIDATION",
+  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "ux_visual",
-    "rule": "Keep AnyTour Design System 1.0 and site-wide visual unification first after emergency correctness overrides until the owner explicitly changes direction."
+    "planned_phase": "technical_refactor",
+    "rule": "Keep technical refactor and CI-cost consolidation first after emergency correctness overrides until the owner explicitly changes direction. Design System 2.0 remains canonical terminology but is not the active execution phase."
   },
   "current_stage": {
-    "id": "COUNTRY_DESTINATION_UNIFICATION",
-    "name": "Unify destination presentation and live-search handoff",
+    "id": "CI_RESOURCE_CONSOLIDATION",
+    "name": "Reduce duplicate GitHub Actions work without losing critical coverage",
     "status": "ACTIVE",
-    "next_action": "Refine /country/ and representative country pages on the shared shell, validate 375/430/768/1024/1440, deploy after green checks, then audit the full homepage-to-lead journey."
+    "next_action": "Continue the verified workflow-by-workflow audit: remove duplicate runners, narrow broad triggers by real dependencies, consolidate related Playwright checks, and preserve critical search/lead/price/tour/flight/recovery coverage."
   },
   "current_work_order": [
-    "country index and representative country-page hierarchy",
-    "destination to hot/search product handoff",
-    "homepage and remaining editorial route hierarchy",
-    "full homepage country hot search results selected-tour lead journey",
-    "responsive overflow wrapping spacing and shell continuity",
-    "tour data platform and SEO after higher-priority visual gaps"
+    "audit broad PR browser triggers and data-only exclusions",
+    "consolidate overlapping browser workflows into domain owners",
+    "fold tiny source-string guards into existing PR FAST owners",
+    "classify PR FAST PR BROWSER POST DEPLOY and SCHEDULED LIVE",
+    "maintain architecture and dependency source of truth",
+    "resume UX and Design System 2.0 visual work after the technical CI phase"
   ],
   "material_progress": [
-    "shared public header navigation footer and page gutter are established across standalone and search shells",
-    "common card button breadcrumb and editorial spacing primitives are shared by the main public routes",
-    "responsive standalone visual coverage exercises 375 430 768 1024 and 1440 widths"
+    "data-only changes no longer start several unrelated visual browser workflows",
+    "duplicate primary-meal browser coverage was consolidated into one owner workflow",
+    "dormant manual traffic-audit stubs were removed",
+    "pending-flight label source assertions were folded into the existing pending-flight confidence owner"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -37,16 +38,12 @@
     "metrika_goals": "DO_NOT_MODIFY",
     "tourvisor_contract": "PRESERVE",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
-    "anytour_logo": "PRESERVE",
-    "verified_social_app_destinations": "PRESERVE",
-    "unresolved_legal_payment_content": "DO_NOT_MIGRATE",
-    "design_system_generation": "ANYTOUR DESIGN SYSTEM 1.0",
-    "implementation_v1_suffixes": "DO_NOT_MASS_RENAME_WITHOUT_DEPENDENCY_MIGRATION",
-    "pr_254": "DEFERRED_PENDING_FRESH_ARCHITECTURE_REVIEW"
+    "design_system_generation": "ANYTOUR DESIGN SYSTEM 2.0",
+    "implementation_v1_suffixes": "DO_NOT_MASS_RENAME_WITHOUT_DEPENDENCY_MIGRATION"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > site_wide_unification > tour_data_platform > content_seo > technical_refactor > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ci_cost_audit > ux_visual > tour_data_platform > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record/defer blocker and continue an independent safe visual or product task"
+    "on_blocker": "record/defer blocker and continue an independent safe technical-refactor or CI-cost task"
   }
 }
