@@ -1,6 +1,6 @@
 # AnyTour — site-wide quality scorecard
 
-Updated: 2026-08-30
+Updated: 2026-08-31
 
 This scorecard evaluates the **whole public anytoour.ru experience**, not only the mature tour-search flow. A green search regression suite is not evidence that the entire site is visually 9/10.
 
@@ -23,15 +23,14 @@ This scorecard evaluates the **whole public anytoour.ru experience**, not only t
 | Mobile site consistency | 7.25 | 8.5 | Shared responsive header, shell and footer are verified across required widths; content density still varies by route |
 | Brand coherence | 7.25 | 9.0 | Shared colors, surfaces, controls, header/footer and spacing now read as one AnyTour system; destination storytelling is still weak |
 
-## Evidence supporting the 2026-08-30 score movement
+## Evidence supporting the current baseline
 
-- AnyTour Design System 2.0 central tokens now own shell surfaces, lines, shadows, controls, hero spacing, page gutters and responsive rhythm.
+- AnyTour Design System 1.0 central tokens own shell surfaces, lines, shadows, controls, hero spacing, page gutters and responsive rhythm.
 - The shared header/navigation consumes that common token layer across standalone pages and the search outer shell.
-- `/contacts/`, `/how-to-buy/`, `/rb/`, `/hot/`, `/country/` and country pages now share common page/card/button/breadcrumb/grid geometry without rewriting unresolved content.
-- The community/pre-footer and footer now use the same common shell width, page gutter, spacing, radius, surface, focus and control tokens while preserving verified destinations.
-- PR visual checks passed for 375, 430, 768, 1024 and 1440 px across homepage, search, target editorial routes and current country pages, including overflow, header/nav geometry, footer, actions/focus and shell continuity.
-- Production deploy completed successfully with public-page verification, unchanged lead-bridge validation and live search smoke.
-- Post-deploy production checks passed for responsive navigation and the full standalone route sweep at the required widths; live tour-card/flights and result-detail regressions also remained green.
+- `/contacts/`, `/how-to-buy/`, `/rb/`, `/hot/`, `/country/` and country pages share common page/card/button/breadcrumb/grid geometry without rewriting unresolved content.
+- The community/pre-footer and footer use the same common shell width, page gutter, spacing, radius, surface, focus and control tokens while preserving verified destinations.
+- Existing visual checks cover 375, 430, 768, 1024 and 1440 px across homepage, search, target editorial routes and current country pages, including overflow, header/nav geometry, footer, actions/focus and shell continuity.
+- Further score increases require fresh production visual evidence after each material route-level refinement.
 
 ## Required evidence for further score increases
 
@@ -43,8 +42,8 @@ This scorecard evaluates the **whole public anytoour.ru experience**, not only t
 
 ## Current design-system work order
 
-1. Refine homepage section hierarchy and discovery flow inside the shared shell.
-2. Strengthen country/destination presentation and handoff into hot/search without making editorial pages dense.
+1. Strengthen country/destination presentation and handoff into hot/search without making editorial pages dense.
+2. Refine homepage section hierarchy and discovery flow inside the shared shell.
 3. Refine `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/` route-specific hierarchy now that shell geometry is common.
 4. Run cross-page journey audit: homepage → destination/hot → search → results → selected tour → lead.
 5. Continue responsive fixes before decorative flourishes.
