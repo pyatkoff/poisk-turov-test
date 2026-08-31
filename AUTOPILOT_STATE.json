@@ -1,63 +1,29 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T04:03:00+02:00",
-  "mode": "anytour_2_0_site_9_0",
-  "phase": "ANYTOUR 2.0 → SITE 9.0/10",
-  "north_star": {
-    "id": "ANYTOUR_2_0_SITE_9_0",
-    "target_score": 9.0,
-    "scope": "whole production product",
-    "rule": "Design 2.0 / Design System foundation is a stage, not the finish line. Continue through search, results, selected tour, conversion, data, SEO, mobile, performance and final evidence-based 9.0 audit."
-  },
+  "updated_at": "2026-08-31T04:44:00+02:00",
+  "mode": "technical_refactor_pass",
+  "phase": "TECHNICAL REFACTOR PASS",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "anytour_2_0_site_9_0",
-    "rule": "Keep AnyTour 2.0 and whole-site 9.0/10 as the roadmap north-star after emergency production, lead-loss, incorrect-data and broken-user-journey overrides unless the owner explicitly changes direction."
+    "planned_phase": "technical_refactor_pass",
+    "rule": "Keep technical refactor first after emergency production, lead-loss and data-correctness overrides until the explicit consolidation sequence is complete or the owner changes direction."
   },
   "current_stage": {
-    "id": "DESIGN_2_0_FOUNDATION",
-    "name": "Design 2.0 / Design System foundation",
+    "id": "TECHNICAL_REFACTOR_CONSOLIDATION",
+    "name": "Technical refactor consolidation",
     "status": "ACTIVE",
-    "progress": "Country Design 2.0 remains production-green. A user screenshot then exposed a real search-layout regression introduced by PR #422: hotel autocomplete was dynamically reparented into the primary .main-fields grid, which distorted the desktop hierarchy. PR #440 removes that reparenting and keeps the existing hotel autocomplete inside advanced filters; its five-width PR visual suite passed and production deploy 33349232306 completed successfully with public-page verification, unchanged lead-bridge verification and live search smoke. PR #447 adds a focused structural CI gate that fails if hotel autocomplete is moved into the primary grid again; both the new guard and security check passed before merge. Tourvisor, analytics/Metrika and lead contracts remain unchanged.",
-    "next_action": "Continue the production Design 2.0 audit through search → results → selected tour → lead on 375/430/768/1024/1440, prioritizing confirmed layout/hierarchy regressions before cosmetic work. Keep critical-catalog readiness and advanced-filter hotel placement as permanent regression gates."
+    "progress": "Architecture/source-of-truth and CI/file inventory work are in progress. A later Design 2.0 pass rewrote the owner-priority files and guards; this state restores the explicit technical-refactor-first direction without changing runtime behavior.",
+    "next_action": "Finish exhaustive GitHub Actions inventory/classification, then continue the non-manifest/PHP/deploy dependency map before safe directory and shared-template consolidation."
   },
-  "roadmap": [
-    {"order":1,"id":"FOUNDATION_ARCHITECTURE","name":"Foundation and architecture","status":"ACTIVE_CONTINUOUS"},
-    {"order":2,"id":"DESIGN_2_0","name":"Design 2.0 / unified product","status":"ACTIVE"},
-    {"order":3,"id":"SEARCH_EXPERIENCE_2_0","name":"Search Experience 2.0","status":"PLANNED"},
-    {"order":4,"id":"RESULTS_2_0","name":"Results 2.0","status":"PLANNED"},
-    {"order":5,"id":"HOTEL_TOUR_2_0","name":"Hotel / Tour 2.0","status":"PLANNED"},
-    {"order":6,"id":"PRICE_INTELLIGENCE","name":"Price Intelligence","status":"FOUNDATION_STARTED"},
-    {"order":7,"id":"CONVERSION_2_0","name":"Conversion 2.0","status":"PLANNED"},
-    {"order":8,"id":"DATA_PLATFORM","name":"Data Platform","status":"FOUNDATION_STARTED"},
-    {"order":9,"id":"SEO_PLATFORM","name":"SEO Platform","status":"FOUNDATION_STARTED"},
-    {"order":10,"id":"MERCHANDISING_DISCOVERY","name":"Merchandising / discovery","status":"PLANNED"},
-    {"order":11,"id":"MOBILE_2_0","name":"Mobile 2.0","status":"PLANNED"},
-    {"order":12,"id":"PERFORMANCE_RELIABILITY","name":"Performance and reliability","status":"ACTIVE_CONTINUOUS"},
-    {"order":13,"id":"FINAL_9_0_AUDIT","name":"Final whole-site 9.0 audit","status":"PLANNED"}
-  ],
   "current_work_order": [
-    "audit search results selected-tour lead journey on 375 430 768 1024 1440",
-    "fix confirmed crooked spacing wrapping overflow and hierarchy before cosmetic work",
-    "preserve advanced-filter hotel placement and critical-catalog readiness as regression gates",
-    "continue shared primitive adoption only where production surfaces still visibly diverge",
-    "advance automatically to Search Experience 2.0 when the Design 2.0 quality gate is satisfied"
-  ],
-  "quality_dimensions": [
-    "visual_quality",
-    "ux",
-    "mobile",
-    "search",
-    "results",
-    "selected_tour",
-    "conversion",
-    "seo_foundation",
-    "performance",
-    "accessibility",
-    "reliability",
-    "maintainability"
+    "freeze architecture and source of truth in ARCHITECTURE.md and TEST_MATRIX.md with one concept one implementation",
+    "complete active compatibility dead file inventory and dependency map",
+    "classify all GitHub Actions into PR FAST PR BROWSER POST DEPLOY SCHEDULED-LIVE and remove duplication only after proven equivalent coverage",
+    "prepare shared search results tour checkout integrations site seo tests scripts templates ownership without behavior change",
+    "consolidate one header one footer one navigation one design system",
+    "resume UX and visual work only after technical consolidation"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -66,18 +32,11 @@
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "analytics_contract": "PRESERVE",
     "tourvisor_contract": "PRESERVE",
-    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
-    "logo": "PRESERVE",
-    "verified_social_app_destinations": "PRESERVE",
-    "unresolved_legal_payment_content": "DEFER",
-    "pr_254": "DEFER_UNLESS_FRESH_REVIEW_PROVES_SAFE",
-    "pr_433": "MERGED_STALE_THEN_CORRECTED_DO_NOT_REAPPLY"
+    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > anytour_2_0_roadmap > technical_refactor > cosmetic_cleanup",
-    "on_stage_done": "advance automatically to the next roadmap stage unless an emergency priority overrides it",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record_blocker_and_continue independent roadmap work",
-    "score_rule": "Do not claim 9.0 until production evidence supports the whole-product score across the listed quality dimensions."
+    "on_blocker": "record_blocker_and_continue_independent_refactor_work"
   }
 }
