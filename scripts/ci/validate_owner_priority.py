@@ -9,9 +9,9 @@ autopilot = (root / 'AUTOPILOT.md').read_text(encoding='utf-8')
 version = (root / 'DESIGN_SYSTEM_VERSION.md').read_text(encoding='utf-8')
 errors = []
 
-expected_mode = 'search_ux_ds2'
-expected_phase = 'ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX'
-expected_stage = 'SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE'
+expected_mode = 'technical_refactor'
+expected_phase = 'ARCHITECTURE_INVENTORY_AND_CI_CONSOLIDATION'
+expected_stage = 'ARCHITECTURE_SOURCE_OF_TRUTH'
 expected_ds = 'ANYTOUR DESIGN SYSTEM 2.0'
 
 if owner.get('active_mode') != expected_mode or owner.get('active_phase') != expected_phase:
@@ -24,10 +24,10 @@ if state.get('mode') != expected_mode or state.get('phase') != expected_phase:
     errors.append('state phase drift')
 if (state.get('current_stage') or {}).get('id') != expected_stage:
     errors.append('state stage drift')
-if '## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 2.0 SEARCH UX + SITE CONVERGENCE' not in autopilot:
+if '## Current owner-directed phase — TECHNICAL REFACTOR PASS' not in autopilot:
     errors.append('autopilot phase drift')
-if 'Treat the public site as one product' not in autopilot:
-    errors.append('autopilot site-coherence rule missing')
+if 'one concept → one implementation' not in autopilot:
+    errors.append('autopilot architecture rule missing')
 if '# AnyTour Design System 2.0' not in version:
     errors.append('design-system declaration drift')
 
@@ -37,4 +37,4 @@ if errors:
         print('-', error)
     raise SystemExit(1)
 
-print('OWNER_PRIORITY_GUARD_OK mode=search_ux_ds2 stage=SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE design_system=2.0')
+print('OWNER_PRIORITY_GUARD_OK mode=technical_refactor stage=ARCHITECTURE_SOURCE_OF_TRUTH design_system=2.0')
