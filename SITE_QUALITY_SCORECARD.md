@@ -25,7 +25,7 @@ This scorecard evaluates the **whole public anytoour.ru experience**, not only t
 
 ## Evidence supporting the 2026-08-30 score movement
 
-- AnyTour Design System 1.0 central tokens now own shell surfaces, lines, shadows, controls, hero spacing, page gutters and responsive rhythm.
+- AnyTour Design System 2.0 central tokens now own shell surfaces, lines, shadows, controls, hero spacing, page gutters and responsive rhythm.
 - The shared header/navigation consumes that common token layer across standalone pages and the search outer shell.
 - `/contacts/`, `/how-to-buy/`, `/rb/`, `/hot/`, `/country/` and country pages now share common page/card/button/breadcrumb/grid geometry without rewriting unresolved content.
 - The community/pre-footer and footer now use the same common shell width, page gutter, spacing, radius, surface, focus and control tokens while preserving verified destinations.
