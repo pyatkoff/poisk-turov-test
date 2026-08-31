@@ -10,11 +10,12 @@ on:
 
 concurrency:
   group: deploy-anytoour-production
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -76,7 +77,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$OLD_HOST" && test -n "$OLD_USER"
-          opts=(-i "$RUNNER_TEMP/legacy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          opts=(-i "$RUNNER_TEMP/legacy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
           remote="$OLD_USER@$OLD_HOST"
           old_root='~/www/anytour.online/poisk-turov-test/v2'
 
@@ -126,20 +127,20 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$NEW_HOST" && test -n "$NEW_USER"
-          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
           remote="$NEW_USER@$NEW_HOST"
           root='~/www/anytoour.ru'
-          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/images" "$HOME/www/anytoour.ru/poisk-turov"'
-          scp "${opts[@]}" -r v2/. "$remote:$root/"
-          if ssh "${opts[@]}" "$remote" 'test -s "$HOME/www/anytoour.ru/config.php"'; then
+          timeout 60s ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/images" "$HOME/www/anytoour.ru/poisk-turov"'
+          timeout 180s scp "${opts[@]}" -r v2/. "$remote:$root/"
+          if timeout 60s ssh "${opts[@]}" "$remote" 'test -s "$HOME/www/anytoour.ru/config.php"'; then
             echo "ANYTOOUR_CONFIG_PRESERVED"
           else
-            scp "${opts[@]}" "$RUNNER_TEMP/anytoour-config.php" "$remote:$root/config.php"
+            timeout 60s scp "${opts[@]}" "$RUNNER_TEMP/anytoour-config.php" "$remote:$root/config.php"
             echo "ANYTOOUR_CONFIG_SEEDED_FROM_LEGACY"
           fi
-          scp "${opts[@]}" "$RUNNER_TEMP/anytoour-bridge-secret" "$remote:$root/.anytoour-bridge-secret"
-          scp "${opts[@]}" "$RUNNER_TEMP/logo.svg" "$remote:$root/images/logo.svg"
-          ssh "${opts[@]}" "$remote" '
+          timeout 60s scp "${opts[@]}" "$RUNNER_TEMP/anytoour-bridge-secret" "$remote:$root/.anytoour-bridge-secret"
+          timeout 60s scp "${opts[@]}" "$RUNNER_TEMP/logo.svg" "$remote:$root/images/logo.svg"
+          timeout 90s ssh "${opts[@]}" "$remote" '
             set -euo pipefail
             root="$HOME/www/anytoour.ru"
             cp "$root/lead-bridge-v1.php" "$root/lead-adapter-v2.php"
