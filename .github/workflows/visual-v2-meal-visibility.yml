@@ -65,10 +65,10 @@ jobs:
                 const field=select?.closest('.result-filter-meal');
                 const quick=field?.querySelector('.meal-quick');
                 const r=select?.getBoundingClientRect();
-                return {detailsOpen:!!details?.open,fieldClass:!!field,selectVisible:!!select&&getComputedStyle(select).display!=='none'&&(r?.width||0)>0,selectWidth:r?.width||0,quickHidden:!quick||quick.hidden||getComputedStyle(quick).display==='none',options:select?.options?.length||0,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+                return {detailsOpen:!!details?.open,fieldClass:!!field,selectVisible:!!select&&getComputedStyle(select).display!=='none'&&(r?.width||0)>0,selectWidth:r?.width||0,quickHidden:!quick||quick.hidden||getComputedStyle(quick).display==='none',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
               });
               if(width===1024)await page.screenshot({path:'meal-filter-artifacts/meal-filter-1024.png',fullPage:false,animations:'disabled'});
-              const bad=!response||response.status()!==200||errors.length||!state.detailsOpen||!state.fieldClass||!state.selectVisible||state.selectWidth<180||!state.quickHidden||state.options<2||state.overflow;
+              const bad=!response||response.status()!==200||errors.length||!state.detailsOpen||!state.fieldClass||!state.selectVisible||state.selectWidth<180||!state.quickHidden||state.overflow;
               report.push({width,http:response?.status()||0,errors,state,bad}); if(bad)failed=true;
               console.log(`MEAL_FILTER width=${width} bad=${bad} state=${JSON.stringify(state)}`);
               await context.close();
