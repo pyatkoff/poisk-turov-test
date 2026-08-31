@@ -1,4 +1,4 @@
-/* AnyTour Design System 2.0: keep the mature search surface on the same horizontal grid as the shared site shell. */
+/* AnyTour Design System 1.0: keep the mature search surface on the same horizontal grid as the shared site shell. */
 .v2-shell{
   width:min(var(--at-shell,1160px),calc(100% - var(--at-page-gutter,40px)))!important;
   max-width:none!important;
