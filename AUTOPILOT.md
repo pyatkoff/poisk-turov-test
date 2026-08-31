@@ -20,9 +20,11 @@ Validate user-facing changes at **375 / 430 / 768 / 1024 / 1440**. Fix confirmed
 
 Shared shell/design primitives are established across the public site. Country-page intent flow is production-green. The hotel autocomplete regression that moved the optional hotel into the primary grid was fixed by PR #440 and guarded by PR #447; keep that invariant permanent. Critical departure/country catalog readiness also has a dedicated live guard.
 
-A later PR #449 incorrectly restored technical-refactor-first state. That state is superseded by the current explicit Design System 1.0 instruction and must not redirect future runs away from visual unification.
+PR #450 restored Design System 1.0 as the canonical owner priority after PR #449 had incorrectly reactivated technical-refactor-first state. PR #451 then fixed a confirmed site-wide responsive shell inconsistency: the shared header now consumes the same `--at-page-edge` token as page/hero content on tablet/mobile, and the visual header guard both matches the current canonical navigation and asserts shared edge alignment across 375 / 430 / 768 / 1024 / 1440.
 
-Next work: run the full production journey `/ → country/hot → /poisk-turov/ → results → selected tour → lead` at the five target widths, then fix only confirmed layout/hierarchy inconsistencies while preserving the mature search/recovery/results/comparison/flight/price/fuel/lead behavior.
+PR #451 passed the full relevant PR visual/regression set and deployed successfully. Production deploy run `33352713213` passed public-page verification, the unchanged external lead bridge and live search smoke. Post-deploy V2 baseline (`33352837965`), selected-tour (`33352838005`) and search-recovery (`33352838036`) visual audits also passed.
+
+Next work: run the complete production journey `/ → country/hot → /poisk-turov/ → results → selected tour → lead` at the five target widths, then fix only confirmed layout/hierarchy inconsistencies while preserving mature search/recovery/results/comparison/flight/price/fuel/lead behavior. The whole-site score remains 7.0/10 until broader end-to-end production evidence supports a move.
 
 ## Mandatory protections
 
