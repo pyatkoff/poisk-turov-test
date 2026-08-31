@@ -1,7 +1,7 @@
 <?php
 /**
  * Rotate Tourvisor collection through three dimensions:
- *  - hotel_batch: up to 30 hotelIds per search
+ *  - hotel_batch: up to 30 hotelIds per search, owner top-500 first
  *  - resort: one region per search
  *  - month: broad departure/country month slices (<=21 days)
  *
@@ -12,6 +12,7 @@ if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once __DIR__ . '/db-v1.php';
 require_once __DIR__ . '/tourvisor-client-v1.php';
 require_once __DIR__ . '/price-observer-v1.php';
+require_once __DIR__ . '/top-hotels-v1.php';
 
 function matrix_arg(array $argv, string $name, ?string $fallback=null): ?string {
     foreach ($argv as $arg) if (str_starts_with($arg, '--'.$name.'=')) return substr($arg, strlen($name)+3);
@@ -68,29 +69,42 @@ function matrix_last_attempts(PDO $pdo): array {
     $rows=$pdo->query("SELECT criterion,target_key,MAX(started_at) last_at FROM tour_matrix_collection_attempts GROUP BY criterion,target_key")->fetchAll(PDO::FETCH_ASSOC) ?: [];
     $map=[]; foreach($rows as $r)$map[$r['criterion'].'|'.$r['target_key']]=$r['last_at']; return $map;
 }
+function matrix_order_hotel_ids(array $ids): array {
+    $rank=array_flip(v2_priority_hotel_ids());
+    usort($ids,static function(int $a,int $b) use($rank): int {
+        $ra=$rank[$a]??PHP_INT_MAX; $rb=$rank[$b]??PHP_INT_MAX;
+        return $ra===$rb ? ($a<=>$b) : ($ra<=>$rb);
+    });
+    return $ids;
+}
 function matrix_candidates(PDO $pdo,int $months): array {
     $pairs=matrix_pairs($pdo,40); $windows=matrix_month_windows($months); $last=matrix_last_attempts($pdo); $c=[];
+    $prioritySet=array_fill_keys(v2_priority_hotel_ids(),true);
     foreach($pairs as $pair){
         $dep=(int)$pair['departure_id']; $country=(int)$pair['country_id'];
         $hs=$pdo->prepare("SELECT id FROM catalog_hotels WHERE country_id=:country AND is_active=1 ORDER BY id");
-        $hs->execute(['country'=>$country]); $ids=array_map('intval',$hs->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        $hs->execute(['country'=>$country]); $ids=matrix_order_hotel_ids(array_map('intval',$hs->fetchAll(PDO::FETCH_COLUMN) ?: []));
         $batches=array_chunk($ids,30);
         $rs=$pdo->prepare("SELECT id,name FROM catalog_regions WHERE country_id=:country AND is_active=1 ORDER BY id");
         $rs->execute(['country'=>$country]); $regions=$rs->fetchAll(PDO::FETCH_ASSOC) ?: [];
         foreach($windows as $w){
             foreach($batches as $bi=>$batch){
                 $key=$dep.':'.$country.':b'.($bi+1).':'.$w['month'].':p'.$w['part'];
-                $c[]=['criterion'=>'hotel_batch','target_key'=>$key,'departure_id'=>$dep,'country_id'=>$country,'region_id'=>null,'hotel_ids'=>$batch,'date_from'=>$w['from'],'date_to'=>$w['to'],'last'=>$last['hotel_batch|'.$key]??'0000-00-00 00:00:00'];
+                $priority=false; foreach($batch as $hotelId){if(isset($prioritySet[$hotelId])){$priority=true;break;}}
+                $c[]=['criterion'=>'hotel_batch','target_key'=>$key,'departure_id'=>$dep,'country_id'=>$country,'region_id'=>null,'hotel_ids'=>$batch,'priority'=>$priority,'date_from'=>$w['from'],'date_to'=>$w['to'],'last'=>$last['hotel_batch|'.$key]??'0000-00-00 00:00:00'];
             }
             foreach($regions as $r){
                 $rid=(int)$r['id']; $key=$dep.':'.$country.':r'.$rid.':'.$w['month'].':p'.$w['part'];
-                $c[]=['criterion'=>'resort','target_key'=>$key,'departure_id'=>$dep,'country_id'=>$country,'region_id'=>$rid,'hotel_ids'=>[],'date_from'=>$w['from'],'date_to'=>$w['to'],'last'=>$last['resort|'.$key]??'0000-00-00 00:00:00'];
+                $c[]=['criterion'=>'resort','target_key'=>$key,'departure_id'=>$dep,'country_id'=>$country,'region_id'=>$rid,'hotel_ids'=>[],'priority'=>false,'date_from'=>$w['from'],'date_to'=>$w['to'],'last'=>$last['resort|'.$key]??'0000-00-00 00:00:00'];
             }
             $key=$dep.':'.$country.':'.$w['month'].':p'.$w['part'];
-            $c[]=['criterion'=>'month','target_key'=>$key,'departure_id'=>$dep,'country_id'=>$country,'region_id'=>null,'hotel_ids'=>[],'date_from'=>$w['from'],'date_to'=>$w['to'],'last'=>$last['month|'.$key]??'0000-00-00 00:00:00'];
+            $c[]=['criterion'=>'month','target_key'=>$key,'departure_id'=>$dep,'country_id'=>$country,'region_id'=>null,'hotel_ids'=>[],'priority'=>false,'date_from'=>$w['from'],'date_to'=>$w['to'],'last'=>$last['month|'.$key]??'0000-00-00 00:00:00'];
         }
     }
     usort($c,static function($a,$b){
+        $priorityA=$a['criterion']==='hotel_batch' && !empty($a['priority']) ? 0 : 1;
+        $priorityB=$b['criterion']==='hotel_batch' && !empty($b['priority']) ? 0 : 1;
+        if($priorityA!==$priorityB)return $priorityA<=>$priorityB;
         $neverA=$a['last']==='0000-00-00 00:00:00'?0:1; $neverB=$b['last']==='0000-00-00 00:00:00'?0:1;
         if($neverA!==$neverB)return $neverA<=>$neverB;
         if($a['last']!==$b['last'])return strcmp($a['last'],$b['last']);
@@ -100,9 +114,17 @@ function matrix_candidates(PDO $pdo,int $months): array {
 }
 function matrix_pick_balanced(array $c,int $budget): array {
     $by=['hotel_batch'=>[],'resort'=>[],'month'=>[]]; foreach($c as $x)$by[$x['criterion']][]=$x;
-    $out=[]; $i=0;
-    while(count($out)<$budget){$added=false; foreach(['hotel_batch','resort','month'] as $kind){if(isset($by[$kind][$i]) && count($out)<$budget){$out[]=$by[$kind][$i];$added=true;}} if(!$added)break; $i++;}
-    return $out;
+    $hotelSlots=min($budget,max(1,(int)ceil($budget*0.55)));
+    $rest=$budget-$hotelSlots; $resortSlots=(int)ceil($rest/2); $monthSlots=$rest-$resortSlots;
+    $out=[];
+    foreach(array_slice($by['hotel_batch'],0,$hotelSlots) as $x)$out[]=$x;
+    foreach(array_slice($by['resort'],0,$resortSlots) as $x)$out[]=$x;
+    foreach(array_slice($by['month'],0,$monthSlots) as $x)$out[]=$x;
+    if(count($out)<$budget){
+        $used=[]; foreach($out as $x)$used[$x['criterion'].'|'.$x['target_key']]=true;
+        foreach($c as $x){$k=$x['criterion'].'|'.$x['target_key'];if(isset($used[$k]))continue;$out[]=$x;$used[$k]=true;if(count($out)>=$budget)break;}
+    }
+    return array_slice($out,0,$budget);
 }
 function matrix_attempt_start(PDO $pdo,array $t): int {
     $s=$pdo->prepare("INSERT INTO tour_matrix_collection_attempts
@@ -125,7 +147,7 @@ foreach($targets as $t){
     if($t['criterion']==='hotel_batch')$search['hotelIds']=$t['hotel_ids'];
     if($t['criterion']==='resort')$search['regionIds']=[$t['region_id']];
     $attempt=matrix_attempt_start($pdo,$t); $sid=null;
-    echo "MATRIX_START criterion={$t['criterion']} key={$t['target_key']} hotels=".count($t['hotel_ids'])." from={$t['date_from']} to={$t['date_to']}\n";
+    echo "MATRIX_START criterion={$t['criterion']} priority=".(!empty($t['priority'])?'top500':'normal')." key={$t['target_key']} hotels=".count($t['hotel_ids'])." from={$t['date_from']} to={$t['date_to']}\n";
     try{
         $sid=matrix_search_id(v2_data_tv_get('/tours/search',$search)); if(!$sid)throw new RuntimeException('no searchId');
         $complete=false; for($p=0;$p<$pollAttempts;$p++){sleep($pollSeconds); if(matrix_complete(v2_data_tv_get('/tours/search/'.$sid.'/status',['operatorStatus'=>false]))){$complete=true;break;}}
