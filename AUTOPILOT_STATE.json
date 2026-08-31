@@ -1,43 +1,40 @@
 {
-  "schema_version": 4,
+  "schema_version": 3,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T09:45:00+02:00",
-  "mode": "tour_data_platform",
-  "phase": "TOUR DATA PLATFORM",
+  "updated_at": "2026-08-31T08:46:27+02:00",
+  "mode": "technical_refactor_pass",
+  "phase": "TECHNICAL REFACTOR PASS",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "tour_data_platform",
-    "rule": "Keep Tour Data Platform first after emergency correctness overrides until the owner explicitly changes direction."
+    "planned_phase": "technical_refactor_pass",
+    "rule": "Keep technical refactor first after emergency correctness overrides until the owner explicitly changes direction."
   },
   "current_stage": {
-    "id": "ACTIVE_DEPARTURES_AND_INGESTION",
-    "name": "Active departure availability and first-party tour/price ingestion",
+    "id": "TECHNICAL_REFACTOR_PASS",
+    "name": "Architecture, dependency and CI consolidation",
     "status": "ACTIVE",
-    "next_action": "Verify the active-departure production sync, then implement passive tour/price observation persistence from successful live search results without blocking search."
+    "next_action": "Complete the exhaustive GitHub Actions inventory/classification, then continue the active/compatibility/dead dependency map."
   },
   "current_work_order": [
-    "active departure cities from free Tourvisor catalog data",
-    "passive tour and price observations from successful user searches",
-    "hot tours snapshot ingestion and real hot inventory",
-    "current low-price calendar from comparable live results",
-    "price history aggregates and guarded recommendations",
-    "SEO offer snapshots and scalable destination/resort/month pages",
-    "search ranking and recommendation improvements using first-party data",
-    "Design System 2.0 product packaging where it supports these data products",
-    "technical refactor only when it supports delivery or correctness"
+    "architecture and source of truth",
+    "active compatibility dead inventory and dependency map",
+    "GitHub Actions audit into PR FAST PR BROWSER POST DEPLOY SCHEDULED-LIVE",
+    "safe directory ownership without behavior changes",
+    "shared template consolidation",
+    "UX and visual only after technical consolidation"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
     "other_projects": "DO_NOT_MODIFY",
     "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "tourvisor_contract": "PRESERVE_LIVE_SEARCH_AND_FINAL_PRICE_SOURCE",
+    "tourvisor_contract": "PRESERVE",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > tour_data_platform > product_ux_visual > seo_data > technical_refactor > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record/defer blocker and continue an independent safe Tour Data Platform task"
+    "on_blocker": "record/defer blocker and continue an independent safe technical-refactor task"
   }
 }
