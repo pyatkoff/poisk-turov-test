@@ -39,6 +39,12 @@ function v2_price_observer_child_signature(array $ages): string
     return implode(',', $clean);
 }
 
+function v2_price_observer_source($value): string
+{
+    $source = trim((string)$value);
+    return in_array($source, ['user_search', 'scheduled_monitor', 'hot_tours'], true) ? $source : 'user_search';
+}
+
 function v2_data_observe_search_results(array $hotels, array $context): array
 {
     $searchId = v2_price_observer_id($context['searchId'] ?? null);
@@ -53,6 +59,7 @@ function v2_data_observe_search_results(array $hotels, array $context): array
     $childSignature = v2_price_observer_child_signature($childs);
     $childrenCount = $childSignature === '' ? 0 : count(explode(',', $childSignature));
     $currencyDefault = strtoupper(v2_price_observer_text($context['currency'] ?? 'RUB', 8)) ?: 'RUB';
+    $source = v2_price_observer_source($context['source'] ?? 'user_search');
     $observedAt = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 
     $pdo = v2_data_db();
@@ -61,7 +68,7 @@ function v2_data_observe_search_results(array $hotels, array $context): array
         departure_date,departure_year,departure_month,nights,adults,children_count,child_ages_signature,
         meal_id,room_id,room_type,operator_id,price,fuel_charge,currency
     ) VALUES (
-        :fingerprint,:observed_at,'user_search',:search_id,:departure_id,:country_id,:region_id,:subregion_id,:hotel_id,:tour_id,
+        :fingerprint,:observed_at,:source,:search_id,:departure_id,:country_id,:region_id,:subregion_id,:hotel_id,:tour_id,
         :departure_date,:departure_year,:departure_month,:nights,:adults,:children_count,:child_ages_signature,
         :meal_id,:room_id,:room_type,:operator_id,:price,:fuel_charge,:currency
     )");
@@ -94,13 +101,14 @@ function v2_data_observe_search_results(array $hotels, array $context): array
             $currency = strtoupper(v2_price_observer_text($tour['currency'] ?? $currencyDefault, 8)) ?: $currencyDefault;
             $dateIso = $date->format('Y-m-d');
             $fingerprint = hash('sha256', implode('|', [
-                'user_search',$searchId,$departureId,$countryId,$hotelId,$tourId,$dateIso,$nights,$adults,$childSignature,
+                $source,$searchId,$departureId,$countryId,$hotelId,$tourId,$dateIso,$nights,$adults,$childSignature,
                 $mealId ?? '',$roomId ?? '',$roomType,$operatorId ?? '',number_format($price,2,'.',''),$currency,
             ]));
 
             $stmt->execute([
                 'fingerprint' => $fingerprint,
                 'observed_at' => $observedAt,
+                'source' => $source,
                 'search_id' => $searchId,
                 'departure_id' => $departureId,
                 'country_id' => $countryId,
@@ -127,5 +135,5 @@ function v2_data_observe_search_results(array $hotels, array $context): array
         }
     }
 
-    return ['written' => $written, 'ignored' => $ignored, 'seen' => $seenTours];
+    return ['written' => $written, 'ignored' => $ignored, 'seen' => $seenTours, 'source' => $source];
 }
