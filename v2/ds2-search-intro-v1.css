@@ -1,0 +1,17 @@
+/* Owner-confirmed AnyTour Design System 2.0 search composition.
+   Keep the mature search mechanics intact while replacing the oversized legacy blue hero
+   with the compact light product intro used by the canonical DS2 reference. */
+.v2-product-hero{min-height:0!important;align-items:center!important;gap:22px!important;margin:0 0 14px!important;padding:22px 26px!important;border:1px solid var(--at-line)!important;border-radius:18px!important;background:linear-gradient(135deg,#fff 0%,#F7F9FF 100%)!important;color:var(--at-ink)!important;box-shadow:0 8px 28px rgba(30,46,90,.055)!important}
+.v2-product-hero:before,.v2-product-hero:after{display:none!important}
+.v2-product-hero__content{max-width:720px!important}
+.v2-product-hero__eyebrow{margin-bottom:8px!important;padding:0!important;border:0!important;background:transparent!important;color:var(--at-brand)!important;font-size:10px!important;letter-spacing:.08em!important}
+.v2-product-hero__eyebrow:before{color:var(--at-accent)!important}
+.v2-product-hero h1{max-width:760px!important;margin:0!important;color:var(--at-ink)!important;font-size:clamp(28px,3vw,38px)!important;line-height:1.05!important;letter-spacing:-.038em!important}
+.v2-product-hero p{max-width:680px!important;margin:9px 0 0!important;color:var(--at-muted)!important;font-size:14px!important;line-height:1.48!important}
+.v2-product-hero__trust{min-width:0!important;display:flex!important;flex-direction:row!important;flex-wrap:wrap!important;justify-content:flex-end!important;align-items:center!important;gap:7px!important}
+.v2-product-hero__trust span{min-height:30px!important;padding:0 10px!important;border:1px solid var(--at-line)!important;border-radius:999px!important;background:#fff!important;color:var(--at-text)!important;font-size:10px!important;box-shadow:none!important;backdrop-filter:none!important}
+.v2-product-hero__trust span:before{width:15px!important;height:15px!important;margin-right:6px!important;background:#EAF8F1!important;color:#087A4C!important;font-size:9px!important}
+.search-card{margin-top:0!important;box-shadow:0 14px 38px rgba(30,46,90,.075)!important}
+@media(max-width:900px){.v2-product-hero{grid-template-columns:1fr!important;gap:11px!important;padding:19px 20px!important}.v2-product-hero__trust{justify-content:flex-start!important}.v2-product-hero h1{font-size:30px!important}}
+@media(max-width:700px){.v2-product-hero{margin-bottom:10px!important;padding:14px 15px!important;border-radius:15px!important;background:#fff!important;box-shadow:0 5px 18px rgba(30,46,90,.045)!important}.v2-product-hero__eyebrow{display:block!important}.v2-product-hero h1{font-size:24px!important;line-height:1.08!important}.v2-product-hero p{margin-top:6px!important;font-size:13px!important}.v2-product-hero__trust{display:none!important}}
+@media(max-width:430px){.v2-product-hero{padding:13px 14px!important}.v2-product-hero h1{font-size:22px!important}}
