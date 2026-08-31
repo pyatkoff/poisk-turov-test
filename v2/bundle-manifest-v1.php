@@ -56,6 +56,7 @@ function v2_bundle_manifest(): array
             'flight-price-sync-v1.js',
             'unpriced-flight-price-reset-v1.js',
             'price-confidence-v1.js',
+            'catalog-local-routing-v1.js',
             'catalogs-v2.js',
             'hotel-autocomplete-v1.js',
             'url-primary-catalog-sync-v1.js',
