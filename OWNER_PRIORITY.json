@@ -2,19 +2,22 @@
   "schema_version": 8,
   "active_mode": "ux_visual",
   "active_phase": "ANYTOUR_DESIGN_SYSTEM_2_SITE_UNIFICATION",
-  "current_stage": "CROSS_PAGE_JOURNEY_AUDIT",
+  "current_stage": "DS2_REFERENCE_CONVERGENCE",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
+  "canonical_visual_reference": "owner-confirmed composite AnyTour DS2 desktop/mobile mockup supplied 2026-08-31",
   "priority_after_emergency_overrides": [
     "ux_visual",
-    "site_wide_unification",
-    "cross_page_journey",
-    "homepage_hierarchy",
-    "hot_editorial_hierarchy",
+    "ds2_reference_convergence",
+    "shared_header_footer",
+    "homepage_hero_search",
+    "search_results",
+    "selected_hotel_tour",
+    "destination_hot_editorial",
     "tour_data_platform",
     "content_seo",
     "technical_refactor",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_design_system_2_site_unification",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize AnyTour Design System 2.0 and site-wide visual unification. Continue the coherent homepage-to-lead journey work without reintroducing Design System 1.0 terminology. Preserve Metrika, Tourvisor and lead contracts, verified destinations and the existing AnyTour logo."
+  "source": "explicit_owner_direction_2026_08_31_design_system_2_reference_mockup",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, converge the public product toward the owner-confirmed AnyTour Design System 2.0 mockup rather than polishing contradictory legacy compositions. Preserve Metrika, Tourvisor and lead contracts, verified destinations and the existing AnyTour logo."
 }
