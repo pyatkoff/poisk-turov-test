@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "mode": "dry_run",
+  "mode": "active_pilot",
   "active_task": {
     "id": "PILOT_ROOT_STABILIZATION_REAUDIT",
     "title": "Re-audit standalone results and selected-tour transitions",
@@ -16,11 +16,11 @@
     ],
     "evidence": [
       "Imported from AUTOPILOT_STATE.json current next_action.",
-      "First orchestrator dry run selected the existing highest-priority stabilization audit.",
-      "QA handoff recorded in autopilot-v2/runs/2026-09-01-pilot-1.md.",
-      "No product runtime code changed during orchestration.",
-      "Targeted live QA attempt was blocked before HTTP by execution-environment DNS resolution failure for anytoour.ru; not classified as product defect."
-    ]
+      "Pilot 1 proved task selection, minimal gates and external-blocker classification.",
+      "Active pilot may now create a narrowly scoped Developer task only from a reproducible DEFECT.",
+      "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
+    ],
+    "parent_task": null
   },
   "queue": [
     {
@@ -37,15 +37,15 @@
     }
   ],
   "last_signal": {
-    "source": "qa_targeted_live_probe",
-    "status": "BLOCKED_EXTERNAL_DNS",
-    "sha": "a11e13a43f005c63ae159c0f742dbd4f30c77748"
+    "source": "pilot_1_acceptance",
+    "status": "ACTIVE_PILOT_ENABLED",
+    "sha": "2ae748edfa59efff3c6b7af262fd4e11ae7714a1"
   },
   "blocked": [
     {
       "scope": "pilot targeted production verification",
       "type": "external_environment",
-      "reason": "Execution environment could not resolve anytoour.ru DNS before first HTTP request.",
+      "reason": "Previous execution environment could not resolve anytoour.ru DNS before first HTTP request.",
       "action": "Retry only the narrow live probe from an environment with working DNS; do not restore broad regression matrix."
     }
   ]
