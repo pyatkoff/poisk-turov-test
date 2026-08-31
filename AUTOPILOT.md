@@ -21,13 +21,21 @@ Canonical priority after emergency overrides:
 5. Validate user-facing changes at 375/430/768/1024/1440 and fix confirmed overflow, wrapping, hierarchy and spacing issues before cosmetic flourishes.
 6. Keep editorial pages clear and lighter than search/results while maintaining the same visual language.
 
+## Latest material progress
+
+- Homepage discovery now follows the quick search directly: country/destination, hot tours, early booking and full search are reachable before explanatory benefit content.
+- Homepage route-specific surfaces now consume shared Design System 1.0 brand/surface/radius/spacing/focus tokens through a narrow alignment layer instead of drifting further from the shared shell.
+- The five-width standalone content sweep is green at 375/430/768/1024/1440 across home, search, contacts, how-to-buy, hot, early booking, country catalog and representative country pages, with no horizontal overflow and stable shared header/footer geometry.
+- A stale navigation guard that still required the intentionally removed top-level `Как купить` link was corrected to match the canonical shared header.
+- Search form parameters, Tourvisor, Metrika/analytics and lead contracts were not changed.
+
 ## Exact next work order
 
-1. Re-run the expanded five-width production navigation sweep after the current shared-header guard fix.
+1. Confirm the merged homepage slice on production after deploy, including live search smoke and production five-width standalone evidence.
 2. Audit the full production journey home → country/destination → hot/search → results → selected tour → lead at 375/430/768/1024/1440.
-3. Fix only confirmed shell/hierarchy/spacing/wrapping/overflow inconsistencies, starting with the weakest public pages.
+3. Fix only confirmed shell/hierarchy/spacing/wrapping/overflow inconsistencies, starting with representative country/destination pages and then other weak editorial pages.
 4. Continue shared primitive adoption where legacy page-specific surfaces still visibly diverge.
-5. Recalculate the whole-site visual score only after production evidence justifies movement.
+5. Recalculate the whole-site visual score only after production evidence justifies movement; do not infer it from the stronger search-only score.
 6. Continue independent technical consolidation only where it directly enables safe Design System migration or removes proven duplication.
 
 ## Mandatory protections
@@ -39,7 +47,7 @@ Do not modify without explicit approval:
 - neighboring projects;
 - unresolved legal/payment content.
 
-Preserve verified social/app destinations and the AnyTour logo. Keep PR #254 deferred unless a fresh review proves its separate DB/platform architecture safe.
+Preserve verified social/app destinations and the AnyTour logo. Keep PR #254 deferred unless a fresh review proves its separate DB/platform architecture safe. Ignore stale/conflicting priority restoration work such as PR #433 unless the owner explicitly changes direction.
 
 ## Execution policy
 
