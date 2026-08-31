@@ -87,6 +87,9 @@ function scheduled_collector_candidates(PDO $pdo): array
         d.name AS departure_name,
         dc.country_id,
         c.name AS country_name,
+        MAX(COALESCE(fd.is_active,0)) AS has_direct,
+        MAX(COALESCE(fc.is_active,0)) AS has_charter,
+        MAX(COALESCE(fdc.is_active,0)) AS has_direct_charter,
         COUNT(o.id) AS observation_count,
         COUNT(DISTINCT NULLIF(o.search_id, '')) AS distinct_search_count,
         COUNT(DISTINCT DATE(o.observed_at)) AS distinct_observation_days,
@@ -96,6 +99,12 @@ function scheduled_collector_candidates(PDO $pdo): array
       FROM catalog_departure_countries dc
       JOIN catalog_departures d ON d.id=dc.departure_id AND d.is_active=1
       JOIN catalog_countries c ON c.id=dc.country_id AND c.is_active=1
+      LEFT JOIN catalog_departure_countries_direct fd
+        ON fd.departure_id=dc.departure_id AND fd.country_id=dc.country_id AND fd.is_active=1
+      LEFT JOIN catalog_departure_countries_charter fc
+        ON fc.departure_id=dc.departure_id AND fc.country_id=dc.country_id AND fc.is_active=1
+      LEFT JOIN catalog_departure_countries_direct_charter fdc
+        ON fdc.departure_id=dc.departure_id AND fdc.country_id=dc.country_id AND fdc.is_active=1
       LEFT JOIN tour_price_observations o
         ON o.departure_id=dc.departure_id AND o.country_id=dc.country_id
       LEFT JOIN (
@@ -109,6 +118,24 @@ function scheduled_collector_candidates(PDO $pdo): array
     return is_array($rows) ? $rows : [];
 }
 
+function scheduled_collector_flight_priority(array $row): int
+{
+    if ((int)($row['has_direct_charter'] ?? 0) === 1) return 0;
+    if ((int)($row['has_charter'] ?? 0) === 1) return 1;
+    if ((int)($row['has_direct'] ?? 0) === 1) return 2;
+    return 3;
+}
+
+function scheduled_collector_flight_class(array $row): string
+{
+    return match (scheduled_collector_flight_priority($row)) {
+        0 => 'direct_charter',
+        1 => 'charter',
+        2 => 'direct',
+        default => 'general',
+    };
+}
+
 function scheduled_collector_priority(array $row): array
 {
     $observations = (int)($row['observation_count'] ?? 0);
@@ -120,7 +147,7 @@ function scheduled_collector_priority(array $row): array
 
     $coverageBand = $observations === 0 ? 0 : ($searches < 5 || $days < 2 ? 1 : ($searches < 15 || $days < 3 ? 2 : ($searches < 30 || $days < 7 ? 3 : 4)));
     $time = $lastAttempt !== '' ? $lastAttempt : ($lastObserved !== '' ? $lastObserved : '0000-00-00 00:00:00');
-    return [$coverageBand, $attempts, $time, (int)$row['country_id']];
+    return [scheduled_collector_flight_priority($row), $coverageBand, $attempts, $time, (int)$row['country_id']];
 }
 
 function scheduled_collector_depth_priority(array $row): array
@@ -133,9 +160,10 @@ function scheduled_collector_depth_priority(array $row): array
 
     // Confidence gates are 5 searches/2 days, 15/3 and 30/7. Revisit observed
     // markets before exhausting the entire breadth matrix so price history can
-    // actually become useful within days instead of months.
+    // actually become useful within days instead of months. Flight availability
+    // remains the first discriminator inside the depth pool.
     $gate = $searches < 5 || $days < 2 ? 0 : ($searches < 15 || $days < 3 ? 1 : ($searches < 30 || $days < 7 ? 2 : 3));
-    return [$gate, $searches, $days, $time, (int)$row['departure_id'], (int)$row['country_id']];
+    return [scheduled_collector_flight_priority($row), $gate, $searches, $days, $time, (int)$row['departure_id'], (int)$row['country_id']];
 }
 
 function scheduled_collector_targets(array $rows, int $budget): array
@@ -293,7 +321,8 @@ foreach ($targets as $target) {
         'onlyCharter'=>false,
         'onlyDirect'=>false,
     ];
-    echo "COLLECT_WINDOW departure={$target['departure_id']} country={$target['country_id']} from={$search['dateFrom']} to={$search['dateTo']} nights=5-14\n";
+    $flightClass = scheduled_collector_flight_class($target);
+    echo "COLLECT_WINDOW departure={$target['departure_id']} country={$target['country_id']} flight={$flightClass} from={$search['dateFrom']} to={$search['dateTo']} nights=5-14\n";
     $attemptId = scheduled_collector_attempt_start($pdo, $target, $search);
     $searchId = null;
 
