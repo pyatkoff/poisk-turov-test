@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T04:57:00+02:00",
+  "updated_at": "2026-08-31T05:10:00+02:00",
   "mode": "design_system_1_0_site_unification",
   "phase": "ANYTOUR DESIGN SYSTEM 1.0 / SITE-WIDE VISUAL UNIFICATION",
   "owner_priority_source": "OWNER_PRIORITY.json",
@@ -14,21 +14,31 @@
     "id": "DESIGN_SYSTEM_1_0_SITE_UNIFICATION",
     "name": "AnyTour Design System 1.0 and site-wide visual unification",
     "status": "ACTIVE",
-    "progress": "Shared shell/header/footer/design primitives are established across the public routes. Country intent flow is production-green. The user-reported hotel-first primary-grid regression was fixed in PR #440 and permanently guarded by PR #447; production deploy/live search smoke passed. A later PR #449 incorrectly restored technical-refactor-first state despite the current explicit Design System direction; this run corrects that source-of-truth drift before continuing visual work.",
-    "next_action": "Audit and improve the production path / → /country/ or /hot/ → /poisk-turov/ → results → selected tour → lead at 375/430/768/1024/1440. Fix only confirmed hierarchy, spacing, wrapping, overflow or duplicated-shell inconsistencies before cosmetic work."
+    "progress": "Shared shell/header/footer/design primitives are established across public routes. PR #450 restored Design System 1.0 as the canonical owner priority after PR #449 had incorrectly reactivated technical-refactor-first state. PR #451 fixed a confirmed site-wide responsive shell inconsistency: the shared header now uses the same --at-page-edge token as page/hero content at 375/430/768/1024, and the header visual guard now matches the canonical navigation and asserts shared edge alignment. All PR checks passed. Production deploy run 33352713213 passed public pages, unchanged lead bridge and live search smoke; post-deploy V2 baseline, selected-tour and search-recovery visual audits also passed. The hotel autocomplete remains inside advanced filters under PR #440/#447 protection.",
+    "next_action": "Run the full production path / → /country/ or /hot/ → /poisk-turov/ → results → selected tour → lead at 375/430/768/1024/1440 and fix only confirmed hierarchy, spacing, wrapping, overflow or duplicated-shell inconsistencies before cosmetic work."
   },
   "current_work_order": [
+    "audit full homepage country hot search results selected-tour lead journey at 375 430 768 1024 1440",
     "keep one coherent header navigation and footer across public pages",
     "keep shared typography grid spacing buttons cards breadcrumbs and responsive primitives coherent",
     "audit / /poisk-turov/ /hot/ /contacts/ /how-to-buy/ /rb/ /country/ and representative country pages",
-    "audit search results selected-tour lead journey on 375 430 768 1024 1440",
     "fix confirmed crooked spacing wrapping overflow duplicated shell and hierarchy before cosmetic work",
     "preserve hotel autocomplete inside advanced filters and critical departure country catalog readiness as regression gates"
   ],
   "site_quality": {
     "whole_site_score": 7.0,
     "search_flow_is_stronger": true,
-    "rule": "Do not infer whole-site visual quality from search-only engineering scores; raise the whole-site score only after production evidence across the public journey."
+    "rule": "Do not infer whole-site visual quality from search-only engineering scores; raise the whole-site score only after production evidence across the complete public journey."
+  },
+  "production_evidence": {
+    "shared_header_merge": "cbd2513e3d04cee842199c1ff9b171e431309eca",
+    "standalone_deploy_run": 33352713213,
+    "deploy_status": "GREEN_PUBLIC_PAGES_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
+    "premerge_five_width_header_guard": "GREEN_375_430_768_1024_1440",
+    "postdeploy_v2_baseline_run": 33352837965,
+    "postdeploy_selected_tour_run": 33352838005,
+    "postdeploy_search_recovery_run": 33352838036,
+    "postdeploy_status": "GREEN_BASELINE_SELECTED_TOUR_SEARCH_RECOVERY"
   },
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -48,6 +58,6 @@
     "on_visual_change": "validate 375 430 768 1024 1440 before deploy",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
     "on_blocker": "record/defer blocker and continue an independent safe Design System task",
-    "score_rule": "Only move the whole-site score when production evidence supports it."
+    "score_rule": "Only move the whole-site score when production evidence across the full journey supports it."
   }
 }
