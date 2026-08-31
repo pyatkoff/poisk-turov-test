@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T02:05:00+02:00",
+  "updated_at": "2026-08-31T03:05:00+02:00",
   "mode": "design_system_1_0",
   "phase": "ANYTOUR DESIGN SYSTEM 1.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
@@ -14,13 +14,13 @@
     "id": "DESIGN_SYSTEM_SITE_WIDE_UNIFICATION",
     "category": "VISUAL",
     "status": "ACTIVE",
-    "progress": "Confirmed the shared header is live after removal of the top-level how-to-buy link. Found and fixed a stale live-navigation assertion that still required the removed link; expanded the five-width production navigation sweep to rb, how-to-buy and representative Turkey country page. Runtime, Metrika, lead and Tourvisor contracts remain untouched.",
-    "next_action": "Re-run the expanded production navigation sweep, then audit the full public journey at 375/430/768/1024/1440 and fix only confirmed shell, hierarchy, spacing, wrapping or overflow inconsistencies."
+    "progress": "Merged PR #437: homepage destination/scenario discovery now follows the quick search directly, the country handoff is visually prioritized, and a narrow homepage alignment layer consumes shared Design System brand/surface/radius/spacing/focus tokens. Corrected the stale standalone-navigation guard that still required the intentionally removed top-level how-to-buy link. PR evidence is green across 375/430/768/1024/1440 with stable shared header/footer geometry and no horizontal overflow. Search, Metrika, lead and Tourvisor contracts remain untouched.",
+    "next_action": "Confirm PR #437 production deploy and live smoke/five-width evidence, then audit the complete home → country/destination → hot/search → results → selected tour → lead journey and fix only confirmed hierarchy, spacing, wrapping or overflow regressions."
   },
   "work_order": [
-    "verify expanded shared-header production navigation sweep on 375 430 768 1024 1440",
+    "verify merged homepage slice on production and five target widths",
     "audit home country destination hot search results selected tour lead journey on five target widths",
-    "fix confirmed shell hierarchy spacing wrapping and overflow inconsistencies",
+    "fix confirmed shell hierarchy spacing wrapping and overflow inconsistencies starting with representative country pages",
     "continue shared primitive adoption on visibly divergent editorial pages",
     "recalculate whole-site visual score only from production evidence",
     "perform technical consolidation only where it directly supports safe Design System migration"
@@ -36,7 +36,8 @@
     "logo": "PRESERVE",
     "verified_social_app_destinations": "PRESERVE",
     "unresolved_legal_payment_content": "DEFER",
-    "pr_254": "DEFER_UNLESS_FRESH_REVIEW_PROVES_SAFE"
+    "pr_254": "DEFER_UNLESS_FRESH_REVIEW_PROVES_SAFE",
+    "pr_433": "STALE_CONFLICTING_PRIORITY_RESTORE_DO_NOT_MERGE"
   },
   "continuation_policy": {
     "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > technical_refactor > content_seo > cosmetic_cleanup",
