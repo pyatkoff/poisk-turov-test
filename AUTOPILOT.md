@@ -20,7 +20,9 @@ After emergency overrides (`production_broken → lead_loss → incorrect_data �
 
 ## Current resume point
 
-The shared token/header/footer/page-shell foundation already exists and the prior tablet footer-grid mismatch was fixed. Continue from cross-page geometry and hierarchy: align the 769–900 px editorial shell to the same 760 px tablet grid used by shared header/footer, then audit homepage, country/destination, `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/` for route-specific hierarchy and overflow. Run the production journey at all required widths after relevant checks are green.
+The shared token/header/footer/page-shell foundation is active. The 769–900 px editorial shell, breadcrumbs, section-heading wraps and card paragraph rhythm now align to the canonical tablet grid. The homepage hero, quick-search card and content sections also use the same shared gutter/tablet cap instead of legacy hard-coded geometry. The responsive visual suite already covers exactly 375/430/768/1024/1440 across homepage, search, editorial routes, country catalog and representative country pages.
+
+Continue with route-specific hierarchy on `/country/` and representative destination pages, then `/contacts/`, `/how-to-buy/` and `/rb/`. After those slices, run the complete production homepage → destination/hot → search → results → selected tour → lead journey at the exact responsive matrix. Treat the owner-calibrated 6.5/10 whole-site baseline separately from stronger search-only engineering scores; current whole-site estimate after the shared-grid work is about 6.7/10.
 
 ## Mandatory protections
 
