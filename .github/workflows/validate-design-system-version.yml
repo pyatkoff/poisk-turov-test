@@ -1,0 +1,20 @@
+name: Validate Design System version
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject legacy design-system version references
+        run: python3 scripts/ci/validate_design_system_version.py
