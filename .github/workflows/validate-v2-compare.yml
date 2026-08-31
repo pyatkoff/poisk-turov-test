@@ -141,3 +141,48 @@ jobs:
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node ./validate-compare-refresh.cjs
+      - name: Verify result decision badges only describe completed result sets
+        shell: bash
+        env:
+          V2_URL: https://anytour.online/poisk-turov-test/v2/
+        run: |
+          set -euo pipefail
+          cat > ./validate-results-decision-finality.cjs <<'JS'
+          const {chromium}=require('playwright');
+          const path=require('path');
+          const jsFile=path.resolve('v2/conversion-confidence-v1.js');
+          const partial=[
+            {id:991,name:'Early Hotel',category:4,rating:4.3,price:120000,country:{name:'Турция'},region:{name:'Анталья'},tours:[{id:'a',date:'10.09.2026',nights:7,price:120000}]},
+            {id:992,name:'Early Best',category:5,rating:4.8,price:110000,country:{name:'Турция'},region:{name:'Сиде'},tours:[{id:'b',date:'11.09.2026',nights:7,price:110000}]},
+          ];
+          const finalRows=[...partial,{id:993,name:'Final Cheapest',category:4,rating:4.6,price:90000,country:{name:'Турция'},region:{name:'Кемер'},tours:[{id:'c',date:'12.09.2026',nights:8,price:90000}]}];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const [name,width,height] of [['mobile',375,812],['tablet',768,1024],['desktop',1440,1000]]){
+              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+              const page=await context.newPage();
+              const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+              const response=await page.goto(process.env.V2_URL,{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForTimeout(3000);
+              await page.evaluate(()=>{window.V2ConversionConfidenceV1=null;delete document.documentElement.dataset.v2CompareBound;});
+              await page.addScriptTag({path:jsFile});
+              await page.evaluate(rows=>{window.dispatchEvent(new CustomEvent('v2:search-started'));window.V2Results.render(rows);},partial);
+              let state=await page.evaluate(()=>({badges:document.querySelectorAll('.result-decision-badges').length,final:window.V2ConversionConfidenceV1.decisionResultsFinal}));
+              if(state.badges!==0||state.final!==false)throw new Error(name+': provisional results exposed definitive badges '+JSON.stringify(state));
+              await page.evaluate(rows=>{window.V2Results.render(rows);window.dispatchEvent(new CustomEvent('v2:search-complete',{detail:{items:rows}}));},finalRows);
+              state=await page.evaluate(()=>({badges:[...document.querySelectorAll('.result-decision-badge')].map(n=>n.textContent.trim()),cheapest:document.querySelector('[data-hotel-id="993"] .result-decision-badge--price')?.textContent.trim()||'',oldCheapest:document.querySelector('[data-hotel-id="992"] .result-decision-badge--price')?.textContent.trim()||'',final:window.V2ConversionConfidenceV1.decisionResultsFinal}));
+              if(state.final!==true||state.cheapest!=='Самая низкая цена'||state.oldCheapest||!state.badges.includes('Лучший рейтинг'))throw new Error(name+': final benchmark wrong '+JSON.stringify(state));
+              await page.evaluate(rows=>{window.dispatchEvent(new CustomEvent('v2:search-continue-started'));window.V2Results.render(rows);},finalRows);
+              state=await page.evaluate(()=>({badges:document.querySelectorAll('.result-decision-badges').length,final:window.V2ConversionConfidenceV1.decisionResultsFinal}));
+              if(state.badges!==0||state.final!==false)throw new Error(name+': continue search kept stale definitive badges '+JSON.stringify(state));
+              await page.evaluate(rows=>window.dispatchEvent(new CustomEvent('v2:search-continued',{detail:{items:rows,addedResultsCount:1}})),finalRows);
+              state=await page.evaluate(()=>({badges:document.querySelectorAll('.result-decision-badges').length,cheapest:document.querySelector('[data-hotel-id="993"] .result-decision-badge--price')?.textContent.trim()||'',final:window.V2ConversionConfidenceV1.decisionResultsFinal,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
+              if(state.final!==true||state.badges<2||state.cheapest!=='Самая низкая цена'||state.overflow)throw new Error(name+': continued final benchmark wrong '+JSON.stringify(state));
+              if((response&&response.status())!==200||errors.length)throw new Error(name+': page errors '+errors.join(';'));
+              console.log('DECISION_FINALITY_OK',name);
+              await context.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node ./validate-results-decision-finality.cjs
