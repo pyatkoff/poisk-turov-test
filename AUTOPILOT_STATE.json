@@ -1,63 +1,40 @@
 {
   "schema_version": 3,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T08:15:00+02:00",
-  "mode": "design_system_1_0_site_unification",
-  "phase": "ANYTOUR DESIGN SYSTEM 1.0 / SITE-WIDE VISUAL UNIFICATION",
+  "updated_at": "2026-08-31T08:46:27+02:00",
+  "mode": "technical_refactor_pass",
+  "phase": "TECHNICAL REFACTOR PASS",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "design_system_1_0_site_unification",
-    "rule": "Keep Design System 1.0 / whole-site visual unification first after emergency production, lead-loss, incorrect-data and broken-user-journey overrides until the owner changes direction."
+    "planned_phase": "technical_refactor_pass",
+    "rule": "Keep technical refactor first after emergency correctness overrides until the owner explicitly changes direction."
   },
   "current_stage": {
-    "id": "DESIGN_SYSTEM_1_0_SITE_UNIFICATION",
-    "name": "AnyTour Design System 1.0 and site-wide visual unification",
+    "id": "TECHNICAL_REFACTOR_PASS",
+    "name": "Architecture, dependency and CI consolidation",
     "status": "ACTIVE",
-    "progress": "PR #462 restored the explicit Design System 1.0 priority/state/guards after PR #460 drifted back to refactor-first. PR #461 aligned the mature search shell to canonical --at-shell/--at-page-gutter tokens, removing a confirmed tablet-width grid mismatch. After correcting the expected bundle-count guard for the new CSS asset, the complete relevant PR suite passed: V2 baseline/PR/selected-tour visuals, search header/footer/mobile checks, startup/bundles, standalone, comparison, flight, lead and security. PR #461 merged as e887eda5d87a1daa1bf1cc1b029c2d31d8b68a51 and standalone deploy 33362874549 completed green through public-page verification, unchanged lead-bridge verification and live search smoke.",
-    "next_action": "Run the complete / → /country/ or /hot/ → /poisk-turov/ → results → selected tour → lead production journey at 375/430/768/1024/1440 and fix only confirmed hierarchy, spacing, wrapping, overflow or duplicated-shell inconsistencies."
+    "next_action": "Complete the exhaustive GitHub Actions inventory/classification, then continue the active/compatibility/dead dependency map."
   },
   "current_work_order": [
-    "audit full homepage country hot search results selected-tour lead journey at 375 430 768 1024 1440",
-    "keep one coherent header navigation footer breadcrumbs and page grid across public pages",
-    "keep shared typography spacing buttons cards and responsive primitives coherent",
-    "audit / /poisk-turov/ /hot/ /contacts/ /how-to-buy/ /rb/ /country/ and representative country pages",
-    "fix confirmed crooked spacing wrapping overflow duplicated shell and hierarchy before cosmetic work",
-    "preserve hotel autocomplete inside advanced filters and critical departure country catalog readiness as regression gates"
+    "architecture and source of truth",
+    "active compatibility dead inventory and dependency map",
+    "GitHub Actions audit into PR FAST PR BROWSER POST DEPLOY SCHEDULED-LIVE",
+    "safe directory ownership without behavior changes",
+    "shared template consolidation",
+    "UX and visual only after technical consolidation"
   ],
-  "site_quality": {
-    "whole_site_score": 7.0,
-    "search_flow_is_stronger": true,
-    "rule": "Do not infer whole-site visual quality from search-only engineering scores; raise the whole-site score only after production evidence across the complete public journey."
-  },
-  "production_evidence": {
-    "breadcrumb_grid_merge": "4c8fdbaa42e58e5548eba4aac339dda799760942",
-    "previous_standalone_deploy_run": 33359258585,
-    "previous_deploy_status": "GREEN_PUBLIC_PAGES_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
-    "priority_restore_merge": "7ad350891df2b1d912fdc0e65e9491f93ff4063f",
-    "search_shell_grid_merge": "e887eda5d87a1daa1bf1cc1b029c2d31d8b68a51",
-    "search_shell_grid_pr_checks": "GREEN_RELEVANT_SUITE_375_430_768_1024_1440",
-    "standalone_deploy_run": 33362874549,
-    "deploy_status": "GREEN_PUBLIC_PAGES_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE"
-  },
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
     "other_projects": "DO_NOT_MODIFY",
-    "logo": "PRESERVE",
-    "verified_social_app_destinations": "PRESERVE",
     "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
-    "analytics_contract": "PRESERVE",
     "tourvisor_contract": "PRESERVE",
-    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
-    "unresolved_legal_payment_content": "DEFER",
-    "pr_254": "DEFER_UNLESS_FRESH_REVIEW_PROVES_SAFE"
+    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > design_system_1_0_site_unification > protected_search_regressions > technical_refactor > content_seo > cosmetic_cleanup",
-    "on_visual_change": "validate 375 430 768 1024 1440 before deploy",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record/defer blocker and continue an independent safe Design System task",
-    "score_rule": "Only move the whole-site score when production evidence across the full journey supports it."
+    "on_blocker": "record/defer blocker and continue an independent safe technical-refactor task"
   }
 }
