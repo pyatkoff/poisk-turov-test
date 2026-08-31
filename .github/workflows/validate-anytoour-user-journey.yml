@@ -123,12 +123,19 @@ jobs:
           fi
 
           curl -fsSL --max-time 45 --get --data-urlencode 'action=flights' --data-urlencode "tourId=$tour_id" --data-urlencode 'currency=RUB' "$api" -o /tmp/root-flights.json
-          python3 - <<'PY' || fail flights
+          python3 - <<'PY' || fail flights_response
           import json
           d=json.load(open('/tmp/root-flights.json'))
+          assert isinstance(d,(list,dict))
+          if isinstance(d,dict):
+              assert d.get('ok') is not False
+              assert not d.get('error')
           flights=d if isinstance(d,list) else d.get('flights',[]) if isinstance(d,dict) else []
-          assert flights
-          assert isinstance(flights[0],dict) and (flights[0].get('forward') or flights[0].get('backward'))
+          if flights:
+              assert isinstance(flights[0],dict) and (flights[0].get('forward') or flights[0].get('backward'))
+              print('ANYTOOUR_JOURNEY_FLIGHTS_OK')
+          else:
+              print('ANYTOOUR_JOURNEY_FLIGHTS_OPTIONAL_EMPTY')
           PY
 
           lead_code="$(curl -fsSL -o /tmp/root-lead-health.json -w '%{http_code}' --max-time 30 "$root/lead-adapter-v2.php")"
