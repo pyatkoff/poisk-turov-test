@@ -2,20 +2,29 @@
 
 Updated: 2026-08-31
 
-Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source and `AUTOPILOT_STATE.json` is the machine-readable resume point.
+Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` locks the active technical-refactor phase, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
 
-## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 2.0
+## Current owner-directed phase — TECHNICAL REFACTOR PASS
 
-After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), prioritize site-wide visual unification under AnyTour Design System 2.0. Design System 1.0 is legacy terminology and must not be restored as the current generation. The previous technical-refactor / CI-cost phase remains superseded by the current owner direction.
+After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is technical consolidation. AnyTour Design System 2.0 remains the canonical design-system generation, but UX/visual work must not preempt this phase.
 
-## Material progress
+## Ordered work
 
-The shared shell/header/footer/cards/buttons/breadcrumbs/page gutters are established. Country pages use one neutral destination hierarchy and a compact live-search handoff with clear availability/flight/price signals. The `/hot/` live-offer cards now keep equal-height rhythm with bottom-aligned CTAs and safe long-name wrapping. The homepage five-card discovery grid is balanced at tablet/small-desktop widths instead of leaving orphan cards or empty grid slots. Relevant PR visual/regression checks remained green.
+1. Make `ARCHITECTURE.md`, `TEST_MATRIX.md` and the one-concept → one-implementation rule authoritative.
+2. Complete a repository-wide inventory/dependency map of ACTIVE, COMPATIBILITY and DEAD candidates; never delete from naming/version evidence alone.
+3. Classify GitHub Actions into PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE and remove duplicates only after equivalent behavioral coverage is proven.
+4. Prepare a behavior-preserving target structure for `shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates` before moving runtime code.
+5. Consolidate the shared template layer to one header, one footer, one navigation and one canonical design system.
+6. Resume UX/visual work only after the technical consolidation phase, except when required to fix a higher-priority broken user journey.
 
 ## Current resume point
 
-Continue the full journey `homepage → country/destination → hot/search → results → selected tour → lead` at 375/430/768/1024/1440 under Design System 2.0. The next confirmed inconsistency is the search-shell horizontal gutter at 561–768px: align `.v2-shell` with the shared DS2 24px page gutter while preserving the 20px mobile gutter at 560px and below. Then continue through search results → selected tour → lead and fix the next confirmed hierarchy, wrapping, overflow or spacing mismatch before cosmetic flourishes.
+Continue the evidence-driven inventory and CI audit. Use `v2/bundle-manifest-v1.php` as the active browser-bundle source of truth and repository consumer mapping as evidence for non-manifest assets. Prefer narrow SAFE/MEDIUM changes that reduce duplicated ownership or source-of-truth drift without altering runtime behavior.
 
 ## Mandatory protections
 
-Work only inside `pyatkoff/poisk-turov-test`. Do not redesign or replace the AnyTour logo. Do not modify Yandex Metrika configuration/goals, Tourvisor contract, or external lead-sending contract/field mapping. Preserve verified social/app destinations. Do not migrate unresolved legal/payment content. Keep PR #254 deferred unless a fresh review proves its separate architecture safe.
+Work only inside `pyatkoff/poisk-turov-test`. Do not modify Yandex Metrika configuration or goals. Preserve the Tourvisor contract and external lead-sending contract/field mapping. Do not modify neighboring projects. Keep AnyTour Design System 2.0 as the canonical design-system generation. Keep PR #254 deferred unless a fresh architecture review proves it safe.
+
+## Execution policy
+
+At the start of each run inspect fresh `main`, open PRs, recent CI/deploy evidence and the source-of-truth files. Prefer narrow SAFE/MEDIUM technical PRs and merge autonomously after relevant green evidence. If blocked, record/defer the blocker and continue another independent technical task. Do not refactor for style and do not invent defects.
