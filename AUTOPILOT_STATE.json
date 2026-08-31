@@ -1,13 +1,13 @@
 {
-  "schema_version": 15,
+  "schema_version": 14,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T19:42:00+02:00",
-  "mode": "technical_refactor",
-  "phase": "ARCHITECTURE_INVENTORY_AND_CI_CONSOLIDATION",
+  "updated_at": "2026-08-31T19:12:00+02:00",
+  "mode": "search_ux_ds2",
+  "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
-  "owner_priority_lock": {"active": true, "planned_phase": "technical_refactor", "rule": "Follow the explicit owner direction to resume the technical refactor pass before further UX/visual work."},
-  "current_stage": {"id": "ARCHITECTURE_SOURCE_OF_TRUTH", "name": "Architecture source of truth and dependency inventory", "status": "ACTIVE", "last_material_progress": "ARCHITECTURE.md and TEST_MATRIX.md already define canonical architecture/test ownership; this slice realigns the machine-readable owner state so autonomous work follows them.", "next_action": "Complete repository inventory/dependency map for ACTIVE, COMPATIBILITY, DEPRECATED and DEAD-CANDIDATE implementations, then continue exhaustive GitHub Actions tier audit without deleting workflows until equivalent coverage is proven."},
-  "protected": {"repository_scope":"pyatkoff/poisk-turov-test only","other_projects":"DO_NOT_MODIFY","metrika_configuration":"DO_NOT_MODIFY","metrika_goals":"DO_NOT_MODIFY","tourvisor_contract":"PRESERVE","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING","canonical_design_system":"ANYTOUR DESIGN SYSTEM 2.0","design_system_1":"DO_NOT_REINTRODUCE","anytour_logo":"PRESERVE","verified_destinations":"PRESERVE"},
-  "continuation_policy": {"priority":"production_broken > lead_loss > incorrect_data > broken_user_journey > architecture_source_of_truth > inventory_dependency_map > ci_tiering_and_consolidation > safe_directory_structure > shared_template_consolidation > ux_visual > content_seo > cosmetic_cleanup","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_blocker":"record/defer blocker and continue an independent safe refactor task"}
+  "owner_priority_lock": {"active": true, "planned_phase": "search_ux_ds2", "rule": "Follow the explicit owner direction to pause technical_refactor and prioritize tour-search UX and user-facing visual work on AnyTour Design System 2.0."},
+  "current_stage": {"id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE", "name": "Search UX, results, filters and site visual convergence", "status": "ACTIVE", "last_material_progress": "PR #606 merged shared site-coherence geometry across homepage/editorial shell; responsive standalone/V2/selected-tour visual validations were green.", "next_action": "Verify production deployment for the merged site-coherence layer, then audit homepage/search shell parity and representative country pages at 375/430/768/1024/1440; continue full-search filters and desktop/mobile consistency without changing external contracts."},
+  "protected": {"repository_scope":"pyatkoff/poisk-turov-test only","other_projects":"DO_NOT_MODIFY","metrika_configuration":"DO_NOT_MODIFY","metrika_goals":"DO_NOT_MODIFY","tourvisor_contract":"PRESERVE","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING","canonical_design_system":"ANYTOUR DESIGN SYSTEM 2.0","design_system_1":"DO_NOT_REINTRODUCE","anytour_logo":"PRESERVE","verified_destinations":"PRESERVE","legal_payment_unresolved":"DEFER","pr_254":"DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW"},
+  "continuation_policy": {"priority":"production_broken > lead_loss > incorrect_data > broken_user_journey > search_user_journey > results_filters_full_search > hotel_tour_cards_and_selected_tour > desktop_mobile_visual_consistency > shared_header_navigation_footer_ds2 > site_visual_convergence_ds2 > technical_refactor_deferred > content_seo > cosmetic_cleanup","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_blocker":"record/defer blocker and continue an independent safe DS2/search-UX task"}
 }
