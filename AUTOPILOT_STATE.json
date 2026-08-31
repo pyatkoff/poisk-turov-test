@@ -1,29 +1,28 @@
 {
   "schema_version": 3,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T05:43:00+02:00",
-  "mode": "technical_refactor_pass",
-  "phase": "TECHNICAL REFACTOR PASS",
+  "updated_at": "2026-08-31T05:55:00+02:00",
+  "mode": "design_system_1",
+  "phase": "ANYTOUR DESIGN SYSTEM 1.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "technical_refactor_pass",
-    "rule": "Keep technical refactor first after emergency production, lead-loss and data-correctness overrides until the explicit consolidation sequence is complete or the owner changes direction."
+    "planned_phase": "design_system_1",
+    "rule": "Keep site-wide visual unification first after emergency production, lead-loss and data-correctness overrides until the owner changes direction."
   },
   "current_stage": {
-    "id": "TECHNICAL_REFACTOR_CONSOLIDATION",
-    "name": "Technical refactor consolidation",
+    "id": "SITE_WIDE_VISUAL_UNIFICATION",
+    "name": "AnyTour Design System 1.0",
     "status": "ACTIVE",
-    "progress": "Architecture/source-of-truth and CI/file inventory work are in progress. A later Design System pass rewrote the owner-priority files and guards; this state restores the explicit technical-refactor-first direction without changing runtime behavior.",
-    "next_action": "Finish exhaustive GitHub Actions inventory/classification, then continue the non-manifest/PHP/deploy dependency map before safe directory and shared-template consolidation."
+    "progress": "Shared shell/header alignment and hotel primary-grid regression recovery are production-green. Whole-site score remains 7.0/10 pending a complete five-width production journey audit.",
+    "next_action": "Audit homepage → country/hot → search → results → selected tour → lead at 375/430/768/1024/1440; fix only confirmed hierarchy, spacing, wrapping, overflow or duplicated-shell defects, then recalculate whole-site score."
   },
   "current_work_order": [
-    "freeze architecture and source of truth in ARCHITECTURE.md and TEST_MATRIX.md with one concept one implementation",
-    "complete active compatibility dead file inventory and dependency map",
-    "classify all GitHub Actions into PR FAST PR BROWSER POST DEPLOY SCHEDULED-LIVE and remove duplication only after proven equivalent coverage",
-    "prepare shared search results tour checkout integrations site seo tests scripts templates ownership without behavior change",
-    "consolidate one header one footer one navigation one design system",
-    "resume UX and visual work only after technical consolidation"
+    "validate full production journey at 375 430 768 1024 1440",
+    "fix confirmed crooked spacing wrapping overflow duplicated shell and inconsistent hierarchy",
+    "continue migrating weak editorial pages onto shared tokens header footer typography grid buttons cards breadcrumbs and responsive behavior",
+    "preserve mature search results selected-tour and lead regressions",
+    "update whole-site score only after production evidence"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -32,11 +31,14 @@
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "analytics_contract": "PRESERVE",
     "tourvisor_contract": "PRESERVE",
-    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
+    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
+    "logo": "DO_NOT_REDESIGN_OR_REPLACE",
+    "legal_payment": "DEFER_UNRESOLVED_CONTENT",
+    "pr_254": "DEFER_UNLESS_FRESH_REVIEW_PROVES_SEPARATE_DB_PLATFORM_ARCHITECTURE_SAFE"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > technical_refactor > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record_blocker_and_continue_independent_refactor_work"
+    "on_blocker": "record_blocker_and_continue_independent_safe_design_system_work"
   }
 }
