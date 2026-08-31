@@ -4,31 +4,29 @@ Updated: 2026-08-31
 
 Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source and `AUTOPILOT_STATE.json` is the machine-readable resume point. Architecture is owned by `ARCHITECTURE.md`; CI/test ownership is owned by `TEST_MATRIX.md`.
 
-## Current owner-directed phase — TECHNICAL REFACTOR PASS
+## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 1.0 SITE-WIDE
 
-After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), prioritize architecture consolidation and evidence-driven technical debt reduction. Do not resume UX/visual implementation until the technical consolidation sequence below is complete or the owner explicitly changes direction.
-
-AnyTour Design System 2.0 remains the canonical design-system generation. Existing DS2 runtime work stays in place; this phase does not roll it back. The goal is to remove architectural duplication and make future UX work safer.
+After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), priority #1 is whole-site visual coherence. The mature tour-search experience remains the quality reference, but the product is scored as one journey, not as search alone.
 
 ## Ordered work
 
-1. Keep `ARCHITECTURE.md` and `TEST_MATRIX.md` canonical and enforce `one concept → one implementation`.
-2. Complete repository inventory/dependency mapping and classify files as `ACTIVE`, `COMPATIBILITY`, `DEPRECATED` or `DEAD-CANDIDATE` based on evidence, never name/age alone.
-3. Complete GitHub Actions audit and classify every workflow into `PR FAST`, `PR BROWSER`, `POST DEPLOY` or `SCHEDULED-LIVE`; remove/consolidate duplicates only after equivalent behavior/path coverage is proven.
-4. Prepare behavior-preserving ownership structure for `shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates`; no mass move/rename.
-5. Consolidate shared template layer toward one header, one footer, one navigation and one design system implementation.
-6. Resume UX/visual convergence only after technical consolidation.
+1. Consolidate shared design tokens/primitives and one coherent header/navigation/footer without replacing the AnyTour logo.
+2. Converge `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages onto the shared shell.
+3. Fix confirmed spacing, wrapping, overflow, duplicated shell and hierarchy issues before cosmetic flourishes.
+4. Validate user-facing changes at 375/430/768/1024/1440 and preserve search/results/comparison/flight/price/fuel/lead regressions.
+5. Continue technical consolidation where it directly reduces duplicate shell/design ownership or makes visual migration safer.
+6. Keep unresolved legal/payment content deferred; keep PR #254 deferred unless a fresh independent architecture review proves it safe.
 
 ## Current resume point
 
-Keep the architecture/source-of-truth documents and guards aligned with this technical phase. Then continue exhaustive active/compatibility/dead inventory and dependency mapping. Use `v2/bundle-manifest-v1.php` as the canonical active browser-bundle source and `scripts/ci/inventory_v2_assets.py` as evidence tooling; repository references are evidence, not proof of runtime activity or deadness.
+The editorial routes already share `v2/site-page-shell-v1.php`. Continue making that shell the single final source for editorial geometry and responsive behavior, then audit homepage/search shell parity and weak route-specific components. Do not create route-local overrides when a shared primitive is sufficient.
 
-For CI, use `CI_WORKFLOW_AUDIT.md` as the evidence ledger and `TEST_MATRIX.md` as policy. Prefer consolidating runner/bootstrap duplication only when protected behavior, trigger/path coverage and failure visibility remain equivalent.
+A fresh DS1 site-unification branch from current `main` now adds one final editorial alignment layer that fixes min-width/overflow, balanced two/three-column grids, section rhythm, breadcrumbs and mobile CTA wrapping across the shared editorial shell. Validate this branch through relevant PR/browser checks before merge, then verify production. Live HTTP access may be temporarily unavailable from the automation environment; when that happens, use repository/browser CI evidence and keep production verification explicitly pending rather than guessing.
 
 ## Mandatory protections
 
-Work only inside `pyatkoff/poisk-turov-test`. Do not modify Yandex Metrika configuration/goals, Tourvisor external contract, external lead-sending contract/field mapping or neighboring projects. Preserve the existing AnyTour logo and verified destinations. Do not perform mass file moves, renames or deletions without dependency proof and relevant regression coverage.
+Work only inside `pyatkoff/poisk-turov-test`. Do not modify Yandex Metrika configuration/goals, Tourvisor external contract, external lead-sending contract/field mapping or neighboring projects. Preserve the existing AnyTour logo and verified destinations. Do not migrate unresolved legal/payment content.
 
-## Refactor decision rule
+## Decision rule
 
-Do not refactor for style and do not invent defects. For each slice: map dependencies → identify canonical owner/implementation → prove coverage → migrate/consolidate narrowly → run focused CI → merge SAFE/MEDIUM changes only after green relevant checks. If blocked, record/defer the blocker and continue an independent safe slice.
+Prefer narrow shared-shell changes with broad visual benefit. For each slice: inspect current implementation → identify confirmed inconsistency → change the canonical shared owner → run focused CI/visual checks → merge only after relevant checks are green → verify production/live behavior where accessible. If blocked, record/defer the blocker and continue an independent safe slice.
