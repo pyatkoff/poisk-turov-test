@@ -31,7 +31,13 @@ PR #617 rebuilt the factual `Лидер продаж` signal on fresh main. It i
 
 PR #618 converged selected tour → flight choice → lead form on AnyTour Design System 2.0 through a final responsive visual layer rather than changing product behavior. It resolves historical CSS conflicts, long-value wrapping/min-width issues and inconsistent price/facts/flight/lead geometry across 375/430/768/1024/1440. The initial CI run correctly rejected the changed bundle contract; the bundle manifest validator was updated to assert the new final DS2 layer and all 21 PR checks then passed, including selected-tour and whole-V2 visual suites. Both production paths completed successfully: V2 passed Verify V2 and Live search smoke; standalone passed public-page verification, unchanged production lead-bridge verification and Live search smoke.
 
-Next: audit and improve homepage section hierarchy/discovery flow as the lowest-scoring public route. Validate the homepage at 375/430/768/1024/1440, make only confirmed DS2 hierarchy/spacing/wrapping fixes, then continue `/hot/` and the editorial routes. Keep search behavior, contracts and already-green selected-tour regressions unchanged.
+PR #622 strengthened homepage discovery hierarchy on wide desktop. The primary `Страны и курорты` journey now occupies two columns in a balanced six-column row while the four secondary journeys remain compact; tablet/mobile behavior and the shared DS2 shell are unchanged. Standalone production verification passed public pages, the unchanged lead bridge and live search smoke.
+
+PR #623 improved `/hot/` offer scanning without changing hot-inventory or search semantics. Route/date/nights metadata and factual price are now distinct DS2 hierarchy elements, with the price clearly scannable before the existing verification CTA. PR bundle/security/visual checks passed, and standalone production deployment passed public-page verification, unchanged production lead-bridge verification and live search smoke.
+
+PR #624 corrected the four-office `/contacts/` desktop layout from an awkward generic 3+1 grid to the existing balanced two-column DS2 editorial primitive. Focused guard/content/V2/bundle checks passed before merge; production verification is the next resume checkpoint.
+
+Next: verify PR #624 production deployment, then continue the editorial route audit through `/how-to-buy/`, `/rb/` and representative country pages. Make only confirmed DS2 hierarchy/spacing/wrapping/shared-shell fixes, validate relevant 375/430/768/1024/1440 behavior, and keep search/results/selected-tour/lead contracts unchanged.
 
 ## Mandatory protections
 
