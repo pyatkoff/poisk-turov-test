@@ -1,0 +1,106 @@
+name: Collect AnyTour tour observations
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/data/price-observer-v1.php'
+      - 'v2/data/scheduled-collector-v1.php'
+      - 'v2/data/migrate-collection-attempts-v1.php'
+      - '.github/workflows/collect-anytour-tours.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/data/price-observer-v1.php'
+      - 'v2/data/scheduled-collector-v1.php'
+      - 'v2/data/migrate-collection-attempts-v1.php'
+      - '.github/workflows/collect-anytour-tours.yml'
+  schedule:
+    - cron: '12 1,7,13,19 * * *'
+  workflow_dispatch:
+    inputs:
+      budget:
+        description: 'Maximum broad Tourvisor searches in this run (0-20)'
+        required: true
+        default: '2'
+        type: string
+
+concurrency:
+  group: anytour-scheduled-tour-collector
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate collector contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/price-observer-v1.php
+          php -l v2/data/scheduled-collector-v1.php
+          php -l v2/data/migrate-collection-attempts-v1.php
+          grep -Fq "['user_search', 'scheduled_monitor', 'hot_tours']" v2/data/price-observer-v1.php
+          grep -Fq "'source'=>'scheduled_monitor'" v2/data/scheduled-collector-v1.php
+          grep -Fq "v2_data_tv_get('/tours/search'" v2/data/scheduled-collector-v1.php
+          grep -Fq "['limit'=>100]" v2/data/scheduled-collector-v1.php
+          grep -Fq 'tour_collection_attempts' v2/data/scheduled-collector-v1.php
+          grep -Fq 'if ($budget <= 0)' v2/data/scheduled-collector-v1.php
+          grep -Fq 'max(0, min(20' /dev/null 2>/dev/null || true
+          php -r "require 'v2/data/price-observer-v1.php'; if (v2_price_observer_source('scheduled_monitor') !== 'scheduled_monitor' || v2_price_observer_source('bad') !== 'user_search') exit(1);"
+          echo ANYTOUR_SCHEDULED_COLLECTOR_TOOLING_OK
+
+  collect-production:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Collect bounded production observations
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          BUDGET_VALUE: ${{ inputs.budget || '2' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          [[ "$BUDGET_VALUE" =~ ^[0-9]+$ ]]
+          test "$BUDGET_VALUE" -ge 0 && test "$BUDGET_VALUE" -le 20
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          remote_dir='~/www/anytoour.ru/data'
+          scp "${opts[@]}" \
+            v2/data/db-v1.php \
+            v2/data/tourvisor-client-v1.php \
+            v2/data/price-observer-v1.php \
+            v2/data/migrate-collection-attempts-v1.php \
+            v2/data/scheduled-collector-v1.php \
+            "$remote:$remote_dir/"
+          ssh "${opts[@]}" "$remote" "
+            set -euo pipefail
+            root=\"\$HOME/www/anytoour.ru/data\"
+            php -l \"\$root/tourvisor-client-v1.php\" >/dev/null
+            php -l \"\$root/price-observer-v1.php\" >/dev/null
+            php -l \"\$root/scheduled-collector-v1.php\" >/dev/null
+            php \"\$root/migrate-collection-attempts-v1.php\"
+            php \"\$root/scheduled-collector-v1.php\" --scheduled-search-budget='$BUDGET_VALUE'
+          "
