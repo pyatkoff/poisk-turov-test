@@ -2,12 +2,10 @@
 const form=document.getElementById('tourSearch');if(!form)return;
 const hotelSelect=form.elements.hotel;if(!hotelSelect||hotelSelect.tagName!=='SELECT')return;
 const field=hotelSelect.closest('.field');if(!field)return;
-const mainFields=form.querySelector('.main-fields'),countryField=form.elements.country&&form.elements.country.closest('.field');
-field.classList.add('field-wide','hotel-autocomplete-field');
-if(mainFields){if(countryField&&countryField.parentElement===mainFields)countryField.insertAdjacentElement('afterend',field);else mainFields.appendChild(field);}
+field.classList.add('hotel-autocomplete-field');
 hotelSelect.hidden=true;hotelSelect.setAttribute('aria-hidden','true');hotelSelect.tabIndex=-1;
-const label=field.querySelector(':scope > span');if(label)label.textContent='Отель (необязательно)';
-const box=document.createElement('div');box.className='hotel-autocomplete';box.innerHTML='<input type="search" data-v2-hotel-query autocomplete="off" placeholder="Например Rixos Premium Belek" aria-label="Отель, если знаете название" aria-autocomplete="list" aria-controls="hotelAutocompleteList"><div id="hotelAutocompleteList" class="hotel-autocomplete__list" role="listbox" hidden></div>';
+const label=field.querySelector(':scope > span');if(label)label.textContent='Конкретный отель';
+const box=document.createElement('div');box.className='hotel-autocomplete';box.innerHTML='<input type="search" data-v2-hotel-query autocomplete="off" placeholder="Например Rixos Premium Belek" aria-label="Конкретный отель" aria-autocomplete="list" aria-controls="hotelAutocompleteList"><div id="hotelAutocompleteList" class="hotel-autocomplete__list" role="listbox" hidden></div>';
 hotelSelect.insertAdjacentElement('afterend',box);
 const input=box.querySelector('[data-v2-hotel-query]'),list=box.querySelector('#hotelAutocompleteList');
 const endpoint=(window.V2_CONFIG&&window.V2_CONFIG.hotelSearchApi)||'/data/hotel-search-v1.php';let timer=0,controller=null,items=[];
