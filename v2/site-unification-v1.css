@@ -1,17 +1,17 @@
-/* AnyTour Design System 1.0 — final site-wide editorial alignment layer.
-   Keeps homepage/search maturity while giving content routes one coherent shell. */
-.sp-main,.sp-hero .sp-wrap,.sp-breadcrumbs .sp-wrap{min-width:0}
-.sp-main>*,.sp-grid>*,.sp-country-grid>*,.sp-section-head>*{min-width:0}
+/* AnyTour Design System 1.0 — final site-wide alignment layer.
+   Keeps the mature search flow intact while giving homepage/editorial routes one coherent geometry and responsive contract. */
+.sp-main,.sp-hero .sp-wrap,.sp-breadcrumbs .sp-wrap,.at-home-main,.at-home-hero__inner,.at-home-search,.at-home-section{min-width:0}
+.sp-main>*,.sp-grid>*,.sp-country-grid>*,.sp-section-head>*,.at-home-search__grid>*,.at-home-direction-grid>*,.at-home-benefits>*{min-width:0}
 .sp-main{display:block}
 .sp-main>section{scroll-margin-top:84px}
 .sp-section-head{align-items:flex-end}
-.sp-section-head h2{max-width:760px;text-wrap:balance}
-.sp-section-head p{overflow-wrap:anywhere}
+.sp-section-head h2,.at-home-section__head h2{max-width:760px;text-wrap:balance}
+.sp-section-head p,.at-home-section__head p,.at-home-direction span,.at-home-benefit p{overflow-wrap:anywhere}
 .sp-card,.sp-row,.sp-step,.sp-country{overflow-wrap:anywhere}
-.sp-card h2,.sp-card h3,.sp-step h2,.sp-step h3{text-wrap:balance}
+.sp-card h2,.sp-card h3,.sp-step h2,.sp-step h3,.at-home-direction strong,.at-home-benefit b{text-wrap:balance}
 .sp-grid--balanced-two{grid-template-columns:repeat(2,minmax(0,1fr))}
 .sp-grid--balanced-three{grid-template-columns:repeat(3,minmax(0,1fr))}
-.sp-actions>a,.sp-actions>button{max-width:100%}
+.sp-actions>a,.sp-actions>button,.at-home-search button,.at-home-search__more{max-width:100%}
 .sp-breadcrumbs .sp-wrap{padding-block:2px}
 @media (min-width:901px){
   .sp-main>section+section,.sp-main>div+section,.sp-main>section+div{margin-top:clamp(30px,3.2vw,44px)}
@@ -20,16 +20,19 @@
 @media (max-width:1024px){
   .sp-grid--balanced-three{grid-template-columns:repeat(2,minmax(0,1fr))}
   .sp-grid--balanced-three>:last-child:nth-child(odd){grid-column:1/-1;max-width:calc(50% - var(--at-space-2));width:100%;justify-self:center}
+  .at-home-search__grid{min-width:0}
 }
 @media (max-width:768px){
   .sp-section-head{align-items:flex-start}
   .sp-main>section{scroll-margin-top:72px}
+  .at-home-section__head{align-items:flex-start}
 }
 @media (max-width:560px){
   .sp-grid--balanced-two,.sp-grid--balanced-three{grid-template-columns:1fr}
   .sp-grid--balanced-three>:last-child:nth-child(odd){grid-column:auto;max-width:none}
-  .sp-section-head h2{font-size:27px}
+  .sp-section-head h2,.at-home-section__head h2{font-size:27px}
   .sp-main>section+section,.sp-main>div+section,.sp-main>section+div{margin-top:26px}
   .sp-card,.sp-row,.sp-step{max-width:100%}
-  .sp-actions>a,.sp-actions>button{white-space:normal;text-align:center}
+  .sp-actions>a,.sp-actions>button,.at-home-search button,.at-home-search__more{white-space:normal;text-align:center}
+  .at-home-direction,.at-home-benefit{max-width:100%}
 }
