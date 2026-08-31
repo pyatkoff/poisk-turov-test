@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AnyTour Autopilot 2.0 State",
+  "type": "object",
+  "required": ["schema_version", "mode", "active_task", "queue", "last_signal"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "mode": {"enum": ["dry_run", "active"]},
+    "active_task": {
+      "type": ["object", "null"],
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "area": {"enum": ["search-core", "results-tour", "conversion-lead", "ux-qa", "site-seo", "platform"]},
+        "risk": {"enum": ["SAFE", "MEDIUM", "HIGH"]},
+        "state": {"enum": ["discovered", "triaged", "ready", "coding", "qa", "visual_qa", "deploy", "production_qa", "done", "blocked"]},
+        "owner": {"enum": ["orchestrator", "developer", "qa", "visual_qa"]},
+        "required_gates": {"type": "array", "items": {"type": "string"}},
+        "evidence": {"type": "array", "items": {"type": "string"}}
+      },
+      "required": ["id", "title", "area", "risk", "state", "owner", "required_gates", "evidence"]
+    },
+    "queue": {"type": "array"},
+    "last_signal": {
+      "type": "object",
+      "properties": {
+        "source": {"type": "string"},
+        "status": {"type": "string"},
+        "sha": {"type": "string"}
+      },
+      "required": ["source", "status"]
+    },
+    "blocked": {"type": "array"}
+  }
+}
