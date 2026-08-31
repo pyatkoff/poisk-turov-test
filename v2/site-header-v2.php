@@ -22,6 +22,7 @@ function v2_render_site_header(string $phone, string $phoneHref, string $activeP
         ['/country/', 'Страны'],
         ['/hot/', 'Горящие туры'],
         ['/rb/', 'Раннее бронирование'],
+        ['/how-to-buy/', 'Как купить'],
         ['/contacts/', 'Контакты'],
     ];
     ?>
