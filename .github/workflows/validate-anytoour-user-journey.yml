@@ -129,7 +129,14 @@ jobs:
           assert isinstance(d,(list,dict))
           if isinstance(d,dict):
               assert d.get('ok') is not False
-              assert not d.get('error')
+              error=d.get('error')
+              if isinstance(error,dict):
+                  code=error.get('code',0)
+                  try: code=int(code or 0)
+                  except (TypeError,ValueError): raise AssertionError('invalid flight error code')
+                  assert code == 0, f"flight error code={code} reason={error.get('reason','')}"
+              elif error:
+                  raise AssertionError(f"unexpected flight error={error}")
           flights=d if isinstance(d,list) else d.get('flights',[]) if isinstance(d,dict) else []
           if flights:
               assert isinstance(flights[0],dict) and (flights[0].get('forward') or flights[0].get('backward'))
