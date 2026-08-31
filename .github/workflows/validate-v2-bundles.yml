@@ -24,6 +24,7 @@ jobs:
           php -l v2/bundle-manifest-v1.php
           php -l v2/bundle-v1.php
           php -l v2/assets.php
+          php -l v2/data/destinations-v1.php
           php <<'PHP'
           <?php
           require 'v2/assets.php';
@@ -47,7 +48,8 @@ jobs:
           if (($manifest['css'][count($manifest['css'])-3]??'')!=='search-header-layout-guard-v1.css') {fwrite(STDERR,"search header layout guard must stay before footer rhythm and shared-shell override\n"); exit(9);}
           if (($manifest['css'][count($manifest['css'])-2]??'')!=='search-footer-rhythm-v1.css') {fwrite(STDERR,"search footer rhythm must stay directly before shared-shell override\n"); exit(10);}
           if (($manifest['css'][count($manifest['css'])-1]??'')!=='search-header-shared-shell-v1.css') {fwrite(STDERR,"search shared-shell override must load last\n"); exit(11);}
-          if (count($manifest['js'])!==33) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
+          if (count($manifest['js'])!==34) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
+          if (!in_array('catalog-local-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"local catalog router missing\n"); exit(15);}
           if (!in_array('hotel-autocomplete-v1.js',$manifest['js'],true)) {fwrite(STDERR,"hotel autocomplete js missing\n"); exit(14);}
           echo 'BUNDLE_MANIFEST_OK css='.count($manifest['css']).' js='.count($manifest['js'])."\n";
           PHP
@@ -59,6 +61,7 @@ jobs:
           test -s "$RUNNER_TEMP/v2-active-bundle.js"
           node --check "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'window.V2Runtime=runtime' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'catalog-local-routing-v1' v2/bundle-manifest-v1.php
           grep -Fq 'window.V2SearchLifecycle=' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'window.V2SelectedTourReturnV1=' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'window.V2TourController=' "$RUNNER_TEMP/v2-active-bundle.js"
