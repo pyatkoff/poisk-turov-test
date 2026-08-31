@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
-  "active": true,
+  "active": false,
   "mode": "technical_refactor_pass",
   "phase": "TECHNICAL REFACTOR PASS",
-  "status": "ACTIVE_EXPLICIT_OWNER_DIRECTION",
+  "status": "SUPERSEDED_BY_NEWER_EXPLICIT_OWNER_DIRECTION",
   "authority": "explicit owner instruction",
   "scope": "pyatkoff/poisk-turov-test",
   "protected_contracts": [
@@ -12,5 +12,5 @@
     "tourvisor_contract",
     "neighboring_projects"
   ],
-  "rule": "Keep technical-refactor-first active until a newer explicit owner instruction changes direction. Autonomous visual or product work must not supersede this lock. Complete source-of-truth, dependency inventory, CI audit and safe directory/shared-template consolidation before UX/visual work, except emergency production, lead-loss, incorrect-data or broken-user-journey overrides."
+  "rule": "The former technical-refactor-first lock is inactive. The newer explicit owner direction on 2026-08-31 makes AnyTour 2.0 → whole-site 9.0/10 the north-star, with Design 2.0 / Design System foundation as the current stage. Technical refactor remains allowed when it directly supports the active roadmap or higher-priority correctness work."
 }
