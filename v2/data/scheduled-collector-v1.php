@@ -183,6 +183,25 @@ function scheduled_collector_targets(array $rows, int $budget): array
     return $targets;
 }
 
+function scheduled_collector_window(PDO $pdo, int $departureId, int $countryId): array
+{
+    $stmt = $pdo->prepare("SELECT MAX(date_to) FROM tour_collection_attempts
+      WHERE departure_id=:departure AND country_id=:country
+        AND status IN ('success','empty')
+        AND nights_from=7 AND nights_to=7");
+    $stmt->execute(['departure'=>$departureId, 'country'=>$countryId]);
+    $lastDateTo = trim((string)$stmt->fetchColumn());
+
+    // Owner-defined coverage sequence: 01.09-22.09, 23.09-14.10,
+    // 15.10-05.11, ... . A failed/timeout attempt does not advance the cursor,
+    // so the same window is retried until it is actually covered.
+    $start = $lastDateTo !== ''
+        ? (new DateTimeImmutable($lastDateTo))->modify('+1 day')
+        : new DateTimeImmutable('2026-09-01');
+    $end = $start->modify('+21 days');
+    return ['dateFrom'=>$start->format('Y-m-d'), 'dateTo'=>$end->format('Y-m-d')];
+}
+
 function scheduled_collector_attempt_start(PDO $pdo, array $target, array $search): int
 {
     $stmt = $pdo->prepare("INSERT INTO tour_collection_attempts
@@ -227,8 +246,6 @@ if ($budget <= 0) {
 
 $pollAttempts = scheduled_collector_int($argv, 'poll-attempts', 1, 30, 20);
 $pollSeconds = scheduled_collector_int($argv, 'poll-seconds', 1, 10, 2);
-$dateFrom = (new DateTimeImmutable('today +7 days'))->format('Y-m-d');
-$dateTo = (new DateTimeImmutable('today +20 days'))->format('Y-m-d');
 
 $pdo = v2_data_db();
 $candidates = scheduled_collector_candidates($pdo);
@@ -242,18 +259,20 @@ $totalWritten = 0;
 $completed = 0;
 $failed = 0;
 foreach ($targets as $target) {
+    $window = scheduled_collector_window($pdo, (int)$target['departure_id'], (int)$target['country_id']);
     $search = [
         'departureId'=>(int)$target['departure_id'],
         'countryId'=>(int)$target['country_id'],
-        'dateFrom'=>$dateFrom,
-        'dateTo'=>$dateTo,
+        'dateFrom'=>$window['dateFrom'],
+        'dateTo'=>$window['dateTo'],
         'nightsFrom'=>7,
-        'nightsTo'=>10,
+        'nightsTo'=>7,
         'adults'=>2,
         'currency'=>'RUB',
         'onlyCharter'=>false,
         'onlyDirect'=>false,
     ];
+    echo "COLLECT_WINDOW departure={$target['departure_id']} country={$target['country_id']} from={$search['dateFrom']} to={$search['dateTo']} nights=7\n";
     $attemptId = scheduled_collector_attempt_start($pdo, $target, $search);
     $searchId = null;
 
