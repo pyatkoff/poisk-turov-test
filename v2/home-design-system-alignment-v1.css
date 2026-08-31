@@ -19,5 +19,5 @@
 .at-home-benefit:before{background:var(--at-soft-blue);color:var(--at-brand)}
 .at-home-section__head p,.at-home-benefit p,.at-home-direction span{color:var(--at-muted)}
 .at-home-search button:focus-visible,.at-home-search__more:focus-visible,.at-home-direction:focus-visible{outline:3px solid var(--at-focus);outline-offset:3px}
-@media(max-width:900px){.at-home-hero__inner,.at-home-search,.at-home-section{width:min(calc(100% - var(--at-page-gutter)),760px)}}
-@media(max-width:560px){.at-home-hero__inner,.at-home-search,.at-home-section{width:calc(100% - var(--at-page-gutter))}.at-home-section--discovery{margin-top:var(--at-section-space);margin-bottom:var(--at-section-space)}.at-home-direction--primary{min-height:132px}}
+@media(max-width:900px){.at-home-hero__inner{width:min(760px,100%)}.at-home-search,.at-home-section{width:min(calc(100% - var(--at-page-gutter)),760px)}}
+@media(max-width:560px){.at-home-hero__inner{width:100%}.at-home-search,.at-home-section{width:calc(100% - var(--at-page-gutter))}.at-home-section--discovery{margin-top:var(--at-section-space);margin-bottom:var(--at-section-space)}.at-home-direction--primary{min-height:132px}}
