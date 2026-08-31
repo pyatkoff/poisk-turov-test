@@ -9,6 +9,8 @@ on:
       - 'v2/data/departures-v1.php'
       - 'v2/data/sync-departures-v1.php'
       - 'v2/data/migrate-departure-countries-v1.php'
+      - 'v2/data/migrate-departure-flight-matrices-v1.php'
+      - 'v2/data/sync-departure-flight-matrices-v1.php'
       - 'v2/data/destinations-v1.php'
       - 'v2/data/validate-departures-v1.php'
       - 'v2/data/catalog-hotel-sync-plan-v1.php'
@@ -38,7 +40,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-
       - name: Validate catalog tooling
         shell: bash
         env:
@@ -46,9 +47,9 @@ jobs:
           BATCH_SIZE: ${{ inputs.batch_size || '2' }}
         run: |
           set -euo pipefail
-          for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/migrate-departures-v1.php v2/data/migrate-departure-countries-v1.php v2/data/sync-departures-v1.php v2/data/validate-departures-v1.php v2/data/sync-catalog-v1.php v2/data/catalog-hotel-sync-plan-v1.php v2/data/db-doctor-v1.php v2/data/destinations-v1.php; do
-            php -l "$f" >/dev/null
-          done
+          for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/migrate-departures-v1.php v2/data/migrate-departure-countries-v1.php v2/data/migrate-departure-flight-matrices-v1.php v2/data/sync-departures-v1.php v2/data/sync-departure-flight-matrices-v1.php v2/data/validate-departures-v1.php v2/data/sync-catalog-v1.php v2/data/catalog-hotel-sync-plan-v1.php v2/data/db-doctor-v1.php v2/data/destinations-v1.php; do php -l "$f" >/dev/null; done
+          grep -Fq "'onlyCharter' => $onlyCharter" v2/data/sync-departure-flight-matrices-v1.php
+          grep -Fq "'onlyDirect' => $onlyDirect" v2/data/sync-departure-flight-matrices-v1.php
           test -s v2/data/schema-v1.sql
           grep -Fq 'catalog_departure_countries' v2/data/catalog-hotel-sync-plan-v1.php
           grep -Fq "CONCAT('hotels:country:'" v2/data/catalog-hotel-sync-plan-v1.php
@@ -57,8 +58,6 @@ jobs:
           php -r "require 'v2/data/tourvisor-client-v1.php'; if (v2_data_tv_retry_delay_seconds(1, null) !== 1 || v2_data_tv_retry_delay_seconds(4, null) !== 8 || v2_data_tv_retry_delay_seconds(1, 99) !== 15) exit(1);"
           if test -n "$COUNTRY_VALUE"; then [[ "$COUNTRY_VALUE" =~ ^[0-9]+(,[0-9]+)*$ ]]; fi
           [[ "$BATCH_SIZE" =~ ^[0-9]+$ ]] && test "$BATCH_SIZE" -ge 1 && test "$BATCH_SIZE" -le 10
-          echo "ANYTOUR_CATALOG_TOOLING_OK country=${COUNTRY_VALUE:-auto} batch=$BATCH_SIZE"
-
       - name: Prepare SSH key
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -67,14 +66,9 @@ jobs:
           set -euo pipefail
           test -n "$KEY_VALUE"
           key="$RUNNER_TEMP/anytoour_key"
-          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
-            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
-          else
-            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
-          fi
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
-
       - name: Sync catalog on production
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
@@ -88,28 +82,21 @@ jobs:
           if test -n "$COUNTRY_VALUE"; then [[ "$COUNTRY_VALUE" =~ ^[0-9]+(,[0-9]+)*$ ]]; fi
           [[ "$BATCH_SIZE" =~ ^[0-9]+$ ]] && test "$BATCH_SIZE" -ge 1 && test "$BATCH_SIZE" -le 10
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
-          remote="$USER_VALUE@$HOST_VALUE"
-          root='~/www/anytoour.ru'
-
+          remote="$USER_VALUE@$HOST_VALUE"; root='~/www/anytoour.ru'
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data" && test -s "$HOME/www/anytoour.ru/config.php"'
           scp "${opts[@]}" -r v2/data/. "$remote:$root/data/"
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
-            root=\"\$HOME/www/anytoour.ru\"
-            chmod 600 \"\$root/config.php\"
-            php -l \"\$root/data/catalog-hotel-sync-plan-v1.php\" >/dev/null
+            root=\"\$HOME/www/anytoour.ru\"; chmod 600 \"\$root/config.php\"
             php \"\$root/data/migrate-departures-v1.php\"
             php \"\$root/data/migrate-departure-countries-v1.php\"
+            php \"\$root/data/migrate-departure-flight-matrices-v1.php\"
             php \"\$root/data/sync-departures-v1.php\"
+            php \"\$root/data/sync-departure-flight-matrices-v1.php\"
             php \"\$root/data/validate-departures-v1.php\"
             country='$COUNTRY_VALUE'
-            if test -z \"\$country\"; then
-              country=\"\$(php \"\$root/data/catalog-hotel-sync-plan-v1.php\" --limit='$BATCH_SIZE')\"
-            fi
-            if test \"\$country\" = 'NONE' || test -z \"\$country\"; then
-              echo 'ANYTOUR_HOTEL_CATALOG_UP_TO_DATE'
-              exit 0
-            fi
+            if test -z \"\$country\"; then country=\"\$(php \"\$root/data/catalog-hotel-sync-plan-v1.php\" --limit='$BATCH_SIZE')\"; fi
+            if test \"\$country\" = 'NONE' || test -z \"\$country\"; then echo 'ANYTOUR_HOTEL_CATALOG_UP_TO_DATE'; exit 0; fi
             [[ \"\$country\" =~ ^[0-9]+(,[0-9]+)*$ ]]
             echo \"ANYTOUR_HOTEL_SYNC_SELECTED country=\$country\"
             php \"\$root/data/sync-catalog-v1.php\" --country=\"\$country\"
