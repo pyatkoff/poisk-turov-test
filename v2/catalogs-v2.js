@@ -1,7 +1,7 @@
 (function(){'use strict';
 const rt=window.V2Runtime;if(!rt)return;
 const form=document.getElementById('tourSearch'),childCount=document.getElementById('childCount'),childAges=document.getElementById('childAges'),serviceBox=document.getElementById('hotelServices'),serviceCount=document.getElementById('serviceCount'),extras=form&&form.querySelector('details.extras');if(!form)return;
-const api=(action,params)=>rt.api(action,params);let revision=0,recovery=null,criticalReady=false,advancedKey='',mealsLoaded=false;
+const api=async(action,params)=>{const local=window.V2LocalCatalogApi&&window.V2LocalCatalogApi.load;if(local){if(action==='regions'&&!(params&&params.arrivalId)){try{return await local(action,params);}catch(e){console.warn('local regions',e);}}if(action==='subregions'){try{return await local(action,params);}catch(e){console.warn('local subregions',e);}}if(action==='hotels'&&params&&params.countryId&&params.regionId){try{return await local(action,params);}catch(e){console.warn('local hotels',e);}}}return rt.api(action,params);};let revision=0,recovery=null,criticalReady=false,advancedKey='',mealsLoaded=false;
 function active(token){return token===revision;}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function optionName(x){return x&&(x.russianName||x.fullRussianName||x.name||x.nameGenitive||x.fullName||x.id)||'';}
