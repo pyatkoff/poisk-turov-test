@@ -6,10 +6,20 @@
     "title": "Re-audit standalone results and selected-tour transitions",
     "area": "ux-qa",
     "risk": "SAFE",
-    "state": "triaged",
-    "owner": "orchestrator",
-    "required_gates": ["Fast CI", "targeted functional evidence", "visual QA if user-facing diff exists"],
-    "evidence": ["Imported from AUTOPILOT_STATE.json current next_action; no product code changes in MVP scaffold."]
+    "state": "qa",
+    "owner": "qa",
+    "required_gates": [
+      "no CI for observation-only audit",
+      "Fast CI only if a concrete product-code fix is created",
+      "targeted visual QA only for user-facing affected route/state",
+      "Deploy + Production smoke only if released"
+    ],
+    "evidence": [
+      "Imported from AUTOPILOT_STATE.json current next_action.",
+      "First orchestrator dry run selected the existing highest-priority stabilization audit.",
+      "QA handoff recorded in autopilot-v2/runs/2026-09-01-pilot-1.md.",
+      "No product runtime code changed during orchestration."
+    ]
   },
   "queue": [
     {
@@ -26,9 +36,9 @@
     }
   ],
   "last_signal": {
-    "source": "migration",
-    "status": "READY_FOR_DRY_RUN",
-    "sha": ""
+    "source": "orchestrator_dry_run",
+    "status": "QA_HANDOFF_READY",
+    "sha": "bd0cf4f7a91a4ef0bf6c5e15227013159af74288"
   },
   "blocked": []
 }
