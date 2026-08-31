@@ -1,0 +1,17 @@
+name: Validate local catalog routing
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/data/hotels-select-v1.php'
+      - 'v2/catalog-local-routing-v1.js'
+      - '.github/workflows/validate-local-catalog-routing.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: php -l v2/data/hotels-select-v1.php
+      - run: node --check v2/catalog-local-routing-v1.js
