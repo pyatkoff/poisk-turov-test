@@ -189,7 +189,7 @@ Do not generate every mathematical filter combination. An SEO page becomes index
 
 ## Delivery order
 
-1. Keep AnyTour Design System 1.0/shared-shell work as the active user-facing priority.
+1. Keep AnyTour Design System 2.0/shared-shell work as the active user-facing priority.
 2. Land DB schema and isolated data access helpers with no production behavior change.
 3. Add catalog sync for countries/regions/subregions/hotels and validate against Tourvisor samples.
 4. Populate a staging/local DB and measure hotel counts/search latency.
