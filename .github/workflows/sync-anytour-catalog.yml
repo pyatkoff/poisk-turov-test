@@ -9,6 +9,9 @@ on:
       - 'v2/data/departures-v1.php'
       - 'v2/data/sync-departures-v1.php'
       - 'v2/data/migrate-departure-countries-v1.php'
+      - 'v2/data/migrate-departure-flight-matrices-v1.php'
+      - 'v2/data/sync-departure-flight-matrices-v1.php'
+      - 'v2/data/validate-departure-flight-matrices-v1.php'
       - 'v2/data/destinations-v1.php'
       - 'v2/data/validate-departures-v1.php'
       - 'v2/data/catalog-hotel-sync-plan-v1.php'
@@ -46,9 +49,12 @@ jobs:
           BATCH_SIZE: ${{ inputs.batch_size || '2' }}
         run: |
           set -euo pipefail
-          for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/migrate-departures-v1.php v2/data/migrate-departure-countries-v1.php v2/data/sync-departures-v1.php v2/data/validate-departures-v1.php v2/data/sync-catalog-v1.php v2/data/catalog-hotel-sync-plan-v1.php v2/data/db-doctor-v1.php v2/data/destinations-v1.php; do
+          for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/migrate-departures-v1.php v2/data/migrate-departure-countries-v1.php v2/data/migrate-departure-flight-matrices-v1.php v2/data/sync-departures-v1.php v2/data/sync-departure-flight-matrices-v1.php v2/data/validate-departure-flight-matrices-v1.php v2/data/validate-departures-v1.php v2/data/sync-catalog-v1.php v2/data/catalog-hotel-sync-plan-v1.php v2/data/db-doctor-v1.php v2/data/destinations-v1.php; do
             php -l "$f" >/dev/null
           done
+          grep -Fq 'DEPARTURE_FLIGHT_MATRICES_OK' v2/data/sync-departure-flight-matrices-v1.php
+          grep -Fq 'DEPARTURE_FLIGHT_MATRICES_VALIDATION_OK' v2/data/validate-departure-flight-matrices-v1.php
+          grep -Fq 'usleep(550000)' v2/data/sync-departure-flight-matrices-v1.php
           test -s v2/data/schema-v1.sql
           grep -Fq 'catalog_departure_countries' v2/data/catalog-hotel-sync-plan-v1.php
           grep -Fq "CONCAT('hotels:country:'" v2/data/catalog-hotel-sync-plan-v1.php
@@ -100,7 +106,10 @@ jobs:
             php -l \"\$root/data/catalog-hotel-sync-plan-v1.php\" >/dev/null
             php \"\$root/data/migrate-departures-v1.php\"
             php \"\$root/data/migrate-departure-countries-v1.php\"
+            php \"\$root/data/migrate-departure-flight-matrices-v1.php\"
             php \"\$root/data/sync-departures-v1.php\"
+            php \"\$root/data/sync-departure-flight-matrices-v1.php\"
+            php \"\$root/data/validate-departure-flight-matrices-v1.php\"
             php \"\$root/data/validate-departures-v1.php\"
             country='$COUNTRY_VALUE'
             if test -z \"\$country\"; then
