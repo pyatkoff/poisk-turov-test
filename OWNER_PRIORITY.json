@@ -1,18 +1,31 @@
 {
-  "schema_version": 6,
-  "active_mode": "technical_refactor",
-  "active_phase": "CI_COST_AUDIT_AND_CONSOLIDATION",
-  "current_stage": "CI_RESOURCE_CONSOLIDATION",
-  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
+  "schema_version": 7,
+  "active_mode": "ux_visual",
+  "active_phase": "ANYTOUR_DESIGN_SYSTEM_1_0_SITEWIDE_UNIFICATION",
+  "current_stage": "EDITORIAL_AND_JOURNEY_COHERENCE",
+  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 1.0",
+  "site_wide_quality_baseline": 6.5,
+  "site_wide_quality_estimate": 6.9,
   "priority_after_emergency_overrides": [
-    "technical_refactor",
-    "ci_cost_audit",
-    "architecture_source_of_truth",
     "ux_visual",
+    "sitewide_shell_coherence",
+    "responsive_visual_regressions",
     "tour_data_platform",
     "content_seo",
-    "cosmetic_cleanup"
+    "cosmetic_cleanup",
+    "ci_cost_audit"
   ],
-  "source": "explicit_owner_direction_2026_08_31_ci_resource_audit",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize technical refactor and GitHub Actions cost consolidation. Reduce duplicate runner/browser work without weakening search, lead, price, tour, flight or recovery coverage. AnyTour Design System 2.0 is the canonical design-system generation, but visual work must not preempt the current technical/CI phase. Preserve Metrika, Tourvisor and lead contracts."
+  "required_routes": [
+    "/",
+    "/poisk-turov/",
+    "/hot/",
+    "/contacts/",
+    "/how-to-buy/",
+    "/rb/",
+    "/country/",
+    "representative country pages"
+  ],
+  "required_viewports": [375,430,768,1024,1440],
+  "source": "explicit_owner_direction_2026_08_31_design_system_1_0_sitewide",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize AnyTour Design System 1.0 and site-wide visual unification. Treat whole-site coherence separately from search-flow engineering quality. Establish and migrate shared tokens, shell, header/navigation, footer, typography, spacing/grid, buttons, cards, breadcrumbs and responsive behavior. Preserve search/recovery/results/comparison/flight/price/fuel/lead regressions. Do not redesign the AnyTour logo, modify Metrika/goals, Tourvisor contract, lead-sending mechanism, verified social/app destinations, or migrate unresolved legal/payment content. Keep PR #254 deferred unless a fresh review proves its separate DB/platform architecture safe."
 }
