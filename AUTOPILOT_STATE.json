@@ -1,29 +1,29 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T02:05:00+02:00",
-  "mode": "design_system_1_0",
-  "phase": "ANYTOUR DESIGN SYSTEM 1.0",
+  "updated_at": "2026-08-31T02:42:00+02:00",
+  "mode": "technical_refactor_pass",
+  "phase": "TECHNICAL REFACTOR PASS",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "design_system_1_0",
-    "rule": "Keep AnyTour Design System 1.0 and site-wide visual unification as priority #1 after emergency correctness overrides unless the owner explicitly changes direction."
+    "planned_phase": "technical_refactor_pass",
+    "rule": "Keep technical-refactor-first active after emergency production/lead/data/user-journey overrides unless the owner explicitly changes direction."
   },
   "current_task": {
-    "id": "DESIGN_SYSTEM_SITE_WIDE_UNIFICATION",
-    "category": "VISUAL",
+    "id": "TECH_REFACTOR_SOURCE_OF_TRUTH_RECOVERY",
+    "category": "TECH_DEBT",
     "status": "ACTIVE",
-    "progress": "Confirmed the shared header is live after removal of the top-level how-to-buy link. Found and fixed a stale live-navigation assertion that still required the removed link; expanded the five-width production navigation sweep to rb, how-to-buy and representative Turkey country page. Runtime, Metrika, lead and Tourvisor contracts remain untouched.",
-    "next_action": "Re-run the expanded production navigation sweep, then audit the full public journey at 375/430/768/1024/1440 and fix only confirmed shell, hierarchy, spacing, wrapping or overflow inconsistencies."
+    "progress": "Recovered explicit technical-refactor-first owner priority after autonomous Design System drift. Runtime, Metrika, lead and Tourvisor contracts are untouched.",
+    "next_action": "Finish exhaustive CI_WORKFLOW_AUDIT.md for remaining workflow families, then continue DEPENDENCY_MAP.md for non-manifest JS/CSS, PHP endpoints/helpers and deploy consumers."
   },
   "work_order": [
-    "verify expanded shared-header production navigation sweep on 375 430 768 1024 1440",
-    "audit home country destination hot search results selected tour lead journey on five target widths",
-    "fix confirmed shell hierarchy spacing wrapping and overflow inconsistencies",
-    "continue shared primitive adoption on visibly divergent editorial pages",
-    "recalculate whole-site visual score only from production evidence",
-    "perform technical consolidation only where it directly supports safe Design System migration"
+    "finish exhaustive GitHub Actions inventory and classify every workflow as PR FAST PR BROWSER POST DEPLOY or SCHEDULED LIVE",
+    "finish dependency map for active compatibility deprecated and dead candidates with concrete consumers",
+    "define safe directory ownership migration for shared search results tour checkout integrations site seo tests scripts templates",
+    "consolidate only proven equivalent CI bootstrap or implementation duplication",
+    "consolidate one shared header footer navigation and design system after consumers are mapped",
+    "return to UX and visual work after technical consolidation"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -32,16 +32,12 @@
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "analytics_contract": "PRESERVE",
     "tourvisor_contract": "PRESERVE",
-    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
-    "logo": "PRESERVE",
-    "verified_social_app_destinations": "PRESERVE",
-    "unresolved_legal_payment_content": "DEFER",
-    "pr_254": "DEFER_UNLESS_FRESH_REVIEW_PROVES_SAFE"
+    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > technical_refactor > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_design_system_slice",
+    "on_ci_success": "continue_to_next_safe_material_technical_refactor_slice",
     "on_blocker": "record_blocker_and_continue_independent_safe_work"
   }
 }
