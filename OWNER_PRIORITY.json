@@ -1,20 +1,20 @@
 {
-  "schema_version": 12,
-  "active_mode": "technical_refactor",
-  "active_phase": "ARCHITECTURE_INVENTORY_AND_CI_CONSOLIDATION",
-  "current_stage": "ARCHITECTURE_SOURCE_OF_TRUTH",
-  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
+  "schema_version": 13,
+  "active_mode": "site_visual_unification",
+  "active_phase": "ANYTOUR_DESIGN_SYSTEM_1_SITE_WIDE",
+  "current_stage": "SHARED_SHELL_AND_WEAK_PAGE_MIGRATION",
+  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 1.0",
   "priority_after_emergency_overrides": [
-    "architecture_source_of_truth",
-    "inventory_dependency_map",
-    "ci_tiering_and_consolidation",
-    "safe_directory_structure",
-    "shared_template_consolidation",
-    "ux_visual",
-    "tour_data_platform",
+    "shared_design_tokens_primitives",
+    "shared_header_navigation_footer",
+    "homepage_country_hot_search_visual_convergence",
+    "editorial_page_migration",
+    "responsive_visual_regression",
+    "search_results_selected_tour_lead_continuity",
+    "technical_consolidation",
     "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_technical_refactor_pass_reconfirmed",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize the technical refactor pass: establish canonical architecture/source of truth and one concept -> one implementation; complete active/compatibility/dead inventory and dependency mapping; classify GitHub Actions into PR FAST, PR BROWSER, POST DEPLOY and SCHEDULED-LIVE and consolidate only with proven equivalent coverage; prepare behavior-preserving shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates ownership structure; then consolidate shared header/footer/navigation/design-system implementations; only after technical consolidation resume UX/visual work. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring project boundaries."
+  "source": "explicit_owner_direction_2026_08_31_site_wide_design_system_1_reconfirmed",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize site-wide AnyTour Design System 1.0 coherence across homepage, search, hot, contacts, how-to-buy, rb, country index and representative country pages. Preserve the mature search flow and converge the rest of the public site onto shared tokens, one header/navigation, one footer, typography, grid/spacing, buttons/cards/breadcrumbs and responsive behavior. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract, verified destinations, AnyTour logo and neighboring project boundaries. Keep unresolved legal/payment content unmigrated and keep PR #254 deferred unless separately proven safe."
 }
