@@ -2,34 +2,20 @@
 
 Updated: 2026-08-31
 
-Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` locks the active technical-refactor phase, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
+Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source and `AUTOPILOT_STATE.json` is the machine-readable resume point.
 
-## Current owner-directed phase — CI COST AUDIT AND TECHNICAL REFACTOR
+## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 1.0
 
-After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is technical consolidation and GitHub Actions cost reduction. The objective is to cut duplicate runner/browser work without weakening the critical contracts around search, prices, tours, flights, recovery and lead submission.
+After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), prioritize site-wide visual unification under AnyTour Design System 1.0. The previous technical-refactor / CI-cost phase is superseded by the current owner direction.
 
-AnyTour Design System 2.0 is the canonical design-system generation. Legacy Design System generation terminology must not be reintroduced. Implementation filenames such as `*-v1.js` / `*-v1.css` are independent module-generation identifiers and must not be mass-renamed without dependency-mapped migration.
+## Material progress
 
-## Ordered work
-
-1. Audit workflows by actual dependency and classify them as PR FAST, PR BROWSER, POST DEPLOY, SCHEDULED-LIVE or consolidate/delete-after-coverage.
-2. Reduce repeated runner starts, `npm init`, Playwright installation and Chromium dependency installation before deleting any unique behavioral coverage.
-3. Consolidate overlapping checks into one domain owner; do not create one workflow per bug/string/selector.
-4. Narrow broad `v2/**` triggers where a workflow does not consume `v2/data/**` or other changed subtrees.
-5. Fold tiny source-string guards into an existing cheap owner where equivalent failure visibility is preserved.
-6. Keep architecture/source-of-truth files synchronized and periodically re-audit the whole search product rather than only recently changed files.
-7. Resume UX/visual work under AnyTour Design System 2.0 after the technical CI phase or when required to preserve a critical user journey.
+The shared shell/header/footer/cards/buttons/breadcrumbs/page gutters are established. Country pages now use one neutral destination hierarchy and a compact live-search handoff with clear availability/flight/price signals; responsive PR visual evidence is green across 375/430/768/1024/1440 and production deploy/search/lead smoke passed.
 
 ## Current resume point
 
-Completed cost reductions include data-only exclusions for several unrelated V2 visual/browser owners, consolidation of the duplicate primary-meal responsive workflow, removal of dormant manual traffic-audit stubs, and consolidation of the pending-flight label source guard into the existing pending-flight confidence owner.
-
-Continue with the broad expensive owners first: `visual-v2-baseline.yml`, then dependency filtering for `validate-v2-pr.yml` / standalone owners, and further browser-suite consolidation where exact coverage overlap is proven. Maintain the target of at least a 2x reduction in routinely triggered PR jobs without weakening money/lead/search/price/tour/flight/recovery protection.
+Run and refine the full journey `homepage → country/destination → hot/search → results → selected tour → lead` at 375/430/768/1024/1440. Fix the next confirmed hierarchy, wrapping, overflow or spacing inconsistency, then continue homepage/hot/editorial hierarchy improvements before cosmetic flourishes.
 
 ## Mandatory protections
 
-Work only inside `pyatkoff/poisk-turov-test`. Do not modify Yandex Metrika configuration or goals. Preserve the Tourvisor contract and the external lead-sending contract/field mapping. Do not modify neighboring projects. Keep GitHub as source of truth.
-
-## Execution policy
-
-At the start of each run inspect fresh `main`, open PRs, recent CI/deploy evidence and the source-of-truth files. Prefer narrow SAFE/MEDIUM consolidation PRs and merge autonomously after green evidence. If blocked, record/defer the blocker and continue another independent technical-refactor or CI-cost task. Do not let visual/design work silently preempt the active technical phase.
+Work only inside `pyatkoff/poisk-turov-test`. Do not redesign or replace the AnyTour logo. Do not modify Yandex Metrika configuration/goals, Tourvisor contract, or external lead-sending contract/field mapping. Preserve verified social/app destinations. Do not migrate unresolved legal/payment content. Keep PR #254 deferred unless a fresh review proves its separate architecture safe.
