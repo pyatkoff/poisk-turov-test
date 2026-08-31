@@ -40,7 +40,7 @@ jobs:
           grep -Fq "v2_render_site_header(\$c['phone'],\$c['phoneHref'],\$c['path'])" v2/site-page-shell-v1.php
           ! grep -Fq '<header class="at-site-header"' v2/index.php
           grep -Fq "['/rb/', 'Раннее бронирование']" v2/site-header-v2.php
-          grep -Fq "['/how-to-buy/', 'Как купить']" v2/site-header-v2.php
+          ! grep -Fq "['/how-to-buy/', 'Как купить']" v2/site-header-v2.php
           grep -Fq "['/country/', 'Страны']" v2/site-header-v2.php
           grep -Fq '@media(max-width:1024px)' v2/site-header-v2.css
           grep -Fq '.at-global-header__mobile{display:block' v2/site-header-v2.css
@@ -55,8 +55,8 @@ jobs:
               fwrite(STDERR, "nested country page must mark Countries in desktop and mobile navigation\n");
               exit(1);
           }
-          if (substr_count($html, 'href="/how-to-buy/"') !== 2) {
-              fwrite(STDERR, "purchase guide must exist in both desktop and mobile navigation\n");
+          if (substr_count($html, 'href="/how-to-buy/"') !== 0) {
+              fwrite(STDERR, "purchase guide must stay outside the canonical top-level header\n");
               exit(2);
           }
           if (str_contains($html, 'href="/poisk-turov/" aria-current="page"')) {
