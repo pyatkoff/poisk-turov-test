@@ -1,18 +1,16 @@
 {
-  "schema_version": 6,
-  "active_mode": "technical_refactor",
-  "active_phase": "CI_COST_AUDIT_AND_CONSOLIDATION",
-  "current_stage": "CI_RESOURCE_CONSOLIDATION",
-  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
+  "schema_version": 5,
+  "active_mode": "design_system_1",
+  "active_phase": "ANYTOUR DESIGN SYSTEM 1.0",
+  "current_stage": "SITE_WIDE_VISUAL_UNIFICATION",
   "priority_after_emergency_overrides": [
-    "technical_refactor",
-    "ci_cost_audit",
-    "architecture_source_of_truth",
-    "ux_visual",
+    "design_system_1",
+    "site_wide_visual_unification",
+    "responsive_shell_and_hierarchy",
+    "cross_page_journey_visual_audit",
     "tour_data_platform",
-    "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_ci_resource_audit",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize technical refactor and GitHub Actions cost consolidation. Reduce duplicate runner/browser work without weakening search, lead, price, tour, flight or recovery coverage. AnyTour Design System 2.0 is the canonical design-system generation, but visual work must not preempt the current technical/CI phase. Preserve Metrika, Tourvisor and lead contracts."
+  "source": "explicit_owner_direction_2026_08_31_design_system_1",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize AnyTour Design System 1.0 and whole-site visual unification across homepage, country/destination, hot/search, results, selected tour and lead. Fix shared shell, spacing, wrapping, overflow, duplicated header/footer and hierarchy before cosmetic flourishes. Preserve the mature search flow and all Metrika, Tourvisor and lead contracts."
 }
