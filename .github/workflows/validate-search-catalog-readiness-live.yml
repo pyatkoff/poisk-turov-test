@@ -1,0 +1,102 @@
+name: Validate search catalog readiness live
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-search-catalog-readiness-live.yml'
+      - 'v2/catalogs-v2.js'
+      - 'v2/catalog-local-routing-v1.js'
+      - 'v2/data/departures-v1.php'
+      - 'v2/data/destinations-v1.php'
+      - 'v2/data/hotels-select-v1.php'
+  workflow_run:
+    workflows: ['Deploy anytoour.ru']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  catalog-readiness:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Verify critical search catalogs reach ready state
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > ./search-catalog-readiness-live.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const cases = [
+            ['mobile-375',375,812],
+            ['mobile-430',430,932],
+            ['tablet-768',768,1024],
+            ['intermediate-1024',1024,900],
+            ['desktop-1440',1440,1000],
+          ];
+          const bad = /Загружаем|Не удалось|недоступен/i;
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            try {
+              for(const [name,width,height] of cases){
+                const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+                const page=await context.newPage();
+                const response=await page.goto('https://anytoour.ru/poisk-turov/',{waitUntil:'domcontentloaded',timeout:45000});
+                if(!response||response.status()!==200) throw new Error(`${name}: HTTP ${response&&response.status()}`);
+                await page.waitForSelector('#tourSearch',{timeout:15000});
+                await page.waitForFunction(()=>{
+                  const form=document.getElementById('tourSearch');
+                  const from=form&&form.elements.from;
+                  const country=form&&form.elements.country;
+                  if(!from||!country||document.querySelector('.catalog-recovery')) return false;
+                  const fromText=String(from.options[from.selectedIndex]?.textContent||'');
+                  const countryText=String(country.options[country.selectedIndex]?.textContent||'');
+                  return Boolean(from.value&&country.value)
+                    && !/Загружаем|Не удалось|недоступен/i.test(fromText)
+                    && !/Загружаем|Не удалось|недоступен/i.test(countryText);
+                },null,{timeout:20000}).catch(async()=>{
+                  const state=await page.evaluate(()=>{
+                    const form=document.getElementById('tourSearch');
+                    const from=form&&form.elements.from;
+                    const country=form&&form.elements.country;
+                    return {
+                      fromValue:from&&from.value,
+                      fromText:from&&from.options[from.selectedIndex]&&from.options[from.selectedIndex].textContent,
+                      countryValue:country&&country.value,
+                      countryText:country&&country.options[country.selectedIndex]&&country.options[country.selectedIndex].textContent,
+                      recovery:document.querySelector('.catalog-recovery')?.textContent?.trim()||'',
+                      source:form&&form.dataset.catalogSource||''
+                    };
+                  });
+                  throw new Error(`${name}: critical catalogs not ready ${JSON.stringify(state)}`);
+                });
+                const state=await page.evaluate(()=>{
+                  const form=document.getElementById('tourSearch');
+                  const from=form.elements.from,country=form.elements.country;
+                  return {
+                    fromValue:from.value,
+                    fromText:String(from.options[from.selectedIndex]?.textContent||'').trim(),
+                    countryValue:country.value,
+                    countryText:String(country.options[country.selectedIndex]?.textContent||'').trim(),
+                    recovery:document.querySelectorAll('.catalog-recovery').length,
+                    source:form.dataset.catalogSource||''
+                  };
+                });
+                if(!state.fromValue||!state.countryValue||state.recovery||bad.test(state.fromText)||bad.test(state.countryText)) throw new Error(`${name}: invalid ready state ${JSON.stringify(state)}`);
+                console.log('SEARCH_CATALOG_READY',name,JSON.stringify(state));
+                await context.close();
+              }
+            } finally { await browser.close(); }
+            console.log('SEARCH_CATALOG_READINESS_LIVE_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node ./search-catalog-readiness-live.cjs
