@@ -1,6 +1,7 @@
 (function(){'use strict';
 async function local(action,params){
     let url='/data/destinations-v1.php',q=new URLSearchParams({action});
+    if(action==='countries'&&params&&params.departureId)q.set('departureId',params.departureId);
     if(action==='regions'&&params&&params.countryId)q.set('countryId',params.countryId);
     if(action==='subregions'&&params&&params.regionId)q.set('regionId',params.regionId);
     if(action==='hotels'){

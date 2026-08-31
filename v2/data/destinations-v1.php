@@ -24,6 +24,22 @@ function destinations_positive_int(mixed $value): ?int
 $action = (string)($_GET['action'] ?? '');
 try {
     $pdo = v2_data_db();
+    if ($action === 'countries') {
+        $departureId = destinations_positive_int($_GET['departureId'] ?? null);
+        if ($departureId === null) destinations_out(['ok'=>true,'items'=>[],'source'=>'anytour-departure-country-matrix']);
+        $stmt = $pdo->prepare("SELECT c.id,c.name
+            FROM catalog_departure_countries dc
+            INNER JOIN catalog_countries c ON c.id=dc.country_id AND c.is_active=1
+            WHERE dc.departure_id=:departure AND dc.is_active=1
+            ORDER BY c.name ASC");
+        $stmt->execute(['departure'=>$departureId]);
+        $items = array_map(static fn(array $r): array => [
+            'id'=>(int)$r['id'],
+            'name'=>(string)$r['name'],
+            'russianName'=>(string)$r['name'],
+        ], $stmt->fetchAll());
+        destinations_out(['ok'=>true,'items'=>$items,'count'=>count($items),'source'=>'anytour-departure-country-matrix']);
+    }
     if ($action === 'regions') {
         $countryId = destinations_positive_int($_GET['countryId'] ?? null);
         if ($countryId === null) destinations_out(['ok'=>true,'items'=>[],'source'=>'anytour-catalog']);
