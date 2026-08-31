@@ -11,6 +11,7 @@ on:
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
       - 'v2/data/rollup-price-daily-v1.php'
+      - 'v2/data/build-seo-offer-snapshots-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
   push:
     branches: [main]
@@ -22,6 +23,7 @@ on:
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
       - 'v2/data/rollup-price-daily-v1.php'
+      - 'v2/data/build-seo-offer-snapshots-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
   schedule:
     - cron: '12 1,7,13,19 * * *'
@@ -63,6 +65,7 @@ jobs:
           php -l v2/data/top-hotels-v1.php
           php -l v2/data/matrix-collector-v1.php
           php -l v2/data/rollup-price-daily-v1.php
+          php -l v2/data/build-seo-offer-snapshots-v1.php
           grep -Fq "['user_search', 'scheduled_monitor', 'hot_tours']" v2/data/price-observer-v1.php
           grep -Fq "'source'=>'scheduled_monitor'" v2/data/scheduled-collector-v1.php
           grep -Fq "array_chunk(\$ids,30)" v2/data/matrix-collector-v1.php
@@ -74,6 +77,7 @@ jobs:
           grep -Fq "'maxHotels'=>5000" v2/data/matrix-collector-v1.php
           grep -Fq "'maxTours'=>50000" v2/data/matrix-collector-v1.php
           grep -Fq 'PRICE_DAILY_ROLLUP_OK' v2/data/rollup-price-daily-v1.php
+          grep -Fq 'SEO_OFFER_SNAPSHOTS_OK' v2/data/build-seo-offer-snapshots-v1.php
           php -r "require 'v2/data/top-hotels-v1.php'; \$ids=v2_priority_hotel_ids(); if (count(\$ids)!==492 || count(array_unique(\$ids))!==492 || \$ids[0]!==22879 || end(\$ids)!==42155) exit(1);"
           php -r "require 'v2/data/price-observer-v1.php'; if (v2_price_observer_source('scheduled_monitor') !== 'scheduled_monitor' || v2_price_observer_limit(99999,100,5000)!==5000) exit(1);"
           echo ANYTOUR_MATRIX_COLLECTOR_TOOLING_OK
@@ -129,6 +133,7 @@ jobs:
             v2/data/top-hotels-v1.php \
             v2/data/matrix-collector-v1.php \
             v2/data/rollup-price-daily-v1.php \
+            v2/data/build-seo-offer-snapshots-v1.php \
             "$remote:$remote_dir/"
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
@@ -139,9 +144,11 @@ jobs:
             php -l \"\$root/top-hotels-v1.php\" >/dev/null
             php -l \"\$root/matrix-collector-v1.php\" >/dev/null
             php -l \"\$root/rollup-price-daily-v1.php\" >/dev/null
+            php -l \"\$root/build-seo-offer-snapshots-v1.php\" >/dev/null
             php \"\$root/migrate-collection-attempts-v1.php\"
             php \"\$root/migrate-matrix-collection-v1.php\"
             php \"\$root/scheduled-collector-v1.php\" --scheduled-search-budget='$BUDGET_VALUE'
             php \"\$root/matrix-collector-v1.php\" --budget='$MATRIX_BUDGET_VALUE' --months='$MATRIX_MONTHS_VALUE'
             php \"\$root/rollup-price-daily-v1.php\" --days=31
+            php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=48 --expires-hours=8 --offers-per-page=10
           "
