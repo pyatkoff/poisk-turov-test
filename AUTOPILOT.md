@@ -19,7 +19,9 @@ After emergency overrides (`production_broken → lead_loss → incorrect_data �
 
 ## Current resume point
 
-Shared header/page-grid, breadcrumb-grid and search-shell alignment slices have reached production with green relevant regression/live evidence. Continue with the full production journey at five widths, starting from the next confirmed visual/hierarchy discontinuity rather than cosmetic churn. Keep the recently fixed hotel field inside advanced filters and preserve its autocomplete behavior.
+Shared header/page-grid, breadcrumb-grid and search-shell alignment slices have reached production with green relevant regression/live evidence. PR #472 removes the next confirmed shared-shell discontinuity: at 768–820px the global community/footer wrappers were capped at 720px while the Design System page grid uses the 760px tablet contract. The PR five-width/relevant validation set completed without failures before merge. Post-merge standalone/V2 deploy and live checks are the release gate for this slice.
+
+Continue with the full production journey at 375/430/768/1024/1440. Re-audit `/`, `/country/` plus a representative country page, `/hot/`, `/poisk-turov/`, results, selected tour and lead first; then `/contacts/`, `/how-to-buy/` and `/rb/`. Fix only confirmed hierarchy, spacing, wrapping, overflow or duplicated-shell regressions. Keep the recently fixed hotel field inside advanced filters and preserve its autocomplete behavior.
 
 ## Mandatory protections
 
