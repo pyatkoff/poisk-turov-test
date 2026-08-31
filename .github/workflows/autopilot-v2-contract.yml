@@ -1,0 +1,43 @@
+name: Autopilot V2 contract
+
+on:
+  pull_request:
+    paths:
+      - 'autopilot-v2/**'
+      - '.github/workflows/autopilot-v2-contract.yml'
+  push:
+    branches: [feature/search-core]
+    paths:
+      - 'autopilot-v2/**'
+      - '.github/workflows/autopilot-v2-contract.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: autopilot-v2-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JSON and lean policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          contract=json.loads(Path('autopilot-v2/project-contract.json').read_text())
+          state=json.loads(Path('autopilot-v2/state.json').read_text())
+          schema=json.loads(Path('autopilot-v2/state.schema.json').read_text())
+          assert contract['design_system']['active']=='AnyTour Design System 2.0'
+          assert 'AnyTour Design System 1.0' in contract['design_system']['obsolete']
+          assert contract['ci_policy']['normal_development']==['Fast CI']
+          assert state['schema_version']==2
+          assert state['mode'] in {'dry_run','active'}
+          assert state['active_task']['state'] in {'discovered','triaged','ready','coding','qa','visual_qa','deploy','production_qa','done','blocked'}
+          assert schema['properties']['schema_version']['const']==2
+          print('AUTOPILOT_V2_CONTRACT_OK')
+          PY
