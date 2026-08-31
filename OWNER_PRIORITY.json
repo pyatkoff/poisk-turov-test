@@ -1,21 +1,23 @@
 {
-  "schema_version": 9,
-  "active_mode": "technical_refactor",
-  "active_phase": "CI_COST_AUDIT_AND_CONSOLIDATION",
-  "current_stage": "ARCHITECTURE_INVENTORY_AND_CI_CONSOLIDATION",
+  "schema_version": 10,
+  "active_mode": "ux_visual",
+  "active_phase": "ANYTOUR_DESIGN_SYSTEM_2_SITE_UNIFICATION",
+  "current_stage": "DS2_REFERENCE_CONVERGENCE",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
+  "canonical_visual_reference": "owner-confirmed composite AnyTour DS2 desktop/mobile mockup supplied 2026-08-31",
   "priority_after_emergency_overrides": [
-    "technical_refactor",
-    "architecture_source_of_truth",
-    "inventory_dependency_map",
-    "ci_cost_audit",
-    "safe_directory_structure",
-    "shared_template_consolidation",
     "ux_visual",
+    "ds2_reference_convergence",
+    "shared_header_footer",
+    "homepage_hero_search",
+    "search_results",
+    "selected_hotel_tour",
+    "destination_hot_editorial",
     "tour_data_platform",
     "content_seo",
+    "technical_refactor",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_technical_refactor_pass",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize the technical refactor pass: architecture/source of truth, full inventory/dependency mapping, CI classification and proven-equivalent consolidation, safe target directory structure, then shared template consolidation. AnyTour Design System 2.0 remains the canonical design-system generation, but UX/visual work follows technical consolidation. Preserve Metrika, Tourvisor, lead contracts and neighboring-project isolation."
+  "source": "explicit_owner_direction_2026_08_31_design_system_2_reference_mockup",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, converge the public product toward the owner-confirmed AnyTour Design System 2.0 mockup rather than polishing contradictory legacy compositions. Technical refactor may support this work but must not preempt the active DS2 visual convergence. Preserve Metrika, Tourvisor and lead contracts, verified destinations and the existing AnyTour logo."
 }

@@ -50,15 +50,15 @@ jobs:
           state=json.loads(Path('AUTOPILOT_STATE.json').read_text())
           lock=json.loads(Path('TECHNICAL_REFACTOR_LOCK.json').read_text())
           version=Path('DESIGN_SYSTEM_VERSION.md').read_text()
-          expected_mode='technical_refactor'
-          expected_phase='CI_COST_AUDIT_AND_CONSOLIDATION'
-          expected_stage='ARCHITECTURE_INVENTORY_AND_CI_CONSOLIDATION'
+          expected_mode='ux_visual'
+          expected_phase='ANYTOUR_DESIGN_SYSTEM_2_SITE_UNIFICATION'
+          expected_stage='DS2_REFERENCE_CONVERGENCE'
           expected_ds='ANYTOUR DESIGN SYSTEM 2.0'
           errors=[]
-          if owner.get('active_mode') != expected_mode or owner.get('active_phase') != expected_phase or owner.get('current_stage') != expected_stage: errors.append('OWNER_PRIORITY drifted from current technical owner direction')
-          if owner.get('canonical_design_system') != expected_ds: errors.append('OWNER_PRIORITY design-system drift')
-          if state.get('mode') != expected_mode or state.get('phase') != expected_phase or (state.get('current_stage') or {}).get('id') != expected_stage or state.get('canonical_design_system') != expected_ds: errors.append('AUTOPILOT_STATE owner-direction drift')
-          if lock.get('active') is not True or lock.get('status') != 'ACTIVE_OWNER_DIRECTION': errors.append('technical-refactor lock is not active')
+          if owner.get('active_mode') != expected_mode or owner.get('active_phase') != expected_phase or owner.get('current_stage') != expected_stage: errors.append('OWNER_PRIORITY drifted from current DS2 reference direction')
+          if owner.get('canonical_design_system') != expected_ds or not owner.get('canonical_visual_reference'): errors.append('OWNER_PRIORITY DS2 reference drift')
+          if state.get('mode') != expected_mode or state.get('phase') != expected_phase or (state.get('current_stage') or {}).get('id') != expected_stage or state.get('canonical_design_system') != expected_ds or not state.get('canonical_visual_reference'): errors.append('AUTOPILOT_STATE owner-direction drift')
+          if lock.get('active') is not False or lock.get('status') != 'INACTIVE_SUPERSEDED_BY_OWNER_DIRECTION': errors.append('superseded technical-refactor lock was reactivated')
           if lock.get('canonical_design_system') != expected_ds: errors.append('technical-refactor lock design-system drift')
           if '# AnyTour Design System 2.0' not in version: errors.append('canonical Design System 2.0 declaration was removed')
           if 'Design System 1.0 terminology is not valid current terminology' not in version: errors.append('legacy Design System 1.0 rollback protection missing')
@@ -66,5 +66,5 @@ jobs:
               print('OWNER_DIRECTION_SECURITY_GUARD_FAIL')
               for error in errors: print('-', error)
               raise SystemExit(1)
-          print('OWNER_DIRECTION_SECURITY_GUARD_OK mode=technical_refactor design_system=2.0')
+          print('OWNER_DIRECTION_SECURITY_GUARD_OK mode=ux_visual stage=DS2_REFERENCE_CONVERGENCE design_system=2.0')
           PY

@@ -1,13 +1,14 @@
 {
-  "schema_version": 9,
+  "schema_version": 10,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T14:49:00+02:00",
-  "mode": "technical_refactor",
-  "phase": "CI_COST_AUDIT_AND_CONSOLIDATION",
+  "updated_at": "2026-08-31T23:20:00+02:00",
+  "mode": "ux_visual",
+  "phase": "ANYTOUR_DESIGN_SYSTEM_2_SITE_UNIFICATION",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
+  "canonical_visual_reference": "owner-confirmed composite AnyTour DS2 desktop/mobile mockup supplied 2026-08-31",
   "owner_priority_source": "OWNER_PRIORITY.json",
-  "owner_priority_lock": {"active": true, "planned_phase": "technical_refactor", "rule": "Keep the technical refactor pass first after emergency correctness overrides until explicit owner change. Preserve Design System 2.0 as canonical terminology while deferring UX/visual work until technical consolidation completes."},
-  "current_stage": {"id": "ARCHITECTURE_INVENTORY_AND_CI_CONSOLIDATION", "name": "Unify architecture, inventory and CI ownership", "status": "ACTIVE", "next_action": "Keep ARCHITECTURE.md and TEST_MATRIX.md authoritative, enforce one concept to one implementation, complete active/compatibility/dead inventory and dependency mapping, classify Actions as PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE, and consolidate only after equivalent coverage is proven."},
+  "owner_priority_lock": {"active": true, "planned_phase": "ux_visual", "rule": "Converge toward the confirmed Design System 2.0 mockup after emergency correctness overrides. Do not restore technical-refactor as the primary phase unless the owner explicitly changes direction."},
+  "current_stage": {"id": "DS2_REFERENCE_CONVERGENCE", "name": "Converge public product with owner-confirmed DS2 mockup", "status": "ACTIVE", "next_action": "Align shared header/footer and homepage hero/search composition to the confirmed DS2 reference first; then /poisk-turov/ search shell/results, selected hotel/tour, and country/hot/editorial pages. Validate 375/430/768/1024/1440 and preserve all functional contracts."},
   "protected": {"repository_scope":"pyatkoff/poisk-turov-test only","other_projects":"DO_NOT_MODIFY","metrika_configuration":"DO_NOT_MODIFY","metrika_goals":"DO_NOT_MODIFY","tourvisor_contract":"PRESERVE","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING","anytour_logo":"PRESERVE","verified_social_app_destinations":"PRESERVE","unresolved_legal_payment_content":"DO_NOT_MIGRATE","design_system_generation":"ANYTOUR DESIGN SYSTEM 2.0","implementation_v1_suffixes":"DO_NOT_MASS_RENAME_WITHOUT_DEPENDENCY_MIGRATION","pr_254":"DEFERRED_PENDING_FRESH_ARCHITECTURE_REVIEW"},
-  "continuation_policy": {"priority":"production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > architecture_source_of_truth > inventory_dependency_map > ci_cost_audit > safe_directory_structure > shared_template_consolidation > ux_visual > tour_data_platform > content_seo > cosmetic_cleanup","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_blocker":"record/defer blocker and continue an independent safe technical-refactor task"}
+  "continuation_policy": {"priority":"production_broken > lead_loss > incorrect_data > broken_user_journey > ds2_reference_convergence > ux_visual > site_wide_unification > tour_data_platform > content_seo > technical_refactor > cosmetic_cleanup","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_blocker":"record/defer blocker and continue an independent safe visual or product task"}
 }
