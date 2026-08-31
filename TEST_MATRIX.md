@@ -6,6 +6,16 @@ This document defines what each test tier is for. The existing workflow set is i
 
 Verified workflow-by-workflow evidence is maintained in `CI_WORKFLOW_AUDIT.md`. This file remains the canonical policy/source-of-truth for test tiers and protected coverage.
 
+## Test ownership rule
+
+Each protected behavior must have one primary test owner and may have additional tier-specific evidence only when the evidence answers a different question. A second workflow must not exist merely because a second implementation or historical file generation exists.
+
+For every behavior under consolidation, the audit must identify:
+
+`behavior → canonical implementation → primary test owner → PR tier → post-deploy/live owner (if required) → compatibility coverage → replacement evidence required before deletion`.
+
+If two workflows protect the same behavior with equivalent trigger scope, environment and assertions, they are consolidation candidates. They remain in place until the audit records equivalent-or-stronger replacement coverage. CI ownership follows the canonical implementation defined by `ARCHITECTURE.md`; compatibility implementations may keep focused coverage only while a proven compatibility consumer remains.
+
 ## Test tiers
 
 ### PR FAST
