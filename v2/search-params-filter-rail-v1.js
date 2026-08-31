@@ -5,43 +5,51 @@ const main=form.querySelector('.main-fields');
 const extraGrid=details.querySelector(':scope > .extra-grid');
 const summary=details.querySelector(':scope > summary');
 const servicePicker=details.querySelector('.service-picker');
+let normalized=false;
 
+function restoreSelect(select,classes){
+  if(!select)return;
+  classes.forEach(name=>select.classList.remove(name));
+  select.removeAttribute('aria-hidden');
+  select.tabIndex=0;
+}
+function moveFilter(name,beforeName,fieldClass,quickSelector,selectClasses){
+  const select=form.elements[name],field=select&&select.closest('.field');if(!select||!field||!extraGrid)return;
+  field.classList.remove('field-wide','main-stars','main-meal','primary-step','primary-step-6','primary-step-7');
+  field.classList.add(fieldClass);
+  const quick=field.querySelector(quickSelector);if(quick)quick.hidden=true;
+  restoreSelect(select,selectClasses);
+  const before=form.elements[beforeName],beforeField=before&&before.closest('.field');
+  if(beforeField&&beforeField.parentElement===extraGrid)extraGrid.insertBefore(field,beforeField);else extraGrid.appendChild(field);
+}
 function normalizePrimaryLayout(){
   if(!main||!extraGrid)return;
-  const stars=form.elements.stars;
-  const starsField=stars&&stars.closest('.field');
-  if(starsField){
-    starsField.classList.remove('field-wide','main-stars','primary-step','primary-step-6');
-    starsField.classList.add('result-filter-stars');
-    const quick=starsField.querySelector('.stars-quick');
-    if(quick)quick.hidden=true;
-    if(stars){stars.classList.remove('ux-native-hidden');stars.removeAttribute('aria-hidden');stars.tabIndex=0;}
-    const rating=form.elements.rating;
-    const ratingField=rating&&rating.closest('.field');
-    if(ratingField&&ratingField.parentElement===extraGrid)extraGrid.insertBefore(starsField,ratingField);else extraGrid.appendChild(starsField);
-  }
+  moveFilter('stars','rating','result-filter-stars','.stars-quick',['ux-native-hidden']);
+  moveFilter('food','price_from','result-filter-meal','.meal-quick',['meal-native-select','ux-native-hidden']);
   [...main.querySelectorAll('.primary-step')].forEach((field,i)=>{
-    field.classList.remove('primary-step-1','primary-step-2','primary-step-3','primary-step-4','primary-step-5','primary-step-6');
+    field.classList.remove('primary-step-1','primary-step-2','primary-step-3','primary-step-4','primary-step-5','primary-step-6','primary-step-7');
     field.classList.add('primary-step-'+(i+1));
   });
   const title=form.querySelector('.search-section-title');
   if(title)title.innerHTML='<span>Параметры поездки</span><small>Маршрут, даты, длительность и туристы</small>';
   form.classList.add('search-params-filter-split');
   details.classList.add('result-filter-rail');
+  normalized=true;
 }
-
 function keepFilterLabel(){
   if(!summary)return;
   const strong=summary.querySelector('strong');
   if(strong&&strong.textContent!=='Фильтры результатов')strong.textContent='Фильтры результатов';
 }
+function scheduleNormalize(){setTimeout(()=>{normalizePrimaryLayout();keepFilterLabel();},0);}
 
-normalizePrimaryLayout();
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scheduleNormalize,{once:true});else scheduleNormalize();
 keepFilterLabel();
-if(summary&&typeof MutationObserver!=='undefined')new MutationObserver(keepFilterLabel).observe(summary,{childList:true,subtree:true,characterData:true});
+if(summary&&typeof MutationObserver!=='undefined')new MutationObserver(()=>{keepFilterLabel();if(normalized){const stars=form.elements.stars,food=form.elements.food;if(stars&&main.contains(stars.closest('.field')))scheduleNormalize();if(food&&main.contains(food.closest('.field')))scheduleNormalize();}}).observe(summary,{childList:true,subtree:true,characterData:true});
 
 let revealed=false;
 window.addEventListener('v2:results-rendered',()=>{
+  if(!normalized)scheduleNormalize();
   if(revealed||window.innerWidth<821)return;
   revealed=true;
   details.open=true;
