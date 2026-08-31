@@ -18,6 +18,18 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Validate explicit pending price label source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          const fs=require('fs');
+          const src=fs.readFileSync('v2/unpriced-flight-price-reset-v1.js','utf8');
+          if(!src.includes("label.textContent='Цена уточняется'")) throw new Error('pending price label missing');
+          if(!src.includes('clarifyPendingLabels();')) throw new Error('pending label normalization not invoked on flight-selected');
+          if(!src.includes("/[0-9]/.test(text)")) throw new Error('priced variants are not protected');
+          console.log('PENDING_FLIGHT_LABEL_OK');
+          JS
       - name: Verify base, priced and pending selected-flight confidence states
         shell: bash
         run: |
