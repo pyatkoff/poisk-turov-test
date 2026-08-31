@@ -2,34 +2,31 @@
 
 Updated: 2026-08-31
 
-Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` locks the active technical-refactor phase, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
+Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source and `AUTOPILOT_STATE.json` is the machine-readable resume point.
 
-## Current owner-directed phase — CI COST AUDIT AND TECHNICAL REFACTOR
+## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 1.0
 
-After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is technical consolidation and GitHub Actions cost reduction. The objective is to cut duplicate runner/browser work without weakening the critical contracts around search, prices, tours, flights, recovery and lead submission.
+After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is site-wide visual unification under AnyTour Design System 1.0. The whole public site must read as one coherent product from homepage and destination pages through hot/search, results, selected tour and lead.
 
-AnyTour Design System 2.0 is the canonical design-system generation. Legacy Design System generation terminology must not be reintroduced. Implementation filenames such as `*-v1.js` / `*-v1.css` are independent module-generation identifiers and must not be mass-renamed without dependency-mapped migration.
+The previous technical-refactor / CI-cost phase is superseded by the current owner direction. CI consolidation remains useful supporting work but must not preempt confirmed visual, responsive or cross-page coherence gaps.
 
 ## Ordered work
 
-1. Audit workflows by actual dependency and classify them as PR FAST, PR BROWSER, POST DEPLOY, SCHEDULED-LIVE or consolidate/delete-after-coverage.
-2. Reduce repeated runner starts, `npm init`, Playwright installation and Chromium dependency installation before deleting any unique behavioral coverage.
-3. Consolidate overlapping checks into one domain owner; do not create one workflow per bug/string/selector.
-4. Narrow broad `v2/**` triggers where a workflow does not consume `v2/data/**` or other changed subtrees.
-5. Fold tiny source-string guards into an existing cheap owner where equivalent failure visibility is preserved.
-6. Keep architecture/source-of-truth files synchronized and periodically re-audit the whole search product rather than only recently changed files.
-7. Resume UX/visual work under AnyTour Design System 2.0 after the technical CI phase or when required to preserve a critical user journey.
+1. Unify shared design tokens/primitives, header/navigation, footer, typography, grid/spacing, buttons, cards, breadcrumbs and responsive behavior across the public site.
+2. Strengthen `/country/` and representative country pages, keeping editorial pages clear and lighter than the search product while improving handoff into live search.
+3. Audit and refine `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/` where route-specific hierarchy still drifts from the shared shell.
+4. Validate the full journey `homepage → country/destination → hot/search → results → selected tour → lead` at 375/430/768/1024/1440.
+5. Fix confirmed wrapping, overflow, crooked spacing, duplicated shell and hierarchy defects before decorative flourishes.
+6. Continue data/SEO and technical work only after higher-priority visual/product gaps or when required for reliability.
 
 ## Current resume point
 
-Completed cost reductions include data-only exclusions for several unrelated V2 visual/browser owners, consolidation of the duplicate primary-meal responsive workflow, removal of dormant manual traffic-audit stubs, and consolidation of the pending-flight label source guard into the existing pending-flight confidence owner.
-
-Continue with the broad expensive owners first: `visual-v2-baseline.yml`, then dependency filtering for `validate-v2-pr.yml` / standalone owners, and further browser-suite consolidation where exact coverage overlap is proven. Maintain the target of at least a 2x reduction in routinely triggered PR jobs without weakening money/lead/search/price/tour/flight/recovery protection.
+The shared shell, header/navigation, footer, common cards/buttons/breadcrumbs and responsive page gutters already cover the main standalone routes. Resume at the country/destination layer: remove route-specific hierarchy drift, strengthen the destination-to-live-search handoff and verify all representative country pages at the required widths. Then run the full cross-page product journey and address the next confirmed inconsistency.
 
 ## Mandatory protections
 
-Work only inside `pyatkoff/poisk-turov-test`. Do not modify Yandex Metrika configuration or goals. Preserve the Tourvisor contract and the external lead-sending contract/field mapping. Do not modify neighboring projects. Keep GitHub as source of truth.
+Work only inside `pyatkoff/poisk-turov-test`. Do not redesign or replace the AnyTour logo. Do not modify Yandex Metrika configuration/goals, the Tourvisor contract, or the external lead-sending contract/field mapping. Preserve verified social/app destinations. Do not modify neighboring projects. Do not migrate unresolved legal/payment content. Keep PR #254 deferred unless a fresh review proves its separate architecture safe.
 
 ## Execution policy
 
-At the start of each run inspect fresh `main`, open PRs, recent CI/deploy evidence and the source-of-truth files. Prefer narrow SAFE/MEDIUM consolidation PRs and merge autonomously after green evidence. If blocked, record/defer the blocker and continue another independent technical-refactor or CI-cost task. Do not let visual/design work silently preempt the active technical phase.
+At the start of each run inspect fresh `main`, open PRs, recent CI/deploy evidence, production/live behavior where accessible and the source-of-truth files. Prefer independent SAFE/MEDIUM visual improvements, validate user-facing work at 375/430/768/1024/1440, merge only after relevant checks are green, then verify production behavior. If blocked, record/defer the blocker and continue another safe task.
