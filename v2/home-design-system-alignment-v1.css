@@ -1,0 +1,23 @@
+/* Homepage Design System 1.0 alignment: keep route-specific composition while consuming shared brand/surface/radius/spacing primitives. */
+.at-home-main{color:var(--at-ink);font-family:var(--at-font)}
+.at-home-hero{background:var(--at-hero-bg)}
+.at-home-search{border-color:var(--at-line);background:var(--at-surface);border-radius:var(--at-radius-xl)}
+.at-home-field>span{color:var(--at-muted)}
+.at-home-field select,.at-home-field input{border-color:var(--at-line);border-radius:var(--at-control-radius);color:var(--at-text)}
+.at-home-search button{background:var(--at-accent);border-radius:var(--at-control-radius)}
+.at-home-search__more{color:var(--at-brand)}
+.at-home-section{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))}
+.at-home-section--discovery{margin-top:var(--at-section-space);margin-bottom:var(--at-section-space)}
+.at-home-section--discovery .at-home-section__head{margin-bottom:var(--at-space-5)}
+.at-home-section--discovery .at-home-direction-grid{gap:var(--at-section-card-gap)}
+.at-home-direction{border-color:var(--at-line);border-radius:var(--at-radius-lg);color:var(--at-ink);background:linear-gradient(145deg,var(--at-soft-blue),var(--at-surface) 66%)}
+.at-home-direction:after{color:var(--at-brand)}
+.at-home-direction--primary{background:linear-gradient(145deg,var(--at-brand-dark),var(--at-brand));border-color:transparent;color:#fff;box-shadow:var(--at-shadow-md)}
+.at-home-direction--primary span{color:rgba(255,255,255,.8)}
+.at-home-direction--primary:after{color:#fff}
+.at-home-benefit{border-color:var(--at-line);border-radius:var(--at-radius-xl);background:linear-gradient(180deg,var(--at-surface),#fbfcff)}
+.at-home-benefit:before{background:var(--at-soft-blue);color:var(--at-brand)}
+.at-home-section__head p,.at-home-benefit p,.at-home-direction span{color:var(--at-muted)}
+.at-home-search button:focus-visible,.at-home-search__more:focus-visible,.at-home-direction:focus-visible{outline:3px solid var(--at-focus);outline-offset:3px}
+@media(max-width:900px){.at-home-section{width:min(calc(100% - var(--at-page-gutter)),760px)}}
+@media(max-width:560px){.at-home-section{width:calc(100% - var(--at-page-gutter))}.at-home-section--discovery{margin-top:var(--at-section-space);margin-bottom:var(--at-section-space)}.at-home-direction--primary{min-height:132px}}
