@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot Roadmap
 
-Updated: 2026-08-31
+Updated: 2026-09-01
 
 Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source and `AUTOPILOT_STATE.json` is the machine-readable resume point. Architecture is owned by `ARCHITECTURE.md`; CI/test ownership is owned by `TEST_MATRIX.md`.
 
@@ -43,7 +43,9 @@ PR #628 fixed a confirmed `/rb/` layout defect: the markup already used `sp-step
 
 PR #629 fixed a shared country-page DS2 regression. `country-page-v1.php` correctly renders the country intent title as an `h1`, while the old country-intent styling still targeted `h2`; representative country pages therefore missed the intended title scale, margins and wrapping. The later DS2 convergence layer now owns the actual `h1`, including the narrow-screen size. All PR checks passed, including visual checks. The final standalone deployment containing both #628 and #629 passed public-page verification, unchanged production lead-bridge verification and live search smoke.
 
-Next: return to the higher-priority search/results path and re-audit the desktop filter rail plus full-search filter lifecycle on current `main`. Make only confirmed DS2 spacing/wrapping/overflow or search-generation fixes. In parallel, visually sample `/country/`, `/country/turkey/` and another representative country page at 375/430/768/1024/1440 before any further editorial change.
+PR #636 fixed the remaining confirmed tablet breakpoint gap in full-search advanced filters. The mobile sheet owns <=700px and the established desktop DS2 rail owns >=821px, but 701–820px—including the required 768px audit width—was falling back to older generic geometry. A dedicated two-column DS2 tablet layer now provides the same hierarchy, wrapping/min-width discipline, flight toggles, hotel-service section and reset action without changing search lifecycle or filter semantics. The strict startup bundle contract was extended to 35 CSS source inputs while preserving one CSS startup request. All 21 PR checks passed, including the 375/430/768/1024/1440 visual suites. V2 production passed Verify V2 and Live search smoke; standalone/public deployment passed public pages, unchanged lead bridge and Live search smoke. `/hot/` and `/how-to-buy/` were re-audited in the same session and no new confirmed structural defect justified speculative edits.
+
+Next: continue search/results-first convergence. Inspect the results toolbar, hotel/tour cards and full-search filter lifecycle at 768/1024/1440 for confirmed DS2 wrapping, overflow or search-generation defects. In parallel, visually sample `/country/`, `/country/turkey/` and another representative country page at 375/430/768/1024/1440. Do not change `/hot/` or `/how-to-buy/` again without a new confirmed defect.
 
 ## Mandatory protections
 
