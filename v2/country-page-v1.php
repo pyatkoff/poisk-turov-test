@@ -63,14 +63,13 @@ function cp_render(array $page): void
         ['label' => 'Страны', 'href' => '/country/'],
         ['label' => 'Туры в ' . $name],
     ]);
-    sp_hero('AnyTour · направление', 'Туры в ' . $name, $intro);
     ?>
     <main class="sp-main sp-country-page">
-      <section class="sp-country-intent" aria-labelledby="country-intent-title">
+      <section class="sp-country-intent sp-country-intent--hero" aria-labelledby="country-intent-title">
         <div class="sp-country-intent__copy">
-          <span class="sp-country-intent__eyebrow">Живой поиск AnyTour</span>
-          <h2 id="country-intent-title">Сразу к актуальным турам</h2>
-          <p>Выберите даты, длительность и состав туристов — поиск покажет доступные отели, варианты перелёта и итоговую цену.</p>
+          <span class="sp-country-intent__eyebrow">AnyTour · направление</span>
+          <h1 id="country-intent-title">Туры в <?=sp_e($name)?></h1>
+          <p><?=sp_e($intro)?></p>
           <ul class="sp-country-intent__signals" aria-label="Что можно проверить в поиске">
             <li>Актуальные предложения</li>
             <li>Перелёт и багаж, когда доступны</li>
@@ -78,13 +77,17 @@ function cp_render(array $page): void
           </ul>
           <div class="sp-actions"><a class="sp-primary" href="<?=sp_e($searchHref)?>"><?=sp_e($searchLabel)?></a><a class="sp-secondary" href="/contacts/">Помочь с выбором</a></div>
         </div>
-        <?php if ($resorts): ?>
-        <div class="sp-country-intent__resorts" aria-label="Популярные курорты">
-          <span class="sp-country-intent__label">Популярные курорты</span>
-          <div class="sp-resort-list"><?php foreach ($resorts as $resort): ?><span class="sp-resort-chip"><?=sp_e($resort)?></span><?php endforeach; ?></div>
-          <p>Можно начать со страны целиком, а курорт уточнить в фильтрах поиска.</p>
+        <div class="sp-country-intent__visual" data-country-visual-slot aria-label="Популярные курорты направления">
+          <div class="sp-country-intent__visual-label">Направление AnyTour</div>
+          <?php if ($resorts): ?>
+          <div class="sp-country-intent__resorts">
+            <span class="sp-country-intent__label">Популярные курорты</span>
+            <div class="sp-resort-list"><?php foreach ($resorts as $resort): ?><span class="sp-resort-chip"><?=sp_e($resort)?></span><?php endforeach; ?></div>
+          </div>
+          <?php else: ?>
+          <div class="sp-country-intent__resorts"><span class="sp-country-intent__label">Подбор по всей стране</span><p>Выберите даты и параметры поездки — актуальные курорты и отели появятся в поиске.</p></div>
+          <?php endif; ?>
         </div>
-        <?php endif; ?>
       </section>
       <?php if ($facts): ?>
       <section aria-labelledby="country-guide-title">
