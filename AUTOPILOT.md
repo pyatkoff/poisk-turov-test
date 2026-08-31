@@ -35,9 +35,15 @@ PR #622 strengthened homepage discovery hierarchy on wide desktop. The primary `
 
 PR #623 improved `/hot/` offer scanning without changing hot-inventory or search semantics. Route/date/nights metadata and factual price are now distinct DS2 hierarchy elements, with the price clearly scannable before the existing verification CTA. PR bundle/security/visual checks passed, and standalone production deployment passed public-page verification, unchanged production lead-bridge verification and live search smoke.
 
-PR #624 corrected the four-office `/contacts/` desktop layout from an awkward generic 3+1 grid to the existing balanced two-column DS2 editorial primitive. Focused guard/content/V2/bundle checks passed before merge; production verification is the next resume checkpoint.
+PR #624 corrected the four-office `/contacts/` desktop layout from an awkward generic 3+1 grid to the existing balanced two-column DS2 editorial primitive. Its production deployment completed successfully and passed public-page verification, unchanged production lead-bridge verification and live search smoke.
 
-Next: verify PR #624 production deployment, then continue the editorial route audit through `/how-to-buy/`, `/rb/` and representative country pages. Make only confirmed DS2 hierarchy/spacing/wrapping/shared-shell fixes, validate relevant 375/430/768/1024/1440 behavior, and keep search/results/selected-tour/lead contracts unchanged.
+`/how-to-buy/` was re-audited before changing it. The shared `.sp-step` primitive already renders explicit step numbering, so the proposed extra numbering layer in PR #626 was identified as non-material duplication and closed without merge.
+
+PR #628 fixed a confirmed `/rb/` layout defect: the markup already used `sp-steps--summary`, but there was no layout rule for that primitive, leaving the three summary cards stacked on wide screens. The DS2 editorial owner now renders the summary as three columns from 901px while preserving stacked tablet/mobile behavior. Its standalone deployment was cancelled only because the immediately following main deployment superseded it.
+
+PR #629 fixed a shared country-page DS2 regression. `country-page-v1.php` correctly renders the country intent title as an `h1`, while the old country-intent styling still targeted `h2`; representative country pages therefore missed the intended title scale, margins and wrapping. The later DS2 convergence layer now owns the actual `h1`, including the narrow-screen size. All PR checks passed, including visual checks. The final standalone deployment containing both #628 and #629 passed public-page verification, unchanged production lead-bridge verification and live search smoke.
+
+Next: return to the higher-priority search/results path and re-audit the desktop filter rail plus full-search filter lifecycle on current `main`. Make only confirmed DS2 spacing/wrapping/overflow or search-generation fixes. In parallel, visually sample `/country/`, `/country/turkey/` and another representative country page at 375/430/768/1024/1440 before any further editorial change.
 
 ## Mandatory protections
 
