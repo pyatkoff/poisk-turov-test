@@ -39,3 +39,29 @@ jobs:
             exit 1
           fi
           echo "SECURITY_GUARD_OK"
+      - name: Protect current owner direction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          owner=json.loads(Path('OWNER_PRIORITY.json').read_text())
+          state=json.loads(Path('AUTOPILOT_STATE.json').read_text())
+          lock=json.loads(Path('TECHNICAL_REFACTOR_LOCK.json').read_text())
+          version=Path('DESIGN_SYSTEM_VERSION.md').read_text()
+          expected_mode='ux_visual'
+          expected_phase='ANYTOUR_DESIGN_SYSTEM_1_SITE_UNIFICATION'
+          expected_ds='ANYTOUR DESIGN SYSTEM 1.0'
+          errors=[]
+          if owner.get('active_mode') != expected_mode or owner.get('active_phase') != expected_phase: errors.append('OWNER_PRIORITY drifted from current visual owner direction')
+          if owner.get('canonical_design_system') != expected_ds: errors.append('OWNER_PRIORITY design-system drift')
+          if state.get('mode') != expected_mode or state.get('phase') != expected_phase or state.get('canonical_design_system') != expected_ds: errors.append('AUTOPILOT_STATE owner-direction drift')
+          if lock.get('active') is not False: errors.append('superseded technical-refactor lock was reactivated')
+          if 'AnyTour Design System 1.0' not in version: errors.append('canonical Design System 1.0 declaration was removed')
+          if errors:
+              print('OWNER_DIRECTION_SECURITY_GUARD_FAIL')
+              for error in errors: print('-', error)
+              raise SystemExit(1)
+          print('OWNER_DIRECTION_SECURITY_GUARD_OK')
+          PY

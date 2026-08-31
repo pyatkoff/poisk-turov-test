@@ -42,7 +42,7 @@ jobs:
           }
           check_page '/contacts/' 'Свяжитесь с AnyTour' 'https://anytoour.ru/contacts/'
           check_page '/how-to-buy/' 'Как купить тур онлайн' 'https://anytoour.ru/how-to-buy/'
-          check_page '/hot/' 'Горящие туры без рекламной магии' 'https://anytoour.ru/hot/'
+          check_page '/hot/' 'Горящие туры из живых поисков' 'https://anytoour.ru/hot/'
           check_page '/country/' 'Туры по странам' 'https://anytoour.ru/country/'
           check_page '/rb/' 'Раннее бронирование без спешки' 'https://anytoour.ru/rb/'
           check_page '/country/turkey/' 'Туры в Турцию' 'https://anytoour.ru/country/turkey/'
