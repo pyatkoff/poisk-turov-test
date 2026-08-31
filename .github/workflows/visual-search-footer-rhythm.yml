@@ -5,7 +5,10 @@ on:
     branches: [main]
     paths:
       - 'v2/search-footer-rhythm-v1.css'
+      - 'v2/site-footer-v1.php'
       - 'v2/site-footer-v1.css'
+      - 'v2/phone-value.php'
+      - 'v2/phone-config.php'
       - 'v2/bundle-manifest-v1.php'
       - '.github/workflows/visual-search-footer-rhythm.yml'
   workflow_dispatch:
@@ -19,6 +22,39 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Validate footer PHP, phone normalization and verified destinations
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/phone-value.php
+          php -l v2/site-footer-v1.php
+          php <<'PHP'
+          <?php
+          $params=['PHONE'=>[['DISPLAY_VALUE'=>'8 (800) 100 - 61 - 50']]];
+          require 'v2/site-footer-v1.php';
+          function footer_fail($message){fwrite(STDERR,"V2_FOOTER_FAIL:$message\n");exit(1);}
+
+          if(($params['PHONE']??null)!=='8 (800) 100 - 61 - 50') footer_fail('request_phone_not_normalized');
+          $nested=['PHONE'=>[['DISPLAY_VALUE'=>'8 (800) 100 - 61 - 50']]];
+          if(v2_site_phone($nested)!=='8 (800) 100 - 61 - 50') footer_fail('nested_phone_not_resolved');
+          if(v2_phone_href(v2_site_phone($nested))!=='88001006150') footer_fail('nested_phone_href');
+          if(v2_find_phone(['VALUE'=>['TEXT'=>'8 (800) 100-61-50']])!=='8 (800) 100-61-50') footer_fail('recursive_phone_not_resolved');
+
+          ob_start(); v2_render_site_footer('8 (800) 100-61-50','88001006150'); $html=ob_get_clean();
+          $required=[
+            'https://max.ru/anytour',
+            'https://t.me/+gGloLUt4d8s3NDcy',
+            'https://vk.com/anytour_online',
+            'https://apps.apple.com/ru/app/anytour-%D0%B3%D0%BE%D1%80%D1%8F%D1%89%D0%B8%D0%B5-%D1%82%D1%83%D1%80%D1%8B/id6753017465',
+            'https://play.google.com/store/apps/details?id=online.anytour',
+          ];
+          foreach($required as $url){if(!str_contains($html,'href="'.$url.'"')) footer_fail('url_missing_'.$url);}
+          if(substr_count($html,'rel="noopener noreferrer"')!==5) footer_fail('external_rel');
+          if(substr_count($html,'<svg')<5) footer_fail('brand_icons_missing');
+          if(str_contains($html,'ym(')||str_contains($html,'metrika')) footer_fail('analytics_leak');
+          file_put_contents('/tmp/footer-fragment.html',$html);
+          echo "V2_SOCIAL_APP_FOOTER_URLS_OK phoneNormalization=1 brandIcons=1\n";
+          PHP
       - name: Install Chromium
         shell: bash
         run: |
@@ -26,6 +62,43 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
+      - name: Validate responsive footer layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > ./validate-footer.cjs <<'JS'
+          const {chromium}=require('playwright');
+          const fs=require('fs');
+          const css=fs.readFileSync('v2/site-footer-v1.css','utf8');
+          const fragment=fs.readFileSync('/tmp/footer-fragment.html','utf8');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            for(const [name,width,height] of [['mobile',375,812],['tablet',768,900],['desktop',1440,1000]]){
+              const page=await browser.newPage({viewport:{width,height}});
+              await page.setContent(`<style>*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif}${css}</style>${fragment}`);
+              const state=await page.evaluate(()=>{
+                const footer=document.querySelector('.v2-site-community');
+                const external=[...footer.querySelectorAll('.v2-site-community__socials a,.v2-site-community__apps a')];
+                return {
+                  overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
+                  external:external.length,
+                  outside:external.some(a=>{const r=a.getBoundingClientRect();return r.left<-1||r.right>innerWidth+1;}),
+                  minHeight:Math.min(...external.map(a=>a.getBoundingClientRect().height)),
+                  apps:footer.querySelectorAll('.v2-site-community__app').length,
+                  socials:footer.querySelectorAll('.v2-site-community__socials a').length,
+                  icons:footer.querySelectorAll('svg').length
+                };
+              });
+              if(state.external!==5||state.apps!==2||state.socials!==3||state.icons<5)throw new Error(name+': destination/icon count '+JSON.stringify(state));
+              if(state.overflow||state.outside)throw new Error(name+': footer overflow '+JSON.stringify(state));
+              if(name==='mobile'&&state.minHeight<43.5)throw new Error(name+': touch target too small '+JSON.stringify(state));
+              console.log('V2_SOCIAL_APP_FOOTER_LAYOUT_OK',name);
+              await page.close();
+            }
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node ./validate-footer.cjs
       - name: Build branch bundles
         shell: bash
         run: |
