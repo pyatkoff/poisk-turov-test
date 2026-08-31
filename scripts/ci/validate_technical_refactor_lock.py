@@ -8,29 +8,27 @@ owner = json.loads((root / "OWNER_PRIORITY.json").read_text(encoding="utf-8"))
 state = json.loads((root / "AUTOPILOT_STATE.json").read_text(encoding="utf-8"))
 autopilot = (root / "AUTOPILOT.md").read_text(encoding="utf-8")
 
-EXPECTED_OWNER_MODE = "design_system_1_0_site_unification"
-EXPECTED_OWNER_PHASE = "ANYTOUR DESIGN SYSTEM 1.0 / SITE-WIDE VISUAL UNIFICATION"
-EXPECTED_STAGE = "DESIGN_SYSTEM_1_0_SITE_UNIFICATION"
+EXPECTED_MODE = "technical_refactor_pass"
+EXPECTED_PHASE = "TECHNICAL REFACTOR PASS"
+EXPECTED_STAGE = "TECHNICAL_REFACTOR_PASS"
 errors = []
 
-if lock.get("active") is not False:
-    errors.append("TECHNICAL_REFACTOR_LOCK must be inactive under the current Design System 1.0 owner direction")
-if lock.get("status") != "SUPERSEDED_BY_NEWER_EXPLICIT_OWNER_DIRECTION":
-    errors.append("TECHNICAL_REFACTOR_LOCK must record that refactor-first was superseded")
-if owner.get("active_mode") != EXPECTED_OWNER_MODE or owner.get("active_phase") != EXPECTED_OWNER_PHASE:
-    errors.append("OWNER_PRIORITY does not match the Design System 1.0 owner direction")
+if lock.get("active") is not True or lock.get("status") != "ACTIVE_EXPLICIT_OWNER_DIRECTION":
+    errors.append("TECHNICAL_REFACTOR_LOCK must be active under the current explicit owner direction")
+if lock.get("mode") != EXPECTED_MODE or lock.get("phase") != EXPECTED_PHASE:
+    errors.append("TECHNICAL_REFACTOR_LOCK mode/phase mismatch")
+if owner.get("active_mode") != EXPECTED_MODE or owner.get("active_phase") != EXPECTED_PHASE:
+    errors.append("OWNER_PRIORITY does not match technical-refactor direction")
 if owner.get("current_stage") != EXPECTED_STAGE:
-    errors.append("OWNER_PRIORITY current stage does not match Design System 1.0")
-if state.get("mode") != EXPECTED_OWNER_MODE or state.get("phase") != EXPECTED_OWNER_PHASE:
-    errors.append("AUTOPILOT_STATE does not match Design System 1.0")
-state_lock = state.get("owner_priority_lock") or {}
-if not state_lock.get("active") or state_lock.get("planned_phase") != EXPECTED_OWNER_MODE:
-    errors.append("AUTOPILOT_STATE owner priority lock does not match Design System 1.0")
-current_stage = state.get("current_stage") or {}
-if current_stage.get("id") != EXPECTED_STAGE:
-    errors.append("AUTOPILOT_STATE current stage does not match Design System 1.0")
-if "## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 1.0" not in autopilot:
-    errors.append("AUTOPILOT.md does not declare Design System 1.0 as current")
+    errors.append("OWNER_PRIORITY current stage does not match technical refactor")
+if state.get("mode") != EXPECTED_MODE or state.get("phase") != EXPECTED_PHASE:
+    errors.append("AUTOPILOT_STATE does not match technical refactor")
+if (state.get("owner_priority_lock") or {}).get("planned_phase") != EXPECTED_MODE:
+    errors.append("AUTOPILOT_STATE owner-priority lock does not match technical refactor")
+if (state.get("current_stage") or {}).get("id") != EXPECTED_STAGE:
+    errors.append("AUTOPILOT_STATE current stage does not match technical refactor")
+if "## Current owner-directed phase — TECHNICAL REFACTOR PASS" not in autopilot:
+    errors.append("AUTOPILOT.md does not declare technical refactor as current")
 
 if errors:
     print("TECHNICAL_REFACTOR_LOCK_FAIL")
@@ -38,4 +36,4 @@ if errors:
         print(f"- {error}")
     raise SystemExit(1)
 
-print("TECHNICAL_REFACTOR_LOCK_SUPERSEDED_OK owner=design_system_1_0_site_unification")
+print("TECHNICAL_REFACTOR_LOCK_OK owner=technical_refactor_pass")
