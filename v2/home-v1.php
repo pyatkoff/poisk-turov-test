@@ -31,6 +31,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   <link rel="stylesheet" href="<?=home_e(v2_asset('site-header-v2.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('home-v1.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('home-journey-v1.css'))?>">
+  <link rel="stylesheet" href="<?=home_e(v2_asset('home-design-system-alignment-v1.css'))?>">
   <link rel="stylesheet" href="<?=home_e(v2_asset('site-footer-v1.css'))?>">
 </head>
 <body>
@@ -65,23 +66,23 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
     <a class="at-home-search__more" href="/poisk-turov/">Расширенный поиск и все фильтры →</a>
   </form>
 
+  <section class="at-home-section at-home-section--discovery">
+    <div class="at-home-section__head"><h2>Выберите, с чего начать</h2><p>Можно сразу искать по параметрам, открыть направление или перейти к сценарию поездки — горящему туру или раннему бронированию.</p></div>
+    <div class="at-home-direction-grid">
+      <a class="at-home-direction at-home-direction--primary" href="<?=home_e($homeLegacyBase)?>/country/"><strong>Страны и курорты</strong><span>Выберите направление и перейдите к актуальным турам</span></a>
+      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/hot/"><strong>Горящие туры</strong><span>Поиск вариантов на ближайшие даты</span></a>
+      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/rb/"><strong>Раннее бронирование</strong><span>Сравните варианты заранее без спешки</span></a>
+      <a class="at-home-direction" href="/poisk-turov/"><strong>Полный поиск</strong><span>Все фильтры, отели, питание и актуальные предложения</span></a>
+      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/how-to-buy/"><strong>Как купить тур</strong><span>Понятный путь от выбора до бронирования</span></a>
+    </div>
+  </section>
+
   <section class="at-home-section">
     <div class="at-home-section__head"><h2>Поиск без сюрпризов</h2><p>Полный поисковик показывает не только цену отеля, но и конкретные варианты тура, перелёт, питание и итоговую стоимость перед заявкой.</p></div>
     <div class="at-home-benefits">
       <article class="at-home-benefit"><b>Актуальные предложения</b><p>Поиск получает доступные варианты напрямую и помогает сравнивать условия, а не только рекламную цену.</p></article>
       <article class="at-home-benefit"><b>Проверка конкретного тура</b><p>Перед заявкой можно открыть выбранный вариант и проверить детали рейса, багажа и размещения.</p></article>
       <article class="at-home-benefit"><b>Менеджер рядом</b><p>Если нужен совет, менеджер подключится уже с параметрами вашего поиска и выбранного предложения.</p></article>
-    </div>
-  </section>
-
-  <section class="at-home-section">
-    <div class="at-home-section__head"><h2>Спланируйте поездку с AnyTour</h2><p>Ищите тур по своим параметрам, выбирайте направление или начните со сценария, который ближе к вашей поездке.</p></div>
-    <div class="at-home-direction-grid">
-      <a class="at-home-direction" href="/poisk-turov/"><strong>Поиск туров</strong><span>Полная форма, фильтры и актуальные предложения</span></a>
-      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/country/"><strong>Страны и курорты</strong><span>Выберите направление и перейдите к актуальным турам</span></a>
-      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/hot/"><strong>Горящие туры</strong><span>Поиск вариантов на ближайшие даты</span></a>
-      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/rb/"><strong>Раннее бронирование</strong><span>Сравните варианты заранее без спешки</span></a>
-      <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/how-to-buy/"><strong>Как купить тур</strong><span>Понятный путь от выбора до бронирования</span></a>
     </div>
   </section>
 </main>
