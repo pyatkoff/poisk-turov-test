@@ -1,6 +1,11 @@
 name: Roll up AnyTour prices
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/data/rollup-price-daily-v1.php'
+      - '.github/workflows/rollup-anytour-prices.yml'
   push:
     branches: [main]
     paths:
@@ -17,15 +22,14 @@ on:
         type: string
 
 concurrency:
-  group: anytour-price-rollup
+  group: anytour-price-rollup-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'production' }}
   cancel-in-progress: false
 
 jobs:
-  rollup:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Validate rollup tooling
         shell: bash
         env:
@@ -38,7 +42,15 @@ jobs:
           grep -Fq 'tour_price_observations' v2/data/rollup-price-daily-v1.php
           grep -Fq 'tour_price_daily' v2/data/rollup-price-daily-v1.php
           grep -Fq 'median_price' v2/data/rollup-price-daily-v1.php
+          grep -Fq 'ON DUPLICATE KEY UPDATE' v2/data/rollup-price-daily-v1.php
           echo "ANYTOUR_PRICE_ROLLUP_TOOLING_OK days=$DAYS_VALUE"
+
+  rollup:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Prepare SSH key
         env:
