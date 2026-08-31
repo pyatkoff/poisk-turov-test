@@ -1,10 +1,10 @@
 {
   "schema_version": 3,
-  "active": true,
+  "active": false,
   "mode": "technical_refactor_pass",
   "phase": "TECHNICAL REFACTOR PASS",
-  "status": "ACTIVE_EXPLICIT_OWNER_DIRECTION",
-  "authority": "explicit owner instruction 2026-08-31",
+  "status": "SUPERSEDED_BY_EXPLICIT_OWNER_DIRECTION",
+  "authority": "superseded by explicit owner instruction 2026-08-31: AnyTour Design System 1.0 is priority #1",
   "scope": "pyatkoff/poisk-turov-test",
   "protected_contracts": [
     "yandex_metrika_configuration_and_goals",
@@ -12,13 +12,5 @@
     "tourvisor_contract",
     "neighboring_projects"
   ],
-  "required_sequence": [
-    "architecture_and_source_of_truth",
-    "file_inventory_and_dependency_map",
-    "ci_workflow_audit_and_proof_based_deduplication",
-    "safe_directory_ownership",
-    "shared_template_consolidation",
-    "ux_visual"
-  ],
-  "rule": "Technical refactor remains the active owner-directed phase until its consolidation sequence is completed or the owner explicitly changes direction. Production, lead-loss and data-correctness emergencies may interrupt it temporarily."
+  "rule": "Technical refactor may continue only as supporting work when it directly enables safe Design System 1.0 migration; it is not the active priority."
 }
