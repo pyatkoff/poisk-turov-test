@@ -50,8 +50,8 @@ jobs:
             if(!links.some(x=>x.href==='/country/'&&x.text.includes('Страны'))) throw new Error(`${label}: countries link missing`);
             if(!links.some(x=>x.href==='/hot/'&&x.text.includes('Горящие'))) throw new Error(`${label}: hot link missing`);
             if(!links.some(x=>x.href==='/rb/'&&x.text.includes('Раннее'))) throw new Error(`${label}: early-booking link missing`);
+            if(!links.some(x=>x.href==='/how-to-buy/'&&x.text.includes('Как купить'))) throw new Error(`${label}: purchase-guide link missing`);
             if(!links.some(x=>x.href==='/contacts/'&&x.text.includes('Контакты'))) throw new Error(`${label}: contacts link missing`);
-            if(links.some(x=>x.href==='/how-to-buy/'&&x.text.includes('Как купить'))) throw new Error(`${label}: removed purchase-guide link still present`);
           };
           (async()=>{
             const browser=await chromium.launch({headless:true});
