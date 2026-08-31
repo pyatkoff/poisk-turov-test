@@ -45,6 +45,7 @@ function v2_bundle_manifest(): array
             'runtime-v3.js',
             'analytics-v4.js',
             'results-renderer-v5.js',
+            'hotel-photo-fallback-v1.js',
             'sales-leader-ui-v1.js',
             'conversion-confidence-v1.js',
             'compare-refresh-guard-v1.js',
