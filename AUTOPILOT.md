@@ -2,29 +2,29 @@
 
 Updated: 2026-08-31
 
-Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` records whether the refactor-first phase is active, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
+Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` records whether the older refactor-first phase is active, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
 
-## Current owner-directed phase — TECHNICAL REFACTOR PASS
+## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 1.0
 
-After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is technical consolidation before further UX/visual work.
+After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is site-wide visual unification. The whole public site is evaluated separately from the stronger search-only engineering experience.
 
 ## Ordered work
 
-1. Keep a single architecture/source of truth in `ARCHITECTURE.md`, `TEST_MATRIX.md` and the one-concept → one-implementation rule.
-2. Complete the inventory/dependency map for active, compatibility and dead files.
-3. Complete the GitHub Actions audit and classify checks into PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE. Remove duplication only after equivalent coverage is proven.
-4. Prepare safe ownership for `shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates` without changing user behavior.
-5. Consolidate the shared template layer to one header, one footer, one navigation and one design system.
-6. Only after technical consolidation resume UX and visual work.
+1. Establish and preserve shared design tokens/primitives: one coherent header/navigation, footer, typography, grid/spacing, buttons/cards, breadcrumbs and responsive behavior.
+2. Audit and improve `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages.
+3. Make the journey feel like one product across homepage → country/destination → hot/search → results → selected tour → lead.
+4. Validate user-facing changes at 375/430/768/1024/1440 and fix confirmed spacing, wrapping, overflow, duplicated-shell and hierarchy problems before cosmetic flourishes.
+5. Preserve mature search/recovery/results/comparison/flight/price/fuel/lead regressions while migrating weaker pages onto the shared shell.
+6. Continue technical refactoring only when justified and safe; it no longer outranks the explicit Design System priority.
 
 ## Current resume point
 
-Previous visual work remains preserved as regression evidence, but does not outrank this phase. Continue from the existing CI inventory/audit and dependency-map artifacts. Keep narrow PRs and merge SAFE/MEDIUM changes only after relevant green checks.
+Shared header/page-grid, breadcrumb-grid and search-shell alignment slices have reached production with green relevant regression/live evidence. Continue with the full production journey at five widths, starting from the next confirmed visual/hierarchy discontinuity rather than cosmetic churn. Keep the recently fixed hotel field inside advanced filters and preserve its autocomplete behavior.
 
 ## Mandatory protections
 
-Work only inside `pyatkoff/poisk-turov-test`. Do not modify Yandex Metrika or goals, the external lead contract, Tourvisor contract or neighboring projects. Do not refactor for style alone and do not invent defects.
+Work only inside `pyatkoff/poisk-turov-test` and allowed V2/standalone production scope. Do not redesign/replace the AnyTour logo. Do not modify Yandex Metrika/goals/analytics contract, Tourvisor contract, existing lead-sending mechanism or neighboring projects. Preserve verified social/app destinations. Do not migrate unresolved legal/payment content. Keep PR #254 deferred unless a fresh review proves its separate DB/platform architecture safe.
 
 ## Execution policy
 
-At the start of each run inspect fresh `main`, open PRs and recent CI. Pick one highest-value independent technical-refactor slice and finish it. If blocked, record/defer the blocker and continue another independent safe slice.
+At the start of each run inspect fresh `main`, open PRs, recent CI/deploy evidence, production/live behavior where accessible and this resume point. Continue through multiple independent safe Design System tasks for as long as execution time allows. Deploy only after relevant checks are green and verify production/live visual behavior after release.
