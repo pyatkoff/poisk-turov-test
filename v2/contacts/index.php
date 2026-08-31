@@ -1,7 +1,7 @@
 <?php require_once dirname(__DIR__).'/site-page-shell-v1.php';
 $c=sp_context('/contacts/','Контакты AnyTour','Контакты турагентства AnyTour: офисы в Москве, Санкт-Петербурге, Калининграде и Чебоксарах, телефоны и юридическая информация.');sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'],['label'=>'Контакты','href'=>'']]);sp_hero('AnyTour · контакты','Свяжитесь с AnyTour','Поможем подобрать тур, проверить конкретное предложение и ответим на вопросы по бронированию.'); ?>
 <main class="sp-main">
-<section><div class="sp-section-head"><h2>Офисы AnyTour</h2><p>Выберите удобный офис или начните с онлайн-поиска — менеджер увидит параметры и выбранный тур.</p></div><div class="sp-grid sp-offices">
+<section><div class="sp-section-head"><h2>Офисы AnyTour</h2><p>Выберите удобный офис или начните с онлайн-поиска — менеджер увидит параметры и выбранный тур.</p></div><div class="sp-grid sp-grid--balanced-two sp-offices">
 <article class="sp-office-card sp-card"><h3>Москва</h3><p class="sp-office-address">Бутырская ул., 86Б, 2-й этаж<br>м. «Дмитровская»</p><a class="sp-office-phone" href="tel:+79309147792">+7 (930) 914-77-92</a></article>
 <article class="sp-office-card sp-card"><h3>Санкт-Петербург</h3><p class="sp-office-address">ул. Белы Куна, 3</p><a class="sp-office-phone" href="tel:+79219870009">+7 (921) 987-00-09</a></article>
 <article class="sp-office-card sp-card"><h3>Калининград</h3><p class="sp-office-address">Нарвская ул., 10А</p><a class="sp-office-phone" href="tel:+79052471946">+7 (905) 247-19-46</a></article>
