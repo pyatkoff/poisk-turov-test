@@ -46,7 +46,8 @@ jobs:
               if (!str_contains($url,'bundle-v1.php?type='.$type.'&v='.$a)) {fwrite(STDERR,"bad $type url: $url\n"); exit(5);}
           }
           if (count($manifest['css'])!==36) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
-          if (($manifest['css'][0]??'')!=='design-system-v1.css') {fwrite(STDERR,"design system must load first\n"); exit(8);}
+          if (($manifest['css'][0]??'')!=='design-system-v2.css') {fwrite(STDERR,"AnyTour Design System 2.0 token layer must load first\n"); exit(8);}
+          if (in_array('design-system-v1.css',$manifest['css'],true)) {fwrite(STDERR,"retired Design System 1.0 token layer must not be active\n"); exit(29);}
           if (!in_array('site-header-v2.css',$manifest['css'],true)) {fwrite(STDERR,"canonical site header css missing\n"); exit(12);}
           if (!in_array('hotel-autocomplete-v1.css',$manifest['css'],true)) {fwrite(STDERR,"hotel autocomplete css missing\n"); exit(13);}
           if (!in_array('search-shell-grid-v1.css',$manifest['css'],true)) {fwrite(STDERR,"shared search shell grid css missing\n"); exit(16);}
