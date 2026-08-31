@@ -1,15 +1,14 @@
 {
-  "schema_version": 4,
-  "active_mode": "tour_data_platform",
-  "active_phase": "TOUR DATA PLATFORM",
-  "current_stage": "ACTIVE_DEPARTURES_AND_INGESTION",
+  "schema_version": 3,
+  "active_mode": "technical_refactor_pass",
+  "active_phase": "TECHNICAL REFACTOR PASS",
+  "current_stage": "TECHNICAL_REFACTOR_PASS",
   "priority_after_emergency_overrides": [
-    "tour_data_platform",
-    "product_ux_visual",
-    "seo_data",
     "technical_refactor",
+    "ux_visual",
+    "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_tour_data_platform",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize the first-party Tour Data Platform that powers active departures, hot tours, SEO offer pages, search ranking, low-price calendar and price recommendations. Preserve Tourvisor as the live availability/final-price source. Technical refactor and cosmetic work are supporting tasks only and must not displace this roadmap. Preserve Yandex Metrika/goals, external lead contract, Tourvisor external contract and neighboring projects."
+  "source": "explicit_owner_direction_2026_08_31_technical_refactor_pass",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, complete the technical refactor pass first: architecture/source-of-truth, inventory/dependency map, GitHub Actions audit and tiering, safe directory ownership, then shared template consolidation; only after technical consolidation move to UX/visual. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring projects."
 }
