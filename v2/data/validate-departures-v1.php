@@ -18,8 +18,13 @@ try {
         }
     }
     $count = (int)$pdo->query('SELECT COUNT(*) FROM catalog_departures')->fetchColumn();
+    $activeCount = (int)$pdo->query('SELECT COUNT(*) FROM catalog_departures WHERE is_active = 1')->fetchColumn();
+    $inactiveCount = max(0, $count - $activeCount);
     $genitiveCount = (int)$pdo->query("SELECT COUNT(*) FROM catalog_departures WHERE name_genitive IS NOT NULL AND TRIM(name_genitive) <> ''")->fetchColumn();
-    echo "ANYTOUR_DEPARTURES_OK rows={$count} name_genitive_rows={$genitiveCount}\n";
+    if ($count <= 0) throw new RuntimeException('Departure catalog is empty');
+    if ($activeCount <= 0) throw new RuntimeException('Departure catalog has no active cities');
+    if ($activeCount > $count) throw new RuntimeException('Active departure count exceeds total rows');
+    echo "ANYTOUR_DEPARTURES_OK rows={$count} active={$activeCount} inactive={$inactiveCount} name_genitive_rows={$genitiveCount}\n";
 } catch (Throwable $e) {
     fwrite(STDERR, 'ANYTOUR_DEPARTURES_INVALID: ' . $e->getMessage() . "\n");
     exit(1);
