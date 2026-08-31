@@ -15,11 +15,14 @@
       "Deploy + Production smoke only if released"
     ],
     "evidence": [
-      "Active pilot confirmed completed-search depth defect and fixed it in PR #656: fast first 25 hotels, then expand to up to 100 on the same searchId.",
-      "PR #658 added instant local narrowing for stars, rating and price over already loaded results while preserving server re-search when widening beyond the source query.",
-      "Fast CI and Security guard passed for both product cycles.",
-      "Production evidence for the new results-depth/filter behavior is still required when a working live-probe environment is available.",
-      "Parent QA audit remains active through hotel/tour/room/flight/price/lead recovery.",
+      "PR #656: completed search renders first 25 hotels and expands to up to 100 on the same searchId.",
+      "PR #658: stars, rating and price can narrow the already loaded result set while widening beyond source constraints uses server re-search.",
+      "PR #662 added region/subregion local narrowing and initially localized meal/operator as well.",
+      "Official Tourvisor search-results schema confirms hotel-level region/subRegion, but meal/operator only exist inside nested tours[] and the contract does not guarantee that nested offers are exhaustive for every hotel; PR #666 therefore keeps meal/operator on server search while retaining proven local filters.",
+      "onlyDirect remains server-side because search_results exposes no reliable direct-flight flag; hotel services/type are absent from search_results; onlyCharter remains server-side because it also affects destination catalog availability.",
+      "PR #663 invalidates selected-tour and flight async generations and clears stale selected-tour/lead UI on v2:search-reset.",
+      "Fast CI and Security guard passed for PR #666; merge SHA ee34c881de396b734f86807c975a5821ba2ca06b.",
+      "Production evidence for depth/local-filter behavior remains blocked by the prior external live-probe environment; continue independent product QA.",
       "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
     ],
     "parent_task": null
@@ -28,9 +31,9 @@
     {
       "id": "SEARCH_RESULTS_FILTER_ARCHITECTURE",
       "priority": 1,
-      "status": "ACTIVE",
+      "status": "DONE_AWAITING_PRODUCTION_EVIDENCE",
       "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
-      "reason": "Finish instant filtering over the loaded result set without unnecessary Tourvisor re-search; verify which meal/resort/operator/flight attributes are complete enough for local filtering."
+      "reason": "Payload completeness boundary is explicit: local stars/rating/price/region/subregion over loaded 25→100; meal/operator/flight/service/type constraints remain server-side where result payload completeness is not proven."
     },
     {
       "id": "RESULTS_DEPTH_100",
@@ -39,23 +42,23 @@
       "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
       "pr": 656,
       "merge_sha": "8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d",
-      "reason": "Completed search now expands from fast first 25 to up to 100 hotels without restarting Tourvisor search."
+      "reason": "Completed search expands from fast first 25 to up to 100 hotels without restarting Tourvisor search."
     },
     {
       "id": "RESULTS_LOCAL_FILTERS_CORE",
       "priority": 1,
       "status": "DONE_AWAITING_PRODUCTION_EVIDENCE",
       "parent": "SEARCH_RESULTS_FILTER_ARCHITECTURE",
-      "pr": 658,
-      "merge_sha": "4a04a6b93c7b7f5d67c86dfad49446b26c688e86",
-      "reason": "Stars, rating and price narrow loaded results instantly; widening beyond source constraints falls back to server search."
+      "pr": 666,
+      "merge_sha": "ee34c881de396b734f86807c975a5821ba2ca06b",
+      "reason": "Local filter boundary corrected after payload audit: stars/rating/price/region/subregion stay instant; meal/operator return to existing server search lifecycle."
     },
     {
       "id": "SELECTED_TOUR_END_TO_END",
       "priority": 1,
-      "status": "READY_AFTER_FILTER_AUDIT",
+      "status": "ACTIVE",
       "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
-      "reason": "Verify results -> hotel -> tour -> room -> flight -> price -> selected tour -> lead form -> recovery while preserving the external lead contract."
+      "reason": "Continue results -> hotel -> tour -> room -> flight -> price -> selected tour -> lead form -> submit/error/retry/recovery. PR #663 already fixed stale selected-tour restoration after search reset; continue with tour/room/flight/price/searchId/tourId/idempotency/recovery verification while preserving external lead contract."
     },
     {
       "id": "PRODUCTION_RESULTS_EVIDENCE",
@@ -108,9 +111,9 @@
     }
   ],
   "last_signal": {
-    "source": "priority_queue_refresh_after_pr_658",
-    "status": "CONTINUE_SEARCH_RESULTS_FILTER_ARCHITECTURE",
-    "sha": "4a04a6b93c7b7f5d67c86dfad49446b26c688e86"
+    "source": "payload_completeness_audit_after_pr_666",
+    "status": "CONTINUE_SELECTED_TOUR_END_TO_END",
+    "sha": "ee34c881de396b734f86807c975a5821ba2ca06b"
   },
   "blocked": [
     {
