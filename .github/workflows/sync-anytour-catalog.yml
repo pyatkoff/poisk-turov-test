@@ -7,6 +7,8 @@ on:
       - '.github/workflows/sync-anytour-catalog.yml'
       - 'v2/data/departures-v1.php'
       - 'v2/data/sync-departures-v1.php'
+      - 'v2/data/migrate-departure-countries-v1.php'
+      - 'v2/data/destinations-v1.php'
       - 'v2/data/validate-departures-v1.php'
       - 'v2/data/schema-departures-v1.sql'
   schedule:
@@ -35,11 +37,13 @@ jobs:
           COUNTRY_VALUE: ${{ inputs.country || '4' }}
         run: |
           set -euo pipefail
-          for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/migrate-departures-v1.php v2/data/sync-departures-v1.php v2/data/validate-departures-v1.php v2/data/sync-catalog-v1.php v2/data/db-doctor-v1.php; do
+          for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/migrate-departures-v1.php v2/data/migrate-departure-countries-v1.php v2/data/sync-departures-v1.php v2/data/validate-departures-v1.php v2/data/sync-catalog-v1.php v2/data/db-doctor-v1.php v2/data/destinations-v1.php; do
             php -l "$f" >/dev/null
           done
           test -s v2/data/schema-v1.sql
           grep -Fq 'name_genitive VARCHAR(180) DEFAULT NULL' v2/data/schema-v1.sql
+          grep -Fq 'catalog_departure_countries' v2/data/migrate-departure-countries-v1.php
+          grep -Fq 'pairs=' v2/data/sync-departures-v1.php
           [[ "$COUNTRY_VALUE" =~ ^[0-9]+(,[0-9]+)*$ ]]
           echo "ANYTOUR_CATALOG_TOOLING_OK country=$COUNTRY_VALUE"
 
@@ -82,10 +86,12 @@ jobs:
             php -l \"\$root/data/db-v1.php\" >/dev/null
             php -l \"\$root/data/tourvisor-client-v1.php\" >/dev/null
             php -l \"\$root/data/migrate-departures-v1.php\" >/dev/null
+            php -l \"\$root/data/migrate-departure-countries-v1.php\" >/dev/null
             php -l \"\$root/data/sync-departures-v1.php\" >/dev/null
             php -l \"\$root/data/validate-departures-v1.php\" >/dev/null
             php -l \"\$root/data/sync-catalog-v1.php\" >/dev/null
             php \"\$root/data/migrate-departures-v1.php\"
+            php \"\$root/data/migrate-departure-countries-v1.php\"
             php \"\$root/data/db-doctor-v1.php\"
             php \"\$root/data/sync-departures-v1.php\"
             php \"\$root/data/validate-departures-v1.php\"

@@ -1,5 +1,5 @@
 <?php
-/** Synchronize Tourvisor departure cities into AnyTour DB. */
+/** Synchronize Tourvisor departure cities and free country availability into AnyTour DB. */
 declare(strict_types=1);
 
 if (PHP_SAPI !== 'cli') {
@@ -28,25 +28,22 @@ function departure_genitive(array $row): ?string
     return null;
 }
 
-/**
- * Tourvisor /departures is a directory and can contain cities with no current
- * package-tour destinations. /countries?departureId=... is also a directory
- * request (not a paid search-start request) and reflects whether a departure
- * currently has at least one available destination.
- */
-function departure_has_available_countries(int $departureId): bool
+/** Return normalized available country IDs from the free Tourvisor directory request. */
+function departure_available_country_ids(int $departureId): array
 {
-    if ($departureId <= 0) return false;
-    $countries = v2_data_tv_get('/countries', [
+    if ($departureId <= 0) return [];
+    $rows = v2_data_tv_get('/countries', [
         'departureId' => $departureId,
         'onlyCharter' => false,
         'onlyDirect' => false,
     ]);
-
-    foreach ($countries as $country) {
-        if (is_array($country) && (int)($country['id'] ?? 0) > 0) return true;
+    $ids = [];
+    foreach ($rows as $country) {
+        if (!is_array($country)) continue;
+        $id = (int)($country['id'] ?? 0);
+        if ($id > 0) $ids[$id] = true;
     }
-    return false;
+    return array_map('intval', array_keys($ids));
 }
 
 $pdo = v2_data_db();
@@ -55,18 +52,23 @@ $now = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 try {
     $sourceRows = v2_data_tv_get('/departures', ['departureCountryId' => 1]);
     $departures = [];
+    $pairs = [];
     foreach ($sourceRows as $row) {
         if (!is_array($row)) continue;
         $id = (int)($row['id'] ?? 0);
         $name = departure_name($row);
         if ($id <= 0 || $name === '') continue;
+        $countryIds = departure_available_country_ids($id);
         $departures[] = [
             'id' => $id,
             'name' => $name,
             'name_genitive' => departure_genitive($row),
             'slug' => v2_data_slug($name),
-            'is_active' => departure_has_available_countries($id) ? 1 : 0,
+            'is_active' => $countryIds !== [] ? 1 : 0,
         ];
+        foreach ($countryIds as $countryId) {
+            $pairs[] = ['departure_id' => $id, 'country_id' => $countryId];
+        }
     }
 
     if (!$departures) {
@@ -74,12 +76,12 @@ try {
     }
 
     $activeCount = count(array_filter($departures, static fn(array $row): bool => (int)$row['is_active'] === 1));
-    if ($activeCount <= 0) {
-        throw new RuntimeException('Tourvisor availability check returned zero active departure cities');
+    if ($activeCount <= 0 || !$pairs) {
+        throw new RuntimeException('Tourvisor availability check returned zero active departure-country pairs');
     }
 
     $pdo->beginTransaction();
-    $stmt = $pdo->prepare("INSERT INTO catalog_departures (id,name,name_genitive,slug,is_active,synced_at)
+    $departureStmt = $pdo->prepare("INSERT INTO catalog_departures (id,name,name_genitive,slug,is_active,synced_at)
         VALUES (:id,:name,:name_genitive,:slug,:is_active,:synced)
         ON DUPLICATE KEY UPDATE
             name=VALUES(name),
@@ -89,7 +91,7 @@ try {
             synced_at=VALUES(synced_at)");
 
     foreach ($departures as $departure) {
-        $stmt->execute([
+        $departureStmt->execute([
             'id' => $departure['id'],
             'name' => $departure['name'],
             'name_genitive' => $departure['name_genitive'],
@@ -98,10 +100,22 @@ try {
             'synced' => $now,
         ]);
     }
+
+    $pdo->exec('UPDATE catalog_departure_countries SET is_active=0');
+    $pairStmt = $pdo->prepare("INSERT INTO catalog_departure_countries (departure_id,country_id,is_active,synced_at)
+        VALUES (:departure_id,:country_id,1,:synced)
+        ON DUPLICATE KEY UPDATE is_active=1,synced_at=VALUES(synced_at)");
+    foreach ($pairs as $pair) {
+        $pairStmt->execute([
+            'departure_id' => $pair['departure_id'],
+            'country_id' => $pair['country_id'],
+            'synced' => $now,
+        ]);
+    }
     $pdo->commit();
 
     $inactiveCount = count($departures) - $activeCount;
-    fwrite(STDOUT, "DEPARTURES_OK total=" . count($departures) . " active={$activeCount} inactive={$inactiveCount}\n");
+    fwrite(STDOUT, "DEPARTURES_OK total=" . count($departures) . " active={$activeCount} inactive={$inactiveCount} pairs=" . count($pairs) . "\n");
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     fwrite(STDERR, 'DEPARTURES_FAILED ' . mb_substr($e->getMessage(), 0, 1000) . "\n");
