@@ -14,6 +14,12 @@ The canonical target is the composite desktop/mobile AnyTour Design System 2.0 m
 
 Target language: compact unified white header; light travel-first canvas; large photographic travel hero with search as the primary first-screen object; white cards with subtle borders/shadows; blue primary UI with orange conversion CTA; dense but clean search-results layout; coherent hotel and destination pages; full dark footer; mobile as a compact continuation of desktop. Preserve the existing AnyTour logo.
 
+## Material progress
+
+The first structural convergence slices are now on `main`: the homepage heavy blue first screen was replaced by a light travel-first composition with search as the primary object; the shared white header was compacted across desktop/mobile while preserving the logo and navigation contract; and `/poisk-turov/` now replaces the oversized decorative blue search hero with a compact light DS2 intro while leaving the mature search/results/selected-tour mechanics untouched. Relevant PR visual/regression checks passed at the protected search widths.
+
+The post-deploy live journey also exposed a test-contract defect around Tourvisor flight responses. The official flights envelope can contain structured `error` metadata together with a flight list; the live guard is being aligned to validate the documented error code instead of treating the mere presence of the envelope as a failure. Runtime/Tourvisor behavior is unchanged.
+
 ## Ordered work
 
 1. Align one shared header and one shared footer with the DS2 reference.
@@ -25,7 +31,7 @@ Target language: compact unified white header; light travel-first canvas; large 
 
 ## Current resume point
 
-Start the first runtime convergence slice with shared header/footer plus homepage/search first-screen composition. Prefer structural convergence with the reference over one-off cosmetic fixes to old layouts.
+Finish post-merge deploy/live verification for the compact shared header and light search intro, then continue structural DS2 convergence in this order: replace the homepage CSS scenic placeholder with an approved repository/local travel image and align hero copy/search placement more closely to the reference; next refine the light results hierarchy/filter rail/cards; then selected hotel/tour; then country/hot/editorial pages. Keep the dark shared footer as the site-wide endpoint and avoid returning to oversized blue product heroes.
 
 ## Mandatory protections
 
