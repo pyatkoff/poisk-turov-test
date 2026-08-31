@@ -47,7 +47,9 @@ jobs:
           grep -Fq "['user_search', 'scheduled_monitor', 'hot_tours']" v2/data/price-observer-v1.php
           grep -Fq "'source'=>'scheduled_monitor'" v2/data/scheduled-collector-v1.php
           grep -Fq "v2_data_tv_get('/tours/search'" v2/data/scheduled-collector-v1.php
-          grep -Fq "['limit'=>100]" v2/data/scheduled-collector-v1.php
+          grep -Fq '$limits = [1000, 500, 100];' v2/data/scheduled-collector-v1.php
+          grep -Fq 'scheduled_collector_fetch_results($searchId)' v2/data/scheduled-collector-v1.php
+          grep -Fq 'COLLECT_RESULT_FETCH' v2/data/scheduled-collector-v1.php
           grep -Fq 'tour_collection_attempts' v2/data/scheduled-collector-v1.php
           grep -Fq 'if ($budget <= 0)' v2/data/scheduled-collector-v1.php
           grep -Fq 'PRICE_DAILY_ROLLUP_OK' v2/data/rollup-price-daily-v1.php
