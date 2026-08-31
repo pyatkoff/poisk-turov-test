@@ -1,0 +1,39 @@
+name: Validate passive price observer
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/data/price-observer-v1.php'
+      - 'v2/data/observe-search-v1.php'
+      - 'v2/passive-price-observer-v1.js'
+      - 'v2/bundle-manifest-v1.php'
+      - '.github/workflows/validate-passive-price-observer.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/data/price-observer-v1.php'
+      - 'v2/data/observe-search-v1.php'
+      - 'v2/passive-price-observer-v1.js'
+      - 'v2/bundle-manifest-v1.php'
+      - '.github/workflows/validate-passive-price-observer.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate observer contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/price-observer-v1.php >/dev/null
+          php -l v2/data/observe-search-v1.php >/dev/null
+          node --check v2/passive-price-observer-v1.js
+          grep -Fq "'passive-price-observer-v1.js'" v2/bundle-manifest-v1.php
+          grep -Fq "v2_data_tv_get('/tours/search/'" v2/data/observe-search-v1.php
+          grep -Fq 'INSERT IGNORE INTO tour_price_observations' v2/data/price-observer-v1.php
+          grep -Fq "source ENUM('user_search','scheduled_monitor','hot_tours')" v2/data/schema-v1.sql
+          php -r 'require "v2/data/price-observer-v1.php"; if (v2_price_observer_child_signature([7,3]) !== "7,3") exit(1); if (v2_price_observer_date("01.09.2026")->format("Y-m-d") !== "2026-09-01") exit(2); echo "PASSIVE_PRICE_OBSERVER_HELPERS_OK\n";'
+          echo "PASSIVE_PRICE_OBSERVER_CONTRACT_OK"
