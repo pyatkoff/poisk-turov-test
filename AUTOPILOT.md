@@ -23,7 +23,7 @@ Keep one understandable source of truth for shared shell, runtime state and prod
 Make `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/`, representative country/resort pages, results and selected-tour surfaces feel like one premium product. Establish one visual language for typography, grid, spacing, buttons, cards, breadcrumbs, imagery, states and navigation. Validate 375/430/768/1024/1440.
 
 ### Stage 3 — Search Experience 2.0
-Deliver a simple first search step with advanced controls only when useful; fast local-first catalogs where safe; strong dates/duration/tourists UX; hotel-first discovery; reliable recovery; minimal unnecessary actions. Preserve the Tourvisor search contract and search lifecycle.
+Deliver a simple first search step with advanced controls only when useful; fast local-first catalogs where safe; strong dates/duration/tourists UX; hotel-first discovery inside advanced search rather than at the cost of the primary journey; reliable recovery; minimal unnecessary actions. Preserve the Tourvisor search contract and search lifecycle.
 
 ### Stage 4 — Results 2.0
 Improve result hierarchy, cards, filters, sorting, hotel-to-tour grouping, flexible-date savings, flight/meal/room/operator/fuel/total-price clarity and mobile filtering. Add evidence-based relevance explanations such as “Почему подходит вам” only when supported by real data.
@@ -59,9 +59,9 @@ Re-score the whole production product from evidence across visual quality, UX, m
 
 The immediate work remains whole-journey visual and UX unification because it is the current prerequisite for the larger AnyTour 2.0 roadmap.
 
-1. Audit the remaining production journey, especially search → results → selected tour → lead on 375/430/768/1024/1440.
-2. Close the observed visual-test gap where the search screenshot can be captured while critical departure/country catalogs are still in an error/loading state.
-3. Fix the next confirmed Design 2.0 weakness from production evidence rather than broad cosmetic churn.
+1. Audit the production journey search → results → selected tour → lead on 375/430/768/1024/1440.
+2. Fix confirmed crooked spacing, wrapping, overflow and hierarchy regressions before cosmetic work.
+3. Keep the hotel autocomplete inside advanced filters and critical departure/country catalog readiness as explicit regression gates.
 4. Continue adoption of shared primitives where legacy page-specific surfaces visibly diverge.
 5. Move from shell consistency into the deeper Design 2.0 treatment of search/results/hotel/mobile surfaces without destabilizing their working behavior.
 6. Keep the next roadmap stage explicit so completing Design 2.0 automatically advances to Search Experience 2.0 rather than ending the autopilot.
@@ -72,10 +72,12 @@ The immediate work remains whole-journey visual and UX unification because it is
 - Homepage route-specific surfaces consume shared brand/surface/radius/spacing/focus tokens through a narrow alignment layer.
 - Shared header/footer and standalone navigation/content sweeps are established across core public routes and five target widths.
 - Country Design 2.0 now puts the live country search and “Помочь с выбором” directly after the hero, combines popular resorts into the same decision block and removes the duplicated lower conversion section. PR #442 passed focused five-width visual evidence, deployed successfully, and the post-deploy live user journey passed.
-- A production visual artifact exposed a search-page state where critical catalogs could still show “Не удалось загрузить города/страны” while the visual workflow itself stayed green. The direct live API/search journey is healthy, so this is being treated as a visual/readiness test gap until the UI path proves otherwise.
+- A production visual artifact exposed a search-page state where critical catalogs could still show “Не удалось загрузить города/страны” while the visual workflow itself stayed green. A dedicated five-width catalog-readiness guard was added and now protects that state.
+- A user screenshot exposed a separate confirmed search-layout regression introduced by PR #422: the hotel autocomplete was dynamically moved from advanced filters into the primary `.main-fields` grid, producing a broken desktop hierarchy. PR #440 removes that reparenting while preserving autocomplete and the existing `hotel` field contract. Its five-width V2 visual PR evidence passed, and production deploy `33349232306` completed successfully with public-page verification, unchanged lead-bridge verification and live search smoke.
+- PR #447 adds a focused structural regression guard that fails if the hotel autocomplete is moved into `.main-fields` again and confirms the canonical hotel field remains inside `details.extras`; the guard and security checks passed before merge.
 - Production catalog sync confirms 71/71 departure rows have `name_genitive`; the canonical departure schema and migration are aligned.
-- A stale/conflicting older priority PR (#433) unexpectedly merged after the newer owner direction and rewrote the autopilot back to technical-refactor-first. That state is not authoritative and is being corrected back to this newer explicit AnyTour 2.0 direction.
-- Search form parameters, Tourvisor, Metrika/analytics and lead contracts were not changed.
+- A stale/conflicting older priority PR (#433) unexpectedly merged after the newer owner direction and rewrote the autopilot back to technical-refactor-first. That state is not authoritative; AnyTour 2.0 / Design 2.0 remains the current direction.
+- Search form parameters, Tourvisor, Metrika/analytics and lead contracts were not changed by the hotel-layout repair.
 
 ## 9.0 quality gate
 
