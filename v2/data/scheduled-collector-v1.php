@@ -96,40 +96,90 @@ function scheduled_collector_priority(array $row): array
     $lastAttempt = trim((string)($row['last_attempt_at'] ?? ''));
     $lastObserved = trim((string)($row['last_observed_at'] ?? ''));
 
-    // Unobserved coverage first, then confidence gaps. Attempts break ties so an
-    // empty market cannot monopolize the budget forever.
     $coverageBand = $observations === 0 ? 0 : ($searches < 5 || $days < 2 ? 1 : ($searches < 15 || $days < 3 ? 2 : ($searches < 30 || $days < 7 ? 3 : 4)));
     $time = $lastAttempt !== '' ? $lastAttempt : ($lastObserved !== '' ? $lastObserved : '0000-00-00 00:00:00');
     return [$coverageBand, $attempts, $time, (int)$row['country_id']];
 }
 
+function scheduled_collector_depth_priority(array $row): array
+{
+    $searches = (int)($row['distinct_search_count'] ?? 0);
+    $days = (int)($row['distinct_observation_days'] ?? 0);
+    $lastAttempt = trim((string)($row['last_attempt_at'] ?? ''));
+    $lastObserved = trim((string)($row['last_observed_at'] ?? ''));
+    $time = $lastAttempt !== '' ? $lastAttempt : ($lastObserved !== '' ? $lastObserved : '0000-00-00 00:00:00');
+
+    // Confidence gates are 5 searches/2 days, 15/3 and 30/7. Revisit observed
+    // markets before exhausting the entire breadth matrix so price history can
+    // actually become useful within days instead of months.
+    $gate = $searches < 5 || $days < 2 ? 0 : ($searches < 15 || $days < 3 ? 1 : ($searches < 30 || $days < 7 ? 2 : 3));
+    return [$gate, $searches, $days, $time, (int)$row['departure_id'], (int)$row['country_id']];
+}
+
 function scheduled_collector_targets(array $rows, int $budget): array
 {
-    usort($rows, static function (array $a, array $b): int {
+    if ($budget <= 0) return [];
+
+    $breadth = array_values(array_filter($rows, static fn(array $row): bool => (int)($row['observation_count'] ?? 0) === 0));
+    $depth = array_values(array_filter($rows, static function (array $row): bool {
+        $observations = (int)($row['observation_count'] ?? 0);
+        $searches = (int)($row['distinct_search_count'] ?? 0);
+        $days = (int)($row['distinct_observation_days'] ?? 0);
+        return $observations > 0 && ($searches < 30 || $days < 7);
+    }));
+
+    usort($breadth, static function (array $a, array $b): int {
         return scheduled_collector_priority($a) <=> scheduled_collector_priority($b);
     });
+    usort($depth, static function (array $a, array $b): int {
+        return scheduled_collector_depth_priority($a) <=> scheduled_collector_depth_priority($b);
+    });
 
-    // First pass takes at most one pair per departure city, forcing geographic
-    // breadth instead of spending the whole budget on the first city alphabetically.
     $targets = [];
     $usedPairs = [];
     $usedDepartures = [];
-    foreach ($rows as $row) {
+    $add = static function (array $row) use (&$targets, &$usedPairs, &$usedDepartures): bool {
         $departure = (int)$row['departure_id'];
-        if (isset($usedDepartures[$departure])) continue;
         $pair = $departure . ':' . (int)$row['country_id'];
+        if (isset($usedPairs[$pair])) return false;
         $targets[] = $row;
         $usedPairs[$pair] = true;
         $usedDepartures[$departure] = true;
-        if (count($targets) >= $budget) return $targets;
+        return true;
+    };
+
+    // With the production budget of 2 this means one repeated market for
+    // history/confidence and one new market for breadth. Larger budgets retain
+    // the same roughly 50/50 split.
+    $depthSlots = $depth === [] ? 0 : max(1, intdiv($budget, 2));
+    $breadthSlots = $budget - $depthSlots;
+    if ($breadth === [] && $depth !== []) {
+        $depthSlots = $budget;
+        $breadthSlots = 0;
     }
 
-    foreach ($rows as $row) {
-        $pair = (int)$row['departure_id'] . ':' . (int)$row['country_id'];
-        if (isset($usedPairs[$pair])) continue;
-        $targets[] = $row;
-        if (count($targets) >= $budget) break;
+    foreach ($depth as $row) {
+        if (count($targets) >= $depthSlots) break;
+        $add($row);
     }
+
+    // Breadth pass prefers a departure not already used in this run.
+    foreach ($breadth as $row) {
+        if (count($targets) >= $depthSlots + $breadthSlots) break;
+        if (isset($usedDepartures[(int)$row['departure_id']])) continue;
+        $add($row);
+    }
+    foreach ($breadth as $row) {
+        if (count($targets) >= $depthSlots + $breadthSlots) break;
+        $add($row);
+    }
+
+    // Fill any remaining budget from either pool without duplicates.
+    foreach (array_merge($depth, $breadth) as $row) {
+        if (count($targets) >= $budget) break;
+        $add($row);
+    }
+
     return $targets;
 }
 
