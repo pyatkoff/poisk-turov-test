@@ -9,7 +9,8 @@ async function local(action,params){
         url='/data/hotels-select-v1.php';q=new URLSearchParams();
         if(params&&params.countryId)q.set('countryId',params.countryId);
         if(params&&params.regionId)q.set('regionId',params.regionId);
-        if(params&&params.subregionId)q.set('subregionId',params.subregionId);
+        const form=document.getElementById('tourSearch'),subregion=params&&params.subregionId||form&&form.elements.subregion&&form.elements.subregion.value||'';
+        if(subregion)q.set('subregionId',subregion);
         if(params&&params.category)q.set('category',params.category);
         if(params&&params.rating)q.set('rating',params.rating);
         if(params&&Array.isArray(params.types)&&params.types[0])q.set('type',params.types[0]);
