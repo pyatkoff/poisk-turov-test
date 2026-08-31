@@ -86,7 +86,7 @@ function loadProgressModule() {
   assert.equal(current.calls.length, 1);
   assert.equal(current.calls[0].action, 'search_results');
   assert.equal(current.calls[0].params.searchId, 71);
-  assert.equal(current.calls[0].params.limit, 25);
+  assert.equal(current.calls[0].params.limit, 100);
   assert.equal(current.renders.length, 1);
   assert.match(current.status.innerHTML, /Поиск завершён/);
 
