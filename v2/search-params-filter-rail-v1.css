@@ -1,0 +1,19 @@
+/* DS2 semantic split: trip parameters define the search; result filters refine a fresh full search. */
+.search-params-filter-split .search-section-title{margin-bottom:14px}
+.search-params-filter-split .search-section-title>span{font-weight:900}
+.search-params-filter-split .search-section-title>small{color:var(--at-muted,#687386)}
+.result-filter-rail{margin-top:20px!important;padding-top:18px!important;border-top:1px solid var(--at-line-soft,#e9edf6)!important}
+.result-filter-rail>summary strong{color:var(--at-brand,#2743cb)}
+.result-filter-rail>summary>span{color:var(--at-muted,#687386)!important}
+.result-filter-stars .stars-quick[hidden]{display:none!important}
+.result-filter-stars>select{display:block!important;position:static!important;width:100%!important;height:46px!important;margin:0!important;padding:0 12px!important;clip:auto!important;overflow:visible!important;white-space:normal!important;border:1px solid var(--at-line-strong,#cdd7ef)!important;border-radius:var(--at-control-radius,12px)!important;background:#fff!important;color:var(--at-text,#354052)!important;font-size:13px!important}
+@media(min-width:821px){
+  .search-params-filter-split .primary-search-flow>.primary-step-5{grid-column:1/-1}
+  .result-filter-rail[open]{padding-bottom:4px}
+  .result-filter-rail[open]>.extra-grid{padding-bottom:2px}
+  .result-filter-rail[open] .service-picker{margin-top:18px!important;padding:16px 14px 0!important;border:1px solid var(--at-line,#e1e7f3)!important;border-radius:var(--at-radius-md,14px)!important;background:var(--at-soft,#f7f9ff)!important}
+  .result-filter-rail[open] .service-picker>summary{min-height:42px!important;padding:0!important;color:var(--at-brand,#2743cb)!important;font-weight:900!important}
+  .result-filter-rail[open] .service-picker>summary span{color:var(--at-muted,#687386)!important;font-weight:700!important}
+  .result-filter-rail[open] .service-picker[open]>summary{margin-bottom:10px!important}
+  .result-filter-rail[open] .service-groups{padding-bottom:14px}
+}
