@@ -1,4 +1,4 @@
-/* Design System 1.0 editorial rhythm: shared hierarchy for public content pages without changing search/runtime contracts. */
+/* Design System 2.0 editorial rhythm: shared hierarchy for public content pages without changing search/runtime contracts. */
 .sp-main{display:grid;gap:var(--at-content-gap,30px)}
 .sp-main>section,.sp-main>div{margin-top:0!important}
 .sp-main>section:has(.sp-section-head){display:grid;gap:18px}
