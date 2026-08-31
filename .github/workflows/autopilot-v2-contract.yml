@@ -36,7 +36,7 @@ jobs:
           assert 'AnyTour Design System 1.0' in contract['design_system']['obsolete']
           assert contract['ci_policy']['normal_development']==['Fast CI']
           assert state['schema_version']==2
-          assert state['mode'] in {'dry_run','active'}
+          assert state['mode'] in set(schema['properties']['mode']['enum'])
           assert state['active_task']['state'] in {'discovered','triaged','ready','coding','qa','visual_qa','deploy','production_qa','done','blocked'}
           assert schema['properties']['schema_version']['const']==2
           print('AUTOPILOT_V2_CONTRACT_OK')
