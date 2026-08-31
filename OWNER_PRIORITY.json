@@ -1,14 +1,14 @@
 {
   "schema_version": 3,
-  "active_mode": "design_system_1_0",
-  "active_phase": "ANYTOUR DESIGN SYSTEM 1.0",
-  "current_stage": "SITE_WIDE_VISUAL_UNIFICATION",
+  "active_mode": "technical_refactor_pass",
+  "active_phase": "TECHNICAL REFACTOR PASS",
+  "current_stage": "CI_AND_DEPENDENCY_INVENTORY",
   "priority_after_emergency_overrides": [
-    "ux_visual",
     "technical_refactor",
+    "ux_visual",
     "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_design_system_1_0",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize AnyTour Design System 1.0 and site-wide visual unification. Audit and improve the shared shell and the full homepage -> country/destination -> hot/search -> results -> selected tour -> lead journey at 375/430/768/1024/1440. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract, verified social/app destinations, logo, unresolved legal/payment content and neighboring projects."
+  "source": "explicit_owner_direction_2026_08_31_technical_refactor_pass",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize the technical refactor pass: architecture/source-of-truth, active/compatibility/dead inventory, GitHub Actions classification and evidence-based consolidation, safe directory ownership, then shared template consolidation before UX/visual work. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring projects."
 }
