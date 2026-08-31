@@ -1,7 +1,7 @@
 {
   "schema_version": 3,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T08:07:00+02:00",
+  "updated_at": "2026-08-31T08:12:00+02:00",
   "mode": "design_system_1_0_site_unification",
   "phase": "ANYTOUR DESIGN SYSTEM 1.0 / SITE-WIDE VISUAL UNIFICATION",
   "owner_priority_source": "OWNER_PRIORITY.json",
@@ -14,11 +14,11 @@
     "id": "DESIGN_SYSTEM_1_0_SITE_UNIFICATION",
     "name": "AnyTour Design System 1.0 and site-wide visual unification",
     "status": "ACTIVE",
-    "progress": "PR #457 fixed editorial/country breadcrumb grid drift and deployed green in run 33359258585. A later refactor-first session again overwrote the explicit Design System owner direction; this state restores the current instruction. The next product slice addresses a confirmed search-shell grid mismatch at tablet width while preserving all mature search contracts.",
-    "next_action": "Land the shared search-shell grid alignment after five-width checks, verify production, then continue the full / → /country/ or /hot/ → /poisk-turov/ → results → selected tour → lead journey at 375/430/768/1024/1440 and fix only confirmed hierarchy, spacing, wrapping, overflow or duplicated-shell inconsistencies."
+    "progress": "PR #462 restored the explicit Design System 1.0 priority/state/guards after PR #460 drifted back to refactor-first. PR #461 aligned the mature search shell to canonical --at-shell/--at-page-gutter tokens, removing a confirmed tablet-width grid mismatch. After correcting the expected bundle-count guard for the new CSS asset, the complete relevant PR suite passed: V2 baseline/PR/selected-tour visuals, search header/footer/mobile checks, startup/bundles, standalone, comparison, flight, lead and security. PR #461 merged as e887eda5d87a1daa1bf1cc1b029c2d31d8b68a51; standalone deploy 33362874549 is running and has passed release validation but not yet final public-page/lead-bridge/live-search verification.",
+    "next_action": "Consume standalone deploy 33362874549 through public-page, unchanged lead-bridge and live-search smoke verification, then run the complete / → /country/ or /hot/ → /poisk-turov/ → results → selected tour → lead production journey at 375/430/768/1024/1440 and fix only confirmed hierarchy, spacing, wrapping, overflow or duplicated-shell inconsistencies."
   },
   "current_work_order": [
-    "align search shell horizontal grid with shared site tokens and validate 375 430 768 1024 1440",
+    "finish production verification for PR 461 search shell grid alignment",
     "audit full homepage country hot search results selected-tour lead journey at 375 430 768 1024 1440",
     "keep one coherent header navigation footer breadcrumbs and page grid across public pages",
     "keep shared typography spacing buttons cards and responsive primitives coherent",
@@ -33,9 +33,13 @@
   },
   "production_evidence": {
     "breadcrumb_grid_merge": "4c8fdbaa42e58e5548eba4aac339dda799760942",
-    "standalone_deploy_run": 33359258585,
-    "deploy_status": "GREEN_PUBLIC_PAGES_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
-    "search_shell_grid_slice": "PR_461_OPEN_AWAITING_RELEVANT_GREEN_CHECKS"
+    "previous_standalone_deploy_run": 33359258585,
+    "previous_deploy_status": "GREEN_PUBLIC_PAGES_UNCHANGED_LEAD_BRIDGE_LIVE_SEARCH_SMOKE",
+    "priority_restore_merge": "7ad350891df2b1d912fdc0e65e9491f93ff4063f",
+    "search_shell_grid_merge": "e887eda5d87a1daa1bf1cc1b029c2d31d8b68a51",
+    "search_shell_grid_pr_checks": "GREEN_RELEVANT_SUITE_375_430_768_1024_1440",
+    "standalone_deploy_run": 33362874549,
+    "deploy_status": "IN_PROGRESS_RELEASE_VALIDATION_GREEN_COPYING_RELEASE_AWAIT_PUBLIC_LEAD_SEARCH_VERIFICATION"
   },
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
