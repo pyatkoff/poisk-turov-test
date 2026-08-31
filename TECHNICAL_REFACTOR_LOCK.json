@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "active": false,
   "mode": "technical_refactor_pass",
   "phase": "TECHNICAL REFACTOR PASS",
@@ -12,5 +12,5 @@
     "tourvisor_contract",
     "neighboring_projects"
   ],
-  "rule": "This technical-refactor-first lock was superseded by the newer explicit owner direction on 2026-08-31 making AnyTour Design System 1.0 and site-wide visual unification priority #1. Technical refactor remains allowed when it directly supports safe visual consolidation or higher-priority correctness work."
+  "rule": "The former technical-refactor-first lock is inactive. The newer explicit owner direction on 2026-08-31 makes AnyTour 2.0 → whole-site 9.0/10 the north-star, with Design 2.0 / Design System foundation as the current stage. Technical refactor remains allowed when it directly supports the active roadmap or higher-priority correctness work."
 }
