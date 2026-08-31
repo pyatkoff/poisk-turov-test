@@ -53,12 +53,13 @@ jobs:
           if (($manifest['css'][count($manifest['css'])-3]??'')!=='search-footer-rhythm-v1.css') {fwrite(STDERR,"search footer rhythm must stay directly before shared-shell override\n"); exit(10);}
           if (($manifest['css'][count($manifest['css'])-2]??'')!=='search-header-shared-shell-v1.css') {fwrite(STDERR,"search shared-shell override must stay directly before DS2 search intro\n"); exit(11);}
           if (($manifest['css'][count($manifest['css'])-1]??'')!=='ds2-search-intro-v1.css') {fwrite(STDERR,"DS2 search intro override must load last\n"); exit(21);}
-          if (count($manifest['js'])!==37) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
+          if (count($manifest['js'])!==38) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
           if (!in_array('catalog-local-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"local catalog router missing\n"); exit(15);}
           if (!in_array('country-matrix-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"country matrix router missing\n"); exit(20);}
           if (!in_array('hotel-autocomplete-v1.js',$manifest['js'],true)) {fwrite(STDERR,"hotel autocomplete js missing\n"); exit(14);}
           if (!in_array('passive-price-observer-v1.js',$manifest['js'],true)) {fwrite(STDERR,"passive price observer missing\n"); exit(17);}
           if (!in_array('current-price-calendar-v1.js',$manifest['js'],true)) {fwrite(STDERR,"current price calendar js missing\n"); exit(19);}
+          if (!in_array('results-filter-autorefresh-v1.js',$manifest['js'],true)) {fwrite(STDERR,"results filter autorefresh missing\n"); exit(22);}
           echo 'BUNDLE_MANIFEST_OK css='.count($manifest['css']).' js='.count($manifest['js'])."\n";
           PHP
       - name: Validate bundled JavaScript syntax
@@ -79,6 +80,7 @@ jobs:
           grep -Fq 'window.V2FlightEmptyRecoveryV1=' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'window.V2LeadUiRaceGuardV1=' "$RUNNER_TEMP/v2-active-bundle.js"
           grep -Fq 'data-v2-hotel-query' "$RUNNER_TEMP/v2-active-bundle.js"
+          grep -Fq 'v2:results-filter-autorefresh' "$RUNNER_TEMP/v2-active-bundle.js"
           echo "BUNDLED_JS_SYNTAX_OK"
       - name: Validate bundle HTTP cache contract
         shell: bash
