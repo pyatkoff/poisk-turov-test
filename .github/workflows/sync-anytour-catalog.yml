@@ -11,15 +11,21 @@ on:
       - 'v2/data/migrate-departure-countries-v1.php'
       - 'v2/data/destinations-v1.php'
       - 'v2/data/validate-departures-v1.php'
+      - 'v2/data/catalog-hotel-sync-plan-v1.php'
       - 'v2/data/schema-departures-v1.sql'
   schedule:
-    - cron: '20 2 * * *'
+    - cron: '20 2,8,14,20 * * *'
   workflow_dispatch:
     inputs:
       country:
-        description: 'Tourvisor country id(s), comma-separated; default Turkey=4'
+        description: 'Optional Tourvisor country id(s), comma-separated. Empty = auto-select active stale countries.'
+        required: false
+        default: ''
+        type: string
+      batch_size:
+        description: 'Automatic country batch size (1-10)'
         required: true
-        default: '4'
+        default: '2'
         type: string
 
 concurrency:
@@ -29,27 +35,29 @@ concurrency:
 jobs:
   sync-catalog:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - name: Validate catalog tooling
         shell: bash
         env:
-          COUNTRY_VALUE: ${{ inputs.country || '4' }}
+          COUNTRY_VALUE: ${{ inputs.country || '' }}
+          BATCH_SIZE: ${{ inputs.batch_size || '2' }}
         run: |
           set -euo pipefail
-          for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/migrate-departures-v1.php v2/data/migrate-departure-countries-v1.php v2/data/sync-departures-v1.php v2/data/validate-departures-v1.php v2/data/sync-catalog-v1.php v2/data/db-doctor-v1.php v2/data/destinations-v1.php; do
+          for f in v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/migrate-departures-v1.php v2/data/migrate-departure-countries-v1.php v2/data/sync-departures-v1.php v2/data/validate-departures-v1.php v2/data/sync-catalog-v1.php v2/data/catalog-hotel-sync-plan-v1.php v2/data/db-doctor-v1.php v2/data/destinations-v1.php; do
             php -l "$f" >/dev/null
           done
           test -s v2/data/schema-v1.sql
-          grep -Fq 'name_genitive VARCHAR(180) DEFAULT NULL' v2/data/schema-v1.sql
-          grep -Fq 'catalog_departure_countries' v2/data/migrate-departure-countries-v1.php
-          grep -Fq 'pairs=' v2/data/sync-departures-v1.php
+          grep -Fq 'catalog_departure_countries' v2/data/catalog-hotel-sync-plan-v1.php
+          grep -Fq "CONCAT('hotels:country:'" v2/data/catalog-hotel-sync-plan-v1.php
           grep -Fq '$status === 429' v2/data/tourvisor-client-v1.php
           grep -Fq 'Retry-After:' v2/data/tourvisor-client-v1.php
           php -r "require 'v2/data/tourvisor-client-v1.php'; if (v2_data_tv_retry_delay_seconds(1, null) !== 1 || v2_data_tv_retry_delay_seconds(4, null) !== 8 || v2_data_tv_retry_delay_seconds(1, 99) !== 15) exit(1);"
-          [[ "$COUNTRY_VALUE" =~ ^[0-9]+(,[0-9]+)*$ ]]
-          echo "ANYTOUR_CATALOG_TOOLING_OK country=$COUNTRY_VALUE"
+          if test -n "$COUNTRY_VALUE"; then [[ "$COUNTRY_VALUE" =~ ^[0-9]+(,[0-9]+)*$ ]]; fi
+          [[ "$BATCH_SIZE" =~ ^[0-9]+$ ]] && test "$BATCH_SIZE" -ge 1 && test "$BATCH_SIZE" -le 10
+          echo "ANYTOUR_CATALOG_TOOLING_OK country=${COUNTRY_VALUE:-auto} batch=$BATCH_SIZE"
 
       - name: Prepare SSH key
         env:
@@ -71,12 +79,14 @@ jobs:
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-          COUNTRY_VALUE: ${{ inputs.country || '4' }}
+          COUNTRY_VALUE: ${{ inputs.country || '' }}
+          BATCH_SIZE: ${{ inputs.batch_size || '2' }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "$HOST_VALUE" && test -n "$USER_VALUE"
-          [[ "$COUNTRY_VALUE" =~ ^[0-9]+(,[0-9]+)*$ ]]
+          if test -n "$COUNTRY_VALUE"; then [[ "$COUNTRY_VALUE" =~ ^[0-9]+(,[0-9]+)*$ ]]; fi
+          [[ "$BATCH_SIZE" =~ ^[0-9]+$ ]] && test "$BATCH_SIZE" -ge 1 && test "$BATCH_SIZE" -le 10
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
           root='~/www/anytoour.ru'
@@ -87,19 +97,21 @@ jobs:
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru\"
             chmod 600 \"\$root/config.php\"
-            php -l \"\$root/data/db-v1.php\" >/dev/null
-            php -l \"\$root/data/tourvisor-client-v1.php\" >/dev/null
-            php -l \"\$root/data/migrate-departures-v1.php\" >/dev/null
-            php -l \"\$root/data/migrate-departure-countries-v1.php\" >/dev/null
-            php -l \"\$root/data/sync-departures-v1.php\" >/dev/null
-            php -l \"\$root/data/validate-departures-v1.php\" >/dev/null
-            php -l \"\$root/data/sync-catalog-v1.php\" >/dev/null
+            php -l \"\$root/data/catalog-hotel-sync-plan-v1.php\" >/dev/null
             php \"\$root/data/migrate-departures-v1.php\"
             php \"\$root/data/migrate-departure-countries-v1.php\"
-            php \"\$root/data/db-doctor-v1.php\"
             php \"\$root/data/sync-departures-v1.php\"
             php \"\$root/data/validate-departures-v1.php\"
-            php \"\$root/data/sync-catalog-v1.php\" --country='$COUNTRY_VALUE'
+            country='$COUNTRY_VALUE'
+            if test -z \"\$country\"; then
+              country=\"\$(php \"\$root/data/catalog-hotel-sync-plan-v1.php\" --limit='$BATCH_SIZE')\"
+            fi
+            if test \"\$country\" = 'NONE' || test -z \"\$country\"; then
+              echo 'ANYTOUR_HOTEL_CATALOG_UP_TO_DATE'
+              exit 0
+            fi
+            [[ \"\$country\" =~ ^[0-9]+(,[0-9]+)*$ ]]
+            echo \"ANYTOUR_HOTEL_SYNC_SELECTED country=\$country\"
+            php \"\$root/data/sync-catalog-v1.php\" --country=\"\$country\"
             php \"\$root/data/db-doctor-v1.php\"
           "
-          echo "ANYTOUR_CATALOG_SYNC_OK country=$COUNTRY_VALUE"
