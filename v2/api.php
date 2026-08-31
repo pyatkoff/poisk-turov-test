@@ -7,6 +7,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 $privateConfig=__DIR__.'/config.php';
 if(is_file($privateConfig)) require_once $privateConfig;
+require_once __DIR__.'/sales-leaders-v1.php';
 function out($data,int $status=200):void{http_response_code($status);echo json_encode($data,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);exit;}
 function jwt():string{$token=trim((string)getenv('TOURVISOR_JWT'));if($token!=='')return $token;if(defined('TOURVISOR_JWT')&&trim((string)TOURVISOR_JWT)!=='')return trim((string)TOURVISOR_JWT);return '';}
 function query_string(array $params):string{$parts=[];foreach($params as $key=>$value){if($value===null||$value==='')continue;if(is_bool($value))$value=$value?'true':'false';if(is_array($value)){foreach($value as $item){if($item===''||$item===null)continue;$parts[]=rawurlencode($key).'='.rawurlencode((string)$item);}}else{$parts[]=rawurlencode($key).'='.rawurlencode((string)$value);}}return implode('&',$parts);}
@@ -39,7 +40,7 @@ case'search_start':out(tv_get('/tours/search',[
 ]));
 case'search_continue':$id=search_id();out(tv_get('/tours/search/'.$id.'/continue'));
 case'search_status':$id=search_id();out(tv_get('/tours/search/'.$id.'/status',['operatorStatus'=>false]));
-case'search_results':$id=search_id();out(tv_get('/tours/search/'.$id,['limit'=>$_GET['limit']??25]));
+case'search_results':$id=search_id();$results=tv_get('/tours/search/'.$id,['limit'=>$_GET['limit']??25]);out(sales_leader_enrich_results($results));
 case'tour':$id=trim((string)($_GET['tourId']??''));if($id==='')out(['ok'=>false,'error'=>'tourId is required'],400);out(tv_get('/tours/'.rawurlencode($id),['currency'=>$_GET['currency']??'RUB']));
 case'flights':$id=trim((string)($_GET['tourId']??''));if($id==='')out(['ok'=>false,'error'=>'tourId is required'],400);out(tv_get('/tours/'.rawurlencode($id).'/flights',['currency'=>$_GET['currency']??'RUB']));
 case'rooms':out(tv_get('/rooms',['ids'=>request_array('ids')]));
