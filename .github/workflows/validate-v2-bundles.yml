@@ -41,10 +41,11 @@ jobs:
               $url=v2_bundle_asset($type);
               if (!str_contains($url,'bundle-v1.php?type='.$type.'&v='.$a)) {fwrite(STDERR,"bad $type url: $url\n"); exit(5);}
           }
-          if (count($manifest['css'])!==29) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
+          if (count($manifest['css'])!==30) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
           if (($manifest['css'][0]??'')!=='design-system-v1.css') {fwrite(STDERR,"design system must load first\n"); exit(8);}
           if (!in_array('site-header-v2.css',$manifest['css'],true)) {fwrite(STDERR,"canonical site header css missing\n"); exit(12);}
           if (!in_array('hotel-autocomplete-v1.css',$manifest['css'],true)) {fwrite(STDERR,"hotel autocomplete css missing\n"); exit(13);}
+          if (!in_array('search-shell-grid-v1.css',$manifest['css'],true)) {fwrite(STDERR,"shared search shell grid css missing\n"); exit(16);}
           if (($manifest['css'][count($manifest['css'])-3]??'')!=='search-header-layout-guard-v1.css') {fwrite(STDERR,"search header layout guard must stay before footer rhythm and shared-shell override\n"); exit(9);}
           if (($manifest['css'][count($manifest['css'])-2]??'')!=='search-footer-rhythm-v1.css') {fwrite(STDERR,"search footer rhythm must stay directly before shared-shell override\n"); exit(10);}
           if (($manifest['css'][count($manifest['css'])-1]??'')!=='search-header-shared-shell-v1.css') {fwrite(STDERR,"search shared-shell override must load last\n"); exit(11);}
@@ -93,6 +94,7 @@ jobs:
           grep -Fq -- '--at-shell:1180px' "$RUNNER_TEMP/bundle.css"
           grep -Fq '.at-global-header' "$RUNNER_TEMP/bundle.css"
           grep -Fq '.hotel-autocomplete__option' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'AnyTour Design System 1.0: keep the mature search surface' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Production guard for the legacy search-header markup' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Search-page footer rhythm guard' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'Search-header compatibility layer' "$RUNNER_TEMP/bundle.css"
