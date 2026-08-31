@@ -33,8 +33,6 @@ function rollup_median(array $prices): float
 {
     $count = count($prices);
     if ($count === 0) throw new InvalidArgumentException('median requires at least one price');
-    // The source query orders price inside every segment, but sorting here keeps
-    // this helper deterministic and safe for direct/test usage too.
     sort($prices, SORT_NUMERIC);
     $middle = intdiv($count, 2);
     return $count % 2 === 1
@@ -78,6 +76,15 @@ $upsert = $pdo->prepare("INSERT INTO tour_price_daily (
         country_id=VALUES(country_id),region_id=VALUES(region_id),min_price=VALUES(min_price),median_price=VALUES(median_price),
         max_price=VALUES(max_price),observation_count=VALUES(observation_count),calculated_at=VALUES(calculated_at)");
 
+// MySQL UNIQUE indexes allow multiple NULL values. meal_id is nullable in the
+// existing schema, so null-meal groups need an explicit delete-before-insert to
+// remain idempotent without changing the production schema contract.
+$deleteNullMeal = $pdo->prepare("DELETE FROM tour_price_daily
+    WHERE price_date=:price_date AND departure_id=:departure_id AND hotel_id=:hotel_id
+      AND departure_year=:departure_year AND departure_month=:departure_month AND nights=:nights
+      AND adults=:adults AND children_count=:children_count AND child_ages_signature=:child_ages_signature
+      AND meal_id IS NULL AND currency=:currency");
+
 $groupFields = [
     'price_date','departure_id','country_id','region_id','hotel_id','departure_year','departure_month','nights','adults',
     'children_count','child_ages_signature','meal_id','currency',
@@ -89,8 +96,25 @@ $groups = 0;
 $observations = 0;
 $calculatedAt = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 
-$flush = static function () use (&$current, &$prices, &$groups, $upsert, $calculatedAt): void {
+$flush = static function () use (&$current, &$prices, &$groups, $upsert, $deleteNullMeal, $calculatedAt): void {
     if ($current === null || $prices === []) return;
+
+    $mealId = $current['meal_id'] !== null ? (int)$current['meal_id'] : null;
+    if ($mealId === null) {
+        $deleteNullMeal->execute([
+            'price_date' => $current['price_date'],
+            'departure_id' => (int)$current['departure_id'],
+            'hotel_id' => (int)$current['hotel_id'],
+            'departure_year' => (int)$current['departure_year'],
+            'departure_month' => (int)$current['departure_month'],
+            'nights' => (int)$current['nights'],
+            'adults' => (int)$current['adults'],
+            'children_count' => (int)$current['children_count'],
+            'child_ages_signature' => (string)$current['child_ages_signature'],
+            'currency' => (string)$current['currency'],
+        ]);
+    }
+
     $upsert->execute([
         'price_date' => $current['price_date'],
         'departure_id' => (int)$current['departure_id'],
@@ -103,7 +127,7 @@ $flush = static function () use (&$current, &$prices, &$groups, $upsert, $calcul
         'adults' => (int)$current['adults'],
         'children_count' => (int)$current['children_count'],
         'child_ages_signature' => (string)$current['child_ages_signature'],
-        'meal_id' => $current['meal_id'] !== null ? (int)$current['meal_id'] : null,
+        'meal_id' => $mealId,
         'currency' => (string)$current['currency'],
         'min_price' => min($prices),
         'median_price' => rollup_median($prices),
@@ -133,8 +157,6 @@ try {
     }
     $flush();
 
-    // If observations were removed/rejected later, do not leave stale aggregates
-    // inside the recalculated window. Only rows not recalculated in this run are stale.
     $delete = $pdo->prepare("DELETE FROM tour_price_daily
         WHERE price_date >= :from_date AND price_date < :to_date AND calculated_at < :calculated_at");
     $delete->execute(['from_date' => $from, 'to_date' => $to, 'calculated_at' => $calculatedAt]);
