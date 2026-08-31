@@ -64,7 +64,8 @@ window.addEventListener('v2:results-rendered',()=>{
   if(revealed||window.innerWidth<821)return;
   revealed=true;
   details.open=true;
-  if(servicePicker)servicePicker.open=true;
+  // Keep hotel services available at the top, but do not auto-expand the long checklist.
+  // The first visible controls should stay scannable: category, rating, meal, price and flight.
   keepFilterLabel();
 });
 })();
