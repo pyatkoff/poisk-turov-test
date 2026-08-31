@@ -1,12 +1,12 @@
 {
-  "schema_version": 12,
-  "active": true,
+  "schema_version": 14,
+  "active": false,
   "mode": "technical_refactor",
-  "phase": "ARCHITECTURE_INVENTORY_AND_CI_CONSOLIDATION",
-  "status": "ACTIVE_OWNER_DIRECTION",
-  "authority": "explicit owner instruction 2026-08-31 technical refactor pass reconfirmed",
+  "phase": "DEFERRED_BY_OWNER",
+  "status": "PAUSED_BY_OWNER_DIRECTION",
+  "authority": "explicit owner instruction 2026-08-31 pause technical_refactor and update design/search",
   "scope": "pyatkoff/poisk-turov-test",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "protected_contracts": ["yandex_metrika_configuration_and_goals","external_lead_contract","tourvisor_contract","neighboring_projects"],
-  "rule": "Technical refactor is the active phase after emergency correctness overrides. Enforce architecture/source-of-truth, evidence-driven inventory, CI tiering/consolidation, safe ownership structure and shared-template consolidation before resuming UX/visual work."
+  "rule": "Technical refactor is deferred. Do not use this lock to redirect active work away from search UX or AnyTour Design System 2.0. Resume technical_refactor only after a new explicit owner direction."
 }
