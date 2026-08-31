@@ -59,6 +59,47 @@ def repository_assets() -> list[str]:
     return sorted(assets)
 
 
+def git_tracked_paths_containing(needle: str) -> set[str]:
+    """Return tracked repository files containing a literal string.
+
+    Exit code 1 from git grep means no match and is not an error. The helper is
+    intentionally repository-wide so workflow/deploy/test/compatibility consumers
+    are visible alongside runtime references.
+    """
+
+    proc = subprocess.run(
+        ["git", "grep", "-l", "-F", "--", needle],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode == 1:
+        return set()
+    if proc.returncode != 0:
+        raise RuntimeError(f"git grep failed for {needle!r}: {proc.stderr.strip()}")
+    return {line.strip() for line in proc.stdout.splitlines() if line.strip()}
+
+
+def repository_consumers(asset: str) -> list[str]:
+    """Map textual repository consumers for one V2 asset.
+
+    Search both the V2-relative asset path and basename because current flat V2
+    loaders/workflows commonly refer to browser files by basename. Results are
+    evidence for classification, not proof of runtime use or deadness.
+    """
+
+    basename = Path(asset).name
+    needles = {asset, f"v2/{asset}", basename}
+    consumers: set[str] = set()
+    for needle in needles:
+        consumers.update(git_tracked_paths_containing(needle))
+
+    own_path = f"v2/{asset}"
+    consumers.discard(own_path)
+    return sorted(consumers)
+
+
 def build_report() -> tuple[dict[str, Any], list[str]]:
     manifest = load_manifest()
     all_assets = repository_assets()
@@ -82,14 +123,21 @@ def build_report() -> tuple[dict[str, Any], list[str]]:
                 errors.append(f"manifest entry is missing from v2/: {entry}")
 
     non_manifest = sorted(asset for asset in all_assets if asset not in active_set)
+    non_manifest_consumers = {asset: repository_consumers(asset) for asset in non_manifest}
+    referenced_non_manifest = sum(1 for consumers in non_manifest_consumers.values() if consumers)
+
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_of_truth": "v2/bundle-manifest-v1.php",
         "classification_rule": {
             "active": "listed in the canonical bundle manifest",
             "non_manifest": (
                 "not in the active browser bundle; requires runtime/CI/deploy/compatibility "
                 "consumer proof before any deprecated/dead classification"
+            ),
+            "consumer_reference": (
+                "tracked repository file containing the asset basename/path; evidence only, "
+                "not proof that the reference is an active runtime consumer"
             ),
         },
         "counts": {
@@ -98,12 +146,20 @@ def build_report() -> tuple[dict[str, Any], list[str]]:
             "active_js": len(manifest["js"]),
             "active_total": len(active_set),
             "non_manifest_total": len(non_manifest),
+            "non_manifest_with_repository_references": referenced_non_manifest,
+            "non_manifest_without_repository_references": len(non_manifest) - referenced_non_manifest,
         },
         "active": {
             "css": manifest["css"],
             "js": manifest["js"],
         },
-        "non_manifest": non_manifest,
+        "non_manifest": [
+            {
+                "asset": asset,
+                "repository_consumers": non_manifest_consumers[asset],
+            }
+            for asset in non_manifest
+        ],
     }
     return report, errors
 
@@ -132,10 +188,14 @@ def main() -> int:
             "V2_ASSET_INVENTORY_OK "
             f"repo={counts['repository_browser_assets']} "
             f"active_css={counts['active_css']} active_js={counts['active_js']} "
-            f"active_total={counts['active_total']} non_manifest={counts['non_manifest_total']}"
+            f"active_total={counts['active_total']} non_manifest={counts['non_manifest_total']} "
+            f"referenced_non_manifest={counts['non_manifest_with_repository_references']} "
+            f"unreferenced_non_manifest={counts['non_manifest_without_repository_references']}"
         )
         for item in report["non_manifest"]:
-            print(f"NON_MANIFEST {item}")
+            consumers = item["repository_consumers"]
+            suffix = f" consumers={','.join(consumers)}" if consumers else " consumers=-"
+            print(f"NON_MANIFEST {item['asset']}{suffix}")
 
     if errors:
         for error in errors:
