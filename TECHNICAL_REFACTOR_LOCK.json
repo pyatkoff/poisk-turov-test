@@ -1,10 +1,10 @@
 {
-  "schema_version": 3,
-  "active": true,
-  "mode": "technical_refactor_pass",
-  "phase": "TECHNICAL REFACTOR PASS",
-  "status": "ACTIVE_BY_EXPLICIT_OWNER_DIRECTION",
-  "authority": "explicit owner instruction 2026-08-31 technical refactor pass",
+  "schema_version": 4,
+  "active": false,
+  "mode": "tour_data_platform",
+  "phase": "TOUR DATA PLATFORM",
+  "status": "INACTIVE_OWNER_DIRECTION_CHANGED",
+  "authority": "explicit owner instruction 2026-08-31 tour data platform priority",
   "scope": "pyatkoff/poisk-turov-test",
   "protected_contracts": [
     "yandex_metrika_configuration_and_goals",
@@ -12,5 +12,5 @@
     "tourvisor_contract",
     "neighboring_projects"
   ],
-  "rule": "Keep technical refactor first after emergency correctness overrides until the owner explicitly changes direction. Complete architecture/source-of-truth, inventory/dependency map, CI classification/consolidation proof, safe directory ownership and shared template consolidation before UX/visual work."
+  "rule": "Technical refactor must not preempt Tour Data Platform work. Use refactoring only when required to safely deliver catalog coverage, collection, normalization, history, aggregates or downstream data products."
 }
