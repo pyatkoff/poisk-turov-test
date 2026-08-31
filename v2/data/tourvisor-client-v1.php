@@ -31,6 +31,12 @@ function v2_data_query_string(array $params): string
     return implode('&', $parts);
 }
 
+function v2_data_tv_retry_delay_seconds(int $attempt, ?int $retryAfter): int
+{
+    if ($retryAfter !== null && $retryAfter > 0) return min(15, $retryAfter);
+    return min(8, 1 << max(0, $attempt - 1));
+}
+
 function v2_data_tv_get(string $path, array $params = []): array
 {
     $token = v2_data_tourvisor_token();
@@ -40,30 +46,60 @@ function v2_data_tv_get(string $path, array $params = []): array
     $query = v2_data_query_string($params);
     if ($query !== '') $url .= '?' . $query;
 
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_TIMEOUT => 60,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $token,
-            'Accept: application/json',
-        ],
-    ]);
-    $body = curl_exec($ch);
-    $errno = curl_errno($ch);
-    $error = curl_error($ch);
-    $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+    $maxAttempts = 4;
+    $lastStatus = 0;
+    $lastError = '';
 
-    if ($errno !== 0) {
-        throw new RuntimeException('Tourvisor connection error: ' . $error);
-    }
-    if ($status < 200 || $status >= 300) {
-        throw new RuntimeException('Tourvisor HTTP ' . $status);
+    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+        $retryAfter = null;
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_TIMEOUT => 60,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $token,
+                'Accept: application/json',
+            ],
+            CURLOPT_HEADERFUNCTION => static function ($curl, string $header) use (&$retryAfter): int {
+                if (stripos($header, 'Retry-After:') === 0) {
+                    $raw = trim(substr($header, strlen('Retry-After:')));
+                    if (ctype_digit($raw)) $retryAfter = (int)$raw;
+                }
+                return strlen($header);
+            },
+        ]);
+        $body = curl_exec($ch);
+        $errno = curl_errno($ch);
+        $error = curl_error($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $lastStatus = $status;
+        $lastError = $error;
+
+        if ($errno !== 0) {
+            if ($attempt < $maxAttempts) {
+                sleep(v2_data_tv_retry_delay_seconds($attempt, null));
+                continue;
+            }
+            throw new RuntimeException('Tourvisor connection error after ' . $attempt . ' attempts: ' . $error);
+        }
+
+        if ($status >= 200 && $status < 300) {
+            $decoded = json_decode((string)$body, true);
+            if (!is_array($decoded)) throw new RuntimeException('Invalid Tourvisor JSON response');
+            return $decoded;
+        }
+
+        $retryable = $status === 429 || in_array($status, [502, 503, 504], true);
+        if ($retryable && $attempt < $maxAttempts) {
+            sleep(v2_data_tv_retry_delay_seconds($attempt, $retryAfter));
+            continue;
+        }
+
+        throw new RuntimeException('Tourvisor HTTP ' . $status . ' after ' . $attempt . ' attempt(s)');
     }
 
-    $decoded = json_decode((string)$body, true);
-    if (!is_array($decoded)) throw new RuntimeException('Invalid Tourvisor JSON response');
-    return $decoded;
+    throw new RuntimeException('Tourvisor request failed: HTTP ' . $lastStatus . ($lastError !== '' ? ' ' . $lastError : ''));
 }
