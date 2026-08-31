@@ -6,10 +6,21 @@
     "title": "Re-audit standalone results and selected-tour transitions",
     "area": "ux-qa",
     "risk": "SAFE",
-    "state": "triaged",
-    "owner": "orchestrator",
-    "required_gates": ["Fast CI", "targeted functional evidence", "visual QA if user-facing diff exists"],
-    "evidence": ["Imported from AUTOPILOT_STATE.json current next_action; no product code changes in MVP scaffold."]
+    "state": "qa",
+    "owner": "qa",
+    "required_gates": [
+      "no CI for observation-only audit",
+      "Fast CI only if a concrete product-code fix is created",
+      "targeted visual QA only for user-facing affected route/state",
+      "Deploy + Production smoke only if released"
+    ],
+    "evidence": [
+      "Imported from AUTOPILOT_STATE.json current next_action.",
+      "First orchestrator dry run selected the existing highest-priority stabilization audit.",
+      "QA handoff recorded in autopilot-v2/runs/2026-09-01-pilot-1.md.",
+      "No product runtime code changed during orchestration.",
+      "Targeted live QA attempt was blocked before HTTP by execution-environment DNS resolution failure for anytoour.ru; not classified as product defect."
+    ]
   },
   "queue": [
     {
@@ -26,9 +37,16 @@
     }
   ],
   "last_signal": {
-    "source": "migration",
-    "status": "READY_FOR_DRY_RUN",
-    "sha": ""
+    "source": "qa_targeted_live_probe",
+    "status": "BLOCKED_EXTERNAL_DNS",
+    "sha": "a11e13a43f005c63ae159c0f742dbd4f30c77748"
   },
-  "blocked": []
+  "blocked": [
+    {
+      "scope": "pilot targeted production verification",
+      "type": "external_environment",
+      "reason": "Execution environment could not resolve anytoour.ru DNS before first HTTP request.",
+      "action": "Retry only the narrow live probe from an environment with working DNS; do not restore broad regression matrix."
+    }
+  ]
 }
