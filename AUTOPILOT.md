@@ -2,32 +2,34 @@
 
 Updated: 2026-08-31
 
-Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` records that the old refactor-first lock is inactive, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
+Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` locks the active technical-refactor phase, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
 
-## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 1.0
+## Current owner-directed phase — CI COST AUDIT AND TECHNICAL REFACTOR
 
-After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is whole-site visual unification. The public site must read as one coherent AnyTour product from homepage through destination/hot/search, results, selected tour and lead. Search-only engineering quality must not be used as the whole-site visual score.
+After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is technical consolidation and GitHub Actions cost reduction. The objective is to cut duplicate runner/browser work without weakening the critical contracts around search, prices, tours, flights, recovery and lead submission.
+
+AnyTour Design System 2.0 is the canonical design-system generation. Legacy Design System generation terminology must not be reintroduced. Implementation filenames such as `*-v1.js` / `*-v1.css` are independent module-generation identifiers and must not be mass-renamed without dependency-mapped migration.
 
 ## Ordered work
 
-1. Keep one shared token/primitives layer for typography, shell width, gutters, spacing, cards, controls, breadcrumbs and responsive behavior.
-2. Keep one coherent header/navigation and one canonical footer across `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages.
-3. Fix confirmed crooked spacing, wrapping, overflow, duplicated shell and inconsistent hierarchy before decorative polish.
-4. Migrate weak editorial/destination pages onto the mature shared shell while keeping them lighter than the dense search product.
-5. Validate material visual changes at 375, 430, 768, 1024 and 1440 px and audit the full homepage → destination/hot → search → results → selected tour → lead journey.
-6. Preserve all search/recovery/results/comparison/flight/price/fuel/lead regressions while changing the outer visual system.
-7. Resume Tour Data Platform work after the owner-directed Design System phase or when needed to support an already-approved visual/product surface.
+1. Audit workflows by actual dependency and classify them as PR FAST, PR BROWSER, POST DEPLOY, SCHEDULED-LIVE or consolidate/delete-after-coverage.
+2. Reduce repeated runner starts, `npm init`, Playwright installation and Chromium dependency installation before deleting any unique behavioral coverage.
+3. Consolidate overlapping checks into one domain owner; do not create one workflow per bug/string/selector.
+4. Narrow broad `v2/**` triggers where a workflow does not consume `v2/data/**` or other changed subtrees.
+5. Fold tiny source-string guards into an existing cheap owner where equivalent failure visibility is preserved.
+6. Keep architecture/source-of-truth files synchronized and periodically re-audit the whole search product rather than only recently changed files.
+7. Resume UX/visual work under AnyTour Design System 2.0 after the technical CI phase or when required to preserve a critical user journey.
 
 ## Current resume point
 
-The shared token/header/footer/page-shell foundation is active. The 769–900 px editorial shell, breadcrumbs, section-heading wraps and card paragraph rhythm now align to the canonical tablet grid. The homepage hero, quick-search card and content sections also use the same shared gutter/tablet cap instead of legacy hard-coded geometry. The responsive visual suite already covers exactly 375/430/768/1024/1440 across homepage, search, editorial routes, country catalog and representative country pages.
+Completed cost reductions include data-only exclusions for several unrelated V2 visual/browser owners, consolidation of the duplicate primary-meal responsive workflow, removal of dormant manual traffic-audit stubs, and consolidation of the pending-flight label source guard into the existing pending-flight confidence owner.
 
-Continue with route-specific hierarchy on `/country/` and representative destination pages, then `/contacts/`, `/how-to-buy/` and `/rb/`. After those slices, run the complete production homepage → destination/hot → search → results → selected tour → lead journey at the exact responsive matrix. Treat the owner-calibrated 6.5/10 whole-site baseline separately from stronger search-only engineering scores; current whole-site estimate after the shared-grid work is about 6.7/10.
+Continue with the broad expensive owners first: `visual-v2-baseline.yml`, then dependency filtering for `validate-v2-pr.yml` / standalone owners, and further browser-suite consolidation where exact coverage overlap is proven. Maintain the target of at least a 2x reduction in routinely triggered PR jobs without weakening money/lead/search/price/tour/flight/recovery protection.
 
 ## Mandatory protections
 
-Work only inside `pyatkoff/poisk-turov-test` and allowed V2/standalone production scope. Do not redesign or replace the AnyTour logo. Do not modify Yandex Metrika configuration/goals, Tourvisor contract, external lead contract/field mapping, verified social/app destinations or neighboring projects. Do not migrate unresolved legal/payment content. Keep PR #254 deferred unless a fresh review proves its separate DB/platform architecture safe.
+Work only inside `pyatkoff/poisk-turov-test`. Do not modify Yandex Metrika configuration or goals. Preserve the Tourvisor contract and the external lead-sending contract/field mapping. Do not modify neighboring projects. Keep GitHub as source of truth.
 
 ## Execution policy
 
-At the start of each run inspect fresh `main`, open PRs, recent CI/deploy evidence, live behavior where accessible and these source-of-truth files. Choose multiple independent safe Design System slices where time permits and carry each through focused regression/visual evidence. SAFE/MEDIUM changes may be merged autonomously after green evidence. If blocked, record/defer the blocker and continue another independent visual-unification task.
+At the start of each run inspect fresh `main`, open PRs, recent CI/deploy evidence and the source-of-truth files. Prefer narrow SAFE/MEDIUM consolidation PRs and merge autonomously after green evidence. If blocked, record/defer the blocker and continue another independent technical-refactor or CI-cost task. Do not let visual/design work silently preempt the active technical phase.
