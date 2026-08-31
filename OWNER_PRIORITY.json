@@ -1,19 +1,18 @@
 {
-  "schema_version": 7,
-  "active_mode": "ux_visual",
-  "active_phase": "ANYTOUR_DESIGN_SYSTEM_1_0",
-  "current_stage": "SITE_WIDE_VISUAL_UNIFICATION",
-  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 1.0",
+  "schema_version": 6,
+  "active_mode": "technical_refactor",
+  "active_phase": "CI_COST_AUDIT_AND_CONSOLIDATION",
+  "current_stage": "CI_RESOURCE_CONSOLIDATION",
+  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "priority_after_emergency_overrides": [
-    "ux_visual",
-    "site_wide_unification",
-    "broken_user_journey",
     "technical_refactor",
     "ci_cost_audit",
+    "architecture_source_of_truth",
+    "ux_visual",
     "tour_data_platform",
     "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_site_wide_design_system_1_0",
-  "rule": "After production, lead-loss and incorrect-data emergencies, prioritize AnyTour Design System 1.0 and site-wide visual unification. Audit and improve the full journey across home, country, hot/search, results, selected tour and lead surfaces at 375/430/768/1024/1440. Preserve Metrika, Tourvisor, lead contracts, logo and verified social/app destinations. Do not migrate unresolved legal/payment content. Keep PR #254 deferred unless separately proven safe."
+  "source": "explicit_owner_direction_2026_08_31_ci_resource_audit",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize technical refactor and GitHub Actions cost consolidation. Reduce duplicate runner/browser work without weakening search, lead, price, tour, flight or recovery coverage. AnyTour Design System 2.0 is the canonical design-system generation, but visual work must not preempt the current technical/CI phase. Preserve Metrika, Tourvisor and lead contracts."
 }
