@@ -13,6 +13,6 @@
 .sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:var(--at-copy-measure,74ch)}
 .sp-search-callout p{max-width:760px}
 .sp-actions{margin-top:24px}
-@media(min-width:901px){.sp-section-head{display:grid;grid-template-columns:minmax(0,.82fr) minmax(360px,1fr);justify-content:stretch;column-gap:clamp(28px,4vw,56px)}.sp-section-head p{justify-self:start}}
+@media(min-width:901px){.sp-section-head{display:grid;grid-template-columns:minmax(0,.82fr) minmax(360px,1fr);justify-content:stretch;column-gap:clamp(28px,4vw,56px)}.sp-section-head p{justify-self:start}.sp-steps--summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:768px){.sp-main>section:has(.sp-section-head){gap:15px}.sp-section-head p{font-size:14px}.sp-steps{gap:12px}.sp-step{min-height:0}.sp-purchase-flow{grid-template-columns:1fr}}
 @media(max-width:560px){.sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:none}.sp-actions{margin-top:20px}.sp-grid--balanced-two{grid-template-columns:1fr}}
