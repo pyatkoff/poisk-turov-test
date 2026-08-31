@@ -3,7 +3,9 @@ name: Autopilot runtime state
 on:
   workflow_run:
     workflows:
-      - "Deploy V2 only"
+      - "Fast CI"
+      - "Deploy anytoour.ru"
+      - "Production smoke"
     types: [completed]
   workflow_dispatch:
 
@@ -18,6 +20,7 @@ permissions:
 jobs:
   update-runtime-state:
     runs-on: ubuntu-latest
+    timeout-minutes: 2
     steps:
       - name: Update persistent runtime issue
         uses: actions/github-script@v7
@@ -34,38 +37,29 @@ jobs:
             const headSha = run ? run.head_sha : context.sha;
             const runUrl = run ? run.html_url : `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
             let signal = 'CI_INFORMATIONAL';
-            let next = 'Inspect AUTOPILOT_STATE.json and continue the highest-priority safe task.';
+            let next = 'Continue the highest-priority safe task from AUTOPILOT_STATE.json.';
             if (conclusion === 'success') {
               signal = 'CI_SUCCESS';
-              next = 'Collect DONE evidence and continue the current AUTOPILOT_STATE.json task or advance to the next queued task.';
+              next = 'Continue immediately; do not wait for redundant checks.';
             } else if (['failure','timed_out','cancelled','action_required'].includes(conclusion)) {
               signal = 'CI_NEEDS_ATTENTION';
-              next = 'Diagnose this workflow result first. Fix it if it is within project scope; otherwise record the blocker and continue independent work.';
+              next = 'Inspect this single failed gate first; do not launch the retired full matrix.';
             }
-            const updated = new Date().toISOString();
             const body = [
-              '# Autopilot runtime state',
-              '',
-              '> Machine-maintained CI handoff. Product/queue authority remains in `AGENTS.md`, `AUTOPILOT.md`, and `AUTOPILOT_STATE.json`.',
-              '',
-              `- Updated: ${updated}`,
+              '# Autopilot runtime state', '',
+              '> Lean CI handoff for Autopilot 1.x and 2.0.', '',
+              `- Updated: ${new Date().toISOString()}`,
               `- Workflow: **${workflow}**`,
               `- Conclusion: **${conclusion}**`,
               `- Signal: **${signal}**`,
               `- Head SHA: \`${headSha}\``,
               `- Run ID: \`${runId}\``,
-              `- Run: ${runUrl}`,
-              '',
-              '## Recommended next action',
-              next,
-              '',
-              '## Continuation rule',
-              'Read this runtime signal together with `AUTOPILOT_STATE.json`. A failed item should not stop unrelated safe work; record/defer an external blocker and continue the queue.'
+              `- Run: ${runUrl}`, '',
+              '## Recommended next action', next, '',
+              '## CI policy',
+              'Normal development uses Fast CI only. Production uses Deploy + Production smoke. Deep visual/live audits are no longer automatic gates.'
             ].join('\n');
             const found = await github.rest.issues.listForRepo({owner, repo, state:'open', per_page:100});
             const issue = found.data.find(i => i.title === title && !i.pull_request);
-            if (issue) {
-              await github.rest.issues.update({owner, repo, issue_number: issue.number, body});
-            } else {
-              await github.rest.issues.create({owner, repo, title, body});
-            }
+            if (issue) await github.rest.issues.update({owner, repo, issue_number: issue.number, body});
+            else await github.rest.issues.create({owner, repo, title, body});

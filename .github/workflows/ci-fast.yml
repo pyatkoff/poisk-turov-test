@@ -1,0 +1,52 @@
+name: Fast CI
+
+on:
+  pull_request:
+    paths:
+      - 'v2/**'
+      - '.github/workflows/ci-fast.yml'
+  push:
+    branches: [main, feature/search-core]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/ci-fast.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: fast-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Syntax only for changed code
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='HEAD^'
+          git rev-parse "$base" >/dev/null 2>&1 || base="$(git hash-object -t tree /dev/null)"
+          mapfile -t changed < <(git diff --name-only "$base" HEAD -- 'v2/**' || true)
+          for f in "${changed[@]}"; do
+            test -f "$f" || continue
+            case "$f" in
+              *.php) php -l "$f" >/dev/null ;;
+              *.js) node --check "$f" ;;
+            esac
+          done
+          echo "FAST_SYNTAX_OK files=${#changed[@]}"
+      - name: Critical search contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'api:"/api-v2.php"' v2/index.php
+          grep -Fq 'leadApi:"/lead-adapter-v2.php"' v2/index.php
+          test -f v2/lead-adapter-v2.php
+          test -f v2/analytics-config.php
+          echo 'FAST_CONTRACT_OK'
