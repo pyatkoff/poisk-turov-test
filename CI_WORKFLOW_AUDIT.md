@@ -38,6 +38,21 @@ For every workflow, record: trigger, path scope, proposed tier, protected behavi
 | `validate-pending-flight-label.yml` | PR to `main` for `unpriced-flight-price-reset-v1.js` | PR FAST | explicit `Цена уточняется` label, pending-label normalization invocation, protection of already-priced labels | exact Node `src.includes()` implementation-string assertions | KEEP temporarily; REPLACE-AFTER-COVERAGE candidate because behavior is not yet tested independently of implementation text |
 | `validate-unpriced-flight-price-reset.yml` | PR to `main` for `unpriced-flight-price-reset-v1.js` and bundle manifest; manual | PR BROWSER | selecting an unpriced flight after a priced one resets stale price, refreshes/falls back fuel correctly, emits `pricePending`, updates lead/confidence copy and avoids overflow at 375/768/1440 | Playwright behavior using local branch guard over legacy remote V2 shell | KEEP; high-value state-transition guard, modernize shared shell/harness later without weakening assertions |
 
+## Verified batch 4 — primary meal responsive/visibility
+
+| Workflow | Trigger / scope | Tier | What it protects | Assertion style | Audit disposition |
+| --- | --- | --- | --- | --- | --- |
+| `visual-v2-meal-visibility.yml` | PR to `main` for primary-meal JS/CSS plus several shared/layout CSS files, bundle manifest or `v2/index.php`; manual | PR BROWSER | all primary meal choices remain visible, wrapped and non-scrolling with no document overflow across 375/430/768/901/1024/1100/1101/1200/1440 | builds branch-local CSS bundle, injects it into the legacy V2 compatibility shell and checks computed geometry/overflow in Playwright | KEEP; broad meal-layout owner and strong behavioral coverage; candidate for shared browser bootstrap/harness only |
+| `validate-v2-primary-meal-responsive.yml` | PR to `main` for primary-meal JS/CSS or bundle manifest | PR BROWSER | at 1024px the meal field expands to the intermediate row, wraps without horizontal scrolling, every option is visible and the final `Без питания` choice is present; uploads screenshot evidence | same branch-local CSS bundle injection over legacy V2 shell, Playwright computed geometry plus one text/content expectation and artifact capture | CONSOLIDATE-CANDIDATE, not deletion-ready: its 1024 visibility/wrap verdict is already a subset of `visual-v2-meal-visibility.yml`, but full-row width, final-choice identity and screenshot evidence are not yet owned by the broader workflow |
+
+### Meal workflows have proven structural overlap, but not yet equivalent coverage
+
+Both meal workflows build the CSS bundle from `bundle-manifest-v1.php`, install Playwright 1.55 Chromium, inject branch-local CSS over `https://anytour.online/poisk-turov-test/v2/`, then assert `.meal-quick` geometry at 1024px. The broader visibility workflow also covers eight additional widths and has a wider path trigger surface.
+
+However, `validate-v2-primary-meal-responsive.yml` still owns three pieces not proved by the broader workflow: the `main-meal` field-width expectation at 1024px, identity/visibility of the last `Без питания` option, and retained screenshot evidence.
+
+Disposition: keep both for now. A safe future consolidation is to add those three missing assertions/evidence to `visual-v2-meal-visibility.yml`, verify the resulting workflow on all current trigger paths, and only then remove the narrower workflow in a separate PR. This is the first workflow family in the exhaustive audit with concrete, implementation-verified consolidation potential rather than filename-level similarity.
+
 ## Confirmed findings
 
 ### PR FAST has refactor-hostile implementation-string guards
@@ -108,10 +123,10 @@ The repository contains additional workflow families that must be audited before
 
 - rooms/flights/price: remaining live/price workflows beyond the verified room/flight companion and pending/unpriced batch;
 - lead: form/idempotency/price/recovery/search-context/UI-race guards;
-- mobile/UI: duration/sticky/meal and focused visual workflows;
+- mobile/UI: focused visual workflows beyond the already documented duration/sticky and primary-meal batches;
 - SEO/content: SEO foundation/page graph/stable paths/publishability/publication manifest/content catalog/primitives plus standalone content/navigation/handoff;
 - live journey/content/catalog/search/tour workflows;
-- visual production/root/results/baseline/selected-tour/meal/sticky/footer workflows;
+- visual production/root/results/baseline/selected-tour/sticky/footer workflows;
 - runtime/audit/measurement/deploy/feed/security/autopilot-state workflows.
 
 These families remain authoritative guards until their trigger/path/behavior overlap is verified in later audit batches.
@@ -121,7 +136,7 @@ These families remain authoritative guards until their trigger/path/behavior ove
 1. Finish exhaustive trigger/path/assertion inventory without modifying workflows.
 2. Extract repeated non-browser syntax/asset/render checks into reusable `scripts/ci/` commands.
 3. Convert the highest-cost `src.includes()`/`grep` guards to behavioral diagnostics, with `validate-pending-flight-label.yml` now an explicit low-risk candidate alongside search-continue.
-4. Extract shared Playwright bootstrap/fixture helpers for comparison/results/selected-tour/pending-flight browser workflows without weakening coverage.
+4. Extract shared Playwright bootstrap/fixture helpers for comparison/results/selected-tour/pending-flight/browser-layout workflows without weakening coverage.
 5. Reconcile canonical `anytoour.ru/poisk-turov/` browser coverage with legacy V2 compatibility harnesses.
 6. Only after equivalent coverage is green, consolidate superseded workflows one family at a time.
 
