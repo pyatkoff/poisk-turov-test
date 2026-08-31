@@ -53,6 +53,25 @@ However, `validate-v2-primary-meal-responsive.yml` still owns three pieces not p
 
 Disposition: keep both for now. A safe future consolidation is to add those three missing assertions/evidence to `visual-v2-meal-visibility.yml`, verify the resulting workflow on all current trigger paths, and only then remove the narrower workflow in a separate PR. This is the first workflow family in the exhaustive audit with concrete, implementation-verified consolidation potential rather than filename-level similarity.
 
+## Verified batch 5 — lead guards and recovery
+
+| Workflow | Trigger / scope | Tier | What it protects | Assertion style | Audit disposition |
+| --- | --- | --- | --- | --- | --- |
+| `validate-lead-form-guard-v1.yml` | push to `main` only when `v2/lead-form-guard-v1.js` or the workflow changes | POST-MERGE FAST today; intended PR FAST contract | basic JS syntax plus presence of phone-length/custom-validity/version implementation markers | `node --check` plus exact `grep` source-string assertions | GAP / REPLACE-AFTER-COVERAGE: it does not protect PRs at all and its semantic checks are implementation-text coupled; keep until equivalent behavioral diagnostic exists, then move that diagnostic to PR FAST |
+| `validate-lead-idempotency-v1.yml` | PR, push to `main`, manual; scoped to idempotency PHP + its diagnostic | PR FAST | deterministic idempotency fingerprint semantics without changing the external lead contract | PHP lint + `scripts/ci/lead/validate-idempotency.php` behavioral diagnostic | KEEP; already follows the preferred one-concept → one-diagnostic pattern and is a model for lead-family consolidation |
+| `validate-lead-price-v1.yml` | PR, push to `main`, manual; scoped to lead-price PHP + its diagnostic | PR FAST | lead price derivation/normalization semantics | PHP lint + `scripts/ci/lead/validate-price.php` behavioral diagnostic | KEEP; already refactor-safe and independently executable |
+| `validate-lead-recovery.yml` | PR to `main`; form/race guard changes; manual | PR BROWSER | error → retry → success and duplicate-success UX, retained form values, success panel/back action across 375/768/1440 | isolated local Playwright DOM harness loading branch-local form guard | KEEP; high-value observable behavior, not duplicate of form syntax guard |
+| `validate-lead-search-context.yml` | push to `main` only for `v2/lead-search-context.js`; manual | POST-MERGE FAST today; intended PR FAST contract | child ages, lifecycle coupling and adapter target are present in lead search-context module | JS syntax + exact `grep` source-string assertions | GAP / REPLACE-AFTER-COVERAGE: no PR protection and all semantic verdicts are source-text coupled; add a deterministic context diagnostic before changing/removing this workflow |
+| `validate-lead-ui-race-guard.yml` | PR to `main` for race guard/bundle manifest | PR FAST | stale lead UI events are blocked during tour changes while current-tour events pass | deterministic local Node/vm behavioral execution | KEEP; compact, refactor-safe behavioral guard; consider moving its inline script to `scripts/ci/lead/` only to centralize implementation, not to weaken coverage |
+
+### Lead-family audit proves a lifecycle gap, not a duplicate-workflow deletion opportunity
+
+The six lead workflows do not contain a safe whole-workflow duplicate. The important finding is trigger asymmetry: `validate-lead-form-guard-v1.yml` and `validate-lead-search-context.yml` run only after code lands on `main`, while the idempotency, price, recovery and UI-race contracts already protect pull requests.
+
+The two push-only workflows are also the weakest refactor guards because their semantic assertions are exact source strings. Changing them directly to PR checks would improve timing but would preserve brittle false-positive behavior. Safer order: first extract deterministic diagnostics under `scripts/ci/lead/` that exercise observable form validation and search-context payload/lifecycle behavior; then wire those diagnostics into PR FAST with the same path scope; only after green equivalent coverage retire the source-string checks or post-merge-only workflows.
+
+Disposition: no lead workflow is deletion-ready in this batch. `validate-lead-idempotency-v1.yml`, `validate-lead-price-v1.yml` and `validate-lead-ui-race-guard.yml` demonstrate the target architecture: one concept → one independently executable diagnostic, with workflows reduced to trigger/tier orchestration.
+
 ## Confirmed findings
 
 ### PR FAST has refactor-hostile implementation-string guards
@@ -117,12 +136,17 @@ Current post-deploy visual workflow listens for `Deploy V2 only`, while the cano
 
 Disposition: map the actual active `deploy.yml` vs `deploy-anytoour.yml` relationship before modifying triggers. This is an ACTIVE/COMPATIBILITY dependency question, not safe dead-code deletion.
 
+### Lead checks are split between PR protection and after-merge detection
+
+`validate-lead-form-guard-v1.yml` and `validate-lead-search-context.yml` currently detect regressions only after push to `main`. By contrast, idempotency, price, recovery and UI-race guards run on pull requests and already use deterministic behavioral execution in three of four cases.
+
+Disposition: treat the push-only pair as CI lifecycle gaps, not as dead checks. Build equivalent `scripts/ci/lead/` diagnostics first, add PR FAST coverage, then remove the brittle grep assertions/post-merge-only dependence after proven parity. This preserves the external lead contract while making technical refactoring safer.
+
 ## Inventory families still to verify
 
 The repository contains additional workflow families that must be audited before any deletion:
 
 - rooms/flights/price: remaining live/price workflows beyond the verified room/flight companion and pending/unpriced batch;
-- lead: form/idempotency/price/recovery/search-context/UI-race guards;
 - mobile/UI: focused visual workflows beyond the already documented duration/sticky and primary-meal batches;
 - SEO/content: SEO foundation/page graph/stable paths/publishability/publication manifest/content catalog/primitives plus standalone content/navigation/handoff;
 - live journey/content/catalog/search/tour workflows;
@@ -135,7 +159,7 @@ These families remain authoritative guards until their trigger/path/behavior ove
 
 1. Finish exhaustive trigger/path/assertion inventory without modifying workflows.
 2. Extract repeated non-browser syntax/asset/render checks into reusable `scripts/ci/` commands.
-3. Convert the highest-cost `src.includes()`/`grep` guards to behavioral diagnostics, with `validate-pending-flight-label.yml` now an explicit low-risk candidate alongside search-continue.
+3. Convert the highest-cost `src.includes()`/`grep` guards to behavioral diagnostics, with lead-form/search-context and `validate-pending-flight-label.yml` now explicit low-risk candidates alongside search-continue.
 4. Extract shared Playwright bootstrap/fixture helpers for comparison/results/selected-tour/pending-flight/browser-layout workflows without weakening coverage.
 5. Reconcile canonical `anytoour.ru/poisk-turov/` browser coverage with legacy V2 compatibility harnesses.
 6. Only after equivalent coverage is green, consolidate superseded workflows one family at a time.
