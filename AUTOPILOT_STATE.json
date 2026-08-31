@@ -1,28 +1,27 @@
 {
   "schema_version": 3,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T08:46:27+02:00",
-  "mode": "technical_refactor_pass",
-  "phase": "TECHNICAL REFACTOR PASS",
+  "updated_at": "2026-08-31T09:08:00+02:00",
+  "mode": "design_system_1_0",
+  "phase": "ANYTOUR DESIGN SYSTEM 1.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "technical_refactor_pass",
-    "rule": "Keep technical refactor first after emergency correctness overrides until the owner explicitly changes direction."
+    "planned_phase": "design_system_1_0",
+    "rule": "Keep AnyTour Design System 1.0 and site-wide visual unification first after emergency correctness overrides until the owner explicitly changes direction."
   },
   "current_stage": {
-    "id": "TECHNICAL_REFACTOR_PASS",
-    "name": "Architecture, dependency and CI consolidation",
+    "id": "SITE_WIDE_VISUAL_UNIFICATION",
+    "name": "Shared shell and full-journey visual unification",
     "status": "ACTIVE",
-    "next_action": "Complete the exhaustive GitHub Actions inventory/classification, then continue the active/compatibility/dead dependency map."
+    "next_action": "Run the production journey homepage -> country/hot -> search -> results -> selected tour -> lead at 375/430/768/1024/1440 and fix only confirmed hierarchy, spacing, wrapping, overflow or duplicated-shell regressions."
   },
   "current_work_order": [
-    "architecture and source of truth",
-    "active compatibility dead inventory and dependency map",
-    "GitHub Actions audit into PR FAST PR BROWSER POST DEPLOY SCHEDULED-LIVE",
-    "safe directory ownership without behavior changes",
-    "shared template consolidation",
-    "UX and visual only after technical consolidation"
+    "shared design tokens primitives header footer typography grid spacing buttons cards breadcrumbs responsive behavior",
+    "homepage country destination hot search visual continuity",
+    "results selected tour lead visual continuity",
+    "five-width production verification",
+    "technical refactor only when justified and non-displacing"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -30,11 +29,15 @@
     "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "tourvisor_contract": "PRESERVE",
-    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
+    "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
+    "logo": "PRESERVE",
+    "verified_social_app_destinations": "PRESERVE",
+    "unresolved_legal_payment_content": "DEFER",
+    "pr_254": "DEFER_UNLESS_FRESH_REVIEW_PROVES_SEPARATE_DB_PLATFORM_ARCHITECTURE_SAFE"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ux_visual > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > technical_refactor > content_seo > cosmetic_cleanup",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record/defer blocker and continue an independent safe technical-refactor task"
+    "on_blocker": "record/defer blocker and continue an independent safe Design System task"
   }
 }
