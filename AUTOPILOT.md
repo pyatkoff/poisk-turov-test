@@ -2,36 +2,29 @@
 
 Updated: 2026-08-31
 
-Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` records whether a refactor-first phase is active, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
+Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source, `TECHNICAL_REFACTOR_LOCK.json` records whether the refactor-first phase is active, and `AUTOPILOT_STATE.json` is the machine-readable resume point.
 
-## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 1.0
+## Current owner-directed phase — TECHNICAL REFACTOR PASS
 
-After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is whole-site visual unification and product coherence.
+After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), the current priority is technical consolidation before further UX/visual work.
 
-Do not confuse the stronger tour-search engineering score with whole-site visual quality. The public product still needs to feel coherent across homepage → country/destination → hot/search → results → selected tour → lead.
+## Ordered work
 
-## Active scope
-
-Audit and improve `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages. Keep one coherent header/navigation, one footer, typography, grid/spacing, buttons, cards, breadcrumbs and responsive behavior. Use the mature search experience as a reference without making editorial pages unnecessarily dense.
-
-Validate user-facing changes at **375 / 430 / 768 / 1024 / 1440**. Fix confirmed crooked spacing, wrapping, overflow, duplicated shell, inconsistent header/footer and hierarchy before cosmetic flourishes.
+1. Keep a single architecture/source of truth in `ARCHITECTURE.md`, `TEST_MATRIX.md` and the one-concept → one-implementation rule.
+2. Complete the inventory/dependency map for active, compatibility and dead files.
+3. Complete the GitHub Actions audit and classify checks into PR FAST / PR BROWSER / POST DEPLOY / SCHEDULED-LIVE. Remove duplication only after equivalent coverage is proven.
+4. Prepare safe ownership for `shared/search/results/tour/checkout/integrations/site/seo/tests/scripts/templates` without changing user behavior.
+5. Consolidate the shared template layer to one header, one footer, one navigation and one design system.
+6. Only after technical consolidation resume UX and visual work.
 
 ## Current resume point
 
-Shared shell/design primitives are established across the public site. Country-page intent flow is production-green. The hotel autocomplete regression that moved the optional hotel into the primary grid was fixed by PR #440 and guarded by PR #447; keep that invariant permanent. Critical departure/country catalog readiness also has a dedicated live guard.
-
-PR #462 restored Design System 1.0 as the canonical owner priority after PR #460 had again rewritten the canonical priority/state/guards to refactor-first. `OWNER_PRIORITY.json`, `AUTOPILOT.md`, `AUTOPILOT_STATE.json`, the refactor lock and both CI guards now agree on Design System 1.0. Owner-priority, technical-lock and security checks passed before merge.
-
-PR #461 fixed a confirmed shared-grid inconsistency on the mature search surface. `.v2-shell` still used hard-coded horizontal gutters, which diverged from the shared site/header grid at tablet width. The search shell now consumes the canonical `--at-shell` and `--at-page-gutter` Design System tokens while preserving all search behavior. The first CI pass exposed only an expected bundle-count guard mismatch after adding the CSS asset; the guard was updated, then the complete relevant suite passed, including V2 baseline, V2 PR visual, selected-tour visual, search header/footer/mobile checks, startup/bundle, standalone, comparison, flight and lead guards.
-
-PR #461 merged as `e887eda5d87a1daa1bf1cc1b029c2d31d8b68a51`. Standalone production deploy run `33362874549` completed successfully: release validation, production copy, public-page verification, unchanged lead-bridge verification and live search smoke all passed.
-
-Next work is the complete production journey `/ → country/hot → /poisk-turov/ → results → selected tour → lead` at 375 / 430 / 768 / 1024 / 1440, followed by only confirmed layout/hierarchy fixes. The whole-site score remains 7.0/10 until broader end-to-end production evidence supports a move.
+Previous visual work remains preserved as regression evidence, but does not outrank this phase. Continue from the existing CI inventory/audit and dependency-map artifacts. Keep narrow PRs and merge SAFE/MEDIUM changes only after relevant green checks.
 
 ## Mandatory protections
 
-Work only inside `pyatkoff/poisk-turov-test` and allowed V2/standalone production scope. Do not redesign or replace the AnyTour logo. Preserve verified social/app destinations. Do not modify Yandex Metrika/goals/analytics contract, Tourvisor contract or the existing lead-sending mechanism. Do not migrate unresolved legal/payment content. Keep PR #254 deferred unless a fresh review proves its separate DB/platform architecture safe.
+Work only inside `pyatkoff/poisk-turov-test`. Do not modify Yandex Metrika or goals, the external lead contract, Tourvisor contract or neighboring projects. Do not refactor for style alone and do not invent defects.
 
 ## Execution policy
 
-At the start of each run inspect fresh `main`, open PRs, recent CI/deploy results, production/live behavior and `AUTOPILOT_STATE.json`. Work through multiple independent safe tasks when time allows. User-facing changes require relevant green checks and five-width visual evidence before deploy. Deploy only after checks are green and verify live behavior afterward. If blocked on one task, record/defer it and continue another safe Design System task.
+At the start of each run inspect fresh `main`, open PRs and recent CI. Pick one highest-value independent technical-refactor slice and finish it. If blocked, record/defer the blocker and continue another independent safe slice.
