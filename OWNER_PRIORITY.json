@@ -1,9 +1,9 @@
 {
-  "schema_version": 7,
+  "schema_version": 8,
   "active_mode": "ux_visual",
-  "active_phase": "ANYTOUR_DESIGN_SYSTEM_1_SITE_UNIFICATION",
+  "active_phase": "ANYTOUR_DESIGN_SYSTEM_2_SITE_UNIFICATION",
   "current_stage": "CROSS_PAGE_JOURNEY_AUDIT",
-  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 1.0",
+  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "priority_after_emergency_overrides": [
     "ux_visual",
     "site_wide_unification",
@@ -15,6 +15,6 @@
     "technical_refactor",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_design_system_1_site_unification",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize AnyTour Design System 1.0 and site-wide visual unification. Country/destination hierarchy is now materially unified; next validate and refine the full homepage-to-lead journey. Preserve Metrika, Tourvisor and lead contracts, verified destinations and the existing AnyTour logo."
+  "source": "explicit_owner_direction_2026_08_31_design_system_2_site_unification",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize AnyTour Design System 2.0 and site-wide visual unification. Continue the coherent homepage-to-lead journey work without reintroducing Design System 1.0 terminology. Preserve Metrika, Tourvisor and lead contracts, verified destinations and the existing AnyTour logo."
 }
