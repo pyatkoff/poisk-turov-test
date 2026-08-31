@@ -1,13 +1,13 @@
 {
-  "schema_version": 12,
+  "schema_version": 13,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T17:47:00+02:00",
-  "mode": "technical_refactor",
-  "phase": "ARCHITECTURE_INVENTORY_AND_CI_CONSOLIDATION",
-  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
+  "updated_at": "2026-08-31T18:58:00+02:00",
+  "mode": "site_visual_unification",
+  "phase": "ANYTOUR_DESIGN_SYSTEM_1_SITE_WIDE",
+  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 1.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
-  "owner_priority_lock": {"active": true, "planned_phase": "technical_refactor", "rule": "Follow the explicit owner technical-refactor sequence after emergency correctness overrides; UX/visual work resumes only after technical consolidation or a new explicit owner direction."},
-  "current_stage": {"id": "ARCHITECTURE_SOURCE_OF_TRUTH", "name": "Canonical architecture and implementation ownership", "status": "ACTIVE", "next_action": "Keep ARCHITECTURE.md and TEST_MATRIX.md canonical, then complete active/compatibility/dead inventory and dependency mapping before CI tier consolidation."},
-  "protected": {"repository_scope":"pyatkoff/poisk-turov-test only","other_projects":"DO_NOT_MODIFY","metrika_configuration":"DO_NOT_MODIFY","metrika_goals":"DO_NOT_MODIFY","tourvisor_contract":"PRESERVE","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING","canonical_design_system":"ANYTOUR DESIGN SYSTEM 2.0","mass_moves_or_renames":"REQUIRE_DEPENDENCY_PROOF"},
-  "continuation_policy": {"priority":"production_broken > lead_loss > incorrect_data > broken_user_journey > architecture_source_of_truth > inventory_dependency_map > ci_tiering_and_consolidation > safe_directory_structure > shared_template_consolidation > ux_visual > cosmetic_cleanup","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_blocker":"record/defer blocker and continue an independent safe technical-refactor task"}
+  "owner_priority_lock": {"active": true, "planned_phase": "site_visual_unification", "rule": "Follow the explicit owner site-wide Design System 1.0 direction after emergency correctness overrides."},
+  "current_stage": {"id": "SHARED_SHELL_AND_WEAK_PAGE_MIGRATION", "name": "Shared site shell and weak-page visual convergence", "status": "ACTIVE", "next_action": "Validate the fresh shared editorial alignment layer, then audit homepage/search shell parity and representative country pages at 375/430/768/1024/1440."},
+  "protected": {"repository_scope":"pyatkoff/poisk-turov-test only","other_projects":"DO_NOT_MODIFY","metrika_configuration":"DO_NOT_MODIFY","metrika_goals":"DO_NOT_MODIFY","tourvisor_contract":"PRESERVE","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING","canonical_design_system":"ANYTOUR DESIGN SYSTEM 1.0","anytour_logo":"PRESERVE","verified_destinations":"PRESERVE","legal_payment_unresolved":"DEFER","pr_254":"DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW"},
+  "continuation_policy": {"priority":"production_broken > lead_loss > incorrect_data > broken_user_journey > shared_design_tokens_primitives > shared_header_navigation_footer > homepage_country_hot_search_visual_convergence > editorial_page_migration > responsive_visual_regression > technical_consolidation > content_seo > cosmetic_cleanup","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_blocker":"record/defer blocker and continue an independent safe site-unification task"}
 }
