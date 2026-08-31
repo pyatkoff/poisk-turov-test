@@ -7,27 +7,27 @@ owner = json.loads((root / "OWNER_PRIORITY.json").read_text(encoding="utf-8"))
 state = json.loads((root / "AUTOPILOT_STATE.json").read_text(encoding="utf-8"))
 autopilot = (root / "AUTOPILOT.md").read_text(encoding="utf-8")
 
-EXPECTED_MODE = "technical_refactor_pass"
-EXPECTED_PHASE = "TECHNICAL REFACTOR PASS"
-EXPECTED_STAGE = "TECHNICAL_REFACTOR_PASS"
-EXPECTED_ORDER = ["technical_refactor", "ux_visual", "content_seo", "cosmetic_cleanup"]
+EXPECTED_MODE = "tour_data_platform"
+EXPECTED_PHASE = "TOUR DATA PLATFORM"
+EXPECTED_STAGE = "ACTIVE_DEPARTURES_AND_INGESTION"
+EXPECTED_ORDER = ["tour_data_platform", "product_ux_visual", "seo_data", "technical_refactor", "cosmetic_cleanup"]
 errors = []
 
 if owner.get("active_mode") != EXPECTED_MODE:
-    errors.append("OWNER_PRIORITY active_mode differs from explicit technical-refactor direction")
+    errors.append("OWNER_PRIORITY active_mode differs from explicit Tour Data Platform direction")
 if owner.get("active_phase") != EXPECTED_PHASE or owner.get("current_stage") != EXPECTED_STAGE:
-    errors.append("OWNER_PRIORITY phase/stage differs from technical-refactor direction")
+    errors.append("OWNER_PRIORITY phase/stage differs from Tour Data Platform direction")
 if owner.get("priority_after_emergency_overrides") != EXPECTED_ORDER:
-    errors.append("OWNER_PRIORITY order differs from technical_refactor -> ux_visual -> content_seo -> cosmetic_cleanup")
+    errors.append("OWNER_PRIORITY order differs from Tour Data Platform roadmap")
 if state.get("mode") != EXPECTED_MODE or state.get("phase") != EXPECTED_PHASE:
-    errors.append("AUTOPILOT_STATE does not match technical-refactor direction")
+    errors.append("AUTOPILOT_STATE does not match Tour Data Platform direction")
 lock = state.get("owner_priority_lock") or {}
 if not lock.get("active") or lock.get("planned_phase") != EXPECTED_MODE:
-    errors.append("AUTOPILOT_STATE priority lock does not match technical-refactor direction")
+    errors.append("AUTOPILOT_STATE priority lock does not match Tour Data Platform direction")
 if (state.get("current_stage") or {}).get("id") != EXPECTED_STAGE:
-    errors.append("AUTOPILOT_STATE current stage does not match technical refactor")
-if "## Current owner-directed phase — TECHNICAL REFACTOR PASS" not in autopilot:
-    errors.append("AUTOPILOT.md must declare technical refactor as current owner-directed phase")
+    errors.append("AUTOPILOT_STATE current stage does not match active data-platform stage")
+if "## Current owner-directed phase — TOUR DATA PLATFORM" not in autopilot:
+    errors.append("AUTOPILOT.md must declare Tour Data Platform as current owner-directed phase")
 
 if errors:
     print("OWNER_PRIORITY_GUARD_FAIL")
