@@ -22,8 +22,8 @@ jobs:
           set -euo pipefail
           php -l v2/data/check-charter-departures-v1.php
           grep -Fq "'onlyCharter' => true" v2/data/check-charter-departures-v1.php
-          grep -Fq "'onlyDirect' => $onlyDirect" v2/data/check-charter-departures-v1.php
           grep -Fq 'CHARTER_DEPARTURES_OK' v2/data/check-charter-departures-v1.php
+          grep -Fq 'direct_charter_cities=' v2/data/check-charter-departures-v1.php
 
   report-production:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
