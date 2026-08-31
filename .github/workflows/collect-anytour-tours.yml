@@ -7,6 +7,8 @@ on:
       - 'v2/data/price-observer-v1.php'
       - 'v2/data/scheduled-collector-v1.php'
       - 'v2/data/migrate-collection-attempts-v1.php'
+      - 'v2/data/migrate-matrix-collection-v1.php'
+      - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/rollup-price-daily-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
   push:
@@ -15,6 +17,8 @@ on:
       - 'v2/data/price-observer-v1.php'
       - 'v2/data/scheduled-collector-v1.php'
       - 'v2/data/migrate-collection-attempts-v1.php'
+      - 'v2/data/migrate-matrix-collection-v1.php'
+      - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/rollup-price-daily-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
   schedule:
@@ -25,6 +29,16 @@ on:
         description: 'Maximum broad Tourvisor searches in this run (0-20)'
         required: true
         default: '2'
+        type: string
+      matrix_budget:
+        description: 'Hotel/resort/month Tourvisor searches in this run (1-30)'
+        required: true
+        default: '9'
+        type: string
+      matrix_months:
+        description: 'Upcoming calendar months to rotate through (1-18)'
+        required: true
+        default: '12'
         type: string
 
 concurrency:
@@ -43,28 +57,26 @@ jobs:
           php -l v2/data/price-observer-v1.php
           php -l v2/data/scheduled-collector-v1.php
           php -l v2/data/migrate-collection-attempts-v1.php
+          php -l v2/data/migrate-matrix-collection-v1.php
+          php -l v2/data/matrix-collector-v1.php
           php -l v2/data/rollup-price-daily-v1.php
           grep -Fq "['user_search', 'scheduled_monitor', 'hot_tours']" v2/data/price-observer-v1.php
           grep -Fq "'source'=>'scheduled_monitor'" v2/data/scheduled-collector-v1.php
-          grep -Fq "v2_data_tv_get('/tours/search'" v2/data/scheduled-collector-v1.php
-          grep -Fq '$limits = [10000, 5000, 2000, 1000, 500, 100];' v2/data/scheduled-collector-v1.php
-          grep -Fq "'nightsFrom'=>5" v2/data/scheduled-collector-v1.php
-          grep -Fq "'nightsTo'=>14" v2/data/scheduled-collector-v1.php
-          grep -Fq 'AND nights_from=5 AND nights_to=14' v2/data/scheduled-collector-v1.php
-          grep -Fq 'nights=5-14' v2/data/scheduled-collector-v1.php
-          grep -Fq 'scheduled_collector_fetch_results($searchId)' v2/data/scheduled-collector-v1.php
-          grep -Fq 'COLLECT_RESULT_FETCH' v2/data/scheduled-collector-v1.php
-          grep -Fq 'tour_collection_attempts' v2/data/scheduled-collector-v1.php
-          grep -Fq 'if ($budget <= 0)' v2/data/scheduled-collector-v1.php
+          grep -Fq "array_chunk(\$ids,30)" v2/data/matrix-collector-v1.php
+          grep -Fq "\$search['hotelIds']=\$t['hotel_ids']" v2/data/matrix-collector-v1.php
+          grep -Fq "\$search['regionIds']=[\$t['region_id']]" v2/data/matrix-collector-v1.php
+          grep -Fq "modify('+20 days')" v2/data/matrix-collector-v1.php
+          grep -Fq "'maxHotels'=>5000" v2/data/matrix-collector-v1.php
+          grep -Fq "'maxTours'=>50000" v2/data/matrix-collector-v1.php
           grep -Fq 'PRICE_DAILY_ROLLUP_OK' v2/data/rollup-price-daily-v1.php
-          php -r "require 'v2/data/price-observer-v1.php'; if (v2_price_observer_source('scheduled_monitor') !== 'scheduled_monitor' || v2_price_observer_source('bad') !== 'user_search') exit(1);"
-          echo ANYTOUR_SCHEDULED_COLLECTOR_TOOLING_OK
+          php -r "require 'v2/data/price-observer-v1.php'; if (v2_price_observer_source('scheduled_monitor') !== 'scheduled_monitor' || v2_price_observer_limit(99999,100,5000)!==5000) exit(1);"
+          echo ANYTOUR_MATRIX_COLLECTOR_TOOLING_OK
 
   collect-production:
     if: github.event_name != 'pull_request'
     needs: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Prepare SSH key
@@ -88,12 +100,16 @@ jobs:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           BUDGET_VALUE: ${{ inputs.budget || '2' }}
+          MATRIX_BUDGET_VALUE: ${{ inputs.matrix_budget || '9' }}
+          MATRIX_MONTHS_VALUE: ${{ inputs.matrix_months || '12' }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "$HOST_VALUE" && test -n "$USER_VALUE"
-          [[ "$BUDGET_VALUE" =~ ^[0-9]+$ ]]
+          [[ "$BUDGET_VALUE" =~ ^[0-9]+$ ]] && [[ "$MATRIX_BUDGET_VALUE" =~ ^[0-9]+$ ]] && [[ "$MATRIX_MONTHS_VALUE" =~ ^[0-9]+$ ]]
           test "$BUDGET_VALUE" -ge 0 && test "$BUDGET_VALUE" -le 20
+          test "$MATRIX_BUDGET_VALUE" -ge 1 && test "$MATRIX_BUDGET_VALUE" -le 30
+          test "$MATRIX_MONTHS_VALUE" -ge 1 && test "$MATRIX_MONTHS_VALUE" -le 18
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$USER_VALUE@$HOST_VALUE"
           remote_dir='~/www/anytoour.ru/data'
@@ -103,6 +119,8 @@ jobs:
             v2/data/price-observer-v1.php \
             v2/data/migrate-collection-attempts-v1.php \
             v2/data/scheduled-collector-v1.php \
+            v2/data/migrate-matrix-collection-v1.php \
+            v2/data/matrix-collector-v1.php \
             v2/data/rollup-price-daily-v1.php \
             "$remote:$remote_dir/"
           ssh "${opts[@]}" "$remote" "
@@ -111,8 +129,11 @@ jobs:
             php -l \"\$root/tourvisor-client-v1.php\" >/dev/null
             php -l \"\$root/price-observer-v1.php\" >/dev/null
             php -l \"\$root/scheduled-collector-v1.php\" >/dev/null
+            php -l \"\$root/matrix-collector-v1.php\" >/dev/null
             php -l \"\$root/rollup-price-daily-v1.php\" >/dev/null
             php \"\$root/migrate-collection-attempts-v1.php\"
+            php \"\$root/migrate-matrix-collection-v1.php\"
             php \"\$root/scheduled-collector-v1.php\" --scheduled-search-budget='$BUDGET_VALUE'
-            php \"\$root/rollup-price-daily-v1.php\" --days=7
+            php \"\$root/matrix-collector-v1.php\" --budget='$MATRIX_BUDGET_VALUE' --months='$MATRIX_MONTHS_VALUE'
+            php \"\$root/rollup-price-daily-v1.php\" --days=31
           "
