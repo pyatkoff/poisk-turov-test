@@ -1,20 +1,20 @@
 {
-  "schema_version": 13,
-  "active_mode": "site_visual_unification",
-  "active_phase": "ANYTOUR_DESIGN_SYSTEM_1_SITE_WIDE",
-  "current_stage": "SHARED_SHELL_AND_WEAK_PAGE_MIGRATION",
-  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 1.0",
+  "schema_version": 14,
+  "active_mode": "search_ux_ds2",
+  "active_phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
+  "current_stage": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
+  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "priority_after_emergency_overrides": [
-    "shared_design_tokens_primitives",
-    "shared_header_navigation_footer",
-    "homepage_country_hot_search_visual_convergence",
-    "editorial_page_migration",
-    "responsive_visual_regression",
-    "search_results_selected_tour_lead_continuity",
-    "technical_consolidation",
+    "search_user_journey",
+    "results_filters_full_search",
+    "hotel_tour_cards_and_selected_tour",
+    "desktop_mobile_visual_consistency",
+    "shared_header_navigation_footer_ds2",
+    "site_visual_convergence_ds2",
+    "technical_refactor_deferred",
     "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_site_wide_design_system_1_reconfirmed",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize site-wide AnyTour Design System 1.0 coherence across homepage, search, hot, contacts, how-to-buy, rb, country index and representative country pages. Preserve the mature search flow and converge the rest of the public site onto shared tokens, one header/navigation, one footer, typography, grid/spacing, buttons/cards/breadcrumbs and responsive behavior. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract, verified destinations, AnyTour logo and neighboring project boundaries. Keep unresolved legal/payment content unmigrated and keep PR #254 deferred unless separately proven safe."
+  "source": "explicit_owner_direction_2026_08_31_pause_technical_refactor_update_design_and_search_ds2",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize the tour-search UX and user-facing visual layer using ANYTOUR DESIGN SYSTEM 2.0 as the only canonical design system. Improve search form, full-search filters, results, hotel/tour cards, selected-tour UX and desktop/mobile visual consistency; converge shared header/navigation/footer and broader site visuals on DS2 where required by user-facing work. Keep technical_refactor deferred until a new explicit owner direction. Do not introduce or restore Design System 1.0. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring project boundaries."
 }
