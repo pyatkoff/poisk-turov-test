@@ -40,7 +40,7 @@ jobs:
           grep -Fq "v2_render_site_header(\$c['phone'],\$c['phoneHref'],\$c['path'])" v2/site-page-shell-v1.php
           ! grep -Fq '<header class="at-site-header"' v2/index.php
           grep -Fq "['/rb/', 'Раннее бронирование']" v2/site-header-v2.php
-          ! grep -Fq "['/how-to-buy/', 'Как купить']" v2/site-header-v2.php
+          grep -Fq "['/how-to-buy/', 'Как купить']" v2/site-header-v2.php
           grep -Fq "['/country/', 'Страны']" v2/site-header-v2.php
           grep -Fq '@media(max-width:1024px)' v2/site-header-v2.css
           grep -Fq '.at-global-header__mobile{display:block' v2/site-header-v2.css
@@ -55,8 +55,8 @@ jobs:
               fwrite(STDERR, "nested country page must mark Countries in desktop and mobile navigation\n");
               exit(1);
           }
-          if (substr_count($html, 'href="/how-to-buy/"') !== 0) {
-              fwrite(STDERR, "purchase guide must stay outside the canonical top-level header\n");
+          if (substr_count($html, 'href="/how-to-buy/"') !== 2) {
+              fwrite(STDERR, "purchase guide must be present in desktop and mobile canonical navigation\n");
               exit(2);
           }
           if (str_contains($html, 'href="/poisk-turov/" aria-current="page"')) {
@@ -66,6 +66,13 @@ jobs:
           if (!v2_header_path_is_active('/country/turkey/', '/country/') || v2_header_path_is_active('/contacts/', '/country/')) {
               fwrite(STDERR, "section active-state helper contract failed\n");
               exit(4);
+          }
+          ob_start();
+          v2_render_site_header('8 (800) 100-61-50', '+78001006150', '/how-to-buy/');
+          $purchaseHtml = ob_get_clean();
+          if (substr_count($purchaseHtml, 'href="/how-to-buy/" aria-current="page"') !== 2) {
+              fwrite(STDERR, "purchase guide must mark itself current in desktop and mobile navigation\n");
+              exit(5);
           }
           echo "NESTED_NAVIGATION_STATE_OK\n";
           PHP
