@@ -3,7 +3,7 @@ name: Validate standalone content UX
 on:
   pull_request:
     paths:
-      - 'v2/design-system-v1.css'
+      - 'v2/design-system-v2.css'
       - 'v2/home-v1.css'
       - 'v2/site-page-v1.css'
       - 'v2/product-shell-v1.css'
@@ -18,7 +18,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'v2/design-system-v1.css'
+      - 'v2/design-system-v2.css'
       - 'v2/home-v1.css'
       - 'v2/site-page-v1.css'
       - 'v2/product-shell-v1.css'
@@ -41,8 +41,8 @@ jobs:
         run: |
           set -euo pipefail
           for f in v2/site-page-shell-v1.php v2/country-page-v1.php v2/country/index.php v2/country/turkey/index.php v2/country/egypt/index.php v2/hot/index.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php; do php -l "$f" >/dev/null; done
-          grep -Fq -- '--at-accent:#D83D00' v2/design-system-v1.css
-          grep -Fq -- '--at-shell:1180px' v2/design-system-v1.css
+          grep -Fq -- '--at-accent:#D83D00' v2/design-system-v2.css
+          grep -Fq -- '--at-shell:1180px' v2/design-system-v2.css
           grep -Fq '.sp-card a.sp-primary{color:#fff}' v2/site-page-v1.css
           grep -Fq '.sp-main a:focus-visible' v2/site-page-v1.css
           ! grep -Fq '.sp-header' v2/site-page-v1.css

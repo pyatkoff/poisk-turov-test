@@ -1,4 +1,4 @@
-name: Visual V2 meal visibility
+name: Visual V2 meal filter
 
 on:
   pull_request:
@@ -6,25 +6,19 @@ on:
     paths:
       - 'v2/primary-meal-ux-v1.css'
       - 'v2/primary-meal-ux-v1.js'
-      - 'v2/app.css'
-      - 'v2/design-system-v1.css'
-      - 'v2/design-v1.css'
-      - 'v2/product-shell-v1.css'
-      - 'v2/br3-control-consistency-v1.css'
-      - 'v2/mobile-results-filters-v1.css'
-      - 'v2/bundle-manifest-v1.php'
-      - 'v2/index.php'
+      - 'v2/search-params-filter-rail-v1.css'
+      - 'v2/search-params-filter-rail-v1.js'
+      - 'v2/ds2-search-tablet-filters-v1.css'
       - '.github/workflows/visual-v2-meal-visibility.yml'
-      - '.github/workflows/validate-v2-primary-meal-responsive.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  meal-visibility:
+  meal-filter:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - name: Build local PR CSS bundle
@@ -39,58 +33,55 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Verify primary meal visibility and intermediate-width contract
+      - name: Verify DS2 meal result filter
         env:
           V2_URL: https://anytour.online/poisk-turov-test/v2/
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p meal-visibility-artifacts
-          cat > ./v2-meal-visibility.cjs <<'JS'
-          const { chromium } = require('playwright');
-          const fs = require('fs');
-          const css = fs.readFileSync(process.env.RUNNER_TEMP+'/v2-pr.css','utf8');
-          const viewports = [375,430,768,901,1024,1100,1101,1200,1440];
+          mkdir -p meal-filter-artifacts
+          cat > ./v2-meal-filter.cjs <<'JS'
+          const {chromium}=require('playwright');
+          const fs=require('fs');
+          const css=fs.readFileSync(process.env.RUNNER_TEMP+'/v2-pr.css','utf8');
+          const viewports=[430,1024];
           (async()=>{
-            const browser=await chromium.launch({headless:true});
+            const browser=await chromium.launch({headless:true}); let failed=false; const report=[];
             for(const width of viewports){
               const context=await browser.newContext({viewport:{width,height:900},ignoreHTTPSErrors:true});
-              const page=await context.newPage();
+              const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
               await page.route('**/poisk-turov-test/v2/bundle-v1.php*',async route=>{
                 const u=new URL(route.request().url());
                 if(u.searchParams.get('type')==='css')return route.fulfill({status:200,contentType:'text/css',body:css});
                 return route.continue();
               });
               const response=await page.goto(process.env.V2_URL,{waitUntil:'domcontentloaded',timeout:45000});
-              await page.waitForFunction(()=>document.querySelectorAll('.meal-quick .meal-choice').length>=5,{timeout:15000});
+              await page.waitForSelector('form.search-params-filter-split details.result-filter-rail',{timeout:15000});
+              await page.evaluate(()=>{const d=document.querySelector('details.result-filter-rail');if(d)d.open=true;});
+              await page.waitForFunction(()=>{const s=document.querySelector('select[name="food"]');return !!s&&!!s.closest('.result-filter-meal')&&getComputedStyle(s).display!=='none'&&s.getBoundingClientRect().width>0;},{timeout:3000});
               const state=await page.evaluate(()=>{
-                const field=document.querySelector('.main-meal');
-                const row=document.querySelector('.meal-quick');
-                const buttons=[...document.querySelectorAll('.meal-quick .meal-choice')];
-                if(!row)return {exists:false,count:buttons.length};
-                const fr=field?.getBoundingClientRect();
-                const rr=row.getBoundingClientRect();
-                const info=buttons.map(btn=>{const r=btn.getBoundingClientRect();return{text:(btn.textContent||'').trim(),visible:r.left>=rr.left-2&&r.right<=rr.right+2};});
-                const clipped=info.filter(x=>!x.visible).length;
-                return {exists:true,count:buttons.length,fieldWidth:fr?.width||0,scrollWidth:row.scrollWidth,clientWidth:row.clientWidth,clipped,last:info[info.length-1]||null,overflowX:getComputedStyle(row).overflowX,flexWrap:getComputedStyle(row).flexWrap,documentOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+                const details=document.querySelector('details.result-filter-rail');
+                const select=document.querySelector('select[name="food"]');
+                const field=select?.closest('.result-filter-meal');
+                const quick=field?.querySelector('.meal-quick');
+                const r=select?.getBoundingClientRect();
+                return {detailsOpen:!!details?.open,fieldClass:!!field,selectVisible:!!select&&getComputedStyle(select).display!=='none'&&(r?.width||0)>0,selectWidth:r?.width||0,quickHidden:!quick||quick.hidden||getComputedStyle(quick).display==='none',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
               });
-              console.log(`MEAL_VISIBILITY width=${width} http=${response?.status()||0} count=${state.count} field=${state.fieldWidth||0} clipped=${state.clipped} scroll=${state.scrollWidth}/${state.clientWidth} overflowX=${state.overflowX} flexWrap=${state.flexWrap} documentOverflow=${state.documentOverflow} last=${state.last?.text||''}`);
-              let bad=response?.status()!==200||!state.exists||state.count<5||state.clipped||state.scrollWidth>state.clientWidth+2||state.documentOverflow||state.flexWrap!=='wrap';
-              if(width===1024){
-                await page.screenshot({path:'meal-visibility-artifacts/meal-1024.png',fullPage:true});
-                bad ||= state.fieldWidth<800||!state.last||state.last.text!=='Без питания'||!state.last.visible;
-              }
-              if(bad)process.exitCode=1;
+              if(width===1024)await page.screenshot({path:'meal-filter-artifacts/meal-filter-1024.png',fullPage:false,animations:'disabled'});
+              const bad=!response||response.status()!==200||errors.length||!state.detailsOpen||!state.fieldClass||!state.selectVisible||state.selectWidth<180||!state.quickHidden||state.overflow;
+              report.push({width,http:response?.status()||0,errors,state,bad}); if(bad)failed=true;
+              console.log(`MEAL_FILTER width=${width} bad=${bad} state=${JSON.stringify(state)}`);
               await context.close();
             }
-            await browser.close();
+            fs.writeFileSync('meal-filter-artifacts/report.json',JSON.stringify(report,null,2));
+            await browser.close(); if(failed)process.exit(1);
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node ./v2-meal-visibility.cjs
-      - name: Upload consolidated 1024 evidence
+          node ./v2-meal-filter.cjs
+      - name: Upload 1024 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v2-meal-visibility-${{ github.event.pull_request.number || github.sha }}
-          path: meal-visibility-artifacts/
+          name: v2-meal-filter-${{ github.event.pull_request.number || github.sha }}
+          path: meal-filter-artifacts/
           retention-days: 14
