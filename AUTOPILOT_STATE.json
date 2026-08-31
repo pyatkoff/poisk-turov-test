@@ -1,13 +1,13 @@
 {
   "schema_version": 14,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T22:08:00+03:00",
+  "updated_at": "2026-08-31T22:18:00+03:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {"active": true, "planned_phase": "search_ux_ds2", "rule": "Follow the explicit owner direction to pause technical_refactor and prioritize tour-search UX and user-facing visual work on AnyTour Design System 2.0."},
-  "current_stage": {"id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE", "name": "Search UX, results, filters and site visual convergence", "status": "ACTIVE", "last_material_progress": "PR #606 production deployment was verified; PR #610 merged and deployed shared AnyTour DS2 light/compact editorial hero convergence across standalone and country pages with standalone/V2/selected-tour visual regressions green.", "next_action": "Fix mobile results filters so Apply writes canonical form fields and starts one fresh full Tourvisor search instead of locally filtering the rendered subset; resolve all-inclusive through the loaded Tourvisor meal catalog, then validate desktop filter-rail spacing/wrapping at 1024/1440 and re-evaluate sales-leader PR #604 on fresh main."},
+  "current_stage": {"id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE", "name": "Search UX, results, filters and site visual convergence", "status": "ACTIVE", "last_material_progress": "PR #612 merged and deployed: mobile result filters now update canonical search fields and start a fresh full Tourvisor search; all-inclusive is resolved from the Tourvisor meal catalog, and PR visual/baseline/selected-tour plus production V2/public-page/lead-bridge/live-search checks passed.", "next_action": "Tighten the desktop left filter rail at 1024/1440 under AnyTour DS2: fix confirmed spacing, hierarchy, wrapping, control sizing and overflow without changing full-search semantics; then re-evaluate sales-leader PR #604 on fresh main."},
   "protected": {"repository_scope":"pyatkoff/poisk-turov-test only","other_projects":"DO_NOT_MODIFY","metrika_configuration":"DO_NOT_MODIFY","metrika_goals":"DO_NOT_MODIFY","tourvisor_contract":"PRESERVE","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING","canonical_design_system":"ANYTOUR DESIGN SYSTEM 2.0","design_system_1":"DO_NOT_REINTRODUCE","anytour_logo":"PRESERVE","verified_destinations":"PRESERVE","legal_payment_unresolved":"DEFER","pr_254":"DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW"},
   "continuation_policy": {"priority":"production_broken > lead_loss > incorrect_data > broken_user_journey > search_user_journey > results_filters_full_search > hotel_tour_cards_and_selected_tour > desktop_mobile_visual_consistency > shared_header_navigation_footer_ds2 > site_visual_convergence_ds2 > technical_refactor_deferred > content_seo > cosmetic_cleanup","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_blocker":"record/defer blocker and continue an independent safe DS2/search-UX task"}
 }
