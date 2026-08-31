@@ -4,24 +4,26 @@ Updated: 2026-08-31
 
 Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the canonical owner-priority source and `AUTOPILOT_STATE.json` is the machine-readable resume point. Architecture is owned by `ARCHITECTURE.md`; CI/test ownership is owned by `TEST_MATRIX.md`.
 
-## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 1.0 SITE-WIDE
+## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 2.0 SEARCH UX + SITE CONVERGENCE
 
-After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), priority #1 is whole-site visual coherence. The mature tour-search experience remains the quality reference, but the product is scored as one journey, not as search alone.
+After emergency overrides (`production_broken → lead_loss → incorrect_data → broken_user_journey`), prioritize the search user journey and user-facing visual layer. Treat the public site as one product across homepage → country/destination → hot/search → results → selected tour → lead; do not use search-only engineering quality as the whole-site score.
 
 ## Ordered work
 
-1. Consolidate shared design tokens/primitives and one coherent header/navigation/footer without replacing the AnyTour logo.
-2. Converge `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages onto the shared shell.
-3. Fix confirmed spacing, wrapping, overflow, duplicated shell and hierarchy issues before cosmetic flourishes.
-4. Validate user-facing changes at 375/430/768/1024/1440 and preserve search/results/comparison/flight/price/fuel/lead regressions.
-5. Continue technical consolidation where it directly reduces duplicate shell/design ownership or makes visual migration safer.
-6. Keep unresolved legal/payment content deferred; keep PR #254 deferred unless a fresh independent architecture review proves it safe.
+1. Preserve and improve the mature search flow: full-search filters, results, hotel/tour cards and selected-tour UX.
+2. Converge shared header/navigation/footer and broader site visuals using the canonical owner-selected design system without replacing the AnyTour logo.
+3. Keep `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages visually coherent through shared shell primitives rather than route-local overrides.
+4. Fix confirmed spacing, wrapping, overflow, duplicated shell and hierarchy issues before cosmetic flourishes.
+5. Validate user-facing changes at 375/430/768/1024/1440 and preserve search/results/comparison/flight/price/fuel/lead regressions.
+6. Keep technical refactor, unresolved legal/payment content and PR #254 deferred until separately authorized/proven safe.
 
-## Current resume point
+## Material progress / current resume point
 
-The editorial routes already share `v2/site-page-shell-v1.php`. Continue making that shell the single final source for editorial geometry and responsive behavior, then audit homepage/search shell parity and weak route-specific components. Do not create route-local overrides when a shared primitive is sufficient.
+PR #606 merged a design-system-neutral shared site-coherence layer into `main`. Homepage and the existing editorial shell now share responsive geometry hardening for `min-width`/overflow, long-copy wrapping, balanced content grids, section rhythm, breadcrumbs and narrow-screen CTA wrapping. Country cards also use equal-height flex geometry so actions align despite uneven descriptions. The change intentionally does not touch search/results/recovery/comparison/flight/price/fuel/lead behavior or external contracts.
 
-The next implementation slice is a fresh shared DS1 alignment layer from current `main`: fix min-width/overflow, balanced two/three-column grids, section rhythm, breadcrumbs and mobile CTA wrapping across the shared editorial shell, and reuse the same safe geometry guards on the homepage. Validate through relevant PR/browser checks before merge, then verify production. Live HTTP access may be temporarily unavailable from the automation environment; when that happens, use repository/browser CI evidence and keep production verification explicitly pending rather than guessing.
+PR validation was green across standalone routes/navigation/content/home-search handoff, V2 pull-request validation, startup/branch bundles, security, visual standalone content, V2 baseline, V2 PR visuals and selected-tour visuals. Production deployment for merge `737a8b9b1f117a645068cb025461d5fcae7475da` must be verified before counting the visual score improvement as live.
+
+Next: verify the deployment and live responsive behavior where accessible, then audit homepage/search shell parity and representative country pages for remaining route-specific hierarchy/spacing issues. Continue with full-search filter correctness and desktop/mobile consistency without weakening the strong search journey.
 
 ## Mandatory protections
 
