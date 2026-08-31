@@ -20,19 +20,21 @@ Structural DS2 convergence is now present across the main search journey. The ho
 
 The production live journey is also green after correcting the smoke for real Tourvisor inventory volatility. A result can become sold between search results and the flights call; the smoke now checks a bounded set of returned tours and skips only the documented stale/sold `error.code=2` case. Malformed flight responses, unexpected errors, broken tour/hotel data, missing viable inventory and lead-health failures still fail the journey. Runtime Tourvisor, Metrika and lead contracts were not changed.
 
-The selected-tour DS2 detail-state is now merged after all eight PR checks passed, including dedicated selected-tour, generic visual and refreshed baseline validation. The chosen offer now becomes the primary detail surface with a lighter image/title/price/facts/flight/lead hierarchy while the existing search, flight, price and lead mechanics remain unchanged.
+The selected-tour DS2 detail-state is merged and protected by dedicated selected-tour, generic visual and refreshed baseline validation. The chosen offer now becomes the primary detail surface with a lighter image/title/price/facts/flight/lead hierarchy while the existing search, flight, price and lead mechanics remain unchanged.
+
+The weaker editorial routes `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/` now consume the same compact light DS2 hierarchy rather than separate oversized hero/card languages. The homepage proof area has also moved from three oversized feature tiles to the owner-reference four-point trust strip, including a dedicated price-before-lead signal and responsive 4→2→1 behavior; all eleven PR checks passed before merge. `/country/` is the active convergence target: its catalog cards are being normalized for stable geometry, clearer title/note/action hierarchy, consistent focus treatment and compact mobile spacing.
 
 ## Ordered work
 
-1. Verify selected hotel/tour DS2 deploy and live behavior.
-2. Bring country, hot and editorial pages onto the same DS2 language.
-3. Replace the homepage/country scenic placeholder with an approved repository/local travel image when one is available; do not hotlink an arbitrary external asset.
-4. Continue shared-shell consistency for header/footer, typography, spacing, buttons, cards and breadcrumbs.
-5. Validate each slice at 375/430/768/1024/1440 and preserve search/recovery/results/flight/price/lead regressions.
+1. Verify production deploy/live evidence for the merged four-point homepage trust strip.
+2. Finish `/country/` catalog hierarchy and validate a representative country page against the shared DS2 shell.
+3. Continue cross-page visual regression at 375/430/768/1024/1440 across homepage → country → hot/search → results → selected tour → lead.
+4. Replace the homepage/country scenic placeholder with an approved repository/local travel image when one is available; do not hotlink an arbitrary external asset.
+5. Continue shared-shell consistency for typography, spacing, buttons, cards and breadcrumbs while preserving the already unified header/footer.
 
 ## Current resume point
 
-Verify deploy/live for the merged selected-tour detail state, then audit and align `/country/` plus a representative destination, followed by `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/`. Keep the dark shared footer as the site-wide endpoint. A photography-led homepage/country hero remains intentionally deferred until an approved local/repository travel image exists; do not regress into oversized blue heroes or substitute an unapproved external image.
+Production deployment for the merged homepage four-point trust strip is running. In parallel, validate and merge the `/country/` catalog-card hierarchy, then inspect a representative destination and continue the full responsive journey audit. Keep the dark shared footer as the site-wide endpoint. A photography-led homepage/country hero remains intentionally deferred until an approved local/repository travel image exists; do not regress into oversized blue heroes or substitute an unapproved external image.
 
 ## Mandatory protections
 
