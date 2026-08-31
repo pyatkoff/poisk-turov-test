@@ -45,6 +45,13 @@ function v2_price_observer_source($value): string
     return in_array($source, ['user_search', 'scheduled_monitor', 'hot_tours'], true) ? $source : 'user_search';
 }
 
+function v2_price_observer_limit($value, int $default, int $max): int
+{
+    $n = filter_var($value, FILTER_VALIDATE_INT);
+    if ($n === false) return $default;
+    return max(1, min($max, (int)$n));
+}
+
 function v2_data_observe_search_results(array $hotels, array $context): array
 {
     $searchId = v2_price_observer_id($context['searchId'] ?? null);
@@ -60,6 +67,8 @@ function v2_data_observe_search_results(array $hotels, array $context): array
     $childrenCount = $childSignature === '' ? 0 : count(explode(',', $childSignature));
     $currencyDefault = strtoupper(v2_price_observer_text($context['currency'] ?? 'RUB', 8)) ?: 'RUB';
     $source = v2_price_observer_source($context['source'] ?? 'user_search');
+    $maxHotels = v2_price_observer_limit($context['maxHotels'] ?? 100, 100, 5000);
+    $maxTours = v2_price_observer_limit($context['maxTours'] ?? 400, 400, 50000);
     $observedAt = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 
     $pdo = v2_data_db();
@@ -76,7 +85,7 @@ function v2_data_observe_search_results(array $hotels, array $context): array
     $written = 0;
     $ignored = 0;
     $seenTours = 0;
-    foreach (array_slice($hotels, 0, 100) as $hotel) {
+    foreach (array_slice($hotels, 0, $maxHotels) as $hotel) {
         if (!is_array($hotel)) continue;
         $hotelId = v2_price_observer_id($hotel['id'] ?? null);
         if ($hotelId === null) continue;
@@ -86,7 +95,7 @@ function v2_data_observe_search_results(array $hotels, array $context): array
         $tours = is_array($hotel['tours'] ?? null) ? $hotel['tours'] : [];
 
         foreach ($tours as $tour) {
-            if (!is_array($tour) || ++$seenTours > 400) break 2;
+            if (!is_array($tour) || ++$seenTours > $maxTours) break 2;
             $date = v2_price_observer_date($tour['date'] ?? null);
             $nights = (int)($tour['nights'] ?? 0);
             $price = (float)($tour['price'] ?? 0);
@@ -135,5 +144,5 @@ function v2_data_observe_search_results(array $hotels, array $context): array
         }
     }
 
-    return ['written' => $written, 'ignored' => $ignored, 'seen' => $seenTours, 'source' => $source];
+    return ['written' => $written, 'ignored' => $ignored, 'seen' => $seenTours, 'source' => $source, 'maxHotels'=>$maxHotels, 'maxTours'=>$maxTours];
 }
