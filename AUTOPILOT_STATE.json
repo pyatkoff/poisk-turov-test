@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T03:55:00+02:00",
+  "updated_at": "2026-08-31T04:03:00+02:00",
   "mode": "anytour_2_0_site_9_0",
   "phase": "ANYTOUR 2.0 → SITE 9.0/10",
   "north_star": {
@@ -20,8 +20,8 @@
     "id": "DESIGN_2_0_FOUNDATION",
     "name": "Design 2.0 / Design System foundation",
     "status": "ACTIVE",
-    "progress": "AnyTour 2.0 owner priority has been restored after stale PR #433 unexpectedly rewrote the autopilot. Country Design 2.0 PR #442 is merged/deployed and the live user journey is green. PR #445 added a dedicated five-width production guard for critical search departure/country catalogs; its live production check passed on 375/430/768/1024/1440, so the earlier screenshot with failed catalogs was transient or timing-related rather than a currently reproducible production failure. The guard now prevents that state from silently passing future visual evidence.",
-    "next_action": "Continue the production Design 2.0 audit through search → results → selected tour → lead on the five target widths and fix the next weakest confirmed user-facing surface. Keep the new critical-catalog readiness guard as a regression gate for search/catalog changes."
+    "progress": "Country Design 2.0 remains production-green. A user screenshot then exposed a real search-layout regression introduced by PR #422: hotel autocomplete was dynamically reparented into the primary .main-fields grid, which distorted the desktop hierarchy. PR #440 removes that reparenting and keeps the existing hotel autocomplete inside advanced filters; its five-width PR visual suite passed and production deploy 33349232306 completed successfully with public-page verification, unchanged lead-bridge verification and live search smoke. PR #447 adds a focused structural CI gate that fails if hotel autocomplete is moved into the primary grid again; both the new guard and security check passed before merge. Tourvisor, analytics/Metrika and lead contracts remain unchanged.",
+    "next_action": "Continue the production Design 2.0 audit through search → results → selected tour → lead on 375/430/768/1024/1440, prioritizing confirmed layout/hierarchy regressions before cosmetic work. Keep critical-catalog readiness and advanced-filter hotel placement as permanent regression gates."
   },
   "roadmap": [
     {"order":1,"id":"FOUNDATION_ARCHITECTURE","name":"Foundation and architecture","status":"ACTIVE_CONTINUOUS"},
@@ -40,8 +40,8 @@
   ],
   "current_work_order": [
     "audit search results selected-tour lead journey on 375 430 768 1024 1440",
-    "fix the next weakest confirmed Design 2.0 user-facing surface",
-    "preserve live search critical-catalog readiness as a regression gate",
+    "fix confirmed crooked spacing wrapping overflow and hierarchy before cosmetic work",
+    "preserve advanced-filter hotel placement and critical-catalog readiness as regression gates",
     "continue shared primitive adoption only where production surfaces still visibly diverge",
     "advance automatically to Search Experience 2.0 when the Design 2.0 quality gate is satisfied"
   ],
@@ -77,7 +77,7 @@
     "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > anytour_2_0_roadmap > technical_refactor > cosmetic_cleanup",
     "on_stage_done": "advance automatically to the next roadmap stage unless an emergency priority overrides it",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record_blocker_and_continue_independent roadmap work",
+    "on_blocker": "record_blocker_and_continue independent roadmap work",
     "score_rule": "Do not claim 9.0 until production evidence supports the whole-product score across the listed quality dimensions."
   }
 }
