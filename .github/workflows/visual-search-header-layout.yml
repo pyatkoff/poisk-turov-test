@@ -54,8 +54,8 @@ jobs:
           const {chromium}=require('playwright');
           const fs=require('fs');
           const sizes=[['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000]];
-          const expectedOrder=['/poisk-turov/','/country/','/hot/','/rb/','/contacts/'];
-          const expectedLabels=['Поиск туров','Страны','Горящие туры','Раннее бронирование','Контакты'];
+          const expectedOrder=['/poisk-turov/','/country/','/hot/','/rb/','/how-to-buy/','/contacts/'];
+          const expectedLabels=['Поиск туров','Страны','Горящие туры','Раннее бронирование','Как купить','Контакты'];
           const close=(a,b,t=3)=>Math.abs(a-b)<=t;
           const center=e=>(e.top+e.bottom)/2;
           const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
