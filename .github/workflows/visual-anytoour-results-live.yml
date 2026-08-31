@@ -29,18 +29,40 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          export DATE_FROM="$(date -d '+2 day' +%Y-%m-%d)"
-          export DATE_TO="$(date -d '+9 day' +%Y-%m-%d)"
+          slot=$((10#$(date +%j) % 3))
+          case "$slot" in
+            0) offset=2; nights=7 ;;
+            1) offset=4; nights=8 ;;
+            2) offset=6; nights=9 ;;
+          esac
+          export DATE_FROM="$(date -d "+${offset} day" +%Y-%m-%d)"
+          export DATE_TO="$(date -d "+$((offset + 7)) day" +%Y-%m-%d)"
+          export TEST_NIGHTS="$nights"
           mkdir -p anytoour-results-visual
           cat > visual-results.cjs <<'JS'
           const { chromium } = require('playwright');
           const fs=require('fs');
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            const page=await browser.newPage({viewport:{width:1440,height:1000}});
+            const context=await browser.newContext({
+              viewport:{width:1440,height:1000},
+              extraHTTPHeaders:{'X-AnyTour-CI':'1'}
+            });
+            await context.route(/https?:\/\/mc\.yandex\.(ru|com)\//,route=>route.abort());
+            const page=await context.newPage();
             const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
             const u=new URL('https://anytoour.ru/poisk-turov/');
-            Object.entries({from:'1',country:'4',dateFrom:process.env.DATE_FROM,dateTo:process.env.DATE_TO,daysFrom:'7',daysTill:'7',count_people:'2'}).forEach(([k,v])=>u.searchParams.set(k,v));
+            Object.entries({
+              from:'1',
+              country:'4',
+              dateFrom:process.env.DATE_FROM,
+              dateTo:process.env.DATE_TO,
+              daysFrom:process.env.TEST_NIGHTS,
+              daysTill:process.env.TEST_NIGHTS,
+              count_people:'2',
+              ci_test:'1'
+            }).forEach(([k,v])=>u.searchParams.set(k,v));
+            console.log('CI_SEARCH_CONTEXT',JSON.stringify({dateFrom:process.env.DATE_FROM,dateTo:process.env.DATE_TO,nights:process.env.TEST_NIGHTS,marker:'ci_test=1'}));
             const response=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000});
             if(!response||response.status()!==200)throw new Error('search page HTTP '+(response&&response.status()));
             await page.waitForSelector('.hotel-card',{timeout:90000});
