@@ -20,9 +20,11 @@ After emergency overrides (`production_broken → lead_loss → incorrect_data �
 
 ## Current resume point
 
-The shared token/header/footer/page-shell foundation is active. The 769–900 px editorial shell, breadcrumbs, section-heading wraps and card paragraph rhythm now align to the canonical tablet grid. The homepage hero, quick-search card and content sections also use the same shared gutter/tablet cap instead of legacy hard-coded geometry. The responsive visual suite already covers exactly 375/430/768/1024/1440 across homepage, search, editorial routes, country catalog and representative country pages.
+The shared token/header/footer/page-shell foundation is active. The homepage hero, quick-search card and content sections already use the canonical shared gutter/tablet cap. Country/destination hierarchy is now normalized: catalog and related remainder rows keep equal card widths instead of enlarging the final cards, country CTAs share a baseline, and generic three-card editorial grids center odd remainders instead of creating false full-width emphasis. `/hot/` live-offer actions align despite variable hotel/meta copy. `/how-to-buy/` stays single-column through the narrow 769–900 px editorial shell and returns to two columns above it. `/rb/` uses a lighter three-card summary on wide screens while keeping the compact responsive flow below it.
 
-Continue with route-specific hierarchy on `/country/` and representative destination pages, then `/contacts/`, `/how-to-buy/` and `/rb/`. After those slices, run the complete production homepage → destination/hot → search → results → selected tour → lead journey at the exact responsive matrix. Treat the owner-calibrated 6.5/10 whole-site baseline separately from stronger search-only engineering scores; current whole-site estimate after the shared-grid work is about 6.7/10.
+The full pre-merge regression/browser suite remained green, production deploy verified public pages, the unchanged lead bridge and live search smoke, and post-deploy browser validation passed at exactly 375/430/768/1024/1440. Treat the owner-calibrated 6.5/10 whole-site baseline separately from stronger search-only engineering scores; current whole-site estimate after this route-level unification is about 6.8/10.
+
+Continue with `/contacts/` hierarchy and responsive rhythm. Then run the complete production homepage → destination/hot → search → results → selected tour → lead journey at the exact responsive matrix, fixing only confirmed cross-page shell/hierarchy discontinuities found there.
 
 ## Mandatory protections
 
