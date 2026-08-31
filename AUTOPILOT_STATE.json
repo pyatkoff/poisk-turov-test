@@ -1,14 +1,14 @@
 {
   "schema_version": 8,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T14:18:00+02:00",
+  "updated_at": "2026-08-31T14:27:00+02:00",
   "mode": "ux_visual",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SITE_UNIFICATION",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {"active": true, "planned_phase": "ux_visual", "rule": "Keep Design System 2.0 site-wide visual unification first after emergency correctness overrides until explicit owner change. Do not reintroduce Design System 1.0 as current terminology."},
-  "current_stage": {"id": "CROSS_PAGE_JOURNEY_AUDIT", "name": "Validate one coherent homepage-to-lead product journey", "status": "ACTIVE", "next_action": "Audit homepage → destination → hot/search → results → selected tour → lead at 375/430/768/1024/1440 and fix the next confirmed visual inconsistency under Design System 2.0."},
-  "material_progress": ["shared shell/header/footer/cards/buttons/breadcrumbs/page gutters established", "country pages share neutral destination hierarchy and live-search confidence signals", "country PR responsive visual evidence green at 375/430/768/1024/1440", "production deploy, public pages, lead bridge and live search smoke succeeded", "Design System 2.0 restored as the sole canonical generation and DS1 rollback guards removed"],
+  "current_stage": {"id": "CROSS_PAGE_JOURNEY_AUDIT", "name": "Validate one coherent homepage-to-lead product journey", "status": "ACTIVE", "next_action": "Continue homepage → destination → hot/search → results → selected tour → lead validation at 375/430/768/1024/1440; next inspect homepage/hot transition and search-shell hierarchy under Design System 2.0."},
+  "material_progress": ["shared shell/header/footer/cards/buttons/breadcrumbs/page gutters established", "country pages share neutral destination hierarchy and live-search confidence signals", "country PR responsive visual evidence green at 375/430/768/1024/1440", "production deploy, public pages, lead bridge and live search smoke succeeded", "Design System 2.0 restored as the sole canonical generation and DS1 rollback guards removed", "hot offer cards now use equal-height flex rhythm, bottom-aligned CTAs and safe long-name wrapping"],
   "protected": {"repository_scope":"pyatkoff/poisk-turov-test only","other_projects":"DO_NOT_MODIFY","metrika_configuration":"DO_NOT_MODIFY","metrika_goals":"DO_NOT_MODIFY","tourvisor_contract":"PRESERVE","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING","anytour_logo":"PRESERVE","verified_social_app_destinations":"PRESERVE","unresolved_legal_payment_content":"DO_NOT_MIGRATE","design_system_generation":"ANYTOUR DESIGN SYSTEM 2.0","implementation_v1_suffixes":"DO_NOT_MASS_RENAME_WITHOUT_DEPENDENCY_MIGRATION","pr_254":"DEFERRED_PENDING_FRESH_ARCHITECTURE_REVIEW"},
   "continuation_policy": {"priority":"production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > site_wide_unification > tour_data_platform > content_seo > technical_refactor > cosmetic_cleanup","on_ci_failure":"diagnose_failure_then_fix_or_defer_if_external","on_blocker":"record/defer blocker and continue an independent safe visual or product task"}
 }
