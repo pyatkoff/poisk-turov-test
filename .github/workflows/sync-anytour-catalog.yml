@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/sync-anytour-catalog.yml'
+      - 'v2/data/tourvisor-client-v1.php'
       - 'v2/data/departures-v1.php'
       - 'v2/data/sync-departures-v1.php'
       - 'v2/data/migrate-departure-countries-v1.php'
@@ -44,6 +45,9 @@ jobs:
           grep -Fq 'name_genitive VARCHAR(180) DEFAULT NULL' v2/data/schema-v1.sql
           grep -Fq 'catalog_departure_countries' v2/data/migrate-departure-countries-v1.php
           grep -Fq 'pairs=' v2/data/sync-departures-v1.php
+          grep -Fq '$status === 429' v2/data/tourvisor-client-v1.php
+          grep -Fq 'Retry-After:' v2/data/tourvisor-client-v1.php
+          php -r "require 'v2/data/tourvisor-client-v1.php'; if (v2_data_tv_retry_delay_seconds(1, null) !== 1 || v2_data_tv_retry_delay_seconds(4, null) !== 8 || v2_data_tv_retry_delay_seconds(1, 99) !== 15) exit(1);"
           [[ "$COUNTRY_VALUE" =~ ^[0-9]+(,[0-9]+)*$ ]]
           echo "ANYTOUR_CATALOG_TOOLING_OK country=$COUNTRY_VALUE"
 
