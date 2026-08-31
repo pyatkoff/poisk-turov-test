@@ -210,13 +210,12 @@ function scheduled_collector_window(PDO $pdo, int $departureId, int $countryId):
     $stmt = $pdo->prepare("SELECT MAX(date_to) FROM tour_collection_attempts
       WHERE departure_id=:departure AND country_id=:country
         AND status IN ('success','empty')
-        AND nights_from=7 AND nights_to=7");
+        AND nights_from=5 AND nights_to=14");
     $stmt->execute(['departure'=>$departureId, 'country'=>$countryId]);
     $lastDateTo = trim((string)$stmt->fetchColumn());
 
-    // Owner-defined coverage sequence: 01.09-22.09, 23.09-14.10,
-    // 15.10-05.11, ... . A failed/timeout attempt does not advance the cursor,
-    // so the same window is retried until it is actually covered.
+    // Coverage sequence is tracked separately for the 5-14 night profile so
+    // earlier 7-night probes do not incorrectly advance the wider cursor.
     $start = $lastDateTo !== ''
         ? (new DateTimeImmutable($lastDateTo))->modify('+1 day')
         : new DateTimeImmutable('2026-09-01');
@@ -287,14 +286,14 @@ foreach ($targets as $target) {
         'countryId'=>(int)$target['country_id'],
         'dateFrom'=>$window['dateFrom'],
         'dateTo'=>$window['dateTo'],
-        'nightsFrom'=>7,
-        'nightsTo'=>7,
+        'nightsFrom'=>5,
+        'nightsTo'=>14,
         'adults'=>2,
         'currency'=>'RUB',
         'onlyCharter'=>false,
         'onlyDirect'=>false,
     ];
-    echo "COLLECT_WINDOW departure={$target['departure_id']} country={$target['country_id']} from={$search['dateFrom']} to={$search['dateTo']} nights=7\n";
+    echo "COLLECT_WINDOW departure={$target['departure_id']} country={$target['country_id']} from={$search['dateFrom']} to={$search['dateTo']} nights=5-14\n";
     $attemptId = scheduled_collector_attempt_start($pdo, $target, $search);
     $searchId = null;
 
