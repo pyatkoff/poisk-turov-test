@@ -5,6 +5,9 @@
 .at-home-benefit,.at-home-direction,.sp-card,.sp-row,.sp-step,.sp-country,.sp-office-card{border:1px solid var(--at-line);border-radius:var(--at-radius-lg);box-shadow:var(--at-shadow-sm)}
 .at-home-benefit,.sp-card,.sp-office-card{background:linear-gradient(180deg,var(--at-surface),#fbfcff)}
 .sp-card.sp-search-callout{background:var(--at-hero-bg);border-color:transparent}
+.sp-card.sp-card--supporting{background:var(--at-soft);box-shadow:none}
+.sp-card.sp-card--supporting:before{background:var(--at-line-strong)}
+.sp-card.sp-card--supporting h2{font-size:20px}
 .sp-row,.sp-step{background:var(--at-surface)}
 .at-home-search button,.sp-primary,.sp-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding-inline:19px;border-radius:var(--at-control-radius);font-weight:850;text-decoration:none;transition:transform .15s ease,box-shadow .15s ease,background .15s ease}
 .at-home-search button,.sp-primary{background:var(--at-accent);color:#fff;box-shadow:0 10px 22px rgba(216,61,0,.16)}
