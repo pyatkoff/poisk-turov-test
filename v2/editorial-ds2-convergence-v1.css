@@ -47,6 +47,15 @@
   font-size:16px;
   line-height:1.56;
 }
+.sp-country-intent h1{
+  max-width:580px;
+  margin:8px 0 0;
+  color:var(--at-ink);
+  font-size:clamp(26px,3vw,38px);
+  line-height:1.05;
+  letter-spacing:-.035em;
+  text-wrap:balance;
+}
 .sp-breadcrumbs{
   background:rgba(255,255,255,.96);
 }
@@ -62,4 +71,5 @@
   .sp-kicker{font-size:10px}
   .sp-hero h1{font-size:30px;line-height:1.05}
   .sp-hero p{margin-top:10px;font-size:14px;line-height:1.52}
+  .sp-country-intent h1{font-size:27px}
 }
