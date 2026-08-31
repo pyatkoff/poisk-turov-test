@@ -1,49 +1,58 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T11:45:00+02:00",
-  "mode": "technical_refactor",
-  "phase": "CI_COST_AUDIT_AND_CONSOLIDATION",
-  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
+  "updated_at": "2026-08-31T12:12:00+02:00",
+  "mode": "ux_visual",
+  "phase": "ANYTOUR_DESIGN_SYSTEM_1_0_SITEWIDE_UNIFICATION",
+  "canonical_design_system": "ANYTOUR DESIGN SYSTEM 1.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
   "owner_priority_lock": {
     "active": true,
-    "planned_phase": "technical_refactor",
-    "rule": "Keep technical refactor and CI-cost consolidation first after emergency correctness overrides until the owner explicitly changes direction. Design System 2.0 remains canonical terminology but is not the active execution phase."
+    "planned_phase": "ux_visual",
+    "rule": "Follow the explicit owner-directed Design System 1.0 site-wide unification phase unless an emergency correctness override is confirmed."
+  },
+  "site_wide_quality": {
+    "baseline": 6.5,
+    "estimate": 6.9,
+    "note": "Whole-site visual coherence score; do not substitute search-only engineering scores."
   },
   "current_stage": {
-    "id": "CI_RESOURCE_CONSOLIDATION",
-    "name": "Reduce duplicate GitHub Actions work without losing critical coverage",
+    "id": "EDITORIAL_AND_JOURNEY_COHERENCE",
+    "name": "Unify weak public pages and validate the complete site journey",
     "status": "ACTIVE",
-    "next_action": "Continue the verified workflow-by-workflow audit: remove duplicate runners, narrow broad triggers by real dependencies, consolidate related Playwright checks, and preserve critical search/lead/price/tour/flight/recovery coverage."
+    "next_action": "Audit and improve /rb/ and representative country pages using the shared Design System 1.0 shell, then run the full homepage → country → hot/search → results → selected tour → lead visual journey at 375/430/768/1024/1440."
   },
-  "current_work_order": [
-    "audit broad PR browser triggers and data-only exclusions",
-    "consolidate overlapping browser workflows into domain owners",
-    "fold tiny source-string guards into existing PR FAST owners",
-    "classify PR FAST PR BROWSER POST DEPLOY and SCHEDULED LIVE",
-    "maintain architecture and dependency source of truth",
-    "resume UX and Design System 2.0 visual work after the technical CI phase"
-  ],
   "material_progress": [
-    "data-only changes no longer start several unrelated visual browser workflows",
-    "duplicate primary-meal browser coverage was consolidated into one owner workflow",
-    "dormant manual traffic-audit stubs were removed",
-    "pending-flight label source assertions were folded into the existing pending-flight confidence owner"
+    "PR #514 merged and deployed: shared editorial section-head geometry now aligns content pages with the mature search visual language",
+    "shared lower-emphasis supporting-card primitive added for secondary/legal/caution content without changing legal/payment meaning",
+    "/contacts/ hierarchy clarified: offices, phone/search actions and legal information now have distinct visual priority while preserving all verified destinations and data",
+    "/how-to-buy/ now uses the shared supporting hierarchy while preserving the existing purchase/legal wording",
+    "post-deploy V2 visual journey, selected-tour production audit and visual baseline all passed after deployment"
+  ],
+  "current_work_order": [
+    "audit /rb/ for remaining duplicated or weak hierarchy",
+    "audit representative country pages and /country/ consistency",
+    "verify homepage → country → hot/search → results → selected tour → lead across 375/430/768/1024/1440",
+    "fix confirmed spacing wrapping overflow duplicated shell header/footer or hierarchy defects before cosmetic flourishes",
+    "continue migrating weak editorial pages to shared tokens/primitives without making them as dense as search results"
   ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
     "other_projects": "DO_NOT_MODIFY",
+    "anytour_logo": "DO_NOT_REDESIGN_OR_REPLACE",
     "metrika_configuration": "DO_NOT_MODIFY",
     "metrika_goals": "DO_NOT_MODIFY",
     "tourvisor_contract": "PRESERVE",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
-    "design_system_generation": "ANYTOUR DESIGN SYSTEM 2.0",
-    "implementation_v1_suffixes": "DO_NOT_MASS_RENAME_WITHOUT_DEPENDENCY_MIGRATION"
+    "verified_social_app_destinations": "PRESERVE",
+    "unresolved_legal_payment_content": "DO_NOT_MIGRATE"
+  },
+  "deferred": {
+    "pr_254": "Keep deferred unless a fresh review proves its separate DB/platform architecture safe."
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > technical_refactor > ci_cost_audit > ux_visual > tour_data_platform > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > ux_visual > sitewide_shell_coherence > responsive_visual_regressions > tour_data_platform > content_seo > cosmetic_cleanup > ci_cost_audit",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_blocker": "record/defer blocker and continue an independent safe technical-refactor or CI-cost task"
+    "on_blocker": "record/defer blocker and continue an independent safe Design System 1.0 page or shared-shell task"
   }
 }
