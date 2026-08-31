@@ -1,13 +1,13 @@
 {
-  "schema_version": 1,
-  "active_mode": "design_system_1_0",
-  "active_phase": "ANYTOUR DESIGN SYSTEM 1.0",
+  "schema_version": 2,
+  "active_mode": "anytour_2_0_site_9_0",
+  "active_phase": "ANYTOUR 2.0 → SITE 9.0/10",
+  "current_stage": "DESIGN_2_0_FOUNDATION",
   "priority_after_emergency_overrides": [
-    "ux_visual",
+    "anytour_2_0_roadmap",
     "technical_refactor",
-    "content_seo",
     "cosmetic_cleanup"
   ],
-  "source": "explicit_owner_direction_2026_08_31_design_system_1_0",
-  "rule": "AnyTour Design System 1.0 and site-wide visual unification are the active owner priority after emergency production, lead-loss, incorrect-data and broken-user-journey overrides. Audit and improve the public journey across home, search, hot, contacts, how-to-buy, early booking, country catalog and representative country pages; keep one shared header/navigation/footer and coherent tokens, typography, grid, spacing, buttons, cards, breadcrumbs and responsive behavior. Preserve Yandex Metrika/goals, analytics, Tourvisor and external lead contracts and stay inside pyatkoff/poisk-turov-test."
+  "source": "explicit_owner_direction_2026_08_31_anytour_2_0_site_9_0",
+  "rule": "AnyTour 2.0 and a real whole-production-site 9.0/10 quality target are the owner north-star after emergency production, lead-loss, incorrect-data and broken-user-journey overrides. Design 2.0 / Design System foundation is the current stage, not the finish line. Continue automatically through Search Experience 2.0, Results 2.0, Hotel/Tour 2.0, Price Intelligence, Conversion 2.0, Data Platform, SEO Platform, merchandising/discovery, Mobile 2.0, performance/reliability and the final evidence-based 9.0 audit. Preserve Yandex Metrika/goals, analytics, Tourvisor and external lead contracts and stay inside pyatkoff/poisk-turov-test."
 }
