@@ -18,7 +18,8 @@ try {
         }
     }
     $count = (int)$pdo->query('SELECT COUNT(*) FROM catalog_departures')->fetchColumn();
-    echo "ANYTOUR_DEPARTURES_OK rows={$count}\n";
+    $genitiveCount = (int)$pdo->query("SELECT COUNT(*) FROM catalog_departures WHERE name_genitive IS NOT NULL AND TRIM(name_genitive) <> ''")->fetchColumn();
+    echo "ANYTOUR_DEPARTURES_OK rows={$count} name_genitive_rows={$genitiveCount}\n";
 } catch (Throwable $e) {
     fwrite(STDERR, 'ANYTOUR_DEPARTURES_INVALID: ' . $e->getMessage() . "\n");
     exit(1);
