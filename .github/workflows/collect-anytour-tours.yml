@@ -9,6 +9,7 @@ on:
       - 'v2/data/migrate-collection-attempts-v1.php'
       - 'v2/data/migrate-matrix-collection-v1.php'
       - 'v2/data/matrix-collector-v1.php'
+      - 'v2/data/top-hotels-v1.php'
       - 'v2/data/rollup-price-daily-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
   push:
@@ -19,6 +20,7 @@ on:
       - 'v2/data/migrate-collection-attempts-v1.php'
       - 'v2/data/migrate-matrix-collection-v1.php'
       - 'v2/data/matrix-collector-v1.php'
+      - 'v2/data/top-hotels-v1.php'
       - 'v2/data/rollup-price-daily-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
   schedule:
@@ -58,17 +60,21 @@ jobs:
           php -l v2/data/scheduled-collector-v1.php
           php -l v2/data/migrate-collection-attempts-v1.php
           php -l v2/data/migrate-matrix-collection-v1.php
+          php -l v2/data/top-hotels-v1.php
           php -l v2/data/matrix-collector-v1.php
           php -l v2/data/rollup-price-daily-v1.php
           grep -Fq "['user_search', 'scheduled_monitor', 'hot_tours']" v2/data/price-observer-v1.php
           grep -Fq "'source'=>'scheduled_monitor'" v2/data/scheduled-collector-v1.php
           grep -Fq "array_chunk(\$ids,30)" v2/data/matrix-collector-v1.php
+          grep -Fq "v2_priority_hotel_ids()" v2/data/matrix-collector-v1.php
+          grep -Fq "ceil(\$budget*0.55)" v2/data/matrix-collector-v1.php
           grep -Fq "\$search['hotelIds']=\$t['hotel_ids']" v2/data/matrix-collector-v1.php
           grep -Fq "\$search['regionIds']=[\$t['region_id']]" v2/data/matrix-collector-v1.php
           grep -Fq "modify('+20 days')" v2/data/matrix-collector-v1.php
           grep -Fq "'maxHotels'=>5000" v2/data/matrix-collector-v1.php
           grep -Fq "'maxTours'=>50000" v2/data/matrix-collector-v1.php
           grep -Fq 'PRICE_DAILY_ROLLUP_OK' v2/data/rollup-price-daily-v1.php
+          php -r "require 'v2/data/top-hotels-v1.php'; \$ids=v2_priority_hotel_ids(); if (count(\$ids)!==492 || count(array_unique(\$ids))!==492 || \$ids[0]!==22879 || end(\$ids)!==42155) exit(1);"
           php -r "require 'v2/data/price-observer-v1.php'; if (v2_price_observer_source('scheduled_monitor') !== 'scheduled_monitor' || v2_price_observer_limit(99999,100,5000)!==5000) exit(1);"
           echo ANYTOUR_MATRIX_COLLECTOR_TOOLING_OK
 
@@ -120,6 +126,7 @@ jobs:
             v2/data/migrate-collection-attempts-v1.php \
             v2/data/scheduled-collector-v1.php \
             v2/data/migrate-matrix-collection-v1.php \
+            v2/data/top-hotels-v1.php \
             v2/data/matrix-collector-v1.php \
             v2/data/rollup-price-daily-v1.php \
             "$remote:$remote_dir/"
@@ -129,6 +136,7 @@ jobs:
             php -l \"\$root/tourvisor-client-v1.php\" >/dev/null
             php -l \"\$root/price-observer-v1.php\" >/dev/null
             php -l \"\$root/scheduled-collector-v1.php\" >/dev/null
+            php -l \"\$root/top-hotels-v1.php\" >/dev/null
             php -l \"\$root/matrix-collector-v1.php\" >/dev/null
             php -l \"\$root/rollup-price-daily-v1.php\" >/dev/null
             php \"\$root/migrate-collection-attempts-v1.php\"
