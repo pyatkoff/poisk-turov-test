@@ -1,7 +1,7 @@
 {
   "schema_version": 5,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-31T11:10:00+02:00",
+  "updated_at": "2026-08-31T11:24:00+02:00",
   "mode": "design_system_1",
   "phase": "ANYTOUR DESIGN SYSTEM 1.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
@@ -14,18 +14,24 @@
     "id": "SITE_WIDE_VISUAL_UNIFICATION",
     "name": "Shared shell, hierarchy and responsive continuity",
     "status": "ACTIVE",
-    "next_action": "Align editorial tablet geometry to the canonical shared grid, then audit homepage, country/destination, hot, contacts, how-to-buy and rb at 375/430/768/1024/1440 before the full production journey."
+    "next_action": "Audit /country/ and representative destination intent cards, then /contacts/, /how-to-buy/ and /rb/ hierarchy. Finish with the full production homepage -> destination/hot -> search -> results -> selected tour -> lead journey using the exact 375/430/768/1024/1440 visual matrix."
   },
   "current_work_order": [
-    "shared design tokens and primitives",
-    "one header navigation and canonical footer",
-    "crooked spacing wrapping overflow and duplicated shell",
-    "editorial and destination hierarchy",
-    "cross-page responsive journey audit",
+    "country catalog and representative destination hierarchy",
+    "contacts how-to-buy and rb hierarchy",
+    "cross-page exact-width production visual matrix",
+    "full homepage destination hot search results selected-tour lead journey",
     "preserve mature search and lead regressions",
     "tour data platform after visual owner phase"
   ],
   "site_wide_visual_baseline": 6.5,
+  "site_wide_visual_current_estimate": 6.7,
+  "material_progress": [
+    "editorial shell, breadcrumbs and shared header/footer now share the canonical tablet grid",
+    "editorial section headings stack safely in the narrow tablet range and adjacent card paragraphs retain readable rhythm",
+    "homepage hero, quick search and content sections now consume the same shared page gutter/tablet cap",
+    "responsive validation already covers 375, 430, 768, 1024 and 1440 across homepage, search, editorial routes, country catalog and representative country pages"
+  ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test and allowed V2/standalone production scope only",
     "other_projects": "DO_NOT_MODIFY",
