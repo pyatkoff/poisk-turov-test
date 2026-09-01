@@ -86,8 +86,8 @@ jobs:
           import sys
           path=Path(sys.argv[1])
           text=path.read_text()
-          text=text.replace('</head>','<link rel="stylesheet" href="/_preview/search3/search3-preview.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-results-preview.css?v=1"><link rel="stylesheet" href="/_preview/search3/search3-filter-rail-preview.css?v=1"><link rel="stylesheet" href="/_preview/search3/search3-mobile-filters.css?v=1"><link rel="stylesheet" href="/_preview/search3/search3-results-top.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-selected-tour.css?v=2"></head>',1)
-          text=text.replace('</body>','<script src="/_preview/search3/search3-preview.js?v=3"></script><script src="/_preview/search3/search3-results-preview.js?v=1"></script><script src="/_preview/search3/search3-filter-rail-preview.js?v=1"></script><script src="/_preview/search3/search3-mobile-filters.js?v=1"></script><script src="/_preview/search3/search3-results-top.js?v=1"></script><script src="/_preview/search3/search3-selected-tour-mobile.js?v=1"></script></body>',1)
+          text=text.replace('</head>','<link rel="stylesheet" href="/_preview/search3/search3-preview.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-results-preview.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-filter-rail-preview.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-mobile-filters.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-results-top.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-selected-tour.css?v=2"></head>',1)
+          text=text.replace('</body>','<script src="/_preview/search3/search3-preview.js?v=3"></script><script src="/_preview/search3/search3-results-preview.js?v=1"></script><script src="/_preview/search3/search3-filter-rail-preview.js?v=2"></script><script src="/_preview/search3/search3-mobile-filters.js?v=2"></script><script src="/_preview/search3/search3-results-top.js?v=1"></script><script src="/_preview/search3/search3-selected-tour-mobile.js?v=1"></script></body>',1)
           path.write_text(text)
           PY
 
@@ -123,13 +123,13 @@ jobs:
           grep -q '/_preview/search3/bundle-v1.php?type=css' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-preview.css?v=3' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-preview.js?v=3' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-results-preview.css?v=1' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-results-preview.css?v=2' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-results-preview.js?v=1' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-filter-rail-preview.css?v=1' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-filter-rail-preview.js?v=1' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-mobile-filters.css?v=1' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-mobile-filters.js?v=1' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-results-top.css?v=2' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-filter-rail-preview.css?v=2' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-filter-rail-preview.js?v=2' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-mobile-filters.css?v=2' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-mobile-filters.js?v=2' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-results-top.css?v=3' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-results-top.js?v=1' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-selected-tour.css?v=2' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-selected-tour-mobile.js?v=1' /tmp/search3-preview.html
@@ -176,13 +176,13 @@ jobs:
               const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
               const page=await context.newPage(); const errors=[];
               page.on('pageerror',e=>errors.push(String(e).slice(0,500)));
-              const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
+              const response=await page.goto(url+'?visual='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
               await page.waitForTimeout(2500);
               const initial=await page.evaluate(()=>({search3:document.body.classList.contains('search3-preview'),form:!!document.querySelector('#tourSearch'),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
               await page.screenshot({path:`search3-visual-artifacts/${name}-initial.png`,fullPage:true});
               await page.evaluate(data=>window.V2Results.render(data),fixture);
               await page.waitForTimeout(300);
-              const results=await page.evaluate(()=>({cards:document.querySelectorAll('#results .hotel-card').length,actions:document.querySelectorAll('.search3-show-tours').length,allToursHidden:[...document.querySelectorAll('#results .hotel-tours')].every(x=>x.hidden),mobileFilters:(()=>{const x=document.querySelector('[data-s3-open-filters]');return !!x&&!x.hidden&&getComputedStyle(x).display!=='none';})(),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
+              const results=await page.evaluate(()=>{const x=document.querySelector('[data-s3-open-filters]');return {cards:document.querySelectorAll('#results .hotel-card').length,actions:document.querySelectorAll('.search3-show-tours').length,allToursHidden:[...document.querySelectorAll('#results .hotel-tours')].every(x=>x.hidden),mobileFilters:!!x&&!x.hidden&&getComputedStyle(x).display!=='none'&&x.getBoundingClientRect().width>0&&x.getBoundingClientRect().height>0,filterDisplay:x?getComputedStyle(x).display:null,toolbarDisplay:x&&x.parentElement?getComputedStyle(x.parentElement).display:null,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};});
               await page.screenshot({path:`search3-visual-artifacts/${name}-results.png`,fullPage:true});
               await page.locator('.search3-show-tours').first().click();
               await page.waitForTimeout(200);
@@ -190,9 +190,11 @@ jobs:
               await page.screenshot({path:`search3-visual-artifacts/${name}-tours.png`,fullPage:true});
               let drawer=null;
               if(width<=999){
-                await page.locator('[data-s3-open-filters]').click(); await page.waitForTimeout(150);
-                drawer=await page.evaluate(()=>({open:document.body.classList.contains('search3-filter-open'),dialog:document.querySelector('.results-filter-rail')?.getAttribute('role')==='dialog',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
-                await page.screenshot({path:`search3-visual-artifacts/${name}-filters.png`,fullPage:true});
+                if(results.mobileFilters){
+                  await page.locator('[data-s3-open-filters]').click({timeout:5000}); await page.waitForTimeout(150);
+                  drawer=await page.evaluate(()=>({open:document.body.classList.contains('search3-filter-open'),dialog:document.querySelector('.results-filter-rail')?.getAttribute('role')==='dialog',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
+                  await page.screenshot({path:`search3-visual-artifacts/${name}-filters.png`,fullPage:true});
+                }else drawer={open:false,dialog:false,overflow:false,reason:'mobile-filter-button-not-visible'};
               }
               const item={name,http:response?.status()||0,errors,initial,results,chooser,drawer}; report.push(item);
               const bad=item.http!==200||errors.length||!initial.search3||!initial.form||initial.overflow||results.cards!==2||results.actions!==2||!results.allToursHidden||results.overflow||(width<=999?!results.mobileFilters:results.mobileFilters)||!chooser.visible||!chooser.heading||chooser.rows<1||chooser.cta.some(x=>x!=='Подробнее о туре')||chooser.overflow||(drawer&&(!drawer.open||!drawer.dialog||drawer.overflow));
