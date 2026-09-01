@@ -26,7 +26,7 @@ jobs:
           php -l v2/index.php >/dev/null
           php -l v2/api-v2.php >/dev/null
           php -l v2/bundle-v1.php >/dev/null
-          grep -Fq "'search-redesign-v2.css'" v2/bundle-manifest-v1.php
+          grep -Fq "'approved-anytour-redesign-v1.css'" v2/bundle-manifest-v1.php
           grep -Fq "'search-redesign-v2.js'" v2/bundle-manifest-v1.php
           node --check v2/search-redesign-v2.js
           echo "SEARCH_PREVIEW_VALIDATE_OK"
@@ -112,5 +112,5 @@ jobs:
           css_code="$(curl -sSL -o /tmp/search2.css -w '%{http_code}' --max-time 30 "$base/bundle-v1.php?type=css")"
           echo "CSS_HTTP=$css_code"
           test "$css_code" = "200"
-          grep -q 'at-search2-results' /tmp/search2.css || { echo 'SEARCH2_CSS_MARKER_MISSING'; exit 25; }
+          grep -q 'Approved AnyTour DS2 search' /tmp/search2.css || { echo 'DS2_CSS_MARKER_MISSING'; exit 25; }
           echo "SEARCH_PREVIEW_OK $base/poisk-turov/"
