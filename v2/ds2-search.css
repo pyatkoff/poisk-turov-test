@@ -42,7 +42,7 @@ body.at-search2-results:not(.at-search2-selected) .results-layout{display:grid}
   background:var(--at-surface);
   box-shadow:var(--at-shadow-sm)
 }
-.results-tools--ds2{width:906px;max-width:906px;margin:0 0 12px 274px}
+.results-tools--ds2{width:auto;max-width:none;margin:0 0 12px}
 .results-tools>div{display:flex;align-items:baseline;gap:9px}
 .results-tools strong{font-size:23px;line-height:1.15;font-weight:850;letter-spacing:-.025em}
 .results-tools #resultSummary{color:var(--at-muted);font-size:11px}
