@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "SEARCH_STATE_PERFORMANCE",
+  "goal": "Improve progressive-result, loading, stale-state and recovery behavior while preserving already useful results and existing Tourvisor/search contracts.",
+  "risk": "MEDIUM",
+  "owns_paths": [
+    "v2/search-progress-ux-v1.js",
+    "v2/search-progress-ux-v1.css",
+    "v2/search-dirty-ux-v1.js",
+    "v2/search-dirty-ux-v1.css",
+    "diagnostics/search_results_recovery_test.cjs"
+  ],
+  "depends_on": [
+    "AUTOPILOT_KERNEL_ROLLOUT"
+  ],
+  "verify": {
+    "level": "targeted",
+    "checks": [
+      "Fast CI",
+      "diagnostics/search_results_recovery_test.cjs",
+      "one affected browser/user-flow scenario; add breakpoint-specific visual evidence only if layout changes"
+    ]
+  },
+  "done_when": [
+    "progressive or recovery changes do not discard valid rendered results unnecessarily",
+    "stale responses cannot overwrite a newer search state",
+    "no unnecessary search_start/search_continue restart is introduced",
+    "only the targeted search/recovery evidence required by the actual change is run"
+  ]
+}
