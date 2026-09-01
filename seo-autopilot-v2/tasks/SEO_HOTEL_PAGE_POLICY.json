@@ -1,0 +1,15 @@
+{
+  "id": "SEO_HOTEL_PAGE_POLICY",
+  "title": "Define when a hotel deserves an indexable SEO page",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "eligibility": [
+    "stable hotel identity",
+    "country/resort relationship",
+    "useful factual hotel information",
+    "unique canonical route",
+    "meaningful path into relevant tour offers/search",
+    "page quality gate passes"
+  ],
+  "rule": "A hotel record alone is not sufficient reason to index a page."
+}
