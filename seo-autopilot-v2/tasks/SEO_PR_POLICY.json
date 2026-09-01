@@ -1,0 +1,15 @@
+{
+  "id": "SEO_PR_POLICY",
+  "title": "Use narrow SEO PRs with explicit evidence",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "body_should_state": [
+    "finding and evidence",
+    "exact scope",
+    "risk class",
+    "protected contracts unchanged",
+    "targeted verification",
+    "production verification requirement if runtime changes"
+  ],
+  "rule": "Do not bulk-merge feature/seo-autopilot-2 into main merely to ship one SEO repair."
+}
