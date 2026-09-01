@@ -1,0 +1,14 @@
+{
+  "id": "SEO_ROUTE_DISCOVERY",
+  "title": "Discover SEO-relevant routes from code and public links",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "sources": [
+    "repository routing/rewrite configuration",
+    "sitemap generators/files",
+    "public navigation/internal links",
+    "SEO template directories",
+    "legacy route references"
+  ],
+  "output": "URL-family inventory, not an exhaustive crawl dump."
+}
