@@ -3,11 +3,26 @@
   "id": "REDESIGN_HEADER_SHELL",
   "goal": "Implement the approved AnyTour Design System 2.0 header/shared-shell direction without changing the AnyTour logo, navigation contracts or search behavior.",
   "risk": "MEDIUM",
+  "verification_class": "MEDIUM",
+  "design_approval": "REQUIRED_AND_ALREADY_SATISFIED_BY_NEW_DESIGN_IMPLEMENTATION_PREP",
   "owns_paths": [
     "v2/site-header-v2.php",
     "v2/site-header-v2.css",
     "v2/header-current-site.js",
     "v2/product-shell-v1.css"
+  ],
+  "never_touch": [
+    "AnyTour logo artwork",
+    "Yandex Metrika configuration or goals",
+    "Tourvisor request/search semantics",
+    "lead transport contracts",
+    "unrelated site headers outside the explicit release task"
+  ],
+  "invariants": [
+    "AnyTour Design System 2.0 is the only active design system",
+    "one canonical header/shared shell remains active",
+    "desktop and mobile navigation behavior remains functional",
+    "no Design System 1.0 primitive or parallel header variant is introduced"
   ],
   "depends_on": [
     "NEW_DESIGN_IMPLEMENTATION_PREP"
