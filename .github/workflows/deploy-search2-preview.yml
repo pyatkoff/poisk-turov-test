@@ -1,0 +1,98 @@
+name: Deploy Search 2.0 preview
+
+on:
+  push:
+    branches: [design/search2-form-polish]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/deploy-search2-preview.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-anytoour-search2-preview
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate preview bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/index.php >/dev/null
+          php -l v2/poisk-turov/index.php >/dev/null
+          php -l v2/api-v2.php >/dev/null
+          php -l v2/bundle-v1.php >/dev/null
+          node --check v2/ds2-search-form-polish-v1.js
+          grep -Fq "'ds2-search-form-desktop-v7.css'" v2/bundle-manifest-v1.php
+          grep -Fq "'ds2-search-form-responsive-v6.css'" v2/bundle-manifest-v1.php
+          grep -Fq "'ds2-search-form-pickers-v6.css'" v2/bundle-manifest-v1.php
+          grep -Fq "'ds2-search-form-composition-v5.css'" v2/bundle-manifest-v1.php
+          grep -Fq "V2_PUBLIC_BASE_PATH', '/_preview/search2'" v2/poisk-turov/index.php
+          echo "SEARCH2_PREVIEW_VALIDATE_OK"
+
+      - name: Prepare SSH key
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY" | tr -d '\r' > "$RUNNER_TEMP/anytoour_key"
+          else
+            printf '%s' "$KEY" | base64 --decode > "$RUNNER_TEMP/anytoour_key"
+          fi
+          chmod 600 "$RUNNER_TEMP/anytoour_key"
+          ssh-keygen -y -f "$RUNNER_TEMP/anytoour_key" >/dev/null
+
+      - name: Copy preview to anytoour.ru
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST" && test -n "$USER"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          remote="$USER@$HOST"
+          root='~/www/anytoour.ru/_preview/search2'
+          timeout 60s ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/_preview/search2/poisk-turov"'
+          timeout 180s scp "${opts[@]}" -r v2/. "$remote:$root/"
+          timeout 90s ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            prod="$HOME/www/anytoour.ru"
+            root="$prod/_preview/search2"
+            cp "$root/index.php" "$root/search-page-v2.php"
+            if test -s "$prod/config.php"; then cp "$prod/config.php" "$root/config.php"; fi
+            if test -s "$prod/.anytoour-bridge-secret"; then cp "$prod/.anytoour-bridge-secret" "$root/.anytoour-bridge-secret"; fi
+            test -s "$root/config.php"
+            php -l "$root/search-page-v2.php" >/dev/null
+            php -l "$root/poisk-turov/index.php" >/dev/null
+            php -l "$root/api-v2.php" >/dev/null
+            chmod 600 "$root/config.php"
+            test ! -e "$prod/_preview/search2/index.html"
+            echo "SEARCH2_PREVIEW_FILES_ACTIVATED"
+          '
+
+      - name: Verify preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          page='https://anytoour.ru/_preview/search2/poisk-turov/'
+          api='https://anytoour.ru/_preview/search2/api-v2.php?action=health'
+          code="$(curl -fsSL -o /tmp/search2-preview.html -w '%{http_code}' --max-time 45 "$page")"
+          api_code="$(curl -fsSL -o /tmp/search2-preview-health.json -w '%{http_code}' --max-time 45 "$api")"
+          echo "PAGE=$code API=$api_code"
+          test "$code" = "200"
+          test "$api_code" = "200"
+          grep -q 'Найти тур' /tmp/search2-preview.html
+          grep -q '/_preview/search2/bundle-v1.php?type=css' /tmp/search2-preview.html
+          grep -q '/_preview/search2/api-v2.php' /tmp/search2-preview.html
+          grep -q 'noindex' /tmp/search2-preview.html
+          grep -q 'tourvisor-direct' /tmp/search2-preview-health.json
+          echo "SEARCH2_PREVIEW_OK"
