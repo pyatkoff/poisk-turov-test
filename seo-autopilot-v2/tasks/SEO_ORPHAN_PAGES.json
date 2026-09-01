@@ -1,0 +1,12 @@
+{
+  "id": "SEO_ORPHAN_PAGES",
+  "title": "Detect indexable orphan pages",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "goal": "Every intentional indexable landing should have a useful crawlable discovery path, not sitemap-only existence.",
+  "actions": [
+    "add contextual/hierarchy link when useful",
+    "merge or deindex when page has no distinct value",
+    "do not create sitewide link spam just to eliminate orphan status"
+  ]
+}
