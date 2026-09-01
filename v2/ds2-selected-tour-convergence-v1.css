@@ -14,7 +14,7 @@
 .selected-tour>.back-results{
   display:inline-flex;
   align-items:center;
-  min-height:40px;
+  min-height:44px;
   margin:0 0 var(--at-space-3);
   color:var(--at-brand);
   line-height:1.25;
@@ -134,7 +134,7 @@
   line-height:1.65;
   overflow-wrap:anywhere;
 }
-.hotel-desc-toggle{min-height:38px;color:var(--at-brand)}
+.hotel-desc-toggle{min-height:44px;color:var(--at-brand)}
 .room-details-host{min-width:0;margin-top:var(--at-space-4)}
 .room-detail-toggle{
   min-width:0;
