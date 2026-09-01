@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "REDESIGN_FOOTER_COMMUNITY",
+  "goal": "Implement the approved AnyTour footer/community composition using only factual project content: MAX, Telegram, VK, App Store, Google Play, the existing legal links, copyright and MasterCard/Visa/Мир. Do not invent contact data or navigation sections.",
+  "risk": "MEDIUM",
+  "owns_paths": [
+    "v2/site-footer-v1.php",
+    "v2/site-footer-v1.css"
+  ],
+  "depends_on": [
+    "NEW_DESIGN_IMPLEMENTATION_PREP"
+  ],
+  "verify": {
+    "level": "targeted",
+    "checks": [
+      "Fast CI",
+      "Security guard",
+      "visual QA at 375px and 1440px on /poisk-turov/"
+    ]
+  },
+  "done_when": [
+    "community block contains exactly MAX, Telegram and VK social destinations plus App Store and Google Play",
+    "canonical footer contains the existing payment/legal links and payment systems without invented phone, email, address, YouTube, Instagram or Apple Pay",
+    "real AnyTour logo/brand identity is preserved",
+    "footer is responsive and does not introduce a second parallel footer"
+  ]
+}
