@@ -1,0 +1,18 @@
+{
+  "id": "SEO_MONITORING",
+  "title": "Continuously detect SEO regressions and opportunities",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "checks": [
+    "unexpected noindex/index changes",
+    "canonical drift",
+    "sitemap drift",
+    "404/redirect regressions",
+    "duplicate title/H1 regressions",
+    "broken internal links",
+    "legacy-domain references",
+    "stale factual offer data",
+    "thin landing regressions"
+  ],
+  "policy": "Detection is autonomous. Apply only narrow SAFE fixes automatically; escalate architecture or protected-boundary changes."
+}
