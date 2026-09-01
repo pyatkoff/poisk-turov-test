@@ -73,12 +73,14 @@ jobs:
           root='~/www/anytoour.ru'
           ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data" "$HOME/www/anytoour.ru/feed/generated" && test -s "$HOME/www/anytoour.ru/config.php"'
           scp "${opts[@]}" v2/data/db-v1.php v2/data/build-yandex-country-feeds-v1.php "$remote:$root/data/"
-          ssh "${opts[@]}" "$remote" "
+          ssh "${opts[@]}" "$remote" '
             set -euo pipefail
-            php -l \"\$HOME/www/anytoour.ru/data/build-yandex-country-feeds-v1.php\" >/dev/null
-            php \"\$HOME/www/anytoour.ru/data/build-yandex-country-feeds-v1.php\" --output-dir=\"\$HOME/www/anytoour.ru/feed/generated\"
-            test -s \"\$HOME/www/anytoour.ru/feed/generated/countries.yml\"
-            grep -Fq '<yml_catalog' \"\$HOME/www/anytoour.ru/feed/generated/countries.yml\"
-            test -s \"\$HOME/www/anytoour.ru/feed/generated/manifest.json\"
-            php -r '\$m=json_decode(file_get_contents(getenv("HOME")."/www/anytoour.ru/feed/generated/manifest.json"),true,512,JSON_THROW_ON_ERROR); if((int)(\$m["rows"]??0)<=0) {fwrite(STDERR,"YANDEX_COUNTRY_FEEDS_EMPTY\\n"); exit(1);} echo "YANDEX_COUNTRY_FEEDS_NONEMPTY rows=".(int)\$m["rows"]." files=".count(\$m["files"]??[])."\\n";'
-          "
+            php -l "$HOME/www/anytoour.ru/data/build-yandex-country-feeds-v1.php" >/dev/null
+            php "$HOME/www/anytoour.ru/data/build-yandex-country-feeds-v1.php" --output-dir="$HOME/www/anytoour.ru/feed/generated"
+            test -s "$HOME/www/anytoour.ru/feed/generated/countries.yml"
+            grep -Fq "<yml_catalog" "$HOME/www/anytoour.ru/feed/generated/countries.yml"
+            test -s "$HOME/www/anytoour.ru/feed/generated/manifest.json"
+            grep -Eq '"'"'"rows"[[:space:]]*:[[:space:]]*[1-9][0-9]*'"'"' "$HOME/www/anytoour.ru/feed/generated/manifest.json" || { echo YANDEX_COUNTRY_FEEDS_EMPTY >&2; exit 1; }
+            echo YANDEX_COUNTRY_FEEDS_NONEMPTY
+            cat "$HOME/www/anytoour.ru/feed/generated/manifest.json"
+          '
