@@ -1,0 +1,21 @@
+{
+  "id": "SEO_TEMPLATE_LIBRARY",
+  "title": "Build reusable intent-specific SEO page templates",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "candidate_templates": [
+    "country",
+    "resort",
+    "hotel"
+  ],
+  "shared_blocks": [
+    "breadcrumbs",
+    "search entry point",
+    "factual destination summary",
+    "current offer snapshot",
+    "popular hotels/destinations",
+    "related internal links",
+    "useful FAQ where evidence supports it"
+  ],
+  "rule": "Shared components are allowed; primary content and intent must not collapse into token-swapped duplicates."
+}
