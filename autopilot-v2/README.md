@@ -8,7 +8,7 @@ The execution contract is:
 
 `task contract -> dependency/ownership check -> writer -> task-scoped verification -> outcome -> acceptance -> release dependents`
 
-Task contracts live in `autopilot-v2/tasks/*.json` and must declare:
+Task contracts live in `autopilot-v2/tasks/*.json` and are the authoritative execution queue. They must declare:
 - `id`
 - `goal`
 - `risk`: `SAFE | MEDIUM | HIGH`
@@ -18,7 +18,9 @@ Task contracts live in `autopilot-v2/tasks/*.json` and must declare:
 - `verify.checks`
 - `done_when`
 
-`controller.py` validates contracts, dependency graphs and task outcomes, chooses up to 3 non-overlapping ready SAFE/MEDIUM tasks, and checks changed files against `owns_paths`.
+Accepted/blocked/failed terminal state lives in `autopilot-v2/outcomes/<TASK_ID>.json`. Queue state is therefore derived from task contracts + outcomes instead of being manually duplicated across several state files.
+
+`controller.py` validates contracts, dependency graphs and task outcomes, derives task status, chooses up to 3 non-overlapping ready SAFE/MEDIUM tasks, and checks changed files against `owns_paths`.
 
 ## Autopilot vs Autopilot 2.0
 
@@ -26,6 +28,19 @@ Task contracts live in `autopilot-v2/tasks/*.json` and must declare:
 - **Autopilot 2.0**: run the same controller with at most three independent writers (`plan --max-writers 3`).
 
 Parallelism is only allowed when task ownership does not overlap. HIGH work remains approval-gated by `AGENTS.md`.
+
+## Runtime status
+
+`controller.py status` is the canonical execution-status view. It derives one of:
+- `ready`
+- `waiting_dependency`
+- `blocked_by_dependency`
+- `approval_required`
+- `accepted`
+- `blocked`
+- `failed`
+
+Do not manually mirror this status into another queue unless a compatibility consumer still requires it.
 
 ## Verification budget
 
@@ -55,9 +70,9 @@ Use one failure class instead of blind retries:
 
 Missing CI wiring or an external outage must not cause the writer to rerun blindly.
 
-## State compatibility
+## Compatibility state
 
-`AGENTS.md` remains the authority for autonomy, hard boundaries and priorities. `AUTOPILOT_STATE.json` remains the project/roadmap resume state. `autopilot-v2/state.json` remains the current execution/pilot state while task contracts are introduced incrementally.
+`AGENTS.md` remains the authority for autonomy, hard boundaries and priorities. `AUTOPILOT_STATE.json` remains a project/roadmap compatibility snapshot while migration is in progress. `autopilot-v2/state.json` remains a legacy pilot/reporting snapshot only and must not be treated as a second authoritative queue.
 
 `project-contract.json` remains the project-wide immutable boundary and lean CI policy. The existing agent notes are role guidance only; they are not separate infrastructure services and do not imply four mandatory agents for every task.
 
@@ -65,6 +80,7 @@ Missing CI wiring or an external outage must not cause the writer to rerun blind
 
 ```bash
 python3 autopilot-v2/controller.py validate
+python3 autopilot-v2/controller.py status
 python3 autopilot-v2/controller.py plan --max-writers 1
 python3 autopilot-v2/controller.py plan --max-writers 3
 python3 autopilot-v2/controller.py check-owns --task TASK_ID changed/file.php another/file.css
