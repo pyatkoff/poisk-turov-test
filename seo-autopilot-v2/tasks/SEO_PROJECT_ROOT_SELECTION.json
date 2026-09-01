@@ -1,0 +1,8 @@
+{
+  "id": "SEO_PROJECT_ROOT_SELECTION",
+  "title": "Require explicit project root when running shared autopilot tooling",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "goal": "Prevent the shared controller from accidentally reading or writing the wrong project's state/tasks.",
+  "desired_contract": "controller invocation identifies the project control-plane root explicitly; default behavior must not silently cross product and SEO state."
+}
