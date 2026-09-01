@@ -3,9 +3,24 @@
   "id": "REDESIGN_FOOTER_COMMUNITY",
   "goal": "Implement the approved AnyTour footer/community composition using only factual project content: MAX, Telegram, VK, App Store, Google Play, the existing legal links, copyright and MasterCard/Visa/Мир. Do not invent contact data or navigation sections.",
   "risk": "MEDIUM",
+  "verification_class": "MEDIUM",
+  "design_approval": "REQUIRED_AND_ALREADY_SATISFIED_BY_NEW_DESIGN_IMPLEMENTATION_PREP",
   "owns_paths": [
     "v2/site-footer-v1.php",
     "v2/ds2-search.css"
+  ],
+  "never_touch": [
+    "AnyTour logo artwork",
+    "Yandex Metrika configuration or goals",
+    "lead transport contracts",
+    "social/app destination URLs unless the task explicitly verifies and owns them",
+    "unrelated site footer implementations outside the explicit release task"
+  ],
+  "invariants": [
+    "footer content remains factual and derived from existing project data",
+    "one canonical footer remains active",
+    "AnyTour Design System 2.0 remains the only active design system",
+    "no invented phone, email, address, social network or payment method is introduced"
   ],
   "depends_on": [
     "NEW_DESIGN_IMPLEMENTATION_PREP"
