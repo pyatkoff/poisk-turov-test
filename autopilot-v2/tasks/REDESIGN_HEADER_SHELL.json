@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "REDESIGN_HEADER_SHELL",
+  "goal": "Implement the approved AnyTour Design System 2.0 header/shared-shell direction without changing the AnyTour logo, navigation contracts or search behavior.",
+  "risk": "MEDIUM",
+  "owns_paths": [
+    "v2/site-header-v2.php",
+    "v2/site-header-v2.css",
+    "v2/header-current-site.js",
+    "v2/product-shell-v1.css"
+  ],
+  "depends_on": [
+    "NEW_DESIGN_IMPLEMENTATION_PREP"
+  ],
+  "verify": {
+    "level": "targeted",
+    "checks": [
+      "Fast CI",
+      "Security guard",
+      "visual QA at 375px and 1440px on /poisk-turov/"
+    ]
+  },
+  "done_when": [
+    "approved header hierarchy and spacing are implemented",
+    "real AnyTour logo is preserved unchanged",
+    "mobile and desktop navigation remain usable without overflow or duplicate shell variants",
+    "no Metrika, Tourvisor, pricing or lead contract is changed"
+  ]
+}
