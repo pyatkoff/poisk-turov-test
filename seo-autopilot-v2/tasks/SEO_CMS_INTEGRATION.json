@@ -1,0 +1,13 @@
+{
+  "id": "SEO_CMS_INTEGRATION",
+  "title": "Integrate SEO contracts with existing site/CMS data safely",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "inspect_first": [
+    "where current country/resort/hotel facts live",
+    "how page templates are routed/rendered",
+    "which metadata fields already exist",
+    "which data belongs to CMS versus tour-search sources"
+  ],
+  "rule": "Do not duplicate an existing source of truth into a second SEO-only database without a clear need."
+}
