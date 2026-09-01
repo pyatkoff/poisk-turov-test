@@ -1,0 +1,12 @@
+{
+  "id": "SEO_TITLE_DESCRIPTION_LENGTH",
+  "title": "Keep metadata concise without hard character-count optimization",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "rules": [
+    "lead with page intent and useful entity context",
+    "avoid repeated boilerplate and keyword lists",
+    "flag extreme truncation risk as QA signal rather than enforce one universal character limit",
+    "descriptions remain factual and readable"
+  ]
+}
