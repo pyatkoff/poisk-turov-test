@@ -42,9 +42,8 @@ $verifiedRegions = [
 ];
 foreach ($verifiedRegions as $path => $regionId) {
     $report = $catalog['reports'][$path] ?? [];
-    $expectedStatus = $path === '/country/turkey/kemer/' ? 'approved' : 'review';
-    if (($report['status'] ?? '') !== $expectedStatus) {
-        fwrite(STDERR, "Unexpected resort editorial status for {$path}\n");
+    if (($report['status'] ?? '') !== 'approved') {
+        fwrite(STDERR, "Turkey resort editorial candidate must be approved: {$path}\n");
         exit(1);
     }
     $state = $catalog['registry'][$path]['page']['search_state'] ?? [];
@@ -58,10 +57,17 @@ foreach ($verifiedRegions as $path => $regionId) {
     }
 }
 
-$expectedCandidates = ['/country/turkey/', '/country/turkey/kemer/'];
+$expectedCandidates = [
+    '/country/turkey/',
+    '/country/turkey/kemer/',
+    '/country/turkey/antalya/',
+    '/country/turkey/side/',
+    '/country/turkey/belek/',
+    '/country/turkey/alanya/',
+];
 if (($catalog['publication_candidates'] ?? []) !== $expectedCandidates) {
-    fwrite(STDERR, "Turkey and Kemer must be the only publication candidates\n");
+    fwrite(STDERR, "All verified Turkey pilot pages must be publication candidates\n");
     exit(1);
 }
 
-echo "SEO Turkey pilot smoke OK country=4 regions=19,20,21,22,23 kemerApproved=1\n";
+echo "SEO Turkey pilot smoke OK country=4 regions=19,20,21,22,23 allApproved=1\n";
