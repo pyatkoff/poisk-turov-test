@@ -1,0 +1,12 @@
+{
+  "id": "SEO_DATA_TO_PAGE_DECOUPLING",
+  "title": "Decouple durable SEO entities from transient offer records",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "country/resort/hotel page identity comes from stable entity data",
+    "tour offer snapshots enrich existing pages",
+    "offer expiry does not delete canonical entity pages",
+    "new transient offer combinations do not automatically create indexable URLs"
+  ]
+}
