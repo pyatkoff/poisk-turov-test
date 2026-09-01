@@ -21,10 +21,9 @@ function enhanceCard(card){
   tours.hidden=true;
   prepareTourRows(tours);
   var best=body.querySelector('.hotel-best-offer>small');if(best)best.textContent='Туры от';
-  var hint=body.querySelector('.hotel-choice-hint');
-  var countText=hint&&hint.textContent?hint.textContent.replace(/^Ещё\s+/,''):'';
+  var tourCount=tours.querySelectorAll('.tour-row').length;
   var action=document.createElement('div');action.className='search3-hotel-action';
-  action.innerHTML='<div class="search3-hotel-action__copy"><strong>Выберите конкретный тур</strong><span>'+(countText?countText+' по датам, питанию и размещению':'с точными датами, номером, питанием и перелётом')+'</span></div><button type="button" class="search3-show-tours" aria-expanded="false">Показать туры</button>';
+  action.innerHTML='<div class="search3-hotel-action__copy"><strong>'+tourCount+' '+tourWord(tourCount)+'</strong><span>· точные даты и цены</span></div><button type="button" class="search3-show-tours" aria-expanded="false">Показать туры</button>';
   body.appendChild(action);
 }
 function enhanceResults(){document.querySelectorAll('#results .hotel-card').forEach(enhanceCard);}
