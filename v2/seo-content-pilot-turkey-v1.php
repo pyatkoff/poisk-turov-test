@@ -1,13 +1,13 @@
 <?php
 /**
  * Editorial SEO pilot: Turkey parent page.
- * Review-only: does not publish a route or alter indexation/canonical/sitemap.
+ * Approved editorial candidate; production indexation still depends on the global launch gate.
  */
 function v2_seo_content_pilot_turkey(): array
 {
     return [
         'id' => 'country.turkey.v1',
-        'status' => 'review',
+        'status' => 'approved',
         'path' => '/country/turkey/',
         'type' => 'country',
         'data' => [
@@ -67,11 +67,12 @@ function v2_seo_content_pilot_turkey(): array
                     ],
                 ],
             ],
-            'search_state' => [],
+            'search_state' => ['country' => 4],
         ],
         'content_notes' => [
             'Evergreen editorial copy only.',
-            'Keep status=review until public route, canonical, sitemap and search-prefill contracts are verified.',
+            'Country search prefill uses country=4, matching the existing production Turkey route countryId=4 contract.',
+            'Approved editorial state does not enable indexation or sitemap emission without the separate production launch gate.',
         ],
     ];
 }
