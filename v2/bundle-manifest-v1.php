@@ -4,6 +4,7 @@ function v2_bundle_manifest(): array
 {
     return [
         'css' => [
+            'design-system-v2.css',
             'app.css',
             'enhancements.css',
             'room-details.css',
