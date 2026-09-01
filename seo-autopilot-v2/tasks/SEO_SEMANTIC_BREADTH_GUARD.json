@@ -1,0 +1,7 @@
+{
+  "id": "SEO_SEMANTIC_BREADTH_GUARD",
+  "title": "Prevent keyword-permutation page sprawl",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "Synonyms, word order and superficial modifiers belong to one strong page unless SERP evidence demonstrates a materially different intent requiring another landing."
+}
