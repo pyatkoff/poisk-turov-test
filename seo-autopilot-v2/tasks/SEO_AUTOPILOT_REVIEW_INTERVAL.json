@@ -1,0 +1,13 @@
+{
+  "id": "SEO_AUTOPILOT_REVIEW_INTERVAL",
+  "title": "Periodically review SEO2 strategy rather than endlessly extending backlog",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "review": [
+    "which tasks produced measurable/technical value",
+    "which assumptions were disproven",
+    "which page families deserve expansion/consolidation",
+    "which monitoring is noisy",
+    "which backlog items should be removed or reprioritized"
+  ]
+}
