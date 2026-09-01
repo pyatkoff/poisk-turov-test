@@ -1,0 +1,15 @@
+{
+  "id": "SEO_META_TEMPLATE_TESTS",
+  "title": "Test metadata templates with real representative entities",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "cases": [
+    "short and long country names",
+    "resort names overlapping country names",
+    "hotel names with category markers",
+    "missing optional factual fields",
+    "Cyrillic punctuation/escaping",
+    "duplicate-name entities"
+  ],
+  "rule": "Tests should catch broken or repetitive templates before scaling them across pages."
+}
