@@ -1,0 +1,13 @@
+{
+  "id": "SEO_BRANDED_QUERY_POLICY",
+  "title": "Protect branded AnyTour search intent",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "brand/domain consistency",
+    "homepage and key product canonical signals",
+    "duplicate historical-domain competition",
+    "factual title/description",
+    "clear navigation to tour search"
+  ]
+}
