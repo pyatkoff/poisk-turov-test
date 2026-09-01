@@ -1,0 +1,29 @@
+{
+  "project": "seo-autopilot-v2",
+  "production_domain": "anytoour.ru",
+  "scope": [
+    "technical SEO",
+    "SEO landing architecture",
+    "metadata and headings",
+    "indexation controls",
+    "internal linking",
+    "structured data",
+    "SEO content quality",
+    "organic monitoring"
+  ],
+  "protected": {
+    "tourvisor": true,
+    "search_business_logic": true,
+    "pricing": true,
+    "lead_transport": true,
+    "metrika": true
+  },
+  "rules": [
+    "Use Design System 2.0 for any user-visible SEO surface.",
+    "Do not invent commercial claims, guarantees, contacts, prices, reviews, ratings, or availability.",
+    "Live offer/price facts must come from an approved factual source.",
+    "Do not mass-publish thin parameter combinations merely to increase URL count.",
+    "Prefer canonical coherent landing families over crawlable faceted-search explosions.",
+    "Keep PRs narrow and reversible."
+  ]
+}
