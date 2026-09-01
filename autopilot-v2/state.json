@@ -26,7 +26,8 @@
       "PR #685 passed Fast CI run 33479540608 and Security guard run 33479540501 and merged as 8b8bb466ef43d71932aa18b7cf1a3a2796d2b631.",
       "PR #686 migrated the canonical footer link hover from hard-coded #2743cb to DS2 --at-brand, also pixel-equivalent.",
       "PR #686 passed Fast CI run 33479645604 and Security guard run 33479645627 and merged as ecbf580e45370fffc696be7c4e993aff9b660214.",
-      "The legacy orange --at-btn remains intentionally untouched because it differs from canonical DS2 --at-accent and must be handled as a separate user-facing visual change with targeted visual QA.",
+      "PR #689 removed legacy header --at-btn ownership in favor of canonical --at-accent. Cascade audit confirmed the rendered header is unchanged because later product-shell-v1.css already overrides the same three header actions with !important values (personal blue, order #D83D00, buy transparent/blue; personal/order hidden on mobile). Fast CI 33484506890 and Security guard 33484506891 passed; merged as 9e1a3f2f88798cefac4eb2606ebfb240a1860fef.",
+      "PR #692 aliased exact-equivalent AnyTour legacy tokens blue/ink/surface/muted/font to canonical DS2 tokens. Orange/sky/line/soft remain intentionally untouched because values differ. Fast CI 33489234149 and Security guard 33489234146 passed; merged as 5ab134908401ac327f319f1c5fd070aec94d6e40.",
       "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
     ],
     "parent_task": "PILOT_ROOT_STABILIZATION_REAUDIT"
@@ -75,9 +76,9 @@
       "id": "DESIGN_SYSTEM_2_UNIFICATION",
       "priority": 2,
       "status": "ACTIVE",
-      "pr": 686,
-      "merge_sha": "ecbf580e45370fffc696be7c4e993aff9b660214",
-      "reason": "Canonical DS2 token foundation is active; rendered shared header and footer now consume canonical --at-brand for exact-equivalent brand-blue states. Continue one primitive/token boundary at a time; the remaining legacy orange action token requires targeted visual QA before migration."
+      "pr": 692,
+      "merge_sha": "5ab134908401ac327f319f1c5fd070aec94d6e40",
+      "reason": "Canonical DS2 token foundation is active; shared header/footer and exact-equivalent AnyTour brand tokens now consume canonical DS2 values without changing rendered output. Continue one primitive/token boundary at a time; only differing-value tokens require targeted visual QA."
     },
     {
       "id": "SEARCH_STATE_PERFORMANCE",
@@ -117,9 +118,9 @@
     }
   ],
   "last_signal": {
-    "source": "ds2_footer_brand_token",
+    "source": "ds2_anytour_exact_aliases",
     "status": "CONTINUE_DESIGN_SYSTEM_2_UNIFICATION",
-    "sha": "ecbf580e45370fffc696be7c4e993aff9b660214"
+    "sha": "5ab134908401ac327f319f1c5fd070aec94d6e40"
   },
   "blocked": [
     {
