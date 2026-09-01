@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot Roadmap
 
-Updated: 2026-09-01
+Updated: 2026-09-02
 
 Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priority source; `AUTOPILOT_STATE.json` is the machine-readable resume point. `ARCHITECTURE.md` owns architecture and `TEST_MATRIX.md` owns CI/test mapping.
 
@@ -17,6 +17,7 @@ New design/layout concepts require explicit owner approval. Existing approved DS
 ## Architecture and protections
 
 - Loaded normalized result filters remain instant/local, target up to 100 loaded hotels. Do not trigger a new Tourvisor search for every result-filter click.
+- Local result facets may only be offered when the loaded payload contains complete data for that facet; otherwise hide/reset the facet rather than silently filtering on partial data.
 - Do not introduce generic client pagination as a replacement for the current progressive loading model.
 - Preserve search/recovery/results/comparison/flight/price/fuel/lead regressions.
 - Work only inside `pyatkoff/poisk-turov-test`.
@@ -39,12 +40,14 @@ Recent material convergence:
 - The first main-push execution after #817 exposed a CI/deployment race while a concurrent country-content release was being copied, producing a transient `/country/russia/` 500 during the copy window rather than a stable runtime defect.
 - PR #820 fixed that race: production `Visual standalone content live` no longer starts directly on main push; it runs authoritatively after successful `Deploy anytoour.ru`, while PRs still use the same local five-width audit. #820 passed Security + local five-width visual checks and merged as `de909ef035b31664851609f8180c0b1de77d969b`.
 - The subsequent country-content `Deploy anytoour.ru` run 33553777247 completed successfully, including public-page verification, unchanged lead-bridge verification and live-search smoke. Authoritative post-deploy five-width visual run 33554159108 also passed, confirming the fully copied release at 375/430/768/1024/1440, including all five `/contacts/` phone targets and representative country pages.
-- Search 2.0 preview deployment is now isolated from production: `Deploy Search 2.0 preview` publishes only branch `design/search2-form-polish` to `/_preview/search2/`. Initial deploy run 33557752534 completed successfully. Subsequent preview pushes remain allowed for review; production remains release-locked.
+- PR #842 hardened local result filtering: meal/category/rating/sea facets are exposed only when the currently loaded normalized payload has complete data for that facet. Production deploy run 33563761068 completed successfully; Tourvisor, pricing, analytics and lead contracts were unchanged.
+- PR #843 fixed shared mobile breadcrumb readability on long country/page names. At widths up to 560 px the current breadcrumb can wrap instead of being clipped to an ellipsis; desktop/tablet are unchanged. PR security, standalone, bundle and visual gates passed before merge; merge commit is `ec4f7afb6eaab4af18cd951018ea0647fae73a3e`.
+- Search 2.0 preview deployment remains isolated from production. Preview run 33563321506 for the tablet convergence completed successfully. PR #810 now scopes its three form CSS layers and one form JS layer to `V2_SEARCH2_PREVIEW` only, so the default production manifest remains canonical at 37 CSS / 44 JS while preview uses 40 CSS / 45 JS. Generic startup/branch bundle checks on head `ec6da726a03affb1fb4c649986abec3688b793f6` pass after this isolation. Production remains release-locked.
 
 Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified destinations and unresolved legal/payment content were untouched by these DS2 fixes.
 
 ## Resume point
 
-Whole-product score remains **7.3/10**. The recent changes improve cross-route handoff wording, touch-target consistency and production visual-gate reliability, but are intentionally narrow and do not yet justify a broader score increase.
+Whole-product score remains **7.3/10**. The production changes improve filter correctness and mobile cross-route readability, while Search 2.0 remains preview-only; this is material progress but not yet enough to justify a whole-product score increase.
 
-Current owner-visible priority is the Search 2.0 initial form on the isolated preview. Continue converging it toward the approved composition `Откуда → Куда → Когда → Ночи → Туристы → Найти туры`, with the blue Search 2.0 CTA and compact secondary filters, and verify 375/430/768/1024/1440 on preview. Preserve all underlying search values/contracts. In parallel, continue confirmed shared DS2 CTA/wrapping fixes on production-safe pages when independent. Do not merge/deploy PR #810 to production until explicit owner approval.
+Current owner-visible priority remains the Search 2.0 initial form on the isolated preview. First confirm the latest isolated preview deploy and then finish five-width visual evidence at 375/430/768/1024/1440, with special attention to 375/430 after the tablet pass. The target composition remains `Откуда → Куда → Когда → Ночи → Туристы → Найти туры`, blue CTA, truthful compact secondary filters, and unchanged underlying search values/contracts. PR #810 still has a stale historical base, so keep the production lock and do not treat passing preview checks as merge readiness. In parallel, continue only confirmed independent shared DS2 wrapping/touch/hierarchy fixes on production-safe pages.
