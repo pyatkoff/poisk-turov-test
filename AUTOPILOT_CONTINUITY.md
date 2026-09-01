@@ -1,11 +1,15 @@
 # Continuous development model
 
-The project uses a hybrid continuity model:
+The project uses one lightweight execution kernel for both Autopilot and Autopilot 2.0.
 
-1. GitHub Actions run immediately on repository events and persist CI outcomes.
-2. `AUTOPILOT_STATE.json` stores the active development task and queue.
-3. `[AUTOPILOT] Runtime state` stores the latest key workflow completion signal.
-4. An active ChatGPT development turn should execute multiple consecutive safe steps rather than one commit per turn.
-5. The hourly ChatGPT automation is only a watchdog/resume mechanism because this environment cannot invoke a new ChatGPT turn directly from a GitHub workflow completion event.
+1. `autopilot-v2/tasks/*.json` is the authoritative queue.
+2. `autopilot-v2/outcomes/*.json` stores accepted/blocked/failed terminal results.
+3. `controller.py status` derives current runtime state; `plan --max-writers 1` is Autopilot and `plan --max-writers 3` is Autopilot 2.0.
+4. GitHub Actions persist only the smallest relevant CI evidence and runtime signals.
+5. `[AUTOPILOT] Runtime state` is a CI/event receipt, not a parallel queue.
+6. An active ChatGPT development turn should execute multiple consecutive safe steps rather than one commit per turn.
+7. Broad audits and live checks stay non-blocking unless the selected task contract explicitly requires them.
 
-The intended cadence is therefore event-driven inside GitHub and long-running when the assistant is active, with hourly recovery if no active turn exists.
+Legacy state/roadmap documents remain readable during migration but no longer need step-by-step synchronization with the execution queue.
+
+The intended cadence is therefore event-driven inside GitHub and long-running while the assistant is active, with any configured hourly recovery acting only as a watchdog.
