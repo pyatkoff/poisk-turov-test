@@ -2,7 +2,7 @@ name: Resolve SEO2 Sri Lanka Maldives country IDs
 
 on:
   workflow_run:
-    workflows: ['Deploy V2 only']
+    workflows: ['Deploy anytoour.ru']
     types: [completed]
   workflow_dispatch:
 
