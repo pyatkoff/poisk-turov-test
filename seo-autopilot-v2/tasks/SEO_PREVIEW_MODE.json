@@ -1,0 +1,12 @@
+{
+  "id": "SEO_PREVIEW_MODE",
+  "title": "Preview new SEO templates without accidental indexation",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "requirements": [
+    "preview/test routes are explicitly non-indexable",
+    "preview URLs are excluded from sitemap/internal production discovery",
+    "preview content uses representative factual data",
+    "promotion to canonical route is a separate release step"
+  ]
+}
