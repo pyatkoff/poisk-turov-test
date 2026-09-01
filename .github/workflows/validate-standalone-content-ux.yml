@@ -8,6 +8,8 @@ on:
       - 'v2/site-page-v1.css'
       - 'v2/product-shell-v1.css'
       - 'v2/site-page-shell-v1.php'
+      - 'v2/site-footer-v1.php'
+      - 'v2/site-footer-v1.css'
       - 'v2/country-page-v1.php'
       - 'v2/country/**'
       - 'v2/hot/**'
@@ -23,6 +25,8 @@ on:
       - 'v2/site-page-v1.css'
       - 'v2/product-shell-v1.css'
       - 'v2/site-page-shell-v1.php'
+      - 'v2/site-footer-v1.php'
+      - 'v2/site-footer-v1.css'
       - 'v2/country-page-v1.php'
       - 'v2/country/**'
       - 'v2/hot/**'
@@ -67,8 +71,8 @@ jobs:
             foreach($pages as [$file,$script,$searchHref,$heading]){
               $_SERVER["SCRIPT_NAME"]=$script;
               ob_start(); include $file; $html=ob_get_clean();
-              if(substr_count($html,"<footer class=\"at-site-footer\">")!==1) exit(10);
-              if(substr_count($html,"class=\"v2-site-community\"")!==1) exit(11);
+              if(substr_count($html,"<footer class=\"ds2-site-footer\">")!==1) exit(10);
+              if(substr_count($html,"class=\"ds2-site-footer__socials\"")!==1) exit(11);
               if(strpos($html,"href=\"$searchHref")===false) exit(12);
               if(strpos($html,$heading)===false) exit(13);
               if(substr_count($html,"<style id=\"sp-design-system-css\">")!==1) exit(20);
@@ -76,7 +80,8 @@ jobs:
               if(substr_count($html,"<style id=\"sp-footer-css\">")!==1) exit(16);
               if(strpos($html,"--at-accent:#D83D00")===false) exit(21);
               if(strpos($html,".sp-card a.sp-primary{color:#fff}")===false) exit(17);
-              if(strpos($html,".v2-site-community")===false) exit(18);
+              if(strpos($html,".ds2-site-footer{")===false) exit(18);
+              if($file==="v2/rb/index.php" && strpos($html,"Помощь менеджера")===false) exit(19);
               foreach(["переносим","старого сайта","следующий этап"] as $internal){ if(stripos($html,$internal)!==false) exit(14); }
             }
             $_SERVER["SCRIPT_NAME"]="/country/turkey/index.php";
@@ -86,5 +91,6 @@ jobs:
             if(strpos($country,"href=\"/country/turkey/\"")!==false) exit(32);
             foreach(["/country/egypt/","/country/tunis/","/country/cyprus/"] as $href){ if(strpos($country,"href=\"$href\"")===false) exit(33); }
             if(strpos($country,"href=\"/poisk-turov/?country=4\"")===false) exit(34);
+            if(strpos($country,"Помощь менеджера")===false) exit(35);
             echo "STANDALONE_CONTENT_UX_OK\n";
           '
