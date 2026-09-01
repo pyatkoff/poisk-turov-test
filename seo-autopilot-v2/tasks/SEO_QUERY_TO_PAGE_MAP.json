@@ -1,0 +1,15 @@
+{
+  "id": "SEO_QUERY_TO_PAGE_MAP",
+  "title": "Map each priority query cluster to one primary canonical page",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "fields": [
+    "query cluster",
+    "intent",
+    "primary canonical URL/page family",
+    "secondary supporting pages",
+    "current collision",
+    "action"
+  ],
+  "principle": "One primary page per intent cluster reduces accidental cannibalization while supporting useful related pages."
+}
