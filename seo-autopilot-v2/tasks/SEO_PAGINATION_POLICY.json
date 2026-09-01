@@ -1,0 +1,14 @@
+{
+  "id": "SEO_PAGINATION_POLICY",
+  "title": "Define pagination behavior for crawlable listing surfaces",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "questions": [
+    "which listing surfaces are intentionally indexable",
+    "whether deeper pages contain unique useful discovery paths",
+    "canonical behavior per page",
+    "internal link crawlability",
+    "interaction with infinite scroll/client loading"
+  ],
+  "rule": "Do not canonicalize all pagination blindly to page one without evaluating discovery/content behavior."
+}
