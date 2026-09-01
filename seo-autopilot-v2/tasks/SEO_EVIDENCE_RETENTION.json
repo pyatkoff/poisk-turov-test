@@ -1,0 +1,14 @@
+{
+  "id": "SEO_EVIDENCE_RETENTION",
+  "title": "Retain compact evidence for SEO decisions",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "retain": [
+    "representative URLs",
+    "before/after contract values",
+    "relevant run/PR/deploy references",
+    "date of live verification",
+    "external evidence date when used"
+  ],
+  "rule": "Keep enough evidence to explain and reverse decisions without storing unnecessary crawl dumps or user data."
+}
