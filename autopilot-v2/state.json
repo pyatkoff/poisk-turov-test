@@ -2,7 +2,7 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. Search/results local-filter completeness is released and the anytoour.ru production deploy for #842 is green.",
+    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. Search/results local-filter completeness is released and the anytoour.ru production deploy for #842 is green. Lead idempotency contract mismatch is confirmed and approval-gated as #850; continue independent MEDIUM state-isolation work.",
     "done": [
       "P0/P1 progressive 25→100, local narrowing, widening/server lifecycle, stale async protection and counters have prior accepted evidence.",
       "Hotel/room, selected-tour/flight and post-success lead handoff were released narrowly to main.",
@@ -10,19 +10,22 @@
       "PR #829 hid the sea-distance local facet when no usable sea-distance data exists.",
       "PR #842 strengthened local facet safety: meal/category/rating/sea facets are exposed only when the currently loaded result set is complete enough to evaluate that facet across the full local set. PR #842 passed Security, V2 validation, selected-tour visual, PR visual and baseline visual gates and merged to main as 923fa8eb30ed8e65630653f3924a147c86a59f45.",
       "Deploy anytoour.ru run 33563761068 for #842 completed successfully.",
-      "Selected-tour re-audit PASS: search-lifecycle-v6 invalidates generation/searchId and clears selected-tour state on changed parameters/new search; unpriced-flight-price-reset-v1 prevents a prior priced flight from surviving selection of an unpriced flight while preserving fuel context; active lead-search-context.js enriches the existing lead payload with validated child ages from the search snapshot."
+      "Selected-tour re-audit PASS: search-lifecycle-v6 invalidates generation/searchId and clears selected-tour state on changed parameters/new search; unpriced-flight-price-reset-v1 prevents a prior priced flight from surviving selection of an unpriced flight while preserving fuel context; active lead-search-context.js enriches the existing lead payload with validated child ages from the search snapshot.",
+      "Selected-tour re-audit PASS: current second-tour isolation guard verifies first-tour flight price/fuel/lead hint/room state cannot leak into a second tour, and room-details-v3 rejects stale async room responses when host tourId changes."
     ],
-    "next": "Continue selected-tour E2E audit with second-tour/room/flight state isolation, searchId/tourId consistency, lead submit idempotency and retry/recovery. Fix only reproduced defects without changing the external lead contract.",
+    "next": "Continue selected-tour E2E audit with searchId/tourId consistency and non-lead-transport retry/recovery. Do not modify the production lead adapter for #850 without explicit approval.",
     "blocked": [
       "Direct HTTP verification from this execution environment is externally blocked when anytoour.ru DNS cannot resolve; GitHub production deploy provides independent production evidence.",
-      "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence."
+      "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence.",
+      "HIGH / approval-gated #850: validated idempotency semantics include flight/flightPrice/flightFuel/comment, while production lead-adapter.php fingerprints only phone/tourId/searchId for 600 seconds. A changed selected flight/price/comment can therefore be deduplicated as the earlier submission. Do not change lead transport/idempotency behavior without explicit approval."
     ],
     "lessons": [
       "Do not bulk-merge feature/search-core into main when bundle composition diverges.",
       "Use AnyTour Design System 2.0 only; Design System 1.0 is obsolete.",
       "Do not change Metrika goals, external lead transport, Tourvisor contracts, pricing semantics or the logo without explicit approval.",
       "Local filtering is safe only when the loaded payload is complete enough for the selected facet; presence in only part of the result set is insufficient.",
-      "Record PASS evidence and move on instead of creating duplicate fixes for already-guarded selected-tour behavior."
+      "Record PASS evidence and move on instead of creating duplicate fixes for already-guarded selected-tour behavior.",
+      "Treat production lead idempotency semantics as part of the protected lead mechanism even when a repository helper/test already describes a different intended fingerprint."
     ]
   },
   "active_task": {
@@ -45,7 +48,10 @@
       "Search lifecycle clears selected-tour UI, invalidates async generation and resets runtime searchId before a replacement search.",
       "Unpriced selected-flight handling resets stale priced-flight display to the tour base price, refreshes specific/fallback fuel context and emits pricePending.",
       "lead-search-context.js is active in bundle-manifest-v1.php and enriches lead POST JSON with childAges/adults from V2SearchLifecycle.snapshot without changing the adapter contract.",
-      "Local-filter completeness defect closed by #842 / main SHA 923fa8eb30ed8e65630653f3924a147c86a59f45; Deploy anytoour.ru run 33563761068 succeeded."
+      "Local-filter completeness defect closed by #842 / main SHA 923fa8eb30ed8e65630653f3924a147c86a59f45; Deploy anytoour.ru run 33563761068 succeeded.",
+      "validate-second-tour-state-isolation.yml explicitly verifies tour1→tour2 price, fuel, lead context, room host tourId and return focus isolation across 375/768/1440.",
+      "room-details-v3 load() snapshots tourId and refuses to render async room data if the host is disconnected or host.dataset.tourId changed.",
+      "HIGH mismatch recorded as #850 instead of modifying protected lead behavior: lead-idempotency-v1.php and its CI require changed flight/price/comment to produce distinct keys, but lead-adapter.php currently keys only phone/tourId/searchId."
     ],
     "parent_task": "P0_P1_PRODUCT_STABILITY"
   },
@@ -54,6 +60,7 @@
     {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_WITH_PRIOR_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
     {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"RELEASED_PRODUCTION","pr":842,"merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45","deploy_run":33563761068},
     {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_REAUDIT"},
+    {"id":"LEAD_IDEMPOTENCY_SEMANTICS","priority":1,"status":"BLOCKED_APPROVAL_HIGH","issue":850},
     {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"GREEN_DEPLOY_DIRECT_PROBE_EXTERNAL_DNS_BLOCKED","deploy_run":33563761068},
     {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"RELEASED_MAIN_PRODUCTION"},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":739,"main_sha":"3d49be1e0224d274f27a515d6e5d5b05c0798e86"},
@@ -67,12 +74,13 @@
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"DONE_ENHANCED_CONTRACTS"}
   ],
   "last_signal": {
-    "source": "p0_p1_filter_release_and_selected_tour_reaudit",
-    "status": "PR842_PRODUCTION_GREEN_SELECTED_TOUR_RESET_PRICE_CHILD_AGES_PASS_CONTINUE_E2E",
+    "source": "selected_tour_e2e_idempotency_audit",
+    "status": "SECOND_TOUR_ROOM_ISOLATION_PASS_LEAD_IDEMPOTENCY_MISMATCH_BLOCKED_HIGH_ISSUE_850",
     "sha": "923fa8eb30ed8e65630653f3924a147c86a59f45"
   },
   "blocked": [
     {"scope":"direct live probe from current execution environment","type":"external_environment","reason":"DNS resolution for anytoour.ru failed before the first direct HTTP request, while GitHub Deploy anytoour.ru succeeded independently.","action":"Retry direct probe later; do not classify as product defect."},
-    {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; broad branch integration is intentionally not a release strategy.","action":"Continue current-main narrow tasks only; never copy the divergent feature branch wholesale."}
+    {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; broad branch integration is intentionally not a release strategy.","action":"Continue current-main narrow tasks only; never copy the divergent feature branch wholesale."},
+    {"scope":"production lead idempotency semantics","type":"approval_required_high","issue":850,"reason":"Production adapter fingerprint omits flight/flightPrice/flightFuel/comment although the validated helper contract requires those changes to produce distinct keys.","action":"Leave blocked until explicit approval to change protected lead adapter behavior; continue independent MEDIUM selected-tour work."}
   ]
 }
