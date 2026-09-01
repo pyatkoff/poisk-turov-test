@@ -1,0 +1,7 @@
+{
+  "id": "SEO_NO_HIDDEN_TEXT",
+  "title": "Do not hide SEO copy from travelers",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "Primary SEO text and links must be legitimate visible user content; do not use off-screen, zero-size, crawler-only or deceptive hidden keyword blocks."
+}
