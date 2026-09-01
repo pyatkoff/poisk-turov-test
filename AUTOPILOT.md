@@ -2,65 +2,38 @@
 
 Updated: 2026-09-01
 
-Operational companion to `AGENTS.md`. Execution state is no longer stored here or in `AUTOPILOT_STATE.json`: the authoritative queue is `autopilot-v2/tasks/*.json`, terminal results are `autopilot-v2/outcomes/*.json`, and current status is derived by `python3 autopilot-v2/controller.py status`. `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work. This document keeps roadmap/history context only.
+Operational companion to `AGENTS.md`. Execution state is authoritative in `autopilot-v2/tasks/*.json` and `autopilot-v2/state.json`; `AUTOPILOT_STATE.json` remains the compatibility resume point.
 
-## Current phase — CORE PRODUCT 9/10, STANDALONE SITE STABILIZATION, SEO FOUNDATION 8.8
+## Current phase — APPROVED ANYTOUR DS2 REDESIGN IMPLEMENTATION
 
-Paid/real-user traffic is intentionally not running. Current visitors are the owner and team, so browser/funnel activity must **not** be treated as conversion evidence.
+The owner-approved full new AnyTour design, including Search 2.0, is being implemented in isolated task lanes. AnyTour Design System 2.0 is the only canonical design system. Already-approved lanes may proceed autonomously, but MEDIUM user-facing work remains unmergeable until its task-required browser/visual evidence is green.
 
-Search, Waiting/Recovery, Results/Comparison, Selected Tour, Flights/Price, Lead UX, Mobile UX, Tablet/Desktop UX, Brand/Trust, Visual Quality and Product Differentiation remain assessed at 9.0 with functional/visual evidence.
+The currently shipped search product remains protected at its prior 9-level functional baseline. The separate public-site visual assessment remains **7.2/10** until the approved redesign reaches integrated preview/production and is verified there. SEO/site foundation remains **8.8**; public indexing remains deliberately deferred.
 
-Standalone architecture is explicit: `https://anytoour.ru/` is the new homepage and `https://anytoour.ru/poisk-turov/` is the full tour search. The legacy `/poisk-turov-test/v2/` route remains compatibility-only and must not regress. Country/content routes are being migrated incrementally.
+## Active redesign lanes
 
-SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,follow`; do not enable indexing/sitemap publication merely because routes are live. The remaining path to 9 requires deliberate publication/indexing policy and reviewed real content.
+- Search 2.0 results workspace — approved and present on `feature/search-core`; isolated preview verification is green.
+- Header shell — PR #703 code-green, awaiting targeted visual QA.
+- Loading/recovery — PR #704 code-green, awaiting targeted visual QA.
+- Hotel/tour selection — PR #706 code-green, awaiting targeted visual QA.
+- Selected tour — PR #712 implements the approved staged **Ваш тур → Выбор рейса → Заявка менеджеру** hierarchy. During review its private injected color palette was replaced with canonical DS2 tokens. Fast CI and Security guard are green at `183010fce6250bbe27b887323190b4fd075bf383`; browser room/flight/price QA and 375/1440 visual QA are still required before merge.
+- Footer/community — PR #715 implements only verified MAX, Telegram, VK, App Store, Google Play, existing legal/payment links and MasterCard/Visa/Мир. Its new visual layer was also converged onto canonical DS2 tokens; targeted CI/visual QA remains required before merge.
+- PR #713 is closed as superseded by the approved hierarchy in #712.
 
-## Active roadmap
+## Latest verification evidence
 
-- ROOT STABILIZATION — ACTIVE HIGHEST PRIORITY while the new standalone shell/routes are being migrated.
-- BR1–BR3 — SHIPPED / MAINTAIN at 9-level.
-- BR4 SEO-ready brand shell — ACTIVE at 8.8; publication/indexing policy remains deliberately deferred.
-- BR5 Social + app footer — SHIPPED / MAINTAIN. Community/social/app content is a compact pre-footer; there must be exactly one canonical full footer.
-- PX1–PX6 — SHIPPED / MAINTAIN at 9-level.
-- PX7 Price watch/return intent — RESEARCH pending persistence/contact/product-contract choices.
+The isolated Search 2.0 preview deployed successfully from `feature/search-core`: public page HTTP 200, `tourvisor-direct` health response, CSS bundle marker and `noindex,nofollow` preview isolation all passed on 2026-09-01. No production release was made from the open redesign PRs.
 
-## Latest material evidence
-
-- Whole-flow recovery audit found and fixed three real reliability gaps in succession: progressive `search_results` refresh failure could abort healthy polling (#217), near-term `Расширить даты ±2 дня` could move departure into the past (#219), and final result-fetch failure after a completed search could force an unnecessary full restart (#221).
-- PR #221 makes completed-search recovery results-only: when status has already reached completion but final `search_results` fails, the UI offers `Загрузить результаты ещё раз` and reuses the existing `searchId` instead of sending another `search_start`.
-- #221 also fixes `Показать ещё`: once `search_continue` has completed, a transient final result-fetch failure preserves already-rendered hotels and the retry fetches only `search_results`; it does not send a second `search_continue` request.
-- All PR #221 checks passed, including the dedicated continue-search recovery contract, startup/branch bundle checks, security, selected-tour visual, main V2 visual and search-recovery visual. PR #221 merged as `25e628777e2157d9859b01fdb6ade012a92e2049`.
-- V2-only deploy `33237509401` passed validate → copy → verify → live search smoke. Standalone deploy `33237509375` passed release validation/copy/public-page verification/unchanged lead-bridge verification/live search smoke.
-- No Tourvisor request contract, pricing contract, Metrika/goals or external lead contract changed in #221.
-- Earlier recovery evidence remains valid: #217 keeps polling alive across intermediate result-refresh failures; #219 clamps empty-search date widening to today and passed five-width production recovery audit `33235485531`.
-- Selected-tour/flight-price source audit confirms tour-switch generation guards prevent stale flight responses, flight retry is available, selected flight data is taken at lead-submit time, and no confirmed stale-price/lead-context defect was found in that pass.
-- Earlier production evidence remains valid: #215 fixed the 3.26:1 tablet/desktop primary CTA contrast regression; responsive content visual `33234379091` and full live user journey `33234379100` passed afterward.
-- URL/restored-state, child composition and stale-results validation remain guarded; `Самая низкая цена` remains current-result-set decision support and does not alter sorting or actual tour pricing.
+No redesign work changes Yandex Metrika/goals, Tourvisor request/identifier contracts, pricing semantics, the external lead transport/field contract, neighboring projects or the AnyTour logo.
 
 ## Exact next work order
 
-The controller task contracts override this historical ordering whenever they differ. For roadmap context:
+1. Complete required targeted browser/visual QA for #703, #704, #706, #712 and #715; merge only evidence-green lanes.
+2. For #712 verify room/meal consistency, flight switching, baggage/fuel presentation and final price refresh at 375 and 1440.
+3. For #715 verify one footer/community composition without overflow or duplicate footer at 375 and 1440.
+4. Continue the approved lead-handoff lane only after selected-tour acceptance.
+5. After integration, re-run the broader public-product assessment across 375/430/768/1024/1440 and reassess the site-wide score honestly.
 
-1. Re-audit results decision-support/state transitions on mobile/tablet/desktop, including progressive/stale results, sorting, comparison, lowest-price presentation and recovery after result refreshes.
-2. Re-audit selected-tour transitions in the browser: room fallback, flight autoload/retry, selected-flight price synchronization and lead entry/recovery, without changing the external lead contract.
-3. Re-run full live standalone journey and responsive/selected-tour visual guards after material V2 UX changes.
-4. Promote additional country/content routes only when their page exists locally and route/search handoff is verified; otherwise preserve the valid legacy destination.
-5. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
-6. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
-7. Do not run traffic diagnostics or make conversion conclusions until explicitly re-enabled.
+## Guardrails / deferred
 
-## Guardrails
-
-- Work only inside `pyatkoff/poisk-turov-test`; production deploy scope is the allowed V2/standalone scope only.
-- Do not redesign/replace the existing AnyTour logo.
-- Do not modify neighboring projects, global site assets or server config outside allowed scope.
-- Do not change Yandex Metrika configuration/goals.
-- Do not change the existing lead-sending mechanism/external contract.
-- Production breakage → lead loss → incorrect data → poor UX → responsive/visual → weakest sub-9 score → roadmap → cosmetic/refactor.
-- CI green alone is not DONE; require relevant functional/production/visual evidence.
-- If one item is blocked, record/defer it and continue independent safe work.
-
-## Explicitly inactive until owner launches traffic
-
-Live conversion optimization/C7; live product optimization/B8; operational traffic feedback/A8; browser-session funnel analysis; waiting for `search → tour → lead` samples; traffic-based A/B-like conclusions.
-
-Absence of traffic is expected and is never a blocker in the current phase.
+Work only inside `pyatkoff/poisk-turov-test` and allowed V2/standalone scope. Preserve the AnyTour logo, verified social/app destinations, Metrika/goals, Tourvisor contracts and the existing lead mechanism. Do not migrate unresolved legal/payment content. PR #254 remains deferred unless its separate DB/platform architecture is freshly proven safe. `technical_refactor` remains deferred until explicit owner direction. Traffic/conversion analysis remains disabled until traffic is explicitly launched.
