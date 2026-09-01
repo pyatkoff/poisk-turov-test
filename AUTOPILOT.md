@@ -4,7 +4,7 @@ Updated: 2026-09-01
 
 Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priority source; `AUTOPILOT_STATE.json` is the machine-readable resume point. `ARCHITECTURE.md` owns architecture and `TEST_MATRIX.md` owns CI/test mapping.
 
-## Current phase — AnyTour Design System 2.0 search UX + site convergence
+## Current owner-directed phase — ANYTOUR DESIGN SYSTEM 2.0 SEARCH UX + SITE CONVERGENCE
 
 AnyTour Design System 2.0 is the only canonical design system. Do not restore, introduce or reference Design System 1.0 as current. Treat the public site as one product across homepage → destination/country → hot/search → results → selected tour → lead.
 
@@ -38,7 +38,7 @@ Recent material convergence:
 - PR #817 hardened the canonical five-width visual gate with an explicit live assertion for exactly five `/contacts/` phone targets and minimum 43.5 px measured height.
 - The first main-push execution after #817 exposed a CI/deployment race while a concurrent country-content release was being copied, producing a transient `/country/russia/` 500 during the copy window rather than a stable runtime defect.
 - PR #820 fixed that race: production `Visual standalone content live` no longer starts directly on main push; it runs authoritatively after successful `Deploy anytoour.ru`, while PRs still use the same local five-width audit. #820 passed Security + local five-width visual checks and merged as `de909ef035b31664851609f8180c0b1de77d969b`.
-- The subsequent country-content `Deploy anytoour.ru` run 33553777247 completed successfully, including public-page verification, unchanged lead-bridge verification and live-search smoke. The post-deploy five-width visual run is the authoritative proof for the fully copied release.
+- The subsequent country-content `Deploy anytoour.ru` run 33553777247 completed successfully, including public-page verification, unchanged lead-bridge verification and live-search smoke. Authoritative post-deploy five-width visual run 33554159108 also passed, confirming the fully copied release at 375/430/768/1024/1440, including all five `/contacts/` phone targets and representative country pages.
 
 Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified destinations and unresolved legal/payment content were untouched by these DS2 fixes.
 
@@ -46,4 +46,4 @@ Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified des
 
 Whole-product score remains **7.3/10**. The recent changes improve cross-route handoff wording, touch-target consistency and production visual-gate reliability, but are intentionally narrow and do not yet justify a broader score increase.
 
-Next priority: complete/confirm the post-deploy five-width standalone visual gate after the latest country release, then continue the shared DS2 CTA/wrapping audit on homepage/search and representative country pages at 375/430/768/1024/1440. Fix only confirmed spacing, wrapping, overflow, hierarchy or shared-shell inconsistencies in canonical owners. Do not invent route-local visual systems or new interaction behavior.
+Next priority: continue the shared DS2 CTA/wrapping audit on homepage/search and representative country pages at 375/430/768/1024/1440. Fix only confirmed spacing, wrapping, overflow, hierarchy or shared-shell inconsistencies in canonical owners. Do not invent route-local visual systems or new interaction behavior. Search 2.0 preview PR #810 remains release-locked until explicit owner approval.
