@@ -1,13 +1,15 @@
 (function(){'use strict';
-var form=document.getElementById('tourSearch'),rail=document.querySelector('.results-filter-rail'),layout=document.querySelector('.results-layout'),tools=document.getElementById('resultsTools'),summary=document.getElementById('resultsSearchSummary');
+var form=document.getElementById('tourSearch'),rail=document.querySelector('.results-filter-rail'),layout=document.querySelector('.results-layout'),tools=document.getElementById('resultsTools'),summary=document.getElementById('resultsSearchSummary'),sort=document.getElementById('sortResults');
 if(!form||!rail||!layout||!tools)return;
 var mq=window.matchMedia('(max-width:999px)');
 var hasResults=false;
-function suppressLegacy(){document.querySelectorAll('.mrf-bar,.mrf-sheet').forEach(function(el){el.hidden=true;el.setAttribute('aria-hidden','true');el.style.setProperty('display','none','important');});}
+function suppressLegacy(){document.querySelectorAll('.mrf-bar,.mrf-sheet,.mobile-search-sticky').forEach(function(el){el.hidden=true;el.setAttribute('aria-hidden','true');el.style.setProperty('display','none','important');});}
 suppressLegacy();
 if(window.MutationObserver){new MutationObserver(function(){suppressLegacy();}).observe(document.body,{childList:true,subtree:true});}
-var toolbar=document.createElement('div');toolbar.className='search3-mobile-toolbar';toolbar.innerHTML='<button type="button" class="search3-mobile-filter-button" data-s3-open-filters>Фильтры <b data-s3-mobile-count></b></button><div class="search3-active-chips" data-s3-active-chips aria-label="Активные параметры поиска"></div>';
+var toolbar=document.createElement('div');toolbar.className='search3-mobile-toolbar';toolbar.innerHTML='<div class="search3-mobile-actions"><button type="button" class="search3-mobile-filter-button" data-s3-open-filters>Фильтры <b data-s3-mobile-count></b></button><label class="search3-mobile-sort-button"><span>Сортировка</span><select data-s3-mobile-sort aria-label="Сортировка результатов"></select></label></div><div class="search3-active-chips" data-s3-active-chips aria-label="Активные параметры поиска"></div>';
 layout.parentNode.insertBefore(toolbar,layout);
+var mobileSort=toolbar.querySelector('[data-s3-mobile-sort]');
+if(sort&&mobileSort){mobileSort.innerHTML=sort.innerHTML;mobileSort.value=sort.value;mobileSort.addEventListener('change',function(){sort.value=mobileSort.value;sort.dispatchEvent(new Event('change',{bubbles:true}));});sort.addEventListener('change',function(){mobileSort.value=sort.value;});}
 var overlay=document.createElement('div');overlay.className='search3-filter-overlay';overlay.hidden=true;overlay.innerHTML='<button type="button" class="search3-filter-overlay__backdrop" data-s3-close-filters aria-label="Закрыть фильтры"></button>';
 document.body.appendChild(overlay);
 function syncToolbarVisibility(){var visible=hasResults&&mq.matches;toolbar.style.setProperty('display',visible?'grid':'none','important');toolbar.setAttribute('aria-hidden',visible?'false':'true');}
