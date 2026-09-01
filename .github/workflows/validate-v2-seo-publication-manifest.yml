@@ -85,15 +85,19 @@ jobs:
           if (!str_contains($json,'"country.turkey"') || str_contains($json,'resort.alanya')) fail('json_manifest');
 
           if (v2_seo_sitemap_candidate_urls($catalog,false)!==[]) fail('launch_gate_off');
-          $urls=v2_seo_sitemap_candidate_urls($catalog,true);
+          if (v2_seo_sitemap_candidate_urls($catalog,true)!==[]) fail('allowlist_required');
+          $slice=['/country/turkey/','/resort/antalya/'];
+          $urls=v2_seo_sitemap_candidate_urls($catalog,true,$slice);
           if ($urls!==['https://anytoour.ru/country/turkey/','https://anytoour.ru/resort/antalya/']) fail('sitemap_candidate_urls');
-          $xml=v2_seo_sitemap_candidate_xml($catalog,true);
-          if (!str_contains($xml,'https://anytoour.ru/country/turkey/') || str_contains($xml,'resort/alanya')) fail('sitemap_xml_gate');
+          $countryOnly=v2_seo_sitemap_candidate_urls($catalog,true,['/country/turkey/']);
+          if ($countryOnly!==['https://anytoour.ru/country/turkey/']) fail('sitemap_selective_slice');
+          $xml=v2_seo_sitemap_candidate_xml($catalog,true,$slice);
+          if (!str_contains($xml,'https://anytoour.ru/country/turkey/') || !str_contains($xml,'https://anytoour.ru/resort/antalya/') || str_contains($xml,'resort/alanya')) fail('sitemap_xml_gate');
 
           $tampered=$catalog;
           $tampered['publication_candidates'][]='/resort/alanya/';
           try { v2_seo_publication_manifest($tampered); fail('tampered_candidate_allowed'); }
           catch (InvalidArgumentException $e) {}
 
-          echo "V2_SEO_PUBLICATION_MANIFEST_OK approvedOnly=1 publishableOnly=1 graph=1 sitemapLaunchGate=1 deterministic=1\n";
+          echo "V2_SEO_PUBLICATION_MANIFEST_OK approvedOnly=1 publishableOnly=1 graph=1 sitemapLaunchGate=1 selectiveAllowlist=1 deterministic=1\n";
           PHP
