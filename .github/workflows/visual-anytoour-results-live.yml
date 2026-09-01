@@ -25,7 +25,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Audit first live result card
+      - name: Audit live result card at DS2 breakpoints
         shell: bash
         run: |
           set -euo pipefail
@@ -61,24 +61,43 @@ jobs:
             if(!response||response.status()!==200)throw new Error('search page HTTP '+(response&&response.status()));
             await page.waitForSelector('.hotel-card',{timeout:90000});
             await page.waitForTimeout(700);
-            const state=await page.evaluate(()=>{
-              const card=document.querySelector('.hotel-card'),photo=card?.querySelector('.hotel-photo'),img=photo?.querySelector('img'),badge=photo?.querySelector('.stars-badge'),body=card?.querySelector('.hotel-body');
-              const r=el=>el?el.getBoundingClientRect():null, css=el=>el?getComputedStyle(el):null;
-              const pr=r(photo),ir=r(img),br=r(badge),cr=r(card),bod=r(body),bc=css(badge);
-              return {card:cr&&{w:cr.width,h:cr.height},photo:pr&&{w:pr.width,h:pr.height},img:ir&&{w:ir.width,h:ir.height},body:bod&&{w:bod.width},badge:br&&{w:br.width,h:br.height},badgeWriting:bc&&bc.writingMode,badgeWhiteSpace:bc&&bc.whiteSpace,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
-            });
-            console.log('RESULT_CARD_STATE',JSON.stringify(state));
-            await page.screenshot({path:'anytoour-results-visual/desktop-first-result.png',fullPage:true,animations:'disabled'});
-            fs.writeFileSync('anytoour-results-visual/state.json',JSON.stringify(state,null,2));
+
+            const audit=async width=>{
+              await page.setViewportSize({width,height:1000});
+              await page.waitForTimeout(180);
+              const state=await page.evaluate(()=>{
+                const card=document.querySelector('.hotel-card'),photo=card?.querySelector('.hotel-photo'),img=photo?.querySelector('img'),badge=photo?.querySelector('.stars-badge'),body=card?.querySelector('.hotel-body'),main=card?.querySelector('.hotel-main'),tools=document.querySelector('#resultsTools');
+                const r=el=>el?el.getBoundingClientRect():null, css=el=>el?getComputedStyle(el):null;
+                const pr=r(photo),ir=r(img),br=r(badge),cr=r(card),bod=r(body),mr=r(main),tr=r(tools),bc=css(badge),mc=css(main);
+                return {card:cr&&{w:cr.width,h:cr.height},main:mr&&{w:mr.width,h:mr.height,display:mc&&mc.display},photo:pr&&{w:pr.width,h:pr.height},img:ir&&{w:ir.width,h:ir.height},body:bod&&{w:bod.width},tools:tr&&{w:tr.width},badge:br&&{w:br.width,h:br.height},badgeWriting:bc&&bc.writingMode,badgeWhiteSpace:bc&&bc.whiteSpace,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+              });
+              console.log('RESULT_CARD_STATE_'+width,JSON.stringify(state));
+              await page.screenshot({path:`anytoour-results-visual/result-${width}.png`,fullPage:true,animations:'disabled'});
+              if(!state.card||!state.photo||!state.body||!state.main)throw new Error(width+': result card structure missing');
+              if(state.overflow)throw new Error(width+': page horizontal overflow');
+              if(state.badge){
+                if(state.badge.w>90||state.badge.h>42)throw new Error(width+': stars badge distorted: '+JSON.stringify(state.badge));
+                if(state.badgeWriting!=='horizontal-tb')throw new Error(width+': stars badge writing mode '+state.badgeWriting);
+              }
+              if(width>=1360){
+                if(state.photo.w<280)throw new Error(width+': hotel photo too narrow: '+state.photo.w);
+                if(state.body.w<500)throw new Error(width+': hotel body too narrow: '+state.body.w);
+              }else if(width>=860){
+                if(state.main.display!=='grid')throw new Error(width+': hotel main must stay grid, got '+state.main.display);
+                if(state.photo.w<300)throw new Error(width+': hotel photo too narrow: '+state.photo.w);
+                if(state.body.w<300)throw new Error(width+': hotel body too narrow: '+state.body.w);
+              }else{
+                if(state.main.display!=='block')throw new Error(width+': hotel main must stack, got '+state.main.display);
+                if(Math.abs(state.photo.w-state.main.w)>4)throw new Error(width+': stacked photo does not span card: '+JSON.stringify({photo:state.photo.w,main:state.main.w}));
+                if(state.photo.h<210||state.photo.h>230)throw new Error(width+': tablet photo height drift: '+state.photo.h);
+              }
+              return state;
+            };
+
+            const states={};
+            for(const width of [1440,1024,768]) states[width]=await audit(width);
+            fs.writeFileSync('anytoour-results-visual/state.json',JSON.stringify(states,null,2));
             if(errors.length)throw new Error('page errors: '+errors.join(' | '));
-            if(!state.card||!state.photo||!state.body)throw new Error('result card structure missing');
-            if(state.photo.w<280)throw new Error('hotel photo too narrow: '+state.photo.w);
-            if(state.body.w<500)throw new Error('hotel body too narrow: '+state.body.w);
-            if(state.badge){
-              if(state.badge.w>90||state.badge.h>42)throw new Error('stars badge distorted: '+JSON.stringify(state.badge));
-              if(state.badgeWriting!=='horizontal-tb')throw new Error('stars badge writing mode '+state.badgeWriting);
-            }
-            if(state.overflow)throw new Error('page horizontal overflow');
             await browser.close();
             console.log('ANYTOOUR_RESULT_CARD_VISUAL_OK');
           })().catch(e=>{console.error(e);process.exit(1)});
