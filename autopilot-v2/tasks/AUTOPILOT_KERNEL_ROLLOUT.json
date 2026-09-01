@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "AUTOPILOT_KERNEL_ROLLOUT",
+  "goal": "Make the lightweight task contract/controller the shared execution kernel without touching product runtime behavior.",
+  "risk": "SAFE",
+  "owns_paths": [
+    ".autopilot/",
+    "autopilot-v2/",
+    ".github/workflows/autopilot-v2-contract.yml",
+    "AGENTS.md"
+  ],
+  "depends_on": [],
+  "verify": {
+    "level": "smoke",
+    "checks": [
+      "python3 autopilot-v2/controller.py validate",
+      "python3 autopilot-v2/controller.py plan --max-writers 3"
+    ]
+  },
+  "done_when": [
+    "task contracts are machine-readable",
+    "controller rejects dependency/ownership contract errors",
+    "controller can select up to three non-overlapping SAFE/MEDIUM ready tasks",
+    "Autopilot V2 contract CI validates the controller without adding a broad product test suite"
+  ]
+}
