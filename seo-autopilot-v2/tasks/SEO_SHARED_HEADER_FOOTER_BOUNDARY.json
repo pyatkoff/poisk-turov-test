@@ -1,0 +1,12 @@
+{
+  "id": "SEO_SHARED_HEADER_FOOTER_BOUNDARY",
+  "title": "Reuse the approved shared DS2 shell without forking it for SEO",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "SEO pages should converge on the approved shared DS2 header/footer",
+    "SEO2 does not invent a separate legacy shell",
+    "shared shell changes are coordinated with the owning design/product contract",
+    "factual footer content remains factual"
+  ]
+}
