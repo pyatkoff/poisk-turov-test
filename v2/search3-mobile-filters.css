@@ -1,5 +1,7 @@
 /* Search 3 isolated mobile filter drawer + active search chips. */
 body.search3-preview .search3-mobile-toolbar{display:none}
+body.search3-preview .search3-mobile-actions{display:flex;gap:8px;min-width:0}
+body.search3-preview .search3-mobile-sort-button{display:none}
 body.search3-preview .search3-active-chips{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
 body.search3-preview .search3-chip{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 10px;border:1px solid var(--at-line);border-radius:999px;background:#fff;color:var(--at-text);font:800 10px/1 var(--at-font);cursor:pointer}
 body.search3-preview .search3-chip:hover{border-color:var(--at-line-strong);background:var(--at-soft)}
@@ -7,12 +9,17 @@ body.search3-preview .search3-chip b{color:var(--at-muted);font-size:14px;line-h
 body.search3-preview .search3-filter-mobile-footer{display:none}
 body.search3-preview .search3-filter-overlay{display:none}
 @media(max-width:999px){
- body.search3-preview .search3-mobile-toolbar{display:flex;position:sticky;top:0;z-index:14;align-items:center;gap:10px;margin:10px var(--at-page-edge);padding:10px;border:1px solid var(--at-line);border-radius:14px;background:rgba(255,255,255,.96);box-shadow:0 8px 24px rgba(32,52,112,.08);backdrop-filter:blur(12px)}
- body.search3-preview .search3-mobile-filter-button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;flex:0 0 auto;padding:0 13px;border:1px solid var(--at-line-strong);border-radius:11px;background:var(--at-soft-blue);color:var(--at-brand);font:900 11px/1 var(--at-font);cursor:pointer}
- body.search3-preview .search3-mobile-filter-button b{margin-left:4px}
- body.search3-preview .search3-active-chips{overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px;scrollbar-width:none}
+ body.search3-preview .search3-mobile-toolbar{display:grid;position:static;z-index:auto;grid-template-columns:1fr;gap:8px;margin:0 0 10px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none}
+ body.search3-preview .search3-mobile-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+ body.search3-preview .search3-mobile-filter-button,body.search3-preview .search3-mobile-sort-button{position:relative;display:inline-flex;align-items:center;justify-content:center;min-height:38px;width:100%;padding:0 12px;border:1px solid #dce4ef;border-radius:8px;background:#fff;color:#344054;font:850 10px/1 var(--at-font);cursor:pointer}
+ body.search3-preview .search3-mobile-filter-button b{margin-left:4px;color:#2463eb}
+ body.search3-preview .search3-mobile-sort-button:after{content:'↕';margin-left:6px;color:#667085;font-size:10px}
+ body.search3-preview .search3-mobile-sort-button select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+ body.search3-preview .search3-active-chips{overflow-x:auto;flex-wrap:nowrap;padding:0 0 2px;scrollbar-width:none}
+ body.search3-preview .search3-active-chips:empty{display:none!important}
  body.search3-preview .search3-active-chips::-webkit-scrollbar{display:none}
- body.search3-preview .search3-chip{flex:0 0 auto;min-height:38px}
+ body.search3-preview .search3-chip{flex:0 0 auto;min-height:30px;padding:0 9px;font-size:9px}
+ body.search3-preview .results-tools--ds2 .results-tools__actions>label{display:none!important}
  body.search3-preview .results-layout{margin-top:0!important}
  body.search3-preview .results-filter-rail{display:block!important;position:fixed!important;inset:0 0 0 auto!important;z-index:1002!important;width:min(92vw,420px)!important;height:100dvh!important;max-height:none!important;overflow:auto!important;padding:20px 18px 92px!important;border:0!important;border-radius:22px 0 0 22px!important;background:#fff!important;box-shadow:-24px 0 60px rgba(15,27,61,.18)!important;transform:translateX(105%)!important;transition:transform .2s ease!important;visibility:hidden!important}
  body.search3-preview.search3-filter-open .results-filter-rail{transform:translateX(0)!important;visibility:visible!important}
@@ -23,7 +30,7 @@ body.search3-preview .search3-filter-overlay{display:none}
  body.search3-preview .search3-filter-mobile-apply{width:100%;min-height:50px;border:0;border-radius:12px;background:var(--at-brand);color:#fff;font:900 13px/1 var(--at-font);cursor:pointer}
 }
 @media(max-width:640px){
- body.search3-preview .search3-mobile-toolbar{margin:8px 12px;padding:8px;border-radius:12px}
+ body.search3-preview .search3-mobile-toolbar{margin:0 0 8px;padding:0}
  body.search3-preview .results-filter-rail{width:100%!important;border-radius:0!important}
  body.search3-preview .search3-filter-mobile-footer{width:100%}
 }
