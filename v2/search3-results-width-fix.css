@@ -1,6 +1,9 @@
 /* Search 3 emergency width guard for approved horizontal result cards. Preview only. */
-body.search3-preview .results-layout{display:grid!important;grid-template-columns:190px minmax(0,1fr)!important;width:calc(100% - var(--at-page-gutter))!important;max-width:var(--at-shell)!important;margin-left:auto!important;margin-right:auto!important}
+body.search3-preview .v2-shell{display:block!important}
+body.search3-preview .results-layout{display:grid!important;grid-column:1/-1!important;justify-self:stretch!important;grid-template-columns:190px minmax(0,1fr)!important;width:100%!important;max-width:none!important;min-width:0!important;margin-left:0!important;margin-right:0!important}
 body.search3-preview .results-layout>.results,body.search3-preview #results{min-width:0!important;width:100%!important;max-width:none!important;align-items:stretch!important}
 body.search3-preview #results .hotel-card{display:block!important;width:100%!important;min-width:0!important;max-width:none!important;align-self:stretch!important}
 body.search3-preview #results .hotel-main{width:100%!important;min-width:0!important;max-width:none!important}
-@media(max-width:999px){body.search3-preview .results-layout{display:block!important;width:auto!important;max-width:none!important}}
+/* Search 3 owns the mobile filter toolbar/drawer; suppress the older DS2 mobile filter UI in preview only. */
+body.search3-preview .mrf-bar,body.search3-preview .mrf-sheet{display:none!important}
+@media(max-width:999px){body.search3-preview .results-layout{display:block!important;width:100%!important;max-width:none!important;margin:0 0 48px!important}}
