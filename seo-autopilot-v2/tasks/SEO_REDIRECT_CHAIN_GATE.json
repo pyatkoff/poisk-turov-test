@@ -1,0 +1,7 @@
+{
+  "id": "SEO_REDIRECT_CHAIN_GATE",
+  "title": "Prevent redirect chains during SEO migrations",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "rule": "When a redirect is introduced or changed, known historical URLs should resolve to the final canonical destination in the minimum practical hops without loops."
+}
