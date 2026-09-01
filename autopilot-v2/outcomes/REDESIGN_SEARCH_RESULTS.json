@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "task": "REDESIGN_SEARCH_RESULTS",
+  "status": "accepted",
+  "attempts": 1,
+  "changed_files": [
+    "v2/search-redesign-v2.css",
+    "v2/search-redesign-v2.js",
+    "v2/index.php",
+    "v2/bundle-manifest-v1.php"
+  ],
+  "verification": {
+    "implementation": "approved Search 2.0 implementation already integrated in feature/search-core",
+    "visual_behavior_gate": "PR #726 merged into feature/search-core; Visual DS2 Search 2.0 results workflow success on head 145565e7eeae2f2ef3f268bf857b99822e18723c",
+    "security_guard": "success on head 145565e7eeae2f2ef3f268bf857b99822e18723c",
+    "browser_visual": "deterministic no-deploy Playwright evidence covers progressive 25→100 capture, local stars narrowing without server submit, server auto-refresh when widening original stars, progressive additional filters, results containment at 375/1440, recovery state and 44px retry target",
+    "protected_contracts": "no Tourvisor call, real lead submission, production request, Metrika change, lead transport change, pricing contract change or logo change in the QA gate"
+  },
+  "failure_class": null,
+  "remaining_risk": "Accepted in feature/search-core only. Production is unchanged; main materially diverges, so release must be narrow and evidence-driven rather than a bulk branch merge."
+}
