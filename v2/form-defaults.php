@@ -6,6 +6,12 @@ function v2_positive_int($value, int $fallback, int $max = PHP_INT_MAX): int
     return $n === false ? $fallback : (int)$n;
 }
 
+function v2_nonnegative_int($value, int $fallback = 0, int $max = PHP_INT_MAX): int
+{
+    $n = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => $max]]);
+    return $n === false ? $fallback : (int)$n;
+}
+
 function v2_date_value($value, DateTimeImmutable $fallback): string
 {
     $raw = trim((string)$value);
@@ -52,5 +58,6 @@ function v2_form_defaults(array $query = [], array $siteParams = []): array
         'nights_from' => $nightsFrom,
         'nights_till' => $nightsTill,
         'count_people' => v2_positive_int($query['count_people'] ?? 2, 2, 6),
+        'child_count' => v2_nonnegative_int($query['child_count'] ?? 0, 0, 3),
     ];
 }
