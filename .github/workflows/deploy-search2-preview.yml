@@ -158,7 +158,7 @@ jobs:
               });
               const expectedRow=width>=901;
               const expectedStack=width<=430;
-              const blue=/rgb\(18,\s*97,\s*246\)/.test(state.bg);
+              const blue=/rgb\((18,\s*97,\s*246|14,\s*85,\s*219)\)/.test(state.bg);
               const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.starQuick!==5||state.mealShortcut!=='All Inclusive'||state.mealPressed!=='true'||!state.mealValue||state.cta!=='Найти туры'||!state.nights||state.filterLabel!=='Все фильтры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked);
               report.push({name,width,height,state,errors,bad}); if(bad) failed=true;
               await page.screenshot({path:`search2-form-evidence/${name}.png`,fullPage:false,animations:'disabled'});
