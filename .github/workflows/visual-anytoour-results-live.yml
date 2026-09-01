@@ -4,6 +4,10 @@ on:
   workflow_run:
     workflows: ["Deploy anytoour.ru"]
     types: [completed]
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/visual-anytoour-results-live.yml'
   workflow_dispatch:
 
 permissions:
@@ -11,9 +15,9 @@ permissions:
 
 jobs:
   result-card:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,7 +29,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Audit live result card and tour variant at DS2 breakpoints
+      - name: Audit live results and selected-tour handoff at DS2 breakpoints
         shell: bash
         run: |
           set -euo pipefail
@@ -38,39 +42,28 @@ jobs:
           const fs=require('fs');
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            const context=await browser.newContext({
-              viewport:{width:1440,height:1000},
-              extraHTTPHeaders:{'X-AnyTour-CI':'1'}
-            });
+            const context=await browser.newContext({viewport:{width:1440,height:1000},extraHTTPHeaders:{'X-AnyTour-CI':'1'}});
             await context.route(/https?:\/\/mc\.yandex\.(ru|com)\//,route=>route.abort());
             const page=await context.newPage();
             const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
             const u=new URL('https://anytoour.ru/poisk-turov/');
-            Object.entries({
-              from:'1',
-              country:'4',
-              dateFrom:process.env.DATE_FROM,
-              dateTo:process.env.DATE_TO,
-              daysFrom:process.env.TEST_NIGHTS,
-              daysTill:process.env.TEST_NIGHTS,
-              count_people:'2',
-              ci_test:'1'
-            }).forEach(([k,v])=>u.searchParams.set(k,v));
+            Object.entries({from:'1',country:'4',dateFrom:process.env.DATE_FROM,dateTo:process.env.DATE_TO,daysFrom:process.env.TEST_NIGHTS,daysTill:process.env.TEST_NIGHTS,count_people:'2',ci_test:'1'}).forEach(([k,v])=>u.searchParams.set(k,v));
             console.log('CI_SEARCH_CONTEXT',JSON.stringify({dateFrom:process.env.DATE_FROM,dateTo:process.env.DATE_TO,departureWindowDays:21,nights:process.env.TEST_NIGHTS,marker:'ci_test=1'}));
             const response=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000});
             if(!response||response.status()!==200)throw new Error('search page HTTP '+(response&&response.status()));
             await page.waitForSelector('.hotel-card',{timeout:90000});
             await page.waitForSelector('.hotel-card .tour-row',{timeout:15000});
             await page.waitForTimeout(700);
+            const compact=el=>{if(!el)return null;const x=el.getBoundingClientRect();return{x:x.x,y:x.y,w:x.width,h:x.height,right:x.right,bottom:x.bottom};};
 
-            const audit=async width=>{
+            const auditResults=async width=>{
               await page.setViewportSize({width,height:1000});
               await page.waitForTimeout(180);
               const state=await page.evaluate(()=>{
-                const card=document.querySelector('.hotel-card'),photo=card?.querySelector('.hotel-photo'),img=photo?.querySelector('img'),badge=photo?.querySelector('.stars-badge'),body=card?.querySelector('.hotel-body'),main=card?.querySelector('.hotel-main'),tools=document.querySelector('#resultsTools'),tourRow=card?.querySelector('.tour-row'),tourMeta=tourRow?.querySelector('.tour-meta'),tourAction=tourRow?.querySelector('.tour-action'),direct=tourRow?.querySelector('.direct-tour:not([data-tid=""])');
-                const r=el=>el?el.getBoundingClientRect():null, css=el=>el?getComputedStyle(el):null, compact=el=>{const x=r(el);return x&&{x:x.x,y:x.y,w:x.width,h:x.height,right:x.right,bottom:x.bottom};};
-                const pr=r(photo),ir=r(img),br=r(badge),cr=r(card),bod=r(body),mr=r(main),tr=r(tools),rr=r(tourRow),ar=r(tourAction),dr=r(direct),bc=css(badge),mc=css(main);
-                return {card:compact(card),main:mr&&{w:mr.width,h:mr.height,display:mc&&mc.display},photo:compact(photo),img:compact(img),body:compact(body),tools:compact(tools),tourRow:compact(tourRow),tourMeta:compact(tourMeta),tourAction:compact(tourAction),directTour:compact(direct),badge:compact(badge),badgeWriting:bc&&bc.writingMode,badgeWhiteSpace:bc&&bc.whiteSpace,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+                const card=document.querySelector('.hotel-card'),photo=card?.querySelector('.hotel-photo'),badge=photo?.querySelector('.stars-badge'),body=card?.querySelector('.hotel-body'),main=card?.querySelector('.hotel-main'),tools=document.querySelector('#resultsTools'),tourRow=card?.querySelector('.tour-row'),tourMeta=tourRow?.querySelector('.tour-meta'),tourAction=tourRow?.querySelector('.tour-action'),direct=tourRow?.querySelector('.direct-tour:not([data-tid=""])');
+                const r=el=>el?el.getBoundingClientRect():null, css=el=>el?getComputedStyle(el):null, c=el=>{const x=r(el);return x&&{x:x.x,y:x.y,w:x.width,h:x.height,right:x.right,bottom:x.bottom};};
+                const mr=r(main),bc=css(badge),mc=css(main);
+                return {card:c(card),main:mr&&{w:mr.width,h:mr.height,display:mc&&mc.display},photo:c(photo),body:c(body),tools:c(tools),tourRow:c(tourRow),tourMeta:c(tourMeta),tourAction:c(tourAction),directTour:c(direct),badge:c(badge),badgeWriting:bc&&bc.writingMode,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
               });
               console.log('RESULT_CARD_STATE_'+width,JSON.stringify(state));
               await page.screenshot({path:`anytoour-results-visual/result-${width}.png`,fullPage:true,animations:'disabled'});
@@ -104,12 +97,50 @@ jobs:
               return state;
             };
 
-            const states={};
-            for(const width of [1440,1024,768]) states[width]=await audit(width);
+            const auditSelected=async width=>{
+              await page.setViewportSize({width,height:1000});
+              await page.waitForTimeout(120);
+              const choose=page.locator('.hotel-card .tour-row .direct-tour[data-tid]:not([data-tid=""])').first();
+              if(await choose.count()===0)throw new Error(width+': populated choose-tour CTA missing');
+              await choose.scrollIntoViewIfNeeded();
+              await choose.click({timeout:10000});
+              await page.waitForSelector('#selectedTour:not([hidden]) .selected-head',{timeout:20000});
+              await page.waitForSelector('#selectedTour:not([hidden]) .facts',{timeout:10000});
+              await page.waitForSelector('#selectedTour:not([hidden]) .lead-form',{timeout:10000});
+              await page.waitForTimeout(650);
+              const state=await page.evaluate(()=>{
+                const root=document.querySelector('#selectedTour:not([hidden])'),head=root?.querySelector('.selected-head'),title=head?.querySelector('h2'),price=head?.querySelector('.selected-price'),facts=root?.querySelector('.facts'),picture=root?.querySelector('.selected-picture'),flights=root?.querySelector('.tour-flights'),lead=root?.querySelector('.lead-form'),leadButton=lead?.querySelector('button[type="submit"],.selected-lead-cta'),back=root?.querySelector('.back-results'),results=document.querySelector('#results');
+                const c=el=>{if(!el)return null;const x=el.getBoundingClientRect();return{x:x.x,y:x.y,w:x.width,h:x.height,right:x.right,bottom:x.bottom};};
+                return {root:c(root),head:c(head),title:c(title),price:c(price),facts:c(facts),factCount:facts?facts.children.length:0,picture:c(picture),flights:c(flights),lead:c(lead),leadButton:c(leadButton),back:c(back),resultsHidden:!results||results.hidden||getComputedStyle(results).display==='none',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2};
+              });
+              console.log('SELECTED_TOUR_STATE_'+width,JSON.stringify(state));
+              await page.screenshot({path:`anytoour-results-visual/selected-${width}.png`,fullPage:true,animations:'disabled'});
+              if(!state.root||!state.head||!state.title||!state.price||!state.facts||!state.lead||!state.back)throw new Error(width+': selected-tour structure missing');
+              if(state.factCount<8)throw new Error(width+': selected-tour facts incomplete: '+state.factCount);
+              if(state.root.w<280||state.root.right>width+2)throw new Error(width+': selected-tour root geometry invalid: '+JSON.stringify(state.root));
+              for(const [name,box] of Object.entries({head:state.head,title:state.title,price:state.price,facts:state.facts,lead:state.lead})) if(box&&(box.x<state.root.x-2||box.right>state.root.right+2))throw new Error(width+': selected '+name+' escapes root');
+              if(state.leadButton&&state.leadButton.h<44)throw new Error(width+': selected lead CTA too short: '+state.leadButton.h);
+              if(state.overflow)throw new Error(width+': selected-tour horizontal overflow');
+              if(width<=768){
+                if(state.price.y<state.title.bottom-4)throw new Error(width+': selected price must stack below title: '+JSON.stringify({title:state.title,price:state.price}));
+              }else{
+                if(state.price.x<=state.title.x)throw new Error(width+': selected price must occupy the secondary header column');
+              }
+              await page.locator('#selectedTour .back-results').click({timeout:10000});
+              await page.waitForSelector('.hotel-card',{state:'visible',timeout:10000});
+              await page.waitForTimeout(120);
+              const returned=await page.evaluate(()=>{const s=document.getElementById('selectedTour'),r=document.getElementById('results');return{selectedHidden:!s||s.hidden||getComputedStyle(s).display==='none',resultsVisible:!!r&&!r.hidden&&getComputedStyle(r).display!=='none',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};});
+              if(!returned.selectedHidden||!returned.resultsVisible||returned.overflow)throw new Error(width+': return-to-results state invalid: '+JSON.stringify(returned));
+              return {...state,returned};
+            };
+
+            const states={results:{},selected:{}};
+            for(const width of [1440,1024,768]) states.results[width]=await auditResults(width);
+            for(const width of [1440,1024,768]) states.selected[width]=await auditSelected(width);
             fs.writeFileSync('anytoour-results-visual/state.json',JSON.stringify(states,null,2));
             if(errors.length)throw new Error('page errors: '+errors.join(' | '));
             await browser.close();
-            console.log('ANYTOOUR_RESULT_CARD_TOUR_VARIANT_VISUAL_OK');
+            console.log('ANYTOOUR_RESULTS_SELECTED_TOUR_VISUAL_OK');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node visual-results.cjs
