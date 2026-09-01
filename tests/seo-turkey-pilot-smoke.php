@@ -14,20 +14,29 @@ foreach ($expected as $path) {
         fwrite(STDERR, "Pilot is not structurally publishable: {$path}\n");
         exit(1);
     }
-    if (($report['status'] ?? '') !== 'review') {
-        fwrite(STDERR, "Pilot must remain review-only: {$path}\n");
-        exit(1);
-    }
 }
 
+$turkeyReport = $catalog['reports']['/country/turkey/'] ?? [];
+$kemerReport = $catalog['reports']['/country/turkey/kemer/'] ?? [];
+if (($turkeyReport['status'] ?? '') !== 'approved') {
+    fwrite(STDERR, "Turkey editorial candidate must be approved\n");
+    exit(1);
+}
+if (($kemerReport['status'] ?? '') !== 'review') {
+    fwrite(STDERR, "Kemer must remain review-only until resort prefill is verified\n");
+    exit(1);
+}
+if (($catalog['registry']['/country/turkey/']['page']['search_state']['country'] ?? null) !== 4) {
+    fwrite(STDERR, "Turkey search prefill country id is invalid\n");
+    exit(1);
+}
 if (($catalog['graph']['/country/turkey/kemer/']['parent'] ?? null) !== '/country/turkey/') {
     fwrite(STDERR, "Kemer parent relation is invalid\n");
     exit(1);
 }
-
-if (($catalog['publication_candidates'] ?? []) !== []) {
-    fwrite(STDERR, "Review-only pilot must not become a publication candidate\n");
+if (($catalog['publication_candidates'] ?? []) !== ['/country/turkey/']) {
+    fwrite(STDERR, "Only Turkey may be a publication candidate\n");
     exit(1);
 }
 
-echo "SEO Turkey/Kemer pilot smoke OK\n";
+echo "SEO Turkey/Kemer pilot smoke OK turkeyApproved=1 kemerReview=1 countryPrefill=4\n";
