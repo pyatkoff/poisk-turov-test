@@ -1,0 +1,13 @@
+{
+  "id": "SEO_IMAGE_CONTRACT",
+  "title": "Use meaningful destination and hotel images safely",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "alt text describes the image rather than stuffing queries",
+    "known dimensions prevent layout shifts",
+    "avoid duplicate decorative image indexing noise",
+    "image source/licensing must be approved",
+    "do not present a generic image as a factual photo of a specific hotel"
+  ]
+}
