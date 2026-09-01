@@ -1,0 +1,19 @@
+{
+  "id": "SEO_FACET_POLICY",
+  "title": "Promote only valuable facets into canonical SEO landings",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "candidate_facets": [
+    "family/children",
+    "all-inclusive",
+    "selected star/category attributes",
+    "other high-value travel attributes with distinct intent"
+  ],
+  "requirements": [
+    "distinct SERP intent",
+    "sufficient factual inventory/content",
+    "stable URL and canonical contract",
+    "non-thin template",
+    "no collision with destination landing"
+  ]
+}
