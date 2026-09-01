@@ -29,6 +29,7 @@ jobs:
           php -l v2/bundle-v1.php >/dev/null
           php -l v2/bundle-manifest-v1.php >/dev/null
           node --check v2/ds2-search-form-polish-v1.js
+          node --check v2/primary-meal-ux-v1.js
           php -r 'require "v2/bundle-manifest-v1.php"; $m=v2_bundle_manifest(); if(count($m["css"])!==37||count($m["js"])!==44) exit(1);'
           php -r 'define("V2_SEARCH2_PREVIEW",true); require "v2/bundle-manifest-v1.php"; $m=v2_bundle_manifest(); if(count($m["css"])!==40||count($m["js"])!==45) exit(1); foreach(["ds2-search-form-polish-v1.css","ds2-search-form-pickers-v6.css","ds2-search-form-preview-v8.css"] as $f) if(!in_array($f,$m["css"],true)) exit(2); if(!in_array("ds2-search-form-polish-v1.js",$m["js"],true)) exit(3);'
           runtime_css="$(php -r '$_SERVER["SCRIPT_NAME"]="/_preview/search2/bundle-v1.php"; $_GET["type"]="css"; include "v2/bundle-v1.php";')"
@@ -36,6 +37,7 @@ jobs:
           grep -Fq 'Search 2.0 preview — date / nights / guests picker convergence' <<<"$runtime_css"
           runtime_js="$(php -r '$_SERVER["SCRIPT_NAME"]="/_preview/search2/bundle-v1.php"; $_GET["type"]="js"; include "v2/bundle-v1.php";')"
           grep -Fq 'ds2-search-initial' <<<"$runtime_js"
+          grep -Fq 'meal-shortcut' <<<"$runtime_js"
           ! grep -Fq "'ds2-search-form-responsive-v6.css'" v2/bundle-manifest-v1.php
           ! grep -Fq "'ds2-search-form-composition-v5.css'" v2/bundle-manifest-v1.php
           ! grep -Fq "'ds2-search-form-desktop-v7.css'" v2/bundle-manifest-v1.php
@@ -129,7 +131,11 @@ jobs:
               page.on('pageerror',e=>errors.push(String(e)));
               const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
               await page.waitForSelector('#tourSearch.ds2-search-initial',{state:'visible',timeout:10000});
-              await page.waitForTimeout(700);
+              await page.waitForFunction(()=>window.V2PrimaryMealUXV1&&typeof window.V2PrimaryMealUXV1.loadMeals==='function',{timeout:10000});
+              await page.evaluate(()=>window.V2PrimaryMealUXV1.loadMeals());
+              await page.waitForSelector('.ds2-search-quick-stars .meal-shortcut',{state:'visible',timeout:10000});
+              await page.locator('.ds2-search-quick-stars .meal-shortcut').click();
+              await page.waitForTimeout(100);
               const state=await page.evaluate(()=>{
                 const form=document.querySelector('#tourSearch.ds2-search-initial');
                 const steps=[...form.querySelectorAll('.main-fields>.primary-step')].slice(0,5);
@@ -137,13 +143,15 @@ jobs:
                 const rects=steps.map(el=>el.getBoundingClientRect());
                 const buttonRect=button?.getBoundingClientRect();
                 const bg=button?getComputedStyle(button).backgroundColor:'';
-                const quick=[...form.querySelectorAll('.ds2-search-quick-stars .stars-choice')];
+                const starQuick=[...form.querySelectorAll('.ds2-search-quick-stars .stars-choice:not(.meal-shortcut)')];
+                const mealShortcut=form.querySelector('.ds2-search-quick-stars .meal-shortcut');
                 const sameRow=rects.length===5&&Math.max(...rects.map(r=>r.top))-Math.min(...rects.map(r=>r.top))<4;
                 const stacked=rects.length===5&&rects.every((r,i)=>i===0||r.top>rects[i-1].top+20);
                 const nights=String(form.querySelector('.ds2-nights-summary')?.textContent||'').trim();
                 const filterLabel=String(form.querySelector('details.extras>summary strong,details.extras-secondary>summary strong')?.textContent||'').trim();
                 return {
-                  steps:rects.length,quick:quick.length,cta:String(button?.querySelector('span')?.textContent||button?.textContent||'').trim(),bg,nights,filterLabel,
+                  steps:rects.length,starQuick:starQuick.length,mealShortcut:String(mealShortcut?.textContent||'').trim(),mealPressed:mealShortcut?.getAttribute('aria-pressed')||'',mealValue:String(form.elements.food?.value||''),
+                  cta:String(button?.querySelector('span')?.textContent||button?.textContent||'').trim(),bg,nights,filterLabel,
                   sameRow,stacked,buttonRight:buttonRect?.right||0,viewport:innerWidth,
                   overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+3
                 };
@@ -151,7 +159,7 @@ jobs:
               const expectedRow=width>=901;
               const expectedStack=width<=430;
               const blue=/rgb\(18,\s*97,\s*246\)/.test(state.bg);
-              const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.quick!==5||state.cta!=='Найти туры'||!state.nights||state.filterLabel!=='Все фильтры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked);
+              const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.starQuick!==5||state.mealShortcut!=='All Inclusive'||state.mealPressed!=='true'||!state.mealValue||state.cta!=='Найти туры'||!state.nights||state.filterLabel!=='Все фильтры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked);
               report.push({name,width,height,state,errors,bad}); if(bad) failed=true;
               await page.screenshot({path:`search2-form-evidence/${name}.png`,fullPage:false,animations:'disabled'});
               await context.close();
