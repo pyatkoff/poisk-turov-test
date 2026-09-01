@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "task": "SEARCH_2_0_MOCKUP_APPROVAL",
+  "status": "accepted",
+  "attempts": 1,
+  "changed_files": [
+    "autopilot-v2/tasks/SEARCH_2_0_MOCKUP_APPROVAL.json",
+    "autopilot-v2/outcomes/SEARCH_2_0_MOCKUP_APPROVAL.json"
+  ],
+  "verification": {
+    "owner_approval": "recorded in merged PR #708",
+    "protected_product_code_changed": false
+  },
+  "failure_class": null,
+  "remaining_risk": "Implementation still requires the REDESIGN_SEARCH_RESULTS task's targeted Fast CI, browser-flow and 375/1440 visual evidence before acceptance."
+}
