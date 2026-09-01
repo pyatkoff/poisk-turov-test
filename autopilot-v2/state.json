@@ -22,7 +22,9 @@
       "Autopilot V2 contract run 33467837016 exposed an invalid lifecycle value: active_task.state=observe is not allowed by the contract workflow. DS2 audit state was corrected to triaged before product-code work continued.",
       "PR #682 established a canonical token-only v2/design-system-v2.css and loads it first in the existing CSS bundle without changing any existing selector behavior.",
       "PR #682 passed Fast CI and Security guard and merged into feature/search-core as f6c28f1fd86655f386da29e08de2c8b5dbe370d6.",
-      "Next DS2 child task must migrate one actually rendered shared primitive to canonical tokens and receive targeted mobile/desktop visual QA before merge.",
+      "PR #685 migrated the actually rendered shared header brand-blue surfaces from the duplicate legacy --at-main alias to canonical DS2 --at-brand. Both resolve to #2743CB, so the change is visually pixel-equivalent while reducing parallel token ownership.",
+      "PR #685 passed Fast CI run 33479540608 and Security guard run 33479540501 and merged into feature/search-core as 8b8bb466ef43d71932aa18b7cf1a3a2796d2b631.",
+      "The legacy orange --at-btn remains intentionally untouched because it differs from canonical DS2 --at-accent and must be handled as a separate user-facing visual change with targeted visual QA.",
       "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
     ],
     "parent_task": "PILOT_ROOT_STABILIZATION_REAUDIT"
@@ -71,9 +73,9 @@
       "id": "DESIGN_SYSTEM_2_UNIFICATION",
       "priority": 2,
       "status": "ACTIVE",
-      "pr": 682,
-      "merge_sha": "f6c28f1fd86655f386da29e08de2c8b5dbe370d6",
-      "reason": "Canonical DS2 token foundation is now active at the start of the bundle. Continue by migrating one rendered shared primitive at a time with targeted visual QA; avoid bulk integration from heavily diverged main."
+      "pr": 685,
+      "merge_sha": "8b8bb466ef43d71932aa18b7cf1a3a2796d2b631",
+      "reason": "Canonical DS2 token foundation is active and the rendered shared header now consumes canonical --at-brand for its brand-blue surfaces. Continue one primitive/token boundary at a time; the remaining legacy orange action token requires targeted visual QA before migration."
     },
     {
       "id": "SEARCH_STATE_PERFORMANCE",
@@ -113,9 +115,9 @@
     }
   ],
   "last_signal": {
-    "source": "ds2_token_foundation",
+    "source": "ds2_header_brand_token",
     "status": "CONTINUE_DESIGN_SYSTEM_2_UNIFICATION",
-    "sha": "f6c28f1fd86655f386da29e08de2c8b5dbe370d6"
+    "sha": "8b8bb466ef43d71932aa18b7cf1a3a2796d2b631"
   },
   "blocked": [
     {
