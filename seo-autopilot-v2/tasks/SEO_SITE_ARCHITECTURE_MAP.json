@@ -1,0 +1,16 @@
+{
+  "id": "SEO_SITE_ARCHITECTURE_MAP",
+  "title": "Maintain a human-readable SEO site architecture map",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "map": [
+    "home and major hubs",
+    "country family",
+    "resort family",
+    "hotel family",
+    "approved thematic families",
+    "tour-search handoff",
+    "non-indexable utility/search states"
+  ],
+  "rule": "Architecture map follows implemented canonical contracts and is updated when families change."
+}
