@@ -37,7 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .visual-ds2 artifacts-ds2-approved-pr
-          cat > .visual-ds2/index.html <<'HTML'
+          cat > .visual-ds2/index.php <<'PHP'
           <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
           <link rel="stylesheet" href="/v2/design-system-v2.css"><link rel="stylesheet" href="/v2/selected-tour-ux.css"><link rel="stylesheet" href="/v2/ds2-search.css">
           <style>*,*::before,*::after{box-sizing:border-box}body{margin:0;background:var(--at-page);font-family:Arial,sans-serif}.fixture-main{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)));margin:24px auto}.primary{border:0;background:var(--at-accent);color:var(--at-surface);border-radius:var(--at-control-radius);padding:0 18px}.lead-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.lead-form label{display:grid;gap:6px}.lead-form input,.lead-form textarea{width:100%;min-width:0;padding:10px;border:1px solid var(--at-line);border-radius:var(--at-control-radius)}@media(max-width:560px){.lead-fields{grid-template-columns:1fr}}</style></head><body>
@@ -52,27 +52,20 @@ jobs:
           <div class="flight-variant"><label class="flight-choice"><input type="radio" name="flight"><span>Вариант 2</span><b>149 500 ₽</b></label><div class="flight-segment"><div class="flight-segment-title"><strong>Туда</strong><span>Turkish Airlines · TK000 · Airbus A321</span></div></div></div></div></div>
           <form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер получит выбранный тур и рейс</span></div><div class="lead-fields"><label>Имя<input value="Тест"></label><label>Телефон<input value="+7 999 123-45-67"></label></div><label>Комментарий<textarea>Тестовая заявка для визуального аудита.</textarea></label><button type="button" class="primary">Отправить заявку</button></form>
           </section></main>
-          <footer class="ds2-site-footer">
-            <div class="ds2-site-footer__inner">
-              <div class="ds2-site-footer__brand"><span class="ds2-site-footer__eyebrow">AnyTour всегда рядом</span><strong>Подписывайтесь и берите поиск туров с собой</strong><p>Каналы AnyTour — для идей и выгодных предложений. Приложение — чтобы искать туры с телефона.</p><div class="ds2-site-footer__socials"><a href="#">MAX</a><a href="#">Telegram</a><a href="#">VK</a></div></div>
-              <div class="ds2-site-footer__apps"><div><strong>Приложение AnyTour</strong><small>Поиск туров с телефона</small></div><a href="#">App Store</a><a href="#">Google Play</a></div>
-            </div>
-            <div class="ds2-site-footer__meta"><nav class="ds2-site-footer__legal"><a href="#">Оплата туров</a><a href="#">Согласие на обработку персональных данных</a><a href="#">Политика конфиденциальности</a></nav><div class="ds2-site-footer__payments"><span>MasterCard</span><span>Visa</span><span>Мир</span></div></div>
-            <div class="ds2-site-footer__bottom"><span>© 2026 «ТУРАГЕНТСТВО ANYTour» Москва | Все права защищены.</span></div>
-          </footer>
+          <?php require_once __DIR__ . '/../v2/site-footer-v1.php'; v2_render_site_footer('', ''); ?>
           <script src="/v2/selected-tour-description-v1.js"></script><script src="/v2/flight-price-sync-v1.js"></script></body></html>
-          HTML
+          PHP
       - name: Audit checked-out DS2 at five widths
         shell: bash
         run: |
           set -euo pipefail
-          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/ds2-http.log 2>&1 &
+          php -S 127.0.0.1:4173 -t . >/tmp/ds2-http.log 2>&1 &
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true' EXIT
           cat > ds2-visual.cjs <<'JS'
           const {chromium}=require('playwright'),fs=require('fs');
           const views=[['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000]];
-          const base='http://127.0.0.1:4173/.visual-ds2/index.html';
+          const base='http://127.0.0.1:4173/.visual-ds2/index.php';
           const selectedSource=fs.readFileSync('v2/selected-tour-description-v1.js','utf8');
           const expectApprovedSelected=selectedSource.includes('selected-tour-progress') && selectedSource.includes('selected-choice-summary');
           (async()=>{const browser=await chromium.launch({headless:true});let failed=false;const report=[];
