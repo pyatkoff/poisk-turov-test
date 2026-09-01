@@ -11,7 +11,7 @@ This file documents how the autonomous development loop persists execution state
 - `python3 autopilot-v2/controller.py status` — canonical derived runtime status.
 - GitHub issue `[AUTOPILOT] Runtime state` — latest CI signal/handoff only; it is not a second task queue.
 
-`AUTOPILOT_STATE.json`, `AUTOPILOT.md`, `AUTOPILOT_CONTINUITY.md`, `AUTOPILOT_STATE_NOTE.md` and `autopilot-v2/state.json` are compatibility/roadmap documents during migration. They must not override task contracts + outcomes when execution state disagrees.
+`AUTOPILOT_STATE.json`, `AUTOPILOT.md` and `autopilot-v2/state.json` remain compatibility/roadmap documents during migration. They must not override task contracts + outcomes when execution state disagrees.
 
 ## Event-driven part
 
