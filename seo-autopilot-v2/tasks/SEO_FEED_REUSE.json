@@ -1,0 +1,15 @@
+{
+  "id": "SEO_FEED_REUSE",
+  "title": "Reuse approved feed data as SEO factual infrastructure",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Evaluate existing destination/hotel/offer feed pipelines as factual inputs for SEO pages and freshness monitoring.",
+  "requirements": [
+    "field provenance understood",
+    "freshness cadence documented",
+    "stable destination/hotel identifiers",
+    "no advertising-only tracking URLs rendered as canonical SEO links",
+    "safe fallback for missing offers"
+  ],
+  "rule": "Reuse data contracts where useful; do not couple SEO page existence to transient ad-feed availability."
+}
