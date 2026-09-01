@@ -28,10 +28,12 @@ jobs:
           php -l v2/api-v2.php >/dev/null
           php -l v2/bundle-v1.php >/dev/null
           node --check v2/ds2-search-form-polish-v1.js
-          grep -Fq "'ds2-search-form-desktop-v7.css'" v2/bundle-manifest-v1.php
-          grep -Fq "'ds2-search-form-responsive-v6.css'" v2/bundle-manifest-v1.php
+          grep -Fq "'ds2-search-form-polish-v1.css'" v2/bundle-manifest-v1.php
           grep -Fq "'ds2-search-form-pickers-v6.css'" v2/bundle-manifest-v1.php
-          grep -Fq "'ds2-search-form-composition-v5.css'" v2/bundle-manifest-v1.php
+          grep -Fq "'ds2-search-form-preview-v8.css'" v2/bundle-manifest-v1.php
+          ! grep -Fq "'ds2-search-form-responsive-v6.css'" v2/bundle-manifest-v1.php
+          ! grep -Fq "'ds2-search-form-composition-v5.css'" v2/bundle-manifest-v1.php
+          ! grep -Fq "'ds2-search-form-desktop-v7.css'" v2/bundle-manifest-v1.php
           grep -Fq "V2_PUBLIC_BASE_PATH', '/_preview/search2'" v2/poisk-turov/index.php
           echo "SEARCH2_PREVIEW_VALIDATE_OK"
 
