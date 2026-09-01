@@ -1,0 +1,14 @@
+{
+  "id": "SEO_GENERATION_GUARDRAILS",
+  "title": "Guard programmatic SEO expansion",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "Do not publish every possible country/resort/hotel/filter combination.",
+    "Require a distinct intent or useful entity page plus factual data.",
+    "Generated content must pass SEO_PAGE_QUALITY_GATE before indexation.",
+    "Default unknown/empty combinations to non-indexable behavior.",
+    "Keep canonical policy deterministic.",
+    "Roll out new families in measured batches before wider expansion."
+  ]
+}
