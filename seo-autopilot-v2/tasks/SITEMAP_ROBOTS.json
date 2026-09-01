@@ -1,0 +1,16 @@
+{
+  "id": "SITEMAP_ROBOTS",
+  "title": "Align sitemap and robots with intended indexation",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "goal": "Make crawl directives and sitemap membership reflect the canonical indexable landing set.",
+  "checks": [
+    "robots.txt syntax and sitemap declarations",
+    "sitemap URL status codes",
+    "canonical versus sitemap mismatches",
+    "noindex URLs in sitemap",
+    "redirect/404 URLs in sitemap",
+    "parameter/search/filter URL exposure",
+    "legacy host URLs"
+  ]
+}
