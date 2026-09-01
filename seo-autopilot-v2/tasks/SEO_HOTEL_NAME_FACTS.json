@@ -1,0 +1,12 @@
+{
+  "id": "SEO_HOTEL_NAME_FACTS",
+  "title": "Preserve factual hotel naming while normalizing display safely",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "retain authoritative hotel identity/name source",
+    "presentation cleanup must not merge distinct hotels",
+    "star/category markers are attributes, not guessed from name",
+    "alternate spellings can aid matching but not create separate canonical pages"
+  ]
+}
