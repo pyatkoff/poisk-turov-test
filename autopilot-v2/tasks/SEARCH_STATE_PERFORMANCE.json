@@ -3,12 +3,27 @@
   "id": "SEARCH_STATE_PERFORMANCE",
   "goal": "Improve progressive-result, loading, stale-state and recovery behavior while preserving already useful results and existing Tourvisor/search contracts.",
   "risk": "MEDIUM",
+  "verification_class": "MEDIUM",
   "owns_paths": [
     "v2/search-progress-ux-v1.js",
     "v2/search-progress-ux-v1.css",
     "v2/search-dirty-ux-v1.js",
     "v2/search-dirty-ux-v1.css",
     "diagnostics/search_results_recovery_test.cjs"
+  ],
+  "never_touch": [
+    "Yandex Metrika configuration or goals",
+    "external lead transport",
+    "pricing semantics",
+    "Tourvisor request/identifier contracts outside the owned recovery runtime",
+    "unrelated DS2 components or site sections"
+  ],
+  "invariants": [
+    "valid already-rendered results remain visible whenever recovery can continue safely",
+    "stale responses cannot overwrite a newer search state",
+    "simple recovery does not introduce unnecessary search_start or search_continue restarts",
+    "valid user input is not reset merely because a transient refresh fails",
+    "verification remains targeted to the changed recovery/performance surface"
   ],
   "depends_on": [
     "AUTOPILOT_KERNEL_ROLLOUT"
