@@ -35,9 +35,11 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
       $href='/poisk-turov/?'.http_build_query(['from'=>(int)$offer['departure_id'],'country'=>(int)$offer['country_id'],'dateFrom'=>$date,'dateTo'=>$date,'daysFrom'=>$nights,'daysTill'=>$nights,'count_people'=>2]);
       $where=array_values(array_filter([(string)($offer['country_name']??''),(string)($offer['region_name']??'')]));
       $departure=trim((string)($offer['departure_name']??''));
+      $category=max(0,(int)($offer['hotel_category']??0));
+      $stars=$category>0?implode('&#8288;',array_fill(0,$category,'★')):'';
       $meta=implode(' · ',array_filter([implode(', ',$where),$departure!==''?'из '.$departure:'',hot_date_label($date),$nights.' ноч.'])); ?>
       <section class="sp-card sp-hot-offer-card">
-        <h3><?=sp_e((string)$offer['hotel_name'])?><?php if((int)($offer['hotel_category']??0)>0): ?> <?=str_repeat('★',(int)$offer['hotel_category'])?><?php endif; ?></h3>
+        <h3><?=sp_e((string)$offer['hotel_name'])?><?php if($category>0): ?> <span class="sp-hot-offer-stars" style="white-space:nowrap" aria-label="<?=sp_e($category.' звёзд')?>"><?=$stars?></span><?php endif; ?></h3>
         <p class="sp-hot-offer-meta"><?=sp_e($meta)?></p>
         <p class="sp-hot-offer-price"><strong><?=sp_e(hot_price($offer['price'],$offer['currency']??'RUB'))?></strong><span>за двоих</span></p>
         <div class="sp-actions"><a class="sp-primary" href="<?=sp_e($href)?>">Проверить варианты</a></div>
