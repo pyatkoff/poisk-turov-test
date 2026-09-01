@@ -2,48 +2,55 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Release accepted Search 2.0 to current main through dependency-safe narrow slices.",
+    "now": "Verify the already-released Search 2.0 activation on current main and close the release lane with production evidence.",
     "done": [
       "P0/P1 local filtering and progressive 25→100 behavior accepted with prior evidence.",
       "Hotel/room, selected-tour/flight and post-success lead handoff released narrowly to main.",
       "Search 2.0 mockup approval completed.",
       "DS2 narrow release plan accepted; bulk feature/search-core merge rejected.",
       "Autopilot 2.0 durable state migrated to schema v3 with resume fields and design-approval state.",
-      "All current Autopilot 2.0 task contracts now carry verification_class, never_touch and invariants; controller validation enforces the enhanced contract."
+      "All current Autopilot 2.0 task contracts now carry verification_class, never_touch and invariants; controller validation enforces the enhanced contract.",
+      "Search 2.0 dormant runtime modules were released to main in PR #759 and canonical DS2 results CSS in PR #760.",
+      "Search 2.0 activation was released to main in PR #761 with merge SHA d142777f73209c79b2e609ea26b2d82e4650643e.",
+      "PR #761 head completed Security guard, V2 pull-request/bundle checks and visual checks successfully."
     ],
-    "next": "Release SEARCH2_DORMANT_ASSETS, then rebuild Search 2.0 activation on current main with targeted gates.",
+    "next": "Run targeted production/live Search 2.0 verification against current main; if green, mark REDESIGN_SEARCH_RESULTS released and continue to the next agreed safe product task.",
     "blocked": [
       "Targeted production verification may be externally blocked when anytoour.ru cannot be resolved from the runner.",
-      "Bulk integration from feature/search-core to main is blocked by branch divergence."
+      "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence."
     ],
     "lessons": [
       "Do not bulk-merge feature/search-core into main when bundle composition diverges.",
       "Use AnyTour Design System 2.0 only; Design System 1.0 is obsolete.",
       "Do not change Metrika goals, external lead transport, Tourvisor contracts, pricing semantics or the logo without explicit approval.",
       "Do not stop automatically after one accepted PR when another agreed safe step fits the run budget.",
-      "Every executable task must declare owned paths, protected surfaces, invariants and proportional verification before coding starts."
+      "Every executable task must declare owned paths, protected surfaces, invariants and proportional verification before coding starts.",
+      "Before creating a release slice, reconcile durable state with current main and recent merged PRs; another safe lane may already have completed the planned step.",
+      "Never overwrite a newer main-targeted DS2 asset with an older divergent feature copy merely because the feature branch remains ahead in that file."
     ]
   },
   "active_task": {
     "id": "REDESIGN_SEARCH_RESULTS",
-    "title": "Release accepted Search 2.0 to current main through dependency-safe narrow slices",
+    "title": "Verify released Search 2.0 on current main and close the release lane",
     "area": "results-tour",
     "risk": "MEDIUM",
     "verification_class": "MEDIUM",
-    "state": "coding",
-    "owner": "developer",
+    "state": "production_qa",
+    "owner": "qa",
     "required_gates": [
-      "SEARCH2_DORMANT_ASSETS: Fast CI + Security guard",
-      "SEARCH2_ACTIVATION_AND_FACTUAL_FOOTER: Fast CI + Security guard + targeted browser/visual QA",
-      "Deploy anytoour.ru + Production smoke after activation release"
+      "Targeted production smoke for search/results/filter flow",
+      "Verify progressive 25→100 and local narrowing do not restart Tourvisor unnecessarily",
+      "Verify widening uses the existing server lifecycle",
+      "Targeted desktop/mobile visual QA of the active Search 2.0 results state"
     ],
     "evidence": [
       "P0/P1 local filtering, progressive 25→100, stale async protection and result counters remain accepted with prior feature evidence.",
       "Hotel/room, selected-tour/flight and post-success lead handoff are already released narrowly to main via #739/#743/#745.",
-      "PR #742 restored factual footer content and >=44px primary mobile targets; the real PHP component passed the corrected five-width visual gate after #751.",
-      "PR #748 repaired Search 2.0 ownership to active ds2-search.css; PR #755 added active ds2-results-filters.js to the owned runtime dependency boundary.",
-      "DS2_NARROW_RELEASE_PLAN passed in PR #756: no bulk feature/search-core merge; remaining Search 2.0 is split into dormant assets first, then a current-main activation + factual footer slice.",
-      "Current main still has materially different index/bundle composition, so activation must be rebuilt against current main instead of copying feature/search-core wholesale.",
+      "PR #759 staged the four dormant Search 2.0 JS modules on main without activation.",
+      "PR #760 staged a main-targeted canonical ds2-search.css without copying the divergent full feature stylesheet.",
+      "PR #761 activated ds2-search.css, results-depth-v1.js, results-local-filters-v1.js, ds2-results-filters.js and search-redesign-v2.js through current-main bundle-manifest-v1.php.",
+      "PR #761 merge SHA is d142777f73209c79b2e609ea26b2d82e4650643e and its PR head passed Security guard, V2 bundle/PR checks and visual checks.",
+      "Current main bundle manifest contains all five Search 2.0 assets in the active dependency order.",
       "HIGH-risk Metrika, external lead transport, Tourvisor contracts, pricing semantics and the AnyTour logo remain untouched."
     ],
     "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -53,29 +60,29 @@
     {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
     {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":666,"merge_sha":"ee34c881de396b734f86807c975a5821ba2ca06b"},
     {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE"},
-    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"BLOCKED_EXTERNAL"},
+    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"READY_RETRY"},
     {"id":"NEW_DESIGN_IMPLEMENTATION_PREP","priority":2,"status":"DONE","pr":700,"merge_sha":"1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c"},
     {"id":"SEARCH_2_0_MOCKUP_APPROVAL","priority":2,"status":"DONE","pr":708},
-    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"ACTIVE_NARROW_MAIN_RELEASE","visual_gate_pr":726,"ownership_repair_pr":748,"filter_dependency_pr":755,"next_slice":"SEARCH2_DORMANT_ASSETS"},
+    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"ACTIVE_PRODUCTION_QA","visual_gate_pr":726,"ownership_repair_pr":748,"filter_dependency_pr":755,"dormant_runtime_pr":759,"canonical_css_pr":760,"activation_pr":761,"main_sha":"d142777f73209c79b2e609ea26b2d82e4650643e","next_slice":"PRODUCTION_EVIDENCE"},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":739,"main_sha":"3d49be1e0224d274f27a515d6e5d5b05c0798e86"},
     {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":743,"main_sha":"c3d9d0b0ac8f33b44d2706f467448762a8c42fd1"},
     {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":745,"main_sha":"a15f84c831cd8cc13a0842fef3996a4d76b29f2c"},
     {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"ACCEPTED_FEATURE_VISUAL_GREEN","pr":742,"merge_sha":"2db30fe8da359ec31af55754a7dcbe9818078414","visual_gate":"REAL_COMPONENT_375_430_768_1024_1440_GREEN"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"DONE_FEATURE_EVIDENCE","latest_pr":731,"latest_merge_sha":"86545937d4dd971ff29903d07412d693bb4c0ef1"},
     {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"DONE_CONTINUE_RELEASE_AUDIT"},
-    {"id":"DS2_NARROW_RELEASE_PLAN","priority":2,"status":"DONE","outcome_pr":756,"next_action":"SEARCH2_DORMANT_ASSETS"},
+    {"id":"DS2_NARROW_RELEASE_PLAN","priority":2,"status":"DONE_ACTIVATION_RELEASED","outcome_pr":756,"dormant_runtime_pr":759,"canonical_css_pr":760,"activation_pr":761,"next_action":"PRODUCTION_EVIDENCE"},
     {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED"},
     {"id":"SEO_FACTORY","priority":3,"status":"QUEUED_AFTER_PRODUCT_STABILITY"},
     {"id":"PX7_PRICE_WATCH_RESEARCH","priority":3,"status":"DEFERRED_RESEARCH"},
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"DONE_ENHANCED_CONTRACTS"}
   ],
   "last_signal": {
-    "source": "autopilot_v2_contract_migration",
-    "status": "ALL_CURRENT_TASKS_ENHANCED_CONTROLLER_ENFORCED",
-    "sha": "755cc5a75dd3ae680c80175baa28cfd4d679a791"
+    "source": "main_release_reconciliation",
+    "status": "SEARCH2_ACTIVATION_ALREADY_RELEASED_PR761_CI_GREEN_PRODUCTION_QA_NEXT",
+    "sha": "d142777f73209c79b2e609ea26b2d82e4650643e"
   },
   "blocked": [
     {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not reliably resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe when live access is available; do not classify DNS/runner failure as a product defect."},
-    {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; Search 2.0 index/bundle composition cannot be released safely as a bulk branch merge.","action":"Use the accepted two-slice plan: dormant assets first, then rebuild activation on current main with targeted gates."}
+    {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; broad branch integration is intentionally not a release strategy.","action":"Continue current-main narrow tasks only; never copy the divergent feature branch wholesale."}
   ]
 }
