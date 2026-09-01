@@ -1,0 +1,13 @@
+{
+  "id": "SEO_ROADMAP_NOTES",
+  "title": "Preserve current SEO2 product context",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "context": [
+    "SEO pages should benefit from reusable daily tour/hotel/price data where factual contracts permit",
+    "country/resort/hotel landing architecture is a major growth direction",
+    "Design System 2.0 is the only current visual target",
+    "technical foundation and existing-page quality come before mass generation",
+    "tests should remain targeted and lightweight by default"
+  ]
+}
