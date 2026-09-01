@@ -1,0 +1,12 @@
+{
+  "id": "SEO_ARCHIVE_POLICY",
+  "title": "Archive obsolete SEO tasks and contracts",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "rules": [
+    "do not leave superseded architecture as apparently active",
+    "record replacement task/contract",
+    "remove stale Design System 1.0 SEO implementation targets",
+    "keep historical outcomes where useful"
+  ]
+}
