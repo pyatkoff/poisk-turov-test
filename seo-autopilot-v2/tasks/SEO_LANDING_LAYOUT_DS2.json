@@ -1,0 +1,17 @@
+{
+  "id": "SEO_LANDING_LAYOUT_DS2",
+  "title": "Design SEO landing hierarchy inside Design System 2.0",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "candidate_order": [
+    "shared header",
+    "breadcrumbs",
+    "intent-specific H1/intro",
+    "relevant tour search entry",
+    "factual current offers",
+    "destination/resort/hotel decision content",
+    "related canonical links",
+    "shared factual footer"
+  ],
+  "rule": "Exact composition varies by page family and data; do not force every block onto every page."
+}
