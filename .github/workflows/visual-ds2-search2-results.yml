@@ -50,7 +50,7 @@ jobs:
           window.V2Catalogs={handleChange:function(){return Promise.resolve();}};
           window.V2Results={render:function(items){const root=document.getElementById('results');root.innerHTML='';items.slice(0,4).forEach(function(h,i){const card=document.createElement('article');card.className='hotel-card';card.innerHTML='<div class="hotel-main"><div class="hotel-photo">Фото '+(i+1)+'</div><div class="hotel-body"><strong class="hotel-title">'+h.name+'</strong><p>'+h.category+'★ · рейтинг '+h.rating+'</p><div class="hotel-price">'+Math.round(h.price||0).toLocaleString('ru-RU')+' ₽</div></div></div>';root.appendChild(card);});window.dispatchEvent(new CustomEvent('v2:results-rendered',{detail:{items:items}}));}};
           </script>
-          <script src="/v2/results-filter-autorefresh-v1.js"></script><script src="/v2/results-local-filters-v1.js"></script><script src="/v2/search-redesign-v2.js"></script></body></html>
+          <script src="/v2/results-local-filters-v1.js"></script><script src="/v2/results-filter-autorefresh-v1.js"></script><script src="/v2/search-redesign-v2.js"></script></body></html>
           HTML
       - name: Audit Search 2.0 behavior and layout
         shell: bash
