@@ -4,10 +4,11 @@
   "goal": "Implement the approved selected-tour summary and flight/room decision presentation without changing pricing semantics, selected-tour state contracts or Tourvisor identifiers.",
   "risk": "MEDIUM",
   "owns_paths": [
-    "v2/selected-tour-v1.css",
-    "v2/selected-tour-v1.js",
-    "v2/flight-choice-v1.css",
-    "v2/flight-choice-v1.js"
+    "v2/selected-tour-ux.css",
+    "v2/tour-controller-v4.js",
+    "v2/selected-tour-description-v1.js",
+    "v2/flight-price-sync-v1.js",
+    "v2/unpriced-flight-price-reset-v1.js"
   ],
   "depends_on": [
     "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -22,7 +23,7 @@
     ]
   },
   "done_when": [
-    "approved selected-tour and flight-choice hierarchy is implemented",
+    "approved selected-tour and flight-choice hierarchy is implemented in the active runtime files",
     "selected room, meal, flight, baggage/fuel and final price stay consistent after changes",
     "stale selected-tour state is not resurrected after a new search or different tour",
     "searchId/tourId and external lead payload contracts remain unchanged"
