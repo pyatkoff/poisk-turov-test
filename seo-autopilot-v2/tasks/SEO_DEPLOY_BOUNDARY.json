@@ -1,0 +1,12 @@
+{
+  "id": "SEO_DEPLOY_BOUNDARY",
+  "title": "Keep SEO deploy scope explicit",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "rules": [
+    "SEO release identifies exact runtime paths deployed",
+    "do not deploy unrelated feature branch contents with an SEO fix",
+    "verify live changed paths after deploy",
+    "record when a merged SEO change is not yet live"
+  ]
+}
