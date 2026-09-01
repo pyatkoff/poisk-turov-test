@@ -1,6 +1,8 @@
 /* Search 3 compact post-search summary and controls. Preview only. */
 body.search3-preview.search3-has-results .v2-product-hero{display:none!important}
 body.search3-preview.search3-has-results #tourSearch{display:none!important}
+body.search3-preview.search3-has-results.search3-editing-search #tourSearch{display:block!important;margin-bottom:12px!important}
+body.search3-preview.search3-has-results.search3-editing-search .results-search-summary{display:none!important}
 body.search3-preview.search3-has-results #v2ResultsConfidence,body.search3-preview.search3-has-results #v2AgencyTrust{display:none!important}
 body.search3-preview .results-search-summary{display:grid!important;grid-template-columns:134px minmax(0,1.55fr) .7fr .7fr .75fr!important;align-items:stretch!important;gap:0!important;margin:0 0 12px!important;padding:0!important;border:1px solid #e2e8f0!important;border-radius:12px!important;background:#fff!important;box-shadow:none!important;overflow:hidden!important}
 body.search3-preview .results-search-summary__edit{grid-column:1!important;grid-row:1!important;order:-1!important;align-self:stretch!important;min-width:0!important;min-height:54px!important;margin:0!important;padding:0 14px!important;border:0!important;border-right:1px solid #edf0f5!important;border-radius:0!important;background:#fff!important;color:#2463eb!important;font-size:10px!important;font-weight:900!important}
