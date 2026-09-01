@@ -1,0 +1,9 @@
+{
+  "id": "SEO_CANONICAL_HOST_CONSTANT",
+  "title": "Centralize the approved production canonical host",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "preferred_host": "https://anytoour.ru",
+  "goal": "Avoid independent hardcoded host strings across canonicals, sitemaps, structured data and SEO internal links.",
+  "rule": "Implement only after inventory identifies the current host-generation paths and confirms no intentional multi-host contract."
+}
