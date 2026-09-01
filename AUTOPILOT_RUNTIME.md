@@ -1,38 +1,41 @@
 # Autopilot runtime handoff
 
-This file documents how the autonomous development loop persists state between assistant iterations.
+This file documents how the autonomous development loop persists execution state between assistant iterations.
 
 ## Sources of truth
 
 - `AGENTS.md` — authority, boundaries, priorities and DONE rules.
-- `AUTOPILOT.md` — human-readable architecture, audit findings and roadmap.
-- `AUTOPILOT_STATE.json` — machine-readable current task, queue, blockers and continuation policy.
-- GitHub issue `[AUTOPILOT] Runtime state` — machine-maintained latest key CI result/handoff.
+- `autopilot-v2/project-contract.json` — immutable project boundaries and lean CI policy.
+- `autopilot-v2/tasks/*.json` — authoritative execution queue.
+- `autopilot-v2/outcomes/*.json` — authoritative terminal task results.
+- `python3 autopilot-v2/controller.py status` — canonical derived runtime status.
+- GitHub issue `[AUTOPILOT] Runtime state` — latest CI signal/handoff only; it is not a second task queue.
+
+`AUTOPILOT_STATE.json`, `AUTOPILOT.md`, `AUTOPILOT_CONTINUITY.md`, `AUTOPILOT_STATE_NOTE.md` and `autopilot-v2/state.json` are compatibility/roadmap documents during migration. They must not override task contracts + outcomes when execution state disagrees.
 
 ## Event-driven part
 
-`.github/workflows/autopilot-runtime-state.yml` listens for completion of key workflows and updates the runtime issue with:
-- workflow name;
-- conclusion;
-- head SHA;
-- run link;
-- normalized signal (`CI_SUCCESS`, `CI_NEEDS_ATTENTION`, `CI_INFORMATIONAL`);
-- recommended continuation action.
+`.github/workflows/autopilot-runtime-state.yml` listens for completion of key workflows and updates the runtime issue with workflow name, conclusion, head SHA, run link, normalized signal and recommended continuation action.
 
-This makes GitHub the persistent state machine even when no chat session is active.
+The runtime issue is an event receipt. It does not own prioritization, dependencies, ownership or task completion.
 
 ## Assistant continuation
 
 On every development iteration:
-1. Read `AGENTS.md` and `AUTOPILOT_STATE.json`.
-2. Inspect the latest `[AUTOPILOT] Runtime state` issue and relevant workflow run/logs.
-3. If CI failed, diagnose/fix it first when it blocks the current highest-priority task.
-4. If the failure is external or blocked, record it and continue independent work.
-5. Continue multiple safe steps in the same iteration rather than stopping after one commit.
-6. Update `AUTOPILOT_STATE.json` when current task, queue, blocker or verification evidence materially changes.
+1. Read `AGENTS.md` and `autopilot-v2/project-contract.json`.
+2. Run/read the controller status and plan from task contracts + outcomes.
+3. Inspect only workflow results relevant to the selected task.
+4. If a relevant CI failure blocks that task, diagnose/fix it first.
+5. If the failure is external or dependency-blocked, record a typed outcome/blocker and continue independent ready work.
+6. Continue multiple safe steps in the same iteration rather than stopping after one commit.
+7. Write/update an outcome only when the task reaches accepted, blocked or failed.
 
-The hourly ChatGPT automation is a watchdog/resume mechanism, not the intended development cadence.
+Do not manually synchronize multiple queue/status files after every step. Compatibility documents may be updated later at a material roadmap milestone.
+
+## Cadence
+
+GitHub Actions remain event-driven. An active assistant turn should continue through multiple safe steps. Any hourly ChatGPT automation remains a watchdog/resume mechanism rather than the intended development cadence.
 
 ## Limitation
 
-GitHub workflow completion can persist and classify state immediately, but it cannot currently trigger a new ChatGPT development turn instantly in this environment. The assistant resumes on an active user turn or watchdog automation. Within an active turn it should continue through multiple CI/fix/verification steps whenever possible.
+A GitHub workflow can persist CI state immediately but cannot itself invoke a new ChatGPT development turn in this environment. The assistant resumes on an active user turn or a configured watchdog automation.
