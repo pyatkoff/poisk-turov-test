@@ -3,8 +3,25 @@
   "id": "NEW_DESIGN_IMPLEMENTATION_PREP",
   "goal": "Prepare the AnyTour search redesign for implementation from approved mockups without polishing the outgoing visual system or changing protected search contracts. Map the approved screen flow into narrow implementation contracts so rollout can proceed screen-by-screen and parallelize only non-overlapping work.",
   "risk": "SAFE",
+  "verification_class": "LOW",
+  "design_approval": "REQUIRED_BEFORE_MATERIAL_UI_IMPLEMENTATION",
   "owns_paths": [
     "autopilot-v2/tasks/"
+  ],
+  "never_touch": [
+    "product runtime while this task is only preparing contracts",
+    "Design System 1.0",
+    "AnyTour logo or unapproved brand assets",
+    "Yandex Metrika configuration or goals",
+    "Tourvisor/API behavior",
+    "external lead transport"
+  ],
+  "invariants": [
+    "material UI work starts only from an approved near-final mockup/prototype",
+    "approved prototype uses real AnyTour branding, Design System 2.0, real copy/CTA and the canonical shared shell",
+    "desktop and mobile states are represented before implementation for material redesign",
+    "trivial regression fixes do not require a new mockup when they preserve the approved design direction",
+    "each implementation slice owns a narrow non-overlapping path set and one observable product outcome"
   ],
   "depends_on": [
     "AUTOPILOT_KERNEL_ROLLOUT"
@@ -15,7 +32,7 @@
   },
   "done_when": [
     "Approved redesign screens are represented as narrow implementation tasks in the agreed user-flow order: header/shell, search form, loading/waiting, results and filters, hotel/tour selection, lead handoff, footer.",
-    "Each implementation task declares exact owns_paths and dependencies before product code is changed.",
+    "Each implementation task declares exact owns_paths, protected boundaries and dependencies before product code is changed.",
     "Current Design System 2.0 receives no cosmetic polishing solely for the outgoing design.",
     "Search/Tourvisor, lead-flow, Metrika goals and other protected contracts remain unchanged unless a separate explicitly scoped task requires it.",
     "Implementation can use up to three non-overlapping writer lanes, while dependent screens release progressively after their prerequisites are accepted.",
