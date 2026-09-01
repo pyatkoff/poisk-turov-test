@@ -1,0 +1,15 @@
+{
+  "id": "SEO_FIRST_RELEASE_PLAN",
+  "title": "Execute the first SEO2 evidence-to-fix sequence",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "sequence": [
+    "SEO_INVENTORY",
+    "SEO_REPO_LIVE_PARITY",
+    "LEGACY_DOMAIN_CLEANUP if evidence shows unintended references",
+    "INDEXABILITY_CANONICAL",
+    "SITEMAP_ROBOTS",
+    "META_H1_CONTRACT"
+  ],
+  "rule": "At each step select the smallest evidence-backed SAFE repair; do not wait for the entire audit to finish before fixing an independent critical defect."
+}
