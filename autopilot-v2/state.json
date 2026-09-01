@@ -2,27 +2,28 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. Search/results local-filter completeness is released and the anytoour.ru production deploy for #842 is green.",
+    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. Search/results local-filter completeness remains released. The stale same-tour lead UI race fix #855 is production-released, and tablet selected-tour structural stacking #861 is merged with production deploy in progress.",
     "done": [
       "P0/P1 progressive 25→100, local narrowing, widening/server lifecycle, stale async protection and counters have prior accepted evidence.",
       "Hotel/room, selected-tour/flight and post-success lead handoff were released narrowly to main.",
       "Search 2.0 runtime activation was released narrowly to main; bulk feature/search-core integration remains prohibited.",
-      "PR #829 hid the sea-distance local facet when no usable sea-distance data exists.",
-      "PR #842 strengthened local facet safety: meal/category/rating/sea facets are exposed only when the currently loaded result set is complete enough to evaluate that facet across the full local set. PR #842 passed Security, V2 validation, selected-tour visual, PR visual and baseline visual gates and merged to main as 923fa8eb30ed8e65630653f3924a147c86a59f45.",
-      "Deploy anytoour.ru run 33563761068 for #842 completed successfully.",
-      "Selected-tour re-audit PASS: search-lifecycle-v6 invalidates generation/searchId and clears selected-tour state on changed parameters/new search; unpriced-flight-price-reset-v1 prevents a prior priced flight from surviving selection of an unpriced flight while preserving fuel context; active lead-search-context.js enriches the existing lead payload with validated child ages from the search snapshot."
+      "PR #842 strengthened local facet safety for meal/category/rating/sea completeness and is released to production.",
+      "Selected-tour lifecycle PASS: changed parameters/new search invalidate async generation/searchId and clear stale selected-tour state; unpriced-flight selection resets stale priced-flight display while preserving fuel context; lead-search-context enriches the existing payload with validated child ages.",
+      "PR #855 fixed a reproduced lead UI race by requiring both tourId and searchId to match before late lead success/error can decorate the current form. It merged to main as baf2790f27416d4cdf5a34d7344439c39c8e1469 and its production deploy/live search smoke passed.",
+      "PR #861 fixes a reproduced 768px selected-tour visual defect structurally: every .selected-tour .selected-head stacks at <=820px instead of depending on optional checkout decoration classes. Security, V2 bundle/PR validation and selected-tour/PR/baseline visual gates passed; it merged to main as 90443fc0f5a79fecac9ae61350cf2c98bddff72b."
     ],
-    "next": "Continue selected-tour E2E audit with second-tour/room/flight state isolation, searchId/tourId consistency, lead submit idempotency and retry/recovery. Fix only reproduced defects without changing the external lead contract.",
+    "next": "Finish production evidence for #861, then continue selected-tour E2E with searchId/tourId consistency and lead error/retry/recovery. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead adapter semantics.",
     "blocked": [
-      "Direct HTTP verification from this execution environment is externally blocked when anytoour.ru DNS cannot resolve; GitHub production deploy provides independent production evidence.",
+      "HIGH issue #850: production lead adapter idempotency semantics differ from the validated helper contract; changing the external lead mechanism requires explicit approval.",
       "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence."
     ],
     "lessons": [
       "Do not bulk-merge feature/search-core into main when bundle composition diverges.",
       "Use AnyTour Design System 2.0 only; Design System 1.0 is obsolete.",
       "Do not change Metrika goals, external lead transport, Tourvisor contracts, pricing semantics or the logo without explicit approval.",
-      "Local filtering is safe only when the loaded payload is complete enough for the selected facet; presence in only part of the result set is insufficient.",
-      "Record PASS evidence and move on instead of creating duplicate fixes for already-guarded selected-tour behavior."
+      "Local filtering is safe only when the loaded payload is complete enough for the selected facet.",
+      "Lead UI async acceptance must be scoped to both tourId and searchId, not tourId alone.",
+      "Responsive selected-tour structure should not depend on optional decoration classes when the canonical DOM structure is stable."
     ]
   },
   "active_task": {
@@ -43,9 +44,9 @@
     "evidence": [
       "Existing focused guards cover second-tour isolation, flight autoload race, room recovery, flight empty recovery, fuel fallback, selected-tour return and lead recovery; use those behaviors rather than a broad matrix.",
       "Search lifecycle clears selected-tour UI, invalidates async generation and resets runtime searchId before a replacement search.",
-      "Unpriced selected-flight handling resets stale priced-flight display to the tour base price, refreshes specific/fallback fuel context and emits pricePending.",
-      "lead-search-context.js is active in bundle-manifest-v1.php and enriches lead POST JSON with childAges/adults from V2SearchLifecycle.snapshot without changing the adapter contract.",
-      "Local-filter completeness defect closed by #842 / main SHA 923fa8eb30ed8e65630653f3924a147c86a59f45; Deploy anytoour.ru run 33563761068 succeeded."
+      "PR #855 prevents stale lead UI success/error from an older search when the same tourId is selected again by requiring matching searchId.",
+      "PR #861 passed all targeted PR validation and visual gates and merged as 90443fc0f5a79fecac9ae61350cf2c98bddff72b; production deploy run 33572839211 is in progress.",
+      "HIGH issue #850 remains approval-gated and must not be fixed by changing lead-adapter.php without explicit owner approval."
     ],
     "parent_task": "P0_P1_PRODUCT_STABILITY"
   },
@@ -53,12 +54,10 @@
     {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"RELEASED_PRODUCTION","latest_pr":842,"latest_merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45","deploy_run":33563761068},
     {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_WITH_PRIOR_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
     {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"RELEASED_PRODUCTION","pr":842,"merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45","deploy_run":33563761068},
-    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_REAUDIT"},
-    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"GREEN_DEPLOY_DIRECT_PROBE_EXTERNAL_DNS_BLOCKED","deploy_run":33563761068},
+    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_REAUDIT","latest_pr":855,"latest_merge_sha":"baf2790f27416d4cdf5a34d7344439c39c8e1469"},
+    {"id":"SELECTED_TOUR_TABLET_VISUAL","priority":1,"status":"MERGED_AWAITING_PRODUCTION_EVIDENCE","pr":861,"merge_sha":"90443fc0f5a79fecac9ae61350cf2c98bddff72b","deploy_run":33572839211},
+    {"id":"LEAD_IDEMPOTENCY_CONTRACT","priority":1,"status":"BLOCKED_APPROVAL_HIGH","issue":850},
     {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"RELEASED_MAIN_PRODUCTION"},
-    {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":739,"main_sha":"3d49be1e0224d274f27a515d6e5d5b05c0798e86"},
-    {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":743,"main_sha":"c3d9d0b0ac8f33b44d2706f467448762a8c42fd1"},
-    {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":745,"main_sha":"a15f84c831cd8cc13a0842fef3996a4d76b29f2c"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"CONTINUE_TARGETED_REAUDIT"},
     {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"CONTINUE_PERIODICALLY"},
     {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED_AFTER_P0_P1_STABILITY"},
@@ -67,12 +66,12 @@
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"DONE_ENHANCED_CONTRACTS"}
   ],
   "last_signal": {
-    "source": "p0_p1_filter_release_and_selected_tour_reaudit",
-    "status": "PR842_PRODUCTION_GREEN_SELECTED_TOUR_RESET_PRICE_CHILD_AGES_PASS_CONTINUE_E2E",
-    "sha": "923fa8eb30ed8e65630653f3924a147c86a59f45"
+    "source": "selected_tour_e2e_and_tablet_visual",
+    "status": "PR855_PRODUCTION_GREEN_PR861_MERGED_DEPLOYING_CONTINUE_E2E",
+    "sha": "90443fc0f5a79fecac9ae61350cf2c98bddff72b"
   },
   "blocked": [
-    {"scope":"direct live probe from current execution environment","type":"external_environment","reason":"DNS resolution for anytoour.ru failed before the first direct HTTP request, while GitHub Deploy anytoour.ru succeeded independently.","action":"Retry direct probe later; do not classify as product defect."},
+    {"scope":"lead adapter idempotency semantics","type":"approval_gate_high","reason":"Issue #850 would require changing protected external lead mechanism semantics.","action":"Do not modify lead-adapter.php without explicit owner approval; continue independent MEDIUM recovery work."},
     {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; broad branch integration is intentionally not a release strategy.","action":"Continue current-main narrow tasks only; never copy the divergent feature branch wholesale."}
   ]
 }
