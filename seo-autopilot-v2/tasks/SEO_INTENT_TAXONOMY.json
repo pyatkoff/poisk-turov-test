@@ -1,0 +1,17 @@
+{
+  "id": "SEO_INTENT_TAXONOMY",
+  "title": "Classify travel search intent consistently",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "types": [
+    "destination discovery",
+    "tour purchase/comparison",
+    "hotel-specific tour intent",
+    "resort-specific intent",
+    "seasonal timing",
+    "departure-city constraint",
+    "product attribute/facet",
+    "last-minute/current inventory"
+  ],
+  "rule": "Taxonomy guides page decisions; it is not a requirement to create one page for every type/entity combination."
+}
