@@ -1,0 +1,13 @@
+{
+  "id": "SEO_AUTOPILOT_OWNERSHIP",
+  "title": "Keep SEO Autopilot 2.0 state isolated from product Autopilot 2.0",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "authoritative_root": "seo-autopilot-v2/",
+  "rules": [
+    "seo-autopilot-v2/state.json is SEO2 state",
+    "seo-autopilot-v2/tasks contains SEO2 tasks",
+    "autopilot-v2 product/Search UX tasks are not SEO2 backlog",
+    "shared controller code may be reused only with explicit project-root selection"
+  ]
+}
