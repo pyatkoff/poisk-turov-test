@@ -1,0 +1,7 @@
+{
+  "id": "SEO_INDEXATION_BATCH_LIMIT",
+  "title": "Keep first new-family indexation batches deliberately small",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "policy": "Choose batch size from template/data risk and monitoring capacity; never default to the full generated universe for the first release."
+}
