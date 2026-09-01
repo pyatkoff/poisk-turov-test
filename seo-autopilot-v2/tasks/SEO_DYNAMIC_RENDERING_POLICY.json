@@ -1,0 +1,12 @@
+{
+  "id": "SEO_DYNAMIC_RENDERING_POLICY",
+  "title": "Keep primary SEO content robust to dynamic data failures",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "primary landing identity/title/H1/context must not depend on a live offer request succeeding",
+    "dynamic offer modules may enhance but not define canonical page identity",
+    "failed API requests degrade to factual empty states",
+    "avoid client-only primary content where server rendering is practical"
+  ]
+}
