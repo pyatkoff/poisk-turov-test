@@ -1,0 +1,13 @@
+{
+  "id": "SEO_INTENT_COLLISION_GATE",
+  "title": "Prevent new landing families from cannibalizing existing ones",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "before_new_family": [
+    "identify primary query intent",
+    "find nearest existing canonical landing",
+    "compare intended content and conversion path",
+    "reject superficial modifier-only differentiation",
+    "record canonical relationship"
+  ]
+}
