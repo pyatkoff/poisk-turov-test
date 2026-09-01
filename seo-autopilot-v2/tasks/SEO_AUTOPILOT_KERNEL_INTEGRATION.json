@@ -1,0 +1,14 @@
+{
+  "id": "SEO_AUTOPILOT_KERNEL_INTEGRATION",
+  "title": "Integrate SEO2 state with the shared Autopilot kernel safely",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Reuse generic controller mechanics without making SEO share product/Search UX task state.",
+  "requirements": [
+    "dedicated SEO state/task root remains authoritative",
+    "project contract loaded independently",
+    "SEO branch/base boundaries explicit",
+    "product autopilot state cannot select SEO tasks accidentally and vice versa",
+    "dry-run/validation before autonomous writes"
+  ]
+}
