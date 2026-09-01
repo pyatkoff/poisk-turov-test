@@ -1,0 +1,75 @@
+name: Behavior DS2 hotel room
+
+on:
+  pull_request:
+    branches: [feature/search-core]
+    paths:
+      - 'v2/hotel-actions-v3.js'
+      - 'v2/room-details-v3.js'
+      - '.github/workflows/behavior-ds2-hotel-room.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hotel-room-behavior:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Build behavior fixture
+        run: |
+          mkdir -p .behavior-hotel-room artifacts-hotel-room-behavior
+          cat > .behavior-hotel-room/index.html <<'HTML'
+          <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
+          <section id="results"><article class="hotel-card" data-hotel-id="1"><div class="hotel-main"><div class="hotel-body"><h3 class="hotel-title">Hotel One</h3><div class="hotel-place">Turkey</div></div></div></article><article class="hotel-card" data-hotel-id="2"><div class="hotel-main"><div class="hotel-body"><h3 class="hotel-title">Hotel Two</h3><div class="hotel-place">Turkey</div></div></div></article></section>
+          <section id="selectedTour"><div class="tour-flights"></div><form class="lead-form"></form></section>
+          <script>
+          window.__pending={hotel:[],rooms:[]};
+          window.V2Runtime={api(action,params){return new Promise((resolve,reject)=>{if(action==='hotel_details')window.__pending.hotel.push({params,resolve,reject});else if(action==='rooms')window.__pending.rooms.push({params,resolve,reject});else reject(new Error('unexpected '+action));});}};
+          </script>
+          <script src="/v2/hotel-actions-v3.js"></script><script src="/v2/room-details-v3.js"></script>
+          </body></html>
+          HTML
+      - name: Audit interactions and stale protection
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/hotel-room-behavior-http.log 2>&1 &
+          pid=$!; trap 'kill $pid 2>/dev/null || true' EXIT
+          cat > hotel-room-behavior.cjs <<'JS'
+          const {chromium}=require('playwright'),fs=require('fs');
+          (async()=>{const browser=await chromium.launch({headless:true});const page=await browser.newPage({viewport:{width:375,height:812}}),errors=[];page.on('pageerror',e=>errors.push(String(e)));const r=await page.goto('http://127.0.0.1:4173/.behavior-hotel-room/index.html',{waitUntil:'networkidle'});
+          await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:results-rendered',{detail:{items:[{id:1,name:'Hotel One',country:{name:'Турция'}},{id:2,name:'Hotel Two',country:{name:'Турция'}}],results:document}})));
+          await page.locator('.hotel-card[data-hotel-id="1"] .hotel-info-toggle').click();
+          const hotelPending=await page.evaluate(()=>window.__pending.hotel.length);
+          await page.evaluate(()=>window.__pending.hotel[0].resolve({name:'Hotel One',common:{address:'Antalya',description:'Hotel description'},images:['https://example.test/a.jpg','https://example.test/b.jpg']}));
+          await page.waitForFunction(()=>document.querySelector('.hotel-card[data-hotel-id="1"] .hotel-inline-detail')?.dataset.loaded==='1');
+          const hotelState=await page.evaluate(()=>({expanded:document.querySelector('.hotel-card[data-hotel-id="1"] .hotel-info-toggle')?.getAttribute('aria-expanded'),loaded:document.querySelector('.hotel-card[data-hotel-id="1"] .hotel-inline-detail')?.dataset.loaded,description:document.querySelector('.hotel-card[data-hotel-id="1"] .hotel-inline-detail')?.textContent||''}));
+          await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:{id:'tour-old',roomId:11,roomType:'Old Room'}}})));
+          await page.locator('.room-detail-toggle').click();
+          const firstRooms=await page.evaluate(()=>window.__pending.rooms.length);
+          await page.evaluate(()=>window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:{id:'tour-new',roomId:22,roomType:'New Room'}}})));
+          await page.evaluate(()=>window.__pending.rooms[0].resolve([{id:11,name:'STALE ROOM',description:'old'}]));
+          await page.waitForTimeout(50);
+          const staleState=await page.evaluate(()=>({tourId:document.querySelector('.room-details-host')?.dataset.tourId,text:document.querySelector('.room-details-host')?.textContent||'',cards:document.querySelectorAll('.room-detail-card').length}));
+          await page.locator('.room-detail-toggle').click();
+          await page.waitForFunction(()=>window.__pending.rooms.length===2);
+          await page.evaluate(()=>window.__pending.rooms[1].resolve([{id:22,name:'New Room',description:'fresh',area:32,hasBalcony:true}]));
+          await page.waitForFunction(()=>document.querySelector('.room-detail-content')?.dataset.loaded==='1');
+          const freshState=await page.evaluate(()=>({tourId:document.querySelector('.room-details-host')?.dataset.tourId,text:document.querySelector('.room-details-host')?.textContent||'',cards:document.querySelectorAll('.room-detail-card').length,expanded:document.querySelector('.room-detail-toggle')?.getAttribute('aria-expanded')}));
+          const bad=r?.status()!==200||errors.length||hotelPending!==1||hotelState.expanded!=='true'||hotelState.loaded!=='1'||!hotelState.description.includes('Hotel description')||firstRooms!==1||staleState.tourId!=='tour-new'||staleState.cards!==0||staleState.text.includes('STALE ROOM')||freshState.tourId!=='tour-new'||freshState.cards!==1||!freshState.text.includes('New Room')||freshState.text.includes('STALE ROOM')||freshState.expanded!=='true';
+          const report={http:r?.status(),errors,hotelPending,hotelState,firstRooms,staleState,freshState,bad};fs.writeFileSync('artifacts-hotel-room-behavior/report.json',JSON.stringify(report,null,2));await page.screenshot({path:'artifacts-hotel-room-behavior/375.png',fullPage:true});await browser.close();if(bad){console.error(report);process.exit(1)}})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node hotel-room-behavior.cjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ds2-hotel-room-behavior-${{ github.event.pull_request.number || github.run_id }}
+          path: artifacts-hotel-room-behavior/
+          retention-days: 14
