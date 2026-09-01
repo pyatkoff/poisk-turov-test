@@ -60,7 +60,7 @@ jobs:
           check_page '/country/egypt/' 'Туры в Египет' 'https://anytoour.ru/country/egypt/'
           check_page '/country/oae/' 'Туры в ОАЭ' 'https://anytoour.ru/country/oae/'
           check_page '/country/tailand/' 'Туры в Таиланд' 'https://anytoour.ru/country/tailand/'
-          check_page '/country/russia/' 'Туры в Россию' 'https://anytoour.ru/country/russia/'
+          check_page '/country/russia/' 'Туры по России' 'https://anytoour.ru/country/russia/'
           check_page '/country/turkey/kemer/' 'Туры в Кемер' 'https://anytoour.ru/country/turkey/kemer/'
           check_page '/country/turkey/antalya/' 'Туры в Анталью' 'https://anytoour.ru/country/turkey/antalya/'
           check_page '/country/turkey/side/' 'Туры в Сиде' 'https://anytoour.ru/country/turkey/side/'
