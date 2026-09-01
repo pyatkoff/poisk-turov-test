@@ -70,12 +70,16 @@ function v2_seo_content_pilot_side(): array
                     ],
                 ],
             ],
-            'search_state' => [],
+            'search_state' => [
+                'country' => 4,
+                'region' => 23,
+            ],
         ],
         'content_notes' => [
             'Evergreen editorial copy only; no hard-coded live prices or availability.',
             'Destination facts checked against official GoTürkiye Side material.',
-            'Keep status=review until route, canonical, sitemap and search-prefill contracts are verified.',
+            'Tourvisor-backed production catalog confirms Turkey country=4 and Side region=23.',
+            'Keep status=review until live offer binding and launch/indexability gates are verified.',
         ],
     ];
 }

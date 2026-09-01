@@ -2,7 +2,14 @@
 require_once __DIR__ . '/../v2/seo-content-pilot-turkey-catalog-v1.php';
 
 $catalog = v2_seo_content_pilot_turkey_catalog();
-$expected = ['/country/turkey/', '/country/turkey/kemer/'];
+$expected = [
+    '/country/turkey/',
+    '/country/turkey/kemer/',
+    '/country/turkey/antalya/',
+    '/country/turkey/side/',
+    '/country/turkey/belek/',
+    '/country/turkey/alanya/',
+];
 
 foreach ($expected as $path) {
     if (!isset($catalog['registry'][$path])) {
@@ -17,31 +24,42 @@ foreach ($expected as $path) {
 }
 
 $turkeyReport = $catalog['reports']['/country/turkey/'] ?? [];
-$kemerReport = $catalog['reports']['/country/turkey/kemer/'] ?? [];
 if (($turkeyReport['status'] ?? '') !== 'approved') {
     fwrite(STDERR, "Turkey editorial candidate must be approved\n");
-    exit(1);
-}
-if (($kemerReport['status'] ?? '') !== 'review') {
-    fwrite(STDERR, "Kemer must remain review-only until live offer binding is verified\n");
     exit(1);
 }
 if (($catalog['registry']['/country/turkey/']['page']['search_state']['country'] ?? null) !== 4) {
     fwrite(STDERR, "Turkey search prefill country id is invalid\n");
     exit(1);
 }
-$kemerState = $catalog['registry']['/country/turkey/kemer/']['page']['search_state'] ?? [];
-if (($kemerState['country'] ?? null) !== 4 || ($kemerState['region'] ?? null) !== 22) {
-    fwrite(STDERR, "Kemer search prefill must use verified country=4 region=22\n");
-    exit(1);
+
+$verifiedRegions = [
+    '/country/turkey/alanya/' => 19,
+    '/country/turkey/antalya/' => 20,
+    '/country/turkey/belek/' => 21,
+    '/country/turkey/kemer/' => 22,
+    '/country/turkey/side/' => 23,
+];
+foreach ($verifiedRegions as $path => $regionId) {
+    $report = $catalog['reports'][$path] ?? [];
+    if (($report['status'] ?? '') !== 'review') {
+        fwrite(STDERR, "Resort must remain review-only before launch: {$path}\n");
+        exit(1);
+    }
+    $state = $catalog['registry'][$path]['page']['search_state'] ?? [];
+    if (($state['country'] ?? null) !== 4 || ($state['region'] ?? null) !== $regionId) {
+        fwrite(STDERR, "Invalid verified search prefill for {$path}\n");
+        exit(1);
+    }
+    if (($catalog['graph'][$path]['parent'] ?? null) !== '/country/turkey/') {
+        fwrite(STDERR, "Invalid Turkey parent relation for {$path}\n");
+        exit(1);
+    }
 }
-if (($catalog['graph']['/country/turkey/kemer/']['parent'] ?? null) !== '/country/turkey/') {
-    fwrite(STDERR, "Kemer parent relation is invalid\n");
-    exit(1);
-}
+
 if (($catalog['publication_candidates'] ?? []) !== ['/country/turkey/']) {
     fwrite(STDERR, "Only Turkey may be a publication candidate\n");
     exit(1);
 }
 
-echo "SEO Turkey/Kemer pilot smoke OK turkeyApproved=1 kemerReview=1 countryPrefill=4 kemerRegion=22\n";
+echo "SEO Turkey pilot smoke OK country=4 regions=19,20,21,22,23 resortStatus=review\n";
