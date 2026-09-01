@@ -1,0 +1,15 @@
+{
+  "id": "SEO_M6_EXIT_CRITERIA",
+  "title": "Operate SEO2 continuously with measured evidence",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "criteria": [
+    "technical regression monitoring",
+    "periodic full reaudit",
+    "external search-performance evidence when available",
+    "demand/opportunity backlog",
+    "safe autonomous repairs",
+    "bounded growth experiments",
+    "outcome reporting separates code changes from measured organic results"
+  ]
+}
