@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "project": "pyatkoff/poisk-turov-test",
   "product": "AnyTour",
   "production": {
@@ -10,6 +10,34 @@
     "active": "AnyTour Design System 2.0",
     "obsolete": ["AnyTour Design System 1.0"],
     "rule": "Do not introduce parallel headers, footers, buttons, cards or shared shell variants when an active Design System 2.0 primitive exists."
+  },
+  "scope_contract": {
+    "owns": [
+      "tour search form and dictionaries",
+      "Tourvisor/API search integration",
+      "dates, duration and tourists",
+      "search filters and result ordering",
+      "hotel and tour cards",
+      "flights, rooms and prices",
+      "selected-tour and lead flow",
+      "search errors and recovery",
+      "desktop/mobile search UX",
+      "search performance and visual regressions"
+    ],
+    "never_touch_without_explicit_task": [
+      "SEO landing-page content outside the search product",
+      "Yandex Metrika configuration or goals",
+      "MAX and manager projects",
+      "unrelated site sections",
+      "production infrastructure unrelated to the selected task"
+    ],
+    "invariants": [
+      "existing lead delivery remains functional",
+      "production URLs and attribution contracts are preserved",
+      "AnyTour Design System 2.0 remains the only active design system",
+      "no speculative refactor is bundled into product work"
+    ],
+    "out_of_scope_rule": "Record an external gap or blocker and continue independent safe work. Do not expand the task merely because an adjacent problem was discovered."
   },
   "hard_boundaries": {
     "other_projects": "DO_NOT_MODIFY",
@@ -27,6 +55,22 @@
     "performance_or_seo_foundation",
     "cosmetic_or_refactor"
   ],
+  "verification_policy": {
+    "LOW": {
+      "use_for": "small isolated or visual-safe changes",
+      "gates": ["syntax/lint when applicable", "one targeted smoke check"]
+    },
+    "MEDIUM": {
+      "use_for": "normal functional changes in an affected flow",
+      "gates": ["Fast CI", "targeted affected-flow check", "targeted visual QA when user-facing"]
+    },
+    "HIGH": {
+      "use_for": "lead, money, data-integrity, production-critical or broad shared-shell changes",
+      "gates": ["Fast CI", "focused automated checks", "production or staging smoke when applicable", "visual QA when user-facing"]
+    },
+    "full_regression": "Run only when risk or accumulated changes justify it; do not run a broad regression matrix for every small PR.",
+    "rule": "Verification must be proportional to risk and affected surface."
+  },
   "ci_policy": {
     "normal_development": ["Fast CI"],
     "production": ["Deploy anytoour.ru", "Production smoke"],
