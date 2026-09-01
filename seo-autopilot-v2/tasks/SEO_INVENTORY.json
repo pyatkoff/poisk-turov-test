@@ -1,0 +1,33 @@
+{
+  "id": "SEO_INVENTORY",
+  "title": "Build authoritative SEO surface inventory",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "goal": "Create a factual inventory of SEO-relevant URL families and their technical contracts before scaling landing pages.",
+  "inspect": [
+    "public URL families and routing",
+    "robots directives",
+    "XML sitemaps",
+    "canonical generation",
+    "title/meta/H1 generation",
+    "country/resort/hotel landing templates",
+    "internal linking surfaces",
+    "structured data",
+    "legacy-domain references and duplicate URL patterns"
+  ],
+  "done_when": [
+    "current SEO URL families are enumerated",
+    "indexable versus non-indexable surfaces are classified",
+    "canonical/indexability conflicts are listed",
+    "duplicate and legacy-domain risks are listed",
+    "next SAFE technical repair is selected from evidence"
+  ],
+  "forbidden": [
+    "bulk page generation",
+    "mass redirects",
+    "Tourvisor/search behavior changes",
+    "pricing changes",
+    "lead-flow changes",
+    "Metrika changes"
+  ]
+}
