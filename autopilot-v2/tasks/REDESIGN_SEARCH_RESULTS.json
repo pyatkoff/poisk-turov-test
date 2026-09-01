@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "REDESIGN_SEARCH_RESULTS",
+  "goal": "Implement the approved Search 2.0 search/results/filter UX as a narrow DS2 layer while preserving existing Tourvisor search semantics, local-filter payload boundary, progressive 25→100 loading and stale-response protections.",
+  "risk": "MEDIUM",
+  "owns_paths": [
+    "v2/search-redesign-v2.css",
+    "v2/search-redesign-v2.js",
+    "v2/index.php",
+    "v2/bundle-manifest-v1.php"
+  ],
+  "depends_on": [
+    "SEARCH_2_0_MOCKUP_APPROVAL"
+  ],
+  "verify": {
+    "level": "targeted",
+    "checks": [
+      "Fast CI",
+      "Security guard",
+      "browser QA for search, local narrowing, server re-search on widening, progressive 25→100 and empty/recovery states",
+      "visual QA at 375px and 1440px"
+    ]
+  },
+  "done_when": [
+    "base search stays concise and additional filters are progressive rather than an upfront wall of controls",
+    "local filters operate only on payload-complete fields and do not restart Tourvisor for simple narrowing",
+    "widening original constraints uses the existing server re-search lifecycle",
+    "result/filter counters, sorting, empty states and progressive loading remain consistent",
+    "no Metrika, lead transport, pricing or logo contract changes"
+  ]
+}
