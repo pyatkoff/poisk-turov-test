@@ -1,0 +1,12 @@
+{
+  "id": "SEO_FAQ_POLICY",
+  "title": "Use FAQ only for genuine traveler questions",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "questions should reflect real intent or useful decision support",
+    "answers must be factual and maintainable",
+    "do not mass-repeat the same FAQ across all destinations",
+    "structured FAQ markup, if any, must match visible content and current eligibility guidance"
+  ]
+}
