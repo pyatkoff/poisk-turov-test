@@ -51,8 +51,8 @@ function tuneQuickStars(stars){
   if(!stars)return false;
   if(stars.dataset.ds2QuickLabels!=='1'){
     stars.dataset.ds2QuickLabels='1';var title=stars.querySelector(':scope > span');if(title){title.textContent='Быстрый выбор';title.classList.add('v2-visually-hidden');}
-    var labels={'':'Все варианты','2':'2★+','3':'3★+','4':'4★+','5':'5★ отели'};
-    stars.querySelectorAll('.stars-choice').forEach(function(btn){var value=String(btn.dataset.value||'');if(Object.prototype.hasOwnProperty.call(labels,value))btn.textContent=labels[value];});
+    var labels={'':'Все варианты','2':'Рекомендуем','3':'Лучшая цена','4':'All Inclusive','5':'5★ отели'};
+    stars.querySelectorAll('.stars-choice').forEach(function(btn){var value=String(btn.dataset.value||'');if(Object.prototype.hasOwnProperty.call(labels,value)){btn.textContent=labels[value];btn.dataset.ds2QuickRole=value===''?'all':value==='2'?'best':value==='3'?'price':value==='4'?'meal':'stars';if(value==='2'&&!btn.querySelector('.ds2-best-badge')){var badge=document.createElement('span');badge.className='ds2-best-badge';badge.textContent='BEST';btn.appendChild(badge);}}});
   }
   stars.classList.add('ds2-search-quick-stars');return true;
 }
