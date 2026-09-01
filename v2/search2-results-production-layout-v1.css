@@ -1,6 +1,0 @@
-/* Search 2.0 production results-state convergence.
- * The main search form stays available through the summary Edit action, but must not occupy
- * desktop results width while Search 2.0 results are active.
- */
-body.at-search2-results:not(.at-search2-selected) #tourSearch{display:none!important}
-body.at-search2-results:not(.at-search2-selected) .results-layout{width:100%;max-width:var(--at-shell)}
