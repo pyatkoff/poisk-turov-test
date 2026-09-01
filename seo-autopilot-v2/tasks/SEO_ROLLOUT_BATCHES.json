@@ -1,0 +1,14 @@
+{
+  "id": "SEO_ROLLOUT_BATCHES",
+  "title": "Release new SEO landing families in controlled batches",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "sequence": [
+    "small representative batch",
+    "render/indexability/canonical/link QA",
+    "observe crawl/index evidence when available",
+    "fix template defects",
+    "expand only after quality gate remains green"
+  ],
+  "rule": "Do not launch thousands of indexable URLs as the first validation step."
+}
