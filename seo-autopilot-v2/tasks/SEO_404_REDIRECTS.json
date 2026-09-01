@@ -1,0 +1,19 @@
+{
+  "id": "SEO_404_REDIRECTS",
+  "title": "Maintain clean SEO redirects and not-found behavior",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "broken internal links",
+    "redirect chains/loops",
+    "soft 404 behavior",
+    "removed landing pages",
+    "legacy URL mappings",
+    "invalid entity slugs"
+  ],
+  "rules": [
+    "redirect only when a genuine replacement exists",
+    "do not blanket redirect unrelated missing pages to homepage",
+    "mass redirect maps require a MEDIUM evidence gate"
+  ]
+}
