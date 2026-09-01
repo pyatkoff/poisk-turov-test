@@ -1,5 +1,5 @@
 <?php
-/** Resolve a resort name against the synchronized Tourvisor catalog without guessing IDs. */
+/** Resolve resort names against the synchronized Tourvisor catalog without guessing IDs. */
 declare(strict_types=1);
 
 if (PHP_SAPI !== 'cli') {
@@ -19,56 +19,79 @@ function resolver_arg(array $argv, string $name): ?string
     return null;
 }
 
-$countryRaw = resolver_arg($argv, 'country');
-$name = resolver_arg($argv, 'name');
-$countryId = filter_var($countryRaw, FILTER_VALIDATE_INT);
+function resolver_names(array $argv): array
+{
+    $single = resolver_arg($argv, 'name');
+    $batch = resolver_arg($argv, 'names');
+    $raw = $single !== null && $single !== '' ? [$single] : explode(',', (string)$batch);
+    $names = [];
+    foreach ($raw as $name) {
+        $name = trim($name);
+        if ($name !== '') $names[] = $name;
+    }
+    return array_values(array_unique($names));
+}
 
-if ($countryId === false || (int)$countryId <= 0 || $name === null || $name === '') {
+function resolver_lookup(PDO $pdo, int $countryId, string $name): array
+{
+    $sql = "SELECT
+                s.id AS subregion_id,
+                s.name AS subregion_name,
+                s.slug AS subregion_slug,
+                r.id AS region_id,
+                r.name AS region_name,
+                r.slug AS region_slug,
+                r.country_id
+            FROM catalog_subregions s
+            INNER JOIN catalog_regions r ON r.id = s.region_id
+            WHERE r.country_id = :country_id
+              AND s.is_active = 1
+              AND r.is_active = 1
+              AND (s.name = :name_exact OR s.slug = :name_slug)
+            ORDER BY (s.name = :name_rank) DESC, s.id ASC";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([
+        'country_id' => $countryId,
+        'name_exact' => $name,
+        'name_slug' => v2_data_slug($name),
+        'name_rank' => $name,
+    ]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!$rows) {
+        throw new RuntimeException("RESORT_NOT_FOUND country={$countryId} name={$name}", 3);
+    }
+    if (count($rows) !== 1) {
+        throw new RuntimeException("RESORT_AMBIGUOUS country={$countryId} name={$name} matches=" . count($rows), 4);
+    }
+
+    $result = $rows[0];
+    $result['country_id'] = (int)$result['country_id'];
+    $result['region_id'] = (int)$result['region_id'];
+    $result['subregion_id'] = (int)$result['subregion_id'];
+    return $result;
+}
+
+$countryRaw = resolver_arg($argv, 'country');
+$countryId = filter_var($countryRaw, FILTER_VALIDATE_INT);
+$names = resolver_names($argv);
+
+if ($countryId === false || (int)$countryId <= 0 || $names === []) {
     fwrite(STDERR, "Usage: php v2/data/resolve-resort-id-v1.php --country=4 --name=Кемер\n");
+    fwrite(STDERR, "   or: php v2/data/resolve-resort-id-v1.php --country=4 --names=Кемер,Анталья,Сиде,Белек,Аланья\n");
     exit(2);
 }
 
 $pdo = v2_data_db();
-$sql = "SELECT
-            s.id AS subregion_id,
-            s.name AS subregion_name,
-            s.slug AS subregion_slug,
-            r.id AS region_id,
-            r.name AS region_name,
-            r.slug AS region_slug,
-            r.country_id
-        FROM catalog_subregions s
-        INNER JOIN catalog_regions r ON r.id = s.region_id
-        WHERE r.country_id = :country_id
-          AND s.is_active = 1
-          AND r.is_active = 1
-          AND (s.name = :name_exact OR s.slug = :name_slug)
-        ORDER BY (s.name = :name_rank) DESC, s.id ASC";
-$stmt = $pdo->prepare($sql);
-$stmt->execute([
-    'country_id' => (int)$countryId,
-    'name_exact' => $name,
-    'name_slug' => v2_data_slug($name),
-    'name_rank' => $name,
-]);
-$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-if (!$rows) {
-    fwrite(STDERR, "RESORT_NOT_FOUND country=" . (int)$countryId . " name=" . $name . "\n");
-    exit(3);
-}
-
-if (count($rows) !== 1) {
-    fwrite(STDERR, "RESORT_AMBIGUOUS country=" . (int)$countryId . " name=" . $name . " matches=" . count($rows) . "\n");
-    foreach ($rows as $row) {
-        fwrite(STDERR, json_encode($row, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n");
+$results = [];
+try {
+    foreach ($names as $name) {
+        $results[] = resolver_lookup($pdo, (int)$countryId, $name);
     }
-    exit(4);
+} catch (RuntimeException $e) {
+    fwrite(STDERR, $e->getMessage() . "\n");
+    exit(in_array($e->getCode(), [3, 4], true) ? $e->getCode() : 1);
 }
 
-$result = $rows[0];
-$result['country_id'] = (int)$result['country_id'];
-$result['region_id'] = (int)$result['region_id'];
-$result['subregion_id'] = (int)$result['subregion_id'];
-
-echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n";
+$output = count($results) === 1 ? $results[0] : $results;
+echo json_encode($output, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n";
