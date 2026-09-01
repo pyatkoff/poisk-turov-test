@@ -57,6 +57,7 @@ function tunePrimarySummaries(main){
 }
 function tuneQuickStars(stars){
   if(!stars)return false;
+  stars.classList.add('main-stars');
   var select=form.elements.stars,labels={'':'Все варианты','2':'2★ и выше','3':'3★ и выше','4':'4★ и выше','5':'5★ отели'};
   var wrap=stars.querySelector('.stars-quick');
   if(!wrap&&select){wrap=document.createElement('div');wrap.className='stars-quick';wrap.setAttribute('role','group');wrap.setAttribute('aria-label','Категория отеля');stars.appendChild(wrap);Object.keys(labels).forEach(function(value){var btn=document.createElement('button');btn.type='button';btn.className='stars-choice';btn.dataset.value=value;btn.addEventListener('click',function(){if(String(select.value||'')===value)return;select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));sync();});wrap.appendChild(btn);});}
@@ -64,11 +65,11 @@ function tuneQuickStars(stars){
   var title=stars.querySelector(':scope > span');if(title){title.textContent='Категория отеля';title.classList.add('v2-visually-hidden');}
   stars.dataset.ds2QuickLabels='1';stars.classList.add('ds2-search-quick-stars');if(select&&!select.dataset.ds2QuickSync){select.dataset.ds2QuickSync='1';select.addEventListener('change',sync);}sync();return !!wrap;
 }
-function tuneAdvancedFilters(){var details=form.querySelector('details.extras,details.extras-secondary');if(!details)return false;if(details.dataset.ds2CollapsedInitial!=='1'){details.dataset.ds2CollapsedInitial='1';var summary=details.querySelector(':scope > summary');if(summary){var strong=summary.querySelector('strong');if(strong)strong.textContent='Все фильтры';else summary.insertAdjacentHTML('afterbegin','<strong>Все фильтры</strong>');}}if(form.classList.contains('ds2-search-initial'))details.open=false;return true;}
+function tuneAdvancedFilters(){var details=form.querySelector('details.extras,details.extras-secondary');if(!details)return false;details.dataset.ds2CollapsedInitial='1';var summary=details.querySelector(':scope > summary');if(summary){var strong=summary.querySelector('strong');if(strong)strong.textContent='Все фильтры';else summary.insertAdjacentHTML('afterbegin','<strong>Все фильтры</strong>');}if(form.classList.contains('ds2-search-initial'))details.open=false;return true;}
 function arrange(){
   syncInitialState();
   var main=form.querySelector('.main-fields');if(!main)return false;
-  var stars=form.querySelector('.main-stars'),nights=main.querySelector('.nights-ux'),dates=main.querySelector('.dates-ux'),guests=main.querySelector('.guests-ux'),details=form.querySelector('details.extras,details.extras-secondary');
+  var starsSelect=form.elements.stars,stars=starsSelect&&starsSelect.closest('.field'),nights=main.querySelector('.nights-ux'),dates=main.querySelector('.dates-ux'),guests=main.querySelector('.guests-ux'),details=form.querySelector('details.extras,details.extras-secondary');
   if(!stars||!nights||!dates||!guests)return false;
   if(!tuneQuickStars(stars))return false;
   if(stars.parentElement!==form||stars.nextElementSibling!==details){if(details)form.insertBefore(stars,details);else main.insertAdjacentElement('afterend',stars);}
