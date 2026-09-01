@@ -1,0 +1,13 @@
+{
+  "id": "SEO_SCHEMA_VALIDATION",
+  "title": "Validate structured data against rendered facts",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "valid JSON-LD/syntax",
+    "supported page/entity type",
+    "URLs use canonical host",
+    "prices/availability/reviews match visible sourced content",
+    "breadcrumbs match visible hierarchy"
+  ]
+}
