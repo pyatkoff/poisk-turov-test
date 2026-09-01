@@ -1,0 +1,17 @@
+{
+  "id": "SEO_REAUDIT_CADENCE",
+  "title": "Periodically re-audit the full SEO surface",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "principle": "Do not audit only files changed by the latest PR; periodically re-inventory the public SEO system to catch drift.",
+  "reaudit": [
+    "URL families",
+    "indexability/canonical",
+    "sitemaps/robots",
+    "metadata duplication",
+    "internal links/orphans",
+    "legacy host references",
+    "factual data freshness",
+    "template quality"
+  ]
+}
