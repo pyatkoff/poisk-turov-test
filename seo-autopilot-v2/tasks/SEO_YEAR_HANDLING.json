@@ -1,0 +1,11 @@
+{
+  "id": "SEO_YEAR_HANDLING",
+  "title": "Avoid stale year tokens in evergreen SEO templates",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "use a year only when it materially serves intent or factual context",
+    "do not hardcode a year across evergreen titles/copy without refresh ownership",
+    "year changes alone do not constitute meaningful content freshness"
+  ]
+}
