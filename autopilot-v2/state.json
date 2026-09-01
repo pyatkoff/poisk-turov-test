@@ -17,13 +17,15 @@
     "evidence": [
       "PR #656: completed search renders first 25 hotels and expands to up to 100 on the same searchId.",
       "PR #658: stars, rating and price can narrow the already loaded result set while widening beyond source constraints uses server re-search.",
-      "PR #662 added region/subregion local narrowing and initially localized meal/operator as well.",
       "Official Tourvisor search-results schema confirms hotel-level region/subRegion, but meal/operator only exist inside nested tours[] and the contract does not guarantee that nested offers are exhaustive for every hotel; PR #666 therefore keeps meal/operator on server search while retaining proven local filters.",
-      "onlyDirect remains server-side because search_results exposes no reliable direct-flight flag; hotel services/type are absent from search_results; onlyCharter remains server-side because it also affects destination catalog availability.",
       "PR #663 invalidates selected-tour and flight async generations and clears stale selected-tour/lead UI on v2:search-reset.",
       "PR #669 fixes confirmed stale selected-tour pricing when switching from a priced flight to a flight whose price is unavailable: stale prior flight price is cleared, tour base/fuel state is restored coherently, and pricePending is emitted without changing lead transport or external contracts.",
       "Fast CI and Security guard passed for PR #669; merge SHA f4bc4517f4e2da6fe375753203e85f0313be58ae.",
-      "Production evidence for depth/local-filter behavior remains blocked by the prior external live-probe environment; continue independent product QA.",
+      "Post-merge controller audit PASS: selecting a second tour increments tourGeneration and flightGeneration, clears current tour/flight state before rendering, and ignores late tour/flight responses whose generation or tour id no longer matches.",
+      "Post-merge search reset audit PASS: v2:search-reset invalidates both async generations, clears currentTour/flightVariants/selectedFlightIndex and hides selected-tour UI.",
+      "Post-merge lead retry/idempotency audit PASS at browser boundary: submit is disabled during a request, failed sends re-enable retry with form data preserved, successful sends set dataset.sent and server duplicate responses are handled as deduplicated success.",
+      "Post-merge child-age context audit PASS: active search snapshot child ages are validated to 0..17, capped to three entries and keep childs consistent before the existing lead request is sent.",
+      "Production evidence remains blocked by the prior external live-probe environment; continue independent product QA.",
       "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
     ],
     "parent_task": null
@@ -59,7 +61,7 @@
       "priority": 1,
       "status": "ACTIVE",
       "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
-      "reason": "Continue results -> hotel -> tour -> room -> flight -> price -> selected tour -> lead form -> submit/error/retry/recovery. PR #663 fixed stale reset generations; PR #669 fixed stale price/fuel state when changing to an unpriced flight. Next verify second-tour/second-flight isolation, searchId/tourId consistency, child ages, submit/retry/idempotency and recovery while preserving the external lead contract."
+      "reason": "PR #663 fixed stale reset generations; PR #669 fixed stale price/fuel state for unpriced flight selections. Static controller/lead audit now passes second-tour/second-flight async isolation, search-reset cleanup, browser submit retry/idempotency boundary and child-age enrichment. Continue room/flight payload consistency and narrow browser/live evidence before closing this priority."
     },
     {
       "id": "PRODUCTION_RESULTS_EVIDENCE",
@@ -112,7 +114,7 @@
     }
   ],
   "last_signal": {
-    "source": "selected_tour_unpriced_flight_reset_pr_669",
+    "source": "selected_tour_post_merge_isolation_audit",
     "status": "CONTINUE_SELECTED_TOUR_END_TO_END",
     "sha": "f4bc4517f4e2da6fe375753203e85f0313be58ae"
   },
