@@ -1,0 +1,7 @@
+{
+  "id": "SEO_NO_SEPARATE_LEGACY_DESIGN",
+  "title": "Do not build a separate legacy-looking SEO microsite",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "New SEO landing work uses AnyTour Design System 2.0 and shared product identity; SEO scale must not recreate inconsistent headers, footers or component systems."
+}
