@@ -1,0 +1,7 @@
+{
+  "id": "SEO_HREFLANG_POLICY",
+  "title": "Avoid premature hreflang complexity",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "policy": "Do not add hreflang unless AnyTour has genuine alternate-language/region pages with stable reciprocal canonical contracts."
+}
