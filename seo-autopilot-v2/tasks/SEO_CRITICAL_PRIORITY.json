@@ -1,0 +1,16 @@
+{
+  "id": "SEO_CRITICAL_PRIORITY",
+  "title": "Prioritize SEO defects by business impact",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "order": [
+    "production deindexation or broken canonical/host signals",
+    "broken important landing/status/sitemap paths",
+    "duplicate/cannibalizing high-value surfaces",
+    "wrong factual metadata/content",
+    "broken organic-to-search conversion path",
+    "architecture and internal linking",
+    "new landing expansion",
+    "cosmetic SEO improvements"
+  ]
+}
