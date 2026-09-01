@@ -1,0 +1,19 @@
+{
+  "id": "SEO_OUTCOME_MEASUREMENT",
+  "title": "Measure SEO changes against explicit outcomes",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "technical_outcomes": [
+    "indexability contract restored",
+    "canonical conflict removed",
+    "duplicate/legacy URL signal removed",
+    "sitemap correctness improved",
+    "orphan/broken-link defect removed"
+  ],
+  "growth_outcomes": [
+    "qualified organic landing coverage",
+    "impressions/clicks for intended query cluster when external data becomes available",
+    "organic entry engagement and lead contribution where approved analytics evidence exists"
+  ],
+  "rule": "Do not claim ranking or traffic improvement without external evidence."
+}
