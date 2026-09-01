@@ -10,7 +10,7 @@ require_once __DIR__ . '/seo-offer-snapshot-v1.php';
  * sitemap emission or global indexation. Hotel identity must be verified before
  * it reaches this renderer; live offer data is read only from fresh snapshots.
  */
-function v2_seo_render_hotel_tours_review(array $record): void
+function v2_seo_render_hotel_tour_review(array $record): void
 {
     if (($record['type'] ?? '') !== 'hotel_tours' || ($record['status'] ?? '') !== 'review') {
         throw new InvalidArgumentException('SEO hotel tours runtime accepts review hotel_tours records only');
@@ -90,4 +90,10 @@ function v2_seo_render_hotel_tours_review(array $record): void
     echo '<div class="sp-actions"><a class="sp-primary" href="'.sp_e(v2_seo_search_handoff_url('/poisk-turov/', $page['search_state'])).'">Найти туры в этот отель</a></div></section>';
     echo '</main>';
     sp_end($context);
+}
+
+/** Compatibility alias for any early callers using the pluralized helper name. */
+function v2_seo_render_hotel_tours_review(array $record): void
+{
+    v2_seo_render_hotel_tour_review($record);
 }
