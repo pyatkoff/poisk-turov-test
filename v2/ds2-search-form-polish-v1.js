@@ -66,7 +66,7 @@ function tunePrimarySummaries(main){
   }
   function syncGuests(){
     var a=Math.max(1,Number(adults.value||1)),c=Math.max(0,Number(children.value||0));
-    var adultWord=a===1?'взрослый':a>=2&&a<=4?'взрослых':'взрослых';
+    var adultWord=a===1?'взрослый':'взрослых';
     var childWord=c===1?'ребёнок':c>=2&&c<=4?'ребёнка':'детей';
     guestOut.textContent=a+' '+adultWord+(c?' · '+c+' '+childWord:'');
   }
@@ -87,6 +87,18 @@ function tuneQuickStars(stars){
     if(Object.prototype.hasOwnProperty.call(labels,value))btn.textContent=labels[value];
   });
 }
+function tuneAdvancedFilters(){
+  var details=form.querySelector('details.extras,details.extras-secondary');
+  if(!details||details.dataset.ds2CollapsedInitial==='1')return;
+  details.dataset.ds2CollapsedInitial='1';
+  if(!document.body.classList.contains('at-search2-results')&&!document.body.classList.contains('at-search2-selected'))details.open=false;
+  var summary=details.querySelector(':scope > summary');
+  if(summary){
+    var strong=summary.querySelector('strong');
+    if(strong)strong.textContent='Все фильтры';
+    else summary.insertAdjacentHTML('afterbegin','<strong>Все фильтры</strong>');
+  }
+}
 function arrange(){
   var main=form.querySelector('.main-fields');
   if(!main)return false;
@@ -98,6 +110,7 @@ function arrange(){
   main.insertAdjacentElement('afterend',stars);
   enhanceNights(main);
   tunePrimarySummaries(main);
+  tuneAdvancedFilters();
   return true;
 }
 if(!arrange()){
