@@ -1,0 +1,13 @@
+{
+  "id": "SEO_SEARCH_HANDOFF",
+  "title": "Connect SEO landings to tour search without coupling contracts",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Let an SEO landing prefill or guide the user into the existing tour-search journey using an explicit supported parameter contract.",
+  "rules": [
+    "SEO does not reimplement Tourvisor search logic.",
+    "Prefill parameters must be documented and validated.",
+    "Search failure must not break the SEO page itself.",
+    "Do not alter lead or analytics contracts silently."
+  ]
+}
