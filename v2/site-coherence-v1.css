@@ -16,6 +16,7 @@
 .sp-country{display:flex;flex-direction:column}
 .sp-country small{flex:0 0 auto}
 .sp-country-action{margin-top:auto;padding-top:14px}
+.sp-country-intent--hero .sp-resort-chip{min-height:44px}
 @media (min-width:901px){
   .sp-main>section+section,.sp-main>div+section,.sp-main>section+div{margin-top:clamp(30px,3.2vw,44px)}
   .sp-grid--balanced-two>.sp-card{height:100%}
