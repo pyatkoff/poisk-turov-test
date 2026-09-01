@@ -1,0 +1,13 @@
+{
+  "id": "SEO_CONTENT_REFRESH",
+  "title": "Refresh volatile SEO facts without rewriting durable pages",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "refresh offer/price modules independently from durable destination copy",
+    "remove or fallback stale offer facts",
+    "do not change canonical URLs because a temporary offer disappeared",
+    "record last factual refresh where useful",
+    "avoid fake freshness through meaningless date changes"
+  ]
+}
