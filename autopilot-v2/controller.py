@@ -25,6 +25,7 @@ VALID_ACTIVE_STATES = {
     "blocked",
 }
 TERMINAL = {"accepted", "blocked", "failed"}
+ACTIVE_TERMINAL_STATES = {"done", "blocked"}
 FAILURE_CLASSES = {
     "writer_failed",
     "verification_failed",
@@ -171,10 +172,23 @@ def task_runtime_status(task, tasks):
     return "ready"
 
 
-def ready_tasks(tasks, limit=3):
+def active_task_contract(state, tasks):
+    active = state.get("active_task")
+    if not active or active.get("state") in ACTIVE_TERMINAL_STATES:
+        return None
+    return tasks.get(active.get("id"))
+
+
+def ready_tasks(tasks, limit=3, reserved_paths=None, exclude_ids=None):
+    reserved_paths = reserved_paths or []
+    exclude_ids = exclude_ids or set()
     ready = []
     for task in tasks.values():
+        if task["id"] in exclude_ids:
+            continue
         if task_runtime_status(task, tasks) != "ready":
+            continue
+        if reserved_paths and ownership_overlap(task["owns_paths"], reserved_paths):
             continue
         if any(ownership_overlap(task["owns_paths"], other["owns_paths"]) for other in ready):
             continue
@@ -265,12 +279,64 @@ def cmd_status(_args):
 
 
 def cmd_plan(args):
-    load_state()
+    state = load_state()
     tasks = load_tasks()
     validate_graph(tasks)
+    active = state.get("active_task")
+    active_contract = active_task_contract(state, tasks)
+
+    if active and active.get("state") == "design_approval_required":
+        plan = {
+            "max_writers": 0,
+            "decision": "DESIGN_APPROVAL_REQUIRED",
+            "continue_active": active,
+            "ready": [],
+            "reason": "The active user-facing redesign is waiting for explicit design approval; implementation must not bypass this gate.",
+            "next": state["resume"]["next"],
+        }
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+        return
+
+    if active and active.get("state") not in ACTIVE_TERMINAL_STATES:
+        reserved_paths = active_contract["owns_paths"] if active_contract else []
+        remaining_capacity = max(0, args.max_writers - (1 if active.get("owner") == "developer" else 0))
+        ready = ready_tasks(
+            tasks,
+            limit=remaining_capacity,
+            reserved_paths=reserved_paths,
+            exclude_ids={active.get("id")},
+        ) if remaining_capacity else []
+        plan = {
+            "max_writers": args.max_writers,
+            "decision": "CONTINUE_ACTIVE",
+            "continue_active": {
+                "id": active["id"],
+                "state": active["state"],
+                "owner": active["owner"],
+                "risk": active["risk"],
+                "verification_class": active["verification_class"],
+                "required_gates": active["required_gates"],
+                "owns_paths": reserved_paths,
+            },
+            "ready": [
+                {
+                    "id": t["id"],
+                    "risk": t["risk"],
+                    "owns_paths": t["owns_paths"],
+                    "verify": t["verify"],
+                }
+                for t in ready
+            ],
+            "continuous_safe_step": bool(ready),
+            "next": state["resume"]["next"],
+        }
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
+        return
+
     ready = ready_tasks(tasks, limit=args.max_writers)
     plan = {
         "max_writers": args.max_writers,
+        "decision": "SELECT_NEXT_SAFE_STEP",
         "ready": [
             {
                 "id": t["id"],
@@ -280,6 +346,8 @@ def cmd_plan(args):
             }
             for t in ready
         ],
+        "continuous_safe_step": bool(ready),
+        "next": state["resume"]["next"],
     }
     print(json.dumps(plan, ensure_ascii=False, indent=2))
 
