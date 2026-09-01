@@ -3,6 +3,8 @@
   "id": "REDESIGN_HOTEL_TOUR_SELECTION",
   "goal": "Implement the approved hotel detail and tour/room selection hierarchy without changing Tourvisor identifiers, room enrichment semantics, selected-tour state or pricing behavior.",
   "risk": "MEDIUM",
+  "verification_class": "MEDIUM",
+  "design_approval": "APPROVED_BY_NEW_DESIGN_IMPLEMENTATION_PREP",
   "owns_paths": [
     "v2/hotel-details-design.css",
     "v2/hotel-actions-v3.js",
@@ -10,6 +12,19 @@
     "v2/room-details-v3.js",
     "v2/tour-design-v1.css",
     "v2/tour-controller-v4.js"
+  ],
+  "never_touch": [
+    "Tourvisor/API identifiers and request semantics",
+    "pricing calculation semantics",
+    "Yandex Metrika configuration or goals",
+    "external lead transport",
+    "AnyTour logo and unrelated shared shell files"
+  ],
+  "invariants": [
+    "room, meal, operator, date and price remain bound to the currently selected tour",
+    "stale room/detail responses cannot overwrite a newer hotel or tour choice",
+    "selected-tour state remains compatible with downstream flight and lead flows",
+    "Design System 2.0 remains the only visual system"
   ],
   "depends_on": [
     "NEW_DESIGN_IMPLEMENTATION_PREP"
