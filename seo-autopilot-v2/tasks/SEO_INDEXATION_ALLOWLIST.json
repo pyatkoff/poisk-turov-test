@@ -1,0 +1,14 @@
+{
+  "id": "SEO_INDEXATION_ALLOWLIST",
+  "title": "Make indexation eligibility explicit by page family",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "principle": "Known useful canonical page families are eligible for indexation; arbitrary renderable routes are not.",
+  "requires": [
+    "page family contract",
+    "quality gate",
+    "canonical policy",
+    "sitemap policy",
+    "internal discovery path"
+  ]
+}
