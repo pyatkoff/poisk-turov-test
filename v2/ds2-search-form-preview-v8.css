@@ -48,6 +48,32 @@
  #tourSearch.ds2-search-initial>.extras,#tourSearch.ds2-search-initial>.extras-secondary{grid-column:1!important;grid-row:auto!important;width:100%!important;height:auto!important}
  #tourSearch.ds2-search-initial>.extras>summary,#tourSearch.ds2-search-initial>.extras-secondary>summary{width:100%!important;min-height:42px!important;height:42px!important}
 }
+@media(min-width:901px) and (max-width:1100px){
+ #tourSearch.ds2-search-initial{grid-template-columns:minmax(0,1fr) 154px!important;grid-template-rows:64px 34px!important;gap:8px 10px!important;padding:10px!important}
+ #tourSearch.ds2-search-initial .main-fields{grid-column:1!important;grid-row:1!important;grid-template-columns:1.02fr 1.02fr 1.42fr .72fr 1.02fr!important;gap:0!important;height:64px!important;min-height:64px!important;border:1px solid #dfe6f0!important;border-radius:11px!important;background:#fff!important}
+ #tourSearch.ds2-search-initial .main-fields>.primary-step,#tourSearch.ds2-search-initial .main-fields>.primary-step-3{grid-column:auto!important;height:62px!important;min-height:62px!important;padding:9px 8px 7px 33px!important;border:0!important;border-right:1px solid #e7ebf2!important;border-radius:0!important}
+ #tourSearch.ds2-search-initial .main-fields>.primary-step:first-child{border-radius:10px 0 0 10px!important}
+ #tourSearch.ds2-search-initial .main-fields>.primary-step:last-child{border-right:0!important;border-radius:0 10px 10px 0!important}
+ #tourSearch.ds2-search-initial .main-fields>.primary-step::before{left:10px!important;width:14px!important;height:14px!important;background-size:14px 14px!important}
+ #tourSearch.ds2-search-initial .main-fields>.primary-step>span,#tourSearch.ds2-search-initial .main-fields>.primary-step .dates-ux>span,#tourSearch.ds2-search-initial .main-fields>.primary-step .nights-ux>span,#tourSearch.ds2-search-initial .main-fields>.primary-step .guests-ux>span{font-size:8px!important;margin-bottom:3px!important}
+ #tourSearch.ds2-search-initial .main-fields select,#tourSearch.ds2-search-initial .dates-picker>summary,#tourSearch.ds2-search-initial .guests-picker>summary,#tourSearch.ds2-search-initial .ds2-nights-picker>summary{font-size:12px!important;min-height:26px!important}
+ #tourSearch.ds2-search-initial .search-submit{grid-column:2!important;grid-row:1!important;width:154px!important;height:64px!important;min-height:64px!important;font-size:12.5px!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars{grid-column:1!important;grid-row:2!important;height:34px!important;min-height:34px!important;overflow-x:auto!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars .stars-choice{height:32px!important;min-height:32px!important;padding:0 11px!important;font-size:9.5px!important}
+ #tourSearch.ds2-search-initial>.extras,#tourSearch.ds2-search-initial>.extras-secondary{grid-column:2!important;grid-row:2!important;width:154px!important;height:34px!important}
+ #tourSearch.ds2-search-initial>.extras>summary,#tourSearch.ds2-search-initial>.extras-secondary>summary{width:154px!important;height:32px!important;min-height:32px!important;font-size:9.5px!important}
+ #tourSearch.ds2-search-initial>.extras[open],#tourSearch.ds2-search-initial>.extras-secondary[open]{grid-column:1/-1!important;grid-row:3!important;width:auto!important;height:auto!important}
+}
+@media(min-width:701px) and (max-width:900px){
+ #tourSearch.ds2-search-initial{padding:11px!important;gap:9px!important}
+ #tourSearch.ds2-search-initial .main-fields{grid-template-columns:1fr 1fr!important;gap:7px!important}
+ #tourSearch.ds2-search-initial .main-fields>.primary-step{min-height:56px!important;padding:8px 9px 7px 34px!important}
+ #tourSearch.ds2-search-initial .main-fields>.primary-step-3{grid-column:1/-1!important}
+ #tourSearch.ds2-search-initial .search-submit{height:52px!important;min-height:52px!important;border-radius:11px!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars{min-height:34px!important;height:34px!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars .stars-choice{height:32px!important;min-height:32px!important;font-size:10px!important}
+ #tourSearch.ds2-search-initial>.extras>summary,#tourSearch.ds2-search-initial>.extras-secondary>summary{height:40px!important;min-height:40px!important}
+}
 @media(max-width:700px){
  #tourSearch.ds2-search-initial{padding:10px!important;border-radius:14px!important}
  #tourSearch.ds2-search-initial .main-fields{grid-template-columns:1fr!important;gap:0!important;border:1px solid #dfe6f0!important;border-radius:12px!important;background:#fff!important;overflow:visible!important}
