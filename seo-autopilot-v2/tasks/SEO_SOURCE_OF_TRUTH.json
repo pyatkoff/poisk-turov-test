@@ -1,0 +1,15 @@
+{
+  "id": "SEO_SOURCE_OF_TRUTH",
+  "title": "Define sources of truth for SEO decisions",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "order": [
+    "production behavior for what users/crawlers currently receive",
+    "current deployed/release evidence",
+    "repository runtime contracts",
+    "approved factual data sources",
+    "external SERP/index/performance evidence",
+    "roadmap assumptions"
+  ],
+  "rule": "When documentation conflicts with observed runtime, record the drift instead of treating documentation as proof."
+}
