@@ -1,0 +1,7 @@
+{
+  "id": "SEO_NO_DOORWAY_PAGES",
+  "title": "Do not create doorway-style destination variants",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "Pages that differ only by keyword/location token and funnel users to the same generic result without distinct useful content are not an acceptable SEO2 scaling strategy."
+}
