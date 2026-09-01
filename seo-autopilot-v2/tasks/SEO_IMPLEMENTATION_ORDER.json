@@ -1,0 +1,16 @@
+{
+  "id": "SEO_IMPLEMENTATION_ORDER",
+  "title": "Use foundation-before-scale implementation order",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "order": [
+    "inventory and live parity",
+    "critical technical fixes",
+    "intent/canonical architecture",
+    "representative DS2 templates",
+    "factual data enrichment",
+    "internal linking/schema/content quality",
+    "controlled scale",
+    "continuous monitoring and experiments"
+  ]
+}
