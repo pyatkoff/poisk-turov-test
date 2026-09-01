@@ -1,0 +1,15 @@
+{
+  "id": "SEO_FEED_PRICE_MONITOR",
+  "title": "Evaluate daily feed prices as a reusable monitoring input",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Determine whether existing Yandex/feed price generation can supply consistent factual snapshots for SEO enrichment and change detection.",
+  "checks": [
+    "coverage",
+    "refresh reliability",
+    "hotel/destination identifiers",
+    "price scope semantics",
+    "tracking-link separation",
+    "missing/stale behavior"
+  ]
+}
