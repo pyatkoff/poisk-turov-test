@@ -1,0 +1,13 @@
+{
+  "id": "SEO_EVIDENCE_CONFIDENCE",
+  "title": "Label SEO findings by evidence confidence",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "levels": [
+    "confirmed live/repository contract",
+    "strong multi-source evidence",
+    "likely diagnostic signal",
+    "hypothesis requiring research"
+  ],
+  "rule": "Autonomous mutations require confirmed or strong evidence appropriate to the change risk."
+}
