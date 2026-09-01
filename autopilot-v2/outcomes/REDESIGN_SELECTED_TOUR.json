@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "task": "REDESIGN_SELECTED_TOUR",
+  "status": "accepted",
+  "attempts": 1,
+  "changed_files": [
+    "v2/selected-tour-description-v1.js",
+    "v2/flight-price-sync-v1.js"
+  ],
+  "verification": {
+    "pull_request": "#712 merged into feature/search-core",
+    "fast_ci": "success",
+    "security_guard": "success",
+    "browser_visual": "PR-safe Playwright evidence green at 375/430/768/1024/1440 for selected-tour hierarchy, flight selection step, price/fuel refresh and horizontal containment",
+    "protected_contracts": "Tourvisor identifiers, selected-tour state, pricing semantics, Metrika and external lead transport/field mapping unchanged"
+  },
+  "failure_class": null,
+  "remaining_risk": "Accepted in feature/search-core only. Production remains unchanged until a narrow release path to main is proven safe and post-deploy verification is green."
+}
