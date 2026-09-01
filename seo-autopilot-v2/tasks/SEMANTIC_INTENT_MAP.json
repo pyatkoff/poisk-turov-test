@@ -1,0 +1,22 @@
+{
+  "id": "SEMANTIC_INTENT_MAP",
+  "title": "Map search demand to distinct landing intents",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "goal": "Create a semantic and intent model before scaling landing-page families.",
+  "clusters": [
+    "country tours",
+    "resort tours",
+    "hotel tours",
+    "season/month demand",
+    "departure-city demand",
+    "family/children demand",
+    "all-inclusive and other materially distinct product attributes",
+    "last-minute demand where factual inventory supports it"
+  ],
+  "rules": [
+    "one landing family only when the intent is materially distinct",
+    "avoid separate pages for superficial keyword permutations",
+    "map every intended indexable family to a canonical URL contract"
+  ]
+}
