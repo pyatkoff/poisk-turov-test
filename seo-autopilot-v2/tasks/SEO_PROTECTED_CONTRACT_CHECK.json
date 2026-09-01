@@ -1,0 +1,13 @@
+{
+  "id": "SEO_PROTECTED_CONTRACT_CHECK",
+  "title": "Verify SEO changes do not alter protected product contracts",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "protected": [
+    "Tourvisor request/response behavior",
+    "search pricing and result logic",
+    "lead persistence/transport/field mapping",
+    "Yandex Metrika goals/counter mechanics"
+  ],
+  "policy": "Run targeted checks only when changed paths could plausibly touch a protected contract."
+}
