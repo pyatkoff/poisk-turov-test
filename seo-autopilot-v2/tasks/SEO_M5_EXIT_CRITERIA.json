@@ -1,0 +1,13 @@
+{
+  "id": "SEO_M5_EXIT_CRITERIA",
+  "title": "Expand indexable coverage only after controlled batches remain healthy",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "criteria": [
+    "batch rollout process proven",
+    "quality gate automated enough for scale",
+    "sitemaps/page registry synchronized",
+    "no major cannibalization/thin-page regressions",
+    "production monitoring catches contract drift"
+  ]
+}
