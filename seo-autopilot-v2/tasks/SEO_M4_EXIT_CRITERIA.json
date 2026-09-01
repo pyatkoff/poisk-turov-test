@@ -1,0 +1,14 @@
+{
+  "id": "SEO_M4_EXIT_CRITERIA",
+  "title": "Exit factual enrichment milestone after freshness and linking are reliable",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "criteria": [
+    "approved offer/price snapshot source",
+    "freshness/stale fallback",
+    "entity mapping stable",
+    "internal-link graph/orphan checks",
+    "structured data matches visible facts",
+    "no-offer state remains useful"
+  ]
+}
