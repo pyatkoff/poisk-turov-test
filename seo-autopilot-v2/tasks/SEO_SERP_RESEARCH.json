@@ -1,0 +1,16 @@
+{
+  "id": "SEO_SERP_RESEARCH",
+  "title": "Use live SERP evidence for landing decisions",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "goal": "Validate whether proposed landing families correspond to materially distinct search intent before publication.",
+  "evidence": [
+    "current result types",
+    "dominant page intent",
+    "query modifiers",
+    "competitor landing structures",
+    "SERP features",
+    "intent overlap between proposed page families"
+  ],
+  "rule": "SERP research informs architecture but does not justify copying competitor text or mass page generation."
+}
