@@ -1,7 +1,15 @@
 (function(){'use strict';
 function tourWord(n){var m=n%10,m100=n%100;return m===1&&m100!==11?'тур':m>=2&&m<=4&&(m100<12||m100>14)?'тура':'туров';}
+function removeLegacyTourHeading(tours){
+  Array.from(tours.children||[]).forEach(function(node){
+    if(node.classList&&node.classList.contains('search3-tour-list-head'))return;
+    var text=String(node.textContent||'').replace(/\s+/g,' ').trim();
+    if(/^Варианты тура\b/i.test(text))node.remove();
+  });
+}
 function prepareTourRows(tours){
   if(!tours)return;
+  removeLegacyTourHeading(tours);
   var rows=tours.querySelectorAll('.tour-row');
   rows.forEach(function(row){
     var btn=row.querySelector('.direct-tour');
@@ -9,7 +17,7 @@ function prepareTourRows(tours){
   });
   var old=tours.querySelector('.search3-tour-list-head');if(old)old.remove();
   var head=document.createElement('div');head.className='search3-tour-list-head';
-  head.innerHTML='<div><strong>Доступные туры</strong><span>Точные даты, питание, номер, оператор и актуальная цена</span></div><b>'+rows.length+' '+tourWord(rows.length)+'</b>';
+  head.innerHTML='<div><strong>Доступные туры</strong><span>Выберите конкретные даты, номер и питание</span></div><b>Все '+rows.length+'</b>';
   tours.insertBefore(head,tours.firstChild);
 }
 function enhanceCard(card){
