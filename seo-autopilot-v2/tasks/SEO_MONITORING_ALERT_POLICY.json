@@ -1,0 +1,19 @@
+{
+  "id": "SEO_MONITORING_ALERT_POLICY",
+  "title": "Alert only on meaningful SEO regressions",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "critical": [
+    "important page family becomes noindex/unavailable",
+    "canonical flips to wrong host/family",
+    "sitemap broadly breaks",
+    "mass 404/redirect regression"
+  ],
+  "normal": [
+    "isolated metadata duplication",
+    "orphan page",
+    "stale offer module",
+    "minor structured-data defect"
+  ],
+  "rule": "Avoid noisy alerts for harmless content churn."
+}
