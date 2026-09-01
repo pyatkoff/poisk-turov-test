@@ -1,0 +1,17 @@
+{
+  "id": "LEGACY_DOMAIN_CLEANUP",
+  "title": "Remove unintended legacy-domain SEO signals",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "goal": "Ensure SEO-facing links, canonicals, sitemap entries and metadata consistently use the approved production host.",
+  "checks": [
+    "canonical URLs",
+    "internal links",
+    "sitemaps",
+    "structured data URLs",
+    "Open Graph URLs",
+    "hardcoded anytour.online references",
+    "other historical hosts"
+  ],
+  "rule": "Do not rewrite intentionally external or historical references without evidence."
+}
