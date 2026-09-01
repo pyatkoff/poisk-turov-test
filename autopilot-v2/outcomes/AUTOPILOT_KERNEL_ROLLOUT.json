@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "task": "AUTOPILOT_KERNEL_ROLLOUT",
+  "status": "accepted",
+  "attempts": 1,
+  "changed_files": [
+    ".autopilot/README.md",
+    ".autopilot/task.example.json",
+    ".autopilot/outcome.example.json",
+    "autopilot-v2/controller.py",
+    "autopilot-v2/tasks/AUTOPILOT_KERNEL_ROLLOUT.json",
+    ".github/workflows/autopilot-v2-contract.yml",
+    "AGENTS.md",
+    "autopilot-v2/README.md"
+  ],
+  "verification": {
+    "controller_validate": "passed",
+    "controller_plan_max_3": "passed",
+    "github_actions_run": "33489637356"
+  },
+  "failure_class": null,
+  "remaining_risk": "The controller is intentionally minimal; product tasks still need explicit contracts before parallel dispatch."
+}
