@@ -15,7 +15,7 @@ concurrency:
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -120,24 +120,113 @@ jobs:
           code="$(curl -sSL -o /tmp/search3-preview.html -w '%{http_code}' --max-time 45 "$base/poisk-turov/")"
           echo "PREVIEW_HTTP=$code"
           test "$code" = "200"
-          grep -q '/_preview/search3/bundle-v1.php?type=css' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_CSS_BUNDLE'; exit 21; }
-          grep -q '/_preview/search3/search3-preview.css?v=2' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_PREVIEW_CSS'; exit 27; }
-          grep -q '/_preview/search3/search3-preview.js?v=2' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_PREVIEW_JS'; exit 28; }
-          grep -q '/_preview/search3/search3-results-preview.css?v=1' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_RESULTS_CSS'; exit 29; }
-          grep -q '/_preview/search3/search3-results-preview.js?v=1' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_RESULTS_JS'; exit 30; }
-          grep -q '/_preview/search3/search3-filter-rail-preview.css?v=1' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_FILTER_CSS'; exit 31; }
-          grep -q '/_preview/search3/search3-filter-rail-preview.js?v=1' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_FILTER_JS'; exit 32; }
-          grep -q '/_preview/search3/search3-mobile-filters.css?v=1' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_MOBILE_FILTER_CSS'; exit 33; }
-          grep -q '/_preview/search3/search3-mobile-filters.js?v=1' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_MOBILE_FILTER_JS'; exit 34; }
-          grep -q '/_preview/search3/search3-results-top.css?v=1' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_RESULTS_TOP_CSS'; exit 35; }
-          grep -q '/_preview/search3/search3-results-top.js?v=1' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_RESULTS_TOP_JS'; exit 36; }
-          grep -q '/_preview/search3/search3-selected-tour.css?v=2' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_SELECTED_TOUR_CSS'; exit 37; }
-          grep -q '/_preview/search3/search3-selected-tour-mobile.js?v=1' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_SELECTED_TOUR_MOBILE_JS'; exit 38; }
-          grep -q '/_preview/search3/api-v2.php' /tmp/search3-preview.html || { echo 'MISSING_PREVIEW_API_URL'; exit 22; }
+          grep -q '/_preview/search3/bundle-v1.php?type=css' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-preview.css?v=2' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-preview.js?v=2' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-results-preview.css?v=1' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-results-preview.js?v=1' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-filter-rail-preview.css?v=1' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-filter-rail-preview.js?v=1' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-mobile-filters.css?v=1' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-mobile-filters.js?v=1' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-results-top.css?v=1' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-results-top.js?v=1' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-selected-tour.css?v=2' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-selected-tour-mobile.js?v=1' /tmp/search3-preview.html
+          grep -q '/_preview/search3/api-v2.php' /tmp/search3-preview.html
           health_code="$(curl -sSL -o /tmp/search3-health.json -w '%{http_code}' --max-time 45 "$base/api-v2.php?action=health")"
           echo "HEALTH_HTTP=$health_code"
           test "$health_code" = "200"
-          grep -q 'tourvisor-direct' /tmp/search3-health.json || { echo 'HEALTH_MARKER_MISSING'; exit 23; }
+          grep -q 'tourvisor-direct' /tmp/search3-health.json
           headers="$(curl -sSI --max-time 30 "$base/poisk-turov/")"
-          printf '%s\n' "$headers" | grep -qi 'x-robots-tag: noindex, nofollow' || { echo 'NOINDEX_HEADER_MISSING'; exit 24; }
+          printf '%s\n' "$headers" | grep -qi 'x-robots-tag: noindex, nofollow'
           echo "SEARCH3_PREVIEW_OK $base/poisk-turov/"
+
+      - name: Install focused visual smoke browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Visual smoke Search 3 desktop and mobile
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p search3-visual-artifacts
+          cat > /tmp/search3-visual.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const url = 'https://anytoour.ru/_preview/search3/poisk-turov/';
+          const views = [['mobile-390',390,844],['desktop-1440',1440,1000]];
+          const fixture=[
+            {id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,picturelink:'',country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[
+              {id:'tour-901-a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'},roomType:'Standard Sea View',placement:'DBL',operator:{name:'ANEX'},isCharter:true},
+              {id:'tour-901-b',date:'12.09.2026',nights:9,price:142000,meal:{name:'Ультра всё включено'},roomType:'Deluxe',placement:'DBL',operator:{name:'PEGAS'},isCharter:false}
+            ]},
+            {id:902,name:'AnyTour Garden Hotel with a deliberately long responsive title',category:4,rating:4.4,seaDistance:650,price:98000,picturelink:'',country:{name:'Турция'},region:{name:'Аланья'},tours:[
+              {id:'tour-902-a',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'},roomType:'Family Room',placement:'2ADL',operator:{name:'Coral Travel'},isCharter:false}
+            ]}
+          ];
+          const visible = el => !!el && !el.hidden && getComputedStyle(el).display!=='none' && getComputedStyle(el).visibility!=='hidden';
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const report=[]; let failed=false;
+            for(const [name,width,height] of views){
+              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+              const page=await context.newPage(); const errors=[];
+              page.on('pageerror',e=>errors.push(String(e).slice(0,500)));
+              const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForTimeout(2500);
+              const initial=await page.evaluate(()=>({
+                search3:document.body.classList.contains('search3-preview'),
+                form:!!document.querySelector('#tourSearch'),
+                overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2
+              }));
+              await page.screenshot({path:`search3-visual-artifacts/${name}-initial.png`,fullPage:true});
+              await page.evaluate(data=>window.V2Results.render(data),fixture);
+              await page.waitForTimeout(300);
+              const results=await page.evaluate(()=>({
+                cards:document.querySelectorAll('#results .hotel-card').length,
+                actions:document.querySelectorAll('.search3-show-tours').length,
+                allToursHidden:[...document.querySelectorAll('#results .hotel-tours')].every(x=>x.hidden),
+                mobileFilters:(()=>{const x=document.querySelector('[data-s3-open-filters]');return !!x&&!x.hidden&&getComputedStyle(x).display!=='none';})(),
+                overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2
+              }));
+              await page.screenshot({path:`search3-visual-artifacts/${name}-results.png`,fullPage:true});
+              await page.locator('.search3-show-tours').first().click();
+              await page.waitForTimeout(200);
+              const chooser=await page.evaluate(()=>({
+                visible:(()=>{const x=document.querySelector('#results .hotel-card .hotel-tours');return !!x&&!x.hidden&&getComputedStyle(x).display!=='none';})(),
+                heading:!!document.querySelector('.search3-tour-chooser-head'),
+                rows:document.querySelectorAll('#results .hotel-card:first-child .tour-row').length,
+                cta:[...document.querySelectorAll('#results .hotel-card:first-child .direct-tour')].map(x=>x.textContent.trim()),
+                overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2
+              }));
+              await page.screenshot({path:`search3-visual-artifacts/${name}-tours.png`,fullPage:true});
+              let drawer=null;
+              if(width<=999){
+                await page.locator('[data-s3-open-filters]').click(); await page.waitForTimeout(150);
+                drawer=await page.evaluate(()=>({open:document.body.classList.contains('search3-filter-open'),dialog:document.querySelector('.results-filter-rail')?.getAttribute('role')==='dialog',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
+                await page.screenshot({path:`search3-visual-artifacts/${name}-filters.png`,fullPage:true});
+              }
+              const item={name,http:response?.status()||0,errors,initial,results,chooser,drawer}; report.push(item);
+              const bad=item.http!==200||errors.length||!initial.search3||!initial.form||initial.overflow||results.cards!==2||results.actions!==2||!results.allToursHidden||results.overflow||(width<=999?!results.mobileFilters:results.mobileFilters)||!chooser.visible||!chooser.heading||chooser.rows<1||chooser.cta.some(x=>x!=='Подробнее о туре')||chooser.overflow||(drawer&&(!drawer.open||!drawer.dialog||drawer.overflow));
+              if(bad)failed=true;
+              console.log('SEARCH3_VISUAL',JSON.stringify(item));
+              await context.close();
+            }
+            fs.writeFileSync('search3-visual-artifacts/report.json',JSON.stringify(report,null,2));
+            await browser.close(); if(failed)process.exit(1);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node /tmp/search3-visual.cjs
+
+      - name: Upload Search 3 visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-preview-visual-${{ github.run_number }}
+          path: search3-visual-artifacts/
+          retention-days: 7
