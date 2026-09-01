@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - 'autopilot-v2/**'
+      - '.autopilot/**'
+      - 'AGENTS.md'
       - '.github/workflows/autopilot-v2-contract.yml'
   push:
     branches: [feature/search-core]
     paths:
       - 'autopilot-v2/**'
+      - '.autopilot/**'
+      - 'AGENTS.md'
       - '.github/workflows/autopilot-v2-contract.yml'
   workflow_dispatch:
 
@@ -20,9 +24,11 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 2
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Validate JSON and lean policy
+      - name: Validate state and lean policy
         shell: bash
         run: |
           set -euo pipefail
@@ -39,5 +45,11 @@ jobs:
           assert state['mode'] in set(schema['properties']['mode']['enum'])
           assert state['active_task']['state'] in {'discovered','triaged','ready','coding','qa','visual_qa','deploy','production_qa','done','blocked'}
           assert schema['properties']['schema_version']['const']==2
-          print('AUTOPILOT_V2_CONTRACT_OK')
+          print('AUTOPILOT_V2_STATE_OK')
           PY
+      - name: Validate task controller
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 autopilot-v2/controller.py validate
+          python3 autopilot-v2/controller.py plan --max-writers 3
