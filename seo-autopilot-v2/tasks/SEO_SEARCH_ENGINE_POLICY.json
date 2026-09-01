@@ -1,0 +1,11 @@
+{
+  "id": "SEO_SEARCH_ENGINE_POLICY",
+  "title": "Use standards-based SEO contracts across search engines",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rules": [
+    "canonical/indexability/sitemap/structured-data contracts should be standards-based",
+    "engine-specific evidence may influence prioritization",
+    "do not break one engine intentionally to optimize superficial behavior in another without explicit evidence"
+  ]
+}
