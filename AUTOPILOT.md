@@ -47,15 +47,17 @@ PR #677 completed the production journey proof through the actual `Выбрат�
 
 PR #680 converged the homepage base benefit-grid owner with the already-canonical downstream DS2 alignment layer. The four `Поиск без сюрпризов` proof cards now declare four balanced desktop columns, two columns through tablet widths and an explicit `04` fallback marker for the fourth card. Review of the loaded CSS order confirmed `home-design-system-alignment-v1.css` remains the final runtime owner and already preserves the intended 4/2/1 geometry at wide/tablet/mobile widths, so this change removes contradictory fallback ownership rather than creating another visual system. All 10 PR checks completed successfully; search/Tourvisor, analytics/Metrika, logo, destinations and lead transport were untouched.
 
+PR #683 continued the public-route DS2 hierarchy pass across `/hot/` and `/contacts/`. On `/hot/`, hotel-category stars are grouped as one non-wrapping semantic label so the category marker cannot fragment star-by-star on narrow cards while the whole marker can still move below a long hotel name. On `/contacts/`, the two child cards inside the `Связаться и перейти к подбору` section now use `h3` beneath the section-level `h2`, restoring the same section/card heading hierarchy used by the rest of the editorial shell. All PR checks passed, including standalone five-width visual validation and search/selected-tour regression gates. Both `Deploy V2 only` and `Deploy anytoour.ru` completed successfully; V2 verification, public-page verification, unchanged lead-bridge validation and live-search smoke passed. Search/Tourvisor, analytics/Metrika, pricing, logo, verified destinations and lead transport were unchanged.
+
 The existing standalone-content visual owner already exercises `/country/`, `/country/turkey/` and a broad representative country set at 375/430/768/1024/1440, including shared header geometry, navigation, footer/community shell, overflow, CTA contrast/focus and selected screenshots. Do not create a duplicate country workflow merely to resample the same surfaces.
 
 ## Current resume point
 
-The live search journey through results → tour variant → selected-tour → return is production-stable at 768/1024/1440, and homepage DS2 base/final ownership is now internally aligned for the proof-card grid. Continue the public-route convergence pass with `/hot/` first, then `/contacts/`, `/how-to-buy/` and `/rb/`.
+The live search journey through results → tour variant → selected-tour → return is production-stable at 768/1024/1440. Homepage DS2 base/final ownership is internally aligned for the proof-card grid, and the latest public-route pass removed confirmed wrapping/hierarchy defects on `/hot/` and `/contacts/`. Continue the convergence pass with `/how-to-buy/` first, then `/rb/`.
 
-For each route, inspect existing 375/430/768/1024/1440 evidence and loaded CSS ownership before editing. Fix only confirmed hierarchy/spacing/wrapping/overflow/shared-shell issues in canonical owners. Preserve the short search handoff and do not make editorial surfaces as dense as the search application.
+Recheck `/hot/` and `/contacts/` in post-deploy five-width evidence, then for each remaining route inspect existing 375/430/768/1024/1440 evidence and loaded CSS ownership before editing. Fix only confirmed hierarchy/spacing/wrapping/overflow/shared-shell issues in canonical owners. Preserve the short search handoff and do not make editorial surfaces as dense as the search application.
 
-Keep the whole-product site-wide score at **7.1/10** until a broader visible product slice materially improves. Owner convergence or CI/evidence hardening alone is not a reason to raise it.
+Keep the whole-product site-wide score at **7.1/10** until a broader visible product slice materially improves. Two real public-route defects are now fixed, but this slice is still too narrow for a whole-site score increase.
 
 ## Mandatory protections
 
