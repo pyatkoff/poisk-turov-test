@@ -4,7 +4,11 @@
   "goal": "Prepare the AnyTour search redesign for implementation from approved mockups without polishing the outgoing visual system or changing protected search contracts. Map the approved screen flow into narrow implementation contracts so rollout can proceed screen-by-screen and parallelize only non-overlapping work.",
   "risk": "SAFE",
   "verification_class": "LOW",
-  "design_approval": "REQUIRED_BEFORE_MATERIAL_UI_IMPLEMENTATION",
+  "design_approval": {
+    "required": true,
+    "status": "approved",
+    "evidence": "AnyTour Design System 2.0 and the approved redesign direction are active; material implementation remains governed by each narrow task's own verification and visual QA."
+  },
   "owns_paths": [
     "autopilot-v2/tasks/"
   ],
