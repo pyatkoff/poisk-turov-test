@@ -1,0 +1,16 @@
+{
+  "id": "SEO_TOURVISOR_BATCH_RESEARCH",
+  "title": "Research safe batch offer collection for SEO snapshots",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Evaluate existing supported Tourvisor/search capabilities for efficient periodic factual offer snapshots without changing production search behavior.",
+  "questions": [
+    "supported hotel batch size",
+    "date-window semantics",
+    "rate/cost limits",
+    "stable hotel mapping",
+    "snapshot storage/freshness",
+    "failure/retry behavior"
+  ],
+  "rule": "This lane is research/data collection; it must not modify the live search contract implicitly."
+}
