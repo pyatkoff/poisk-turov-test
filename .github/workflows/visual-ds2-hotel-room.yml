@@ -1,0 +1,53 @@
+name: Visual DS2 hotel room
+
+on:
+  pull_request:
+    branches: [feature/search-core]
+    paths:
+      - 'v2/hotel-details-design.css'
+      - 'v2/room-details.css'
+      - '.github/workflows/visual-ds2-hotel-room.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hotel-room-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Playwright Chromium
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Build fixture
+        run: |
+          mkdir -p .visual-hotel-room artifacts-hotel-room
+          cat > .visual-hotel-room/index.html <<'HTML'
+          <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <link rel="stylesheet" href="/v2/design-system-v2.css"><link rel="stylesheet" href="/v2/hotel-details-design.css"><link rel="stylesheet" href="/v2/room-details.css">
+          <style>*,*::before,*::after{box-sizing:border-box}body{margin:0;background:var(--at-page);font-family:Arial,sans-serif}.fixture{width:min(980px,calc(100% - 32px));margin:24px auto}.hotel-card{padding:16px;border:1px solid var(--at-line);border-radius:var(--at-radius-lg);background:var(--at-surface)}</style></head><body><main class="fixture">
+          <section class="hotel-card"><h2>AnyTour Coast Resort & Spa</h2><div class="hotel-actions"><button class="hotel-info-toggle" aria-expanded="true">Об отеле</button><a class="hotel-map-link" href="#">На карте</a></div><div class="hotel-inline-detail"><div class="hotel-detail-inner"><div class="hotel-gallery"><div class="hotel-gallery-main"><div style="height:100%;display:grid;place-items:center;background:var(--at-soft-blue)">HOTEL PHOTO</div></div><div class="hotel-gallery-thumbs"><button class="hotel-gallery-thumb is-active"></button><button class="hotel-gallery-thumb"></button><button class="hotel-gallery-thumb"></button><button class="hotel-gallery-thumb"></button><button class="hotel-gallery-thumb"></button><button class="hotel-gallery-thumb"></button></div></div><div class="hotel-detail-facts"><div><span>Категория</span><b>5 звёзд</b></div><div><span>Рейтинг</span><b>4.8</b></div><div><span>До моря</span><b>120 м</b></div></div><section class="hotel-detail-section"><h4>Об отеле</h4><div class="hotel-detail-description"><p>Курортный отель у моря с семейной инфраструктурой.</p></div></section><div class="hotel-detail-tags"><div class="hotel-detail-tag-group"><strong>Подходит</strong><div><span>С детьми</span><span>Пляж</span><span>Спа</span></div></div></div></div></div></section>
+          <section class="room-details-host"><article class="room-detail-card"><div class="room-gallery"><div class="room-gallery-main"><div style="height:100%;display:grid;place-items:center;background:var(--at-soft-blue)">ROOM PHOTO</div></div><div class="room-gallery-thumbs"><button class="room-gallery-thumb is-active"></button><button class="room-gallery-thumb"></button><button class="room-gallery-thumb"></button></div></div><div class="room-detail-body"><div class="section-heading"><strong>Deluxe Sea View</strong><span>Номер с видом на море</span></div><div class="room-facts"><div><span>Площадь</span><b>34 м²</b></div><div><span>Гости</span><b>2+1</b></div><div><span>Кровать</span><b>King size</b></div><div><span>Вид</span><b>Море</b></div><div><span>Балкон</span><b>Есть</b></div></div><p class="room-comment">Комментарий к размещению без изменения данных тура.</p></div></article></section>
+          </main></body></html>
+          HTML
+      - name: Audit five widths
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/hotel-room-http.log 2>&1 &
+          pid=$!; trap 'kill $pid 2>/dev/null || true' EXIT
+          cat > hotel-room-visual.cjs <<'JS'
+          const {chromium}=require('playwright'),fs=require('fs');
+          const views=[['375',375,812],['430',430,932],['768',768,1024],['1024',1024,900],['1440',1440,1000]];
+          (async()=>{const b=await chromium.launch({headless:true});let failed=false,report=[];for(const [name,width,height] of views){const c=await b.newContext({viewport:{width,height}}),p=await c.newPage(),errors=[];p.on('pageerror',e=>errors.push(String(e)));const r=await p.goto('http://127.0.0.1:4173/.visual-hotel-room/index.html',{waitUntil:'networkidle'});const m=await p.evaluate(()=>{const rect=e=>e?.getBoundingClientRect();const info=document.querySelector('.hotel-info-toggle'),map=document.querySelector('.hotel-map-link'),h=document.querySelector('.hotel-inline-detail'),room=document.querySelector('.room-detail-card');return{overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,hotelRight:rect(h)?.right||0,roomRight:rect(room)?.right||0,viewport:innerWidth,infoH:rect(info)?.height||0,mapH:rect(map)?.height||0,hotelFacts:document.querySelectorAll('.hotel-detail-facts>div').length,roomFacts:document.querySelectorAll('.room-facts>div').length,hotelThumbs:document.querySelectorAll('.hotel-gallery-thumb').length,roomThumbs:document.querySelectorAll('.room-gallery-thumb').length}});const bad=r?.status()!==200||errors.length||m.overflow||m.hotelRight>m.viewport+2||m.roomRight>m.viewport+2||m.infoH<42||m.mapH<42||m.hotelFacts!==3||m.roomFacts!==5||m.hotelThumbs!==6||m.roomThumbs!==3;report.push({name,width,http:r?.status(),errors,m,bad});if(bad)failed=true;await p.screenshot({path:`artifacts-hotel-room/${name}.png`,fullPage:true});await c.close();}fs.writeFileSync('artifacts-hotel-room/report.json',JSON.stringify(report,null,2));await b.close();if(failed)process.exit(1)})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node hotel-room-visual.cjs
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ds2-hotel-room-${{ github.event.pull_request.number || github.run_id }}
+          path: artifacts-hotel-room/
+          retention-days: 14
