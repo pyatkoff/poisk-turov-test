@@ -2,15 +2,15 @@
 /**
  * Editorial SEO pilot: Kemer, Turkey.
  *
- * Deliberately review-only. This record does not enable indexing,
- * emit sitemap entries, or invent live prices/availability.
+ * Approved editorial candidate. This record does not by itself enable indexing
+ * or sitemap emission; production launch still depends on the global SEO gate.
  * Dynamic commercial facts belong to the approved SEO offer snapshot layer.
  */
 function v2_seo_content_pilot_kemer(): array
 {
     return [
         'id' => 'resort.kemer.v1',
-        'status' => 'review',
+        'status' => 'approved',
         'path' => '/country/turkey/kemer/',
         'type' => 'resort',
         'data' => [
@@ -80,7 +80,8 @@ function v2_seo_content_pilot_kemer(): array
             'Stable editorial copy only; live price/date/availability claims are prohibited here.',
             'Destination facts were checked against official GoTürkiye material before drafting.',
             'Tourvisor-backed production catalog verification: country_id=4, region_id=22, region_name=Кемер.',
-            'Keep status=review until live offer snapshot binding and representative runtime handoff are verified.',
+            'Live runtime verification confirmed HTTP 200, canonical, noindex, country=4&region=22 handoff and a fresh offer snapshot block.',
+            'Approved editorial state still does not enable indexing or sitemap emission without the separate production launch gate.',
         ],
     ];
 }
