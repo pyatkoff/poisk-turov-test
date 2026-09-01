@@ -1,27 +1,21 @@
 <?php
-/** Ordered active V2 browser assets. Business/runtime JS stays intact; legacy visual skins are excluded from the DS2 preview. */
+/**
+ * DS2 preview bundle.
+ * Keep runtime/business JS intact, but isolate the redesign from legacy visual CSS.
+ * Old skins were fighting the approved layout and are intentionally not loaded here.
+ */
 function v2_bundle_manifest(): array
 {
     return [
         'css' => [
+            /* Minimal base needed by existing controls/runtime. */
             'design-system-v2.css',
-            'app.css',
-            'enhancements.css',
-            'room-details.css',
-            'selected-tour-ux.css',
-            'search-states-design.css',
+
+            /* Current approved DS2 screens only. */
             'results-experience-v1.css',
-            'conversion-confidence-v1.css',
             'checkout-experience-v1.css',
-            'mobile-results-filters-v1.css',
-            'search-progress-ux-v1.css',
-            'search-dirty-ux-v1.css',
-            'mobile-search-summary-v1.css',
-            'search-filters-ux-v1.css',
             'site-footer-v1.css',
-            'results-layout-guard-v1.css',
             'anytour-checkout-brand.css',
-            /* Approved AnyTour DS2 authority. */
             'approved-anytour-redesign-v1.css',
             'ds2-first-screen-fix.css',
             'ds2-results-layout-fix.css',
