@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "task": "DS2_NARROW_RELEASE_PLAN",
+  "status": "accepted",
+  "attempts": 1,
+  "changed_files": [
+    "autopilot-v2/outcomes/DS2_NARROW_RELEASE_PLAN.json"
+  ],
+  "verification": {
+    "inventory": "Hotel/room, selected-tour and post-success lead handoff are already released narrowly to main via #739/#743/#745. Remaining Search 2.0 uses ds2-search.css, search-redesign-v2.js and ds2-results-filters.js on feature/search-core while current main still uses the older bundle/index composition.",
+    "ownership": "PR #748 repaired Search 2.0 ownership to active ds2-search.css; PR #755 added the missing active ds2-results-filters.js dependency.",
+    "footer": "PR #742 restored factual footer content and >=44px primary mobile community/app targets; PR #751 made the existing five-width gate render the real site-footer-v1.php component and the corrected 375/430/768/1024/1440 gate is green.",
+    "release_slice_1": "SEARCH2_DORMANT_ASSETS (SAFE): add only v2/ds2-search.css, v2/search-redesign-v2.js and v2/ds2-results-filters.js to current main without referencing them yet. Gates: Fast CI + Security guard. No runtime path changes.",
+    "release_slice_2": "SEARCH2_ACTIVATION_AND_FACTUAL_FOOTER (MEDIUM), dependent on slice 1: rebuild v2/index.php, v2/bundle-manifest-v1.php and v2/site-footer-v1.php against current main instead of copying feature/search-core wholesale. Activate accepted CSS/JS and factual footer while preserving newer main search lifecycle, stale protection, selected-tour price/fuel, Metrika and lead behavior. Gates: Fast CI, Security, targeted search browser QA, selected-tour smoke, 375/1440 visual QA plus breakpoint widths only if affected, then Deploy anytoour.ru + Production smoke.",
+    "protected_contracts": "Explicitly excluded: bulk feature/search-core merge/cherry-pick, Yandex Metrika/goals, external lead transport/field mapping, Tourvisor API/search contract changes, pricing semantics, AnyTour logo, neighboring projects and retired broad CI matrices."
+  },
+  "failure_class": null,
+  "remaining_risk": "Search 2.0 activation remains user-facing MEDIUM work because current main and feature/search-core have materially different index/bundle composition. Next safe action is SEARCH2_DORMANT_ASSETS on current main; activation must wait for that slice to be green."
+}
