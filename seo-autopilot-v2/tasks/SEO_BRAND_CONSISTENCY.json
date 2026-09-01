@@ -1,0 +1,13 @@
+{
+  "id": "SEO_BRAND_CONSISTENCY",
+  "title": "Keep AnyTour brand identity consistent across SEO pages",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "brand spelling",
+    "production domain",
+    "approved logo/header/footer",
+    "Design System 2.0",
+    "no stale AnyTour Design System 1.0 implementation references"
+  ]
+}
