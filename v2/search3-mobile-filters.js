@@ -3,6 +3,9 @@ var form=document.getElementById('tourSearch'),rail=document.querySelector('.res
 if(!form||!rail||!layout||!tools)return;
 var mq=window.matchMedia('(max-width:999px)');
 var hasResults=false;
+function suppressLegacy(){document.querySelectorAll('.mrf-bar,.mrf-sheet').forEach(function(el){el.hidden=true;el.setAttribute('aria-hidden','true');el.style.setProperty('display','none','important');});}
+suppressLegacy();
+if(window.MutationObserver){new MutationObserver(function(){suppressLegacy();}).observe(document.body,{childList:true,subtree:true});}
 var toolbar=document.createElement('div');toolbar.className='search3-mobile-toolbar';toolbar.innerHTML='<button type="button" class="search3-mobile-filter-button" data-s3-open-filters>Фильтры <b data-s3-mobile-count></b></button><div class="search3-active-chips" data-s3-active-chips aria-label="Активные параметры поиска"></div>';
 layout.parentNode.insertBefore(toolbar,layout);
 var overlay=document.createElement('div');overlay.className='search3-filter-overlay';overlay.hidden=true;overlay.innerHTML='<button type="button" class="search3-filter-overlay__backdrop" data-s3-close-filters aria-label="Закрыть фильтры"></button>';
@@ -16,9 +19,9 @@ function open(){if(!mq.matches||!hasResults)return;document.body.classList.add('
 function close(){document.body.classList.remove('search3-filter-open');overlay.hidden=true;rail.removeAttribute('aria-modal');rail.removeAttribute('role');}
 document.addEventListener('click',function(e){var openBtn=e.target.closest('[data-s3-open-filters]');if(openBtn){open();return;}if(e.target.closest('[data-s3-close-filters]')){close();return;}var clear=e.target.closest('[data-s3-clear]');if(!clear)return;var name=clear.dataset.s3Clear,el=form.elements[name];if(!el)return;if(el.type==='checkbox')el.checked=false;else el.value='';el.dispatchEvent(new Event('change',{bubbles:true}));renderChips();if(typeof form.requestSubmit==='function')form.requestSubmit();else form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.classList.contains('search3-filter-open'))close();});
-window.addEventListener('v2:results-rendered',function(e){var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];hasResults=items.length>0;renderChips();syncToolbarVisibility();setTimeout(updateCounts,0);});
+window.addEventListener('v2:results-rendered',function(e){var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];hasResults=items.length>0;suppressLegacy();renderChips();syncToolbarVisibility();setTimeout(function(){suppressLegacy();updateCounts();},0);});
 window.addEventListener('search3:result-filters-changed',function(e){updateCounts(e&&e.detail||{});});
-window.addEventListener('v2:search-reset',function(){hasResults=false;close();renderChips();updateCounts({activeCount:0});syncToolbarVisibility();});
+window.addEventListener('v2:search-reset',function(){hasResults=false;close();suppressLegacy();renderChips();updateCounts({activeCount:0});syncToolbarVisibility();});
 if(typeof mq.addEventListener==='function')mq.addEventListener('change',function(){if(!mq.matches)close();syncToolbarVisibility();});else if(typeof mq.addListener==='function')mq.addListener(function(){if(!mq.matches)close();syncToolbarVisibility();});
 if(summary)summary.insertAdjacentElement('afterend',toolbar);renderChips();updateCounts();syncToolbarVisibility();
 })();
