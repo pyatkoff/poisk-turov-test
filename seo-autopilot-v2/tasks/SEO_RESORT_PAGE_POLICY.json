@@ -1,0 +1,14 @@
+{
+  "id": "SEO_RESORT_PAGE_POLICY",
+  "title": "Define resort landing eligibility and value",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "eligibility": [
+    "stable resort identity and country relationship",
+    "distinct travel/search intent",
+    "useful factual destination content",
+    "hotel/offer/navigation value where available",
+    "unique canonical route",
+    "page quality gate passes"
+  ]
+}
