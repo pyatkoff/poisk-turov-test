@@ -48,4 +48,6 @@
   .sp-card,.sp-row,.sp-step{max-width:100%}
   .sp-actions>a,.sp-actions>button,.at-home-search button,.at-home-search__more{white-space:normal;text-align:center}
   .at-home-direction,.at-home-benefit{max-width:100%}
+  .sp-breadcrumbs .sp-wrap{overflow:visible;flex-wrap:wrap;align-content:center;row-gap:0;padding-block:6px}
+  .sp-breadcrumbs span[aria-current=page]{flex:1 1 180px;overflow:visible;text-overflow:clip;white-space:normal;line-height:1.35;overflow-wrap:anywhere}
 }
