@@ -1,0 +1,14 @@
+{
+  "id": "SEO_ROADMAP_MILESTONES",
+  "title": "Track SEO2 by outcomes rather than task count",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "milestones": [
+    "M1 authoritative inventory and critical technical defects",
+    "M2 canonical page-family architecture and semantic map",
+    "M3 first DS2 country/resort/hotel template pilot",
+    "M4 factual offer/price enrichment and internal-link graph",
+    "M5 controlled landing expansion",
+    "M6 monitoring, external evidence and continuous optimization"
+  ]
+}
