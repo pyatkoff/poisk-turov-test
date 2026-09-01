@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "task": "REDESIGN_HOTEL_TOUR_SELECTION",
-  "status": "shipped",
+  "status": "accepted",
   "attempts": 1,
   "changed_files": [
     "v2/hotel-details-design.css",
@@ -10,6 +10,7 @@
   "verification": {
     "implementation_pull_request": "#736 merged into feature/search-core",
     "behavior_gate_pull_request": "#737 merged into feature/search-core",
+    "production_release_status": "SHIPPED",
     "production_release_pull_request": "#739 merged into main at 3d49be1e0224d274f27a515d6e5d5b05c0798e86",
     "fast_ci": "success",
     "security_guard": "success",
