@@ -26,10 +26,6 @@ on:
       - 'v2/country/**'
       - 'v2/country-page-v1.php'
       - '.github/workflows/visual-standalone-content-live.yml'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/visual-standalone-content-live.yml'
   workflow_run:
     workflows: ['Deploy anytoour.ru']
     types: [completed]
