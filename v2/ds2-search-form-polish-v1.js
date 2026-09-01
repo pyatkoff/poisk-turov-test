@@ -43,6 +43,17 @@ function enhanceNights(main){
   sync();
   return true;
 }
+function tuneQuickStars(stars){
+  if(!stars||stars.dataset.ds2QuickLabels==='1')return;
+  stars.dataset.ds2QuickLabels='1';
+  var title=stars.querySelector(':scope > span');
+  if(title){title.textContent='Быстрый выбор';title.classList.add('v2-visually-hidden');}
+  var labels={'':'Все варианты','2':'2★+','3':'3★+','4':'4★+','5':'5★ отели'};
+  stars.querySelectorAll('.stars-choice').forEach(function(btn){
+    var value=String(btn.dataset.value||'');
+    if(Object.prototype.hasOwnProperty.call(labels,value))btn.textContent=labels[value];
+  });
+}
 function arrange(){
   var main=form.querySelector('.main-fields');
   if(!main)return false;
@@ -50,8 +61,7 @@ function arrange(){
   var nights=main.querySelector('.nights-ux');
   if(!stars||!nights)return false;
   stars.classList.add('ds2-search-quick-stars');
-  var title=stars.querySelector(':scope > span');
-  if(title)title.textContent='Быстрый выбор';
+  tuneQuickStars(stars);
   main.insertAdjacentElement('afterend',stars);
   enhanceNights(main);
   return true;
