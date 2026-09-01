@@ -1,0 +1,12 @@
+{
+  "id": "SEO_SECURITY_BOUNDARY",
+  "title": "Keep SEO discovery limited to intended public surfaces",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "rules": [
+    "do not expose admin/debug/private paths for SEO",
+    "do not place secrets or private operational data in generated metadata/sitemaps",
+    "inventory public SEO routes separately from internal tooling",
+    "robots.txt is not an access-control mechanism"
+  ]
+}
