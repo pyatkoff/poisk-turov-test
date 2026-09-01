@@ -1,0 +1,19 @@
+{
+  "id": "DUPLICATION_CANNIBALIZATION",
+  "title": "Detect duplicate and cannibalizing SEO surfaces",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "same intent across multiple canonical URLs",
+    "near-identical template pages",
+    "legacy/current domain duplicates",
+    "parameter duplicates",
+    "conflicting country/resort/hotel intent",
+    "duplicate metadata as a symptom"
+  ],
+  "outputs": [
+    "keep/merge/noindex/canonical/redirect recommendation",
+    "SAFE repair candidates",
+    "MEDIUM migration candidates"
+  ]
+}
