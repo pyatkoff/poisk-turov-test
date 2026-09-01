@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "project": "AnyTour SEO Autopilot 2.0",
+  "base_branch": "feature/seo-autopilot-2",
+  "status": "ACTIVE",
+  "active_task": "SEO_INVENTORY",
+  "priority_order": [
+    "SEO_INVENTORY",
+    "INDEXABILITY_CANONICAL",
+    "SITEMAP_ROBOTS",
+    "META_H1_CONTRACT",
+    "DUPLICATION_CANNIBALIZATION",
+    "LANDING_ARCHITECTURE",
+    "INTERNAL_LINKING",
+    "OFFER_PRICE_DATA",
+    "STRUCTURED_DATA",
+    "CONTENT_QUALITY",
+    "SEO_MONITORING"
+  ],
+  "protected_boundaries": [
+    "tourvisor_contract",
+    "search_business_logic",
+    "pricing_logic",
+    "lead_transport_and_persistence",
+    "yandex_metrika_goals_and_counter_behavior",
+    "unrelated_product_ux"
+  ],
+  "design_system": "AnyTour Design System 2.0",
+  "release_policy": {
+    "safe": "autonomous narrow PR",
+    "medium": "plan and evidence gate",
+    "high": "explicit approval before release"
+  }
+}
