@@ -1,0 +1,18 @@
+{
+  "id": "SEO_LANDING_COMPONENT_OWNERSHIP",
+  "title": "Define which landing components are SEO-owned versus shared",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "seo_owned_candidates": [
+    "destination intro/content blocks",
+    "SEO breadcrumbs configuration",
+    "related destination/hotel modules",
+    "factual offer snapshot presentation adapters"
+  ],
+  "shared": [
+    "header/footer",
+    "core DS2 tokens",
+    "tour search",
+    "lead flow"
+  ]
+}
