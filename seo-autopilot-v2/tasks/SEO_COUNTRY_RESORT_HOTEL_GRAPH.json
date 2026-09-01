@@ -1,0 +1,19 @@
+{
+  "id": "SEO_COUNTRY_RESORT_HOTEL_GRAPH",
+  "title": "Model country resort and hotel entities for SEO",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Create a stable factual entity graph that supports landing hierarchy, breadcrumbs, internal linking and reusable content/data blocks.",
+  "entities": [
+    "country",
+    "resort",
+    "hotel"
+  ],
+  "relationships": [
+    "country contains resort",
+    "resort contains hotel",
+    "hotel belongs to country/resort",
+    "related destinations based on factual taxonomy rather than keyword similarity alone"
+  ],
+  "rule": "Prefer stable IDs and factual taxonomy over parsing names from URLs."
+}
