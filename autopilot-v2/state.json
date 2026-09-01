@@ -2,48 +2,45 @@
   "schema_version": 2,
   "mode": "active_pilot",
   "active_task": {
-    "id": "REDESIGN_HOTEL_TOUR_SELECTION",
-    "title": "Implement approved AnyTour DS2 hotel and room hierarchy",
+    "id": "REDESIGN_SELECTED_TOUR",
+    "title": "Implement approved AnyTour DS2 selected-tour and flight hierarchy",
     "area": "results-tour",
     "risk": "MEDIUM",
-    "state": "visual_qa",
-    "owner": "visual_qa",
+    "state": "ready",
+    "owner": "developer",
     "required_gates": [
       "Fast CI",
       "Security guard",
+      "browser QA for room/flight switching and price refresh",
       "targeted visual QA at 375px and 1440px before merge"
     ],
     "evidence": [
-      "P0/P1 search filter architecture remains DONE_AWAITING_PRODUCTION_EVIDENCE; local narrowing does not restart Tourvisor when the loaded payload is complete for that filter.",
-      "Selected-tour end-to-end remains DONE_AWAITING_PRODUCTION_EVIDENCE after stale reset, flight price/fuel reset and roomType/placement normalization fixes.",
-      "Targeted production verification remains BLOCKED_EXTERNAL; prior DNS/browser environment failure is not treated as a product defect.",
-      "PR #702 was closed without merge as a duplicate/superseded header implementation.",
-      "PR #703 implements the approved DS2 header/shared shell; Fast CI and Security guard are green and merge is held only for required 375/1440 visual QA.",
-      "PR #704 implements approved DS2 loading/empty/error/recovery presentation; Fast CI and Security guard are green and merge is held only for required visual/browser QA.",
-      "PR #705 repaired REDESIGN_HOTEL_TOUR_SELECTION owns_paths from nonexistent placeholders to the active runtime files and merged as 3f7cb78f27731fcb3fd445f4ea80ca7e7362d54a.",
-      "PR #706 restyles active hotel detail and room detail presentation on DS2 tokens without JS/search/pricing/lead changes; Fast CI and Security guard are green and required visual QA is pending.",
-      "Result-level tour rows remain untouched because they belong to the separately approval-gated revised Search 2.0/Search Results lane.",
-      "REDESIGN_SELECTED_TOUR contract still references placeholder/nonexistent files and must be repaired before implementation without overlapping an active writer ownership boundary.",
-      "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
+      "SEARCH_RESULTS_FILTER_ARCHITECTURE remains DONE_AWAITING_PRODUCTION_EVIDENCE; local narrowing is restricted to payload-complete hotel fields while incomplete constraints remain server-side.",
+      "RESULTS_DEPTH_100 remains DONE_AWAITING_PRODUCTION_EVIDENCE after PR #656.",
+      "SELECTED_TOUR_END_TO_END remains DONE_AWAITING_PRODUCTION_EVIDENCE after stale reset, room normalization and flight/fuel price fixes.",
+      "PR #708 recorded explicit owner approval of the full new design and merged as 3b8e222a59b275aef376a4565cd1035283b81ffb.",
+      "Search 2.0 workspace presentation is now present on feature/search-core via commits dbe158d86d990a75dc7c177107abc25ec1005084, f28aec5626cdcbdd7525353bc3e24be3eabc6494 and 20a38015738d12dc641691a408e4614255b60e44; Tourvisor/local-filter/progressive/lead contracts were not changed by that layer.",
+      "PR #703 header, #704 loading/recovery and #706 hotel/room remain code-green but held for required targeted visual QA.",
+      "PR #709 repaired REDESIGN_SELECTED_TOUR ownership to active runtime files and merged as 91603da6ed554d629570b792debf6df532d23870; Security guard and Autopilot V2 contract checks passed.",
+      "HIGH-risk Metrika, external lead transport and protected contracts remain untouched."
     ],
     "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
   },
   "queue": [
-    {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","reason":"Payload completeness boundary is explicit; simple local narrowing does not restart Tourvisor."},
+    {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE"},
     {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
     {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":666,"merge_sha":"ee34c881de396b734f86807c975a5821ba2ca06b"},
     {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE"},
-    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"BLOCKED_EXTERNAL","reason":"Retry only a narrow live probe when DNS/browser access permits."},
-    {"id":"DESIGN_SYSTEM_2_UNIFICATION","priority":2,"status":"PAUSED_FOR_REDESIGN","pr":692,"merge_sha":"5ab134908401ac327f319f1c5fd070aec94d6e40"},
+    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"BLOCKED_EXTERNAL"},
     {"id":"NEW_DESIGN_IMPLEMENTATION_PREP","priority":2,"status":"DONE","pr":700,"merge_sha":"1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c"},
-    {"id":"REDESIGN_HEADER_SHELL","priority":2,"status":"READY_AWAITING_VISUAL_QA","pr":703,"head_sha":"e486e199a843b6a35ac8ce8fc872559699d2574d","reason":"Fast CI + Security guard green; required 375/1440 visual QA unavailable in current environment."},
-    {"id":"SEARCH_2_0_MOCKUP_APPROVAL","priority":2,"status":"APPROVAL_REQUIRED","reason":"Do not infer implementation approval from general autonomous-development commands; revised search/results UI remains explicitly gated in current contract."},
-    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"WAITING_APPROVAL","reason":"Depends on SEARCH_2_0_MOCKUP_APPROVAL and must preserve Tourvisor/local-filter/progressive/stale-state contracts."},
-    {"id":"REDESIGN_LOADING_RECOVERY","priority":2,"status":"READY_AWAITING_VISUAL_QA","pr":704,"head_sha":"e3ec3ecbec5348d3d9cdc5db72722b1e7682ba39","reason":"Fast CI + Security guard green; lifecycle/searchId behavior unchanged."},
-    {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"ACTIVE_AWAITING_VISUAL_QA","contract_pr":705,"contract_merge_sha":"3f7cb78f27731fcb3fd445f4ea80ca7e7362d54a","pr":706,"head_sha":"4f6481be93c2e34ca1796bd94ba2892c94b743d8","reason":"Active hotel/room runtime presentation updated; Fast CI + Security guard green; result-level tour rows remain approval-gated with Search Results."},
-    {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"BLOCKED_CONTRACT_REPAIR","reason":"Current task owns placeholder/nonexistent selected-tour/flight files; repair ownership against active runtime before implementation and avoid overlap with active hotel/tour writer paths."},
-    {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"QUEUED_AFTER_SELECTED_TOUR","reason":"Approved lead success/retry and MAX/Telegram continuation; external lead transport/field mapping stays unchanged."},
-    {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"QUEUED","reason":"Approved factual footer only: MAX, Telegram, VK, App Store, Google Play, existing legal links and MasterCard/Visa/Мир."},
+    {"id":"SEARCH_2_0_MOCKUP_APPROVAL","priority":2,"status":"DONE","pr":708,"merge_sha":"3b8e222a59b275aef376a4565cd1035283b81ffb"},
+    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"IMPLEMENTED_AWAITING_TARGETED_QA","head_sha":"20a38015738d12dc641691a408e4614255b60e44"},
+    {"id":"REDESIGN_HEADER_SHELL","priority":2,"status":"READY_AWAITING_VISUAL_QA","pr":703},
+    {"id":"REDESIGN_LOADING_RECOVERY","priority":2,"status":"READY_AWAITING_VISUAL_QA","pr":704},
+    {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"ACTIVE_AWAITING_VISUAL_QA","pr":706},
+    {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"READY","contract_pr":709,"contract_merge_sha":"91603da6ed554d629570b792debf6df532d23870"},
+    {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"QUEUED_AFTER_SELECTED_TOUR"},
+    {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"QUEUED"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"QUEUED"},
     {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"QUEUED"},
     {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED"},
@@ -53,14 +50,12 @@
   ],
   "last_signal": {
     "source": "redesign_implementation_progress",
-    "status": "HEADER_LOADING_HOTEL_ROOM_CODE_GREEN_VISUAL_QA_BLOCKED_CONTINUE_INDEPENDENT_SAFE_WORK",
-    "sha": "3f7cb78f27731fcb3fd445f4ea80ca7e7362d54a"
+    "status": "SEARCH2_APPROVED_AND_LOADED_SELECTED_TOUR_CONTRACT_REPAIRED_CONTINUE_SELECTED_TOUR",
+    "sha": "91603da6ed554d629570b792debf6df532d23870"
   },
   "blocked": [
-    {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe from an environment with working DNS; continue independent safe product work."},
-    {"scope":"user-facing redesign PRs #703, #704 and #706","type":"external_visual_qa","reason":"Their task contracts require browser/375px/1440px visual evidence before merge, but the current execution environment has no usable browser/live visual path.","action":"Keep code and green CI evidence; do not merge until targeted visual evidence can be collected."},
-    {"scope":"revised Search 2.0 implementation","type":"approval_gate","reason":"Newest corrected search/results/filter mockup remains explicitly approval-gated in state.","action":"Do not implement REDESIGN_SEARCH_RESULTS until SEARCH_2_0_MOCKUP_APPROVAL is accepted."},
-    {"scope":"REDESIGN_SELECTED_TOUR implementation","type":"task_contract","reason":"Task owns placeholder/nonexistent files and requires ownership repair against active runtime before coding.","action":"Repair the contract in a SAFE slice after ensuring its owns_paths do not overlap an active writer lane."},
-    {"scope":"bulk DS2 integration from main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core with unrelated product/workflow changes mixed in.","action":"Do not bulk merge/cherry-pick main; port only narrowly justified changes."}
+    {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe when live access is available; do not classify DNS/runner failure as a product defect."},
+    {"scope":"user-facing redesign visual gates","type":"external_visual_qa","reason":"PRs #703, #704 and #706 require targeted 375/1440 browser evidence before merge and that evidence is not currently available through this execution path.","action":"Keep green code and continue independent redesign lanes; merge only after targeted visual evidence."},
+    {"scope":"bulk integration from main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core with unrelated work mixed in.","action":"Do not bulk merge/cherry-pick main; port only narrowly justified changes."}
   ]
 }
