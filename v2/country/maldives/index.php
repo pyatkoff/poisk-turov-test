@@ -22,5 +22,7 @@ cp_render([
     'editorialSections' => $data['sections'] ?? [],
     'hotelTourLinks' => [
         ['label' => 'Туры в Kurumba Maldives', 'href' => '/country/maldives/hotel/kurumba-maldives-2461/'],
+        ['label' => 'Туры в Kandima Maldives', 'href' => '/country/maldives/hotel/kandima-maldives-49820/'],
+        ['label' => 'Туры в Sheraton Maldives Full Moon Resort & Spa', 'href' => '/country/maldives/hotel/sheraton-maldives-full-moon-resort-spa-2479/'],
     ],
 ]);
