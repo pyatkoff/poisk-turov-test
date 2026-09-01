@@ -1,0 +1,14 @@
+{
+  "id": "SEO_M2_EXIT_CRITERIA",
+  "title": "Exit architecture milestone only with intent and canonical contracts",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "criteria": [
+    "semantic/intent map for priority demand",
+    "country/resort/hotel hierarchy defined",
+    "URL/canonical/indexation policy per family",
+    "parameter/facet policy",
+    "internal-link/breadcrumb architecture",
+    "thin/cannibalization safeguards"
+  ]
+}
