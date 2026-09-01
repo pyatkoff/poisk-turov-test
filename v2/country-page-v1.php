@@ -42,6 +42,14 @@ function cp_render(array $page): void
     $resorts = array_values(array_filter((array)($page['resorts'] ?? [])));
     $facts = array_values(array_filter((array)($page['facts'] ?? [])));
     $editorialSections = array_values(array_filter((array)($page['editorialSections'] ?? []), 'is_array'));
+    $hotelTourLinks = [];
+    foreach ((array)($page['hotelTourLinks'] ?? []) as $link) {
+        if (!is_array($link)) continue;
+        $label = trim((string)($link['label'] ?? ''));
+        $href = trim((string)($link['href'] ?? ''));
+        if ($label === '' || !preg_match('#^/country/[a-z0-9-]+/hotel/[a-z0-9-]+/$#', $href)) continue;
+        $hotelTourLinks[$href] = $label;
+    }
     $relatedDestinations = cp_related_destinations($slug);
     $countryId = isset($page['countryId']) ? (int)$page['countryId'] : 0;
     $searchHref = '/poisk-turov/' . ($countryId > 0 ? '?country=' . $countryId : '');
@@ -57,6 +65,7 @@ function cp_render(array $page): void
       </section>
       <?php if ($facts): ?><section aria-labelledby="country-guide-title"><div class="sp-section-head"><h2 id="country-guide-title">Что важно при выборе</h2><p>Короткие ориентиры перед тем, как сравнивать отели, даты и конкретные варианты тура.</p></div><div class="sp-grid sp-grid--balanced-three"><?php foreach ($facts as $fact): ?><article class="sp-card"><h3><?=sp_e((string)($fact['title'] ?? 'Важно знать'))?></h3><p><?=sp_e((string)($fact['text'] ?? ''))?></p></article><?php endforeach; ?></div></section><?php endif; ?>
       <?php foreach ($editorialSections as $section): $sectionTitle=trim((string)($section['title']??'')); $paragraphs=array_values(array_filter(array_map(fn($p)=>trim((string)$p),(array)($section['paragraphs']??[])))); if($sectionTitle===''||!$paragraphs) continue; ?><section class="sp-card"><h2><?=sp_e($sectionTitle)?></h2><?php foreach($paragraphs as $paragraph): ?><p><?=sp_e($paragraph)?></p><?php endforeach; ?></section><?php endforeach; ?>
+      <?php if ($hotelTourLinks): ?><section class="sp-card" data-hotel-tour-links><h2>Туры в отели</h2><p>Перейдите на страницу конкретного отеля, чтобы посмотреть свежие пакетные предложения и продолжить подбор с уже выбранным отелем.</p><div class="sp-actions"><?php foreach ($hotelTourLinks as $href=>$label): ?><a class="sp-secondary" href="<?=sp_e($href)?>"><?=sp_e($label)?></a><?php endforeach; ?></div></section><?php endif; ?>
       <?php if ($relatedDestinations): ?><section aria-labelledby="country-related-title" data-related-destinations><div class="sp-section-head"><h2 id="country-related-title">Сравните похожие направления</h2><p>Если даты или формат отдыха ещё не окончательные, посмотрите несколько альтернатив и затем сравните живые предложения в общем поиске.</p></div><div class="sp-country-grid sp-country-grid--related"><?php foreach ($relatedDestinations as [$relatedName,$relatedHref,$relatedNote]): ?><a class="sp-country" href="<?=sp_e($relatedHref)?>"><span><?=sp_e($relatedName)?></span><small><?=sp_e($relatedNote)?></small><span class="sp-country-action">Открыть направление</span></a><?php endforeach; ?></div></section><?php endif; ?>
     </main>
     <?php sp_end($c);
