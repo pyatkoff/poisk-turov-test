@@ -2,125 +2,170 @@
   "schema_version": 2,
   "mode": "active_pilot",
   "active_task": {
-    "id": "DESIGN_SYSTEM_2_UNIFICATION",
-    "title": "Unify search shell under AnyTour Design System 2.0",
-    "area": "ux-qa",
-    "risk": "SAFE",
+    "id": "REDESIGN_HEADER_SHELL",
+    "title": "Implement approved AnyTour DS2 header/shared shell",
+    "area": "ux-implementation",
+    "risk": "MEDIUM",
     "state": "triaged",
     "owner": "qa",
     "required_gates": [
-      "Fast CI only if a concrete product-code fix is created",
-      "targeted visual QA for user-facing affected route/state",
-      "Deploy + Production smoke only if released"
+      "Fast CI",
+      "Security guard",
+      "targeted visual QA at 375px and 1440px before merge"
     ],
     "evidence": [
-      "SELECTED_TOUR_END_TO_END static re-audit completed without a new confirmed defect after PR #663, #669 and #674.",
-      "Second-tour/second-flight isolation, search reset invalidation, room-detail stale protection, price/fuel payload selection, retry/idempotency, child-age enrichment and roomType/placement normalization all remain PASS at the repository/browser-boundary contract level.",
-      "SELECTED_TOUR_END_TO_END therefore moves to DONE_AWAITING_PRODUCTION_EVIDENCE rather than receiving speculative code changes.",
-      "feature/search-core and main are materially diverged: main is 692 commits ahead and 53 behind feature/search-core from their merge base. Main already contains DS2 convergence work, so bulk merge/cherry-pick is not safe for this P1 stream; DS2 work on feature/search-core must remain narrow and independently verified.",
-      "Production evidence remains blocked by the prior external live-probe environment; continue independent product QA.",
-      "Autopilot V2 contract run 33467837016 exposed an invalid lifecycle value: active_task.state=observe is not allowed by the contract workflow. DS2 audit state was corrected to triaged before product-code work continued.",
-      "PR #682 established a canonical token-only v2/design-system-v2.css and loads it first in the existing CSS bundle without changing any existing selector behavior.",
-      "PR #682 passed Fast CI and Security guard and merged into feature/search-core as f6c28f1fd86655f386da29e08de2c8b5dbe370d6.",
-      "PR #685 migrated the actually rendered shared header brand-blue surfaces from duplicate legacy --at-main to canonical DS2 --at-brand. Both resolve to #2743CB, making the change visually pixel-equivalent.",
-      "PR #685 passed Fast CI run 33479540608 and Security guard run 33479540501 and merged as 8b8bb466ef43d71932aa18b7cf1a3a2796d2b631.",
-      "PR #686 migrated the canonical footer link hover from hard-coded #2743cb to DS2 --at-brand, also pixel-equivalent.",
-      "PR #686 passed Fast CI run 33479645604 and Security guard run 33479645627 and merged as ecbf580e45370fffc696be7c4e993aff9b660214.",
-      "PR #689 removed legacy header --at-btn ownership in favor of canonical --at-accent. Cascade audit confirmed the rendered header is unchanged because later product-shell-v1.css already overrides the same three header actions with !important values (personal blue, order #D83D00, buy transparent/blue; personal/order hidden on mobile). Fast CI 33484506890 and Security guard 33484506891 passed; merged as 9e1a3f2f88798cefac4eb2606ebfb240a1860fef.",
-      "PR #692 aliased exact-equivalent AnyTour legacy tokens blue/ink/surface/muted/font to canonical DS2 tokens. Orange/sky/line/soft remain intentionally untouched because values differ. Fast CI 33489234149 and Security guard 33489234146 passed; merged as 5ab134908401ac327f319f1c5fd070aec94d6e40.",
+      "P0/P1 search filter architecture remains DONE_AWAITING_PRODUCTION_EVIDENCE: local stars/rating/price/region/subregion operate over loaded progressive results; incomplete payload constraints remain server-side.",
+      "Selected-tour end-to-end remains DONE_AWAITING_PRODUCTION_EVIDENCE after the stale reset, stale flight price/fuel reset and roomType/placement normalization fixes.",
+      "Targeted production verification remains BLOCKED_EXTERNAL by the prior live-probe DNS environment; no product defect is inferred from that blocker.",
+      "DS2 token convergence through PR #692 remains merged and green.",
+      "PR #693 was closed without merge because it was a premature product-level search/results restyle while the current DESIGN_SYSTEM_2_UNIFICATION contract explicitly freezes cosmetic work until mockup approval; it also drifted beyond that task ownership boundary.",
+      "PR #699 merged as e059c3e751e69e9a4c68d8812a09435b6e3b0821 and defined narrow approved redesign lanes for header/shell, selected-tour/flights, lead handoff and factual footer/community composition.",
+      "PR #700 merged as 1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c and completed the redesign contract map with loading/recovery, hotel/tour selection and revised Search 2.0 contracts.",
+      "NEW_DESIGN_IMPLEMENTATION_PREP is accepted. Revised Search 2.0 is explicitly approval-gated; no search/results product code from the latest mockup may be implemented until owner approval.",
       "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
     ],
-    "parent_task": "PILOT_ROOT_STABILIZATION_REAUDIT"
+    "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
   },
   "queue": [
     {
       "id": "SEARCH_RESULTS_FILTER_ARCHITECTURE",
       "priority": 1,
       "status": "DONE_AWAITING_PRODUCTION_EVIDENCE",
-      "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
-      "reason": "Payload completeness boundary is explicit: local stars/rating/price/region/subregion over loaded 25→100; meal/operator/flight/service/type constraints remain server-side where result payload completeness is not proven."
+      "reason": "Payload completeness boundary is explicit; simple local narrowing does not restart Tourvisor."
     },
     {
       "id": "RESULTS_DEPTH_100",
       "priority": 1,
       "status": "DONE_AWAITING_PRODUCTION_EVIDENCE",
-      "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
       "pr": 656,
       "merge_sha": "8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d",
-      "reason": "Completed search expands from fast first 25 to up to 100 hotels without restarting Tourvisor search."
+      "reason": "Completed search expands from fast first 25 to up to 100 hotels without restarting the search."
     },
     {
       "id": "RESULTS_LOCAL_FILTERS_CORE",
       "priority": 1,
       "status": "DONE_AWAITING_PRODUCTION_EVIDENCE",
-      "parent": "SEARCH_RESULTS_FILTER_ARCHITECTURE",
       "pr": 666,
       "merge_sha": "ee34c881de396b734f86807c975a5821ba2ca06b",
-      "reason": "Local filter boundary corrected after payload audit: stars/rating/price/region/subregion stay instant; meal/operator return to existing server search lifecycle."
+      "reason": "Local stars/rating/price/region/subregion stay instant; incomplete meal/operator/flight/service/type constraints remain server-side."
     },
     {
       "id": "SELECTED_TOUR_END_TO_END",
       "priority": 1,
       "status": "DONE_AWAITING_PRODUCTION_EVIDENCE",
-      "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
-      "reason": "PR #663 fixed stale reset generations; PR #669 fixed stale price/fuel state for unpriced flight selections; PR #674 normalized structured roomType/placement before the existing lead submit. Final static re-audit found no further confirmed defect in second-tour/flight isolation, room enrichment, price/fuel payload, retry/idempotency or child ages."
+      "reason": "Static/browser-boundary re-audit found no additional confirmed defect after PR #663, #669 and #674."
     },
     {
       "id": "PRODUCTION_RESULTS_EVIDENCE",
       "priority": 1,
       "status": "BLOCKED_EXTERNAL",
-      "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
-      "reason": "Narrow live verification for result depth, local-filter and selected-tour behavior; previous execution environment could not resolve anytoour.ru."
+      "reason": "Previous execution environment could not resolve anytoour.ru; retry only a narrow live probe when the environment permits."
     },
     {
       "id": "DESIGN_SYSTEM_2_UNIFICATION",
       "priority": 2,
-      "status": "ACTIVE",
+      "status": "PAUSED_FOR_REDESIGN",
       "pr": 692,
       "merge_sha": "5ab134908401ac327f319f1c5fd070aec94d6e40",
-      "reason": "Canonical DS2 token foundation is active; shared header/footer and exact-equivalent AnyTour brand tokens now consume canonical DS2 values without changing rendered output. Continue one primitive/token boundary at a time; only differing-value tokens require targeted visual QA."
+      "reason": "Outgoing shell receives no further cosmetic polishing. Canonical DS2 tokens remain the active foundation for the approved redesign."
+    },
+    {
+      "id": "NEW_DESIGN_IMPLEMENTATION_PREP",
+      "priority": 2,
+      "status": "DONE",
+      "pr": 700,
+      "merge_sha": "1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c",
+      "reason": "Approved redesign flow is mapped into narrow implementation contracts; Search 2.0 remains separately approval-gated."
+    },
+    {
+      "id": "REDESIGN_HEADER_SHELL",
+      "priority": 2,
+      "status": "ACTIVE",
+      "reason": "Approved header/shared-shell direction; next MEDIUM user-facing implementation lane, requiring Fast CI, Security guard and targeted 375/1440 visual QA."
+    },
+    {
+      "id": "SEARCH_2_0_MOCKUP_APPROVAL",
+      "priority": 2,
+      "status": "APPROVAL_REQUIRED",
+      "reason": "Latest revised Search 2.0 search/results/filter mockup is not yet explicitly approved."
+    },
+    {
+      "id": "REDESIGN_SEARCH_RESULTS",
+      "priority": 2,
+      "status": "WAITING_APPROVAL",
+      "reason": "Depends on SEARCH_2_0_MOCKUP_APPROVAL; preserve Tourvisor/local-filter/progressive/stale-state contracts."
+    },
+    {
+      "id": "REDESIGN_LOADING_RECOVERY",
+      "priority": 2,
+      "status": "QUEUED",
+      "reason": "Approved loading/recovery direction; preserve useful progressive results and existing searchId recovery behavior."
+    },
+    {
+      "id": "REDESIGN_HOTEL_TOUR_SELECTION",
+      "priority": 2,
+      "status": "QUEUED",
+      "reason": "Approved hotel/tour selection hierarchy; preserve room/detail stale protection and pricing semantics."
+    },
+    {
+      "id": "REDESIGN_SELECTED_TOUR",
+      "priority": 2,
+      "status": "QUEUED",
+      "reason": "Approved selected-tour/flight summary; preserve selected state, price/fuel and Tourvisor identifiers."
+    },
+    {
+      "id": "REDESIGN_LEAD_HANDOFF",
+      "priority": 2,
+      "status": "QUEUED_AFTER_SELECTED_TOUR",
+      "reason": "Approved lead success/retry and MAX/Telegram continuation; external lead transport/field mapping stays unchanged."
+    },
+    {
+      "id": "REDESIGN_FOOTER_COMMUNITY",
+      "priority": 2,
+      "status": "QUEUED",
+      "reason": "Approved factual footer: MAX, Telegram, VK, App Store, Google Play, existing legal links and MasterCard/Visa/Мир only; no invented contact data."
     },
     {
       "id": "SEARCH_STATE_PERFORMANCE",
       "priority": 2,
       "status": "QUEUED",
-      "reason": "Improve progressive results, loading/error/recovery states and stale-state behavior without discarding useful results."
+      "reason": "Improve progressive loading/error/recovery and stale-state behavior after approved redesign lanes where not already covered."
     },
     {
       "id": "FULL_SEARCH_UX_REAUDIT",
       "priority": 2,
       "status": "QUEUED",
-      "reason": "Periodic whole-search mobile/tablet/desktop audit rather than only recently changed files."
+      "reason": "Periodic whole-search mobile/tablet/desktop audit after the first redesign slices land."
     },
     {
       "id": "FEED_DATA_FACTORY",
       "priority": 3,
       "status": "QUEUED",
-      "reason": "Daily Tourvisor price monitoring, scalable Yandex feeds and reusable country/resort/hotel data for the site."
+      "reason": "Daily Tourvisor price monitoring, scalable Yandex feeds and reusable country/resort/hotel data after P0/P1 product stability."
     },
     {
       "id": "SEO_FACTORY",
       "priority": 3,
       "status": "QUEUED_AFTER_PRODUCT_STABILITY",
-      "reason": "Build scalable country/resort/hotel SEO pages and internal linking on the shared Design System 2.0 and reusable tour data."
+      "reason": "Scalable country/resort/hotel SEO pages and internal linking on DS2 and reusable tour data."
     },
     {
       "id": "PX7_PRICE_WATCH_RESEARCH",
       "priority": 3,
       "status": "DEFERRED_RESEARCH",
-      "reason": "Price-watch product research requires product-contract decisions before coding."
+      "reason": "Requires a product contract before coding."
     },
     {
       "id": "AUTOPILOT_V2_STATE_CONSOLIDATION",
       "priority": 4,
       "status": "QUEUED",
-      "reason": "Remove stale Autopilot 1.x state/document contradictions, define one authoritative queue and inspect legacy deploy workflow only after product-critical work."
+      "reason": "Synchronize legacy Autopilot state/instructions only after product-critical redesign work."
     }
   ],
   "last_signal": {
-    "source": "ds2_anytour_exact_aliases",
-    "status": "CONTINUE_DESIGN_SYSTEM_2_UNIFICATION",
-    "sha": "5ab134908401ac327f319f1c5fd070aec94d6e40"
+    "source": "new_design_contract_map",
+    "status": "CONTINUE_APPROVED_REDESIGN_LANES_KEEP_SEARCH_2_0_APPROVAL_GATED",
+    "sha": "1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c"
   },
   "blocked": [
     {
@@ -130,10 +175,16 @@
       "action": "Retry only the narrow live probe from an environment with working DNS; continue independent safe product work meanwhile."
     },
     {
+      "scope": "revised Search 2.0 implementation",
+      "type": "approval_gate",
+      "reason": "The newest corrected search/results/filter mockup has not yet been explicitly approved by the owner.",
+      "action": "Do not implement REDESIGN_SEARCH_RESULTS until SEARCH_2_0_MOCKUP_APPROVAL is accepted."
+    },
+    {
       "scope": "bulk DS2 integration from main",
       "type": "branch_divergence",
-      "reason": "main is 692 commits ahead and 53 commits behind feature/search-core from the merge base, with many unrelated workflows/data/product changes mixed with DS2 work.",
-      "action": "Do not bulk merge or cherry-pick main into feature/search-core. Audit and port only narrowly justified DS2 changes with normal Fast CI + targeted visual QA."
+      "reason": "main remains materially diverged from feature/search-core with unrelated product/workflow changes mixed in.",
+      "action": "Do not bulk merge or cherry-pick main; port only narrowly justified changes."
     }
   ]
 }
