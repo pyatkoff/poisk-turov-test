@@ -34,7 +34,7 @@
     "area": "selected-tour-lead",
     "risk": "MEDIUM",
     "verification_class": "MEDIUM",
-    "state": "investigate",
+    "state": "qa",
     "owner": "qa",
     "required_gates": [
       "Reproduce any defect before implementation",
