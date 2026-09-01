@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/assets.php';
 require_once __DIR__ . '/seo-config.php';
+require_once __DIR__ . '/seo-launch-slice-v1.php';
 require_once __DIR__ . '/site-footer-v1.php';
 require_once __DIR__ . '/site-header-v2.php';
 require_once __DIR__ . '/phone-value.php';
@@ -18,6 +19,9 @@ function sp_context(string $path,string $title,string $description): array {
   $docRoot=rtrim((string)($_SERVER['DOCUMENT_ROOT']??''),'/');
   $siteConf=$docRoot.'/site_conf.php'; if($docRoot!==''&&is_file($siteConf)) require $siteConf;
   $siteParams=is_array($params??null)?$params:[];
+  if(array_key_exists('SEO_TURKEY_LAUNCH',$siteParams)) {
+    $siteParams=v2_seo_turkey_launch_site_params($siteParams,!empty($siteParams['SEO_TURKEY_LAUNCH']));
+  }
   $phone=v2_site_phone($siteParams,'8 (800) 100 - 61 - 50');
   return ['path'=>$path,'title'=>$title,'description'=>$description,'phone'=>$phone,'phoneHref'=>v2_phone_href($phone),'robots'=>v2_seo_robots_content(v2_seo_indexable($siteParams))];
 }
