@@ -1,0 +1,13 @@
+{
+  "id": "SEO_CORE_WEB_VITALS_POLICY",
+  "title": "Prevent SEO modules from causing material performance regressions",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "focus": [
+    "LCP-critical hero/search assets",
+    "CLS from offer/image blocks",
+    "interaction cost from unnecessary SEO JS",
+    "mobile payload growth"
+  ],
+  "rule": "Use measured evidence before claiming Core Web Vitals improvement or regression."
+}
