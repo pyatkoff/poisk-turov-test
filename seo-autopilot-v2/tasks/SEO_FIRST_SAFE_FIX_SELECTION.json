@@ -1,0 +1,14 @@
+{
+  "id": "SEO_FIRST_SAFE_FIX_SELECTION",
+  "title": "Select the first repair from inventory evidence",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "preference": [
+    "wrong production/legacy domain in SEO signals",
+    "broken sitemap/robots reference",
+    "obvious canonical inconsistency with one clear intended target",
+    "factual metadata/template defect",
+    "broken internal canonical link"
+  ],
+  "rule": "Skip to a different SAFE defect if the apparent fix actually requires a broader URL/indexation migration."
+}
