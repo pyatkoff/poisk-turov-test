@@ -2,7 +2,7 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. Search/results local-filter completeness is released and the anytoour.ru production deploy for #842 is green. Lead idempotency contract mismatch is confirmed and approval-gated as #850; continue independent MEDIUM state-isolation work.",
+    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. Search/results local-filter completeness is released. Same-tour stale lead UI responses across a new search were fixed in #855. Lead idempotency contract mismatch remains approval-gated as #850; continue independent MEDIUM recovery/state work.",
     "done": [
       "P0/P1 progressive 25→100, local narrowing, widening/server lifecycle, stale async protection and counters have prior accepted evidence.",
       "Hotel/room, selected-tour/flight and post-success lead handoff were released narrowly to main.",
@@ -11,9 +11,10 @@
       "PR #842 strengthened local facet safety: meal/category/rating/sea facets are exposed only when the currently loaded result set is complete enough to evaluate that facet across the full local set. PR #842 passed Security, V2 validation, selected-tour visual, PR visual and baseline visual gates and merged to main as 923fa8eb30ed8e65630653f3924a147c86a59f45.",
       "Deploy anytoour.ru run 33563761068 for #842 completed successfully.",
       "Selected-tour re-audit PASS: search-lifecycle-v6 invalidates generation/searchId and clears selected-tour state on changed parameters/new search; unpriced-flight-price-reset-v1 prevents a prior priced flight from surviving selection of an unpriced flight while preserving fuel context; active lead-search-context.js enriches the existing lead payload with validated child ages from the search snapshot.",
-      "Selected-tour re-audit PASS: current second-tour isolation guard verifies first-tour flight price/fuel/lead hint/room state cannot leak into a second tour, and room-details-v3 rejects stale async room responses when host tourId changes."
+      "Selected-tour re-audit PASS: current second-tour isolation guard verifies first-tour flight price/fuel/lead hint/room state cannot leak into a second tour, and room-details-v3 rejects stale async room responses when host tourId changes.",
+      "PR #855 fixed a reproduced lead UI race: success/error events are now accepted only when both tourId and runtime searchId match, preventing an old submission from decorating a newly selected copy of the same tour after a new search. Security, focused lead race/recovery checks, bundle validation and selected-tour/PR/baseline visual gates passed; merged to main as baf2790f27416d4cdf5a34d7344439c39c8e1469."
     ],
-    "next": "Continue selected-tour E2E audit with searchId/tourId consistency and non-lead-transport retry/recovery. Do not modify the production lead adapter for #850 without explicit approval.",
+    "next": "Complete production evidence for #855, then continue selected-tour E2E audit with non-lead-transport retry/recovery and remaining searchId/tourId consistency. Do not modify the production lead adapter for #850 without explicit approval.",
     "blocked": [
       "Direct HTTP verification from this execution environment is externally blocked when anytoour.ru DNS cannot resolve; GitHub production deploy provides independent production evidence.",
       "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence.",
@@ -25,6 +26,7 @@
       "Do not change Metrika goals, external lead transport, Tourvisor contracts, pricing semantics or the logo without explicit approval.",
       "Local filtering is safe only when the loaded payload is complete enough for the selected facet; presence in only part of the result set is insufficient.",
       "Record PASS evidence and move on instead of creating duplicate fixes for already-guarded selected-tour behavior.",
+      "Async lead UI events must be scoped by both tourId and searchId; tourId alone is insufficient when a user can encounter the same tour in a replacement search.",
       "Treat production lead idempotency semantics as part of the protected lead mechanism even when a repository helper/test already describes a different intended fingerprint."
     ]
   },
@@ -34,7 +36,7 @@
     "area": "selected-tour-lead",
     "risk": "MEDIUM",
     "verification_class": "MEDIUM",
-    "state": "qa",
+    "state": "production_qa",
     "owner": "qa",
     "required_gates": [
       "Reproduce any defect before implementation",
@@ -51,6 +53,7 @@
       "Local-filter completeness defect closed by #842 / main SHA 923fa8eb30ed8e65630653f3924a147c86a59f45; Deploy anytoour.ru run 33563761068 succeeded.",
       "validate-second-tour-state-isolation.yml explicitly verifies tour1→tour2 price, fuel, lead context, room host tourId and return focus isolation across 375/768/1440.",
       "room-details-v3 load() snapshots tourId and refuses to render async room data if the host is disconnected or host.dataset.tourId changed.",
+      "PR #855 / main baf2790f27416d4cdf5a34d7344439c39c8e1469 extends lead-ui-race-guard-v1 to require both tourId and searchId and adds focused same-tour/different-search plus search-reset regression cases; all PR checks passed.",
       "HIGH mismatch recorded as #850 instead of modifying protected lead behavior: lead-idempotency-v1.php and its CI require changed flight/price/comment to produce distinct keys, but lead-adapter.php currently keys only phone/tourId/searchId."
     ],
     "parent_task": "P0_P1_PRODUCT_STABILITY"
@@ -59,7 +62,7 @@
     {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"RELEASED_PRODUCTION","latest_pr":842,"latest_merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45","deploy_run":33563761068},
     {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_WITH_PRIOR_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
     {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"RELEASED_PRODUCTION","pr":842,"merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45","deploy_run":33563761068},
-    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_REAUDIT"},
+    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_PRODUCTION_QA","latest_pr":855,"latest_merge_sha":"baf2790f27416d4cdf5a34d7344439c39c8e1469"},
     {"id":"LEAD_IDEMPOTENCY_SEMANTICS","priority":1,"status":"BLOCKED_APPROVAL_HIGH","issue":850},
     {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"GREEN_DEPLOY_DIRECT_PROBE_EXTERNAL_DNS_BLOCKED","deploy_run":33563761068},
     {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"RELEASED_MAIN_PRODUCTION"},
@@ -74,12 +77,12 @@
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"DONE_ENHANCED_CONTRACTS"}
   ],
   "last_signal": {
-    "source": "selected_tour_e2e_idempotency_audit",
-    "status": "SECOND_TOUR_ROOM_ISOLATION_PASS_LEAD_IDEMPOTENCY_MISMATCH_BLOCKED_HIGH_ISSUE_850",
-    "sha": "923fa8eb30ed8e65630653f3924a147c86a59f45"
+    "source": "selected_tour_same_tour_new_search_lead_race_fix",
+    "status": "PR855_MERGED_PRODUCTION_QA_ACTIVE_IDEMPOTENCY_850_BLOCKED_HIGH",
+    "sha": "baf2790f27416d4cdf5a34d7344439c39c8e1469"
   },
   "blocked": [
-    {"scope":"direct live probe from current execution environment","type":"external_environment","reason":"DNS resolution for anytoour.ru failed before the first direct HTTP request, while GitHub Deploy anytoour.ru succeeded independently.","action":"Retry direct probe later; do not classify as product defect."},
+    {"scope":"direct live probe from current execution environment","type":"external_environment","reason":"DNS resolution for anytoour.ru failed before the first direct HTTP request, while GitHub Deploy anytoour.ru provides independent production evidence.","action":"Retry direct probe later; do not classify as product defect."},
     {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; broad branch integration is intentionally not a release strategy.","action":"Continue current-main narrow tasks only; never copy the divergent feature branch wholesale."},
     {"scope":"production lead idempotency semantics","type":"approval_required_high","issue":850,"reason":"Production adapter fingerprint omits flight/flightPrice/flightFuel/comment although the validated helper contract requires those changes to produce distinct keys.","action":"Leave blocked until explicit approval to change protected lead adapter behavior; continue independent MEDIUM selected-tour work."}
   ]
