@@ -1,0 +1,14 @@
+{
+  "id": "SEO_DESKTOP_LANDING_QA",
+  "title": "Verify SEO landing hierarchy on desktop",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "clear destination hierarchy",
+    "search and commercial path prominent",
+    "content width/readability",
+    "useful related destinations/hotels",
+    "no duplicate header/footer systems",
+    "DS2 visual consistency"
+  ]
+}
