@@ -26,7 +26,7 @@ jobs:
           php -l v2/index.php >/dev/null
           php -l v2/api-v2.php >/dev/null
           php -l v2/bundle-v1.php >/dev/null
-          grep -Fq "'ds2-search.css'" v2/bundle-manifest-v1.php
+          grep -Fq "v2_asset('ds2-search.css')" v2/index.php
           grep -Fq "'search-redesign-v2.js'" v2/bundle-manifest-v1.php
           node --check v2/search-redesign-v2.js
           echo "SEARCH_PREVIEW_VALIDATE_OK"
@@ -97,7 +97,8 @@ jobs:
           code="$(curl -sSL -o /tmp/search2-preview.html -w '%{http_code}' --max-time 45 "$base/poisk-turov/")"
           echo "PREVIEW_HTTP=$code"
           test "$code" = "200"
-          grep -q '/_preview/search2/bundle-v1.php?type=css' /tmp/search2-preview.html || { echo 'MISSING_PREVIEW_CSS_URL'; exit 21; }
+          grep -q '/_preview/search2/bundle-v1.php?type=css' /tmp/search2-preview.html || { echo 'MISSING_PREVIEW_BASE_CSS_URL'; exit 21; }
+          grep -q '/_preview/search2/ds2-search.css?v=' /tmp/search2-preview.html || { echo 'MISSING_PREVIEW_DS2_CSS_URL'; exit 25; }
           grep -q '/_preview/search2/api-v2.php' /tmp/search2-preview.html || { echo 'MISSING_PREVIEW_API_URL'; exit 22; }
           health_code="$(curl -sSL -o /tmp/search2-health.json -w '%{http_code}' --max-time 45 "$base/api-v2.php?action=health")"
           echo "HEALTH_HTTP=$health_code"
@@ -105,8 +106,8 @@ jobs:
           grep -q 'tourvisor-direct' /tmp/search2-health.json || { echo 'HEALTH_MARKER_MISSING'; exit 23; }
           headers="$(curl -sSI --max-time 30 "$base/poisk-turov/")"
           printf '%s\n' "$headers" | grep -qi 'x-robots-tag: noindex, nofollow' || { echo 'NOINDEX_HEADER_MISSING'; exit 24; }
-          css_code="$(curl -sSL -o /tmp/search2.css -w '%{http_code}' --max-time 30 "$base/bundle-v1.php?type=css")"
-          echo "CSS_HTTP=$css_code"
-          test "$css_code" = "200"
-          grep -q 'AnyTour DS2 search' /tmp/search2.css || { echo 'DS2_CSS_MARKER_MISSING'; exit 25; }
+          ds2_code="$(curl -sSL -o /tmp/ds2-search.css -w '%{http_code}' --max-time 30 "$base/ds2-search.css")"
+          echo "DS2_CSS_HTTP=$ds2_code"
+          test "$ds2_code" = "200"
+          grep -q 'AnyTour DS2 search' /tmp/ds2-search.css || { echo 'DS2_CSS_MARKER_MISSING'; exit 26; }
           echo "SEARCH_PREVIEW_OK $base/poisk-turov/"
