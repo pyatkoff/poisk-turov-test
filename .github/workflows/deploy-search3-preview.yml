@@ -87,7 +87,7 @@ jobs:
           import sys
           path=Path(sys.argv[1])
           text=path.read_text()
-          text=text.replace('</head>','<link rel="stylesheet" href="/_preview/search3/search3-preview.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-results-preview.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-results-width-fix.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-filter-rail-preview.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-mobile-filters.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-results-top.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-selected-tour.css?v=2"></head>',1)
+          text=text.replace('</head>','<link rel="stylesheet" href="/_preview/search3/search3-preview.css?v=4"><link rel="stylesheet" href="/_preview/search3/search3-results-preview.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-results-width-fix.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-filter-rail-preview.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-mobile-filters.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-results-top.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-selected-tour.css?v=2"></head>',1)
           text=text.replace('</body>','<script src="/_preview/search3/search3-preview.js?v=3"></script><script src="/_preview/search3/search3-results-preview.js?v=1"></script><script src="/_preview/search3/search3-filter-rail-preview.js?v=2"></script><script src="/_preview/search3/search3-mobile-filters.js?v=4"></script><script src="/_preview/search3/search3-results-top.js?v=2"></script><script src="/_preview/search3/search3-selected-tour-mobile.js?v=1"></script></body>',1)
           path.write_text(text)
           PY
@@ -122,7 +122,7 @@ jobs:
           echo "PREVIEW_HTTP=$code"
           test "$code" = "200"
           grep -q '/_preview/search3/bundle-v1.php?type=css' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-preview.css?v=3' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-preview.css?v=4' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-preview.js?v=3' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-results-preview.css?v=2' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-results-width-fix.css?v=2' /tmp/search3-preview.html
