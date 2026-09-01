@@ -5,7 +5,7 @@
   "risk": "MEDIUM",
   "owns_paths": [
     "v2/site-footer-v1.php",
-    "v2/site-footer-v1.css"
+    "v2/ds2-search.css"
   ],
   "depends_on": [
     "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -22,6 +22,7 @@
     "community block contains exactly MAX, Telegram and VK social destinations plus App Store and Google Play",
     "canonical footer contains the existing payment/legal links and payment systems without invented phone, email, address, YouTube, Instagram or Apple Pay",
     "real AnyTour logo/brand identity is preserved",
-    "footer is responsive and does not introduce a second parallel footer"
+    "footer is responsive and mobile interactive targets meet the active visual contract",
+    "footer does not introduce a second parallel footer"
   ]
 }
