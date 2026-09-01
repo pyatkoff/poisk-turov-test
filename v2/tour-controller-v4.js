@@ -3,7 +3,7 @@ const rt=window.V2Runtime,cfg=window.V2_CONFIG||{};if(!rt)return;
 let currentTour=null,flightVariants=[],selectedFlightIndex=0,busyTourId='',tourGeneration=0,flightGeneration=0,flightLoadingTourId='';
 const leadApi=String(cfg.leadApi||'/poisk-turov-test/v2/lead-adapter.php');
 const privacyUrl=String(cfg.privacyUrl||'').trim();
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function money(v){const n=Number(v||0);return n?new Intl.NumberFormat('ru-RU').format(n):'';}
 function clean(v){return String(v||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
 function displayText(v){if(v===null||v===undefined)return'';if(Array.isArray(v))return v.map(displayText).filter(Boolean).join(', ');if(typeof v==='object'){for(const key of['russianName','fullRussianName','name','title','value','text','label','description']){const text=displayText(v[key]);if(text)return text;}return'';}return String(v).trim();}
