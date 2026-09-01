@@ -1,0 +1,13 @@
+{
+  "id": "SEO_CONTENT_FROM_DATA",
+  "title": "Use structured facts to create useful page modules, not synthetic prose claims",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "examples": [
+    "current offer cards",
+    "popular hotel lists based on approved evidence",
+    "destination/resort navigation",
+    "search scope summaries"
+  ],
+  "rule": "Derived summaries must remain traceable to source data; AI wording cannot add unstated facts."
+}
