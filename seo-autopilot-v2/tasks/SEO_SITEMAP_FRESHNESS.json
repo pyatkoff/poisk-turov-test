@@ -1,0 +1,13 @@
+{
+  "id": "SEO_SITEMAP_FRESHNESS",
+  "title": "Keep sitemap outputs synchronized with canonical page eligibility",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "new eligible pages included",
+    "removed/noncanonical/noindex pages excluded",
+    "host correct",
+    "generation does not depend on transient offer existence for durable entity pages",
+    "lastmod, if emitted, reflects meaningful change policy"
+  ]
+}
