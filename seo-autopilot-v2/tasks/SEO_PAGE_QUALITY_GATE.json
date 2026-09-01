@@ -1,0 +1,16 @@
+{
+  "id": "SEO_PAGE_QUALITY_GATE",
+  "title": "Block thin or unsafe SEO pages from indexation",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "minimum_signals": [
+    "stable canonical entity/intent",
+    "unique useful visible content",
+    "valid title and H1",
+    "crawlable internal path",
+    "no unsupported commercial claims",
+    "factual dynamic blocks degrade safely",
+    "no duplicate canonical target conflict"
+  ],
+  "policy": "A generated route is not automatically eligible for indexation."
+}
