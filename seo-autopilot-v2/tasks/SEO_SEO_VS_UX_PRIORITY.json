@@ -1,0 +1,7 @@
+{
+  "id": "SEO_SEO_VS_UX_PRIORITY",
+  "title": "Coordinate SEO requirements with product UX rather than overriding it",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "SEO content/navigation should improve discovery and intent satisfaction without degrading the approved search journey; product UX changes remain with the product/design lane."
+}
