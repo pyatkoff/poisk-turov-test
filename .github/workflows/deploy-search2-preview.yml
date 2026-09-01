@@ -138,10 +138,13 @@ jobs:
               await page.waitForTimeout(100);
               const state=await page.evaluate(()=>{
                 const form=document.querySelector('#tourSearch.ds2-search-initial');
-                const steps=[...form.querySelectorAll('.main-fields>.primary-step')].slice(0,5);
+                const allSteps=[...form.querySelectorAll('.main-fields>.primary-step')];
+                const steps=allSteps.slice(0,5);
                 const button=form.querySelector('.search-submit');
+                const quickLane=form.querySelector('.ds2-search-quick-stars');
                 const rects=steps.map(el=>el.getBoundingClientRect());
                 const buttonRect=button?.getBoundingClientRect();
+                const quickRect=quickLane?.getBoundingClientRect();
                 const bg=button?getComputedStyle(button).backgroundColor:'';
                 const starQuick=[...form.querySelectorAll('.ds2-search-quick-stars .stars-choice:not(.meal-shortcut)')];
                 const mealShortcut=form.querySelector('.ds2-search-quick-stars .meal-shortcut');
@@ -149,17 +152,18 @@ jobs:
                 const stacked=rects.length===5&&rects.every((r,i)=>i===0||r.top>rects[i-1].top+20);
                 const nights=String(form.querySelector('.ds2-nights-summary')?.textContent||'').trim();
                 const filterLabel=String(form.querySelector('details.extras>summary strong,details.extras-secondary>summary strong')?.textContent||'').trim();
+                const overflowNodes=[...document.querySelectorAll('body *')].map(el=>{const r=el.getBoundingClientRect();return {tag:el.tagName.toLowerCase(),id:el.id||'',cls:String(el.className||'').slice(0,120),left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width),scrollWidth:el.scrollWidth,clientWidth:el.clientWidth};}).filter(x=>x.right>innerWidth+3||x.left<-3).sort((a,b)=>Math.max(b.right-innerWidth,-b.left)-Math.max(a.right-innerWidth,-a.left)).slice(0,12);
                 return {
-                  steps:rects.length,starQuick:starQuick.length,mealShortcut:String(mealShortcut?.textContent||'').trim(),mealPressed:mealShortcut?.getAttribute('aria-pressed')||'',mealValue:String(form.elements.food?.value||''),
+                  steps:rects.length,primaryCount:allSteps.length,foodInMain:!!form.elements.food?.closest('.main-fields'),starQuick:starQuick.length,mealShortcut:String(mealShortcut?.textContent||'').trim(),mealPressed:mealShortcut?.getAttribute('aria-pressed')||'',mealValue:String(form.elements.food?.value||''),
                   cta:String(button?.querySelector('span')?.textContent||button?.textContent||'').trim(),bg,nights,filterLabel,
-                  sameRow,stacked,buttonRight:buttonRect?.right||0,viewport:innerWidth,
-                  overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+3
+                  sameRow,stacked,ctaBeforeQuick:!!(buttonRect&&quickRect&&buttonRect.bottom<=quickRect.top+2),buttonRight:buttonRect?.right||0,viewport:innerWidth,
+                  docScrollWidth:document.documentElement.scrollWidth,docClientWidth:document.documentElement.clientWidth,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+3,overflowNodes
                 };
               });
               const expectedRow=width>=901;
               const expectedStack=width<=430;
               const blue=/rgb\((18,\s*97,\s*246|14,\s*85,\s*219)\)/.test(state.bg);
-              const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.starQuick!==5||state.mealShortcut!=='All Inclusive'||state.mealPressed!=='true'||!state.mealValue||state.cta!=='Найти туры'||!state.nights||state.filterLabel!=='Все фильтры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked);
+              const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.primaryCount!==5||state.foodInMain||state.starQuick!==5||state.mealShortcut!=='All Inclusive'||state.mealPressed!=='true'||!state.mealValue||state.cta!=='Найти туры'||!state.nights||state.filterLabel!=='Все фильтры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked)||(width<=700&&!state.ctaBeforeQuick);
               report.push({name,width,height,state,errors,bad}); if(bad) failed=true;
               await page.screenshot({path:`search2-form-evidence/${name}.png`,fullPage:false,animations:'disabled'});
               await context.close();
