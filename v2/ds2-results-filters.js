@@ -11,6 +11,7 @@ let applying=false;
 let state={priceMax:0,stars:0,rating:0,meal:''};
 function renderer(){return window.V2Results||null;}
 function price(h){const p=Number(h&&h.price||0);if(p>0)return p;const tours=Array.isArray(h&&h.tours)?h.tours:[];const values=tours.map(t=>Number(t&&t.price||0)).filter(v=>v>0);return values.length?Math.min.apply(null,values):0;}
+function allPrices(list){const values=[];(Array.isArray(list)?list:[]).forEach(h=>{const tours=Array.isArray(h&&h.tours)?h.tours:[];tours.forEach(t=>{const p=Number(t&&t.price||0);if(p>0)values.push(p);});if(!tours.length){const p=price(h);if(p>0)values.push(p);}});return values;}
 function totalTours(list){return (Array.isArray(list)?list:[]).reduce((sum,h)=>sum+(Array.isArray(h&&h.tours)?h.tours.length:0),0);}
 function mealText(t){return [t&&t.meal&&t.meal.russianName,t&&t.meal&&t.meal.fullRussianName,t&&t.meal&&t.meal.name].filter(Boolean).join(' ').toLowerCase();}
 function tourMealMatches(t,key){if(!key)return true;const m=mealText(t);if(key==='ai')return /вс[её]\s+включено|all\s+inclusive|(^|\s)ai($|\s)/i.test(m);if(key==='hb')return /полупансион|half\s*board|(^|\s)hb($|\s)/i.test(m);return true;}
@@ -30,7 +31,7 @@ rail.addEventListener('change',e=>{const t=e.target;if(!t.matches('[data-ds2-cho
 rail.addEventListener('click',e=>{if(e.target.closest('[data-ds2-reset]'))reset();});
 }
 build();
-window.addEventListener('v2:results-rendered',e=>{if(applying)return;const items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];sourceItems=items.slice();if(!sourceItems.length){if(heading)heading.textContent='Отели не найдены';if(summary)summary.textContent='Попробуйте изменить параметры';return;}const prices=sourceItems.map(price).filter(v=>v>0);const range=rail.querySelector('[data-ds2-price]');if(range&&prices.length){const max=Math.ceil(Math.max.apply(null,prices)/5000)*5000;const min=Math.floor(Math.min.apply(null,prices)/5000)*5000;range.min=String(Math.max(0,min));range.max=String(Math.max(min+5000,max));range.value=range.max;state.priceMax=Number(range.max);syncPrice();}updateSummary(sourceItems.length,sourceItems);const count=rail.querySelector('[data-ds2-filter-count]');if(count)count.textContent=String(sourceItems.length);});
+window.addEventListener('v2:results-rendered',e=>{if(applying)return;const items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];sourceItems=items.slice();if(!sourceItems.length){if(heading)heading.textContent='Отели не найдены';if(summary)summary.textContent='Попробуйте изменить параметры';return;}const prices=allPrices(sourceItems);const range=rail.querySelector('[data-ds2-price]');if(range&&prices.length){const max=Math.ceil(Math.max.apply(null,prices)/5000)*5000;const min=Math.floor(Math.min.apply(null,prices)/5000)*5000;range.min=String(Math.max(0,min));range.max=String(Math.max(min+5000,max));range.value=range.max;state.priceMax=Number(range.max);syncPrice();}updateSummary(sourceItems.length,sourceItems);const count=rail.querySelector('[data-ds2-filter-count]');if(count)count.textContent=String(sourceItems.length);});
 window.addEventListener('v2:search-reset',()=>{sourceItems=[];if(heading)heading.textContent='Предложения';if(summary)summary.textContent='Актуальные варианты';reset();});
-window.DS2ResultsFilters={apply,reset,filteredHotel,matches,get state(){return Object.assign({},state);},version:6};
+window.DS2ResultsFilters={apply,reset,filteredHotel,matches,allPrices,get state(){return Object.assign({},state);},version:7};
 })();
