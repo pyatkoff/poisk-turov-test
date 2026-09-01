@@ -1,0 +1,16 @@
+{
+  "id": "SEO_HUB_PAGES",
+  "title": "Use useful hub pages to connect destination hierarchy",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "candidate_hubs": [
+    "countries/destinations",
+    "popular resorts",
+    "hotel discovery where useful"
+  ],
+  "rules": [
+    "hub is a useful navigation surface, not a raw sitemap dump",
+    "links target canonical eligible pages",
+    "DS2 presentation and mobile usability apply"
+  ]
+}
