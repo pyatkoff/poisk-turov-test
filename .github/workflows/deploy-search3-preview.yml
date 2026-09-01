@@ -186,7 +186,7 @@ jobs:
               await page.screenshot({path:`search3-visual-artifacts/${name}-results.png`,fullPage:true});
               await page.locator('.search3-show-tours').first().click();
               await page.waitForTimeout(200);
-              const chooser=await page.evaluate(()=>({visible:(()=>{const x=document.querySelector('#results .hotel-card .hotel-tours');return !!x&&!x.hidden&&getComputedStyle(x).display!=='none';})(),heading:!!document.querySelector('.search3-tour-chooser-head'),rows:document.querySelectorAll('#results .hotel-card:first-child .tour-row').length,cta:[...document.querySelectorAll('#results .hotel-card:first-child .direct-tour')].map(x=>x.textContent.trim()),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
+              const chooser=await page.evaluate(()=>({visible:(()=>{const x=document.querySelector('#results .hotel-card .hotel-tours');return !!x&&!x.hidden&&getComputedStyle(x).display!=='none';})(),heading:!!document.querySelector('.search3-tour-list-head'),rows:document.querySelectorAll('#results .hotel-card:first-child .tour-row').length,cta:[...document.querySelectorAll('#results .hotel-card:first-child .direct-tour')].map(x=>x.textContent.trim()),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
               await page.screenshot({path:`search3-visual-artifacts/${name}-tours.png`,fullPage:true});
               let drawer=null;
               if(width<=999){
