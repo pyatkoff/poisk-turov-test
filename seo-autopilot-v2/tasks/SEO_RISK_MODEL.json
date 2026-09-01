@@ -1,0 +1,24 @@
+{
+  "id": "SEO_RISK_MODEL",
+  "title": "Classify SEO changes before execution",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "SAFE": [
+    "diagnostics/inventory",
+    "documentation/state",
+    "narrow factual typo/domain-reference fixes with clear evidence",
+    "targeted tests/monitoring"
+  ],
+  "MEDIUM": [
+    "canonical/indexation policy changes",
+    "new templates/page families",
+    "internal-link architecture",
+    "schema/data integration",
+    "bounded redirects"
+  ],
+  "HIGH": [
+    "mass redirects/URL migrations",
+    "mass indexation publication",
+    "protected product/analytics contract changes"
+  ]
+}
