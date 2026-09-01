@@ -1,0 +1,14 @@
+{
+  "id": "SEO_COMPETITOR_RESEARCH",
+  "title": "Research competing travel SERPs for structural opportunities",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "look_for": [
+    "landing families ranking for core intents",
+    "useful information architecture patterns",
+    "content/data modules users expect",
+    "internal-link structures",
+    "SERP gaps AnyTour can answer with factual data"
+  ],
+  "rule": "Learn from patterns; do not copy competitor text, claims, proprietary data or design."
+}
