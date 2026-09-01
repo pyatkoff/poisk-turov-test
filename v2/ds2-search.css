@@ -37,7 +37,7 @@ body.at-search2-results:not(.at-search2-selected) .results-layout{display:grid}
   align-items:center;
   justify-content:space-between;
   gap:18px;
-  margin:0 0 12px calc((100% - var(--at-shell))/2 + 274px);
+  margin:0 0 12px 274px;
   padding:11px 13px;
   border:1px solid var(--at-line);
   border-radius:var(--at-radius-md);
