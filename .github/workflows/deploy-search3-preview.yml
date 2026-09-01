@@ -87,8 +87,8 @@ jobs:
           import sys
           path=Path(sys.argv[1])
           text=path.read_text()
-          text=text.replace('</head>','<link rel="stylesheet" href="/_preview/search3/search3-preview.css?v=4"><link rel="stylesheet" href="/_preview/search3/search3-results-preview.css?v=4"><link rel="stylesheet" href="/_preview/search3/search3-results-width-fix.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-filter-rail-preview.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-mobile-filters.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-results-top.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-selected-tour.css?v=3"></head>',1)
-          text=text.replace('</body>','<script src="/_preview/search3/search3-preview.js?v=3"></script><script src="/_preview/search3/search3-results-preview.js?v=3"></script><script src="/_preview/search3/search3-filter-rail-preview.js?v=2"></script><script src="/_preview/search3/search3-mobile-filters.js?v=4"></script><script src="/_preview/search3/search3-results-top.js?v=2"></script><script src="/_preview/search3/search3-selected-tour-mobile.js?v=1"></script></body>',1)
+          text=text.replace('</head>','<link rel="stylesheet" href="/_preview/search3/search3-preview.css?v=5"><link rel="stylesheet" href="/_preview/search3/search3-results-preview.css?v=4"><link rel="stylesheet" href="/_preview/search3/search3-results-width-fix.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-filter-rail-preview.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-mobile-filters.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-results-top.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-selected-tour.css?v=4"></head>',1)
+          text=text.replace('</body>','<script src="/_preview/search3/search3-preview.js?v=3"></script><script src="/_preview/search3/search3-results-preview.js?v=3"></script><script src="/_preview/search3/search3-filter-rail-preview.js?v=2"></script><script src="/_preview/search3/search3-mobile-filters.js?v=4"></script><script src="/_preview/search3/search3-results-top.js?v=2"></script><script src="/_preview/search3/search3-selected-tour-mobile.js?v=2"></script></body>',1)
           path.write_text(text)
           PY
 
@@ -122,7 +122,7 @@ jobs:
           echo "PREVIEW_HTTP=$code"
           test "$code" = "200"
           grep -q '/_preview/search3/bundle-v1.php?type=css' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-preview.css?v=4' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-preview.css?v=5' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-preview.js?v=3' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-results-preview.css?v=4' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-results-width-fix.css?v=2' /tmp/search3-preview.html
@@ -133,8 +133,8 @@ jobs:
           grep -q '/_preview/search3/search3-mobile-filters.js?v=4' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-results-top.css?v=3' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-results-top.js?v=2' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-selected-tour.css?v=3' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-selected-tour-mobile.js?v=1' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-selected-tour.css?v=4' /tmp/search3-preview.html
+          grep -q '/_preview/search3/search3-selected-tour-mobile.js?v=2' /tmp/search3-preview.html
           grep -q '/_preview/search3/api-v2.php' /tmp/search3-preview.html
           health_code="$(curl -sSL -o /tmp/search3-health.json -w '%{http_code}' --max-time 45 "$base/api-v2.php?action=health")"
           echo "HEALTH_HTTP=$health_code"
@@ -200,19 +200,20 @@ jobs:
               }
               const selected=await page.evaluate(()=>{
                 document.body.classList.remove('search3-filter-open');
+                const overlay=document.querySelector('.search3-filter-overlay');if(overlay)overlay.hidden=true;
                 const root=document.getElementById('selectedTour'),results=document.getElementById('results');
                 if(!root)return {exists:false};
                 if(results)results.hidden=true;
                 root.hidden=false;
                 root.innerHTML='<button type="button" class="back-results">← Вернуться к предложениям</button><div class="selected-head"><div><span class="eyebrow">ВЫБРАННЫЙ ТУР</span><h2>AnyTour Coast Resort</h2><p>Турция · Анталья · Лара</p></div><div class="selected-price"><small>Стоимость</small>125 000 ₽</div></div><div class="selected-picture"><div style="width:100%;height:100%;background:#dfe9ff"></div></div><div class="facts"><div><span>Вылет из</span><b>Москва</b></div><div><span>Дата</span><b>10.09.2026</b></div><div><span>Ночей</span><b>7</b></div><div><span>Туристы</span><b>2 взр.</b></div><div><span>Питание</span><b>Все включено</b></div><div><span>Номер</span><b>Standard Sea View</b></div><div><span>Размещение</span><b>DBL</b></div><div><span>Оператор</span><b>ANEX</b></div><div><span>Перелёт</span><b>Чартер</b></div><div><span>Топливный сбор</span><b>—</b></div></div><div class="tour-flights"><div class="section-heading"><strong>Авиарейсы</strong><span>Выберите подходящий вариант</span></div><div class="flight-variant is-selected">Рейс и багаж проверены</div></div><form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер проверит тур перед подтверждением</span></div><button type="submit">Оставить заявку</button></form>';
                 window.dispatchEvent(new CustomEvent('v2:selected-tour-opened'));
-                const picture=root.querySelector('.selected-picture'),head=root.querySelector('.selected-head'),bar=document.querySelector('.search3-selected-mobile-bar');
-                return {exists:true,facts:root.querySelectorAll('.facts>div').length,imageBeforeHead:!!picture&&!!head&&picture.getBoundingClientRect().top<head.getBoundingClientRect().top,barVisible:!!bar&&!bar.hidden&&getComputedStyle(bar).display!=='none',barPrice:bar?.querySelector('[data-s3-selected-price]')?.textContent?.trim()||'',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+                const picture=root.querySelector('.selected-picture'),head=root.querySelector('.selected-head'),bar=document.querySelector('.search3-selected-mobile-bar'),toolbar=document.querySelector('.search3-mobile-toolbar');
+                return {exists:true,facts:root.querySelectorAll('.facts>div').length,imageBeforeHead:!!picture&&!!head&&picture.getBoundingClientRect().top<head.getBoundingClientRect().top,barVisible:!!bar&&!bar.hidden&&getComputedStyle(bar).display!=='none',barPrice:bar?.querySelector('[data-s3-selected-price]')?.textContent?.trim()||'',toolbarHidden:!toolbar||getComputedStyle(toolbar).display==='none',overlayHidden:!overlay||overlay.hidden,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
               });
               await page.waitForTimeout(100);
               await page.screenshot({path:`search3-visual-artifacts/${name}-selected.png`,fullPage:true});
               const item={name,http:response?.status()||0,errors,initial,results,chooser,drawer,selected}; report.push(item);
-              const bad=item.http!==200||errors.length||!initial.search3||!initial.form||initial.overflow||results.cards!==2||results.actions!==2||!results.allToursHidden||results.overflow||results.legacyMobileBars!==0||(width<=999?!results.mobileFilters:results.mobileFilters)||!chooser.visible||!chooser.heading||chooser.rows<1||chooser.cta.some(x=>x!=='Подробнее о туре')||chooser.overflow||(drawer&&(!drawer.open||!drawer.dialog||drawer.overflow))||!selected.exists||selected.facts!==10||selected.overflow||(width<=640&&(!selected.imageBeforeHead||!selected.barVisible||selected.barPrice!=='125 000 ₽'));
+              const bad=item.http!==200||errors.length||!initial.search3||!initial.form||initial.overflow||results.cards!==2||results.actions!==2||!results.allToursHidden||results.overflow||results.legacyMobileBars!==0||(width<=999?!results.mobileFilters:results.mobileFilters)||!chooser.visible||!chooser.heading||chooser.rows<1||chooser.cta.some(x=>x!=='Подробнее о туре')||chooser.overflow||(drawer&&(!drawer.open||!drawer.dialog||drawer.overflow))||!selected.exists||selected.facts!==10||!selected.toolbarHidden||!selected.overlayHidden||selected.overflow||(width<=640&&(!selected.imageBeforeHead||!selected.barVisible||selected.barPrice!=='125 000 ₽'));
               if(bad)failed=true;
               console.log('SEARCH3_VISUAL',JSON.stringify(item));
               await context.close();
