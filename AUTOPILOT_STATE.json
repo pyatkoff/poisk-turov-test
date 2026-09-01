@@ -12,11 +12,11 @@
     "rule": "Prioritize tour-search UX and site-wide user-facing convergence on AnyTour Design System 2.0. New design concepts require owner approval. Search 2.0 PR #810 may deploy only to the isolated /_preview/search2/ route because the owner explicitly approved preview publishing; it must not merge or deploy to production /poisk-turov/ until explicit production approval."
   },
   "current_stage": {
-    "id": "SEARCH2_INITIAL_FORM_PREVIEW_CONVERGENCE",
-    "name": "Search 2.0 initial-form preview convergence + shared DS2 stability",
+    "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
+    "name": "Shared DS2 CTA, touch-target and responsive convergence",
     "status": "ACTIVE",
     "last_material_progress": "Production DS2 remains verified through PR #820 and the subsequent successful country release/post-deploy five-width audit. The owner then explicitly approved using https://anytoour.ru/_preview/search2/poisk-turov/ for Search 2.0 review. A dedicated preview-only workflow now deploys branch design/search2-form-polish to /_preview/search2/ without touching production; initial preview deploy run 33557752534 passed. Fresh visual evidence from PR #810 showed that the rendered initial form still retained the older large two-row composition and orange CTA despite branch polish layers. The current preview branch therefore adds an explicit ds2-search-initial state owner, robust delayed enhancement of the transformed date/nights/guest controls, and an authoritative initial-form CSS layer targeting the approved five-control composition with blue CTA. Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified destinations and unresolved legal/payment content remain unchanged.",
-    "next_action": "Verify the newest preview deploy and five-width PR visual evidence for the actual rendered initial form. Confirm that desktop is one compact row: Откуда, Куда, Когда, Ночи, Туристы, blue Найти туры; tablet/mobile must remain usable at 1024/768/430/375. If visual evidence still shows the legacy composition, diagnose the actual runtime state/class mismatch before adding more cosmetic layers. Keep production release locked pending owner visual approval."
+    "next_action": "Within the existing SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE owner stage, verify the newest Search 2.0 preview deploy and five-width PR visual evidence for the actual rendered initial form. Confirm that desktop is one compact row: Откуда, Куда, Когда, Ночи, Туристы, blue Найти туры; tablet/mobile must remain usable at 1024/768/430/375. If visual evidence still shows the legacy composition, diagnose the actual runtime state/class mismatch before adding more cosmetic layers. Keep production release locked pending owner visual approval."
   },
   "local_results_filtering": {
     "mode": "instant_local",
