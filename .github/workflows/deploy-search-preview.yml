@@ -94,11 +94,23 @@ jobs:
         run: |
           set -euo pipefail
           base='https://anytoour.ru/_preview/search2'
-          code="$(curl -fsSL -o /tmp/search2-preview.html -w '%{http_code}' --max-time 45 "$base/poisk-turov/")"
+          code="$(curl -sSL -o /tmp/search2-preview.html -w '%{http_code}' --max-time 45 "$base/poisk-turov/")"
+          echo "PREVIEW_HTTP=$code"
+          head -c 500 /tmp/search2-preview.html || true
+          echo
           test "$code" = "200"
-          grep -q '/_preview/search2/bundle-v1.php?type=css' /tmp/search2-preview.html
-          grep -q '/_preview/search2/api-v2.php' /tmp/search2-preview.html
-          curl -fsSL --max-time 45 "$base/api-v2.php?action=health" | grep -q 'tourvisor-direct'
-          curl -fsSI --max-time 30 "$base/poisk-turov/" | grep -qi 'x-robots-tag: noindex, nofollow'
-          curl -fsSL --max-time 30 "$base/bundle-v1.php?type=css" | grep -q 'search2-results-layout'
+          grep -q '/_preview/search2/bundle-v1.php?type=css' /tmp/search2-preview.html || { echo 'MISSING_PREVIEW_CSS_URL'; exit 21; }
+          grep -q '/_preview/search2/api-v2.php' /tmp/search2-preview.html || { echo 'MISSING_PREVIEW_API_URL'; exit 22; }
+          health_code="$(curl -sSL -o /tmp/search2-health.json -w '%{http_code}' --max-time 45 "$base/api-v2.php?action=health")"
+          echo "HEALTH_HTTP=$health_code"
+          cat /tmp/search2-health.json || true
+          echo
+          test "$health_code" = "200"
+          grep -q 'tourvisor-direct' /tmp/search2-health.json || { echo 'HEALTH_MARKER_MISSING'; exit 23; }
+          headers="$(curl -sSI --max-time 30 "$base/poisk-turov/")"
+          printf '%s\n' "$headers" | grep -qi 'x-robots-tag: noindex, nofollow' || { echo 'NOINDEX_HEADER_MISSING'; exit 24; }
+          css_code="$(curl -sSL -o /tmp/search2.css -w '%{http_code}' --max-time 30 "$base/bundle-v1.php?type=css")"
+          echo "CSS_HTTP=$css_code"
+          test "$css_code" = "200"
+          grep -q 'search2-results-layout' /tmp/search2.css || { echo 'SEARCH2_CSS_MARKER_MISSING'; exit 25; }
           echo "SEARCH_PREVIEW_OK $base/poisk-turov/"
