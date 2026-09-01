@@ -12,6 +12,7 @@ function closeOtherPickers(current){
 }
 function ruWord(n,one,few,many){n=Math.abs(Number(n)||0)%100;var last=n%10;if(n>10&&n<20)return many;if(last>1&&last<5)return few;if(last===1)return one;return many;}
 function nightsText(from,to){var a=String(from&&from.value||''),b=String(to&&to.value||'');function one(v){var n=Number(v||0);return n?n+' '+ruWord(n,'ночь','ночи','ночей'):'';}return a&&b?(a===b?one(a):a+'–'+b+' ночей'):a?one(a):'Выберите ночи';}
+function tuneNightsSummary(summary){if(!summary)return;summary.style.listStyle='none';summary.style.whiteSpace='nowrap';summary.style.display='flex';summary.style.alignItems='center';summary.style.gap='4px';}
 function enhanceNights(main){
   var field=main.querySelector('.nights-ux');
   if(!field)return false;
@@ -20,14 +21,14 @@ function enhanceNights(main){
   var title=field.querySelector(':scope > span');if(title)title.textContent='Ночи';
   if(field.dataset.ds2CompactNights==='1'){
     var existing=field.querySelector('.ds2-nights-picker>summary'),existingOut=field.querySelector('.ds2-nights-summary');
-    var existingLabel=nightsText(from,to);if(existingOut)existingOut.textContent=existingLabel;if(existing){existing.style.listStyle='none';existing.setAttribute('aria-label','Ночи: '+existingLabel+'. Изменить');}
+    var existingLabel=nightsText(from,to);if(existingOut)existingOut.textContent=existingLabel;if(existing){tuneNightsSummary(existing);existing.setAttribute('aria-label','Ночи: '+existingLabel+'. Изменить');}
     return !!existing;
   }
   var quick=field.querySelector('.nights-quick'),custom=field.querySelector('.nights-custom');
   if(!quick||!custom)return false;
   field.dataset.ds2CompactNights='1';
   var picker=document.createElement('details');picker.className='ds2-nights-picker';
-  var summary=document.createElement('summary');summary.style.listStyle='none';summary.setAttribute('aria-label','Выбрать количество ночей');summary.innerHTML='<strong class="ds2-nights-summary"></strong><span aria-hidden="true">⌄</span>';
+  var summary=document.createElement('summary');tuneNightsSummary(summary);summary.setAttribute('aria-label','Выбрать количество ночей');summary.innerHTML='<strong class="ds2-nights-summary"></strong><span aria-hidden="true">⌄</span>';
   var panel=document.createElement('div');panel.className='ds2-nights-panel';panel.id='ds2-nights-panel';summary.setAttribute('aria-controls',panel.id);summary.setAttribute('aria-haspopup','dialog');
   var caption=document.createElement('small');caption.className='ds2-nights-caption';caption.textContent='Выберите диапазон ночей';
   panel.appendChild(caption);panel.appendChild(quick);panel.appendChild(custom);picker.appendChild(summary);picker.appendChild(panel);field.appendChild(picker);
