@@ -10,6 +10,7 @@ function syncInitialState(){
 function closeOtherPickers(current){
   form.querySelectorAll('.dates-picker,.guests-picker,.ds2-nights-picker').forEach(function(other){if(other!==current&&other.open)other.open=false;});
 }
+function ruWord(n,one,few,many){n=Math.abs(Number(n)||0)%100;var last=n%10;if(n>10&&n<20)return many;if(last>1&&last<5)return few;if(last===1)return one;return many;}
 function enhanceNights(main){
   var field=main.querySelector('.nights-ux');
   if(!field)return false;
@@ -20,17 +21,18 @@ function enhanceNights(main){
   if(!quick||!custom||!from||!to)return false;
   field.dataset.ds2CompactNights='1';
   var picker=document.createElement('details');picker.className='ds2-nights-picker';
-  var summary=document.createElement('summary');summary.innerHTML='<strong class="ds2-nights-summary"></strong><span aria-hidden="true">⌄</span>';
+  var summary=document.createElement('summary');summary.setAttribute('aria-label','Выбрать количество ночей');summary.innerHTML='<strong class="ds2-nights-summary"></strong><span aria-hidden="true">⌄</span>';
   var panel=document.createElement('div');panel.className='ds2-nights-panel';
   var caption=document.createElement('small');caption.className='ds2-nights-caption';caption.textContent='Выберите диапазон ночей';
   panel.appendChild(caption);panel.appendChild(quick);panel.appendChild(custom);picker.appendChild(summary);picker.appendChild(panel);field.appendChild(picker);
-  function sync(){var a=String(from.value||''),b=String(to.value||'');var label=a&&b?(a===b?a+' ночей':a+'–'+b+' ночей'):a?a+' ночей':'Выберите ночи';var out=summary.querySelector('.ds2-nights-summary');if(out)out.textContent=label;}
-  picker.addEventListener('toggle',function(){if(picker.open)closeOtherPickers(picker);});
+  function nightsLabel(v){var n=Number(v||0);return n?n+' '+ruWord(n,'ночь','ночи','ночей'):'';}
+  function sync(){var a=String(from.value||''),b=String(to.value||'');var label=a&&b?(a===b?nightsLabel(a):a+'–'+b+' ночей'):a?nightsLabel(a):'Выберите ночи';var out=summary.querySelector('.ds2-nights-summary');if(out)out.textContent=label;summary.setAttribute('aria-label','Ночи: '+label+'. Изменить');}
+  picker.addEventListener('toggle',function(){summary.setAttribute('aria-expanded',picker.open?'true':'false');if(picker.open)closeOtherPickers(picker);});
   from.addEventListener('input',sync);to.addEventListener('input',sync);from.addEventListener('change',sync);to.addEventListener('change',sync);
   quick.addEventListener('click',function(e){var btn=e.target&&e.target.closest&&e.target.closest('.nights-choice');if(!btn)return;setTimeout(function(){sync();if(!btn.dataset.custom)picker.open=false;},0);});
   document.addEventListener('click',function(e){if(picker.open&&!picker.contains(e.target))picker.open=false;});
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&picker.open){picker.open=false;summary.focus();}});
-  sync();return true;
+  summary.setAttribute('aria-expanded','false');sync();return true;
 }
 function coordinateExistingPickers(){form.querySelectorAll('.dates-picker,.guests-picker').forEach(function(picker){if(picker.dataset.ds2Coordinated==='1')return;picker.dataset.ds2Coordinated='1';picker.addEventListener('toggle',function(){if(picker.open)closeOtherPickers(picker);});});}
 function compactDate(v){if(!v)return'';var p=String(v).split('-').map(Number);if(p.length!==3||!p[0]||!p[1]||!p[2])return String(v);try{return new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short'}).format(new Date(p[0],p[1]-1,p[2])).replace('.','');}catch(e){return String(v);}}
@@ -39,7 +41,7 @@ function tunePrimarySummaries(main){
   var dateOut=main.querySelector('.dates-summary'),guestOut=main.querySelector('.guests-summary');
   if(!dateFrom||!dateTo||!adults||!children||!dateOut||!guestOut)return false;
   function syncDates(){var a=compactDate(dateFrom.value),b=compactDate(dateTo.value);dateOut.textContent=a&&b?a+' – '+b:a?('с '+a):b?('до '+b):'Выберите даты';}
-  function syncGuests(){var a=Math.max(1,Number(adults.value||1)),c=Math.max(0,Number(children.value||0));var adultWord=a===1?'взрослый':'взрослых';var childWord=c===1?'ребёнок':c>=2&&c<=4?'ребёнка':'детей';guestOut.textContent=a+' '+adultWord+(c?' · '+c+' '+childWord:'');}
+  function syncGuests(){var a=Math.max(1,Number(adults.value||1)),c=Math.max(0,Number(children.value||0));var adultWord=ruWord(a,'взрослый','взрослых','взрослых');var childWord=ruWord(c,'ребёнок','ребёнка','детей');guestOut.textContent=a+' '+adultWord+(c?' · '+c+' '+childWord:'');}
   if(main.dataset.ds2CompactSummaries!=='1'){
     main.dataset.ds2CompactSummaries='1';
     function after(fn){return function(){setTimeout(fn,0);};}
