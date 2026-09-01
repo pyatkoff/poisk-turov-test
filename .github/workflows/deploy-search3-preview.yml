@@ -198,8 +198,21 @@ jobs:
                   await page.screenshot({path:`search3-visual-artifacts/${name}-filters.png`,fullPage:true});
                 }else drawer={open:false,dialog:false,overflow:false,reason:'mobile-filter-button-not-visible'};
               }
-              const item={name,http:response?.status()||0,errors,initial,results,chooser,drawer}; report.push(item);
-              const bad=item.http!==200||errors.length||!initial.search3||!initial.form||initial.overflow||results.cards!==2||results.actions!==2||!results.allToursHidden||results.overflow||results.legacyMobileBars!==0||(width<=999?!results.mobileFilters:results.mobileFilters)||!chooser.visible||!chooser.heading||chooser.rows<1||chooser.cta.some(x=>x!=='Подробнее о туре')||chooser.overflow||(drawer&&(!drawer.open||!drawer.dialog||drawer.overflow));
+              const selected=await page.evaluate(()=>{
+                document.body.classList.remove('search3-filter-open');
+                const root=document.getElementById('selectedTour'),results=document.getElementById('results');
+                if(!root)return {exists:false};
+                if(results)results.hidden=true;
+                root.hidden=false;
+                root.innerHTML='<button type="button" class="back-results">← Вернуться к предложениям</button><div class="selected-head"><div><span class="eyebrow">ВЫБРАННЫЙ ТУР</span><h2>AnyTour Coast Resort</h2><p>Турция · Анталья · Лара</p></div><div class="selected-price"><small>Стоимость</small>125 000 ₽</div></div><div class="selected-picture"><div style="width:100%;height:100%;background:#dfe9ff"></div></div><div class="facts"><div><span>Вылет из</span><b>Москва</b></div><div><span>Дата</span><b>10.09.2026</b></div><div><span>Ночей</span><b>7</b></div><div><span>Туристы</span><b>2 взр.</b></div><div><span>Питание</span><b>Все включено</b></div><div><span>Номер</span><b>Standard Sea View</b></div><div><span>Размещение</span><b>DBL</b></div><div><span>Оператор</span><b>ANEX</b></div><div><span>Перелёт</span><b>Чартер</b></div><div><span>Топливный сбор</span><b>—</b></div></div><div class="tour-flights"><div class="section-heading"><strong>Авиарейсы</strong><span>Выберите подходящий вариант</span></div><div class="flight-variant is-selected">Рейс и багаж проверены</div></div><form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер проверит тур перед подтверждением</span></div><button type="submit">Оставить заявку</button></form>';
+                window.dispatchEvent(new CustomEvent('v2:selected-tour-opened'));
+                const picture=root.querySelector('.selected-picture'),head=root.querySelector('.selected-head'),bar=document.querySelector('.search3-selected-mobile-bar');
+                return {exists:true,facts:root.querySelectorAll('.facts>div').length,imageBeforeHead:!!picture&&!!head&&picture.getBoundingClientRect().top<head.getBoundingClientRect().top,barVisible:!!bar&&!bar.hidden&&getComputedStyle(bar).display!=='none',barPrice:bar?.querySelector('[data-s3-selected-price]')?.textContent?.trim()||'',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+              });
+              await page.waitForTimeout(100);
+              await page.screenshot({path:`search3-visual-artifacts/${name}-selected.png`,fullPage:true});
+              const item={name,http:response?.status()||0,errors,initial,results,chooser,drawer,selected}; report.push(item);
+              const bad=item.http!==200||errors.length||!initial.search3||!initial.form||initial.overflow||results.cards!==2||results.actions!==2||!results.allToursHidden||results.overflow||results.legacyMobileBars!==0||(width<=999?!results.mobileFilters:results.mobileFilters)||!chooser.visible||!chooser.heading||chooser.rows<1||chooser.cta.some(x=>x!=='Подробнее о туре')||chooser.overflow||(drawer&&(!drawer.open||!drawer.dialog||drawer.overflow))||!selected.exists||selected.facts!==10||selected.overflow||(width<=640&&(!selected.imageBeforeHead||!selected.barVisible||selected.barPrice!=='125 000 ₽'));
               if(bad)failed=true;
               console.log('SEARCH3_VISUAL',JSON.stringify(item));
               await context.close();
