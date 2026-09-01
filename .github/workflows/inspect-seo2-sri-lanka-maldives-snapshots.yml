@@ -1,17 +1,17 @@
-name: Resolve SEO2 Sri Lanka Maldives regions
+name: Inspect SEO2 Sri Lanka Maldives snapshots
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/resolve-seo2-sri-lanka-maldives-regions.yml'
+  workflow_run:
+    workflows: ['Deploy anytoour.ru']
+    types: [completed]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  resolve:
+  inspect:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -31,7 +31,7 @@ jobs:
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
 
-      - name: List synchronized regions and subregions
+      - name: Inspect fresh country and resort snapshots
         env:
           NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           NEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -41,11 +41,7 @@ jobs:
           test -n "$NEW_HOST" && test -n "$NEW_USER"
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
           remote="$NEW_USER@$NEW_HOST"
-          echo 'SEO2_SRI_LANKA_REGIONS_BEGIN'
+          echo 'SEO2_SNAPSHOTS_BEGIN'
           timeout 45s ssh "${opts[@]}" "$remote" \
-            "php \"\$HOME/www/anytoour.ru/data/resolve-resort-id-v1.php\" --country=12 --list"
-          echo 'SEO2_SRI_LANKA_REGIONS_END'
-          echo 'SEO2_MALDIVES_REGIONS_BEGIN'
-          timeout 45s ssh "${opts[@]}" "$remote" \
-            "php \"\$HOME/www/anytoour.ru/data/resolve-resort-id-v1.php\" --country=8 --list"
-          echo 'SEO2_MALDIVES_REGIONS_END'
+            "php \"\$HOME/www/anytoour.ru/data/inspect-seo-offer-snapshots-v1.php\" --countries=12,8"
+          echo 'SEO2_SNAPSHOTS_END'
