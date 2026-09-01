@@ -1,0 +1,13 @@
+{
+  "id": "SEO_DESIGN_SYSTEM_2",
+  "title": "Keep SEO landing pages on AnyTour Design System 2.0",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Ensure SEO landing templates feel like one AnyTour product rather than a separate legacy SEO site.",
+  "rules": [
+    "Design System 1.0 is not an implementation target.",
+    "Reuse the approved DS2 header/footer/components where compatible.",
+    "SEO content must not create a second conflicting component system.",
+    "Visual work must not silently alter search/Tourvisor/lead contracts."
+  ]
+}
