@@ -1,0 +1,19 @@
+{
+  "id": "SEO_GROWTH_EXPERIMENTS",
+  "title": "Run bounded SEO growth experiments after the foundation is healthy",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "examples": [
+    "new high-value landing family pilot",
+    "richer live-offer module",
+    "internal-link module",
+    "intent-specific content block"
+  ],
+  "requirements": [
+    "baseline",
+    "small rollout cohort",
+    "technical quality gate",
+    "measurable outcome hypothesis",
+    "rollback/stop rule"
+  ]
+}
