@@ -1,11 +1,9 @@
 name: Resolve SEO2 Sri Lanka Maldives country IDs
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/resolve-seo2-sri-lanka-maldives-country-ids.yml'
-      - 'v2/data/resolve-country-id-v1.php'
+  workflow_run:
+    workflows: ['Deploy V2 only']
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -13,6 +11,7 @@ permissions:
 
 jobs:
   resolve:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
