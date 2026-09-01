@@ -4,10 +4,12 @@
   "goal": "Implement the approved hotel detail and tour/room selection hierarchy without changing Tourvisor identifiers, room enrichment semantics, selected-tour state or pricing behavior.",
   "risk": "MEDIUM",
   "owns_paths": [
-    "v2/hotel-detail-v1.css",
-    "v2/hotel-detail-v1.js",
-    "v2/tour-choice-v1.css",
-    "v2/tour-choice-v1.js"
+    "v2/hotel-details-design.css",
+    "v2/hotel-actions-v3.js",
+    "v2/room-details.css",
+    "v2/room-details-v3.js",
+    "v2/tour-design-v1.css",
+    "v2/tour-controller-v4.js"
   ],
   "depends_on": [
     "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -22,7 +24,7 @@
     ]
   },
   "done_when": [
-    "approved hotel and tour option hierarchy is implemented",
+    "approved hotel and tour option hierarchy is implemented in the active runtime files",
     "room, meal, operator, date and price information remain consistent with the selected tour",
     "stale room/detail responses cannot overwrite a newer hotel or tour choice",
     "no external lead, Metrika or logo contract changes"
