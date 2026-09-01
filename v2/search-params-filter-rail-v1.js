@@ -40,8 +40,11 @@ function normalizeInitialLayout(){
   if(!main||!extraGrid||!isInitialState())return;
   const food=form.elements.food,foodField=food&&food.closest('.field');
   if(foodField&&main.contains(foodField))moveFilter('food','price_from','result-filter-meal','.meal-quick',['meal-native-select','ux-native-hidden']);
-  const stars=form.elements.stars,starsField=stars&&stars.closest('.field'),submit=form.querySelector('.search-submit');
-  if(starsField&&starsField.parentElement===form&&submit&&submit.nextElementSibling!==starsField)form.insertBefore(submit,starsField);
+  const stars=form.elements.stars,starsField=stars&&stars.closest('.field');
+  if(starsField){
+    starsField.classList.remove('primary-step','primary-step-1','primary-step-2','primary-step-3','primary-step-4','primary-step-5','primary-step-6','primary-step-7');
+    if(starsField.parentElement!==form||starsField.nextElementSibling!==details)form.insertBefore(starsField,details);
+  }
 }
 function normalizePrimaryLayout(){
   if(!main||!extraGrid||isInitialState())return;
@@ -70,7 +73,7 @@ function scheduleNormalize(){setTimeout(()=>{if(isInitialState())normalizeInitia
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scheduleNormalize,{once:true});else scheduleNormalize();
 keepFilterLabel();
 if(summary&&typeof MutationObserver!=='undefined')new MutationObserver(()=>{keepFilterLabel();if(isInitialState()){normalizeInitialLayout();return;}if(normalized){const stars=form.elements.stars,food=form.elements.food;if(stars&&main.contains(stars.closest('.field')))scheduleNormalize();if(food&&main.contains(food.closest('.field')))scheduleNormalize();}}).observe(summary,{childList:true,subtree:true,characterData:true});
-if(typeof MutationObserver!=='undefined')new MutationObserver(()=>{if(isInitialState()){keepFilterLabel();normalizeInitialLayout();}}).observe(form,{childList:true});
+if(typeof MutationObserver!=='undefined')new MutationObserver(()=>{if(isInitialState()){keepFilterLabel();normalizeInitialLayout();}}).observe(form,{childList:true,subtree:true});
 
 window.addEventListener('v2:results-rendered',()=>{
   scheduleNormalize();
