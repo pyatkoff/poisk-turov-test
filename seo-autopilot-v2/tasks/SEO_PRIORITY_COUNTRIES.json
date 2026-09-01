@@ -1,0 +1,14 @@
+{
+  "id": "SEO_PRIORITY_COUNTRIES",
+  "title": "Prioritize country landing work using evidence",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "score": [
+    "existing organic demand",
+    "commercial/tour inventory relevance",
+    "quality of factual destination data",
+    "existing page quality gap",
+    "internal-link opportunity"
+  ],
+  "rule": "Do not assume a country priority list without current demand and inventory evidence."
+}
