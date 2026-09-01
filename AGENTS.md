@@ -138,7 +138,7 @@ Maintain work under these categories:
 
 ## Codex execution protocol
 
-Codex is an implementation lane, not the product owner. Before changing code, read `AGENTS.md`, `AUTOPILOT.md`, `AUTOPILOT_STATE.json`, `.autopilot/README.md` and the relevant code/tests for the assigned task.
+Codex is an implementation lane, not the product owner. Before changing code, read `AGENTS.md`, `.autopilot/README.md`, `autopilot-v2/project-contract.json`, the assigned task contract in `autopilot-v2/tasks/`, current controller status/plan, and the relevant code/tests. `AUTOPILOT_STATE.json` and `AUTOPILOT.md` are roadmap/compatibility context only and must not override the task contract.
 
 For every assigned task:
 - follow the task contract and `owns_paths` exactly;
