@@ -1,0 +1,19 @@
+{
+  "id": "SEO_PAGE_FAMILY_REGISTRY",
+  "title": "Maintain one registry of SEO page-family contracts",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "fields": [
+    "family id",
+    "intent",
+    "route",
+    "indexable",
+    "canonical policy",
+    "sitemap policy",
+    "template owner",
+    "data dependencies",
+    "internal discovery",
+    "representative URLs",
+    "risk"
+  ]
+}
