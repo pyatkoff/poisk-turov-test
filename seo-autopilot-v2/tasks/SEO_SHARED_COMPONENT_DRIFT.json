@@ -1,0 +1,13 @@
+{
+  "id": "SEO_SHARED_COMPONENT_DRIFT",
+  "title": "Detect SEO pages drifting from shared DS2 components",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "header version",
+    "footer version",
+    "logo/brand identity",
+    "core spacing/typography tokens",
+    "search entry component contract"
+  ]
+}
