@@ -1,0 +1,14 @@
+{
+  "id": "SEO_TEMPLATE_OWNERSHIP",
+  "title": "Make SEO template ownership explicit",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "principle": "SEO tasks own SEO landing templates and metadata contracts, not shared search runtime by default.",
+  "requires_for_each_template": [
+    "owned paths",
+    "shared DS2 dependencies",
+    "data-source dependencies",
+    "canonical/indexability contract",
+    "verification command or representative QA"
+  ]
+}
