@@ -1,0 +1,15 @@
+{
+  "id": "SEO_LOCAL_FACTS",
+  "title": "Separate durable destination facts from volatile offers",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "data_classes": {
+    "durable": ["country/resort taxonomy", "hotel identity", "stable attributes when sourced"],
+    "volatile": ["tour price", "availability", "departure/date examples"]
+  },
+  "rules": [
+    "volatile facts require timestamps and staleness handling",
+    "durable facts still require provenance",
+    "do not turn inferred or generated statements into factual database fields"
+  ]
+}
