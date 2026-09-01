@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "SEARCH_2_0_MOCKUP_APPROVAL",
-  "goal": "Record owner approval of the revised Search 2.0 desktop/mobile search-results-filter direction so implementation can proceed under the existing redesign contract.",
+  "goal": "Record owner approval of the revised Search 2.0 desktop/mobile search-results-tour-selection direction so implementation can proceed under the existing redesign contract.",
   "risk": "SAFE",
   "verification_class": "LOW",
   "owns_paths": [
@@ -17,12 +17,20 @@
   "invariants": [
     "this task records a design decision only and cannot implement product code",
     "approval applies to the documented Search 2.0 desktop/mobile direction, not unrelated screens",
-    "implementation remains bound by the downstream task owns_paths and protected contracts"
+    "implementation remains bound by the downstream task owns_paths and protected contracts",
+    "homepage and country/resort pages keep a compact search entry while /poisk-turov/ uses the expanded search workspace",
+    "expanded search contains hotel rating instead of tour operator and exposes instant confirmation as a first-class checkbox",
+    "hotel stars, hotel rating and meal plan belong to the primary search and must not be needlessly duplicated as full sidebar filter sections",
+    "results sidebar is for deeper choice criteria such as actual tour price, beach/location, flight, baggage, airline/airport, hotel facilities, family/adults-only signals, availability and tour operator when supported by reliable data",
+    "hotel result cards remain hotel-level: show price-from, number of tours and instant-confirmation availability, with Show tours as the primary CTA",
+    "Buy now must never appear on a hotel-level price-from card; it is allowed only for a concrete tour after dates, room, meal, flight/operator and current price are known and instant confirmation has been revalidated",
+    "a concrete instant-confirmation tour may expose Buy now as primary CTA while preserving Leave a request as the secondary fallback",
+    "mobile keeps the same search and result semantics while full filters open in a dedicated compact panel/drawer"
   ],
   "design_approval": {
     "required": true,
     "status": "approved",
-    "evidence": "Owner confirmed the full new Search 2.0 design direction and instructed implementation to continue on 2026-09-01."
+    "evidence": "Owner approved the revised Search 2.0 direction in chat on 2026-09-01 after reviewing the new desktop/mobile mockup and the instant-confirmation purchase flow."
   },
   "depends_on": [
     "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -33,8 +41,8 @@
   },
   "done_when": [
     "owner approval is explicitly recorded",
-    "REDESIGN_SEARCH_RESULTS may proceed while preserving Tourvisor, local-filter, progressive-result and stale-state contracts"
+    "REDESIGN_SEARCH_RESULTS may proceed toward the revised target while preserving Tourvisor, local-filter, progressive-result, stale-state, pricing and lead contracts"
   ],
   "status": "APPROVED",
-  "approval_evidence": "Owner confirmed the full new design is agreed and instructed implementation to continue on 2026-09-01."
+  "approval_evidence": "Owner approved the revised Search 2.0 search/results/concrete-tour UX target and instructed implementation to continue on 2026-09-01."
 }
