@@ -3,8 +3,22 @@
   "id": "FULL_SEARCH_UX_REAUDIT",
   "goal": "Perform a periodic whole-search UX audit across key mobile/tablet/desktop states without turning the audit itself into a permanent blocking CI matrix.",
   "risk": "SAFE",
+  "verification_class": "LOW",
   "owns_paths": [
     "autopilot-v2/outcomes/FULL_SEARCH_UX_REAUDIT.json"
+  ],
+  "never_touch": [
+    "product code during observation-only audit",
+    "Yandex Metrika configuration or goals",
+    "Tourvisor/API behavior",
+    "external lead transport",
+    "SEO content outside search product"
+  ],
+  "invariants": [
+    "audit itself produces evidence, not opportunistic code changes",
+    "confirmed defects become separate scoped tasks with their own owns_paths and risk",
+    "desktop and mobile are always represented; intermediate widths are added only when layout risk justifies them",
+    "full-site or five-width visual regression remains periodic/on-demand rather than a gate for every small change"
   ],
   "depends_on": [
     "AUTOPILOT_KERNEL_ROLLOUT"
