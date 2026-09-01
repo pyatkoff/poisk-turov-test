@@ -1,0 +1,15 @@
+{
+  "id": "SEO_PERFORMANCE",
+  "title": "Protect landing performance while adding SEO content",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "server-rendered critical content",
+    "excessive JS dependency for crawlable content",
+    "image dimensions/lazy loading",
+    "duplicate assets",
+    "large dynamic offer payloads",
+    "layout stability of SEO modules"
+  ],
+  "rule": "Do not improve SEO copy volume by making the landing materially slower or dependent on client-only rendering for primary content."
+}
