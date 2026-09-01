@@ -1,40 +1,40 @@
 (function(){'use strict';
 function textValue(v){if(v===null||v===undefined)return'';if(typeof v==='string'||typeof v==='number')return String(v).trim();if(Array.isArray(v))return v.map(textValue).filter(Boolean).join(', ');if(typeof v==='object'){for(const key of['russianName','fullRussianName','name','title','value','text','label','description']){const text=textValue(v[key]);if(text)return text;}return'';}return'';}
 function ensureApprovedStyles(){if(document.getElementById('v2-approved-selected-tour-styles'))return;const style=document.createElement('style');style.id='v2-approved-selected-tour-styles';style.textContent=`
-.selected-tour.v2-approved-selected-tour{max-width:1180px;margin:0 auto;padding:24px;border:1px solid #e5e7eb;border-radius:28px;background:#fff;box-shadow:0 24px 70px rgba(15,23,42,.08)}
-.v2-approved-selected-tour .selected-tour-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 22px;padding:6px;border-radius:16px;background:#f5f7fb}
-.v2-approved-selected-tour .selected-tour-progress span{display:flex;align-items:center;justify-content:center;min-height:36px;padding:0 10px;border-radius:12px;color:#6b7280;font-size:12px;font-weight:750}
-.v2-approved-selected-tour .selected-tour-progress span.is-active{background:#fff;color:#111827;box-shadow:0 4px 14px rgba(15,23,42,.08)}
-.v2-approved-selected-tour .selected-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:22px;align-items:start;margin:0 0 20px;padding:0}
-.v2-approved-selected-tour .selected-head .eyebrow{background:transparent;padding:0;min-height:0;color:#f05a24;font-size:12px;letter-spacing:.08em}
-.v2-approved-selected-tour .selected-head h2{margin:8px 0 6px;font-size:clamp(28px,3vw,42px);line-height:1.05;letter-spacing:-.03em;color:#111827}
-.v2-approved-selected-tour .selected-head p{margin:0;color:#6b7280;font-size:15px}
-.v2-approved-selected-tour .selected-price{min-width:230px;padding:16px 18px;border:1px solid #fed7c7;border-radius:18px;background:#fff8f4;color:#111827;box-shadow:none;text-align:right}
-.v2-approved-selected-tour .selected-price small{display:block;margin-bottom:4px;color:#8b5d4c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.v2-approved-selected-tour .selected-picture{overflow:hidden;margin:0 0 18px;border-radius:22px;aspect-ratio:16/6;background:#eef2f7;box-shadow:none}
+.selected-tour.v2-approved-selected-tour{max-width:var(--at-shell);margin:0 auto;padding:var(--at-space-5);border:1px solid var(--at-line);border-radius:var(--at-radius-xl);background:var(--at-surface);box-shadow:var(--at-shadow-md)}
+.v2-approved-selected-tour .selected-tour-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 var(--at-space-5);padding:6px;border-radius:var(--at-radius-lg);background:var(--at-soft)}
+.v2-approved-selected-tour .selected-tour-progress span{display:flex;align-items:center;justify-content:center;min-height:36px;padding:0 10px;border-radius:var(--at-control-radius);color:var(--at-muted);font-size:12px;font-weight:750}
+.v2-approved-selected-tour .selected-tour-progress span.is-active{background:var(--at-surface);color:var(--at-ink);box-shadow:var(--at-shadow-sm)}
+.v2-approved-selected-tour .selected-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--at-space-5);align-items:start;margin:0 0 var(--at-space-5);padding:0}
+.v2-approved-selected-tour .selected-head .eyebrow{background:transparent;padding:0;min-height:0;color:var(--at-accent);font-size:12px;letter-spacing:.08em}
+.v2-approved-selected-tour .selected-head h2{margin:8px 0 6px;font-size:clamp(28px,3vw,42px);line-height:1.05;letter-spacing:-.03em;color:var(--at-ink)}
+.v2-approved-selected-tour .selected-head p{margin:0;color:var(--at-muted);font-size:15px}
+.v2-approved-selected-tour .selected-price{min-width:230px;padding:16px 18px;border:1px solid var(--at-line-strong);border-radius:var(--at-radius-lg);background:var(--at-soft);color:var(--at-ink);box-shadow:none;text-align:right}
+.v2-approved-selected-tour .selected-price small{display:block;margin-bottom:4px;color:var(--at-muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.v2-approved-selected-tour .selected-picture{overflow:hidden;margin:0 0 var(--at-space-4);border-radius:var(--at-radius-xl);aspect-ratio:16/6;background:var(--at-soft);box-shadow:none}
 .v2-approved-selected-tour .selected-picture img{width:100%;height:100%;object-fit:cover}
-.v2-approved-selected-tour .facts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 14px}
-.v2-approved-selected-tour .facts>div{min-width:0;padding:12px;border:1px solid #e5e7eb;border-radius:14px;background:#fff}
-.v2-approved-selected-tour .facts span{display:block;margin-bottom:4px;color:#9ca3af;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
-.v2-approved-selected-tour .facts b{display:block;color:#1f2937;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
-.v2-approved-selected-tour .selected-choice-summary{margin:14px 0 18px;padding:16px;border:0;border-radius:18px;background:#f8fafc}
+.v2-approved-selected-tour .facts{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 var(--at-space-3)}
+.v2-approved-selected-tour .facts>div{min-width:0;padding:12px;border:1px solid var(--at-line);border-radius:var(--at-radius-md);background:var(--at-surface)}
+.v2-approved-selected-tour .facts span{display:block;margin-bottom:4px;color:var(--at-subtle);font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.v2-approved-selected-tour .facts b{display:block;color:var(--at-text);font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.v2-approved-selected-tour .selected-choice-summary{margin:var(--at-space-3) 0 var(--at-space-4);padding:16px;border:0;border-radius:var(--at-radius-lg);background:var(--at-soft)}
 .v2-approved-selected-tour .selected-choice-summary-head{align-items:center}
-.v2-approved-selected-tour .selected-choice-summary-head strong{font-size:15px;color:#111827}
-.v2-approved-selected-tour .selected-choice-summary-head span{color:#9ca3af}
-.v2-approved-selected-tour .hotel-desc{margin:12px 0 0;padding:16px 18px;border:0;border-radius:18px;background:#fafafa;color:#4b5563}
-.v2-approved-selected-tour .tour-flights{margin-top:26px;padding:22px;border:1px solid #e5e7eb;border-radius:22px;background:#fff}
-.v2-approved-selected-tour .tour-flights .section-heading strong{font-size:24px;color:#111827}
-.v2-approved-selected-tour .tour-flights .section-heading span{color:#6b7280}
+.v2-approved-selected-tour .selected-choice-summary-head strong{font-size:15px;color:var(--at-ink)}
+.v2-approved-selected-tour .selected-choice-summary-head span{color:var(--at-subtle)}
+.v2-approved-selected-tour .hotel-desc{margin:12px 0 0;padding:16px 18px;border:0;border-radius:var(--at-radius-lg);background:var(--at-soft);color:var(--at-text)}
+.v2-approved-selected-tour .tour-flights{margin-top:var(--at-space-5);padding:22px;border:1px solid var(--at-line);border-radius:var(--at-radius-xl);background:var(--at-surface)}
+.v2-approved-selected-tour .tour-flights .section-heading strong{font-size:24px;color:var(--at-ink)}
+.v2-approved-selected-tour .tour-flights .section-heading span{color:var(--at-muted)}
 .v2-approved-selected-tour .flight-variants{display:grid;gap:12px}
-.v2-approved-selected-tour .flight-variant{padding:16px;border:1px solid #e5e7eb;border-radius:18px;background:#fff;box-shadow:none}
-.v2-approved-selected-tour .flight-variant.is-selected{border-color:#f05a24;background:#fffaf7;box-shadow:0 0 0 2px rgba(240,90,36,.08)}
-.v2-approved-selected-tour .flight-choice>span{color:#111827}
-.v2-approved-selected-tour .flight-choice>b{color:#f05a24}
-.v2-approved-selected-tour .lead-form{margin-top:26px;padding:22px;border:1px solid #e5e7eb;border-radius:22px;background:#f9fafb}
-.v2-approved-selected-tour .lead-form .section-heading strong{font-size:24px;color:#111827}
-.v2-approved-selected-tour .lead-form .primary{min-height:54px;border-radius:14px}
+.v2-approved-selected-tour .flight-variant{padding:16px;border:1px solid var(--at-line);border-radius:var(--at-radius-lg);background:var(--at-surface);box-shadow:none}
+.v2-approved-selected-tour .flight-variant.is-selected{border-color:var(--at-accent);background:var(--at-soft);box-shadow:var(--at-shadow-sm)}
+.v2-approved-selected-tour .flight-choice>span{color:var(--at-ink)}
+.v2-approved-selected-tour .flight-choice>b{color:var(--at-accent)}
+.v2-approved-selected-tour .lead-form{margin-top:var(--at-space-5);padding:22px;border:1px solid var(--at-line);border-radius:var(--at-radius-xl);background:var(--at-soft)}
+.v2-approved-selected-tour .lead-form .section-heading strong{font-size:24px;color:var(--at-ink)}
+.v2-approved-selected-tour .lead-form .primary{min-height:54px;border-radius:var(--at-radius-md)}
 @media(max-width:900px){.v2-approved-selected-tour .facts{grid-template-columns:repeat(3,minmax(0,1fr))}.v2-approved-selected-tour .selected-picture{aspect-ratio:16/8}}
-@media(max-width:700px){.selected-tour.v2-approved-selected-tour{padding:16px;border-radius:20px}.v2-approved-selected-tour .selected-tour-progress{grid-template-columns:1fr;margin-bottom:16px}.v2-approved-selected-tour .selected-tour-progress span{display:none}.v2-approved-selected-tour .selected-tour-progress span.is-active{display:flex}.v2-approved-selected-tour .selected-head{grid-template-columns:1fr;gap:12px}.v2-approved-selected-tour .selected-price{min-width:0;text-align:left}.v2-approved-selected-tour .selected-picture{aspect-ratio:4/3;border-radius:18px}.v2-approved-selected-tour .facts{grid-template-columns:1fr 1fr}.v2-approved-selected-tour .tour-flights,.v2-approved-selected-tour .lead-form{padding:16px;border-radius:18px}}
+@media(max-width:700px){.selected-tour.v2-approved-selected-tour{padding:16px;border-radius:var(--at-radius-lg)}.v2-approved-selected-tour .selected-tour-progress{grid-template-columns:1fr;margin-bottom:16px}.v2-approved-selected-tour .selected-tour-progress span{display:none}.v2-approved-selected-tour .selected-tour-progress span.is-active{display:flex}.v2-approved-selected-tour .selected-head{grid-template-columns:1fr;gap:12px}.v2-approved-selected-tour .selected-price{min-width:0;text-align:left}.v2-approved-selected-tour .selected-picture{aspect-ratio:4/3;border-radius:var(--at-radius-lg)}.v2-approved-selected-tour .facts{grid-template-columns:1fr 1fr}.v2-approved-selected-tour .tour-flights,.v2-approved-selected-tour .lead-form{padding:16px;border-radius:var(--at-radius-lg)}}
 @media(max-width:430px){.selected-tour.v2-approved-selected-tour{padding:12px}.v2-approved-selected-tour .selected-head h2{font-size:28px}.v2-approved-selected-tour .facts{gap:6px}.v2-approved-selected-tour .facts>div{padding:10px}.v2-approved-selected-tour .tour-flights,.v2-approved-selected-tour .lead-form{margin-left:0;margin-right:0;padding:14px 12px}}
 `;document.head.appendChild(style);}
 function ensureProgress(scope){if(!scope||scope.querySelector('.selected-tour-progress'))return;const back=scope.querySelector('.back-results');const progress=document.createElement('div');progress.className='selected-tour-progress';progress.setAttribute('aria-label','Этапы выбора тура');['Тур выбран','Выбор рейса','Заявка менеджеру'].forEach((label,index)=>{const item=document.createElement('span');item.textContent=label;if(index===0)item.classList.add('is-active');progress.appendChild(item);});if(back&&back.nextSibling)back.insertAdjacentElement('afterend',progress);else scope.prepend(progress);}
