@@ -39,6 +39,8 @@ Do not create a new workflow when an existing check can own the behavior. Prefer
 
 A task may be accepted as soon as its own dependencies, ownership and required verification are satisfied. Independent sibling tasks do not wait for the slowest lane or for unrelated CI.
 
+Acceptance is a handoff point, not a default stop condition. After accepting a task, the controller should immediately pick the next ready in-scope task when the current run still has execution budget. A completed commit or PR must not end the run by itself. Continue through additional safe ready work until a genuine blocker, required approval, exhausted run budget, or empty ready queue is reached.
+
 ## Outcome receipt
 
 Every delegated task should finish with a small machine-readable outcome equivalent to:
@@ -76,6 +78,6 @@ Do not rerun a writer for missing CI wiring or an external-service failure. Retr
 
 The controller can remain small:
 
-`pick ready task -> check dependencies -> assign writer -> enforce owns_paths -> run task verification -> write outcome -> accept/block -> release dependents`
+`pick ready task -> check dependencies -> assign writer -> enforce owns_paths -> run task verification -> write outcome -> accept/block -> pick next ready task while run budget remains`
 
 No separate database, dashboard, mandatory worktree, or large supervisor hierarchy is required. Use a worktree only for genuinely parallel or risky work where isolation provides value.
