@@ -1,0 +1,21 @@
+{
+  "id": "META_H1_CONTRACT",
+  "title": "Enforce intent-specific title meta and H1 contracts",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "goal": "Make metadata unique, factual and aligned with the primary search intent of each indexable landing family.",
+  "checks": [
+    "missing/duplicate titles",
+    "missing/duplicate H1",
+    "title-H1 intent mismatch",
+    "boilerplate descriptions",
+    "unsupported claims",
+    "legacy brand/domain strings"
+  ],
+  "rules": [
+    "one visible primary H1 per landing page",
+    "do not fabricate prices or guarantees",
+    "avoid mechanical keyword stuffing",
+    "templates must remain readable in Russian"
+  ]
+}
