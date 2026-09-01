@@ -1,13 +1,13 @@
 <?php
 /**
  * Editorial SEO pilot: Belek, Turkey.
- * Review-only: does not publish a route or alter indexation/canonical/sitemap.
+ * Approved editorial candidate; production indexation still depends on the global SEO gate.
  */
 function v2_seo_content_pilot_belek(): array
 {
     return [
         'id' => 'resort.belek.v1',
-        'status' => 'review',
+        'status' => 'approved',
         'path' => '/country/turkey/belek/',
         'type' => 'resort',
         'data' => [
@@ -79,7 +79,8 @@ function v2_seo_content_pilot_belek(): array
             'Evergreen editorial copy only; no hard-coded live prices or availability.',
             'Destination facts checked against official GoTürkiye Antalya material.',
             'Tourvisor-backed production catalog confirms Turkey country=4 and Belek region=21.',
-            'Keep status=review until live offer binding and launch/indexability gates are verified.',
+            'Live runtime verification confirmed HTTP 200, canonical, noindex, country=4&region=21 handoff and a fresh offer snapshot block.',
+            'Approved editorial state still does not enable indexing or sitemap emission without the separate production launch gate.',
         ],
     ];
 }

@@ -1,13 +1,13 @@
 <?php
 /**
  * Editorial SEO pilot: Side, Turkey.
- * Review-only: does not publish a route or alter indexation/canonical/sitemap.
+ * Approved editorial candidate; production indexation still depends on the global SEO gate.
  */
 function v2_seo_content_pilot_side(): array
 {
     return [
         'id' => 'resort.side.v1',
-        'status' => 'review',
+        'status' => 'approved',
         'path' => '/country/turkey/side/',
         'type' => 'resort',
         'data' => [
@@ -79,7 +79,8 @@ function v2_seo_content_pilot_side(): array
             'Evergreen editorial copy only; no hard-coded live prices or availability.',
             'Destination facts checked against official GoTürkiye Side material.',
             'Tourvisor-backed production catalog confirms Turkey country=4 and Side region=23.',
-            'Keep status=review until live offer binding and launch/indexability gates are verified.',
+            'Live runtime verification confirmed HTTP 200, canonical, noindex, country=4&region=23 handoff and a fresh offer snapshot block.',
+            'Approved editorial state still does not enable indexing or sitemap emission without the separate production launch gate.',
         ],
     ];
 }

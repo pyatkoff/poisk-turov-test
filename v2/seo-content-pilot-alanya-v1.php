@@ -1,13 +1,13 @@
 <?php
 /**
  * Editorial SEO pilot: Alanya, Turkey.
- * Review-only: does not publish a route or alter indexation/canonical/sitemap.
+ * Approved editorial candidate; production indexation still depends on the global SEO gate.
  */
 function v2_seo_content_pilot_alanya(): array
 {
     return [
         'id' => 'resort.alanya.v1',
-        'status' => 'review',
+        'status' => 'approved',
         'path' => '/country/turkey/alanya/',
         'type' => 'resort',
         'data' => [
@@ -79,7 +79,8 @@ function v2_seo_content_pilot_alanya(): array
             'Evergreen editorial copy only; no hard-coded live prices or availability.',
             'Destination facts checked against official GoTürkiye Antalya material.',
             'Tourvisor-backed production catalog confirms Turkey country=4 and Alanya region=19.',
-            'Keep status=review until live offer binding and launch/indexability gates are verified.',
+            'Live runtime verification confirmed HTTP 200, canonical, noindex, country=4&region=19 handoff and a fresh offer snapshot block.',
+            'Approved editorial state still does not enable indexing or sitemap emission without the separate production launch gate.',
         ],
     ];
 }
