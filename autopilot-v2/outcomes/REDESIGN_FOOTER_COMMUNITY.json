@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "task": "REDESIGN_FOOTER_COMMUNITY",
+  "status": "accepted",
+  "attempts": 1,
+  "changed_files": [
+    "v2/site-footer-v1.css",
+    "v2/site-footer-v1.php"
+  ],
+  "verification": {
+    "pull_request": "#715 merged into feature/search-core",
+    "fast_ci": "success",
+    "security_guard": "success",
+    "browser_visual": "PR-safe Playwright evidence green at 375/430/768/1024/1440 with one community/footer composition and no horizontal overflow",
+    "factual_destinations": "MAX, Telegram, VK, App Store and Google Play reuse existing verified project URLs; payment/legal destinations and MasterCard/Visa/Мир remain factual",
+    "protected_contracts": "AnyTour logo, Metrika, Tourvisor and lead transport unchanged"
+  },
+  "failure_class": null,
+  "remaining_risk": "Accepted in feature/search-core only. Production remains unchanged until a narrow release path to main is proven safe and post-deploy verification is green."
+}
