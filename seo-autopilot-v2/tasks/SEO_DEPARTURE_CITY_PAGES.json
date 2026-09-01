@@ -1,0 +1,14 @@
+{
+  "id": "SEO_DEPARTURE_CITY_PAGES",
+  "title": "Evaluate departure-city landing families",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "requirements": [
+    "distinct search demand/intent",
+    "supported departure-city search contract",
+    "factual current offer examples where available",
+    "canonical strategy",
+    "quality gate"
+  ],
+  "rule": "Do not generate city x destination pages merely from a Cartesian product."
+}
