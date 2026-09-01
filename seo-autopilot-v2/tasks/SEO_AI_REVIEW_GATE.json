@@ -1,0 +1,14 @@
+{
+  "id": "SEO_AI_REVIEW_GATE",
+  "title": "Validate AI-assisted SEO copy against source facts and duplication rules",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "unsupported factual statements",
+    "repetition across entities",
+    "keyword stuffing",
+    "wrong entity relationships",
+    "invented superlatives/guarantees",
+    "usefulness to traveler intent"
+  ]
+}
