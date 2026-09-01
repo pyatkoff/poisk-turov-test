@@ -1,0 +1,22 @@
+{
+  "id": "LANDING_ARCHITECTURE",
+  "title": "Build intent-led SEO landing architecture",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Define scalable country, resort, hotel and selected thematic landing families that answer distinct organic intents.",
+  "principles": [
+    "search intent before URL count",
+    "country -> resort -> hotel hierarchy where factual data supports it",
+    "no indexable combinatorial filter explosion",
+    "no thin pages without differentiated value",
+    "reuse approved live tour/price data as enrichment rather than invented copy",
+    "strong contextual internal linking"
+  ],
+  "requires_before_release": [
+    "inventory evidence",
+    "canonical policy",
+    "template examples",
+    "thin-content safeguards",
+    "crawl/indexation plan"
+  ]
+}
