@@ -1,0 +1,7 @@
+{
+  "id": "SEO_SEARCH_PAGE_BOUNDARY",
+  "title": "Keep /poisk-turov product behavior product-owned",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "SEO2 may audit the search page's indexability/canonical/internal-link role, but changes to form, Tourvisor/API, filters, results, cards, prices, rooms, flights, selected tour, recovery or lead UX remain in the search/product lane unless explicitly approved."
+}
