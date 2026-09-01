@@ -1,0 +1,13 @@
+{
+  "id": "SEO_DATA_STALENESS_MONITOR",
+  "title": "Detect stale dynamic facts on SEO pages",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "monitor": [
+    "last snapshot timestamp",
+    "source refresh success",
+    "rendered price/availability age",
+    "fallback activation"
+  ],
+  "rule": "Stale dynamic facts should disappear or fall back safely rather than remain as misleading evergreen claims."
+}
