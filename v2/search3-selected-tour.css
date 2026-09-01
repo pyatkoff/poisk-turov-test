@@ -1,4 +1,7 @@
 /* Search 3 concrete-tour visual convergence. Preview only; no purchase/lead semantics are changed. */
+body.search3-preview.search3-selected-open .search3-page-intro,body.search3-preview.search3-selected-open .results-search-summary,body.search3-preview.search3-selected-open .results-tools--ds2,body.search3-preview.search3-selected-open .search3-mobile-toolbar{display:none!important}
+body.search3-preview.search3-selected-open .results-layout{display:block!important}
+body.search3-preview.search3-selected-open .results-filter-rail{display:none!important}
 body.search3-preview #selectedTour{max-width:var(--at-shell)!important;margin:24px auto 56px!important;padding:0!important;background:transparent!important}
 body.search3-preview #selectedTour .back-results{min-height:40px!important;margin:0 0 14px!important;padding:0 12px!important;border:1px solid var(--at-line)!important;border-radius:10px!important;background:#fff!important;color:var(--at-brand)!important;font:800 11px/1 var(--at-font)!important}
 body.search3-preview #selectedTour .selected-head{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;gap:24px!important;align-items:end!important;padding:22px 24px!important;border:1px solid var(--at-line)!important;border-radius:18px 18px 0 0!important;background:#fff!important}
