@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "SEARCH_2_0_MOCKUP_APPROVAL",
+  "goal": "Hold implementation of the revised Search 2.0 search/results/filter workspace until the owner explicitly approves the latest corrected mockup direction.",
+  "risk": "HIGH",
+  "owns_paths": [
+    "v2/search-redesign-v2.css",
+    "v2/search-redesign-v2.js",
+    "v2/index.php",
+    "v2/bundle-manifest-v1.php"
+  ],
+  "depends_on": [
+    "NEW_DESIGN_IMPLEMENTATION_PREP"
+  ],
+  "verify": {
+    "level": "none",
+    "checks": []
+  },
+  "done_when": [
+    "owner explicitly approves the latest Search 2.0 desktop/mobile search-results-filter direction",
+    "no search/results product code is changed before approval"
+  ]
+}
