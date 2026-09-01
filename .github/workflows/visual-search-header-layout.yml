@@ -60,6 +60,7 @@ jobs:
           const center=e=>(e.top+e.bottom)/2;
           const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
           const px=v=>parseFloat(v)||0;
+          const visible=e=>!!e&&e.width>0&&e.height>0&&e.display!=='none';
           (async()=>{
             const browser=await chromium.launch({headless:true}); let failed=false; const report=[];
             for(const [name,width,height] of sizes){
@@ -96,15 +97,15 @@ jobs:
               let bad=!response||response.status()!==200||errors.length||state.overflow||state.globalCount!==1||state.legacyCount!==0||!state.header||!state.logo||state.mobilePhoneCount!==1||!same(state.desktopOrder,expectedOrder)||!same(state.desktopLabels,expectedLabels)||!same(state.mobileOrder,expectedOrder)||!same(state.mobileLabels,expectedLabels)||state.currentDesktop!=='page'||state.currentMobile!=='page';
               if(width>1024){
                 const expectedHeight=px(state.tokens.desktop);
-                bad ||= !expectedHeight||!close(state.header.height,expectedHeight,2)||!state.nav||state.nav.display==='none'||!state.cta||state.cta.display==='none'||(state.mobile&&state.mobile.display!=='none')||!state.phone||state.phone.display==='none'||!close(center(state.logo),center(state.header),3)||!close(center(state.phone),center(state.header),3);
+                bad ||= !expectedHeight||!close(state.header.height,expectedHeight,2)||!visible(state.nav)||!visible(state.cta)||visible(state.mobile)||!visible(state.phone)||!close(center(state.logo),center(state.header),3)||!close(center(state.phone),center(state.header),3);
               } else {
                 const expectedHeight=px(width<=520?state.tokens.compact:state.tokens.mobile);
                 const expectedEdge=px(state.tokens.pageEdge);
-                bad ||= !expectedHeight||!close(state.header.height,expectedHeight,2)||state.nav?.display!=='none'||state.cta?.display!=='none'||!state.mobile||state.mobile.display==='none'||state.mobile.left<=state.logo.right||!close(center(state.logo),center(state.header),3)||!close(center(state.mobile),center(state.header),3)||!close(state.logo.left,expectedEdge,1)||!close(width-state.mobile.right,expectedEdge,1);
+                bad ||= !expectedHeight||!close(state.header.height,expectedHeight,2)||visible(state.nav)||visible(state.cta)||!visible(state.mobile)||state.mobile.left<=state.logo.right||!close(center(state.logo),center(state.header),3)||!close(center(state.mobile),center(state.header),3)||!close(state.logo.left,expectedEdge,1)||!close(width-state.mobile.right,expectedEdge,1);
                 if(width<=768){
-                  bad ||= !state.phone||state.phone.display!=='none';
+                  bad ||= visible(state.phone);
                 } else {
-                  bad ||= !state.phone||state.phone.display==='none'||!close(center(state.phone),center(state.header),3);
+                  bad ||= !visible(state.phone)||!close(center(state.phone),center(state.header),3);
                 }
               }
               report.push({name,width,http:response?.status()||0,errors,state,bad}); if(bad)failed=true;
