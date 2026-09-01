@@ -5,6 +5,8 @@ form.dataset.ds2InitialPolish='1';
 function enhanceNights(main){
   var field=main.querySelector('.nights-ux');
   if(!field||field.dataset.ds2CompactNights==='1')return !!field;
+  var title=field.querySelector(':scope > span');
+  if(title)title.textContent='Ночи';
   var quick=field.querySelector('.nights-quick');
   var custom=field.querySelector('.nights-custom');
   var from=form.elements.daysFrom,to=form.elements.daysTill;
@@ -43,6 +45,37 @@ function enhanceNights(main){
   sync();
   return true;
 }
+function compactDate(v){
+  if(!v)return'';
+  var p=String(v).split('-').map(Number);
+  if(p.length!==3||!p[0]||!p[1]||!p[2])return String(v);
+  try{return new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short'}).format(new Date(p[0],p[1]-1,p[2])).replace('.','');}
+  catch(e){return String(v);}
+}
+function tunePrimarySummaries(main){
+  if(!main||main.dataset.ds2CompactSummaries==='1')return;
+  var dateFrom=form.elements.dateFrom,dateTo=form.elements.dateTo;
+  var adults=form.elements.count_people,children=form.elements.child_count;
+  var dateOut=main.querySelector('.dates-summary');
+  var guestOut=main.querySelector('.guests-summary');
+  if(!dateFrom||!dateTo||!adults||!children||!dateOut||!guestOut)return;
+  main.dataset.ds2CompactSummaries='1';
+  function syncDates(){
+    var a=compactDate(dateFrom.value),b=compactDate(dateTo.value);
+    dateOut.textContent=a&&b?a+' – '+b:a?('с '+a):b?('до '+b):'Выберите даты';
+  }
+  function syncGuests(){
+    var a=Math.max(1,Number(adults.value||1)),c=Math.max(0,Number(children.value||0));
+    var adultWord=a===1?'взрослый':a>=2&&a<=4?'взрослых':'взрослых';
+    var childWord=c===1?'ребёнок':c>=2&&c<=4?'ребёнка':'детей';
+    guestOut.textContent=a+' '+adultWord+(c?' · '+c+' '+childWord:'');
+  }
+  function after(fn){return function(){setTimeout(fn,0);};}
+  dateFrom.addEventListener('input',after(syncDates));dateTo.addEventListener('input',after(syncDates));
+  dateFrom.addEventListener('change',after(syncDates));dateTo.addEventListener('change',after(syncDates));
+  adults.addEventListener('change',after(syncGuests));children.addEventListener('change',after(syncGuests));
+  syncDates();syncGuests();
+}
 function tuneQuickStars(stars){
   if(!stars||stars.dataset.ds2QuickLabels==='1')return;
   stars.dataset.ds2QuickLabels='1';
@@ -64,6 +97,7 @@ function arrange(){
   tuneQuickStars(stars);
   main.insertAdjacentElement('afterend',stars);
   enhanceNights(main);
+  tunePrimarySummaries(main);
   return true;
 }
 if(!arrange()){
