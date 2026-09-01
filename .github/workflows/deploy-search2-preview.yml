@@ -31,6 +31,11 @@ jobs:
           node --check v2/ds2-search-form-polish-v1.js
           php -r 'require "v2/bundle-manifest-v1.php"; $m=v2_bundle_manifest(); if(count($m["css"])!==37||count($m["js"])!==44) exit(1);'
           php -r 'define("V2_SEARCH2_PREVIEW",true); require "v2/bundle-manifest-v1.php"; $m=v2_bundle_manifest(); if(count($m["css"])!==40||count($m["js"])!==45) exit(1); foreach(["ds2-search-form-polish-v1.css","ds2-search-form-pickers-v6.css","ds2-search-form-preview-v8.css"] as $f) if(!in_array($f,$m["css"],true)) exit(2); if(!in_array("ds2-search-form-polish-v1.js",$m["js"],true)) exit(3);'
+          runtime_css="$(php -r '$_SERVER["SCRIPT_NAME"]="/_preview/search2/bundle-v1.php"; $_GET["type"]="css"; include "v2/bundle-v1.php";')"
+          grep -Fq 'Search 2.0 initial form composition v8' <<<"$runtime_css"
+          grep -Fq 'Search 2.0 picker geometry v6' <<<"$runtime_css"
+          runtime_js="$(php -r '$_SERVER["SCRIPT_NAME"]="/_preview/search2/bundle-v1.php"; $_GET["type"]="js"; include "v2/bundle-v1.php";')"
+          grep -Fq 'ds2-search-initial' <<<"$runtime_js"
           ! grep -Fq "'ds2-search-form-responsive-v6.css'" v2/bundle-manifest-v1.php
           ! grep -Fq "'ds2-search-form-composition-v5.css'" v2/bundle-manifest-v1.php
           ! grep -Fq "'ds2-search-form-desktop-v7.css'" v2/bundle-manifest-v1.php
