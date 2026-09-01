@@ -7,8 +7,23 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 TASK_DIR = ROOT / "tasks"
 OUTCOME_DIR = ROOT / "outcomes"
+STATE_FILE = ROOT / "state.json"
 VALID_RISK = {"SAFE", "MEDIUM", "HIGH"}
 VALID_VERIFY = {"none", "smoke", "targeted", "production"}
+VALID_VERIFICATION_CLASS = {"LOW", "MEDIUM", "HIGH"}
+VALID_ACTIVE_STATES = {
+    "discovered",
+    "triaged",
+    "ready",
+    "coding",
+    "qa",
+    "visual_qa",
+    "design_approval_required",
+    "deploy",
+    "production_qa",
+    "done",
+    "blocked",
+}
 TERMINAL = {"accepted", "blocked", "failed"}
 FAILURE_CLASSES = {
     "writer_failed",
@@ -24,6 +39,53 @@ FAILURE_CLASSES = {
 
 def load_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def validate_state(state):
+    required = {"schema_version", "mode", "resume", "active_task", "queue", "last_signal"}
+    missing = sorted(required - set(state))
+    if missing:
+        raise ValueError(f"state missing fields: {', '.join(missing)}")
+    if state["schema_version"] != 3:
+        raise ValueError("state.schema_version must be 3")
+    if state["mode"] not in {"dry_run", "active_pilot", "active"}:
+        raise ValueError(f"invalid mode: {state['mode']}")
+
+    resume = state["resume"]
+    if not isinstance(resume, dict):
+        raise ValueError("resume must be an object")
+    for key in ("now", "done", "next", "blocked", "lessons"):
+        if key not in resume:
+            raise ValueError(f"resume missing field: {key}")
+    if not isinstance(resume["now"], str) or not isinstance(resume["next"], str):
+        raise ValueError("resume.now and resume.next must be strings")
+    for key in ("done", "blocked", "lessons"):
+        if not isinstance(resume[key], list) or not all(isinstance(item, str) for item in resume[key]):
+            raise ValueError(f"resume.{key} must be an array of strings")
+
+    active = state["active_task"]
+    if active is not None:
+        active_required = {
+            "id", "title", "area", "risk", "verification_class", "state",
+            "owner", "required_gates", "evidence"
+        }
+        active_missing = sorted(active_required - set(active))
+        if active_missing:
+            raise ValueError(f"active_task missing fields: {', '.join(active_missing)}")
+        if active["risk"] not in VALID_RISK:
+            raise ValueError(f"invalid active_task risk: {active['risk']}")
+        if active["verification_class"] not in VALID_VERIFICATION_CLASS:
+            raise ValueError(f"invalid verification_class: {active['verification_class']}")
+        if active["state"] not in VALID_ACTIVE_STATES:
+            raise ValueError(f"invalid active_task state: {active['state']}")
+
+    return state
+
+
+def load_state():
+    if not STATE_FILE.exists():
+        raise ValueError("state.json is missing")
+    return validate_state(load_json(STATE_FILE))
 
 
 def task_files():
@@ -159,16 +221,33 @@ def validate_outcome(data, task=None):
 
 
 def cmd_validate(_args):
+    state = load_state()
     tasks = load_tasks()
     validate_graph(tasks)
     for task_id, task in tasks.items():
         outcome = outcome_for(task_id)
         if outcome:
             validate_outcome(outcome, task)
-    print(f"AUTOPILOT_CONTROLLER_OK tasks={len(tasks)}")
+    print(f"AUTOPILOT_CONTROLLER_OK state_schema={state['schema_version']} tasks={len(tasks)}")
+
+
+def cmd_resume(_args):
+    state = load_state()
+    payload = {
+        "mode": state["mode"],
+        "now": state["resume"]["now"],
+        "done": state["resume"]["done"],
+        "next": state["resume"]["next"],
+        "blocked": state["resume"]["blocked"],
+        "lessons": state["resume"]["lessons"],
+        "active_task": state["active_task"],
+        "last_signal": state["last_signal"],
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 def cmd_status(_args):
+    state = load_state()
     tasks = load_tasks()
     validate_graph(tasks)
     rows = []
@@ -182,10 +261,11 @@ def cmd_status(_args):
             "verify": task["verify"]["level"],
             "failure_class": outcome.get("failure_class") if outcome else None,
         })
-    print(json.dumps({"tasks": rows}, ensure_ascii=False, indent=2))
+    print(json.dumps({"active_task": state["active_task"], "tasks": rows}, ensure_ascii=False, indent=2))
 
 
 def cmd_plan(args):
+    load_state()
     tasks = load_tasks()
     validate_graph(tasks)
     ready = ready_tasks(tasks, limit=args.max_writers)
@@ -229,6 +309,8 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     p_validate = sub.add_parser("validate")
     p_validate.set_defaults(func=cmd_validate)
+    p_resume = sub.add_parser("resume")
+    p_resume.set_defaults(func=cmd_resume)
     p_status = sub.add_parser("status")
     p_status.set_defaults(func=cmd_status)
     p_plan = sub.add_parser("plan")
