@@ -1,0 +1,14 @@
+{
+  "id": "SEO_DONE_DEFINITION",
+  "title": "Define done as verified outcome, not code written",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "done_requires": [
+    "finding/evidence recorded",
+    "narrow change or explicit no-change outcome",
+    "targeted verification green",
+    "production verification when runtime was released",
+    "state/outcome updated",
+    "next task selected"
+  ]
+}
