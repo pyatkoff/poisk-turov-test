@@ -28,6 +28,7 @@ function v2_bundle_manifest(): array
             'br3-control-consistency-v1.css',
             'site-footer-v1.css',
             'results-layout-guard-v1.css',
+            'search-results-ds2-v1.css',
         ],
         'js' => [
             'header-current-site.js',
@@ -60,6 +61,7 @@ function v2_bundle_manifest(): array
             'search-progress-ux-v1.js',
             'search-dirty-ux-v1.js',
             'mobile-search-summary-v1.js',
+            'search-results-ds2-v1.js',
             'accessibility.js',
         ],
     ];
