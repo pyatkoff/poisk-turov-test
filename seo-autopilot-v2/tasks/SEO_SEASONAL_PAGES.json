@@ -1,0 +1,14 @@
+{
+  "id": "SEO_SEASONAL_PAGES",
+  "title": "Evaluate seasonal and month landing pages by real intent",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rule": "Create a seasonal/month landing only when search intent and page value differ materially from the evergreen destination page.",
+  "requirements": [
+    "SERP/semantic evidence",
+    "useful seasonal factual content",
+    "stable canonical lifecycle",
+    "strategy for out-of-season periods",
+    "no yearly URL churn without a strong reason"
+  ]
+}
