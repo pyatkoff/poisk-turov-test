@@ -1,0 +1,17 @@
+{
+  "id": "SEO_INVENTORY_PRIORITIES",
+  "title": "Inspect the highest-risk SEO contracts first",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "order": [
+    "robots.txt and sitemap outputs",
+    "canonical host and canonical helpers",
+    "public SEO routing/templates",
+    "title/H1/meta generation",
+    "legacy domain references",
+    "parameter/search-state indexability",
+    "internal linking",
+    "structured data",
+    "factual data freshness"
+  ]
+}
