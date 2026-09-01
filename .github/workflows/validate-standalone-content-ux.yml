@@ -51,7 +51,7 @@ jobs:
           grep -Fq -- '--at-shell:1180px' v2/design-system-v2.css
           grep -Fq '.sp-card a.sp-primary{color:#fff}' v2/site-page-v1.css
           grep -Fq '.sp-main a:focus-visible' v2/site-page-v1.css
-          grep -Fq '.sp-office-phone{display:inline-flex;align-items:center;min-height:44px}' v2/site-coherence-v1.css
+          grep -Fq '.sp-office-phone,.sp-contact-phone{display:inline-flex;align-items:center;min-height:44px}' v2/site-coherence-v1.css
           ! grep -Fq '.sp-header' v2/site-page-v1.css
           grep -Fq 'background:var(--at-accent)' v2/home-v1.css
           grep -Fq 'color:var(--at-brand)' v2/home-v1.css
@@ -84,6 +84,7 @@ jobs:
               if(strpos($html,"--at-accent:#D83D00")===false) exit(21);
               if(strpos($html,".sp-card a.sp-primary{color:#fff}")===false) exit(17);
               if(strpos($html,".ds2-site-footer{")===false) exit(18);
+              if($file==="v2/contacts/index.php" && (substr_count($html,"class=\"sp-office-phone\"")!==4 || substr_count($html,"class=\"sp-contact-phone\"")!==1)) exit(22);
               if($file==="v2/rb/index.php" && strpos($html,"Помощь менеджера")===false) exit(19);
               foreach(["переносим","старого сайта","следующий этап"] as $internal){ if(stripos($html,$internal)!==false) exit(14); }
             }
