@@ -1,0 +1,15 @@
+{
+  "id": "SEO_RELEASE_CHECKLIST",
+  "title": "Use a compact SEO release checklist",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "check": [
+    "scope is narrow and dependency-complete",
+    "risk classified",
+    "canonical/indexability impact understood",
+    "factual claims sourced",
+    "protected contracts unchanged",
+    "targeted checks green",
+    "production verification defined"
+  ]
+}
