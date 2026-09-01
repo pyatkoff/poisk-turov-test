@@ -1,0 +1,8 @@
+{
+  "id": "SEO_PRODUCTION_DOMAIN",
+  "title": "Treat anytoour.ru as the intended SEO production host",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "host": "anytoour.ru",
+  "rule": "Inventory must still verify actual live host/canonical behavior before applying redirect or canonical migrations involving historical domains."
+}
