@@ -1,0 +1,46 @@
+name: Inspect SEO2 Maldives hotel refresh
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-seo2-maldives-hotels-refresh.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Prepare production SSH key
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Inspect fresh Maldives hotel snapshots
+        env:
+          NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          NEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NEW_HOST" && test -n "$NEW_USER"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$NEW_USER@$NEW_HOST"
+          echo 'SEO2_MALDIVES_HOTELS_REFRESH_BEGIN'
+          timeout 45s ssh "${opts[@]}" "$remote" \
+            "php \"\$HOME/www/anytoour.ru/data/inspect-seo-hotel-snapshots-v1.php\" --country=8 --limit=30"
+          echo 'SEO2_MALDIVES_HOTELS_REFRESH_END'
