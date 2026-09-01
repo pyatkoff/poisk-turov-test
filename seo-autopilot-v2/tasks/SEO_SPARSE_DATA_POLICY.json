@@ -1,0 +1,12 @@
+{
+  "id": "SEO_SPARSE_DATA_POLICY",
+  "title": "Handle sparse destination and hotel data without filler",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "omit unsupported blocks instead of generating generic filler",
+    "keep stable useful navigation/search path",
+    "indexability depends on overall page value and family policy",
+    "do not invent facts to make sparse pages look complete"
+  ]
+}
