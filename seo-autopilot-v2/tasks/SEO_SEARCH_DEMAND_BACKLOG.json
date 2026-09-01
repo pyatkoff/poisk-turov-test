@@ -1,0 +1,17 @@
+{
+  "id": "SEO_SEARCH_DEMAND_BACKLOG",
+  "title": "Turn validated search demand into a landing backlog",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "for_each_opportunity": [
+    "query cluster",
+    "intent",
+    "current AnyTour landing",
+    "SERP evidence",
+    "factual data availability",
+    "proposed page family",
+    "cannibalization risk",
+    "commercial relevance",
+    "priority"
+  ]
+}
