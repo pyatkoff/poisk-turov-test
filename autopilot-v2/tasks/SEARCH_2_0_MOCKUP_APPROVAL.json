@@ -1,13 +1,10 @@
 {
   "schema_version": 1,
   "id": "SEARCH_2_0_MOCKUP_APPROVAL",
-  "goal": "Hold implementation of the revised Search 2.0 search/results/filter workspace until the owner explicitly approves the latest corrected mockup direction.",
-  "risk": "HIGH",
+  "goal": "Record owner approval of the revised Search 2.0 desktop/mobile search-results-filter direction so implementation can proceed under the existing redesign contract.",
+  "risk": "SAFE",
   "owns_paths": [
-    "v2/search-redesign-v2.css",
-    "v2/search-redesign-v2.js",
-    "v2/index.php",
-    "v2/bundle-manifest-v1.php"
+    "autopilot-v2/tasks/SEARCH_2_0_MOCKUP_APPROVAL.json"
   ],
   "depends_on": [
     "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -17,7 +14,9 @@
     "checks": []
   },
   "done_when": [
-    "owner explicitly approves the latest Search 2.0 desktop/mobile search-results-filter direction",
-    "no search/results product code is changed before approval"
-  ]
+    "owner approval is explicitly recorded",
+    "REDESIGN_SEARCH_RESULTS may proceed while preserving Tourvisor, local-filter, progressive-result and stale-state contracts"
+  ],
+  "status": "APPROVED",
+  "approval_evidence": "Owner confirmed the full new design is agreed and instructed implementation to continue on 2026-09-01."
 }
