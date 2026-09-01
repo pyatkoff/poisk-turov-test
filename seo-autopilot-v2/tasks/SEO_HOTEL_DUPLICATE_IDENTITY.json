@@ -1,0 +1,13 @@
+{
+  "id": "SEO_HOTEL_DUPLICATE_IDENTITY",
+  "title": "Prevent duplicate hotel identities from creating competing pages",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "stable upstream hotel IDs",
+    "same hotel with spelling/transliteration variants",
+    "resort reassignment",
+    "duplicate slug/name collisions",
+    "canonical merge policy"
+  ]
+}
