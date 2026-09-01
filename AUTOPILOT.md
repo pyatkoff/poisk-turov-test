@@ -45,15 +45,17 @@ PR #675 extended that same single-search production evidence into the first rend
 
 PR #677 completed the production journey proof through the actual `Выбрать тур` → populated selected-tour → `Вернуться к предложениям` handoff on the same already-populated search state. The live gate passed at 1440/1024/768 with 10 populated facts, selected picture/flights/lead surfaces contained inside the DS2 card, correct desktop/tablet selected-price hierarchy, no horizontal overflow and a valid return to the preserved results state. The measured selected-tour roots were 1180 px at 1440, 984 px at 1024 and 744 px at 768; the lead CTA remained 54 px high at all three widths. This was CI/evidence hardening only: runtime CSS/JS, Tourvisor, analytics/Metrika, pricing and lead transport were unchanged.
 
+PR #680 converged the homepage base benefit-grid owner with the already-canonical downstream DS2 alignment layer. The four `Поиск без сюрпризов` proof cards now declare four balanced desktop columns, two columns through tablet widths and an explicit `04` fallback marker for the fourth card. Review of the loaded CSS order confirmed `home-design-system-alignment-v1.css` remains the final runtime owner and already preserves the intended 4/2/1 geometry at wide/tablet/mobile widths, so this change removes contradictory fallback ownership rather than creating another visual system. All 10 PR checks completed successfully; search/Tourvisor, analytics/Metrika, logo, destinations and lead transport were untouched.
+
 The existing standalone-content visual owner already exercises `/country/`, `/country/turkey/` and a broad representative country set at 375/430/768/1024/1440, including shared header geometry, navigation, footer/community shell, overflow, CTA contrast/focus and selected screenshots. Do not create a duplicate country workflow merely to resample the same surfaces.
 
 ## Current resume point
 
-The live search journey through results → tour variant → selected-tour → return is production-stable at 768/1024/1440. Continue an independent site-wide DS2 slice from the weakest public surface rather than inventing a selected-tour defect. Current scorecard points to homepage section hierarchy/discovery flow first, then `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/` route-specific hierarchy.
+The live search journey through results → tour variant → selected-tour → return is production-stable at 768/1024/1440, and homepage DS2 base/final ownership is now internally aligned for the proof-card grid. Continue the public-route convergence pass with `/hot/` first, then `/contacts/`, `/how-to-buy/` and `/rb/`.
 
-For the homepage, inspect existing five-width evidence before editing. Fix only a confirmed hierarchy/spacing/wrapping/shared-shell issue in canonical owners; preserve the short search handoff and do not make editorial surfaces as dense as the search application.
+For each route, inspect existing 375/430/768/1024/1440 evidence and loaded CSS ownership before editing. Fix only confirmed hierarchy/spacing/wrapping/overflow/shared-shell issues in canonical owners. Preserve the short search handoff and do not make editorial surfaces as dense as the search application.
 
-Keep the whole-product site-wide score at **7.1/10** until a broader visible product slice materially improves; CI/evidence hardening alone is not a reason to raise it.
+Keep the whole-product site-wide score at **7.1/10** until a broader visible product slice materially improves. Owner convergence or CI/evidence hardening alone is not a reason to raise it.
 
 ## Mandatory protections
 
