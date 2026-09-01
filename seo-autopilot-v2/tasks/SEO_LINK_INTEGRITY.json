@@ -1,0 +1,13 @@
+{
+  "id": "SEO_LINK_INTEGRITY",
+  "title": "Validate internal SEO links against canonical routes",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "checks": [
+    "target returns intended status",
+    "target is canonical where expected",
+    "no historical host",
+    "no accidental tracking/search-state parameters",
+    "anchor remains useful and factual"
+  ]
+}
