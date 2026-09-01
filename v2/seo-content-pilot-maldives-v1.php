@@ -55,8 +55,10 @@ function v2_seo_content_pilot_maldives(): array
                     ],
                 ],
             ],
-            'related_title' => 'Популярные атоллы',
-            'related' => [],
+            'related_title' => 'Туры в отели на Мальдивах',
+            'related' => [
+                ['label' => 'Туры в Kurumba Maldives', 'href' => '/country/maldives/hotel/kurumba-maldives-2461/'],
+            ],
             'internal_links' => [
                 ['title' => 'Подбор тура', 'links' => [
                     ['label' => 'Поиск туров AnyTour', 'href' => '/poisk-turov/'],
@@ -68,6 +70,7 @@ function v2_seo_content_pilot_maldives(): array
             'Evergreen editorial copy only.',
             'Tourvisor countryId=8 was verified against the synchronized production catalog on 2026-09-01.',
             'Resort/region IDs remain unbound until separately verified.',
+            'Kurumba Maldives hotelId=2461 is verified against the synchronized production catalog and has a fresh hotel offer snapshot.',
             'Review status does not enable indexation or sitemap emission.',
         ],
     ];

@@ -20,4 +20,7 @@ cp_render([
         ['title' => 'Трансфер и пакет', 'text' => 'Перед заявкой проверяйте доступные сведения о перелёте, трансфере, размещении и итоговой стоимости.'],
     ],
     'editorialSections' => $data['sections'] ?? [],
+    'hotelTourLinks' => [
+        ['label' => 'Туры в Kurumba Maldives', 'href' => '/country/maldives/hotel/kurumba-maldives-2461/'],
+    ],
 ]);
