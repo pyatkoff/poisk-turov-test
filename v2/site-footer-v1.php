@@ -9,36 +9,35 @@ if (isset($params) && is_array($params) && array_key_exists('PHONE', $params)) {
 function v2_render_site_footer(string $phone, string $phoneHref): void
 {
     $legacy = 'https://anytour.online';
-    $tapTarget = 'min-height:44px;display:inline-flex;align-items:center;';
     ?>
     <footer class="ds2-site-footer">
       <div class="ds2-site-footer__inner">
         <div class="ds2-site-footer__brand">
-          <a class="ds2-site-footer__logo" href="/" aria-label="AnyTour — главная" style="<?=$tapTarget?>">
+          <a class="ds2-site-footer__logo" href="/" aria-label="AnyTour — главная">
             <img src="/images/logo.svg" alt="AnyTour">
           </a>
           <span class="ds2-site-footer__eyebrow">AnyTour всегда рядом</span>
           <strong>Подписывайтесь и берите поиск туров с собой</strong>
           <p>Каналы AnyTour — для идей и выгодных предложений. Приложение — чтобы искать туры с телефона.</p>
           <div class="ds2-site-footer__socials" aria-label="Социальные сети AnyTour">
-            <a href="https://max.ru/anytour" target="_blank" rel="noopener noreferrer" style="<?=$tapTarget?>">MAX</a>
-            <a href="https://t.me/+gGloLUt4d8s3NDcy" target="_blank" rel="noopener noreferrer" style="<?=$tapTarget?>">Telegram</a>
-            <a href="https://vk.com/anytour_online" target="_blank" rel="noopener noreferrer" style="<?=$tapTarget?>">VK</a>
+            <a href="https://max.ru/anytour" target="_blank" rel="noopener noreferrer">MAX</a>
+            <a href="https://t.me/+gGloLUt4d8s3NDcy" target="_blank" rel="noopener noreferrer">Telegram</a>
+            <a href="https://vk.com/anytour_online" target="_blank" rel="noopener noreferrer">VK</a>
           </div>
         </div>
 
         <div class="ds2-site-footer__apps" aria-label="Приложение AnyTour">
           <div><strong>Приложение AnyTour</strong><small>Поиск туров с телефона</small></div>
-          <a href="https://apps.apple.com/ru/app/anytour-%D0%B3%D0%BE%D1%80%D1%8F%D1%89%D0%B8%D0%B5-%D1%82%D1%83%D1%80%D1%8B/id6753017465" target="_blank" rel="noopener noreferrer" style="<?=$tapTarget?>">App Store</a>
-          <a href="https://play.google.com/store/apps/details?id=online.anytour" target="_blank" rel="noopener noreferrer" style="<?=$tapTarget?>">Google Play</a>
+          <a href="https://apps.apple.com/ru/app/anytour-%D0%B3%D0%BE%D1%80%D1%8F%D1%89%D0%B8%D0%B5-%D1%82%D1%83%D1%80%D1%8B/id6753017465" target="_blank" rel="noopener noreferrer">App Store</a>
+          <a href="https://play.google.com/store/apps/details?id=online.anytour" target="_blank" rel="noopener noreferrer">Google Play</a>
         </div>
       </div>
 
       <div class="ds2-site-footer__meta">
         <nav class="ds2-site-footer__legal" aria-label="Служебные ссылки">
-          <a href="<?=$legacy?>/payment/" style="<?=$tapTarget?>">Оплата туров</a>
-          <a href="<?=$legacy?>/personal-data/" style="<?=$tapTarget?>">Согласие на обработку персональных данных</a>
-          <a href="<?=$legacy?>/politika-konfidentsialnosti/" style="<?=$tapTarget?>">Политика конфиденциальности</a>
+          <a href="<?=$legacy?>/payment/">Оплата туров</a>
+          <a href="<?=$legacy?>/personal-data/">Согласие на обработку персональных данных</a>
+          <a href="<?=$legacy?>/politika-konfidentsialnosti/">Политика конфиденциальности</a>
         </nav>
         <div class="ds2-site-footer__payments" aria-label="Платёжные системы">
           <span>MasterCard</span><span>Visa</span><span>Мир</span>
