@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "REDESIGN_HOTEL_TOUR_SELECTION",
+  "goal": "Implement the approved hotel detail and tour/room selection hierarchy without changing Tourvisor identifiers, room enrichment semantics, selected-tour state or pricing behavior.",
+  "risk": "MEDIUM",
+  "owns_paths": [
+    "v2/hotel-detail-v1.css",
+    "v2/hotel-detail-v1.js",
+    "v2/tour-choice-v1.css",
+    "v2/tour-choice-v1.js"
+  ],
+  "depends_on": [
+    "NEW_DESIGN_IMPLEMENTATION_PREP"
+  ],
+  "verify": {
+    "level": "targeted",
+    "checks": [
+      "Fast CI",
+      "Security guard",
+      "browser QA for hotel open, room/meal/tour selection and stale-detail protection",
+      "visual QA at 375px and 1440px"
+    ]
+  },
+  "done_when": [
+    "approved hotel and tour option hierarchy is implemented",
+    "room, meal, operator, date and price information remain consistent with the selected tour",
+    "stale room/detail responses cannot overwrite a newer hotel or tour choice",
+    "no external lead, Metrika or logo contract changes"
+  ]
+}
