@@ -1,0 +1,17 @@
+{
+  "id": "SEO_EXTERNAL_DATA_INTEGRATION",
+  "title": "Integrate external search-performance evidence when available",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "candidate_inputs": [
+    "Yandex Webmaster search/indexing evidence",
+    "Google Search Console if used",
+    "rank/SERP research",
+    "approved analytics organic landing outcomes"
+  ],
+  "rules": [
+    "read-only evidence first",
+    "do not alter Metrika goals/counter mechanics",
+    "separate observed performance from inferred opportunity"
+  ]
+}
