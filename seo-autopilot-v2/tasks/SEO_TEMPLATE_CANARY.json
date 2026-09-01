@@ -1,0 +1,7 @@
+{
+  "id": "SEO_TEMPLATE_CANARY",
+  "title": "Canary new SEO template versions on representative pages",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rule": "Before a template revision affects a large landing family, verify it on a small representative set including sparse-data and no-offer states."
+}
