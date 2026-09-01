@@ -6,6 +6,7 @@ on:
       - 'v2/design-system-v2.css'
       - 'v2/home-v1.css'
       - 'v2/site-page-v1.css'
+      - 'v2/site-coherence-v1.css'
       - 'v2/product-shell-v1.css'
       - 'v2/site-page-shell-v1.php'
       - 'v2/site-footer-v1.php'
@@ -23,6 +24,7 @@ on:
       - 'v2/design-system-v2.css'
       - 'v2/home-v1.css'
       - 'v2/site-page-v1.css'
+      - 'v2/site-coherence-v1.css'
       - 'v2/product-shell-v1.css'
       - 'v2/site-page-shell-v1.php'
       - 'v2/site-footer-v1.php'
@@ -49,6 +51,7 @@ jobs:
           grep -Fq -- '--at-shell:1180px' v2/design-system-v2.css
           grep -Fq '.sp-card a.sp-primary{color:#fff}' v2/site-page-v1.css
           grep -Fq '.sp-main a:focus-visible' v2/site-page-v1.css
+          grep -Fq '.sp-office-phone{display:inline-flex;align-items:center;min-height:44px}' v2/site-coherence-v1.css
           ! grep -Fq '.sp-header' v2/site-page-v1.css
           grep -Fq 'background:var(--at-accent)' v2/home-v1.css
           grep -Fq 'color:var(--at-brand)' v2/home-v1.css
