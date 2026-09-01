@@ -112,5 +112,5 @@ jobs:
           css_code="$(curl -sSL -o /tmp/search2.css -w '%{http_code}' --max-time 30 "$base/bundle-v1.php?type=css")"
           echo "CSS_HTTP=$css_code"
           test "$css_code" = "200"
-          grep -q 'search2-results-layout' /tmp/search2.css || { echo 'SEARCH2_CSS_MARKER_MISSING'; exit 25; }
+          grep -q 'at-search2-results' /tmp/search2.css || { echo 'SEARCH2_CSS_MARKER_MISSING'; exit 25; }
           echo "SEARCH_PREVIEW_OK $base/poisk-turov/"
