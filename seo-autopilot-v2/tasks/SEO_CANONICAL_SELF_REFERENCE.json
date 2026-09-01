@@ -1,0 +1,12 @@
+{
+  "id": "SEO_CANONICAL_SELF_REFERENCE",
+  "title": "Ensure canonical landing pages emit deterministic canonicals",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "canonical indexable page resolves to its intended normalized canonical URL",
+    "tracking/filter variants resolve to the family policy",
+    "canonical target returns 200 and is not noindex",
+    "host/path normalization is deterministic"
+  ]
+}
