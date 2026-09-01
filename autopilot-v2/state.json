@@ -2,28 +2,24 @@
   "schema_version": 2,
   "mode": "active_pilot",
   "active_task": {
-    "id": "DS2_NARROW_RELEASE_PLAN",
-    "title": "Prepare dependency-safe narrow release of the remaining accepted Search 2.0 lane",
+    "id": "REDESIGN_SEARCH_RESULTS",
+    "title": "Release accepted Search 2.0 to current main through dependency-safe narrow slices",
     "area": "results-tour",
     "risk": "MEDIUM",
-    "state": "investigate",
+    "state": "implement",
     "owner": "developer",
     "required_gates": [
-      "Fast CI",
-      "Security guard",
-      "targeted browser/visual QA for each user-facing release slice",
-      "Deploy anytoour.ru + Production smoke after any main release"
+      "SEARCH2_DORMANT_ASSETS: Fast CI + Security guard",
+      "SEARCH2_ACTIVATION_AND_FACTUAL_FOOTER: Fast CI + Security guard + targeted browser/visual QA",
+      "Deploy anytoour.ru + Production smoke after activation release"
     ],
     "evidence": [
       "P0/P1 local filtering, progressive 25→100, stale async protection and result counters remain accepted with prior feature evidence.",
-      "Approved hotel/room DS2 was released narrowly to main in PR #739 (3d49be1e0224d274f27a515d6e5d5b05c0798e86).",
-      "Approved selected-tour/flight hierarchy was released narrowly to main in PR #743 (c3d9d0b0ac8f33b44d2706f467448762a8c42fd1).",
-      "Approved post-success lead handoff was released narrowly to main in PR #745 (a15f84c831cd8cc13a0842fef3996a4d76b29f2c) without changing lead transport/field mapping.",
-      "PR #747 repaired footer task ownership to the actual active DS2 CSS layer; merged as e057d4b7a12299114fd497a6e1ee0b4a16daf347.",
-      "PR #748 repaired Search 2.0 task ownership from deleted search-redesign-v2.css to active ds2-search.css; merged as bddb6f709991c4d208fe14f2c426ebbfb3d067db.",
-      "PR #749 replaced stale legacy footer selectors/CSS in the existing visual gate; PR #751 then made the gate execute the real site-footer-v1.php component instead of duplicating fixture markup.",
-      "The corrected five-width gate confirmed a real 375/430 footer target-size defect; PR #742 fixed social/app actions to >=44px, kept only factual footer content, passed Fast CI + Security + the real-component visual gate, and merged as 2db30fe8da359ec31af55754a7dcbe9818078414.",
-      "Search 2.0 remains accepted on feature/search-core but current main still has materially different index/bundle composition; do not bulk merge or blindly cherry-pick the feature branch.",
+      "Hotel/room, selected-tour/flight and post-success lead handoff are already released narrowly to main via #739/#743/#745.",
+      "PR #742 restored factual footer content and >=44px primary mobile targets; the real PHP component passed the corrected five-width visual gate after #751.",
+      "PR #748 repaired Search 2.0 ownership to active ds2-search.css; PR #755 added active ds2-results-filters.js to the owned runtime dependency boundary.",
+      "DS2_NARROW_RELEASE_PLAN passed in PR #756: no bulk feature/search-core merge; remaining Search 2.0 is split into dormant assets first, then a current-main activation + factual footer slice.",
+      "Current main still has materially different index/bundle composition, so activation must be rebuilt against current main instead of copying feature/search-core wholesale.",
       "HIGH-risk Metrika, external lead transport, Tourvisor contracts, pricing semantics and the AnyTour logo remain untouched."
     ],
     "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -36,26 +32,26 @@
     {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"BLOCKED_EXTERNAL"},
     {"id":"NEW_DESIGN_IMPLEMENTATION_PREP","priority":2,"status":"DONE","pr":700,"merge_sha":"1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c"},
     {"id":"SEARCH_2_0_MOCKUP_APPROVAL","priority":2,"status":"DONE","pr":708},
-    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"ACCEPTED_FEATURE_NEEDS_NARROW_MAIN_RELEASE","visual_gate_pr":726,"ownership_repair_pr":748},
+    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"ACTIVE_NARROW_MAIN_RELEASE","visual_gate_pr":726,"ownership_repair_pr":748,"filter_dependency_pr":755,"next_slice":"SEARCH2_DORMANT_ASSETS"},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":739,"main_sha":"3d49be1e0224d274f27a515d6e5d5b05c0798e86"},
     {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":743,"main_sha":"c3d9d0b0ac8f33b44d2706f467448762a8c42fd1"},
     {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":745,"main_sha":"a15f84c831cd8cc13a0842fef3996a4d76b29f2c"},
     {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"ACCEPTED_FEATURE_VISUAL_GREEN","pr":742,"merge_sha":"2db30fe8da359ec31af55754a7dcbe9818078414","visual_gate":"REAL_COMPONENT_375_430_768_1024_1440_GREEN"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"DONE_FEATURE_EVIDENCE","latest_pr":731,"latest_merge_sha":"86545937d4dd971ff29903d07412d693bb4c0ef1"},
     {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"DONE_CONTINUE_RELEASE_AUDIT"},
-    {"id":"DS2_NARROW_RELEASE_PLAN","priority":2,"status":"ACTIVE","reason":"Map remaining Search 2.0 dependencies onto current main without bulk feature/search-core integration."},
+    {"id":"DS2_NARROW_RELEASE_PLAN","priority":2,"status":"DONE","outcome_pr":756,"next_action":"SEARCH2_DORMANT_ASSETS"},
     {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED"},
     {"id":"SEO_FACTORY","priority":3,"status":"QUEUED_AFTER_PRODUCT_STABILITY"},
     {"id":"PX7_PRICE_WATCH_RESEARCH","priority":3,"status":"DEFERRED_RESEARCH"},
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"QUEUED"}
   ],
   "last_signal": {
-    "source": "ds2_footer_real_component_visual_qa",
-    "status": "FOOTER_FACTUAL_AND_MOBILE_TARGETS_GREEN_REMAINING_SEARCH2_RELEASE_REQUIRES_DEPENDENCY_SAFE_MAIN_REBUILD",
-    "sha": "2db30fe8da359ec31af55754a7dcbe9818078414"
+    "source": "ds2_narrow_release_plan",
+    "status": "PLAN_GREEN_SEARCH2_DORMANT_ASSETS_NEXT_NO_BULK_INTEGRATION",
+    "sha": "1372909d80e1c9e2f1154f0dc25315d64828c736"
   },
   "blocked": [
     {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not reliably resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe when live access is available; do not classify DNS/runner failure as a product defect."},
-    {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; Search 2.0 index/bundle composition cannot be released safely as a bulk branch merge.","action":"Rebuild and verify only narrow accepted Search 2.0 slices on current main with explicit dependencies."}
+    {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; Search 2.0 index/bundle composition cannot be released safely as a bulk branch merge.","action":"Use the accepted two-slice plan: dormant assets first, then rebuild activation on current main with targeted gates."}
   ]
 }
