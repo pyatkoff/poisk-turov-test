@@ -1,0 +1,14 @@
+{
+  "id": "INTERNAL_LINKING",
+  "title": "Build a useful contextual internal-link graph",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Connect country, resort, hotel and related useful landing pages with crawlable links that also help users navigate.",
+  "rules": [
+    "links must be visible and useful",
+    "avoid sitewide keyword-link spam",
+    "prefer hierarchy, breadcrumbs and contextual related destinations",
+    "do not link to thin/noncanonical parameter pages",
+    "detect orphan indexable pages"
+  ]
+}
