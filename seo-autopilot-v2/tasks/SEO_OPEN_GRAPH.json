@@ -1,0 +1,12 @@
+{
+  "id": "SEO_OPEN_GRAPH",
+  "title": "Keep canonical and social metadata coherent",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "og:url matches intended canonical",
+    "og:title/description remain factual",
+    "share image matches page/entity where applicable",
+    "legacy domain references are absent"
+  ]
+}
