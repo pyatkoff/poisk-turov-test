@@ -25,7 +25,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Audit live result card at DS2 breakpoints
+      - name: Audit live result card and tour variant at DS2 breakpoints
         shell: bash
         run: |
           set -euo pipefail
@@ -60,20 +60,30 @@ jobs:
             const response=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000});
             if(!response||response.status()!==200)throw new Error('search page HTTP '+(response&&response.status()));
             await page.waitForSelector('.hotel-card',{timeout:90000});
+            await page.waitForSelector('.hotel-card .tour-row',{timeout:15000});
             await page.waitForTimeout(700);
 
             const audit=async width=>{
               await page.setViewportSize({width,height:1000});
               await page.waitForTimeout(180);
               const state=await page.evaluate(()=>{
-                const card=document.querySelector('.hotel-card'),photo=card?.querySelector('.hotel-photo'),img=photo?.querySelector('img'),badge=photo?.querySelector('.stars-badge'),body=card?.querySelector('.hotel-body'),main=card?.querySelector('.hotel-main'),tools=document.querySelector('#resultsTools');
-                const r=el=>el?el.getBoundingClientRect():null, css=el=>el?getComputedStyle(el):null;
-                const pr=r(photo),ir=r(img),br=r(badge),cr=r(card),bod=r(body),mr=r(main),tr=r(tools),bc=css(badge),mc=css(main);
-                return {card:cr&&{w:cr.width,h:cr.height},main:mr&&{w:mr.width,h:mr.height,display:mc&&mc.display},photo:pr&&{w:pr.width,h:pr.height},img:ir&&{w:ir.width,h:ir.height},body:bod&&{w:bod.width},tools:tr&&{w:tr.width},badge:br&&{w:br.width,h:br.height},badgeWriting:bc&&bc.writingMode,badgeWhiteSpace:bc&&bc.whiteSpace,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+                const card=document.querySelector('.hotel-card'),photo=card?.querySelector('.hotel-photo'),img=photo?.querySelector('img'),badge=photo?.querySelector('.stars-badge'),body=card?.querySelector('.hotel-body'),main=card?.querySelector('.hotel-main'),tools=document.querySelector('#resultsTools'),tourRow=card?.querySelector('.tour-row'),tourMeta=tourRow?.querySelector('.tour-meta'),tourAction=tourRow?.querySelector('.tour-action'),direct=tourRow?.querySelector('.direct-tour:not([data-tid=""])');
+                const r=el=>el?el.getBoundingClientRect():null, css=el=>el?getComputedStyle(el):null, compact=el=>{const x=r(el);return x&&{x:x.x,y:x.y,w:x.width,h:x.height,right:x.right,bottom:x.bottom};};
+                const pr=r(photo),ir=r(img),br=r(badge),cr=r(card),bod=r(body),mr=r(main),tr=r(tools),rr=r(tourRow),ar=r(tourAction),dr=r(direct),bc=css(badge),mc=css(main);
+                return {card:compact(card),main:mr&&{w:mr.width,h:mr.height,display:mc&&mc.display},photo:compact(photo),img:compact(img),body:compact(body),tools:compact(tools),tourRow:compact(tourRow),tourMeta:compact(tourMeta),tourAction:compact(tourAction),directTour:compact(direct),badge:compact(badge),badgeWriting:bc&&bc.writingMode,badgeWhiteSpace:bc&&bc.whiteSpace,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
               });
               console.log('RESULT_CARD_STATE_'+width,JSON.stringify(state));
               await page.screenshot({path:`anytoour-results-visual/result-${width}.png`,fullPage:true,animations:'disabled'});
               if(!state.card||!state.photo||!state.body||!state.main)throw new Error(width+': result card structure missing');
+              if(!state.tools||state.tools.w<240||state.tools.w>width+2)throw new Error(width+': results toolbar geometry invalid: '+JSON.stringify(state.tools));
+              if(!state.tourRow||!state.tourMeta||!state.tourAction)throw new Error(width+': tour variant structure missing');
+              if(state.tourRow.w<240||state.tourRow.w>state.card.w)throw new Error(width+': tour row width invalid: '+JSON.stringify({tourRow:state.tourRow,card:state.card}));
+              if(state.tourAction.right>state.tourRow.right+2||state.tourMeta.right>state.tourRow.right+2)throw new Error(width+': tour variant content escapes row');
+              if(state.directTour){
+                if(state.directTour.h<42)throw new Error(width+': choose-tour CTA too short: '+state.directTour.h);
+                if(state.directTour.w<108)throw new Error(width+': choose-tour CTA too narrow: '+state.directTour.w);
+                if(state.directTour.right>state.tourRow.right+2)throw new Error(width+': choose-tour CTA escapes row');
+              }
               if(state.overflow)throw new Error(width+': page horizontal overflow');
               if(state.badge){
                 if(state.badge.w>90||state.badge.h>42)throw new Error(width+': stars badge distorted: '+JSON.stringify(state.badge));
@@ -99,7 +109,7 @@ jobs:
             fs.writeFileSync('anytoour-results-visual/state.json',JSON.stringify(states,null,2));
             if(errors.length)throw new Error('page errors: '+errors.join(' | '));
             await browser.close();
-            console.log('ANYTOOUR_RESULT_CARD_VISUAL_OK');
+            console.log('ANYTOOUR_RESULT_CARD_TOUR_VARIANT_VISUAL_OK');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node visual-results.cjs
