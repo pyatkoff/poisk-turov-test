@@ -1,0 +1,65 @@
+/* Search 2.0 preview — keep attention on the approved initial search form.
+ * The marketing intro is reduced to a compact context header only before results.
+ * Initial-state visual treatment only; search/results/selected-tour contracts are untouched.
+ */
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero{
+  max-width:1180px!important;
+  min-height:0!important;
+  margin:0 auto 10px!important;
+  padding:12px 14px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  display:block!important;
+}
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__content{
+  max-width:none!important;
+}
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__eyebrow{
+  margin:0 0 4px!important;
+  color:#2743cb!important;
+  font-size:10px!important;
+  font-weight:850!important;
+  letter-spacing:.04em!important;
+  text-transform:none!important;
+}
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{
+  max-width:none!important;
+  margin:0!important;
+  color:#151b24!important;
+  font-size:22px!important;
+  line-height:1.12!important;
+  letter-spacing:-.025em!important;
+}
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero p,
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__trust{
+  display:none!important;
+}
+
+@media(max-width:1100px){
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero{
+    margin-bottom:8px!important;
+    padding:10px 4px!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{
+    font-size:20px!important;
+  }
+}
+
+@media(max-width:700px){
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero{
+    margin-bottom:6px!important;
+    padding:8px 2px!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__eyebrow{
+    margin-bottom:3px!important;
+    font-size:9px!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{
+    font-size:18px!important;
+    line-height:1.15!important;
+  }
+}
