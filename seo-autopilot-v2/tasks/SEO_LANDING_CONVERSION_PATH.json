@@ -1,0 +1,13 @@
+{
+  "id": "SEO_LANDING_CONVERSION_PATH",
+  "title": "Keep organic landing journeys connected to conversion",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "relevant search CTA",
+    "prefill contract where supported",
+    "hotel/destination context retained into search",
+    "lead flow unchanged",
+    "post-success messenger handoff remains product-owned rather than duplicated by SEO"
+  ]
+}
