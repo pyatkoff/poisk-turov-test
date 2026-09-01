@@ -1,0 +1,37 @@
+name: Verify SEO2 Maldives hotel tours live
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-seo2-maldives-hotel-tours-live.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check five review-only hotel-tour routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          check(){
+            local slug="$1" hotel_id="$2" h1="$3"
+            local url="https://anytoour.ru/country/maldives/hotel/${slug}/"
+            local out="/tmp/${hotel_id}.html"
+            code="$(curl -fsSL -o "$out" -w '%{http_code}' --max-time 30 "$url")"
+            echo "$slug HTTP=$code"
+            test "$code" = "200"
+            grep -Fq "content=\"noindex,follow,max-image-preview:large\"" "$out"
+            grep -Fq "$h1" "$out"
+            grep -Eq "href=\"/poisk-turov/\?[^\"]*hotel=${hotel_id}([^0-9]|&amp;|\")" "$out"
+          }
+          check 'kurumba-maldives-2461' '2461' 'Туры в Kurumba Maldives'
+          check 'kandima-maldives-49820' '49820' 'Туры в Kandima Maldives'
+          check 'sheraton-maldives-full-moon-resort-spa-2479' '2479' 'Туры в Sheraton Maldives Full Moon Resort & Spa'
+          check 'velassaru-maldives-2487' '2487' 'Туры в Velassaru Maldives'
+          check 'hard-rock-hotel-maldives-66197' '66197' 'Туры в Hard Rock Hotel Maldives'
+          echo 'SEO2_MALDIVES_HOTEL_TOURS_LIVE_OK'
