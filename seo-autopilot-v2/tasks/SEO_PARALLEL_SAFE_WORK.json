@@ -1,0 +1,12 @@
+{
+  "id": "SEO_PARALLEL_SAFE_WORK",
+  "title": "Allow independent SAFE SEO investigations without conflicting writes",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rules": [
+    "parallelize read-only inventory/research where useful",
+    "serialize writes to the same file/contract",
+    "do not open competing fixes for the same defect",
+    "merge evidence before selecting a mutation"
+  ]
+}
