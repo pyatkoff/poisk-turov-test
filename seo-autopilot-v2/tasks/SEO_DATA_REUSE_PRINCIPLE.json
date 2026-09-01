@@ -1,0 +1,7 @@
+{
+  "id": "SEO_DATA_REUSE_PRINCIPLE",
+  "title": "Reuse one factual data pipeline across SEO and feeds where contracts match",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "Prefer a shared normalized destination/hotel/offer snapshot source over separate SEO-only and advertising-only copies, while keeping channel-specific URLs/tracking outside the factual entity data."
+}
