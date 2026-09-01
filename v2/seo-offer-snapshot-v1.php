@@ -47,7 +47,7 @@ function v2_seo_resort_snapshot_offers(int $countryId, int $regionId, int $limit
             if (isset($seen[$key])) continue;
             $seen[$key] = true;
             $offer['departureId'] = (int)$row['departure_id'];
-            $offer['departureName'] = trim((string)$row['departure_name'];
+            $offer['departureName'] = trim((string)$row['departure_name']);
             $offer['snapshotObservedAt'] = (string)$row['observed_at'];
             $offers[] = $offer;
         }
