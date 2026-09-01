@@ -1,0 +1,17 @@
+/* Temporary focused DS2 first-screen lock; remove after legacy layout is fully retired. */
+@media (min-width:901px){
+  body:not(.at-search2-results) .v2-product-hero{width:calc(100% - 48px)!important;max-width:1280px!important;margin:24px auto 0!important;min-height:560px!important;padding:0!important;position:relative!important;overflow:hidden!important}
+  body:not(.at-search2-results) .v2-product-hero__content{display:block!important;position:absolute!important;z-index:5!important;top:64px!important;left:64px!important;right:auto!important;bottom:auto!important;width:620px!important;max-width:calc(100% - 128px)!important;margin:0!important;padding:0!important;transform:none!important;text-align:left!important;opacity:1!important}
+  body:not(.at-search2-results) .v2-product-hero__content h1{display:block!important;margin:0!important;padding:0!important;color:#0F172A!important;font-size:54px!important;line-height:1.02!important;opacity:1!important;text-shadow:none!important}
+  body:not(.at-search2-results) .v2-product-hero__content h1 em{display:block!important;color:#FF510C!important;opacity:1!important}
+  body:not(.at-search2-results) .v2-product-hero__content p{display:block!important;margin:15px 0 0!important;color:#475569!important;opacity:1!important}
+  body:not(.at-search2-results) #tourSearch.search-card{position:absolute!important;z-index:8!important;top:242px!important;left:64px!important;right:64px!important;width:auto!important;max-width:none!important;margin:0!important;transform:none!important}
+  body:not(.at-search2-results) #tourSearch .main-fields{display:grid!important;grid-template-columns:minmax(0,1.18fr) minmax(0,1.18fr) minmax(0,1.12fr) minmax(0,.72fr) minmax(0,1fr) minmax(0,1.03fr)!important;gap:10px!important;align-items:end!important}
+  body:not(.at-search2-results) #tourSearch .main-stars,
+  body:not(.at-search2-results) #tourSearch .main-meal,
+  body:not(.at-search2-results) #tourSearch .primary-step-6,
+  body:not(.at-search2-results) #tourSearch .primary-step-7{display:none!important}
+  body:not(.at-search2-results) #tourSearch details.extras{display:block!important}
+  body:not(.at-search2-results) #tourSearch details.extras:not([open])>.extra-grid{display:none!important}
+  body:not(.at-search2-results) .v2-product-hero__trust{z-index:6!important}
+}
