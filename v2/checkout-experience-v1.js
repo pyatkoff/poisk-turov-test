@@ -17,5 +17,8 @@ window.addEventListener('v2:flight-selected',()=>setStage(2,false));
 window.addEventListener('v2:lead-started',()=>setStage(3,false));
 window.addEventListener('v2:lead-error',()=>setStage(3,false));
 window.addEventListener('v2:lead-success',()=>{const scope=document.getElementById('selectedTour');hideOptionalLeadFields(scope);setStage(3,true);});
+const selected=document.getElementById('selectedTour');
+if(selected&&typeof MutationObserver!=='undefined')new MutationObserver(()=>{if(!selected.hidden)decorate(selected);}).observe(selected,{attributes:true,attributeFilter:['hidden']});
+if(selected&&!selected.hidden)decorate(selected);
 window.V2CheckoutExperienceV1={decorate,decorateFacts,decorateJourney,decorateLead,decorateOptionalLeadFields,hideOptionalLeadFields,setStage,version:1};
 })();
