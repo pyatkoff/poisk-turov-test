@@ -1,0 +1,22 @@
+/* Search 3 selected-tour density pass. Visual only; keeps controller data and lead flow intact. */
+@media(max-width:640px){
+body.search3-preview.search3-selected-open #selectedTour{margin-top:8px!important;margin-bottom:24px!important}
+body.search3-preview.search3-selected-open #selectedTour .back-results{margin-bottom:6px!important;min-height:30px!important}
+body.search3-preview.search3-selected-open #selectedTour .selected-picture{height:156px!important}
+body.search3-preview.search3-selected-open #selectedTour .selected-head{padding:9px 10px!important;gap:8px!important}
+body.search3-preview.search3-selected-open #selectedTour .selected-head h2{font-size:16px!important}
+body.search3-preview.search3-selected-open #selectedTour .selected-price{font-size:17px!important;min-width:90px!important}
+body.search3-preview.search3-selected-open #selectedTour .facts{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body.search3-preview.search3-selected-open #selectedTour .facts>div,body.search3-preview.search3-selected-open #selectedTour .facts>div:nth-child(n){min-height:39px!important;padding:6px 8px!important;border-top:1px solid var(--at-line-soft)!important;border-right:1px solid var(--at-line-soft)!important}
+body.search3-preview.search3-selected-open #selectedTour .facts>div:nth-child(-n+3){border-top:0!important}
+body.search3-preview.search3-selected-open #selectedTour .facts>div:nth-child(3n){border-right:0!important}
+body.search3-preview.search3-selected-open #selectedTour .facts>div:nth-child(n+7){min-height:34px!important;background:#fafbfe!important}
+body.search3-preview.search3-selected-open #selectedTour .facts span{font-size:6.5px!important;margin-bottom:2px!important}
+body.search3-preview.search3-selected-open #selectedTour .facts b{font-size:8.5px!important;line-height:1.15!important}
+body.search3-preview.search3-selected-open #selectedTour .hotel-desc,body.search3-preview.search3-selected-open #selectedTour .tour-flights,body.search3-preview.search3-selected-open #selectedTour .lead-form{margin-top:7px!important;padding:9px 10px!important;border-radius:11px!important}
+body.search3-preview.search3-selected-open #selectedTour .section-heading{margin-bottom:7px!important;gap:1px!important}
+body.search3-preview.search3-selected-open #selectedTour .section-heading strong{font-size:13px!important}
+body.search3-preview.search3-selected-open #selectedTour .section-heading span{font-size:7px!important}
+body.search3-preview.search3-selected-open #selectedTour .flight-variant{padding:8px 9px!important;min-height:0!important;font-size:9px!important}
+body.search3-preview.search3-selected-open #selectedTour .lead-form button[type=submit]{min-height:38px!important;font-size:11px!important}
+}
