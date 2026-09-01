@@ -1,0 +1,12 @@
+{
+  "id": "SEO_INTERNAL_LINK_ANCHORS",
+  "title": "Use natural descriptive internal-link anchors",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "rules": [
+    "anchor describes destination in context",
+    "avoid repetitive exact-match sitewide anchors",
+    "do not stuff hidden or footer link blocks",
+    "navigation labels remain useful to travelers"
+  ]
+}
