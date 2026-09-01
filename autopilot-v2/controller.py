@@ -114,6 +114,28 @@ def validate_task(task):
     checks = verify.get("checks", [])
     if verify["level"] != "none" and not checks:
         raise ValueError("verify.checks required unless level=none")
+
+    verification_class = task.get("verification_class")
+    if verification_class is not None and verification_class not in VALID_VERIFICATION_CLASS:
+        raise ValueError("verification_class must be LOW|MEDIUM|HIGH")
+
+    design = task.get("design_approval")
+    if design is not None:
+        if not isinstance(design, dict):
+            raise ValueError("design_approval must be an object")
+        if design.get("required") is not True:
+            raise ValueError("design_approval.required must be true when design_approval is present")
+        if design.get("status") not in {"approved", "required"}:
+            raise ValueError("design_approval.status must be approved|required")
+        if design.get("status") == "approved" and not design.get("evidence"):
+            raise ValueError("approved design requires design_approval.evidence")
+
+    invariants = task.get("invariants")
+    if invariants is not None and (not isinstance(invariants, list) or not all(isinstance(item, str) for item in invariants)):
+        raise ValueError("invariants must be an array of strings")
+    never_touch = task.get("never_touch")
+    if never_touch is not None and (not isinstance(never_touch, list) or not all(isinstance(item, str) for item in never_touch)):
+        raise ValueError("never_touch must be an array of strings")
     return task
 
 
@@ -152,6 +174,9 @@ def task_runtime_status(task, tasks):
     outcome = outcome_for(task["id"])
     if outcome:
         return outcome.get("status", "unknown")
+    design = task.get("design_approval")
+    if design and design.get("status") == "required":
+        return "design_approval_required"
     missing = [dep for dep in task["depends_on"] if dep not in tasks]
     if missing:
         return "invalid_dependency"
@@ -270,6 +295,7 @@ def cmd_status(_args):
         rows.append({
             "id": task["id"],
             "risk": task["risk"],
+            "verification_class": task.get("verification_class"),
             "status": task_runtime_status(task, tasks),
             "depends_on": task["depends_on"],
             "verify": task["verify"]["level"],
@@ -317,11 +343,13 @@ def cmd_plan(args):
                 "verification_class": active["verification_class"],
                 "required_gates": active["required_gates"],
                 "owns_paths": reserved_paths,
+                "design_approval": active_contract.get("design_approval") if active_contract else None,
             },
             "ready": [
                 {
                     "id": t["id"],
                     "risk": t["risk"],
+                    "verification_class": t.get("verification_class"),
                     "owns_paths": t["owns_paths"],
                     "verify": t["verify"],
                 }
@@ -341,6 +369,7 @@ def cmd_plan(args):
             {
                 "id": t["id"],
                 "risk": t["risk"],
+                "verification_class": t.get("verification_class"),
                 "owns_paths": t["owns_paths"],
                 "verify": t["verify"],
             }
