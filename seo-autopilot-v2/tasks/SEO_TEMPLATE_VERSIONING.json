@@ -1,0 +1,12 @@
+{
+  "id": "SEO_TEMPLATE_VERSIONING",
+  "title": "Version SEO template contracts without fragmenting the site",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "template revisions preserve canonical URL identity unless migration is intentional",
+    "avoid parallel legacy/new SEO templates for the same page family",
+    "Design System 2.0 remains the visual target",
+    "record material metadata/content contract changes"
+  ]
+}
