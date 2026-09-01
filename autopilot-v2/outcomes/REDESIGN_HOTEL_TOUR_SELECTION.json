@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "task": "REDESIGN_HOTEL_TOUR_SELECTION",
-  "status": "accepted",
+  "status": "shipped",
   "attempts": 1,
   "changed_files": [
     "v2/hotel-details-design.css",
@@ -9,12 +9,15 @@
   ],
   "verification": {
     "implementation_pull_request": "#736 merged into feature/search-core",
+    "behavior_gate_pull_request": "#737 merged into feature/search-core",
+    "production_release_pull_request": "#739 merged into main at 3d49be1e0224d274f27a515d6e5d5b05c0798e86",
     "fast_ci": "success",
     "security_guard": "success",
-    "browser_visual": "Visual DS2 hotel room gate green at 375/430/768/1024/1440 for hotel and room detail containment, facts, galleries and 42px actions",
+    "browser_visual": "Feature-side hotel/room visual gate green at 375/430/768/1024/1440; main PR #739 also passed normal V2 baseline, PR visual, selected-tour, standalone and bundle validation gates",
     "browser_behavior": "#737 PR-safe Playwright gate green for hotel detail open/render, room detail open, current-tour replacement and stale old-room response protection",
-    "tour_selection_contract": "Result-level tour rows remain owned by the separately accepted Search 2.0 lane; selected-tour/flight consistency remains covered by the accepted Search 2.0 and selected-tour gates. No Tourvisor identifiers, pricing semantics, Metrika, lead transport or logo changes."
+    "production": "Deploy anytoour.ru run 33517984397 success: release copy, public pages, unchanged lead bridge and live search smoke all green; Validate V2 tour live also green for live tour card API, flights and detail comparison",
+    "tour_selection_contract": "Result-level tour rows remain owned by the separately accepted Search 2.0 lane. No Tourvisor identifiers, pricing semantics, Metrika, external lead transport or logo changes."
   },
   "failure_class": null,
-  "remaining_risk": "Accepted in feature/search-core only. Production remains unchanged until the narrow dependency-safe release to main is prepared and normal post-deploy verification is green."
+  "remaining_risk": "The hotel/room DS2 slice is production-shipped. Other accepted feature/search-core redesign lanes still require their own narrow dependency-safe releases to main; bulk branch integration remains prohibited."
 }
