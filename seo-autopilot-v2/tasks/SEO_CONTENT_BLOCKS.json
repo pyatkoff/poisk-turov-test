@@ -1,0 +1,16 @@
+{
+  "id": "SEO_CONTENT_BLOCKS",
+  "title": "Define reusable factual SEO content blocks",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "candidate_blocks": [
+    "destination summary",
+    "resorts/hotels navigation",
+    "live offer snapshot",
+    "search CTA",
+    "related alternatives",
+    "FAQ",
+    "breadcrumbs"
+  ],
+  "rule": "Each block has an explicit data source/fallback and must add user value; do not stack blocks solely to increase text length."
+}
