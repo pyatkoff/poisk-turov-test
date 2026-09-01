@@ -1,0 +1,15 @@
+{
+  "id": "SEO_TEMPLATE_FACT_CHECK",
+  "title": "Fact-check reusable SEO template claims",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "brand/contact/support claims",
+    "payment claims",
+    "price/discount language",
+    "hotel/resort attributes",
+    "availability language",
+    "year/date claims"
+  ],
+  "rule": "A claim repeated by a template has multiplied risk; verify the source before scaling it."
+}
