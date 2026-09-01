@@ -1,0 +1,7 @@
+{
+  "id": "SEO_NO_BULK_BRANCH_MERGE",
+  "title": "Do not release SEO2 by bulk-merging the long-lived feature branch",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "Production releases are narrow, dependency-complete slices built against the intended current target branch; unrelated SEO2/product history stays out."
+}
