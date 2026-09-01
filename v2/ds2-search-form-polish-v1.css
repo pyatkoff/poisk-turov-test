@@ -40,11 +40,14 @@ body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__trust 
   body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{font-size:28px!important}
 }
 @media(max-width:700px){
-  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero{margin:12px 2px 10px!important}
-  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{font-size:24px!important}
-  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero p{font-size:12px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero{margin:9px 2px 8px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{font-size:21px!important;line-height:1.06!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero p{margin-top:4px!important;font-size:11px!important;line-height:1.35!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__trust{display:none!important}
 }
 @media(max-width:520px){
-  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{font-size:22px!important}
-  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__eyebrow{font-size:9px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero{margin:7px 2px 7px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__eyebrow{margin-bottom:4px!important;font-size:8px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{font-size:19px!important;line-height:1.05!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero p{display:none!important}
 }
