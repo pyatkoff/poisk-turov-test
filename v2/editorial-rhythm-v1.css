@@ -9,6 +9,7 @@
 .sp-steps{gap:16px}
 .sp-step{min-height:96px;padding-top:23px;padding-bottom:23px}
 .sp-purchase-flow,.sp-grid--balanced-two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sp-purchase-flow{list-style:none;margin:0;padding:0}
 .sp-card{min-height:100%}
 .sp-card p,.sp-row span,.sp-copy,.sp-step p{max-width:var(--at-copy-measure,74ch)}
 .sp-search-callout p{max-width:760px}
