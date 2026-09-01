@@ -1,11 +1,28 @@
 <?php
-/** Ordered active V2 browser assets. Keep order identical to the historical index.php includes. */
+/** Ordered active V2 browser assets. Business/runtime JS stays intact; legacy visual skins are excluded from the DS2 preview. */
 function v2_bundle_manifest(): array
 {
     return [
         'css' => [
-            'design-system-v2.css','app.css','enhancements.css','room-details.css','selected-tour-ux.css','design-v1.css','hotel-details-design.css','tour-design-v1.css','search-states-design.css','anytour-brand.css','results-experience-v1.css','conversion-confidence-v1.css','checkout-experience-v1.css','header-current-site.css','primary-meal-ux-v1.css','mobile-results-filters-v1.css','search-progress-ux-v1.css','search-dirty-ux-v1.css','mobile-search-summary-v1.css','search-filters-ux-v1.css','product-shell-v1.css','br3-control-consistency-v1.css','site-footer-v1.css','results-layout-guard-v1.css','search-redesign-v2.css',
-            /* Final authority: approved unified AnyTour mockups. */
+            'design-system-v2.css',
+            'app.css',
+            'enhancements.css',
+            'room-details.css',
+            'selected-tour-ux.css',
+            'search-states-design.css',
+            'results-experience-v1.css',
+            'conversion-confidence-v1.css',
+            'checkout-experience-v1.css',
+            'primary-meal-ux-v1.css',
+            'mobile-results-filters-v1.css',
+            'search-progress-ux-v1.css',
+            'search-dirty-ux-v1.css',
+            'mobile-search-summary-v1.css',
+            'search-filters-ux-v1.css',
+            'site-footer-v1.css',
+            'results-layout-guard-v1.css',
+            'anytour-checkout-brand.css',
+            /* Final visual authority: approved AnyTour DS2 mockups. */
             'approved-anytour-redesign-v1.css',
         ],
         'js' => [
