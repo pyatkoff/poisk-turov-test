@@ -1,0 +1,7 @@
+{
+  "id": "SEO_BLOCKER_POLICY",
+  "title": "Do not let one gated SEO lane stop independent safe progress",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "Record the blocker and move to the next independent high-priority SAFE task when a lane needs credentials, external data, product ownership, or MEDIUM/HIGH approval."
+}
