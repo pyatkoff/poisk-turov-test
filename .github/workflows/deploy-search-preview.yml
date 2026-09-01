@@ -27,6 +27,7 @@ jobs:
           php -l v2/api-v2.php >/dev/null
           php -l v2/bundle-v1.php >/dev/null
           grep -Fq "v2_asset('ds2-search.css')" v2/index.php
+          grep -Fq "'css' => []" v2/bundle-manifest-v1.php
           grep -Fq "'search-redesign-v2.js'" v2/bundle-manifest-v1.php
           node --check v2/search-redesign-v2.js
           echo "SEARCH_PREVIEW_VALIDATE_OK"
@@ -97,8 +98,8 @@ jobs:
           code="$(curl -sSL -o /tmp/search2-preview.html -w '%{http_code}' --max-time 45 "$base/poisk-turov/")"
           echo "PREVIEW_HTTP=$code"
           test "$code" = "200"
-          grep -q '/_preview/search2/bundle-v1.php?type=css' /tmp/search2-preview.html || { echo 'MISSING_PREVIEW_BASE_CSS_URL'; exit 21; }
           grep -q '/_preview/search2/ds2-search.css?v=' /tmp/search2-preview.html || { echo 'MISSING_PREVIEW_DS2_CSS_URL'; exit 25; }
+          if grep -q '/_preview/search2/bundle-v1.php?type=css' /tmp/search2-preview.html; then echo 'LEGACY_CSS_BUNDLE_STILL_LINKED'; exit 21; fi
           grep -q '/_preview/search2/api-v2.php' /tmp/search2-preview.html || { echo 'MISSING_PREVIEW_API_URL'; exit 22; }
           health_code="$(curl -sSL -o /tmp/search2-health.json -w '%{http_code}' --max-time 45 "$base/api-v2.php?action=health")"
           echo "HEALTH_HTTP=$health_code"
