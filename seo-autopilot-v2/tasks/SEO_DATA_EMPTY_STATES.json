@@ -1,0 +1,13 @@
+{
+  "id": "SEO_DATA_EMPTY_STATES",
+  "title": "Keep SEO landings useful when live offers are empty",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "do not turn a durable destination page into a 404 solely because live offers are temporarily empty",
+    "remove stale price claims",
+    "show a useful search/retry path",
+    "preserve factual durable content",
+    "do not emit offer structured data without visible current offers"
+  ]
+}
