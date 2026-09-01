@@ -1,0 +1,13 @@
+{
+  "id": "STRUCTURED_DATA",
+  "title": "Add factual structured data where eligible",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Expose machine-readable facts only when they match visible page content and the page type.",
+  "rules": [
+    "never fabricate ratings/reviews/prices/availability",
+    "structured data must match visible content",
+    "validate syntax and page eligibility",
+    "do not add schema solely for rich-result manipulation"
+  ]
+}
