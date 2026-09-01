@@ -1,0 +1,8 @@
+{
+  "id": "SEO_CONTROL_PLANE_REVIEW",
+  "title": "Review SEO2 control-plane for duplication before kernel integration",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "goal": "Consolidate overlapping policy tasks into a maintainable authoritative set before wiring the shared controller.",
+  "rule": "The bootstrap can be verbose for discovery, but the executable controller contract should stay compact and unambiguous."
+}
