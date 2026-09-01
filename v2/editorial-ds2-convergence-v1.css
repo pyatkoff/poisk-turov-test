@@ -64,6 +64,8 @@
   .sp-hero:before{right:-110px;bottom:-150px;opacity:.7}
   .sp-hero h1{font-size:34px}
   .sp-hero p{font-size:15px}
+  .sp-breadcrumbs .sp-wrap{min-height:44px}
+  .sp-breadcrumbs a{display:inline-flex;align-items:center;min-height:44px}
 }
 @media(max-width:560px){
   .sp-hero{padding:27px var(--at-page-edge) 32px}
