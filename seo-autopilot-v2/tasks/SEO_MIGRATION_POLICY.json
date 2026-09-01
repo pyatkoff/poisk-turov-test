@@ -1,0 +1,16 @@
+{
+  "id": "SEO_MIGRATION_POLICY",
+  "title": "Protect existing organic signals during URL migrations",
+  "risk": "HIGH",
+  "status": "QUEUED",
+  "requirements": [
+    "old-to-new URL mapping",
+    "canonical strategy",
+    "redirect strategy",
+    "internal-link update plan",
+    "sitemap update plan",
+    "rollback plan",
+    "post-release crawl verification"
+  ],
+  "policy": "Never perform broad SEO URL migrations as an incidental cleanup."
+}
