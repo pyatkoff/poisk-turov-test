@@ -1,5 +1,6 @@
 /* Search 3 approved desktop result-filter rail. Preview only. */
-body.search3-preview .results-layout{grid-template-columns:190px minmax(0,1fr)!important;gap:14px!important;align-items:start!important}
+body.search3-preview .results-layout{display:grid!important;grid-template-columns:190px minmax(0,1fr)!important;gap:14px!important;align-items:start!important;width:calc(100% - var(--at-page-gutter))!important;max-width:var(--at-shell)!important;margin:0 auto 56px!important}
+body.search3-preview .results-layout>.results{min-width:0!important;width:100%!important;max-width:none!important;margin:0!important}
 body.search3-preview .results-filter-rail{width:190px!important;padding:14px 12px!important;border:1px solid #e2e8f0!important;border-radius:12px!important;background:#fff!important;box-shadow:0 3px 12px rgba(16,24,40,.04)!important}
 body.search3-preview .filter-rail-head{margin-bottom:10px!important}
 body.search3-preview .filter-rail-title{font-size:13px!important;font-weight:950!important;color:#14213d!important}
@@ -16,4 +17,4 @@ body.search3-preview .results-filter-rail input[type=radio]:checked{border:4px s
 body.search3-preview .search3-filter-select{width:100%!important;min-height:34px!important;padding:0 26px 0 8px!important;border:1px solid #dce4ef!important;border-radius:8px!important;background:#fff!important;color:#344054!important;font:750 9px/1 var(--at-font)!important}
 body.search3-preview .filter-rail-result{padding-top:4px!important;color:#667085!important;font-size:9px!important}
 body.search3-preview .filter-rail-result strong{display:block!important;margin-top:3px!important;color:#14213d!important;font-size:11px!important}
-@media(max-width:999px){body.search3-preview .results-layout{display:block!important}.search3-preview .results-filter-rail{display:none!important}}
+@media(max-width:999px){body.search3-preview .results-layout{display:block!important;width:auto!important;max-width:none!important;margin:0 var(--at-page-edge) 48px!important}.search3-preview .results-filter-rail{display:none!important}}
