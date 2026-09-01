@@ -1,0 +1,15 @@
+{
+  "id": "SEO_CRAWL_BUDGET_HYGIENE",
+  "title": "Reduce low-value crawl surfaces",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "targets": [
+    "duplicate parameter URLs",
+    "redirect chains",
+    "calendar/search-state explosions",
+    "empty generated pages",
+    "legacy host duplicates",
+    "sitemap pollution"
+  ],
+  "rule": "Use canonical/noindex/robots/route controls according to the actual URL family; do not apply blanket blocking without evidence."
+}
