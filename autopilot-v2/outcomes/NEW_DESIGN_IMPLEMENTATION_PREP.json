@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "task": "NEW_DESIGN_IMPLEMENTATION_PREP",
+  "status": "accepted",
+  "attempts": 1,
+  "changed_files": [
+    "autopilot-v2/tasks/REDESIGN_HEADER_SHELL.json",
+    "autopilot-v2/tasks/SEARCH_2_0_MOCKUP_APPROVAL.json",
+    "autopilot-v2/tasks/REDESIGN_SEARCH_RESULTS.json",
+    "autopilot-v2/tasks/REDESIGN_LOADING_RECOVERY.json",
+    "autopilot-v2/tasks/REDESIGN_HOTEL_TOUR_SELECTION.json",
+    "autopilot-v2/tasks/REDESIGN_SELECTED_TOUR.json",
+    "autopilot-v2/tasks/REDESIGN_LEAD_HANDOFF.json",
+    "autopilot-v2/tasks/REDESIGN_FOOTER_COMMUNITY.json"
+  ],
+  "verification": {
+    "contract_mapping": "approved screens split into narrow implementation lanes",
+    "search_results_gate": "latest revised Search 2.0 mockup remains explicit approval gate",
+    "protected_contracts": "no product code, Metrika, Tourvisor, pricing, lead transport or logo changes"
+  },
+  "failure_class": null,
+  "remaining_risk": "Search/results implementation remains approval-gated until the owner explicitly accepts the latest revised Search 2.0 mockup; user-facing implementation tasks still require targeted browser/visual QA before merge."
+}
