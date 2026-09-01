@@ -1,0 +1,17 @@
+{
+  "id": "SEO_SITEMAP_SHARDING",
+  "title": "Scale sitemaps by canonical landing family",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "candidate_groups": [
+    "countries",
+    "resorts",
+    "hotels",
+    "approved thematic landings"
+  ],
+  "rules": [
+    "only canonical indexable 200 URLs belong",
+    "exclude search/filter/tracking variants",
+    "sitemap grouping should aid monitoring rather than change canonical policy"
+  ]
+}
