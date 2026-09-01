@@ -1,0 +1,18 @@
+{
+  "id": "SEO_OFFER_CARD_SCHEMA",
+  "title": "Define factual fields for reusable SEO offer cards",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "candidate_fields": [
+    "hotel/destination stable id",
+    "display name",
+    "departure city",
+    "departure date/window",
+    "duration",
+    "tourist basis",
+    "meal/room when sourced",
+    "price/currency",
+    "snapshot timestamp",
+    "search handoff target"
+  ]
+}
