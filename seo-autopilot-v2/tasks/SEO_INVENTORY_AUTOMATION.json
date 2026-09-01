@@ -1,0 +1,15 @@
+{
+  "id": "SEO_INVENTORY_AUTOMATION",
+  "title": "Automate repeatable SEO inventory collection",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "collect": [
+    "known public routes/page families",
+    "status/indexability/canonical",
+    "title/H1",
+    "sitemap membership",
+    "internal-link discovery",
+    "legacy host references"
+  ],
+  "rule": "Start with representative/page-family evidence; scale crawling only when useful and cheap enough."
+}
