@@ -29,7 +29,9 @@ jobs:
           php -l v2/bundle-manifest-v1.php >/dev/null
           grep -Fq "'ds2-search.css'" v2/bundle-manifest-v1.php
           grep -Fq "'search-redesign-v2.js'" v2/bundle-manifest-v1.php
+          test -s v2/search3-preview.css
           node --check v2/search-redesign-v2.js
+          node --check v2/search3-preview.js
           echo "SEARCH3_PREVIEW_VALIDATE_OK"
 
       - name: Prepare SSH key
@@ -68,6 +70,15 @@ jobs:
           cp "$prod/config.php" "$root/config.php"
           chmod 600 "$root/config.php"
           cp "$root/index.php" "$root/search-page-v3.php"
+          python3 - "$root/search-page-v3.php" <<'PY'
+          from pathlib import Path
+          import sys
+          path=Path(sys.argv[1])
+          text=path.read_text()
+          text=text.replace('</head>','<link rel="stylesheet" href="/_preview/search3/search3-preview.css?v=1"></head>',1)
+          text=text.replace('</body>','<script src="/_preview/search3/search3-preview.js?v=1"></script></body>',1)
+          path.write_text(text)
+          PY
 
           cat > "$root/poisk-turov/index.php" <<'PHP'
           <?php
@@ -99,6 +110,8 @@ jobs:
           echo "PREVIEW_HTTP=$code"
           test "$code" = "200"
           grep -q '/_preview/search3/bundle-v1.php?type=css' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_CSS_BUNDLE'; exit 21; }
+          grep -q '/_preview/search3/search3-preview.css?v=1' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_PREVIEW_CSS'; exit 27; }
+          grep -q '/_preview/search3/search3-preview.js?v=1' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_PREVIEW_JS'; exit 28; }
           grep -q '/_preview/search3/api-v2.php' /tmp/search3-preview.html || { echo 'MISSING_PREVIEW_API_URL'; exit 22; }
           health_code="$(curl -sSL -o /tmp/search3-health.json -w '%{http_code}' --max-time 45 "$base/api-v2.php?action=health")"
           echo "HEALTH_HTTP=$health_code"
