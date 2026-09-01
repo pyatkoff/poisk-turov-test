@@ -2,8 +2,8 @@
 /**
  * Editorial SEO pilot: Kemer, Turkey.
  *
- * Deliberately review-only. This record does not mount a route, enable indexing,
- * emit canonical/sitemap entries, or invent live prices/availability.
+ * Deliberately review-only. This record does not enable indexing,
+ * emit sitemap entries, or invent live prices/availability.
  * Dynamic commercial facts belong to the approved SEO offer snapshot layer.
  */
 function v2_seo_content_pilot_kemer(): array
@@ -71,12 +71,16 @@ function v2_seo_content_pilot_kemer(): array
                     ],
                 ],
             ],
-            'search_state' => [],
+            'search_state' => [
+                'country' => 4,
+                'region' => 22,
+            ],
         ],
         'content_notes' => [
             'Stable editorial copy only; live price/date/availability claims are prohibited here.',
             'Destination facts were checked against official GoTürkiye material before drafting.',
-            'Keep status=review until route taxonomy, Turkey parent page, search prefill identifiers, and live offer snapshot binding are verified.',
+            'Tourvisor-backed production catalog verification: country_id=4, region_id=22, region_name=Кемер.',
+            'Keep status=review until live offer snapshot binding and representative runtime handoff are verified.',
         ],
     ];
 }
