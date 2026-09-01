@@ -1,0 +1,86 @@
+/* Search 2.0 preview — 1440/desktop refinement against the approved initial-form mockup.
+ * Initial state only. Visual hierarchy/geometry only; search contracts are untouched.
+ */
+@media(min-width:1280px){
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch.search-card{
+    grid-template-columns:minmax(0,1fr) 176px!important;
+    grid-template-rows:70px 36px!important;
+    gap:8px 12px!important;
+    max-width:1180px!important;
+    margin-inline:auto!important;
+    padding:10px!important;
+    border:1px solid #dfe6f0!important;
+    border-radius:15px!important;
+    box-shadow:0 8px 24px rgba(16,24,40,.045)!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields{
+    height:70px!important;
+    min-height:70px!important;
+    grid-template-columns:1.02fr 1.02fr 1.5fr .66fr 1.02fr!important;
+    border-radius:12px!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields>.primary-step{
+    height:68px!important;
+    min-height:68px!important;
+    padding:11px 11px 9px 36px!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields>.primary-step::before{
+    left:13px!important;
+    width:15px!important;
+    height:15px!important;
+    background-size:15px 15px!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields>.primary-step>span,
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields>.primary-step .dates-ux>span,
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields>.primary-step .nights-ux>span,
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields>.primary-step .guests-ux>span{
+    margin-bottom:4px!important;
+    color:#7c8798!important;
+    font-size:9px!important;
+    font-weight:760!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields select,
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields .dates-picker>summary strong,
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields .guests-picker>summary strong,
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-picker>summary strong{
+    font-size:13.5px!important;
+    font-weight:860!important;
+    letter-spacing:-.015em!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .search-submit{
+    width:176px!important;
+    height:70px!important;
+    min-height:70px!important;
+    border-radius:12px!important;
+    font-size:13.5px!important;
+    background:#1261f6!important;
+    box-shadow:0 7px 18px rgba(18,97,246,.20)!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch>.ds2-search-quick-stars{
+    min-height:36px!important;
+    height:36px!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch>.ds2-search-quick-stars .stars-quick{
+    gap:7px!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch>.ds2-search-quick-stars .stars-choice{
+    height:34px!important;
+    min-height:34px!important;
+    padding:0 13px!important;
+    border-radius:10px!important;
+    font-size:10px!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch>.extras:not([open]),
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch>.extras-secondary:not([open]){
+    width:176px!important;
+    height:36px!important;
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch>.extras:not([open])>summary,
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch>.extras-secondary:not([open])>summary{
+    width:176px!important;
+    height:34px!important;
+    min-height:34px!important;
+    border-radius:10px!important;
+    font-size:10px!important;
+  }
+}
