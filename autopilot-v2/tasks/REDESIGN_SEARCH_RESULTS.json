@@ -6,6 +6,7 @@
   "owns_paths": [
     "v2/ds2-search.css",
     "v2/search-redesign-v2.js",
+    "v2/ds2-results-filters.js",
     "v2/index.php",
     "v2/bundle-manifest-v1.php"
   ],
@@ -27,6 +28,7 @@
     "widening original constraints uses the existing server re-search lifecycle",
     "result/filter counters, sorting, empty states and progressive loading remain consistent",
     "single active DS2 visual layer remains v2/ds2-search.css",
+    "active results-filter runtime dependency ds2-results-filters.js is included in the task/release boundary",
     "no Metrika, lead transport, pricing or logo contract changes"
   ]
 }
