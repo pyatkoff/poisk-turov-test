@@ -1,0 +1,16 @@
+{
+  "id": "SEO_LOGGING",
+  "title": "Record SEO autopilot decisions without user PII",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "record": [
+    "task id",
+    "URL family or template",
+    "finding",
+    "risk",
+    "change/PR reference",
+    "verification outcome",
+    "next action"
+  ],
+  "rule": "SEO diagnostic logs do not need traveler names, phones, comments or messenger identifiers."
+}
