@@ -1,0 +1,12 @@
+{
+  "id": "SEO_CROSS_PROJECT_BOUNDARY",
+  "title": "Keep SEO2 changes inside the intended AnyTour project",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rules": [
+    "do not modify MAX bot/manager projects as part of SEO work",
+    "do not change unrelated franchise projects",
+    "shared factual feeds may be consumed only through documented contracts",
+    "cross-project changes require their own task/review boundary"
+  ]
+}
