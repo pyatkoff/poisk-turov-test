@@ -1,0 +1,19 @@
+{
+  "id": "SEO_BASELINE_SCORECARD",
+  "title": "Establish a repeatable SEO quality baseline",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "dimensions": [
+    "technical indexability",
+    "canonical hygiene",
+    "crawl/sitemap hygiene",
+    "metadata/H1 quality",
+    "landing architecture",
+    "content usefulness",
+    "internal linking",
+    "factual freshness",
+    "structured data",
+    "mobile/desktop landing UX"
+  ],
+  "rule": "Scores summarize evidence; they do not replace defect-level findings."
+}
