@@ -1,0 +1,14 @@
+{
+  "id": "SEO_CONTROLLER_DRY_RUN",
+  "title": "Dry-run SEO task selection before enabling autonomous writes",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "checks": [
+    "loads seo-autopilot-v2/state.json",
+    "selects SEO_INVENTORY first",
+    "respects protected boundaries",
+    "does not read product task queue as SEO queue",
+    "classifies MEDIUM/HIGH tasks as gated",
+    "continues to next independent SAFE task when allowed"
+  ]
+}
