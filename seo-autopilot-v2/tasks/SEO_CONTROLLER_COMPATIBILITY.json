@@ -1,0 +1,18 @@
+{
+  "id": "SEO_CONTROLLER_COMPATIBILITY",
+  "title": "Reuse generic Autopilot mechanics without copying product assumptions",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "reuse": [
+    "task loading",
+    "risk/status transitions",
+    "outcome recording",
+    "continuation logic"
+  ],
+  "do_not_reuse_implicitly": [
+    "product task IDs",
+    "product protected paths",
+    "product branch target",
+    "Search UX verification assumptions"
+  ]
+}
