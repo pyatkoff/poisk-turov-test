@@ -76,7 +76,6 @@ def accepted(task_id):
 
 
 def ownership_overlap(a, b):
-    # Contracts use repo-relative files/directories. Parent/child path ownership overlaps.
     for pa in a:
         pa = pa.rstrip("/")
         for pb in b:
@@ -86,15 +85,34 @@ def ownership_overlap(a, b):
     return False
 
 
+def task_runtime_status(task, tasks):
+    outcome = outcome_for(task["id"])
+    if outcome:
+        return outcome.get("status", "unknown")
+    missing = [dep for dep in task["depends_on"] if dep not in tasks]
+    if missing:
+        return "invalid_dependency"
+    failed_deps = []
+    waiting_deps = []
+    for dep in task["depends_on"]:
+        dep_outcome = outcome_for(dep)
+        if dep_outcome and dep_outcome.get("status") in {"blocked", "failed"}:
+            failed_deps.append(dep)
+        elif not accepted(dep):
+            waiting_deps.append(dep)
+    if failed_deps:
+        return "blocked_by_dependency"
+    if waiting_deps:
+        return "waiting_dependency"
+    if task["risk"] == "HIGH":
+        return "approval_required"
+    return "ready"
+
+
 def ready_tasks(tasks, limit=3):
     ready = []
     for task in tasks.values():
-        own = outcome_for(task["id"])
-        if own and own.get("status") in TERMINAL:
-            continue
-        if not all(accepted(dep) for dep in task["depends_on"]):
-            continue
-        if task["risk"] == "HIGH":
+        if task_runtime_status(task, tasks) != "ready":
             continue
         if any(ownership_overlap(task["owns_paths"], other["owns_paths"]) for other in ready):
             continue
@@ -109,8 +127,8 @@ def validate_graph(tasks):
         for dep in task["depends_on"]:
             if dep not in tasks:
                 raise ValueError(f"{task['id']}: unknown dependency {dep}")
-    # small DFS cycle check
     visiting, visited = set(), set()
+
     def visit(task_id):
         if task_id in visiting:
             raise ValueError(f"dependency cycle at {task_id}")
@@ -121,6 +139,7 @@ def validate_graph(tasks):
             visit(dep)
         visiting.remove(task_id)
         visited.add(task_id)
+
     for task_id in tasks:
         visit(task_id)
 
@@ -147,6 +166,23 @@ def cmd_validate(_args):
         if outcome:
             validate_outcome(outcome, task)
     print(f"AUTOPILOT_CONTROLLER_OK tasks={len(tasks)}")
+
+
+def cmd_status(_args):
+    tasks = load_tasks()
+    validate_graph(tasks)
+    rows = []
+    for task in tasks.values():
+        outcome = outcome_for(task["id"])
+        rows.append({
+            "id": task["id"],
+            "risk": task["risk"],
+            "status": task_runtime_status(task, tasks),
+            "depends_on": task["depends_on"],
+            "verify": task["verify"]["level"],
+            "failure_class": outcome.get("failure_class") if outcome else None,
+        })
+    print(json.dumps({"tasks": rows}, ensure_ascii=False, indent=2))
 
 
 def cmd_plan(args):
@@ -193,6 +229,8 @@ def main():
     sub = parser.add_subparsers(dest="command", required=True)
     p_validate = sub.add_parser("validate")
     p_validate.set_defaults(func=cmd_validate)
+    p_status = sub.add_parser("status")
+    p_status.set_defaults(func=cmd_status)
     p_plan = sub.add_parser("plan")
     p_plan.add_argument("--max-writers", type=int, default=3, choices=(1, 2, 3))
     p_plan.set_defaults(func=cmd_plan)
