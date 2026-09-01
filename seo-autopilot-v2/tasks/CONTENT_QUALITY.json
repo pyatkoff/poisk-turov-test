@@ -1,0 +1,17 @@
+{
+  "id": "CONTENT_QUALITY",
+  "title": "Score and improve SEO landing content quality",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "intent satisfaction",
+    "uniqueness beyond token substitution",
+    "factual accuracy",
+    "useful destination/hotel information",
+    "commercial usefulness",
+    "thin content",
+    "keyword stuffing",
+    "unsupported claims"
+  ],
+  "principle": "A smaller set of useful differentiated pages is preferred over a large set of templated thin pages."
+}
