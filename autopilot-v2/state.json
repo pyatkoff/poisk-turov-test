@@ -2,7 +2,7 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Re-audit the production-bound DS2 search journey after Search 2.0 activation and factual-footer release.",
+    "now": "Finish production evidence for the released Search 2.0 + factual footer, then continue the next periodic whole-search audit.",
     "done": [
       "P0/P1 local filtering and progressive 25→100 behavior accepted with prior evidence.",
       "Hotel/room, selected-tour/flight and post-success lead handoff released narrowly to main.",
@@ -11,7 +11,7 @@
       "Stale release/state PRs #765 and #770 closed without merge.",
       "Autopilot 2.0 durable state uses schema v3 and enhanced task contracts."
     ],
-    "next": "Run the observation-only FULL_SEARCH_UX_REAUDIT on current main across Search → Results → Hotel/Room → Selected Tour/Flights → Lead. Split any confirmed defect into its own scoped task. Collect production evidence for #788 through the latest superseding main deploy/smoke.",
+    "next": "Collect production evidence for the released Search 2.0/factual-footer composition through the latest superseding main deploy/smoke. Then schedule the next periodic observation-only FULL_SEARCH_UX_REAUDIT; any confirmed defect must be split into its own scoped task.",
     "blocked": [
       "Targeted live verification may still be externally blocked if anytoour.ru cannot be resolved from a runner.",
       "Bulk integration from feature/search-core to main remains prohibited because the branches materially diverge."
@@ -25,17 +25,17 @@
     ]
   },
   "active_task": {
-    "id": "FULL_SEARCH_UX_REAUDIT",
-    "title": "Re-audit the complete DS2 search and conversion journey on current main",
+    "id": "REDESIGN_SEARCH_RESULTS",
+    "title": "Verify the released Search 2.0 composition on production after current-main stabilization",
     "area": "results-tour",
-    "risk": "SAFE",
-    "verification_class": "LOW",
-    "state": "qa",
+    "risk": "MEDIUM",
+    "verification_class": "MEDIUM",
+    "state": "production_qa",
     "owner": "qa",
     "required_gates": [
-      "Observation-only audit: no product-code diff and no broad CI matrix",
-      "Desktop and mobile evidence; add intermediate widths only for a concrete layout risk",
-      "Confirmed defects must become separate scoped tasks with proportional verification"
+      "Use existing Deploy anytoour.ru + Production smoke; do not add or restore broad workflows",
+      "Treat a superseded/cancelled older deploy as infrastructure sequencing, not a product defect",
+      "If live access is blocked externally, record the blocker and continue safe independent work"
     ],
     "evidence": [
       "Search 2.0 runtime was activated on main in #761 (merge d142777f73209c79b2e609ea26b2d82e4650643e).",
@@ -43,7 +43,7 @@
       "Current-main audit found two stacked footer layers in v2/site-footer-v1.php; stale #765 could also restore the removed 274px desktop results offset.",
       "Fresh #788 was rebuilt from current main, preserved the #767 results layout fix, passed Security, V2 validation, branch bundles, footer visual, selected-tour visual, V2 baseline and V2 PR visual gates, and merged as dcc88468e0ac3c2f6f18aa0092f2afc24b4b892e.",
       "#765 and stale state snapshot #770 were closed without merge.",
-      "The direct #788 Deploy anytoour.ru run was cancelled after a newer main push superseded it; production evidence follows the newer main deploy rather than treating cancellation as a product defect.",
+      "The direct #788 Deploy anytoour.ru run was cancelled after newer main push #789 superseded it; production evidence follows the newer main deploy rather than treating cancellation as a product defect.",
       "HIGH-risk Metrika, external lead transport, Tourvisor contracts, pricing semantics and the AnyTour logo remain untouched."
     ],
     "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -53,16 +53,16 @@
     {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
     {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":666,"merge_sha":"ee34c881de396b734f86807c975a5821ba2ca06b"},
     {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE"},
-    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"PENDING_SUPERSEDING_MAIN_DEPLOY_SMOKE"},
+    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"ACTIVE_SUPERSEDING_MAIN_DEPLOY_SMOKE"},
     {"id":"NEW_DESIGN_IMPLEMENTATION_PREP","priority":2,"status":"DONE","pr":700,"merge_sha":"1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c"},
     {"id":"SEARCH_2_0_MOCKUP_APPROVAL","priority":2,"status":"DONE","pr":708},
-    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"RELEASED_MAIN_STABILIZED","activation_pr":761,"activation_sha":"d142777f73209c79b2e609ea26b2d82e4650643e","overflow_fix_pr":767},
+    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"PRODUCTION_QA","activation_pr":761,"activation_sha":"d142777f73209c79b2e609ea26b2d82e4650643e","overflow_fix_pr":767},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":739,"main_sha":"3d49be1e0224d274f27a515d6e5d5b05c0798e86"},
     {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":743,"main_sha":"c3d9d0b0ac8f33b44d2706f467448762a8c42fd1"},
     {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":745,"main_sha":"a15f84c831cd8cc13a0842fef3996a4d76b29f2c"},
     {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"MERGED_MAIN_AWAITING_PRODUCTION_EVIDENCE","release_pr":788,"main_sha":"dcc88468e0ac3c2f6f18aa0092f2afc24b4b892e"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"DONE_FEATURE_EVIDENCE","latest_pr":731,"latest_merge_sha":"86545937d4dd971ff29903d07412d693bb4c0ef1"},
-    {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"ACTIVE"},
+    {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"DONE_CONTINUE_PERIODIC_AUDIT"},
     {"id":"DS2_NARROW_RELEASE_PLAN","priority":2,"status":"DONE","outcome_pr":756},
     {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED"},
     {"id":"SEO_FACTORY","priority":3,"status":"QUEUED_AFTER_PRODUCT_STABILITY"},
@@ -71,11 +71,11 @@
   ],
   "last_signal": {
     "source": "autopilot_v2_footer_release",
-    "status": "FOOTER_788_MERGED_SUPERSEDING_DEPLOY_PENDING",
+    "status": "FOOTER_788_MERGED_SUPERSEDING_DEPLOY_ACTIVE",
     "sha": "dcc88468e0ac3c2f6f18aa0092f2afc24b4b892e"
   },
   "blocked": [
-    {"scope":"targeted production verification","type":"external_environment","reason":"Treat runner DNS/network failures or superseded deploy cancellation as evidence blockers, not product defects.","action":"Use the latest main deploy and production smoke; otherwise continue independent P1 audit work."},
+    {"scope":"targeted production verification","type":"external_environment","reason":"Treat runner DNS/network failures or superseded deploy cancellation as evidence blockers, not product defects.","action":"Use the latest main deploy and production smoke; otherwise continue independent P1 work."},
     {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core.","action":"Continue narrow current-main releases only."}
   ]
 }
