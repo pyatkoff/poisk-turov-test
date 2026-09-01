@@ -3,10 +3,25 @@
   "id": "REDESIGN_LOADING_RECOVERY",
   "goal": "Implement the approved loading/waiting/error/recovery presentation without changing the existing search lifecycle or discarding useful progressive results.",
   "risk": "MEDIUM",
+  "verification_class": "MEDIUM",
+  "design_approval": "REQUIRED_AND_ALREADY_SATISFIED_BY_NEW_DESIGN_IMPLEMENTATION_PREP",
   "owns_paths": [
     "v2/search-progress-ux-v1.js",
     "v2/search-progress-ux-v1.css",
     "v2/search-dirty-ux-v1.js"
+  ],
+  "never_touch": [
+    "Tourvisor request/search lifecycle contracts",
+    "Yandex Metrika configuration or goals",
+    "lead transport contracts",
+    "pricing semantics",
+    "unrelated search state modules"
+  ],
+  "invariants": [
+    "already-loaded valid results remain usable during progressive work where possible",
+    "stale async responses never overwrite a newer search",
+    "valid user input is preserved across recoverable failures",
+    "retry/recovery reuses the existing search lifecycle rather than creating a parallel one"
   ],
   "depends_on": [
     "NEW_DESIGN_IMPLEMENTATION_PREP"
