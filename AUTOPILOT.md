@@ -41,15 +41,17 @@ PR #670 removed the homepage-local duplicate token/header ownership so the homep
 
 PR #672 extended the existing production result-card live audit from 1440 to 1440/1024/768 while reusing one populated search state. It validates the canonical grid-to-stacked transition, hotel photo/body geometry, stars-badge orientation and page overflow without adding extra Tourvisor searches.
 
-PR #675 extends that same single-search production evidence into the first rendered tour variant. At 1440/1024/768 the live gate now also measures the results toolbar, tour row/meta/action containment and the visible `Выбрать тур` CTA while retaining the hotel-card/photo/stars/overflow assertions. The change adds no Tourvisor search, runtime CSS/JS, analytics/Metrika, price or lead behavior. Security guard passed before merge; merge SHA `08c6fea505574e0b1bf83921e933a2fa255c6f19`. The live production execution will run after the next successful standalone deployment.
+PR #675 extended that same single-search production evidence into the first rendered tour variant. At 1440/1024/768 the live gate measures the results toolbar, tour row/meta/action containment and the visible `Выбрать тур` CTA while retaining hotel-card/photo/stars/overflow assertions.
+
+PR #677 completed the production journey proof through the actual `Выбрать тур` → populated selected-tour → `Вернуться к предложениям` handoff on the same already-populated search state. The live gate passed at 1440/1024/768 with 10 populated facts, selected picture/flights/lead surfaces contained inside the DS2 card, correct desktop/tablet selected-price hierarchy, no horizontal overflow and a valid return to the preserved results state. The measured selected-tour roots were 1180 px at 1440, 984 px at 1024 and 744 px at 768; the lead CTA remained 54 px high at all three widths. This was CI/evidence hardening only: runtime CSS/JS, Tourvisor, analytics/Metrika, pricing and lead transport were unchanged.
 
 The existing standalone-content visual owner already exercises `/country/`, `/country/turkey/` and a broad representative country set at 375/430/768/1024/1440, including shared header geometry, navigation, footer/community shell, overflow, CTA contrast/focus and selected screenshots. Do not create a duplicate country workflow merely to resample the same surfaces.
 
 ## Current resume point
 
-Continue from the selected-tour handoff: validate the actual `Выбрать тур` → selected-tour transition and populated selected-tour geometry/hierarchy at 768/1024/1440. Fix only confirmed DS2 hierarchy/spacing/wrapping/overflow defects in canonical owners. Preserve the loaded-results local-filter architecture and all external contracts.
+The live search journey through results → tour variant → selected-tour → return is production-stable at 768/1024/1440. Continue an independent site-wide DS2 slice from the weakest public surface rather than inventing a selected-tour defect. Current scorecard points to homepage section hierarchy/discovery flow first, then `/hot/`, `/contacts/`, `/how-to-buy/` and `/rb/` route-specific hierarchy.
 
-If the selected-tour handoff is already stable, continue an independent site-wide DS2 slice by reviewing existing five-width evidence for the weakest public route and fixing only a confirmed shared-shell or hierarchy defect.
+For the homepage, inspect existing five-width evidence before editing. Fix only a confirmed hierarchy/spacing/wrapping/shared-shell issue in canonical owners; preserve the short search handoff and do not make editorial surfaces as dense as the search application.
 
 Keep the whole-product site-wide score at **7.1/10** until a broader visible product slice materially improves; CI/evidence hardening alone is not a reason to raise it.
 
