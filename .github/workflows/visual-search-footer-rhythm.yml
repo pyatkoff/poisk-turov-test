@@ -7,6 +7,7 @@ on:
       - 'v2/search-footer-rhythm-v1.css'
       - 'v2/site-footer-v1.php'
       - 'v2/site-footer-v1.css'
+      - 'v2/ds2-search.css'
       - 'v2/phone-value.php'
       - 'v2/phone-config.php'
       - 'v2/bundle-manifest-v1.php'
@@ -50,10 +51,14 @@ jobs:
           ];
           foreach($required as $url){if(!str_contains($html,'href="'.$url.'"')) footer_fail('url_missing_'.$url);}
           if(substr_count($html,'rel="noopener noreferrer"')!==5) footer_fail('external_rel');
-          if(substr_count($html,'<svg')<5) footer_fail('brand_icons_missing');
+          $isDs2=str_contains($html,'class="ds2-site-footer"');
+          $isLegacy=str_contains($html,'class="v2-site-community"');
+          if(!$isDs2&&!$isLegacy) footer_fail('known_footer_root_missing');
+          if($isLegacy&&substr_count($html,'<svg')<5) footer_fail('legacy_brand_icons_missing');
+          if($isDs2&&substr_count($html,'<footer')!==1) footer_fail('ds2_parallel_footer');
           if(str_contains($html,'ym(')||str_contains($html,'metrika')) footer_fail('analytics_leak');
           file_put_contents('/tmp/footer-fragment.html',$html);
-          echo "V2_SOCIAL_APP_FOOTER_URLS_OK phoneNormalization=1 brandIcons=1\n";
+          echo "V2_SOCIAL_APP_FOOTER_URLS_OK phoneNormalization=1 footerMode=".($isDs2?'ds2':'legacy')."\n";
           PHP
       - name: Install Chromium
         shell: bash
@@ -69,7 +74,10 @@ jobs:
           cat > ./validate-footer.cjs <<'JS'
           const {chromium}=require('playwright');
           const fs=require('fs');
-          const css=fs.readFileSync('v2/site-footer-v1.css','utf8');
+          const css=[
+            fs.existsSync('v2/site-footer-v1.css')?fs.readFileSync('v2/site-footer-v1.css','utf8'):'',
+            fs.existsSync('v2/ds2-search.css')?fs.readFileSync('v2/ds2-search.css','utf8'):''
+          ].join('\n');
           const fragment=fs.readFileSync('/tmp/footer-fragment.html','utf8');
           (async()=>{
             const browser=await chromium.launch({headless:true});
@@ -77,22 +85,27 @@ jobs:
               const page=await browser.newPage({viewport:{width,height}});
               await page.setContent(`<style>*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif}${css}</style>${fragment}`);
               const state=await page.evaluate(()=>{
-                const footer=document.querySelector('.v2-site-community');
-                const external=[...footer.querySelectorAll('.v2-site-community__socials a,.v2-site-community__apps a')];
+                const footer=document.querySelector('.ds2-site-footer,.v2-site-community');
+                if(!footer)return {missing:true};
+                const ds2=footer.classList.contains('ds2-site-footer');
+                const external=[...footer.querySelectorAll(ds2?'.ds2-site-footer__socials a,.ds2-site-footer__apps>a':'.v2-site-community__socials a,.v2-site-community__apps a')];
                 return {
+                  ds2,
                   overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
                   external:external.length,
                   outside:external.some(a=>{const r=a.getBoundingClientRect();return r.left<-1||r.right>innerWidth+1;}),
                   minHeight:Math.min(...external.map(a=>a.getBoundingClientRect().height)),
-                  apps:footer.querySelectorAll('.v2-site-community__app').length,
-                  socials:footer.querySelectorAll('.v2-site-community__socials a').length,
+                  apps:footer.querySelectorAll(ds2?'.ds2-site-footer__apps>a':'.v2-site-community__app').length,
+                  socials:footer.querySelectorAll(ds2?'.ds2-site-footer__socials a':'.v2-site-community__socials a').length,
                   icons:footer.querySelectorAll('svg').length
                 };
               });
-              if(state.external!==5||state.apps!==2||state.socials!==3||state.icons<5)throw new Error(name+': destination/icon count '+JSON.stringify(state));
+              if(state.missing)throw new Error(name+': footer root missing');
+              if(state.external!==5||state.apps!==2||state.socials!==3)throw new Error(name+': destination count '+JSON.stringify(state));
+              if(!state.ds2&&state.icons<5)throw new Error(name+': legacy icon count '+JSON.stringify(state));
               if(state.overflow||state.outside)throw new Error(name+': footer overflow '+JSON.stringify(state));
               if(name==='mobile'&&state.minHeight<43.5)throw new Error(name+': touch target too small '+JSON.stringify(state));
-              console.log('V2_SOCIAL_APP_FOOTER_LAYOUT_OK',name);
+              console.log('V2_SOCIAL_APP_FOOTER_LAYOUT_OK',name,state.ds2?'ds2':'legacy');
               await page.close();
             }
             await browser.close();
@@ -122,8 +135,8 @@ jobs:
             for(const [name,width,height] of sizes){const c=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});const p=await c.newPage();const errors=[];p.on('pageerror',e=>errors.push(String(e)));
               await p.route('**/*',route=>{const u=new URL(route.request().url());if(u.pathname.endsWith('/bundle-v1.php')){const t=u.searchParams.get('type');if(t==='css')return route.fulfill({status:200,contentType:'text/css; charset=UTF-8',body:css});if(t==='js')return route.fulfill({status:200,contentType:'application/javascript; charset=UTF-8',body:js});}return route.continue();});
               const response=await p.goto(process.env.V2_URL,{waitUntil:'domcontentloaded',timeout:45000});await p.waitForTimeout(3500);
-              const state=await p.evaluate(()=>{const main=document.querySelector('main.v2-shell'),community=document.querySelector('.v2-site-community'),inner=document.querySelector('.v2-site-community__inner');const r=e=>e?.getBoundingClientRect();const mr=r(main),cr=r(community),ir=r(inner);return{mainBottom:mr?.bottom||0,communityTop:cr?.top||0,innerTop:ir?.top||0,gap:ir&&mr?ir.top-mr.bottom:null,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2};});
-              await p.locator('.v2-site-community').scrollIntoViewIfNeeded();await p.waitForTimeout(100);await p.screenshot({path:`footer-rhythm-artifacts/${name}.png`,fullPage:false,animations:'disabled'});
+              const state=await p.evaluate(()=>{const main=document.querySelector('main.v2-shell'),footer=document.querySelector('.ds2-site-footer,.v2-site-community'),inner=document.querySelector('.ds2-site-footer__inner,.v2-site-community__inner');const r=e=>e?.getBoundingClientRect();const mr=r(main),fr=r(footer),ir=r(inner);return{mainBottom:mr?.bottom||0,footerTop:fr?.top||0,innerTop:ir?.top||0,gap:ir&&mr?ir.top-mr.bottom:null,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2};});
+              const footerLocator=p.locator('.ds2-site-footer,.v2-site-community').first();if(await footerLocator.count())await footerLocator.scrollIntoViewIfNeeded();await p.waitForTimeout(100);await p.screenshot({path:`footer-rhythm-artifacts/${name}.png`,fullPage:false,animations:'disabled'});
               const maxGap=width<=560?55:width<=820?65:75;const bad=(response?.status()||0)!==200||errors.length||state.overflow||state.gap===null||state.gap<20||state.gap>maxGap;report.push({name,width,state,maxGap,errors,bad});if(bad)failed=true;await c.close();}
             fs.writeFileSync('footer-rhythm-artifacts/report.json',JSON.stringify(report,null,2));await browser.close();if(failed)process.exit(1);})().catch(e=>{console.error(e);process.exit(1)});
           JS
