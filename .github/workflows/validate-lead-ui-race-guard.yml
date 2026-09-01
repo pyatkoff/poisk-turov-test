@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Block stale lead UI events but preserve current-tour events
+      - name: Block stale lead UI events across tour and search changes
         shell: bash
         run: |
           set -euo pipefail
@@ -26,18 +26,25 @@ jobs:
           const listeners={};
           const window={
             V2TourController:{currentTour:{id:'tour-b'}},
+            V2Runtime:{state:{searchId:202}},
             addEventListener:(name,fn)=>{(listeners[name]||(listeners[name]=[])).push(fn);}
           };
-          vm.runInNewContext(fs.readFileSync('v2/lead-ui-race-guard-v1.js','utf8'),{window,String});
+          vm.runInNewContext(fs.readFileSync('v2/lead-ui-race-guard-v1.js','utf8'),{window,String,Number});
           const guard=window.V2LeadUiRaceGuardV1;
           if(!guard)throw new Error('guard not loaded');
           let stopped=0;
-          const stale={detail:{tourId:'tour-a'},stopImmediatePropagation:()=>{stopped++;}};
-          if(guard.protect(stale)!==false||stopped!==1)throw new Error('stale event was not blocked');
-          const current={detail:{tourId:'tour-b'},stopImmediatePropagation:()=>{throw new Error('current event blocked');}};
+          const staleTour={detail:{tourId:'tour-a',searchId:202},stopImmediatePropagation:()=>{stopped++;}};
+          if(guard.protect(staleTour)!==false||stopped!==1)throw new Error('stale tour event was not blocked');
+          const staleSearch={detail:{tourId:'tour-b',searchId:101},stopImmediatePropagation:()=>{stopped++;}};
+          if(guard.protect(staleSearch)!==false||stopped!==2)throw new Error('same-tour stale search event was not blocked');
+          const current={detail:{tourId:'tour-b',searchId:202},stopImmediatePropagation:()=>{throw new Error('current event blocked');}};
           if(guard.protect(current)!==true)throw new Error('current event rejected');
           window.V2TourController.currentTour=null;
-          const switching={detail:{tourId:'tour-a'},stopImmediatePropagation:()=>{stopped++;}};
-          if(guard.protect(switching)!==false||stopped!==2)throw new Error('event during tour switch was not blocked');
+          const switching={detail:{tourId:'tour-a',searchId:202},stopImmediatePropagation:()=>{stopped++;}};
+          if(guard.protect(switching)!==false||stopped!==3)throw new Error('event during tour switch was not blocked');
+          window.V2TourController.currentTour={id:'tour-b'};
+          window.V2Runtime.state.searchId=0;
+          const reset={detail:{tourId:'tour-b',searchId:202},stopImmediatePropagation:()=>{stopped++;}};
+          if(guard.protect(reset)!==false||stopped!==4)throw new Error('event after search reset was not blocked');
           console.log('LEAD_UI_RACE_GUARD_OK');
           JS
