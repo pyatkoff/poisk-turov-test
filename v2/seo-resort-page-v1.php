@@ -3,13 +3,22 @@ require_once __DIR__ . '/site-page-shell-v1.php';
 require_once __DIR__ . '/seo-page-contract-v1.php';
 
 /**
- * Render a curated resort page on its final clean path while the editorial
- * record is still in review. Review pages are always noindex.
+ * Render a curated resort page on its final clean path.
+ *
+ * review   => always noindex
+ * approved => follows the existing global SEO_INDEXABLE site gate
+ *
+ * This keeps editorial approval separate from the site-wide indexing launch.
  */
-function v2_seo_render_resort_review(array $record): void
+function v2_seo_render_resort(array $record): void
 {
-    if (($record['type'] ?? '') !== 'resort' || ($record['status'] ?? '') !== 'review') {
-        throw new InvalidArgumentException('SEO resort runtime accepts review resort records only');
+    if (($record['type'] ?? '') !== 'resort') {
+        throw new InvalidArgumentException('SEO resort runtime accepts resort records only');
+    }
+
+    $status = (string)($record['status'] ?? '');
+    if (!in_array($status, ['review', 'approved'], true)) {
+        throw new InvalidArgumentException('SEO resort runtime requires review or approved status');
     }
 
     $path = v2_seo_stable_internal_href($record['path'] ?? '');
@@ -19,7 +28,9 @@ function v2_seo_render_resort_review(array $record): void
 
     $page = v2_seo_page_contract(is_array($record['data'] ?? null) ? $record['data'] : []);
     $context = sp_context($path, $page['title'], $page['description']);
-    $context['robots'] = v2_seo_robots_content(false);
+    if ($status !== 'approved') {
+        $context['robots'] = v2_seo_robots_content(false);
+    }
 
     sp_head($context);
     sp_header($context);
@@ -50,4 +61,13 @@ function v2_seo_render_resort_review(array $record): void
     echo '<section class="sp-card sp-search-callout"><h2>Подобрать тур</h2><p>Проверьте актуальные даты, стоимость и доступность предложений в поиске AnyTour.</p><div class="sp-actions"><a class="sp-primary" href="'.sp_e(v2_seo_search_handoff_url('/poisk-turov/', $page['search_state'])).'">Перейти к поиску туров</a></div></section>';
     echo '</main>';
     sp_end($context);
+}
+
+/** Backward-compatible explicit review entrypoint. */
+function v2_seo_render_resort_review(array $record): void
+{
+    if (($record['status'] ?? '') !== 'review') {
+        throw new InvalidArgumentException('SEO resort review runtime accepts review records only');
+    }
+    v2_seo_render_resort($record);
 }
