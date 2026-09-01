@@ -9,7 +9,7 @@
     "state": "implement",
     "owner": "developer",
     "required_gates": [
-      "SEARCH2_DORMANT_ASSETS: Fast CI + Security guard",
+      "SEARCH2_DORMANT_ASSETS: Fast/main CI + Security guard",
       "SEARCH2_ACTIVATION_AND_FACTUAL_FOOTER: Fast CI + Security guard + targeted browser/visual QA",
       "Deploy anytoour.ru + Production smoke after activation release"
     ],
@@ -17,9 +17,9 @@
       "P0/P1 local filtering, progressive 25→100, stale async protection and result counters remain accepted with prior feature evidence.",
       "Hotel/room, selected-tour/flight and post-success lead handoff are already released narrowly to main via #739/#743/#745.",
       "PR #742 restored factual footer content and >=44px primary mobile targets; the real PHP component passed the corrected five-width visual gate after #751.",
-      "PR #748 repaired Search 2.0 ownership to active ds2-search.css; PR #755 added active ds2-results-filters.js to the owned runtime dependency boundary.",
-      "DS2_NARROW_RELEASE_PLAN passed in PR #756: no bulk feature/search-core merge; remaining Search 2.0 is split into dormant assets first, then a current-main activation + factual footer slice.",
-      "Current main still has materially different index/bundle composition, so activation must be rebuilt against current main instead of copying feature/search-core wholesale.",
+      "PR #748 repaired Search 2.0 ownership to active ds2-search.css; #755 added ds2-results-filters.js; #758 completed the boundary with results-depth-v1.js and results-local-filters-v1.js.",
+      "PR #759 released four accepted Search 2.0 JS modules to current main as dormant, unreferenced assets only: results-depth-v1.js, results-local-filters-v1.js, ds2-results-filters.js and search-redesign-v2.js. All eight main PR workflows were green. bundle-manifest-v1.php and index.php were intentionally unchanged, so the merge has zero runtime activation.",
+      "Current main still has materially different index/bundle composition, canonical shared header, child-search behavior and newer results-filter-autorefresh-v1.js v3. Activation must be rebuilt against current main instead of copying feature/search-core wholesale.",
       "HIGH-risk Metrika, external lead transport, Tourvisor contracts, pricing semantics and the AnyTour logo remain untouched."
     ],
     "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -32,26 +32,26 @@
     {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"BLOCKED_EXTERNAL"},
     {"id":"NEW_DESIGN_IMPLEMENTATION_PREP","priority":2,"status":"DONE","pr":700,"merge_sha":"1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c"},
     {"id":"SEARCH_2_0_MOCKUP_APPROVAL","priority":2,"status":"DONE","pr":708},
-    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"ACTIVE_NARROW_MAIN_RELEASE","visual_gate_pr":726,"ownership_repair_pr":748,"filter_dependency_pr":755,"next_slice":"SEARCH2_DORMANT_ASSETS"},
+    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"ACTIVE_NARROW_MAIN_RELEASE","visual_gate_pr":726,"ownership_repair_pr":748,"filter_dependency_pr":755,"depth_local_dependency_pr":758,"dormant_runtime_pr":759,"dormant_runtime_main_sha":"201badcd85f099d3f941bd5a63bbc56b4a663464","next_slice":"SEARCH2_CANONICAL_CSS_AND_MAIN_ACTIVATION_ASSEMBLY"},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":739,"main_sha":"3d49be1e0224d274f27a515d6e5d5b05c0798e86"},
     {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":743,"main_sha":"c3d9d0b0ac8f33b44d2706f467448762a8c42fd1"},
     {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":745,"main_sha":"a15f84c831cd8cc13a0842fef3996a4d76b29f2c"},
     {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"ACCEPTED_FEATURE_VISUAL_GREEN","pr":742,"merge_sha":"2db30fe8da359ec31af55754a7dcbe9818078414","visual_gate":"REAL_COMPONENT_375_430_768_1024_1440_GREEN"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"DONE_FEATURE_EVIDENCE","latest_pr":731,"latest_merge_sha":"86545937d4dd971ff29903d07412d693bb4c0ef1"},
     {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"DONE_CONTINUE_RELEASE_AUDIT"},
-    {"id":"DS2_NARROW_RELEASE_PLAN","priority":2,"status":"DONE","outcome_pr":756,"next_action":"SEARCH2_DORMANT_ASSETS"},
+    {"id":"DS2_NARROW_RELEASE_PLAN","priority":2,"status":"DONE","outcome_pr":756,"next_action":"SEARCH2_CANONICAL_CSS_AND_MAIN_ACTIVATION_ASSEMBLY"},
     {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED"},
     {"id":"SEO_FACTORY","priority":3,"status":"QUEUED_AFTER_PRODUCT_STABILITY"},
     {"id":"PX7_PRICE_WATCH_RESEARCH","priority":3,"status":"DEFERRED_RESEARCH"},
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"QUEUED"}
   ],
   "last_signal": {
-    "source": "ds2_narrow_release_plan",
-    "status": "PLAN_GREEN_SEARCH2_DORMANT_ASSETS_NEXT_NO_BULK_INTEGRATION",
-    "sha": "1372909d80e1c9e2f1154f0dc25315d64828c736"
+    "source": "search2_dormant_runtime_release",
+    "status": "FOUR_ACCEPTED_JS_MODULES_ON_MAIN_DORMANT_ALL_PR_GATES_GREEN",
+    "sha": "201badcd85f099d3f941bd5a63bbc56b4a663464"
   },
   "blocked": [
     {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not reliably resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe when live access is available; do not classify DNS/runner failure as a product defect."},
-    {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; Search 2.0 index/bundle composition cannot be released safely as a bulk branch merge.","action":"Use the accepted two-slice plan: dormant assets first, then rebuild activation on current main with targeted gates."}
+    {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; Search 2.0 index/bundle composition cannot be released safely as a bulk branch merge.","action":"Continue narrow main assembly. Preserve shared site-header-v2.php, child-search behavior and current-main results-filter-autorefresh-v1.js v3; activate only after targeted behavior + visual evidence."}
   ]
 }
