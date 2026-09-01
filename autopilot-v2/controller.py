@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parent
 TASK_DIR = ROOT / "tasks"
 OUTCOME_DIR = ROOT / "outcomes"
 STATE_FILE = ROOT / "state.json"
+
 VALID_RISK = {"SAFE", "MEDIUM", "HIGH"}
 VALID_VERIFY = {"none", "smoke", "targeted", "production"}
 VALID_VERIFICATION_CLASS = {"LOW", "MEDIUM", "HIGH"}
@@ -42,6 +43,14 @@ def load_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _string_list(value, field, non_empty=False):
+    if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
+        raise ValueError(f"{field} must be an array of non-empty strings")
+    if non_empty and not value:
+        raise ValueError(f"{field} must be a non-empty array")
+    return value
+
+
 def validate_state(state):
     required = {"schema_version", "mode", "resume", "active_task", "queue", "last_signal"}
     missing = sorted(required - set(state))
@@ -61,8 +70,7 @@ def validate_state(state):
     if not isinstance(resume["now"], str) or not isinstance(resume["next"], str):
         raise ValueError("resume.now and resume.next must be strings")
     for key in ("done", "blocked", "lessons"):
-        if not isinstance(resume[key], list) or not all(isinstance(item, str) for item in resume[key]):
-            raise ValueError(f"resume.{key} must be an array of strings")
+        _string_list(resume[key], f"resume.{key}")
 
     active = state["active_task"]
     if active is not None:
@@ -79,6 +87,8 @@ def validate_state(state):
             raise ValueError(f"invalid verification_class: {active['verification_class']}")
         if active["state"] not in VALID_ACTIVE_STATES:
             raise ValueError(f"invalid active_task state: {active['state']}")
+        _string_list(active["required_gates"], "active_task.required_gates")
+        _string_list(active["evidence"], "active_task.evidence")
 
     return state
 
@@ -94,48 +104,61 @@ def task_files():
 
 
 def validate_task(task):
-    required = {"schema_version", "id", "goal", "risk", "owns_paths", "depends_on", "verify", "done_when"}
+    required = {
+        "schema_version",
+        "id",
+        "goal",
+        "risk",
+        "verification_class",
+        "owns_paths",
+        "never_touch",
+        "invariants",
+        "depends_on",
+        "verify",
+        "done_when",
+    }
     missing = sorted(required - set(task))
     if missing:
-        raise ValueError(f"missing fields: {', '.join(missing)}")
+        raise ValueError(f"{task.get('id', '<unknown>')}: missing fields: {', '.join(missing)}")
     if task["schema_version"] != 1:
-        raise ValueError("schema_version must be 1")
+        raise ValueError(f"{task['id']}: schema_version must be 1")
     if task["risk"] not in VALID_RISK:
-        raise ValueError(f"invalid risk: {task['risk']}")
-    if not isinstance(task["owns_paths"], list) or not task["owns_paths"]:
-        raise ValueError("owns_paths must be a non-empty array")
-    if not isinstance(task["depends_on"], list):
-        raise ValueError("depends_on must be an array")
-    if not isinstance(task["done_when"], list) or not task["done_when"]:
-        raise ValueError("done_when must be a non-empty array")
+        raise ValueError(f"{task['id']}: invalid risk: {task['risk']}")
+    if task["verification_class"] not in VALID_VERIFICATION_CLASS:
+        raise ValueError(f"{task['id']}: verification_class must be LOW|MEDIUM|HIGH")
+
+    _string_list(task["owns_paths"], f"{task['id']}.owns_paths", non_empty=True)
+    _string_list(task["never_touch"], f"{task['id']}.never_touch", non_empty=True)
+    _string_list(task["invariants"], f"{task['id']}.invariants", non_empty=True)
+    _string_list(task["done_when"], f"{task['id']}.done_when", non_empty=True)
+
+    if not isinstance(task["depends_on"], list) or not all(isinstance(item, str) and item.strip() for item in task["depends_on"]):
+        raise ValueError(f"{task['id']}.depends_on must be an array of task ids")
+
     verify = task["verify"]
     if not isinstance(verify, dict) or verify.get("level") not in VALID_VERIFY:
-        raise ValueError("verify.level must be none|smoke|targeted|production")
+        raise ValueError(f"{task['id']}: verify.level must be none|smoke|targeted|production")
     checks = verify.get("checks", [])
+    _string_list(checks, f"{task['id']}.verify.checks")
     if verify["level"] != "none" and not checks:
-        raise ValueError("verify.checks required unless level=none")
-
-    verification_class = task.get("verification_class")
-    if verification_class is not None and verification_class not in VALID_VERIFICATION_CLASS:
-        raise ValueError("verification_class must be LOW|MEDIUM|HIGH")
+        raise ValueError(f"{task['id']}: verify.checks required unless level=none")
 
     design = task.get("design_approval")
     if design is not None:
         if not isinstance(design, dict):
-            raise ValueError("design_approval must be an object")
+            raise ValueError(f"{task['id']}: design_approval must be an object")
         if design.get("required") is not True:
-            raise ValueError("design_approval.required must be true when design_approval is present")
+            raise ValueError(f"{task['id']}: design_approval.required must be true when present")
         if design.get("status") not in {"approved", "required"}:
-            raise ValueError("design_approval.status must be approved|required")
-        if design.get("status") == "approved" and not design.get("evidence"):
-            raise ValueError("approved design requires design_approval.evidence")
+            raise ValueError(f"{task['id']}: design_approval.status must be approved|required")
+        if design.get("status") == "approved" and not str(design.get("evidence", "")).strip():
+            raise ValueError(f"{task['id']}: approved design requires design_approval.evidence")
 
-    invariants = task.get("invariants")
-    if invariants is not None and (not isinstance(invariants, list) or not all(isinstance(item, str) for item in invariants)):
-        raise ValueError("invariants must be an array of strings")
-    never_touch = task.get("never_touch")
-    if never_touch is not None and (not isinstance(never_touch, list) or not all(isinstance(item, str) for item in never_touch)):
-        raise ValueError("never_touch must be an array of strings")
+    if task["risk"] == "HIGH" and task["verification_class"] != "HIGH":
+        raise ValueError(f"{task['id']}: HIGH-risk task requires verification_class HIGH")
+    if task["verification_class"] == "HIGH" and verify["level"] in {"none", "smoke"}:
+        raise ValueError(f"{task['id']}: HIGH verification_class requires targeted|production verify level")
+
     return task
 
 
@@ -174,12 +197,15 @@ def task_runtime_status(task, tasks):
     outcome = outcome_for(task["id"])
     if outcome:
         return outcome.get("status", "unknown")
+
     design = task.get("design_approval")
     if design and design.get("status") == "required":
         return "design_approval_required"
+
     missing = [dep for dep in task["depends_on"] if dep not in tasks]
     if missing:
         return "invalid_dependency"
+
     failed_deps = []
     waiting_deps = []
     for dep in task["depends_on"]:
@@ -188,6 +214,7 @@ def task_runtime_status(task, tasks):
             failed_deps.append(dep)
         elif not accepted(dep):
             waiting_deps.append(dep)
+
     if failed_deps:
         return "blocked_by_dependency"
     if waiting_deps:
@@ -228,6 +255,7 @@ def validate_graph(tasks):
         for dep in task["depends_on"]:
             if dep not in tasks:
                 raise ValueError(f"{task['id']}: unknown dependency {dep}")
+
     visiting, visited = set(), set()
 
     def visit(task_id):
@@ -259,15 +287,32 @@ def validate_outcome(data, task=None):
         raise ValueError("outcome task id does not match contract")
 
 
+def validate_active_alignment(state, tasks):
+    active = state.get("active_task")
+    if not active or active.get("state") in ACTIVE_TERMINAL_STATES:
+        return
+    contract = tasks.get(active["id"])
+    if not contract:
+        raise ValueError(f"active_task contract missing: {active['id']}")
+    if active["risk"] != contract["risk"]:
+        raise ValueError(f"active_task risk differs from contract: {active['id']}")
+    if active["verification_class"] != contract["verification_class"]:
+        raise ValueError(f"active_task verification_class differs from contract: {active['id']}")
+
+
 def cmd_validate(_args):
     state = load_state()
     tasks = load_tasks()
     validate_graph(tasks)
+    validate_active_alignment(state, tasks)
     for task_id, task in tasks.items():
         outcome = outcome_for(task_id)
         if outcome:
             validate_outcome(outcome, task)
-    print(f"AUTOPILOT_CONTROLLER_OK state_schema={state['schema_version']} tasks={len(tasks)}")
+    print(
+        f"AUTOPILOT_CONTROLLER_OK "
+        f"state_schema={state['schema_version']} tasks={len(tasks)} enhanced_contracts={len(tasks)}"
+    )
 
 
 def cmd_resume(_args):
@@ -289,13 +334,14 @@ def cmd_status(_args):
     state = load_state()
     tasks = load_tasks()
     validate_graph(tasks)
+    validate_active_alignment(state, tasks)
     rows = []
     for task in tasks.values():
         outcome = outcome_for(task["id"])
         rows.append({
             "id": task["id"],
             "risk": task["risk"],
-            "verification_class": task.get("verification_class"),
+            "verification_class": task["verification_class"],
             "status": task_runtime_status(task, tasks),
             "depends_on": task["depends_on"],
             "verify": task["verify"]["level"],
@@ -308,6 +354,7 @@ def cmd_plan(args):
     state = load_state()
     tasks = load_tasks()
     validate_graph(tasks)
+    validate_active_alignment(state, tasks)
     active = state.get("active_task")
     active_contract = active_task_contract(state, tasks)
 
@@ -349,7 +396,7 @@ def cmd_plan(args):
                 {
                     "id": t["id"],
                     "risk": t["risk"],
-                    "verification_class": t.get("verification_class"),
+                    "verification_class": t["verification_class"],
                     "owns_paths": t["owns_paths"],
                     "verify": t["verify"],
                 }
@@ -369,7 +416,7 @@ def cmd_plan(args):
             {
                 "id": t["id"],
                 "risk": t["risk"],
-                "verification_class": t.get("verification_class"),
+                "verification_class": t["verification_class"],
                 "owns_paths": t["owns_paths"],
                 "verify": t["verify"],
             }
@@ -395,7 +442,10 @@ def cmd_check_owns(args):
         if not ok:
             bad.append(changed)
     if bad:
-        print(json.dumps({"task": args.task, "failure_class": "owns_violation", "files": bad}, ensure_ascii=False))
+        print(json.dumps(
+            {"task": args.task, "failure_class": "owns_violation", "files": bad},
+            ensure_ascii=False,
+        ))
         return 2
     print(f"OWNS_PATHS_OK task={args.task} files={len(args.changed)}")
     return 0
@@ -404,19 +454,25 @@ def cmd_check_owns(args):
 def main():
     parser = argparse.ArgumentParser(description="AnyTour lightweight Autopilot controller")
     sub = parser.add_subparsers(dest="command", required=True)
+
     p_validate = sub.add_parser("validate")
     p_validate.set_defaults(func=cmd_validate)
+
     p_resume = sub.add_parser("resume")
     p_resume.set_defaults(func=cmd_resume)
+
     p_status = sub.add_parser("status")
     p_status.set_defaults(func=cmd_status)
+
     p_plan = sub.add_parser("plan")
     p_plan.add_argument("--max-writers", type=int, default=3, choices=(1, 2, 3))
     p_plan.set_defaults(func=cmd_plan)
+
     p_owns = sub.add_parser("check-owns")
     p_owns.add_argument("--task", required=True)
     p_owns.add_argument("changed", nargs="+")
     p_owns.set_defaults(func=cmd_check_owns)
+
     args = parser.parse_args()
     try:
         result = args.func(args)
