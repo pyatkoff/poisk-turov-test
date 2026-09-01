@@ -1,0 +1,11 @@
+{
+  "id": "SEO_ANALYTICS_BOUNDARY",
+  "title": "Measure SEO without silently changing analytics contracts",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rules": [
+    "existing Yandex Metrika goals/counter mechanics are protected",
+    "SEO may consume approved read-only organic landing/conversion evidence",
+    "new tracking requirements must be proposed separately rather than slipped into an SEO template PR"
+  ]
+}
