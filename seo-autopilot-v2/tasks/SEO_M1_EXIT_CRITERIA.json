@@ -1,0 +1,15 @@
+{
+  "id": "SEO_M1_EXIT_CRITERIA",
+  "title": "Exit foundation milestone only after technical contracts are known",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "criteria": [
+    "page/URL families inventoried",
+    "production host/canonical behavior understood",
+    "robots/sitemap behavior understood",
+    "major legacy-domain/duplicate risks classified",
+    "metadata/H1 sources identified",
+    "first critical SAFE defects repaired or explicitly gated",
+    "page-family registry initialized"
+  ]
+}
