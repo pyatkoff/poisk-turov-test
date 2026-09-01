@@ -1,7 +1,7 @@
 {
-  "schema_version": 16,
+  "schema_version": 17,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-01T23:18:00+03:00",
+  "updated_at": "2026-09-01T23:58:00+03:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -9,14 +9,14 @@
   "owner_priority_lock": {
     "active": true,
     "planned_phase": "search_ux_ds2",
-    "rule": "Prioritize tour-search UX and site-wide user-facing convergence on AnyTour Design System 2.0. New design concepts require owner approval. Search 2.0 preview PR #810 is release-locked and must not be merged or deployed until the owner explicitly approves the visual design."
+    "rule": "Prioritize tour-search UX and site-wide user-facing convergence on AnyTour Design System 2.0. New design concepts require owner approval. Search 2.0 PR #810 may deploy only to the isolated /_preview/search2/ route because the owner explicitly approved preview publishing; it must not merge or deploy to production /poisk-turov/ until explicit production approval."
   },
   "current_stage": {
-    "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "name": "Shared DS2 CTA, touch-target and responsive convergence",
+    "id": "SEARCH2_INITIAL_FORM_PREVIEW_CONVERGENCE",
+    "name": "Search 2.0 initial-form preview convergence + shared DS2 stability",
     "status": "ACTIVE",
-    "last_material_progress": "PR #813 normalized the /how-to-buy/ secondary manager handoff to the canonical 'Помощь менеджера' label. PR #814 fixed /contacts/ phone usability by giving all four office phones plus the unified phone a 44 px DS2 touch target in the shared site-coherence owner; all relevant PR checks were green and Deploy anytoour.ru run 33553029719 passed public-page verification, unchanged lead-bridge verification and live-search smoke. Post-deploy standalone visual run 33553359626 passed at 375/430/768/1024/1440. PR #817 added an explicit five-width live numeric assertion for exactly five /contacts/ phone targets. Its immediate main-push production visual run exposed a CI/deploy race while a concurrent country-content release was being copied, not a stable runtime defect. PR #820 fixed that race by removing the redundant main-push production trigger and retaining local PR validation plus the authoritative workflow_run trigger after successful Deploy anytoour.ru; #820 PR checks were green and it merged as de909ef035b31664851609f8180c0b1de77d969b. The subsequent country release Deploy anytoour.ru run 33553777247 completed successfully with public pages, unchanged lead bridge and live-search smoke green, and authoritative post-deploy five-width standalone visual run 33554159108 completed successfully, proving the fully copied release across 375/430/768/1024/1440 including the five /contacts/ phone targets and representative country pages. Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified destinations and unresolved legal/payment content were unchanged. Search 2.0 preview PR #810 remains draft/unmerged under the owner release lock.",
-    "next_action": "Continue the shared DS2 CTA/wrapping audit on homepage/search and representative country pages at 375/430/768/1024/1440. Fix only confirmed inconsistencies in canonical shared owners. Preserve mature search/results/selected-tour behavior and loaded-results instant-local filtering. Do not merge/deploy PR #810 until explicit owner approval."
+    "last_material_progress": "Production DS2 remains verified through PR #820 and the subsequent successful country release/post-deploy five-width audit. The owner then explicitly approved using https://anytoour.ru/_preview/search2/poisk-turov/ for Search 2.0 review. A dedicated preview-only workflow now deploys branch design/search2-form-polish to /_preview/search2/ without touching production; initial preview deploy run 33557752534 passed. Fresh visual evidence from PR #810 showed that the rendered initial form still retained the older large two-row composition and orange CTA despite branch polish layers. The current preview branch therefore adds an explicit ds2-search-initial state owner, robust delayed enhancement of the transformed date/nights/guest controls, and an authoritative initial-form CSS layer targeting the approved five-control composition with blue CTA. Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified destinations and unresolved legal/payment content remain unchanged.",
+    "next_action": "Verify the newest preview deploy and five-width PR visual evidence for the actual rendered initial form. Confirm that desktop is one compact row: Откуда, Куда, Когда, Ночи, Туристы, blue Найти туры; tablet/mobile must remain usable at 1024/768/430/375. If visual evidence still shows the legacy composition, diagnose the actual runtime state/class mismatch before adding more cosmetic layers. Keep production release locked pending owner visual approval."
   },
   "local_results_filtering": {
     "mode": "instant_local",
@@ -27,7 +27,7 @@
   "site_wide_score": {
     "value": 7.3,
     "scale": 10,
-    "note": "Held at 7.3. CTA wording, contact touch targets and deployment-gate correctness improved and are verified live, but these are narrow convergence and reliability repairs rather than a broad enough visual step to raise the whole-product score."
+    "note": "Held at 7.3. Search 2.0 preview work is not production and therefore does not raise the public-site score. Production DS2 remains stable at the prior verified level."
   },
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -42,7 +42,7 @@
     "verified_destinations": "PRESERVE",
     "legal_payment_unresolved": "DEFER",
     "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
-    "search2_preview_pr_810": "DO_NOT_MERGE_OR_DEPLOY_UNTIL_EXPLICIT_OWNER_APPROVAL"
+    "search2_preview_pr_810": "PREVIEW_DEPLOY_ALLOWED_ONLY_TO_/_preview/search2_; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_APPROVAL"
   },
   "deferred": {
     "technical_refactor": "DEFER_UNTIL_EXPLICIT_OWNER_DIRECTION",
@@ -50,8 +50,8 @@
     "legal_payment": "DEFER_UNRESOLVED_CONTENT"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > search_user_journey > results_filters_loaded_set > optional_background_expansion > hotel_tour_cards_and_selected_tour > desktop_mobile_visual_consistency > shared_header_navigation_footer_ds2 > site_visual_convergence_ds2 > technical_refactor_deferred > content_seo > cosmetic_cleanup",
-    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > search_user_journey > search2_initial_form_preview > results_filters_loaded_set > hotel_tour_cards_and_selected_tour > desktop_mobile_visual_consistency > shared_header_navigation_footer_ds2 > site_visual_convergence_ds2 > technical_refactor_deferred > content_seo > cosmetic_cleanup",
+    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_preview-contract-only",
     "on_blocker": "record/defer blocker and continue an independent safe DS2/search-UX task"
   }
 }
