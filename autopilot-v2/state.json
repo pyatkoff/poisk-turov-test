@@ -25,6 +25,10 @@
       "Post-merge search reset audit PASS: v2:search-reset invalidates both async generations, clears currentTour/flightVariants/selectedFlightIndex and hides selected-tour UI.",
       "Post-merge lead retry/idempotency audit PASS at browser boundary: submit is disabled during a request, failed sends re-enable retry with form data preserved, successful sends set dataset.sent and server duplicate responses are handled as deduplicated success.",
       "Post-merge child-age context audit PASS: active search snapshot child ages are validated to 0..17, capped to three entries and keep childs consistent before the existing lead request is sent.",
+      "PR #674 fixes confirmed selected-room payload normalization: structured Tourvisor roomType/placement values are converted to the same human-readable string contract used by selected-tour UI before the existing lead request is sent; no external lead field or transport changed.",
+      "Fast CI and Security guard passed for PR #674; merge SHA 70f00a9af42a86d5e4c01bac9dc0eb3f19854beb.",
+      "Room enrichment audit PASS: room-details-v3 binds async room responses to the current connected host and matching tourId, so stale room detail responses cannot overwrite a newly selected tour.",
+      "Selected flight payload audit PASS: lead payload keeps tour base price separately while selectedFlightData carries the chosen flight description, flightPrice and flightFuel; lead-price-v1 derives selectedPrice from flightPrice when available and otherwise falls back to base price.",
       "Production evidence remains blocked by the prior external live-probe environment; continue independent product QA.",
       "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
     ],
@@ -61,7 +65,7 @@
       "priority": 1,
       "status": "ACTIVE",
       "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
-      "reason": "PR #663 fixed stale reset generations; PR #669 fixed stale price/fuel state for unpriced flight selections. Static controller/lead audit now passes second-tour/second-flight async isolation, search-reset cleanup, browser submit retry/idempotency boundary and child-age enrichment. Continue room/flight payload consistency and narrow browser/live evidence before closing this priority."
+      "reason": "PR #663 fixed stale reset generations; PR #669 fixed stale price/fuel state for unpriced flight selections; PR #674 fixed structured roomType/placement normalization before the existing lead submit. Static audits now pass second-tour/second-flight isolation, room-detail stale protection, price/fuel payload selection, retry/idempotency and child-age enrichment. Continue narrow browser/live evidence and remaining selected-tour recovery states before closing this priority."
     },
     {
       "id": "PRODUCTION_RESULTS_EVIDENCE",
@@ -114,9 +118,9 @@
     }
   ],
   "last_signal": {
-    "source": "selected_tour_post_merge_isolation_audit",
+    "source": "selected_tour_room_payload_fix_and_consistency_audit",
     "status": "CONTINUE_SELECTED_TOUR_END_TO_END",
-    "sha": "f4bc4517f4e2da6fe375753203e85f0313be58ae"
+    "sha": "70f00a9af42a86d5e4c01bac9dc0eb3f19854beb"
   },
   "blocked": [
     {
