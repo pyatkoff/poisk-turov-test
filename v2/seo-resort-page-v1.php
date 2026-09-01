@@ -27,7 +27,9 @@ function v2_seo_render_resort(array $record): void
         throw new InvalidArgumentException('SEO resort runtime requires a clean trailing-slash path');
     }
 
-    $page = v2_seo_page_contract(is_array($record['data'] ?? null) ? $record['data'] : []);
+    $rawPage = is_array($record['data'] ?? null) ? $record['data'] : [];
+    $resortName = trim((string)($rawPage['name'] ?? '')) ?: 'этот курорт';
+    $page = v2_seo_page_contract($rawPage);
     $context = sp_context($path, $page['title'], $page['description']);
     if ($status !== 'approved') {
         $context['robots'] = v2_seo_robots_content(false);
@@ -53,7 +55,7 @@ function v2_seo_render_resort(array $record): void
         : [];
 
     if ($offers) {
-        echo '<section class="sp-card sp-offer-snapshot"><h2>Актуальные туры в '.sp_e((string)($page['name'] ?? 'этот курорт')).'</h2>';
+        echo '<section class="sp-card sp-offer-snapshot"><h2>Актуальные туры в '.sp_e($resortName).'</h2>';
         echo '<p>Предложения собраны из свежих ценовых наблюдений AnyTour. Стоимость и доступность перепроверяются в поиске перед заявкой.</p>';
         echo '<div class="sp-offer-list">';
         foreach ($offers as $offer) {
