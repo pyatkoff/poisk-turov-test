@@ -1,7 +1,7 @@
 (function(){'use strict';
 const rt=window.V2Runtime;if(!rt)return;
 const cache=new Map();let currentTour=null,clicksBound=false;
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[m]));}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 function clean(v){return String(v||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
 function imageUrl(v){const s=String(v||'').trim();return s.indexOf('//')===0?'https:'+s:s;}
 function normalizeRooms(d){if(Array.isArray(d))return d;if(d&&Array.isArray(d.rooms))return d.rooms;return[];}
