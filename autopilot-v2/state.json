@@ -2,17 +2,19 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Continue P0/P1 selected-tour end-to-end and search-state re-audit on current main after closing the local-filter payload-completeness defect in PR #842.",
+    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. Search/results local-filter completeness is released and the anytoour.ru production deploy for #842 is green.",
     "done": [
       "P0/P1 progressive 25→100, local narrowing, widening/server lifecycle, stale async protection and counters have prior accepted evidence.",
       "Hotel/room, selected-tour/flight and post-success lead handoff were released narrowly to main.",
       "Search 2.0 runtime activation was released narrowly to main; bulk feature/search-core integration remains prohibited.",
       "PR #829 hid the sea-distance local facet when no usable sea-distance data exists.",
-      "PR #842 strengthened local facet safety: meal/category/rating/sea facets are exposed only when the currently loaded result set is complete enough to evaluate that facet across the full local set. PR #842 passed existing Security, V2 validation and visual gates and merged to main as 923fa8eb30ed8e65630653f3924a147c86a59f45."
+      "PR #842 strengthened local facet safety: meal/category/rating/sea facets are exposed only when the currently loaded result set is complete enough to evaluate that facet across the full local set. PR #842 passed Security, V2 validation, selected-tour visual, PR visual and baseline visual gates and merged to main as 923fa8eb30ed8e65630653f3924a147c86a59f45.",
+      "Deploy anytoour.ru run 33563761068 for #842 completed successfully.",
+      "Selected-tour re-audit PASS: search-lifecycle-v6 invalidates generation/searchId and clears selected-tour state on changed parameters/new search; unpriced-flight-price-reset-v1 prevents a prior priced flight from surviving selection of an unpriced flight while preserving fuel context; active lead-search-context.js enriches the existing lead payload with validated child ages from the search snapshot."
     ],
-    "next": "Audit current-main selected-tour end-to-end state isolation and recovery: new search, second tour, room, flight, price sync, searchId/tourId consistency and lead-form recovery. Fix only reproduced defects without changing the external lead contract.",
+    "next": "Continue selected-tour E2E audit with second-tour/room/flight state isolation, searchId/tourId consistency, lead submit idempotency and retry/recovery. Fix only reproduced defects without changing the external lead contract.",
     "blocked": [
-      "Targeted production verification is externally blocked in this execution environment when anytoour.ru DNS cannot resolve; classify as BLOCKED_EXTERNAL, not a product defect.",
+      "Direct HTTP verification from this execution environment is externally blocked when anytoour.ru DNS cannot resolve; GitHub production deploy provides independent production evidence.",
       "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence."
     ],
     "lessons": [
@@ -20,7 +22,7 @@
       "Use AnyTour Design System 2.0 only; Design System 1.0 is obsolete.",
       "Do not change Metrika goals, external lead transport, Tourvisor contracts, pricing semantics or the logo without explicit approval.",
       "Local filtering is safe only when the loaded payload is complete enough for the selected facet; presence in only part of the result set is insufficient.",
-      "Do not stop after one accepted PR when another independent P0/P1 audit step fits the run budget."
+      "Record PASS evidence and move on instead of creating duplicate fixes for already-guarded selected-tour behavior."
     ]
   },
   "active_task": {
@@ -39,20 +41,21 @@
       "Preserve external lead contract, Metrika and pricing semantics"
     ],
     "evidence": [
-      "Current main includes the prior narrow hotel/room, selected-tour/flight and lead-handoff releases.",
-      "Existing focused guards cover second-tour isolation, flight autoload race, room recovery, flight empty recovery, fuel fallback, selected-tour return and lead recovery; audit implementation against those behaviors rather than launching a broad matrix.",
-      "Local-filter payload completeness defect was closed by PR #842 / main SHA 923fa8eb30ed8e65630653f3924a147c86a59f45.",
-      "Live HTTP verification from this execution environment is currently BLOCKED_EXTERNAL by DNS resolution failure before any request reaches anytoour.ru."
+      "Existing focused guards cover second-tour isolation, flight autoload race, room recovery, flight empty recovery, fuel fallback, selected-tour return and lead recovery; use those behaviors rather than a broad matrix.",
+      "Search lifecycle clears selected-tour UI, invalidates async generation and resets runtime searchId before a replacement search.",
+      "Unpriced selected-flight handling resets stale priced-flight display to the tour base price, refreshes specific/fallback fuel context and emits pricePending.",
+      "lead-search-context.js is active in bundle-manifest-v1.php and enriches lead POST JSON with childAges/adults from V2SearchLifecycle.snapshot without changing the adapter contract.",
+      "Local-filter completeness defect closed by #842 / main SHA 923fa8eb30ed8e65630653f3924a147c86a59f45; Deploy anytoour.ru run 33563761068 succeeded."
     ],
     "parent_task": "P0_P1_PRODUCT_STABILITY"
   },
   "queue": [
-    {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","latest_pr":842,"latest_merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45"},
-    {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
-    {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":842,"merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45"},
+    {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"RELEASED_PRODUCTION","latest_pr":842,"latest_merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45","deploy_run":33563761068},
+    {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_WITH_PRIOR_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
+    {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"RELEASED_PRODUCTION","pr":842,"merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45","deploy_run":33563761068},
     {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_REAUDIT"},
-    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"BLOCKED_EXTERNAL_RETRY_LATER"},
-    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"RELEASED_MAIN_AWAITING_LIVE_EVIDENCE"},
+    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"GREEN_DEPLOY_DIRECT_PROBE_EXTERNAL_DNS_BLOCKED","deploy_run":33563761068},
+    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"RELEASED_MAIN_PRODUCTION"},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":739,"main_sha":"3d49be1e0224d274f27a515d6e5d5b05c0798e86"},
     {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":743,"main_sha":"c3d9d0b0ac8f33b44d2706f467448762a8c42fd1"},
     {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":745,"main_sha":"a15f84c831cd8cc13a0842fef3996a4d76b29f2c"},
@@ -64,12 +67,12 @@
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"DONE_ENHANCED_CONTRACTS"}
   ],
   "last_signal": {
-    "source": "p0_p1_local_filter_payload_completeness",
-    "status": "PR842_MERGED_CI_VISUAL_GREEN_LIVE_DNS_BLOCKED_NEXT_SELECTED_TOUR_REAUDIT",
+    "source": "p0_p1_filter_release_and_selected_tour_reaudit",
+    "status": "PR842_PRODUCTION_GREEN_SELECTED_TOUR_RESET_PRICE_CHILD_AGES_PASS_CONTINUE_E2E",
     "sha": "923fa8eb30ed8e65630653f3924a147c86a59f45"
   },
   "blocked": [
-    {"scope":"targeted production verification","type":"external_environment","reason":"This execution environment failed DNS resolution for anytoour.ru before the first HTTP request.","action":"Retry a narrow live probe on a later run; do not classify the DNS failure as a product defect."},
+    {"scope":"direct live probe from current execution environment","type":"external_environment","reason":"DNS resolution for anytoour.ru failed before the first direct HTTP request, while GitHub Deploy anytoour.ru succeeded independently.","action":"Retry direct probe later; do not classify as product defect."},
     {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; broad branch integration is intentionally not a release strategy.","action":"Continue current-main narrow tasks only; never copy the divergent feature branch wholesale."}
   ]
 }
