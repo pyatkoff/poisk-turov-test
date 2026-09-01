@@ -1,0 +1,12 @@
+{
+  "id": "SEO_TEST_COST_POLICY",
+  "title": "Keep SEO2 CI proportional to change risk",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rules": [
+    "documentation/state-only PRs do not run heavy browser suites by default",
+    "narrow metadata/canonical fixes run targeted contract tests",
+    "template/runtime changes run representative render smoke",
+    "broad crawls/visual matrices run at milestones, scheduled reaudit or when risk requires them"
+  ]
+}
