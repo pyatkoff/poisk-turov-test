@@ -4,10 +4,9 @@
   "goal": "Implement the approved lead form/success/retry presentation and post-submit MAX/Telegram handoff UI while preserving the existing external lead-sending contract and existing max-search integration boundary.",
   "risk": "MEDIUM",
   "owns_paths": [
-    "v2/lead-ux-v1.css",
-    "v2/lead-ux-v1.js",
-    "v2/selected-tour-v1.css",
-    "v2/selected-tour-v1.js"
+    "v2/checkout-experience-v1.css",
+    "v2/checkout-experience-v1.js",
+    "v2/lead-form-guard-v1.js"
   ],
   "depends_on": [
     "REDESIGN_SELECTED_TOUR"
@@ -27,5 +26,10 @@
     "no phone or other PII is placed into messenger URLs",
     "existing external lead field mapping and transport remain unchanged",
     "MAX/Telegram buttons reuse the existing project handoff mechanics rather than inventing a new bot protocol"
+  ],
+  "runtime_evidence": [
+    "checkout-experience-v1.js is loaded by bundle-manifest-v1.php and owns checkout/lead journey presentation",
+    "lead-form-guard-v1.js is loaded by bundle-manifest-v1.php and owns lead submit/success/retry presentation",
+    "backend lead-adapter/receiver/bridge files remain outside this UI task ownership to preserve the external lead contract"
   ]
 }
