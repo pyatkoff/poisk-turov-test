@@ -1,7 +1,6 @@
 (function(){'use strict';
 function field(form,name){var el=form&&form.elements&&form.elements[name];return el&&el.closest?el.closest('.field'):null;}
 function cleanField(f){if(!f)return;f.classList.remove('field-wide','main-stars','main-meal','primary-step','primary-step-1','primary-step-2','primary-step-3','primary-step-4','primary-step-5','primary-step-6','primary-step-7','result-filter-priority','result-filter-stars','result-filter-meal');var select=f.querySelector('select');if(select){select.classList.remove('ux-native-hidden','meal-native-select');select.removeAttribute('aria-hidden');select.tabIndex=0;}var q=f.querySelector('.stars-quick,.meal-quick');if(q)q.hidden=true;}
-function moveControl(form,name,wrap){var f=field(form,name),el=form.elements[name];if(!f||!el)return null;cleanField(f);wrap.appendChild(el);f.remove();return el;}
 function makeComposite(label,cls){var box=document.createElement('label');box.className='field search3-composite '+cls;box.innerHTML='<span>'+label+'</span><div class="search3-composite__control"></div>';return box;}
 function init(){
   var form=document.getElementById('tourSearch');if(!form||form.dataset.search3Ready==='1')return;
@@ -10,23 +9,29 @@ function init(){
   var shell=form.parentNode;if(shell&&!document.querySelector('.search3-page-intro')){var intro=document.createElement('div');intro.className='search3-page-intro';intro.innerHTML='<div class="search3-breadcrumb">Главная <span>›</span> Поиск туров</div><h1>Поиск туров</h1><p>Найдите туры по лучшим ценам от надежных туроператоров</p>';shell.insertBefore(intro,form);}
   var title=form.querySelector('.search-section-title');if(title)title.hidden=true;
   var main=form.querySelector('.main-fields'),extras=form.querySelector(':scope > details.extras');if(!main||!extras)return;
+
+  /* Snapshot every original control before clearing the legacy primary grid. */
+  var refs={};['from','country','dateFrom','dateTo','daysFrom','daysTill','count_people','child_count'].forEach(function(name){refs[name]=form.elements[name]||null;});
+  var originalFields={};Object.keys(refs).forEach(function(name){var el=refs[name];originalFields[name]=el&&el.closest?el.closest('.field'):null;});
+  var submit=form.querySelector(':scope > .search-submit');
+
   main.innerHTML='';main.className='main-fields search3-primary-grid';
 
-  function appendSimple(name,label,cls){var f=field(form,name);if(!f)return null;cleanField(f);var s=f.querySelector(':scope > span');if(s)s.textContent=label;if(cls)f.classList.add(cls);main.appendChild(f);return f;}
-  appendSimple('from','Откуда','search3-from');
-  appendSimple('country','Куда','search3-country');
+  function appendOriginal(name,label,cls){var f=originalFields[name];if(!f)return null;cleanField(f);var s=f.querySelector(':scope > span');if(s)s.textContent=label;if(cls)f.classList.add(cls);main.appendChild(f);return f;}
+  appendOriginal('from','Откуда','search3-from');
+  appendOriginal('country','Куда','search3-country');
   var region=field(form,'region');if(region){cleanField(region);var rs=region.querySelector(':scope > span');if(rs)rs.textContent='Курорт / регион';region.classList.add('search3-region');main.appendChild(region);}
 
-  var dateBox=makeComposite('Дата вылета','search3-dates');var dateCtl=dateBox.querySelector('.search3-composite__control');
-  var d1=form.elements.dateFrom,d2=form.elements.dateTo;if(d1&&d2){var f1=d1.closest('.field'),f2=d2.closest('.field');dateCtl.appendChild(d1);dateCtl.appendChild(document.createTextNode('—'));dateCtl.appendChild(d2);if(f1)f1.remove();if(f2&&f2!==f1)f2.remove();main.appendChild(dateBox);}
+  var d1=refs.dateFrom,d2=refs.dateTo;
+  if(d1&&d2){var dateBox=makeComposite('Дата вылета','search3-dates'),dateCtl=dateBox.querySelector('.search3-composite__control');dateCtl.appendChild(d1);dateCtl.appendChild(document.createTextNode('—'));dateCtl.appendChild(d2);main.appendChild(dateBox);}
 
-  var nightBox=makeComposite('Ночей','search3-nights');var nightCtl=nightBox.querySelector('.search3-composite__control');
-  var n1=form.elements.daysFrom,n2=form.elements.daysTill;if(n1&&n2){var nf1=n1.closest('.field'),nf2=n2.closest('.field');nightCtl.appendChild(n1);nightCtl.appendChild(document.createTextNode('—'));nightCtl.appendChild(n2);if(nf1)nf1.remove();if(nf2&&nf2!==nf1)nf2.remove();main.appendChild(nightBox);}
+  var n1=refs.daysFrom,n2=refs.daysTill;
+  if(n1&&n2){var nightBox=makeComposite('Ночей','search3-nights'),nightCtl=nightBox.querySelector('.search3-composite__control');nightCtl.appendChild(n1);nightCtl.appendChild(document.createTextNode('—'));nightCtl.appendChild(n2);main.appendChild(nightBox);}
 
-  var touristBox=makeComposite('Туристы','search3-tourists');var touristCtl=touristBox.querySelector('.search3-composite__control');
-  var adults=form.elements.count_people,children=form.elements.child_count;if(adults&&children){var af=adults.closest('.field'),cf=children.closest('.field');var summary=document.createElement('button');summary.type='button';summary.className='search3-tourists__summary';var pop=document.createElement('div');pop.className='search3-tourists__pop';pop.hidden=true;pop.innerHTML='<span>Взрослых</span>';pop.appendChild(adults);var ch=document.createElement('span');ch.textContent='Детей';pop.appendChild(ch);pop.appendChild(children);function syncGuests(){var a=Number(adults.value||2),c=Number(children.value||0);summary.textContent=a+' '+(a===1?'взрослый':'взрослых')+(c?' · '+c+' '+(c===1?'ребёнок':'детей'):'');}summary.addEventListener('click',function(e){e.preventDefault();pop.hidden=!pop.hidden;});adults.addEventListener('change',syncGuests);children.addEventListener('change',syncGuests);syncGuests();touristCtl.appendChild(summary);touristCtl.appendChild(pop);if(af)af.remove();if(cf&&cf!==af)cf.remove();main.appendChild(touristBox);}
+  var adults=refs.count_people,children=refs.child_count,touristBox=null;
+  if(adults&&children){touristBox=makeComposite('Туристы','search3-tourists');var touristCtl=touristBox.querySelector('.search3-composite__control');var summary=document.createElement('button');summary.type='button';summary.className='search3-tourists__summary';var pop=document.createElement('div');pop.className='search3-tourists__pop';pop.hidden=true;pop.innerHTML='<span>Взрослых</span>';pop.appendChild(adults);var ch=document.createElement('span');ch.textContent='Детей';pop.appendChild(ch);pop.appendChild(children);function syncGuests(){var a=Number(adults.value||2),c=Number(children.value||0);summary.textContent=a+' '+(a===1?'взрослый':'взрослых')+(c?' · '+c+' '+(c===1?'ребёнок':'детей'):'');}summary.addEventListener('click',function(e){e.preventDefault();pop.hidden=!pop.hidden;});adults.addEventListener('change',syncGuests);children.addEventListener('change',syncGuests);syncGuests();touristCtl.appendChild(summary);touristCtl.appendChild(pop);main.appendChild(touristBox);}
 
-  var submit=form.querySelector(':scope > .search-submit');if(submit){submit.innerHTML='<span>Найти туры</span><b aria-hidden="true">→</b>';main.appendChild(submit);}
+  if(submit){submit.innerHTML='<span>Найти туры</span><b aria-hidden="true">→</b>';main.appendChild(submit);}
 
   var quality=document.createElement('section');quality.className='search3-quality';quality.innerHTML='<div class="search3-quality__grid"></div>';main.parentNode.insertBefore(quality,main.nextSibling);var grid=quality.querySelector('.search3-quality__grid');
   [['stars','Категория отеля','search3-stars'],['rating','Оценка отеля','search3-rating'],['food','Питание','search3-meal'],['price_till','Бюджет на тур','search3-budget'],['hotel','Конкретный отель','search3-hotel']].forEach(function(x){var f=field(form,x[0]);if(!f)return;cleanField(f);var s=f.querySelector(':scope > span');if(s)s.textContent=x[1];f.classList.add(x[2]);grid.appendChild(f);});
@@ -39,8 +44,8 @@ function init(){
   var hot=document.createElement('label');hot.className='search3-quick__label';hot.innerHTML='<input type="checkbox" data-search3-hot><span>Горящие туры</span>';quick.appendChild(hot);
   quality.parentNode.insertBefore(quick,extras);extras.classList.remove('result-filter-rail');extras.hidden=true;
 
-  document.addEventListener('click',function(e){if(!touristBox.contains(e.target)){var p=touristBox.querySelector('.search3-tourists__pop');if(p)p.hidden=true;}},true);
-  setTimeout(function(){['region','stars','food'].forEach(function(name){var f=field(form,name);if(!f)return;cleanField(f);if(name==='region'){var s=f.querySelector(':scope > span');if(s)s.textContent='Курорт / регион';f.classList.add('search3-region');if(f.parentNode!==main)main.insertBefore(f,dateBox);}else{if(name==='stars'){var st=f.querySelector(':scope > span');if(st)st.textContent='Категория отеля';}if(name==='food'){var ft=f.querySelector(':scope > span');if(ft)ft.textContent='Питание';}if(f.parentNode!==grid)grid.appendChild(f);}});},100);
+  if(touristBox)document.addEventListener('click',function(e){if(!touristBox.contains(e.target)){var p=touristBox.querySelector('.search3-tourists__pop');if(p)p.hidden=true;}},true);
+  setTimeout(function(){['region','stars','food'].forEach(function(name){var f=field(form,name);if(!f)return;cleanField(f);if(name==='region'){var s=f.querySelector(':scope > span');if(s)s.textContent='Курорт / регион';f.classList.add('search3-region');if(f.parentNode!==main){var dateBoxNow=main.querySelector('.search3-dates');main.insertBefore(f,dateBoxNow||main.children[2]||null);}}else{if(name==='stars'){var st=f.querySelector(':scope > span');if(st)st.textContent='Категория отеля';}if(name==='food'){var ft=f.querySelector(':scope > span');if(ft)ft.textContent='Питание';}if(f.parentNode!==grid)grid.appendChild(f);}});},100);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(init,20);},{once:true});else setTimeout(init,20);
 })();
