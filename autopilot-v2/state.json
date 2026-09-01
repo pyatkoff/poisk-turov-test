@@ -2,20 +2,28 @@
   "schema_version": 2,
   "mode": "active_pilot",
   "active_task": {
-    "id": "REDESIGN_HOTEL_TOUR_SELECTION",
-    "title": "Complete the approved hotel, tour and room selection redesign",
+    "id": "DS2_NARROW_RELEASE_PLAN",
+    "title": "Prepare dependency-safe narrow release of the remaining accepted Search 2.0 lane",
     "area": "results-tour",
     "risk": "MEDIUM",
     "state": "investigate",
     "owner": "developer",
-    "required_gates": ["Fast CI","Security guard","browser QA for hotel open, room/meal/tour selection and stale-detail protection","visual QA at 375px and 1440px"],
+    "required_gates": [
+      "Fast CI",
+      "Security guard",
+      "targeted browser/visual QA for each user-facing release slice",
+      "Deploy anytoour.ru + Production smoke after any main release"
+    ],
     "evidence": [
-      "SEARCH_RESULTS_FILTER_ARCHITECTURE remains DONE_AWAITING_PRODUCTION_EVIDENCE; simple narrowing is local only on payload-complete fields and widening original constraints uses the existing server lifecycle.",
-      "PR #726 accepted Search 2.0 browser QA including progressive 25→100, local narrowing, server refresh on widening, empty/recovery and 375/1440 containment.",
-      "PR #728 fixed stale final-results retry responses after a newer search starts.",
-      "PR #731 fixed the completed-search result counter so the visible total follows background 25→100 result-depth expansion; Fast CI and Security guard passed; merged as 86545937d4dd971ff29903d07412d693bb4c0ef1.",
-      "FULL_SEARCH_UX_REAUDIT completed and recorded a concrete implementation gap: the approved hotel/tour/room redesign is not currently accepted because prior PR #706 closed without merge. The corrected outcome schema was merged in PR #734.",
-      "PR #712 selected-tour, #715 factual footer/community and #723 lead handoff remain accepted in feature/search-core with dedicated browser/visual evidence.",
+      "P0/P1 local filtering, progressive 25→100, stale async protection and result counters remain accepted with prior feature evidence.",
+      "Approved hotel/room DS2 was released narrowly to main in PR #739 (3d49be1e0224d274f27a515d6e5d5b05c0798e86).",
+      "Approved selected-tour/flight hierarchy was released narrowly to main in PR #743 (c3d9d0b0ac8f33b44d2706f467448762a8c42fd1).",
+      "Approved post-success lead handoff was released narrowly to main in PR #745 (a15f84c831cd8cc13a0842fef3996a4d76b29f2c) without changing lead transport/field mapping.",
+      "PR #747 repaired footer task ownership to the actual active DS2 CSS layer; merged as e057d4b7a12299114fd497a6e1ee0b4a16daf347.",
+      "PR #748 repaired Search 2.0 task ownership from deleted search-redesign-v2.css to active ds2-search.css; merged as bddb6f709991c4d208fe14f2c426ebbfb3d067db.",
+      "PR #749 replaced stale legacy footer selectors/CSS in the existing visual gate; PR #751 then made the gate execute the real site-footer-v1.php component instead of duplicating fixture markup.",
+      "The corrected five-width gate confirmed a real 375/430 footer target-size defect; PR #742 fixed social/app actions to >=44px, kept only factual footer content, passed Fast CI + Security + the real-component visual gate, and merged as 2db30fe8da359ec31af55754a7dcbe9818078414.",
+      "Search 2.0 remains accepted on feature/search-core but current main still has materially different index/bundle composition; do not bulk merge or blindly cherry-pick the feature branch.",
       "HIGH-risk Metrika, external lead transport, Tourvisor contracts, pricing semantics and the AnyTour logo remain untouched."
     ],
     "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -27,24 +35,27 @@
     {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE"},
     {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"BLOCKED_EXTERNAL"},
     {"id":"NEW_DESIGN_IMPLEMENTATION_PREP","priority":2,"status":"DONE","pr":700,"merge_sha":"1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c"},
-    {"id":"SEARCH_2_0_MOCKUP_APPROVAL","priority":2,"status":"DONE","pr":708,"merge_sha":"3b8e222a59b275aef376a4565cd1035283b81ffb"},
-    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"ACCEPTED_FEATURE_SEARCH_CORE","visual_gate_pr":726,"merge_sha":"d957dae4ea395473e536330cd9ca724c3ea67435"},
-    {"id":"REDESIGN_HEADER_SHELL","priority":2,"status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":703},
-    {"id":"REDESIGN_LOADING_RECOVERY","priority":2,"status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":704},
-    {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"ACTIVE_REIMPLEMENT_APPROVED_DESIGN","prior_pr":706,"reason":"Full UX reaudit confirmed this approved screen is still missing from the accepted feature branch."},
-    {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"ACCEPTED_FEATURE_SEARCH_CORE","pr":712,"merge_sha":"1ee325bd950c459a1d148b0374193aa3e6b1abcb"},
-    {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"ACCEPTED_FEATURE_SEARCH_CORE","pr":723,"merge_sha":"fbc530e6fa202426d855ca49dbb07aaf20cb6cdb","visual_gate_pr":724},
-    {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"ACCEPTED_FEATURE_SEARCH_CORE","pr":715,"merge_sha":"14a2b9677fbfa56698f6a0869210dcd236c55d8e"},
+    {"id":"SEARCH_2_0_MOCKUP_APPROVAL","priority":2,"status":"DONE","pr":708},
+    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"ACCEPTED_FEATURE_NEEDS_NARROW_MAIN_RELEASE","visual_gate_pr":726,"ownership_repair_pr":748},
+    {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":739,"main_sha":"3d49be1e0224d274f27a515d6e5d5b05c0798e86"},
+    {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":743,"main_sha":"c3d9d0b0ac8f33b44d2706f467448762a8c42fd1"},
+    {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":745,"main_sha":"a15f84c831cd8cc13a0842fef3996a4d76b29f2c"},
+    {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"ACCEPTED_FEATURE_VISUAL_GREEN","pr":742,"merge_sha":"2db30fe8da359ec31af55754a7dcbe9818078414","visual_gate":"REAL_COMPONENT_375_430_768_1024_1440_GREEN"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"DONE_FEATURE_EVIDENCE","latest_pr":731,"latest_merge_sha":"86545937d4dd971ff29903d07412d693bb4c0ef1"},
-    {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"DONE_WITH_DEFECT","outcome_pr":732,"outcome_schema_fix_pr":734,"next_task":"REDESIGN_HOTEL_TOUR_SELECTION"},
+    {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"DONE_CONTINUE_RELEASE_AUDIT"},
+    {"id":"DS2_NARROW_RELEASE_PLAN","priority":2,"status":"ACTIVE","reason":"Map remaining Search 2.0 dependencies onto current main without bulk feature/search-core integration."},
     {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED"},
     {"id":"SEO_FACTORY","priority":3,"status":"QUEUED_AFTER_PRODUCT_STABILITY"},
     {"id":"PX7_PRICE_WATCH_RESEARCH","priority":3,"status":"DEFERRED_RESEARCH"},
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"QUEUED"}
   ],
-  "last_signal": {"source":"full_search_ux_reaudit","status":"SEARCH_STATE_GREEN_HOTEL_TOUR_APPROVED_SCREEN_MISSING_REACTIVATED","sha":"54f6faed7a66755c00d66c4aa0d9102b7039b6c8"},
+  "last_signal": {
+    "source": "ds2_footer_real_component_visual_qa",
+    "status": "FOOTER_FACTUAL_AND_MOBILE_TARGETS_GREEN_REMAINING_SEARCH2_RELEASE_REQUIRES_DEPENDENCY_SAFE_MAIN_REBUILD",
+    "sha": "2db30fe8da359ec31af55754a7dcbe9818078414"
+  },
   "blocked": [
     {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not reliably resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe when live access is available; do not classify DNS/runner failure as a product defect."},
-    {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core with unrelated work mixed in.","action":"Do not bulk merge/cherry-pick the feature branch; release only narrowly justified accepted changes after remaining active redesign QA."}
+    {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; Search 2.0 index/bundle composition cannot be released safely as a bulk branch merge.","action":"Rebuild and verify only narrow accepted Search 2.0 slices on current main with explicit dependencies."}
   ]
 }
