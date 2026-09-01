@@ -1,0 +1,13 @@
+{
+  "id": "SEO_ACCESSIBILITY_BASELINE",
+  "title": "Keep SEO content semantically accessible",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "logical heading hierarchy",
+    "descriptive link text",
+    "keyboard-usable links/controls",
+    "meaningful image alternatives",
+    "content not hidden solely for crawlers"
+  ]
+}
