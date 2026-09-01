@@ -1,0 +1,12 @@
+{
+  "id": "SEO_ENTITY_SLUG_POLICY",
+  "title": "Keep country resort and hotel URLs stable",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "slug is presentation; stable entity ID remains authoritative internally",
+    "renames require explicit redirect handling",
+    "duplicate names must resolve deterministically",
+    "do not silently change canonical URLs when display names change"
+  ]
+}
