@@ -135,8 +135,10 @@ jobs:
                 const quick=[...form.querySelectorAll('.ds2-search-quick-stars .stars-choice')];
                 const sameRow=rects.length===5&&Math.max(...rects.map(r=>r.top))-Math.min(...rects.map(r=>r.top))<4;
                 const stacked=rects.length===5&&rects.every((r,i)=>i===0||r.top>rects[i-1].top+20);
+                const nights=String(form.querySelector('.ds2-nights-summary')?.textContent||'').trim();
+                const filterLabel=String(form.querySelector('details.extras>summary strong,details.extras-secondary>summary strong')?.textContent||'').trim();
                 return {
-                  steps:rects.length,quick:quick.length,cta:String(button?.textContent||'').trim(),bg,
+                  steps:rects.length,quick:quick.length,cta:String(button?.querySelector('span')?.textContent||button?.textContent||'').trim(),bg,nights,filterLabel,
                   sameRow,stacked,buttonRight:buttonRect?.right||0,viewport:innerWidth,
                   overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+3
                 };
@@ -144,7 +146,7 @@ jobs:
               const expectedRow=width>=901;
               const expectedStack=width<=430;
               const blue=/rgb\(18,\s*97,\s*246\)/.test(state.bg);
-              const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.quick!==5||state.cta!=='Найти туры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked);
+              const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.quick!==5||state.cta!=='Найти туры'||!state.nights||state.filterLabel!=='Все фильтры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked);
               report.push({name,width,height,state,errors,bad}); if(bad) failed=true;
               await page.screenshot({path:`search2-form-evidence/${name}.png`,fullPage:false,animations:'disabled'});
               await context.close();
