@@ -21,7 +21,8 @@
       "Official Tourvisor search-results schema confirms hotel-level region/subRegion, but meal/operator only exist inside nested tours[] and the contract does not guarantee that nested offers are exhaustive for every hotel; PR #666 therefore keeps meal/operator on server search while retaining proven local filters.",
       "onlyDirect remains server-side because search_results exposes no reliable direct-flight flag; hotel services/type are absent from search_results; onlyCharter remains server-side because it also affects destination catalog availability.",
       "PR #663 invalidates selected-tour and flight async generations and clears stale selected-tour/lead UI on v2:search-reset.",
-      "Fast CI and Security guard passed for PR #666; merge SHA ee34c881de396b734f86807c975a5821ba2ca06b.",
+      "PR #669 fixes confirmed stale selected-tour pricing when switching from a priced flight to a flight whose price is unavailable: stale prior flight price is cleared, tour base/fuel state is restored coherently, and pricePending is emitted without changing lead transport or external contracts.",
+      "Fast CI and Security guard passed for PR #669; merge SHA f4bc4517f4e2da6fe375753203e85f0313be58ae.",
       "Production evidence for depth/local-filter behavior remains blocked by the prior external live-probe environment; continue independent product QA.",
       "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
     ],
@@ -58,7 +59,7 @@
       "priority": 1,
       "status": "ACTIVE",
       "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
-      "reason": "Continue results -> hotel -> tour -> room -> flight -> price -> selected tour -> lead form -> submit/error/retry/recovery. PR #663 already fixed stale selected-tour restoration after search reset; continue with tour/room/flight/price/searchId/tourId/idempotency/recovery verification while preserving external lead contract."
+      "reason": "Continue results -> hotel -> tour -> room -> flight -> price -> selected tour -> lead form -> submit/error/retry/recovery. PR #663 fixed stale reset generations; PR #669 fixed stale price/fuel state when changing to an unpriced flight. Next verify second-tour/second-flight isolation, searchId/tourId consistency, child ages, submit/retry/idempotency and recovery while preserving the external lead contract."
     },
     {
       "id": "PRODUCTION_RESULTS_EVIDENCE",
@@ -111,9 +112,9 @@
     }
   ],
   "last_signal": {
-    "source": "payload_completeness_audit_after_pr_666",
+    "source": "selected_tour_unpriced_flight_reset_pr_669",
     "status": "CONTINUE_SELECTED_TOUR_END_TO_END",
-    "sha": "ee34c881de396b734f86807c975a5821ba2ca06b"
+    "sha": "f4bc4517f4e2da6fe375753203e85f0313be58ae"
   },
   "blocked": [
     {
