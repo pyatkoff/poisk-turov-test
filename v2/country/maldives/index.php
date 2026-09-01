@@ -24,5 +24,7 @@ cp_render([
         ['label' => 'Туры в Kurumba Maldives', 'href' => '/country/maldives/hotel/kurumba-maldives-2461/'],
         ['label' => 'Туры в Kandima Maldives', 'href' => '/country/maldives/hotel/kandima-maldives-49820/'],
         ['label' => 'Туры в Sheraton Maldives Full Moon Resort & Spa', 'href' => '/country/maldives/hotel/sheraton-maldives-full-moon-resort-spa-2479/'],
+        ['label' => 'Туры в Velassaru Maldives', 'href' => '/country/maldives/hotel/velassaru-maldives-2487/'],
+        ['label' => 'Туры в Hard Rock Hotel Maldives', 'href' => '/country/maldives/hotel/hard-rock-hotel-maldives-66197/'],
     ],
 ]);
