@@ -1,0 +1,13 @@
+{
+  "id": "SEO_LAST_MINUTE_POLICY",
+  "title": "Handle last-minute tour intent with live inventory safeguards",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "requirements": [
+    "real current inventory signal",
+    "clear staleness threshold",
+    "useful fallback when inventory disappears",
+    "stable canonical strategy",
+    "no fabricated urgency or discount claim"
+  ]
+}
