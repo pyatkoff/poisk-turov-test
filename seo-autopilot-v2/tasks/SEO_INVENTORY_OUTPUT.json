@@ -1,0 +1,18 @@
+{
+  "id": "SEO_INVENTORY_OUTPUT",
+  "title": "Record the first SEO inventory as an outcome artifact",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "output_path": "seo-autopilot-v2/outcomes/SEO_INVENTORY.md",
+  "sections": [
+    "URL/page families",
+    "routing/template ownership",
+    "indexability/canonical",
+    "robots/sitemaps",
+    "metadata/H1",
+    "internal links",
+    "structured data",
+    "legacy-domain/duplicate risks",
+    "first SAFE repair candidates"
+  ]
+}
