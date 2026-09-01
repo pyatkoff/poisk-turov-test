@@ -43,7 +43,7 @@
  #tourSearch.ds2-search-initial .main-fields>.primary-step-3{grid-column:1/-1!important}
  #tourSearch.ds2-search-initial .main-fields>.primary-step:first-child,#tourSearch.ds2-search-initial .main-fields>.primary-step:last-child{border-radius:11px!important}
  #tourSearch.ds2-search-initial .search-submit{grid-column:1!important;grid-row:auto!important;width:100%!important;height:54px!important;min-height:54px!important}
- #tourSearch.ds2-search-initial>.ds2-search-quick-stars{grid-column:1!important;grid-row:auto!important;width:100%!important;overflow-x:auto!important;scrollbar-width:none!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars{grid-column:1!important;grid-row:auto!important;width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;contain:inline-size!important;overscroll-behavior-inline:contain!important;scrollbar-width:none!important}
  #tourSearch.ds2-search-initial>.ds2-search-quick-stars::-webkit-scrollbar{display:none!important}
  #tourSearch.ds2-search-initial>.extras,#tourSearch.ds2-search-initial>.extras-secondary{grid-column:1!important;grid-row:auto!important;width:100%!important;height:auto!important}
  #tourSearch.ds2-search-initial>.extras>summary,#tourSearch.ds2-search-initial>.extras-secondary>summary{width:100%!important;min-height:42px!important;height:42px!important}
