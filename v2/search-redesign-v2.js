@@ -1,17 +1,17 @@
 (function(){'use strict';
 if(window.V2SearchRedesignV2)return;
-var body=document.body,tools=document.getElementById('resultsTools'),selected=document.getElementById('selectedTour');
+var body=document.body,form=document.getElementById('tourSearch'),tools=document.getElementById('resultsTools'),selected=document.getElementById('selectedTour'),results=document.getElementById('results'),summary=document.getElementById('resultsSearchSummary'),route=document.getElementById('resultsSearchRoute'),dates=document.getElementById('resultsSearchDates'),nights=document.getElementById('resultsSearchNights'),guests=document.getElementById('resultsSearchGuests'),edit=document.getElementById('resultsSearchEdit');
 if(!body||!tools)return;
-function sync(){
-  var hasResults=!tools.hidden;
-  var hasSelected=!!(selected&&!selected.hidden);
-  body.classList.toggle('at-search2-results',hasResults);
-  body.classList.toggle('at-search2-selected',hasSelected);
-}
-var observer=new MutationObserver(sync);
-observer.observe(tools,{attributes:true,attributeFilter:['hidden','class']});
-if(selected)observer.observe(selected,{attributes:true,attributeFilter:['hidden','class']});
+function selectedText(el){if(!el)return'';if(el.tagName==='SELECT'){var o=el.options&&el.options[el.selectedIndex];return o?String(o.textContent||'').trim():'';}return String(el.value||'').trim();}
+function shortDate(v){if(!v)return'';var p=String(v).split('-').map(Number);if(p.length!==3)return String(v);try{return new Intl.DateTimeFormat('ru-RU',{day:'numeric',month:'short'}).format(new Date(p[0],p[1]-1,p[2])).replace('.','');}catch(e){return String(v);}}
+function syncSummary(){if(!form||!summary)return;var country=selectedText(form.elements.country),region=selectedText(form.elements.region),df=form.elements.dateFrom&&form.elements.dateFrom.value,dt=form.elements.dateTo&&form.elements.dateTo.value,nf=String(form.elements.daysFrom&&form.elements.daysFrom.value||''),nt=String(form.elements.daysTill&&form.elements.daysTill.value||''),adults=Math.max(1,Number(form.elements.count_people&&form.elements.count_people.value||1)),children=Math.max(0,Number(form.elements.child_count&&form.elements.child_count.value||0));if(route)route.textContent=[country,region&&region!=='Все курорты'?region:''].filter(Boolean).join(', ')||'Выбранное направление';if(dates)dates.textContent=(df?shortDate(df):'')+(df&&dt?' — ':'')+(dt?shortDate(dt):'')||'—';if(nights)nights.textContent=nf&&nt&&nf!==nt?nf+'–'+nt+' ночей':nf?nf+' ночей':'—';if(guests)guests.textContent=adults+' '+(adults===1?'взрослый':'взрослых')+(children?' · '+children+' '+(children===1?'ребёнок':'детей'):'');}
+function setView(view){if(!results)return;var v=view==='grid'?'grid':'list';results.classList.toggle('results-view-grid',v==='grid');results.classList.toggle('results-view-list',v==='list');document.querySelectorAll('[data-results-view]').forEach(function(b){var active=b.getAttribute('data-results-view')===v;b.classList.toggle('is-active',active);b.setAttribute('aria-pressed',active?'true':'false');});try{localStorage.setItem('anytour_results_view',v);}catch(e){}}
+function sync(){var hasResults=!tools.hidden;var hasSelected=!!(selected&&!selected.hidden);body.classList.toggle('at-search2-results',hasResults);body.classList.toggle('at-search2-selected',hasSelected);if(summary)summary.hidden=!hasResults||hasSelected;if(hasResults)syncSummary();}
+var observer=new MutationObserver(sync);observer.observe(tools,{attributes:true,attributeFilter:['hidden','class']});if(selected)observer.observe(selected,{attributes:true,attributeFilter:['hidden','class']});
+if(form){form.addEventListener('input',syncSummary);form.addEventListener('change',syncSummary);}
+if(edit)edit.addEventListener('click',function(){body.classList.remove('at-search2-results');if(summary)summary.hidden=true;if(form&&form.scrollIntoView)form.scrollIntoView({behavior:'smooth',block:'start'});var first=form&&form.querySelector('select,input');if(first)setTimeout(function(){try{first.focus({preventScroll:true});}catch(e){first.focus();}},250);});
+document.addEventListener('click',function(e){var view=e.target&&e.target.closest&&e.target.closest('[data-results-view]');if(view){setView(view.getAttribute('data-results-view'));return;}var map=e.target&&e.target.closest&&e.target.closest('[data-results-map]');if(map){window.dispatchEvent(new CustomEvent('v2:results-map-requested'));map.setAttribute('aria-pressed',map.getAttribute('aria-pressed')==='true'?'false':'true');}});
 ['v2:search-started','v2:search-progress','v2:results-rendered','v2:search-complete','v2:search-dirty','v2:selected-tour-changed','v2:selected-tour-cleared'].forEach(function(name){window.addEventListener(name,sync);});
-sync();
-window.V2SearchRedesignV2={sync:sync,version:1};
+try{setView(localStorage.getItem('anytour_results_view')||'list');}catch(e){setView('list');}syncSummary();sync();
+window.V2SearchRedesignV2={sync:sync,syncSummary:syncSummary,setView:setView,version:2};
 })();
