@@ -27,7 +27,15 @@ jobs:
           import json,re,pathlib
           rows=json.load(open('/tmp/countries.json'))
           assert isinstance(rows,list) and rows
-          expected={'turkey':('Турция','4'),'egypt':('Египет','1'),'oae':('ОАЭ','9'),'tailand':('Таиланд','2'),'russia':('Россия','47')}
+          expected={
+              'turkey':('Турция','4'),
+              'egypt':('Египет','1'),
+              'oae':('ОАЭ','9'),
+              'tailand':('Таиланд','2'),
+              'russia':('Россия','47'),
+              'maldives':('Мальдивы','8'),
+              'sri-lanka':('Шри-Ланка','12'),
+          }
           by_name={str(x.get('name','')).strip():str(x.get('id','')) for x in rows if isinstance(x,dict)}
           for slug,(name,country_id) in expected.items():
               assert by_name.get(name)==country_id, f'{name}: live id {by_name.get(name)!r} != {country_id}'
@@ -50,7 +58,7 @@ jobs:
           import pathlib,re
           catalogue=pathlib.Path('v2/country/index.php').read_text(encoding='utf-8')
           local=('turkey','egypt','oae','tailand','russia','tunis','vetnam','dominikana','cyprus','cuba','maldives','mexico','sri-lanka','tanzania')
-          verified_ids={'turkey','egypt','oae','tailand','russia'}
+          verified_ids={'turkey','egypt','oae','tailand','russia','maldives','sri-lanka'}
           for slug in local:
               assert f"'/country/{slug}/'" in catalogue, f'{slug}: local catalogue link missing'
               route=pathlib.Path(f'v2/country/{slug}/index.php')
