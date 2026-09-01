@@ -1,0 +1,13 @@
+{
+  "id": "SEO_CONTENT_PROVENANCE",
+  "title": "Track provenance for factual SEO content",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "goal": "Distinguish sourced facts, volatile offer data and editorial copy so updates do not turn assumptions into facts.",
+  "classes": [
+    "sourced durable fact",
+    "sourced volatile fact",
+    "editorial guidance",
+    "derived display value"
+  ]
+}
