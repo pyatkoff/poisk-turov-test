@@ -1,0 +1,16 @@
+{
+  "id": "SEO_NO_FAKE_CLAIMS",
+  "title": "Block unsupported trust and commercial claims",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "forbidden_without_evidence": [
+    "best price guarantee",
+    "instant confirmation",
+    "24/7 support",
+    "discount percentages",
+    "review/rating aggregates",
+    "availability claims",
+    "specific contact/payment claims not present in approved product data"
+  ],
+  "rule": "SEO copy must not invent conversion claims to make templates look richer."
+}
