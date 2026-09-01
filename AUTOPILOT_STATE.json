@@ -1,7 +1,7 @@
 {
-  "schema_version": 17,
+  "schema_version": 18,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-01T23:58:00+03:00",
+  "updated_at": "2026-09-02T01:09:00+03:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -13,21 +13,21 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "name": "Shared DS2 CTA, touch-target and responsive convergence",
+    "name": "Shared DS2 responsive convergence and Search 2.0 preview QA",
     "status": "ACTIVE",
-    "last_material_progress": "Production DS2 remains verified through PR #820 and the subsequent successful country release/post-deploy five-width audit. The owner then explicitly approved using https://anytoour.ru/_preview/search2/poisk-turov/ for Search 2.0 review. A dedicated preview-only workflow now deploys branch design/search2-form-polish to /_preview/search2/ without touching production; initial preview deploy run 33557752534 passed. Fresh visual evidence from PR #810 showed that the rendered initial form still retained the older large two-row composition and orange CTA despite branch polish layers. The current preview branch therefore adds an explicit ds2-search-initial state owner, robust delayed enhancement of the transformed date/nights/guest controls, and an authoritative initial-form CSS layer targeting the approved five-control composition with blue CTA. Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified destinations and unresolved legal/payment content remain unchanged.",
-    "next_action": "Within the existing SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE owner stage, verify the newest Search 2.0 preview deploy and five-width PR visual evidence for the actual rendered initial form. Confirm that desktop is one compact row: Откуда, Куда, Когда, Ночи, Туристы, blue Найти туры; tablet/mobile must remain usable at 1024/768/430/375. If visual evidence still shows the legacy composition, diagnose the actual runtime state/class mismatch before adding more cosmetic layers. Keep production release locked pending owner visual approval."
+    "last_material_progress": "PR #842 is in production and requires complete loaded result data before exposing meal/category/rating/sea local facets; deploy run 33563761068 passed without changing Tourvisor, pricing, analytics or lead contracts. PR #843 merged a shared DS2 mobile breadcrumb fix so long current-page labels wrap instead of clipping on <=560px; all PR security, standalone, bundle and visual gates passed. Search 2.0 preview run 33563321506 passed the latest tablet composition. PR #810 was further hardened so preview form assets are conditional on V2_SEARCH2_PREVIEW: the default production bundle stays canonical at 37 CSS / 44 JS, while preview adds three form CSS files and one form JS for 40 CSS / 45 JS. On head ec6da726a03affb1fb4c649986abec3688b793f6, generic startup and branch bundle checks pass. The unrelated legacy footer-rhythm evidence gate still reports zero measured main-to-footer gap on the anytour.online fixture even though its own footer layout assertions pass at mobile/tablet/desktop; do not treat that as a Search 2.0 form regression. Production release lock for #810 remains active.",
+    "next_action": "Verify completion of Search 2.0 preview deploy run 33564475783 and then complete five-width visual review at 375/430/768/1024/1440, prioritizing 375/430 after the successful tablet pass. Confirm the actual rendered initial form is Откуда, Куда, Когда, Ночи, Туристы plus blue Найти туры and truthful compact secondary filters. Do not add more CSS layers; update the existing canonical preview layer only. Keep #810 out of production until explicit owner visual approval and account for its stale historical base before any future release."
   },
   "local_results_filtering": {
     "mode": "instant_local",
     "loaded_hotel_target": 100,
-    "rule": "Result filters for fields present in normalized loaded results filter that loaded set immediately. New Tourvisor searches are reserved for real primary search-input changes or separately justified background expansion.",
+    "rule": "Result filters for fields present in normalized loaded results filter that loaded set immediately. A facet is exposed only when the currently loaded normalized payload has complete data for that facet. New Tourvisor searches are reserved for real primary search-input changes or separately justified background expansion.",
     "generic_client_pagination": "DO_NOT_INTRODUCE"
   },
   "site_wide_score": {
     "value": 7.3,
     "scale": 10,
-    "note": "Held at 7.3. Search 2.0 preview work is not production and therefore does not raise the public-site score. Production DS2 remains stable at the prior verified level."
+    "note": "Held at 7.3. Production gained a narrow correctness fix for local facets and a shared mobile breadcrumb readability fix, while Search 2.0 remains preview-only. Material progress is real but not broad enough to raise the whole-product score yet."
   },
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -47,7 +47,8 @@
   "deferred": {
     "technical_refactor": "DEFER_UNTIL_EXPLICIT_OWNER_DIRECTION",
     "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
-    "legal_payment": "DEFER_UNRESOLVED_CONTENT"
+    "legal_payment": "DEFER_UNRESOLVED_CONTENT",
+    "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON_ANYTOUR.ONLINE_FIXTURE_WHILE_FOOTER_LAYOUT_ASSERTIONS_PASS; INVESTIGATE_SEPARATELY_IF IT BECOMES RELEASE-BLOCKING"
   },
   "continuation_policy": {
     "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > search_user_journey > search2_initial_form_preview > results_filters_loaded_set > hotel_tour_cards_and_selected_tour > desktop_mobile_visual_consistency > shared_header_navigation_footer_ds2 > site_visual_convergence_ds2 > technical_refactor_deferred > content_seo > cosmetic_cleanup",
