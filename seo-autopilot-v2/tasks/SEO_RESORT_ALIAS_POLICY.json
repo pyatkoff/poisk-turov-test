@@ -1,0 +1,11 @@
+{
+  "id": "SEO_RESORT_ALIAS_POLICY",
+  "title": "Handle resort aliases without duplicate canonical pages",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "aliases/synonyms map to one stable resort entity",
+    "alternate spelling can be used naturally in content/metadata where useful",
+    "do not create separate canonical routes for every spelling variant"
+  ]
+}
