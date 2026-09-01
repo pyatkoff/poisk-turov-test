@@ -1,5 +1,5 @@
 (function(){'use strict';
-var form=document.getElementById('tourSearch'),rail=document.querySelector('.results-filter-rail'),layout=document.querySelector('.results-layout'),tools=document.getElementById('resultsTools'),summary=document.getElementById('resultsSearchSummary'),sort=document.getElementById('sortResults');
+var form=document.getElementById('tourSearch'),rail=document.querySelector('.results-filter-rail'),layout=document.querySelector('.results-layout'),tools=document.getElementById('resultsTools'),summary=document.getElementById('resultsSearchSummary'),sort=document.getElementById('sortResults'),resultSummary=document.getElementById('resultSummary'),viewSwitch=tools&&tools.querySelector('.results-view-switch');
 if(!form||!rail||!layout||!tools)return;
 var mq=window.matchMedia('(max-width:999px)');
 var hasResults=false;
@@ -7,12 +7,12 @@ function suppressLegacy(){document.querySelectorAll('.mrf-bar,.mrf-sheet,.mobile
 suppressLegacy();
 if(window.MutationObserver){new MutationObserver(function(){suppressLegacy();}).observe(document.body,{childList:true,subtree:true});}
 var toolbar=document.createElement('div');toolbar.className='search3-mobile-toolbar';toolbar.innerHTML='<div class="search3-mobile-actions"><button type="button" class="search3-mobile-filter-button" data-s3-open-filters>Фильтры <b data-s3-mobile-count></b></button><label class="search3-mobile-sort-button"><span>Сортировка</span><select data-s3-mobile-sort aria-label="Сортировка результатов"></select></label></div><div class="search3-active-chips" data-s3-active-chips aria-label="Активные параметры поиска"></div>';
-layout.parentNode.insertBefore(toolbar,layout);
+tools.insertAdjacentElement('afterend',toolbar);
 var mobileSort=toolbar.querySelector('[data-s3-mobile-sort]');
 if(sort&&mobileSort){mobileSort.innerHTML=sort.innerHTML;mobileSort.value=sort.value;mobileSort.addEventListener('change',function(){sort.value=mobileSort.value;sort.dispatchEvent(new Event('change',{bubbles:true}));});sort.addEventListener('change',function(){mobileSort.value=sort.value;});}
 var overlay=document.createElement('div');overlay.className='search3-filter-overlay';overlay.hidden=true;overlay.innerHTML='<button type="button" class="search3-filter-overlay__backdrop" data-s3-close-filters aria-label="Закрыть фильтры"></button>';
 document.body.appendChild(overlay);
-function syncToolbarVisibility(){var visible=hasResults&&mq.matches;toolbar.style.setProperty('display',visible?'grid':'none','important');toolbar.setAttribute('aria-hidden',visible?'false':'true');}
+function syncToolbarVisibility(){var compact=hasResults&&mq.matches;toolbar.style.setProperty('display',compact?'grid':'none','important');toolbar.setAttribute('aria-hidden',compact?'false':'true');if(resultSummary)resultSummary.style.setProperty('display',compact?'none':'','important');if(viewSwitch)viewSwitch.style.setProperty('display',compact?'none':'','important');}
 function selectedLabel(name,prefix){var el=form.elements[name];if(!el)return'';var value=String(el.value||'');if(!value)return'';var label='';if(el.tagName==='SELECT'){var opt=el.options&&el.selectedIndex>=0?el.options[el.selectedIndex]:null;label=opt?String(opt.textContent||'').trim():value;}else label=value;if(!label||/^(люб|все|любой|любая|любое)/i.test(label))return'';return (prefix?prefix+' ':'')+label;}
 function chip(name,label){return '<button type="button" class="search3-chip" data-s3-clear="'+name+'"><span>'+label.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span><b aria-hidden="true">×</b></button>';}
 function renderChips(){var chips=[];var region=selectedLabel('region','');if(region)chips.push(chip('region',region));var stars=selectedLabel('stars','');if(stars)chips.push(chip('stars',stars));var rating=selectedLabel('rating','Оценка');if(rating)chips.push(chip('rating',rating));var food=selectedLabel('food','');if(food)chips.push(chip('food',food));var price=String((form.elements.price_till||{}).value||'');if(price&&Number(price)>0)chips.push(chip('price_till','до '+new Intl.NumberFormat('ru-RU').format(Number(price))+' ₽'));var hotel=selectedLabel('hotel','');if(hotel)chips.push(chip('hotel',hotel));var direct=form.elements.onlyDirect;if(direct&&direct.checked)chips.push(chip('onlyDirect','Прямой рейс'));toolbar.querySelector('[data-s3-active-chips]').innerHTML=chips.join('');toolbar.classList.toggle('has-chips',!!chips.length);}
@@ -25,5 +25,5 @@ window.addEventListener('v2:results-rendered',function(e){var items=e&&e.detail&
 window.addEventListener('search3:result-filters-changed',function(e){updateCounts(e&&e.detail||{});});
 window.addEventListener('v2:search-reset',function(){hasResults=false;close();suppressLegacy();renderChips();updateCounts({activeCount:0});syncToolbarVisibility();});
 if(typeof mq.addEventListener==='function')mq.addEventListener('change',function(){if(!mq.matches)close();syncToolbarVisibility();});else if(typeof mq.addListener==='function')mq.addListener(function(){if(!mq.matches)close();syncToolbarVisibility();});
-if(summary)summary.insertAdjacentElement('afterend',toolbar);renderChips();updateCounts();syncToolbarVisibility();
+renderChips();updateCounts();syncToolbarVisibility();
 })();
