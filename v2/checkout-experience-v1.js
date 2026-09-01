@@ -18,7 +18,9 @@ window.addEventListener('v2:lead-started',()=>setStage(3,false));
 window.addEventListener('v2:lead-error',()=>setStage(3,false));
 window.addEventListener('v2:lead-success',()=>{const scope=document.getElementById('selectedTour');hideOptionalLeadFields(scope);setStage(3,true);});
 const selected=document.getElementById('selectedTour');
-if(selected&&typeof MutationObserver!=='undefined')new MutationObserver(()=>{if(!selected.hidden)decorate(selected);}).observe(selected,{attributes:true,attributeFilter:['hidden']});
-if(selected&&!selected.hidden)decorate(selected);
+let selectedDecoratePending=false;
+function scheduleSelectedDecorate(){if(!selected||selected.hidden||selectedDecoratePending)return;selectedDecoratePending=true;queueMicrotask(()=>{selectedDecoratePending=false;if(!selected.hidden)decorate(selected);});}
+if(selected&&typeof MutationObserver!=='undefined')new MutationObserver(scheduleSelectedDecorate).observe(selected,{attributes:true,attributeFilter:['hidden'],childList:true,subtree:true});
+scheduleSelectedDecorate();
 window.V2CheckoutExperienceV1={decorate,decorateFacts,decorateJourney,decorateLead,decorateOptionalLeadFields,hideOptionalLeadFields,setStage,version:1};
 })();
