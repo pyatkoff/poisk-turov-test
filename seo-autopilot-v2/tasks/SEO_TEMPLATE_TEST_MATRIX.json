@@ -1,0 +1,24 @@
+{
+  "id": "SEO_TEMPLATE_TEST_MATRIX",
+  "title": "Test representative SEO templates instead of every generated URL",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "representatives": [
+    "country with offers",
+    "country without current offers",
+    "resort with hotels",
+    "resort sparse-data case",
+    "hotel with offers",
+    "hotel without current offers",
+    "invalid/unknown slug",
+    "parameterized variant"
+  ],
+  "checks": [
+    "status/indexability/canonical",
+    "title/H1",
+    "internal links",
+    "visible factual fallback",
+    "structured data consistency",
+    "mobile render smoke"
+  ]
+}
