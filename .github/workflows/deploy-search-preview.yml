@@ -53,9 +53,10 @@ jobs:
           test -n "$HOST" && test -n "$USER"
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
           remote="$USER@$HOST"
-          root='$HOME/www/anytoour.ru/_preview/search2'
+          remote_home="$(ssh "${opts[@]}" "$remote" 'printf %s "$HOME"')"
+          root="$remote_home/www/anytoour.ru/_preview/search2"
 
-          ssh "${opts[@]}" "$remote" 'rm -rf "$HOME/www/anytoour.ru/_preview/search2" && mkdir -p "$HOME/www/anytoour.ru/_preview/search2/poisk-turov"'
+          ssh "${opts[@]}" "$remote" "rm -rf '$root' && mkdir -p '$root/poisk-turov'"
           scp "${opts[@]}" -r v2/. "$remote:$root/"
 
           ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
