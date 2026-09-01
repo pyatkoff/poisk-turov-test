@@ -1,0 +1,12 @@
+{
+  "id": "SEO_SLUG_TRANSLITERATION",
+  "title": "Keep Cyrillic entity transliteration deterministic",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "one deterministic transliteration/normalization function",
+    "stable existing canonical slugs are not churned for cosmetic improvements",
+    "collisions are resolved using stable identity",
+    "slug changes require redirect evidence"
+  ]
+}
