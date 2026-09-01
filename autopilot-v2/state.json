@@ -8,12 +8,7 @@
     "risk": "MEDIUM",
     "state": "visual_qa",
     "owner": "visual_qa",
-    "required_gates": [
-      "Fast CI",
-      "Security guard",
-      "browser QA for room/flight switching and price refresh",
-      "targeted visual QA at 375px and 1440px before merge"
-    ],
+    "required_gates": ["Fast CI","Security guard","browser QA for room/flight switching and price refresh","targeted visual QA at 375px and 1440px before merge"],
     "evidence": [
       "SEARCH_RESULTS_FILTER_ARCHITECTURE remains DONE_AWAITING_PRODUCTION_EVIDENCE; local narrowing is restricted to payload-complete hotel fields while incomplete constraints remain server-side.",
       "RESULTS_DEPTH_100 remains DONE_AWAITING_PRODUCTION_EVIDENCE after PR #656.",
@@ -21,12 +16,11 @@
       "PR #708 recorded explicit owner approval of the full new design and merged as 3b8e222a59b275aef376a4565cd1035283b81ffb.",
       "Search 2.0 workspace presentation is present on feature/search-core; Tourvisor/local-filter/progressive/lead contracts remain unchanged by that presentation layer.",
       "PR #703 header, #704 loading/recovery and #706 hotel/room remain code-green but held for required targeted visual QA.",
-      "PR #712 implements the approved selected-tour staged hierarchy and copy in the active runtime decorator; Fast CI #45 and Security guard #1898 are green; browser and 375/1440 visual QA remain required before merge.",
+      "PR #712 implements the approved selected-tour staged hierarchy and copy. Review found its new layer used a private injected palette; commit 183010fce6250bbe27b887323190b4fd075bf383 converged it to canonical AnyTour DS2 tokens. Fast CI #49 and Security guard #1902 are green; browser and 375/1440 visual QA remain required before merge.",
       "PR #713 was closed unmerged because it only restyled the old selected-tour surface; PR #714 was closed because it synchronized that superseded path.",
-      "PR #715 implements the approved factual footer presentation with only MAX, Telegram, VK, App Store, Google Play, existing legal links and MasterCard/Visa/Mir; Fast CI #47 and Security guard #1901 are green; visual QA remains required before merge.",
-      "PR #716 repaired REDESIGN_LEAD_HANDOFF ownership to active checkout/lead UI runtime files and merged as 70f66b87b6755f8148e27994d188ff105d0fae99; backend lead transport files remain outside task ownership.",
-      "PR #711 was closed unmerged as an obsolete extra design approval gate because the owner has approved the full agreed redesign direction.",
-      "HIGH-risk Metrika, external lead transport and protected contracts remain untouched."
+      "PR #715 implements the approved factual footer with only verified destinations/content. Review found a separate hardcoded palette; commit 7f25aec09247fba85e8dbb8d65ecf8760c0668f2 converged it to canonical DS2 tokens. Fast CI #50 and Security guard #1903 are green; visual QA remains required before merge.",
+      "PR #716 repaired REDESIGN_LEAD_HANDOFF ownership to active checkout/lead UI runtime files; backend lead transport remains outside task ownership.",
+      "HIGH-risk Metrika, external lead transport, Tourvisor contracts, pricing semantics and the AnyTour logo remain untouched."
     ],
     "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
   },
@@ -42,9 +36,9 @@
     {"id":"REDESIGN_HEADER_SHELL","priority":2,"status":"READY_AWAITING_VISUAL_QA","pr":703},
     {"id":"REDESIGN_LOADING_RECOVERY","priority":2,"status":"READY_AWAITING_VISUAL_QA","pr":704},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"READY_AWAITING_VISUAL_QA","pr":706},
-    {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"IMPLEMENTED_AWAITING_TARGETED_QA","contract_pr":709,"pr":712,"head_sha":"fcab378f60c56c64232ebb8df1e09debb3d09f19"},
+    {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"IMPLEMENTED_AWAITING_TARGETED_QA","contract_pr":709,"pr":712,"head_sha":"183010fce6250bbe27b887323190b4fd075bf383"},
     {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"CONTRACT_REPAIRED_QUEUED_AFTER_SELECTED_TOUR","contract_pr":716,"contract_merge_sha":"70f66b87b6755f8148e27994d188ff105d0fae99"},
-    {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"IMPLEMENTED_AWAITING_VISUAL_QA","pr":715,"head_sha":"c2f300e342899367b2ab340b26cd06fb827fd2fa"},
+    {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"IMPLEMENTED_AWAITING_VISUAL_QA","pr":715,"head_sha":"7f25aec09247fba85e8dbb8d65ecf8760c0668f2"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"QUEUED"},
     {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"QUEUED"},
     {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED"},
@@ -52,14 +46,10 @@
     {"id":"PX7_PRICE_WATCH_RESEARCH","priority":3,"status":"DEFERRED_RESEARCH"},
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"QUEUED"}
   ],
-  "last_signal": {
-    "source": "redesign_implementation_progress",
-    "status": "APPROVED_SELECTED_TOUR_AND_FOOTER_CODE_GREEN_LEAD_UI_CONTRACT_REPAIRED_CONTINUE_VISUAL_QA_AND_LEAD_FLOW",
-    "sha": "70f66b87b6755f8148e27994d188ff105d0fae99"
-  },
+  "last_signal": {"source":"redesign_implementation_progress","status":"SELECTED_TOUR_AND_FOOTER_CANONICAL_DS2_TOKENS_CODE_GREEN_AWAITING_VISUAL_QA","sha":"7f25aec09247fba85e8dbb8d65ecf8760c0668f2"},
   "blocked": [
     {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe when live access is available; do not classify DNS/runner failure as a product defect."},
-    {"scope":"user-facing redesign visual gates","type":"external_visual_qa","reason":"PRs #703, #704, #706, #712 and #715 require targeted browser/375px/1440px evidence before merge and that evidence is not currently available through this execution path.","action":"Keep green code and continue independent redesign lanes; merge only after targeted visual evidence."},
+    {"scope":"user-facing redesign visual gates","type":"external_visual_qa","reason":"PRs #703, #704, #706, #712 and #715 require targeted browser/375px/1440px evidence before merge and that evidence is not currently available through this execution path.","action":"Keep green code and continue independent approved redesign lanes; merge only after targeted visual evidence."},
     {"scope":"bulk integration from main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core with unrelated work mixed in.","action":"Do not bulk merge/cherry-pick main; port only narrowly justified changes."}
   ]
 }
