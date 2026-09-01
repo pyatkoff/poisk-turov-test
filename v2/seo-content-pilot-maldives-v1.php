@@ -62,11 +62,12 @@ function v2_seo_content_pilot_maldives(): array
                     ['label' => 'Поиск туров AnyTour', 'href' => '/poisk-turov/'],
                 ]],
             ],
-            'search_state' => [],
+            'search_state' => ['country' => 8],
         ],
         'content_notes' => [
             'Evergreen editorial copy only.',
-            'No countryId or regionId is invented; search prefill stays generic until production catalog verification.',
+            'Tourvisor countryId=8 was verified against the synchronized production catalog on 2026-09-01.',
+            'Resort/region IDs remain unbound until separately verified.',
             'Review status does not enable indexation or sitemap emission.',
         ],
     ];
