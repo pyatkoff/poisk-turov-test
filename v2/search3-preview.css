@@ -2,6 +2,7 @@
 body.search3-preview{--at-shell:1480px!important;--at-page-gutter:48px!important;--at-page-edge:24px!important;background:#f7f9fc!important}
 body.search3-preview .v2-product-hero[hidden]{display:none!important}
 body.search3-preview .v2-shell{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))!important;max-width:none!important;padding-top:0!important}
+body.search3-preview .v2-shell>:not(.search3-page-intro):not(.v2-product-hero):not(#tourSearch):not(#status):not(#resultsSearchSummary):not(#resultsTools):not(.results-layout):not(#selectedTour){display:none!important}
 body.search3-preview .search3-page-intro{width:100%!important;max-width:none!important;margin:13px auto 8px!important}
 body.search3-preview .search3-breadcrumb{color:#98a2b3!important;font-size:9px!important;font-weight:700!important}
 body.search3-preview .search3-breadcrumb span{padding:0 7px!important}
@@ -33,7 +34,16 @@ body.search3-preview .search3-quick__label{display:inline-flex!important;align-i
 body.search3-preview .search3-quick__label input{width:15px!important;height:15px!important;margin:0!important;accent-color:#1463ff!important}
 body.search3-preview .search3-quick__label--instant{color:#344054!important}
 body.search3-preview #tourSearch>details.extras[hidden]{display:none!important}
-@media(min-width:1000px){body.search3-preview .at-site-header>.at-site-header__top,body.search3-preview .at-site-header .at-site-nav{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))!important;max-width:none!important}}
+body.search3-preview .at-global-header{background:#fff!important;border-bottom:1px solid #edf0f5!important;box-shadow:none!important}
+body.search3-preview .at-global-header__inner{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))!important;max-width:none!important;min-height:64px!important;gap:26px!important}
+body.search3-preview .at-global-header__logo img{width:128px!important;height:auto!important}
+body.search3-preview .at-global-header__nav{gap:25px!important}
+body.search3-preview .at-global-header__nav a{padding:23px 0!important;border-radius:0!important;background:transparent!important;color:#101828!important;font-size:11px!important;font-weight:800!important}
+body.search3-preview .at-global-header__nav a[aria-current=page]{color:#155eef!important;background:transparent!important}
+body.search3-preview .at-global-header__actions{gap:18px!important}
+body.search3-preview .at-global-header__phone{position:relative!important;padding-bottom:12px!important;color:#101828!important;font-size:14px!important;font-weight:900!important}
+body.search3-preview .at-global-header__phone:after{content:'Ежедневно 09:00–21:00';position:absolute;left:0;bottom:-1px;color:#98a2b3;font-size:8px;font-weight:600;white-space:nowrap}
+body.search3-preview .at-global-header__cta{min-height:36px!important;padding:0 16px!important;border:1px solid #d9e1ec!important;border-radius:8px!important;background:#fff!important;color:#101828!important;box-shadow:none!important;font-size:10px!important;font-weight:800!important}
 @media(max-width:1260px){body.search3-preview #tourSearch .search3-primary-grid{grid-template-columns:repeat(4,1fr)!important}body.search3-preview #tourSearch .search3-primary-grid>.search-submit{grid-column:auto!important}body.search3-preview .search3-quality__grid{grid-template-columns:repeat(3,1fr)!important}}
 @media(max-width:760px){body.search3-preview{--at-page-gutter:24px!important;--at-page-edge:12px!important}body.search3-preview .search3-page-intro{margin:14px auto 10px!important}body.search3-preview .search3-page-intro h1{font-size:24px!important}body.search3-preview #tourSearch{margin:10px auto 14px!important;padding:12px!important;border-radius:14px!important}body.search3-preview #tourSearch .search3-primary-grid,body.search3-preview .search3-quality__grid{grid-template-columns:1fr!important;gap:9px!important}body.search3-preview #tourSearch .search3-primary-grid>.search-submit{grid-column:1/-1!important;min-height:46px!important}.search3-quick{gap:12px!important}.search3-quick__label{width:calc(50% - 6px)!important}.search3-tourists__pop{left:0!important;right:auto!important}.search3-date-button{font-size:11px!important}}
 @media(max-width:520px){body.search3-preview .search3-quick{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px 8px!important}body.search3-preview .search3-quick__label{width:100%!important}}
