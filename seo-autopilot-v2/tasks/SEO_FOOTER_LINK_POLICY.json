@@ -1,0 +1,11 @@
+{
+  "id": "SEO_FOOTER_LINK_POLICY",
+  "title": "Keep footer navigation useful rather than an SEO link dump",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "footer may expose a small useful set of stable hubs/legal/community links",
+    "do not place hundreds of destination keyword links in the footer",
+    "deep destination discovery belongs in contextual hubs and hierarchy"
+  ]
+}
