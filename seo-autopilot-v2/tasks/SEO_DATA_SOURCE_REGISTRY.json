@@ -1,0 +1,18 @@
+{
+  "id": "SEO_DATA_SOURCE_REGISTRY",
+  "title": "Register factual sources used by SEO templates",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "fields": [
+    "source_id",
+    "data_class",
+    "owner",
+    "refresh_cadence",
+    "stable_identifiers",
+    "allowed_rendered_fields",
+    "staleness_policy",
+    "fallback",
+    "consumers"
+  ],
+  "principle": "Every dynamic factual SEO claim should be traceable to an approved source contract."
+}
