@@ -1,0 +1,17 @@
+{
+  "id": "SEO_LANDING_SEARCH_PREFILL",
+  "title": "Define a stable SEO landing to search prefill contract",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "candidate_context": [
+    "country id",
+    "resort id",
+    "hotel id"
+  ],
+  "rules": [
+    "use stable supported identifiers rather than parsing display text",
+    "dates/duration/tourists remain user-controlled unless explicitly supported",
+    "prefill failure falls back to normal search",
+    "search runtime remains product-owned"
+  ]
+}
