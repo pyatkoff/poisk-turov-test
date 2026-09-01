@@ -1,0 +1,15 @@
+{
+  "id": "SEO_COMMERCIAL_SCORE",
+  "title": "Prioritize SEO opportunities using demand and commercial relevance",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "dimensions": [
+    "search demand evidence",
+    "current ranking/coverage gap when known",
+    "tour inventory availability",
+    "user intent proximity to purchase",
+    "page/data quality readiness",
+    "implementation risk"
+  ],
+  "rule": "Do not infer revenue impact from keyword volume alone."
+}
