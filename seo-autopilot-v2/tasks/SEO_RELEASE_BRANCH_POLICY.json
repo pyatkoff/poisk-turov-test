@@ -1,0 +1,12 @@
+{
+  "id": "SEO_RELEASE_BRANCH_POLICY",
+  "title": "Build narrow SEO release branches from the intended target",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "rules": [
+    "start from current release target branch",
+    "apply only accepted SEO slice and required dependencies",
+    "run proportional verification",
+    "record production evidence before marking runtime work complete"
+  ]
+}
