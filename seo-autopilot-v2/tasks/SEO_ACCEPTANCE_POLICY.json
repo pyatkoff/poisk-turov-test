@@ -1,0 +1,7 @@
+{
+  "id": "SEO_ACCEPTANCE_POLICY",
+  "title": "Accept SEO work only against explicit task contracts",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "A change is not accepted because it looks SEO-friendly; it must satisfy its task done criteria, factuality, risk gate, protected boundaries and proportional verification."
+}
