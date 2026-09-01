@@ -1,0 +1,7 @@
+{
+  "id": "SEO_PRODUCTION_FIRST_TRIAGE",
+  "title": "Prioritize live SEO defects over speculative architecture work",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "If production evidence reveals lost indexability, wrong host/canonical, broken landing or misleading factual content, address or gate it before lower-impact roadmap expansion."
+}
