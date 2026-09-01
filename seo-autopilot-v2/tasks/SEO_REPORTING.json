@@ -1,0 +1,15 @@
+{
+  "id": "SEO_REPORTING",
+  "title": "Keep SEO Autopilot reporting concise and decision-oriented",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "report_fields": [
+    "what was found",
+    "business/SEO impact",
+    "what changed",
+    "verification evidence",
+    "risk/blocker",
+    "next selected task"
+  ],
+  "rule": "Do not confuse merged code with ranking/traffic success; report external outcomes only when measured."
+}
