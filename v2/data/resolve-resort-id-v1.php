@@ -19,6 +19,11 @@ function resolver_arg(array $argv, string $name): ?string
     return null;
 }
 
+function resolver_flag(array $argv, string $name): bool
+{
+    return in_array('--' . $name, $argv, true);
+}
+
 function resolver_names(array $argv): array
 {
     $single = resolver_arg($argv, 'name');
@@ -72,17 +77,52 @@ function resolver_lookup(PDO $pdo, int $countryId, string $name): array
     return $result;
 }
 
+function resolver_list(PDO $pdo, int $countryId): array
+{
+    $sql = "SELECT
+                s.id AS subregion_id,
+                s.name AS subregion_name,
+                s.slug AS subregion_slug,
+                r.id AS region_id,
+                r.name AS region_name,
+                r.slug AS region_slug,
+                r.country_id
+            FROM catalog_subregions s
+            INNER JOIN catalog_regions r ON r.id = s.region_id
+            WHERE r.country_id = :country_id
+              AND s.is_active = 1
+              AND r.is_active = 1
+            ORDER BY r.name ASC, s.name ASC, s.id ASC";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(['country_id' => $countryId]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as &$row) {
+        $row['country_id'] = (int)$row['country_id'];
+        $row['region_id'] = (int)$row['region_id'];
+        $row['subregion_id'] = (int)$row['subregion_id'];
+    }
+    unset($row);
+    return $rows;
+}
+
 $countryRaw = resolver_arg($argv, 'country');
 $countryId = filter_var($countryRaw, FILTER_VALIDATE_INT);
+$listMode = resolver_flag($argv, 'list');
 $names = resolver_names($argv);
 
-if ($countryId === false || (int)$countryId <= 0 || $names === []) {
+if ($countryId === false || (int)$countryId <= 0 || (!$listMode && $names === [])) {
     fwrite(STDERR, "Usage: php v2/data/resolve-resort-id-v1.php --country=4 --name=Кемер\n");
     fwrite(STDERR, "   or: php v2/data/resolve-resort-id-v1.php --country=4 --names=Кемер,Анталья,Сиде,Белек,Аланья\n");
+    fwrite(STDERR, "   or: php v2/data/resolve-resort-id-v1.php --country=4 --list\n");
     exit(2);
 }
 
 $pdo = v2_data_db();
+if ($listMode) {
+    echo json_encode(resolver_list($pdo, (int)$countryId), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n";
+    exit(0);
+}
+
 $results = [];
 try {
     foreach ($names as $name) {
