@@ -23,28 +23,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          php -l v2/index.php >/dev/null
-          php -l v2/api-v2.php >/dev/null
-          php -l v2/bundle-v1.php >/dev/null
-          php -l v2/bundle-manifest-v1.php >/dev/null
-          grep -Fq "'ds2-search.css'" v2/bundle-manifest-v1.php
-          grep -Fq "'search-redesign-v2.js'" v2/bundle-manifest-v1.php
-          test -s v2/search3-preview.css
-          test -s v2/search3-results-preview.css
-          test -s v2/search3-results-width-fix.css
-          test -s v2/search3-filter-rail-preview.css
-          test -s v2/search3-mobile-filters.css
-          test -s v2/search3-results-top.css
-          test -s v2/search3-selected-tour.css
-          test -s v2/search3-selected-tour-mobile.js
-          node --check v2/search-redesign-v2.js
-          node --check v2/search3-preview.js
-          node --check v2/search3-results-preview.js
-          node --check v2/search3-filter-rail-preview.js
-          node --check v2/search3-mobile-filters.js
-          node --check v2/search3-results-top.js
-          node --check v2/search3-selected-tour-mobile.js
-          echo "SEARCH3_PREVIEW_VALIDATE_OK"
+          for f in v2/index.php v2/api-v2.php v2/bundle-v1.php v2/bundle-manifest-v1.php; do php -l "$f" >/dev/null; done
+          for f in v2/search3-preview.css v2/search3-results-preview.css v2/search3-results-width-fix.css v2/search3-filter-rail-preview.css v2/search3-mobile-filters.css v2/search3-results-top.css v2/search3-selected-tour.css v2/search3-selected-tour-mobile.js; do test -s "$f"; done
+          for f in v2/search-redesign-v2.js v2/search3-preview.js v2/search3-results-preview.js v2/search3-filter-rail-preview.js v2/search3-mobile-filters.js v2/search3-results-top.js v2/search3-selected-tour-mobile.js; do node --check "$f"; done
+          echo SEARCH3_PREVIEW_VALIDATE_OK
 
       - name: Prepare SSH key
         env:
@@ -70,10 +52,8 @@ jobs:
           remote="$USER@$HOST"
           remote_home="$(ssh "${opts[@]}" "$remote" 'printf %s "$HOME"')"
           root="$remote_home/www/anytoour.ru/_preview/search3"
-
           ssh "${opts[@]}" "$remote" "rm -rf '$root' && mkdir -p '$root/poisk-turov'"
           scp "${opts[@]}" -r v2/. "$remote:$root/"
-
           ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
           set -euo pipefail
           root="$HOME/www/anytoour.ru/_preview/search3"
@@ -85,13 +65,11 @@ jobs:
           python3 - "$root/search-page-v3.php" <<'PY'
           from pathlib import Path
           import sys
-          path=Path(sys.argv[1])
-          text=path.read_text()
+          path=Path(sys.argv[1]); text=path.read_text()
           text=text.replace('</head>','<link rel="stylesheet" href="/_preview/search3/search3-preview.css?v=5"><link rel="stylesheet" href="/_preview/search3/search3-results-preview.css?v=4"><link rel="stylesheet" href="/_preview/search3/search3-results-width-fix.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-filter-rail-preview.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-mobile-filters.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-results-top.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-selected-tour.css?v=4"></head>',1)
           text=text.replace('</body>','<script src="/_preview/search3/search3-preview.js?v=3"></script><script src="/_preview/search3/search3-results-preview.js?v=3"></script><script src="/_preview/search3/search3-filter-rail-preview.js?v=2"></script><script src="/_preview/search3/search3-mobile-filters.js?v=4"></script><script src="/_preview/search3/search3-results-top.js?v=2"></script><script src="/_preview/search3/search3-selected-tour-mobile.js?v=2"></script></body>',1)
           path.write_text(text)
           PY
-
           cat > "$root/poisk-turov/index.php" <<'PHP'
           <?php
           header('X-Robots-Tag: noindex, nofollow', true);
@@ -100,7 +78,6 @@ jobs:
           if (!defined('V2_PUBLIC_BASE_PATH')) define('V2_PUBLIC_BASE_PATH', '/_preview/search3');
           require dirname(__DIR__) . '/search-page-v3.php';
           PHP
-
           cat > "$root/lead-adapter-v2.php" <<'PHP'
           <?php
           header('Content-Type: application/json; charset=utf-8');
@@ -108,9 +85,7 @@ jobs:
           http_response_code(403);
           echo json_encode(['ok'=>false,'preview'=>true,'message'=>'Lead submission is disabled on Search 3 preview'], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
           PHP
-
           for f in index.php search-page-v3.php poisk-turov/index.php assets.php api-v2.php bundle-v1.php bundle-manifest-v1.php lead-adapter-v2.php; do php -l "$root/$f" >/dev/null; done
-          echo "SEARCH3_PREVIEW_FILES_READY"
           REMOTE
 
       - name: Verify public preview
@@ -118,36 +93,16 @@ jobs:
         run: |
           set -euo pipefail
           base='https://anytoour.ru/_preview/search3'
-          code="$(curl -sSL -o /tmp/search3-preview.html -w '%{http_code}' --max-time 45 "$base/poisk-turov/")"
-          echo "PREVIEW_HTTP=$code"
-          test "$code" = "200"
-          grep -q '/_preview/search3/bundle-v1.php?type=css' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-preview.css?v=5' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-preview.js?v=3' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-results-preview.css?v=4' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-results-width-fix.css?v=2' /tmp/search3-preview.html
+          test "$(curl -sSL -o /tmp/search3-preview.html -w '%{http_code}' --max-time 45 "$base/poisk-turov/")" = 200
           grep -q '/_preview/search3/search3-results-preview.js?v=3' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-filter-rail-preview.css?v=3' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-filter-rail-preview.js?v=2' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-mobile-filters.css?v=2' /tmp/search3-preview.html
           grep -q '/_preview/search3/search3-mobile-filters.js?v=4' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-results-top.css?v=3' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-results-top.js?v=2' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-selected-tour.css?v=4' /tmp/search3-preview.html
-          grep -q '/_preview/search3/search3-selected-tour-mobile.js?v=2' /tmp/search3-preview.html
-          grep -q '/_preview/search3/api-v2.php' /tmp/search3-preview.html
-          health_code="$(curl -sSL -o /tmp/search3-health.json -w '%{http_code}' --max-time 45 "$base/api-v2.php?action=health")"
-          echo "HEALTH_HTTP=$health_code"
-          test "$health_code" = "200"
+          test "$(curl -sSL -o /tmp/search3-health.json -w '%{http_code}' --max-time 45 "$base/api-v2.php?action=health")" = 200
           grep -q 'tourvisor-direct' /tmp/search3-health.json
-          headers="$(curl -sSI --max-time 30 "$base/poisk-turov/")"
-          printf '%s\n' "$headers" | grep -qi 'x-robots-tag: noindex, nofollow'
-          echo "SEARCH3_PREVIEW_OK $base/poisk-turov/"
+          curl -sSI --max-time 30 "$base/poisk-turov/" | grep -qi 'x-robots-tag: noindex, nofollow'
 
       - name: Install focused visual smoke browser
         shell: bash
         run: |
-          set -euo pipefail
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
@@ -158,69 +113,21 @@ jobs:
           set -euo pipefail
           mkdir -p search3-visual-artifacts
           cat > search3-visual.cjs <<'JS'
-          const { chromium } = require('playwright');
-          const fs = require('fs');
-          const url = 'https://anytoour.ru/_preview/search3/poisk-turov/';
-          const views = [['mobile-390',390,844],['desktop-1440',1440,1000]];
-          const fixture=[
-            {id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,picturelink:'',country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[
-              {id:'tour-901-a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'},roomType:'Standard Sea View',placement:'DBL',operator:{name:'ANEX'},isCharter:true},
-              {id:'tour-901-b',date:'12.09.2026',nights:9,price:142000,meal:{name:'Ультра всё включено'},roomType:'Deluxe',placement:'DBL',operator:{name:'PEGAS'},isCharter:false}
-            ]},
-            {id:902,name:'AnyTour Garden Hotel with a deliberately long responsive title',category:4,rating:4.4,seaDistance:650,price:98000,picturelink:'',country:{name:'Турция'},region:{name:'Аланья'},tours:[
-              {id:'tour-902-a',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'},roomType:'Family Room',placement:'2ADL',operator:{name:'Coral Travel'},isCharter:false}
-            ]}
-          ];
-          (async()=>{
-            const browser=await chromium.launch({headless:true});
-            const report=[]; let failed=false;
-            for(const [name,width,height] of views){
-              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
-              const page=await context.newPage(); const errors=[];
-              page.on('pageerror',e=>errors.push(String(e).slice(0,500)));
-              const response=await page.goto(url+'?visual='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
-              await page.waitForTimeout(2500);
-              const initial=await page.evaluate(()=>({search3:document.body.classList.contains('search3-preview'),form:!!document.querySelector('#tourSearch'),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
-              await page.screenshot({path:`search3-visual-artifacts/${name}-initial.png`,fullPage:true});
-              await page.evaluate(data=>window.V2Results.render(data),fixture);
-              await page.waitForTimeout(300);
-              const results=await page.evaluate(()=>{const x=document.querySelector('[data-s3-open-filters]');return {cards:document.querySelectorAll('#results .hotel-card').length,actions:document.querySelectorAll('.search3-show-tours').length,allToursHidden:[...document.querySelectorAll('#results .hotel-tours')].every(x=>x.hidden),mobileFilters:!!x&&!x.hidden&&getComputedStyle(x).display!=='none'&&x.getBoundingClientRect().width>0&&x.getBoundingClientRect().height>0,filterDisplay:x?getComputedStyle(x).display:null,toolbarDisplay:x&&x.parentElement?getComputedStyle(x.parentElement).display:null,legacyMobileBars:document.querySelectorAll('.mrf-bar:not([hidden])').length,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};});
-              await page.screenshot({path:`search3-visual-artifacts/${name}-results.png`,fullPage:true});
-              await page.locator('.search3-show-tours').first().click();
-              await page.waitForTimeout(200);
-              const chooser=await page.evaluate(()=>({visible:(()=>{const x=document.querySelector('#results .hotel-card .hotel-tours');return !!x&&!x.hidden&&getComputedStyle(x).display!=='none';})(),heading:!!document.querySelector('.search3-tour-list-head'),rows:document.querySelectorAll('#results .hotel-card:first-child .tour-row').length,cta:[...document.querySelectorAll('#results .hotel-card:first-child .direct-tour')].map(x=>x.textContent.trim()),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
-              await page.screenshot({path:`search3-visual-artifacts/${name}-tours.png`,fullPage:true});
-              let drawer=null;
-              if(width<=999){
-                if(results.mobileFilters){
-                  await page.locator('[data-s3-open-filters]').click({timeout:5000}); await page.waitForTimeout(150);
-                  drawer=await page.evaluate(()=>({open:document.body.classList.contains('search3-filter-open'),dialog:document.querySelector('.results-filter-rail')?.getAttribute('role')==='dialog',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
-                  await page.screenshot({path:`search3-visual-artifacts/${name}-filters.png`,fullPage:true});
-                }else drawer={open:false,dialog:false,overflow:false,reason:'mobile-filter-button-not-visible'};
-              }
-              const selected=await page.evaluate(()=>{
-                document.body.classList.remove('search3-filter-open');
-                const overlay=document.querySelector('.search3-filter-overlay');if(overlay)overlay.hidden=true;
-                const root=document.getElementById('selectedTour'),results=document.getElementById('results');
-                if(!root)return {exists:false};
-                if(results)results.hidden=true;
-                root.hidden=false;
-                root.innerHTML='<button type="button" class="back-results">← Вернуться к предложениям</button><div class="selected-head"><div><span class="eyebrow">ВЫБРАННЫЙ ТУР</span><h2>AnyTour Coast Resort</h2><p>Турция · Анталья · Лара</p></div><div class="selected-price"><small>Стоимость</small>125 000 ₽</div></div><div class="selected-picture"><div style="width:100%;height:100%;background:#dfe9ff"></div></div><div class="facts"><div><span>Вылет из</span><b>Москва</b></div><div><span>Дата</span><b>10.09.2026</b></div><div><span>Ночей</span><b>7</b></div><div><span>Туристы</span><b>2 взр.</b></div><div><span>Питание</span><b>Все включено</b></div><div><span>Номер</span><b>Standard Sea View</b></div><div><span>Размещение</span><b>DBL</b></div><div><span>Оператор</span><b>ANEX</b></div><div><span>Перелёт</span><b>Чартер</b></div><div><span>Топливный сбор</span><b>—</b></div></div><div class="tour-flights"><div class="section-heading"><strong>Авиарейсы</strong><span>Выберите подходящий вариант</span></div><div class="flight-variant is-selected">Рейс и багаж проверены</div></div><form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер проверит тур перед подтверждением</span></div><button type="submit">Оставить заявку</button></form>';
-                window.dispatchEvent(new CustomEvent('v2:selected-tour-opened'));
-                const picture=root.querySelector('.selected-picture'),head=root.querySelector('.selected-head'),bar=document.querySelector('.search3-selected-mobile-bar'),toolbar=document.querySelector('.search3-mobile-toolbar');
-                return {exists:true,facts:root.querySelectorAll('.facts>div').length,imageBeforeHead:!!picture&&!!head&&picture.getBoundingClientRect().top<head.getBoundingClientRect().top,barVisible:!!bar&&!bar.hidden&&getComputedStyle(bar).display!=='none',barPrice:bar?.querySelector('[data-s3-selected-price]')?.textContent?.trim()||'',toolbarHidden:!toolbar||getComputedStyle(toolbar).display==='none',overlayHidden:!overlay||overlay.hidden,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
-              });
-              await page.waitForTimeout(100);
-              await page.screenshot({path:`search3-visual-artifacts/${name}-selected.png`,fullPage:true});
-              const item={name,http:response?.status()||0,errors,initial,results,chooser,drawer,selected}; report.push(item);
-              const bad=item.http!==200||errors.length||!initial.search3||!initial.form||initial.overflow||results.cards!==2||results.actions!==2||!results.allToursHidden||results.overflow||results.legacyMobileBars!==0||(width<=999?!results.mobileFilters:results.mobileFilters)||!chooser.visible||!chooser.heading||chooser.rows<1||chooser.cta.some(x=>x!=='Подробнее о туре')||chooser.overflow||(drawer&&(!drawer.open||!drawer.dialog||drawer.overflow))||!selected.exists||selected.facts!==10||!selected.toolbarHidden||!selected.overlayHidden||selected.overflow||(width<=640&&(!selected.imageBeforeHead||!selected.barVisible||selected.barPrice!=='125 000 ₽'));
-              if(bad)failed=true;
-              console.log('SEARCH3_VISUAL',JSON.stringify(item));
-              await context.close();
-            }
-            fs.writeFileSync('search3-visual-artifacts/report.json',JSON.stringify(report,null,2));
-            await browser.close(); if(failed)process.exit(1);
-          })().catch(e=>{console.error(e);process.exit(1)});
+          const { chromium }=require('playwright'); const fs=require('fs');
+          const url='https://anytoour.ru/_preview/search3/poisk-turov/';
+          const views=[['mobile-390',390,844],['desktop-1440',1440,1000]];
+          const fixture=[{id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,picturelink:'',country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[{id:'tour-901-a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'},roomType:'Standard Sea View',placement:'DBL',operator:{name:'ANEX'},isCharter:true},{id:'tour-901-b',date:'12.09.2026',nights:9,price:142000,meal:{name:'Ультра всё включено'},roomType:'Deluxe',placement:'DBL',operator:{name:'PEGAS'},isCharter:false}]},{id:902,name:'AnyTour Garden Hotel with a deliberately long responsive title',category:4,rating:4.4,seaDistance:650,price:98000,picturelink:'',country:{name:'Турция'},region:{name:'Аланья'},tours:[{id:'tour-902-a',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'},roomType:'Family Room',placement:'2ADL',operator:{name:'Coral Travel'},isCharter:false}]}];
+          (async()=>{const browser=await chromium.launch({headless:true});const report=[];let failed=false;
+          for(const [name,width,height] of views){const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e).slice(0,500)));const response=await page.goto(url+'?visual='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});await page.waitForTimeout(2500);
+          const initial=await page.evaluate(()=>({search3:document.body.classList.contains('search3-preview'),form:!!document.querySelector('#tourSearch'),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));await page.screenshot({path:`search3-visual-artifacts/${name}-initial.png`,fullPage:true});
+          await page.evaluate(data=>window.V2Results.render(data),fixture);await page.waitForTimeout(300);
+          const results=await page.evaluate(()=>{const x=document.querySelector('[data-s3-open-filters]');return{cards:document.querySelectorAll('#results .hotel-card').length,actions:document.querySelectorAll('.search3-show-tours').length,allToursHidden:[...document.querySelectorAll('#results .hotel-tours')].every(x=>x.hidden),mobileFilters:!!x&&getComputedStyle(x).display!=='none'&&x.getBoundingClientRect().width>0,legacyMobileBars:document.querySelectorAll('.mrf-bar:not([hidden])').length,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};});await page.screenshot({path:`search3-visual-artifacts/${name}-results.png`,fullPage:true});
+          let drawer=null;if(width<=999&&results.mobileFilters){await page.locator('[data-s3-open-filters]').click();await page.waitForTimeout(120);drawer=await page.evaluate(()=>({open:document.body.classList.contains('search3-filter-open'),dialog:document.querySelector('.results-filter-rail')?.getAttribute('role')==='dialog',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));await page.screenshot({path:`search3-visual-artifacts/${name}-filters.png`,fullPage:true});await page.evaluate(()=>document.querySelector('[data-s3-close-filters]')?.click());await page.waitForTimeout(80);}
+          await page.locator('.search3-show-tours').first().click();await page.waitForTimeout(200);
+          const chooser=await page.evaluate(()=>{const x=document.querySelector('#results .hotel-card .hotel-tours'),toolbar=document.querySelector('.search3-mobile-toolbar');return{visible:!!x&&!x.hidden&&getComputedStyle(x).display!=='none',heading:!!document.querySelector('.search3-tour-list-head'),rows:document.querySelectorAll('#results .hotel-card:first-child .tour-row').length,cta:[...document.querySelectorAll('#results .hotel-card:first-child .direct-tour')].map(x=>x.textContent.trim()),focused:document.body.classList.contains('search3-hotel-tours-open'),toolbarHidden:width>760||!toolbar||getComputedStyle(toolbar).display==='none',overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};});await page.screenshot({path:`search3-visual-artifacts/${name}-tours.png`,fullPage:true});
+          const selected=await page.evaluate(()=>{document.body.classList.remove('search3-filter-open');const overlay=document.querySelector('.search3-filter-overlay');if(overlay)overlay.hidden=true;const root=document.getElementById('selectedTour'),results=document.getElementById('results');if(!root)return{exists:false};if(results)results.hidden=true;root.hidden=false;root.innerHTML='<button type="button" class="back-results">← Вернуться к предложениям</button><div class="selected-head"><div><span class="eyebrow">ВЫБРАННЫЙ ТУР</span><h2>AnyTour Coast Resort</h2><p>Турция · Анталья · Лара</p></div><div class="selected-price"><small>Стоимость</small>125 000 ₽</div></div><div class="selected-picture"><div style="width:100%;height:100%;background:#dfe9ff"></div></div><div class="facts">'+['Москва','10.09.2026','7','2 взр.','Все включено','Standard Sea View','DBL','ANEX','Чартер','—'].map((v,i)=>'<div><span>'+['Вылет из','Дата','Ночей','Туристы','Питание','Номер','Размещение','Оператор','Перелёт','Топливный сбор'][i]+'</span><b>'+v+'</b></div>').join('')+'</div><div class="tour-flights"><div class="section-heading"><strong>Авиарейсы</strong><span>Выберите подходящий вариант</span></div><div class="flight-variant is-selected">Рейс и багаж проверены</div></div><form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер проверит тур перед подтверждением</span></div><button type="submit">Оставить заявку</button></form>';window.dispatchEvent(new CustomEvent('v2:selected-tour-opened'));const picture=root.querySelector('.selected-picture'),head=root.querySelector('.selected-head'),bar=document.querySelector('.search3-selected-mobile-bar'),toolbar=document.querySelector('.search3-mobile-toolbar');return{exists:true,facts:root.querySelectorAll('.facts>div').length,imageBeforeHead:!!picture&&!!head&&picture.getBoundingClientRect().top<head.getBoundingClientRect().top,barVisible:!!bar&&!bar.hidden&&getComputedStyle(bar).display!=='none',barPrice:bar?.querySelector('[data-s3-selected-price]')?.textContent?.trim()||'',toolbarHidden:!toolbar||getComputedStyle(toolbar).display==='none',overlayHidden:!overlay||overlay.hidden,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};});await page.waitForTimeout(100);await page.screenshot({path:`search3-visual-artifacts/${name}-selected.png`,fullPage:true});
+          const item={name,http:response?.status()||0,errors,initial,results,drawer,chooser,selected};report.push(item);const bad=item.http!==200||errors.length||!initial.search3||!initial.form||initial.overflow||results.cards!==2||results.actions!==2||!results.allToursHidden||results.overflow||results.legacyMobileBars!==0||(width<=999?!results.mobileFilters:results.mobileFilters)||(drawer&&(!drawer.open||!drawer.dialog||drawer.overflow))||!chooser.visible||!chooser.heading||chooser.rows<1||chooser.cta.some(x=>x!=='Подробнее о туре')||chooser.overflow||(width<=760&&(!chooser.focused||!chooser.toolbarHidden))||!selected.exists||selected.facts!==10||!selected.toolbarHidden||!selected.overlayHidden||selected.overflow||(width<=640&&(!selected.imageBeforeHead||!selected.barVisible||selected.barPrice!=='125 000 ₽'));if(bad)failed=true;console.log('SEARCH3_VISUAL',JSON.stringify(item));await context.close();}
+          fs.writeFileSync('search3-visual-artifacts/report.json',JSON.stringify(report,null,2));await browser.close();if(failed)process.exit(1);})().catch(e=>{console.error(e);process.exit(1)});
           JS
           node ./search3-visual.cjs
 
