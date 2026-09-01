@@ -1,0 +1,14 @@
+{
+  "id": "SEO_TEMPLATE_DATA_CONTRACT",
+  "title": "Define required and optional data per SEO template",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "for_each_field": [
+    "source",
+    "required/optional",
+    "freshness class",
+    "fallback",
+    "rendered claim implications"
+  ],
+  "rule": "A missing optional dynamic field must not cause fabricated copy or break canonical page rendering."
+}
