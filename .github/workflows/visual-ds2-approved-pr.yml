@@ -63,7 +63,7 @@ jobs:
           python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/ds2-http.log 2>&1 &
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true' EXIT
-          cat > /tmp/ds2-visual.cjs <<'JS'
+          cat > ds2-visual.cjs <<'JS'
           const {chromium}=require('playwright'),fs=require('fs');
           const views=[['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000]];
           const base='http://127.0.0.1:4173/.visual-ds2/index.html';
@@ -79,7 +79,7 @@ jobs:
           report.push({name,width,http:response?.status()||0,errors,initial,synced,leadStep,bad});if(bad)failed=true;console.log(`DS2_PR ${name} http=${response?.status()} progress=${initial.progress} facts=${initial.facts} flights=${initial.flights} footer=${initial.socials}/${initial.apps}/${initial.footers} price=${synced.price} fuel=${synced.fuel} steps=${synced.active}/${leadStep} overflow=${initial.overflow}/${synced.overflow} bad=${bad}`);await context.close();}
           fs.writeFileSync('artifacts-ds2-approved-pr/report.json',JSON.stringify(report,null,2));await browser.close();if(failed)process.exit(1);})().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node /tmp/ds2-visual.cjs
+          node ds2-visual.cjs
       - name: Upload DS2 visual evidence
         if: always()
         uses: actions/upload-artifact@v4
