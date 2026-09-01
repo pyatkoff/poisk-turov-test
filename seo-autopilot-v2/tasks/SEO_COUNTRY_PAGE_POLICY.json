@@ -1,0 +1,14 @@
+{
+  "id": "SEO_COUNTRY_PAGE_POLICY",
+  "title": "Define country landing value and contract",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "requirements": [
+    "primary country-tour intent",
+    "useful resort/hotel navigation",
+    "relevant tour-search entry",
+    "factual current offer module when available",
+    "unique metadata/content",
+    "canonical and sitemap eligibility"
+  ]
+}
