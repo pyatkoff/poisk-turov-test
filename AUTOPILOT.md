@@ -6,16 +6,18 @@ Operational companion to `AGENTS.md`. Execution state is no longer stored here o
 
 ## Current redesign overlay — approved AnyTour Design System 2.0
 
-The full agreed AnyTour redesign, including Search 2.0, is approved and is being implemented in isolated lanes. AnyTour Design System 2.0 is the only canonical design system. User-facing MEDIUM changes remain gated by task-specific browser/visual evidence before merge.
+The full agreed AnyTour redesign, including Search 2.0, is approved and is being implemented in isolated lanes. AnyTour Design System 2.0 is the only canonical design system. User-facing MEDIUM changes require their task-specific browser/visual evidence before feature integration and normal production evidence before being counted as shipped.
 
-- Search 2.0 workspace is present on `feature/search-core`; isolated preview HTTP, Tourvisor-direct health, CSS and noindex verification are green.
-- PRs #703 header, #704 loading/recovery and #706 hotel/tour selection were closed unmerged on 2026-09-01. They are not active release candidates or visual-QA blockers and must not be resumed implicitly.
-- PR #712 implements the approved staged `Ваш тур → Выбор рейса → Заявка менеджеру` hierarchy. Review found a private injected palette; commit `183010fce6250bbe27b887323190b4fd075bf383` converged the approved layer onto canonical DS2 tokens. Fast CI and Security guard are green; room/flight/price browser QA and 375/1440 visual QA remain required.
-- PR #715 implements only verified MAX, Telegram, VK, App Store, Google Play, existing legal/payment links and MasterCard/Visa/Мир. Its separate hardcoded palette was likewise replaced with canonical DS2 tokens at `7f25aec09247fba85e8dbb8d65ecf8760c0668f2`; Fast CI and Security guard are green; 375/1440 visual QA remains required.
-- PR #716 repaired the lead-handoff task ownership to active checkout/lead UI files while keeping backend lead transport outside task ownership.
-- PR #713 is closed as superseded by #712. PR #711 is closed as obsolete because the full agreed redesign direction is already approved.
+Accepted in `feature/search-core` on 2026-09-01:
 
-The separate public-site visual score remains **7.2/10** until redesigned lanes are integrated, deployed and production-verified. Do not raise it for open PRs.
+- **Selected tour / flight choice — PR #712.** Approved staged `Ваш тур → Выбор рейса → Заявка менеджеру` hierarchy is integrated. Its private palette was removed in review in favor of canonical DS2 tokens. Fast CI and Security guard are green. PR-safe Playwright evidence is green at 375/430/768/1024/1440 for hierarchy, flight step, price/fuel refresh and horizontal containment. Tourvisor IDs, selected-tour state, pricing semantics, Metrika and external lead transport were not changed.
+- **Factual footer/community — PR #715.** Integrated composition uses only the verified MAX, Telegram, VK, App Store and Google Play destinations already present in the project plus existing payment/legal links and MasterCard/Visa/Мир. Fast CI/Security and five-width PR-safe visual evidence are green. No invented contacts/socials and no parallel footer were introduced.
+- **Post-success lead handoff — PR #723.** Integrated UI appears only after `v2:lead-success`, reuses the existing verified MAX/Telegram destinations rendered by the community footer, and does not copy phone/name/comment or other PII into messenger URLs. Fast CI and Security are green. Dedicated PR-safe browser evidence at 375 and 1440 is green for sending → error/retry → success, exact two messenger destinations, no PII leak and no horizontal overflow. External lead persistence/transport and field mapping remain unchanged.
+- **PR-safe visual infrastructure — #722/#724.** These no-deploy Playwright gates test checked-out PR code locally, do not call Tourvisor or submit real leads, and provide screenshot/report evidence for approved DS2 lanes.
+
+PRs #703 header, #704 loading/recovery and #706 hotel/tour selection remain closed unmerged and are not active release candidates. They must not be resurrected implicitly.
+
+The separate public-site visual score remains **7.2/10** because the accepted redesign lanes are integrated only in `feature/search-core` and have not yet been released to `main`/production.
 
 ## Current phase — CORE PRODUCT 9/10, STANDALONE SITE STABILIZATION, SEO FOUNDATION 8.8
 
@@ -30,33 +32,32 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 ## Active roadmap
 
 - ROOT STABILIZATION — ACTIVE HIGHEST PRIORITY while the new standalone shell/routes are being migrated.
-- Approved DS2 redesign lanes — ACTIVE only where a current task/open implementation exists; do not resurrect closed #703/#704/#706 branches implicitly.
+- **REDESIGN_SEARCH_RESULTS — ACTIVE NEXT APPROVED LANE.** Search 2.0 presentation exists on `feature/search-core`; run task-specific QA for search, local narrowing, server re-search on widening, progressive 25→100, empty/recovery states and 375/1440 layout before accepting it.
+- REDESIGN_SELECTED_TOUR — ACCEPTED in feature/search-core via #712.
+- REDESIGN_FOOTER_COMMUNITY — ACCEPTED in feature/search-core via #715.
+- REDESIGN_LEAD_HANDOFF — ACCEPTED in feature/search-core via #723.
 - BR1–BR3 — SHIPPED / MAINTAIN at 9-level.
 - BR4 SEO-ready brand shell — ACTIVE at 8.8; publication/indexing policy remains deliberately deferred.
-- BR5 Social + app footer — existing shipped baseline maintained while approved factual footer redesign #715 awaits QA.
 - PX1–PX6 — SHIPPED / MAINTAIN at 9-level.
 - PX7 Price watch/return intent — RESEARCH pending persistence/contact/product-contract choices.
 
-## Latest material evidence
+## Release boundary
 
-- PR #712 and #715 were reviewed for DS2 ownership consistency; both had introduced hardcoded private visual palettes in otherwise approved layouts. Both now consume canonical DS2 tokens and their post-fix Fast CI/Security checks are green.
-- State reconciliation confirmed #703/#704/#706 are closed unmerged and removed them from the active QA blocker list.
-- Whole-flow recovery fixes remain valid: progressive `search_results` refresh (#217), near-term date widening (#219), and completed-search/final result-fetch recovery (#221).
-- V2-only deploy `33237509401` and standalone deploy `33237509375` passed their production verification/live search smoke for the shipped baseline.
-- No Tourvisor request contract, pricing contract, Metrika/goals or external lead contract changed in the redesign token-convergence work.
+`main` and `feature/search-core` remain materially diverged with unrelated work mixed in. Do **not** bulk merge or broadly cherry-pick the feature branch into `main`. Accepted redesign work is not production-shipped merely because its feature PR merged.
+
+Release only narrowly justified, accepted changes after the remaining active redesign QA is complete. Any production release must go through the normal `main` deploy workflows and their post-deploy live/search/selected-tour/public-page gates. A failed runner/DNS probe is an external verification issue, not automatically a product regression.
 
 ## Exact next work order
 
 The controller task contracts override this historical ordering whenever they differ.
 
-1. Complete targeted browser/visual QA for active PR #712 and #715; merge only evidence-green lanes.
-2. For #712 verify room/meal consistency, flight switching, baggage/fuel presentation and final price refresh at 375 and 1440.
-3. For #715 verify one responsive footer/community composition at 375 and 1440 with no overflow or duplicate footer.
-4. Continue the approved lead-handoff implementation after selected-tour acceptance.
-5. Revisit any header/loading/hotel lane only through a fresh current task/implementation decision, not by reopening closed #703/#704/#706 implicitly.
-6. After integration, re-run the public product at 375/430/768/1024/1440 and reassess the site-wide visual score.
-7. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
-8. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
+1. Complete targeted browser/visual QA for `REDESIGN_SEARCH_RESULTS` using the approved Search 2.0 implementation.
+2. Verify concise base search, progressive filters, local narrowing only on payload-complete fields, existing server re-search on widening, progressive 25→100, result/filter counters, sorting and empty/recovery states at 375 and 1440.
+3. Do not reopen closed #703/#704/#706 implicitly; only create a fresh lane if current evidence proves one is still needed.
+4. After active redesign acceptance, design a narrow release path from the accepted feature work to `main`; do not bulk merge branch divergence.
+5. After release, run normal V2 + standalone deploy/post-deploy gates and re-audit the public product at 375/430/768/1024/1440 before changing the site-wide visual score.
+6. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
+7. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
 
 ## Guardrails
 
@@ -69,7 +70,7 @@ The controller task contracts override this historical ordering whenever they di
 - Do not migrate unresolved legal/payment content.
 - PR #254 remains deferred unless its separate DB/platform architecture is freshly proven safe.
 - `technical_refactor` remains deferred until explicit owner direction.
-- CI green alone is not DONE; require relevant functional/production/visual evidence.
+- CI green alone is not production DONE; require relevant functional/production/visual evidence.
 - If one item is blocked, record/defer it and continue independent safe approved work.
 
 ## Explicitly inactive until owner launches traffic
