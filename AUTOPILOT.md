@@ -8,18 +8,18 @@ Operational companion to `AGENTS.md`. Execution state is no longer stored here o
 
 The full agreed AnyTour redesign, including Search 2.0, is approved and is being implemented in isolated lanes. AnyTour Design System 2.0 is the only canonical design system. User-facing MEDIUM changes require their task-specific browser/visual evidence before feature integration and normal production evidence before being counted as shipped.
 
-Accepted in `feature/search-core` on 2026-09-01:
+Current accepted/shipped state on 2026-09-01:
 
-- **Search 2.0 results/filter UX — accepted after PR #726 QA.** Deterministic PR-safe browser evidence is green at 375/1440 for progressive 25→100 result capture, local stars narrowing without restarting the server submit lifecycle, server auto-refresh when widening the original stars constraint, progressive additional filters, recovery state and 44px retry target. Security guard is green. The gate makes no Tourvisor call, real lead submission or production request and does not alter Metrika, pricing, lead transport or logo contracts.
-- **Hotel/room detail hierarchy — PR #736 + #737.** The previously approved hotel and room presentation from the closed-unmerged #706 lane has been restored onto the current feature baseline without inventing a new mockup. Canonical DS2 tokens now own hotel actions/detail/gallery/facts and room gallery/facts/comment hierarchy. Fast CI and Security guard are green; the dedicated visual gate is green at 375/430/768/1024/1440, and the browser behavior gate confirms hotel detail open/render, room detail open and stale old-room responses cannot overwrite a newer selected tour. Result-level tour rows remain owned by the separately accepted Search 2.0 lane. Tourvisor identifiers, selected-tour state, pricing, Metrika, external lead transport and logo were unchanged.
-- **Selected tour / flight choice — PR #712.** Approved staged `Ваш тур → Выбор рейса → Заявка менеджеру` hierarchy is integrated. Its private palette was removed in review in favor of canonical DS2 tokens. Fast CI and Security guard are green. PR-safe Playwright evidence is green at 375/430/768/1024/1440 for hierarchy, flight step, price/fuel refresh and horizontal containment. Tourvisor IDs, selected-tour state, pricing semantics, Metrika and external lead transport were not changed.
-- **Factual footer/community — PR #715.** Integrated composition uses only the verified MAX, Telegram, VK, App Store and Google Play destinations already present in the project plus existing payment/legal links and MasterCard/Visa/Мир. Fast CI/Security and five-width PR-safe visual evidence are green. No invented contacts/socials and no parallel footer were introduced.
-- **Post-success lead handoff — PR #723.** Integrated UI appears only after `v2:lead-success`, reuses the existing verified MAX/Telegram destinations rendered by the community footer, and does not copy phone/name/comment or other PII into messenger URLs. Fast CI and Security are green. Dedicated PR-safe browser evidence at 375 and 1440 is green for sending → error/retry → success, exact two messenger destinations, no PII leak and no horizontal overflow. External lead persistence/transport and field mapping remain unchanged.
+- **Hotel/room detail hierarchy — SHIPPED via PR #739.** The previously approved hotel and room presentation was restored and verified in feature/search-core through #736/#737, then released to `main` as an intentionally narrow two-CSS-file slice. Main already contained every required DS2 token and loaded `design-system-v2.css` before both active files. All eight main PR gates were green. Production deploy run `33517984397` completed successfully through release copy, public-page verification, unchanged lead-bridge verification and live search smoke; live tour/flight validation also passed. No Tourvisor identifiers, selected-tour state, pricing semantics, Metrika, external lead transport, logo or unresolved legal/payment content changed.
+- **Search 2.0 results/filter UX — accepted after PR #726 QA.** Deterministic PR-safe browser evidence is green at 375/1440 for progressive 25→100 result capture, local stars narrowing without restarting the server submit lifecycle, server auto-refresh when widening the original stars constraint, progressive additional filters, recovery state and 44px retry target. Security guard is green. The gate makes no Tourvisor call, real lead submission or production request and does not alter Metrika, pricing, lead transport or logo contracts. This lane still requires its own narrow main release.
+- **Selected tour / flight choice — PR #712.** Approved staged `Ваш тур → Выбор рейса → Заявка менеджеру` hierarchy is accepted in feature/search-core. Its private palette was removed in review in favor of canonical DS2 tokens. Fast CI and Security guard are green. PR-safe Playwright evidence is green at 375/430/768/1024/1440 for hierarchy, flight step, price/fuel refresh and horizontal containment. Tourvisor IDs, selected-tour state, pricing semantics, Metrika and external lead transport were not changed. It still requires a narrow main release.
+- **Factual footer/community — PR #715.** Accepted feature composition uses only the verified MAX, Telegram, VK, App Store and Google Play destinations already present in the project plus existing payment/legal links and MasterCard/Visa/Мир. Fast CI/Security and five-width PR-safe visual evidence are green. No invented contacts/socials and no parallel footer were introduced. It still requires a narrow main release.
+- **Post-success lead handoff — PR #723.** Accepted feature UI appears only after `v2:lead-success`, reuses the existing verified MAX/Telegram destinations rendered by the community footer, and does not copy phone/name/comment or other PII into messenger URLs. Fast CI and Security are green. Dedicated PR-safe browser evidence at 375 and 1440 is green for sending → error/retry → success, exact two messenger destinations, no PII leak and no horizontal overflow. External lead persistence/transport and field mapping remain unchanged. It still requires a narrow main release.
 - **PR-safe visual infrastructure — #722/#724/#726/#736/#737.** These no-deploy Playwright gates test checked-out PR code locally, do not call production protected services, and provide screenshot/report evidence for approved DS2 lanes.
 
-PRs #703 header and #704 loading/recovery remain closed unmerged and are not active release candidates. Historical PR #706 stays closed; its already-approved hotel/room presentation was re-applied narrowly and verified through #736/#737 rather than reopening the stale branch.
+PRs #703 header and #704 loading/recovery remain closed unmerged and are not active release candidates. Historical PR #706 stays closed; its already-approved hotel/room presentation was re-applied narrowly and shipped through #736/#737/#739 rather than reopening the stale branch.
 
-The separate public-site visual score remains **7.2/10** because the accepted redesign lanes are integrated only in `feature/search-core` and have not yet been released to `main`/production.
+The separate public-site visual score remains **7.2/10**. The hotel/room slice is a meaningful production step, but a site-wide score increase would be premature until more of the agreed cross-site redesign reaches production and the whole product is re-audited at five widths.
 
 ## Current phase — CORE PRODUCT 9/10, STANDALONE SITE STABILIZATION, SEO FOUNDATION 8.8
 
@@ -34,9 +34,9 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 ## Active roadmap
 
 - ROOT STABILIZATION — ACTIVE HIGHEST PRIORITY while the new standalone shell/routes are being migrated.
-- **DS2_NARROW_RELEASE_PLAN — ACTIVE NEXT LANE.** All currently accepted redesign lanes now have targeted evidence; inventory their exact runtime dependencies against `main` and prepare only narrow release slices. Do not bulk merge `feature/search-core`.
+- **DS2_NARROW_RELEASE_PLAN — ACTIVE NEXT LANE.** The first narrow accepted redesign slice is shipped through #739. Continue by inventorying the remaining accepted runtime dependencies against current `main` and prepare only self-contained main-targeted release slices. Do not bulk merge `feature/search-core`.
+- REDESIGN_HOTEL_TOUR_SELECTION — SHIPPED in production via #739 after #736/#737 evidence.
 - REDESIGN_SEARCH_RESULTS — ACCEPTED in feature/search-core after #726 targeted QA.
-- REDESIGN_HOTEL_TOUR_SELECTION — ACCEPTED in feature/search-core via #736/#737.
 - REDESIGN_SELECTED_TOUR — ACCEPTED in feature/search-core via #712.
 - REDESIGN_FOOTER_COMMUNITY — ACCEPTED in feature/search-core via #715.
 - REDESIGN_LEAD_HANDOFF — ACCEPTED in feature/search-core via #723.
@@ -49,14 +49,14 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 
 `main` and `feature/search-core` remain materially diverged with unrelated work mixed in. Do **not** bulk merge or broadly cherry-pick the feature branch into `main`. Accepted redesign work is not production-shipped merely because its feature PR merged.
 
-Release only narrowly justified accepted changes. Any production release must go through the normal `main` deploy workflows and their post-deploy live/search/selected-tour/public-page gates. A failed runner/DNS probe is an external verification issue, not automatically a product regression.
+Release only narrowly justified accepted changes. Any production release must go through the normal `main` deploy workflows and their post-deploy live/search/selected-tour/public-page gates. #739 proves the narrow-release path can work without pulling the divergent feature branch into production.
 
 ## Exact next work order
 
 The controller task contracts override this historical ordering whenever they differ.
 
-1. Inventory the exact accepted Search 2.0, hotel/room detail, selected-tour, factual footer and post-success handoff runtime files against current `main`.
-2. Split release work into the smallest dependency-safe `main`-targeted slices; do not bulk merge `feature/search-core` or reopen closed #703/#704/#706 implicitly.
+1. Inventory the remaining accepted Search 2.0, selected-tour, factual footer and post-success handoff runtime files against current `main`; hotel/room detail is already shipped.
+2. Select the smallest self-contained accepted lane whose dependencies are already present in main, and prepare only a narrow main-targeted PR.
 3. Prove each release slice excludes Metrika/goals, Tourvisor contract changes, pricing semantics, external lead transport/field mapping, logo replacement and unresolved legal/payment migrations.
 4. Run the relevant main CI/visual gates before merge; after release run normal V2 + standalone deploy/post-deploy gates.
 5. Re-audit the public product at 375/430/768/1024/1440 before changing the site-wide visual score.
