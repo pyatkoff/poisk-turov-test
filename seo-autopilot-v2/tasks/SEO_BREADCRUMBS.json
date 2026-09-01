@@ -1,0 +1,18 @@
+{
+  "id": "SEO_BREADCRUMBS",
+  "title": "Align visible breadcrumbs with SEO entity hierarchy",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "hierarchy": [
+    "home",
+    "country",
+    "resort",
+    "hotel"
+  ],
+  "rules": [
+    "only include levels that factually exist",
+    "visible breadcrumbs and structured data must agree",
+    "links target canonical indexable entities",
+    "do not fabricate hierarchy from URL strings"
+  ]
+}
