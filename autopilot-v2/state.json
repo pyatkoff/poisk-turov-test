@@ -6,7 +6,7 @@
     "title": "Implement approved AnyTour DS2 selected-tour and flight hierarchy",
     "area": "results-tour",
     "risk": "MEDIUM",
-    "state": "ready",
+    "state": "implemented_awaiting_targeted_qa",
     "owner": "developer",
     "required_gates": [
       "Fast CI",
@@ -19,10 +19,12 @@
       "RESULTS_DEPTH_100 remains DONE_AWAITING_PRODUCTION_EVIDENCE after PR #656.",
       "SELECTED_TOUR_END_TO_END remains DONE_AWAITING_PRODUCTION_EVIDENCE after stale reset, room normalization and flight/fuel price fixes.",
       "PR #708 recorded explicit owner approval of the full new design and merged as 3b8e222a59b275aef376a4565cd1035283b81ffb.",
-      "Search 2.0 workspace presentation is now present on feature/search-core via commits dbe158d86d990a75dc7c177107abc25ec1005084, f28aec5626cdcbdd7525353bc3e24be3eabc6494 and 20a38015738d12dc641691a408e4614255b60e44; Tourvisor/local-filter/progressive/lead contracts were not changed by that layer.",
+      "Search 2.0 workspace presentation is present on feature/search-core and its isolated preview deploy passed HTTP, health, CSS and noindex verification on 2026-09-01.",
       "PR #703 header, #704 loading/recovery and #706 hotel/room remain code-green but held for required targeted visual QA.",
-      "PR #709 repaired REDESIGN_SELECTED_TOUR ownership to active runtime files and merged as 91603da6ed554d629570b792debf6df532d23870; Security guard and Autopilot V2 contract checks passed.",
-      "HIGH-risk Metrika, external lead transport and protected contracts remain untouched."
+      "PR #709 repaired REDESIGN_SELECTED_TOUR ownership to active runtime files and merged as 91603da6ed554d629570b792debf6df532d23870.",
+      "PR #713 implements the selected-tour DS2 presentation in v2/selected-tour-ux.css only; Fast CI and Security guard are green at 4246ba42a927602227a4eac68a3cba1d04a4cf1c.",
+      "PR #713 remains intentionally unmerged until browser QA covers room/flight switching, price refresh and 375/1440 visual evidence.",
+      "HIGH-risk Metrika, external lead transport, Tourvisor contracts and the AnyTour logo remain untouched."
     ],
     "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
   },
@@ -38,7 +40,7 @@
     {"id":"REDESIGN_HEADER_SHELL","priority":2,"status":"READY_AWAITING_VISUAL_QA","pr":703},
     {"id":"REDESIGN_LOADING_RECOVERY","priority":2,"status":"READY_AWAITING_VISUAL_QA","pr":704},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"ACTIVE_AWAITING_VISUAL_QA","pr":706},
-    {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"READY","contract_pr":709,"contract_merge_sha":"91603da6ed554d629570b792debf6df532d23870"},
+    {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"IMPLEMENTED_AWAITING_TARGETED_QA","pr":713,"head_sha":"4246ba42a927602227a4eac68a3cba1d04a4cf1c"},
     {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"QUEUED_AFTER_SELECTED_TOUR"},
     {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"QUEUED"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"QUEUED"},
@@ -50,12 +52,12 @@
   ],
   "last_signal": {
     "source": "redesign_implementation_progress",
-    "status": "SEARCH2_APPROVED_AND_LOADED_SELECTED_TOUR_CONTRACT_REPAIRED_CONTINUE_SELECTED_TOUR",
-    "sha": "91603da6ed554d629570b792debf6df532d23870"
+    "status": "SELECTED_TOUR_DS2_IMPLEMENTED_CODE_GREEN_AWAITING_TARGETED_QA",
+    "sha": "4246ba42a927602227a4eac68a3cba1d04a4cf1c"
   },
   "blocked": [
     {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe when live access is available; do not classify DNS/runner failure as a product defect."},
-    {"scope":"user-facing redesign visual gates","type":"external_visual_qa","reason":"PRs #703, #704 and #706 require targeted 375/1440 browser evidence before merge and that evidence is not currently available through this execution path.","action":"Keep green code and continue independent redesign lanes; merge only after targeted visual evidence."},
+    {"scope":"user-facing redesign visual gates","type":"external_visual_qa","reason":"PRs #703, #704, #706 and #713 require targeted browser/visual evidence before merge; the isolated Search 2.0 preview currently deploys feature/search-core rather than individual PR branches.","action":"Keep green code and continue independent approved redesign lanes; merge only after targeted visual evidence."},
     {"scope":"bulk integration from main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core with unrelated work mixed in.","action":"Do not bulk merge/cherry-pick main; port only narrowly justified changes."}
   ]
 }
