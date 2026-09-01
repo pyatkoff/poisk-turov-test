@@ -40,6 +40,17 @@ jobs:
             grep -Eq "href=['\"]\/poisk-turov\/\?country=${country_id}['\"]" "$out"
             echo "/country/$slug/ -> /poisk-turov/?country=$country_id OK"
           }
+          check_resort_handoff(){
+            local slug="$1" region_id="$2" out
+            out="$(page_out "/country/turkey/$slug/")"
+            grep -Fq "href=\"/poisk-turov/?country=4&amp;region=${region_id}\"" "$out"
+            if grep -Fq 'sp-offer-snapshot' "$out"; then
+              grep -Fq 'Посмотреть туры' "$out"
+              grep -Fq "country=4&amp;region=${region_id}" "$out"
+              echo "/country/turkey/$slug/ fresh offer block OK"
+            fi
+            echo "/country/turkey/$slug/ -> country=4 region=$region_id OK"
+          }
           check_page '/contacts/' 'Свяжитесь с AnyTour' 'https://anytoour.ru/contacts/'
           check_page '/how-to-buy/' 'Как купить тур онлайн' 'https://anytoour.ru/how-to-buy/'
           check_page '/hot/' 'Горящие туры из живых поисков' 'https://anytoour.ru/hot/'
@@ -50,9 +61,19 @@ jobs:
           check_page '/country/oae/' 'Туры в ОАЭ' 'https://anytoour.ru/country/oae/'
           check_page '/country/tailand/' 'Туры в Таиланд' 'https://anytoour.ru/country/tailand/'
           check_page '/country/russia/' 'Туры в Россию' 'https://anytoour.ru/country/russia/'
+          check_page '/country/turkey/kemer/' 'Туры в Кемер' 'https://anytoour.ru/country/turkey/kemer/'
+          check_page '/country/turkey/antalya/' 'Туры в Анталью' 'https://anytoour.ru/country/turkey/antalya/'
+          check_page '/country/turkey/side/' 'Туры в Сиде' 'https://anytoour.ru/country/turkey/side/'
+          check_page '/country/turkey/belek/' 'Туры в Белек' 'https://anytoour.ru/country/turkey/belek/'
+          check_page '/country/turkey/alanya/' 'Туры в Аланью' 'https://anytoour.ru/country/turkey/alanya/'
           check_country_handoff turkey 4
           check_country_handoff egypt 1
           check_country_handoff oae 9
           check_country_handoff tailand 2
           check_country_handoff russia 47
+          check_resort_handoff kemer 22
+          check_resort_handoff antalya 20
+          check_resort_handoff side 23
+          check_resort_handoff belek 21
+          check_resort_handoff alanya 19
           echo 'ANYTOOUR_MIGRATED_CONTENT_OK'
