@@ -1,0 +1,109 @@
+name: Deploy Search 3 preview
+
+on:
+  push:
+    branches: [feature/search3-preview]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/deploy-search3-preview.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-search3-preview
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate preview release
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/index.php >/dev/null
+          php -l v2/api-v2.php >/dev/null
+          php -l v2/bundle-v1.php >/dev/null
+          php -l v2/bundle-manifest-v1.php >/dev/null
+          grep -Fq "'ds2-search.css'" v2/bundle-manifest-v1.php
+          grep -Fq "'search-redesign-v2.js'" v2/bundle-manifest-v1.php
+          node --check v2/search-redesign-v2.js
+          echo "SEARCH3_PREVIEW_VALIDATE_OK"
+
+      - name: Prepare SSH key
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY"
+          path="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$path"; else printf '%s' "$KEY" | base64 --decode > "$path"; fi
+          chmod 600 "$path"
+          ssh-keygen -y -f "$path" >/dev/null
+
+      - name: Deploy isolated Search 3 preview
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST" && test -n "$USER"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER@$HOST"
+          remote_home="$(ssh "${opts[@]}" "$remote" 'printf %s "$HOME"')"
+          root="$remote_home/www/anytoour.ru/_preview/search3"
+
+          ssh "${opts[@]}" "$remote" "rm -rf '$root' && mkdir -p '$root/poisk-turov'"
+          scp "${opts[@]}" -r v2/. "$remote:$root/"
+
+          ssh "${opts[@]}" "$remote" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          root="$HOME/www/anytoour.ru/_preview/search3"
+          prod="$HOME/www/anytoour.ru"
+          test -s "$prod/config.php"
+          cp "$prod/config.php" "$root/config.php"
+          chmod 600 "$root/config.php"
+          cp "$root/index.php" "$root/search-page-v3.php"
+
+          cat > "$root/poisk-turov/index.php" <<'PHP'
+          <?php
+          header('X-Robots-Tag: noindex, nofollow', true);
+          if (!defined('V2_FORCE_SEARCH_PAGE')) define('V2_FORCE_SEARCH_PAGE', true);
+          if (!defined('V2_CANONICAL_PATH')) define('V2_CANONICAL_PATH', '/_preview/search3/poisk-turov/');
+          if (!defined('V2_PUBLIC_BASE_PATH')) define('V2_PUBLIC_BASE_PATH', '/_preview/search3');
+          require dirname(__DIR__) . '/search-page-v3.php';
+          PHP
+
+          cat > "$root/lead-adapter-v2.php" <<'PHP'
+          <?php
+          header('Content-Type: application/json; charset=utf-8');
+          header('X-Robots-Tag: noindex, nofollow', true);
+          http_response_code(403);
+          echo json_encode(['ok'=>false,'preview'=>true,'message'=>'Lead submission is disabled on Search 3 preview'], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
+          PHP
+
+          for f in index.php search-page-v3.php poisk-turov/index.php assets.php api-v2.php bundle-v1.php bundle-manifest-v1.php lead-adapter-v2.php; do php -l "$root/$f" >/dev/null; done
+          echo "SEARCH3_PREVIEW_FILES_READY"
+          REMOTE
+
+      - name: Verify public preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://anytoour.ru/_preview/search3'
+          code="$(curl -sSL -o /tmp/search3-preview.html -w '%{http_code}' --max-time 45 "$base/poisk-turov/")"
+          echo "PREVIEW_HTTP=$code"
+          test "$code" = "200"
+          grep -q '/_preview/search3/bundle-v1.php?type=css' /tmp/search3-preview.html || { echo 'MISSING_SEARCH3_CSS_BUNDLE'; exit 21; }
+          grep -q '/_preview/search3/api-v2.php' /tmp/search3-preview.html || { echo 'MISSING_PREVIEW_API_URL'; exit 22; }
+          health_code="$(curl -sSL -o /tmp/search3-health.json -w '%{http_code}' --max-time 45 "$base/api-v2.php?action=health")"
+          echo "HEALTH_HTTP=$health_code"
+          test "$health_code" = "200"
+          grep -q 'tourvisor-direct' /tmp/search3-health.json || { echo 'HEALTH_MARKER_MISSING'; exit 23; }
+          headers="$(curl -sSI --max-time 30 "$base/poisk-turov/")"
+          printf '%s\n' "$headers" | grep -qi 'x-robots-tag: noindex, nofollow' || { echo 'NOINDEX_HEADER_MISSING'; exit 24; }
+          echo "SEARCH3_PREVIEW_OK $base/poisk-turov/"
