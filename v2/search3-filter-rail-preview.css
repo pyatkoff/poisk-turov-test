@@ -1,0 +1,12 @@
+/* Search 3 isolated decision-oriented results filters. */
+body.search3-preview .results-filter-rail{width:272px!important;padding:18px!important;border-radius:18px!important}
+body.search3-preview .results-layout{grid-template-columns:272px minmax(0,1fr)!important;gap:24px!important}
+body.search3-preview .search3-filter-note{display:block!important;margin-top:3px!important;color:var(--at-muted)!important;font-size:9px!important;font-weight:700!important}
+body.search3-preview .search3-filter-scenarios{display:grid!important;grid-template-columns:1fr!important;gap:7px!important;margin:0 0 16px!important;padding:0 0 16px!important;border-bottom:1px solid var(--at-line-soft)!important}
+body.search3-preview .search3-filter-scenarios button{display:flex!important;align-items:center!important;justify-content:flex-start!important;min-height:38px!important;padding:0 11px!important;border:1px solid var(--at-line)!important;border-radius:10px!important;background:var(--at-soft)!important;color:var(--at-text)!important;font:800 10px/1 var(--at-font)!important;cursor:pointer!important}
+body.search3-preview .search3-filter-scenarios button:hover{border-color:var(--at-line-strong)!important;background:var(--at-soft-blue)!important}
+body.search3-preview .search3-filter-select{width:100%!important;min-height:42px!important;padding:0 32px 0 10px!important;border:1px solid var(--at-line)!important;border-radius:10px!important;background:#fff!important;color:var(--at-ink)!important;font:750 11px/1 var(--at-font)!important}
+body.search3-preview .results-filter-rail input[type=radio]{appearance:none!important;display:grid!important;place-items:center!important;width:17px!important;height:17px!important;flex:0 0 17px!important;margin:0!important;border:1.5px solid var(--at-line-strong)!important;border-radius:50%!important;background:#fff!important}
+body.search3-preview .results-filter-rail input[type=radio]:checked{border:5px solid var(--at-brand)!important}
+body.search3-preview .results-filter-rail .filter-range>span,body.search3-preview .results-filter-rail legend{font-size:12px!important;font-weight:900!important}
+@media(max-width:999px){body.search3-preview .results-layout{display:block!important}.search3-preview .results-filter-rail{display:none!important}}
