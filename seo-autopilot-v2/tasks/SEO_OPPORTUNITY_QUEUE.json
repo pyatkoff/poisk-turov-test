@@ -1,0 +1,16 @@
+{
+  "id": "SEO_OPPORTUNITY_QUEUE",
+  "title": "Prioritize SEO work by impact and evidence",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "score_dimensions": [
+    "indexation severity",
+    "affected URL count",
+    "search-intent value",
+    "commercial relevance",
+    "confidence of evidence",
+    "implementation risk",
+    "reversibility"
+  ],
+  "priority_rule": "Fix accidental loss/duplication and high-value existing surfaces before generating new landing volume."
+}
