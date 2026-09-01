@@ -37,17 +37,17 @@ jobs:
             const headSha = run ? run.head_sha : context.sha;
             const runUrl = run ? run.html_url : `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
             let signal = 'CI_INFORMATIONAL';
-            let next = 'Continue the highest-priority safe task from AUTOPILOT_STATE.json.';
+            let next = 'Use autopilot-v2/controller.py status and continue the highest-priority ready task contract.';
             if (conclusion === 'success') {
               signal = 'CI_SUCCESS';
-              next = 'Continue immediately; do not wait for redundant checks.';
+              next = 'Continue immediately from controller status; do not wait for redundant checks.';
             } else if (['failure','timed_out','cancelled','action_required'].includes(conclusion)) {
               signal = 'CI_NEEDS_ATTENTION';
               next = 'Inspect this single failed gate first; do not launch the retired full matrix.';
             }
             const body = [
               '# Autopilot runtime state', '',
-              '> Lean CI handoff for Autopilot 1.x and 2.0.', '',
+              '> Lean CI handoff for Autopilot and Autopilot 2.0.', '',
               `- Updated: ${new Date().toISOString()}`,
               `- Workflow: **${workflow}**`,
               `- Conclusion: **${conclusion}**`,
@@ -56,8 +56,10 @@ jobs:
               `- Run ID: \`${runId}\``,
               `- Run: ${runUrl}`, '',
               '## Recommended next action', next, '',
+              '## Execution truth',
+              '`autopilot-v2/tasks/*.json` + `autopilot-v2/outcomes/*.json`; derive live status with `python3 autopilot-v2/controller.py status`.', '',
               '## CI policy',
-              'Normal development uses Fast CI only. Production uses Deploy + Production smoke. Deep visual/live audits are no longer automatic gates.'
+              'Normal development uses Fast CI only. Production uses Deploy + Production smoke. Deep visual/live audits are not automatic gates.'
             ].join('\n');
             const found = await github.rest.issues.listForRepo({owner, repo, state:'open', per_page:100});
             const issue = found.data.find(i => i.title === title && !i.pull_request);
