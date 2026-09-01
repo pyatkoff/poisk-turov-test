@@ -58,6 +58,13 @@ function v2_seo_content_pilot_maldives(): array
             'related_title' => 'Туры в отели на Мальдивах',
             'related' => [
                 ['label' => 'Туры в Kurumba Maldives', 'href' => '/country/maldives/hotel/kurumba-maldives-2461/'],
+                ['label' => 'Туры в Kandima Maldives', 'href' => '/country/maldives/hotel/kandima-maldives-49820/'],
+                ['label' => 'Туры в Sheraton Maldives Full Moon Resort & Spa', 'href' => '/country/maldives/hotel/sheraton-maldives-full-moon-resort-spa-2479/'],
+                ['label' => 'Туры в Velassaru Maldives', 'href' => '/country/maldives/hotel/velassaru-maldives-2487/'],
+                ['label' => 'Туры в Hard Rock Hotel Maldives', 'href' => '/country/maldives/hotel/hard-rock-hotel-maldives-66197/'],
+                ['label' => 'Туры в SAii Lagoon Maldives', 'href' => '/country/maldives/hotel/saii-lagoon-maldives-65938/'],
+                ['label' => 'Туры в LUX* South Ari Atoll Resorts & Villas', 'href' => '/country/maldives/hotel/lux-south-ari-atoll-resorts-villas-12126/'],
+                ['label' => 'Туры в Villa Park Sun Island', 'href' => '/country/maldives/hotel/villa-park-sun-island-2482/'],
             ],
             'internal_links' => [
                 ['title' => 'Подбор тура', 'links' => [
@@ -70,7 +77,7 @@ function v2_seo_content_pilot_maldives(): array
             'Evergreen editorial copy only.',
             'Tourvisor countryId=8 was verified against the synchronized production catalog on 2026-09-01.',
             'Resort/region IDs remain unbound until separately verified.',
-            'Kurumba Maldives hotelId=2461 is verified against the synchronized production catalog and has a fresh hotel offer snapshot.',
+            'All linked hotel-tour routes use hotel IDs/slugs verified against fresh production hotel snapshot evidence; volatile offer data remains snapshot-driven.',
             'Review status does not enable indexation or sitemap emission.',
         ],
     ];
