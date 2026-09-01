@@ -1,0 +1,12 @@
+{
+  "id": "SEO_ROLLBACK",
+  "title": "Keep SEO releases reversible",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "rules": [
+    "narrow PRs should be revertable independently",
+    "MEDIUM/HIGH indexation or URL changes document rollback behavior",
+    "avoid mixing content, routing, redirects and product runtime in one SEO release",
+    "record previous canonical/indexation behavior for migrations"
+  ]
+}
