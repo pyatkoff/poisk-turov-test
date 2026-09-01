@@ -1,0 +1,11 @@
+{
+  "id": "SEO_CHANGE_BUDGET",
+  "title": "Limit simultaneous SEO variables",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rules": [
+    "avoid changing URL, canonical, metadata, content architecture and redirects for a family in one unbounded release",
+    "prefer one contract class per SAFE PR",
+    "MEDIUM releases may bundle dependent changes only when the migration plan explains why they are inseparable"
+  ]
+}
