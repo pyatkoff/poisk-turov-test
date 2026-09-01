@@ -1,0 +1,15 @@
+{
+  "id": "SEO_INTENT_CONTENT_BRIEF",
+  "title": "Generate content briefs from intent and factual data before writing templates",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "brief": [
+    "primary intent",
+    "traveler questions/decisions",
+    "available factual data",
+    "useful internal destinations",
+    "search handoff",
+    "claims to avoid",
+    "unique value versus neighboring page families"
+  ]
+}
