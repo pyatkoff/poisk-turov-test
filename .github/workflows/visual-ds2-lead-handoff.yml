@@ -1,0 +1,77 @@
+name: Visual DS2 lead handoff
+
+on:
+  pull_request:
+    branches: [feature/search-core]
+    paths:
+      - 'v2/checkout-experience-v1.css'
+      - 'v2/checkout-experience-v1.js'
+      - 'v2/lead-form-guard-v1.js'
+      - '.github/workflows/visual-ds2-lead-handoff.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: visual-ds2-lead-handoff-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lead-handoff-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Build local lead fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .visual-lead artifacts-ds2-lead-handoff
+          cat > .visual-lead/index.html <<'HTML'
+          <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <link rel="stylesheet" href="/v2/design-system-v2.css"><link rel="stylesheet" href="/v2/checkout-experience-v1.css">
+          <style>*,*::before,*::after{box-sizing:border-box}body{margin:0;background:var(--at-page);font-family:Arial,sans-serif}.fixture{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)));margin:24px auto}.selected-tour{padding:20px}.selected-head{display:grid;grid-template-columns:1fr auto;gap:16px}.selected-price{padding:12px}.lead-form{display:grid;gap:12px;padding:20px}.lead-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.lead-form label{display:grid;gap:6px}.lead-form input,.lead-form textarea{width:100%;min-width:0;padding:10px}.primary,.secondary{min-height:44px;padding:0 16px}.v2-site-community__socials{display:flex;gap:8px}@media(max-width:560px){.selected-head,.lead-fields{grid-template-columns:1fr}}</style></head><body>
+          <main class="fixture"><section id="selectedTour" class="selected-tour"><button class="back-results" type="button">← Вернуться</button><div class="selected-head"><div><h2>AnyTour Coast Resort</h2><p>Турция · Анталья</p></div><div class="selected-price"><small>Стоимость тура</small>142 000 ₽</div></div><div class="facts"><div><span>Перелёт</span><b>Чартер</b></div><div><span>Топливный сбор</span><b>6 000 ₽</b></div></div><div class="tour-flights"><div class="section-heading"><strong>Авиарейсы</strong><span>Выберите рейс</span></div><div class="flight-variant is-selected"><label class="flight-choice"><input type="radio" checked><span>Вариант 1</span><b>142 000 ₽</b></label></div></div><form class="lead-form"><div class="section-heading"><strong>Оставить заявку</strong><span>Менеджер получит выбранный тур</span></div><div class="lead-fields"><label>Имя<input name="name" value="Тест"></label><label>Телефон<input name="phone" value="+7 999 123-45-67"></label></div><label>Комментарий<textarea name="comment">Тест visual gate</textarea></label><label class="lead-consent"><input type="checkbox" checked>Согласен</label><p class="lead-message"></p><button type="submit" class="primary">Отправить заявку</button></form></section></main>
+          <section class="v2-site-community"><div class="v2-site-community__socials"><a href="https://max.ru/anytour">MAX</a><a href="https://t.me/+gGloLUt4d8s3NDcy">Telegram</a><a href="https://vk.com/anytour_online">VK</a></div></section><div id="results"></div>
+          <script src="/v2/checkout-experience-v1.js"></script><script src="/v2/lead-form-guard-v1.js"></script></body></html>
+          HTML
+      - name: Audit lead states at 375 and 1440
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4174 --bind 127.0.0.1 >/tmp/ds2-lead-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          cat > ds2-lead-visual.cjs <<'JS'
+          const {chromium}=require('playwright'),fs=require('fs');
+          const views=[['mobile-375',375,812],['desktop-1440',1440,1000]];
+          const base='http://127.0.0.1:4174/.visual-lead/index.html';
+          const leadSource=fs.readFileSync('v2/lead-form-guard-v1.js','utf8');
+          const expectHandoff=leadSource.includes('lead-success-handoff')&&leadSource.includes('existingMessengerHref');
+          (async()=>{const browser=await chromium.launch({headless:true});let failed=false,report=[];
+          for(const [name,width,height] of views){const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(String(e)));const response=await page.goto(base,{waitUntil:'networkidle',timeout:30000});
+          const initial=await page.evaluate(()=>{const root=document.getElementById('selectedTour'),tour={id:'fixture',isCharter:true,fuelCharge:6000};dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour}}));const form=root.querySelector('.lead-form');return{guard:form.dataset.v2LeadGuard||'',handoff:form.querySelectorAll('.lead-success-handoff').length,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};});
+          const sending=await page.evaluate(()=>{dispatchEvent(new CustomEvent('v2:lead-started'));const form=document.querySelector('.lead-form'),msg=form.querySelector('.lead-message'),btn=form.querySelector('button[type="submit"]');return{state:msg?.dataset.state||'',message:msg?.textContent||'',button:btn?.textContent||'',handoff:form.querySelectorAll('.lead-success-handoff').length};});
+          const retry=await page.evaluate(()=>{dispatchEvent(new CustomEvent('v2:lead-error'));const form=document.querySelector('.lead-form'),msg=form.querySelector('.lead-message'),btn=form.querySelector('button[type="submit"]');return{state:msg?.dataset.state||'',message:msg?.textContent||'',button:btn?.textContent||'',handoff:form.querySelectorAll('.lead-success-handoff').length};});
+          const success=await page.evaluate(()=>{dispatchEvent(new CustomEvent('v2:lead-success',{detail:{leadId:12345}}));const form=document.querySelector('.lead-form'),panel=form.querySelector('.lead-success-panel'),links=[...form.querySelectorAll('.lead-success-messenger')].map(a=>({text:a.textContent.trim(),href:a.getAttribute('href')}));return{panel:!!panel,handoff:form.querySelectorAll('.lead-success-handoff').length,links,submitHidden:!!form.querySelector('button[type="submit"]')?.hidden,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};});
+          await page.screenshot({path:`artifacts-ds2-lead-handoff/${name}.png`,fullPage:true});
+          const hrefs=success.links.map(x=>x.href);const piiLeak=hrefs.some(h=>/[+]7|999|123-45-67|Тест visual gate/i.test(String(h||'')));const handoffBad=expectHandoff&&(success.handoff!==1||success.links.length!==2||!hrefs.includes('https://max.ru/anytour')||!hrefs.includes('https://t.me/+gGloLUt4d8s3NDcy')||piiLeak);const baselineHandoffBad=!expectHandoff&&(success.handoff!==0||success.links.length!==0);const bad=response?.status()!==200||errors.length||initial.guard!=='1'||initial.handoff!==0||initial.overflow||sending.state!=='sending'||!sending.message.includes('Отправляем')||sending.handoff!==0||retry.state!=='error'||!retry.message.includes('попробуйте ещё раз')||retry.button!=='Повторить отправку'||retry.handoff!==0||!success.panel||handoffBad||baselineHandoffBad||!success.submitHidden||success.overflow;
+          report.push({name,width,http:response?.status()||0,expectHandoff,errors,initial,sending,retry,success,piiLeak,bad});if(bad)failed=true;console.log(`LEAD_DS2 ${name} http=${response?.status()} expectHandoff=${expectHandoff} guard=${initial.guard} states=${sending.state}/${retry.state} handoff=${initial.handoff}/${sending.handoff}/${retry.handoff}/${success.handoff} links=${success.links.length} pii=${piiLeak} overflow=${initial.overflow}/${success.overflow} bad=${bad}`);await context.close();}
+          fs.writeFileSync('artifacts-ds2-lead-handoff/report.json',JSON.stringify(report,null,2));await browser.close();if(failed)process.exit(1);})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node ds2-lead-visual.cjs
+      - name: Upload lead visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ds2-lead-handoff-${{ github.event.pull_request.number || github.run_id }}
+          path: artifacts-ds2-lead-handoff/
+          retention-days: 14
