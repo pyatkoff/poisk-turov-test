@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "task": "REDESIGN_HOTEL_TOUR_SELECTION",
+  "status": "accepted",
+  "attempts": 1,
+  "changed_files": [
+    "v2/hotel-details-design.css",
+    "v2/room-details.css"
+  ],
+  "verification": {
+    "implementation_pull_request": "#736 merged into feature/search-core",
+    "fast_ci": "success",
+    "security_guard": "success",
+    "browser_visual": "Visual DS2 hotel room gate green at 375/430/768/1024/1440 for hotel and room detail containment, facts, galleries and 42px actions",
+    "browser_behavior": "#737 PR-safe Playwright gate green for hotel detail open/render, room detail open, current-tour replacement and stale old-room response protection",
+    "tour_selection_contract": "Result-level tour rows remain owned by the separately accepted Search 2.0 lane; selected-tour/flight consistency remains covered by the accepted Search 2.0 and selected-tour gates. No Tourvisor identifiers, pricing semantics, Metrika, lead transport or logo changes."
+  },
+  "failure_class": null,
+  "remaining_risk": "Accepted in feature/search-core only. Production remains unchanged until the narrow dependency-safe release to main is prepared and normal post-deploy verification is green."
+}
