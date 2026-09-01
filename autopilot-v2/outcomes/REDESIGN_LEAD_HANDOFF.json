@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "task": "REDESIGN_LEAD_HANDOFF",
+  "status": "accepted",
+  "attempts": 1,
+  "changed_files": [
+    "v2/lead-form-guard-v1.js"
+  ],
+  "verification": {
+    "pull_request": "#723 merged into feature/search-core",
+    "fast_ci": "success",
+    "security_guard": "success",
+    "browser_visual": "Dedicated PR-safe Playwright gate #724 is green at 375 and 1440 for sending, error/retry and success states with no horizontal overflow",
+    "messenger_handoff": "MAX and Telegram continuation appears only after v2:lead-success, reuses the existing verified community-footer destinations and exposes no test phone/PII in URLs",
+    "protected_contracts": "external lead persistence/transport and field mapping, Metrika, Tourvisor, pricing and logo unchanged"
+  },
+  "failure_class": null,
+  "remaining_risk": "Accepted in feature/search-core only. Production remains unchanged until a narrow release path to main is proven safe and post-deploy verification is green."
+}
