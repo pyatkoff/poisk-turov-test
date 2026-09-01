@@ -1,15 +1,9 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-08-29T08:05:00+02:00",
-  "mode": "pretraffic_9_score_product_development",
-  "phase": "Core tour-search product remains 9.0 across all eleven core areas. Standalone anytoour.ru remains in production stabilization. Progressive result refresh, near-term empty-search date recovery, and completed-search/final-result-fetch recovery are fixed and production-verified. SEO/site foundation remains 8.8 and indexing/publication remains deferred.",
-  "release_gate": {
-    "minimum_score_each_area": 9.0,
-    "traffic_required": false,
-    "traffic_analysis_enabled": false,
-    "areas": ["search_ux","waiting_progress_recovery","results_comparison","selected_tour","flights_price","lead_ux","mobile_ux","tablet_desktop_ux","brand_trust","visual_quality","product_differentiation","seo_site_foundation"]
-  },
+  "updated_at": "2026-09-01T15:15:00+03:00",
+  "mode": "approved_ds2_redesign_implementation",
+  "phase": "The full agreed AnyTour Design System 2.0 redesign is approved and active in isolated implementation lanes. Search 2.0 preview is green. Header/loading/hotel-selection/selected-tour/footer lanes are code-green or implemented but remain gated by task-required browser/visual QA before merge and production release. Shipped functional search baseline remains protected; public-site visual score remains 7.2 and SEO foundation remains 8.8.",
   "scores": {
     "search_ux": 9.0,
     "waiting_progress_recovery": 9.0,
@@ -22,103 +16,58 @@
     "brand_trust": 9.0,
     "visual_quality": 9.0,
     "product_differentiation": 9.0,
-    "seo_site_foundation": 8.8
+    "seo_site_foundation": 8.8,
+    "public_site_visual": 7.2
   },
   "current_task": {
-    "id": "ANYTOOUR_STANDALONE_STABILIZATION",
-    "category": "PRODUCTION_UX_DATA",
-    "title": "Stabilize standalone search and migrated content routes",
-    "status": "ACTIVE",
-    "objective": "Keep homepage/search/content migration production-safe across data handoff, full tour-search journey, navigation, responsive layout, footer/legal shell and local-to-search route contracts while preserving legacy V2 and all external contracts.",
-    "progress": "PR #217 keeps healthy status polling alive across transient progressive search_results failures. PR #219 prevents empty-search date widening from placing near-term departure in the past. PR #221 fixes completed-search final-result recovery and completed continue-search result recovery: both now retry only search_results against the existing searchId and do not unnecessarily restart search_start/search_continue. #221 merged as 25e628777e2157d9859b01fdb6ade012a92e2049. V2 deploy 33237509401 and standalone deploy 33237509375 both passed production verification and live search smoke. No Tourvisor request, Metrika/goals, pricing, or external lead contract changed.",
-    "next_action": "Re-audit results decision-support/state transitions on mobile/tablet/desktop, then browser-level selected-tour room/flight/price/lead recovery while preserving the external lead contract."
+    "id": "REDESIGN_SELECTED_TOUR",
+    "category": "VISUAL_UX",
+    "title": "Verify approved AnyTour DS2 selected-tour hierarchy",
+    "status": "IMPLEMENTED_AWAITING_TARGETED_QA",
+    "objective": "Ship the approved staged selected-tour → flight → lead presentation while preserving room/flight state, Tourvisor identifiers, pricing/fuel semantics and the external lead contract.",
+    "progress": "PR #712 implements the approved Ваш тур → Выбор рейса → Заявка менеджеру hierarchy. A review-found private palette was removed in favor of canonical DS2 tokens at 183010fce6250bbe27b887323190b4fd075bf383; Fast CI and Security guard are green. PR #715 footer/community received the same DS2 token convergence at 7f25aec09247fba85e8dbb8d65ecf8760c0668f2 and is also code-green. PR #716 repaired lead-handoff ownership without exposing backend lead transport.",
+    "next_action": "Collect task-required 375/1440 visual and selected-tour room/flight/price browser evidence for open redesign PRs. Merge/deploy only evidence-green lanes, then implement the approved lead-handoff UI."
   },
   "queue": [
-    {"id":"ROOT_STABILIZATION","status":"ACTIVE_HIGHEST_PRIORITY","title":"anytoour.ru standalone production stabilization"},
-    {"id":"BR1","status":"SHIPPED_MAINTAIN_9","title":"Branded first impression"},
-    {"id":"BR2","status":"SHIPPED_MAINTAIN_9","title":"Trust architecture"},
-    {"id":"BR3","status":"SHIPPED_MAINTAIN_9","title":"Product-wide visual identity"},
-    {"id":"BR4","status":"ACTIVE_8_8_PRODUCT_BOUNDARY","title":"SEO-ready brand shell and site foundation"},
-    {"id":"BR5","status":"SHIPPED_MAINTAIN","title":"Social + app footer/community pre-footer"},
-    {"id":"PX1","status":"SHIPPED_MAINTAIN_9","title":"Decision support in results"},
-    {"id":"PX2","status":"SHIPPED_MAINTAIN_9","title":"Flexible search and recovery"},
-    {"id":"PX3","status":"SHIPPED_MAINTAIN_9","title":"Price confidence"},
-    {"id":"PX4","status":"SHIPPED_MAINTAIN_9","title":"Flight decision quality"},
-    {"id":"PX5","status":"SHIPPED_MAINTAIN_9","title":"Hotel choice depth"},
-    {"id":"PX6","status":"SHIPPED_MAINTAIN_9","title":"Save compare resume"},
-    {"id":"PX7","status":"RESEARCH","title":"Price watch and return intent"}
+    {"id":"REDESIGN_SEARCH_RESULTS","status":"IMPLEMENTED_AWAITING_TARGETED_QA"},
+    {"id":"REDESIGN_HEADER_SHELL","status":"READY_AWAITING_VISUAL_QA","pr":703},
+    {"id":"REDESIGN_LOADING_RECOVERY","status":"READY_AWAITING_VISUAL_QA","pr":704},
+    {"id":"REDESIGN_HOTEL_TOUR_SELECTION","status":"READY_AWAITING_VISUAL_QA","pr":706},
+    {"id":"REDESIGN_SELECTED_TOUR","status":"IMPLEMENTED_AWAITING_TARGETED_QA","pr":712,"head_sha":"183010fce6250bbe27b887323190b4fd075bf383"},
+    {"id":"REDESIGN_LEAD_HANDOFF","status":"CONTRACT_REPAIRED_QUEUED_AFTER_SELECTED_TOUR","contract_pr":716,"contract_merge_sha":"70f66b87b6755f8148e27994d188ff105d0fae99"},
+    {"id":"REDESIGN_FOOTER_COMMUNITY","status":"IMPLEMENTED_AWAITING_VISUAL_QA","pr":715,"head_sha":"7f25aec09247fba85e8dbb8d65ecf8760c0668f2"},
+    {"id":"FULL_SEARCH_UX_REAUDIT","status":"QUEUED"}
   ],
-  "seo_foundation": {
-    "score": 8.8,
-    "standalone_root_noindex": true,
-    "legacy_route_noindex": true,
-    "semantic_shell": true,
-    "server_rendered_primitives": true,
-    "page_contract": true,
-    "page_types": ["country","resort","seasonal"],
-    "editorial_h1_required": true,
-    "stable_internal_links_only": true,
-    "curated_registry": true,
-    "publishability_gate": true,
-    "registered_relationship_graph": true,
-    "controlled_editorial_content_catalog": true,
-    "publication_review_manifest": true,
-    "publication_manifest_side_effect_free": true,
-    "next_missing_layers": ["deliberate_public_indexing_contract","reviewed_real_content_inventory","sitemap_publication_policy","structured_data_after_indexable_pages"]
-  },
   "production_baseline": {
-    "last_verified_legacy_commit": "25e628777e2157d9859b01fdb6ade012a92e2049",
-    "legacy_deploy_v2": 33237509401,
-    "legacy_status": "PRODUCTION_GREEN_FINAL_RESULTS_AND_CONTINUE_RECOVERY_LIVE_SMOKE_GREEN",
     "standalone_target": "https://anytoour.ru/",
     "standalone_search": "https://anytoour.ru/poisk-turov/",
-    "last_verified_standalone_commit": "25e628777e2157d9859b01fdb6ade012a92e2049",
-    "standalone_deploy_run": 33237509375,
-    "standalone_user_journey_run": 33234379100,
-    "standalone_content_visual_run": 33234379091,
-    "search_recovery_visual_run": 33237424928,
-    "standalone_content_guard_last_result": "PRODUCTION_GREEN_PRIMARY_CTA_CONTRAST_FOCUS_RESPONSIVE",
-    "standalone_status": "DEPLOY_GREEN_PUBLIC_PAGES_LEAD_BRIDGE_SEARCH_SMOKE_GREEN"
+    "status": "SHIPPED_BASELINE_UNCHANGED_BY_OPEN_REDESIGN_PRS",
+    "search2_preview_status": "GREEN_HTTP_HEALTH_CSS_NOINDEX_2026_09_01",
+    "redesign_release_status": "NOT_DEPLOYED_AWAITING_TARGETED_QA"
   },
-  "recent_material_fixes": [
-    {"pr":221,"scope":"completed_search_final_results_recovery","result":"Completed main search and completed continue-search now recover transient final search_results failures by re-fetching results against the existing searchId, without repeating search_start or search_continue; production deploys are green."},
-    {"pr":219,"scope":"empty_search_date_recovery_clamp","result":"Date widening now clamps departure start to local today for near-term searches; five-width guard covers today/tomorrow recovery and production is verified."},
-    {"pr":217,"scope":"progressive_results_recovery","result":"Transient intermediate search_results refresh errors no longer abort healthy status polling; next cycle retries results while completed-search result loading stays strict."},
-    {"pr":215,"scope":"primary_search_cta_contrast","result":"Tablet/desktop search submit moved from inaccessible #FF510C/white 3.26:1 to accessible #D83D00/white and is production-verified."},
-    {"pr":214,"scope":"responsive_search_cta_guard","result":"Production visual audit validates whichever search submit is actually visible: inline on larger widths or sticky mobile CTA."},
-    {"pr":212,"scope":"standalone_primary_cta_guard","result":"Standalone routes require visible primary CTA, >=4.5:1 text contrast and visible keyboard focus across responsive widths."},
-    {"pr":211,"scope":"live_journey_optional_room_enrichment","result":"Valid empty room enrichment no longer falsely fails the production journey; run 33233807572 passed."},
-    {"pr":210,"scope":"standalone_shared_shell_styles","result":"Trusted shared-shell styling is present on standalone content routes."},
-    {"pr":208,"scope":"primary_cta_accessibility","result":"Primary standalone content CTAs meet readable contrast and visible keyboard focus."},
-    {"pr":206,"scope":"migrated_content_guard_self_validation","result":"Production live-content validation confirms migrated routes and country search handoffs."},
-    {"pr":199,"scope":"country_search_handoff","result":"Turkey/Egypt/UAE/Thailand/Russia local pages pass live-catalog country IDs 4/1/9/2/47 into /poisk-turov/."},
-    {"pr":196,"scope":"homepage_exact_nights_handoff","result":"The single homepage nights field submits an exact duration instead of silently widening the stay."},
-    {"pr":180,"scope":"single_footer_contract","result":"V2/standalone keep one canonical full footer; social/app destinations remain a compact community pre-footer."}
+  "blocked": [
+    {"scope":"redesign targeted visual/browser QA","reason":"PRs #703, #704, #706, #712 and #715 require task-specific browser/visual evidence before merge; the current isolated preview deploys feature/search-core rather than individual PR heads."}
   ],
-  "blocked": [],
   "deferred": [
-    {"scope":"traffic/conversion analysis","reason":"Explicitly disabled until owner launches traffic."},
-    {"scope":"public SEO indexing/sitemap promotion","reason":"Live standalone routes do not themselves authorize indexing; requires a deliberate publication contract and reviewed content."},
-    {"scope":"structured data expansion","reason":"Add only after real indexable public page types and visible reviewed content exist."},
-    {"scope":"PX7 price watch / proactive return intent","reason":"May require persistence/contact/product-contract decisions."},
-    {"scope":"global nginx/server configuration","reason":"Outside allowed V2/repository write scope."}
+    {"scope":"PR #254","reason":"Deferred unless separate DB/platform architecture is freshly proven safe."},
+    {"scope":"technical_refactor","reason":"Deferred until explicit owner direction."},
+    {"scope":"unresolved legal/payment content","reason":"Do not migrate until resolved."},
+    {"scope":"traffic/conversion analysis","reason":"Disabled until owner launches traffic."},
+    {"scope":"public SEO indexing/sitemap promotion","reason":"Requires deliberate publication contract and reviewed content."}
   ],
   "protected": {
     "other_projects": "DO_NOT_MODIFY",
-    "global_site_assets_and_server_config": "DO_NOT_MODIFY_OUTSIDE_ALLOWED_V2_SCOPE",
     "logo": "DO_NOT_CHANGE",
+    "design_system": "ANYTOUR_DESIGN_SYSTEM_2_ONLY",
     "metrika_configuration": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
     "metrika_goals": "READ_ONLY_WITHOUT_EXPLICIT_APPROVAL",
+    "tourvisor_contract": "PRESERVE_DURING_REDESIGN",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > weakest_sub9_score > brand_product_roadmap > cosmetic_refactor",
-    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external",
-    "on_ci_success": "continue_to_next_safe_material_task",
-    "on_blocker": "record_blocker_and_continue_independent_safe_work",
-    "on_visual_change": "validate_required_viewports_before_advancing",
-    "on_no_traffic": "ignore_as_expected_and continue_product_development",
-    "on_score_below_9": "prioritize_weakest_material_area unless remaining material work is explicitly product-blocked, then continue independent audits",
-    "on_score_at_least_9": "move_to_next_weakest_area"
+    "priority": "production_broken > lead_loss > incorrect_data > poor_ux > responsive_visual > approved_ds2_redesign > seo_foundation > cosmetic_refactor",
+    "on_visual_change": "require_task_scoped_visual_browser_evidence_before_merge",
+    "on_ci_success": "continue_to_next_independent_approved_safe_task",
+    "on_blocker": "record_and_continue_independent_approved_work"
   }
 }
