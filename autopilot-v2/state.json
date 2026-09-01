@@ -2,37 +2,27 @@
   "schema_version": 2,
   "mode": "active_pilot",
   "active_task": {
-    "id": "PILOT_ROOT_STABILIZATION_REAUDIT",
-    "title": "Re-audit search results through selected-tour and lead transitions",
+    "id": "DESIGN_SYSTEM_2_UNIFICATION",
+    "title": "Unify search shell under AnyTour Design System 2.0",
     "area": "ux-qa",
     "risk": "SAFE",
-    "state": "qa",
+    "state": "observe",
     "owner": "qa",
     "required_gates": [
-      "no CI for observation-only audit",
       "Fast CI only if a concrete product-code fix is created",
-      "targeted visual QA only for user-facing affected route/state",
+      "targeted visual QA for user-facing affected route/state",
       "Deploy + Production smoke only if released"
     ],
     "evidence": [
-      "PR #656: completed search renders first 25 hotels and expands to up to 100 on the same searchId.",
-      "PR #658: stars, rating and price can narrow the already loaded result set while widening beyond source constraints uses server re-search.",
-      "Official Tourvisor search-results schema confirms hotel-level region/subRegion, but meal/operator only exist inside nested tours[] and the contract does not guarantee that nested offers are exhaustive for every hotel; PR #666 therefore keeps meal/operator on server search while retaining proven local filters.",
-      "PR #663 invalidates selected-tour and flight async generations and clears stale selected-tour/lead UI on v2:search-reset.",
-      "PR #669 fixes confirmed stale selected-tour pricing when switching from a priced flight to a flight whose price is unavailable: stale prior flight price is cleared, tour base/fuel state is restored coherently, and pricePending is emitted without changing lead transport or external contracts.",
-      "Fast CI and Security guard passed for PR #669; merge SHA f4bc4517f4e2da6fe375753203e85f0313be58ae.",
-      "Post-merge controller audit PASS: selecting a second tour increments tourGeneration and flightGeneration, clears current tour/flight state before rendering, and ignores late tour/flight responses whose generation or tour id no longer matches.",
-      "Post-merge search reset audit PASS: v2:search-reset invalidates both async generations, clears currentTour/flightVariants/selectedFlightIndex and hides selected-tour UI.",
-      "Post-merge lead retry/idempotency audit PASS at browser boundary: submit is disabled during a request, failed sends re-enable retry with form data preserved, successful sends set dataset.sent and server duplicate responses are handled as deduplicated success.",
-      "Post-merge child-age context audit PASS: active search snapshot child ages are validated to 0..17, capped to three entries and keep childs consistent before the existing lead request is sent.",
-      "PR #674 fixes confirmed selected-room payload normalization: structured Tourvisor roomType/placement values are converted to the same human-readable string contract used by selected-tour UI before the existing lead request is sent; no external lead field or transport changed.",
-      "Fast CI and Security guard passed for PR #674; merge SHA 70f00a9af42a86d5e4c01bac9dc0eb3f19854beb.",
-      "Room enrichment audit PASS: room-details-v3 binds async room responses to the current connected host and matching tourId, so stale room detail responses cannot overwrite a newly selected tour.",
-      "Selected flight payload audit PASS: lead payload keeps tour base price separately while selectedFlightData carries the chosen flight description, flightPrice and flightFuel; lead-price-v1 derives selectedPrice from flightPrice when available and otherwise falls back to base price.",
+      "SELECTED_TOUR_END_TO_END static re-audit completed without a new confirmed defect after PR #663, #669 and #674.",
+      "Second-tour/second-flight isolation, search reset invalidation, room-detail stale protection, price/fuel payload selection, retry/idempotency, child-age enrichment and roomType/placement normalization all remain PASS at the repository/browser-boundary contract level.",
+      "SELECTED_TOUR_END_TO_END therefore moves to DONE_AWAITING_PRODUCTION_EVIDENCE rather than receiving speculative code changes.",
+      "Current feature/search-core has no open PRs.",
+      "feature/search-core and main are materially diverged: main is 692 commits ahead and 53 behind feature/search-core from their merge base. Main already contains DS2 convergence work, so bulk merge/cherry-pick is not safe for this P1 stream; DS2 work on feature/search-core must remain narrow and independently verified.",
       "Production evidence remains blocked by the prior external live-probe environment; continue independent product QA.",
       "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
     ],
-    "parent_task": null
+    "parent_task": "PILOT_ROOT_STABILIZATION_REAUDIT"
   },
   "queue": [
     {
@@ -63,22 +53,22 @@
     {
       "id": "SELECTED_TOUR_END_TO_END",
       "priority": 1,
-      "status": "ACTIVE",
+      "status": "DONE_AWAITING_PRODUCTION_EVIDENCE",
       "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
-      "reason": "PR #663 fixed stale reset generations; PR #669 fixed stale price/fuel state for unpriced flight selections; PR #674 fixed structured roomType/placement normalization before the existing lead submit. Static audits now pass second-tour/second-flight isolation, room-detail stale protection, price/fuel payload selection, retry/idempotency and child-age enrichment. Continue narrow browser/live evidence and remaining selected-tour recovery states before closing this priority."
+      "reason": "PR #663 fixed stale reset generations; PR #669 fixed stale price/fuel state for unpriced flight selections; PR #674 normalized structured roomType/placement before the existing lead submit. Final static re-audit found no further confirmed defect in second-tour/flight isolation, room enrichment, price/fuel payload, retry/idempotency or child ages."
     },
     {
       "id": "PRODUCTION_RESULTS_EVIDENCE",
       "priority": 1,
       "status": "BLOCKED_EXTERNAL",
       "parent": "PILOT_ROOT_STABILIZATION_REAUDIT",
-      "reason": "Narrow live verification for result depth and local-filter behavior; previous execution environment could not resolve anytoour.ru."
+      "reason": "Narrow live verification for result depth, local-filter and selected-tour behavior; previous execution environment could not resolve anytoour.ru."
     },
     {
       "id": "DESIGN_SYSTEM_2_UNIFICATION",
       "priority": 2,
-      "status": "QUEUED",
-      "reason": "Unify shared header/footer/controls/cards/spacing and eliminate obsolete or parallel UI implementations under AnyTour Design System 2.0."
+      "status": "ACTIVE",
+      "reason": "Unify shared header/footer/controls/cards/spacing and eliminate obsolete or parallel UI implementations under AnyTour Design System 2.0. Avoid bulk integration from heavily diverged main; make only narrow independently verified changes on feature/search-core."
     },
     {
       "id": "SEARCH_STATE_PERFORMANCE",
@@ -118,9 +108,9 @@
     }
   ],
   "last_signal": {
-    "source": "selected_tour_room_payload_fix_and_consistency_audit",
-    "status": "CONTINUE_SELECTED_TOUR_END_TO_END",
-    "sha": "70f00a9af42a86d5e4c01bac9dc0eb3f19854beb"
+    "source": "selected_tour_final_static_pass_and_ds2_handoff",
+    "status": "CONTINUE_DESIGN_SYSTEM_2_UNIFICATION",
+    "sha": "c897c1d9864ed33b2c32f7f438095739d9b888fb"
   },
   "blocked": [
     {
@@ -128,6 +118,12 @@
       "type": "external_environment",
       "reason": "Previous execution environment could not resolve anytoour.ru DNS before first HTTP request.",
       "action": "Retry only the narrow live probe from an environment with working DNS; continue independent safe product work meanwhile."
+    },
+    {
+      "scope": "bulk DS2 integration from main",
+      "type": "branch_divergence",
+      "reason": "main is 692 commits ahead and 53 commits behind feature/search-core from the merge base, with many unrelated workflows/data/product changes mixed with DS2 work.",
+      "action": "Do not bulk merge or cherry-pick main into feature/search-core. Audit and port only narrowly justified DS2 changes with normal Fast CI + targeted visual QA."
     }
   ]
 }
