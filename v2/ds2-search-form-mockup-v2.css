@@ -205,7 +205,7 @@ body:not(.at-search2-results):not(.at-search2-selected) #tourSearch>.extras>summ
 @media(max-width:700px){
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch.search-card{padding:10px!important;border-radius:12px!important}
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields{grid-template-columns:1fr!important;gap:7px!important}
-  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields>.primary-step{min-height:54px!important;padding:8px 10px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields>.primary-step{min-height:50px!important;padding:7px 9px!important}
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .main-fields .nights-quick{grid-template-columns:repeat(5,minmax(0,1fr))!important}
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .search-submit{min-height:46px!important;height:46px!important;font-size:12px!important}
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch>.ds2-search-quick-stars{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important}
