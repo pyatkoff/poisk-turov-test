@@ -3,11 +3,26 @@
   "id": "DS2_NARROW_RELEASE_PLAN",
   "goal": "Design the smallest evidence-driven release path that moves only accepted AnyTour Design System 2.0 lanes from feature/search-core to main without bulk-merging unrelated branch divergence.",
   "risk": "SAFE",
+  "verification_class": "LOW",
   "owns_paths": [
     "AUTOPILOT.md",
     "AUTOPILOT_STATE.json",
     "autopilot-v2/tasks/DS2_NARROW_RELEASE_PLAN.json",
     "autopilot-v2/outcomes/DS2_NARROW_RELEASE_PLAN.json"
+  ],
+  "never_touch": [
+    "product runtime files while this task is planning-only",
+    "Yandex Metrika configuration or goals",
+    "Tourvisor/API contracts",
+    "pricing semantics",
+    "external lead transport",
+    "AnyTour logo or brand identity"
+  ],
+  "invariants": [
+    "feature/search-core is not bulk-merged into main",
+    "only already accepted DS2 behavior may enter a proposed release slice",
+    "each release slice has explicit dependencies and verification gates",
+    "branch divergence is handled by rebuilding narrow changes against current main rather than copying unrelated feature history"
   ],
   "depends_on": [
     "REDESIGN_SEARCH_RESULTS",
