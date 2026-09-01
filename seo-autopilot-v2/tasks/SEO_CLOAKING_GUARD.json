@@ -1,0 +1,12 @@
+{
+  "id": "SEO_CLOAKING_GUARD",
+  "title": "Keep crawler and user primary content aligned",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rules": [
+    "do not render keyword/content blocks only to crawlers",
+    "structured data reflects visible content",
+    "server/client rendering differences must not materially change SEO claims",
+    "no hidden keyword text"
+  ]
+}
