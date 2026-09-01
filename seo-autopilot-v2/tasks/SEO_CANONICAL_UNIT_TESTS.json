@@ -1,0 +1,16 @@
+{
+  "id": "SEO_CANONICAL_UNIT_TESTS",
+  "title": "Unit-test deterministic canonical generation",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "cases": [
+    "canonical landing",
+    "tracking-param variant",
+    "filter/search-state variant",
+    "legacy host input",
+    "unknown entity",
+    "slug normalization",
+    "trailing-slash variant"
+  ],
+  "rule": "Canonical tests should be fast enough for targeted PR CI."
+}
