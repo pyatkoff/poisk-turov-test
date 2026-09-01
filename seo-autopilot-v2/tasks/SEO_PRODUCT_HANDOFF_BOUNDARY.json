@@ -1,0 +1,7 @@
+{
+  "id": "SEO_PRODUCT_HANDOFF_BOUNDARY",
+  "title": "Escalate product UX changes instead of hiding them in SEO work",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "When an SEO finding requires changing tour-search UX, lead flow, manager/bot behavior or shared product mechanics, record the dependency and hand it to the owning product lane rather than modifying it silently."
+}
