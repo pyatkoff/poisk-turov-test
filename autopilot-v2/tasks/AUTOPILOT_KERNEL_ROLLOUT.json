@@ -3,24 +3,40 @@
   "id": "AUTOPILOT_KERNEL_ROLLOUT",
   "goal": "Make the lightweight task contract/controller the shared execution kernel without touching product runtime behavior.",
   "risk": "SAFE",
+  "verification_class": "LOW",
   "owns_paths": [
     ".autopilot/",
     "autopilot-v2/",
     ".github/workflows/autopilot-v2-contract.yml",
     "AGENTS.md"
   ],
+  "never_touch": [
+    "v2/ product runtime except task-contract references required by the kernel",
+    "Yandex Metrika configuration or goals",
+    "Tourvisor/API behavior",
+    "external lead transport",
+    "SEO content and SEO branch work"
+  ],
+  "invariants": [
+    "kernel changes remain product-runtime neutral",
+    "existing task and outcome files remain readable while contracts are migrated incrementally",
+    "controller prefers targeted verification over broad product regression",
+    "active task and design approval gates cannot be bypassed by plan selection"
+  ],
   "depends_on": [],
   "verify": {
     "level": "smoke",
     "checks": [
       "python3 autopilot-v2/controller.py validate",
+      "python3 autopilot-v2/controller.py resume",
       "python3 autopilot-v2/controller.py plan --max-writers 3"
     ]
   },
   "done_when": [
     "task contracts are machine-readable",
-    "controller rejects dependency/ownership contract errors",
-    "controller can select up to three non-overlapping SAFE/MEDIUM ready tasks",
-    "Autopilot V2 contract CI validates the controller without adding a broad product test suite"
+    "controller rejects dependency/ownership/state contract errors",
+    "controller can select only non-overlapping SAFE/MEDIUM ready tasks while respecting the active task",
+    "design approval requirements are not bypassed by planning",
+    "Autopilot V2 contract validation remains lightweight and does not add a broad product test suite"
   ]
 }
