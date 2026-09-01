@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "REDESIGN_LOADING_RECOVERY",
+  "goal": "Implement the approved loading/waiting/error/recovery presentation without changing the existing search lifecycle or discarding useful progressive results.",
+  "risk": "MEDIUM",
+  "owns_paths": [
+    "v2/search-progress-ux-v1.js",
+    "v2/search-progress-ux-v1.css",
+    "v2/search-dirty-ux-v1.js"
+  ],
+  "depends_on": [
+    "NEW_DESIGN_IMPLEMENTATION_PREP"
+  ],
+  "verify": {
+    "level": "targeted",
+    "checks": [
+      "Fast CI",
+      "Security guard",
+      "browser QA for initial loading, progressive refresh, transient error retry and completed-search recovery",
+      "visual QA at 375px and 1440px"
+    ]
+  },
+  "done_when": [
+    "loading states communicate progress without blocking useful already-loaded results",
+    "transient result refresh failures recover against the existing searchId where appropriate",
+    "stale async responses cannot overwrite a newer search",
+    "error and retry states do not reset valid user input unnecessarily"
+  ]
+}
