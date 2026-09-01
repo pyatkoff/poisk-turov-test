@@ -1,7 +1,7 @@
 {
   "schema_version": 16,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-01T23:16:00+03:00",
+  "updated_at": "2026-09-01T23:18:00+03:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Shared DS2 CTA, touch-target and responsive convergence",
     "status": "ACTIVE",
-    "last_material_progress": "PR #813 normalized the /how-to-buy/ secondary manager handoff to the canonical 'Помощь менеджера' label. PR #814 fixed /contacts/ phone usability by giving all four office phones plus the unified phone a 44 px DS2 touch target in the shared site-coherence owner; all relevant PR checks were green and Deploy anytoour.ru run 33553029719 passed public-page verification, unchanged lead-bridge verification and live-search smoke. Post-deploy standalone visual run 33553359626 passed at 375/430/768/1024/1440. PR #817 then added an explicit five-width live numeric regression assertion for exactly five /contacts/ phone targets. Its immediate main-push production visual run exposed a CI/deploy race while a concurrent country-content release was being copied, not a stable runtime defect. PR #820 fixed that race by removing the redundant main-push production trigger and retaining local PR validation plus the authoritative workflow_run trigger after successful Deploy anytoour.ru; #820 PR checks were green and it merged as de909ef035b31664851609f8180c0b1de77d969b. The subsequent country release deploy 33553777247 completed successfully with public pages, unchanged lead bridge and live search smoke green. Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified destinations and unresolved legal/payment content were unchanged. Search 2.0 preview PR #810 remains draft/unmerged under the owner release lock.",
-    "next_action": "Confirm the post-deploy standalone five-width run after the latest successful country deploy, then continue the shared DS2 CTA/wrapping audit on homepage/search and representative country pages at 375/430/768/1024/1440. Fix only confirmed inconsistencies in canonical shared owners. Preserve mature search/results/selected-tour behavior and loaded-results instant-local filtering. Do not merge/deploy PR #810 until explicit owner approval."
+    "last_material_progress": "PR #813 normalized the /how-to-buy/ secondary manager handoff to the canonical 'Помощь менеджера' label. PR #814 fixed /contacts/ phone usability by giving all four office phones plus the unified phone a 44 px DS2 touch target in the shared site-coherence owner; all relevant PR checks were green and Deploy anytoour.ru run 33553029719 passed public-page verification, unchanged lead-bridge verification and live-search smoke. Post-deploy standalone visual run 33553359626 passed at 375/430/768/1024/1440. PR #817 added an explicit five-width live numeric assertion for exactly five /contacts/ phone targets. Its immediate main-push production visual run exposed a CI/deploy race while a concurrent country-content release was being copied, not a stable runtime defect. PR #820 fixed that race by removing the redundant main-push production trigger and retaining local PR validation plus the authoritative workflow_run trigger after successful Deploy anytoour.ru; #820 PR checks were green and it merged as de909ef035b31664851609f8180c0b1de77d969b. The subsequent country release Deploy anytoour.ru run 33553777247 completed successfully with public pages, unchanged lead bridge and live-search smoke green, and authoritative post-deploy five-width standalone visual run 33554159108 completed successfully, proving the fully copied release across 375/430/768/1024/1440 including the five /contacts/ phone targets and representative country pages. Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified destinations and unresolved legal/payment content were unchanged. Search 2.0 preview PR #810 remains draft/unmerged under the owner release lock.",
+    "next_action": "Continue the shared DS2 CTA/wrapping audit on homepage/search and representative country pages at 375/430/768/1024/1440. Fix only confirmed inconsistencies in canonical shared owners. Preserve mature search/results/selected-tour behavior and loaded-results instant-local filtering. Do not merge/deploy PR #810 until explicit owner approval."
   },
   "local_results_filtering": {
     "mode": "instant_local",
@@ -27,7 +27,7 @@
   "site_wide_score": {
     "value": 7.3,
     "scale": 10,
-    "note": "Held at 7.3. CTA wording, contact touch targets and deployment-gate correctness improved, but these are narrow convergence and reliability repairs rather than a broad enough visual step to raise the whole-product score."
+    "note": "Held at 7.3. CTA wording, contact touch targets and deployment-gate correctness improved and are verified live, but these are narrow convergence and reliability repairs rather than a broad enough visual step to raise the whole-product score."
   },
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
