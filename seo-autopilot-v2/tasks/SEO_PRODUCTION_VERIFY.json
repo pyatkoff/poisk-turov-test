@@ -1,0 +1,16 @@
+{
+  "id": "SEO_PRODUCTION_VERIFY",
+  "title": "Verify changed SEO contracts on production after deploy",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "verify_changed_family": [
+    "HTTP status",
+    "robots/indexability",
+    "canonical",
+    "title/H1",
+    "critical internal links",
+    "sitemap membership when relevant",
+    "no legacy-host regression"
+  ],
+  "rule": "Production verification is targeted to the released SEO contract; broader crawls run at release milestones or periodic reaudit."
+}
