@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "id": "example-task",
+  "goal": "One concrete user or production outcome",
+  "risk": "safe",
+  "owns_paths": [
+    "path/to/owned-file"
+  ],
+  "depends_on": [],
+  "verify": {
+    "level": "smoke",
+    "checks": [
+      "smallest relevant deterministic or browser smoke"
+    ]
+  },
+  "done_when": [
+    "expected behavior is true",
+    "required task-level verification passed"
+  ]
+}
