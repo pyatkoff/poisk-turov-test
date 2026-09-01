@@ -1,0 +1,14 @@
+{
+  "id": "SEO_MOBILE_LANDING_QA",
+  "title": "Verify SEO landing usability on mobile",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "primary H1 and search CTA visible",
+    "no horizontal overflow",
+    "internal links/tap targets usable",
+    "dynamic offer blocks do not dominate or shift layout",
+    "header/footer remain DS2-consistent",
+    "content remains readable without interaction"
+  ]
+}
