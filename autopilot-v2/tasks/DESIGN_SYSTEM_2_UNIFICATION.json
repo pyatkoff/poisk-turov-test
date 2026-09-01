@@ -4,7 +4,11 @@
   "goal": "Freeze cosmetic convergence work on the current search shell while the new AnyTour design is being finalized. Use this lane only to prepare safe migration boundaries and avoid polishing UI that is expected to be replaced.",
   "risk": "SAFE",
   "verification_class": "LOW",
-  "design_approval": "REQUIRED_FOR_MATERIAL_VISUAL_CHANGE",
+  "design_approval": {
+    "required": true,
+    "status": "approved",
+    "evidence": "AnyTour Design System 2.0 is the approved active design contract in autopilot-v2/project-contract.json; material visual changes still require their own risk-scoped visual QA."
+  },
   "owns_paths": [
     "v2/design-system-v2.css",
     "v2/anytour-brand.css",
