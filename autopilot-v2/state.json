@@ -11,7 +11,7 @@
       "Stale release/state PRs #765 and #770 closed without merge.",
       "Autopilot 2.0 durable state uses schema v3 and enhanced task contracts."
     ],
-    "next": "Run the next targeted whole-search UX/flow audit on current main: Search → Results → Hotel/Room → Selected Tour/Flights → Lead, fixing only confirmed P0/P1 defects. Collect production evidence for #788 when its deploy/smoke completes.",
+    "next": "Run the observation-only FULL_SEARCH_UX_REAUDIT on current main across Search → Results → Hotel/Room → Selected Tour/Flights → Lead. Split any confirmed defect into its own scoped task. Collect production evidence for #788 through the latest superseding main deploy/smoke.",
     "blocked": [
       "Targeted live verification may still be externally blocked if anytoour.ru cannot be resolved from a runner.",
       "Bulk integration from feature/search-core to main remains prohibited because the branches materially diverge."
@@ -28,14 +28,14 @@
     "id": "FULL_SEARCH_UX_REAUDIT",
     "title": "Re-audit the complete DS2 search and conversion journey on current main",
     "area": "results-tour",
-    "risk": "MEDIUM",
-    "verification_class": "MEDIUM",
-    "state": "investigating",
-    "owner": "developer",
+    "risk": "SAFE",
+    "verification_class": "LOW",
+    "state": "qa",
+    "owner": "qa",
     "required_gates": [
-      "Confirmed defect slices: Fast CI + Security guard",
-      "Targeted browser/visual QA for user-facing changes",
-      "Deploy anytoour.ru + Production smoke after production-bound releases"
+      "Observation-only audit: no product-code diff and no broad CI matrix",
+      "Desktop and mobile evidence; add intermediate widths only for a concrete layout risk",
+      "Confirmed defects must become separate scoped tasks with proportional verification"
     ],
     "evidence": [
       "Search 2.0 runtime was activated on main in #761 (merge d142777f73209c79b2e609ea26b2d82e4650643e).",
@@ -43,6 +43,7 @@
       "Current-main audit found two stacked footer layers in v2/site-footer-v1.php; stale #765 could also restore the removed 274px desktop results offset.",
       "Fresh #788 was rebuilt from current main, preserved the #767 results layout fix, passed Security, V2 validation, branch bundles, footer visual, selected-tour visual, V2 baseline and V2 PR visual gates, and merged as dcc88468e0ac3c2f6f18aa0092f2afc24b4b892e.",
       "#765 and stale state snapshot #770 were closed without merge.",
+      "The direct #788 Deploy anytoour.ru run was cancelled after a newer main push superseded it; production evidence follows the newer main deploy rather than treating cancellation as a product defect.",
       "HIGH-risk Metrika, external lead transport, Tourvisor contracts, pricing semantics and the AnyTour logo remain untouched."
     ],
     "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -52,7 +53,7 @@
     {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
     {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":666,"merge_sha":"ee34c881de396b734f86807c975a5821ba2ca06b"},
     {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE"},
-    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"PENDING_TARGETED_DEPLOY_SMOKE"},
+    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"PENDING_SUPERSEDING_MAIN_DEPLOY_SMOKE"},
     {"id":"NEW_DESIGN_IMPLEMENTATION_PREP","priority":2,"status":"DONE","pr":700,"merge_sha":"1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c"},
     {"id":"SEARCH_2_0_MOCKUP_APPROVAL","priority":2,"status":"DONE","pr":708},
     {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"RELEASED_MAIN_STABILIZED","activation_pr":761,"activation_sha":"d142777f73209c79b2e609ea26b2d82e4650643e","overflow_fix_pr":767},
@@ -70,11 +71,11 @@
   ],
   "last_signal": {
     "source": "autopilot_v2_footer_release",
-    "status": "FOOTER_788_MERGED_PRODUCTION_EVIDENCE_PENDING",
+    "status": "FOOTER_788_MERGED_SUPERSEDING_DEPLOY_PENDING",
     "sha": "dcc88468e0ac3c2f6f18aa0092f2afc24b4b892e"
   },
   "blocked": [
-    {"scope":"targeted production verification","type":"external_environment","reason":"Treat runner DNS/network failures as external evidence blockers, not product defects.","action":"Use the existing deploy and production smoke when available; otherwise continue independent P1 audit work."},
+    {"scope":"targeted production verification","type":"external_environment","reason":"Treat runner DNS/network failures or superseded deploy cancellation as evidence blockers, not product defects.","action":"Use the latest main deploy and production smoke; otherwise continue independent P1 audit work."},
     {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core.","action":"Continue narrow current-main releases only."}
   ]
 }
