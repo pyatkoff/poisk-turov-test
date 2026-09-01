@@ -10,10 +10,11 @@ The full agreed AnyTour redesign, including Search 2.0, is approved and is being
 
 Accepted in `feature/search-core` on 2026-09-01:
 
+- **Search 2.0 results/filter UX — accepted after PR #726 QA.** Deterministic PR-safe browser evidence is green at 375/1440 for progressive 25→100 result capture, local stars narrowing without restarting the server submit lifecycle, server auto-refresh when widening the original stars constraint, progressive additional filters, recovery state and 44px retry target. Security guard is green. The gate makes no Tourvisor call, real lead submission or production request and does not alter Metrika, pricing, lead transport or logo contracts.
 - **Selected tour / flight choice — PR #712.** Approved staged `Ваш тур → Выбор рейса → Заявка менеджеру` hierarchy is integrated. Its private palette was removed in review in favor of canonical DS2 tokens. Fast CI and Security guard are green. PR-safe Playwright evidence is green at 375/430/768/1024/1440 for hierarchy, flight step, price/fuel refresh and horizontal containment. Tourvisor IDs, selected-tour state, pricing semantics, Metrika and external lead transport were not changed.
 - **Factual footer/community — PR #715.** Integrated composition uses only the verified MAX, Telegram, VK, App Store and Google Play destinations already present in the project plus existing payment/legal links and MasterCard/Visa/Мир. Fast CI/Security and five-width PR-safe visual evidence are green. No invented contacts/socials and no parallel footer were introduced.
 - **Post-success lead handoff — PR #723.** Integrated UI appears only after `v2:lead-success`, reuses the existing verified MAX/Telegram destinations rendered by the community footer, and does not copy phone/name/comment or other PII into messenger URLs. Fast CI and Security are green. Dedicated PR-safe browser evidence at 375 and 1440 is green for sending → error/retry → success, exact two messenger destinations, no PII leak and no horizontal overflow. External lead persistence/transport and field mapping remain unchanged.
-- **PR-safe visual infrastructure — #722/#724.** These no-deploy Playwright gates test checked-out PR code locally, do not call Tourvisor or submit real leads, and provide screenshot/report evidence for approved DS2 lanes.
+- **PR-safe visual infrastructure — #722/#724/#726.** These no-deploy Playwright gates test checked-out PR code locally, do not call production protected services, and provide screenshot/report evidence for approved DS2 lanes.
 
 PRs #703 header, #704 loading/recovery and #706 hotel/tour selection remain closed unmerged and are not active release candidates. They must not be resurrected implicitly.
 
@@ -32,7 +33,8 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 ## Active roadmap
 
 - ROOT STABILIZATION — ACTIVE HIGHEST PRIORITY while the new standalone shell/routes are being migrated.
-- **REDESIGN_SEARCH_RESULTS — ACTIVE NEXT APPROVED LANE.** Search 2.0 presentation exists on `feature/search-core`; run task-specific QA for search, local narrowing, server re-search on widening, progressive 25→100, empty/recovery states and 375/1440 layout before accepting it.
+- **DS2_NARROW_RELEASE_PLAN — ACTIVE NEXT LANE.** All currently accepted redesign lanes now have targeted evidence; inventory their exact runtime dependencies against `main` and prepare only narrow release slices. Do not bulk merge `feature/search-core`.
+- REDESIGN_SEARCH_RESULTS — ACCEPTED in feature/search-core after #726 targeted QA.
 - REDESIGN_SELECTED_TOUR — ACCEPTED in feature/search-core via #712.
 - REDESIGN_FOOTER_COMMUNITY — ACCEPTED in feature/search-core via #715.
 - REDESIGN_LEAD_HANDOFF — ACCEPTED in feature/search-core via #723.
@@ -45,17 +47,17 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 
 `main` and `feature/search-core` remain materially diverged with unrelated work mixed in. Do **not** bulk merge or broadly cherry-pick the feature branch into `main`. Accepted redesign work is not production-shipped merely because its feature PR merged.
 
-Release only narrowly justified, accepted changes after the remaining active redesign QA is complete. Any production release must go through the normal `main` deploy workflows and their post-deploy live/search/selected-tour/public-page gates. A failed runner/DNS probe is an external verification issue, not automatically a product regression.
+Release only narrowly justified accepted changes. Any production release must go through the normal `main` deploy workflows and their post-deploy live/search/selected-tour/public-page gates. A failed runner/DNS probe is an external verification issue, not automatically a product regression.
 
 ## Exact next work order
 
 The controller task contracts override this historical ordering whenever they differ.
 
-1. Complete targeted browser/visual QA for `REDESIGN_SEARCH_RESULTS` using the approved Search 2.0 implementation.
-2. Verify concise base search, progressive filters, local narrowing only on payload-complete fields, existing server re-search on widening, progressive 25→100, result/filter counters, sorting and empty/recovery states at 375 and 1440.
-3. Do not reopen closed #703/#704/#706 implicitly; only create a fresh lane if current evidence proves one is still needed.
-4. After active redesign acceptance, design a narrow release path from the accepted feature work to `main`; do not bulk merge branch divergence.
-5. After release, run normal V2 + standalone deploy/post-deploy gates and re-audit the public product at 375/430/768/1024/1440 before changing the site-wide visual score.
+1. Inventory the exact accepted Search 2.0, selected-tour, factual footer and post-success handoff runtime files against current `main`.
+2. Split release work into the smallest dependency-safe `main`-targeted slices; do not bulk merge `feature/search-core` or reopen closed #703/#704/#706 implicitly.
+3. Prove each release slice excludes Metrika/goals, Tourvisor contract changes, pricing semantics, external lead transport/field mapping, logo replacement and unresolved legal/payment migrations.
+4. Run the relevant main CI/visual gates before merge; after release run normal V2 + standalone deploy/post-deploy gates.
+5. Re-audit the public product at 375/430/768/1024/1440 before changing the site-wide visual score.
 6. Preserve legacy `/poisk-turov-test/v2/` runtime paths, privacy URL, Bitrix session behavior and existing lead contract.
 7. Revisit BR4 indexing only after deliberate publication policy and reviewed content inventory exist.
 
