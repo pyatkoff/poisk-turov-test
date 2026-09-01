@@ -1,0 +1,12 @@
+{
+  "id": "SEO_DUPLICATE_CONTENT_HASHING",
+  "title": "Detect token-swapped duplicate landing content",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "method": [
+    "normalize entity names/prices/dates",
+    "compare remaining visible template text",
+    "flag highly similar pages for manual/template review"
+  ],
+  "rule": "Similarity is a diagnostic signal, not an automatic deletion decision."
+}
