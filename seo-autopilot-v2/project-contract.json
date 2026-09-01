@@ -8,6 +8,7 @@
     "indexation controls",
     "internal linking",
     "structured data",
+    "SEO editorial content",
     "SEO content quality",
     "organic monitoring"
   ],
@@ -20,10 +21,13 @@
   },
   "rules": [
     "Use Design System 2.0 for any user-visible SEO surface.",
+    "Write useful destination-specific editorial copy for approved SEO pages; do not generate filler text for URL volume.",
+    "Separate stable editorial facts from volatile offer/price facts; volatile facts must come from approved fresh data snapshots.",
     "Do not invent commercial claims, guarantees, contacts, prices, reviews, ratings, or availability.",
     "Live offer/price facts must come from an approved factual source.",
     "Do not mass-publish thin parameter combinations merely to increase URL count.",
     "Prefer canonical coherent landing families over crawlable faceted-search explosions.",
+    "Every publishable page must have a distinct search intent, useful copy, stable internal links, and a factual search handoff.",
     "Keep PRs narrow and reversible."
   ]
 }
