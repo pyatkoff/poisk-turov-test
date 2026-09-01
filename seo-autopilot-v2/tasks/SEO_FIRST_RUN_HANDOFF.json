@@ -1,0 +1,13 @@
+{
+  "id": "SEO_FIRST_RUN_HANDOFF",
+  "title": "Move from bootstrap into factual SEO inventory",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "next": [
+    "inspect repository SEO routes/templates and generators",
+    "inspect live robots/sitemap/canonical examples",
+    "record SEO_INVENTORY outcome",
+    "select first independent SAFE defect",
+    "continue to next SAFE slice if evidence/time allow"
+  ]
+}
