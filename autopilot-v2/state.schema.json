@@ -2,10 +2,21 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AnyTour Autopilot 2.0 State",
   "type": "object",
-  "required": ["schema_version", "mode", "active_task", "queue", "last_signal"],
+  "required": ["schema_version", "mode", "resume", "active_task", "queue", "last_signal"],
   "properties": {
-    "schema_version": {"const": 2},
+    "schema_version": {"const": 3},
     "mode": {"enum": ["dry_run", "active_pilot", "active"]},
+    "resume": {
+      "type": "object",
+      "required": ["now", "done", "next", "blocked", "lessons"],
+      "properties": {
+        "now": {"type": "string"},
+        "done": {"type": "array", "items": {"type": "string"}},
+        "next": {"type": "string"},
+        "blocked": {"type": "array", "items": {"type": "string"}},
+        "lessons": {"type": "array", "items": {"type": "string"}}
+      }
+    },
     "active_task": {
       "type": ["object", "null"],
       "properties": {
@@ -13,13 +24,14 @@
         "title": {"type": "string"},
         "area": {"enum": ["search-core", "results-tour", "conversion-lead", "ux-qa", "site-seo", "platform"]},
         "risk": {"enum": ["SAFE", "MEDIUM", "HIGH"]},
-        "state": {"enum": ["discovered", "triaged", "ready", "coding", "qa", "visual_qa", "deploy", "production_qa", "done", "blocked"]},
+        "verification_class": {"enum": ["LOW", "MEDIUM", "HIGH"]},
+        "state": {"enum": ["discovered", "triaged", "ready", "coding", "qa", "visual_qa", "design_approval_required", "deploy", "production_qa", "done", "blocked"]},
         "owner": {"enum": ["orchestrator", "developer", "qa", "visual_qa"]},
         "required_gates": {"type": "array", "items": {"type": "string"}},
         "evidence": {"type": "array", "items": {"type": "string"}},
         "parent_task": {"type": ["string", "null"]}
       },
-      "required": ["id", "title", "area", "risk", "state", "owner", "required_gates", "evidence"]
+      "required": ["id", "title", "area", "risk", "verification_class", "state", "owner", "required_gates", "evidence"]
     },
     "queue": {"type": "array"},
     "last_signal": {
