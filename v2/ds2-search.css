@@ -32,10 +32,11 @@ body.at-search2-results:not(.at-search2-selected) .results-layout{display:grid}
 .results-search-summary__edit:focus-visible{outline:3px solid var(--at-focus);outline-offset:2px}
 
 .results-tools{
+  width:906px;
+  max-width:906px;
   align-items:center;
   justify-content:space-between;
   gap:18px;
-  max-width:906px;
   margin:0 calc((100% - var(--at-shell))/2) 12px auto;
   padding:11px 13px;
   border:1px solid var(--at-line);
@@ -96,7 +97,7 @@ body.at-search2-selected .results-search-summary,body.at-search2-selected .resul
 
 @media(max-width:1220px){
   .results-search-summary{margin-inline:var(--at-page-edge)}
-  .results-tools{max-width:none;margin:0 var(--at-page-edge) 12px 290px}
+  .results-tools{width:auto;max-width:none;margin:0 var(--at-page-edge) 12px}
   .results-layout{width:calc(100% - (var(--at-page-edge) * 2))}
 }
 @media(max-width:999px){
