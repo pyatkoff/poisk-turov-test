@@ -1,0 +1,88 @@
+name: Visual DS2 Search 2.0 results
+
+on:
+  pull_request:
+    branches: [feature/search-core]
+    paths:
+      - 'v2/search-redesign-v2.css'
+      - 'v2/search-redesign-v2.js'
+      - 'v2/results-local-filters-v1.js'
+      - 'v2/results-filter-autorefresh-v1.js'
+      - '.github/workflows/visual-ds2-search2-results.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: visual-ds2-search2-results-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  search2-results-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Build local Search 2.0 fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .visual-search2 artifacts-ds2-search2
+          cat > .visual-search2/index.html <<'HTML'
+          <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <link rel="stylesheet" href="/v2/design-system-v2.css"><link rel="stylesheet" href="/v2/app.css"><link rel="stylesheet" href="/v2/search-redesign-v2.css">
+          <style>*,*::before,*::after{box-sizing:border-box}body{margin:0;background:var(--at-page);font-family:Arial,sans-serif}.v2-shell{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)));margin:20px auto}.v2-product-hero{padding:12px 0}.search-card{padding:18px}.main-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.field{display:grid;gap:5px}.field input,.field select{width:100%;min-width:0;height:46px}.extras{margin-top:12px}.search-submit{min-height:48px;width:100%;margin-top:12px}.results-tools{display:flex;justify-content:space-between;gap:12px;align-items:center}.results{display:grid;gap:14px}.hotel-card{background:#fff;border:1px solid var(--at-line);border-radius:16px;overflow:hidden}.hotel-main{display:grid;grid-template-columns:260px minmax(0,1fr)}.hotel-photo{min-height:220px;background:var(--at-soft-blue);display:grid;place-items:center}.hotel-body{padding:18px}.hotel-price{font-weight:900}.retry-results{min-height:44px}@media(max-width:700px){.main-fields,.hotel-main{grid-template-columns:1fr}.hotel-photo{min-height:160px}}</style></head><body>
+          <main class="v2-shell"><section class="v2-product-hero"><strong>Поиск туров AnyTour</strong></section>
+          <form id="tourSearch" class="search-card"><div class="search-section-title"><span>Параметры тура</span><small>Основное — сразу, дополнительные фильтры — по необходимости</small></div><div class="primary-search-flow"><div class="main-fields"><label class="field"><span>Куда</span><select name="arrival"><option value="4">Турция</option></select></label><label class="field"><span>Отель от</span><select name="stars"><option value="3" selected>3★</option><option value="4">4★</option><option value="5">5★</option><option value="0">Любая</option></select></label><label class="field"><span>Рейтинг</span><select name="rating"><option value="0">Любой</option><option value="4">от 4.0</option></select></label><label class="field"><span>Цена от</span><input name="price_from" value=""></label><label class="field"><span>Цена до</span><input name="price_till" value=""></label><label class="field"><span>Регион</span><select name="region"><option value="">Любой</option><option value="10">Анталья</option></select></label><input type="hidden" name="subregion" value=""></div></div><details class="extras"><summary>Дополнительные фильтры</summary><div class="extra-grid"><label class="field"><span>Питание</span><select name="food"><option value="">Любое</option></select></label></div></details><button class="search-submit" type="submit">Найти тур</button></form>
+          <div id="status" hidden></div><div id="resultsTools" class="results-tools" hidden><div><strong>Найденные туры</strong><div id="resultSummary"></div></div><select id="sort"><option>По цене</option></select></div><section id="results" class="results"></section><section id="selectedTour" hidden></section>
+          </main>
+          <script>
+          window.__submitCalls=0;
+          window.V2SearchLifecycle={pending:false,searchId:77,dirty:true,snapshot:{hotelCategory:3,hotelRating:0,priceFrom:0,priceTo:0,regionIds:[],subregionIds:[]},submit:function(){window.__submitCalls++;}};
+          window.V2Catalogs={handleChange:function(){return Promise.resolve();}};
+          window.V2Results={render:function(items){const root=document.getElementById('results');root.innerHTML='';items.slice(0,4).forEach(function(h,i){const card=document.createElement('article');card.className='hotel-card';card.innerHTML='<div class="hotel-main"><div class="hotel-photo">Фото '+(i+1)+'</div><div class="hotel-body"><strong class="hotel-title">'+h.name+'</strong><p>'+h.category+'★ · рейтинг '+h.rating+'</p><div class="hotel-price">'+Math.round(h.price||0).toLocaleString('ru-RU')+' ₽</div></div></div>';root.appendChild(card);});window.dispatchEvent(new CustomEvent('v2:results-rendered',{detail:{items:items}}));}};
+          </script>
+          <script src="/v2/results-filter-autorefresh-v1.js"></script><script src="/v2/results-local-filters-v1.js"></script><script src="/v2/search-redesign-v2.js"></script></body></html>
+          HTML
+      - name: Audit Search 2.0 behavior and layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4175 --bind 127.0.0.1 >/tmp/search2-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          cat > search2-qa.cjs <<'JS'
+          const {chromium}=require('playwright'),fs=require('fs');
+          const views=[['mobile-375',375,812],['desktop-1440',1440,1000]];
+          const base='http://127.0.0.1:4175/.visual-search2/index.html';
+          function hotels(count){return Array.from({length:count},(_,i)=>({id:i+1,name:'AnyTour Hotel '+(i+1),category:i%3===0?5:(i%2===0?4:3),rating:3.8+(i%5)*0.2,price:90000+i*1200,region:{id:'10'},subRegion:{id:'101'},tours:[{id:'t'+i,price:90000+i*1200}]}));}
+          (async()=>{const browser=await chromium.launch({headless:true});let failed=false,report=[];
+          for(const [name,width,height] of views){const context=await browser.newContext({viewport:{width,height}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(String(e)));const response=await page.goto(base,{waitUntil:'networkidle',timeout:30000});
+          const initial=await page.evaluate(items=>{const tools=document.getElementById('resultsTools');tools.hidden=false;window.V2Results.render(items);window.V2SearchRedesignV2.sync();const form=document.getElementById('tourSearch'),extras=form.querySelector('.extras');const shell=getComputedStyle(document.querySelector('.v2-shell')),search=document.getElementById('tourSearch').getBoundingClientRect(),results=document.getElementById('results').getBoundingClientRect();return{bodyResults:document.body.classList.contains('at-search2-results'),source:window.V2ResultsLocalFiltersV1.sourceItems.length,extrasOpen:extras.open,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,shellColumns:shell.gridTemplateColumns,searchLeft:search.left,searchRight:search.right,resultsLeft:results.left,summary:document.getElementById('resultSummary').textContent};},hotels(25));
+          const narrow=await page.evaluate(async()=>{const stars=document.querySelector('[name="stars"]');stars.value='4';stars.dispatchEvent(new Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,800));return{shown:window.V2ResultsLocalFiltersV1.shown,source:window.V2ResultsLocalFiltersV1.sourceItems.length,submits:window.__submitCalls,summary:document.getElementById('resultSummary').textContent};});
+          const widen=await page.evaluate(async()=>{const stars=document.querySelector('[name="stars"]');stars.value='0';stars.dispatchEvent(new Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,800));return{submits:window.__submitCalls,status:document.getElementById('status').textContent};});
+          const progressive=await page.evaluate(items=>{window.V2Results.render(items);return{source:window.V2ResultsLocalFiltersV1.sourceItems.length,shown:window.V2ResultsLocalFiltersV1.shown,cards:document.querySelectorAll('.hotel-card').length};},hotels(100));
+          const recovery=await page.evaluate(()=>{const tools=document.getElementById('resultsTools'),status=document.getElementById('status');tools.hidden=true;status.hidden=false;status.innerHTML='Не удалось обновить предложения. <button class="retry-results">Повторить</button>';window.V2SearchRedesignV2.sync();const retry=status.querySelector('.retry-results').getBoundingClientRect();return{bodyResults:document.body.classList.contains('at-search2-results'),retryHeight:retry.height,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};});
+          await page.screenshot({path:`artifacts-ds2-search2/${name}.png`,fullPage:true});
+          const desktopBad=width>=1025&&(!initial.shellColumns.includes('296')&&initial.searchRight>initial.resultsLeft+4);
+          const mobileBad=width<1025&&initial.searchRight>width+2;
+          const bad=response?.status()!==200||errors.length||!initial.bodyResults||initial.source!==25||initial.extrasOpen||initial.overflow||desktopBad||mobileBad||narrow.source!==25||narrow.shown>=25||narrow.submits!==0||!narrow.summary.includes('из 25')||widen.submits!==1||!widen.status.includes('обновляем предложения')||progressive.source!==100||progressive.shown!==100||recovery.bodyResults||recovery.retryHeight<44||recovery.overflow;
+          report.push({name,width,http:response?.status()||0,errors,initial,narrow,widen,progressive,recovery,bad});if(bad)failed=true;console.log(`SEARCH2 ${name} http=${response?.status()} body=${initial.bodyResults} source=${initial.source}->${progressive.source} narrow=${narrow.shown}/${narrow.source} submits=${narrow.submits}/${widen.submits} extras=${initial.extrasOpen} overflow=${initial.overflow}/${recovery.overflow} bad=${bad}`);await context.close();}
+          fs.writeFileSync('artifacts-ds2-search2/report.json',JSON.stringify(report,null,2));await browser.close();if(failed)process.exit(1);})().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node search2-qa.cjs
+      - name: Upload Search 2.0 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ds2-search2-results-${{ github.event.pull_request.number || github.run_id }}
+          path: artifacts-ds2-search2/
+          retention-days: 14
