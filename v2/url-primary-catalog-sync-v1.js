@@ -15,10 +15,10 @@ async function syncPrimary(desiredFrom,desiredCountry){
     try{await catalogs.handleChange({target:country});}catch(error){console.warn('V2 URL country catalog sync',error);}
   }
 }
-async function syncAdvanced(desiredRegion,desiredSubregion){
-  if(!desiredRegion&&!desiredSubregion)return;
-  const region=form.elements.region,subregion=form.elements.subregion,extras=form.querySelector('details.extras');
-  if(!region||!subregion||typeof catalogs.refreshDestination!=='function')return;
+async function syncAdvanced(desiredRegion,desiredSubregion,desiredHotel){
+  if(!desiredRegion&&!desiredSubregion&&!desiredHotel)return;
+  const region=form.elements.region,subregion=form.elements.subregion,hotel=form.elements.hotel,extras=form.querySelector('details.extras');
+  if(!region||!subregion||!hotel||typeof catalogs.refreshDestination!=='function')return;
   if(extras)extras.open=true;
   try{await catalogs.refreshDestination();}catch(error){console.warn('V2 URL destination catalog sync',error);return;}
   if(!desiredRegion||!hasOption(region,desiredRegion))return;
@@ -26,14 +26,15 @@ async function syncAdvanced(desiredRegion,desiredSubregion){
   try{await catalogs.handleChange({target:region});}catch(error){console.warn('V2 URL region catalog sync',error);return;}
   if(desiredSubregion&&hasOption(subregion,desiredSubregion)){
     subregion.value=String(desiredSubregion);
-    try{await catalogs.handleChange({target:subregion});}catch(error){console.warn('V2 URL subregion catalog sync',error);}
+    try{await catalogs.handleChange({target:subregion});}catch(error){console.warn('V2 URL subregion catalog sync',error);return;}
   }
+  if(desiredHotel&&hasOption(hotel,desiredHotel))hotel.value=String(desiredHotel);
 }
 catalogs.init=async function(){
   await originalInit();
   if(typeof URLSearchParams!=='function')return;
-  const sp=new URLSearchParams(window.location.search||''),desiredFrom=sp.get('from'),desiredCountry=sp.get('country'),desiredRegion=sp.get('region'),desiredSubregion=sp.get('subregion');
+  const sp=new URLSearchParams(window.location.search||''),desiredFrom=sp.get('from'),desiredCountry=sp.get('country'),desiredRegion=sp.get('region'),desiredSubregion=sp.get('subregion'),desiredHotel=sp.get('hotel');
   await syncPrimary(desiredFrom,desiredCountry);
-  await syncAdvanced(desiredRegion,desiredSubregion);
+  await syncAdvanced(desiredRegion,desiredSubregion,desiredHotel);
 };
 })();
