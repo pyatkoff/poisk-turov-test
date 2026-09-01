@@ -1,0 +1,12 @@
+{
+  "id": "SEO_ROADMAP_SYNC",
+  "title": "Keep SEO roadmap synchronized with evidence",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rules": [
+    "new evidence may reprioritize queued tasks",
+    "completed tasks record outcomes before state advances",
+    "blocked MEDIUM/HIGH work must not stall independent SAFE work",
+    "remove obsolete tasks rather than carrying dead backlog indefinitely"
+  ]
+}
