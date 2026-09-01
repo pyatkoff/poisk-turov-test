@@ -2,24 +2,23 @@
   "schema_version": 2,
   "mode": "active_pilot",
   "active_task": {
-    "id": "REDESIGN_SELECTED_TOUR",
-    "title": "Verify approved AnyTour selected-tour and flight hierarchy",
-    "area": "results-tour",
+    "id": "REDESIGN_SEARCH_RESULTS",
+    "title": "Verify approved Search 2.0 search/results/filter UX",
+    "area": "results",
     "risk": "MEDIUM",
     "state": "visual_qa",
     "owner": "visual_qa",
-    "required_gates": ["Fast CI","Security guard","browser QA for room/flight switching and price refresh","targeted visual QA at 375px and 1440px before merge"],
+    "required_gates": ["Fast CI","Security guard","browser QA for search/local narrowing/server widening/progressive 25→100/empty recovery","targeted visual QA at 375px and 1440px before acceptance"],
     "evidence": [
-      "SEARCH_RESULTS_FILTER_ARCHITECTURE remains DONE_AWAITING_PRODUCTION_EVIDENCE; local narrowing is restricted to payload-complete hotel fields while incomplete constraints remain server-side.",
+      "SEARCH_RESULTS_FILTER_ARCHITECTURE remains DONE_AWAITING_PRODUCTION_EVIDENCE; simple narrowing is local only on payload-complete hotel fields while widening original constraints uses the existing server lifecycle.",
       "RESULTS_DEPTH_100 remains DONE_AWAITING_PRODUCTION_EVIDENCE after PR #656.",
-      "SELECTED_TOUR_END_TO_END remains DONE_AWAITING_PRODUCTION_EVIDENCE after stale reset, room normalization and flight/fuel price fixes.",
-      "PR #708 recorded explicit owner approval of the full new design and merged as 3b8e222a59b275aef376a4565cd1035283b81ffb.",
-      "Search 2.0 workspace presentation is present on feature/search-core; Tourvisor/local-filter/progressive/lead contracts remain unchanged by that presentation layer.",
-      "PRs #703 header, #704 loading/recovery and #706 hotel/room were closed unmerged on 2026-09-01 and are no longer active visual-QA blockers. Their branches must not be treated as release candidates unless an exact lane is deliberately reopened.",
-      "PR #712 implements the approved selected-tour staged hierarchy and copy. Review found its new layer used a private injected palette; commit 183010fce6250bbe27b887323190b4fd075bf383 converged it to canonical AnyTour DS2 tokens. Fast CI #49 and Security guard #1902 are green; browser and 375/1440 visual QA remain required before merge.",
-      "PR #713 was closed unmerged because it only restyled the old selected-tour surface; PR #714 was closed because it synchronized that superseded path.",
-      "PR #715 implements the approved factual footer with only verified destinations/content. Review found a separate hardcoded palette; commit 7f25aec09247fba85e8dbb8d65ecf8760c0668f2 converged it to canonical DS2 tokens. Fast CI #50 and Security guard #1903 are green; visual QA remains required before merge.",
-      "PR #716 repaired REDESIGN_LEAD_HANDOFF ownership to active checkout/lead UI runtime files; backend lead transport remains outside task ownership.",
+      "SELECTED_TOUR_END_TO_END remains protected after stale reset, room normalization and flight/fuel price fixes.",
+      "PR #708 records explicit owner approval of the full new design including Search 2.0.",
+      "PR #712 selected-tour is accepted in feature/search-core after Fast CI/Security and PR-safe five-width browser/visual evidence.",
+      "PR #715 factual footer/community is accepted in feature/search-core after Fast CI/Security and PR-safe five-width visual evidence.",
+      "PR #723 lead handoff is accepted in feature/search-core after Fast CI/Security and dedicated 375/1440 sending/error/success browser evidence; MAX/Telegram appear only after success with no PII in URLs.",
+      "PR #722 and #724 provide no-deploy PR-safe DS2 browser/visual evidence without Tourvisor calls or real lead submissions.",
+      "PRs #703/#704/#706 remain closed unmerged and inactive.",
       "HIGH-risk Metrika, external lead transport, Tourvisor contracts, pricing semantics and the AnyTour logo remain untouched."
     ],
     "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
@@ -32,13 +31,13 @@
     {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"BLOCKED_EXTERNAL"},
     {"id":"NEW_DESIGN_IMPLEMENTATION_PREP","priority":2,"status":"DONE","pr":700,"merge_sha":"1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c"},
     {"id":"SEARCH_2_0_MOCKUP_APPROVAL","priority":2,"status":"DONE","pr":708,"merge_sha":"3b8e222a59b275aef376a4565cd1035283b81ffb"},
-    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"IMPLEMENTED_AWAITING_TARGETED_QA","head_sha":"20a38015738d12dc641691a408e4614255b60e44"},
+    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"IMPLEMENTED_AWAITING_TARGETED_QA"},
     {"id":"REDESIGN_HEADER_SHELL","priority":2,"status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":703},
     {"id":"REDESIGN_LOADING_RECOVERY","priority":2,"status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":704},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":706},
-    {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"IMPLEMENTED_AWAITING_TARGETED_QA","contract_pr":709,"pr":712,"head_sha":"183010fce6250bbe27b887323190b4fd075bf383"},
-    {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"CONTRACT_REPAIRED_QUEUED_AFTER_SELECTED_TOUR","contract_pr":716,"contract_merge_sha":"70f66b87b6755f8148e27994d188ff105d0fae99"},
-    {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"IMPLEMENTED_AWAITING_VISUAL_QA","pr":715,"head_sha":"7f25aec09247fba85e8dbb8d65ecf8760c0668f2"},
+    {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"ACCEPTED_FEATURE_SEARCH_CORE","pr":712,"merge_sha":"1ee325bd950c459a1d148b0374193aa3e6b1abcb"},
+    {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"ACCEPTED_FEATURE_SEARCH_CORE","pr":723,"merge_sha":"fbc530e6fa202426d855ca49dbb07aaf20cb6cdb","visual_gate_pr":724},
+    {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"ACCEPTED_FEATURE_SEARCH_CORE","pr":715,"merge_sha":"14a2b9677fbfa56698f6a0869210dcd236c55d8e"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"QUEUED"},
     {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"QUEUED"},
     {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED"},
@@ -46,10 +45,9 @@
     {"id":"PX7_PRICE_WATCH_RESEARCH","priority":3,"status":"DEFERRED_RESEARCH"},
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"QUEUED"}
   ],
-  "last_signal": {"source":"redesign_state_reconciliation","status":"CLOSED_OLD_REDESIGN_LANES_REMOVED_SELECTED_TOUR_AND_FOOTER_AWAIT_VISUAL_QA","sha":"7f25aec09247fba85e8dbb8d65ecf8760c0668f2"},
+  "last_signal": {"source":"approved_ds2_feature_acceptance","status":"SELECTED_TOUR_FOOTER_LEAD_HANDOFF_ACCEPTED_SEARCH_RESULTS_NEXT","sha":"fbc530e6fa202426d855ca49dbb07aaf20cb6cdb"},
   "blocked": [
-    {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe when live access is available; do not classify DNS/runner failure as a product defect."},
-    {"scope":"active user-facing redesign visual gates","type":"external_visual_qa","reason":"PR #712 requires browser/375px/1440px evidence and PR #715 requires 375px/1440px evidence before merge; that PR-specific evidence is not currently available through this execution path.","action":"Keep #712/#715 unmerged until targeted evidence is available and continue only independent approved work."},
-    {"scope":"bulk integration from main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core with unrelated work mixed in.","action":"Do not bulk merge/cherry-pick main; port only narrowly justified changes."}
+    {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not reliably resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe when live access is available; do not classify DNS/runner failure as a product defect."},
+    {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core with unrelated work mixed in.","action":"Do not bulk merge/cherry-pick the feature branch; release only narrowly justified accepted changes after remaining active redesign QA."}
   ]
 }
