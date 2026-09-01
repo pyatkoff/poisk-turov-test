@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "DESIGN_APPROVAL_GATE",
+  "goal": "Prevent autonomous implementation or deployment of net-new AnyTour DS2 mockups before the owner has explicitly approved the corresponding visual direction, while allowing already-approved redesign lanes to continue through implementation and verification.",
+  "risk": "SAFE",
+  "owns_paths": [
+    "autopilot-v2/tasks/DESIGN_APPROVAL_GATE.json"
+  ],
+  "depends_on": [],
+  "verify": {
+    "level": "none",
+    "checks": []
+  },
+  "done_when": [
+    "net-new visual directions require explicit owner approval evidence before implementation",
+    "already-approved mockups may proceed without repeated approval requests",
+    "user-facing redesign PRs are not merged until their task-required visual QA is satisfied",
+    "AnyTour Design System 2.0 remains the only canonical design system"
+  ],
+  "status": "ACTIVE",
+  "policy": {
+    "new_mockup": "REQUIRES_EXPLICIT_OWNER_APPROVAL",
+    "approved_mockup": "IMPLEMENT_WITHOUT_REASKING",
+    "merge_gate": "REQUIRED_VISUAL_QA_MUST_BE_GREEN",
+    "canonical_design_system": "ANYTOUR_DESIGN_SYSTEM_2_0_ONLY"
+  },
+  "evidence": "Owner clarified on 2026-09-01 that the current phase is development and approval of new design/mockups before implementation. Existing SEARCH_2_0_MOCKUP_APPROVAL remains valid for the design direction it explicitly covers."
+}
