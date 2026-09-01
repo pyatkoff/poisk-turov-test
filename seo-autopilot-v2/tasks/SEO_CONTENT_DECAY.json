@@ -1,0 +1,19 @@
+{
+  "id": "SEO_CONTENT_DECAY",
+  "title": "Detect SEO pages whose factual usefulness has decayed",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "signals": [
+    "stale year/date language",
+    "missing factual source",
+    "dead internal destinations",
+    "long-term empty commercial modules",
+    "template superseded by better canonical page"
+  ],
+  "actions": [
+    "refresh",
+    "merge",
+    "deindex",
+    "redirect only when a genuine replacement exists"
+  ]
+}
