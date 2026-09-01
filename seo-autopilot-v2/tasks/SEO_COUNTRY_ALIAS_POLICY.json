@@ -1,0 +1,7 @@
+{
+  "id": "SEO_COUNTRY_ALIAS_POLICY",
+  "title": "Handle country query aliases without duplicate pages",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rule": "Common query variants and grammatical forms should normally map to one canonical country landing; create another page only for a genuinely distinct intent."
+}
