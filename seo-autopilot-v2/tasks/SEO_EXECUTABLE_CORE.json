@@ -1,0 +1,17 @@
+{
+  "id": "SEO_EXECUTABLE_CORE",
+  "title": "Reduce policy backlog into a compact executable SEO2 core",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "target_core": [
+    "inventory",
+    "technical/indexability",
+    "intent/architecture",
+    "template/content/data",
+    "internal linking/schema",
+    "verification/monitoring",
+    "risk/protected boundaries",
+    "state/outcomes"
+  ],
+  "rule": "Detailed policies may remain reference contracts; controller task selection should operate on a smaller set of actionable lanes."
+}
