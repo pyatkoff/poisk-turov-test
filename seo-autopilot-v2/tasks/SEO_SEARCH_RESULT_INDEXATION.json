@@ -1,0 +1,14 @@
+{
+  "id": "SEO_SEARCH_RESULT_INDEXATION",
+  "title": "Separate tour-search state from canonical SEO landings",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "principle": "Interactive tour-search result states are product/search surfaces; only explicitly designed landing families become canonical SEO pages.",
+  "checks": [
+    "query parameters",
+    "filter combinations",
+    "date/duration/tourist state",
+    "sort state",
+    "search recovery URLs"
+  ]
+}
