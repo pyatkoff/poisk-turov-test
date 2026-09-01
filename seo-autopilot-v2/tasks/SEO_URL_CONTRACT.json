@@ -1,0 +1,16 @@
+{
+  "id": "SEO_URL_CONTRACT",
+  "title": "Define one stable URL contract per SEO page family",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "for_each_family": [
+    "route shape",
+    "entity identifier source",
+    "slug normalization",
+    "trailing slash behavior",
+    "canonical generation",
+    "parameter policy",
+    "404 behavior",
+    "rename/redirect behavior"
+  ]
+}
