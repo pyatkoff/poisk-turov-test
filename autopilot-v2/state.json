@@ -1,12 +1,33 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "mode": "active_pilot",
+  "resume": {
+    "now": "Release accepted Search 2.0 to current main through dependency-safe narrow slices.",
+    "done": [
+      "P0/P1 local filtering and progressive 25→100 behavior accepted with prior evidence.",
+      "Hotel/room, selected-tour/flight and post-success lead handoff released narrowly to main.",
+      "Search 2.0 mockup approval completed.",
+      "DS2 narrow release plan accepted; bulk feature/search-core merge rejected."
+    ],
+    "next": "Release SEARCH2_DORMANT_ASSETS, then rebuild Search 2.0 activation on current main with targeted gates.",
+    "blocked": [
+      "Targeted production verification may be externally blocked when anytoour.ru cannot be resolved from the runner.",
+      "Bulk integration from feature/search-core to main is blocked by branch divergence."
+    ],
+    "lessons": [
+      "Do not bulk-merge feature/search-core into main when bundle composition diverges.",
+      "Use AnyTour Design System 2.0 only; Design System 1.0 is obsolete.",
+      "Do not change Metrika goals, external lead transport, Tourvisor contracts, pricing semantics or the logo without explicit approval.",
+      "Do not stop automatically after one accepted PR when another agreed safe step fits the run budget."
+    ]
+  },
   "active_task": {
     "id": "REDESIGN_SEARCH_RESULTS",
     "title": "Release accepted Search 2.0 to current main through dependency-safe narrow slices",
     "area": "results-tour",
     "risk": "MEDIUM",
-    "state": "implement",
+    "verification_class": "MEDIUM",
+    "state": "coding",
     "owner": "developer",
     "required_gates": [
       "SEARCH2_DORMANT_ASSETS: Fast CI + Security guard",
@@ -43,12 +64,12 @@
     {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED"},
     {"id":"SEO_FACTORY","priority":3,"status":"QUEUED_AFTER_PRODUCT_STABILITY"},
     {"id":"PX7_PRICE_WATCH_RESEARCH","priority":3,"status":"DEFERRED_RESEARCH"},
-    {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"QUEUED"}
+    {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"IN_PROGRESS_SCHEMA_V3"}
   ],
   "last_signal": {
-    "source": "ds2_narrow_release_plan",
-    "status": "PLAN_GREEN_SEARCH2_DORMANT_ASSETS_NEXT_NO_BULK_INTEGRATION",
-    "sha": "1372909d80e1c9e2f1154f0dc25315d64828c736"
+    "source": "autopilot_v2_state_migration",
+    "status": "SCHEMA_V3_RESUME_READY",
+    "sha": "aa97e1e1bdc25aed72c638978db74646ba74419a"
   },
   "blocked": [
     {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not reliably resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe when live access is available; do not classify DNS/runner failure as a product defect."},
