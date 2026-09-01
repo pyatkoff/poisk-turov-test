@@ -1,32 +1,73 @@
-# AnyTour Autopilot 2.0 MVP
+# AnyTour Autopilot 2.0
 
-Autopilot 2.0 is an orchestration layer on top of the existing project, not a replacement for production runtime code.
+Autopilot 2.0 is the parallel/planning mode of the same lightweight execution kernel used by Autopilot. It is not a second infrastructure stack and does not replace production runtime code.
 
-## MVP goals
+## Shared kernel
 
-- keep one machine-readable project contract;
-- keep one explicit task state machine;
-- separate Orchestrator, Developer, QA and Visual QA responsibilities;
-- preserve the lean CI policy introduced by the CI-diet pass;
-- import current priorities from `AUTOPILOT_STATE.json` without deleting Autopilot 1.x;
-- start in `dry_run` mode so the orchestrator can prove task selection and gate selection before autonomous product mutations.
+The execution contract is:
 
-## State flow
+`task contract -> dependency/ownership check -> writer -> task-scoped verification -> outcome -> acceptance -> release dependents`
 
-`discovered -> triaged -> ready -> coding -> qa -> visual_qa -> deploy -> production_qa -> done`
+Task contracts live in `autopilot-v2/tasks/*.json` and must declare:
+- `id`
+- `goal`
+- `risk`: `SAFE | MEDIUM | HIGH`
+- `owns_paths`
+- `depends_on`
+- `verify.level`: `none | smoke | targeted | production`
+- `verify.checks`
+- `done_when`
 
-A task may move to `blocked` from any state. Visual QA may be skipped when QA records that no user-facing/shared-UI risk exists.
+`controller.py` validates contracts, dependency graphs and task outcomes, chooses up to 3 non-overlapping ready SAFE/MEDIUM tasks, and checks changed files against `owns_paths`.
 
-## Gate policy
+## Autopilot vs Autopilot 2.0
 
-Normal coding loop: `Fast CI` only.
+- **Autopilot**: run the same controller with one writer (`plan --max-writers 1`).
+- **Autopilot 2.0**: run the same controller with at most three independent writers (`plan --max-writers 3`).
 
-Production release: existing deploy workflow plus `Production smoke`.
+Parallelism is only allowed when task ownership does not overlap. HIGH work remains approval-gated by `AGENTS.md`.
 
-Deep live/visual/SEO regression suites are on-demand evidence tools, not automatic gates. New permanent workflows require a demonstrated coverage gap.
+## Verification budget
 
-## Compatibility with Autopilot 1.x
+Verification is attached to each task instead of automatically running the whole repository matrix.
 
-`AGENTS.md` remains the authority for autonomy, hard boundaries and priority order. `AUTOPILOT_STATE.json` remains readable as the current product/roadmap source while migration is in progress. `autopilot-v2/state.json` is the v2 execution state.
+- **SAFE**: none/syntax/smallest smoke; browser only for real user-facing risk.
+- **MEDIUM**: focused deterministic checks + one relevant browser/user-flow check.
+- **HIGH**: explicit authorization where required, targeted regression, independent review where useful, production smoke for protected live contracts.
 
-The first pilot task is deliberately non-mutating: re-audit the current standalone results/selected-tour transitions and let the Orchestrator choose the smallest evidence set. Only after the dry run behaves correctly should `mode` become `active`.
+Ordinary visual work defaults to 375 + 1440. Add 430/768/1024 only when the affected breakpoint/layout requires it. Deep live/visual/SEO suites are on-demand or scheduled evidence, not normal development blockers.
+
+## Progressive acceptance
+
+A task may be accepted as soon as its own dependencies and required evidence are satisfied. Unrelated sibling tasks do not wait for the slowest lane. Accepted dependencies immediately release downstream work.
+
+## Typed recovery
+
+Use one failure class instead of blind retries:
+- `writer_failed`
+- `verification_failed`
+- `verification_missing`
+- `owns_violation`
+- `merge_conflict`
+- `external_service_failed`
+- `production_failed`
+- `blocked_by_dependency`
+
+Missing CI wiring or an external outage must not cause the writer to rerun blindly.
+
+## State compatibility
+
+`AGENTS.md` remains the authority for autonomy, hard boundaries and priorities. `AUTOPILOT_STATE.json` remains the project/roadmap resume state. `autopilot-v2/state.json` remains the current execution/pilot state while task contracts are introduced incrementally.
+
+`project-contract.json` remains the project-wide immutable boundary and lean CI policy. The existing agent notes are role guidance only; they are not separate infrastructure services and do not imply four mandatory agents for every task.
+
+## Minimal commands
+
+```bash
+python3 autopilot-v2/controller.py validate
+python3 autopilot-v2/controller.py plan --max-writers 1
+python3 autopilot-v2/controller.py plan --max-writers 3
+python3 autopilot-v2/controller.py check-owns --task TASK_ID changed/file.php another/file.css
+```
+
+Do not add a dashboard, database, mandatory worktrees or new broad workflows until a concrete limitation of this kernel is proven.
