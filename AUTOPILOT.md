@@ -1,8 +1,8 @@
-# poisk-turov-test — Autopilot State
+# poisk-turov-test — Product roadmap / compatibility state
 
-Updated: 2026-08-29 08:05 +02:00
+Updated: 2026-09-01
 
-Operational companion to `AGENTS.md`; `AUTOPILOT_STATE.json` is the machine-readable resume point and `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work.
+Operational companion to `AGENTS.md`. Execution state is no longer stored here or in `AUTOPILOT_STATE.json`: the authoritative queue is `autopilot-v2/tasks/*.json`, terminal results are `autopilot-v2/outcomes/*.json`, and current status is derived by `python3 autopilot-v2/controller.py status`. `PRODUCT_ROADMAP.md` owns Brand + Product/competitor-gap work. This document keeps roadmap/history context only.
 
 ## Current phase — CORE PRODUCT 9/10, STANDALONE SITE STABILIZATION, SEO FOUNDATION 8.8
 
@@ -37,6 +37,8 @@ SEO/site foundation remains **8.8**. Standalone remains deliberately `noindex,fo
 - URL/restored-state, child composition and stale-results validation remain guarded; `Самая низкая цена` remains current-result-set decision support and does not alter sorting or actual tour pricing.
 
 ## Exact next work order
+
+The controller task contracts override this historical ordering whenever they differ. For roadmap context:
 
 1. Re-audit results decision-support/state transitions on mobile/tablet/desktop, including progressive/stale results, sorting, comparison, lowest-price presentation and recovery after result refreshes.
 2. Re-audit selected-tour transitions in the browser: room fallback, flight autoload/retry, selected-flight price synchronization and lead entry/recovery, without changing the external lead contract.
