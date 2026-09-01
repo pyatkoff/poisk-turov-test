@@ -1,0 +1,13 @@
+{
+  "id": "SEO_AUTONOMY_POLICY",
+  "title": "Continue autonomous SEO work across safe slices",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rules": [
+    "After a SAFE task is completed and verified, re-read state and select the next highest-priority independent SAFE task.",
+    "Do not stop merely because one PR was opened or merged when another evidence-backed SAFE slice fits the current run.",
+    "Never widen a SAFE slice into MEDIUM/HIGH work to keep moving.",
+    "Record blockers and move to another independent SAFE task when possible.",
+    "Keep product protected boundaries intact."
+  ]
+}
