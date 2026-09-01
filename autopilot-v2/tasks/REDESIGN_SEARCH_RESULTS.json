@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "REDESIGN_SEARCH_RESULTS",
-  "goal": "Implement the approved Search 2.0 search/results/filter UX as a narrow DS2 layer while preserving existing Tourvisor search semantics, local-filter payload boundary, progressive 25→100 loading and stale-response protections.",
+  "goal": "Implement the approved Search 2.0 expanded-search/results/filter/concrete-tour UX as a narrow DS2 layer while preserving existing Tourvisor search semantics, local-filter payload boundary, progressive 25→100 loading and stale-response protections.",
   "risk": "MEDIUM",
   "verification_class": "MEDIUM",
   "design_approval": {
@@ -31,6 +31,12 @@
     "progressive result expansion never starts a second Tourvisor search for the same searchId",
     "stale, dirty or pending expansion is rejected",
     "AnyTour Design System 2.0 remains the only active visual system",
+    "the dedicated search page uses an expanded search workspace; compact search entry remains for homepage and country/resort pages",
+    "primary search includes hotel stars, hotel rating, meal plan and instant-confirmation checkbox; tour operator is not a primary search field",
+    "results sidebar prioritizes deeper choice criteria and does not needlessly duplicate stars/rating/meal as full sections",
+    "hotel-level cards use Show tours and may advertise how many concrete offers support instant confirmation",
+    "Buy now is forbidden on hotel-level price-from cards and is available only for a concrete tour after current offer data and instant-confirmation eligibility are known/revalidated",
+    "instant-confirmation concrete tours preserve Leave a request as a secondary conversion path",
     "no unrelated refactor is bundled into this task"
   ],
   "depends_on": [
@@ -41,12 +47,16 @@
     "checks": [
       "Fast CI",
       "Security guard",
-      "browser QA for search, local narrowing, server re-search on widening, progressive 25→100 and empty/recovery states",
+      "browser QA for expanded search, instant-confirmation search constraint, local narrowing, server re-search on widening, progressive 25→100 and empty/recovery states",
+      "browser QA that hotel cards never expose Buy now and concrete instant-confirmation offers preserve both purchase and lead paths",
       "visual QA at 375px and 1440px"
     ]
   },
   "done_when": [
-    "base search stays concise and additional filters are progressive rather than an upfront wall of controls",
+    "expanded /poisk-turov/ search exposes the approved primary trip and quality criteria without turning the results sidebar into a duplicate search form",
+    "instant confirmation is a first-class search criterion and remains visibly represented through hotel results and concrete offers",
+    "hotel result cards expose Show tours rather than premature purchase actions",
+    "concrete instant-confirmation offers may expose Buy now plus Leave a request only when supported by reliable current offer data",
     "local filters operate only on payload-complete fields and do not restart Tourvisor for simple narrowing",
     "widening original constraints uses the existing server re-search lifecycle",
     "progressive results-depth runtime expands an initial 25-result payload to at most 100 for the same searchId without starting a new Tourvisor search and rejects stale, dirty or pending expansion",
