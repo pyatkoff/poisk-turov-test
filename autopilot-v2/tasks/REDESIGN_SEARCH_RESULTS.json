@@ -7,6 +7,8 @@
     "v2/ds2-search.css",
     "v2/search-redesign-v2.js",
     "v2/ds2-results-filters.js",
+    "v2/results-depth-v1.js",
+    "v2/results-local-filters-v1.js",
     "v2/index.php",
     "v2/bundle-manifest-v1.php"
   ],
@@ -26,6 +28,8 @@
     "base search stays concise and additional filters are progressive rather than an upfront wall of controls",
     "local filters operate only on payload-complete fields and do not restart Tourvisor for simple narrowing",
     "widening original constraints uses the existing server re-search lifecycle",
+    "progressive results-depth runtime expands an initial 25-result payload to at most 100 for the same searchId without starting a new Tourvisor search and rejects stale, dirty or pending expansion",
+    "results-local-filters runtime is included in the task/release boundary and only intercepts equal-or-narrower payload-complete filters; widening remains owned by the existing server lifecycle",
     "result/filter counters, sorting, empty states and progressive loading remain consistent",
     "single active DS2 visual layer remains v2/ds2-search.css",
     "active results-filter runtime dependency ds2-results-filters.js is included in the task/release boundary",
