@@ -13,7 +13,7 @@ function v2_seo_content_pilot_sri_lanka(): array
         'data' => [
             'name' => 'Шри-Ланка',
             'title' => 'Туры на Шри-Ланку — подбор отдыха и отелей | AnyTour',
-            'description' => 'Подберите тур на Шри-Ланку: сравните Бентоту, Хиккадуву, Негомбо, Тринкомали и другие районы, выберите отель и проверьте актуальные предложения в поиске AnyTour.',
+            'description' => 'Подберите тур на Шри-Ланку: сравните Бентоту, Хиккадуву, Негомбо, Тринкомали, Коломбо, Тангалле и другие районы, выберите отель и проверьте актуальные предложения в поиске AnyTour.',
             'h1' => 'Туры на Шри-Ланку',
             'eyebrow' => 'Направления AnyTour',
             'intro' => 'Шри-Ланка подходит и для пляжной поездки, и для путешествия с экскурсиями по острову. Побережья отличаются условиями по сезонам, атмосферой и инфраструктурой, поэтому район отдыха лучше выбирать вместе с датами поездки и планами вне отеля. Актуальные цены, вылеты и доступность конкретных туров проверяются в поиске AnyTour.',
@@ -26,7 +26,7 @@ function v2_seo_content_pilot_sri_lanka(): array
                     'id' => 'resorts',
                     'title' => 'Как выбрать курорт на Шри-Ланке',
                     'paragraphs' => [
-                        'Бентота, Хиккадува, Негомбо, Тринкомали и другие районы отличаются характером побережья, инфраструктурой и удобством для поездок по острову. Для спокойного пляжного отдыха и для активной программы могут подойти разные части страны.',
+                        'Бентота, Хиккадува, Негомбо, Тринкомали, Коломбо, Тангалле и другие районы отличаются характером побережья, инфраструктурой и удобством для поездок по острову. Для спокойного пляжного отдыха и для активной программы могут подойти разные части страны.',
                         'При сравнении вариантов учитывайте не только название курорта, но и расположение конкретного отеля, доступ к пляжу и то, сколько времени вы хотите проводить в поездках за пределами побережья.'
                     ],
                 ],
@@ -61,6 +61,8 @@ function v2_seo_content_pilot_sri_lanka(): array
                 ['label' => 'Туры в Негомбо', 'href' => '/country/sri-lanka/negombo/'],
                 ['label' => 'Туры в Хиккадуву', 'href' => '/country/sri-lanka/hikkaduwa/'],
                 ['label' => 'Туры в Тринкомали', 'href' => '/country/sri-lanka/trincomalee/'],
+                ['label' => 'Туры в Коломбо', 'href' => '/country/sri-lanka/colombo/'],
+                ['label' => 'Туры в Тангалле', 'href' => '/country/sri-lanka/tangalle/'],
             ],
             'internal_links' => [
                 ['title' => 'Подбор тура', 'links' => [
@@ -72,7 +74,7 @@ function v2_seo_content_pilot_sri_lanka(): array
         'content_notes' => [
             'Evergreen editorial copy only.',
             'Tourvisor countryId=12 was verified against the synchronized production catalog on 2026-09-01.',
-            'Verified resort routes currently use Bentota region=53, Negombo region=57, Hikkaduwa region=594 and Trincomalee region=59.',
+            'Verified resort routes currently use Bentota region=53, Negombo region=57, Hikkaduwa region=594, Trincomalee region=59, Colombo region=56 and Tangalle region=592.',
             'Review status does not enable indexation or sitemap emission.',
         ],
     ];
