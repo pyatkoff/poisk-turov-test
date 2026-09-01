@@ -1,0 +1,14 @@
+{
+  "id": "SEO_CONTENT_DIFF_REVIEW",
+  "title": "Review template content changes at scale before release",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "sample": [
+    "high-volume entity",
+    "long-name entity",
+    "sparse-data entity",
+    "no-offer entity",
+    "duplicate-name edge case"
+  ],
+  "rule": "A small code diff can change thousands of pages; evaluate representative rendered output, not code size alone."
+}
