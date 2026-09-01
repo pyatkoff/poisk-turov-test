@@ -1,0 +1,12 @@
+{
+  "id": "SEO_POPULARITY_SOURCE",
+  "title": "Define evidence before using popularity rankings",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "candidate_sources": [
+    "approved aggregate search demand",
+    "approved aggregate AnyTour search/offer interactions",
+    "editorial curation"
+  ],
+  "rule": "Popularity labels need a defined time window and source; do not infer popularity from arbitrary list order."
+}
