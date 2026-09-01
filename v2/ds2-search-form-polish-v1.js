@@ -2,6 +2,11 @@
 var form=document.getElementById('tourSearch');
 if(!form||form.dataset.ds2InitialPolish==='1')return;
 form.dataset.ds2InitialPolish='1';
+function closeOtherPickers(current){
+  form.querySelectorAll('.dates-picker,.guests-picker,.ds2-nights-picker').forEach(function(other){
+    if(other!==current&&other.open)other.open=false;
+  });
+}
 function enhanceNights(main){
   var field=main.querySelector('.nights-ux');
   if(!field||field.dataset.ds2CompactNights==='1')return !!field;
@@ -33,6 +38,7 @@ function enhanceNights(main){
     var out=summary.querySelector('.ds2-nights-summary');
     if(out)out.textContent=label;
   }
+  picker.addEventListener('toggle',function(){if(picker.open)closeOtherPickers(picker);});
   from.addEventListener('input',sync);to.addEventListener('input',sync);
   from.addEventListener('change',sync);to.addEventListener('change',sync);
   quick.addEventListener('click',function(e){
@@ -44,6 +50,13 @@ function enhanceNights(main){
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&picker.open){picker.open=false;summary.focus();}});
   sync();
   return true;
+}
+function coordinateExistingPickers(){
+  form.querySelectorAll('.dates-picker,.guests-picker').forEach(function(picker){
+    if(picker.dataset.ds2Coordinated==='1')return;
+    picker.dataset.ds2Coordinated='1';
+    picker.addEventListener('toggle',function(){if(picker.open)closeOtherPickers(picker);});
+  });
 }
 function compactDate(v){
   if(!v)return'';
@@ -109,6 +122,7 @@ function arrange(){
   tuneQuickStars(stars);
   main.insertAdjacentElement('afterend',stars);
   enhanceNights(main);
+  coordinateExistingPickers();
   tunePrimarySummaries(main);
   tuneAdvancedFilters();
   return true;
