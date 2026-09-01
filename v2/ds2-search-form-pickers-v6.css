@@ -55,7 +55,10 @@ body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-
 body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-panel .nights-choice.is-active{border-color:#9db4eb!important;background:#eef3ff!important;color:#155eef!important;box-shadow:inset 0 0 0 1px #d4e0ff!important}
 body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-panel .nights-custom{grid-template-columns:1fr 1fr!important;gap:7px!important;margin-top:9px!important}
 body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-panel .nights-custom input{height:40px!important;border:1px solid #d8e0ec!important;border-radius:9px!important;padding:0 8px!important;font-size:11px!important}
-@media(max-width:1100px){body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .dates-panel,body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .guests-panel{left:0!important}}
+@media(min-width:901px){
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .guests-panel{left:auto!important;right:-8px!important}
+}
+@media(max-width:1100px){body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .dates-panel,body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .guests-panel{left:0!important;right:auto!important}}
 @media(max-width:700px){
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .dates-picker[open]:before,
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .guests-picker[open]:before,
@@ -63,7 +66,7 @@ body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .dates-panel,
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .guests-panel,
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-panel{
-    position:fixed!important;left:10px!important;right:10px!important;top:auto!important;bottom:max(10px,env(safe-area-inset-bottom))!important;
+    position:fixed!important;left:max(10px,env(safe-area-inset-left))!important;right:max(10px,env(safe-area-inset-right))!important;top:auto!important;bottom:max(10px,env(safe-area-inset-bottom))!important;
     width:auto!important;max-height:72vh!important;overflow:auto!important;padding:16px!important;border-radius:20px!important;
     box-shadow:0 24px 75px rgba(20,30,55,.28)!important
   }
@@ -77,4 +80,18 @@ body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .stepper button,body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .stepper output{width:40px!important;height:40px!important;min-height:40px!important}
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-panel .nights-quick{grid-template-columns:1fr 1fr!important}
   body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-panel .nights-choice{min-height:44px!important;height:44px!important;font-size:11px!important}
+}
+@media(max-width:430px){
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .dates-panel,
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .guests-panel,
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-panel{
+    left:max(8px,env(safe-area-inset-left))!important;right:max(8px,env(safe-area-inset-right))!important;bottom:max(8px,env(safe-area-inset-bottom))!important;
+    max-height:78vh!important;padding:14px!important;border-radius:18px!important
+  }
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .picker-panel-head{top:-14px!important;margin:-14px -14px 6px!important;padding:14px 14px 9px!important;border-radius:18px 18px 0 0!important}
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .picker-panel-head strong{font-size:15px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .dates-panel input{height:46px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .guests-row{min-height:56px!important;padding:6px 0!important}
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-panel .nights-quick{gap:6px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) #tourSearch .ds2-nights-panel .nights-choice{font-size:10.5px!important}
 }
