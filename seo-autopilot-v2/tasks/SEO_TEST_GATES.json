@@ -1,0 +1,17 @@
+{
+  "id": "SEO_TEST_GATES",
+  "title": "Keep SEO verification lightweight and targeted",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "default_pr_gates": [
+    "syntax/static validation for changed files",
+    "targeted SEO contract check for changed URL/template family",
+    "short smoke only when runtime behavior is touched"
+  ],
+  "scheduled_or_release_gates": [
+    "broader crawl inventory",
+    "duplicate/canonical audit",
+    "multi-page rendered verification"
+  ],
+  "rule": "Do not run the full heavy suite for every documentation or narrow SEO contract PR."
+}
