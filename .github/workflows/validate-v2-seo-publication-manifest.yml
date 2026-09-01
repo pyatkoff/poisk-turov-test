@@ -7,6 +7,7 @@ on:
       - 'v2/seo-publication-manifest-v1.php'
       - 'v2/seo-sitemap-candidates-v1.php'
       - 'v2/seo-launch-slice-v1.php'
+      - 'v2/site-page-shell-v1.php'
       - 'v2/seo-content-catalog-v1.php'
       - 'v2/seo-content-pilot-turkey-catalog-v1.php'
       - 'v2/seo-content-pilot-turkey-v1.php'
@@ -19,6 +20,7 @@ on:
       - 'v2/seo-page-registry-v1.php'
       - 'v2/seo-page-graph-v1.php'
       - 'tests/seo-launch-slice-smoke.php'
+      - 'tests/seo-runtime-launch-gate-smoke.php'
       - '.github/workflows/validate-v2-seo-publication-manifest.yml'
   workflow_dispatch:
 
@@ -38,7 +40,9 @@ jobs:
           php -l v2/seo-publication-manifest-v1.php
           php -l v2/seo-sitemap-candidates-v1.php
           php -l v2/seo-launch-slice-v1.php
+          php -l v2/site-page-shell-v1.php
           php -l tests/seo-launch-slice-smoke.php
+          php -l tests/seo-runtime-launch-gate-smoke.php
           php <<'PHP'
           <?php
           require 'v2/seo-sitemap-candidates-v1.php';
@@ -113,3 +117,4 @@ jobs:
           echo "V2_SEO_PUBLICATION_MANIFEST_OK approvedOnly=1 publishableOnly=1 graph=1 sitemapLaunchGate=1 selectiveAllowlist=1 deterministic=1\n";
           PHP
           php tests/seo-launch-slice-smoke.php
+          php tests/seo-runtime-launch-gate-smoke.php
