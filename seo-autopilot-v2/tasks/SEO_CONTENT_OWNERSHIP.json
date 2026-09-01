@@ -1,0 +1,11 @@
+{
+  "id": "SEO_CONTENT_OWNERSHIP",
+  "title": "Separate template copy, factual data and product UI ownership",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "ownership": {
+    "seo": ["landing intent copy", "metadata", "SEO internal-link modules"],
+    "data": ["destination/hotel facts", "offer snapshots"],
+    "product": ["tour search mechanics", "lead flow", "shared DS2 interaction behavior"]
+  }
+}
