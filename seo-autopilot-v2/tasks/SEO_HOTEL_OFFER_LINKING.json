@@ -1,0 +1,12 @@
+{
+  "id": "SEO_HOTEL_OFFER_LINKING",
+  "title": "Connect hotel SEO pages to current offers safely",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "hotel identity remains stable independently of offers",
+    "offer/search links use supported search handoff",
+    "price examples carry freshness handling",
+    "no current offer is a valid empty state, not a reason to fabricate one"
+  ]
+}
