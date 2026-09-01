@@ -6,7 +6,7 @@
     "title": "Unify search shell under AnyTour Design System 2.0",
     "area": "ux-qa",
     "risk": "SAFE",
-    "state": "observe",
+    "state": "triaged",
     "owner": "qa",
     "required_gates": [
       "Fast CI only if a concrete product-code fix is created",
@@ -20,6 +20,7 @@
       "Current feature/search-core has no open PRs.",
       "feature/search-core and main are materially diverged: main is 692 commits ahead and 53 behind feature/search-core from their merge base. Main already contains DS2 convergence work, so bulk merge/cherry-pick is not safe for this P1 stream; DS2 work on feature/search-core must remain narrow and independently verified.",
       "Production evidence remains blocked by the prior external live-probe environment; continue independent product QA.",
+      "Autopilot V2 contract run 33467837016 exposed an invalid lifecycle value: active_task.state=observe is not allowed by the contract workflow. DS2 audit state is corrected to triaged before product-code work continues.",
       "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
     ],
     "parent_task": "PILOT_ROOT_STABILIZATION_REAUDIT"
@@ -108,9 +109,9 @@
     }
   ],
   "last_signal": {
-    "source": "selected_tour_final_static_pass_and_ds2_handoff",
+    "source": "autopilot_v2_contract_state_repair",
     "status": "CONTINUE_DESIGN_SYSTEM_2_UNIFICATION",
-    "sha": "c897c1d9864ed33b2c32f7f438095739d9b888fb"
+    "sha": "57c406925ecdd417215e3005a9982f08610012c7"
   },
   "blocked": [
     {
