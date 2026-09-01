@@ -1,5 +1,8 @@
 <?php
-/** Resolve synchronized Tourvisor country IDs from the local AnyTour catalog. */
+/**
+ * Resolve synchronized Tourvisor country IDs from the local AnyTour catalog.
+ * Reusable read-only CLI; safe to keep after temporary production diagnostics are removed.
+ */
 declare(strict_types=1);
 
 if (PHP_SAPI !== 'cli') {
