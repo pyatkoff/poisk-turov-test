@@ -1,0 +1,26 @@
+{
+  "id": "OFFER_PRICE_DATA",
+  "title": "Use factual live offer and price data for SEO enrichment",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Enrich SEO pages with useful current commercial facts while preventing stale or fabricated price claims.",
+  "requirements": [
+    "approved source provenance",
+    "snapshot timestamp",
+    "staleness threshold",
+    "graceful fallback when no current offer exists",
+    "no schema values absent from visible page content"
+  ],
+  "candidate_uses": [
+    "starting tour prices",
+    "current hotel examples",
+    "duration/departure examples",
+    "popular factual offers",
+    "feed reuse where contracts match"
+  ],
+  "forbidden": [
+    "invented minimum prices",
+    "permanent guarantees from transient offers",
+    "indexable empty price-combination pages"
+  ]
+}
