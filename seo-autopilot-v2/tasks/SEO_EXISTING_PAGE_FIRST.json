@@ -1,0 +1,7 @@
+{
+  "id": "SEO_EXISTING_PAGE_FIRST",
+  "title": "Improve valuable existing pages before multiplying URLs",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "When an existing canonical page can satisfy an intent through better content/data/linking, prefer improving it over creating a near-duplicate landing."
+}
