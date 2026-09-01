@@ -1,0 +1,12 @@
+{
+  "id": "SEO_PRICE_HISTORY",
+  "title": "Evaluate price-history insights without misleading claims",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "candidate_value": [
+    "monitor meaningful price movement",
+    "identify destinations/hotels with current offer activity",
+    "support internal merchandising and content refresh priorities"
+  ],
+  "rule": "Do not publish 'price dropped', 'best time', savings or historical comparisons until sampling semantics and evidence are reliable."
+}
