@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "FULL_SEARCH_UX_REAUDIT",
+  "goal": "Perform a periodic whole-search UX audit across key mobile/tablet/desktop states without turning the audit itself into a permanent blocking CI matrix.",
+  "risk": "SAFE",
+  "owns_paths": [
+    "autopilot-v2/outcomes/FULL_SEARCH_UX_REAUDIT.json"
+  ],
+  "depends_on": [
+    "AUTOPILOT_KERNEL_ROLLOUT"
+  ],
+  "verify": {
+    "level": "none",
+    "checks": []
+  },
+  "done_when": [
+    "audit records PASS, a concrete DEFECT task, or BLOCKED_EXTERNAL",
+    "observation-only audit creates no product-code diff and requires no CI",
+    "a confirmed defect is split into its own task contract with exact owns_paths and risk-scoped verification",
+    "broad five-width or full-site regression remains on-demand maintenance evidence rather than a normal development gate"
+  ]
+}
