@@ -1,0 +1,12 @@
+{
+  "id": "SEO_OFFER_CARD_DS2",
+  "title": "Render factual SEO offer cards using Design System 2.0",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "reuse DS2 visual tokens/components where compatible",
+    "price scope/freshness is visible enough to avoid misleading users",
+    "card links into supported search/tour flow",
+    "absence of current offers has a clean fallback"
+  ]
+}
