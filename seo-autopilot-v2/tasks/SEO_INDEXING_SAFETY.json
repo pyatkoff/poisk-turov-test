@@ -1,0 +1,11 @@
+{
+  "id": "SEO_INDEXING_SAFETY",
+  "title": "Require explicit evidence before broad indexation changes",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "broad index/noindex changes require page-family evidence",
+    "new generated routes remain outside the indexable set until quality/canonical contracts pass",
+    "existing high-value canonical pages are not removed from indexation as incidental cleanup"
+  ]
+}
