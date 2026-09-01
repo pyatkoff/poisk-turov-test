@@ -1,0 +1,18 @@
+{
+  "id": "SEO_AI_CONTENT_POLICY",
+  "title": "Use AI for SEO content without fabricating travel facts",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "allowed": [
+    "draft structure and editorial explanations from approved facts",
+    "rewrite for clarity and intent",
+    "detect repetition/thinness",
+    "suggest internal-link context"
+  ],
+  "forbidden": [
+    "invent hotel facilities/location facts",
+    "invent prices/availability/reviews",
+    "mass-generate near-identical pages without quality gate",
+    "present model inference as sourced fact"
+  ]
+}
