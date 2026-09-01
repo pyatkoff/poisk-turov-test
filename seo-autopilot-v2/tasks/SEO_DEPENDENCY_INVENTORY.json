@@ -1,0 +1,15 @@
+{
+  "id": "SEO_DEPENDENCY_INVENTORY",
+  "title": "Inventory dependencies before narrow SEO releases",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "inspect": [
+    "template includes",
+    "shared DS2 CSS/components",
+    "routing/rewrite dependencies",
+    "data-source includes",
+    "metadata helpers",
+    "sitemap/robots generators"
+  ],
+  "rule": "A narrow SEO release must include every active dependency required by the changed contract, without bulk-merging unrelated work."
+}
