@@ -1,0 +1,24 @@
+{
+  "id": "SEO_PAGE_INVENTORY_SCHEMA",
+  "title": "Standardize SEO inventory evidence",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "fields": [
+    "url_family",
+    "example_url",
+    "page_type",
+    "http_status",
+    "indexability",
+    "canonical_policy",
+    "title_source",
+    "h1_source",
+    "sitemap_membership",
+    "internal_link_source",
+    "structured_data_types",
+    "data_freshness_source",
+    "duplicate_risk",
+    "legacy_domain_risk",
+    "recommended_action",
+    "risk"
+  ]
+}
