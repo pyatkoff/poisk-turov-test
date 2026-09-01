@@ -22,8 +22,10 @@
       "Autopilot V2 contract run 33467837016 exposed an invalid lifecycle value: active_task.state=observe is not allowed by the contract workflow. DS2 audit state was corrected to triaged before product-code work continued.",
       "PR #682 established a canonical token-only v2/design-system-v2.css and loads it first in the existing CSS bundle without changing any existing selector behavior.",
       "PR #682 passed Fast CI and Security guard and merged into feature/search-core as f6c28f1fd86655f386da29e08de2c8b5dbe370d6.",
-      "PR #685 migrated the actually rendered shared header brand-blue surfaces from the duplicate legacy --at-main alias to canonical DS2 --at-brand. Both resolve to #2743CB, so the change is visually pixel-equivalent while reducing parallel token ownership.",
-      "PR #685 passed Fast CI run 33479540608 and Security guard run 33479540501 and merged into feature/search-core as 8b8bb466ef43d71932aa18b7cf1a3a2796d2b631.",
+      "PR #685 migrated the actually rendered shared header brand-blue surfaces from duplicate legacy --at-main to canonical DS2 --at-brand. Both resolve to #2743CB, making the change visually pixel-equivalent.",
+      "PR #685 passed Fast CI run 33479540608 and Security guard run 33479540501 and merged as 8b8bb466ef43d71932aa18b7cf1a3a2796d2b631.",
+      "PR #686 migrated the canonical footer link hover from hard-coded #2743cb to DS2 --at-brand, also pixel-equivalent.",
+      "PR #686 passed Fast CI run 33479645604 and Security guard run 33479645627 and merged as ecbf580e45370fffc696be7c4e993aff9b660214.",
       "The legacy orange --at-btn remains intentionally untouched because it differs from canonical DS2 --at-accent and must be handled as a separate user-facing visual change with targeted visual QA.",
       "HIGH-risk areas remain approval-gated by AGENTS.md and project-contract.json."
     ],
@@ -73,9 +75,9 @@
       "id": "DESIGN_SYSTEM_2_UNIFICATION",
       "priority": 2,
       "status": "ACTIVE",
-      "pr": 685,
-      "merge_sha": "8b8bb466ef43d71932aa18b7cf1a3a2796d2b631",
-      "reason": "Canonical DS2 token foundation is active and the rendered shared header now consumes canonical --at-brand for its brand-blue surfaces. Continue one primitive/token boundary at a time; the remaining legacy orange action token requires targeted visual QA before migration."
+      "pr": 686,
+      "merge_sha": "ecbf580e45370fffc696be7c4e993aff9b660214",
+      "reason": "Canonical DS2 token foundation is active; rendered shared header and footer now consume canonical --at-brand for exact-equivalent brand-blue states. Continue one primitive/token boundary at a time; the remaining legacy orange action token requires targeted visual QA before migration."
     },
     {
       "id": "SEARCH_STATE_PERFORMANCE",
@@ -115,9 +117,9 @@
     }
   ],
   "last_signal": {
-    "source": "ds2_header_brand_token",
+    "source": "ds2_footer_brand_token",
     "status": "CONTINUE_DESIGN_SYSTEM_2_UNIFICATION",
-    "sha": "8b8bb466ef43d71932aa18b7cf1a3a2796d2b631"
+    "sha": "ecbf580e45370fffc696be7c4e993aff9b660214"
   },
   "blocked": [
     {
