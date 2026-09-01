@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "task_id": "DS2_NARROW_RELEASE_PLAN",
+  "result": "PASS",
+  "summary": "Accepted DS2 lanes are mapped to dependency-safe main release slices without bulk-merging feature/search-core. Hotel/room, selected-tour and post-success lead handoff are already released. Remaining Search 2.0 must be rebuilt on current main in two stages: dormant assets first, then an explicit activation slice with browser/visual/deploy evidence. The factual DS2 footer depends on the active ds2-search.css layer and must not be released ahead of that activation.",
+  "evidence": [
+    "PR #739 released only hotel-details-design.css + room-details.css to main; no JS/search/lead contract change.",
+    "PR #743 released the accepted selected-tour hierarchy to current main while preserving newer main fuel/incomplete-price safeguards.",
+    "PR #745 released only the post-success lead handoff JS to main; lead persistence/transport and field mapping stayed unchanged.",
+    "feature/search-core Search 2.0 uses v2/ds2-search.css directly, while current main still uses the legacy CSS bundle composition.",
+    "feature/search-core loads v2/search-redesign-v2.js and v2/ds2-results-filters.js; current main does not contain those active Search 2.0 runtime modules.",
+    "PR #748 repaired Search 2.0 ownership to the active ds2-search.css layer; PR #755 added the missing active ds2-results-filters.js dependency to the task boundary.",
+    "PR #742 restored factual footer content and >=44px primary mobile community/app targets. PR #751 made the five-width gate render the real site-footer-v1.php component; Fast CI, Security and 375/430/768/1024/1440 visual evidence are green.",
+    "Current main site-footer-v1.php still uses the prior v2-site-community/at-site-footer composition, so replacing it before ds2-search.css activation would create a styling dependency gap."
+  ],
+  "release_slices": [
+    {
+      "id": "SEARCH2_DORMANT_ASSETS",
+      "risk": "SAFE",
+      "target": "main",
+      "files": [
+        "v2/ds2-search.css",
+        "v2/search-redesign-v2.js",
+        "v2/ds2-results-filters.js"
+      ],
+      "rule": "Add/rebuild these accepted assets on current main without referencing them from index.php or bundle-manifest-v1.php yet. Do not replace unrelated main runtime files.",
+      "gates": ["Fast CI", "Security guard"],
+      "done_when": "Assets exist on main but are dormant, protected contracts are untouched, and no user-facing runtime path changes."
+    },
+    {
+      "id": "SEARCH2_ACTIVATION_AND_FACTUAL_FOOTER",
+      "risk": "MEDIUM",
+      "target": "main",
+      "depends_on": ["SEARCH2_DORMANT_ASSETS"],
+      "files": [
+        "v2/index.php",
+        "v2/bundle-manifest-v1.php",
+        "v2/site-footer-v1.php"
+      ],
+      "rule": "Rebuild the approved Search 2.0 activation against current main instead of copying feature/search-core wholesale. Preserve all newer main Tourvisor/search lifecycle, stale-response, selected-tour price/fuel, Metrika and lead-contract behavior. Activate ds2-search.css and the two accepted Search 2.0 JS modules, then switch to the factual DS2 footer only in the same dependency-complete slice.",
+      "gates": [
+        "Fast CI",
+        "Security guard",
+        "targeted browser QA for initial search, progressive 25→100, local narrowing, server re-search on widening, sorting, empty/recovery and counters",
+        "targeted selected-tour smoke to prove existing room/flight/price/lead flow remains intact",
+        "visual QA at 375px and 1440px; add 430/768/1024 only for affected breakpoint transitions",
+        "Deploy anytoour.ru",
+        "Production smoke"
+      ],
+      "done_when": "Current main renders the approved Search 2.0 + factual DS2 footer with accepted behavior and no protected-contract changes."
+    }
+  ],
+  "explicitly_excluded": [
+    "bulk merge or bulk cherry-pick of feature/search-core",
+    "Yandex Metrika configuration or goals",
+    "external lead transport or field mapping",
+    "Tourvisor API/search contract changes",
+    "pricing semantics or selected-flight/fuel safeguards",
+    "AnyTour logo changes",
+    "neighboring projects",
+    "broad retired CI/visual matrices"
+  ],
+  "next_action": "Create SEARCH2_DORMANT_ASSETS from current main as the next SAFE implementation slice. Only after it is green, build the MEDIUM activation PR on top of current main and run the targeted browser/visual/deploy gates."
+}
