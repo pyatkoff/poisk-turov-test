@@ -1,0 +1,12 @@
+{
+  "id": "SEO_H1_VISIBILITY",
+  "title": "Keep the primary H1 visible and useful",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "primary H1 is visible to users",
+    "one clear primary page heading per landing",
+    "do not hide keyword H1 while showing a different visual title",
+    "H1 expresses page intent rather than a keyword list"
+  ]
+}
