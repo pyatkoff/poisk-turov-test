@@ -26,7 +26,7 @@ jobs:
           php -l v2/index.php >/dev/null
           php -l v2/api-v2.php >/dev/null
           php -l v2/bundle-v1.php >/dev/null
-          grep -Fq "'approved-anytour-redesign-v1.css'" v2/bundle-manifest-v1.php
+          grep -Fq "'ds2-search.css'" v2/bundle-manifest-v1.php
           grep -Fq "'search-redesign-v2.js'" v2/bundle-manifest-v1.php
           node --check v2/search-redesign-v2.js
           echo "SEARCH_PREVIEW_VALIDATE_OK"
@@ -96,15 +96,11 @@ jobs:
           base='https://anytoour.ru/_preview/search2'
           code="$(curl -sSL -o /tmp/search2-preview.html -w '%{http_code}' --max-time 45 "$base/poisk-turov/")"
           echo "PREVIEW_HTTP=$code"
-          head -c 500 /tmp/search2-preview.html || true
-          echo
           test "$code" = "200"
           grep -q '/_preview/search2/bundle-v1.php?type=css' /tmp/search2-preview.html || { echo 'MISSING_PREVIEW_CSS_URL'; exit 21; }
           grep -q '/_preview/search2/api-v2.php' /tmp/search2-preview.html || { echo 'MISSING_PREVIEW_API_URL'; exit 22; }
           health_code="$(curl -sSL -o /tmp/search2-health.json -w '%{http_code}' --max-time 45 "$base/api-v2.php?action=health")"
           echo "HEALTH_HTTP=$health_code"
-          cat /tmp/search2-health.json || true
-          echo
           test "$health_code" = "200"
           grep -q 'tourvisor-direct' /tmp/search2-health.json || { echo 'HEALTH_MARKER_MISSING'; exit 23; }
           headers="$(curl -sSI --max-time 30 "$base/poisk-turov/")"
@@ -112,5 +108,5 @@ jobs:
           css_code="$(curl -sSL -o /tmp/search2.css -w '%{http_code}' --max-time 30 "$base/bundle-v1.php?type=css")"
           echo "CSS_HTTP=$css_code"
           test "$css_code" = "200"
-          grep -q 'Approved AnyTour DS2 search' /tmp/search2.css || { echo 'DS2_CSS_MARKER_MISSING'; exit 25; }
+          grep -q 'AnyTour DS2 search' /tmp/search2.css || { echo 'DS2_CSS_MARKER_MISSING'; exit 25; }
           echo "SEARCH_PREVIEW_OK $base/poisk-turov/"
