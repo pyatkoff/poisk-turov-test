@@ -40,7 +40,6 @@ const windowMock = {
 global.window = windowMock;
 global.document = documentMock;
 global.CustomEvent = CustomEventMock;
-
 global.getComputedStyle = () => ({ display: 'none', visibility: 'hidden' });
 
 const source = fs.readFileSync('v2/search-progress-ux-v1.js', 'utf8');
@@ -80,6 +79,11 @@ window.V2Results = { render() { renderCount += 1; } };
   assert.equal(currentAttempt, true, 'current retry should render');
   assert.equal(renderCount, 1, 'current retry should render exactly once');
   assert.equal(completed, 1, 'current retry should dispatch search-complete once');
+
+  hub.dispatchEvent(new CustomEventMock('v2:search-complete', { detail: { searchId: 202, progress: 100, items: Array.from({ length: 25 }, (_, i) => ({ id: i })) } }));
+  assert.match(status.innerHTML, /Найдено отелей: 25\./, 'completed status should initially reflect first result batch');
+  hub.dispatchEvent(new CustomEventMock('v2:results-rendered', { detail: { items: Array.from({ length: 100 }, (_, i) => ({ id: i })) } }));
+  assert.match(status.innerHTML, /Найдено отелей: 100\./, 'completed status should follow progressive 25→100 expansion');
 
   console.log('search_results_recovery_test: PASS');
 })().catch(error => {
