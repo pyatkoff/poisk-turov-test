@@ -1,0 +1,14 @@
+{
+  "id": "SEO_AUTOPILOT_STOP_CONDITIONS",
+  "title": "Stop autonomous execution at real risk boundaries",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "stop_or_gate_when": [
+    "required evidence is contradictory or missing",
+    "change becomes MEDIUM/HIGH and no approved plan exists",
+    "protected product/analytics contract would change",
+    "production behavior cannot be safely verified",
+    "next step would require mass publication or URL migration"
+  ],
+  "continue_when": "another independent evidence-backed SAFE task remains available"
+}
