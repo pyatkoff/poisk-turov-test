@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/site-page-shell-v1.php';
 require_once __DIR__ . '/seo-page-contract-v1.php';
+require_once __DIR__ . '/seo-offer-snapshot-v1.php';
 
 /**
  * Render a curated resort page on its final clean path.
@@ -43,6 +44,39 @@ function v2_seo_render_resort(array $record): void
         echo '<section class="sp-card"'.($id !== '' ? ' id="'.sp_e($id).'"' : '').'><h2>'.sp_e($section['title']).'</h2>';
         foreach ($section['paragraphs'] as $paragraph) echo '<p>'.sp_e($paragraph).'</p>';
         echo '</section>';
+    }
+
+    $countryId = (int)($page['search_state']['country'] ?? 0);
+    $regionId = (int)($page['search_state']['region'] ?? 0);
+    $offers = ($countryId > 0 && $regionId > 0)
+        ? v2_seo_resort_snapshot_offers($countryId, $regionId, 6)
+        : [];
+
+    if ($offers) {
+        echo '<section class="sp-card sp-offer-snapshot"><h2>Актуальные туры в '.sp_e((string)($page['name'] ?? 'этот курорт')).'</h2>';
+        echo '<p>Предложения собраны из свежих ценовых наблюдений AnyTour. Стоимость и доступность перепроверяются в поиске перед заявкой.</p>';
+        echo '<div class="sp-offer-list">';
+        foreach ($offers as $offer) {
+            $hotel = trim((string)($offer['hotelName'] ?? '')) ?: 'Отель';
+            $departure = trim((string)($offer['departureName'] ?? ''));
+            $date = v2_seo_offer_date_label((string)($offer['departureDate'] ?? ''));
+            $nights = (int)($offer['nights'] ?? 0);
+            $price = v2_seo_offer_price_label((float)($offer['price'] ?? 0), (string)($offer['currency'] ?? 'RUB'));
+            $searchState = $page['search_state'];
+            $departureId = (int)($offer['departureId'] ?? 0);
+            if ($departureId > 0) $searchState['from'] = $departureId;
+            $href = v2_seo_search_handoff_url('/poisk-turov/', $searchState);
+
+            echo '<article class="sp-offer-item">';
+            echo '<h3>'.sp_e($hotel).'</h3>';
+            echo '<p>';
+            if ($departure !== '') echo 'Вылет из '.sp_e($departure).' · ';
+            echo sp_e($date).' · '.sp_e((string)$nights).' ночей</p>';
+            echo '<p><strong>от '.sp_e($price).'</strong></p>';
+            echo '<div class="sp-actions"><a class="sp-secondary" href="'.sp_e($href).'">Посмотреть туры</a></div>';
+            echo '</article>';
+        }
+        echo '</div></section>';
     }
 
     $links = [];
