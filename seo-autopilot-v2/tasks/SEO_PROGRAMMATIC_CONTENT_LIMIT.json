@@ -1,0 +1,7 @@
+{
+  "id": "SEO_PROGRAMMATIC_CONTENT_LIMIT",
+  "title": "Limit programmatic copy to supported structured facts",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "Programmatic text may combine approved structured facts into readable summaries but must not extrapolate unknown hotel/resort qualities, popularity, suitability or guarantees."
+}
