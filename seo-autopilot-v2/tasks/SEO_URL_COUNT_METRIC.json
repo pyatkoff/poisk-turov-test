@@ -1,0 +1,7 @@
+{
+  "id": "SEO_URL_COUNT_METRIC",
+  "title": "Do not optimize SEO2 for raw indexed URL count",
+  "risk": "SAFE",
+  "status": "ACTIVE",
+  "rule": "More URLs are not a success outcome by themselves. Coverage is valuable only when pages are distinct, useful, factual, technically healthy and tied to real search intent."
+}
