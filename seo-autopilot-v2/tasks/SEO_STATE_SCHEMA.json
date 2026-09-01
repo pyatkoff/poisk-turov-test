@@ -1,0 +1,17 @@
+{
+  "id": "SEO_STATE_SCHEMA",
+  "title": "Validate SEO2 state independently",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "desired_fields": [
+    "version",
+    "project",
+    "base branch",
+    "active task",
+    "task status/risk",
+    "protected boundaries",
+    "last outcome",
+    "next candidates"
+  ],
+  "rule": "Schema evolution must not require product state to understand SEO-specific task semantics."
+}
