@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "DESIGN_SYSTEM_2_UNIFICATION",
+  "goal": "Continue converging the rendered search shell on canonical AnyTour Design System 2.0 primitives without changing user-visible behavior unless an explicitly reviewed differing-value token or layout primitive is in scope.",
+  "risk": "SAFE",
+  "owns_paths": [
+    "v2/design-system-v2.css",
+    "v2/anytour-brand.css",
+    "v2/site-header-v2.css",
+    "v2/site-footer-v1.css",
+    "v2/product-shell-v1.css",
+    "v2/bundle-manifest-v1.php"
+  ],
+  "depends_on": [
+    "AUTOPILOT_KERNEL_ROLLOUT"
+  ],
+  "verify": {
+    "level": "smoke",
+    "checks": [
+      "Fast CI for product-code changes",
+      "375 + 1440 targeted visual evidence only when rendered output may change"
+    ]
+  },
+  "done_when": [
+    "the next selected shared-shell/token boundary consumes canonical Design System 2.0 ownership",
+    "no Design System 1.0 source or parallel shared primitive is introduced",
+    "exact-equivalent token changes do not trigger broad visual regression suites",
+    "differing-value or layout changes receive only the affected targeted visual check"
+  ]
+}
