@@ -1,0 +1,12 @@
+{
+  "id": "SEO_TEMPLATE_ROLLBACK",
+  "title": "Make scaled SEO template changes easy to revert",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "avoid unrelated edits in template releases",
+    "retain previous known-good contract reference",
+    "canary before family-wide rollout",
+    "rollback restores metadata/indexability/content coherently rather than partially"
+  ]
+}
