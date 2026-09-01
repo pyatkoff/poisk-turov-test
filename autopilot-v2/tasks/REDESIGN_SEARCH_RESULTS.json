@@ -3,6 +3,12 @@
   "id": "REDESIGN_SEARCH_RESULTS",
   "goal": "Implement the approved Search 2.0 search/results/filter UX as a narrow DS2 layer while preserving existing Tourvisor search semantics, local-filter payload boundary, progressive 25→100 loading and stale-response protections.",
   "risk": "MEDIUM",
+  "verification_class": "MEDIUM",
+  "design_approval": {
+    "required": true,
+    "status": "approved",
+    "evidence": "SEARCH_2_0_MOCKUP_APPROVAL"
+  },
   "owns_paths": [
     "v2/ds2-search.css",
     "v2/search-redesign-v2.js",
@@ -11,6 +17,21 @@
     "v2/results-local-filters-v1.js",
     "v2/index.php",
     "v2/bundle-manifest-v1.php"
+  ],
+  "never_touch": [
+    "Yandex Metrika goals or configuration",
+    "external lead transport contracts",
+    "Tourvisor pricing semantics",
+    "AnyTour logo",
+    "SEO landing-page content outside the search product"
+  ],
+  "invariants": [
+    "simple narrowing remains local when payload-complete",
+    "widening original constraints uses the existing server re-search lifecycle",
+    "progressive result expansion never starts a second Tourvisor search for the same searchId",
+    "stale, dirty or pending expansion is rejected",
+    "AnyTour Design System 2.0 remains the only active visual system",
+    "no unrelated refactor is bundled into this task"
   ],
   "depends_on": [
     "SEARCH_2_0_MOCKUP_APPROVAL"
