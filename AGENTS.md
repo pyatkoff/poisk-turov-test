@@ -24,6 +24,8 @@ The agent may independently:
 
 Do not stop after every intermediate step to ask whether to continue. Continue through the roadmap until a genuine blocker is reached.
 
+Do not stop merely because one commit, PR, task slice or acceptance gate has completed. If the current autonomous run still has execution budget and another ready step is safe, in scope and does not require user approval, immediately continue with that next step. Stop only for a genuine blocker, a required approval, exhausted run budget, or when no ready in-scope work remains.
+
 ## Hard boundaries
 
 This repository/project is isolated from neighboring projects.
