@@ -25,6 +25,14 @@
   .sp-grid--balanced-three>:last-child:nth-child(odd){grid-column:1/-1;max-width:calc(50% - var(--at-space-2));width:100%;justify-self:center}
   .at-home-search__grid{min-width:0}
 }
+@media (min-width:901px) and (max-width:1024px){
+  .sp-country-page .sp-grid--balanced-three{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .sp-country-page .sp-grid--balanced-three>:last-child:nth-child(odd){grid-column:auto;max-width:none;width:auto;justify-self:stretch}
+}
+@media (max-width:900px){
+  .sp-country-page .sp-grid--balanced-three{grid-template-columns:1fr}
+  .sp-country-page .sp-grid--balanced-three>:last-child:nth-child(odd){grid-column:auto;max-width:none;width:auto;justify-self:stretch}
+}
 @media (max-width:768px){
   .sp-section-head{align-items:flex-start}
   .sp-main>section{scroll-margin-top:72px}
