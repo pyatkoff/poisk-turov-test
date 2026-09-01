@@ -1,0 +1,16 @@
+{
+  "id": "SEO_PARAMETER_POLICY",
+  "title": "Control search and filter parameter indexation",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "goal": "Prevent crawlable duplicate/faceted explosions while preserving useful search functionality.",
+  "classify": [
+    "tracking parameters",
+    "search state parameters",
+    "sort/filter parameters",
+    "prefill parameters",
+    "pagination",
+    "true canonical landing dimensions"
+  ],
+  "rule": "Do not promote a parameter combination to an indexable landing merely because it can render search results."
+}
