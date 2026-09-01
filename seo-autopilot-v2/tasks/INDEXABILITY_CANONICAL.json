@@ -1,0 +1,22 @@
+{
+  "id": "INDEXABILITY_CANONICAL",
+  "title": "Normalize indexability and canonical contracts",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "goal": "Ensure every SEO-relevant URL family has one intentional indexation and canonical policy.",
+  "checks": [
+    "HTTP status",
+    "meta robots and X-Robots-Tag",
+    "canonical target",
+    "parameter variants",
+    "http/https and host variants",
+    "legacy domain references",
+    "trailing slash policy",
+    "pagination/filter/search-result policy"
+  ],
+  "done_when": [
+    "conflicts are classified by URL family",
+    "SAFE fixes are isolated into narrow PRs",
+    "mass redirect or architecture changes are held behind a MEDIUM plan gate"
+  ]
+}
