@@ -9,15 +9,41 @@ function v2_seo_is_anytoour_host(): bool
     return $host === 'anytoour.ru' || $host === 'www.anytoour.ru';
 }
 
+function v2_seo_normalize_path(string $path): string
+{
+    $path = parse_url($path, PHP_URL_PATH) ?: '/';
+    $path = '/' . trim($path, '/');
+    return $path === '/' ? '/' : $path . '/';
+}
+
+function v2_seo_request_path(): string
+{
+    if (defined('V2_CANONICAL_PATH')) {
+        return v2_seo_normalize_path((string)V2_CANONICAL_PATH);
+    }
+    return v2_seo_normalize_path((string)($_SERVER['REQUEST_URI'] ?? '/'));
+}
+
 function v2_seo_indexable(array $siteParams = []): bool
 {
-    if (!v2_seo_is_anytoour_host()) {
+    if (!v2_seo_is_anytoour_host() || empty($siteParams['SEO_INDEXABLE'])) {
         return false;
     }
 
-    // Keep launch controlled. Indexing is enabled only through production
-    // site configuration after the SEO pages and redirects are ready.
-    return !empty($siteParams['SEO_INDEXABLE']);
+    // A global launch flag alone must never open the whole site. Indexation is
+    // opt-in per clean path so the first SEO release can be rolled out as a
+    // narrow, reversible slice.
+    $allowed = $siteParams['SEO_INDEXABLE_PATHS'] ?? [];
+    if (!is_array($allowed) || $allowed === []) {
+        return false;
+    }
+
+    $current = v2_seo_request_path();
+    foreach ($allowed as $path) {
+        if (!is_string($path) || trim($path) === '') continue;
+        if (v2_seo_normalize_path($path) === $current) return true;
+    }
+    return false;
 }
 
 function v2_seo_canonical_url(): string

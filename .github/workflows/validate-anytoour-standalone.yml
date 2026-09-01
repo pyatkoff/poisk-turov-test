@@ -123,8 +123,21 @@ jobs:
             echo 'Sitemap must stay empty while the site is noindex' >&2
             exit 40
           fi
-          grep -Fq "return !empty(\$siteParams['SEO_INDEXABLE']);" v2/seo-config.php
-          echo "SEO_LAUNCH_SCAFFOLD_OK"
+          php -r '
+            $_SERVER["HTTP_HOST"]="anytoour.ru";
+            $_SERVER["REQUEST_URI"]="/country/turkey/kemer/?utm_source=test";
+            require "v2/seo-config.php";
+            if (v2_seo_indexable(["SEO_INDEXABLE"=>true]) !== false) exit(45);
+            $slice=["SEO_INDEXABLE"=>true,"SEO_INDEXABLE_PATHS"=>["/country/turkey/","/country/turkey/kemer/"]];
+            if (v2_seo_indexable($slice) !== true) exit(46);
+            $_SERVER["REQUEST_URI"]="/poisk-turov/";
+            if (v2_seo_indexable($slice) !== false) exit(47);
+            $_SERVER["HTTP_HOST"]="anytour.online";
+            $_SERVER["REQUEST_URI"]="/country/turkey/kemer/";
+            if (v2_seo_indexable($slice) !== false) exit(48);
+          '
+          grep -Fq 'SEO_INDEXABLE_PATHS' v2/seo-config.php
+          echo "SEO_SELECTIVE_LAUNCH_SCAFFOLD_OK"
       - name: Keep standalone shell assets and routing reachable
         shell: bash
         run: |
