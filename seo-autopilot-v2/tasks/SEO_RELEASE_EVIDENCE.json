@@ -1,0 +1,21 @@
+{
+  "id": "SEO_RELEASE_EVIDENCE",
+  "title": "Require proportional SEO release evidence",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "safe": [
+    "changed-file validation",
+    "representative rendered/contract check"
+  ],
+  "medium": [
+    "representative matrix",
+    "crawl/indexability/canonical evidence",
+    "rollback path"
+  ],
+  "high": [
+    "migration map",
+    "broader pre/post crawl evidence",
+    "explicit approval",
+    "rollback plan"
+  ]
+}
