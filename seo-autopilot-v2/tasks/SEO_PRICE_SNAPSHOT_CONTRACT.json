@@ -1,0 +1,14 @@
+{
+  "id": "SEO_PRICE_SNAPSHOT_CONTRACT",
+  "title": "Define safe minimum-price snapshot semantics",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "questions": [
+    "what search scope produced the minimum",
+    "departure city/date/duration/tourist assumptions",
+    "timestamp and refresh cadence",
+    "currency/party basis",
+    "fallback when no matching offers exist"
+  ],
+  "rule": "Do not display a generic 'from' price until its scope and freshness are explicit."
+}
