@@ -1,31 +1,32 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-01T17:15:00+03:00",
+  "updated_at": "2026-09-01T18:03:00+03:00",
   "mode": "approved_ds2_redesign_implementation",
-  "phase": "Full agreed AnyTour Design System 2.0 redesign remains approved and active. The approved hotel/room detail hierarchy is now the first redesign lane narrowly released from feature/search-core to main and verified in production via #739. Search 2.0, selected-tour, factual footer/community and post-success lead handoff remain accepted in feature/search-core and require their own dependency-safe main releases. Bulk feature integration remains prohibited. Public-site visual score remains 7.2 until more of the agreed product-wide redesign is production-shipped and re-audited as one coherent site.",
+  "phase": "Full agreed AnyTour Design System 2.0 redesign remains approved and active. Hotel/room detail and selected-tour/flight-choice are now narrowly released from feature/search-core to main and verified in production via #739 and #743. Search 2.0 and post-success lead handoff remain accepted in feature/search-core and require their own dependency-safe main releases. Factual footer/community remains accepted in principle, but current feature cleanup #742 is not releasable yet because its five-width visual gate fails on 375/430 mobile target sizing. Bulk feature integration remains prohibited. Public-site visual score remains 7.2 until more of the agreed product-wide redesign is production-shipped and re-audited as one coherent site.",
   "scores": {"search_ux":9.0,"waiting_progress_recovery":9.0,"results_comparison":9.0,"selected_tour":9.0,"flights_price":9.0,"lead_ux":9.0,"mobile_ux":9.0,"tablet_desktop_ux":9.0,"brand_trust":9.0,"visual_quality":9.0,"product_differentiation":9.0,"seo_site_foundation":8.8,"public_site_visual":7.2},
   "current_task": {
     "id": "DS2_NARROW_RELEASE_PLAN",
     "category": "RELEASE_PLANNING",
     "title": "Continue narrow releases for accepted DS2 lanes",
     "status": "READY",
-    "progress": "Hotel/room detail hierarchy is SHIPPED through #739: two CSS files only, all eight main PR checks green, production deploy green for public pages, unchanged lead bridge and live search, and live tour/flight verification green. Remaining accepted feature lanes are Search 2.0, selected-tour, factual footer/community and post-success lead handoff.",
-    "next_action": "Inventory the next smallest dependency-safe accepted runtime slice against current main, preferring a self-contained lane with existing task-specific evidence. Prepare a main-targeted PR only after proving its dependencies and protected contracts; do not bulk merge feature/search-core."
+    "progress": "Hotel/room detail is SHIPPED through #739 and selected-tour/flight-choice is SHIPPED through #743. #743 changed only selected-tour-description plus DS2 token styling for flight tradeoff chips while preserving newer main fuel fallback and incomplete-price safeguards. All eleven PR workflows were green, production deploy run 33522968133 completed successfully, and public pages, unchanged lead bridge and live search smoke all passed.",
+    "next_action": "Inventory post-success lead handoff against current main as the next likely small self-contained accepted lane; independently inventory Search 2.0 dependencies. Do not release the footer cleanup until #742's 375/430 mobile target failure is resolved and its five-width visual gate is green. Do not bulk merge feature/search-core."
   },
   "queue": [
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","status":"SHIPPED_PRODUCTION","implementation_pr":736,"behavior_gate_pr":737,"release_pr":739,"main_sha":"3d49be1e0224d274f27a515d6e5d5b05c0798e86","deploy_run":33517984397},
+    {"id":"REDESIGN_SELECTED_TOUR","status":"SHIPPED_PRODUCTION","feature_pr":712,"release_pr":743,"main_sha":"c3d9d0b0ac8f33b44d2706f467448762a8c42fd1","deploy_run":33522968133},
     {"id":"REDESIGN_SEARCH_RESULTS","status":"ACCEPTED_FEATURE_SEARCH_CORE","visual_gate_pr":726,"visual_gate_head":"145565e7eeae2f2ef3f268bf857b99822e18723c"},
     {"id":"DS2_NARROW_RELEASE_PLAN","status":"READY"},
     {"id":"REDESIGN_HEADER_SHELL","status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":703},
     {"id":"REDESIGN_LOADING_RECOVERY","status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":704},
-    {"id":"REDESIGN_SELECTED_TOUR","status":"ACCEPTED_FEATURE_SEARCH_CORE","pr":712,"merge_sha":"1ee325bd950c459a1d148b0374193aa3e6b1abcb"},
     {"id":"REDESIGN_LEAD_HANDOFF","status":"ACCEPTED_FEATURE_SEARCH_CORE","contract_pr":716,"pr":723,"merge_sha":"fbc530e6fa202426d855ca49dbb07aaf20cb6cdb","visual_gate_pr":724,"visual_gate_merge_sha":"732e0fe6a153de90c5128ea4ff8cf082954350b9"},
-    {"id":"REDESIGN_FOOTER_COMMUNITY","status":"ACCEPTED_FEATURE_SEARCH_CORE","pr":715,"merge_sha":"14a2b9677fbfa56698f6a0869210dcd236c55d8e"}
+    {"id":"REDESIGN_FOOTER_COMMUNITY","status":"ACCEPTED_FEATURE_SEARCH_CORE_BLOCKED_BY_CURRENT_VISUAL_CLEANUP","pr":715,"merge_sha":"14a2b9677fbfa56698f6a0869210dcd236c55d8e","cleanup_pr":742,"cleanup_visual_run":33522418731,"reason":"375/430 visual gate reports mobile target heights below 44px; do not release until fixed and green."}
   ],
-  "production_baseline": {"standalone_target":"https://anytoour.ru/","standalone_search":"https://anytoour.ru/poisk-turov/","status":"SHIPPED_WITH_FIRST_NARROW_DS2_REDESIGN_SLICE","search2_preview_status":"GREEN_HTTP_HEALTH_CSS_NOINDEX_2026_09_01","redesign_release_status":"HOTEL_ROOM_DETAILS_SHIPPED_PR_739","last_verified_main_sha":"3d49be1e0224d274f27a515d6e5d5b05c0798e86"},
+  "production_baseline": {"standalone_target":"https://anytoour.ru/","standalone_search":"https://anytoour.ru/poisk-turov/","status":"SHIPPED_WITH_TWO_NARROW_DS2_REDESIGN_SLICES","search2_preview_status":"GREEN_HTTP_HEALTH_CSS_NOINDEX_2026_09_01","redesign_release_status":"HOTEL_ROOM_AND_SELECTED_TOUR_SHIPPED_PR_739_PR_743","last_verified_main_sha":"c3d9d0b0ac8f33b44d2706f467448762a8c42fd1"},
   "blocked": [
-    {"scope":"bulk feature/search-core to main integration","reason":"main and feature/search-core materially diverge with unrelated work; do not bulk merge/cherry-pick the branch. Release only narrowly justified accepted changes through isolated main-targeted PRs."}
+    {"scope":"bulk feature/search-core to main integration","reason":"main and feature/search-core materially diverge with unrelated work; do not bulk merge/cherry-pick the branch. Release only narrowly justified accepted changes through isolated main-targeted PRs."},
+    {"scope":"current factual footer cleanup #742","reason":"Five-width visual gate fails at 375/430 because one or more community/app mobile targets are below 44px. Keep unmerged until visual contract is restored."}
   ],
   "deferred": [{"scope":"PR #254","reason":"Deferred unless separate DB/platform architecture is freshly proven safe."},{"scope":"technical_refactor","reason":"Deferred until explicit owner direction."},{"scope":"unresolved legal/payment content","reason":"Do not migrate until resolved."},{"scope":"traffic/conversion analysis","reason":"Disabled until owner launches traffic."}],
   "protected": {"other_projects":"DO_NOT_MODIFY","logo":"DO_NOT_CHANGE","design_system":"ANYTOUR_DESIGN_SYSTEM_2_ONLY","metrika_configuration":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","metrika_goals":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","tourvisor_contract":"PRESERVE_DURING_REDESIGN","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"}
