@@ -1,0 +1,15 @@
+{
+  "id": "SEO_COMMERCIAL_INTENT",
+  "title": "Keep SEO pages commercially useful without doorway behavior",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "requirements": [
+    "clear path to relevant tour search",
+    "useful factual destination/hotel context",
+    "current offer examples when available",
+    "related alternatives",
+    "mobile-friendly conversion path",
+    "no forced keyword-only pages"
+  ],
+  "principle": "The landing page should help a traveler choose and continue, not exist only for a crawler."
+}
