@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "NEW_DESIGN_IMPLEMENTATION_PREP",
+  "goal": "Prepare the AnyTour search redesign for implementation from approved mockups without polishing the outgoing visual system or changing protected search contracts. Map the approved screen flow into narrow implementation contracts so rollout can proceed screen-by-screen and parallelize only non-overlapping work.",
+  "risk": "SAFE",
+  "owns_paths": [
+    "autopilot-v2/tasks/"
+  ],
+  "depends_on": [
+    "AUTOPILOT_KERNEL_ROLLOUT"
+  ],
+  "verify": {
+    "level": "none",
+    "checks": []
+  },
+  "done_when": [
+    "Approved redesign screens are represented as narrow implementation tasks in the agreed user-flow order: header/shell, search form, loading/waiting, results and filters, hotel/tour selection, lead handoff, footer.",
+    "Each implementation task declares exact owns_paths and dependencies before product code is changed.",
+    "Current Design System 2.0 receives no cosmetic polishing solely for the outgoing design.",
+    "Search/Tourvisor, lead-flow, Metrika goals and other protected contracts remain unchanged unless a separate explicitly scoped task requires it.",
+    "Implementation can use up to three non-overlapping writer lanes, while dependent screens release progressively after their prerequisites are accepted.",
+    "Visual verification is limited to the affected approved screen at 375px and 1440px by default; additional breakpoints are required only when the changed layout crosses them."
+  ]
+}
