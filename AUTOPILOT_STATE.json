@@ -1,29 +1,32 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-01T15:25:00+03:00",
+  "updated_at": "2026-09-01T15:40:00+03:00",
   "mode": "approved_ds2_redesign_implementation",
-  "phase": "Full agreed AnyTour Design System 2.0 redesign is approved and active. Search 2.0 preview is green. PRs #703/#704/#706 are closed unmerged and are not active release/QA lanes. Active user-facing redesign work is #712 selected-tour and #715 footer/community, both code-green on canonical DS2 tokens and still gated by task-specific visual/browser QA. Shipped search baseline remains protected; public-site visual score is 7.2 and SEO foundation 8.8.",
+  "phase": "Full agreed AnyTour Design System 2.0 redesign remains approved and active. The selected-tour hierarchy (#712), factual footer/community (#715) and post-success lead messenger handoff (#723) are accepted and integrated into feature/search-core with task-specific browser/visual evidence. Production is intentionally unchanged because feature/search-core materially diverges from main and bulk integration is prohibited; release must be narrow and evidence-driven. Search 2.0 results remains the next active approved lane. Public-site visual score stays 7.2 until redesigned lanes reach production and are verified there.",
   "scores": {"search_ux":9.0,"waiting_progress_recovery":9.0,"results_comparison":9.0,"selected_tour":9.0,"flights_price":9.0,"lead_ux":9.0,"mobile_ux":9.0,"tablet_desktop_ux":9.0,"brand_trust":9.0,"visual_quality":9.0,"product_differentiation":9.0,"seo_site_foundation":8.8,"public_site_visual":7.2},
   "current_task": {
-    "id": "REDESIGN_SELECTED_TOUR",
+    "id": "REDESIGN_SEARCH_RESULTS",
     "category": "VISUAL_UX",
-    "title": "Verify approved AnyTour DS2 selected-tour hierarchy",
+    "title": "Verify approved Search 2.0 search/results/filter UX",
     "status": "IMPLEMENTED_AWAITING_TARGETED_QA",
-    "progress": "PR #712 implements the approved staged Ваш тур → Выбор рейса → Заявка менеджеру hierarchy. Review removed a private injected palette in favor of canonical DS2 tokens at 183010fce6250bbe27b887323190b4fd075bf383; Fast CI/Security are green. PR #715 factual footer/community received the same DS2 token convergence at 7f25aec09247fba85e8dbb8d65ecf8760c0668f2 and is also code-green. PR #716 repaired lead-handoff UI ownership while backend transport remains protected. PRs #703/#704/#706 are closed unmerged and must not be treated as active blockers.",
-    "next_action": "Collect required 375/1440 visual QA and selected-tour room/flight/price browser evidence for #712/#715. Merge/deploy only evidence-green lanes, then continue the approved lead-handoff UI."
+    "progress": "Accepted feature/search-core lanes: #712 selected-tour, #715 footer/community, #723 lead handoff. PR-safe visual infrastructure #722 covers selected-tour/footer at 375/430/768/1024/1440; #724 covers lead sending/error/success and MAX/Telegram post-success handoff at 375/1440. Search 2.0 remains implemented on feature/search-core and now owns the next targeted QA slot.",
+    "next_action": "Run task-specific Search 2.0 browser QA for search, local narrowing, server re-search on widening, progressive 25→100, empty/recovery states and 375/1440 presentation. Do not bulk merge feature/search-core into main; after accepted search/results evidence, design a narrow release path and run normal main deploy/post-deploy gates."
   },
   "queue": [
     {"id":"REDESIGN_SEARCH_RESULTS","status":"IMPLEMENTED_AWAITING_TARGETED_QA"},
     {"id":"REDESIGN_HEADER_SHELL","status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":703},
     {"id":"REDESIGN_LOADING_RECOVERY","status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":704},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":706},
-    {"id":"REDESIGN_SELECTED_TOUR","status":"IMPLEMENTED_AWAITING_TARGETED_QA","pr":712,"head_sha":"183010fce6250bbe27b887323190b4fd075bf383"},
-    {"id":"REDESIGN_LEAD_HANDOFF","status":"CONTRACT_REPAIRED_QUEUED_AFTER_SELECTED_TOUR","contract_pr":716},
-    {"id":"REDESIGN_FOOTER_COMMUNITY","status":"IMPLEMENTED_AWAITING_VISUAL_QA","pr":715,"head_sha":"7f25aec09247fba85e8dbb8d65ecf8760c0668f2"}
+    {"id":"REDESIGN_SELECTED_TOUR","status":"ACCEPTED_FEATURE_SEARCH_CORE","pr":712,"merge_sha":"1ee325bd950c459a1d148b0374193aa3e6b1abcb"},
+    {"id":"REDESIGN_LEAD_HANDOFF","status":"ACCEPTED_FEATURE_SEARCH_CORE","contract_pr":716,"pr":723,"merge_sha":"fbc530e6fa202426d855ca49dbb07aaf20cb6cdb","visual_gate_pr":724,"visual_gate_merge_sha":"732e0fe6a153de90c5128ea4ff8cf082954350b9"},
+    {"id":"REDESIGN_FOOTER_COMMUNITY","status":"ACCEPTED_FEATURE_SEARCH_CORE","pr":715,"merge_sha":"14a2b9677fbfa56698f6a0869210dcd236c55d8e"}
   ],
-  "production_baseline": {"standalone_target":"https://anytoour.ru/","standalone_search":"https://anytoour.ru/poisk-turov/","status":"SHIPPED_BASELINE_UNCHANGED_BY_OPEN_REDESIGN_PRS","search2_preview_status":"GREEN_HTTP_HEALTH_CSS_NOINDEX_2026_09_01","redesign_release_status":"NOT_DEPLOYED_AWAITING_TARGETED_QA"},
-  "blocked": [{"scope":"active redesign targeted visual/browser QA","reason":"PR #712 requires room/flight/price browser plus 375/1440 visual evidence and #715 requires 375/1440 visual evidence before merge; PR-specific preview evidence is not available through the current execution path."}],
+  "production_baseline": {"standalone_target":"https://anytoour.ru/","standalone_search":"https://anytoour.ru/poisk-turov/","status":"SHIPPED_BASELINE_UNCHANGED_BY_FEATURE_REDESIGN_INTEGRATION","search2_preview_status":"GREEN_HTTP_HEALTH_CSS_NOINDEX_2026_09_01","redesign_release_status":"NOT_DEPLOYED_FEATURE_INTEGRATION_ONLY"},
+  "blocked": [
+    {"scope":"targeted production verification","reason":"Prior execution environment could not reliably resolve anytoour.ru; retry a narrow live probe when available and do not classify runner/DNS failure as a product defect."},
+    {"scope":"bulk feature/search-core to main integration","reason":"main and feature/search-core materially diverge with unrelated work; do not bulk merge/cherry-pick. Release only narrowly justified accepted changes after remaining active redesign QA."}
+  ],
   "deferred": [{"scope":"PR #254","reason":"Deferred unless separate DB/platform architecture is freshly proven safe."},{"scope":"technical_refactor","reason":"Deferred until explicit owner direction."},{"scope":"unresolved legal/payment content","reason":"Do not migrate until resolved."},{"scope":"traffic/conversion analysis","reason":"Disabled until owner launches traffic."}],
   "protected": {"other_projects":"DO_NOT_MODIFY","logo":"DO_NOT_CHANGE","design_system":"ANYTOUR_DESIGN_SYSTEM_2_ONLY","metrika_configuration":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","metrika_goals":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","tourvisor_contract":"PRESERVE_DURING_REDESIGN","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"}
 }
