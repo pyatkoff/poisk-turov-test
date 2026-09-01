@@ -230,10 +230,12 @@
   .selected-tour .facts.checkout-facts{grid-template-columns:repeat(3,minmax(0,1fr))}
   .flight-choice>b{max-width:150px}
 }
-@media(max-width:768px){
-  .selected-tour{padding:20px;border-radius:var(--at-radius-lg)}
+@media(max-width:820px){
   .selected-head.checkout-head{grid-template-columns:1fr;gap:var(--at-space-3)}
   .selected-head.checkout-head .selected-price{width:auto;min-width:min(100%,240px);text-align:left}
+}
+@media(max-width:768px){
+  .selected-tour{padding:20px;border-radius:var(--at-radius-lg)}
   .checkout-journey{grid-template-columns:repeat(3,minmax(0,1fr))}
   .checkout-journey span{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center}
   .tour-flights.checkout-flights>.section-heading,
