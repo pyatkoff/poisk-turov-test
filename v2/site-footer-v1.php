@@ -5,7 +5,7 @@ if (isset($params) && is_array($params) && array_key_exists('PHONE', $params)) {
     $params['PHONE'] = v2_site_phone($params, '8 (800) 100 - 61 - 50');
 }
 
-/** Canonical factual AnyTour DS2 footer for the search experience. */
+/** Canonical factual AnyTour DS2 footer; primary mobile community/app actions keep a 44px tap target. */
 function v2_render_site_footer(string $phone, string $phoneHref): void
 {
     $legacy = 'https://anytour.online';
