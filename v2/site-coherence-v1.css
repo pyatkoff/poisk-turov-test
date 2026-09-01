@@ -13,7 +13,7 @@
 .sp-grid--balanced-three{grid-template-columns:repeat(3,minmax(0,1fr))}
 .sp-actions>a,.sp-actions>button,.at-home-search button,.at-home-search__more{max-width:100%}
 .sp-breadcrumbs .sp-wrap{padding-block:2px}
-.sp-office-phone{display:inline-flex;align-items:center;min-height:44px}
+.sp-office-phone,.sp-contact-phone{display:inline-flex;align-items:center;min-height:44px}
 .sp-country{display:flex;flex-direction:column}
 .sp-country small{flex:0 0 auto}
 .sp-country-action{margin-top:auto;padding-top:14px}
