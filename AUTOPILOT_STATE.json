@@ -1,20 +1,21 @@
 {
   "schema_version": 1,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-01T15:40:00+03:00",
+  "updated_at": "2026-09-01T15:53:00+03:00",
   "mode": "approved_ds2_redesign_implementation",
-  "phase": "Full agreed AnyTour Design System 2.0 redesign remains approved and active. The selected-tour hierarchy (#712), factual footer/community (#715) and post-success lead messenger handoff (#723) are accepted and integrated into feature/search-core with task-specific browser/visual evidence. Production is intentionally unchanged because feature/search-core materially diverges from main and bulk integration is prohibited; release must be narrow and evidence-driven. Search 2.0 results remains the next active approved lane. Public-site visual score stays 7.2 until redesigned lanes reach production and are verified there.",
+  "phase": "Full agreed AnyTour Design System 2.0 redesign remains approved and active. Selected-tour (#712), factual footer/community (#715), post-success lead messenger handoff (#723) and Search 2.0 results/filter UX are now accepted in feature/search-core with task-specific browser/visual evidence. Search 2.0 targeted QA is green via #726. Production remains intentionally unchanged because feature/search-core materially diverges from main and bulk integration is prohibited; the active task is now a narrow evidence-driven release plan. Public-site visual score stays 7.2 until accepted redesign lanes reach production and are verified there.",
   "scores": {"search_ux":9.0,"waiting_progress_recovery":9.0,"results_comparison":9.0,"selected_tour":9.0,"flights_price":9.0,"lead_ux":9.0,"mobile_ux":9.0,"tablet_desktop_ux":9.0,"brand_trust":9.0,"visual_quality":9.0,"product_differentiation":9.0,"seo_site_foundation":8.8,"public_site_visual":7.2},
   "current_task": {
-    "id": "REDESIGN_SEARCH_RESULTS",
-    "category": "VISUAL_UX",
-    "title": "Verify approved Search 2.0 search/results/filter UX",
-    "status": "IMPLEMENTED_AWAITING_TARGETED_QA",
-    "progress": "Accepted feature/search-core lanes: #712 selected-tour, #715 footer/community, #723 lead handoff. PR-safe visual infrastructure #722 covers selected-tour/footer at 375/430/768/1024/1440; #724 covers lead sending/error/success and MAX/Telegram post-success handoff at 375/1440. Search 2.0 remains implemented on feature/search-core and now owns the next targeted QA slot.",
-    "next_action": "Run task-specific Search 2.0 browser QA for search, local narrowing, server re-search on widening, progressive 25→100, empty/recovery states and 375/1440 presentation. Do not bulk merge feature/search-core into main; after accepted search/results evidence, design a narrow release path and run normal main deploy/post-deploy gates."
+    "id": "DS2_NARROW_RELEASE_PLAN",
+    "category": "RELEASE_PLANNING",
+    "title": "Design narrow release path for accepted DS2 lanes",
+    "status": "READY",
+    "progress": "Accepted feature/search-core lanes now include #712 selected-tour, #715 footer/community, #723 lead handoff and Search 2.0 results/filter UX. PR #726 provides green deterministic 375/1440 behavior/visual evidence for progressive 25→100 capture, local narrowing, server re-search on widening, progressive filters and recovery state; Security guard is also green.",
+    "next_action": "Inventory accepted runtime files against current main, split them into the smallest dependency-safe release slices, and prepare only narrow main-targeted PRs. Do not bulk merge feature/search-core. Deploy only after relevant main CI is green and normal production/post-deploy gates can verify public pages, search/results, selected tour and unchanged lead bridge."
   },
   "queue": [
-    {"id":"REDESIGN_SEARCH_RESULTS","status":"IMPLEMENTED_AWAITING_TARGETED_QA"},
+    {"id":"REDESIGN_SEARCH_RESULTS","status":"ACCEPTED_FEATURE_SEARCH_CORE","visual_gate_pr":726,"visual_gate_head":"145565e7eeae2f2ef3f268bf857b99822e18723c"},
+    {"id":"DS2_NARROW_RELEASE_PLAN","status":"READY"},
     {"id":"REDESIGN_HEADER_SHELL","status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":703},
     {"id":"REDESIGN_LOADING_RECOVERY","status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":704},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","status":"CLOSED_UNMERGED_NOT_ACTIVE","pr":706},
@@ -25,7 +26,7 @@
   "production_baseline": {"standalone_target":"https://anytoour.ru/","standalone_search":"https://anytoour.ru/poisk-turov/","status":"SHIPPED_BASELINE_UNCHANGED_BY_FEATURE_REDESIGN_INTEGRATION","search2_preview_status":"GREEN_HTTP_HEALTH_CSS_NOINDEX_2026_09_01","redesign_release_status":"NOT_DEPLOYED_FEATURE_INTEGRATION_ONLY"},
   "blocked": [
     {"scope":"targeted production verification","reason":"Prior execution environment could not reliably resolve anytoour.ru; retry a narrow live probe when available and do not classify runner/DNS failure as a product defect."},
-    {"scope":"bulk feature/search-core to main integration","reason":"main and feature/search-core materially diverge with unrelated work; do not bulk merge/cherry-pick. Release only narrowly justified accepted changes after remaining active redesign QA."}
+    {"scope":"bulk feature/search-core to main integration","reason":"main and feature/search-core materially diverge with unrelated work; do not bulk merge/cherry-pick the branch. Release only narrowly justified accepted changes through isolated main-targeted PRs."}
   ],
   "deferred": [{"scope":"PR #254","reason":"Deferred unless separate DB/platform architecture is freshly proven safe."},{"scope":"technical_refactor","reason":"Deferred until explicit owner direction."},{"scope":"unresolved legal/payment content","reason":"Do not migrate until resolved."},{"scope":"traffic/conversion analysis","reason":"Disabled until owner launches traffic."}],
   "protected": {"other_projects":"DO_NOT_MODIFY","logo":"DO_NOT_CHANGE","design_system":"ANYTOUR_DESIGN_SYSTEM_2_ONLY","metrika_configuration":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","metrika_goals":"READ_ONLY_WITHOUT_EXPLICIT_APPROVAL","tourvisor_contract":"PRESERVE_DURING_REDESIGN","lead_sending_mechanism":"PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING"}
