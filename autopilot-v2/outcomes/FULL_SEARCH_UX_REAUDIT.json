@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "FULL_SEARCH_UX_REAUDIT",
+  "result": "DEFECT",
+  "observed_at": "2026-09-01T15:56:00+02:00",
+  "summary": "Search 2.0 results/filter UX, selected-tour, footer/community and post-success lead handoff have accepted feature/search-core evidence, but the approved hotel/tour/room selection redesign is not currently accepted in the branch: its only implementation PR #706 was closed without merge and the queue explicitly marks REDESIGN_HOTEL_TOUR_SELECTION as CLOSED_UNMERGED_NOT_ACTIVE.",
+  "evidence": [
+    "REDESIGN_SEARCH_RESULTS accepted via targeted QA PR #726.",
+    "REDESIGN_SELECTED_TOUR accepted via PR #712.",
+    "REDESIGN_LEAD_HANDOFF accepted via PR #723 with visual gate #724.",
+    "REDESIGN_FOOTER_COMMUNITY accepted via PR #715.",
+    "REDESIGN_HOTEL_TOUR_SELECTION PR #706 is closed without merge and therefore cannot be counted as implementation of the approved hotel/tour/room screen.",
+    "The existing REDESIGN_HOTEL_TOUR_SELECTION task contract already owns the active hotel/room/tour runtime paths and remains the correct bounded implementation lane."
+  ],
+  "next_task": "REDESIGN_HOTEL_TOUR_SELECTION",
+  "next_action": "Re-activate the existing approved hotel/tour/room redesign task, implement the agreed hierarchy in its owned active runtime paths, then run Fast CI + Security guard + browser QA for hotel open, room/meal/tour selection, stale-detail protection and visual QA at 375/1440.",
+  "protected_contracts": [
+    "Tourvisor identifiers and request semantics",
+    "selected-tour state and pricing behavior",
+    "external lead contract",
+    "Yandex Metrika/goals",
+    "AnyTour logo"
+  ]
+}
