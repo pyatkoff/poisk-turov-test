@@ -1,0 +1,14 @@
+{
+  "id": "SEO_DATA_COVERAGE_REPORT",
+  "title": "Measure factual data coverage before scaling page families",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "measure": [
+    "countries with stable facts",
+    "resorts with stable taxonomy/content",
+    "hotels with stable identity/attributes",
+    "entities with current offer coverage",
+    "entities passing page quality eligibility"
+  ],
+  "rule": "Coverage informs rollout size; missing data is not filled with invented content."
+}
