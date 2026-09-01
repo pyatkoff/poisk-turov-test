@@ -1,0 +1,16 @@
+{
+  "id": "SEO_DUPLICATE_HOST_POLICY",
+  "title": "Consolidate production host signals",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "preferred_host": "https://anytoour.ru",
+  "checks": [
+    "www/non-www",
+    "http/https",
+    "historical domains",
+    "canonical generation",
+    "absolute internal links",
+    "sitemap host"
+  ],
+  "rule": "Redirect/canonical changes across historical domains require evidence that the host is not intentionally serving another product."
+}
