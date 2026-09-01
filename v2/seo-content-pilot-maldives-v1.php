@@ -65,6 +65,9 @@ function v2_seo_content_pilot_maldives(): array
                 ['label' => 'Туры в SAii Lagoon Maldives', 'href' => '/country/maldives/hotel/saii-lagoon-maldives-65938/'],
                 ['label' => 'Туры в LUX* South Ari Atoll Resorts & Villas', 'href' => '/country/maldives/hotel/lux-south-ari-atoll-resorts-villas-12126/'],
                 ['label' => 'Туры в Villa Park Sun Island', 'href' => '/country/maldives/hotel/villa-park-sun-island-2482/'],
+                ['label' => 'Туры в Barcelo Nasandhura Male', 'href' => '/country/maldives/hotel/barcelo-nasandhura-male-126556/'],
+                ['label' => 'Туры в NOOE Maldives Kunaavashi', 'href' => '/country/maldives/hotel/nooe-maldives-kunaavashi-101694/'],
+                ['label' => 'Туры в NH Collection Reethi Maldives', 'href' => '/country/maldives/hotel/nh-collection-reethi-maldives-ex-reethi-beach-resort-2475/'],
             ],
             'internal_links' => [
                 ['title' => 'Подбор тура', 'links' => [
