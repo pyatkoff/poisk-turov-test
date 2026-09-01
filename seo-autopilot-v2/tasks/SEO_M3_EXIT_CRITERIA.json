@@ -1,0 +1,14 @@
+{
+  "id": "SEO_M3_EXIT_CRITERIA",
+  "title": "Exit template pilot after representative DS2 pages pass quality gates",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "criteria": [
+    "representative country/resort/hotel templates",
+    "DS2 shell consistency",
+    "factual data/fallback contracts",
+    "canonical/title/H1/schema/internal-link QA",
+    "mobile/desktop representative QA",
+    "search handoff works without altering product contracts"
+  ]
+}
