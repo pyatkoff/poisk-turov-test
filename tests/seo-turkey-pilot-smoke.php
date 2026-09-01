@@ -23,11 +23,16 @@ if (($turkeyReport['status'] ?? '') !== 'approved') {
     exit(1);
 }
 if (($kemerReport['status'] ?? '') !== 'review') {
-    fwrite(STDERR, "Kemer must remain review-only until resort prefill is verified\n");
+    fwrite(STDERR, "Kemer must remain review-only until live offer binding is verified\n");
     exit(1);
 }
 if (($catalog['registry']['/country/turkey/']['page']['search_state']['country'] ?? null) !== 4) {
     fwrite(STDERR, "Turkey search prefill country id is invalid\n");
+    exit(1);
+}
+$kemerState = $catalog['registry']['/country/turkey/kemer/']['page']['search_state'] ?? [];
+if (($kemerState['country'] ?? null) !== 4 || ($kemerState['region'] ?? null) !== 22) {
+    fwrite(STDERR, "Kemer search prefill must use verified country=4 region=22\n");
     exit(1);
 }
 if (($catalog['graph']['/country/turkey/kemer/']['parent'] ?? null) !== '/country/turkey/') {
@@ -39,4 +44,4 @@ if (($catalog['publication_candidates'] ?? []) !== ['/country/turkey/']) {
     exit(1);
 }
 
-echo "SEO Turkey/Kemer pilot smoke OK turkeyApproved=1 kemerReview=1 countryPrefill=4\n";
+echo "SEO Turkey/Kemer pilot smoke OK turkeyApproved=1 kemerReview=1 countryPrefill=4 kemerRegion=22\n";
