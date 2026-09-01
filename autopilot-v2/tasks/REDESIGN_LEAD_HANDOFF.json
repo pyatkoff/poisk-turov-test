@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "REDESIGN_LEAD_HANDOFF",
+  "goal": "Implement the approved lead form/success/retry presentation and post-submit MAX/Telegram handoff UI while preserving the existing external lead-sending contract and existing max-search integration boundary.",
+  "risk": "MEDIUM",
+  "owns_paths": [
+    "v2/lead-ux-v1.css",
+    "v2/lead-ux-v1.js",
+    "v2/selected-tour-v1.css",
+    "v2/selected-tour-v1.js"
+  ],
+  "depends_on": [
+    "REDESIGN_SELECTED_TOUR"
+  ],
+  "verify": {
+    "level": "targeted",
+    "checks": [
+      "Fast CI",
+      "Security guard",
+      "browser QA for submit loading, success, retry and recovery",
+      "visual QA at 375px and 1440px"
+    ]
+  },
+  "done_when": [
+    "lead form and submit states match the approved flow",
+    "messenger continuation is offered only after successful lead persistence",
+    "no phone or other PII is placed into messenger URLs",
+    "existing external lead field mapping and transport remain unchanged",
+    "MAX/Telegram buttons reuse the existing project handoff mechanics rather than inventing a new bot protocol"
+  ]
+}
