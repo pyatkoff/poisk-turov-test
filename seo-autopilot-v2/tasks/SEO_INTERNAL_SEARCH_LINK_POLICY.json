@@ -1,0 +1,12 @@
+{
+  "id": "SEO_INTERNAL_SEARCH_LINK_POLICY",
+  "title": "Keep links from SEO pages into tour search intentional",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rules": [
+    "use the current production search domain/path",
+    "only supported prefill parameters",
+    "do not make tracking/search-state URLs canonical SEO links",
+    "preserve a usable fallback when prefill cannot be resolved"
+  ]
+}
