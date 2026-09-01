@@ -6,10 +6,19 @@ on:
     paths:
       - 'v2/seo-publication-manifest-v1.php'
       - 'v2/seo-sitemap-candidates-v1.php'
+      - 'v2/seo-launch-slice-v1.php'
       - 'v2/seo-content-catalog-v1.php'
+      - 'v2/seo-content-pilot-turkey-catalog-v1.php'
+      - 'v2/seo-content-pilot-turkey-v1.php'
+      - 'v2/seo-content-pilot-kemer-v1.php'
+      - 'v2/seo-content-pilot-antalya-v1.php'
+      - 'v2/seo-content-pilot-side-v1.php'
+      - 'v2/seo-content-pilot-belek-v1.php'
+      - 'v2/seo-content-pilot-alanya-v1.php'
       - 'v2/seo-publishability-v1.php'
       - 'v2/seo-page-registry-v1.php'
       - 'v2/seo-page-graph-v1.php'
+      - 'tests/seo-launch-slice-smoke.php'
       - '.github/workflows/validate-v2-seo-publication-manifest.yml'
   workflow_dispatch:
 
@@ -28,6 +37,8 @@ jobs:
           set -euo pipefail
           php -l v2/seo-publication-manifest-v1.php
           php -l v2/seo-sitemap-candidates-v1.php
+          php -l v2/seo-launch-slice-v1.php
+          php -l tests/seo-launch-slice-smoke.php
           php <<'PHP'
           <?php
           require 'v2/seo-sitemap-candidates-v1.php';
@@ -101,3 +112,4 @@ jobs:
 
           echo "V2_SEO_PUBLICATION_MANIFEST_OK approvedOnly=1 publishableOnly=1 graph=1 sitemapLaunchGate=1 selectiveAllowlist=1 deterministic=1\n";
           PHP
+          php tests/seo-launch-slice-smoke.php
