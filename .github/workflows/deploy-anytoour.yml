@@ -131,7 +131,10 @@ jobs:
           remote="$NEW_USER@$NEW_HOST"
           root='~/www/anytoour.ru'
           timeout 60s ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/images" "$HOME/www/anytoour.ru/poisk-turov"'
-          timeout 180s scp "${opts[@]}" -r v2/. "$remote:$root/"
+          archive="$RUNNER_TEMP/anytoour-v2.tar.gz"
+          tar -C v2 -czf "$archive" .
+          timeout 90s scp "${opts[@]}" "$archive" "$remote:/tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz"
+          timeout 90s ssh "${opts[@]}" "$remote" "tar -xzf /tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz -C \"\$HOME/www/anytoour.ru\" && rm -f /tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz"
           if timeout 60s ssh "${opts[@]}" "$remote" 'test -s "$HOME/www/anytoour.ru/config.php"'; then
             echo "ANYTOOUR_CONFIG_PRESERVED"
           else
