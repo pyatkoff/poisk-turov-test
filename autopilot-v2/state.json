@@ -2,87 +2,74 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Verify the already-released Search 2.0 activation on current main and close the release lane with production evidence.",
+    "now": "Continue P0/P1 selected-tour end-to-end and search-state re-audit on current main after closing the local-filter payload-completeness defect in PR #842.",
     "done": [
-      "P0/P1 local filtering and progressive 25→100 behavior accepted with prior evidence.",
-      "Hotel/room, selected-tour/flight and post-success lead handoff released narrowly to main.",
-      "Search 2.0 mockup approval completed.",
-      "DS2 narrow release plan accepted; bulk feature/search-core merge rejected.",
-      "Autopilot 2.0 durable state migrated to schema v3 with resume fields and design-approval state.",
-      "All current Autopilot 2.0 task contracts now carry verification_class, never_touch and invariants; controller validation enforces the enhanced contract.",
-      "Search 2.0 dormant runtime modules were released to main in PR #759 and canonical DS2 results CSS in PR #760.",
-      "Search 2.0 activation was released to main in PR #761 with merge SHA d142777f73209c79b2e609ea26b2d82e4650643e.",
-      "PR #761 head completed Security guard, V2 pull-request/bundle checks and visual checks successfully."
+      "P0/P1 progressive 25→100, local narrowing, widening/server lifecycle, stale async protection and counters have prior accepted evidence.",
+      "Hotel/room, selected-tour/flight and post-success lead handoff were released narrowly to main.",
+      "Search 2.0 runtime activation was released narrowly to main; bulk feature/search-core integration remains prohibited.",
+      "PR #829 hid the sea-distance local facet when no usable sea-distance data exists.",
+      "PR #842 strengthened local facet safety: meal/category/rating/sea facets are exposed only when the currently loaded result set is complete enough to evaluate that facet across the full local set. PR #842 passed existing Security, V2 validation and visual gates and merged to main as 923fa8eb30ed8e65630653f3924a147c86a59f45."
     ],
-    "next": "Run targeted production/live Search 2.0 verification against current main; if green, mark REDESIGN_SEARCH_RESULTS released and continue to the next agreed safe product task.",
+    "next": "Audit current-main selected-tour end-to-end state isolation and recovery: new search, second tour, room, flight, price sync, searchId/tourId consistency and lead-form recovery. Fix only reproduced defects without changing the external lead contract.",
     "blocked": [
-      "Targeted production verification may be externally blocked when anytoour.ru cannot be resolved from the runner.",
+      "Targeted production verification is externally blocked in this execution environment when anytoour.ru DNS cannot resolve; classify as BLOCKED_EXTERNAL, not a product defect.",
       "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence."
     ],
     "lessons": [
       "Do not bulk-merge feature/search-core into main when bundle composition diverges.",
       "Use AnyTour Design System 2.0 only; Design System 1.0 is obsolete.",
       "Do not change Metrika goals, external lead transport, Tourvisor contracts, pricing semantics or the logo without explicit approval.",
-      "Do not stop automatically after one accepted PR when another agreed safe step fits the run budget.",
-      "Every executable task must declare owned paths, protected surfaces, invariants and proportional verification before coding starts.",
-      "Before creating a release slice, reconcile durable state with current main and recent merged PRs; another safe lane may already have completed the planned step.",
-      "Never overwrite a newer main-targeted DS2 asset with an older divergent feature copy merely because the feature branch remains ahead in that file."
+      "Local filtering is safe only when the loaded payload is complete enough for the selected facet; presence in only part of the result set is insufficient.",
+      "Do not stop after one accepted PR when another independent P0/P1 audit step fits the run budget."
     ]
   },
   "active_task": {
-    "id": "REDESIGN_SEARCH_RESULTS",
-    "title": "Verify released Search 2.0 on current main and close the release lane",
-    "area": "results-tour",
+    "id": "SELECTED_TOUR_END_TO_END",
+    "title": "Re-audit current-main selected-tour state isolation and recovery",
+    "area": "selected-tour-lead",
     "risk": "MEDIUM",
     "verification_class": "MEDIUM",
-    "state": "production_qa",
+    "state": "investigate",
     "owner": "qa",
     "required_gates": [
-      "Targeted production smoke for search/results/filter flow",
-      "Verify progressive 25→100 and local narrowing do not restart Tourvisor unnecessarily",
-      "Verify widening uses the existing server lifecycle",
-      "Targeted desktop/mobile visual QA of the active Search 2.0 results state"
+      "Reproduce any defect before implementation",
+      "Fast CI and Security guard for functional changes",
+      "Targeted affected-flow QA",
+      "Targeted visual QA when user-facing",
+      "Preserve external lead contract, Metrika and pricing semantics"
     ],
     "evidence": [
-      "P0/P1 local filtering, progressive 25→100, stale async protection and result counters remain accepted with prior feature evidence.",
-      "Hotel/room, selected-tour/flight and post-success lead handoff are already released narrowly to main via #739/#743/#745.",
-      "PR #759 staged the four dormant Search 2.0 JS modules on main without activation.",
-      "PR #760 staged a main-targeted canonical ds2-search.css without copying the divergent full feature stylesheet.",
-      "PR #761 activated ds2-search.css, results-depth-v1.js, results-local-filters-v1.js, ds2-results-filters.js and search-redesign-v2.js through current-main bundle-manifest-v1.php.",
-      "PR #761 merge SHA is d142777f73209c79b2e609ea26b2d82e4650643e and its PR head passed Security guard, V2 bundle/PR checks and visual checks.",
-      "Current main bundle manifest contains all five Search 2.0 assets in the active dependency order.",
-      "HIGH-risk Metrika, external lead transport, Tourvisor contracts, pricing semantics and the AnyTour logo remain untouched."
+      "Current main includes the prior narrow hotel/room, selected-tour/flight and lead-handoff releases.",
+      "Existing focused guards cover second-tour isolation, flight autoload race, room recovery, flight empty recovery, fuel fallback, selected-tour return and lead recovery; audit implementation against those behaviors rather than launching a broad matrix.",
+      "Local-filter payload completeness defect was closed by PR #842 / main SHA 923fa8eb30ed8e65630653f3924a147c86a59f45.",
+      "Live HTTP verification from this execution environment is currently BLOCKED_EXTERNAL by DNS resolution failure before any request reaches anytoour.ru."
     ],
-    "parent_task": "NEW_DESIGN_IMPLEMENTATION_PREP"
+    "parent_task": "P0_P1_PRODUCT_STABILITY"
   },
   "queue": [
-    {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE"},
+    {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","latest_pr":842,"latest_merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45"},
     {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
-    {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":666,"merge_sha":"ee34c881de396b734f86807c975a5821ba2ca06b"},
-    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE"},
-    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"READY_RETRY"},
-    {"id":"NEW_DESIGN_IMPLEMENTATION_PREP","priority":2,"status":"DONE","pr":700,"merge_sha":"1c16d4724ce012f19ce8bfe4ecc3cf5fe137152c"},
-    {"id":"SEARCH_2_0_MOCKUP_APPROVAL","priority":2,"status":"DONE","pr":708},
-    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"ACTIVE_PRODUCTION_QA","visual_gate_pr":726,"ownership_repair_pr":748,"filter_dependency_pr":755,"dormant_runtime_pr":759,"canonical_css_pr":760,"activation_pr":761,"main_sha":"d142777f73209c79b2e609ea26b2d82e4650643e","next_slice":"PRODUCTION_EVIDENCE"},
+    {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"DONE_AWAITING_PRODUCTION_EVIDENCE","pr":842,"merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45"},
+    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_REAUDIT"},
+    {"id":"PRODUCTION_RESULTS_EVIDENCE","priority":1,"status":"BLOCKED_EXTERNAL_RETRY_LATER"},
+    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"RELEASED_MAIN_AWAITING_LIVE_EVIDENCE"},
     {"id":"REDESIGN_HOTEL_TOUR_SELECTION","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":739,"main_sha":"3d49be1e0224d274f27a515d6e5d5b05c0798e86"},
     {"id":"REDESIGN_SELECTED_TOUR","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":743,"main_sha":"c3d9d0b0ac8f33b44d2706f467448762a8c42fd1"},
     {"id":"REDESIGN_LEAD_HANDOFF","priority":2,"status":"RELEASED_MAIN_PRODUCTION","release_pr":745,"main_sha":"a15f84c831cd8cc13a0842fef3996a4d76b29f2c"},
-    {"id":"REDESIGN_FOOTER_COMMUNITY","priority":2,"status":"ACCEPTED_FEATURE_VISUAL_GREEN","pr":742,"merge_sha":"2db30fe8da359ec31af55754a7dcbe9818078414","visual_gate":"REAL_COMPONENT_375_430_768_1024_1440_GREEN"},
-    {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"DONE_FEATURE_EVIDENCE","latest_pr":731,"latest_merge_sha":"86545937d4dd971ff29903d07412d693bb4c0ef1"},
-    {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"DONE_CONTINUE_RELEASE_AUDIT"},
-    {"id":"DS2_NARROW_RELEASE_PLAN","priority":2,"status":"DONE_ACTIVATION_RELEASED","outcome_pr":756,"dormant_runtime_pr":759,"canonical_css_pr":760,"activation_pr":761,"next_action":"PRODUCTION_EVIDENCE"},
-    {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED"},
-    {"id":"SEO_FACTORY","priority":3,"status":"QUEUED_AFTER_PRODUCT_STABILITY"},
+    {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"CONTINUE_TARGETED_REAUDIT"},
+    {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"CONTINUE_PERIODICALLY"},
+    {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED_AFTER_P0_P1_STABILITY"},
+    {"id":"SEO_FACTORY","priority":3,"status":"QUEUED_AFTER_P0_P1_STABILITY"},
     {"id":"PX7_PRICE_WATCH_RESEARCH","priority":3,"status":"DEFERRED_RESEARCH"},
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"DONE_ENHANCED_CONTRACTS"}
   ],
   "last_signal": {
-    "source": "main_release_reconciliation",
-    "status": "SEARCH2_ACTIVATION_ALREADY_RELEASED_PR761_CI_GREEN_PRODUCTION_QA_NEXT",
-    "sha": "d142777f73209c79b2e609ea26b2d82e4650643e"
+    "source": "p0_p1_local_filter_payload_completeness",
+    "status": "PR842_MERGED_CI_VISUAL_GREEN_LIVE_DNS_BLOCKED_NEXT_SELECTED_TOUR_REAUDIT",
+    "sha": "923fa8eb30ed8e65630653f3924a147c86a59f45"
   },
   "blocked": [
-    {"scope":"targeted production verification","type":"external_environment","reason":"Prior execution environment could not reliably resolve anytoour.ru before the first HTTP request.","action":"Retry only a narrow live probe when live access is available; do not classify DNS/runner failure as a product defect."},
+    {"scope":"targeted production verification","type":"external_environment","reason":"This execution environment failed DNS resolution for anytoour.ru before the first HTTP request.","action":"Retry a narrow live probe on a later run; do not classify the DNS failure as a product defect."},
     {"scope":"bulk integration from feature/search-core to main","type":"branch_divergence","reason":"main remains materially diverged from feature/search-core; broad branch integration is intentionally not a release strategy.","action":"Continue current-main narrow tasks only; never copy the divergent feature branch wholesale."}
   ]
 }
