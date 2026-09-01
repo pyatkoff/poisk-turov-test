@@ -12,7 +12,7 @@ Priority order after emergency overrides is: search user journey → loaded-resu
 
 New design/layout concepts require explicit owner approval. Existing approved DS2 owners may be repaired and converged autonomously when a concrete defect is confirmed.
 
-**Search 2.0 release lock:** draft PR #810 is preview/design-approval work only. Do not merge it to `main` and do not deploy its redesign to production until the owner explicitly approves the visual design.
+**Search 2.0 release lock:** draft PR #810 is design-approval work. The owner explicitly approved publishing this branch to the isolated preview route `https://anytoour.ru/_preview/search2/poisk-turov/`; preview-only deploys from `design/search2-form-polish` are therefore allowed and should be used for visual review. Do not merge #810 to `main` and do not deploy its redesign to production `/poisk-turov/` until the owner explicitly approves the visual design for production.
 
 ## Architecture and protections
 
@@ -39,6 +39,7 @@ Recent material convergence:
 - The first main-push execution after #817 exposed a CI/deployment race while a concurrent country-content release was being copied, producing a transient `/country/russia/` 500 during the copy window rather than a stable runtime defect.
 - PR #820 fixed that race: production `Visual standalone content live` no longer starts directly on main push; it runs authoritatively after successful `Deploy anytoour.ru`, while PRs still use the same local five-width audit. #820 passed Security + local five-width visual checks and merged as `de909ef035b31664851609f8180c0b1de77d969b`.
 - The subsequent country-content `Deploy anytoour.ru` run 33553777247 completed successfully, including public-page verification, unchanged lead-bridge verification and live-search smoke. Authoritative post-deploy five-width visual run 33554159108 also passed, confirming the fully copied release at 375/430/768/1024/1440, including all five `/contacts/` phone targets and representative country pages.
+- Search 2.0 preview deployment is now isolated from production: `Deploy Search 2.0 preview` publishes only branch `design/search2-form-polish` to `/_preview/search2/`. Initial deploy run 33557752534 completed successfully. Subsequent preview pushes remain allowed for review; production remains release-locked.
 
 Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified destinations and unresolved legal/payment content were untouched by these DS2 fixes.
 
@@ -46,4 +47,4 @@ Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified des
 
 Whole-product score remains **7.3/10**. The recent changes improve cross-route handoff wording, touch-target consistency and production visual-gate reliability, but are intentionally narrow and do not yet justify a broader score increase.
 
-Next priority: continue the shared DS2 CTA/wrapping audit on homepage/search and representative country pages at 375/430/768/1024/1440. Fix only confirmed spacing, wrapping, overflow, hierarchy or shared-shell inconsistencies in canonical owners. Do not invent route-local visual systems or new interaction behavior. Search 2.0 preview PR #810 remains release-locked until explicit owner approval.
+Current owner-visible priority is the Search 2.0 initial form on the isolated preview. Continue converging it toward the approved composition `Откуда → Куда → Когда → Ночи → Туристы → Найти туры`, with the blue Search 2.0 CTA and compact secondary filters, and verify 375/430/768/1024/1440 on preview. Preserve all underlying search values/contracts. In parallel, continue confirmed shared DS2 CTA/wrapping fixes on production-safe pages when independent. Do not merge/deploy PR #810 to production until explicit owner approval.
