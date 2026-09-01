@@ -1,0 +1,7 @@
+{
+  "id": "SEO_NO_INDEX_EMPTY_COMBINATIONS",
+  "title": "Prevent empty generated combinations from becoming indexable",
+  "risk": "MEDIUM",
+  "status": "QUEUED",
+  "rule": "Unknown or unsupported generated combinations must not silently render thin 200 indexable pages; behavior is defined by the page-family contract."
+}
