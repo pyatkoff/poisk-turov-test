@@ -3,9 +3,27 @@
   "id": "SEARCH_2_0_MOCKUP_APPROVAL",
   "goal": "Record owner approval of the revised Search 2.0 desktop/mobile search-results-filter direction so implementation can proceed under the existing redesign contract.",
   "risk": "SAFE",
+  "verification_class": "LOW",
   "owns_paths": [
     "autopilot-v2/tasks/SEARCH_2_0_MOCKUP_APPROVAL.json"
   ],
+  "never_touch": [
+    "product runtime code",
+    "Yandex Metrika configuration or goals",
+    "Tourvisor/API contracts",
+    "lead transport",
+    "pricing semantics"
+  ],
+  "invariants": [
+    "this task records a design decision only and cannot implement product code",
+    "approval applies to the documented Search 2.0 desktop/mobile direction, not unrelated screens",
+    "implementation remains bound by the downstream task owns_paths and protected contracts"
+  ],
+  "design_approval": {
+    "required": true,
+    "status": "approved",
+    "evidence": "Owner confirmed the full new Search 2.0 design direction and instructed implementation to continue on 2026-09-01."
+  },
   "depends_on": [
     "NEW_DESIGN_IMPLEMENTATION_PREP"
   ],
