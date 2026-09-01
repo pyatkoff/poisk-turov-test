@@ -1,0 +1,14 @@
+{
+  "id": "SEO_ROBOTS_META_PRECEDENCE",
+  "title": "Detect conflicting crawl and index directives",
+  "risk": "SAFE_TO_MEDIUM",
+  "status": "QUEUED",
+  "checks": [
+    "robots.txt accessibility versus desired indexability",
+    "meta robots",
+    "X-Robots-Tag",
+    "canonical target indexability",
+    "sitemap membership"
+  ],
+  "rule": "Treat directive combinations as a contract; do not use robots.txt as a substitute for noindex behavior."
+}
