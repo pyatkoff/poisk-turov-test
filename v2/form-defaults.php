@@ -12,12 +12,17 @@ function v2_nonnegative_int($value, int $fallback = 0, int $max = PHP_INT_MAX): 
     return $n === false ? $fallback : (int)$n;
 }
 
-function v2_child_ages(array $query, int $childCount): array
+function v2_raw_child_ages(array $query): array
 {
     $raw = $query['child_age'] ?? ($query['child_age[]'] ?? []);
-    if (!is_array($raw)) $raw = [$raw];
+    if ($raw === '' || $raw === null) return [];
+    return is_array($raw) ? array_values($raw) : [$raw];
+}
+
+function v2_child_ages(array $query, int $childCount): array
+{
     $ages = [];
-    foreach (array_slice($raw, 0, $childCount) as $value) {
+    foreach (array_slice(v2_raw_child_ages($query), 0, $childCount) as $value) {
         $ages[] = v2_nonnegative_int($value, 7, 17);
     }
     while (count($ages) < $childCount) $ages[] = 7;
@@ -61,7 +66,9 @@ function v2_form_defaults(array $query = [], array $siteParams = []): array
     $nightsFrom = v2_positive_int(v2_query_alias($query, ['days_from', 'daysFrom'], 7), 7, 28);
     $nightsTill = v2_positive_int(v2_query_alias($query, ['days_till', 'daysTill'], 10), 10, 28);
     if ($nightsTill < $nightsFrom) $nightsTill = $nightsFrom;
-    $childCount = v2_nonnegative_int($query['child_count'] ?? 0, 0, 3);
+    $rawChildAges = v2_raw_child_ages($query);
+    $childCountFallback = min(3, count($rawChildAges));
+    $childCount = v2_nonnegative_int($query['child_count'] ?? $childCountFallback, $childCountFallback, 3);
 
     return [
         'from' => $from,
