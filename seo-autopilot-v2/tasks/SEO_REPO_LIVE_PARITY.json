@@ -1,0 +1,15 @@
+{
+  "id": "SEO_REPO_LIVE_PARITY",
+  "title": "Detect repository versus live SEO drift",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "compare": [
+    "canonical/meta/H1 output",
+    "robots.txt",
+    "sitemap outputs",
+    "routing/status behavior",
+    "shared header/footer identity",
+    "legacy-domain references"
+  ],
+  "rule": "Do not assume repository state is deployed merely because a PR is merged."
+}
