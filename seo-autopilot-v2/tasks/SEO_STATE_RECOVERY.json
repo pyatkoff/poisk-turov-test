@@ -1,0 +1,12 @@
+{
+  "id": "SEO_STATE_RECOVERY",
+  "title": "Recover SEO2 safely after interrupted runs",
+  "risk": "SAFE",
+  "status": "QUEUED",
+  "rules": [
+    "read authoritative SEO2 state/outcomes before selecting work",
+    "check whether an earlier PR/release already completed the active task",
+    "do not repeat a mutation solely because local run state was lost",
+    "resume from verified evidence"
+  ]
+}
