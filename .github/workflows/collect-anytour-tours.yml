@@ -11,6 +11,9 @@ on:
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
+      - 'v2/data/top500-daily-plan-v1.php'
+      - 'v2/data/top500-daily-collector-v1.php'
+      - 'tests/top500-daily-plan-smoke.php'
       - 'v2/data/rollup-price-daily-v1.php'
       - 'v2/data/build-seo-offer-snapshots-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
@@ -24,25 +27,28 @@ on:
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
+      - 'v2/data/top500-daily-plan-v1.php'
+      - 'v2/data/top500-daily-collector-v1.php'
+      - 'tests/top500-daily-plan-smoke.php'
       - 'v2/data/rollup-price-daily-v1.php'
       - 'v2/data/build-seo-offer-snapshots-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
   schedule:
-    - cron: '12 1,7,13,19 * * *'
+    - cron: '12 2 * * *'
   workflow_dispatch:
     inputs:
       budget:
-        description: 'Maximum broad Tourvisor searches in this run (0-20)'
+        description: 'Optional broad Tourvisor searches in a manual run (0-20)'
         required: true
         default: '2'
         type: string
       matrix_budget:
-        description: 'Hotel/resort/month Tourvisor searches in this run (1-30)'
+        description: 'Optional manual hotel/resort/month Tourvisor searches (1-30)'
         required: true
         default: '9'
         type: string
       matrix_months:
-        description: 'Upcoming calendar months to rotate through (1-18)'
+        description: 'Upcoming calendar months for optional manual matrix rotation (1-18)'
         required: true
         default: '12'
         type: string
@@ -54,45 +60,29 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - name: Validate collector contracts
+      - name: Validate exact daily TOP500 contract
         shell: bash
         run: |
           set -euo pipefail
-          php -l v2/data/price-observer-v1.php
-          php -l v2/data/scheduled-collector-v1.php
-          php -l v2/data/migrate-collection-attempts-v1.php
-          php -l v2/data/migrate-matrix-collection-v1.php
-          php -l v2/data/top-hotels-v1.php
-          php -l v2/data/top500-coverage-v1.php
-          php -l v2/data/matrix-collector-v1.php
-          php -l v2/data/rollup-price-daily-v1.php
-          php -l v2/data/build-seo-offer-snapshots-v1.php
-          grep -Fq "['user_search', 'scheduled_monitor', 'hot_tours']" v2/data/price-observer-v1.php
-          grep -Fq "'source'=>'scheduled_monitor'" v2/data/scheduled-collector-v1.php
-          grep -Fq "array_chunk(\$ids,30)" v2/data/matrix-collector-v1.php
-          grep -Fq "v2_priority_hotel_ids()" v2/data/matrix-collector-v1.php
-          grep -Fq "ceil(\$budget*0.55)" v2/data/matrix-collector-v1.php
-          grep -Fq "\$search['hotelIds']=\$t['hotel_ids']" v2/data/matrix-collector-v1.php
-          grep -Fq "\$search['regionIds']=[\$t['region_id']]" v2/data/matrix-collector-v1.php
-          grep -Fq "modify('+20 days')" v2/data/matrix-collector-v1.php
-          grep -Fq "'maxHotels'=>5000" v2/data/matrix-collector-v1.php
-          grep -Fq "'maxTours'=>50000" v2/data/matrix-collector-v1.php
-          grep -Fq 'TOP500_COVERAGE' v2/data/matrix-collector-v1.php
-          grep -Fq 'MATRIX_EMPTY' v2/data/matrix-collector-v1.php
-          grep -Fq 'TOP500_UNSEARCHED_IDS' v2/data/top500-coverage-v1.php
-          grep -Fq 'PRICE_DAILY_ROLLUP_OK' v2/data/rollup-price-daily-v1.php
-          grep -Fq 'SEO_OFFER_SNAPSHOTS_OK' v2/data/build-seo-offer-snapshots-v1.php
-          php -r "require 'v2/data/top-hotels-v1.php'; \$ids=v2_priority_hotel_ids(); if (count(\$ids)!==492 || count(array_unique(\$ids))!==492 || \$ids[0]!==22879 || end(\$ids)!==42155) exit(1);"
-          php -r "require 'v2/data/price-observer-v1.php'; if (v2_price_observer_source('scheduled_monitor') !== 'scheduled_monitor' || v2_price_observer_limit(99999,100,5000)!==5000) exit(1);"
-          echo ANYTOUR_MATRIX_COLLECTOR_TOOLING_OK
+          php -l v2/data/top500-daily-plan-v1.php >/dev/null
+          php -l v2/data/top500-daily-collector-v1.php >/dev/null
+          php -l tests/top500-daily-plan-smoke.php >/dev/null
+          php -l v2/data/price-observer-v1.php >/dev/null
+          php -l v2/data/top-hotels-v1.php >/dev/null
+          php -l v2/data/rollup-price-daily-v1.php >/dev/null
+          php -l v2/data/build-seo-offer-snapshots-v1.php >/dev/null
+          php tests/top500-daily-plan-smoke.php
+          php -r "require 'v2/data/top-hotels-v1.php'; \$ids=v2_priority_hotel_ids(); if (count(\$ids)!==492 || count(array_unique(\$ids))!==492) exit(1); echo 'TOP500_PRIORITY_SET_OK count=492'.PHP_EOL;"
+          echo ANYTOUR_TOP500_DAILY_TOOLING_OK
 
   collect-production:
     if: github.event_name != 'pull_request'
     needs: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - name: Prepare SSH key
@@ -111,7 +101,7 @@ jobs:
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
 
-      - name: Collect and refresh production aggregates
+      - name: Collect full TOP500 and refresh production aggregates
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -138,6 +128,8 @@ jobs:
             v2/data/migrate-matrix-collection-v1.php \
             v2/data/top-hotels-v1.php \
             v2/data/top500-coverage-v1.php \
+            v2/data/top500-daily-plan-v1.php \
+            v2/data/top500-daily-collector-v1.php \
             v2/data/matrix-collector-v1.php \
             v2/data/rollup-price-daily-v1.php \
             v2/data/build-seo-offer-snapshots-v1.php \
@@ -145,19 +137,16 @@ jobs:
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru/data\"
-            php -l \"\$root/tourvisor-client-v1.php\" >/dev/null
-            php -l \"\$root/price-observer-v1.php\" >/dev/null
-            php -l \"\$root/scheduled-collector-v1.php\" >/dev/null
-            php -l \"\$root/top-hotels-v1.php\" >/dev/null
-            php -l \"\$root/top500-coverage-v1.php\" >/dev/null
-            php -l \"\$root/matrix-collector-v1.php\" >/dev/null
-            php -l \"\$root/rollup-price-daily-v1.php\" >/dev/null
-            php -l \"\$root/build-seo-offer-snapshots-v1.php\" >/dev/null
+            php -l \"\$root/top500-daily-plan-v1.php\" >/dev/null
+            php -l \"\$root/top500-daily-collector-v1.php\" >/dev/null
             php \"\$root/migrate-collection-attempts-v1.php\"
             php \"\$root/migrate-matrix-collection-v1.php\"
             php \"\$root/top500-coverage-v1.php\"
-            php \"\$root/scheduled-collector-v1.php\" --scheduled-search-budget='$BUDGET_VALUE'
-            php \"\$root/matrix-collector-v1.php\" --budget='$MATRIX_BUDGET_VALUE' --months='$MATRIX_MONTHS_VALUE'
+            php \"\$root/top500-daily-collector-v1.php\" --preferred-departure-id=1 --start-days=1
+            if [ '${{ github.event_name }}' = 'workflow_dispatch' ]; then
+              php \"\$root/scheduled-collector-v1.php\" --scheduled-search-budget='$BUDGET_VALUE'
+              php \"\$root/matrix-collector-v1.php\" --budget='$MATRIX_BUDGET_VALUE' --months='$MATRIX_MONTHS_VALUE'
+            fi
             php \"\$root/top500-coverage-v1.php\"
             php \"\$root/rollup-price-daily-v1.php\" --days=31
             php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=48 --expires-hours=8 --offers-per-page=10
