@@ -6,6 +6,9 @@ function v2_seo_egypt_hotel_manifest(): array
         ['file'=>'seo-content-pilot-egypt-dexon-roma-v1.php','function'=>'v2_seo_content_pilot_egypt_dexon_roma','label'=>'Туры в DEXON ROMA HOTEL','href'=>'/country/egypt/hotel/dexon-roma-hotel-ex-roma-host-way-388/'],
         ['file'=>'seo-content-pilot-egypt-empire-aqua-v1.php','function'=>'v2_seo_content_pilot_egypt_empire_aqua','label'=>'Туры в EMPIRE HOTEL AQUA PARK','href'=>'/country/egypt/hotel/empire-hotel-aqua-park-ex-the-three-corners-triton-empire-502/'],
         ['file'=>'seo-content-pilot-egypt-sun-sea-v1.php','function'=>'v2_seo_content_pilot_egypt_sun_sea','label'=>'Туры в SUN & SEA HOTEL','href'=>'/country/egypt/hotel/sun-sea-hotel-9372/'],
+        ['file'=>'seo-content-pilot-egypt-mirage-bay-v1.php','function'=>'v2_seo_content_pilot_egypt_mirage_bay','label'=>'Туры в MIRAGE BAY RESORT & AQUAPARK','href'=>'/country/egypt/hotel/mirage-bay-resort-aquapark-299/'],
+        ['file'=>'seo-content-pilot-egypt-sand-beach-v1.php','function'=>'v2_seo_content_pilot_egypt_sand_beach','label'=>'Туры в SAND BEACH','href'=>'/country/egypt/hotel/sand-beach-405/'],
+        ['file'=>'seo-content-pilot-egypt-il-mercato-v1.php','function'=>'v2_seo_content_pilot_egypt_il_mercato','label'=>'Туры в IL MERCATO SPLASH AQUA PARK','href'=>'/country/egypt/hotel/il-mercato-splash-aqua-park-2904/'],
     ];
 }
 
