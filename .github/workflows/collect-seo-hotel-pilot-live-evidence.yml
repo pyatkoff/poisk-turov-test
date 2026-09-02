@@ -7,7 +7,10 @@ on:
     paths:
       - 'v2/seo-hotel-pilot-live-evidence-v1.php'
       - 'v2/data/report-seo-hotel-pilot-live-evidence-v1.php'
+      - 'v2/seo-hotel-pilot-readiness-status-v1.php'
+      - 'v2/data/report-seo-hotel-pilot-readiness-status-v1.php'
       - 'tests/seo-hotel-pilot-live-evidence-smoke.php'
+      - 'tests/seo-hotel-pilot-readiness-status-cli-smoke.php'
       - '.github/workflows/collect-seo-hotel-pilot-live-evidence.yml'
   push:
     branches: [main]
@@ -19,6 +22,8 @@ on:
       - 'v2/seo-content-pilot-*-catalog-v1.php'
       - 'v2/seo-content-pilot-*-hotel-review-catalog-v1.php'
       - 'v2/data/report-seo-hotel-pilot-live-evidence-v1.php'
+      - 'v2/seo-hotel-pilot-readiness-status-v1.php'
+      - 'v2/data/report-seo-hotel-pilot-readiness-status-v1.php'
       - '.github/workflows/collect-seo-hotel-pilot-live-evidence.yml'
 
 permissions:
@@ -35,8 +40,12 @@ jobs:
           set -euo pipefail
           php -l v2/seo-hotel-pilot-live-evidence-v1.php >/dev/null
           php -l v2/data/report-seo-hotel-pilot-live-evidence-v1.php >/dev/null
+          php -l v2/seo-hotel-pilot-readiness-status-v1.php >/dev/null
+          php -l v2/data/report-seo-hotel-pilot-readiness-status-v1.php >/dev/null
           php -l tests/seo-hotel-pilot-live-evidence-smoke.php >/dev/null
+          php -l tests/seo-hotel-pilot-readiness-status-cli-smoke.php >/dev/null
           php tests/seo-hotel-pilot-live-evidence-smoke.php
+          php tests/seo-hotel-pilot-readiness-status-cli-smoke.php
 
   live-evidence:
     if: github.event_name != 'pull_request'
@@ -55,7 +64,28 @@ jobs:
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
           if [ -s seo-hotel-pilot-live-evidence.err ]; then cat seo-hotel-pilot-live-evidence.err >&2; fi
           exit 0
-      - name: Upload hotel pilot evidence
+      - name: Build fail-closed 3x3 readiness status
+        id: status
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -s seo-hotel-pilot-live-evidence.json ]; then
+            php v2/data/report-seo-hotel-pilot-readiness-status-v1.php \
+              --live-evidence=seo-hotel-pilot-live-evidence.json \
+              --require-status \
+              > seo-hotel-pilot-readiness-status.json \
+              2> seo-hotel-pilot-readiness-status.err
+            code=$?
+          else
+            printf '%s\n' '{"state":"review_only_hotel_pilot_status_unavailable","publication_candidates":[],"automatic_execution_allowed":false}' > seo-hotel-pilot-readiness-status.json
+            printf '%s\n' 'missing live evidence json' > seo-hotel-pilot-readiness-status.err
+            code=3
+          fi
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ -s seo-hotel-pilot-readiness-status.err ]; then cat seo-hotel-pilot-readiness-status.err >&2; fi
+          exit 0
+      - name: Upload hotel pilot evidence and readiness status
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -63,12 +93,16 @@ jobs:
           path: |
             seo-hotel-pilot-live-evidence.json
             seo-hotel-pilot-live-evidence.err
+            seo-hotel-pilot-readiness-status.json
+            seo-hotel-pilot-readiness-status.err
           if-no-files-found: error
           retention-days: 14
-      - name: Reject collector errors but allow review hold
+      - name: Reject collector/status errors but allow review hold
         if: always()
         shell: bash
         run: |
-          code="${{ steps.collect.outputs.exit_code }}"
-          test "$code" = "0" || test "$code" = "3"
-          echo "hotel pilot review evidence exit=$code (0=ready, 3=review hold)"
+          collector_code="${{ steps.collect.outputs.exit_code }}"
+          status_code="${{ steps.status.outputs.exit_code }}"
+          test "$collector_code" = "0" || test "$collector_code" = "3"
+          test "$status_code" = "0"
+          echo "hotel pilot review evidence exit=$collector_code (0=ready, 3=review hold); readiness status exit=$status_code"
