@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/seo-content-pilot-maldives-hotels-v1.php';
+
 /**
  * Editorial SEO pilot: Maldives country page.
  * Review-only content; production indexation depends on a separate launch decision.
@@ -25,37 +27,7 @@ function v2_seo_content_pilot_maldives(): array
                 ['id'=>'search','title'=>'Как подобрать тур на Мальдивы','paragraphs'=>['Начните с города вылета, дат, продолжительности и бюджета, затем сравните подходящие острова и отели. После этого уточняйте питание, категорию номера и условия конкретного предложения.','Цены и доступность меняются, поэтому финальные параметры тура нужно перепроверить в поиске AnyTour перед передачей заявки.']],
             ],
             'related_title' => 'Туры в отели на Мальдивах',
-            'related' => [
-                ['label'=>'Туры в Kurumba Maldives','href'=>'/country/maldives/hotel/kurumba-maldives-2461/'],
-                ['label'=>'Туры в Kandima Maldives','href'=>'/country/maldives/hotel/kandima-maldives-49820/'],
-                ['label'=>'Туры в Sheraton Maldives Full Moon Resort & Spa','href'=>'/country/maldives/hotel/sheraton-maldives-full-moon-resort-spa-2479/'],
-                ['label'=>'Туры в Velassaru Maldives','href'=>'/country/maldives/hotel/velassaru-maldives-2487/'],
-                ['label'=>'Туры в Hard Rock Hotel Maldives','href'=>'/country/maldives/hotel/hard-rock-hotel-maldives-66197/'],
-                ['label'=>'Туры в SAii Lagoon Maldives','href'=>'/country/maldives/hotel/saii-lagoon-maldives-65938/'],
-                ['label'=>'Туры в LUX* South Ari Atoll Resorts & Villas','href'=>'/country/maldives/hotel/lux-south-ari-atoll-resorts-villas-12126/'],
-                ['label'=>'Туры в Villa Park Sun Island','href'=>'/country/maldives/hotel/villa-park-sun-island-2482/'],
-                ['label'=>'Туры в Barcelo Nasandhura Male','href'=>'/country/maldives/hotel/barcelo-nasandhura-male-126556/'],
-                ['label'=>'Туры в NOOE Maldives Kunaavashi','href'=>'/country/maldives/hotel/nooe-maldives-kunaavashi-101694/'],
-                ['label'=>'Туры в NH Collection Reethi Maldives','href'=>'/country/maldives/hotel/nh-collection-reethi-maldives-ex-reethi-beach-resort-2475/'],
-                ['label'=>'Туры в Machchafushi Island Resort & Spa Maldives','href'=>'/country/maldives/hotel/machchafushi-island-resort-spa-maldives-ex-centara-grand-island-resort-spa-maldives-2427/'],
-                ['label'=>'Туры в Nika Island Resort','href'=>'/country/maldives/hotel/nika-island-resort-2469/'],
-                ['label'=>'Туры в Furaveri Island Resort & Spa','href'=>'/country/maldives/hotel/furaveri-island-resort-spa-46068/'],
-                ['label'=>'Туры в Royal Island Resort & Spa','href'=>'/country/maldives/hotel/royal-island-resort-spa-2477/'],
-                ['label'=>'Туры в Villa Nautica','href'=>'/country/maldives/hotel/villa-nautica-ex-paradise-island-resort-spa-2472/'],
-                ['label'=>'Туры в Coco Bodu Hithi','href'=>'/country/maldives/hotel/coco-bodu-hithi-2433/'],
-                ['label'=>'Туры в The Westin Maldives Miriandhoo Resort','href'=>'/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/'],
-                ['label'=>'Туры в Taj Coral Reef Resort & Spa','href'=>'/country/maldives/hotel/taj-coral-reef-resort-spa-2483/'],
-                ['label'=>'Туры в Kagi Maldives Spa Island','href'=>'/country/maldives/hotel/kagi-maldives-spa-island-72939/'],
-                ['label'=>'Туры в Grand Park Kodhipparu','href'=>'/country/maldives/hotel/grand-park-kodhipparu-56835/'],
-                ['label'=>'Туры в Avani+ Fares Maldives Resort','href'=>'/country/maldives/hotel/avani-fares-maldives-resort-82538/'],
-                ['label'=>'Туры в Ayada Maldives','href'=>'/country/maldives/hotel/ayada-maldives-12121/'],
-                ['label'=>'Туры в Banyan Tree Maldives Vabbinfaru','href'=>'/country/maldives/hotel/banyan-tree-maldives-vabbinfaru-2423/'],
-                ['label'=>'Туры в Brennia Kottefaru','href'=>'/country/maldives/hotel/brennia-kottefaru-72602/'],
-                ['label'=>'Туры в Ifuru Island Maldives','href'=>'/country/maldives/hotel/ifuru-island-maldives-108164/'],
-                ['label'=>'Туры в Angsana Velavaru','href'=>'/country/maldives/hotel/angsana-velavaru-74701/'],
-                ['label'=>'Туры в Cinnamon Hakuraa Huraa Maldives','href'=>'/country/maldives/hotel/cinnamon-hakuraa-huraa-maldives-ex-chaaya-lagoon-hakuraahuraa-2429/'],
-                ['label'=>'Туры в Dhawa Ihuru','href'=>'/country/maldives/hotel/dhawa-ihuru-ex-angsana-ihuru-resort-spa-2419/'],
-            ],
+            'related' => v2_seo_maldives_hotel_links(),
             'internal_links' => [['title'=>'Подбор тура','links'=>[['label'=>'Поиск туров AnyTour','href'=>'/poisk-turov/']]]],
             'search_state' => ['country' => 8],
         ],
