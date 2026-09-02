@@ -1,0 +1,50 @@
+name: TOP500 catalog bootstrap once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/top500-catalog-bootstrap-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Fill all currently missing priority hotel identities
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          root='~/www/anytoour.ru/data'
+          scp "${opts[@]}" v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/top-hotels-v1.php v2/data/sync-priority-hotels-v1.php v2/data/top500-coverage-v1.php "$remote:$root/"
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            root="$HOME/www/anytoour.ru/data"
+            php -l "$root/sync-priority-hotels-v1.php" >/dev/null
+            for i in 1 2 3 4 5 6 7 8; do
+              echo "TOP500_BOOTSTRAP_PASS pass=$i"
+              php "$root/sync-priority-hotels-v1.php" --limit=50
+            done
+            php "$root/top500-coverage-v1.php"
+          '
