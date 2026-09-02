@@ -17,7 +17,29 @@ function family_catalog(int $countryId, string $countrySlug, int $hotelId, strin
     ];
     if ($deep) $sections[] = ['title' => 'Как продолжить подбор', 'paragraphs' => ['Используйте поиск для проверки доступных вариантов на выбранные даты.']];
 
-    $records = [[
+    $country = [
+        'id' => 'country.' . $countrySlug . '.review',
+        'status' => 'review',
+        'path' => $countryPath,
+        'type' => 'country',
+        'data' => [
+            'name' => ucfirst($countrySlug),
+            'title' => 'Туры: ' . ucfirst($countrySlug) . ' | AnyTour',
+            'description' => 'Редакционная review-страница направления для проверки структуры hotel-tour семейства AnyTour перед отдельным решением о публикации.',
+            'h1' => 'Туры: ' . ucfirst($countrySlug),
+            'intro' => 'Review-родитель нужен только для безопасной проверки структуры дочерних страниц туров в отели до отдельного решения о запуске.',
+            'breadcrumbs' => [['label' => 'Главная', 'href' => '/'], ['label' => ucfirst($countrySlug)]],
+            'sections' => [
+                ['title' => 'Как выбрать направление', 'paragraphs' => ['Сравните формат поездки и параметры будущего тура.']],
+                ['title' => 'Как продолжить поиск', 'paragraphs' => ['Проверяйте актуальные варианты в поиске AnyTour.']],
+            ],
+            'related' => [['label' => 'Test Hotel ' . $hotelId, 'href' => $path]],
+            'internal_links' => [['title' => 'Подбор тура', 'links' => [['label' => 'Поиск туров AnyTour', 'href' => '/poisk-turov/']]]],
+            'search_state' => ['country' => $countryId],
+        ],
+    ];
+
+    $hotel = [
         'id' => 'hotel_tours.' . $countrySlug . '.' . $hotelSlug . '.v1',
         'status' => 'review',
         'path' => $path,
@@ -40,9 +62,9 @@ function family_catalog(int $countryId, string $countrySlug, int $hotelId, strin
             'internal_links' => [['title' => 'Подбор тура', 'links' => [['label' => 'Поиск туров AnyTour', 'href' => '/poisk-turov/']]]],
             'search_state' => ['country' => $countryId, 'hotel' => $hotelId],
         ],
-    ]];
+    ];
 
-    return v2_seo_content_catalog($records, [$path => ['parent' => $countryPath]]);
+    return v2_seo_content_catalog([$country, $hotel], [$path => ['parent' => $countryPath]]);
 }
 
 $now = 1800000000;
