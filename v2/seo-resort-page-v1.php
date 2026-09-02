@@ -38,7 +38,13 @@ function v2_seo_render_resort(array $record): void
     sp_head($context);
     sp_header($context);
     sp_breadcrumbs($page['breadcrumbs']);
-    sp_hero($page['eyebrow'] ?: 'AnyTour · курорт', $page['h1'], $page['intro']);
+    sp_hero(
+        $page['eyebrow'] ?: 'AnyTour · курорт',
+        $page['h1'],
+        $page['intro'],
+        v2_seo_search_handoff_url('/poisk-turov/', $page['search_state']),
+        'Подобрать тур в ' . $resortName
+    );
 
     echo '<main class="sp-main sp-seo-editorial-page sp-resort-page">';
     echo '<div class="sp-editorial-grid">';
