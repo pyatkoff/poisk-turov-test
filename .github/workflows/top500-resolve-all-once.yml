@@ -1,0 +1,93 @@
+name: TOP500 resolve all missing once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/top500-resolve-all-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Resolve each missing priority ID exactly once
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          work="$RUNNER_TEMP/top500-resolve-all"
+          mkdir -p "$work"
+          cat > "$work/resolve.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          require __DIR__.'/db-v1.php';
+          require __DIR__.'/tourvisor-client-v1.php';
+          require __DIR__.'/top-hotels-v1.php';
+          function one_pick(array $row,int $id):array{
+            if(isset($row['hotel'])&&is_array($row['hotel']))$row=$row['hotel'];
+            if(isset($row['data'])&&is_array($row['data']))$row=$row['data'];
+            if(isset($row[0])&&is_array($row[0]))$row=$row[0];
+            if(!isset($row['id']))$row['id']=$id;
+            return $row;
+          }
+          function one_upsert(PDO $pdo,array $row,string $now):bool{
+            $id=(int)($row['id']??0);$name=trim((string)($row['name']??''));if($id<=0||$name==='')return false;
+            $country=is_array($row['country']??null)?$row['country']:[];$region=is_array($row['region']??null)?$row['region']:[];
+            $sub=is_array($row['subRegion']??null)?$row['subRegion']:(is_array($row['subregion']??null)?$row['subregion']:[]);
+            $common=is_array($row['common']??null)?$row['common']:[];
+            $countryId=(int)($country['id']??($row['countryId']??0));$countryName=(string)($country['name']??($row['countryName']??''));
+            if($countryId<=0||trim($countryName)==='')return false;
+            $regionId=isset($region['id'])?(int)$region['id']:(isset($row['regionId'])?(int)$row['regionId']:null);$regionName=$region['name']??($row['regionName']??null);
+            $subId=isset($sub['id'])?(int)$sub['id']:(isset($row['subregionId'])?(int)$row['subregionId']:null);$subName=$sub['name']??($row['subregionName']??null);
+            $normalized=v2_data_normalize_text($name);$parts=array_filter([$normalized,v2_data_normalize_text($countryName),v2_data_normalize_text((string)$regionName),v2_data_normalize_text((string)$subName)]);$searchKey=implode(' ',array_values(array_unique($parts)));
+            $sql="INSERT INTO catalog_hotels (id,country_id,country_name,region_id,region_name,subregion_id,subregion_name,name,normalized_name,search_key,slug,category,rating,hotel_type,latitude,longitude,is_active,first_seen_at,last_seen_at,synced_at) VALUES (:id,:country_id,:country_name,:region_id,:region_name,:subregion_id,:subregion_name,:name,:normalized_name,:search_key,:slug,:category,:rating,:hotel_type,:latitude,:longitude,1,:first_seen,:last_seen,:synced) ON DUPLICATE KEY UPDATE country_id=VALUES(country_id),country_name=VALUES(country_name),region_id=VALUES(region_id),region_name=VALUES(region_name),subregion_id=VALUES(subregion_id),subregion_name=VALUES(subregion_name),name=VALUES(name),normalized_name=VALUES(normalized_name),search_key=VALUES(search_key),slug=VALUES(slug),category=VALUES(category),rating=VALUES(rating),hotel_type=VALUES(hotel_type),latitude=VALUES(latitude),longitude=VALUES(longitude),is_active=1,last_seen_at=VALUES(last_seen_at),synced_at=VALUES(synced_at)";
+            $pdo->prepare($sql)->execute(['id'=>$id,'country_id'=>$countryId,'country_name'=>$countryName,'region_id'=>$regionId,'region_name'=>$regionName,'subregion_id'=>$subId,'subregion_name'=>$subName,'name'=>$name,'normalized_name'=>$normalized,'search_key'=>$searchKey,'slug'=>(v2_data_slug($name)?:'hotel').'-'.$id,'category'=>isset($row['category'])?(int)$row['category']:null,'rating'=>isset($row['rating'])?(float)$row['rating']:null,'hotel_type'=>isset($row['type'])?(int)$row['type']:null,'latitude'=>isset($common['latitude'])?(float)$common['latitude']:(isset($row['latitude'])?(float)$row['latitude']:null),'longitude'=>isset($common['longitude'])?(float)$common['longitude']:(isset($row['longitude'])?(float)$row['longitude']:null),'first_seen'=>$now,'last_seen'=>$now,'synced'=>$now]);
+            $alias=$pdo->prepare("INSERT IGNORE INTO hotel_aliases (hotel_id,alias,normalized_alias,source) VALUES (:hotel,:alias,:normalized,'priority_detail')");$alias->execute(['hotel'=>$id,'alias'=>$name,'normalized'=>$normalized]);
+            return true;
+          }
+          $pdo=v2_data_db();$ids=array_values(array_unique(array_map('intval',v2_priority_hotel_ids())));$csv=implode(',',$ids);
+          $present=array_map('intval',$pdo->query("SELECT id FROM catalog_hotels WHERE id IN ($csv) AND is_active=1")->fetchAll(PDO::FETCH_COLUMN)?:[]);$missing=array_values(array_diff($ids,$present));
+          $now=(new DateTimeImmutable('now'))->format('Y-m-d H:i:s');$resolved=[];$notFound=[];$invalid=[];$errors=[];
+          foreach($missing as $id){
+            try{$row=one_pick(v2_data_tv_get('/hotels/'.$id),$id);if(one_upsert($pdo,$row,$now)){$resolved[]=['hotel_id'=>$id,'country_id'=>(int)((is_array($row['country']??null)?($row['country']['id']??0):($row['countryId']??0))),'name'=>(string)($row['name']??'')];echo "TOP500_RESOLVE_OK hotel=$id\n";}else{$invalid[]=$id;echo "TOP500_RESOLVE_INVALID hotel=$id\n";}}
+            catch(Throwable $e){$m=$e->getMessage();if(str_contains($m,'HTTP 404')){$notFound[]=$id;echo "TOP500_RESOLVE_404 hotel=$id\n";}else{$errors[]=['hotel_id'=>$id,'error'=>mb_substr($m,0,200)];echo "TOP500_RESOLVE_ERROR hotel=$id\n";}}
+            usleep(150000);
+          }
+          $presentAfter=array_map('intval',$pdo->query("SELECT id FROM catalog_hotels WHERE id IN ($csv) AND is_active=1")->fetchAll(PDO::FETCH_COLUMN)?:[]);$missingAfter=array_values(array_diff($ids,$presentAfter));
+          $out=['state'=>'top500_resolve_all_once','priority_count'=>count($ids),'initial_missing_count'=>count($missing),'resolved_count'=>count($resolved),'not_found_count'=>count($notFound),'invalid_count'=>count($invalid),'error_count'=>count($errors),'catalog_active_count'=>count($presentAfter),'remaining_missing_count'=>count($missingAfter),'resolved'=>$resolved,'not_found_ids'=>$notFound,'invalid_ids'=>$invalid,'errors'=>$errors,'remaining_missing_ids'=>$missingAfter];
+          file_put_contents($argv[1],json_encode($out,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)."\n");
+          echo 'TOP500_RESOLVE_SUMMARY initial='.$out['initial_missing_count'].' resolved='.$out['resolved_count'].' not_found='.$out['not_found_count'].' invalid='.$out['invalid_count'].' errors='.$out['error_count'].' catalog='.$out['catalog_active_count'].' remaining='.$out['remaining_missing_count']."\n";
+          if($errors!==[])exit(2);
+          PHP
+          scp "${opts[@]}" v2/data/db-v1.php v2/data/tourvisor-client-v1.php v2/data/top-hotels-v1.php "$work/resolve.php" "$remote:~/www/anytoour.ru/data/"
+          ssh "${opts[@]}" "$remote" 'php "$HOME/www/anytoour.ru/data/resolve.php" "$HOME/www/anytoour.ru/data/top500-resolve-all.json"'
+          scp "${opts[@]}" "$remote:~/www/anytoour.ru/data/top500-resolve-all.json" "$work/report.json"
+          ssh "${opts[@]}" "$remote" 'rm -f "$HOME/www/anytoour.ru/data/resolve.php" "$HOME/www/anytoour.ru/data/top500-resolve-all.json"'
+      - name: Upload classification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: top500-resolve-all-${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/top500-resolve-all/report.json
+          retention-days: 3
