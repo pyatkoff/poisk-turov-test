@@ -13,6 +13,7 @@ function v2_seo_publication_manifest(array $catalog): array
     $reports = is_array($catalog['reports'] ?? null) ? $catalog['reports'] : [];
     $graph = is_array($catalog['graph'] ?? null) ? $catalog['graph'] : [];
     $candidatePaths = v2_seo_content_candidate_paths($catalog);
+    $publicationTypes = ['country' => true, 'resort' => true, 'seasonal' => true];
 
     $manifest = [];
     foreach ($candidatePaths as $path) {
@@ -26,11 +27,16 @@ function v2_seo_publication_manifest(array $catalog): array
             throw new InvalidArgumentException('Publication candidate no longer satisfies approved publishability gate: '.$path);
         }
 
+        $type = strtolower(trim((string)($registered['type'] ?? '')));
+        if (!isset($publicationTypes[$type])) {
+            throw new InvalidArgumentException('Publication candidate type requires a separate launch decision: '.$type);
+        }
+
         $page = is_array($registered['page'] ?? null) ? $registered['page'] : [];
         $manifest[] = [
             'id' => v2_seo_content_id($report['id'] ?? ''),
             'path' => $path,
-            'type' => strtolower(trim((string)($registered['type'] ?? ''))),
+            'type' => $type,
             'h1' => trim((string)($page['h1'] ?? '')),
             'title' => trim((string)($page['title'] ?? '')),
             'description' => trim((string)($page['description'] ?? '')),
