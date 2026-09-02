@@ -88,16 +88,24 @@ $reviewBuckets=[
     ['country_id'=>8,'paths'=>['/country/maldives/hotel/test-8008/']],
     ['country_id'=>1,'paths'=>['/country/egypt/hotel/test-1001/']],
 ];
-$reviewSlice=v2_seo_hotel_review_launch_slice($reviewRows,$reviewBuckets,[4,8,1],1,3,$now);
+$sliceManifest=$manifest;
+$sliceManifest['hotel_tours_review_ready_count']=3;
+$reviewSlice=v2_seo_hotel_review_launch_slice($reviewRows,$reviewBuckets,[4,8,1],1,3,$now,$sliceManifest);
 if(($reviewSlice['state']??'')!=='review_only_requires_separate_indexation_approval'||($reviewSlice['total']??0)!==3) unified_ready_fail('review_slice_state');
 foreach(['publication_allowed','indexation_allowed','sitemap_allowed','canonical_launch_allowed','route_launch_allowed'] as $flag) if(($reviewSlice[$flag]??true)!==false) unified_ready_fail('review_slice_'.$flag);
 if(($reviewSlice['publication_candidates']??null)!==[]||($reviewSlice['explicit_user_indexation_approval_required']??false)!==true) unified_ready_fail('review_slice_approval_boundary');
-if(!preg_match('/^[a-f0-9]{64}$/',(string)($reviewSlice['evidence_manifest_sha256']??''))) unified_ready_fail('review_slice_fingerprint');
+foreach(['evidence_manifest_sha256','manifest_sha256','hotel_evidence_sha256','review_contract_sha256','slice_contract_sha256'] as $fingerprintField) if(!preg_match('/^[a-f0-9]{64}$/',(string)($reviewSlice[$fingerprintField]??''))) unified_ready_fail('review_slice_fingerprint_'.$fingerprintField);
+if(($reviewSlice['manifest_bound']??false)!==true||($reviewSlice['manifest_sha256']??'')!==($manifest['manifest_sha256']??'')||($reviewSlice['review_contract_sha256']??'')!==($manifest['review_contract_sha256']??'')) unified_ready_fail('review_slice_manifest_binding');
 if(($reviewSlice['evidence_valid_until_epoch']??0)!==($now+600)||($reviewSlice['evidence_remaining_seconds']??0)!==600||($reviewSlice['evidence_fresh']??false)!==true) unified_ready_fail('review_slice_freshness_window');
 $countryFreshness=$reviewSlice['country_evidence_freshness']??[];
 foreach([1,4,8] as $countryId){
     if(($countryFreshness[$countryId]['item_count']??0)!==1||($countryFreshness[$countryId]['oldest_evidence_epoch']??0)!==$now||($countryFreshness[$countryId]['evidence_valid_until_epoch']??0)!==($now+600)) unified_ready_fail('review_slice_country_freshness_'.$countryId);
 }
+$unsafeSliceManifest=$sliceManifest;
+$unsafeSliceManifest['hotel_tours_indexation_allowed']=true;
+$unsafeSliceBlocked=false;
+try { v2_seo_hotel_review_launch_slice($reviewRows,$reviewBuckets,[4,8,1],1,3,$now,$unsafeSliceManifest); } catch (InvalidArgumentException $e) { $unsafeSliceBlocked=true; }
+if(!$unsafeSliceBlocked) unified_ready_fail('review_slice_unsafe_manifest_allowed');
 
 $futureEvidence=$reviewRows;
 $futureEvidence[0]['evidence_epoch']=$now+1;
@@ -134,4 +142,4 @@ if(($thinManifest['integrity_ok']??false)!==true||($thinManifest['review_ready']
 $thinFamily=$thinManifest['quality_by_type']['resort']??null;
 if(!is_array($thinFamily)||($thinFamily['review_ready']??true)!==false||($thinFamily['min_score']??100)>=100||($thinFamily['blocked']??0)!==1) unified_ready_fail('manifest_family_quality_block');
 
-echo "SEO_UNIFIED_READINESS_OK country=100 resort=100 hotel=100 manifest=100 familyFloor=100 hotelBoundary=1 evidenceFingerprint=1 reviewSliceBoundary=1 reviewFreshness=1 thinResortBlocked=1\n";
+echo "SEO_UNIFIED_READINESS_OK country=100 resort=100 hotel=100 manifest=100 familyFloor=100 hotelBoundary=1 evidenceFingerprint=1 reviewSliceBoundary=1 reviewFreshness=1 reviewManifestBound=1 thinResortBlocked=1\n";
