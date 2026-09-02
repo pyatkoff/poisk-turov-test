@@ -12,7 +12,7 @@ foreach((array)$d['rows'] as $row){
     if(($row['page_type']??'')!=='country') second_wave_launch_fail('page_type');
     if(($row['decision']??'')!=='GO') second_wave_launch_fail('decision');
     if(($row['technical_quality_score']??0)!==100) second_wave_launch_fail('quality');
-    if(($row['numeric_demand_score']??'not-null')!==null) second_wave_launch_fail('invented_numeric_score');
+    if(!array_key_exists('numeric_demand_score',$row)||$row['numeric_demand_score']!==null) second_wave_launch_fail('invented_numeric_score');
     if(($row['numeric_score_intentionally_not_invented']??false)!==true) second_wave_launch_fail('numeric_policy');
 }
 if(($d['decision_policy']??'')!=='categorical_evidence_complete_v1') second_wave_launch_fail('policy');
