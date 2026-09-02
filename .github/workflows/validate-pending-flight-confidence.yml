@@ -6,7 +6,6 @@ on:
     paths:
       - 'v2/price-confidence-v1.js'
       - 'v2/unpriced-flight-price-reset-v1.js'
-      - 'v2/bundle-manifest-v1.php'
       - '.github/workflows/validate-pending-flight-confidence.yml'
   workflow_dispatch:
 
