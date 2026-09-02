@@ -99,3 +99,24 @@ body.search3-preview #selectedTour .section-heading{margin-bottom:10px!important
  body.search3-preview #selectedTour .lead-form{padding-bottom:11px!important}
  body.search3-preview .ds2-site-footer{margin-top:18px!important}
 }
+
+/* P0 contract: after search, the full advanced form is not the desktop hero. */
+@media(min-width:1000px){
+ body.search3-preview.search3-has-results #tourSearch{display:none!important}
+ body.search3-preview.search3-has-results.search3-editing-search #tourSearch{display:block!important}
+ body.search3-preview.search3-has-results #resultsSearchSummary{display:grid!important;grid-template-columns:minmax(0,1.7fr) .72fr .72fr .72fr 132px!important;margin:8px 0 12px!important}
+ body.search3-preview.search3-has-results #resultsSearchSummary .results-search-summary__route{grid-column:1!important}
+ body.search3-preview.search3-has-results #resultsSearchSummary .results-search-summary__fact{display:block!important}
+ body.search3-preview.search3-has-results #resultsSearchSummary .results-search-summary__edit{grid-column:5!important;grid-row:1!important;border-left:1px solid #edf0f5!important;border-right:0!important;color:#2463eb!important}
+ body.search3-preview.search3-has-results .results-tools--ds2{width:calc(100% - 230px)!important;margin-left:230px!important;margin-top:0!important;padding-top:7px!important;padding-bottom:7px!important}
+ body.search3-preview.search3-has-results.search3-editing-search #resultsSearchSummary{display:none!important}
+}
+
+/* Mobile results should keep the route visible, not just an orphan edit button. */
+@media(max-width:640px){
+ body.search3-preview.search3-has-results #resultsSearchSummary{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;width:100%!important;min-width:0!important;border:1px solid #e2e8f0!important;border-radius:10px!important;background:#fff!important;overflow:hidden!important}
+ body.search3-preview.search3-has-results #resultsSearchSummary .results-search-summary__route{display:block!important;grid-column:1!important;grid-row:1!important;padding:8px 10px!important}
+ body.search3-preview.search3-has-results #resultsSearchSummary .results-search-summary__route strong{font-size:7px!important}
+ body.search3-preview.search3-has-results #resultsSearchSummary .results-search-summary__route span{font-size:9px!important}
+ body.search3-preview.search3-has-results #resultsSearchSummary .results-search-summary__edit{grid-column:2!important;grid-row:1!important;min-width:104px!important;border:0!important;border-left:1px solid #edf0f5!important;border-radius:0!important}
+}
