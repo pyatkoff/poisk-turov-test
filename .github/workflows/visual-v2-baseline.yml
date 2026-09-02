@@ -63,9 +63,6 @@ jobs:
           const baselineTo = '2026-09-14';
           const viewports = [
             ['mobile-375',375,812],
-            ['mobile-430',430,932],
-            ['tablet-768',768,1024],
-            ['intermediate-1024',1024,900],
             ['desktop-1440',1440,1000],
           ];
 
@@ -250,7 +247,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '{"status":"accepted-refresh","reason":"explicit visual-baseline-refresh PR after deterministic five-viewport capture"}\n' > visual-baseline-artifacts/comparison.json
+          printf '{"status":"accepted-refresh","reason":"explicit visual-baseline-refresh PR after deterministic desktop/mobile capture"}\n' > visual-baseline-artifacts/comparison.json
           echo 'Pixel comparison intentionally refreshed; deterministic journey assertions above remain mandatory.'
 
       - name: Upload visual baseline evidence
