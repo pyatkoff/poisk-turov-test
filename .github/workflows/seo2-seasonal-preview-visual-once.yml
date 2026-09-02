@@ -1,0 +1,97 @@
+name: SEO2 seasonal preview visual once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-seasonal-preview-visual-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Capture live Antalya seasonal preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p seo2-seasonal-preview-visual
+          cat > /tmp/seo2-seasonal-preview-visual.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const url='https://anytoour.ru/_preview/seo2/seasonal/antalya-september/';
+          const viewports=[['mobile-375',375,812],['desktop-1440',1440,1000]];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const report=[];
+            let failed=false;
+            for(const [vp,width,height] of viewports){
+              const context=await browser.newContext({viewport:{width,height}});
+              const page=await context.newPage();
+              const errors=[];
+              page.on('pageerror',e=>errors.push(String(e).slice(0,500)));
+              const response=await page.goto(url,{waitUntil:'networkidle',timeout:30000});
+              const state=await page.evaluate(()=>{
+                const action=document.querySelector('.sp-hero-actions .sp-primary');
+                const canonical=document.querySelector('link[rel="canonical"]');
+                const robots=document.querySelector('meta[name="robots"]')?.content||'';
+                const h1=document.querySelector('h1')?.textContent.trim()||'';
+                const text=document.body.innerText;
+                const href=action?.getAttribute('href')||'';
+                return {
+                  h1Count:document.querySelectorAll('h1').length,
+                  h1,
+                  href,
+                  robots,
+                  canonical:canonical?.getAttribute('href')||'',
+                  ogUrl:document.querySelector('meta[property="og:url"]')?.content||'',
+                  viewport:document.documentElement.clientWidth,
+                  scrollWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
+                  actionWidth:action?Math.round(action.getBoundingClientRect().width):0,
+                  factualMarkers:[
+                    'Средняя температура воздуха',
+                    'Средняя максимальная температура',
+                    'Средняя минимальная температура',
+                    'Среднее количество осадков',
+                    'Среднее число дождливых дней'
+                  ].map(x=>text.includes(x)),
+                  previewLabel:text.includes('Review preview')||text.includes('review preview')||text.includes('Предпросмотр'),
+                };
+              });
+              await page.screenshot({path:`seo2-seasonal-preview-visual/antalya-september-${vp}.png`,fullPage:true});
+              const item={vp,http:response?.status()||0,errors,...state};
+              report.push(item);
+              const handoffOk=state.href.startsWith('/poisk-turov/')&&state.href.includes('country=4')&&state.href.includes('region=20');
+              const mobileWidthOk=width>560||state.actionWidth>=state.viewport-48;
+              const bad=item.http!==200||errors.length||state.h1Count!==1||!state.h1.includes('Анталь')||!handoffOk||!state.robots.includes('noindex')||state.canonical!==''||state.ogUrl!==''||state.scrollWidth>state.viewport+2||!mobileWidthOk||state.factualMarkers.some(v=>!v);
+              if(bad) failed=true;
+              console.log(`SEO2_SEASONAL_PREVIEW_VISUAL vp=${vp} http=${item.http} h1=${JSON.stringify(state.h1)} href=${JSON.stringify(state.href)} robots=${JSON.stringify(state.robots)} canonical=${JSON.stringify(state.canonical)} overflow=${state.scrollWidth>state.viewport+2}`);
+              await context.close();
+            }
+            fs.writeFileSync('seo2-seasonal-preview-visual/report.json',JSON.stringify(report,null,2));
+            await browser.close();
+            if(failed) process.exit(1);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          NODE_PATH="$PWD/node_modules" node /tmp/seo2-seasonal-preview-visual.cjs
+
+      - name: Upload disposable visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo2-seasonal-preview-visual-${{ github.event.pull_request.number }}
+          path: seo2-seasonal-preview-visual/
+          retention-days: 3
