@@ -8,12 +8,7 @@ if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once dirname(__DIR__) . '/seo-seasonal-coverage-readiness-v1.php';
 require_once dirname(__DIR__) . '/seo-seasonal-family-binding-v1.php';
 require_once dirname(__DIR__) . '/seo-seasonal-review-plan-v1.php';
-require_once dirname(__DIR__) . '/seo-content-pilot-turkey-v1.php';
-require_once dirname(__DIR__) . '/seo-content-pilot-kemer-v1.php';
-require_once dirname(__DIR__) . '/seo-content-pilot-antalya-v1.php';
-require_once dirname(__DIR__) . '/seo-content-pilot-side-v1.php';
-require_once dirname(__DIR__) . '/seo-content-pilot-belek-v1.php';
-require_once dirname(__DIR__) . '/seo-content-pilot-alanya-v1.php';
+require_once dirname(__DIR__) . '/seo-seasonal-family-registry-v1.php';
 
 function seasonal_plan_arg(array $argv,string $name):?string
 {
@@ -28,14 +23,6 @@ function seasonal_plan_json(string $path,string $label):array
     if(!is_array($decoded)) throw new InvalidArgumentException($label.' input must be an object');
     return $decoded;
 }
-function seasonal_plan_family(string $family):array
-{
-    if($family!=='turkey') throw new InvalidArgumentException('Unsupported verified seasonal family');
-    return [
-        v2_seo_content_pilot_turkey(),
-        [v2_seo_content_pilot_antalya(),v2_seo_content_pilot_kemer(),v2_seo_content_pilot_belek(),v2_seo_content_pilot_side(),v2_seo_content_pilot_alanya()],
-    ];
-}
 
 try {
     $readinessPath=seasonal_plan_arg($argv,'readiness')??'';
@@ -45,8 +32,16 @@ try {
     if($readinessPath===''||$identitiesPath===''||$family===''||$rawKeys==='') {
         throw new InvalidArgumentException('Usage requires --readiness --identities --family --page-keys');
     }
-    [$country,$resorts]=seasonal_plan_family($family);
-    $countryId=(int)($country['data']['search_state']['country']??0);
+    $familyRecord=v2_seo_seasonal_family_registry_get($family);
+    if(($familyRecord['state']??'')!=='verified_review_only_destination_family'
+        ||($familyRecord['publication_allowed']??true)!==false
+        ||($familyRecord['copy_allowed']??true)!==false
+        ||($familyRecord['publication_candidates']??null)!==[]) {
+        throw new InvalidArgumentException('Verified family crossed review-only boundary');
+    }
+    $country=is_array($familyRecord['country']??null)?$familyRecord['country']:[];
+    $resorts=is_array($familyRecord['resorts']??null)?$familyRecord['resorts']:[];
+    $countryId=(int)($familyRecord['country_id']??0);
     if($countryId<=0) throw new InvalidArgumentException('Verified family has no country identity');
 
     $readiness=seasonal_plan_json($readinessPath,'readiness');
