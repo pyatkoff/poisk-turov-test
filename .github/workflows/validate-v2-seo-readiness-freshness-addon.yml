@@ -1,0 +1,35 @@
+name: Validate SEO evidence freshness chain
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-evidence-freshness-chain-v1.php'
+      - 'tests/seo-evidence-freshness-chain-smoke.php'
+      - 'tests/seo-phase-readiness-gate-smoke.php'
+      - 'v2/data/report-seo-evidence-freshness-chain-v1.php'
+      - 'tests/seo-evidence-freshness-chain-cli-smoke.php'
+      - '.github/workflows/validate-v2-seo-readiness-freshness-addon.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  freshness-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fast freshness checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-evidence-freshness-chain-v1.php >/dev/null
+          php -l tests/seo-phase-readiness-gate-smoke.php >/dev/null
+          php tests/seo-phase-readiness-gate-smoke.php
+          php -l tests/seo-evidence-freshness-chain-smoke.php >/dev/null
+          php tests/seo-evidence-freshness-chain-smoke.php
+          php -l v2/data/report-seo-evidence-freshness-chain-v1.php >/dev/null
+          php -l tests/seo-evidence-freshness-chain-cli-smoke.php >/dev/null
+          php tests/seo-evidence-freshness-chain-cli-smoke.php
