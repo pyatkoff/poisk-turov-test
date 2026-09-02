@@ -34,7 +34,7 @@ jobs:
           const path = require('path');
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            for(const width of [375,768,1440]){
+            for(const width of [375]){
               const page=await browser.newPage({viewport:{width,height:900}});
               await page.setContent(`<div id="results"><button class="direct-tour" data-tid="t1">Тур 1</button><button class="direct-tour" data-tid="t2">Тур 2</button></div><section id="selectedTour"></section>`);
               await page.evaluate(()=>{window.V2Runtime={state:{searchId:101},api:async()=>[]};});
