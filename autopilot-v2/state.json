@@ -2,7 +2,7 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. PR #922 is now production-green on the V2-only path. PR #930 fixed a reproduced pending-lead tour-switch race: while lead submission was in flight, result-card direct-tour actions remained mutable, so the visible selected tour could diverge from the already-sent request and the old request success could become stale to the UI. The fix locks only currently-enabled direct-tour actions together with flight/back controls while pending, preserves pre-disabled actions, restores guard-owned locks after a current error or search reset, and does not let a tour-selected event thaw controls while the request remains pending. All 10 existing PR check suites passed, including Security, targeted lead recovery at 375/768/1440 and visual QA. PR #930 merged as fc2d2466f283b6b1f5b9f0584274ccd4d8b7a705; production push validation has started.",
+    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. PR #948 fixed a reproduced pending-lead new-search race: while a lead submission was in flight, the main #tourSearch form and mobile sticky search action remained usable, so a new search could reset the selected/search state while the already-sent lead request still belonged to the previous tour/search snapshot and its later success could become stale/invisible. The fix marks only the search form and sticky search action as guard-owned locked controls while pending, capture-blocks tourSearch submit, restores them after a current lead error/reset, and keeps them frozen through success. Security, Fast/V2 validation, targeted lead recovery at 375/768/1440 and PR/baseline visual QA passed. PR #948 merged as 32bc0f28dc819feb51ca95ec7598ec8a8e35b826; production push validation is pending/startup.",
     "done": [
       "P0/P1 progressive 25→100, local narrowing, widening/server lifecycle, stale async protection and counters have prior accepted evidence.",
       "PR #842 strengthened local facet safety for meal/category/rating/sea completeness and is released to production.",
@@ -11,9 +11,10 @@
       "PR #907 invalidates delayed selected-tour loads after search reset and is production-green.",
       "PR #910 freezes selected flight controls while a lead request is pending and restores them only after a current lead error; merge 0c9f9e26a1eb7b979d76f526655059fc586e0def; Deploy V2 only 33589823831 succeeded.",
       "PR #922 fixed the pending-lead back-to-results race without changing lead transport/persistence/idempotency; merge 98e41e21a991f8c0dda75588ff319613840a87cf; Deploy V2 only 33592748849 succeeded.",
-      "PR #930 fixed pending-lead tour switching by freezing guard-owned direct-tour actions while the request is pending, preserving pre-disabled controls and recovery semantics. All 10 PR check suites passed; merge fc2d2466f283b6b1f5b9f0584274ccd4d8b7a705."
+      "PR #930 fixed pending-lead tour switching by freezing guard-owned direct-tour actions while the request is pending, preserving pre-disabled controls and recovery semantics. All 10 PR check suites passed; merge fc2d2466f283b6b1f5b9f0584274ccd4d8b7a705.",
+      "PR #948 fixed pending-lead new-search mutation by guarding #tourSearch submit and mobile sticky search while the request is pending. Security, lead UI race, targeted lead recovery, V2 validation, PR visual and baseline visual passed; merge 32bc0f28dc819feb51ca95ec7598ec8a8e35b826."
     ],
-    "next": "Finish production evidence for #930, then continue selected-tour E2E with remaining submit/retry/recovery and restored-state coherence, especially new-search behavior while a lead request is pending. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead-adapter semantics.",
+    "next": "Finish production evidence for #948, then continue selected-tour E2E with remaining submit/retry/recovery and restored-state coherence after returning to results or retrying a failed lead. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead-adapter semantics.",
     "blocked": [
       "HIGH issue #850: production lead adapter idempotency semantics differ from the validated helper contract; changing the external lead mechanism requires explicit approval.",
       "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence.",
@@ -24,7 +25,7 @@
       "Do not change Metrika goals, external lead transport, Tourvisor contracts, pricing semantics or the logo without explicit approval.",
       "Local filtering is safe only when the loaded payload is complete enough for the selected facet.",
       "Lead UI async acceptance must be scoped to both tourId and searchId.",
-      "A pending lead submission must freeze user choices that would make the visible selected-tour state diverge from the request snapshot, including selected flight, return-to-results navigation and switching to another tour; recovery unlocks only guard-owned controls after a current error/reset."
+      "A pending lead submission must freeze user choices that would make the visible selected-tour/search state diverge from the request snapshot, including selected flight, return-to-results navigation, switching to another tour and starting a new search; recovery unlocks only guard-owned controls after a current error/reset."
     ]
   },
   "active_task": {
@@ -45,7 +46,8 @@
     "evidence": [
       "PR #922 production V2 deploy 33592748849 succeeded on merge 98e41e21a991f8c0dda75588ff319613840a87cf.",
       "PR #930 passed all 10 existing pull-request check suites including Security, targeted lead recovery and visual QA and merged as fc2d2466f283b6b1f5b9f0584274ccd4d8b7a705.",
-      "Production push workflows for #930 started on exact merge SHA fc2d2466f283b6b1f5b9f0584274ccd4d8b7a705.",
+      "PR #948 reproduced and fixed pending-lead new-search mutation; Security, lead UI race, targeted lead recovery at 375/768/1440, Fast/V2 validation, PR visual and baseline visual passed; merge 32bc0f28dc819feb51ca95ec7598ec8a8e35b826.",
+      "Production push workflows for #948 are pending/startup on exact merge SHA 32bc0f28dc819feb51ca95ec7598ec8a8e35b826.",
       "HIGH issue #850 remains approval-gated and lead-adapter.php must not be changed without explicit owner approval."
     ],
     "parent_task": "P0_P1_PRODUCT_STABILITY"
@@ -53,7 +55,7 @@
   "queue": [
     {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"RELEASED_PRODUCTION","latest_pr":842,"latest_merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45"},
     {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_WITH_PRIOR_EVIDENCE"},
-    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_PRODUCTION_QA","latest_pr":930,"latest_merge_sha":"fc2d2466f283b6b1f5b9f0584274ccd4d8b7a705"},
+    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_PRODUCTION_QA","latest_pr":948,"latest_merge_sha":"32bc0f28dc819feb51ca95ec7598ec8a8e35b826"},
     {"id":"FLIGHT_STATE_RECOVERY_REAUDIT","priority":1,"status":"PASS_CURRENT_MAIN_NO_DEFECT_REPRODUCED"},
     {"id":"LEAD_IDEMPOTENCY_CONTRACT","priority":1,"status":"BLOCKED_APPROVAL_HIGH","issue":850},
     {"id":"DESIGN_SYSTEM_2","priority":2,"status":"CONTINUE_TARGETED_CONVERGENCE"},
@@ -65,9 +67,9 @@
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"DONE_ENHANCED_CONTRACTS"}
   ],
   "last_signal": {
-    "source": "lead_submit_tour_switch_race",
-    "status": "PR930_MERGED_PRODUCTION_QA_RUNNING_CONTINUE_E2E",
-    "sha": "fc2d2466f283b6b1f5b9f0584274ccd4d8b7a705"
+    "source": "lead_submit_new_search_race",
+    "status": "PR948_MERGED_PRODUCTION_QA_PENDING_CONTINUE_E2E",
+    "sha": "32bc0f28dc819feb51ca95ec7598ec8a8e35b826"
   },
   "blocked": [
     {"scope":"lead adapter idempotency semantics","type":"approval_gate_high","reason":"Issue #850 would require changing protected external lead mechanism semantics.","action":"Do not modify lead-adapter.php without explicit owner approval; continue independent MEDIUM recovery work."},
