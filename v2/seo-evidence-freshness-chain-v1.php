@@ -12,7 +12,9 @@ function v2_seo_evidence_freshness_chain(
 ): array {
     $nowEpoch??=time();$errors=[];
     $shaOk=static fn(mixed $v):bool=>is_string($v)&&preg_match('/^[a-f0-9]{64}$/',$v)===1;
-    $freshAt=static fn(int $ts) use($nowEpoch,$maxAgeSeconds):bool=>$ts>0&&$ts<=$nowEpoch&&($nowEpoch-$ts)<=$maxAgeSeconds;
+    $freshAt=static function(int $ts) use($nowEpoch,$maxAgeSeconds): bool {
+        return $ts>0&&$ts<=$nowEpoch&&($nowEpoch-$ts)<=$maxAgeSeconds;
+    };
 
     if(($productionIdentity['integrity_ok']??false)!==true)$errors[]='production_identity_not_valid';
     if(($productionIdentity['source']??'')!=='live_http_collector')$errors[]='production_identity_not_live';
