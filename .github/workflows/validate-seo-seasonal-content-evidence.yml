@@ -6,8 +6,10 @@ on:
     paths:
       - 'v2/seo-seasonal-content-evidence-v1.php'
       - 'v2/seo-seasonal-source-registry-v1.php'
+      - 'v2/seo-seasonal-verified-content-evidence-v1.php'
       - 'tests/seo-seasonal-content-evidence-smoke.php'
       - 'tests/seo-seasonal-source-registry-smoke.php'
+      - 'tests/seo-seasonal-verified-content-evidence-smoke.php'
       - '.github/workflows/validate-seo-seasonal-content-evidence.yml'
   workflow_dispatch:
 
@@ -26,7 +28,10 @@ jobs:
           set -euo pipefail
           php -l v2/seo-seasonal-content-evidence-v1.php >/dev/null
           php -l v2/seo-seasonal-source-registry-v1.php >/dev/null
+          php -l v2/seo-seasonal-verified-content-evidence-v1.php >/dev/null
           php -l tests/seo-seasonal-content-evidence-smoke.php >/dev/null
           php -l tests/seo-seasonal-source-registry-smoke.php >/dev/null
+          php -l tests/seo-seasonal-verified-content-evidence-smoke.php >/dev/null
           php tests/seo-seasonal-content-evidence-smoke.php
           php tests/seo-seasonal-source-registry-smoke.php
+          php tests/seo-seasonal-verified-content-evidence-smoke.php
