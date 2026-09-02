@@ -40,12 +40,15 @@ if ($evidenceFile !== '') {
     $decoded = json_decode((string)$raw, true);
     if (!is_array($decoded)) seo2_readiness_cli_fail('evidence file must contain a JSON array');
     $evidence = $decoded;
-} elseif (!posix_isatty(STDIN)) {
-    $raw = stream_get_contents(STDIN);
-    if (trim((string)$raw) !== '') {
-        $decoded = json_decode((string)$raw, true);
-        if (!is_array($decoded)) seo2_readiness_cli_fail('stdin evidence must contain a JSON array');
-        $evidence = $decoded;
+} else {
+    $stdinIsTty = function_exists('stream_isatty') ? stream_isatty(STDIN) : true;
+    if (!$stdinIsTty) {
+        $raw = stream_get_contents(STDIN);
+        if (trim((string)$raw) !== '') {
+            $decoded = json_decode((string)$raw, true);
+            if (!is_array($decoded)) seo2_readiness_cli_fail('stdin evidence must contain a JSON array');
+            $evidence = $decoded;
+        }
     }
 }
 
