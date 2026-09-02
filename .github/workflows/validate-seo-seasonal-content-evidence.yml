@@ -19,6 +19,7 @@ on:
       - 'tests/seo-seasonal-review-content-smoke.php'
       - 'tests/seo-seasonal-content-packet-smoke.php'
       - 'tests/seo-seasonal-review-page-smoke.php'
+      - 'tests/seo-seasonal-preview-publication-boundary-smoke.php'
       - '.github/workflows/validate-seo-seasonal-content-evidence.yml'
   workflow_dispatch:
 
@@ -51,6 +52,7 @@ jobs:
           php -l tests/seo-seasonal-review-content-smoke.php >/dev/null
           php -l tests/seo-seasonal-content-packet-smoke.php >/dev/null
           php -l tests/seo-seasonal-review-page-smoke.php >/dev/null
+          php -l tests/seo-seasonal-preview-publication-boundary-smoke.php >/dev/null
           php tests/seo-seasonal-content-evidence-smoke.php
           php tests/seo-seasonal-source-registry-smoke.php
           php tests/seo-seasonal-verified-content-evidence-smoke.php
@@ -58,3 +60,4 @@ jobs:
           php tests/seo-seasonal-review-content-smoke.php
           php tests/seo-seasonal-content-packet-smoke.php
           php tests/seo-seasonal-review-page-smoke.php
+          php tests/seo-seasonal-preview-publication-boundary-smoke.php
