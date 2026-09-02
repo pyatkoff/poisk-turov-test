@@ -10,6 +10,18 @@ body.search3-preview:not(.search3-has-results) .results-layout{display:none!impo
 /* Results remain one coherent page flow. Match the shared DS2 result-state selector specificity so its two-column search shell cannot leak into Search3. */
 body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) .v2-shell{display:block!important}
 body.search3-preview.search3-has-results .results-search-summary{width:100%!important;max-width:none!important;margin-left:0!important;margin-right:0!important}
+/* The shared DS2 result-state also enlarges mature production cards. Search3 owns the compact maket7 card geometry in preview. */
+@media(min-width:1025px){
+body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-main{display:grid!important;grid-template-columns:276px minmax(0,1fr)!important;align-items:stretch!important;gap:0!important;min-height:156px!important}
+body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo{width:auto!important;height:156px!important;min-height:156px!important;max-height:156px!important;border-radius:0!important}
+body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-body{display:grid!important;grid-template-columns:minmax(0,1fr) 180px!important;grid-template-rows:auto auto auto 1fr auto!important;column-gap:16px!important;min-width:0!important;padding:12px 14px 11px!important}
+body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-title{margin:0!important;font-size:15px!important;line-height:1.13!important;letter-spacing:-.18px!important}
+body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-place{margin-top:4px!important;font-size:9px!important}
+body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-decision-line{margin-top:7px!important}
+body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-decision-line span{min-height:20px!important;padding-inline:7px!important;font-size:8px!important}
+body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-bottom{margin:0!important;padding:1px 0 0 14px!important;gap:0!important}
+body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-price{margin-top:4px!important;font-size:19px!important;line-height:1!important}
+}
 /* Search 3 owns the mobile filter toolbar/drawer; suppress the older DS2 mobile filter UI in preview only. */
 body.search3-preview .mrf-bar,body.search3-preview .mrf-sheet{display:none!important}
 @media(max-width:999px){body.search3-preview .results-layout{display:block!important;width:100%!important;max-width:none!important;margin:0 0 48px!important}}
