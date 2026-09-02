@@ -18,6 +18,9 @@ function v2_seo_egypt_hotel_manifest(): array
         ['file'=>'seo-content-pilot-egypt-el-khan-v1.php','function'=>'v2_seo_content_pilot_egypt_el_khan','label'=>'Туры в EL KHAN SHARM HOTEL','href'=>'/country/egypt/hotel/el-khan-sharm-hotel-81245/'],
         ['file'=>'seo-content-pilot-egypt-swiss-heaven-v1.php','function'=>'v2_seo_content_pilot_egypt_swiss_heaven','label'=>'Туры в SWISS HEAVEN SHARMING INN','href'=>'/country/egypt/hotel/swiss-heaven-sharming-inn-453/'],
         ['file'=>'seo-content-pilot-egypt-viking-v1.php','function'=>'v2_seo_content_pilot_egypt_viking','label'=>'Туры в VIKING CLUB','href'=>'/country/egypt/hotel/viking-club-518/'],
+        ['file'=>'seo-content-pilot-egypt-uni-sharm-v1.php','function'=>'v2_seo_content_pilot_egypt_uni_sharm','label'=>'Туры в UNI SHARM AQUA PARK','href'=>'/country/egypt/hotel/uni-sharm-aqua-park-ex-karma-eastotels-516/'],
+        ['file'=>'seo-content-pilot-egypt-viva-sharm-v1.php','function'=>'v2_seo_content_pilot_egypt_viva_sharm','label'=>'Туры в VIVA SHARM','href'=>'/country/egypt/hotel/viva-sharm-ex-top-choice-viva-sharm-9377/'],
+        ['file'=>'seo-content-pilot-egypt-verginia-v1.php','function'=>'v2_seo_content_pilot_egypt_verginia','label'=>'Туры в VERGINIA SHARM RESORT & AQUA PARK','href'=>'/country/egypt/hotel/verginia-sharm-resort-aqua-park-eh-verginia-sharm-sol-verginia-447/'],
     ];
 }
 
