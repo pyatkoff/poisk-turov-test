@@ -49,7 +49,11 @@ function v2_seo_seasonal_review_plan(array $coverage, array $binding, array $req
         if(!isset($available[$key])) throw new InvalidArgumentException('Requested seasonal identity is not family-bound: '.$key);
         $row=$available[$key];
         $expires=(int)($row['expires_at_epoch']??0);
-        if($expires<=$nowEpoch) throw new InvalidArgumentException('Requested seasonal identity expired: '.$key);
+        $checkedAt=(int)($row['evidence_checked_at_epoch']??0);
+        $freshness=(int)($row['freshness_seconds']??0);
+        $offerCount=(int)($row['offer_count']??0);
+        if($expires<=$nowEpoch||$checkedAt<=0||$checkedAt>$nowEpoch+5||$freshness<=0) throw new InvalidArgumentException('Requested seasonal identity evidence is stale: '.$key);
+        if($offerCount<=0) throw new InvalidArgumentException('Requested seasonal identity has no factual offer depth: '.$key);
         if(($row['publication_allowed']??true)!==false||($row['copy_allowed']??true)!==false) throw new InvalidArgumentException('Requested seasonal identity crossed publication boundary: '.$key);
         $items[]=[
             'state'=>'review_only_seasonal_plan_item',
@@ -61,6 +65,9 @@ function v2_seo_seasonal_review_plan(array $coverage, array $binding, array $req
             'year'=>(int)($row['year']??0),
             'month'=>(int)($row['month']??0),
             'parent_path'=>(string)($row['parent_path']??''),
+            'offer_count'=>$offerCount,
+            'evidence_checked_at_epoch'=>$checkedAt,
+            'freshness_seconds'=>$freshness,
             'expires_at_epoch'=>$expires,
             'publication_allowed'=>false,
             'copy_allowed'=>false,

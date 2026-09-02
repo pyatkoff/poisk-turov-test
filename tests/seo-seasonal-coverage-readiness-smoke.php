@@ -27,15 +27,18 @@ $binding=[
  'state'=>'review_only_seasonal_family_binding','country_id'=>1,'evidence_valid_until_epoch'=>18000,
  'publication_allowed'=>false,'copy_allowed'=>false,'publication_candidates'=>[],
  'bound'=>[
-  ['page_key'=>'month:1:1:2026-10','page_type'=>'month','region_id'=>null,'departure_id'=>1,'year'=>2026,'month'=>10,'parent_path'=>'/country/egypt/','expires_at_epoch'=>18000,'publication_allowed'=>false,'copy_allowed'=>false],
-  ['page_key'=>'resort_month:1:1:55:2026-10','page_type'=>'resort_month','region_id'=>55,'departure_id'=>1,'year'=>2026,'month'=>10,'parent_path'=>'/country/egypt/sharm-el-sheikh/','expires_at_epoch'=>17000,'publication_allowed'=>false,'copy_allowed'=>false],
+  ['page_key'=>'month:1:1:2026-10','page_type'=>'month','region_id'=>null,'departure_id'=>1,'year'=>2026,'month'=>10,'parent_path'=>'/country/egypt/','offer_count'=>5,'evidence_checked_at_epoch'=>1000,'freshness_seconds'=>17000,'expires_at_epoch'=>18000,'publication_allowed'=>false,'copy_allowed'=>false],
+  ['page_key'=>'resort_month:1:1:55:2026-10','page_type'=>'resort_month','region_id'=>55,'departure_id'=>1,'year'=>2026,'month'=>10,'parent_path'=>'/country/egypt/sharm-el-sheikh/','offer_count'=>2,'evidence_checked_at_epoch'=>1000,'freshness_seconds'=>16000,'expires_at_epoch'=>17000,'publication_allowed'=>false,'copy_allowed'=>false],
  ],
 ];
 $plan=v2_seo_seasonal_review_plan($egypt,$binding,['resort_month:1:1:55:2026-10','month:1:1:2026-10'],5000,3);
 if(($plan['state']??'')!=='review_only_seasonal_plan'||($plan['item_count']??0)!==2)coverage_fail('review_plan');
 if(($plan['publication_candidates']??null)!==[]||($plan['publication_allowed']??true)!==false||($plan['feed_publish_allowed']??true)!==false||($plan['copy_allowed']??true)!==false)coverage_fail('review_plan_boundary');
 if(($plan['items'][0]['page_key']??'')!=='month:1:1:2026-10')coverage_fail('review_plan_order');
+if(($plan['items'][0]['offer_count']??0)!==5||($plan['items'][0]['freshness_seconds']??0)!==17000||($plan['items'][0]['evidence_checked_at_epoch']??0)!==1000)coverage_fail('review_plan_factual_metrics');
 try{v2_seo_seasonal_review_plan($egypt,$binding,['month:1:1:2026-11'],5000);coverage_fail('review_plan_unknown_key');}catch(InvalidArgumentException $e){}
+$zeroDepth=$binding;$zeroDepth['bound'][0]['offer_count']=0;
+try{v2_seo_seasonal_review_plan($egypt,$zeroDepth,['month:1:1:2026-10'],5000);coverage_fail('review_plan_zero_depth');}catch(InvalidArgumentException $e){}
 
 $maldivesPolicy=$policy; $maldivesPolicy['country_id']=8;
 $maldives=v2_seo_seasonal_coverage_assess($data,$maldivesPolicy,5000);
@@ -57,4 +60,4 @@ if (($expired['review_ready']??true)!==false || !in_array('evidence_expired',$ex
 $missingClock=$data; unset($missingClock['evidence_checked_at_epoch'],$missingClock['evidence_valid_until_epoch'],$missingClock['evidence_clock_valid']);
 $clockless=v2_seo_seasonal_coverage_assess($missingClock,$policy,5000);
 if (($clockless['review_ready']??true)!==false || !in_array('evidence_clock_missing_or_invalid',$clockless['errors']??[],true)) coverage_fail('missing_clock_should_block');
-echo "SEO_SEASONAL_COVERAGE_OK explicitPolicy=1 explicitPlan=1 autoSelection=0 publication=0\n";
+echo "SEO_SEASONAL_COVERAGE_OK explicitPolicy=1 explicitPlan=1 selectedDepth=1 autoSelection=0 publication=0\n";
