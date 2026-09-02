@@ -73,15 +73,33 @@ $reviewRows=[];
 foreach([[4,4004,'turkey'],[8,8008,'maldives'],[1,1001,'egypt']] as [$countryId,$hotelId,$slug]){
     $reviewRows[]=['path'=>'/country/'.$slug.'/hotel/test-'.$hotelId.'/','country_id'=>$countryId,'hotel_id'=>$hotelId,'evidence_epoch'=>$now,'evidence_expires_epoch'=>$now+600,'score'=>100,'ready_for_launch_review'=>true,'errors'=>[]];
 }
-$reviewSlice=v2_seo_hotel_review_launch_slice($reviewRows,[
+$reviewBuckets=[
     ['country_id'=>4,'paths'=>['/country/turkey/hotel/test-4004/']],
     ['country_id'=>8,'paths'=>['/country/maldives/hotel/test-8008/']],
     ['country_id'=>1,'paths'=>['/country/egypt/hotel/test-1001/']],
-],[4,8,1],1,3,$now);
+];
+$reviewSlice=v2_seo_hotel_review_launch_slice($reviewRows,$reviewBuckets,[4,8,1],1,3,$now);
 if(($reviewSlice['state']??'')!=='review_only_requires_separate_indexation_approval'||($reviewSlice['total']??0)!==3) unified_ready_fail('review_slice_state');
 foreach(['publication_allowed','indexation_allowed','sitemap_allowed','canonical_launch_allowed','route_launch_allowed'] as $flag) if(($reviewSlice[$flag]??true)!==false) unified_ready_fail('review_slice_'.$flag);
 if(($reviewSlice['publication_candidates']??null)!==[]||($reviewSlice['explicit_user_indexation_approval_required']??false)!==true) unified_ready_fail('review_slice_approval_boundary');
 if(!preg_match('/^[a-f0-9]{64}$/',(string)($reviewSlice['evidence_manifest_sha256']??''))) unified_ready_fail('review_slice_fingerprint');
+if(($reviewSlice['evidence_valid_until_epoch']??0)!==($now+600)||($reviewSlice['evidence_remaining_seconds']??0)!==600||($reviewSlice['evidence_fresh']??false)!==true) unified_ready_fail('review_slice_freshness_window');
+$countryFreshness=$reviewSlice['country_evidence_freshness']??[];
+foreach([1,4,8] as $countryId){
+    if(($countryFreshness[$countryId]['item_count']??0)!==1||($countryFreshness[$countryId]['oldest_evidence_epoch']??0)!==$now||($countryFreshness[$countryId]['evidence_valid_until_epoch']??0)!==($now+600)) unified_ready_fail('review_slice_country_freshness_'.$countryId);
+}
+
+$futureEvidence=$reviewRows;
+$futureEvidence[0]['evidence_epoch']=$now+1;
+$futureBlocked=false;
+try { v2_seo_hotel_review_launch_slice($futureEvidence,$reviewBuckets,[4,8,1],1,3,$now); } catch (InvalidArgumentException $e) { $futureBlocked=true; }
+if(!$futureBlocked) unified_ready_fail('review_slice_future_evidence_allowed');
+
+$expiredAtValidation=$reviewRows;
+$expiredAtValidation[0]['evidence_expires_epoch']=$now;
+$expiredBlocked=false;
+try { v2_seo_hotel_review_launch_slice($expiredAtValidation,$reviewBuckets,[4,8,1],1,3,$now); } catch (InvalidArgumentException $e) { $expiredBlocked=true; }
+if(!$expiredBlocked) unified_ready_fail('review_slice_expired_evidence_allowed');
 
 $unsafe=$catalog;
 $unsafe['publication_candidates'][]=$hotelPath;
@@ -104,4 +122,4 @@ if(!in_array('editorial_depth',$thinResort['errors']??[],true)) unified_ready_fa
 $thinManifest=v2_seo_launch_manifest($thinCatalog,$evidence,$now);
 if(($thinManifest['integrity_ok']??false)!==true||($thinManifest['review_ready']??true)!==false||($thinManifest['quality_score']??100)>=100||($thinManifest['blocked_by_type']['resort']??0)!==1) unified_ready_fail('manifest_quality_block');
 
-echo "SEO_UNIFIED_READINESS_OK country=100 resort=100 hotel=100 manifest=100 hotelBoundary=1 reviewSliceBoundary=1 thinResortBlocked=1\n";
+echo "SEO_UNIFIED_READINESS_OK country=100 resort=100 hotel=100 manifest=100 hotelBoundary=1 reviewSliceBoundary=1 reviewFreshness=1 thinResortBlocked=1\n";
