@@ -32,6 +32,10 @@ try {
     if($readinessPath===''||$identitiesPath===''||$family===''||$rawKeys==='') {
         throw new InvalidArgumentException('Usage requires --readiness --identities --family --page-keys');
     }
+    $keys=array_values(array_filter(array_map('trim',preg_split('/\s*,\s*/',$rawKeys,-1,PREG_SPLIT_NO_EMPTY)?:[]),static fn(string $v):bool=>$v!==''));
+    if($keys===[]||count($keys)!==count(array_unique($keys))) throw new InvalidArgumentException('Explicit page keys must be non-empty and unique');
+    $keySet=array_fill_keys($keys,true);
+
     $familyRecord=v2_seo_seasonal_family_registry_get($family);
     if(($familyRecord['state']??'')!=='verified_review_only_destination_family'
         ||($familyRecord['publication_allowed']??true)!==false
@@ -52,14 +56,16 @@ try {
         throw new InvalidArgumentException('Identity inventory crossed publication boundary');
     }
 
-    $filtered=$inventory;
-    $filtered['identities']=array_values(array_filter($inventory['identities']??[],static fn($row):bool=>is_array($row)
+    $countrySupported=array_values(array_filter($inventory['identities']??[],static fn($row):bool=>is_array($row)
         &&(int)($row['country_id']??0)===$countryId
         &&in_array((string)($row['page_type']??''),$supportedPageTypes,true)));
+    if($countrySupported===[]) throw new InvalidArgumentException('No supported identities for verified family country');
+    $filtered=$inventory;
+    $filtered['identities']=array_values(array_filter($countrySupported,static fn($row):bool=>isset($keySet[(string)($row['page_key']??'')])));
     $filtered['identity_count']=count($filtered['identities']);
     $filtered['blocked']=[];
     $filtered['blocked_count']=0;
-    if($filtered['identity_count']===0) throw new InvalidArgumentException('No supported identities for verified family country');
+    if($filtered['identity_count']!==count($keys)) throw new InvalidArgumentException('One or more explicit page keys have no supported fresh identity');
 
     $defaultResortMin=in_array('resort_month',$supportedPageTypes,true)?1:0;
     $policy=[
@@ -72,12 +78,16 @@ try {
     $coverage=v2_seo_seasonal_coverage_assess($readiness,$policy);
     if(($coverage['review_ready']??false)!==true) throw new InvalidArgumentException('Seasonal coverage is not review-ready: '.implode(',',array_map('strval',$coverage['errors']??[])));
     $binding=v2_seo_seasonal_family_binding($country,$resorts,$filtered);
-    if((int)($binding['blocked_count']??0)!==0) throw new InvalidArgumentException('Supported seasonal identities failed family binding');
-    $keys=array_values(array_filter(array_map('trim',preg_split('/\s*,\s*/',$rawKeys,-1,PREG_SPLIT_NO_EMPTY)?:[]),static fn(string $v):bool=>$v!==''));
+    if((int)($binding['blocked_count']??0)!==0||(int)($binding['bound_count']??0)!==count($keys)) {
+        $codes=[];
+        foreach(($binding['blocked']??[]) as $row) foreach(($row['errors']??[]) as $error) $codes[(string)$error]=true;
+        throw new InvalidArgumentException('Explicit seasonal identities failed family binding: '.implode(',',array_keys($codes)));
+    }
     $maxItems=(int)(seasonal_plan_arg($argv,'max-items')??'12');
     $plan=v2_seo_seasonal_review_plan($coverage,$binding,$keys,null,$maxItems);
     $plan['family']=$family;
     $plan['supported_page_types']=$supportedPageTypes;
+    $plan['country_supported_identity_count']=count($countrySupported);
     $plan['source_identity_count']=$filtered['identity_count'];
     $plan['family_bound_count']=(int)($binding['bound_count']??0);
     $plan['family_blocked_count']=(int)($binding['blocked_count']??0);
