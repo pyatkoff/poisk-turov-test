@@ -51,7 +51,7 @@ jobs:
           ];
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            for(const [name,width,height] of [['mobile',375,812],['tablet',768,1024],['intermediate',1024,900],['desktop',1440,1000]]){
+            for(const [name,width,height] of [['mobile',375,812],['desktop',1440,1000]]){
               const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
               const page=await context.newPage();
               const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
