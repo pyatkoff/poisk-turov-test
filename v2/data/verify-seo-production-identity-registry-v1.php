@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/../seo-production-identity-registry-v1.php';
+require_once __DIR__.'/../seo-production-identity-collector-v1.php';
 
 $file='';
 foreach(array_slice($argv,1) as $arg){
@@ -18,15 +19,12 @@ $evidence=[
     'observed_at_utc'=>(string)($payload['observed_at_utc']??''),
     'pages'=>$pages,
 ];
-$expected=[
-    ['path'=>'/country/turkey/','type'=>'country','robots_prefix'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/alanya/','type'=>'resort','robots_prefix'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/antalya/','type'=>'resort','robots_prefix'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/belek/','type'=>'resort','robots_prefix'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/kemer/','type'=>'resort','robots_prefix'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/side/','type'=>'resort','robots_prefix'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/hotel/aegean-park-1601/','type'=>'hotel_tours','robots_prefix'=>'noindex,follow','sitemap_member'=>false],
-];
+
+// One source of truth for the live production identity scope. The collector and
+// verifier must use the same exact controlled launch paths plus the protected
+// hotel_tours reference; duplicating a hard-coded Turkey-only list here caused
+// the registry to drift as soon as Egypt/Maldives were launched.
+$expected=v2_seo_production_identity_expected_rows();
 $result=v2_seo_production_identity_registry_validate($evidence,$expected);
 if(($result['integrity_ok']??false)!==true){
     fwrite(STDERR,"SEO_IDENTITY_REGISTRY_VERIFY_FAIL:".implode(',',array_map('strval',$result['errors']??[]))."\n");
