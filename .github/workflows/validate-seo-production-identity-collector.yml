@@ -1,0 +1,36 @@
+name: Validate SEO production identity collector
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-production-identity-collector-v1.php'
+      - 'v2/seo-production-identity-registry-v1.php'
+      - 'v2/seo-launch-slice-v1.php'
+      - 'v2/seo-ds2-reference-pages-v1.php'
+      - 'v2/data/report-seo-production-identity-v1.php'
+      - 'tests/seo-production-identity-collector-smoke.php'
+      - '.github/workflows/validate-seo-production-identity-collector.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-identity-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-production-identity-collector-v1.php >/dev/null
+          php -l v2/data/report-seo-production-identity-v1.php >/dev/null
+          php -l tests/seo-production-identity-collector-smoke.php >/dev/null
+      - name: Verify fail-closed identity boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/seo-production-identity-collector-smoke.php
