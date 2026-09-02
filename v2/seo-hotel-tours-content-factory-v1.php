@@ -24,6 +24,9 @@ function v2_seo_hotel_tours_content_record(array $hotel, array $editorial): arra
             throw new InvalidArgumentException('SEO hotel-tour content requires stable lowercase slugs');
         }
     }
+    if (!str_ends_with($hotelSlug, '-' . $hotelId)) {
+        throw new InvalidArgumentException('SEO hotel-tour slug must end with its verified hotel ID');
+    }
 
     $title = trim((string)($editorial['title'] ?? ''));
     $description = trim((string)($editorial['description'] ?? ''));
