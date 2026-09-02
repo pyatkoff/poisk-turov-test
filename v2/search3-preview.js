@@ -43,10 +43,12 @@ function init(){
   if(submit){submit.innerHTML='<span>Найти туры</span><b aria-hidden="true">→</b>';main.appendChild(submit);}
   var quality=document.createElement('section');quality.className='search3-quality';quality.innerHTML='<div class="search3-quality__grid"></div>';main.parentNode.insertBefore(quality,main.nextSibling);var grid=quality.querySelector('.search3-quality__grid');
   [['stars','Категория отеля','search3-stars'],['rating','Оценка отеля','search3-rating'],['food','Питание','search3-meal'],['price_till','Бюджет на тур','search3-budget'],['hotel','Конкретный отель','search3-hotel']].forEach(function(x){var f=field(form,x[0]);if(!f)return;cleanField(f);var s=f.querySelector(':scope > span');if(s)s.textContent=x[1];f.classList.add(x[2]);grid.appendChild(f);});
+  var budget=form.elements.price_till;if(budget)budget.placeholder='до 250 000 ₽';
+  var hotel=form.elements.hotel;if(hotel)hotel.setAttribute('aria-label','Конкретный отель');
   var quick=document.createElement('div');quick.className='search3-quick';
   var flight=document.createElement('label');flight.className='search3-quick__label search3-quick__label--static';flight.innerHTML='<input type="checkbox" checked><span>Только с перелётом</span>';quick.appendChild(flight);
   var instant=document.createElement('label');instant.className='search3-quick__label search3-quick__label--instant';instant.innerHTML='<input type="checkbox" data-search3-instant><span>⚡ Моментальное подтверждение</span>';quick.appendChild(instant);
-  var direct=form.elements.onlyDirect;if(direct){var dl=direct.closest('label');if(dl){dl.classList.add('search3-quick__label');quick.appendChild(dl);}}
+  var direct=form.elements.onlyDirect;if(direct){var directLabel=document.createElement('label');directLabel.className='search3-quick__label search3-quick__label--direct';directLabel.appendChild(direct);var directText=document.createElement('span');directText.textContent='Прямой рейс';directLabel.appendChild(directText);quick.appendChild(directLabel);}
   var seats=document.createElement('label');seats.className='search3-quick__label';seats.innerHTML='<input type="checkbox" data-search3-seats><span>Есть места</span>';quick.appendChild(seats);
   var hot=document.createElement('label');hot.className='search3-quick__label';hot.innerHTML='<input type="checkbox" data-search3-hot><span>Горящие туры</span>';quick.appendChild(hot);
   quality.parentNode.insertBefore(quick,extras);extras.classList.remove('result-filter-rail');extras.hidden=true;
