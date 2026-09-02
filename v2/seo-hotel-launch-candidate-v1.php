@@ -88,6 +88,17 @@ function v2_seo_hotel_country_launch_slice_proposal(
     }
     if (!$required) throw new InvalidArgumentException('Hotel launch country slice requires countries');
 
+    $readinessCountryByPath = [];
+    foreach ($readinessRows as $row) {
+        if (!is_array($row)) continue;
+        $path = trim((string)($row['path'] ?? ''));
+        if ($path === '') continue;
+        if (isset($readinessCountryByPath[$path])) {
+            throw new InvalidArgumentException('Duplicate hotel launch-readiness path: ' . $path);
+        }
+        $readinessCountryByPath[$path] = (int)($row['country_id'] ?? 0);
+    }
+
     $seenCountries = [];
     $flatPaths = [];
     $bucketCounts = [];
@@ -103,7 +114,16 @@ function v2_seo_hotel_country_launch_slice_proposal(
         }
         $seenCountries[$countryId] = true;
         $bucketCounts[$countryId] = count($paths);
-        foreach ($paths as $path) $flatPaths[] = $path;
+        foreach ($paths as $path) {
+            $path = trim((string)$path);
+            if ($path === '' || !array_key_exists($path, $readinessCountryByPath)) {
+                throw new InvalidArgumentException('Hotel launch country slice path is missing readiness evidence: ' . $path);
+            }
+            if ($readinessCountryByPath[$path] !== $countryId) {
+                throw new InvalidArgumentException('Hotel launch country slice path country mismatch: ' . $path);
+            }
+            $flatPaths[] = $path;
+        }
     }
 
     if (array_diff_key($required, $seenCountries) || array_diff_key($seenCountries, $required)) {
