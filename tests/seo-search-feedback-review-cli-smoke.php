@@ -47,7 +47,8 @@ $out=[];$code=0;exec($cmd.' 2>&1',$out,$code);
 if($code!==0)search_feedback_review_cli_fail('valid_exit_'.$code.'_'.implode('|',$out));
 $decoded=json_decode(implode("\n",$out),true);
 if(!is_array($decoded)||($decoded['state']??'')!=='search_feedback_review_ready')search_feedback_review_cli_fail('valid_state');
-if(($decoded['observed_count']??0)!==1||($decoded['missing_count']??0)!==5)search_feedback_review_cli_fail('counts');
+if(($decoded['launch_scope']??'')!=='controlled_country_resort_v2')search_feedback_review_cli_fail('scope');
+if(($decoded['observed_count']??0)!==1||($decoded['missing_count']??0)!==7)search_feedback_review_cli_fail('counts');
 if((($decoded['recommendations'][0]['recommendation']??null)!=='improve_review'))search_feedback_review_cli_fail('recommendation');
 if(($decoded['recommendation_semantics']??'')!=='review_only_no_execution'||($decoded['explicit_user_approval_required']??false)!==true)search_feedback_review_cli_fail('semantics');
 foreach(['automatic_execution_allowed','automatic_deindex_allowed','publication_allowed','indexation_change_allowed','sitemap_change_allowed','canonical_change_allowed','route_change_allowed','hotel_tours_indexation_allowed'] as $flag){
@@ -96,4 +97,4 @@ $out=[];$code=0;exec($cmd.' 2>&1',$out,$code);
 if($code!==3)search_feedback_review_cli_fail('hotel_exit_'.$code);
 
 @unlink($feedbackFile);@unlink($policyFile);
-echo "SEO_SEARCH_FEEDBACK_REVIEW_CLI_SMOKE_OK ready=1 missingUnknown=5 staleBlocked=1 noMatchBlocked=1 noindexReviewOnly=1 hotelBlocked=1\n";
+echo "SEO_SEARCH_FEEDBACK_REVIEW_CLI_SMOKE_OK ready=1 cohort=8 missingUnknown=7 staleBlocked=1 noMatchBlocked=1 noindexReviewOnly=1 hotelBlocked=1\n";
