@@ -48,6 +48,7 @@ function v2_seo_seasonal_family_binding(array $countryRecord, array $resortRecor
         $departureId = (int)($identity['departure_id'] ?? 0);
         $year = (int)($identity['year'] ?? 0);
         $month = (int)($identity['month'] ?? 0);
+        $offerCount = (int)($identity['offer_count'] ?? 0);
         $freshness = (int)($identity['freshness_seconds'] ?? 0);
         $identityCheckedAt=(int)($identity['evidence_checked_at_epoch']??0);
         $identityExpires=(int)($identity['expires_at_epoch']??0);
@@ -57,6 +58,7 @@ function v2_seo_seasonal_family_binding(array $countryRecord, array $resortRecor
         if ($identityCountryId !== $countryId) $errors[] = 'country_identity_mismatch';
         if ($departureId <= 0) $errors[] = 'invalid_departure_identity';
         if ($year < 2020 || $year > 2100 || $month < 1 || $month > 12) $errors[] = 'invalid_period';
+        if ($offerCount <= 0) $errors[] = 'empty_offer_depth';
         if ($freshness <= 0) $errors[] = 'stale_identity';
         if ($identityCheckedAt<=0||$identityCheckedAt>$nowEpoch+5||$identityExpires<=$nowEpoch) $errors[]='identity_evidence_expired_or_invalid';
         if (($identity['publication_allowed'] ?? true) !== false || ($identity['copy_allowed'] ?? true) !== false) $errors[] = 'identity_publication_boundary_crossed';
@@ -77,7 +79,7 @@ function v2_seo_seasonal_family_binding(array $countryRecord, array $resortRecor
         $bound[] = [
             'state'=>'review_only_family_bound_identity','page_key'=>$key,'page_type'=>$pageType,'country_id'=>$countryId,
             'region_id'=>$regionId,'departure_id'=>$departureId,'year'=>$year,'month'=>$month,'parent_path'=>$parentPath,
-            'evidence_checked_at_epoch'=>$identityCheckedAt,'expires_at_epoch'=>$identityExpires,'freshness_seconds'=>$freshness,
+            'offer_count'=>$offerCount,'evidence_checked_at_epoch'=>$identityCheckedAt,'expires_at_epoch'=>$identityExpires,'freshness_seconds'=>$freshness,
             'publication_allowed'=>false,'copy_allowed'=>false,
         ];
     }
