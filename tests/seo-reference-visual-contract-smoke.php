@@ -49,7 +49,7 @@ foreach ($editorialTokens as $token) {
         exit(3);
     }
 }
-if (strpos($shell, "string \$actionHref='',string \$actionLabel='',string \$modifier=''") === false || strpos($shell, "'sp-hero--'.preg_replace") === false || strpos($shell, 'sp-hero-actions') === false) {
+if (strpos($shell, "string \$actionHref='',string \$actionLabel='',string \$modifier=''") === false || strpos($shell, "sp-hero--'.preg_replace") === false || strpos($shell, 'sp-hero-actions') === false) {
     fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:hero_modifier\n");
     exit(4);
 }
