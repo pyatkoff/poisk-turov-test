@@ -11,6 +11,7 @@ on:
       - 'v2/seo-seasonal-review-content-v1.php'
       - 'v2/seo-seasonal-content-packet-v1.php'
       - 'v2/seo-seasonal-review-page-v1.php'
+      - 'v2/seo-seasonal-preview-readiness-v1.php'
       - 'v2/_preview/seo2/seasonal/**'
       - 'tests/seo-seasonal-content-evidence-smoke.php'
       - 'tests/seo-seasonal-source-registry-smoke.php'
@@ -20,6 +21,7 @@ on:
       - 'tests/seo-seasonal-content-packet-smoke.php'
       - 'tests/seo-seasonal-review-page-smoke.php'
       - 'tests/seo-seasonal-preview-publication-boundary-smoke.php'
+      - 'tests/seo-seasonal-preview-readiness-smoke.php'
       - '.github/workflows/validate-seo-seasonal-content-evidence.yml'
   workflow_dispatch:
 
@@ -43,6 +45,7 @@ jobs:
           php -l v2/seo-seasonal-review-content-v1.php >/dev/null
           php -l v2/seo-seasonal-content-packet-v1.php >/dev/null
           php -l v2/seo-seasonal-review-page-v1.php >/dev/null
+          php -l v2/seo-seasonal-preview-readiness-v1.php >/dev/null
           php -l v2/_preview/seo2/seasonal/antalya-september/index.php >/dev/null
           php -l v2/_preview/seo2/seasonal/maldives-september/index.php >/dev/null
           php -l tests/seo-seasonal-content-evidence-smoke.php >/dev/null
@@ -53,6 +56,7 @@ jobs:
           php -l tests/seo-seasonal-content-packet-smoke.php >/dev/null
           php -l tests/seo-seasonal-review-page-smoke.php >/dev/null
           php -l tests/seo-seasonal-preview-publication-boundary-smoke.php >/dev/null
+          php -l tests/seo-seasonal-preview-readiness-smoke.php >/dev/null
           php tests/seo-seasonal-content-evidence-smoke.php
           php tests/seo-seasonal-source-registry-smoke.php
           php tests/seo-seasonal-verified-content-evidence-smoke.php
@@ -61,3 +65,4 @@ jobs:
           php tests/seo-seasonal-content-packet-smoke.php
           php tests/seo-seasonal-review-page-smoke.php
           php tests/seo-seasonal-preview-publication-boundary-smoke.php
+          php tests/seo-seasonal-preview-readiness-smoke.php
