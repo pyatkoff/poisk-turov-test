@@ -12,6 +12,9 @@ function v2_seo_egypt_hotel_manifest(): array
         ['file'=>'seo-content-pilot-egypt-mazar-v1.php','function'=>'v2_seo_content_pilot_egypt_mazar','label'=>'Туры в MAZAR RESORT & SPA','href'=>'/country/egypt/hotel/mazar-resort-spa-56104/'],
         ['file'=>'seo-content-pilot-egypt-coral-hills-v1.php','function'=>'v2_seo_content_pilot_egypt_coral_hills','label'=>'Туры в CORAL HILLS RESORT','href'=>'/country/egypt/hotel/coral-hills-resort-162/'],
         ['file'=>'seo-content-pilot-egypt-tropitel-dahab-v1.php','function'=>'v2_seo_content_pilot_egypt_tropitel_dahab','label'=>'Туры в TROPITEL DAHAB OASIS','href'=>'/country/egypt/hotel/tropitel-dahab-oasis-512/'],
+        ['file'=>'seo-content-pilot-egypt-tivoli-v1.php','function'=>'v2_seo_content_pilot_egypt_tivoli','label'=>'Туры в TIVOLI HOTEL AQUA PARK','href'=>'/country/egypt/hotel/tivoli-hotel-aqua-park-511/'],
+        ['file'=>'seo-content-pilot-egypt-old-vic-v1.php','function'=>'v2_seo_content_pilot_egypt_old_vic','label'=>'Туры в OLD VIC SHARM','href'=>'/country/egypt/hotel/old-vic-sharm-56094/'],
+        ['file'=>'seo-content-pilot-egypt-faraana-v1.php','function'=>'v2_seo_content_pilot_egypt_faraana','label'=>'Туры в FARAANA HEIGHTS AQUA PARK','href'=>'/country/egypt/hotel/faraana-heights-aqua-park-1968/'],
     ];
 }
 
