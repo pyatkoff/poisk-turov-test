@@ -115,11 +115,19 @@ foreach (($productionParent['data']['related'] ?? []) as $link) {
         turkey_hotel_review_fail('production_parent_exposes_review_hotel_link');
     }
 }
+try {
+    v2_seo_hotel_family_catalog($productionParent, v2_seo_turkey_hotel_records());
+    turkey_hotel_review_fail('approved_parent_allowed');
+} catch (InvalidArgumentException $e) {
+    if (!str_contains($e->getMessage(), 'parent must remain review-only')) {
+        turkey_hotel_review_fail('approved_parent_wrong_rejection');
+    }
+}
 
 $reviewParent = $registry['/country/turkey/'] ?? [];
 if (($reports['/country/turkey/']['status'] ?? '') !== 'review') turkey_hotel_review_fail('isolated_parent_not_review');
 if (($reviewParent['type'] ?? '') !== 'country') turkey_hotel_review_fail('isolated_parent_type');
 
-echo 'SEO_TURKEY_HOTEL_REVIEW_OK hotels=' . $expectedHotelCount . ' candidates=0 parentIsolation=1 country=4 uniqueHotelIds=' . count($manifestHotelIds) . ' uniqueEditorial=' . count($editorialFingerprints) . PHP_EOL;
+echo 'SEO_TURKEY_HOTEL_REVIEW_OK hotels=' . $expectedHotelCount . ' candidates=0 parentIsolation=1 approvedParentRejected=1 country=4 uniqueHotelIds=' . count($manifestHotelIds) . ' uniqueEditorial=' . count($editorialFingerprints) . PHP_EOL;
 
 require __DIR__ . '/seo-egypt-hotel-review-catalog-smoke.php';
