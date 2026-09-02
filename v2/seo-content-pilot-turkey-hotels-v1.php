@@ -33,6 +33,9 @@ function v2_seo_turkey_hotel_manifest(): array
         ['file'=>'seo-content-pilot-turkey-green-gold-v1.php','function'=>'v2_seo_content_pilot_turkey_green_gold','label'=>'Туры в GREEN GOLD','href'=>'/country/turkey/hotel/green-gold-21753/'],
         ['file'=>'seo-content-pilot-turkey-wasa-hotel-v1.php','function'=>'v2_seo_content_pilot_turkey_wasa_hotel','label'=>'Туры в WASA HOTEL','href'=>'/country/turkey/hotel/wasa-hotel-5536/'],
         ['file'=>'seo-content-pilot-turkey-rosella-v1.php','function'=>'v2_seo_content_pilot_turkey_rosella','label'=>'Туры в ROSELLA APART & HOTEL','href'=>'/country/turkey/hotel/rosella-apart-hotel-21814/'],
+        ['file'=>'seo-content-pilot-turkey-alexius-beach-v1.php','function'=>'v2_seo_content_pilot_turkey_alexius_beach','label'=>'Туры в ALEXIUS BEACH HOTEL','href'=>'/country/turkey/hotel/alexius-beach-hotel-ex-beldiana-club-1039/'],
+        ['file'=>'seo-content-pilot-turkey-greenport-bodrum-v1.php','function'=>'v2_seo_content_pilot_turkey_greenport_bodrum','label'=>'Туры в GREENPORT HOTEL BODRUM','href'=>'/country/turkey/hotel/greenport-hotel-bodrum-ex-aegean-garden-1600/'],
+        ['file'=>'seo-content-pilot-turkey-moni-v1.php','function'=>'v2_seo_content_pilot_turkey_moni','label'=>'Туры в MONI HOTEL','href'=>'/country/turkey/hotel/moni-hotel-111534/'],
     ];
 }
 
