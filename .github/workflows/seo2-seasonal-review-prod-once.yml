@@ -1,0 +1,61 @@
+name: SEO2 seasonal review production once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-seasonal-review-prod-once.yml'
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key" && ssh-keygen -y -f "$key" >/dev/null
+      - name: Collect fresh production evidence and build explicit Turkey review plan
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          root='~/www/anytoour.ru'
+          work="$RUNNER_TEMP/seo2-seasonal-review"
+          mkdir -p "$work"
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data/seo2-review-once" && test -s "$HOME/www/anytoour.ru/config.php"'
+          scp "${opts[@]}" v2/data/db-v1.php v2/data/inspect-seo-data-readiness-v1.php v2/data/inspect-seo-seasonal-identities-v1.php v2/seo-data-readiness-v1.php v2/seo-seasonal-identity-v1.php "$remote:$root/data/seo2-review-once/"
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            base="$HOME/www/anytoour.ru"; t="$base/data/seo2-review-once"
+            mkdir -p "$t/v2/data" "$t/v2"
+            cp "$base/config.php" "$t/v2/config.php"; chmod 600 "$t/v2/config.php"
+            cp "$t/db-v1.php" "$t/v2/data/db-v1.php"; cp "$t/inspect-seo-data-readiness-v1.php" "$t/v2/data/inspect-seo-data-readiness-v1.php"; cp "$t/inspect-seo-seasonal-identities-v1.php" "$t/v2/data/inspect-seo-seasonal-identities-v1.php"; cp "$t/seo-data-readiness-v1.php" "$t/v2/seo-data-readiness-v1.php"; cp "$t/seo-seasonal-identity-v1.php" "$t/v2/seo-seasonal-identity-v1.php"
+            php "$t/v2/data/inspect-seo-data-readiness-v1.php" --countries=1,4,8 --require-countries=3 --require-snapshots=1 > "$t/readiness.json"
+            php "$t/v2/data/inspect-seo-seasonal-identities-v1.php" --countries=1,4,8 --require-identities=1 > "$t/identities.json"
+            rm -f "$t/v2/config.php"
+          '
+          scp "${opts[@]}" "$remote:$root/data/seo2-review-once/readiness.json" "$work/readiness.json"
+          scp "${opts[@]}" "$remote:$root/data/seo2-review-once/identities.json" "$work/identities.json"
+          php v2/data/report-seo-seasonal-review-plan-v1.php \
+            --readiness="$work/readiness.json" --identities="$work/identities.json" --family=turkey \
+            --page-keys=month:1:4:2026-09,resort_month:1:4:20:2026-09,resort_month:1:4:22:2026-09 \
+            --min-month-identities=2 --min-resort-month-identities=10 --min-freshness-seconds=1800 --min-offers-per-snapshot=1 --require-items=3 > "$work/plan.json"
+          php -r '$x=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR); if(($x["item_count"]??0)!==3||($x["coverage_score"]??0)!==100||($x["family_blocked_count"]??-1)!==0||($x["publication_candidates"]??null)!==[]||($x["publication_allowed"]??true)!==false||($x["feed_publish_allowed"]??true)!==false||($x["copy_allowed"]??true)!==false) exit(1); $p=array_column($x["items"]??[],"parent_path","page_key"); if(($p["month:1:4:2026-09"]??"")!=="/country/turkey/"||($p["resort_month:1:4:20:2026-09"]??"")!=="/country/turkey/antalya/"||($p["resort_month:1:4:22:2026-09"]??"")!=="/country/turkey/kemer/") exit(2); printf("SEO2_SEASONAL_REVIEW_OK items=3 score=100 expires=%d publication=0 copy=0\n",$x["evidence_valid_until_epoch"]??0);' "$work/plan.json"
+      - name: Upload disposable review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo2-seasonal-review-${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/seo2-seasonal-review/plan.json
+          retention-days: 3
