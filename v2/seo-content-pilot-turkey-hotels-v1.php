@@ -30,6 +30,9 @@ function v2_seo_turkey_hotel_manifest(): array
         ['file'=>'seo-content-pilot-turkey-ares-blue-v1.php','function'=>'v2_seo_content_pilot_turkey_ares_blue','label'=>'Туры в ARES BLUE','href'=>'/country/turkey/hotel/ares-blue-ex-larissa-blue-1326/'],
         ['file'=>'seo-content-pilot-turkey-kleopatra-ada-v1.php','function'=>'v2_seo_content_pilot_turkey_kleopatra_ada','label'=>'Туры в KLEOPATRA ADA HOTEL','href'=>'/country/turkey/hotel/kleopatra-ada-hotel-1299/'],
         ['file'=>'seo-content-pilot-turkey-sun-fire-beach-v1.php','function'=>'v2_seo_content_pilot_turkey_sun_fire_beach','label'=>'Туры в SUN FIRE BEACH HOTEL','href'=>'/country/turkey/hotel/sun-fire-beach-hotel-1525/'],
+        ['file'=>'seo-content-pilot-turkey-green-gold-v1.php','function'=>'v2_seo_content_pilot_turkey_green_gold','label'=>'Туры в GREEN GOLD','href'=>'/country/turkey/hotel/green-gold-21753/'],
+        ['file'=>'seo-content-pilot-turkey-wasa-hotel-v1.php','function'=>'v2_seo_content_pilot_turkey_wasa_hotel','label'=>'Туры в WASA HOTEL','href'=>'/country/turkey/hotel/wasa-hotel-5536/'],
+        ['file'=>'seo-content-pilot-turkey-rosella-v1.php','function'=>'v2_seo_content_pilot_turkey_rosella','label'=>'Туры в ROSELLA APART & HOTEL','href'=>'/country/turkey/hotel/rosella-apart-hotel-21814/'],
     ];
 }
 
