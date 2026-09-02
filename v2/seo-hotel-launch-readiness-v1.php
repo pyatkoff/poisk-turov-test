@@ -56,18 +56,21 @@ function v2_seo_hotel_launch_readiness(array $catalog, array $snapshotEvidence =
 
         $evidence = $evidenceByHotel[$hotelId] ?? null;
         $evidenceFresh = false;
+        $evidenceEpoch = 0;
+        $evidenceExpiresEpoch = 0;
         if (is_array($evidence)) {
             $evidenceCountry = (int)($evidence['country_id'] ?? 0);
             $slug = trim((string)($evidence['hotel_slug'] ?? ''));
-            $epoch = (int)($evidence['evidence_epoch'] ?? 0);
+            $evidenceEpoch = (int)($evidence['evidence_epoch'] ?? 0);
             $freshness = (int)($evidence['freshness_seconds'] ?? 0);
+            $evidenceExpiresEpoch = $evidenceEpoch > 0 && $freshness > 0 ? $evidenceEpoch + $freshness : 0;
             $pathSlug = basename(rtrim((string)$path, '/'));
             $evidenceFresh = $evidenceCountry === $countryId
                 && $slug === $pathSlug
-                && $epoch > 0
+                && $evidenceEpoch > 0
                 && $freshness > 0
-                && $epoch <= $nowEpoch + 300
-                && ($epoch + $freshness) >= $nowEpoch;
+                && $evidenceEpoch <= $nowEpoch + 300
+                && $evidenceExpiresEpoch >= $nowEpoch;
         }
         if ($evidenceFresh) $score += 10; else $errors[] = 'fresh_identity_evidence_required';
 
@@ -75,6 +78,8 @@ function v2_seo_hotel_launch_readiness(array $catalog, array $snapshotEvidence =
             'path' => (string)$path,
             'country_id' => $countryId,
             'hotel_id' => $hotelId,
+            'evidence_epoch' => $evidenceEpoch,
+            'evidence_expires_epoch' => $evidenceExpiresEpoch,
             'score' => $score,
             'ready_for_launch_review' => $score === 100 && $errors === [],
             'errors' => array_values(array_unique($errors)),
