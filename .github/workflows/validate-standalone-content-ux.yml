@@ -139,15 +139,47 @@ jobs:
           }
 
           $contentSlugs = [];
+          $editorialFingerprints = [];
           foreach (glob('v2/seo-content-pilot-maldives-*-v1.php') ?: [] as $contentFile) {
               $source = file_get_contents($contentFile);
               if ($source === false || strpos($source, 'v2_seo_hotel_tours_content_record') === false) continue;
-              if (!preg_match("/'hotel_slug'\\s*=>\\s*'([a-z0-9-]+)'/", $source, $m)) {
-                  fail_family('content_slug_missing:'.basename($contentFile));
+              if (!preg_match('/function\s+(v2_seo_content_pilot_maldives_[a-z0-9_]+)\s*\(/', $source, $fnMatch)) {
+                  fail_family('content_function_missing:'.basename($contentFile));
               }
-              $slug = $m[1];
+              require_once $contentFile;
+              $fn = $fnMatch[1];
+              if (!function_exists($fn)) fail_family('content_function_unavailable:'.$fn);
+              $hotelRecord = $fn();
+              if (($hotelRecord['status'] ?? '') !== 'review' || ($hotelRecord['type'] ?? '') !== 'hotel_tours') {
+                  fail_family('record_contract:'.basename($contentFile));
+              }
+              $path = trim((string)($hotelRecord['path'] ?? ''));
+              if (!preg_match('#^/country/maldives/hotel/([a-z0-9-]+)/$#', $path, $pathMatch)) {
+                  fail_family('record_path:'.basename($contentFile));
+              }
+              $slug = $pathMatch[1];
+              $hotelId = (int)($hotelRecord['data']['search_state']['hotel'] ?? 0);
+              $countryId = (int)($hotelRecord['data']['search_state']['country'] ?? 0);
+              if ($countryId !== 8 || $hotelId <= 0 || !str_ends_with($slug, '-'.$hotelId)) {
+                  fail_family('record_identity:'.$slug);
+              }
               if (isset($contentSlugs[$slug])) fail_family('duplicate_content_slug:'.$slug);
               $contentSlugs[$slug] = true;
+
+              $hotelName = mb_strtolower(trim((string)($hotelRecord['data']['name'] ?? '')), 'UTF-8');
+              $editorial = [
+                  'description' => (string)($hotelRecord['data']['description'] ?? ''),
+                  'intro' => (string)($hotelRecord['data']['intro'] ?? ''),
+                  'sections' => $hotelRecord['data']['sections'] ?? [],
+              ];
+              $normalized = mb_strtolower((string)json_encode($editorial, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'UTF-8');
+              if ($hotelName !== '') $normalized = str_replace($hotelName, '{{hotel}}', $normalized);
+              $fingerprint = hash('sha256', preg_replace('/\s+/u', ' ', $normalized) ?? $normalized);
+              if (isset($editorialFingerprints[$fingerprint])) {
+                  fail_family('duplicate_editorial_copy:'.$editorialFingerprints[$fingerprint].':'.$slug);
+              }
+              $editorialFingerprints[$fingerprint] = $slug;
+
               exec('php -l '.escapeshellarg($contentFile).' 2>&1', $lintOutput, $lintCode);
               if ($lintCode !== 0) fail_family('content_syntax:'.$slug);
           }
@@ -168,5 +200,5 @@ jobs:
           }
           if (!$routes) fail_family('empty_family');
 
-          echo 'MALDIVES_HOTEL_FAMILY_OK count='.count($routes)."\n";
+          echo 'MALDIVES_HOTEL_FAMILY_OK count='.count($routes).' uniqueEditorial='.count($editorialFingerprints)."\n";
           PHP
