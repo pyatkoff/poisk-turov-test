@@ -5,12 +5,6 @@ on:
       - 'v2/lead-idempotency-v1.php'
       - 'scripts/ci/lead/validate-idempotency.php'
       - '.github/workflows/validate-lead-idempotency-v1.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'v2/lead-idempotency-v1.php'
-      - 'scripts/ci/lead/validate-idempotency.php'
-      - '.github/workflows/validate-lead-idempotency-v1.yml'
   workflow_dispatch:
 
 concurrency:
