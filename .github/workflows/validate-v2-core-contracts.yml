@@ -1,0 +1,177 @@
+name: Validate V2 core contracts
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/**/*.js'
+      - 'v2/index.php'
+      - 'v2/api-v2.php'
+      - 'v2/lead-adapter-v2.php'
+      - 'v2/assets.php'
+      - 'v2/form-defaults.php'
+      - 'v2/analytics-config.php'
+      - 'v2/privacy-config.php'
+      - 'v2/asset-version-v1.php'
+      - 'v2/catalog-cache-v1.php'
+      - '.github/workflows/deploy.yml'
+      - '.github/workflows/deploy-anytoour.yml'
+      - '.github/workflows/validate-v2-core-contracts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-validate-v2-core-contracts-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate results sorting and partial-data contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          global.document={readyState:'loading',getElementById:()=>({value:'price',dataset:{},addEventListener:()=>{}}),addEventListener:()=>{}};
+          global.window={addEventListener:()=>{},dispatchEvent:()=>{}};
+          global.CustomEvent=function(){};
+          require('./v2/results-renderer-v5.js');
+          const r=global.window.V2ResultsV5;
+          if(!r||r.version!==5)process.exit(1);
+          let list=r.sorted([{id:'unknown',price:0},{id:'expensive',price:90000},{id:'cheap',price:70000}],'price');
+          if(list.map(x=>x.id).join(',')!=='cheap,expensive,unknown')process.exit(2);
+          list=r.sorted([{id:'unknown',rating:4.8,price:0},{id:'priced',rating:4.8,price:80000}],'rating');
+          if(list.map(x=>x.id).join(',')!=='priced,unknown')process.exit(3);
+          if(r.textValue({russianName:'Стандарт'})!=='Стандарт')process.exit(4);
+          if(r.textValue([{name:'DBL'},{title:'SEA VIEW'}])!=='DBL, SEA VIEW')process.exit(5);
+          const row=r.tourRow({id:'x',roomType:{name:'Deluxe'},placement:{title:'2 ADL'},meal:{russianName:'Всё включено'},operator:{name:'Test operator'},price:100000});
+          if(row.includes('[object Object]')||!row.includes('Deluxe')||!row.includes('2 ADL')||!row.includes('Всё включено')||!row.includes('Test operator'))process.exit(6);
+          if(typeof r.primaryTourTags==='function')process.exit(7);
+          console.log('RESULTS_V5_OK');
+          NODE
+
+      - name: Validate runtime retry policy semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          global.window={};
+          require('./v2/runtime-retry-policy.js');
+          const p=window.V2RetryPolicy;
+          if(!p)process.exit(1);
+          if(!p.shouldRetry('search_status',{code:'HTTP_ERROR',status:502},0))process.exit(2);
+          if(!p.shouldRetry('flights',{code:'NETWORK_ERROR'},0))process.exit(3);
+          if(p.shouldRetry('search_status',{code:'HTTP_ERROR',status:400},0))process.exit(4);
+          if(p.shouldRetry('search_start',{code:'HTTP_ERROR',status:502},0))process.exit(5);
+          if(p.shouldRetry('search_continue',{code:'NETWORK_ERROR'},0))process.exit(6);
+          if(p.shouldRetry('search_status',{code:'TIMEOUT'},0))process.exit(7);
+          if(p.shouldRetry('search_status',{code:'HTTP_ERROR',status:503},1))process.exit(8);
+          console.log('V2_RETRY_POLICY_OK');
+          NODE
+
+      - name: Validate asset content version semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          require 'v2/asset-version-v1.php';
+          $f=tempnam(sys_get_temp_dir(),'v2asset');
+          file_put_contents($f,'same-content');
+          $a=v2_asset_content_version($f);
+          touch($f,time()+20);
+          clearstatcache(true,$f);
+          $b=v2_asset_content_version($f);
+          if($a==='0'||$a!==$b){fwrite(STDERR,"mtime changed content version\n");exit(1);}
+          file_put_contents($f,'changed-content');
+          $c=v2_asset_content_version($f);
+          if($c==='0'||$c===$a){fwrite(STDERR,"content change did not change version\n");exit(1);}
+          @unlink($f);
+          if(v2_asset_content_version($f)!=='0'){fwrite(STDERR,"missing file contract failed\n");exit(1);}
+          echo "V2_ASSET_CONTENT_VERSION_OK\n";
+          PHP
+
+      - name: Validate catalog cache semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          function query_string(array $params) {
+              $parts=[];
+              foreach ($params as $key=>$value) {
+                  if ($value===null || $value==='') continue;
+                  if (is_bool($value)) $value=$value?'true':'false';
+                  if (is_array($value)) foreach ($value as $item) $parts[]=rawurlencode($key).'='.rawurlencode((string)$item);
+                  else $parts[]=rawurlencode($key).'='.rawurlencode((string)$value);
+              }
+              return implode('&',$parts);
+          }
+          require 'v2/catalog-cache-v1.php';
+          $dir=v2_catalog_cache_dir();
+          if (is_dir($dir)) foreach (glob($dir.'/*.json') ?: [] as $f) @unlink($f);
+          $calls=0;
+          $loader=function($path,$params) use (&$calls){$calls++; return ['path'=>$path,'params'=>$params,'call'=>$calls];};
+          $a=v2_catalog_get('/countries',['departureId'=>1],900,$loader);
+          $b=v2_catalog_get('/countries',['departureId'=>1],900,$loader);
+          if ($calls!==1 || $a!==$b) {fwrite(STDERR,"cache hit contract failed\n"); exit(1);}
+          $c=v2_catalog_get('/countries',['departureId'=>2],900,$loader);
+          if ($calls!==2 || $c===$b) {fwrite(STDERR,"parameter isolation failed\n"); exit(1);}
+          $file=$dir.'/'.v2_catalog_cache_key('/countries',['departureId'=>1]).'.json';
+          if (!is_file($file)) {fwrite(STDERR,"cache file missing\n"); exit(1);}
+          touch($file,time()-5);
+          $d=v2_catalog_get('/countries',['departureId'=>1],1,$loader);
+          if ($calls!==3 || ($d['call'] ?? 0)!==3) {fwrite(STDERR,"ttl expiry failed\n"); exit(1);}
+          foreach (glob($dir.'/*.json') ?: [] as $f) @unlink($f);
+          @rmdir($dir); @rmdir(dirname($dir));
+          echo "V2_CATALOG_CACHE_OK\n";
+          PHP
+
+      - name: Validate active dependency closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import pathlib,re,sys
+          root=pathlib.Path('v2')
+          index=(root/'index.php').read_text(encoding='utf-8')
+          assets=re.findall(r"v2_asset\('([^']+)'\)",index)
+          missing=[x for x in assets if not (root/x).is_file()]
+          print('ACTIVE_ASSETS',len(assets),'MISSING',missing)
+          if missing: sys.exit(1)
+          active=['index.php','api-v2.php','lead-adapter-v2.php','assets.php','form-defaults.php','analytics-config.php','privacy-config.php']+assets
+          forbidden=[r'poisk-turov-test/anytour',r'\.\./anytour',r'/anytour/images',r'\bTvApi\b',r'tvapi\.php',r'/max-search/']
+          hits=[]
+          for rel in dict.fromkeys(active):
+              p=root/rel
+              if not p.is_file() or p.suffix.lower() in {'.png','.jpg','.jpeg','.gif','.webp','.svg'}: continue
+              text=p.read_text(encoding='utf-8',errors='ignore')
+              for pattern in forbidden:
+                  if re.search(pattern,text,re.I): hits.append((rel,pattern))
+          print('FORBIDDEN_HITS',hits)
+          if hits: sys.exit(2)
+          print('V2_DEPENDENCY_CLOSURE_OK')
+          PY
+
+      - name: Validate deployment isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          canonical=.github/workflows/deploy-anytoour.yml
+          legacy=.github/workflows/deploy.yml
+          grep -Fq -- 'name: Deploy anytoour.ru' "$canonical"
+          grep -Fq -- "- 'v2/**'" "$canonical"
+          grep -Fq -- 'tar -C v2 -czf "$archive" .' "$canonical"
+          grep -Fq -- "root='~/www/anytoour.ru'" "$canonical"
+          grep -Fq -- 'workflow_dispatch:' "$legacy"
+          ! grep -Eq -- '^[[:space:]]+push:' "$legacy"
+          grep -Fq -- 'scp "${ssh_opts[@]}" -r v2/.' "$legacy"
+          grep -Fq -- 'poisk-turov-test/v2/' "$legacy"
+          ! grep -Eq -- 'scp .*anytour\.com|scp .*max-search|scp .*poisk-turov-tg' "$legacy"
+          echo "V2_ISOLATION_OK"
