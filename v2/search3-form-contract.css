@@ -31,4 +31,14 @@
   html body.search3-preview #tourSearch .search3-quick__label input{flex:0 0 15px!important;width:15px!important;height:15px!important;margin:0!important;opacity:1!important;accent-color:#1463ff!important}
   html body.search3-preview #tourSearch .search3-quick__label[aria-disabled=true]{opacity:1!important;color:#475467!important}
   html body.search3-preview #tourSearch .search3-quick__label--instant span{color:#344054!important}
+
+  /* maket7 desktop ends with a slim utility footer, not the full marketing footer. */
+  html body.search3-preview .ds2-site-footer{margin-top:18px!important;background:#fff!important;border-top:1px solid #e7ecf3!important;color:#667085!important}
+  html body.search3-preview .ds2-site-footer__inner{display:none!important}
+  html body.search3-preview .ds2-site-footer__meta{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:20px!important;min-height:42px!important;padding:0 24px!important;background:#fff!important;border:0!important}
+  html body.search3-preview .ds2-site-footer__legal{display:flex!important;align-items:center!important;gap:18px!important;flex-wrap:wrap!important}
+  html body.search3-preview .ds2-site-footer__legal a{color:#667085!important;font-size:8px!important;line-height:1.2!important}
+  html body.search3-preview .ds2-site-footer__payments{display:flex!important;align-items:center!important;gap:6px!important}
+  html body.search3-preview .ds2-site-footer__payments span{min-height:24px!important;padding:0 7px!important;border:1px solid #e1e7f0!important;border-radius:5px!important;background:#fff!important;color:#667085!important;font-size:7px!important}
+  html body.search3-preview .ds2-site-footer__bottom{display:none!important}
 }
