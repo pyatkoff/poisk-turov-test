@@ -2,7 +2,7 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. PR #948 fixed a reproduced pending-lead new-search race: while a lead submission was in flight, the main #tourSearch form and mobile sticky search action remained usable, so a new search could reset the selected/search state while the already-sent lead request still belonged to the previous tour/search snapshot and its later success could become stale/invisible. The fix marks only the search form and sticky search action as guard-owned locked controls while pending, capture-blocks tourSearch submit, restores them after a current lead error/reset, and keeps them frozen through success. Security, Fast/V2 validation, targeted lead recovery at 375/768/1440 and PR/baseline visual QA passed. PR #948 merged as 32bc0f28dc819feb51ca95ec7598ec8a8e35b826; production push validation is pending/startup.",
+    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. PR #948 fixed a reproduced pending-lead new-search race: while a lead submission was in flight, the main #tourSearch form and mobile sticky search action remained usable, so a new search could reset the selected/search state while the already-sent lead request still belonged to the previous tour/search snapshot and its later success could become stale/invisible. The fix marks only the search form and sticky search action as guard-owned locked controls while pending, capture-blocks tourSearch submit, restores them after a current lead error/reset, and keeps them frozen through success. Security, Fast/V2 validation, targeted lead recovery at 375/768/1440 and PR/baseline visual QA passed. PR #948 merged as 32bc0f28dc819feb51ca95ec7598ec8a8e35b826. Deploy anytoour.ru run 33601413531 succeeded on the exact merge SHA; Deploy V2 only run 33601413471 is still in progress at Copy V2, with Verify V2 and Live search smoke pending. Independently, selected-tour return/restored-state re-audit is PASS on current main: both ordinary back-results and lead-success-back are capture-handled by selected-tour-return-v1.js, preserve results/sort/comparison state, restore focus to the current source card after rerender or fall back to results, and are already covered at 375/768/1440.",
     "done": [
       "P0/P1 progressive 25→100, local narrowing, widening/server lifecycle, stale async protection and counters have prior accepted evidence.",
       "PR #842 strengthened local facet safety for meal/category/rating/sea completeness and is released to production.",
@@ -12,9 +12,10 @@
       "PR #910 freezes selected flight controls while a lead request is pending and restores them only after a current lead error; merge 0c9f9e26a1eb7b979d76f526655059fc586e0def; Deploy V2 only 33589823831 succeeded.",
       "PR #922 fixed the pending-lead back-to-results race without changing lead transport/persistence/idempotency; merge 98e41e21a991f8c0dda75588ff319613840a87cf; Deploy V2 only 33592748849 succeeded.",
       "PR #930 fixed pending-lead tour switching by freezing guard-owned direct-tour actions while the request is pending, preserving pre-disabled controls and recovery semantics. All 10 PR check suites passed; merge fc2d2466f283b6b1f5b9f0584274ccd4d8b7a705.",
-      "PR #948 fixed pending-lead new-search mutation by guarding #tourSearch submit and mobile sticky search while the request is pending. Security, lead UI race, targeted lead recovery, V2 validation, PR visual and baseline visual passed; merge 32bc0f28dc819feb51ca95ec7598ec8a8e35b826."
+      "PR #948 fixed pending-lead new-search mutation by guarding #tourSearch submit and mobile sticky search while the request is pending. Security, lead UI race, targeted lead recovery, V2 validation, PR visual and baseline visual passed; merge 32bc0f28dc819feb51ca95ec7598ec8a8e35b826; Deploy anytoour.ru 33601413531 succeeded.",
+      "Selected-tour restored-state return re-audit PASS on current main: back-results and lead-success-back hide selected tour, preserve existing results state and restore focus/source identity across rerenders or fall back to results; targeted 375/768/1440 workflow already covers the behavior."
     ],
-    "next": "Finish production evidence for #948, then continue selected-tour E2E with remaining submit/retry/recovery and restored-state coherence after returning to results or retrying a failed lead. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead-adapter semantics.",
+    "next": "Finish Deploy V2 only production evidence for #948 (Verify V2 + Live search smoke), then continue selected-tour E2E with remaining submit/retry/recovery boundaries. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead-adapter semantics.",
     "blocked": [
       "HIGH issue #850: production lead adapter idempotency semantics differ from the validated helper contract; changing the external lead mechanism requires explicit approval.",
       "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence.",
@@ -25,7 +26,8 @@
       "Do not change Metrika goals, external lead transport, Tourvisor contracts, pricing semantics or the logo without explicit approval.",
       "Local filtering is safe only when the loaded payload is complete enough for the selected facet.",
       "Lead UI async acceptance must be scoped to both tourId and searchId.",
-      "A pending lead submission must freeze user choices that would make the visible selected-tour/search state diverge from the request snapshot, including selected flight, return-to-results navigation, switching to another tour and starting a new search; recovery unlocks only guard-owned controls after a current error/reset."
+      "A pending lead submission must freeze user choices that would make the visible selected-tour/search state diverge from the request snapshot, including selected flight, return-to-results navigation, switching to another tour and starting a new search; recovery unlocks only guard-owned controls after a current error/reset.",
+      "Selected-tour return should preserve useful result state and source identity rather than re-searching or rebuilding results."
     ]
   },
   "active_task": {
@@ -47,7 +49,9 @@
       "PR #922 production V2 deploy 33592748849 succeeded on merge 98e41e21a991f8c0dda75588ff319613840a87cf.",
       "PR #930 passed all 10 existing pull-request check suites including Security, targeted lead recovery and visual QA and merged as fc2d2466f283b6b1f5b9f0584274ccd4d8b7a705.",
       "PR #948 reproduced and fixed pending-lead new-search mutation; Security, lead UI race, targeted lead recovery at 375/768/1440, Fast/V2 validation, PR visual and baseline visual passed; merge 32bc0f28dc819feb51ca95ec7598ec8a8e35b826.",
-      "Production push workflows for #948 are pending/startup on exact merge SHA 32bc0f28dc819feb51ca95ec7598ec8a8e35b826.",
+      "Deploy anytoour.ru 33601413531 succeeded on exact PR #948 merge SHA 32bc0f28dc819feb51ca95ec7598ec8a8e35b826.",
+      "Deploy V2 only 33601413471 for PR #948 is still in progress at Copy V2; Verify V2 and Live search smoke are pending, so production V2 evidence is not yet counted green.",
+      "Selected-tour return/restored-state re-audit is PASS via selected-tour-return-v1.js and existing 375/768/1440 targeted validation, including rerender source restoration and lead-success-back.",
       "HIGH issue #850 remains approval-gated and lead-adapter.php must not be changed without explicit owner approval."
     ],
     "parent_task": "P0_P1_PRODUCT_STABILITY"
@@ -68,7 +72,7 @@
   ],
   "last_signal": {
     "source": "lead_submit_new_search_race",
-    "status": "PR948_MERGED_PRODUCTION_QA_PENDING_CONTINUE_E2E",
+    "status": "PR948_MERGED_PRIMARY_DEPLOY_GREEN_V2_DEPLOY_RUNNING_RESTORED_STATE_PASS",
     "sha": "32bc0f28dc819feb51ca95ec7598ec8a8e35b826"
   },
   "blocked": [
