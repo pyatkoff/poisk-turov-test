@@ -37,16 +37,24 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   async function forceLeadState(state, detail = {}) {
     const event = state === 'sending' ? 'lead-started' : state === 'success' ? 'lead-success' : 'lead-error';
-    await page.evaluate(({ event, detail }) => window.dispatchEvent(new CustomEvent('v2:' + event, { detail: Object.assign({ previewSimulation: true }, detail) })), { event, detail });
+    const result = await page.evaluate(({ state, event, detail }) => {
+      const form = document.querySelector('#selectedTour .lead-form');
+      if (!form) return { ok: false, actual: null, reason: 'form-missing' };
+      /* Reset the QA marker before dispatch. This prevents a previous state from
+         satisfying the assertion and makes each screenshot prove its own event. */
+      delete form.dataset.search3LeadState;
+      window.dispatchEvent(new CustomEvent('v2:' + event, { detail: Object.assign({ previewSimulation: true }, detail) }));
+      return { ok: form.dataset.search3LeadState === state, actual: form.dataset.search3LeadState || null };
+    }, { state, event, detail });
+    if (!result.ok) {
+      report.errors.push(`lead state mismatch: expected ${state}, got ${result.actual || 'none'}${result.reason ? ` (${result.reason})` : ''}`);
+      return false;
+    }
     try {
-      await page.waitForFunction(expected => {
-        const form = document.querySelector('#selectedTour .lead-form');
-        return !!form && form.dataset.search3LeadState === expected;
-      }, state, { timeout: 3000 });
+      await page.locator(`#selectedTour .lead-form[data-search3-lead-state="${state}"] .search3-lead-status`).first().waitFor({ state: 'visible', timeout: 3000 });
       return true;
     } catch (_) {
-      const actual = await page.locator('#selectedTour .lead-form').first().getAttribute('data-search3-lead-state').catch(() => null);
-      report.errors.push(`lead state mismatch: expected ${state}, got ${actual || 'none'}`);
+      report.errors.push(`lead state ${state} marker changed but status UI is not visible`);
       return false;
     }
   }
