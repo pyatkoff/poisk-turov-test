@@ -1,7 +1,7 @@
 {
   "schema_version": 20,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-02T03:01:00+03:00",
+  "updated_at": "2026-09-02T03:06:00+03:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Shared DS2 responsive convergence and Search 2.0 preview QA",
     "status": "ACTIVE",
-    "last_material_progress": "Search 2.0 preview run #51 (33573157764) passed the full 375/430/768/1024/1440 evidence set on head efdd19f4fe9799e3e36332d00729f675b1e94530. The prior mobile document-overflow defect is closed: document width equals viewport width at all five sizes, primaryCount=5, food stays out of the primary row, CTA precedes quick filters on mobile, and the truthful All Inclusive shortcut writes canonical food=7. Visual inspection of 375 confirmed a coherent stacked form and internal quick-filter scrolling without page overflow; the nights summary remains on one line. Independently, PR #870 normalized the selected-tour back-results and hotel-description text actions from 40/38px to the canonical DS2 44px touch rhythm in the existing ds2-selected-tour-convergence-v1.css layer. All eight PR validation/visual workflows passed, including the five-width selected-tour audit and baseline comparison; PR #870 merged as 4ddf997599d69fadf96fd0842cc4ff9e561e187b. Production V2 deploy run 33573370464 was started after merge and must be checked to completion before treating that production change as DONE. Search 2.0 production release lock for #810 remains active.",
-    "next_action": "First finish production verification for merged PR #870: require Deploy V2 only run 33573370464 to pass Verify V2 and Live search smoke, then confirm the selected-tour post-deploy visual workflow if triggered. After that, continue Search 2.0 only as preview-approved visual convergence: use run #51 as the current green five-width baseline, inspect/repair only concrete remaining mismatches inside existing canonical preview layers, and do not add another CSS layer. Do not merge #810 or deploy Search 2.0 to production without explicit owner visual approval. Continue independent shared DS2 wrapping/touch/hierarchy fixes only when a concrete production defect is confirmed."
+    "last_material_progress": "Search 2.0 preview run #51 (33573157764) passed the full 375/430/768/1024/1440 evidence set on head efdd19f4fe9799e3e36332d00729f675b1e94530. The prior mobile document-overflow defect is closed: document width equals viewport width at all five sizes, primaryCount=5, food stays out of the primary row, CTA precedes quick filters on mobile, and the truthful All Inclusive shortcut writes canonical food=7. Visual inspection of 375 confirmed a coherent stacked form and internal quick-filter scrolling without page overflow; the nights summary remains on one line. Independently, PR #870 normalized the selected-tour back-results and hotel-description text actions from 40/38px to the canonical DS2 44px touch rhythm in the existing ds2-selected-tour-convergence-v1.css layer. All eight PR validation/visual workflows passed; merge 4ddf997599d69fadf96fd0842cc4ff9e561e187b deployed successfully in V2 run 33573370464 including Verify V2 and Live search smoke, and selected-tour post-deploy run 33573588616 passed. The generic V2 post-deploy run then exposed a stale CI assertion only: every five-width page/search/result assertion was green, but it still required removed legacy .v2-site-community. PR #872 updated that gate to require exactly one canonical .ds2-site-footer and zero legacy community blocks; security passed, it merged as 2ae43e3dffce44a607fb14254056438ca8de554b, and direct five-width production verification run 33573805145 passed. Search 2.0 production release lock for #810 remains active.",
+    "next_action": "Continue Search 2.0 only as preview-approved visual convergence, using run #51 as the current green five-width baseline. Inspect/repair only concrete remaining visual mismatches against the approved design inside existing canonical preview layers; do not add another CSS layer. Keep the target composition and truthful filter/search contracts unchanged. Do not merge #810 or deploy Search 2.0 to production without explicit owner visual approval. In parallel, continue independent shared DS2 wrapping/touch/hierarchy fixes only when a concrete production defect is confirmed, with full relevant PR/deploy/live evidence."
   },
   "local_results_filtering": {
     "mode": "instant_local",
@@ -27,7 +27,7 @@
   "site_wide_score": {
     "value": 7.3,
     "scale": 10,
-    "note": "Held at 7.3. Search 2.0 now has a fully green five-width preview baseline with the mobile overflow defect closed, and selected-tour touch targets are converging to the shared 44px DS2 rhythm. Search 2.0 remains preview-only and PR #870 still awaits completed production V2 evidence, so the whole-product score is intentionally unchanged."
+    "note": "Held at 7.3. Search 2.0 now has a fully green five-width preview baseline with the mobile overflow defect closed; selected-tour touch targets are live on the shared 44px DS2 rhythm; and the stale post-deploy footer assertion was corrected and reverified. Search 2.0 remains preview-only, so the whole-product score is intentionally unchanged."
   },
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -48,7 +48,7 @@
     "technical_refactor": "DEFER_UNTIL_EXPLICIT_OWNER_DIRECTION",
     "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
     "legal_payment": "DEFER_UNRESOLVED_CONTENT",
-    "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON_ANYTOUR.ONLINE_FIXTURE_WHILE_FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING"
+    "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING"
   },
   "continuation_policy": {
     "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > search_user_journey > search2_initial_form_preview > results_filters_loaded_set > hotel_tour_cards_and_selected_tour > desktop_mobile_visual_consistency > shared_header_navigation_footer_ds2 > site_visual_convergence_ds2 > technical_refactor_deferred > content_seo > cosmetic_cleanup",
