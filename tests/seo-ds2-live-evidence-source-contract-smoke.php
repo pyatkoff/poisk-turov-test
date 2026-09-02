@@ -8,7 +8,7 @@ $hotel=(string)file_get_contents(__DIR__.'/../v2/seo-hotel-tour-page-v1.php');
 if(substr_count($snapshot,'s.expires_at>=NOW()')<2)ds2_live_source_fail('snapshot_expiry_gate');
 if(!str_contains($resort,'v2_seo_resort_snapshot_offers('))ds2_live_source_fail('resort_snapshot_source');
 if(!str_contains($hotel,'v2_seo_hotel_snapshot_offers('))ds2_live_source_fail('hotel_snapshot_source');
-if(!str_contains($hotel,"$context['robots'] = v2_seo_robots_content(false);"))ds2_live_source_fail('hotel_noindex_runtime');
+if(!str_contains($hotel,"\$context['robots'] = v2_seo_robots_content(false);"))ds2_live_source_fail('hotel_noindex_runtime');
 $d=v2_seo_ds2_reference_acceptance_dossier();
 foreach(['hotel_tours_publication_candidate_allowed','hotel_tours_indexation_allowed','hotel_tours_sitemap_allowed','hotel_tours_canonical_launch_allowed','hotel_tours_route_launch_allowed'] as $flag)if(($d[$flag]??true)!==false)ds2_live_source_fail($flag);
 if(($d['separate_user_hotel_indexation_approval_required']??false)!==true)ds2_live_source_fail('approval');
