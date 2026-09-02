@@ -1,5 +1,6 @@
 name: Inspect SEO2 Maldives hotel snapshots
 
+# One-shot production evidence refresh. Remove after evidence is collected.
 on:
   push:
     branches: [main]
