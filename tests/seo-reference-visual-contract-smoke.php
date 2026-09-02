@@ -35,13 +35,14 @@ foreach ($required as $token) {
         exit(2);
     }
 }
-$breadcrumbTokens = [
+$editorialTokens = [
     '.sp-breadcrumbs .sp-wrap{display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap}',
     '.sp-breadcrumbs [aria-current="page"]{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '.sp-related-card:before{display:none!important}',
 ];
-foreach ($breadcrumbTokens as $token) {
+foreach ($editorialTokens as $token) {
     if (strpos($editorialCss, $token) === false) {
-        fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:breadcrumb:$token\n");
+        fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:editorial:$token\n");
         exit(3);
     }
 }
@@ -57,4 +58,4 @@ if (strpos($hotel, "'Найти туры в этот отель'") === false || 
     fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:hotel_offer_focus\n");
     exit(6);
 }
-echo "SEO_REFERENCE_VISUAL_OK desktop=3 tablet=2 mobile=1 leadCard=1 balancedTail=1 heroCta=1 breadcrumbClamp=1 offerHierarchy=1 hotelOfferFocus=1 densityPass=1 lightRelatedNav=1\n";
+echo "SEO_REFERENCE_VISUAL_OK desktop=3 tablet=2 mobile=1 leadCard=1 balancedTail=1 heroCta=1 breadcrumbClamp=1 offerHierarchy=1 hotelOfferFocus=1 densityPass=1 lightRelatedNav=1 flatRelatedAccent=1\n";
