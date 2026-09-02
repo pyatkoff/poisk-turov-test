@@ -18,7 +18,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base='https://anytour.online/poisk-turov-test/v2/api-v2.php'
+          base='https://anytoour.ru/api-v2.php'
           from="$(date -d '+2 day' +%Y-%m-%d)"
           till="$(date -d '+9 day' +%Y-%m-%d)"
           curl -k -L -sS --max-time 50 "$base?action=search_start&departureId=1&countryId=4&dateFrom=$from&dateTo=$till&nightsFrom=7&nightsTo=10&adults=2&currency=RUB" -o /tmp/start.json
