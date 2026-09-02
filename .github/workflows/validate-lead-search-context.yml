@@ -1,7 +1,6 @@
 name: Validate V2 lead search context
 on:
-  push:
-    branches: [main]
+  pull_request:
     paths:
       - 'v2/lead-search-context.js'
       - '.github/workflows/validate-lead-search-context.yml'
