@@ -6,6 +6,7 @@ on:
     paths:
       - 'v2/lead-form-guard-v1.js'
       - 'v2/lead-ui-race-guard-v1.js'
+      - 'v2/lead-flight-submit-lock-v1.js'
       - '.github/workflows/validate-lead-recovery.yml'
   workflow_dispatch:
 
@@ -31,6 +32,8 @@ jobs:
           for(const width of [375,768,1440]) for(const duplicate of [false,true]){
             const page=await browser.newPage({viewport:{width,height:900}});
             await page.setContent(`<div id="results"></div><section id="selectedTour"><div class="selected-head"></div><div class="facts"></div><div class="tour-flights"><div class="flight-variants"><div class="flight-variant is-selected"><label class="flight-choice"><input type="radio" name="v2flight" checked><span>Вариант 1</span></label></div><div class="flight-variant"><label class="flight-choice"><input type="radio" name="v2flight"><span>Вариант 2</span></label></div></div></div><form class="lead-form"><div class="section-heading"><strong>Заявка</strong><span></span></div><div class="lead-fields"><label>Имя<input name="name" value="Павел"></label><label>Телефон<input name="phone" value="+7 900 123-45-67"></label></div><label>Комментарий<textarea name="comment">Позвонить вечером</textarea></label><label class="lead-consent"><input type="checkbox" checked>Согласен</label><button type="submit">Отправить</button><div class="lead-message"></div></form></section><footer class="ds2-site-footer"><div class="ds2-site-footer__socials"><a href="https://max.ru/anytour">MAX</a><a href="https://t.me/+gGloLUt4d8s3NDcy">Telegram</a></div></footer>`);
+            await page.addScriptTag({path:path.resolve('v2/lead-ui-race-guard-v1.js')});
+            await page.addScriptTag({path:path.resolve('v2/lead-flight-submit-lock-v1.js')});
             await page.addScriptTag({path:path.resolve('v2/lead-form-guard-v1.js')});
             await page.evaluate(()=>document.dispatchEvent(new Event('DOMContentLoaded')));
             const emit=(name,detail={})=>page.evaluate(({name,detail})=>window.dispatchEvent(new CustomEvent('v2:'+name,{detail})),{name,detail});
