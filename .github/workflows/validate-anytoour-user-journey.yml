@@ -43,7 +43,7 @@ jobs:
           grep -q 'action="/poisk-turov/"' /tmp/root-home.html || fail home_search_action
           grep -q 'api:"/api-v2.php"' /tmp/root-search.html || fail api_runtime_path
           grep -q 'leadApi:"/lead-adapter-v2.php"' /tmp/root-search.html || fail lead_runtime_path
-          echo 'ANYTOUR_JOURNEY_PAGES_OK'
+          echo 'ANYTOOUR_JOURNEY_PAGES_OK'
 
           curl -fsSL --max-time 45 "$api?action=departures" -o /tmp/root-departures.json
           curl -fsSL --max-time 45 "$api?action=countries&departureId=1" -o /tmp/root-countries.json
@@ -100,7 +100,7 @@ jobs:
 
             curl -fsSL --max-time 45 --get --data-urlencode 'action=tour' --data-urlencode "tourId=$candidate_tour" --data-urlencode 'currency=RUB' "$api" -o /tmp/root-tour.json
             if ! python3 -c "import json; d=json.load(open('/tmp/root-tour.json')); assert isinstance(d,dict) and str(d.get('id',''))"; then
-              echo "ANYTOUR_JOURNEY_SKIP_STALE_TOUR tourId=$candidate_tour stage=tour"
+              echo "ANYTOOUR_JOURNEY_SKIP_STALE_TOUR tourId=$candidate_tour stage=tour"
               sold=$((sold+1))
               continue
             fi
@@ -118,7 +118,7 @@ jobs:
                   try: code=int(error.get('code',0) or 0)
                   except (TypeError,ValueError): raise AssertionError('invalid flight error code')
                   if code == 2:
-                      print(f"ANYTOUR_JOURNEY_STALE_SOLD reason={error.get('reason','')}")
+                      print(f"ANYTOOUR_JOURNEY_STALE_SOLD reason={error.get('reason','')}")
                       sys.exit(2)
                   assert code == 0, f"flight error code={code} reason={error.get('reason','')}"
               elif error:
@@ -126,9 +126,9 @@ jobs:
           flights=d if isinstance(d,list) else d.get('flights',[]) if isinstance(d,dict) else []
           if flights:
               assert isinstance(flights[0],dict) and (flights[0].get('forward') or flights[0].get('backward'))
-              print('ANYTOUR_JOURNEY_FLIGHTS_OK')
+              print('ANYTOOUR_JOURNEY_FLIGHTS_OK')
           else:
-              print('ANYTOUR_JOURNEY_FLIGHTS_OPTIONAL_EMPTY')
+              print('ANYTOOUR_JOURNEY_FLIGHTS_OPTIONAL_EMPTY')
           PY
             flight_status=$?
             set -e
@@ -143,7 +143,7 @@ jobs:
             break
           done < /tmp/root-pairs.tsv
           test "$viable" = '1' || fail no_viable_tour_after_stale_retry
-          echo "ANYTOUR_JOURNEY_RESULTS_OK searchId=$search_id hotelId=$hotel_id tourId=$tour_id staleSoldSkipped=$sold"
+          echo "ANYTOOUR_JOURNEY_RESULTS_OK searchId=$search_id hotelId=$hotel_id tourId=$tour_id staleSoldSkipped=$sold"
 
           room_id="$(python3 - <<'PY'
           import json
@@ -162,7 +162,7 @@ jobs:
               assert d.get('ok') is not False
               assert not d.get('error')
           rooms=d if isinstance(d,list) else d.get('rooms',[]) if isinstance(d,dict) else []
-          print('ANYTOUR_JOURNEY_ROOM_DETAILS_OK' if rooms else 'ANYTOUR_JOURNEY_ROOM_DETAILS_OPTIONAL_EMPTY')
+          print('ANYTOOUR_JOURNEY_ROOM_DETAILS_OK' if rooms else 'ANYTOOUR_JOURNEY_ROOM_DETAILS_OPTIONAL_EMPTY')
           PY
           fi
 
