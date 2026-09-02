@@ -12,6 +12,9 @@ function v2_seo_turkey_hotel_manifest(): array
         ['file'=>'seo-content-pilot-turkey-dedeman-kemer-v1.php','function'=>'v2_seo_content_pilot_turkey_dedeman_kemer','label'=>'Туры в DEDEMAN KEMER RESORT','href'=>'/country/turkey/hotel/dedeman-kemer-resort-ex-club-jovia-kemer-28476/'],
         ['file'=>'seo-content-pilot-turkey-concordia-celes-v1.php','function'=>'v2_seo_content_pilot_turkey_concordia_celes','label'=>'Туры в CONCORDIA CELES HOTEL','href'=>'/country/turkey/hotel/concordia-celes-hotel-1134/'],
         ['file'=>'seo-content-pilot-turkey-casa-fora-v1.php','function'=>'v2_seo_content_pilot_turkey_casa_fora','label'=>'Туры в CASA FORA BEACH RESORT BY MIRAMOR','href'=>'/country/turkey/hotel/casa-fora-beach-resort-by-miramor-90704/'],
+        ['file'=>'seo-content-pilot-turkey-aroma-butik-v1.php','function'=>'v2_seo_content_pilot_turkey_aroma_butik','label'=>'Туры в AROMA BUTIK HOTEL','href'=>'/country/turkey/hotel/aroma-butik-hotel-70447/'],
+        ['file'=>'seo-content-pilot-turkey-aegean-park-v1.php','function'=>'v2_seo_content_pilot_turkey_aegean_park','label'=>'Туры в AEGEAN PARK','href'=>'/country/turkey/hotel/aegean-park-1601/'],
+        ['file'=>'seo-content-pilot-turkey-agon-v1.php','function'=>'v2_seo_content_pilot_turkey_agon','label'=>'Туры в AGON HOTEL','href'=>'/country/turkey/hotel/agon-hotel-65881/'],
     ];
 }
 

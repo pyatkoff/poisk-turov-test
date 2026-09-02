@@ -7,6 +7,10 @@ function turkey_hotel_review_fail(string $message): void
     exit(1);
 }
 
+$manifest = v2_seo_turkey_hotel_manifest();
+$expectedHotelCount = count($manifest);
+if ($expectedHotelCount <= 0) turkey_hotel_review_fail('empty_manifest');
+
 $catalog = v2_seo_content_pilot_turkey_hotel_review_catalog();
 $registry = is_array($catalog['registry'] ?? null) ? $catalog['registry'] : [];
 $reports = is_array($catalog['reports'] ?? null) ? $catalog['reports'] : [];
@@ -32,8 +36,12 @@ foreach ($registry as $path => $entry) {
 }
 
 sort($hotelPaths, SORT_STRING);
-if (count($hotelPaths) !== 6) turkey_hotel_review_fail('expected_6_hotels_got_' . count($hotelPaths));
-if (count($registry) !== 7) turkey_hotel_review_fail('expected_parent_plus_6_hotels');
+if (count($hotelPaths) !== $expectedHotelCount) {
+    turkey_hotel_review_fail('manifest_registry_count_mismatch_' . $expectedHotelCount . '_' . count($hotelPaths));
+}
+if (count($registry) !== $expectedHotelCount + 1) {
+    turkey_hotel_review_fail('expected_parent_plus_manifest_hotels');
+}
 
 $productionParent = v2_seo_content_pilot_turkey();
 if (($productionParent['status'] ?? '') !== 'approved') turkey_hotel_review_fail('production_parent_status_changed');
@@ -48,4 +56,4 @@ $reviewParent = $registry['/country/turkey/'] ?? [];
 if (($reports['/country/turkey/']['status'] ?? '') !== 'review') turkey_hotel_review_fail('isolated_parent_not_review');
 if (($reviewParent['type'] ?? '') !== 'country') turkey_hotel_review_fail('isolated_parent_type');
 
-echo 'SEO_TURKEY_HOTEL_REVIEW_OK hotels=6 candidates=0 parentIsolation=1 country=4' . PHP_EOL;
+echo 'SEO_TURKEY_HOTEL_REVIEW_OK hotels=' . $expectedHotelCount . ' candidates=0 parentIsolation=1 country=4' . PHP_EOL;
