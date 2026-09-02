@@ -6,6 +6,18 @@ body.search3-preview.search3-has-results .search3-page-intro h1{margin:0!importa
 body.search3-preview.search3-has-results .search3-page-intro p{margin-top:5px!important;color:#667085!important;font-size:9px!important}
 body.search3-preview.search3-has-results .search3-breadcrumb{margin-bottom:5px!important;font-size:8px!important}
 
+/* Initial state: maket7 starts with one compact primary search row. Advanced parameters are opt-in on desktop too. */
+body.search3-preview:not(.search3-has-results) #tourSearch .search3-advanced-toggle{display:flex!important;align-items:center!important;justify-content:space-between!important;width:auto!important;min-height:34px!important;margin:9px 0 0!important;padding:0 11px!important;border:1px solid #e1e7ef!important;border-radius:8px!important;background:#fff!important;color:#344054!important;font:800 9px/1 var(--at-font)!important}
+body.search3-preview:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quality{display:none!important}
+body.search3-preview:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quick{display:none!important}
+body.search3-preview:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quality{display:block!important}
+body.search3-preview:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quick{display:flex!important}
+body.search3-preview:not(.search3-has-results) #tourSearch{padding-bottom:13px!important}
+body.search3-preview:not(.search3-has-results) .results-tools--ds2,body.search3-preview:not(.search3-has-results) #resultsSearchSummary,body.search3-preview:not(.search3-has-results) .search3-mobile-toolbar{display:none!important}
+body.search3-preview:not(.search3-has-results) .results-layout{min-height:0!important;margin:0!important}
+body.search3-preview:not(.search3-has-results) #results:empty{display:none!important;min-height:0!important;margin:0!important;padding:0!important}
+body.search3-preview:not(.search3-has-results) .ds2-site-footer{margin-top:34px!important}
+
 /* Card facts come only from the real best-priced tour already loaded for the hotel. */
 body.search3-preview .search3-hotel-facts{display:flex;align-items:stretch;gap:0;min-width:0;margin-top:8px;border:1px solid #edf0f5;border-radius:8px;background:#fbfcfe;overflow:hidden}
 body.search3-preview .search3-hotel-facts>span{display:block;min-width:0;padding:6px 9px;border-right:1px solid #edf0f5}
@@ -14,6 +26,11 @@ body.search3-preview .search3-hotel-facts small{display:block;margin-bottom:3px;
 body.search3-preview .search3-hotel-facts b{display:block;overflow:hidden;color:#344054;font:850 9px/1.18 var(--at-font);white-space:nowrap;text-overflow:ellipsis}
 
 @media(min-width:1000px){
+ body.search3-preview:not(.search3-has-results) #tourSearch .search3-primary-grid{grid-template-columns:minmax(0,1.08fr) minmax(0,1.08fr) minmax(0,1.28fr) minmax(0,.72fr) minmax(0,.95fr) 150px!important;gap:12px!important}
+ body.search3-preview:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quality{margin-top:10px!important;padding-top:10px!important;border-top:1px solid #eef1f5!important}
+ body.search3-preview:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quality__grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px 12px!important}
+ body.search3-preview:not(.search3-has-results) #tourSearch .search3-advanced-toggle{max-width:190px!important}
+
  body.search3-preview #results .hotel-main{grid-template-columns:226px minmax(0,1fr)!important;min-height:166px!important}
  body.search3-preview #results .hotel-photo{height:166px!important;min-height:166px!important}
  body.search3-preview #results .hotel-body{grid-template-columns:minmax(0,1fr) 170px!important;grid-template-rows:auto auto auto auto 1fr auto!important;column-gap:16px!important;padding:12px 14px 10px!important}
@@ -56,6 +73,8 @@ body.search3-preview .search3-hotel-facts b{display:block;overflow:hidden;color:
  body.search3-preview.search3-has-results #resultsSearchSummary{order:3!important}
  body.search3-preview.search3-has-results .search3-mobile-toolbar{order:4!important}
  body.search3-preview.search3-has-results .results-layout{order:5!important}
+ body.search3-preview:not(.search3-has-results) #tourSearch .search3-advanced-toggle{width:100%!important;max-width:none!important}
+ body.search3-preview:not(.search3-has-results) .ds2-site-footer{margin-top:24px!important}
 
  body.search3-preview #results .hotel-main{display:grid!important;grid-template-columns:112px minmax(0,1fr)!important;align-items:stretch!important}
  body.search3-preview #results .hotel-photo{height:auto!important;min-height:132px!important}
