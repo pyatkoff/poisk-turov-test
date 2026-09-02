@@ -6,11 +6,6 @@ on:
     paths:
       - 'v2/index.php'
       - '.github/workflows/validate-web-consultant-contract.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'v2/index.php'
-      - '.github/workflows/validate-web-consultant-contract.yml'
 
 permissions:
   contents: read
