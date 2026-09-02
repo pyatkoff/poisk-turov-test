@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../v2/seo-page-launch-readiness-v1.php';
 require_once __DIR__ . '/../v2/seo-launch-manifest-v1.php';
+require_once __DIR__ . '/../v2/seo-hotel-review-launch-slice-v1.php';
 
 function unified_ready_fail(string $message): void
 {
@@ -68,6 +69,20 @@ if(($manifest['hotel_tours_publication_allowed']??true)!==false||($manifest['hot
 if(($manifest['hotel_evidence_valid_until_epoch']??0)!==($now+600)) unified_ready_fail('manifest_evidence_clock');
 if(!preg_match('/^[a-f0-9]{64}$/',(string)($manifest['manifest_sha256']??''))) unified_ready_fail('manifest_fingerprint');
 
+$reviewRows=[];
+foreach([[4,4004,'turkey'],[8,8008,'maldives'],[1,1001,'egypt']] as [$countryId,$hotelId,$slug]){
+    $reviewRows[]=['path'=>'/country/'.$slug.'/hotel/test-'.$hotelId.'/','country_id'=>$countryId,'hotel_id'=>$hotelId,'evidence_epoch'=>$now,'evidence_expires_epoch'=>$now+600,'score'=>100,'ready_for_launch_review'=>true,'errors'=>[]];
+}
+$reviewSlice=v2_seo_hotel_review_launch_slice($reviewRows,[
+    ['country_id'=>4,'paths'=>['/country/turkey/hotel/test-4004/']],
+    ['country_id'=>8,'paths'=>['/country/maldives/hotel/test-8008/']],
+    ['country_id'=>1,'paths'=>['/country/egypt/hotel/test-1001/']],
+],[4,8,1],1,3,$now);
+if(($reviewSlice['state']??'')!=='review_only_requires_separate_indexation_approval'||($reviewSlice['total']??0)!==3) unified_ready_fail('review_slice_state');
+foreach(['publication_allowed','indexation_allowed','sitemap_allowed','canonical_launch_allowed','route_launch_allowed'] as $flag) if(($reviewSlice[$flag]??true)!==false) unified_ready_fail('review_slice_'.$flag);
+if(($reviewSlice['publication_candidates']??null)!==[]||($reviewSlice['explicit_user_indexation_approval_required']??false)!==true) unified_ready_fail('review_slice_approval_boundary');
+if(!preg_match('/^[a-f0-9]{64}$/',(string)($reviewSlice['evidence_manifest_sha256']??''))) unified_ready_fail('review_slice_fingerprint');
+
 $unsafe=$catalog;
 $unsafe['publication_candidates'][]=$hotelPath;
 $unsafeManifest=v2_seo_launch_manifest($unsafe,$evidence,$now);
@@ -89,4 +104,4 @@ if(!in_array('editorial_depth',$thinResort['errors']??[],true)) unified_ready_fa
 $thinManifest=v2_seo_launch_manifest($thinCatalog,$evidence,$now);
 if(($thinManifest['integrity_ok']??false)!==true||($thinManifest['review_ready']??true)!==false||($thinManifest['quality_score']??100)>=100||($thinManifest['blocked_by_type']['resort']??0)!==1) unified_ready_fail('manifest_quality_block');
 
-echo "SEO_UNIFIED_READINESS_OK country=100 resort=100 hotel=100 manifest=100 hotelBoundary=1 thinResortBlocked=1\n";
+echo "SEO_UNIFIED_READINESS_OK country=100 resort=100 hotel=100 manifest=100 hotelBoundary=1 reviewSliceBoundary=1 thinResortBlocked=1\n";
