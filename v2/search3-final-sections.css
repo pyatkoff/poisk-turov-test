@@ -4,13 +4,15 @@
 .search3-final-section__heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
 .search3-final-section__heading strong{color:var(--at-ink);font:900 16px/1.15 var(--at-font)}
 .search3-final-section__heading span{color:var(--at-muted);font:700 9px/1.2 var(--at-font)}
-.search3-final-services{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--at-line-soft);border-radius:10px;overflow:hidden}
-.search3-final-services article{min-width:0;min-height:82px;padding:12px;border-right:1px solid var(--at-line-soft);border-bottom:1px solid var(--at-line-soft);background:#fff}
-.search3-final-services article:nth-child(3n){border-right:0}
-.search3-final-services article:nth-last-child(-n+3){border-bottom:0}
+.search3-final-services{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--at-line-soft);border-radius:10px;overflow:hidden}
+.search3-final-services article{min-width:0;min-height:88px;padding:12px;border-right:1px solid var(--at-line-soft);border-bottom:1px solid var(--at-line-soft);background:#fff}
+.search3-final-services article:nth-child(5n){border-right:0}
 .search3-final-services span,.search3-final-tourists span{display:block;margin-bottom:5px;color:var(--at-muted);font:800 8px/1.25 var(--at-font)}
 .search3-final-services strong,.search3-final-tourists strong{display:block;color:var(--at-ink);font:900 10px/1.35 var(--at-font);overflow-wrap:anywhere}
 .search3-final-services small{display:block;margin-top:4px;color:var(--at-muted);font:700 8px/1.3 var(--at-font)}
-.search3-final-tourists{padding:12px;border:1px solid var(--at-line-soft);border-radius:10px;background:var(--at-soft)}
-@media(min-width:1000px){body.search3-preview #selectedTour .search3-final-sections{grid-column:1/-1!important}}
-@media(max-width:640px){.search3-final-section{padding:11px;border-radius:12px}.search3-final-section__heading{align-items:flex-start;flex-direction:column;gap:2px;margin-bottom:8px}.search3-final-section__heading strong{font-size:14px}.search3-final-section__heading span{font-size:8px}.search3-final-services{grid-template-columns:1fr 1fr}.search3-final-services article,.search3-final-services article:nth-child(n){min-height:68px;padding:9px;border-right:1px solid var(--at-line-soft);border-bottom:1px solid var(--at-line-soft)}.search3-final-services article:nth-child(2n){border-right:0}.search3-final-services article:nth-last-child(-n+2){border-bottom:0}}
+.search3-final-tourists{display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:66px;padding:12px 14px;border:1px solid var(--at-line-soft);border-radius:10px;background:#fff}
+.search3-final-tourists span{margin:0}
+.search3-final-tourists strong{text-align:right;font-size:11px}
+@media(min-width:1000px){body.search3-preview #selectedTour .search3-final-sections{grid-column:1/-1!important}body.search3-preview #selectedTour.search3-final-review .search3-final-section{padding:14px 16px!important;border-radius:12px!important}body.search3-preview #selectedTour.search3-final-review .search3-final-section__heading{margin-bottom:10px!important}body.search3-preview #selectedTour.search3-final-review .search3-final-services article{min-height:78px!important;padding:11px!important}}
+@media(max-width:999px) and (min-width:641px){.search3-final-services{grid-template-columns:repeat(3,minmax(0,1fr))}.search3-final-services article:nth-child(5n){border-right:1px solid var(--at-line-soft)}.search3-final-services article:nth-child(3n){border-right:0}}
+@media(max-width:640px){.search3-final-section{padding:11px;border-radius:12px}.search3-final-section__heading{align-items:flex-start;flex-direction:column;gap:2px;margin-bottom:8px}.search3-final-section__heading strong{font-size:14px}.search3-final-section__heading span{font-size:8px}.search3-final-services{grid-template-columns:1fr 1fr}.search3-final-services article,.search3-final-services article:nth-child(n){min-height:68px;padding:9px;border-right:1px solid var(--at-line-soft);border-bottom:1px solid var(--at-line-soft)}.search3-final-services article:nth-child(2n){border-right:0}.search3-final-tourists{align-items:flex-start;flex-direction:column;gap:4px;padding:10px}.search3-final-tourists strong{text-align:left;font-size:10px}}
