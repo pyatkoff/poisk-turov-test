@@ -17,6 +17,19 @@ if(($maldives['path']??'')!=='/_preview/seo2/seasonal/maldives-september/') seas
 if(($maldives['parent_path']??'')!=='/country/maldives/') seasonal_preview_fail('maldives_parent');
 if(($maldives['search_state']??null)!==['country'=>8]) seasonal_preview_fail('maldives_search_identity');
 
+$integrity=v2_seo_seasonal_preview_integrity(dirname(__DIR__).'/v2');
+if(($integrity['state']??'')!=='review_ready'||($integrity['review_ready']??false)!==true) seasonal_preview_fail('integrity_not_ready');
+if(($integrity['preview_count']??0)!==2||($integrity['blocked']??null)!==[]) seasonal_preview_fail('integrity_counts');
+if(($integrity['publication_candidates']??null)!==[]) seasonal_preview_fail('integrity_publication_candidates');
+foreach(['publication_allowed','indexation_allowed','sitemap_allowed','canonical_allowed','route_launch_allowed'] as $flag){
+    if(($integrity[$flag]??true)!==false) seasonal_preview_fail('integrity_boundary_'.$flag);
+}
+if(v2_seo_seasonal_preview_headers()!==['X-Robots-Tag: noindex, follow']) seasonal_preview_fail('x_robots_contract');
+$missingRoutes=v2_seo_seasonal_preview_integrity('/tmp/seo2-seasonal-preview-missing-routes');
+if(($missingRoutes['state']??'')!=='blocked'||($missingRoutes['review_ready']??true)!==false) seasonal_preview_fail('missing_routes_not_blocked');
+$missingCodes=array_column($missingRoutes['blocked']??[],'code');
+if(!in_array('missing_physical_preview_route',$missingCodes,true)) seasonal_preview_fail('missing_route_code');
+
 $_SERVER['DOCUMENT_ROOT']='/tmp/seo2-seasonal-preview-empty-root';
 $_SERVER['HTTP_HOST']='anytoour.ru';
 @mkdir($_SERVER['DOCUMENT_ROOT'],0777,true);
@@ -54,4 +67,4 @@ foreach(['antalya-september','maldives-september'] as $key){
     if($source===false||!str_contains($source,"v2_seo_render_seasonal_preview('".$key."')")) seasonal_preview_fail($key.'_route_renderer');
 }
 
-echo "SEO_SEASONAL_PREVIEW_OK previews=2\n";
+echo "SEO_SEASONAL_PREVIEW_OK previews=2 integrity=review_ready xrobots=noindex\n";
