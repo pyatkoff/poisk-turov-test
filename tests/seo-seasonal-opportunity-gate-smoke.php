@@ -26,5 +26,5 @@ if(($r['state']??'')!=='seasonal_opportunity_evidence_blocked'||!in_array('comme
 
 $bad=$page;$bad['search_state']=['country'=>4,'region'=>999];
 $r=v2_seo_seasonal_opportunity_gate($bad,$signals,$now);
-if(($r['state']??'')!=='seasonal_intent_blocked'||($r['opportunity']??'x')!==null)season_opp_fail('identity');
+if(($r['state']??'')!=='seasonal_intent_blocked'||!array_key_exists('opportunity',$r)||$r['opportunity']!==null)season_opp_fail('identity');
 echo "SEO_SEASONAL_OPPORTUNITY_GATE_OK demandGate=1 uniquenessGate=1 inventoryHours=72 publication=0 indexation=0\n";
