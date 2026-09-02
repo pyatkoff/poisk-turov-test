@@ -1,4 +1,15 @@
 /* Search3 final-total convergence. Presentation only: all values remain sourced from real selected tour/flight data. */
+.search3-review-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 12px;padding:4px 2px}
+.search3-review-heading[hidden]{display:none!important}
+.search3-review-heading span{display:block;margin-bottom:4px;color:var(--at-brand);font:900 9px/1.2 var(--at-font);letter-spacing:.08em}
+.search3-review-heading h2{margin:0;color:var(--at-ink);font:950 26px/1.05 var(--at-font);letter-spacing:-.025em}
+.search3-review-heading p{margin:6px 0 0;color:var(--at-muted);font:700 10px/1.35 var(--at-font)}
+.search3-review-heading>b{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:#19a957;color:#fff;font:900 13px/1 var(--at-font)}
+body.search3-preview #selectedTour.search3-final-review .hotel-desc{display:none!important}
+body.search3-preview #selectedTour.search3-final-review .selected-head .eyebrow{display:none!important}
+body.search3-preview #selectedTour.search3-final-review .selected-head{align-items:center!important}
+body.search3-preview #selectedTour.search3-final-review .facts{margin-top:10px!important}
+body.search3-preview #selectedTour.search3-final-review .tour-flights,body.search3-preview #selectedTour.search3-final-review .search3-final-sections,body.search3-preview #selectedTour.search3-final-review .search3-lead-shell{margin-top:12px!important}
 @media(min-width:1000px){
 body.search3-preview #selectedTour .search3-lead-shell{grid-template-columns:minmax(0,1fr) 320px!important;gap:18px!important;align-items:start!important}
 body.search3-preview #selectedTour .search3-lead-shell>.lead-form{padding:22px 24px!important;border-radius:14px!important}
@@ -14,4 +25,11 @@ body.search3-preview #selectedTour .search3-booking-summary__total span{font-siz
 body.search3-preview #selectedTour .search3-booking-summary__total strong{font-size:23px!important}
 body.search3-preview #selectedTour .search3-booking-summary__price-note{font-size:8px!important;line-height:1.4!important}
 body.search3-preview #selectedTour .lead-form button[type=submit]{min-height:48px!important;background:#ff5a0a!important;border-color:#ff5a0a!important;border-radius:10px!important}
+body.search3-preview #selectedTour.search3-final-review .search3-review-heading{grid-column:1/-1!important;grid-row:3!important;margin-top:2px!important}
+body.search3-preview #selectedTour.search3-final-review .selected-picture{grid-row:4!important;height:176px!important;border-radius:14px 0 0 14px!important}
+body.search3-preview #selectedTour.search3-final-review .selected-head{grid-row:4!important;min-height:176px!important;border-radius:0 14px 14px 0!important;padding:18px 20px!important}
+body.search3-preview #selectedTour.search3-final-review .selected-head h2{font-size:22px!important}
+body.search3-preview #selectedTour.search3-final-review .selected-price{font-size:22px!important}
+body.search3-preview #selectedTour.search3-final-review .facts{grid-row:5!important;border-radius:12px!important}
 }
+@media(max-width:640px){.search3-review-heading{order:2;margin:2px 0 7px;padding:2px 0}.search3-review-heading h2{font-size:19px}.search3-review-heading p{font-size:8px}.search3-review-heading>b{width:24px;height:24px;flex-basis:24px;font-size:11px}body.search3-preview #selectedTour.search3-final-review .selected-picture{order:3!important}body.search3-preview #selectedTour.search3-final-review .selected-head{order:4!important}body.search3-preview #selectedTour.search3-final-review .facts{order:5!important}}
