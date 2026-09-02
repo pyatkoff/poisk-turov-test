@@ -122,4 +122,55 @@ try {
     launch_candidate_fail('pilot_expired_evidence_allowed');
 } catch (InvalidArgumentException $e) {}
 
-echo "SEO_HOTEL_LAUNCH_CANDIDATE_OK explicit=1 readyOnly=1 cap=1 proposalOnly=1 countryBalanced=1 evidenceReplayBlocked=1 pilot=9 pilotManifestBound=1\n";
+// Focused editorial QA for the exact 9-page pilot. This checks stable content
+// quality only; fresh production identity is still enforced separately above.
+$allRecords=array_merge(v2_seo_turkey_hotel_records(),v2_seo_maldives_hotel_records(),v2_seo_egypt_hotel_records());
+$recordsByPath=[];
+foreach($allRecords as $record){
+    $path=(string)($record['path']??'');
+    if($path!=='' && isset($recordsByPath[$path])) launch_candidate_fail('pilot_qa_duplicate_record_path');
+    if($path!=='') $recordsByPath[$path]=$record;
+}
+$seenTitles=[];$seenH1=[];$seenIntro=[];$qaCount=0;
+foreach($spec['countries'] as $bucket){
+    $countryId=(int)$bucket['country_id'];
+    foreach($bucket['paths'] as $path){
+        $record=$recordsByPath[$path]??null;
+        if(!is_array($record)) launch_candidate_fail('pilot_qa_missing_record');
+        if(($record['status']??'')!=='review' || ($record['type']??'')!=='hotel_tours') launch_candidate_fail('pilot_qa_review_boundary');
+        $data=is_array($record['data']??null)?$record['data']:[];
+        $state=is_array($data['search_state']??null)?$data['search_state']:[];
+        if((int)($state['country']??0)!==$countryId) launch_candidate_fail('pilot_qa_country_identity');
+        if(!preg_match('~-([1-9][0-9]*)/$~',$path,$m) || (int)($state['hotel']??0)!==(int)$m[1]) launch_candidate_fail('pilot_qa_hotel_identity');
+        $title=trim((string)($data['title']??''));
+        $h1=trim((string)($data['h1']??''));
+        $description=trim((string)($data['description']??''));
+        $intro=trim((string)($data['intro']??''));
+        $sections=is_array($data['sections']??null)?$data['sections']:[];
+        if(mb_strlen($title,'UTF-8')<35 || mb_strlen($h1,'UTF-8')<12) launch_candidate_fail('pilot_qa_thin_heading');
+        if(mb_strlen($description,'UTF-8')<100 || mb_strlen($intro,'UTF-8')<100) launch_candidate_fail('pilot_qa_thin_metadata');
+        if(count($sections)<3) launch_candidate_fail('pilot_qa_thin_sections');
+        $paragraphCount=0;
+        foreach($sections as $section){
+            if(trim((string)($section['title']??''))==='') launch_candidate_fail('pilot_qa_empty_section_title');
+            $paragraphs=is_array($section['paragraphs']??null)?$section['paragraphs']:[];
+            if(!$paragraphs) launch_candidate_fail('pilot_qa_empty_section');
+            foreach($paragraphs as $paragraph){
+                if(mb_strlen(trim((string)$paragraph),'UTF-8')<45) launch_candidate_fail('pilot_qa_thin_paragraph');
+                $paragraphCount++;
+            }
+        }
+        if($paragraphCount<6) launch_candidate_fail('pilot_qa_insufficient_paragraphs');
+        foreach([['title',$title],['h1',$h1],['intro',$intro]] as $item){
+            $fingerprint=mb_strtolower(preg_replace('/\s+/u',' ',trim($item[1])),'UTF-8');
+            $set=&${'seen'.ucfirst($item[0])};
+            if(isset($set[$fingerprint])) launch_candidate_fail('pilot_qa_duplicate_'.$item[0]);
+            $set[$fingerprint]=true;
+            unset($set);
+        }
+        $qaCount++;
+    }
+}
+if($qaCount!==9) launch_candidate_fail('pilot_qa_count');
+
+echo "SEO_HOTEL_LAUNCH_CANDIDATE_OK explicit=1 readyOnly=1 cap=1 proposalOnly=1 countryBalanced=1 evidenceReplayBlocked=1 pilot=9 pilotManifestBound=1 pilotContentQA=9\n";
