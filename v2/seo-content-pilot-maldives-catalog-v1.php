@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__ . '/seo-content-catalog-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-v1.php';
+require_once __DIR__ . '/seo-content-pilot-maldives-avani-fares-v1.php';
+require_once __DIR__ . '/seo-content-pilot-maldives-ayada-v1.php';
+require_once __DIR__ . '/seo-content-pilot-maldives-banyan-vabbinfaru-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-barcelo-nasandhura-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-coco-bodu-hithi-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-furaveri-v1.php';
@@ -34,6 +37,9 @@ function v2_seo_content_pilot_maldives_catalog(): array
 {
     $records = [
         v2_seo_content_pilot_maldives(),
+        v2_seo_content_pilot_maldives_avani_fares(),
+        v2_seo_content_pilot_maldives_ayada(),
+        v2_seo_content_pilot_maldives_banyan_vabbinfaru(),
         v2_seo_content_pilot_maldives_barcelo_nasandhura(),
         v2_seo_content_pilot_maldives_coco_bodu_hithi(),
         v2_seo_content_pilot_maldives_furaveri(),
