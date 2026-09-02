@@ -10,7 +10,7 @@ function v2_seo_seasonal_verified_content_evidence(array $claims, ?int $nowEpoch
     foreach ($claims as $index=>$claim) {
         if (!is_array($claim)) { $blocked[]=['index'=>$index,'code'=>'invalid_claim']; continue; }
         $countryId=(int)($claim['country_id']??0); $pageKey=trim((string)($claim['page_key']??''));
-        $claimKey=trim((string)($claim['claim_key']??'');
+        $claimKey=trim((string)($claim['claim_key']??''));
         $sourceId=trim((string)($claim['source_id']??'')); $claimType=trim((string)($claim['type']??''));
         $sourceClass=trim((string)($claim['source_class']??'')); $sourceUrl=trim((string)($claim['source_url']??''));
         if ($countryId<=0) { $blocked[]=['index'=>$index,'code'=>'missing_country_id']; continue; }
