@@ -21,6 +21,9 @@ function v2_seo_egypt_hotel_manifest(): array
         ['file'=>'seo-content-pilot-egypt-uni-sharm-v1.php','function'=>'v2_seo_content_pilot_egypt_uni_sharm','label'=>'Туры в UNI SHARM AQUA PARK','href'=>'/country/egypt/hotel/uni-sharm-aqua-park-ex-karma-eastotels-516/'],
         ['file'=>'seo-content-pilot-egypt-viva-sharm-v1.php','function'=>'v2_seo_content_pilot_egypt_viva_sharm','label'=>'Туры в VIVA SHARM','href'=>'/country/egypt/hotel/viva-sharm-ex-top-choice-viva-sharm-9377/'],
         ['file'=>'seo-content-pilot-egypt-verginia-v1.php','function'=>'v2_seo_content_pilot_egypt_verginia','label'=>'Туры в VERGINIA SHARM RESORT & AQUA PARK','href'=>'/country/egypt/hotel/verginia-sharm-resort-aqua-park-eh-verginia-sharm-sol-verginia-447/'],
+        ['file'=>'seo-content-pilot-egypt-ecotel-dahab-v1.php','function'=>'v2_seo_content_pilot_egypt_ecotel_dahab','label'=>'Туры в ECOTEL DAHAB BAY VIEW RESORT','href'=>'/country/egypt/hotel/ecotel-dahab-bay-view-resort-322/'],
+        ['file'=>'seo-content-pilot-egypt-eden-rock-v1.php','function'=>'v2_seo_content_pilot_egypt_eden_rock','label'=>'Туры в EDEN ROCK HOTEL','href'=>'/country/egypt/hotel/eden-rock-hotel-198/'],
+        ['file'=>'seo-content-pilot-egypt-panorama-naama-v1.php','function'=>'v2_seo_content_pilot_egypt_panorama_naama','label'=>'Туры в PANORAMA NAAMA HEIGHTS','href'=>'/country/egypt/hotel/panorama-naama-heights-350/'],
     ];
 }
 
