@@ -11,11 +11,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    viewport: { width: 1440, height: 1000 },
-    deviceScaleFactor: 1,
-    ignoreHTTPSErrors: true,
-  });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1, ignoreHTTPSErrors: true });
   const page = await context.newPage();
   page.on('pageerror', e => report.errors.push(`pageerror: ${String(e)}`));
   page.on('console', m => { if (m.type() === 'error') report.errors.push(`console: ${m.text()}`); });
@@ -26,24 +22,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         const loc = page.locator(anchor).first();
         if (await loc.count()) await loc.scrollIntoViewIfNeeded().catch(() => {});
         await sleep(250);
-      } else {
-        await page.evaluate(() => scrollTo(0, 0));
-      }
+      } else await page.evaluate(() => scrollTo(0, 0));
       const file = path.join(outDir, `${name}.png`);
       await page.screenshot({ path: file, fullPage: false, animations: 'disabled' });
       report.states.push({ name, ok: true, file, url: page.url() });
       return true;
-    } catch (e) {
-      report.states.push({ name, ok: false, error: String(e) });
-      return false;
-    }
+    } catch (e) { report.states.push({ name, ok: false, error: String(e) }); return false; }
   }
 
   async function waitVisible(selector, timeout = 90000) {
-    try {
-      await page.locator(selector).first().waitFor({ state: 'visible', timeout });
-      return true;
-    } catch (_) { return false; }
+    try { await page.locator(selector).first().waitFor({ state: 'visible', timeout }); return true; }
+    catch (_) { return false; }
   }
 
   try {
@@ -76,10 +65,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
           await direct.click();
           const selected = await waitVisible('#selectedTour:not([hidden])', 60000);
           report.selectedTour = selected;
-          await sleep(900);
-          await snap('04-tour-details', '#selectedTour');
-
           if (selected) {
+            const detailReady = await waitVisible('#selectedTour .selected-head h2, #selectedTour .selected-picture', 60000);
+            report.tourDetailsReady = detailReady;
+            if (!detailReady) report.errors.push('tour details stayed in loading state before screenshot');
+            await sleep(500);
+            await snap('04-tour-details', '#selectedTour');
+
             await waitVisible('#selectedTour .tour-flights', 45000);
             await sleep(700);
             await snap('05-flights', '#selectedTour .tour-flights');
@@ -105,25 +97,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
             const leadForm = page.locator('#selectedTour .lead-form').first();
             if (await leadForm.count()) {
               await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-started', { detail: { previewSimulation: true } })));
-              await sleep(250);
-              await snap('07-lead-sending', '#selectedTour .lead-form');
-
+              await sleep(250); await snap('07-lead-sending', '#selectedTour .lead-form');
               await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-success', { detail: { previewSimulation: true, leadId: 'PREVIEW' } })));
-              await sleep(250);
-              await snap('08-lead-success', '#selectedTour .lead-form');
-
+              await sleep(250); await snap('08-lead-success', '#selectedTour .lead-form');
               await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-error', { detail: { previewSimulation: true } })));
-              await sleep(250);
-              await snap('09-lead-error', '#selectedTour .lead-form');
-            } else {
-              report.errors.push('lead form missing after final review');
-            }
+              await sleep(250); await snap('09-lead-error', '#selectedTour .lead-form');
+            } else report.errors.push('lead form missing after final review');
           }
         }
       }
-    } else {
-      report.search = { submitted: false, reason: 'search submit missing' };
-    }
+    } else report.search = { submitted: false, reason: 'search submit missing' };
   } catch (e) {
     report.errors.push(String(e));
     await snap('99-failure').catch(() => {});
@@ -133,9 +116,5 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(report, null, 2));
     await browser.close();
   }
-
   if (!report.http || report.http >= 400) process.exit(2);
-})().catch(e => {
-  console.error(e);
-  process.exit(1);
-});
+})().catch(e => { console.error(e); process.exit(1); });
