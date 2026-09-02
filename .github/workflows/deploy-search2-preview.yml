@@ -137,9 +137,9 @@ jobs:
               await page.evaluate(()=>window.V2PrimaryMealUXV1.loadMeals());
               await page.waitForSelector('.ds2-search-quick-stars .meal-shortcut',{state:'visible',timeout:10000});
               await page.locator('.ds2-search-quick-stars .meal-shortcut').click();
-              // The preview-only service enhancer intentionally waits for the canonical catalog init.
-              // Give it enough time to lazy-load the real hotel_services catalog before evidence capture.
               await page.waitForTimeout(4200);
+              const serviceButtons=page.locator('.ds2-search-quick-stars .service-shortcut');
+              if(await serviceButtons.count()===2){await serviceButtons.nth(0).click();await serviceButtons.nth(1).click();await page.waitForTimeout(100);}
               const state=await page.evaluate(()=>{
                 const form=document.querySelector('#tourSearch.ds2-search-initial');
                 const allSteps=[...form.querySelectorAll('.main-fields>.primary-step')];
@@ -154,13 +154,14 @@ jobs:
                 const mealShortcut=form.querySelector('.ds2-search-quick-stars .meal-shortcut');
                 const serviceShortcuts=[...form.querySelectorAll('.ds2-search-quick-stars .service-shortcut')].map(btn=>({label:String(btn.textContent||'').trim(),value:String(btn.dataset.serviceValue||''),pressed:btn.getAttribute('aria-pressed')||''}));
                 const serviceCatalog=[...document.querySelectorAll('#hotelServices label.service-check')].map(label=>({label:String(label.querySelector('span')?.textContent||label.textContent||'').trim(),value:String(label.querySelector('input[name="hotel_service[]"]')?.value||'')})).filter(x=>x.label&&x.value);
+                const selectedServices=[...document.querySelectorAll('#hotelServices input[name="hotel_service[]"]:checked')].map(input=>String(input.value||''));
                 const sameRow=rects.length===5&&Math.max(...rects.map(r=>r.top))-Math.min(...rects.map(r=>r.top))<4;
                 const stacked=rects.length===5&&rects.every((r,i)=>i===0||r.top>rects[i-1].top+20);
                 const nights=String(form.querySelector('.ds2-nights-summary')?.textContent||'').trim();
                 const filterLabel=String(form.querySelector('details.extras>summary strong,details.extras-secondary>summary strong')?.textContent||'').trim();
                 const overflowNodes=[...document.querySelectorAll('body *')].map(el=>{const r=el.getBoundingClientRect();return {tag:el.tagName.toLowerCase(),id:el.id||'',cls:String(el.className||'').slice(0,120),left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width),scrollWidth:el.scrollWidth,clientWidth:el.clientWidth};}).filter(x=>x.right>innerWidth+3||x.left<-3).sort((a,b)=>Math.max(b.right-innerWidth,-b.left)-Math.max(a.right-innerWidth,-a.left)).slice(0,12);
                 return {
-                  steps:rects.length,primaryCount:allSteps.length,foodInMain:!!form.elements.food?.closest('.main-fields'),starQuick:starQuick.length,mealShortcut:String(mealShortcut?.textContent||'').trim(),mealPressed:mealShortcut?.getAttribute('aria-pressed')||'',mealValue:String(form.elements.food?.value||''),serviceShortcuts,serviceCatalog,
+                  steps:rects.length,primaryCount:allSteps.length,foodInMain:!!form.elements.food?.closest('.main-fields'),starQuick:starQuick.length,mealShortcut:String(mealShortcut?.textContent||'').trim(),mealPressed:mealShortcut?.getAttribute('aria-pressed')||'',mealValue:String(form.elements.food?.value||''),serviceShortcuts,serviceCatalog,selectedServices,
                   cta:String(button?.querySelector('span')?.textContent||button?.textContent||'').trim(),bg,nights,filterLabel,
                   sameRow,stacked,ctaBeforeQuick:!!(buttonRect&&quickRect&&buttonRect.bottom<=quickRect.top+2),buttonRight:buttonRect?.right||0,viewport:innerWidth,
                   docScrollWidth:document.documentElement.scrollWidth,docClientWidth:document.documentElement.clientWidth,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+3,overflowNodes
@@ -169,7 +170,9 @@ jobs:
               const expectedRow=width>=901;
               const expectedStack=width<=430;
               const blue=/rgb\((18,\s*97,\s*246|14,\s*85,\s*219)\)/.test(state.bg);
-              const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.primaryCount!==5||state.foodInMain||state.starQuick!==5||state.mealShortcut!=='All Inclusive'||state.mealPressed!=='true'||!state.mealValue||state.cta!=='Найти туры'||!state.nights||state.filterLabel!=='Все фильтры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked)||(width<=700&&!state.ctaBeforeQuick);
+              const serviceLabels=state.serviceShortcuts.map(x=>x.label).join('|');
+              const serviceBound=state.serviceShortcuts.length===2&&serviceLabels==='Первая линия|С детьми'&&state.serviceShortcuts.every(x=>x.pressed==='true'&&x.value&&state.selectedServices.includes(x.value));
+              const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.primaryCount!==5||state.foodInMain||state.starQuick!==5||state.mealShortcut!=='All Inclusive'||state.mealPressed!=='true'||!state.mealValue||!serviceBound||state.cta!=='Найти туры'||!state.nights||state.filterLabel!=='Все фильтры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked)||(width<=700&&!state.ctaBeforeQuick);
               report.push({name,width,height,state,errors,bad}); if(bad) failed=true;
               await page.screenshot({path:`search2-form-evidence/${name}.png`,fullPage:false,animations:'disabled'});
               await context.close();
