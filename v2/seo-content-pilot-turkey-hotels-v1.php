@@ -36,6 +36,9 @@ function v2_seo_turkey_hotel_manifest(): array
         ['file'=>'seo-content-pilot-turkey-alexius-beach-v1.php','function'=>'v2_seo_content_pilot_turkey_alexius_beach','label'=>'Туры в ALEXIUS BEACH HOTEL','href'=>'/country/turkey/hotel/alexius-beach-hotel-ex-beldiana-club-1039/'],
         ['file'=>'seo-content-pilot-turkey-greenport-bodrum-v1.php','function'=>'v2_seo_content_pilot_turkey_greenport_bodrum','label'=>'Туры в GREENPORT HOTEL BODRUM','href'=>'/country/turkey/hotel/greenport-hotel-bodrum-ex-aegean-garden-1600/'],
         ['file'=>'seo-content-pilot-turkey-moni-v1.php','function'=>'v2_seo_content_pilot_turkey_moni','label'=>'Туры в MONI HOTEL','href'=>'/country/turkey/hotel/moni-hotel-111534/'],
+        ['file'=>'seo-content-pilot-turkey-meril-beach-v1.php','function'=>'v2_seo_content_pilot_turkey_meril_beach','label'=>'Туры в MERIL BEACH HOTEL TURUNC ADULTS ONLY 16+','href'=>'/country/turkey/hotel/meril-beach-hotel-turunc-adults-only-16-42916/'],
+        ['file'=>'seo-content-pilot-turkey-nora-family-club-v1.php','function'=>'v2_seo_content_pilot_turkey_nora_family_club','label'=>'Туры в THE NORA HOTELS FAMILY CLUB','href'=>'/country/turkey/hotel/the-nora-hotels-family-club-ex-scylax-family-club-71071/'],
+        ['file'=>'seo-content-pilot-turkey-palmora-lara-v1.php','function'=>'v2_seo_content_pilot_turkey_palmora_lara','label'=>'Туры в PALMORA LARA HOTEL','href'=>'/country/turkey/hotel/palmora-lara-hotel-ex-jura-hotels-lara-resort-65770/'],
     ];
 }
 
