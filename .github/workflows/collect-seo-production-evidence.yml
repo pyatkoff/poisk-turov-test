@@ -4,6 +4,14 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '17 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/seo-*.php'
+      - 'v2/data/report-seo-production-identity-v1.php'
+      - 'v2/country/**'
+      - 'v2/sitemap.xml'
+      - '.github/workflows/collect-seo-production-evidence.yml'
 
 permissions:
   contents: read
