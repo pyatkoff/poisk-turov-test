@@ -24,6 +24,9 @@ function v2_seo_egypt_hotel_manifest(): array
         ['file'=>'seo-content-pilot-egypt-ecotel-dahab-v1.php','function'=>'v2_seo_content_pilot_egypt_ecotel_dahab','label'=>'Туры в ECOTEL DAHAB BAY VIEW RESORT','href'=>'/country/egypt/hotel/ecotel-dahab-bay-view-resort-322/'],
         ['file'=>'seo-content-pilot-egypt-eden-rock-v1.php','function'=>'v2_seo_content_pilot_egypt_eden_rock','label'=>'Туры в EDEN ROCK HOTEL','href'=>'/country/egypt/hotel/eden-rock-hotel-198/'],
         ['file'=>'seo-content-pilot-egypt-panorama-naama-v1.php','function'=>'v2_seo_content_pilot_egypt_panorama_naama','label'=>'Туры в PANORAMA NAAMA HEIGHTS','href'=>'/country/egypt/hotel/panorama-naama-heights-350/'],
+        ['file'=>'seo-content-pilot-egypt-falcon-naama-v1.php','function'=>'v2_seo_content_pilot_egypt_falcon_naama','label'=>'Туры в FALCON NAAMA STAR','href'=>'/country/egypt/hotel/falcon-naama-star-210/'],
+        ['file'=>'seo-content-pilot-egypt-parrotel-lagoon-v1.php','function'=>'v2_seo_content_pilot_egypt_parrotel_lagoon','label'=>'Туры в PARROTEL LAGOON WATERPARK RESORT','href'=>'/country/egypt/hotel/parrotel-lagoon-waterpark-resort-71147/'],
+        ['file'=>'seo-content-pilot-egypt-parrotel-aqua-v1.php','function'=>'v2_seo_content_pilot_egypt_parrotel_aqua','label'=>'Туры в PARROTEL AQUA PARK RESORT','href'=>'/country/egypt/hotel/parrotel-aqua-park-resort-ex-park-inn-by-radisson-352/'],
     ];
 }
 
