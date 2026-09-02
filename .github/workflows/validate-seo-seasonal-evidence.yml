@@ -8,12 +8,14 @@ on:
       - 'v2/seo-seasonal-candidate-v1.php'
       - 'v2/seo-feed-evidence-v1.php'
       - 'v2/seo-data-readiness-v1.php'
+      - 'v2/seo-seasonal-coverage-readiness-v1.php'
       - 'v2/data/report-seo-seasonal-evidence-v1.php'
       - 'v2/data/inspect-seo-data-readiness-v1.php'
       - 'tests/seo-seasonal-evidence-smoke.php'
       - 'tests/seo-seasonal-candidate-smoke.php'
       - 'tests/seo-feed-evidence-smoke.php'
       - 'tests/seo-data-readiness-smoke.php'
+      - 'tests/seo-seasonal-coverage-readiness-smoke.php'
       - '.github/workflows/validate-seo-seasonal-evidence.yml'
   workflow_dispatch:
 
@@ -34,16 +36,19 @@ jobs:
           php -l v2/seo-seasonal-candidate-v1.php >/dev/null
           php -l v2/seo-feed-evidence-v1.php >/dev/null
           php -l v2/seo-data-readiness-v1.php >/dev/null
+          php -l v2/seo-seasonal-coverage-readiness-v1.php >/dev/null
           php -l v2/data/report-seo-seasonal-evidence-v1.php >/dev/null
           php -l v2/data/inspect-seo-data-readiness-v1.php >/dev/null
           php -l tests/seo-seasonal-evidence-smoke.php >/dev/null
           php -l tests/seo-seasonal-candidate-smoke.php >/dev/null
           php -l tests/seo-feed-evidence-smoke.php >/dev/null
           php -l tests/seo-data-readiness-smoke.php >/dev/null
+          php -l tests/seo-seasonal-coverage-readiness-smoke.php >/dev/null
           php tests/seo-seasonal-evidence-smoke.php
           php tests/seo-seasonal-candidate-smoke.php
           php tests/seo-feed-evidence-smoke.php
           php tests/seo-data-readiness-smoke.php
+          php tests/seo-seasonal-coverage-readiness-smoke.php
           grep -Fq "s.page_type IN ('month','resort_month')" v2/data/inspect-seo-data-readiness-v1.php
           grep -Fq 's.expires_at > NOW()' v2/data/inspect-seo-data-readiness-v1.php
           ! grep -Fq 'min_price' v2/data/inspect-seo-data-readiness-v1.php
