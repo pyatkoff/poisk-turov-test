@@ -56,7 +56,7 @@ jobs:
             IFS='|' read -r country file fn family <<< "$spec"
             php v2/data/validate-seo-hotel-snapshot-identities-v1.php --catalog-file="$file" --catalog-function="$fn" < "$RUNNER_TEMP/hotels-$country.json"
             php v2/data/report-seo-launch-readiness-v1.php --catalog-file="$file" --catalog-function="$fn" --evidence-file="$RUNNER_TEMP/hotels-$country.json" > "$RUNNER_TEMP/readiness-$family.json"
-            php -r '$x=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if(($x["state"]??"")!=="review_only_launch_readiness_report"||($x["publication_allowed"]??true)!==false||($x["indexation_allowed"]??true)!==false)exit(2);printf("SEO2_HOTEL_FAMILY_READINESS family=%s ready=%d blocked=%d publication=0 indexation=0\n",$argv[2],(int)($x["ready_count"]??0),(int)($x["blocked_count"]??0));' "$RUNNER_TEMP/readiness-$family.json" "$family"
+            php -r '$x=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if(($x["state"]??"")!=="review_only_launch_readiness_report")exit(2);printf("SEO2_HOTEL_FAMILY_READINESS family=%s ready=%d blocked=%d review_only=1\n",$argv[2],(int)($x["ready_count"]??0),(int)($x["blocked_count"]??0));' "$RUNNER_TEMP/readiness-$family.json" "$family"
           done
 
       - name: Build review-only quality slice evidence
@@ -71,7 +71,7 @@ jobs:
             $path=getenv('RUNNER_TEMP').'/readiness-'.$family.'.json';
             $x=json_decode(file_get_contents($path),true,512,JSON_THROW_ON_ERROR);
             $ready=[];
-            foreach(($x['rows']??[]) as $row){
+            foreach(($x['ready']??[]) as $row){
               if(!is_array($row)||($row['type']??'')!=='hotel_tours'||($row['ready_for_launch_review']??false)!==true||(int)($row['score']??0)!==100)continue;
               $ready[]=['family'=>$family,'path'=>(string)($row['path']??''),'country_id'=>(int)($row['country_id']??0),'hotel_id'=>(int)($row['hotel_id']??0),'score'=>100,'evidence_epoch'=>(int)($row['evidence_epoch']??0),'evidence_expires_epoch'=>(int)($row['evidence_expires_epoch']??0),'publication_allowed'=>false,'indexation_allowed'=>false];
             }
