@@ -21,6 +21,9 @@ function v2_seo_turkey_hotel_manifest(): array
         ['file'=>'seo-content-pilot-turkey-kleopatra-ikiz-v1.php','function'=>'v2_seo_content_pilot_turkey_kleopatra_ikiz','label'=>'Туры в KLEOPATRA IKIZ','href'=>'/country/turkey/hotel/kleopatra-ikiz-28482/'],
         ['file'=>'seo-content-pilot-turkey-kleopatra-smile-v1.php','function'=>'v2_seo_content_pilot_turkey_kleopatra_smile','label'=>'Туры в KLEOPATRA SMILE HOTEL','href'=>'/country/turkey/hotel/kleopatra-smile-hotel-75706/'],
         ['file'=>'seo-content-pilot-turkey-belkon-v1.php','function'=>'v2_seo_content_pilot_turkey_belkon','label'=>'Туры в BELKON HOTEL','href'=>'/country/turkey/hotel/belkon-hotel-2121/'],
+        ['file'=>'seo-content-pilot-turkey-belpoint-beach-v1.php','function'=>'v2_seo_content_pilot_turkey_belpoint_beach','label'=>'Туры в BELPOINT BEACH','href'=>'/country/turkey/hotel/belpoint-beach-ex-ruza-beach-hotel-1097/'],
+        ['file'=>'seo-content-pilot-turkey-more-hotel-v1.php','function'=>'v2_seo_content_pilot_turkey_more_hotel','label'=>'Туры в MORE HOTEL','href'=>'/country/turkey/hotel/more-hotel-1389/'],
+        ['file'=>'seo-content-pilot-turkey-club-selen-icmeler-v1.php','function'=>'v2_seo_content_pilot_turkey_club_selen_icmeler','label'=>'Туры в CLUB SELEN ICMELER','href'=>'/country/turkey/hotel/club-selen-icmeler-56492/'],
     ];
 }
 
