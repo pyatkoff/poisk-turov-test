@@ -19,9 +19,14 @@ function sp_context(string $path,string $title,string $description): array {
   $docRoot=rtrim((string)($_SERVER['DOCUMENT_ROOT']??''),'/');
   $siteConf=$docRoot.'/site_conf.php'; if($docRoot!==''&&is_file($siteConf)) require $siteConf;
   $siteParams=is_array($params??null)?$params:[];
-  if(array_key_exists('SEO_TURKEY_LAUNCH',$siteParams)) {
-    $siteParams=v2_seo_turkey_launch_site_params($siteParams,!empty($siteParams['SEO_TURKEY_LAUNCH']));
-  }
+  // First controlled SEO production launch: the reviewed Turkey country/resort
+  // allowlist is enabled by default. Production can still fail closed instantly
+  // by setting SEO_TURKEY_LAUNCH=false in site_conf.php. The allowlist itself
+  // contains no search route and no hotel_tours pages.
+  $turkeyLaunchEnabled=array_key_exists('SEO_TURKEY_LAUNCH',$siteParams)
+    ? !empty($siteParams['SEO_TURKEY_LAUNCH'])
+    : true;
+  $siteParams=v2_seo_turkey_launch_site_params($siteParams,$turkeyLaunchEnabled);
   $phone=v2_site_phone($siteParams,'8 (800) 100 - 61 - 50');
   return ['path'=>$path,'title'=>$title,'description'=>$description,'phone'=>$phone,'phoneHref'=>v2_phone_href($phone),'robots'=>v2_seo_robots_content(v2_seo_indexable($siteParams))];
 }
