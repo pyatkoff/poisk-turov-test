@@ -22,6 +22,8 @@ function syncLayout(){
   const root=document.getElementById('selectedTour'),form=root&&root.querySelector('.lead-form'),shell=form&&form.closest('.search3-lead-shell'),summary=shell&&shell.querySelector('.search3-booking-summary');
   if(!root||!form||!shell||!summary)return;
   const desktop=window.matchMedia('(min-width:1000px)').matches,finalReview=root.classList.contains('search3-final-review'),leadEntry=root.classList.contains('search3-lead-entry');
+  if(finalReview&&!leadEntry)root.dataset.search3FinalLayout='maket7';else delete root.dataset.search3FinalLayout;
+  const title=summary.querySelector('.search3-booking-summary__title');if(title)title.textContent=finalReview&&!leadEntry?'Итоговая стоимость':'Ваш тур';
   clearLayout(shell,form,summary);
   if(desktop&&finalReview&&leadEntry){
     shell.style.setProperty('display','grid','important');
@@ -35,11 +37,11 @@ function syncLayout(){
     summary.style.setProperty('grid-column','2','important');
     summary.style.setProperty('grid-row','1','important');
   }else if(desktop&&finalReview){
-    /* Final review uses the root grid so the real price summary can sit in the right rail. */
+    /* Maket7 final review uses a compact hotel card on the left and cost-only rail on the right. */
     shell.style.setProperty('display','contents','important');
-    form.style.setProperty('grid-column','1','important');
+    form.style.setProperty('grid-column','1 / 3','important');
     summary.style.setProperty('display','block','important');
-    summary.style.setProperty('grid-column','2','important');
+    summary.style.setProperty('grid-column','3','important');
     summary.style.setProperty('grid-row','4 / 12','important');
   }
 }
@@ -55,5 +57,5 @@ window.addEventListener('v2:lead-error',layoutSoon);
 window.addEventListener('v2:lead-success',renderSoon);
 window.addEventListener('resize',layoutSoon);
 document.addEventListener('click',e=>{if(e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-flight-continue button'))layoutSoon();});
-window.Search3BookingSummary={render,syncLayout,version:3};
+window.Search3BookingSummary={render,syncLayout,version:4};
 })();
