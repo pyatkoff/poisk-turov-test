@@ -121,3 +121,5 @@ if (($reports['/country/turkey/']['status'] ?? '') !== 'review') turkey_hotel_re
 if (($reviewParent['type'] ?? '') !== 'country') turkey_hotel_review_fail('isolated_parent_type');
 
 echo 'SEO_TURKEY_HOTEL_REVIEW_OK hotels=' . $expectedHotelCount . ' candidates=0 parentIsolation=1 country=4 uniqueHotelIds=' . count($manifestHotelIds) . ' uniqueEditorial=' . count($editorialFingerprints) . PHP_EOL;
+
+require __DIR__ . '/seo-egypt-hotel-review-catalog-smoke.php';
