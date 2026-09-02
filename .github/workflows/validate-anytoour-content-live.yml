@@ -34,20 +34,69 @@ jobs:
             grep -Fq "name=\"robots\" content=\"$robots" "$out"
             grep -Fq '/images/logo.svg' "$out"
           }
+          check_search_handoff(){
+            local out="$1" country_id="$2" region_id="${3:-}"
+            python3 - "$out" "$country_id" "$region_id" <<'PY'
+          import sys
+          from html.parser import HTMLParser
+          from urllib.parse import parse_qs, urlparse
+
+          file_name, expected_country, expected_region = sys.argv[1:4]
+
+          class Links(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.hrefs = []
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() != 'a':
+                      return
+                  href = dict(attrs).get('href')
+                  if href:
+                      # HTMLParser already resolves character references in attributes.
+                      self.hrefs.append(href)
+
+          parser = Links()
+          with open(file_name, encoding='utf-8') as fh:
+              parser.feed(fh.read())
+
+          candidates = []
+          for href in parser.hrefs:
+              parsed = urlparse(href)
+              if parsed.path != '/poisk-turov/':
+                  continue
+              candidates.append(href)
+              query = parse_qs(parsed.query)
+              if query.get('country') != [expected_country]:
+                  continue
+              if expected_region and query.get('region') != [expected_region]:
+                  continue
+              sys.exit(0)
+
+          print(
+              'SEARCH_HANDOFF_MISMATCH',
+              f'expected_country={expected_country}',
+              f'expected_region={expected_region or "-"}',
+              'candidates=' + repr(candidates),
+              file=sys.stderr,
+          )
+          sys.exit(1)
+          PY
+          }
           check_country_handoff(){
             local slug="$1" country_id="$2" out
             out="$(page_out "/country/$slug/")"
-            grep -Eq "href=['\"]\/poisk-turov\/\?country=${country_id}['\"]" "$out"
-            echo "/country/$slug/ -> /poisk-turov/?country=$country_id OK"
+            check_search_handoff "$out" "$country_id"
+            echo "/country/$slug/ -> /poisk-turov/ country=$country_id OK"
           }
           check_resort_handoff(){
             local slug="$1" region_id="$2" out
             out="$(page_out "/country/turkey/$slug/")"
-            grep -Fq "href=\"/poisk-turov/?country=4&amp;region=${region_id}\"" "$out"
-            if grep -Fq 'sp-offer-snapshot' "$out"; then
+            check_search_handoff "$out" 4 "$region_id"
+            if grep -Fq '<section class="sp-card sp-offer-snapshot"' "$out"; then
               grep -Fq 'Посмотреть туры' "$out"
-              grep -Fq "country=4&amp;region=${region_id}" "$out"
               echo "/country/turkey/$slug/ fresh offer block OK"
+            else
+              echo "/country/turkey/$slug/ fresh offer block absent (allowed; no stale claim inferred from CSS)"
             fi
             echo "/country/turkey/$slug/ -> country=4 region=$region_id OK"
           }
@@ -57,7 +106,8 @@ jobs:
           check_page '/country/' 'Туры по странам' 'https://anytoour.ru/country/'
           check_page '/rb/' 'Раннее бронирование без спешки' 'https://anytoour.ru/rb/'
           check_page '/country/turkey/' 'Туры в Турцию' 'https://anytoour.ru/country/turkey/' 'index,follow'
-          check_page '/country/egypt/' 'Туры в Египет' 'https://anytoour.ru/country/egypt/'
+          check_page '/country/egypt/' 'Туры в Египет' 'https://anytoour.ru/country/egypt/' 'index,follow'
+          check_page '/country/maldives/' 'Туры на Мальдивы' 'https://anytoour.ru/country/maldives/' 'index,follow'
           check_page '/country/oae/' 'Туры в ОАЭ' 'https://anytoour.ru/country/oae/'
           check_page '/country/tailand/' 'Туры в Таиланд' 'https://anytoour.ru/country/tailand/'
           check_page '/country/russia/' 'Туры по России' 'https://anytoour.ru/country/russia/'
@@ -68,6 +118,7 @@ jobs:
           check_page '/country/turkey/alanya/' 'Туры в Аланью' 'https://anytoour.ru/country/turkey/alanya/' 'index,follow'
           check_country_handoff turkey 4
           check_country_handoff egypt 1
+          check_country_handoff maldives 8
           check_country_handoff oae 9
           check_country_handoff tailand 2
           check_country_handoff russia 47
@@ -76,4 +127,4 @@ jobs:
           check_resort_handoff side 23
           check_resort_handoff belek 21
           check_resort_handoff alanya 19
-          echo 'ANYTOOUR_MIGRATED_CONTENT_OK'
+          echo 'ANYTOOUR_MIGRATED_CONTENT_OK controlled_indexable=8'
