@@ -6,14 +6,12 @@ on:
     paths:
       - 'v2/current-price-calendar-v1.js'
       - 'v2/current-price-calendar-v1.css'
-      - 'v2/bundle-manifest-v1.php'
       - '.github/workflows/validate-current-price-calendar.yml'
   push:
     branches: [main]
     paths:
       - 'v2/current-price-calendar-v1.js'
       - 'v2/current-price-calendar-v1.css'
-      - 'v2/bundle-manifest-v1.php'
       - '.github/workflows/validate-current-price-calendar.yml'
   workflow_dispatch:
 
