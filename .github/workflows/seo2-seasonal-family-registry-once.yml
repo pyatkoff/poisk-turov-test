@@ -24,5 +24,5 @@ jobs:
           php -l tests/seo-seasonal-family-registry-smoke.php >/dev/null
           php tests/seo-seasonal-family-registry-smoke.php
           grep -Fq "require_once dirname(__DIR__) . '/seo-seasonal-family-registry-v1.php'" v2/data/report-seo-seasonal-review-plan-v1.php
-          ! grep -Fq "if($family!=='turkey')" v2/data/report-seo-seasonal-review-plan-v1.php
+          ! grep -Fq 'if($family!==\x27turkey\x27)' v2/data/report-seo-seasonal-review-plan-v1.php
           echo SEO_SEASONAL_FAMILY_REGISTRY_INTEGRATION_OK
