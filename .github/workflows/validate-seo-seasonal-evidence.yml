@@ -7,6 +7,7 @@ on:
       - 'v2/seo-seasonal-evidence-v1.php'
       - 'v2/seo-seasonal-candidate-v1.php'
       - 'v2/seo-feed-evidence-v1.php'
+      - 'v2/seo-feed-family-binding-v1.php'
       - 'v2/seo-data-readiness-v1.php'
       - 'v2/seo-seasonal-coverage-readiness-v1.php'
       - 'v2/seo-seasonal-identity-v1.php'
@@ -18,6 +19,7 @@ on:
       - 'tests/seo-seasonal-evidence-smoke.php'
       - 'tests/seo-seasonal-candidate-smoke.php'
       - 'tests/seo-feed-evidence-smoke.php'
+      - 'tests/seo-feed-family-binding-smoke.php'
       - 'tests/seo-data-readiness-smoke.php'
       - 'tests/seo-seasonal-coverage-readiness-smoke.php'
       - 'tests/seo-seasonal-identity-smoke.php'
@@ -41,6 +43,7 @@ jobs:
           php -l v2/seo-seasonal-evidence-v1.php >/dev/null
           php -l v2/seo-seasonal-candidate-v1.php >/dev/null
           php -l v2/seo-feed-evidence-v1.php >/dev/null
+          php -l v2/seo-feed-family-binding-v1.php >/dev/null
           php -l v2/seo-data-readiness-v1.php >/dev/null
           php -l v2/seo-seasonal-coverage-readiness-v1.php >/dev/null
           php -l v2/seo-seasonal-identity-v1.php >/dev/null
@@ -52,6 +55,7 @@ jobs:
           php -l tests/seo-seasonal-evidence-smoke.php >/dev/null
           php -l tests/seo-seasonal-candidate-smoke.php >/dev/null
           php -l tests/seo-feed-evidence-smoke.php >/dev/null
+          php -l tests/seo-feed-family-binding-smoke.php >/dev/null
           php -l tests/seo-data-readiness-smoke.php >/dev/null
           php -l tests/seo-seasonal-coverage-readiness-smoke.php >/dev/null
           php -l tests/seo-seasonal-identity-smoke.php >/dev/null
@@ -59,6 +63,7 @@ jobs:
           php tests/seo-seasonal-evidence-smoke.php
           php tests/seo-seasonal-candidate-smoke.php
           php tests/seo-feed-evidence-smoke.php
+          php tests/seo-feed-family-binding-smoke.php
           php tests/seo-data-readiness-smoke.php
           php tests/seo-seasonal-coverage-readiness-smoke.php
           php tests/seo-seasonal-identity-smoke.php
