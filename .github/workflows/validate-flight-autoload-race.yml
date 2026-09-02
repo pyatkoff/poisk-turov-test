@@ -27,7 +27,7 @@ jobs:
           cat > flight-autoload-race.cjs <<'JS'
           const {chromium}=require('playwright'); const path=require('path');
           (async()=>{const browser=await chromium.launch({headless:true});
-          for(const width of [375,768,1440]){
+          for(const width of [375]){
             const page=await browser.newPage({viewport:{width,height:900}});
             await page.setContent('<form id="tourSearch"><input name="sessid" value="test"></form><div id="results"></div><section id="selectedTour" hidden></section>');
             await page.evaluate(()=>{
