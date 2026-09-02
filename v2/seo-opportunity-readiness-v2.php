@@ -33,7 +33,9 @@ function v2_seo_opportunity_readiness(array $page, array $signals, ?int $nowEpoc
         'uniqueness'=>['required'=>true,'max_age'=>86400*31],
         'content'=>['required'=>true,'max_age'=>86400*31],
         'technical'=>['required'=>true,'max_age'=>86400*7],
-        'commercial_inventory'=>['required'=>$intent==='commercial_transactional','max_age'=>86400],
+        // Daily collection normally refreshes this sooner, but a transient missed
+        // cycle should not invalidate an otherwise useful review candidate.
+        'commercial_inventory'=>['required'=>$intent==='commercial_transactional','max_age'=>86400*3],
     ];
     $knownScores=[]; $blocked=[];
     foreach($definitions as $key=>$definition){
