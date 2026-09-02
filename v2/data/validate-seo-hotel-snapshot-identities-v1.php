@@ -3,6 +3,10 @@
  * Compare review-only hotel-tour editorial identities with a fresh snapshot JSON.
  * Read-only CLI utility: no DB/API calls and no writes.
  *
+ * Snapshot rows must carry evidence_epoch + freshness_seconds from the production
+ * DB inspector. The validator recomputes expiry against the current runner clock,
+ * so a once-fresh JSON file cannot be reused after its evidence window has expired.
+ *
  * Usage:
  *   php v2/data/validate-seo-hotel-snapshot-identities-v1.php \
  *     --catalog-file=v2/seo-content-pilot-maldives-catalog-v1.php \
@@ -50,6 +54,8 @@ if (!is_string($raw) || trim($raw) === '') seo_identity_fail('snapshot_json_miss
 $snapshot = json_decode($raw, true);
 if (!is_array($snapshot) || !array_is_list($snapshot)) seo_identity_fail('snapshot_json_invalid');
 
+$now = time();
+$maxFutureClockSkew = 300;
 $snapshotById = [];
 $slugToId = [];
 foreach ($snapshot as $row) {
@@ -57,6 +63,16 @@ foreach ($snapshot as $row) {
     $hotelId = (int)($row['hotel_id'] ?? 0);
     $slug = trim((string)($row['hotel_slug'] ?? ''));
     if ($hotelId <= 0 || $slug === '') seo_identity_fail('snapshot_identity_missing');
+
+    $evidenceEpoch = filter_var($row['evidence_epoch'] ?? null, FILTER_VALIDATE_INT);
+    $freshnessSeconds = filter_var($row['freshness_seconds'] ?? null, FILTER_VALIDATE_INT);
+    if ($evidenceEpoch === false || (int)$evidenceEpoch <= 0) seo_identity_fail('snapshot_evidence_epoch_missing_' . $hotelId);
+    if ($freshnessSeconds === false || (int)$freshnessSeconds <= 0) seo_identity_fail('snapshot_freshness_missing_' . $hotelId);
+    $evidenceEpoch = (int)$evidenceEpoch;
+    $freshnessSeconds = (int)$freshnessSeconds;
+    if ($evidenceEpoch > $now + $maxFutureClockSkew) seo_identity_fail('snapshot_evidence_from_future_' . $hotelId);
+    if ($now >= $evidenceEpoch + $freshnessSeconds) seo_identity_fail('snapshot_evidence_expired_' . $hotelId);
+
     if (isset($snapshotById[$hotelId])) seo_identity_fail('snapshot_duplicate_hotel_id_' . $hotelId);
     if (isset($slugToId[$slug]) && $slugToId[$slug] !== $hotelId) seo_identity_fail('snapshot_duplicate_slug_' . $slug);
     $snapshotById[$hotelId] = $slug;
