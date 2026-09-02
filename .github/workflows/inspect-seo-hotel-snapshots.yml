@@ -1,0 +1,66 @@
+name: Inspect SEO hotel snapshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      country:
+        description: 'Tourvisor country ID to inspect'
+        required: true
+        type: string
+      limit:
+        description: 'Maximum hotel rows (1-100)'
+        required: false
+        default: '40'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Validate inputs
+        env:
+          COUNTRY: ${{ inputs.country }}
+          LIMIT: ${{ inputs.limit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$COUNTRY" =~ ^[1-9][0-9]*$ ]] || { echo 'Invalid country ID' >&2; exit 2; }
+          [[ "$LIMIT" =~ ^[1-9][0-9]*$ ]] || { echo 'Invalid limit' >&2; exit 2; }
+          (( LIMIT >= 1 && LIMIT <= 100 )) || { echo 'Limit must be 1-100' >&2; exit 2; }
+
+      - name: Prepare production SSH key
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Inspect fresh production hotel snapshots
+        env:
+          NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          NEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          COUNTRY: ${{ inputs.country }}
+          LIMIT: ${{ inputs.limit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NEW_HOST" && test -n "$NEW_USER"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$NEW_USER@$NEW_HOST"
+          echo "SEO_HOTEL_SNAPSHOT_BEGIN country=$COUNTRY limit=$LIMIT"
+          timeout 45s ssh "${opts[@]}" "$remote" \
+            "php \"\$HOME/www/anytoour.ru/data/inspect-seo-hotel-snapshots-v1.php\" --country=$COUNTRY --limit=$LIMIT"
+          echo 'SEO_HOTEL_SNAPSHOT_END'
