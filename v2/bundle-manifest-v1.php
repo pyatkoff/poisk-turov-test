@@ -12,7 +12,7 @@ function v2_bundle_manifest(): array
     ];
     if (defined('V2_SEARCH2_PREVIEW') && V2_SEARCH2_PREVIEW) {
         array_push($manifest['css'], 'ds2-search-form-polish-v1.css', 'ds2-search-form-pickers-v6.css', 'ds2-search-form-preview-v8.css');
-        $manifest['js'][] = 'ds2-search-form-polish-v1.js';
+        array_push($manifest['js'], 'ds2-search-form-polish-v1.js', 'ds2-search-form-service-shortcuts-v1.js');
     }
     return $manifest;
 }
