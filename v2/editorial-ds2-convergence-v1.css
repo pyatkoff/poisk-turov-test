@@ -59,6 +59,8 @@
 .sp-breadcrumbs{
   background:rgba(255,255,255,.96);
 }
+/* Related pages are navigation, so suppress the generic card accent inherited from .sp-card. */
+.sp-related-card:before{display:none!important}
 @media(max-width:768px){
   .sp-hero{padding-top:32px;padding-bottom:38px}
   .sp-hero:before{right:-110px;bottom:-150px;opacity:.7}
