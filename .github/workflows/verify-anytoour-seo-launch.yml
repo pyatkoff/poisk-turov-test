@@ -11,6 +11,11 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/verify-anytoour-seo-launch.yml'
+      - 'v2/seo-launch-slice-v1.php'
+      - 'v2/seo-controlled-launch-catalog-v1.php'
+      - 'v2/seo-content-pilot-seasonal-september-v1.php'
+      - 'v2/seo-seasonal-page-v1.php'
+      - 'v2/sitemap.xml'
       - 'v2/seo-production-identity-registry-v1.php'
       - 'v2/seo-production-identity-collector-v1.php'
       - 'v2/data/verify-seo-production-identity-registry-v1.php'
@@ -18,6 +23,14 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/verify-anytoour-seo-launch.yml'
+      - 'v2/seo-launch-slice-v1.php'
+      - 'v2/seo-controlled-launch-catalog-v1.php'
+      - 'v2/seo-content-pilot-seasonal-september-v1.php'
+      - 'v2/seo-seasonal-page-v1.php'
+      - 'v2/sitemap.xml'
+      - 'v2/country/turkey/antalya/september/**'
+      - 'v2/country/maldives/september/**'
+      - 'tests/seo-launch-slice-smoke.php'
       - 'v2/seo-production-identity-registry-v1.php'
       - 'v2/seo-production-identity-collector-v1.php'
       - 'v2/data/verify-seo-production-identity-registry-v1.php'
@@ -42,6 +55,11 @@ jobs:
           set -euo pipefail
           php -l v2/seo-launch-slice-v1.php >/dev/null
           php -l v2/seo-controlled-launch-catalog-v1.php >/dev/null
+          php -l v2/seo-content-pilot-seasonal-september-v1.php >/dev/null
+          php -l v2/seo-seasonal-page-v1.php >/dev/null
+          php -l v2/seo-seasonal-offer-snapshot-v1.php >/dev/null
+          php -l v2/country/turkey/antalya/september/index.php >/dev/null
+          php -l v2/country/maldives/september/index.php >/dev/null
           php -l v2/seo-production-identity-collector-v1.php >/dev/null
           php tests/seo-launch-slice-smoke.php
           php tests/seo-production-identity-collector-smoke.php
@@ -49,14 +67,14 @@ jobs:
           import xml.etree.ElementTree as ET
           base='https://anytoour.ru'
           expected={
-            base+'/country/egypt/', base+'/country/maldives/', base+'/country/turkey/',
-            base+'/country/turkey/alanya/', base+'/country/turkey/antalya/', base+'/country/turkey/belek/',
-            base+'/country/turkey/kemer/', base+'/country/turkey/side/',
+            base+'/country/egypt/', base+'/country/maldives/', base+'/country/maldives/september/', base+'/country/turkey/',
+            base+'/country/turkey/alanya/', base+'/country/turkey/antalya/', base+'/country/turkey/antalya/september/',
+            base+'/country/turkey/belek/', base+'/country/turkey/kemer/', base+'/country/turkey/side/',
           }
           actual={n.text.strip() for n in ET.parse('v2/sitemap.xml').getroot().iter() if n.tag.endswith('loc') and n.text}
           assert actual == expected, (actual, expected)
           assert not any('/hotel/' in u or '/poisk-turov/' in u for u in actual)
-          print('ANYTOOUR_PREDEPLOY_SEO_CONTRACT_OK paths=8 hotel_tours=0')
+          print('ANYTOOUR_PREDEPLOY_SEO_CONTRACT_OK paths=10 seasonal=2 hotel_tours=0')
           PY
 
   production-seo:
@@ -66,7 +84,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify controlled country/resort launch
+      - name: Verify controlled country/resort/seasonal launch
         shell: bash
         env:
           SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -77,9 +95,11 @@ jobs:
           paths=(
             '/country/egypt/'
             '/country/maldives/'
+            '/country/maldives/september/'
             '/country/turkey/'
             '/country/turkey/alanya/'
             '/country/turkey/antalya/'
+            '/country/turkey/antalya/september/'
             '/country/turkey/belek/'
             '/country/turkey/kemer/'
             '/country/turkey/side/'
@@ -92,9 +112,9 @@ jobs:
           import os, xml.etree.ElementTree as ET
           base=os.environ['BASE']
           expected={
-            base+'/country/egypt/', base+'/country/maldives/', base+'/country/turkey/',
-            base+'/country/turkey/alanya/', base+'/country/turkey/antalya/', base+'/country/turkey/belek/',
-            base+'/country/turkey/kemer/', base+'/country/turkey/side/',
+            base+'/country/egypt/', base+'/country/maldives/', base+'/country/maldives/september/', base+'/country/turkey/',
+            base+'/country/turkey/alanya/', base+'/country/turkey/antalya/', base+'/country/turkey/antalya/september/',
+            base+'/country/turkey/belek/', base+'/country/turkey/kemer/', base+'/country/turkey/side/',
           }
           actual={node.text.strip() for node in ET.parse('/tmp/sitemap.xml').getroot().iter() if node.tag.endswith('loc') and node.text}
           assert actual == expected, (actual, expected)
@@ -120,10 +140,7 @@ jobs:
           grep -Eq '<meta name="robots" content="noindex,follow[^\"]*"' /tmp/hotel-review.html
           protected_canonical="${base}${protected}"
           grep -Fq "<link rel=\"canonical\" href=\"$protected_canonical\">" /tmp/hotel-review.html
-          if grep -Fq "$protected_canonical" /tmp/sitemap.xml; then
-            echo 'HOTEL_TOUR_SITEMAP_LEAK' >&2
-            exit 1
-          fi
+          if grep -Fq "$protected_canonical" /tmp/sitemap.xml; then echo 'HOTEL_TOUR_SITEMAP_LEAK' >&2; exit 1; fi
 
           BASE="$base" SOURCE_SHA="$SOURCE_SHA" EVENT_NAME="$EVENT_NAME" PROTECTED="$protected" PROTECTED_CODE="$protected_code" python3 - <<'PY'
           import datetime, hashlib, json, os, re, xml.etree.ElementTree as ET
@@ -144,17 +161,16 @@ jobs:
               'state':'controlled_seo_postlaunch_baseline','domain':'anytoour.ru',
               'observed_at_utc':datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat(),
               'source_sha':os.environ.get('SOURCE_SHA',''),'trigger':os.environ.get('EVENT_NAME',''),
-              'launch_scope':'turkey_egypt_maldives_country_resort_v2','launch_url_count':len(rows),'pages':rows,
+              'launch_scope':'turkey_egypt_maldives_country_resort_seasonal_v3','launch_url_count':len(rows),'pages':rows,
               'robots_sitemap_declared':True,'sitemap_url_count':len(sitemap),
               'protected_hotel_tour':{'path':os.environ['PROTECTED'],'http_status':int(os.environ['PROTECTED_CODE']),'robots':protected_robots.group(1) if protected_robots else None,'canonical':protected_canonical.group(1) if protected_canonical else None,'sitemap_member':base+os.environ['PROTECTED'] in sitemap},
               'search_console_metrics_state':'not_collected_by_this_workflow','publication_scope_expanded':True,
-              'publication_scope_expansion':'country_pages_only','hotel_tours_indexation_allowed':False,
+              'publication_scope_expansion':'evidence_backed_seasonal_pair','hotel_tours_indexation_allowed':False,
           }
-          stable=dict(payload); stable.pop('observed_at_utc',None)
+          stable=dict(payload);stable.pop('observed_at_utc',None)
           payload['baseline_sha256']=hashlib.sha256(json.dumps(stable,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-          with open('/tmp/anytoour-seo-baseline.json','w',encoding='utf-8') as fh:
-              json.dump(payload,fh,ensure_ascii=False,indent=2); fh.write('\n')
-          print('ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=8 hotel_tours_indexed=0 baseline_sha256='+payload['baseline_sha256'])
+          with open('/tmp/anytoour-seo-baseline.json','w',encoding='utf-8') as fh: json.dump(payload,fh,ensure_ascii=False,indent=2);fh.write('\n')
+          print('ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=10 seasonal=2 hotel_tours_indexed=0 baseline_sha256='+payload['baseline_sha256'])
           PY
 
           php -l v2/seo-production-identity-registry-v1.php >/dev/null
