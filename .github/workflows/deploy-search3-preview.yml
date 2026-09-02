@@ -6,6 +6,8 @@ on:
     paths:
       - 'v2/**'
       - 'search3-visual-qa.cjs'
+      - 'search3-visual-desktop.cjs'
+      - 'search3-visual-mobile.cjs'
       - '.github/workflows/deploy-search3-preview.yml'
   workflow_dispatch:
 
@@ -82,7 +84,11 @@ jobs:
   visual-qa:
     needs: deploy-preview
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 7
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [desktop, mobile]
     permissions:
       contents: read
     steps:
@@ -94,18 +100,18 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Capture Search3 key states
+      - name: Capture Search3 ${{ matrix.mode }} states
         env:
           SEARCH3_PREVIEW_URL: https://anytoour.ru/_preview/search3/poisk-turov/
-          SEARCH3_QA_OUT: search3-visual-artifacts
+          SEARCH3_QA_OUT: search3-visual-${{ matrix.mode }}-artifacts
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=5s 7m node search3-visual-qa.cjs
-      - name: Upload Search3 screenshots
+          timeout --signal=TERM --kill-after=5s 5m node "search3-visual-${{ matrix.mode }}.cjs"
+      - name: Upload Search3 ${{ matrix.mode }} screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: search3-visual-${{ github.run_number }}-${{ github.sha }}
-          path: search3-visual-artifacts/
+          name: search3-visual-${{ matrix.mode }}-${{ github.run_number }}-${{ github.sha }}
+          path: search3-visual-${{ matrix.mode }}-artifacts/
           retention-days: 30
