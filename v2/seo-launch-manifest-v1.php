@@ -67,6 +67,7 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
     $readyByType = ['country'=>0,'resort'=>0,'hotel_tours'=>0];
     $blockedByType = ['country'=>0,'resort'=>0,'hotel_tours'=>0];
     $hotelEvidenceValidUntil = [];
+    $hotelEvidenceRows = [];
     $scoreTotal=0; $scoreRows=0;
     foreach ($readiness as $row) {
         if (!is_array($row)) { $errors[]='invalid_readiness_row'; continue; }
@@ -77,23 +78,45 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
             if (($row['ready_for_launch_review']??false)===true) $readyByType[$type]++; else $blockedByType[$type]++;
             $scoreTotal+=max(0,min(100,(int)($row['score']??0))); $scoreRows++;
         }
-        if ($type==='hotel_tours' && (int)($row['evidence_expires_epoch']??0)>0) $hotelEvidenceValidUntil[]=(int)$row['evidence_expires_epoch'];
+        if ($type==='hotel_tours') {
+            $expires=(int)($row['evidence_expires_epoch']??0);
+            if ($expires>0) $hotelEvidenceValidUntil[]=$expires;
+            $hotelEvidenceRows[]=[
+                'path'=>$path,
+                'country_id'=>(int)($row['country_id']??0),
+                'hotel_id'=>(int)($row['hotel_id']??0),
+                'evidence_epoch'=>(int)($row['evidence_epoch']??0),
+                'evidence_expires_epoch'=>$expires,
+                'score'=>(int)($row['score']??0),
+                'ready_for_launch_review'=>(bool)($row['ready_for_launch_review']??false),
+            ];
+        }
     }
 
     usort($structuralRows, static fn(array $a,array $b):int => strcmp($a['path'],$b['path']));
+    usort($hotelEvidenceRows, static fn(array $a,array $b):int => strcmp($a['path'],$b['path']));
     $normalizedCandidates=array_values(array_map('strval',$candidates)); sort($normalizedCandidates,SORT_STRING);
     $fingerprintPayload = ['rows'=>$structuralRows,'publication_candidates'=>$normalizedCandidates,'type_counts'=>$typeCounts];
     $fingerprint = hash('sha256', json_encode($fingerprintPayload, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
+    $evidenceFingerprint = hash('sha256', json_encode($hotelEvidenceRows, JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
+    $reviewContractFingerprint = hash('sha256', json_encode([
+        'manifest_sha256'=>$fingerprint,
+        'hotel_evidence_sha256'=>$evidenceFingerprint,
+        'validated_at_epoch'=>$nowEpoch,
+    ], JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
     $errors = array_values(array_unique($errors));
     $readyCount=array_sum($readyByType); $blockedCount=array_sum($blockedByType);
     $qualityScore=$scoreRows>0?(int)round($scoreTotal/$scoreRows):0;
     $reviewReady=$errors===[] && $scoreRows>0 && $blockedCount===0;
+    $hotelEvidenceValidUntilEpoch=$hotelEvidenceValidUntil===[]?0:min($hotelEvidenceValidUntil);
+    $hotelEvidenceFresh=$typeCounts['hotel_tours']===0 || ($hotelEvidenceValidUntilEpoch>$nowEpoch && $blockedByType['hotel_tours']===0);
 
     return [
         'state'=>$errors===[]?'review_manifest_valid':'review_manifest_blocked',
         'integrity_ok'=>$errors===[],
         'review_ready'=>$reviewReady,
         'quality_score'=>$qualityScore,
+        'validated_at_epoch'=>$nowEpoch,
         'registry_count'=>count($registry),
         'readiness_row_count'=>$scoreRows,
         'ready_count'=>$readyCount,
@@ -105,8 +128,12 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
         'publication_candidate_count'=>count($candidates),
         'hotel_tours_publication_candidate_count'=>count(array_filter($candidates,static fn($p):bool=>isset($registry[$p])&&($registry[$p]['type']??'')==='hotel_tours')),
         'hotel_tours_review_ready_count'=>$readyByType['hotel_tours'],
-        'hotel_evidence_valid_until_epoch'=>$hotelEvidenceValidUntil===[]?0:min($hotelEvidenceValidUntil),
+        'hotel_evidence_valid_until_epoch'=>$hotelEvidenceValidUntilEpoch,
+        'hotel_evidence_remaining_seconds'=>$hotelEvidenceValidUntilEpoch>0?max(0,$hotelEvidenceValidUntilEpoch-$nowEpoch):0,
+        'hotel_evidence_fresh'=>$hotelEvidenceFresh,
         'manifest_sha256'=>$fingerprint,
+        'hotel_evidence_sha256'=>$evidenceFingerprint,
+        'review_contract_sha256'=>$reviewContractFingerprint,
         'errors'=>$errors,
         'publication_allowed'=>false,
         'hotel_tours_publication_allowed'=>false,
