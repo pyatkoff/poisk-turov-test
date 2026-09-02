@@ -17,7 +17,11 @@ $unknown=$signals; unset($unknown['demand']);
 $r=v2_seo_opportunity_readiness($page,$unknown,$now);
 if(($r['review_candidate']??true)!==false||!in_array('demand:unknown',$r['blocked_dimensions']??[],true))opp_fail('unknown_demand');
 
-$stale=$signals; $stale['commercial_inventory']['observed_at_epoch']=$now-86401;
+// Commercial inventory remains usable through exactly 72 hours.
+$within72=$signals; $within72['commercial_inventory']['observed_at_epoch']=$now-(86400*3);
+$r=v2_seo_opportunity_readiness($page,$within72,$now);
+if(($r['review_candidate']??false)!==true||($r['dimensions']['commercial_inventory']['fresh']??false)!==true)opp_fail('inventory_72h_boundary');
+$stale=$signals; $stale['commercial_inventory']['observed_at_epoch']=$now-(86400*3)-1;
 $r=v2_seo_opportunity_readiness($page,$stale,$now);
 if(($r['review_candidate']??true)!==false||($r['dimensions']['commercial_inventory']['status']??'')!=='unknown')opp_fail('stale_inventory');
 
@@ -30,4 +34,4 @@ $bad=$page; $bad['intent']='informational';
 $r=v2_seo_opportunity_readiness($bad,$signals,$now);
 if(($r['state']??'')!=='invalid'||!in_array('role_intent_mismatch',$r['errors']??[],true))opp_fail('role_intent');
 
-echo "SEO_OPPORTUNITY_V2_OK demandGate=1 uniquenessGate=1 inventoryFreshness=1 publication=0 indexation=0\n";
+echo "SEO_OPPORTUNITY_V2_OK demandGate=1 uniquenessGate=1 inventoryFreshnessHours=72 publication=0 indexation=0\n";
