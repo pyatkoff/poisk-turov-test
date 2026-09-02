@@ -1,0 +1,46 @@
+name: Validate SEO hotel pilot readiness status
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-hotel-pilot-readiness-status-v1.php'
+      - 'v2/data/report-seo-hotel-pilot-readiness-status-v1.php'
+      - 'v2/seo-hotel-launch-pilot-v1.php'
+      - 'v2/seo-opportunity-scoring-policy-v1.php'
+      - 'tests/seo-hotel-pilot-readiness-status-smoke.php'
+      - 'tests/seo-hotel-pilot-readiness-status-cli-smoke.php'
+      - '.github/workflows/validate-seo-hotel-pilot-readiness-status.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/seo-hotel-pilot-readiness-status-v1.php'
+      - 'v2/data/report-seo-hotel-pilot-readiness-status-v1.php'
+      - 'v2/seo-hotel-launch-pilot-v1.php'
+      - 'v2/seo-opportunity-scoring-policy-v1.php'
+      - 'tests/seo-hotel-pilot-readiness-status-smoke.php'
+      - 'tests/seo-hotel-pilot-readiness-status-cli-smoke.php'
+      - '.github/workflows/validate-seo-hotel-pilot-readiness-status.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness-status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PHP syntax
+        run: |
+          set -euo pipefail
+          php -l v2/seo-hotel-pilot-readiness-status-v1.php >/dev/null
+          php -l v2/data/report-seo-hotel-pilot-readiness-status-v1.php >/dev/null
+          php -l tests/seo-hotel-pilot-readiness-status-smoke.php >/dev/null
+          php -l tests/seo-hotel-pilot-readiness-status-cli-smoke.php >/dev/null
+      - name: Validate exact 3x3 readiness states and safety boundaries
+        run: |
+          set -euo pipefail
+          php tests/seo-hotel-pilot-readiness-status-smoke.php
+          php tests/seo-hotel-pilot-readiness-status-cli-smoke.php
