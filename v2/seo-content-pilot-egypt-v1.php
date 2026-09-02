@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/seo-content-pilot-egypt-hotels-v1.php';
+
 /**
  * Editorial SEO pilot: Egypt parent page.
  * Review state only; no indexation or sitemap side effects.
@@ -55,8 +57,8 @@ function v2_seo_content_pilot_egypt(): array
                     ],
                 ],
             ],
-            'related_title' => 'Курорты Египта',
-            'related' => [],
+            'related_title' => 'Туры в отели Египта',
+            'related' => v2_seo_egypt_hotel_links(),
             'internal_links' => [
                 [
                     'title' => 'Подбор тура',
@@ -70,6 +72,7 @@ function v2_seo_content_pilot_egypt(): array
         'content_notes' => [
             'Evergreen editorial copy only.',
             'Country search prefill uses country=1, matching the existing production Egypt route countryId=1 contract.',
+            'Hotel-tour links use only country/hotel identities verified by fresh production identity snapshot evidence.',
             'Resort links are intentionally deferred until authoritative production region IDs are verified.',
             'Review state does not enable indexation or sitemap emission.',
         ],
