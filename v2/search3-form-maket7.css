@@ -1,0 +1,26 @@
+/* Search 3 desktop form convergence to maket7. Preview-scoped and visual only. */
+@media(min-width:761px){
+body.search3-preview .search3-page-intro{margin-top:15px!important;margin-bottom:9px!important}
+body.search3-preview .search3-page-intro h1{font-size:28px!important;margin-bottom:4px!important}
+body.search3-preview .search3-page-intro p{font-size:11px!important}
+body.search3-preview #tourSearch{margin-top:11px!important;margin-bottom:14px!important;padding:15px 16px 14px!important;border-radius:12px!important;box-shadow:0 4px 14px rgba(16,24,40,.035)!important}
+body.search3-preview #tourSearch .search3-primary-grid{grid-template-columns:1.02fr 1fr .88fr 1.28fr .67fr .88fr 136px!important;gap:12px!important}
+body.search3-preview #tourSearch .field>span{margin-bottom:6px!important;color:#667085!important;font-size:9px!important;line-height:1!important;font-weight:750!important}
+body.search3-preview #tourSearch select,body.search3-preview #tourSearch input[type=date],body.search3-preview #tourSearch input[type=number],body.search3-preview #tourSearch input[type=text],body.search3-preview .search3-tourists__summary,body.search3-preview .search3-composite__control{min-height:40px!important;height:40px!important;border-color:#d8e0eb!important;border-radius:7px!important;background:#fff!important;font-size:11px!important;font-weight:750!important}
+body.search3-preview .search3-date-button{height:38px!important;font-size:10px!important;white-space:nowrap!important}
+body.search3-preview .search3-night-proxy{height:36px!important;min-height:36px!important;font-size:11px!important}
+body.search3-preview #tourSearch .search3-primary-grid>.search-submit{min-width:136px!important;width:136px!important;min-height:40px!important;height:40px!important;padding:0 12px!important;border-radius:7px!important;font-size:11px!important;white-space:nowrap!important;line-height:1!important}
+body.search3-preview #tourSearch .search3-primary-grid>.search-submit span{display:inline!important;white-space:nowrap!important}
+body.search3-preview #tourSearch .search3-primary-grid>.search-submit b{font-size:13px!important;line-height:1!important}
+body.search3-preview .search3-quality{margin-top:12px!important}
+body.search3-preview .search3-quality__grid{grid-template-columns:1fr 1fr 1.15fr 1fr 1.48fr!important;gap:12px!important}
+body.search3-preview .search3-quality__grid select,body.search3-preview .search3-quality__grid input{min-height:40px!important;height:40px!important}
+body.search3-preview .search3-quick{gap:24px!important;margin-top:13px!important;min-height:20px!important;flex-wrap:nowrap!important}
+body.search3-preview .search3-quick__label{position:relative!important;gap:7px!important;font-size:10px!important;line-height:1!important;white-space:nowrap!important;color:#344054!important}
+body.search3-preview .search3-quick__label input{flex:0 0 15px!important;width:15px!important;height:15px!important;border-radius:4px!important}
+body.search3-preview .search3-quick__label:has(input[name=onlyDirect]){font-size:0!important;background:transparent!important;border:0!important;padding:0!important;min-height:0!important;border-radius:0!important;box-shadow:none!important}
+body.search3-preview .search3-quick__label:has(input[name=onlyDirect])::after{content:'Прямой рейс';font:800 10px/1 var(--at-font)!important;color:#344054!important;white-space:nowrap!important}
+body.search3-preview .search3-quick__label:has(input[name=onlyDirect]) input{display:inline-block!important;appearance:auto!important;margin:0!important;width:15px!important;height:15px!important;accent-color:#1463ff!important}
+body.search3-preview .search3-tourists__pop{top:45px!important;border-radius:9px!important}
+}
+@media(min-width:1261px){body.search3-preview #tourSearch{min-height:0!important}}
