@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/seo-content-catalog-v1.php';
+require_once __DIR__ . '/seo-hotel-family-catalog-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-angsana-velavaru-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-avani-fares-v1.php';
@@ -33,8 +33,8 @@ require_once __DIR__ . '/seo-content-pilot-maldives-westin-v1.php';
 
 function v2_seo_content_pilot_maldives_catalog(): array
 {
-    $records = [
-        v2_seo_content_pilot_maldives(),
+    $country = v2_seo_content_pilot_maldives();
+    $hotels = [
         v2_seo_content_pilot_maldives_angsana_velavaru(),
         v2_seo_content_pilot_maldives_avani_fares(),
         v2_seo_content_pilot_maldives_ayada(),
@@ -66,11 +66,5 @@ function v2_seo_content_pilot_maldives_catalog(): array
         v2_seo_content_pilot_maldives_westin(),
     ];
 
-    $relations = [];
-    foreach (array_slice($records, 1) as $record) {
-        $path = (string)($record['path'] ?? '');
-        if ($path === '') throw new InvalidArgumentException('Maldives hotel-tour catalog record is missing path');
-        $relations[$path] = ['parent' => '/country/maldives/'];
-    }
-    return v2_seo_content_catalog($records, $relations);
+    return v2_seo_hotel_family_catalog($country, $hotels);
 }
