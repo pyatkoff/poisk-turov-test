@@ -38,13 +38,15 @@ function v2_seo_render_hotel_tour_review(array $record): void
     sp_breadcrumbs($page['breadcrumbs']);
     sp_hero($page['eyebrow'] ?: 'AnyTour · туры в отель', $page['h1'], $page['intro']);
 
-    echo '<main class="sp-main sp-hotel-tour-page">';
+    echo '<main class="sp-main sp-seo-editorial-page sp-hotel-tour-page">';
+    echo '<div class="sp-editorial-grid">';
     foreach ($page['sections'] as $section) {
         $id = preg_replace('/[^a-zA-Z0-9_-]+/', '-', (string)($section['id'] ?? ''));
-        echo '<section class="sp-card"'.($id !== '' ? ' id="'.sp_e($id).'"' : '').'><h2>'.sp_e($section['title']).'</h2>';
+        echo '<section class="sp-card sp-editorial-section"'.($id !== '' ? ' id="'.sp_e($id).'"' : '').'><h2>'.sp_e($section['title']).'</h2>';
         foreach ($section['paragraphs'] as $paragraph) echo '<p>'.sp_e($paragraph).'</p>';
         echo '</section>';
     }
+    echo '</div>';
 
     $offers = v2_seo_hotel_snapshot_offers($countryId, $hotelId, 6);
     if ($offers) {
@@ -80,7 +82,7 @@ function v2_seo_render_hotel_tour_review(array $record): void
         if ($href !== null && $label !== '') $links[$href] = $label;
     }
     if ($links) {
-        echo '<section class="sp-card"><h2>'.sp_e($page['related_title'] ?: 'Связанные страницы').'</h2><div class="sp-actions">';
+        echo '<section class="sp-card sp-related-card"><h2>'.sp_e($page['related_title'] ?: 'Связанные страницы').'</h2><div class="sp-actions">';
         foreach ($links as $href => $label) echo '<a class="sp-secondary" href="'.sp_e($href).'">'.sp_e($label).'</a>';
         echo '</div></section>';
     }
