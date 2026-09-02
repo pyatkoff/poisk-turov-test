@@ -3,13 +3,14 @@ require_once __DIR__ . '/seo-content-pilot-maldives-hotels-v1.php';
 
 /**
  * Editorial SEO pilot: Maldives country page.
- * Review-only content; production indexation depends on a separate launch decision.
+ * Approved for the controlled country-page launch; runtime indexation remains
+ * restricted by the centralized exact-path launch allowlist.
  */
 function v2_seo_content_pilot_maldives(): array
 {
     return [
         'id' => 'country.maldives.v1',
-        'status' => 'review',
+        'status' => 'approved',
         'path' => '/country/maldives/',
         'type' => 'country',
         'data' => [
@@ -36,7 +37,7 @@ function v2_seo_content_pilot_maldives(): array
             'Tourvisor countryId=8 was verified against the synchronized production catalog on 2026-09-01.',
             'Resort/region IDs remain unbound until separately verified.',
             'All linked hotel-tour routes use hotel IDs/slugs verified against production hotel snapshot evidence refreshed on 2026-09-02; volatile offer data remains snapshot-driven.',
-            'Review status does not enable indexation or sitemap emission.',
+            'Approved status is limited to the controlled country-page launch allowlist; it does not approve hotel_tours or resort/atoll route creation.',
         ],
     ];
 }
