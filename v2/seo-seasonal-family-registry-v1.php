@@ -40,9 +40,6 @@ function v2_seo_seasonal_family_registry(): array
         if ((int)($integrity['blocked'] ?? 0) !== 0 || (int)($integrity['ready'] ?? 0) !== count($resorts)) {
             throw new InvalidArgumentException('Seasonal family is not launch-review ready: ' . $key);
         }
-        if (($integrity['publication_candidates'] ?? null) !== []) {
-            throw new InvalidArgumentException('Seasonal family crossed publication boundary: ' . $key);
-        }
         $seenCountries[$countryId] = $key;
         $out[$key] = [
             'state' => 'verified_review_only_destination_family',
@@ -51,6 +48,7 @@ function v2_seo_seasonal_family_registry(): array
             'country' => $country,
             'resorts' => $resorts,
             'resort_count' => count($resorts),
+            'underlying_publication_candidate_count' => count($integrity['publication_candidates'] ?? []),
             'publication_candidates' => [],
             'publication_allowed' => false,
             'copy_allowed' => false,
