@@ -1,0 +1,28 @@
+name: SEO2 seasonal family registry once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-seasonal-family-registry-v1.php'
+      - 'v2/data/report-seo-seasonal-review-plan-v1.php'
+      - 'tests/seo-seasonal-family-registry-smoke.php'
+      - '.github/workflows/seo2-seasonal-family-registry-once.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate registry and CLI integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-seasonal-family-registry-v1.php >/dev/null
+          php -l v2/data/report-seo-seasonal-review-plan-v1.php >/dev/null
+          php -l tests/seo-seasonal-family-registry-smoke.php >/dev/null
+          php tests/seo-seasonal-family-registry-smoke.php
+          grep -Fq "require_once dirname(__DIR__) . '/seo-seasonal-family-registry-v1.php'" v2/data/report-seo-seasonal-review-plan-v1.php
+          ! grep -Fq "if($family!=='turkey')" v2/data/report-seo-seasonal-review-plan-v1.php
+          echo SEO_SEASONAL_FAMILY_REGISTRY_INTEGRATION_OK
