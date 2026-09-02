@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../v2/seo-seasonal-coverage-readiness-v1.php';
 require_once __DIR__ . '/../v2/seo-seasonal-review-plan-v1.php';
+require_once __DIR__ . '/../v2/seo-seasonal-review-dataset-v1.php';
 function coverage_fail(string $m): void { fwrite(STDERR,"SEO_SEASONAL_COVERAGE_FAIL:$m\n"); exit(1); }
 
 $data = [
@@ -40,6 +41,19 @@ try{v2_seo_seasonal_review_plan($egypt,$binding,['month:1:1:2026-11'],5000);cove
 $zeroDepth=$binding;$zeroDepth['bound'][0]['offer_count']=0;
 try{v2_seo_seasonal_review_plan($egypt,$zeroDepth,['month:1:1:2026-10'],5000);coverage_fail('review_plan_zero_depth');}catch(InvalidArgumentException $e){}
 
+$egyptDatasetPlan=$plan;$egyptDatasetPlan['family']='egypt';$egyptDatasetPlan['items']=[$plan['items'][0]];$egyptDatasetPlan['item_count']=1;
+$turkeyDatasetPlan=$egyptDatasetPlan;$turkeyDatasetPlan['family']='turkey';$turkeyDatasetPlan['country_id']=4;$turkeyDatasetPlan['items'][0]['country_id']=4;$turkeyDatasetPlan['items'][0]['page_key']='month:1:4:2026-10';$turkeyDatasetPlan['items'][0]['parent_path']='/country/turkey/';
+$maldivesDatasetPlan=$egyptDatasetPlan;$maldivesDatasetPlan['family']='maldives';$maldivesDatasetPlan['country_id']=8;$maldivesDatasetPlan['items'][0]['country_id']=8;$maldivesDatasetPlan['items'][0]['page_key']='month:1:8:2026-10';$maldivesDatasetPlan['items'][0]['parent_path']='/country/maldives/';
+$dataset=v2_seo_seasonal_review_dataset([$turkeyDatasetPlan,$egyptDatasetPlan,$maldivesDatasetPlan],['egypt','turkey','maldives'],5000,3);
+if(($dataset['state']??'')!=='review_only_seasonal_dataset'||($dataset['family_count']??0)!==3||($dataset['item_count']??0)!==3)coverage_fail('review_dataset');
+if(($dataset['publication_candidates']??null)!==[]||($dataset['publication_allowed']??true)!==false||($dataset['feed_publish_allowed']??true)!==false||($dataset['copy_allowed']??true)!==false)coverage_fail('review_dataset_boundary');
+if(array_key_exists('offer_count',$dataset['items'][0]??[]))coverage_fail('review_dataset_volatile_offer_leak');
+try{v2_seo_seasonal_review_dataset([$egyptDatasetPlan,$turkeyDatasetPlan],['egypt','turkey','maldives'],5000,3);coverage_fail('review_dataset_missing_family');}catch(InvalidArgumentException $e){}
+$duplicateCountry=$turkeyDatasetPlan;$duplicateCountry['country_id']=1;$duplicateCountry['items'][0]['country_id']=1;
+try{v2_seo_seasonal_review_dataset([$egyptDatasetPlan,$duplicateCountry,$maldivesDatasetPlan],['egypt','turkey','maldives'],5000,3);coverage_fail('review_dataset_duplicate_country');}catch(InvalidArgumentException $e){}
+$staleDatasetPlan=$maldivesDatasetPlan;$staleDatasetPlan['evidence_valid_until_epoch']=5000;
+try{v2_seo_seasonal_review_dataset([$egyptDatasetPlan,$turkeyDatasetPlan,$staleDatasetPlan],['egypt','turkey','maldives'],5000,3);coverage_fail('review_dataset_stale_plan');}catch(InvalidArgumentException $e){}
+
 $maldivesPolicy=$policy; $maldivesPolicy['country_id']=8;
 $maldives=v2_seo_seasonal_coverage_assess($data,$maldivesPolicy,5000);
 if (($maldives['review_ready']??true)!==false) coverage_fail('maldives_should_block');
@@ -60,4 +74,4 @@ if (($expired['review_ready']??true)!==false || !in_array('evidence_expired',$ex
 $missingClock=$data; unset($missingClock['evidence_checked_at_epoch'],$missingClock['evidence_valid_until_epoch'],$missingClock['evidence_clock_valid']);
 $clockless=v2_seo_seasonal_coverage_assess($missingClock,$policy,5000);
 if (($clockless['review_ready']??true)!==false || !in_array('evidence_clock_missing_or_invalid',$clockless['errors']??[],true)) coverage_fail('missing_clock_should_block');
-echo "SEO_SEASONAL_COVERAGE_OK explicitPolicy=1 explicitPlan=1 selectedDepth=1 autoSelection=0 publication=0\n";
+echo "SEO_SEASONAL_COVERAGE_OK explicitPolicy=1 explicitPlan=1 reviewDataset=1 selectedDepth=1 autoSelection=0 publication=0\n";
