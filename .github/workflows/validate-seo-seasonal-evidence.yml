@@ -5,8 +5,10 @@ on:
     branches: [main]
     paths:
       - 'v2/seo-seasonal-evidence-v1.php'
+      - 'v2/seo-seasonal-candidate-v1.php'
       - 'v2/data/report-seo-seasonal-evidence-v1.php'
       - 'tests/seo-seasonal-evidence-smoke.php'
+      - 'tests/seo-seasonal-candidate-smoke.php'
       - '.github/workflows/validate-seo-seasonal-evidence.yml'
   workflow_dispatch:
 
@@ -24,9 +26,12 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/seo-seasonal-evidence-v1.php >/dev/null
+          php -l v2/seo-seasonal-candidate-v1.php >/dev/null
           php -l v2/data/report-seo-seasonal-evidence-v1.php >/dev/null
           php -l tests/seo-seasonal-evidence-smoke.php >/dev/null
+          php -l tests/seo-seasonal-candidate-smoke.php >/dev/null
           php tests/seo-seasonal-evidence-smoke.php
+          php tests/seo-seasonal-candidate-smoke.php
 
       - name: Validate seasonal evidence CLI fail-closed behavior
         shell: bash
