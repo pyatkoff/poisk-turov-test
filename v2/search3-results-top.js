@@ -1,4 +1,6 @@
 (function(){'use strict';
+function ensureMaket7Contract(){if(document.getElementById('search3-maket7-contract'))return;var link=document.createElement('link');link.id='search3-maket7-contract';link.rel='stylesheet';link.href='/_preview/search3/search3-form-maket7.css?v=2';document.head.appendChild(link);}
+ensureMaket7Contract();
 var form=document.getElementById('tourSearch'),tools=document.getElementById('resultsTools'),heading=tools&&tools.querySelector('strong'),summary=document.getElementById('resultSummary'),searchSummary=document.getElementById('resultsSearchSummary'),edit=document.getElementById('resultsSearchEdit');
 if(!form||!tools||!heading||!summary)return;
 function word(n,one,few,many){var x=Math.abs(Number(n)||0)%100,y=x%10;if(x>10&&x<20)return many;if(y===1)return one;if(y>=2&&y<=4)return few;return many;}
