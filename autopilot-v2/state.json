@@ -2,40 +2,28 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. PR #907 fixed the stale selected-tour load after search reset and is fully production-green: merge c5b0ed2dc3e8423113fd96b53f57fcfd22c90350, Deploy anytoour.ru 33589155096 and Deploy V2 only 33589155006 both succeeded with Live search smoke. PR #910 then fixed a reproduced flight/lead snapshot race by freezing existing flight controls while a lead submission is pending and restoring them only after a current lead error. It merged as 0c9f9e26a1eb7b979d76f526655059fc586e0def after Security, targeted lead recovery, lead race, V2 validation and selected-tour visual gates passed. Production workflows for #910 are now running.",
+    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. PR #910 is production-green on the V2-only path. PR #922 fixed a reproduced pending-lead navigation race: while lead submission was in flight, the selected-tour back-to-results action remained mutable even though flight selection was frozen. The fix locks the existing back-results action during the pending request, restores it after a current lead error or tour/search reset, and keeps it frozen through success where the canonical success panel owns return navigation. All 10 existing PR gates passed, including targeted lead recovery at 375/768/1440, Security and visual QA. PR #922 merged as 98e41e21a991f8c0dda75588ff319613840a87cf; production deploys are running.",
     "done": [
       "P0/P1 progressive 25→100, local narrowing, widening/server lifecycle, stale async protection and counters have prior accepted evidence.",
-      "Hotel/room, selected-tour/flight and post-success lead handoff were released narrowly to main.",
-      "Search 2.0 runtime activation was released narrowly to main; bulk feature/search-core integration remains prohibited.",
       "PR #842 strengthened local facet safety for meal/category/rating/sea completeness and is released to production.",
-      "Selected-tour lifecycle PASS: changed parameters/new search invalidate async generation/searchId and clear stale selected-tour state; unpriced-flight selection resets stale priced-flight display while preserving fuel context; lead-search-context enriches the existing payload with validated child ages.",
-      "PR #855 fixed a reproduced lead UI race by requiring both tourId and searchId to match before late lead success/error can decorate the current form. It merged to main as baf2790f27416d4cdf5a34d7344439c39c8e1469 and its production deploy/live search smoke passed.",
-      "PR #861 fixed the 768px selected-tour structural stacking defect and merged as 90443fc0f5a79fecac9ae61350cf2c98bddff72b; later production evidence is green.",
-      "PR #870 normalized selected-tour back-results and hotel-description actions to canonical 44px touch targets; merge 4ddf997599d69fadf96fd0842cc4ff9e561e187b deployed successfully and post-deploy selected-tour verification passed.",
-      "PR #878 fixed the canonical DS2 post-success messenger handoff lookup and has successful production/post-deploy visual evidence on merge 1989b7a33220708009680fa1192cb5bb638b155f.",
-      "PR #884 fixed the reproduced same-tour/different-room room-details async leak by scoping acceptance to tourId plus deterministic room key. It merged as 28f59b20c7b9d5a6f8c15537613631e925360f1f and is production-green: Deploy anytoour.ru 33581218590, Deploy V2 only 33581218603 with Verify V2 + Live search smoke, and selected-tour post-deploy visual 33581442966 all succeeded.",
-      "Current-main flight state/recovery PASS: loadFlights binds responses to flightGeneration plus current tour identity, empty/error recovery retries only the current tour, pending/unpriced flight selection resets any stale priced display while preserving selected fuel context and emits pricePending, and lead submit errors keep form data and re-enable retry. No speculative product change was made where no defect reproduced.",
-      "PR #907 fixed a reproduced search-reset/tour-load race: a delayed tour response from the previous search can no longer repopulate currentTour, reopen selected-tour or trigger stale flight loading after v2:search-reset. The existing second-tour state-isolation guard was extended at 375/768/1440 without a new workflow. Merge c5b0ed2dc3e8423113fd96b53f57fcfd22c90350; Deploy anytoour.ru 33589155096 and Deploy V2 only 33589155006 both succeeded including Verify V2 / Live search smoke.",
-      "PR #910 fixed a reproduced lead-submit/flight-selection race: the initial targeted lead-recovery run failed because flight controls stayed mutable after lead-started. The narrow fix reuses lead-ui-race-guard-v1.js, freezes .flight-variants while the current lead request is pending, restores them after a current lead error, leaves the submitted choice frozen after success, and clears the lock on tour/search reset. No external lead payload, transport, persistence, idempotency, pricing, Tourvisor, Metrika or logo semantics changed. Security, lead-recovery, lead-race, V2 and selected-tour visual gates passed; merge 0c9f9e26a1eb7b979d76f526655059fc586e0def."
+      "PR #855 scopes late lead UI success/error acceptance to both tourId and searchId and is production-green.",
+      "PR #884 scopes delayed room details to tourId plus deterministic room identity and is production-green.",
+      "PR #907 invalidates delayed selected-tour loads after search reset and is production-green.",
+      "PR #910 freezes selected flight controls while a lead request is pending and restores them only after a current lead error; merge 0c9f9e26a1eb7b979d76f526655059fc586e0def; Deploy V2 only 33589823831 succeeded.",
+      "PR #922 reproduced and fixed the pending-lead back-to-results race without changing lead transport/persistence/idempotency. All 10 existing PR gates passed; merge 98e41e21a991f8c0dda75588ff319613840a87cf."
     ],
-    "next": "Finish production evidence for #910, then continue selected-tour E2E with remaining submission/recovery consistency and restored-state/back-to-results coherence. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead adapter semantics.",
+    "next": "Finish production evidence for #922, then continue selected-tour E2E with remaining submit/retry/recovery and restored-state coherence. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead-adapter semantics.",
     "blocked": [
       "HIGH issue #850: production lead adapter idempotency semantics differ from the validated helper contract; changing the external lead mechanism requires explicit approval.",
       "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence.",
       "Search 2.0 PR #810 remains preview-only and production-release-locked pending explicit owner visual approval."
     ],
     "lessons": [
-      "Do not bulk-merge feature/search-core into main when bundle composition diverges.",
       "Use AnyTour Design System 2.0 only; Design System 1.0 is obsolete.",
       "Do not change Metrika goals, external lead transport, Tourvisor contracts, pricing semantics or the logo without explicit approval.",
       "Local filtering is safe only when the loaded payload is complete enough for the selected facet.",
-      "Lead UI async acceptance must be scoped to both tourId and searchId, not tourId alone.",
-      "Responsive selected-tour structure should not depend on optional decoration classes when the canonical DOM structure is stable.",
-      "Post-success handoff must consume canonical DS2 footer destinations; removed legacy footer selectors are not a valid runtime dependency.",
-      "Room-details async acceptance cannot rely on tourId alone; the selected room identity must also still match before a delayed response decorates the current host.",
-      "Flight async acceptance is already generation-scoped and current-tour-scoped; preserve those guards when touching flight lifecycle.",
-      "Tour-load async acceptance must be invalidated by search reset, not only by another tour selection; targeted integration fixtures must preserve production bundle listener order.",
-      "A lead submission snapshots the selected flight before network completion, so the visible flight controls must not remain mutable while that request is pending; recovery should unlock only after a current lead error."
+      "Lead UI async acceptance must be scoped to both tourId and searchId.",
+      "A pending lead submission must freeze user choices that would make the visible selected-tour state diverge from the request snapshot, including selected flight and return-to-results navigation; recovery unlocks only after a current error/reset."
     ]
   },
   "active_task": {
@@ -54,31 +42,20 @@
       "Preserve external lead contract, Metrika and pricing semantics"
     ],
     "evidence": [
-      "Existing focused guards cover second-tour isolation, flight autoload race, room recovery, flight empty recovery, fuel fallback, selected-tour return and lead recovery; use those behaviors rather than a broad matrix.",
-      "Search lifecycle clears selected-tour UI, invalidates search runtime generation and resets runtime searchId before a replacement search.",
-      "PR #855 prevents stale lead UI success/error from an older search when the same tourId is selected again by requiring matching searchId.",
-      "PR #861 and #870 have production evidence for selected-tour tablet structure and 44px touch-target convergence.",
-      "PR #878 has successful production/post-deploy evidence for the canonical DS2 messenger handoff.",
-      "PR #884 has green standalone deploy, V2 deploy with Verify V2 + Live search smoke, and selected-tour post-deploy visual evidence.",
-      "Current-main flight lifecycle re-audit found no new async/load recovery defect: generation/current-tour guards reject stale flight responses and priced→pending transitions preserve coherent base price/fuel/lead context.",
-      "PR #907 is production-green on both normal and V2-only deploy paths including Live search smoke.",
-      "PR #910 was reproduced first by a failing targeted lead-recovery run, then passed targeted recovery at 375/768/1440 plus Security, lead race, V2 validation and selected-tour visual QA after the fix. Merge 0c9f9e26a1eb7b979d76f526655059fc586e0def; production workflows are running.",
-      "HIGH issue #850 remains approval-gated and must not be fixed by changing lead-adapter.php without explicit owner approval."
+      "PR #910 V2-only production deploy 33589823831 succeeded; cancelled standalone run is not treated as a product defect.",
+      "PR #922 passed all 10 existing pull-request gates including Security, targeted lead recovery and visual QA and merged as 98e41e21a991f8c0dda75588ff319613840a87cf.",
+      "Production runs for #922 started: Deploy anytoour.ru 33592748815 and Deploy V2 only 33592748849.",
+      "HIGH issue #850 remains approval-gated and lead-adapter.php must not be changed without explicit owner approval."
     ],
     "parent_task": "P0_P1_PRODUCT_STABILITY"
   },
   "queue": [
-    {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"RELEASED_PRODUCTION","latest_pr":842,"latest_merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45","deploy_run":33563761068},
-    {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_WITH_PRIOR_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
-    {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"RELEASED_PRODUCTION","pr":842,"merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45","deploy_run":33563761068},
-    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_PRODUCTION_QA","latest_pr":910,"latest_merge_sha":"0c9f9e26a1eb7b979d76f526655059fc586e0def","previous_pr":907,"previous_merge_sha":"c5b0ed2dc3e8423113fd96b53f57fcfd22c90350","previous_deploy_anytoour_run":33589155096,"previous_deploy_v2_run":33589155006},
-    {"id":"SELECTED_TOUR_TABLET_VISUAL","priority":1,"status":"RELEASED_PRODUCTION","pr":861,"merge_sha":"90443fc0f5a79fecac9ae61350cf2c98bddff72b"},
-    {"id":"SELECTED_TOUR_TOUCH_TARGETS","priority":1,"status":"RELEASED_PRODUCTION","pr":870,"merge_sha":"4ddf997599d69fadf96fd0842cc4ff9e561e187b"},
-    {"id":"LEAD_SUCCESS_DS2_HANDOFF","priority":1,"status":"RELEASED_PRODUCTION","pr":878,"merge_sha":"1989b7a33220708009680fa1192cb5bb638b155f"},
-    {"id":"ROOM_DETAILS_STATE_ISOLATION","priority":1,"status":"RELEASED_PRODUCTION","pr":884,"merge_sha":"28f59b20c7b9d5a6f8c15537613631e925360f1f","deploy_anytoour_run":33581218590,"deploy_v2_run":33581218603,"postdeploy_visual_run":33581442966},
+    {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"RELEASED_PRODUCTION","latest_pr":842,"latest_merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45"},
+    {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_WITH_PRIOR_EVIDENCE"},
+    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_PRODUCTION_QA","latest_pr":922,"latest_merge_sha":"98e41e21a991f8c0dda75588ff319613840a87cf","deploy_anytoour_run":33592748815,"deploy_v2_run":33592748849},
     {"id":"FLIGHT_STATE_RECOVERY_REAUDIT","priority":1,"status":"PASS_CURRENT_MAIN_NO_DEFECT_REPRODUCED"},
     {"id":"LEAD_IDEMPOTENCY_CONTRACT","priority":1,"status":"BLOCKED_APPROVAL_HIGH","issue":850},
-    {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"RELEASED_MAIN_PRODUCTION"},
+    {"id":"DESIGN_SYSTEM_2","priority":2,"status":"CONTINUE_TARGETED_CONVERGENCE"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"CONTINUE_TARGETED_REAUDIT"},
     {"id":"FULL_SEARCH_UX_REAUDIT","priority":2,"status":"CONTINUE_PERIODICALLY"},
     {"id":"FEED_DATA_FACTORY","priority":3,"status":"QUEUED_AFTER_P0_P1_STABILITY"},
@@ -87,9 +64,9 @@
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"DONE_ENHANCED_CONTRACTS"}
   ],
   "last_signal": {
-    "source": "lead_submit_flight_snapshot_race",
-    "status": "PR910_MERGED_PRODUCTION_QA_RUNNING_CONTINUE_E2E",
-    "sha": "0c9f9e26a1eb7b979d76f526655059fc586e0def"
+    "source": "lead_submit_return_navigation_race",
+    "status": "PR922_MERGED_PRODUCTION_QA_RUNNING_CONTINUE_E2E",
+    "sha": "98e41e21a991f8c0dda75588ff319613840a87cf"
   },
   "blocked": [
     {"scope":"lead adapter idempotency semantics","type":"approval_gate_high","reason":"Issue #850 would require changing protected external lead mechanism semantics.","action":"Do not modify lead-adapter.php without explicit owner approval; continue independent MEDIUM recovery work."},
