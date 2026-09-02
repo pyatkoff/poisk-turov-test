@@ -6,6 +6,7 @@ on:
     paths:
       - 'v2/**'
       - 'tests/seo-turkey-hotel-review-catalog-smoke.php'
+      - 'tests/seo-hotel-family-launch-readiness-smoke.php'
       - '.github/workflows/validate-v2-pr.yml'
 
 concurrency:
@@ -166,3 +167,10 @@ jobs:
           set -euo pipefail
           php -l tests/seo-turkey-hotel-review-catalog-smoke.php >/dev/null
           php tests/seo-turkey-hotel-review-catalog-smoke.php
+
+      - name: Validate hotel family launch-readiness summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l tests/seo-hotel-family-launch-readiness-smoke.php >/dev/null
+          php tests/seo-hotel-family-launch-readiness-smoke.php
