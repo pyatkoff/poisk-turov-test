@@ -28,6 +28,9 @@ $required = [
     '.sp-seo-editorial-page .sp-search-callout .sp-actions{grid-column:2;grid-row:1/3',
     '.sp-related-card{border:0;border-top:1px solid var(--at-line);border-radius:0;background:transparent;box-shadow:none!important',
     '.sp-related-card .sp-secondary{min-height:38px;background:#fff;border-color:var(--at-line)',
+    '@media(min-width:900px){.sp-hero--hotel-tour .sp-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px)',
+    '.sp-hero--hotel-tour .sp-hero-actions{grid-column:2;grid-row:1/4;display:grid',
+    '.sp-hero--hotel-tour .sp-hero-actions .sp-primary{width:100%;justify-content:center;min-height:52px',
 ];
 foreach ($required as $token) {
     if (strpos($css, $token) === false) {
@@ -46,16 +49,16 @@ foreach ($editorialTokens as $token) {
         exit(3);
     }
 }
-if (strpos($shell, "string \$actionHref='',string \$actionLabel=''") === false || strpos($shell, 'sp-hero-actions') === false) {
-    fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:hero_optional_action\n");
+if (strpos($shell, "string \$actionHref='',string \$actionLabel='',string \$modifier=''") === false || strpos($shell, "sp-hero--'.preg_replace") === false || strpos($shell, 'sp-hero-actions') === false) {
+    fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:hero_modifier\n");
     exit(4);
 }
 if (strpos($resort, "'Подобрать тур в ' . \$resortName") === false || strpos($resort, "v2_seo_search_handoff_url('/poisk-turov/', \$page['search_state'])") === false || strpos($resort, 'sp-offer-meta') === false || strpos($resort, 'sp-offer-price') === false) {
     fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:resort_offer_hierarchy\n");
     exit(5);
 }
-if (strpos($hotel, "'Найти туры в этот отель'") === false || strpos($hotel, "v2_seo_search_handoff_url('/poisk-turov/', \$page['search_state'])") === false || strpos($hotel, 'sp-offer-meta') === false || strpos($hotel, 'sp-offer-price') === false || strpos($hotel, 'sp-offer-item sp-offer-item--hotel') === false || strpos($hotel, "echo '<h3>'.sp_e(\$hotelName).'</h3>'") !== false) {
+if (strpos($hotel, "'Найти туры в этот отель'") === false || strpos($hotel, "'hotel-tour'") === false || strpos($hotel, "v2_seo_search_handoff_url('/poisk-turov/', \$page['search_state'])") === false || strpos($hotel, 'sp-offer-meta') === false || strpos($hotel, 'sp-offer-price') === false || strpos($hotel, 'sp-offer-item sp-offer-item--hotel') === false || strpos($hotel, "echo '<h3>'.sp_e(\$hotelName).'</h3>'") !== false) {
     fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:hotel_offer_focus\n");
     exit(6);
 }
-echo "SEO_REFERENCE_VISUAL_OK desktop=3 tablet=2 mobile=1 leadCard=1 balancedTail=1 heroCta=1 breadcrumbClamp=1 offerHierarchy=1 hotelOfferFocus=1 densityPass=1 lightRelatedNav=1 flatRelatedAccent=1\n";
+echo "SEO_REFERENCE_VISUAL_OK desktop=3 tablet=2 mobile=1 leadCard=1 balancedTail=1 heroCta=1 breadcrumbClamp=1 offerHierarchy=1 hotelOfferFocus=1 densityPass=1 lightRelatedNav=1 flatRelatedAccent=1 hotelCommercialHero=1\n";
