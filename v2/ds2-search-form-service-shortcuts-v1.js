@@ -26,7 +26,8 @@ function render(){
     if(input&&role&&!found[role.key])found[role.key]={input:input,role:role};
   });
   target.querySelectorAll('.service-shortcut').forEach(function(btn){if(!found[btn.dataset.serviceRole])btn.remove();});
-  Object.keys(found).forEach(function(key){
+  ['first-line','children'].forEach(function(key){
+    if(!found[key])return;
     var item=found[key],btn=target.querySelector('.service-shortcut[data-service-role="'+key+'"]');
     if(!btn){
       btn=document.createElement('button');btn.type='button';btn.className='stars-choice service-shortcut';btn.dataset.serviceRole=key;btn.dataset.ds2QuickRole='service';btn.textContent=item.role.label;
@@ -36,11 +37,11 @@ function render(){
         if(!current)return;
         current.checked=!current.checked;current.dispatchEvent(new Event('change',{bubbles:true}));render();
       });
-      target.appendChild(btn);
     }
     btn.dataset.serviceValue=String(item.input.value||'');
     btn.classList.toggle('is-active',!!item.input.checked);
     btn.setAttribute('aria-pressed',item.input.checked?'true':'false');
+    target.appendChild(btn);
   });
   target.setAttribute('aria-label','Быстрые фильтры');
 }
