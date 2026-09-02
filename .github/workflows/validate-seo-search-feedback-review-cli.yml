@@ -1,0 +1,33 @@
+name: Validate SEO search feedback review CLI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/data/report-seo-search-feedback-review-v1.php'
+      - 'v2/seo-search-feedback-evidence-v1.php'
+      - 'v2/seo-search-feedback-policy-v1.php'
+      - 'tests/seo-search-feedback-review-cli-smoke.php'
+      - '.github/workflows/validate-seo-search-feedback-review-cli.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-seo-search-feedback-review-cli-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review-cli:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate review CLI syntax and fail-closed behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/report-seo-search-feedback-review-v1.php >/dev/null
+          php -l tests/seo-search-feedback-review-cli-smoke.php >/dev/null
+          php tests/seo-search-feedback-review-cli-smoke.php
