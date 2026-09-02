@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'v2/**'
+      - 'tests/seo-turkey-hotel-review-catalog-smoke.php'
       - '.github/workflows/validate-v2-pr.yml'
 
 concurrency:
@@ -158,3 +159,10 @@ jobs:
             if (strpos($html, "id=\"v2-search-title\"") === false) exit(5);
             echo "V2_PR_SEO_OK\n";
           '
+
+      - name: Validate Turkey hotel review family isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l tests/seo-turkey-hotel-review-catalog-smoke.php >/dev/null
+          php tests/seo-turkey-hotel-review-catalog-smoke.php
