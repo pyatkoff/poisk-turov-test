@@ -115,8 +115,8 @@ jobs:
           grep -Fq "clearRelaxDependents(form,name);el.dispatchEvent(new Event('change',{bubbles:true}));" "$renderer"
           grep -Fq "window.V2SearchLifecycle.submit()" "$renderer"
           catalogs=v2/catalogs-v2.js
-          grep -Fq "if(e.target.name==='arrival'){token=++revision;advancedKey='';await loadRegions(token);if(active(token))await loadSubregions(token);if(active(token))await Promise.all([loadHotels(token),loadHotelServices(token)]);return true;}" "$catalogs"
-          grep -Fq "if(e.target.name==='region'){token=++revision;advancedKey='';await loadSubregions(token);if(active(token))await Promise.all([loadHotels(token),loadHotelServices(token)]);return true;}" "$catalogs"
+          grep -Fq "if(e.target.name==='arrival'){token=++revision;advancedKey='';servicesLoaded=false;await loadRegions(token);if(active(token))await loadSubregions(token);if(active(token))await loadHotels(token);if(active(token)&&servicePicker&&servicePicker.open)await loadHotelServices(token);return true;}" "$catalogs"
+          grep -Fq "if(e.target.name==='region'){token=++revision;advancedKey='';servicesLoaded=false;await loadSubregions(token);if(active(token))await loadHotels(token);if(active(token)&&servicePicker&&servicePicker.open)await loadHotelServices(token);return true;}" "$catalogs"
           grep -Fq "if(e.target.name==='subregion'){token=++revision;await loadHotels(token);return true;}" "$catalogs"
           echo EMPTY_RELAX_CASCADE_OK
 
