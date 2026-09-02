@@ -7,6 +7,8 @@ function v2_seo_data_readiness_summary(array $rows, array $requestedCountryIds):
     $byCountry = [];
     $totalSnapshots = 0;
     $totalUsable = 0;
+    $checkedEpochs = [];
+    $validUntilEpochs = [];
 
     foreach ($rows as $row) {
         if (!is_array($row)) continue;
@@ -15,6 +17,10 @@ function v2_seo_data_readiness_summary(array $rows, array $requestedCountryIds):
         if ($countryId <= 0 || !in_array($pageType, ['month','resort_month'], true)) continue;
         $snapshotCount = max(0, (int)($row['snapshot_count'] ?? 0));
         $usableCount = max(0, min($snapshotCount, (int)($row['usable_snapshot_count'] ?? 0)));
+        $checkedEpoch = (int)($row['evidence_checked_at_epoch'] ?? 0);
+        $earliestExpiresEpoch = (int)($row['earliest_expires_epoch'] ?? 0);
+        if ($checkedEpoch > 0) $checkedEpochs[] = $checkedEpoch;
+        if ($earliestExpiresEpoch > 0) $validUntilEpochs[] = $earliestExpiresEpoch;
         $entry = [
             'page_type'=>$pageType,
             'snapshot_count'=>$snapshotCount,
@@ -25,6 +31,8 @@ function v2_seo_data_readiness_summary(array $rows, array $requestedCountryIds):
             'newest_observed_at'=>(string)($row['newest_observed_at'] ?? ''),
             'earliest_expires_at'=>(string)($row['earliest_expires_at'] ?? ''),
             'latest_expires_at'=>(string)($row['latest_expires_at'] ?? ''),
+            'earliest_expires_epoch'=>$earliestExpiresEpoch,
+            'latest_expires_epoch'=>(int)($row['latest_expires_epoch'] ?? 0),
             'min_freshness_seconds'=>(int)($row['min_freshness_seconds'] ?? 0),
             'max_freshness_seconds'=>(int)($row['max_freshness_seconds'] ?? 0),
             'usable_snapshot_count'=>$usableCount,
@@ -50,6 +58,11 @@ function v2_seo_data_readiness_summary(array $rows, array $requestedCountryIds):
     unset($country);
 
     $missingCountries = array_values(array_diff($requestedCountryIds, array_map('intval', array_keys($byCountry))));
+    $evidenceCheckedAtEpoch = $checkedEpochs === [] ? 0 : max($checkedEpochs);
+    $evidenceValidUntilEpoch = $validUntilEpochs === [] ? 0 : min($validUntilEpochs);
+    $clockConsistent = $checkedEpochs !== [] && (max($checkedEpochs) - min($checkedEpochs)) <= 5;
+    $evidenceClockValid = $clockConsistent && $evidenceValidUntilEpoch > $evidenceCheckedAtEpoch;
+
     return [
         'state'=>'review_only_data_readiness',
         'requested_country_ids'=>$requestedCountryIds,
@@ -59,6 +72,9 @@ function v2_seo_data_readiness_summary(array $rows, array $requestedCountryIds):
         'usable_snapshot_count'=>$totalUsable,
         'blocked_snapshot_count'=>$totalSnapshots-$totalUsable,
         'all_unexpired_snapshots_usable'=>$totalSnapshots > 0 && $totalSnapshots === $totalUsable,
+        'evidence_checked_at_epoch'=>$evidenceCheckedAtEpoch,
+        'evidence_valid_until_epoch'=>$evidenceValidUntilEpoch,
+        'evidence_clock_valid'=>$evidenceClockValid,
         'publication_allowed'=>false,
         'feed_publish_allowed'=>false,
         'copy_allowed'=>false,
