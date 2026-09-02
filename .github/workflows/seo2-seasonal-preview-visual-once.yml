@@ -62,13 +62,15 @@ jobs:
                   scrollWidth:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth),
                   actionWidth:action?Math.round(action.getBoundingClientRect().width):0,
                   factualMarkers:[
-                    'Средняя температура воздуха',
-                    'Средняя максимальная температура',
-                    'Средняя минимальная температура',
-                    'Среднее количество осадков',
-                    'Среднее число дождливых дней'
+                    'Температура в сентябре',
+                    '25,3 °C',
+                    '31,2 °C',
+                    '19,6 °C',
+                    'Осадки',
+                    '16,7 мм',
+                    '1,71 дня'
                   ].map(x=>text.includes(x)),
-                  previewLabel:text.includes('Review preview')||text.includes('review preview')||text.includes('Предпросмотр'),
+                  previewLabel:text.toLowerCase().includes('review preview')||text.includes('review-предпросмотр'),
                 };
               });
               await page.screenshot({path:`seo2-seasonal-preview-visual/antalya-september-${vp}.png`,fullPage:true});
@@ -76,9 +78,9 @@ jobs:
               report.push(item);
               const handoffOk=state.href.startsWith('/poisk-turov/')&&state.href.includes('country=4')&&state.href.includes('region=20');
               const mobileWidthOk=width>560||state.actionWidth>=state.viewport-48;
-              const bad=item.http!==200||errors.length||state.h1Count!==1||!state.h1.includes('Анталь')||!handoffOk||!state.robots.includes('noindex')||state.canonical!==''||state.ogUrl!==''||state.scrollWidth>state.viewport+2||!mobileWidthOk||state.factualMarkers.some(v=>!v);
+              const bad=item.http!==200||errors.length||state.h1Count!==1||!state.h1.includes('Анталь')||!handoffOk||!state.robots.includes('noindex')||state.canonical!==''||state.ogUrl!==''||state.scrollWidth>state.viewport+2||!mobileWidthOk||!state.previewLabel||state.factualMarkers.some(v=>!v);
               if(bad) failed=true;
-              console.log(`SEO2_SEASONAL_PREVIEW_VISUAL vp=${vp} http=${item.http} h1=${JSON.stringify(state.h1)} href=${JSON.stringify(state.href)} robots=${JSON.stringify(state.robots)} canonical=${JSON.stringify(state.canonical)} overflow=${state.scrollWidth>state.viewport+2}`);
+              console.log(`SEO2_SEASONAL_PREVIEW_VISUAL vp=${vp} http=${item.http} h1=${JSON.stringify(state.h1)} href=${JSON.stringify(state.href)} robots=${JSON.stringify(state.robots)} canonical=${JSON.stringify(state.canonical)} overflow=${state.scrollWidth>state.viewport+2} facts=${state.factualMarkers.every(Boolean)} preview=${state.previewLabel}`);
               await context.close();
             }
             fs.writeFileSync('seo2-seasonal-preview-visual/report.json',JSON.stringify(report,null,2));
