@@ -1,0 +1,21 @@
+/* Desktop Tour Details convergence against approved DS2 booking boards. Presentation only. */
+@media(min-width:1000px){
+body.search3-preview #selectedTour:not(.search3-final-review) .facts{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:0!important;padding:0!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important;overflow:hidden!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .facts>div{min-width:0!important;padding:11px 12px!important;border:0!important;border-right:1px solid var(--at-line-soft)!important;border-bottom:1px solid var(--at-line-soft)!important;background:#fff!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .facts>div:nth-child(5n){border-right:0!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .facts>div:nth-last-child(-n+5){border-bottom:0!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .facts span{display:block!important;margin-bottom:4px!important;color:var(--at-muted)!important;font:800 8px/1.2 var(--at-font)!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .facts b{display:block!important;color:var(--at-ink)!important;font:900 10px/1.3 var(--at-font)!important;overflow-wrap:anywhere!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .hotel-desc{padding:14px 16px!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important;color:var(--at-muted)!important;font:700 9px/1.5 var(--at-font)!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights{padding:16px!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights .section-heading{display:flex!important;align-items:end!important;justify-content:space-between!important;gap:16px!important;margin-bottom:12px!important;padding:0!important;border:0!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights .section-heading strong{font-size:15px!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights .section-heading span{font-size:8px!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .flight-variants{gap:8px!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .flight-choice{min-height:38px!important;padding:8px 11px!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .flight-segment{padding:10px 11px!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .flight-segment-title{margin-bottom:7px!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .flight-baggage{margin-top:7px!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .search3-flight-continue{margin-top:10px!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .search3-flight-continue button{min-width:188px!important;min-height:42px!important;border-radius:8px!important;font-size:10px!important}
+}
