@@ -1,0 +1,78 @@
+name: TOP500 no-country hotel batch probe
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/top500-no-country-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Probe whether hotelIds can span countries without countryId
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          work="$RUNNER_TEMP/top500-no-country"
+          mkdir -p "$work"
+          cat > "$work/probe.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          require __DIR__.'/db-v1.php';
+          require __DIR__.'/tourvisor-client-v1.php';
+          $pdo=v2_data_db();
+          $rows=$pdo->query("SELECT id,country_id FROM catalog_hotels WHERE is_active=1 AND country_id>0 ORDER BY country_id,id")->fetchAll(PDO::FETCH_ASSOC)?:[];
+          $picked=[];$countries=[];
+          foreach($rows as $r){$cid=(int)$r['country_id'];if(isset($countries[$cid]))continue;$countries[$cid]=true;$picked[]=(int)$r['id'];if(count($picked)===2)break;}
+          if(count($picked)!==2)throw new RuntimeException('need two valid hotels from distinct countries');
+          $hotelIds=[$picked[0],$picked[1],8520];
+          $from=(new DateTimeImmutable('today'))->modify('+1 day')->format('Y-m-d');
+          $to=(new DateTimeImmutable('today'))->modify('+10 days')->format('Y-m-d');
+          $search=['departureId'=>1,'dateFrom'=>$from,'dateTo'=>$to,'nightsFrom'=>5,'nightsTo'=>10,'adults'=>2,'currency'=>'RUB','hotelIds'=>$hotelIds];
+          $out=['state'=>'top500_no_country_probe','hotel_ids'=>$hotelIds,'accepted'=>false,'search_id'=>null,'complete'=>false,'returned_hotel_ids'=>[],'error'=>null];
+          try{
+            $start=v2_data_tv_get('/tours/search',$search);$sid=(int)($start['searchId']??($start['id']??0));if($sid<=0)throw new RuntimeException('no searchId');
+            $out['accepted']=true;$out['search_id']=$sid;
+            for($i=0;$i<12;$i++){sleep(2);$s=v2_data_tv_get('/tours/search/'.$sid.'/status',['operatorStatus'=>false]);if((int)($s['progress']??0)>=100||strtolower((string)($s['status']??''))==='complete'){$out['complete']=true;break;}}
+            if($out['complete']){
+              $payload=v2_data_tv_get('/tours/search/'.$sid,['limit'=>100]);
+              $items=array_is_list($payload)?$payload:($payload['hotels']??($payload['items']??($payload['results']??[])));
+              if(is_array($items))foreach($items as $h)if(is_array($h)&&isset($h['id']))$out['returned_hotel_ids'][]=(int)$h['id'];
+              $out['returned_hotel_ids']=array_values(array_unique($out['returned_hotel_ids']));sort($out['returned_hotel_ids'],SORT_NUMERIC);
+            }
+          }catch(Throwable $e){$out['error']=mb_substr($e->getMessage(),0,500);}
+          file_put_contents($argv[1],json_encode($out,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n");
+          echo 'TOP500_NO_COUNTRY_PROBE accepted='.($out['accepted']?'1':'0').' complete='.($out['complete']?'1':'0').' returned='.count($out['returned_hotel_ids']).' error='.(string)($out['error']??'none')."\n";
+          PHP
+          scp "${opts[@]}" v2/data/db-v1.php v2/data/tourvisor-client-v1.php "$work/probe.php" "$remote:~/www/anytoour.ru/data/"
+          ssh "${opts[@]}" "$remote" 'php "$HOME/www/anytoour.ru/data/probe.php" "$HOME/www/anytoour.ru/data/top500-no-country-probe.json"'
+          scp "${opts[@]}" "$remote:~/www/anytoour.ru/data/top500-no-country-probe.json" "$work/report.json"
+          ssh "${opts[@]}" "$remote" 'rm -f "$HOME/www/anytoour.ru/data/probe.php" "$HOME/www/anytoour.ru/data/top500-no-country-probe.json"'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: top500-no-country-probe-${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/top500-no-country/report.json
+          retention-days: 3
