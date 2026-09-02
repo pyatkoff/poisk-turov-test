@@ -1,0 +1,143 @@
+name: Collect SEO seasonal live evidence
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '27 */6 * * *'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/data/inspect-seo-seasonal-identities-v1.php'
+      - 'v2/seo-seasonal-identity-v1.php'
+      - 'v2/seo-seasonal-preview-launch-dossier-v1.php'
+      - 'v2/data/report-seo-seasonal-preview-launch-dossier-v1.php'
+      - 'v2/data/evidence/seo-seasonal-manual-serp-*.json'
+      - '.github/workflows/collect-seo-seasonal-live-evidence.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/data/inspect-seo-seasonal-identities-v1.php'
+      - 'v2/seo-seasonal-identity-v1.php'
+      - 'v2/seo-seasonal-preview-launch-dossier-v1.php'
+      - 'v2/data/report-seo-seasonal-preview-launch-dossier-v1.php'
+      - 'v2/data/evidence/seo-seasonal-manual-serp-*.json'
+      - '.github/workflows/collect-seo-seasonal-live-evidence.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seo-seasonal-live-evidence
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate read-only seasonal evidence tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/inspect-seo-seasonal-identities-v1.php >/dev/null
+          php -l v2/seo-seasonal-identity-v1.php >/dev/null
+          php -l v2/seo-seasonal-preview-launch-dossier-v1.php >/dev/null
+          php -l v2/data/report-seo-seasonal-preview-launch-dossier-v1.php >/dev/null
+          php tests/seo-seasonal-preview-launch-dossier-smoke.php
+          php tests/seo-seasonal-preview-launch-dossier-cli-smoke.php
+
+  live-seasonal-evidence:
+    if: github.event_name != 'pull_request'
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Collect read-only production seasonal identities
+        id: identities
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set +e
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE" || exit 2
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            root="$HOME/www/anytoour.ru"
+            test -s "$root/config.php"
+            test -s "$root/data/inspect-seo-seasonal-identities-v1.php"
+            test -s "$root/seo-seasonal-identity-v1.php"
+            php "$root/data/inspect-seo-seasonal-identities-v1.php" --countries=4,8 --limit=500
+          ' > seo-seasonal-live-identities.json 2> seo-seasonal-live-identities.err
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ -s seo-seasonal-live-identities.err ]; then cat seo-seasonal-live-identities.err >&2; fi
+          exit 0
+
+      - name: Build exact-pair seasonal launch dossier
+        id: dossier
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          identity_code="${{ steps.identities.outputs.exit_code }}"
+          if [ "$identity_code" = "0" ] && [ -s seo-seasonal-live-identities.json ]; then
+            php v2/data/report-seo-seasonal-preview-launch-dossier-v1.php \
+              --serp-evidence=v2/data/evidence/seo-seasonal-manual-serp-2026-09-03.json \
+              --identity-evidence=seo-seasonal-live-identities.json \
+              --require-go-review \
+              > seo-seasonal-live-dossier.json \
+              2> seo-seasonal-live-dossier.err
+            code=$?
+          else
+            printf '%s\n' '{"state":"review_only_seasonal_launch_dossier_unavailable","all_go_review":false,"publication_candidates":[],"automatic_execution_allowed":false}' > seo-seasonal-live-dossier.json
+            printf '%s\n' 'seasonal identity collector unavailable' > seo-seasonal-live-dossier.err
+            code=2
+          fi
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ -s seo-seasonal-live-dossier.err ]; then cat seo-seasonal-live-dossier.err >&2; fi
+          exit 0
+
+      - name: Upload seasonal identity and dossier evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-seasonal-live-evidence-${{ github.run_id }}
+          path: |
+            seo-seasonal-live-identities.json
+            seo-seasonal-live-identities.err
+            seo-seasonal-live-dossier.json
+            seo-seasonal-live-dossier.err
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Reject infrastructure errors but allow evidence HOLD
+        if: always()
+        shell: bash
+        run: |
+          identity_code="${{ steps.identities.outputs.exit_code }}"
+          dossier_code="${{ steps.dossier.outputs.exit_code }}"
+          test "$identity_code" = "0"
+          test "$dossier_code" = "0" || test "$dossier_code" = "3"
+          echo "seasonal identity exit=$identity_code; dossier exit=$dossier_code (0=GO_REVIEW, 3=HOLD)"
