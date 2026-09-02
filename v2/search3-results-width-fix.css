@@ -7,3 +7,4 @@ body.search3-preview #results .hotel-main{width:100%!important;min-width:0!impor
 /* Search 3 owns the mobile filter toolbar/drawer; suppress the older DS2 mobile filter UI in preview only. */
 body.search3-preview .mrf-bar,body.search3-preview .mrf-sheet{display:none!important}
 @media(max-width:999px){body.search3-preview .results-layout{display:block!important;width:100%!important;max-width:none!important;margin:0 0 48px!important}}
+@media(max-width:760px){body.search3-preview.search3-hotel-tours-open .results-layout{display:block!important;margin:0 0 48px!important;padding:0!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}body.search3-preview.search3-hotel-tours-open #results{padding:0!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}}
