@@ -1,0 +1,77 @@
+name: SEO2 seasonal preview fresh readiness once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-seasonal-preview-fresh-readiness-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Read fresh production identities and score previews
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          root='~/www/anytoour.ru'
+          work="$RUNNER_TEMP/seo2-seasonal-preview-readiness"
+          mkdir -p "$work"
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data/seo2-preview-readiness-once" && test -s "$HOME/www/anytoour.ru/config.php"'
+          scp "${opts[@]}" \
+            v2/data/db-v1.php \
+            v2/data/inspect-seo-seasonal-identities-v1.php \
+            v2/seo-seasonal-identity-v1.php \
+            "$remote:$root/data/seo2-preview-readiness-once/"
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            base="$HOME/www/anytoour.ru"
+            once="$base/data/seo2-preview-readiness-once"
+            mkdir -p "$once/v2/data" "$once/v2"
+            cp "$base/config.php" "$once/v2/config.php"
+            chmod 600 "$once/v2/config.php"
+            cp "$once/db-v1.php" "$once/v2/data/db-v1.php"
+            cp "$once/inspect-seo-seasonal-identities-v1.php" "$once/v2/data/inspect-seo-seasonal-identities-v1.php"
+            cp "$once/seo-seasonal-identity-v1.php" "$once/v2/seo-seasonal-identity-v1.php"
+            php "$once/v2/data/inspect-seo-seasonal-identities-v1.php" --countries=4,8 --require-identities=2 > "$once/identities.json"
+            rm -f "$once/v2/config.php"
+          '
+          scp "${opts[@]}" "$remote:$root/data/seo2-preview-readiness-once/identities.json" "$work/identities.json"
+          php v2/data/report-seo-seasonal-preview-readiness-v1.php --evidence-file="$work/identities.json" --require-ready=1 > "$work/readiness.json"
+          php -r '
+            $j=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);
+            printf("SEO2_SEASONAL_PREVIEW_FRESH state=%s ready=%d/%d checked=%d valid_until=%d publication=%s\n",$j["state"]??"",$j["ready_count"]??0,$j["preview_count"]??0,$j["evidence_checked_at_epoch"]??0,$j["evidence_valid_until_epoch"]??0,($j["publication_allowed"]??true)?"true":"false");
+            foreach(($j["pages"]??[]) as $key=>$page){printf("SEO2_SEASONAL_PREVIEW_PAGE %s page_key=%s score=%d fresh=%s\n",$key,$page["page_key"]??"",$page["score"]??0,($page["fresh_identity_ready"]??false)?"true":"false");}
+          ' "$work/readiness.json"
+      - name: Upload disposable readiness evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo2-seasonal-preview-readiness-${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/seo2-seasonal-preview-readiness/readiness.json
+          retention-days: 3
