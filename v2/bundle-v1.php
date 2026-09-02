@@ -1,4 +1,11 @@
 <?php
+$script = str_replace('\\', '/', (string)($_SERVER['SCRIPT_NAME'] ?? ''));
+if (!defined('V2_SEARCH2_PREVIEW') && str_starts_with($script, '/_preview/search2/')) {
+    define('V2_SEARCH2_PREVIEW', true);
+}
+if (!defined('V2_PUBLIC_BASE_PATH') && defined('V2_SEARCH2_PREVIEW') && V2_SEARCH2_PREVIEW) {
+    define('V2_PUBLIC_BASE_PATH', '/_preview/search2');
+}
 require_once __DIR__ . '/assets.php';
 $type = strtolower((string)($_GET['type'] ?? ''));
 $manifest = v2_bundle_manifest();

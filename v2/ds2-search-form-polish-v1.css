@@ -1,0 +1,53 @@
+/* Search 2.0 preview — lightweight page-shell polish only.
+ * Initial-form composition lives in ds2-search-form-preview-v8.css.
+ * Picker geometry lives in ds2-search-form-pickers-v6.css.
+ * Keep this layer intentionally small to avoid competing form overrides.
+ */
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero{
+  margin:18px 0 12px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__content{max-width:840px!important}
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__eyebrow{margin-bottom:7px!important;font-size:10px!important}
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{
+  max-width:840px!important;
+  font-size:30px!important;
+  line-height:1.05!important;
+  letter-spacing:-.035em!important;
+}
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero p{
+  max-width:760px!important;
+  margin-top:6px!important;
+  font-size:12px!important;
+  line-height:1.45!important;
+}
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__trust{align-self:end!important;gap:8px!important}
+body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__trust span{
+  min-height:28px!important;
+  padding:0 9px!important;
+  border-radius:999px!important;
+  font-size:9px!important;
+}
+#tourSearch.ds2-search-initial .search-submit:focus-visible{
+  outline:3px solid var(--at-focus)!important;
+  outline-offset:3px!important;
+}
+@media(max-width:1100px){
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{font-size:28px!important}
+}
+@media(max-width:700px){
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero{margin:9px 2px 8px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{font-size:21px!important;line-height:1.06!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero p{margin-top:4px!important;font-size:11px!important;line-height:1.35!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__trust{display:none!important}
+}
+@media(max-width:520px){
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero{margin:7px 2px 7px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero__eyebrow{margin-bottom:4px!important;font-size:8px!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero h1{font-size:19px!important;line-height:1.05!important}
+  body:not(.at-search2-results):not(.at-search2-selected) .v2-product-hero p{display:none!important}
+}

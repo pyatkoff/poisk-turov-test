@@ -1,0 +1,193 @@
+name: Deploy Search 2.0 preview
+
+on:
+  push:
+    branches: [design/search2-form-polish]
+    paths:
+      - 'v2/**'
+      - '.github/workflows/deploy-search2-preview.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-anytoour-search2-preview
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate preview bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/index.php >/dev/null
+          php -l v2/poisk-turov/index.php >/dev/null
+          php -l v2/api-v2.php >/dev/null
+          php -l v2/bundle-v1.php >/dev/null
+          php -l v2/bundle-manifest-v1.php >/dev/null
+          node --check v2/ds2-search-form-polish-v1.js
+          node --check v2/ds2-search-form-service-shortcuts-v1.js
+          node --check v2/primary-meal-ux-v1.js
+          php -r 'require "v2/bundle-manifest-v1.php"; $m=v2_bundle_manifest(); if(count($m["css"])!==37||count($m["js"])!==44) exit(1);'
+          php -r 'define("V2_SEARCH2_PREVIEW",true); require "v2/bundle-manifest-v1.php"; $m=v2_bundle_manifest(); if(count($m["css"])!==40||count($m["js"])!==46) exit(1); foreach(["ds2-search-form-polish-v1.css","ds2-search-form-pickers-v6.css","ds2-search-form-preview-v8.css"] as $f) if(!in_array($f,$m["css"],true)) exit(2); foreach(["ds2-search-form-polish-v1.js","ds2-search-form-service-shortcuts-v1.js"] as $f) if(!in_array($f,$m["js"],true)) exit(3);'
+          runtime_css="$(php -r '$_SERVER["SCRIPT_NAME"]="/_preview/search2/bundle-v1.php"; $_GET["type"]="css"; include "v2/bundle-v1.php";')"
+          grep -Fq 'Search 2.0 preview — authoritative initial-form composition' <<<"$runtime_css"
+          grep -Fq 'Search 2.0 preview — date / nights / guests picker convergence' <<<"$runtime_css"
+          runtime_js="$(php -r '$_SERVER["SCRIPT_NAME"]="/_preview/search2/bundle-v1.php"; $_GET["type"]="js"; include "v2/bundle-v1.php";')"
+          grep -Fq 'ds2-search-initial' <<<"$runtime_js"
+          grep -Fq 'meal-shortcut' <<<"$runtime_js"
+          grep -Fq 'service-shortcut' <<<"$runtime_js"
+          ! grep -Fq "'ds2-search-form-responsive-v6.css'" v2/bundle-manifest-v1.php
+          ! grep -Fq "'ds2-search-form-composition-v5.css'" v2/bundle-manifest-v1.php
+          ! grep -Fq "'ds2-search-form-desktop-v7.css'" v2/bundle-manifest-v1.php
+          grep -Fq "V2_SEARCH2_PREVIEW', \$isSearch2Preview" v2/poisk-turov/index.php
+          grep -Fq "V2_PUBLIC_BASE_PATH', '/_preview/search2'" v2/poisk-turov/index.php
+          echo "SEARCH2_PREVIEW_VALIDATE_OK"
+
+      - name: Prepare SSH key
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY" | tr -d '\r' > "$RUNNER_TEMP/anytoour_key"
+          else
+            printf '%s' "$KEY" | base64 --decode > "$RUNNER_TEMP/anytoour_key"
+          fi
+          chmod 600 "$RUNNER_TEMP/anytoour_key"
+          ssh-keygen -y -f "$RUNNER_TEMP/anytoour_key" >/dev/null
+
+      - name: Copy preview to anytoour.ru
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST" && test -n "$USER"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          remote="$USER@$HOST"
+          root='~/www/anytoour.ru/_preview/search2'
+          timeout 60s ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/_preview/search2/poisk-turov"'
+          timeout 180s scp "${opts[@]}" -r v2/. "$remote:$root/"
+          timeout 90s ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            prod="$HOME/www/anytoour.ru"
+            root="$prod/_preview/search2"
+            cp "$root/index.php" "$root/search-page-v2.php"
+            if test -s "$prod/config.php"; then cp "$prod/config.php" "$root/config.php"; fi
+            if test -s "$prod/.anytoour-bridge-secret"; then cp "$prod/.anytoour-bridge-secret" "$root/.anytoour-bridge-secret"; fi
+            test -s "$root/config.php"
+            php -l "$root/search-page-v2.php" >/dev/null
+            php -l "$root/poisk-turov/index.php" >/dev/null
+            php -l "$root/api-v2.php" >/dev/null
+            chmod 600 "$root/config.php"
+            test ! -e "$prod/_preview/search2/index.html"
+            echo "SEARCH2_PREVIEW_FILES_ACTIVATED"
+          '
+
+      - name: Verify preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          page='https://anytoour.ru/_preview/search2/poisk-turov/'
+          api='https://anytoour.ru/_preview/search2/api-v2.php?action=health'
+          code="$(curl -fsSL -o /tmp/search2-preview.html -w '%{http_code}' --max-time 45 "$page")"
+          api_code="$(curl -fsSL -o /tmp/search2-preview-health.json -w '%{http_code}' --max-time 45 "$api")"
+          echo "PAGE=$code API=$api_code"
+          test "$code" = "200"
+          test "$api_code" = "200"
+          grep -q 'Найти тур' /tmp/search2-preview.html
+          grep -q '/_preview/search2/bundle-v1.php?type=css' /tmp/search2-preview.html
+          grep -q '/_preview/search2/api-v2.php' /tmp/search2-preview.html
+          grep -q 'noindex' /tmp/search2-preview.html
+          grep -q 'tourvisor-direct' /tmp/search2-preview-health.json
+          echo "SEARCH2_PREVIEW_OK"
+
+      - name: Capture initial-form viewport evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+          mkdir -p search2-form-evidence
+          cat > search2-form-evidence.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const url = 'https://anytoour.ru/_preview/search2/poisk-turov/';
+          const sizes = [
+            ['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['tablet-1024',1024,900],['desktop-1440',1440,1000]
+          ];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const report=[]; let failed=false;
+            for(const [name,width,height] of sizes){
+              const context=await browser.newContext({viewport:{width,height},ignoreHTTPSErrors:true});
+              const page=await context.newPage(); const errors=[];
+              page.on('pageerror',e=>errors.push(String(e)));
+              const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
+              await page.waitForSelector('#tourSearch.ds2-search-initial',{state:'visible',timeout:10000});
+              await page.waitForFunction(()=>window.V2PrimaryMealUXV1&&typeof window.V2PrimaryMealUXV1.loadMeals==='function',{timeout:10000});
+              await page.evaluate(()=>window.V2PrimaryMealUXV1.loadMeals());
+              await page.waitForSelector('.ds2-search-quick-stars .meal-shortcut',{state:'visible',timeout:10000});
+              await page.locator('.ds2-search-quick-stars .meal-shortcut').click();
+              await page.waitForTimeout(4200);
+              const serviceButtons=page.locator('.ds2-search-quick-stars .service-shortcut');
+              if(await serviceButtons.count()===2){await serviceButtons.nth(0).click();await serviceButtons.nth(1).click();await page.waitForTimeout(100);}
+              const state=await page.evaluate(()=>{
+                const form=document.querySelector('#tourSearch.ds2-search-initial');
+                const allSteps=[...form.querySelectorAll('.main-fields>.primary-step')];
+                const steps=allSteps.slice(0,5);
+                const button=form.querySelector('.search-submit');
+                const quickLane=form.querySelector('.ds2-search-quick-stars');
+                const rects=steps.map(el=>el.getBoundingClientRect());
+                const buttonRect=button?.getBoundingClientRect();
+                const quickRect=quickLane?.getBoundingClientRect();
+                const bg=button?getComputedStyle(button).backgroundColor:'';
+                const starQuick=[...form.querySelectorAll('.ds2-search-quick-stars .stars-choice:not(.meal-shortcut):not(.service-shortcut)')];
+                const mealShortcut=form.querySelector('.ds2-search-quick-stars .meal-shortcut');
+                const serviceShortcuts=[...form.querySelectorAll('.ds2-search-quick-stars .service-shortcut')].map(btn=>({label:String(btn.textContent||'').trim(),value:String(btn.dataset.serviceValue||''),pressed:btn.getAttribute('aria-pressed')||''}));
+                const serviceCatalog=[...document.querySelectorAll('#hotelServices label.service-check')].map(label=>({label:String(label.querySelector('span')?.textContent||label.textContent||'').trim(),value:String(label.querySelector('input[name="hotel_service[]"]')?.value||'')})).filter(x=>x.label&&x.value);
+                const selectedServices=[...document.querySelectorAll('#hotelServices input[name="hotel_service[]"]:checked')].map(input=>String(input.value||''));
+                const sameRow=rects.length===5&&Math.max(...rects.map(r=>r.top))-Math.min(...rects.map(r=>r.top))<4;
+                const stacked=rects.length===5&&rects.every((r,i)=>i===0||r.top>rects[i-1].top+20);
+                const nights=String(form.querySelector('.ds2-nights-summary')?.textContent||'').trim();
+                const filterLabel=String(form.querySelector('details.extras>summary strong,details.extras-secondary>summary strong')?.textContent||'').trim();
+                const overflowNodes=[...document.querySelectorAll('body *')].map(el=>{const r=el.getBoundingClientRect();return {tag:el.tagName.toLowerCase(),id:el.id||'',cls:String(el.className||'').slice(0,120),left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width),scrollWidth:el.scrollWidth,clientWidth:el.clientWidth};}).filter(x=>x.right>innerWidth+3||x.left<-3).sort((a,b)=>Math.max(b.right-innerWidth,-b.left)-Math.max(a.right-innerWidth,-a.left)).slice(0,12);
+                return {
+                  steps:rects.length,primaryCount:allSteps.length,foodInMain:!!form.elements.food?.closest('.main-fields'),starQuick:starQuick.length,mealShortcut:String(mealShortcut?.textContent||'').trim(),mealPressed:mealShortcut?.getAttribute('aria-pressed')||'',mealValue:String(form.elements.food?.value||''),serviceShortcuts,serviceCatalog,selectedServices,
+                  cta:String(button?.querySelector('span')?.textContent||button?.textContent||'').trim(),bg,nights,filterLabel,
+                  sameRow,stacked,ctaBeforeQuick:!!(buttonRect&&quickRect&&buttonRect.bottom<=quickRect.top+2),buttonRight:buttonRect?.right||0,viewport:innerWidth,
+                  docScrollWidth:document.documentElement.scrollWidth,docClientWidth:document.documentElement.clientWidth,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+3,overflowNodes
+                };
+              });
+              const expectedRow=width>=901;
+              const expectedStack=width<=430;
+              const blue=/rgb\((18,\s*97,\s*246|14,\s*85,\s*219)\)/.test(state.bg);
+              const serviceLabels=state.serviceShortcuts.map(x=>x.label).join('|');
+              const serviceBound=state.serviceShortcuts.length===2&&serviceLabels==='Первая линия|С детьми'&&state.serviceShortcuts.every(x=>x.pressed==='true'&&x.value&&state.selectedServices.includes(x.value));
+              const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.primaryCount!==5||state.foodInMain||state.starQuick!==5||state.mealShortcut!=='All Inclusive'||state.mealPressed!=='true'||!state.mealValue||!serviceBound||state.cta!=='Найти туры'||!state.nights||state.filterLabel!=='Все фильтры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked)||(width<=700&&!state.ctaBeforeQuick);
+              report.push({name,width,height,state,errors,bad}); if(bad) failed=true;
+              await page.screenshot({path:`search2-form-evidence/${name}.png`,fullPage:false,animations:'disabled'});
+              await context.close();
+            }
+            fs.writeFileSync('search2-form-evidence/report.json',JSON.stringify(report,null,2));
+            await browser.close(); if(failed) process.exit(1);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node search2-form-evidence.cjs
+          cat search2-form-evidence/report.json
+
+      - name: Upload initial-form evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search2-initial-form-${{ github.sha }}
+          path: search2-form-evidence/
+          retention-days: 14
