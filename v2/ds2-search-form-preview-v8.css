@@ -82,7 +82,8 @@
  #tourSearch.ds2-search-initial .main-fields>.primary-step:last-child{border-bottom:0!important;border-radius:0 0 11px 11px!important}
  #tourSearch.ds2-search-initial .main-fields>.primary-step:focus-within{border-radius:9px!important;box-shadow:inset 0 0 0 2px rgba(18,97,246,.16)!important}
  #tourSearch.ds2-search-initial .search-submit{order:2!important;margin-top:1px!important}
- #tourSearch.ds2-search-initial>.ds2-search-quick-stars{order:3!important;height:auto!important;min-height:38px!important;padding-bottom:2px!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars{order:3!important;height:auto!important;min-height:38px!important;padding-bottom:2px!important;overflow:visible!important;contain:none!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars .stars-quick{width:100%!important;min-width:0!important;max-width:100%!important;flex-wrap:wrap!important;align-items:stretch!important}
  #tourSearch.ds2-search-initial>.ds2-search-quick-stars .stars-choice{height:38px!important;min-height:38px!important;font-size:12px!important}
  #tourSearch.ds2-search-initial>.extras,#tourSearch.ds2-search-initial>.extras-secondary{order:4!important}
 }
