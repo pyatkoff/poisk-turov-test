@@ -70,11 +70,14 @@ function v2_seo_render_hotel_tour_review(array $record): void
             $href = v2_seo_search_handoff_url('/poisk-turov/', $searchState);
 
             echo '<article class="sp-offer-item">';
-            echo '<h3>'.sp_e($hotelName).'</h3><p>';
-            if ($departure !== '') echo 'Вылет из '.sp_e($departure).' · ';
-            echo sp_e($date).' · '.sp_e((string)$nights).' ночей</p>';
-            echo '<p><strong>от '.sp_e($price).'</strong></p>';
-            echo '<div class="sp-actions"><a class="sp-secondary" href="'.sp_e($href).'">Посмотреть тур</a></div>';
+            echo '<h3>'.sp_e($hotelName).'</h3>';
+            echo '<div class="sp-offer-meta">';
+            if ($departure !== '') echo '<span class="sp-offer-fact">Вылет из '.sp_e($departure).'</span>';
+            echo '<span class="sp-offer-fact">'.sp_e($date).'</span>';
+            echo '<span class="sp-offer-fact">'.sp_e((string)$nights).' ночей</span>';
+            echo '</div>';
+            echo '<div class="sp-offer-bottom"><div class="sp-offer-price"><span>от</span><strong>'.sp_e($price).'</strong></div>';
+            echo '<a class="sp-secondary sp-offer-action" href="'.sp_e($href).'">Посмотреть тур</a></div>';
             echo '</article>';
         }
         echo '</div></section>';
