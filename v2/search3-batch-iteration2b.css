@@ -1,0 +1,36 @@
+/* Search 3 iteration 2b — hard lock to approved maket7 geometry. */
+
+@media(min-width:761px){
+  /* Desktop initial is intentionally a two-row search block, as in maket7. */
+  body.search3-preview:not(.search3-has-results) #tourSearch .search3-advanced-toggle{display:none!important}
+  body.search3-preview:not(.search3-has-results) #tourSearch .search3-quality{display:block!important;margin-top:12px!important;padding-top:0!important;border-top:0!important}
+  body.search3-preview:not(.search3-has-results) #tourSearch .search3-quick{display:flex!important;margin-top:12px!important}
+  body.search3-preview:not(.search3-has-results) #tourSearch .search3-primary-grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr) minmax(0,1.45fr) minmax(0,.72fr) minmax(0,.92fr) 150px!important;gap:12px!important;align-items:end!important}
+  body.search3-preview:not(.search3-has-results) #tourSearch .search3-quality__grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important;gap:12px!important}
+  body.search3-preview:not(.search3-has-results) #tourSearch .search3-region{display:block!important}
+  body.search3-preview:not(.search3-has-results) #tourSearch{padding:16px 17px 14px!important}
+  body.search3-preview:not(.search3-has-results) #tourSearch .search3-primary-grid>.search-submit{width:150px!important;min-width:150px!important}
+
+  /* Results keep maket7 hierarchy: compact query summary above rail + cards. */
+  body.search3-preview.search3-has-results #tourSearch{display:none!important}
+  body.search3-preview.search3-has-results.search3-editing-search #tourSearch{display:block!important}
+  body.search3-preview.search3-has-results.search3-editing-search #tourSearch .search3-advanced-toggle{display:none!important}
+  body.search3-preview.search3-has-results.search3-editing-search #tourSearch .search3-quality{display:block!important}
+  body.search3-preview.search3-has-results.search3-editing-search #tourSearch .search3-quick{display:flex!important}
+  body.search3-preview.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr) minmax(0,1.45fr) minmax(0,.72fr) minmax(0,.92fr) 150px!important;gap:12px!important}
+  body.search3-preview.search3-has-results.search3-editing-search #tourSearch .search3-quality__grid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:12px!important}
+}
+
+@media(max-width:760px){
+  /* Mobile keeps advanced controls secondary. */
+  body.search3-preview:not(.search3-has-results) #tourSearch .search3-advanced-toggle{display:flex!important}
+  body.search3-preview:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quality{display:none!important}
+  body.search3-preview:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quick{display:none!important}
+  body.search3-preview:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quality{display:block!important}
+  body.search3-preview:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quick{display:flex!important}
+  body.search3-preview #tourSearch .search3-region{order:3!important}
+  body.search3-preview #tourSearch .search3-dates{order:4!important}
+  body.search3-preview #tourSearch .search3-nights{order:5!important}
+  body.search3-preview #tourSearch .search3-tourists{order:6!important}
+  body.search3-preview #tourSearch .search-submit{order:7!important}
+}
