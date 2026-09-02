@@ -52,13 +52,27 @@
   body.search3-preview.search3-hotel-tours-open #results .search3-tours-focused{border-color:#dce5f1!important;box-shadow:0 3px 12px rgba(16,24,40,.05)!important}
   body.search3-preview.search3-hotel-tours-open #results .search3-tours-focused .hotel-main{border-bottom:1px solid #edf0f5!important}
   body.search3-preview.search3-hotel-tours-open #results .hotel-tours{padding:10px!important}
-  body.search3-preview.search3-hotel-tours-open #results .tour-row{display:grid!important;grid-template-columns:minmax(0,1fr) 150px!important;align-items:center!important;min-height:68px!important;padding:8px 9px!important}
+  body.search3-preview.search3-hotel-tours-open #results .search3-tour-list-head{margin-bottom:8px!important;padding:0 2px!important}
+  body.search3-preview.search3-hotel-tours-open #results .search3-tour-list-head strong{font-size:12.5px!important}
+  body.search3-preview.search3-hotel-tours-open #results .search3-tour-list-head span{font-size:7.5px!important}
+  body.search3-preview.search3-hotel-tours-open #results .tour-row{display:grid!important;grid-template-columns:minmax(0,1fr) 150px!important;align-items:center!important;min-height:68px!important;padding:8px 9px!important;border-radius:8px!important}
+  body.search3-preview.search3-hotel-tours-open #results .tour-meta{min-width:0!important}
+  body.search3-preview.search3-hotel-tours-open #results .tour-fact small{font-size:6.4px!important}
+  body.search3-preview.search3-hotel-tours-open #results .tour-fact b{font-size:8.2px!important}
   body.search3-preview.search3-hotel-tours-open #results .tour-action{min-width:140px!important;padding-left:12px!important;border-left:1px solid #edf0f5!important}
   body.search3-preview.search3-hotel-tours-open #results .tour-action>b{font-size:15px!important}
   body.search3-preview.search3-hotel-tours-open #results .direct-tour{width:100%!important;min-height:32px!important;background:#ff5a0a!important;color:#fff!important;border:0!important}
 }
 
 @media(max-width:760px){
+  body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo{height:126px!important;min-height:126px!important}
+  body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-body{padding:8px 9px 9px!important;grid-template-columns:minmax(0,1fr) 92px!important;column-gap:7px!important}
+  body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-title{font-size:12px!important;line-height:1.1!important}
+  body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-place{font-size:7px!important}
+  body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-price{font-size:15px!important}
+  body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-price-context{font-size:6px!important}
+  body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-show-tours{min-height:36px!important;border-radius:7px!important;font-size:8.5px!important}
+
   body.search3-preview.search3-selected-open{padding-bottom:70px!important}
   body.search3-preview.search3-selected-open #selectedTour{margin:0!important;padding:0 0 12px!important;background:#fff!important}
   body.search3-preview.search3-selected-open #selectedTour .back-results{margin:4px 10px 7px!important;min-height:32px!important;border:0!important;background:transparent!important;padding:0!important;font-size:8px!important}
@@ -91,7 +105,7 @@
   body.search3-preview.search3-hotel-tours-open .results-layout{margin-top:0!important}
   body.search3-preview.search3-hotel-tours-open #results .hotel-card:not(.search3-tours-focused){display:none!important}
   body.search3-preview.search3-hotel-tours-open #results .search3-tours-focused{border:0!important;border-radius:0!important;box-shadow:none!important}
-  body.search3-preview.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo{height:168px!important;min-height:168px!important}
+  body.search3-preview.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo{height:158px!important;min-height:158px!important}
   body.search3-preview.search3-hotel-tours-open #results .search3-tours-focused .hotel-body{padding:9px 10px 8px!important}
   body.search3-preview.search3-hotel-tours-open #results .search3-tours-focused .hotel-title{font-size:14px!important}
   body.search3-preview.search3-hotel-tours-open #results .search3-tours-focused .search3-hotel-facts{display:none!important}
@@ -101,7 +115,13 @@
   body.search3-preview.search3-hotel-tours-open #results .hotel-tours{padding:9px 10px 16px!important;background:#f8fafc!important}
   body.search3-preview.search3-hotel-tours-open #results .search3-tour-list-head{margin-bottom:7px!important}
   body.search3-preview.search3-hotel-tours-open #results .search3-tour-list-head strong{font-size:14px!important}
+  body.search3-preview.search3-hotel-tours-open #results .search3-tour-list-head span{font-size:7.5px!important;line-height:1.25!important}
   body.search3-preview.search3-hotel-tours-open #results .tour-row{padding:8px!important;border:1px solid #e4eaf2!important;border-radius:8px!important;background:#fff!important}
+  body.search3-preview.search3-hotel-tours-open #results .tour-meta>strong{font-size:10px!important;margin-bottom:6px!important}
+  body.search3-preview.search3-hotel-tours-open #results .tour-facts{gap:4px!important}
+  body.search3-preview.search3-hotel-tours-open #results .tour-fact{min-height:22px!important;padding:4px 6px!important;border-radius:5px!important}
+  body.search3-preview.search3-hotel-tours-open #results .tour-fact small{font-size:6.5px!important}
+  body.search3-preview.search3-hotel-tours-open #results .tour-fact b{font-size:8px!important}
   body.search3-preview.search3-hotel-tours-open #results .tour-action{margin-top:7px!important;padding-top:7px!important;border-top:1px solid #edf0f5!important}
   body.search3-preview.search3-hotel-tours-open #results .tour-action>b{font-size:15px!important}
   body.search3-preview.search3-hotel-tours-open #results .direct-tour{width:100%!important;min-height:38px!important;background:#ff5a0a!important;color:#fff!important;border:0!important;border-radius:7px!important}
