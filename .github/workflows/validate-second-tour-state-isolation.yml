@@ -45,6 +45,31 @@ jobs:
                 window.dispatchEvent(new CustomEvent('v2:tour-selected',{detail:{tour:t}}));
               },tour);
 
+              // Reproduce the same-tour/different-room race: a late room response from
+              // the previous selection must not decorate the newly selected room host.
+              await page.evaluate(()=>{
+                window.__roomResolver=null;
+                window.V2Runtime.api=(endpoint,args)=>new Promise(resolve=>{
+                  window.__roomRequest={endpoint,args};
+                  window.__roomResolver=resolve;
+                });
+              });
+              const sameRoomA={id:'same-tour',name:'Same A',price:70000,fuelCharge:1000,roomType:'ROOM A',roomId:31};
+              const sameRoomB={id:'same-tour',name:'Same B',price:71000,fuelCharge:1000,roomType:'ROOM B',roomId:32};
+              await renderSelected(sameRoomA);
+              await page.click('.room-detail-toggle');
+              await page.waitForFunction(()=>typeof window.__roomResolver==='function');
+              await renderSelected(sameRoomB);
+              await page.evaluate(()=>window.__roomResolver([{id:31,name:'STALE ROOM A',description:'old response'}]));
+              await page.waitForTimeout(30);
+              let roomRace=await page.evaluate(()=>({
+                key:document.querySelector('.room-details-host')?.dataset.roomKey,
+                text:document.querySelector('.room-detail-content')?.textContent||'',
+                loaded:document.querySelector('.room-detail-content')?.dataset.loaded||''
+              }));
+              if(roomRace.key!=='32'||/STALE ROOM A/.test(roomRace.text)||roomRace.loaded==='1')throw new Error(`same-tour room race leaked stale response ${width}: ${JSON.stringify(roomRace)}`);
+              await page.evaluate(()=>{window.V2Runtime.api=async()=>[];});
+
               const tour1={id:'t1',name:'Первый',price:100000,fuelCharge:5000,roomType:'STANDARD',roomId:11};
               const tour2={id:'t2',name:'Второй',price:90000,fuelCharge:2000,roomType:'DELUXE',roomId:22};
               await page.click('[data-tid="t1"]');
@@ -60,7 +85,6 @@ jobs:
               state=await page.evaluate(()=>({price:document.querySelector('.selected-price').textContent.replace(/\s+/g,' ').trim(),fuel:Array.from(document.querySelectorAll('.facts>div')).find(x=>x.querySelector('span')?.textContent.trim()==='Топливный сбор')?.querySelector('b')?.textContent.trim(),lead:document.querySelector('.lead-form .section-heading span')?.textContent.trim(),room:document.querySelector('.room-details-host')?.dataset.tourId,confidence:document.querySelector('.selected-price-confidence')?.textContent.replace(/\s+/g,' ').trim()}));
               if(!/90[\s\u00a0]?000/.test(state.price)||!/^2[\s\u00a0]?000 ₽$/.test(state.fuel)||!/рейс можно выбрать выше/.test(state.lead)||state.room!=='t2'||!/Цена из поиска/.test(state.confidence))throw new Error(`tour2 reset leaked tour1 state ${width}: ${JSON.stringify(state)}`);
 
-              let priceEvent=null;
               await page.evaluate(()=>window.addEventListener('v2:tour-price-updated',e=>{window.__lastPriceEvent=e.detail;}));
               await page.evaluate(t=>window.dispatchEvent(new CustomEvent('v2:flight-selected',{detail:{tour:t,flight:{price:0},index:1}})),tour2);
               state=await page.evaluate(()=>({price:document.querySelector('.selected-price').textContent.replace(/\s+/g,' ').trim(),fuel:Array.from(document.querySelectorAll('.facts>div')).find(x=>x.querySelector('span')?.textContent.trim()==='Топливный сбор')?.querySelector('b')?.textContent.trim(),lead:document.querySelector('.lead-form .section-heading span')?.textContent.trim(),confidence:document.querySelector('.selected-price-confidence')?.textContent.replace(/\s+/g,' ').trim(),event:window.__lastPriceEvent}));
