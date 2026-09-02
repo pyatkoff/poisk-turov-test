@@ -28,8 +28,8 @@ function v2_seo_hotel_review_pilot_report(array $package, ?int $nowEpoch=null): 
         throw new InvalidArgumentException('Pilot report requires manifest-bound 3x3 slice');
     }
 
-    $rows=is_array($slice['candidates']??null)?$slice['candidates']:[];
-    if (count($rows)!==9) throw new InvalidArgumentException('Pilot report requires exactly nine candidate rows');
+    $rows=is_array($slice['review_items']??null)?$slice['review_items']:[];
+    if (count($rows)!==9) throw new InvalidArgumentException('Pilot report requires exactly nine review rows');
     $countries=[]; $expires=[]; $paths=[];
     foreach($rows as $row){
         if(!is_array($row)) throw new InvalidArgumentException('Invalid pilot row');
