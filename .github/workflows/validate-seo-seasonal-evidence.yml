@@ -10,6 +10,7 @@ on:
       - 'v2/seo-data-readiness-v1.php'
       - 'v2/seo-seasonal-coverage-readiness-v1.php'
       - 'v2/data/report-seo-seasonal-evidence-v1.php'
+      - 'v2/data/report-seo-seasonal-coverage-v1.php'
       - 'v2/data/inspect-seo-data-readiness-v1.php'
       - 'tests/seo-seasonal-evidence-smoke.php'
       - 'tests/seo-seasonal-candidate-smoke.php'
@@ -38,6 +39,7 @@ jobs:
           php -l v2/seo-data-readiness-v1.php >/dev/null
           php -l v2/seo-seasonal-coverage-readiness-v1.php >/dev/null
           php -l v2/data/report-seo-seasonal-evidence-v1.php >/dev/null
+          php -l v2/data/report-seo-seasonal-coverage-v1.php >/dev/null
           php -l v2/data/inspect-seo-data-readiness-v1.php >/dev/null
           php -l tests/seo-seasonal-evidence-smoke.php >/dev/null
           php -l tests/seo-seasonal-candidate-smoke.php >/dev/null
@@ -70,5 +72,19 @@ jobs:
           sed "s/\"expires_at\":${expires}/\"expires_at\":${stale}/" /tmp/seasonal-evidence.json > /tmp/seasonal-stale.json
           if php v2/data/report-seo-seasonal-evidence-v1.php --file=/tmp/seasonal-stale.json --require-usable=1 >/tmp/seasonal-stale-report.json 2>/tmp/seasonal-stale.err; then
             echo 'SEO_SEASONAL_EVIDENCE_CLI_FAIL:stale evidence passed require-usable' >&2
+            exit 1
+          fi
+
+      - name: Validate seasonal coverage CLI explicit policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/data-readiness.json <<'JSON'
+          {"state":"review_only_data_readiness","countries":[{"country_id":4,"snapshot_count":12,"usable_snapshot_count":12,"types":[{"page_type":"month","snapshot_count":4,"usable_snapshot_count":4,"identity_count":4,"min_offer_count":3,"min_freshness_seconds":7200},{"page_type":"resort_month","snapshot_count":8,"usable_snapshot_count":8,"identity_count":8,"min_offer_count":1,"min_freshness_seconds":7200}]}]}
+          JSON
+          php v2/data/report-seo-seasonal-coverage-v1.php --file=/tmp/data-readiness.json --country=4 --min-month-identities=3 --min-resort-month-identities=3 --min-freshness-seconds=3600 --min-offers-per-snapshot=1 --require-review-ready=1 > /tmp/coverage.json
+          php -r '$x=json_decode(file_get_contents("/tmp/coverage.json"),true); if(($x["state"]??"")!=="review_ready"||($x["publication_allowed"]??true)!==false) exit(1); echo "SEO_SEASONAL_COVERAGE_CLI_OK\n";'
+          if php v2/data/report-seo-seasonal-coverage-v1.php --file=/tmp/data-readiness.json --country=4 --min-month-identities=6 --min-resort-month-identities=10 --min-freshness-seconds=3600 --min-offers-per-snapshot=1 --require-review-ready=1 >/tmp/coverage-blocked.json 2>/tmp/coverage-blocked.err; then
+            echo 'SEO_SEASONAL_COVERAGE_CLI_FAIL:insufficient coverage passed' >&2
             exit 1
           fi
