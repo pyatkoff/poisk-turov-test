@@ -1,0 +1,81 @@
+name: Collect SEO Yandex Webmaster feedback
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: collect-seo-yandex-webmaster-feedback
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      YANDEX_WEBMASTER_OAUTH_TOKEN: ${{ secrets.YANDEX_WEBMASTER_OAUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate collector code
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/collect-yandex-webmaster-query-analytics.sh
+          php -l v2/seo-yandex-webmaster-feedback-v1.php >/dev/null
+          php -l v2/data/report-seo-yandex-webmaster-feedback-v1.php >/dev/null
+          php -l v2/data/report-seo-search-feedback-readiness-v1.php >/dev/null
+
+      - name: Collect read-only Webmaster evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p seo-feedback-artifact
+          if [[ -z "${YANDEX_WEBMASTER_OAUTH_TOKEN:-}" ]]; then
+            printf '%s\n' '{"state":"not_configured","domain":"anytoour.ru","secret":"YANDEX_WEBMASTER_OAUTH_TOKEN","network_called":false,"publication_candidates":[],"automatic_execution_allowed":false}' > seo-feedback-artifact/collector-status.json
+            php v2/data/report-seo-search-feedback-readiness-v1.php > seo-feedback-artifact/readiness.json
+            echo 'YANDEX_WEBMASTER_FEEDBACK_NOT_CONFIGURED'
+            exit 0
+          fi
+
+          bash scripts/collect-yandex-webmaster-query-analytics.sh /tmp/yandex-webmaster-raw.json
+          collected="$(date +%s)"
+          php v2/data/report-seo-yandex-webmaster-feedback-v1.php \
+            --input=/tmp/yandex-webmaster-raw.json \
+            --collected-at="$collected" \
+            > seo-feedback-artifact/yandex-webmaster-feedback.json
+          php v2/data/report-seo-search-feedback-v1.php \
+            --input=seo-feedback-artifact/yandex-webmaster-feedback.json \
+            --now-epoch="$collected" \
+            > seo-feedback-artifact/intake.json
+          php v2/data/report-seo-search-feedback-readiness-v1.php \
+            --feedback=seo-feedback-artifact/yandex-webmaster-feedback.json \
+            --now-epoch="$collected" \
+            > seo-feedback-artifact/readiness.json
+          php -r '
+            $f=json_decode(file_get_contents("seo-feedback-artifact/yandex-webmaster-feedback.json"),true);
+            $r=json_decode(file_get_contents("seo-feedback-artifact/readiness.json"),true);
+            echo json_encode([
+              "state"=>"collected",
+              "domain"=>"anytoour.ru",
+              "source"=>"yandex_webmaster_query_analytics_v4",
+              "observed_controlled_path_count"=>$f["observed_controlled_path_count"]??0,
+              "readiness_counts"=>$r["counts"]??[],
+              "review_ready"=>$r["review_ready"]??false,
+              "publication_candidates"=>[],
+              "automatic_execution_allowed"=>false
+            ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT),"\n";
+          ' > seo-feedback-artifact/collector-status.json
+          echo 'YANDEX_WEBMASTER_FEEDBACK_COLLECTED'
+
+      - name: Upload normalized SEO feedback evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-yandex-webmaster-feedback-${{ github.run_id }}
+          path: seo-feedback-artifact/
+          if-no-files-found: error
+          retention-days: 30
