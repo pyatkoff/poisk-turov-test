@@ -8,7 +8,7 @@ require_once __DIR__ . '/seo-page-contract-v1.php';
 function v2_seo_destination_page(string $type, array $data): array
 {
     $type = strtolower(trim($type));
-    if (!in_array($type, ['country', 'resort', 'seasonal'], true)) {
+    if (!in_array($type, ['country', 'resort', 'seasonal', 'hotel_tours'], true)) {
         throw new InvalidArgumentException('Unsupported SEO destination page type');
     }
 
@@ -55,4 +55,9 @@ function v2_seo_resort_page(array $data): array
 function v2_seo_seasonal_page(array $data): array
 {
     return v2_seo_destination_page('seasonal', $data);
+}
+
+function v2_seo_hotel_tours_page(array $data): array
+{
+    return v2_seo_destination_page('hotel_tours', $data);
 }
