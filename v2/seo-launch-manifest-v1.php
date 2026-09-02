@@ -66,6 +66,7 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
     $seenReadiness = [];
     $readyByType = ['country'=>0,'resort'=>0,'hotel_tours'=>0];
     $blockedByType = ['country'=>0,'resort'=>0,'hotel_tours'=>0];
+    $scoreBuckets = ['country'=>[],'resort'=>[],'hotel_tours'=>[]];
     $hotelEvidenceValidUntil = [];
     $hotelEvidenceRows = [];
     $scoreTotal=0; $scoreRows=0;
@@ -76,7 +77,9 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
         $seenReadiness[$path]=true;
         if (isset($readyByType[$type])) {
             if (($row['ready_for_launch_review']??false)===true) $readyByType[$type]++; else $blockedByType[$type]++;
-            $scoreTotal+=max(0,min(100,(int)($row['score']??0))); $scoreRows++;
+            $score=max(0,min(100,(int)($row['score']??0)));
+            $scoreBuckets[$type][]=$score;
+            $scoreTotal+=$score; $scoreRows++;
         }
         if ($type==='hotel_tours') {
             $expires=(int)($row['evidence_expires_epoch']??0);
@@ -93,6 +96,22 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
         }
     }
 
+    $qualityByType=[];
+    foreach (['country','resort','hotel_tours'] as $type) {
+        $scores=$scoreBuckets[$type];
+        $total=count($scores);
+        $qualityByType[$type]=[
+            'type'=>$type,
+            'total'=>$total,
+            'ready'=>$readyByType[$type],
+            'blocked'=>$blockedByType[$type],
+            'min_score'=>$total>0?min($scores):0,
+            'avg_score'=>$total>0?(int)round(array_sum($scores)/$total):0,
+            'max_score'=>$total>0?max($scores):0,
+            'review_ready'=>$total>0 && $blockedByType[$type]===0 && min($scores)===100,
+        ];
+    }
+
     usort($structuralRows, static fn(array $a,array $b):int => strcmp($a['path'],$b['path']));
     usort($hotelEvidenceRows, static fn(array $a,array $b):int => strcmp($a['path'],$b['path']));
     $normalizedCandidates=array_values(array_map('strval',$candidates)); sort($normalizedCandidates,SORT_STRING);
@@ -107,7 +126,9 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
     $errors = array_values(array_unique($errors));
     $readyCount=array_sum($readyByType); $blockedCount=array_sum($blockedByType);
     $qualityScore=$scoreRows>0?(int)round($scoreTotal/$scoreRows):0;
-    $reviewReady=$errors===[] && $scoreRows>0 && $blockedCount===0;
+    $populatedFamilyScores=array_values(array_filter(array_map(static fn(array $x):?int=>$x['total']>0?$x['min_score']:null,$qualityByType),static fn($x):bool=>$x!==null));
+    $familyQualityFloor=$populatedFamilyScores===[]?0:min($populatedFamilyScores);
+    $reviewReady=$errors===[] && $scoreRows>0 && $blockedCount===0 && $familyQualityFloor===100;
     $hotelEvidenceValidUntilEpoch=$hotelEvidenceValidUntil===[]?0:min($hotelEvidenceValidUntil);
     $hotelEvidenceFresh=$typeCounts['hotel_tours']===0 || ($hotelEvidenceValidUntilEpoch>$nowEpoch && $blockedByType['hotel_tours']===0);
 
@@ -116,6 +137,8 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
         'integrity_ok'=>$errors===[],
         'review_ready'=>$reviewReady,
         'quality_score'=>$qualityScore,
+        'family_quality_floor'=>$familyQualityFloor,
+        'quality_by_type'=>$qualityByType,
         'validated_at_epoch'=>$nowEpoch,
         'registry_count'=>count($registry),
         'readiness_row_count'=>$scoreRows,

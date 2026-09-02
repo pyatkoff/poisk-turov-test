@@ -62,8 +62,12 @@ $summary=v2_seo_page_launch_readiness_summary($rows);
 if(count($summary)!==3) unified_ready_fail('summary_types');
 
 $manifest=v2_seo_launch_manifest($catalog,$evidence,$now);
-if(($manifest['integrity_ok']??false)!==true||($manifest['review_ready']??false)!==true||($manifest['quality_score']??0)!==100) unified_ready_fail('manifest_ready');
+if(($manifest['integrity_ok']??false)!==true||($manifest['review_ready']??false)!==true||($manifest['quality_score']??0)!==100||($manifest['family_quality_floor']??0)!==100) unified_ready_fail('manifest_ready');
 if(($manifest['registry_count']??0)!==3||($manifest['readiness_row_count']??0)!==3||($manifest['ready_count']??0)!==3||($manifest['blocked_count']??-1)!==0) unified_ready_fail('manifest_counts');
+foreach(['country','resort','hotel_tours'] as $type){
+    $family=$manifest['quality_by_type'][$type]??null;
+    if(!is_array($family)||($family['total']??0)!==1||($family['ready']??0)!==1||($family['blocked']??-1)!==0||($family['min_score']??0)!==100||($family['avg_score']??0)!==100||($family['max_score']??0)!==100||($family['review_ready']??false)!==true) unified_ready_fail('family_scorecard_'.$type);
+}
 if(($manifest['hotel_tours_review_ready_count']??0)!==1||($manifest['hotel_tours_publication_candidate_count']??-1)!==0) unified_ready_fail('manifest_hotel_counts');
 if(($manifest['hotel_tours_publication_allowed']??true)!==false||($manifest['hotel_tours_indexation_allowed']??true)!==false||($manifest['publication_allowed']??true)!==false) unified_ready_fail('manifest_publication_boundary');
 if(($manifest['hotel_evidence_valid_until_epoch']??0)!==($now+600)) unified_ready_fail('manifest_evidence_clock');
@@ -126,6 +130,8 @@ foreach($thinRows as $row) if(($row['type']??'')==='resort') $thinResort=$row;
 if(!is_array($thinResort)||($thinResort['ready_for_launch_review']??true)!==false) unified_ready_fail('thin_resort_allowed');
 if(!in_array('editorial_depth',$thinResort['errors']??[],true)) unified_ready_fail('thin_resort_reason');
 $thinManifest=v2_seo_launch_manifest($thinCatalog,$evidence,$now);
-if(($thinManifest['integrity_ok']??false)!==true||($thinManifest['review_ready']??true)!==false||($thinManifest['quality_score']??100)>=100||($thinManifest['blocked_by_type']['resort']??0)!==1) unified_ready_fail('manifest_quality_block');
+if(($thinManifest['integrity_ok']??false)!==true||($thinManifest['review_ready']??true)!==false||($thinManifest['quality_score']??100)>=100||($thinManifest['family_quality_floor']??100)>=100||($thinManifest['blocked_by_type']['resort']??0)!==1) unified_ready_fail('manifest_quality_block');
+$thinFamily=$thinManifest['quality_by_type']['resort']??null;
+if(!is_array($thinFamily)||($thinFamily['review_ready']??true)!==false||($thinFamily['min_score']??100)>=100||($thinFamily['blocked']??0)!==1) unified_ready_fail('manifest_family_quality_block');
 
-echo "SEO_UNIFIED_READINESS_OK country=100 resort=100 hotel=100 manifest=100 hotelBoundary=1 evidenceFingerprint=1 reviewSliceBoundary=1 reviewFreshness=1 thinResortBlocked=1\n";
+echo "SEO_UNIFIED_READINESS_OK country=100 resort=100 hotel=100 manifest=100 familyFloor=100 hotelBoundary=1 evidenceFingerprint=1 reviewSliceBoundary=1 reviewFreshness=1 thinResortBlocked=1\n";
