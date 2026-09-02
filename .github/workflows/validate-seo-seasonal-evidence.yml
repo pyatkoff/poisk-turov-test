@@ -1,0 +1,27 @@
+name: Validate SEO seasonal evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-seasonal-evidence-v1.php'
+      - 'tests/seo-seasonal-evidence-smoke.php'
+      - '.github/workflows/validate-seo-seasonal-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seasonal-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate seasonal evidence contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-seasonal-evidence-v1.php >/dev/null
+          php -l tests/seo-seasonal-evidence-smoke.php >/dev/null
+          php tests/seo-seasonal-evidence-smoke.php
