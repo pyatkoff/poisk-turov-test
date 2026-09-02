@@ -11,10 +11,14 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/verify-anytoour-seo-launch.yml'
+      - 'v2/seo-production-identity-registry-v1.php'
+      - 'v2/data/verify-seo-production-identity-registry-v1.php'
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/verify-anytoour-seo-launch.yml'
+      - 'v2/seo-production-identity-registry-v1.php'
+      - 'v2/data/verify-seo-production-identity-registry-v1.php'
 
 permissions:
   contents: read
@@ -29,6 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
+      - uses: actions/checkout@v4
+
       - name: Verify controlled Turkey country/resort launch
         shell: bash
         env:
@@ -84,6 +90,8 @@ jobs:
           protected_code="$(curl -fsSL -o /tmp/hotel-review.html -w '%{http_code}' --max-time 35 "$base$protected")"
           test "$protected_code" = '200'
           grep -Eq '<meta name="robots" content="noindex,follow[^\"]*"' /tmp/hotel-review.html
+          protected_canonical="${base}${protected}"
+          grep -Fq "<link rel=\"canonical\" href=\"$protected_canonical\">" /tmp/hotel-review.html
           if grep -Fq "$protected" /tmp/sitemap.xml; then
             echo 'HOTEL_TOUR_SITEMAP_LEAK' >&2
             exit 1
@@ -110,6 +118,7 @@ jobs:
                   })
           protected_html=open('/tmp/hotel-review.html', encoding='utf-8').read()
           protected_robots=re.search(r'<meta name="robots" content="([^\"]+)"', protected_html)
+          protected_canonical=re.search(r'<link rel="canonical" href="([^\"]+)"', protected_html)
           payload={
               'state':'controlled_seo_postlaunch_baseline',
               'domain':'anytoour.ru',
@@ -125,6 +134,7 @@ jobs:
                   'path':os.environ['PROTECTED'],
                   'http_status':int(os.environ['PROTECTED_CODE']),
                   'robots':protected_robots.group(1) if protected_robots else None,
+                  'canonical':protected_canonical.group(1) if protected_canonical else None,
                   'sitemap_member':base+os.environ['PROTECTED'] in sitemap,
               },
               'search_console_metrics_state':'not_collected_by_this_workflow',
@@ -140,10 +150,17 @@ jobs:
           print('ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=6 hotel_tours_indexed=0 baseline_sha256='+payload['baseline_sha256'])
           PY
 
+          php -l v2/seo-production-identity-registry-v1.php >/dev/null
+          php -l v2/data/verify-seo-production-identity-registry-v1.php >/dev/null
+          php v2/data/verify-seo-production-identity-registry-v1.php --baseline-file=/tmp/anytoour-seo-baseline.json > /tmp/anytoour-seo-identity-registry.json
+          php -r '$x=json_decode(file_get_contents("/tmp/anytoour-seo-identity-registry.json"),true); if(($x["integrity_ok"]??false)!==true) exit(1); if(($x["hotel_tours_indexation_allowed"]??true)!==false) exit(2); echo "ANYTOOUR_IDENTITY_REGISTRY_OK ".($x["identity_registry_sha256"]??"")."\n";'
+
       - name: Upload production SEO baseline
         uses: actions/upload-artifact@v4
         with:
           name: anytoour-seo-baseline-${{ github.run_id }}
-          path: /tmp/anytoour-seo-baseline.json
+          path: |
+            /tmp/anytoour-seo-baseline.json
+            /tmp/anytoour-seo-identity-registry.json
           if-no-files-found: error
           retention-days: 30

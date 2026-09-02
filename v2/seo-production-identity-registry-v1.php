@@ -6,9 +6,9 @@ declare(strict_types=1);
  * This is review-only diagnostics: it never changes publication, indexation,
  * sitemap, canonical or route state.
  *
- * Expected rows define the exact current production state per path, so launched
- * country/resort pages and protected hotel_tours can be checked together without
- * weakening the hotel_tours noindex boundary.
+ * Expected rows define the exact current production state per path. Robots may be
+ * matched exactly (`robots`) or by a required leading policy (`robots_prefix`) so
+ * harmless supplemental crawler directives do not invalidate identity evidence.
  */
 function v2_seo_production_identity_registry_validate(
     array $evidence,
@@ -35,20 +35,23 @@ function v2_seo_production_identity_registry_validate(
         if(!is_array($row)){ $errors[]='expected_row_invalid_'.$i; continue; }
         $path=(string)($row['path']??'');
         $type=(string)($row['type']??'');
-        $robots=(string)($row['robots']??'');
+        $robotsExact=(string)($row['robots']??'');
+        $robotsPrefix=(string)($row['robots_prefix']??'');
         $sitemapMember=$row['sitemap_member']??null;
         if($path===''||isset($expected[$path])){ $errors[]='expected_path_duplicate_or_missing_'.$i; continue; }
         if(!in_array($type,['country','resort','hotel_tours'],true))$errors[]='expected_type_invalid:'.$path;
-        if($robots===''||!is_bool($sitemapMember))$errors[]='expected_identity_policy_invalid:'.$path;
+        if(($robotsExact===''&&$robotsPrefix==='')||($robotsExact!==''&&$robotsPrefix!=='')||!is_bool($sitemapMember))$errors[]='expected_identity_policy_invalid:'.$path;
+        $robotsPolicy=$robotsExact!==''?$robotsExact:$robotsPrefix;
         if($type==='hotel_tours'){
-            if(!str_starts_with($robots,'noindex,follow'))$errors[]='hotel_tours_expected_noindex:'.$path;
+            if(!str_starts_with($robotsPolicy,'noindex,follow'))$errors[]='hotel_tours_expected_noindex:'.$path;
             if($sitemapMember!==false)$errors[]='hotel_tours_expected_out_of_sitemap:'.$path;
         }
         $expected[$path]=[
             'path'=>$path,
             'type'=>$type,
             'http_status'=>(int)($row['http_status']??200),
-            'robots'=>$robots,
+            'robots'=>$robotsExact,
+            'robots_prefix'=>$robotsPrefix,
             'canonical'=>(string)($row['canonical']??('https://anytoour.ru'.$path)),
             'sitemap_member'=>$sitemapMember===true,
         ];
@@ -67,7 +70,8 @@ function v2_seo_production_identity_registry_validate(
         $canonical=(string)($page['canonical']??'');
         $sitemapMember=$page['sitemap_member']??null;
         if($status!==$want['http_status'])$errors[]='identity_http_status:'.$path;
-        if($robots!==$want['robots'])$errors[]='identity_robots_mismatch:'.$path;
+        if($want['robots']!=='' && $robots!==$want['robots'])$errors[]='identity_robots_mismatch:'.$path;
+        if($want['robots_prefix']!=='' && !str_starts_with($robots,$want['robots_prefix']))$errors[]='identity_robots_mismatch:'.$path;
         if($canonical!==$want['canonical'])$errors[]='identity_canonical_mismatch:'.$path;
         if(!is_bool($sitemapMember)||$sitemapMember!==$want['sitemap_member'])$errors[]='identity_sitemap_mismatch:'.$path;
         if($want['type']==='hotel_tours'){
