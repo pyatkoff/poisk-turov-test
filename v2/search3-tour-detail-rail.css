@@ -1,6 +1,7 @@
 /* Search3 desktop tour-details rail. Real selected-tour data only. */
 .search3-tour-detail-rail{display:none}
 @media(min-width:1000px){
+body.search3-preview.search3-selected-open .results-search-summary{display:grid!important;max-width:1180px!important;width:calc(100% - 32px)!important;margin:10px auto 0!important}
 body.search3-preview #selectedTour:not(.search3-final-review){grid-template-columns:260px minmax(0,1fr) 250px!important;column-gap:14px!important;align-items:start!important}
 body.search3-preview #selectedTour:not(.search3-final-review) .back-results{grid-column:1/-1!important;grid-row:1!important}
 body.search3-preview #selectedTour:not(.search3-final-review) .search3-booking-stepper{grid-column:1/-1!important;grid-row:2!important}
