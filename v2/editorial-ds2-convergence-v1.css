@@ -74,4 +74,7 @@
   .sp-hero h1{font-size:30px;line-height:1.05}
   .sp-hero p{margin-top:10px;font-size:14px;line-height:1.52}
   .sp-country-intent h1{font-size:27px}
+  .sp-breadcrumbs .sp-wrap{display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap}
+  .sp-breadcrumbs a,.sp-breadcrumbs .sp-wrap>span:not([aria-current="page"]){flex:0 0 auto}
+  .sp-breadcrumbs [aria-current="page"]{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
