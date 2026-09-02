@@ -42,3 +42,9 @@ body.search3-preview #selectedTour.search3-final-review .facts{grid-row:5!import
 body.search3-preview #selectedTour.search3-final-review .search3-booking-summary{border-color:#dfe5ef!important;box-shadow:0 8px 24px rgba(31,52,109,.06)!important}
 }
 @media(max-width:640px){.search3-review-heading{order:2;margin:2px 0 7px;padding:2px 0}.search3-review-heading h2{font-size:19px}.search3-review-heading p{font-size:8px}.search3-review-heading>b{width:24px;height:24px;flex-basis:24px;font-size:11px}body.search3-preview #selectedTour.search3-final-review .selected-picture{order:3!important}body.search3-preview #selectedTour.search3-final-review .selected-head{order:4!important}body.search3-preview #selectedTour.search3-final-review .facts{order:5!important}.search3-summary-submit{min-height:46px}.search3-summary-actions p{font-size:8px}}
+
+/* In Maket7 final review the selected hotel card owns hotel identity only.
+   Legacy price/confidence inserts are moved out of this card; the real price lives in the summary rail. */
+@media(min-width:1000px){
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-head>:not(:first-child){display:none!important}
+}
