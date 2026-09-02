@@ -1,5 +1,6 @@
 (function(){'use strict';
 var footer=document.querySelector('.ds2-site-footer');if(!footer||footer.dataset.search3Footer==='1')return;footer.dataset.search3Footer='1';
+footer.style.setProperty('background','#0b1324','important');footer.style.setProperty('background-color','#0b1324','important');footer.style.setProperty('color','#fff','important');
 function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function href(selector,fallback){var a=document.querySelector(selector);return a&&a.href?a.href:fallback||'#';}
 function headerLink(pattern,fallback){var list=Array.from(document.querySelectorAll('.at-global-header__nav a'));var a=list.find(function(x){return pattern.test(String(x.textContent||''));});return a&&a.href?a.href:fallback||'#';}
