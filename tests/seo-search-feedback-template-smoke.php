@@ -24,7 +24,7 @@ foreach($rows as $row){
     if(str_contains((string)($row['path']??''),'/hotel/')) search_feedback_template_fail('hotel_leak');
     if(($row['source_class']??null)!==''||($row['source_ref']??null)!=='') search_feedback_template_fail('source_not_blank');
     foreach(['collected_at_epoch','period_start_epoch','period_end_epoch'] as $field){
-        if(($row[$field]??'sentinel')!==null) search_feedback_template_fail('timestamp_not_null_'.$field);
+        if(!array_key_exists($field,$row)||$row[$field]!==null) search_feedback_template_fail('timestamp_not_null_'.$field);
     }
     $metrics=$row['metrics']??null;
     if(!is_array($metrics)) search_feedback_template_fail('metrics_missing');
