@@ -41,7 +41,8 @@ function v2_seo_render_hotel_tour_review(array $record): void
         $page['h1'],
         $page['intro'],
         v2_seo_search_handoff_url('/poisk-turov/', $page['search_state']),
-        'Найти туры в этот отель'
+        'Найти туры в этот отель',
+        'hotel-tour'
     );
 
     echo '<main class="sp-main sp-seo-editorial-page sp-hotel-tour-page">';
