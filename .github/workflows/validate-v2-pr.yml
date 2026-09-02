@@ -8,6 +8,7 @@ on:
       - 'tests/seo-turkey-hotel-review-catalog-smoke.php'
       - 'tests/seo-hotel-family-launch-readiness-smoke.php'
       - 'tests/seo-page-launch-readiness-smoke.php'
+      - 'tests/seo-hotel-launch-candidate-smoke.php'
       - '.github/workflows/validate-v2-pr.yml'
 
 concurrency:
@@ -177,3 +178,5 @@ jobs:
           php tests/seo-hotel-family-launch-readiness-smoke.php
           php -l tests/seo-page-launch-readiness-smoke.php >/dev/null
           php tests/seo-page-launch-readiness-smoke.php
+          php -l tests/seo-hotel-launch-candidate-smoke.php >/dev/null
+          php tests/seo-hotel-launch-candidate-smoke.php
