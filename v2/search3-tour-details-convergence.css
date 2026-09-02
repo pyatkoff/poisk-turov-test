@@ -24,4 +24,17 @@ body.search3-preview #selectedTour:not(.search3-final-review) .flight-segment-ti
 body.search3-preview #selectedTour:not(.search3-final-review) .flight-baggage{margin-top:7px!important}
 body.search3-preview #selectedTour:not(.search3-final-review) .search3-flight-continue{margin-top:10px!important}
 body.search3-preview #selectedTour:not(.search3-final-review) .search3-flight-continue button{min-width:188px!important;min-height:42px!important;border-radius:8px!important;font-size:10px!important}
+/* The legacy decision-summary repeats facts already visible above and collapsed into a
+   250px grid column, causing severe word breaks. Maket7 proceeds directly from tour facts
+   to optional details and flights, so remove only this redundant presentation block. */
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-choice-summary{display:none!important}
+/* Preserve access to secondary facts and room details, but make both full-width rows
+   instead of squeezing them beside the removed legacy summary. */
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .facts-secondary-toggle{grid-column:1/3!important;grid-row:5!important;width:100%!important;min-height:38px!important;margin:10px 0 0!important;padding:0 14px!important;border:1px solid var(--at-line)!important;border-radius:10px!important;background:#fff!important;color:var(--at-brand)!important;justify-content:flex-start!important;font-size:9px!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc{grid-column:1/3!important;grid-row:6!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc-toggle{grid-column:1/3!important;grid-row:7!important;width:max-content!important;margin:8px 0 0!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .room-details-host{grid-column:1/3!important;grid-row:8!important;width:100%!important;margin:10px 0 0!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .room-detail-toggle{width:100%!important;min-height:48px!important;border-radius:10px!important;text-align:left!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights{grid-column:1/3!important;grid-row:9!important;margin-top:12px!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .search3-flight-continue{grid-column:1/3!important;grid-row:10!important}
 }
