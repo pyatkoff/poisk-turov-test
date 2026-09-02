@@ -1,0 +1,118 @@
+name: SEO2 feed production identities once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-feed-prod-identities-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Read identity-only fresh feed evidence
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          work="$RUNNER_TEMP/seo2-feed-prod-once"
+          mkdir -p "$work"
+
+          cat > "$work/inspect.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          require __DIR__.'/v2/data/db-v1.php';
+          $pdo=v2_data_db();
+          $sql="SELECT page_key,page_type,country_id,region_id,departure_id,offers_json,UNIX_TIMESTAMP(expires_at) expires_at_epoch,UNIX_TIMESTAMP(NOW()) checked_at_epoch FROM seo_offer_snapshots WHERE country_id IN (1,4,8) AND page_type IN ('month','resort_month') AND expires_at>NOW() ORDER BY country_id,page_key LIMIT 1000";
+          $rows=$pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC)?:[];
+          $seen=[];$items=[];$checked=0;
+          foreach($rows as $row){
+            $checked=max($checked,(int)($row['checked_at_epoch']??0));
+            $country=(int)($row['country_id']??0);$pageKey=(string)($row['page_key']??'');$expires=(int)($row['expires_at_epoch']??0);
+            $offers=json_decode((string)($row['offers_json']??'[]'),true);
+            if(!is_array($offers)) continue;
+            foreach($offers as $offer){
+              if(!is_array($offer)) continue;
+              $hotel=(int)($offer['hotelId']??0);$tour=trim((string)($offer['tourId']??''));
+              if($country<=0||$hotel<=0||$tour===''||$expires<=0) continue;
+              $id=$country.'|'.$hotel.'|'.$tour;
+              if(isset($seen[$id])){ if($expires<$items[$seen[$id]]['expires_at_epoch']) $items[$seen[$id]]['expires_at_epoch']=$expires; continue; }
+              $seen[$id]=count($items);
+              $items[]=['country_id'=>$country,'hotel_id'=>$hotel,'tour_id'=>$tour,'source_page_key'=>$pageKey,'expires_at_epoch'=>$expires];
+            }
+          }
+          usort($items,static fn($a,$b)=>[$a['country_id'],$a['hotel_id'],$a['tour_id']]<=>[$b['country_id'],$b['hotel_id'],$b['tour_id']]);
+          echo json_encode(['state'=>'identity_only_fresh_feed_inventory','checked_at_epoch'=>$checked,'snapshot_count'=>count($rows),'items'=>$items],JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n";
+          PHP
+
+          ssh "${opts[@]}" "$remote" 'rm -rf "$HOME/www/anytoour.ru/data/seo2-feed-prod-once"; mkdir -p "$HOME/www/anytoour.ru/data/seo2-feed-prod-once/v2/data"'
+          scp "${opts[@]}" v2/data/db-v1.php "$remote:~/www/anytoour.ru/data/seo2-feed-prod-once/v2/data/db-v1.php"
+          scp "${opts[@]}" "$work/inspect.php" "$remote:~/www/anytoour.ru/data/seo2-feed-prod-once/inspect.php"
+          ssh "${opts[@]}" "$remote" 'set -euo pipefail; base="$HOME/www/anytoour.ru/data/seo2-feed-prod-once"; cp "$HOME/www/anytoour.ru/config.php" "$base/v2/config.php"; chmod 600 "$base/v2/config.php"; php "$base/inspect.php" > "$base/inventory.json"; rm -f "$base/v2/config.php"'
+          scp "${opts[@]}" "$remote:~/www/anytoour.ru/data/seo2-feed-prod-once/inventory.json" "$work/inventory.json"
+          ssh "${opts[@]}" "$remote" 'rm -rf "$HOME/www/anytoour.ru/data/seo2-feed-prod-once"'
+
+          cat > "$work/bind.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          $root=$argv[1];$inventory=json_decode(file_get_contents($argv[2]),true,512,JSON_THROW_ON_ERROR);
+          require $root.'/v2/seo-feed-family-binding-v1.php';
+          require $root.'/v2/seo-content-pilot-turkey-hotel-review-catalog-v1.php';
+          require $root.'/v2/seo-content-pilot-maldives-catalog-v1.php';
+          require $root.'/v2/seo-content-pilot-egypt-hotel-review-catalog-v1.php';
+          $families=[
+            ['key'=>'turkey','country_id'=>4,'catalog'=>v2_seo_content_pilot_turkey_hotel_review_catalog()],
+            ['key'=>'maldives','country_id'=>8,'catalog'=>v2_seo_content_pilot_maldives_catalog()],
+            ['key'=>'egypt','country_id'=>1,'catalog'=>v2_seo_content_pilot_egypt_hotel_review_catalog()],
+          ];
+          $items=[];
+          foreach(($inventory['items']??[]) as $row){
+            $items[]=['state'=>'fresh_feed_evidence','country_id'=>(int)$row['country_id'],'hotel_id'=>(int)$row['hotel_id'],'tour_id'=>(string)$row['tour_id'],'source_page_key'=>(string)$row['source_page_key'],'expires_at_epoch'=>(int)$row['expires_at_epoch'],'feed_publish_allowed'=>false];
+          }
+          $report=['state'=>'review_only_feed_evidence','feed_publish_allowed'=>false,'items'=>$items];
+          $binding=v2_seo_feed_family_binding($families,[$report],(int)($inventory['checked_at_epoch']??time()));
+          $byCountry=[];$safe=[];
+          foreach(($binding['bound']??[]) as $item){
+            $cid=(int)$item['country_id'];$byCountry[$cid]=($byCountry[$cid]??0)+1;
+            $safe[]=['country_id'=>$cid,'hotel_id'=>(int)$item['hotel_id'],'tour_id'=>(string)$item['tour_id'],'family_key'=>(string)$item['family_key'],'source_page_key'=>(string)$item['source_page_key'],'expires_at_epoch'=>(int)$item['expires_at_epoch']];
+          }
+          usort($safe,static fn($a,$b)=>[$a['country_id'],$a['hotel_id'],$a['tour_id']]<=>[$b['country_id'],$b['hotel_id'],$b['tour_id']]);
+          $out=['state'=>'review_only_verified_feed_identity_inventory','checked_at_epoch'=>(int)($inventory['checked_at_epoch']??0),'snapshot_count'=>(int)($inventory['snapshot_count']??0),'verified_hotel_identity_count'=>(int)($binding['verified_hotel_identity_count']??0),'bound_count'=>(int)($binding['bound_count']??0),'blocked_count'=>(int)($binding['blocked_count']??0),'by_country'=>$byCountry,'feed_publish_allowed'=>false,'publication_allowed'=>false,'publication_candidates'=>[],'items'=>$safe];
+          file_put_contents($argv[3],json_encode($out,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n");
+          echo 'SEO2_FEED_PROD_IDENTITIES snapshots='.$out['snapshot_count'].' verified_hotels='.$out['verified_hotel_identity_count'].' bound='.$out['bound_count'].' blocked='.$out['blocked_count']."\n";
+          foreach($byCountry as $cid=>$count) echo 'SEO2_FEED_PROD_COUNTRY country='.$cid.' bound='.$count."\n";
+          foreach(array_slice($safe,0,30) as $x) echo 'SEO2_FEED_IDENTITY country='.$x['country_id'].' hotel='.$x['hotel_id'].' tour='.str_replace(["\r","\n"],'',(string)$x['tour_id']).' expires='.$x['expires_at_epoch']."\n";
+          if(($out['publication_candidates']??null)!==[]||($out['feed_publish_allowed']??true)!==false) exit(10);
+          PHP
+          php "$work/bind.php" "$GITHUB_WORKSPACE" "$work/inventory.json" "$work/report.json"
+
+      - name: Upload disposable identity report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo2-feed-prod-identities-${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/seo2-feed-prod-once/report.json
+          retention-days: 3
