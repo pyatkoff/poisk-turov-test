@@ -1,0 +1,99 @@
+name: TOP500 unresolved mapping audit once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/top500-missing-map-audit-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Audit historical country mappings for unresolved priority IDs
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          work="$RUNNER_TEMP/top500-map-audit"
+          mkdir -p "$work"
+          cat > "$work/audit.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          require __DIR__.'/db-v1.php';
+          require __DIR__.'/top-hotels-v1.php';
+          $pdo=v2_data_db();
+          $ids=array_values(array_unique(array_map('intval',v2_priority_hotel_ids())));
+          $csv=implode(',',$ids);
+          $present=array_map('intval',$pdo->query("SELECT id FROM catalog_hotels WHERE id IN ($csv) AND is_active=1")->fetchAll(PDO::FETCH_COLUMN)?:[]);
+          $missing=array_values(array_diff($ids,$present));
+          $missingSet=array_fill_keys($missing,true);
+          $sources=[];
+          $add=function(int $hotel,int $country,string $source)use(&$sources,$missingSet):void{
+            if(!isset($missingSet[$hotel])||$country<=0)return;
+            $sources[$hotel][$country][$source]=true;
+          };
+          if($missing!==[]){
+            $mcsv=implode(',',$missing);
+            $rows=$pdo->query("SELECT hotel_id,country_id,COUNT(*) n,MAX(observed_at) last_seen FROM tour_price_observations WHERE hotel_id IN ($mcsv) AND country_id IS NOT NULL GROUP BY hotel_id,country_id")->fetchAll(PDO::FETCH_ASSOC)?:[];
+            foreach($rows as $r)$add((int)$r['hotel_id'],(int)$r['country_id'],'observation');
+            $attempts=$pdo->query("SELECT country_id,hotel_ids_json,status,MAX(started_at) last_started FROM tour_matrix_collection_attempts WHERE criterion='hotel_batch' AND hotel_ids_json IS NOT NULL GROUP BY country_id,hotel_ids_json,status")->fetchAll(PDO::FETCH_ASSOC)?:[];
+            foreach($attempts as $r){
+              $arr=json_decode((string)$r['hotel_ids_json'],true);
+              if(!is_array($arr))continue;
+              foreach($arr as $id)$add((int)$id,(int)$r['country_id'],'matrix_attempt');
+            }
+            $snaps=$pdo->query("SELECT country_id,offers_json FROM seo_offer_snapshots WHERE offers_json IS NOT NULL AND country_id IS NOT NULL ORDER BY captured_at DESC LIMIT 5000")->fetchAll(PDO::FETCH_ASSOC)?:[];
+            foreach($snaps as $r){
+              $offers=json_decode((string)$r['offers_json'],true);
+              if(!is_array($offers))continue;
+              foreach($offers as $offer)if(is_array($offer)&&isset($offer['hotelId']))$add((int)$offer['hotelId'],(int)$r['country_id'],'snapshot');
+            }
+          }
+          $resolved=[];$ambiguous=[];$unknown=[];
+          foreach($missing as $id){
+            $countries=array_keys($sources[$id]??[]);sort($countries,SORT_NUMERIC);
+            if(count($countries)===1){
+              $cid=(int)$countries[0];$resolved[]=['hotel_id'=>$id,'country_id'=>$cid,'sources'=>array_keys($sources[$id][$cid])];
+            }elseif(count($countries)>1){
+              $rows=[];foreach($countries as $cid)$rows[]=['country_id'=>(int)$cid,'sources'=>array_keys($sources[$id][$cid])];
+              $ambiguous[]=['hotel_id'=>$id,'countries'=>$rows];
+            }else{$unknown[]=$id;}
+          }
+          $out=['state'=>'top500_unresolved_mapping_audit','priority_count'=>count($ids),'catalog_active_count'=>count($present),'missing_count'=>count($missing),'resolved_historical_count'=>count($resolved),'ambiguous_count'=>count($ambiguous),'unknown_count'=>count($unknown),'resolved'=>$resolved,'ambiguous'=>$ambiguous,'unknown'=>$unknown];
+          file_put_contents($argv[1],json_encode($out,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n");
+          echo 'TOP500_MAP_AUDIT priority='.$out['priority_count'].' catalog='.$out['catalog_active_count'].' missing='.$out['missing_count'].' resolved='.$out['resolved_historical_count'].' ambiguous='.$out['ambiguous_count'].' unknown='.$out['unknown_count']."\n";
+          foreach($resolved as $r)echo 'TOP500_MAP_RESOLVED hotel='.$r['hotel_id'].' country='.$r['country_id'].' sources='.implode(',', $r['sources'])."\n";
+          foreach($ambiguous as $r)echo 'TOP500_MAP_AMBIGUOUS hotel='.$r['hotel_id'].' countries='.implode(',',array_map(static fn($x)=>(string)$x['country_id'],$r['countries']))."\n";
+          echo 'TOP500_MAP_UNKNOWN_IDS '.implode(',',$unknown)."\n";
+          PHP
+          scp "${opts[@]}" v2/data/db-v1.php v2/data/top-hotels-v1.php "$work/audit.php" "$remote:~/www/anytoour.ru/data/"
+          ssh "${opts[@]}" "$remote" 'php "$HOME/www/anytoour.ru/data/audit.php" "$HOME/www/anytoour.ru/data/top500-map-audit.json"'
+          scp "${opts[@]}" "$remote:~/www/anytoour.ru/data/top500-map-audit.json" "$work/report.json"
+          ssh "${opts[@]}" "$remote" 'rm -f "$HOME/www/anytoour.ru/data/audit.php" "$HOME/www/anytoour.ru/data/top500-map-audit.json"'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: top500-map-audit-${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/top500-map-audit/report.json
+          retention-days: 3
