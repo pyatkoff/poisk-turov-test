@@ -79,11 +79,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     if (await submit.count()) {
       await submit.click();
       const hasResults = await waitVisible('#results .hotel-card', 120000);
-      report.search = { submitted: true, hasResults };
-      await sleep(800);
+      const searchComplete = hasResults ? await waitVisible('#status .search-progress-done', 120000) : false;
+      report.search = { submitted: true, hasResults, complete: searchComplete };
+      if (hasResults && !searchComplete) report.errors.push('results became visible but search never reached completed state before screenshots');
+      await sleep(350);
       await snap('02-results', '#resultsTools');
 
-      if (hasResults) {
+      if (hasResults && searchComplete) {
         const showTours = page.locator('#results .search3-show-tours').first();
         if (await showTours.count()) {
           await showTours.click();
@@ -151,10 +153,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   }
 
   const lifecycleComplete = report.leadStates && report.leadStates.sending === true && report.leadStates.success === true && report.leadStates.error === true;
-  const strictPass = !!report.http && report.http < 400 && report.captureComplete === true && report.tourDetailsReady === true && lifecycleComplete && report.errors.length === 0;
+  const searchComplete = report.search && report.search.submitted === true && report.search.hasResults === true && report.search.complete === true;
+  const strictPass = !!report.http && report.http < 400 && searchComplete && report.captureComplete === true && report.tourDetailsReady === true && lifecycleComplete && report.errors.length === 0;
   if (!strictPass) {
     console.error('Search3 strict visual QA failed:', JSON.stringify({
       http: report.http,
+      search: report.search || null,
       captureComplete: report.captureComplete,
       tourDetailsReady: report.tourDetailsReady,
       leadStates: report.leadStates || null,
