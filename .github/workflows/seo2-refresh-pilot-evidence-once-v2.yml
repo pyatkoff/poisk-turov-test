@@ -1,0 +1,103 @@
+name: SEO2 one-shot controlled pilot evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-refresh-pilot-evidence-once-v2.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare production SSH key
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Capture fresh production identity evidence and readiness
+        env:
+          NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          NEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NEW_HOST" && test -n "$NEW_USER"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$NEW_USER@$NEW_HOST"
+
+          inspect_family() {
+            key="$1"; country="$2"; catalog="$3"; fn="$4"
+            evidence="$RUNNER_TEMP/$key-evidence.json"
+            report="$RUNNER_TEMP/$key-readiness.json"
+            echo "SEO2_PILOT_EVIDENCE_BEGIN key=$key country=$country"
+            timeout 45s ssh "${opts[@]}" "$remote" \
+              "php \"\$HOME/www/anytoour.ru/data/inspect-seo-hotel-snapshots-v1.php\" --country=$country --limit=100 --identity-only" \
+              | tee "$evidence"
+            php v2/data/report-seo-launch-readiness-v1.php \
+              --catalog-file="$catalog" \
+              --catalog-function="$fn" \
+              --evidence-file="$evidence" \
+              --require-ready=1 > "$report"
+            php -r '$x=json_decode(file_get_contents($argv[1]),true); if(!is_array($x)) exit(2); printf("SEO2_PILOT_FAMILY_READY key=%s ready=%d blocked=%d\n",$argv[2],$x["ready_count"]??0,$x["blocked_count"]??0);' "$report" "$key"
+            echo "SEO2_PILOT_EVIDENCE_END key=$key"
+          }
+
+          inspect_family turkey 4 v2/seo-content-pilot-turkey-hotel-review-catalog-v1.php v2_seo_content_pilot_turkey_hotel_review_catalog
+          inspect_family maldives 8 v2/seo-content-pilot-maldives-catalog-v1.php v2_seo_content_pilot_maldives_catalog
+          inspect_family egypt 1 v2/seo-content-pilot-egypt-hotel-review-catalog-v1.php v2_seo_content_pilot_egypt_hotel_review_catalog
+
+      - name: Require exact 3x3 pilot to be fresh and 100/100 now
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          require 'v2/seo-hotel-launch-pilot-v1.php';
+          $rows=[];
+          foreach(['turkey','maldives','egypt'] as $key){
+              $path=getenv('RUNNER_TEMP').'/'.$key.'-readiness.json';
+              $report=json_decode((string)file_get_contents($path),true);
+              if(!is_array($report)) {fwrite(STDERR,"PILOT_REPORT_INVALID:$key\n"); exit(2);}
+              foreach(($report['ready']??[]) as $row) $rows[]=$row;
+          }
+          $proposal=v2_seo_hotel_launch_pilot_proposal($rows,time());
+          if(($proposal['total']??0)!==9) {fwrite(STDERR,"PILOT_TOTAL_INVALID\n"); exit(3);}
+          foreach([4,8,1] as $countryId){
+              if(count($proposal['countries'][$countryId]??[])!==3){fwrite(STDERR,"PILOT_COUNTRY_INVALID:$countryId\n");exit(4);}
+          }
+          echo "SEO2_PILOT_FRESH_READY_OK total=9 countries=4:3,8:3,1:3 proposalOnly=1\n";
+          PHP
+
+      - name: Verify production DS2 reference and noindex boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          kemer="$RUNNER_TEMP/kemer.html"
+          westin="$RUNNER_TEMP/westin.html"
+          curl -fsSL --max-time 30 https://anytoour.ru/country/turkey/kemer/ -o "$kemer"
+          curl -fsSL --max-time 30 https://anytoour.ru/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/ -o "$westin"
+          grep -Fq 'sp-seo-editorial-page sp-resort-page' "$kemer"
+          grep -Fq 'sp-seo-editorial-page sp-hotel-tour-page' "$westin"
+          grep -Fq 'name="robots" content="noindex,follow,max-image-preview:large"' "$westin"
+          grep -Fq 'rel="canonical" href="https://anytoour.ru/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/"' "$westin"
+          grep -Fq 'country=8' "$westin"
+          grep -Fq 'hotel=65108' "$westin"
+          echo SEO2_PRODUCTION_REFERENCE_OK kemer=200 westin=200 hotelNoindex=1 verifiedIdentity=8:65108
