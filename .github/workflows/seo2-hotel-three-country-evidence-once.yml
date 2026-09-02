@@ -1,0 +1,94 @@
+name: SEO2 hotel three-country evidence once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-hotel-three-country-evidence-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare production SSH key
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"; else printf '%s' "$SSH_KEY" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Refresh fresh production hotel identities
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          for country in 4 8 1; do
+            timeout 45s ssh "${opts[@]}" "$remote" "php \"\$HOME/www/anytoour.ru/data/inspect-seo-hotel-snapshots-v1.php\" --country=$country --limit=100 --identity-only" > "$RUNNER_TEMP/hotels-$country.json"
+            php -r '$x=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR); if(!is_array($x)||!array_is_list($x)||count($x)<1)exit(2); $min=null;$max=null;foreach($x as $r){$e=(int)($r["evidence_epoch"]??0);$f=(int)($r["freshness_seconds"]??0);if((int)($r["country_id"]??0)!==(int)$argv[2]||(int)($r["hotel_id"]??0)<=0||trim((string)($r["hotel_slug"]??""))===""||$e<=0||$f<=0)exit(3);$expires=$e+$f;$min=$min===null?$expires:min($min,$expires);$max=$max===null?$e:max($max,$e);} printf("SEO2_PROD_HOTEL_EVIDENCE country=%d rows=%d checked_max=%d valid_until_min=%d identity_only=1\n",$argv[2],count($x),$max,$min);' "$RUNNER_TEMP/hotels-$country.json" "$country"
+          done
+
+      - name: Validate catalog identity intersections and readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          declare -a rows=(
+            '4|v2/seo-content-pilot-turkey-hotel-review-catalog-v1.php|v2_seo_content_pilot_turkey_hotel_review_catalog|turkey'
+            '8|v2/seo-content-pilot-maldives-catalog-v1.php|v2_seo_content_pilot_maldives_catalog|maldives'
+            '1|v2/seo-content-pilot-egypt-hotel-review-catalog-v1.php|v2_seo_content_pilot_egypt_hotel_review_catalog|egypt'
+          )
+          for spec in "${rows[@]}"; do
+            IFS='|' read -r country file fn family <<< "$spec"
+            php v2/data/validate-seo-hotel-snapshot-identities-v1.php --catalog-file="$file" --catalog-function="$fn" < "$RUNNER_TEMP/hotels-$country.json"
+            php v2/data/report-seo-launch-readiness-v1.php --catalog-file="$file" --catalog-function="$fn" --evidence-file="$RUNNER_TEMP/hotels-$country.json" > "$RUNNER_TEMP/readiness-$family.json"
+            php -r '$x=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);if(($x["state"]??"")!=="review_only_launch_readiness_report"||($x["publication_allowed"]??true)!==false||($x["indexation_allowed"]??true)!==false)exit(2);printf("SEO2_HOTEL_FAMILY_READINESS family=%s ready=%d blocked=%d publication=0 indexation=0\n",$argv[2],(int)($x["ready_count"]??0),(int)($x["blocked_count"]??0));' "$RUNNER_TEMP/readiness-$family.json" "$family"
+          done
+
+      - name: Build review-only quality slice evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          $families=['turkey','maldives','egypt'];
+          $slice=[];
+          foreach($families as $family){
+            $path=getenv('RUNNER_TEMP').'/readiness-'.$family.'.json';
+            $x=json_decode(file_get_contents($path),true,512,JSON_THROW_ON_ERROR);
+            $ready=[];
+            foreach(($x['rows']??[]) as $row){
+              if(!is_array($row)||($row['type']??'')!=='hotel_tours'||($row['ready_for_launch_review']??false)!==true||(int)($row['score']??0)!==100)continue;
+              $ready[]=['family'=>$family,'path'=>(string)($row['path']??''),'country_id'=>(int)($row['country_id']??0),'hotel_id'=>(int)($row['hotel_id']??0),'score'=>100,'evidence_epoch'=>(int)($row['evidence_epoch']??0),'evidence_expires_epoch'=>(int)($row['evidence_expires_epoch']??0),'publication_allowed'=>false,'indexation_allowed'=>false];
+            }
+            usort($ready,static fn($a,$b)=>[$a['hotel_id'],$a['path']]<=>[$b['hotel_id'],$b['path']]);
+            if($ready!==[])$slice[]=$ready[0];
+          }
+          $out=['state'=>'review_only_hotel_quality_slice','family_count'=>count($slice),'item_count'=>count($slice),'items'=>$slice,'publication_candidates'=>[],'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false];
+          file_put_contents(getenv('RUNNER_TEMP').'/hotel-quality-slice.json',json_encode($out,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR));
+          printf("SEO2_HOTEL_QUALITY_SLICE families=%d items=%d publication=0 indexation=0 sitemap=0\n",count($slice),count($slice));
+          foreach($slice as $row)printf("SEO2_HOTEL_SLICE_ITEM family=%s hotel_id=%d score=100 valid_until=%d path=%s\n",$row['family'],$row['hotel_id'],$row['evidence_expires_epoch'],$row['path']);
+          PHP
+
+      - name: Upload disposable evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo2-hotel-three-country-evidence-${{ github.event.pull_request.number }}
+          path: |
+            ${{ runner.temp }}/readiness-*.json
+            ${{ runner.temp }}/hotel-quality-slice.json
+          retention-days: 3
