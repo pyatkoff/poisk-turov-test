@@ -14,6 +14,25 @@ body.search3-preview #selectedTour .section-heading strong{font-size:17px!import
 body.search3-preview #selectedTour .flight-variant{border-radius:10px!important;box-shadow:none!important}
 body.search3-preview #selectedTour .lead-form button[type=submit]{min-height:46px!important;border-radius:8px!important;background:#ff4f0a!important}
 }
+body.search3-preview #selectedTour .lead-form[data-search3-lead-state]>*:not(.search3-lead-status){display:none!important}
+body.search3-preview .search3-lead-status{display:grid;grid-template-columns:54px minmax(0,1fr);gap:16px;align-items:start;padding:8px 0}
+body.search3-preview .search3-lead-status[hidden]{display:none!important}
+body.search3-preview .search3-lead-status h3{margin:0 0 6px;color:#0d1b4c;font-size:22px;line-height:1.15}
+body.search3-preview .search3-lead-status p{margin:0 0 12px;color:#68708a;font-size:12px;line-height:1.45}
+body.search3-preview .search3-lead-status strong{display:block;margin:14px 0 10px;color:#0d1b4c;font-size:13px}
+body.search3-preview .search3-lead-status__icon{display:flex;width:48px;height:48px;align-items:center;justify-content:center;border-radius:50%;font-size:24px;font-weight:900}
+body.search3-preview .search3-lead-status__icon--sending{background:#eef5ff;color:#075cff}
+body.search3-preview .search3-lead-status__icon--success{background:#20bd63;color:#fff}
+body.search3-preview .search3-lead-status__icon--error{background:#ef5350;color:#fff}
+body.search3-preview .search3-lead-status ol{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:8px;color:#33405f;font-size:11px}
+body.search3-preview .search3-lead-status ol li:before{content:'✓';display:inline-flex;width:18px;height:18px;margin-right:7px;align-items:center;justify-content:center;border:1px solid #075cff;border-radius:50%;color:#075cff;font-size:9px;font-weight:900}
+body.search3-preview .search3-lead-id{font-weight:800;color:#0d1b4c!important}
+body.search3-preview .search3-messenger-actions,body.search3-preview .search3-error-actions{display:flex;gap:8px;flex-wrap:wrap}
+body.search3-preview .search3-msg-btn,body.search3-preview .search3-retry-lead,body.search3-preview .search3-edit-lead,body.search3-preview .search3-stay-site{display:inline-flex;min-height:42px;padding:0 16px;align-items:center;justify-content:center;border-radius:8px;text-decoration:none;font:800 11px/1 var(--at-font);cursor:pointer}
+body.search3-preview .search3-msg-btn--max,body.search3-preview .search3-retry-lead{border:1px solid #075cff;background:#075cff;color:#fff}
+body.search3-preview .search3-msg-btn--tg,body.search3-preview .search3-edit-lead{border:1px solid #075cff;background:#fff;color:#075cff}
+body.search3-preview .search3-msg-btn--disabled{border:1px solid #d8deea;background:#f5f7fb;color:#9aa3b7;cursor:not-allowed}
+body.search3-preview .search3-stay-site{border:0;background:transparent;color:#075cff}
 @media(max-width:640px){
 body.search3-preview #selectedTour{margin-top:8px!important}
 body.search3-preview #selectedTour .selected-picture{height:178px!important;border-radius:10px 10px 0 0!important}
@@ -22,4 +41,10 @@ body.search3-preview #selectedTour .selected-head h2{font-size:18px!important}
 body.search3-preview #selectedTour .facts{border-radius:0 0 10px 10px!important}
 body.search3-preview #selectedTour .hotel-desc,body.search3-preview #selectedTour .tour-flights,body.search3-preview #selectedTour .lead-form{padding:10px!important;border-radius:10px!important}
 body.search3-preview #selectedTour .lead-form button[type=submit]{min-height:46px!important;background:#ff4f0a!important}
+body.search3-preview .search3-lead-status{grid-template-columns:1fr;gap:10px;padding:4px 0}
+body.search3-preview .search3-lead-status__icon{width:44px;height:44px;font-size:21px}
+body.search3-preview .search3-lead-status h3{font-size:19px}
+body.search3-preview .search3-lead-status p{font-size:11px}
+body.search3-preview .search3-messenger-actions,body.search3-preview .search3-error-actions{display:grid;grid-template-columns:1fr}
+body.search3-preview .search3-msg-btn,body.search3-preview .search3-retry-lead,body.search3-preview .search3-edit-lead,body.search3-preview .search3-stay-site{width:100%;min-height:44px}
 }
