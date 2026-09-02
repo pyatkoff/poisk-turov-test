@@ -1,7 +1,7 @@
 (function(){'use strict';
 function ensureMaket7Contract(){if(document.getElementById('search3-maket7-contract'))return;var link=document.createElement('link');link.id='search3-maket7-contract';link.rel='stylesheet';link.href='/_preview/search3/search3-form-maket7.css?v=2';document.head.appendChild(link);}
 ensureMaket7Contract();
-var form=document.getElementById('tourSearch'),tools=document.getElementById('resultsTools'),heading=tools&&tools.querySelector('strong'),summary=document.getElementById('resultSummary'),searchSummary=document.getElementById('resultsSearchSummary'),edit=document.getElementById('resultsSearchEdit');
+var form=document.getElementById('tourSearch'),tools=document.getElementById('resultsTools'),heading=tools&&tools.querySelector('strong'),summary=document.getElementById('resultSummary'),searchSummary=document.getElementById('resultsSearchSummary'),edit=document.getElementById('resultsSearchEdit'),results=document.getElementById('results');
 if(!form||!tools||!heading||!summary)return;
 function word(n,one,few,many){var x=Math.abs(Number(n)||0)%100,y=x%10;if(x>10&&x<20)return many;if(y===1)return one;if(y>=2&&y<=4)return few;return many;}
 function toursCount(items){return (Array.isArray(items)?items:[]).reduce(function(sum,h){return sum+(Array.isArray(h&&h.tours)?h.tours.length:0);},0);}
@@ -9,9 +9,11 @@ function selectedText(name){var el=form.elements[name];if(!el)return'';if(el.tag
 function compactRoute(){var from=selectedText('from'),country=selectedText('country'),region=selectedText('region');var dest=[country,region].filter(Boolean).join(' · ');return [from,dest].filter(Boolean).join(' → ');}
 function syncRoute(){if(!searchSummary)return;var route=searchSummary.querySelector('#resultsSearchRoute');if(route){var text=compactRoute();if(text)route.textContent=text;}}
 function ensureMeta(){var existing=tools.querySelector('.search3-results-meta');if(existing)return existing;var meta=document.createElement('div');meta.className='search3-results-meta';meta.innerHTML='<span data-s3-hotels>0 отелей</span><span aria-hidden="true">·</span><span data-s3-tours>0 туров</span>';var first=tools.firstElementChild;if(first)first.appendChild(meta);return meta;}
+function syncResultsState(){var has=!!(results&&results.querySelector('.hotel-card'));document.body.classList.toggle('search3-has-results',has);if(has)document.body.classList.remove('search3-editing-search');}
 function update(items){items=Array.isArray(items)?items:[];var hotels=items.length,tours=toursCount(items);heading.textContent='Найдено '+tours+' '+word(tours,'тур','тура','туров');summary.textContent=hotels?hotels+' '+word(hotels,'отель','отеля','отелей')+' · актуальные варианты':'Актуальные варианты';var meta=ensureMeta(),h=meta.querySelector('[data-s3-hotels]'),t=meta.querySelector('[data-s3-tours]');if(h)h.textContent=hotels+' '+word(hotels,'отель','отеля','отелей');if(t)t.textContent=tours+' '+word(tours,'тур','тура','туров');syncRoute();document.body.classList.toggle('search3-has-results',hotels>0);document.body.classList.remove('search3-editing-search');}
 window.addEventListener('v2:results-rendered',function(e){update(e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[]);});
 window.addEventListener('v2:search-reset',function(){document.body.classList.remove('search3-has-results','search3-editing-search');heading.textContent='Предложения';summary.textContent='Актуальные варианты';var meta=tools.querySelector('.search3-results-meta');if(meta)meta.remove();});
+if(results){new MutationObserver(syncResultsState).observe(results,{childList:true});syncResultsState();}
 if(edit)edit.addEventListener('click',function(){document.body.classList.add('search3-editing-search');form.scrollIntoView({behavior:'smooth',block:'start'});var focusTarget=form.querySelector('select,input:not([type="hidden"]),button');if(focusTarget)setTimeout(function(){try{focusTarget.focus({preventScroll:true});}catch(_e){focusTarget.focus();}},250);});
 form.addEventListener('change',syncRoute);syncRoute();
 })();
