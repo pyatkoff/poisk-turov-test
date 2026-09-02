@@ -24,6 +24,9 @@ function v2_seo_turkey_hotel_manifest(): array
         ['file'=>'seo-content-pilot-turkey-belpoint-beach-v1.php','function'=>'v2_seo_content_pilot_turkey_belpoint_beach','label'=>'Туры в BELPOINT BEACH','href'=>'/country/turkey/hotel/belpoint-beach-ex-ruza-beach-hotel-1097/'],
         ['file'=>'seo-content-pilot-turkey-more-hotel-v1.php','function'=>'v2_seo_content_pilot_turkey_more_hotel','label'=>'Туры в MORE HOTEL','href'=>'/country/turkey/hotel/more-hotel-1389/'],
         ['file'=>'seo-content-pilot-turkey-club-selen-icmeler-v1.php','function'=>'v2_seo_content_pilot_turkey_club_selen_icmeler','label'=>'Туры в CLUB SELEN ICMELER','href'=>'/country/turkey/hotel/club-selen-icmeler-56492/'],
+        ['file'=>'seo-content-pilot-turkey-ares-city-v1.php','function'=>'v2_seo_content_pilot_turkey_ares_city','label'=>'Туры в ARES CITY','href'=>'/country/turkey/hotel/ares-city-ex-kami-hotel-1282/'],
+        ['file'=>'seo-content-pilot-turkey-club-wasa-v1.php','function'=>'v2_seo_content_pilot_turkey_club_wasa','label'=>'Туры в CLUB WASA HOLIDAY VILLAGE','href'=>'/country/turkey/hotel/club-wasa-holiday-village-ex-larissa-holiday-beach-club-81900/'],
+        ['file'=>'seo-content-pilot-turkey-seray-v1.php','function'=>'v2_seo_content_pilot_turkey_seray','label'=>'Туры в SERAY','href'=>'/country/turkey/hotel/seray-ex-aryes-deluxe-9336/'],
     ];
 }
 
