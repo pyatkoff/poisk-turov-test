@@ -2,7 +2,7 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. Search/results local-filter completeness remains released. Selected-tour structural/touch convergence is production-green, and PR #878 fixed the canonical DS2 post-success messenger handoff lookup with all PR gates green; production evidence is now pending for merge 1989b7a33220708009680fa1192cb5bb638b155f.",
+    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. Search/results local-filter completeness remains released. PR #878 canonical DS2 post-success messenger handoff now has green production/post-deploy evidence. PR #884 fixed a reproduced same-tour/different-room async leak in room details and merged to main as 28f59b20c7b9d5a6f8c15537613631e925360f1f; production evidence is pending for that merge.",
     "done": [
       "P0/P1 progressive 25→100, local narrowing, widening/server lifecycle, stale async protection and counters have prior accepted evidence.",
       "Hotel/room, selected-tour/flight and post-success lead handoff were released narrowly to main.",
@@ -12,9 +12,10 @@
       "PR #855 fixed a reproduced lead UI race by requiring both tourId and searchId to match before late lead success/error can decorate the current form. It merged to main as baf2790f27416d4cdf5a34d7344439c39c8e1469 and its production deploy/live search smoke passed.",
       "PR #861 fixed the 768px selected-tour structural stacking defect and merged as 90443fc0f5a79fecac9ae61350cf2c98bddff72b; later production evidence is green.",
       "PR #870 normalized selected-tour back-results and hotel-description actions to canonical 44px touch targets; merge 4ddf997599d69fadf96fd0842cc4ff9e561e187b deployed successfully and post-deploy selected-tour verification passed.",
-      "PR #878 fixed a reproduced post-success lead UX defect: messenger continuation still queried removed legacy .v2-site-community__socials even though the canonical footer is .ds2-site-footer__socials. The fix changes only the lookup and extends the existing lead recovery guard; Security, lead recovery, V2 bundle/PR and selected-tour/visual gates all passed before merge."
+      "PR #878 fixed the canonical DS2 post-success messenger handoff lookup and now has successful production/post-deploy visual evidence on merge 1989b7a33220708009680fa1192cb5bb638b155f.",
+      "PR #884 fixed a reproduced room-details stale async race where the same tourId with a changed room identity could accept the previous room response. Room requests/hosts are now scoped by tourId plus deterministic room key; the existing second-tour state-isolation guard reproduces the delayed-response case at 375/768/1440. Targeted state isolation, Security and affected V2/visual gates passed before merge."
     ],
-    "next": "Finish production evidence for #878, then continue selected-tour E2E with second-tour/room/flight state isolation and remaining error/retry/recovery paths. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead adapter semantics.",
+    "next": "Finish production evidence for #884, then continue selected-tour E2E with flight state isolation and remaining error/retry/recovery paths. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead adapter semantics.",
     "blocked": [
       "HIGH issue #850: production lead adapter idempotency semantics differ from the validated helper contract; changing the external lead mechanism requires explicit approval.",
       "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence.",
@@ -27,7 +28,8 @@
       "Local filtering is safe only when the loaded payload is complete enough for the selected facet.",
       "Lead UI async acceptance must be scoped to both tourId and searchId, not tourId alone.",
       "Responsive selected-tour structure should not depend on optional decoration classes when the canonical DOM structure is stable.",
-      "Post-success handoff must consume canonical DS2 footer destinations; removed legacy footer selectors are not a valid runtime dependency."
+      "Post-success handoff must consume canonical DS2 footer destinations; removed legacy footer selectors are not a valid runtime dependency.",
+      "Room-details async acceptance cannot rely on tourId alone; the selected room identity must also still match before a delayed response decorates the current host."
     ]
   },
   "active_task": {
@@ -50,7 +52,8 @@
       "Search lifecycle clears selected-tour UI, invalidates async generation and resets runtime searchId before a replacement search.",
       "PR #855 prevents stale lead UI success/error from an older search when the same tourId is selected again by requiring matching searchId.",
       "PR #861 and #870 have production evidence for selected-tour tablet structure and 44px touch-target convergence.",
-      "PR #878 merged as 1989b7a33220708009680fa1192cb5bb638b155f after all nine relevant PR gates passed; production deploy/smoke is pending.",
+      "PR #878 has successful production/post-deploy evidence for the canonical DS2 messenger handoff.",
+      "PR #884 merged as 28f59b20c7b9d5a6f8c15537613631e925360f1f after the existing second-tour isolation guard passed its new same-tour/different-room delayed-response reproduction at 375/768/1440 plus Security and affected V2/visual gates; production evidence is pending.",
       "HIGH issue #850 remains approval-gated and must not be fixed by changing lead-adapter.php without explicit owner approval."
     ],
     "parent_task": "P0_P1_PRODUCT_STABILITY"
@@ -59,10 +62,11 @@
     {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"RELEASED_PRODUCTION","latest_pr":842,"latest_merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45","deploy_run":33563761068},
     {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_WITH_PRIOR_EVIDENCE","pr":656,"merge_sha":"8ab3da23684a8e82ed6b752210d3ce5f9fbcd06d"},
     {"id":"RESULTS_LOCAL_FILTERS_CORE","priority":1,"status":"RELEASED_PRODUCTION","pr":842,"merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45","deploy_run":33563761068},
-    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_REAUDIT","latest_pr":878,"latest_merge_sha":"1989b7a33220708009680fa1192cb5bb638b155f"},
+    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_REAUDIT","latest_pr":884,"latest_merge_sha":"28f59b20c7b9d5a6f8c15537613631e925360f1f"},
     {"id":"SELECTED_TOUR_TABLET_VISUAL","priority":1,"status":"RELEASED_PRODUCTION","pr":861,"merge_sha":"90443fc0f5a79fecac9ae61350cf2c98bddff72b"},
     {"id":"SELECTED_TOUR_TOUCH_TARGETS","priority":1,"status":"RELEASED_PRODUCTION","pr":870,"merge_sha":"4ddf997599d69fadf96fd0842cc4ff9e561e187b"},
-    {"id":"LEAD_SUCCESS_DS2_HANDOFF","priority":1,"status":"MERGED_AWAITING_PRODUCTION_EVIDENCE","pr":878,"merge_sha":"1989b7a33220708009680fa1192cb5bb638b155f"},
+    {"id":"LEAD_SUCCESS_DS2_HANDOFF","priority":1,"status":"RELEASED_PRODUCTION","pr":878,"merge_sha":"1989b7a33220708009680fa1192cb5bb638b155f"},
+    {"id":"ROOM_DETAILS_STATE_ISOLATION","priority":1,"status":"MERGED_AWAITING_PRODUCTION_EVIDENCE","pr":884,"merge_sha":"28f59b20c7b9d5a6f8c15537613631e925360f1f"},
     {"id":"LEAD_IDEMPOTENCY_CONTRACT","priority":1,"status":"BLOCKED_APPROVAL_HIGH","issue":850},
     {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"RELEASED_MAIN_PRODUCTION"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"CONTINUE_TARGETED_REAUDIT"},
@@ -73,9 +77,9 @@
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"DONE_ENHANCED_CONTRACTS"}
   ],
   "last_signal": {
-    "source": "selected_tour_lead_success_ds2_handoff",
-    "status": "PR878_MERGED_AWAITING_PRODUCTION_EVIDENCE_CONTINUE_E2E",
-    "sha": "1989b7a33220708009680fa1192cb5bb638b155f"
+    "source": "selected_tour_room_state_isolation",
+    "status": "PR884_MERGED_AWAITING_PRODUCTION_EVIDENCE_CONTINUE_E2E",
+    "sha": "28f59b20c7b9d5a6f8c15537613631e925360f1f"
   },
   "blocked": [
     {"scope":"lead adapter idempotency semantics","type":"approval_gate_high","reason":"Issue #850 would require changing protected external lead mechanism semantics.","action":"Do not modify lead-adapter.php without explicit owner approval; continue independent MEDIUM recovery work."},
