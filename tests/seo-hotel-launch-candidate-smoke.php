@@ -1,5 +1,9 @@
 <?php
 require_once __DIR__ . '/../v2/seo-hotel-launch-candidate-v1.php';
+require_once __DIR__ . '/../v2/seo-hotel-launch-pilot-v1.php';
+require_once __DIR__ . '/../v2/seo-content-pilot-turkey-hotels-v1.php';
+require_once __DIR__ . '/../v2/seo-content-pilot-maldives-hotels-v1.php';
+require_once __DIR__ . '/../v2/seo-content-pilot-egypt-hotels-v1.php';
 
 function launch_candidate_fail(string $message): void
 {
@@ -81,4 +85,41 @@ try {
     if (!str_contains($e->getMessage(), 'currently fresh')) launch_candidate_fail('expired_wrong_error');
 }
 
-echo "SEO_HOTEL_LAUNCH_CANDIDATE_OK explicit=1 readyOnly=1 cap=1 proposalOnly=1 countryBalanced=1 evidenceReplayBlocked=1\n";
+$spec = v2_seo_hotel_launch_pilot_spec();
+if (($spec['state']??'')!=='proposal_only_requires_launch_approval') launch_candidate_fail('pilot_state');
+$manifestPaths = [];
+foreach ([v2_seo_turkey_hotel_manifest(), v2_seo_maldives_hotel_manifest(), v2_seo_egypt_hotel_manifest()] as $manifest) {
+    foreach ($manifest as $entry) $manifestPaths[(string)($entry['href']??'')] = true;
+}
+$pilotRows=[];
+foreach ($spec['countries'] as $bucket) {
+    if (count($bucket['paths']??[])!==3) launch_candidate_fail('pilot_bucket_size');
+    foreach ($bucket['paths'] as $path) {
+        if (!isset($manifestPaths[$path])) launch_candidate_fail('pilot_path_missing_from_review_manifest');
+        if (isset($pilotRows[$path])) launch_candidate_fail('pilot_duplicate_path');
+        if (!preg_match('~-([1-9][0-9]*)/$~', $path, $m)) launch_candidate_fail('pilot_path_identity');
+        $pilotRows[$path]=[
+            'path'=>$path,
+            'country_id'=>(int)$bucket['country_id'],
+            'hotel_id'=>(int)$m[1],
+            'evidence_epoch'=>$now,
+            'evidence_expires_epoch'=>$freshUntil,
+            'score'=>100,
+            'ready_for_launch_review'=>true,
+            'errors'=>[],
+        ];
+    }
+}
+if (count($pilotRows)!==9) launch_candidate_fail('pilot_total');
+$pilotProposal=v2_seo_hotel_launch_pilot_proposal(array_values($pilotRows),$now);
+if (($pilotProposal['total']??0)!==9) launch_candidate_fail('pilot_proposal_total');
+if (($pilotProposal['max_per_country']??0)!==3 || ($pilotProposal['max_total']??0)!==9) launch_candidate_fail('pilot_caps');
+
+$expiredPilot=array_values($pilotRows);
+$expiredPilot[0]['evidence_expires_epoch']=$now-1;
+try {
+    v2_seo_hotel_launch_pilot_proposal($expiredPilot,$now);
+    launch_candidate_fail('pilot_expired_evidence_allowed');
+} catch (InvalidArgumentException $e) {}
+
+echo "SEO_HOTEL_LAUNCH_CANDIDATE_OK explicit=1 readyOnly=1 cap=1 proposalOnly=1 countryBalanced=1 evidenceReplayBlocked=1 pilot=9 pilotManifestBound=1\n";
