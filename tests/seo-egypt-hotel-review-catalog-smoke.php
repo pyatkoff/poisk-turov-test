@@ -85,8 +85,10 @@ if ($hotelPaths !== $expectedPaths) egypt_hotel_review_fail('manifest_registry_p
 if (count($hotelPaths) !== $expectedHotelCount) egypt_hotel_review_fail('manifest_registry_count_mismatch_' . $expectedHotelCount . '_' . count($hotelPaths));
 if (count($registry) !== $expectedHotelCount + 1) egypt_hotel_review_fail('expected_parent_plus_manifest_hotels');
 
+// The public country record is independently approved for the controlled launch.
+// This must not alter the review-only parent projection inside the hotel catalog.
 $editorialParent = v2_seo_content_pilot_egypt();
-if (($editorialParent['status'] ?? '') !== 'review') egypt_hotel_review_fail('editorial_parent_not_review');
+if (($editorialParent['status'] ?? '') !== 'approved') egypt_hotel_review_fail('editorial_parent_not_approved');
 $parentLinks = [];
 foreach (($editorialParent['data']['related'] ?? []) as $link) {
     $href = trim((string)($link['href'] ?? ''));
@@ -99,4 +101,9 @@ $reviewParent = $registry['/country/egypt/'] ?? [];
 if (($reports['/country/egypt/']['status'] ?? '') !== 'review') egypt_hotel_review_fail('isolated_parent_not_review');
 if (($reviewParent['type'] ?? '') !== 'country') egypt_hotel_review_fail('isolated_parent_type');
 
-echo 'SEO_EGYPT_HOTEL_REVIEW_OK hotels=' . $expectedHotelCount . ' candidates=0 parentReview=1 country=1 uniqueHotelIds=' . count($manifestHotelIds) . ' uniqueEditorial=' . count($editorialFingerprints) . PHP_EOL;
+// Explicitly prove that country approval did not create any hotel publication candidate.
+foreach (v2_seo_content_candidate_paths($catalog) as $candidate) {
+    if (str_contains((string)$candidate, '/hotel/')) egypt_hotel_review_fail('hotel_candidate_leak');
+}
+
+echo 'SEO_EGYPT_HOTEL_REVIEW_OK hotels=' . $expectedHotelCount . ' candidates=0 countryApproved=1 parentReviewProjection=1 country=1 uniqueHotelIds=' . count($manifestHotelIds) . ' uniqueEditorial=' . count($editorialFingerprints) . PHP_EOL;
