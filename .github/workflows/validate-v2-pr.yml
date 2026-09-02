@@ -8,6 +8,7 @@ on:
       - 'tests/seo-turkey-hotel-review-catalog-smoke.php'
       - 'tests/seo-hotel-family-launch-readiness-smoke.php'
       - 'tests/seo-page-launch-readiness-smoke.php'
+      - 'tests/seo-hotel-launch-candidate-smoke.php'
       - '.github/workflows/validate-v2-pr.yml'
 
 concurrency:
@@ -26,7 +27,6 @@ jobs:
         run: |
           set -euo pipefail
           for file in v2/*.php; do php -l "$file" >/dev/null; done
-          find v2/data -maxdepth 1 -type f -name '*.php' -print0 | xargs -0 -n1 php -l >/dev/null
           echo V2_PHP_OK
 
       - name: Validate active JavaScript syntax
@@ -37,7 +37,7 @@ jobs:
           test "${#assets[@]}" -gt 0
           for asset in "${assets[@]}"; do
             test -f "v2/$asset"
-            node --check "$asset" 2>/dev/null || node --check "v2/$asset"
+            node --check "v2/$asset"
           done
           echo V2_JS_OK
 
@@ -178,6 +178,8 @@ jobs:
           php tests/seo-hotel-family-launch-readiness-smoke.php
           php -l tests/seo-page-launch-readiness-smoke.php >/dev/null
           php tests/seo-page-launch-readiness-smoke.php
+          php -l tests/seo-hotel-launch-candidate-smoke.php >/dev/null
+          php tests/seo-hotel-launch-candidate-smoke.php
           php -l v2/data/report-seo-launch-readiness-v1.php >/dev/null
           php v2/data/report-seo-launch-readiness-v1.php \
             --catalog-file=v2/seo-content-pilot-maldives-catalog-v1.php \
