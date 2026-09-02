@@ -1,0 +1,13 @@
+/* Search3 final contact block / lifecycle polish. Visual only. */
+body.search3-preview #selectedTour .lead-form{position:relative;overflow:hidden}
+body.search3-preview #selectedTour .lead-form .lead-fields label,body.search3-preview #selectedTour .lead-form>label{display:grid;gap:6px;color:var(--at-ink);font:850 9px/1.2 var(--at-font)}
+body.search3-preview #selectedTour .lead-form input,body.search3-preview #selectedTour .lead-form textarea{width:100%;border:1px solid var(--at-line);background:#fff;color:var(--at-ink);font:750 11px/1.35 var(--at-font);transition:border-color .15s ease,box-shadow .15s ease}
+body.search3-preview #selectedTour .lead-form input:focus,body.search3-preview #selectedTour .lead-form textarea:focus{outline:0;border-color:var(--at-brand);box-shadow:0 0 0 3px rgba(7,92,255,.08)}
+body.search3-preview #selectedTour .lead-consent{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important;margin-top:10px;color:var(--at-muted)!important;font-size:8px!important;line-height:1.4!important}
+body.search3-preview #selectedTour .lead-consent input{flex:0 0 15px;width:15px!important;height:15px!important;margin:1px 0 0;accent-color:var(--at-brand)}
+body.search3-preview #selectedTour .lead-message{min-height:16px;margin:8px 0 0;color:var(--at-muted);font:700 8px/1.35 var(--at-font)}
+body.search3-preview #selectedTour.search3-final-review .lead-form{border-color:#dfe5ef!important;background:linear-gradient(180deg,#fff 0%,#fcfdff 100%)!important}
+body.search3-preview #selectedTour.search3-final-review .lead-form .section-heading strong{font-size:20px!important}
+body.search3-preview #selectedTour.search3-final-review .lead-form .section-heading span{max-width:52%;text-align:right}
+@media(min-width:1000px){body.search3-preview #selectedTour.search3-final-review .lead-form{padding:22px 24px!important}body.search3-preview #selectedTour.search3-final-review .lead-fields{gap:14px!important}body.search3-preview #selectedTour.search3-final-review .lead-form input{min-height:46px;padding:0 13px!important}body.search3-preview #selectedTour.search3-final-review .lead-form textarea{min-height:88px;padding:11px 13px!important;resize:vertical}body.search3-preview #selectedTour.search3-final-review .lead-form>button[type=submit]{margin-top:12px;width:100%;font-size:13px!important}}
+@media(max-width:640px){body.search3-preview #selectedTour .lead-form .lead-fields{grid-template-columns:1fr!important}body.search3-preview #selectedTour .lead-form .section-heading span{max-width:none;text-align:left}body.search3-preview #selectedTour .lead-form input{min-height:44px;padding:0 11px!important}body.search3-preview #selectedTour .lead-form textarea{padding:10px 11px!important}}
