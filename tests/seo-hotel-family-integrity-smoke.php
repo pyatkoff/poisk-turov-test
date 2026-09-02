@@ -42,18 +42,25 @@ foreach(($pilot['countries']??[]) as $bucket){
     }
 }
 if(count($pilotPaths)!==9) family_integrity_fail('pilot_count');
+$matchedPilotPaths=[];
 foreach($families as $family){
     $catalog=$family['catalog'];
     $registry=is_array($catalog['registry']??null)?$catalog['registry']:[];
+    $reports=is_array($catalog['reports']??null)?$catalog['reports']:[];
     $candidates=array_fill_keys(array_map('strval',is_array($catalog['publication_candidates']??null)?$catalog['publication_candidates']:[]),true);
     foreach($pilotPaths as $path=>$_){
         if(!isset($registry[$path])) continue;
+        if(isset($matchedPilotPaths[$path])) family_integrity_fail('pilot_cross_family_duplicate');
+        $matchedPilotPaths[$path]=true;
         $entry=$registry[$path];
+        $pageReport=is_array($reports[$path]??null)?$reports[$path]:[];
         if(($entry['type']??'')!=='hotel_tours') family_integrity_fail('pilot_wrong_type');
-        if(($entry['status']??'')!=='review') family_integrity_fail('pilot_not_review');
+        if(($pageReport['status']??'')!=='review') family_integrity_fail('pilot_not_review');
+        if(($pageReport['publishable']??false)!==true) family_integrity_fail('pilot_structurally_blocked');
         if(isset($candidates[$path])) family_integrity_fail('pilot_candidate_leak');
     }
 }
+if(count($matchedPilotPaths)!==9) family_integrity_fail('pilot_path_missing_from_catalogs');
 
 try {
     v2_seo_hotel_family_integrity([$families[0], ['key'=>'turkey-copy','country_id'=>4,'catalog'=>$families[0]['catalog']]]);
