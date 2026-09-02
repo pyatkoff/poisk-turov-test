@@ -10,9 +10,10 @@ foreach($expected as $row){
 $fixtures['https://anytoour.ru/sitemap.xml']=['status'=>200,'body'=>$sitemap];
 $fetch=static fn(string $url):array=>$fixtures[$url]??['status'=>404,'body'=>''];
 $r=v2_seo_collect_production_identity($fetch,$now);
-if(($r['state']??'')!=='production_identity_registry_valid'||($r['page_count']??0)!==7)fail_collector('valid');
+if(($r['state']??'')!=='production_identity_registry_valid'||($r['page_count']??0)!==9)fail_collector('valid');
+if(($r['type_counts']['country']??0)!==3||($r['type_counts']['resort']??0)!==5)fail_collector('controlled_scope');
 if(($r['type_counts']['hotel_tours']??0)!==1||($r['hotel_tours_indexation_allowed']??true)!==false)fail_collector('hotel_boundary');
 $bad=$fixtures;$hotel=(string)v2_seo_ds2_reference_pages()['hotel_tours']['path'];$bad['https://anytoour.ru'.$hotel]['body']=str_replace('noindex,follow','index,follow',$bad['https://anytoour.ru'.$hotel]['body']);
 $r=v2_seo_collect_production_identity(static fn(string $url):array=>$bad[$url]??['status'=>404,'body'=>''],$now);
 if(($r['state']??'')!=='production_identity_registry_invalid')fail_collector('fail_closed');
-echo "SEO_PRODUCTION_IDENTITY_COLLECTOR_OK pages=7 hotel_tours=noindex\n";
+echo "SEO_PRODUCTION_IDENTITY_COLLECTOR_OK pages=9 country=3 resort=5 hotel_tours=noindex\n";

@@ -12,12 +12,14 @@ on:
     paths:
       - '.github/workflows/verify-anytoour-seo-launch.yml'
       - 'v2/seo-production-identity-registry-v1.php'
+      - 'v2/seo-production-identity-collector-v1.php'
       - 'v2/data/verify-seo-production-identity-registry-v1.php'
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/verify-anytoour-seo-launch.yml'
       - 'v2/seo-production-identity-registry-v1.php'
+      - 'v2/seo-production-identity-collector-v1.php'
       - 'v2/data/verify-seo-production-identity-registry-v1.php'
 
 permissions:
@@ -28,14 +30,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  predeploy-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate future controlled launch contract without querying future production state
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-launch-slice-v1.php >/dev/null
+          php -l v2/seo-controlled-launch-catalog-v1.php >/dev/null
+          php -l v2/seo-production-identity-collector-v1.php >/dev/null
+          php tests/seo-launch-slice-smoke.php
+          php tests/seo-production-identity-collector-smoke.php
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          base='https://anytoour.ru'
+          expected={
+            base+'/country/egypt/', base+'/country/maldives/', base+'/country/turkey/',
+            base+'/country/turkey/alanya/', base+'/country/turkey/antalya/', base+'/country/turkey/belek/',
+            base+'/country/turkey/kemer/', base+'/country/turkey/side/',
+          }
+          actual={n.text.strip() for n in ET.parse('v2/sitemap.xml').getroot().iter() if n.tag.endswith('loc') and n.text}
+          assert actual == expected, (actual, expected)
+          assert not any('/hotel/' in u or '/poisk-turov/' in u for u in actual)
+          print('ANYTOOUR_PREDEPLOY_SEO_CONTRACT_OK paths=8 hotel_tours=0')
+          PY
+
   production-seo:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify controlled Turkey country/resort launch
+      - name: Verify controlled country/resort launch
         shell: bash
         env:
           SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
@@ -44,6 +75,8 @@ jobs:
           set -euo pipefail
           base='https://anytoour.ru'
           paths=(
+            '/country/egypt/'
+            '/country/maldives/'
             '/country/turkey/'
             '/country/turkey/alanya/'
             '/country/turkey/antalya/'
@@ -54,24 +87,19 @@ jobs:
 
           curl -fsSL --max-time 30 "$base/robots.txt" -o /tmp/robots.txt
           grep -Fq 'Sitemap: https://anytoour.ru/sitemap.xml' /tmp/robots.txt
-
           curl -fsSL --max-time 30 "$base/sitemap.xml" -o /tmp/sitemap.xml
           BASE="$base" python3 - <<'PY'
           import os, xml.etree.ElementTree as ET
           base=os.environ['BASE']
           expected={
-            base+'/country/turkey/',
-            base+'/country/turkey/alanya/',
-            base+'/country/turkey/antalya/',
-            base+'/country/turkey/belek/',
-            base+'/country/turkey/kemer/',
-            base+'/country/turkey/side/',
+            base+'/country/egypt/', base+'/country/maldives/', base+'/country/turkey/',
+            base+'/country/turkey/alanya/', base+'/country/turkey/antalya/', base+'/country/turkey/belek/',
+            base+'/country/turkey/kemer/', base+'/country/turkey/side/',
           }
-          root=ET.parse('/tmp/sitemap.xml').getroot()
-          actual={node.text.strip() for node in root.iter() if node.tag.endswith('loc') and node.text}
+          actual={node.text.strip() for node in ET.parse('/tmp/sitemap.xml').getroot().iter() if node.tag.endswith('loc') and node.text}
           assert actual == expected, (actual, expected)
           assert not any('/hotel/' in u or '/poisk-turov/' in u for u in actual)
-          print('ANYTOOUR_SEO_SITEMAP_OK', len(actual))
+          print('ANYTOOUR_SEO_SITEMAP_OK',len(actual))
           PY
 
           : > /tmp/page-status.tsv
@@ -86,68 +114,47 @@ jobs:
             printf '%s\t%s\t%s\n' "$path" "$code" "$file" >> /tmp/page-status.tsv
           done
 
-          protected='/country/turkey/hotel/aegean-park-1601/'
+          protected='/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/'
           protected_code="$(curl -fsSL -o /tmp/hotel-review.html -w '%{http_code}' --max-time 35 "$base$protected")"
           test "$protected_code" = '200'
           grep -Eq '<meta name="robots" content="noindex,follow[^\"]*"' /tmp/hotel-review.html
           protected_canonical="${base}${protected}"
           grep -Fq "<link rel=\"canonical\" href=\"$protected_canonical\">" /tmp/hotel-review.html
-          if grep -Fq "$protected" /tmp/sitemap.xml; then
+          if grep -Fq "$protected_canonical" /tmp/sitemap.xml; then
             echo 'HOTEL_TOUR_SITEMAP_LEAK' >&2
             exit 1
           fi
 
           BASE="$base" SOURCE_SHA="$SOURCE_SHA" EVENT_NAME="$EVENT_NAME" PROTECTED="$protected" PROTECTED_CODE="$protected_code" python3 - <<'PY'
           import datetime, hashlib, json, os, re, xml.etree.ElementTree as ET
-
           base=os.environ['BASE']
           sitemap={node.text.strip() for node in ET.parse('/tmp/sitemap.xml').getroot().iter() if node.tag.endswith('loc') and node.text}
           rows=[]
-          with open('/tmp/page-status.tsv', encoding='utf-8') as fh:
+          with open('/tmp/page-status.tsv',encoding='utf-8') as fh:
               for line in fh:
-                  path, code, filename=line.rstrip('\n').split('\t')
-                  html=open(filename, encoding='utf-8').read()
-                  robots=re.search(r'<meta name="robots" content="([^\"]+)"', html)
-                  canonical=re.search(r'<link rel="canonical" href="([^\"]+)"', html)
-                  rows.append({
-                      'path': path,
-                      'http_status': int(code),
-                      'robots': robots.group(1) if robots else None,
-                      'canonical': canonical.group(1) if canonical else None,
-                      'sitemap_member': base+path in sitemap,
-                  })
-          protected_html=open('/tmp/hotel-review.html', encoding='utf-8').read()
-          protected_robots=re.search(r'<meta name="robots" content="([^\"]+)"', protected_html)
-          protected_canonical=re.search(r'<link rel="canonical" href="([^\"]+)"', protected_html)
+                  path,code,filename=line.rstrip('\n').split('\t')
+                  html=open(filename,encoding='utf-8').read()
+                  robots=re.search(r'<meta name="robots" content="([^\"]+)"',html)
+                  canonical=re.search(r'<link rel="canonical" href="([^\"]+)"',html)
+                  rows.append({'path':path,'http_status':int(code),'robots':robots.group(1) if robots else None,'canonical':canonical.group(1) if canonical else None,'sitemap_member':base+path in sitemap})
+          protected_html=open('/tmp/hotel-review.html',encoding='utf-8').read()
+          protected_robots=re.search(r'<meta name="robots" content="([^\"]+)"',protected_html)
+          protected_canonical=re.search(r'<link rel="canonical" href="([^\"]+)"',protected_html)
           payload={
-              'state':'controlled_seo_postlaunch_baseline',
-              'domain':'anytoour.ru',
+              'state':'controlled_seo_postlaunch_baseline','domain':'anytoour.ru',
               'observed_at_utc':datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat(),
-              'source_sha':os.environ.get('SOURCE_SHA',''),
-              'trigger':os.environ.get('EVENT_NAME',''),
-              'launch_scope':'turkey_country_resort_v1',
-              'launch_url_count':len(rows),
-              'pages':rows,
-              'robots_sitemap_declared':True,
-              'sitemap_url_count':len(sitemap),
-              'protected_hotel_tour':{
-                  'path':os.environ['PROTECTED'],
-                  'http_status':int(os.environ['PROTECTED_CODE']),
-                  'robots':protected_robots.group(1) if protected_robots else None,
-                  'canonical':protected_canonical.group(1) if protected_canonical else None,
-                  'sitemap_member':base+os.environ['PROTECTED'] in sitemap,
-              },
-              'search_console_metrics_state':'not_collected_by_this_workflow',
-              'publication_scope_expanded':False,
-              'hotel_tours_indexation_allowed':False,
+              'source_sha':os.environ.get('SOURCE_SHA',''),'trigger':os.environ.get('EVENT_NAME',''),
+              'launch_scope':'turkey_egypt_maldives_country_resort_v2','launch_url_count':len(rows),'pages':rows,
+              'robots_sitemap_declared':True,'sitemap_url_count':len(sitemap),
+              'protected_hotel_tour':{'path':os.environ['PROTECTED'],'http_status':int(os.environ['PROTECTED_CODE']),'robots':protected_robots.group(1) if protected_robots else None,'canonical':protected_canonical.group(1) if protected_canonical else None,'sitemap_member':base+os.environ['PROTECTED'] in sitemap},
+              'search_console_metrics_state':'not_collected_by_this_workflow','publication_scope_expanded':True,
+              'publication_scope_expansion':'country_pages_only','hotel_tours_indexation_allowed':False,
           }
-          stable=dict(payload)
-          stable.pop('observed_at_utc',None)
+          stable=dict(payload); stable.pop('observed_at_utc',None)
           payload['baseline_sha256']=hashlib.sha256(json.dumps(stable,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
           with open('/tmp/anytoour-seo-baseline.json','w',encoding='utf-8') as fh:
-              json.dump(payload,fh,ensure_ascii=False,indent=2)
-              fh.write('\n')
-          print('ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=6 hotel_tours_indexed=0 baseline_sha256='+payload['baseline_sha256'])
+              json.dump(payload,fh,ensure_ascii=False,indent=2); fh.write('\n')
+          print('ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=8 hotel_tours_indexed=0 baseline_sha256='+payload['baseline_sha256'])
           PY
 
           php -l v2/seo-production-identity-registry-v1.php >/dev/null

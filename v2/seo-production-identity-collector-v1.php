@@ -7,10 +7,11 @@ require_once __DIR__.'/seo-ds2-reference-pages-v1.php';
 function v2_seo_production_identity_expected_rows(): array
 {
     $rows=[];
-    foreach(v2_seo_turkey_launch_paths() as $path){
+    foreach(v2_seo_controlled_launch_paths() as $path){
+        $isResort=str_starts_with($path,'/country/turkey/')&&$path!=='/country/turkey/';
         $rows[]=[
             'path'=>$path,
-            'type'=>$path==='/country/turkey/'?'country':'resort',
+            'type'=>$isResort?'resort':'country',
             'http_status'=>200,
             'robots_prefix'=>'index,follow',
             'canonical'=>'https://anytoour.ru'.$path,
