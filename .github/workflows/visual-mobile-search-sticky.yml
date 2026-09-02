@@ -6,6 +6,7 @@ on:
     paths:
       - 'v2/mobile-search-summary-v1.css'
       - 'v2/mobile-search-summary-v1.js'
+      - 'v2/search-progress-ux-v1.css'
       - 'v2/bundle-manifest-v1.php'
       - '.github/workflows/visual-mobile-search-sticky.yml'
   workflow_dispatch:
@@ -19,6 +20,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Verify mobile summary/progress stacking contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F '.mobile-search-summary:not([hidden])+.status:has(.search-progress-ux:not(.search-progress-done)){top:max(68px,calc(64px + env(safe-area-inset-top)))}' v2/search-progress-ux-v1.css
       - name: Install Chromium
         shell: bash
         run: |
@@ -56,8 +62,11 @@ jobs:
               await page.waitForFunction(()=>{const s=document.querySelector('.mobile-search-sticky'),b=document.querySelector('.search-submit');const stickyHidden=!s||s.hidden||getComputedStyle(s).display==='none';const inlineVisible=!!b&&getComputedStyle(b).display!=='none';return stickyHidden&&inlineVisible;},{timeout:1800}).catch(()=>{});
               await page.screenshot({path:`mobile-sticky-artifacts/${name}-boundary.png`,fullPage:false,animations:'disabled'});
               const boundary=await page.evaluate(()=>{const s=document.querySelector('.mobile-search-sticky'),b=document.querySelector('.search-submit');return{stickyVisible:!!s&&!s.hidden&&getComputedStyle(s).display!=='none',inlineVisible:!!b&&getComputedStyle(b).display!=='none'};});
+              await page.evaluate(()=>{const trust=document.getElementById('v2AgencyTrust');if(trust)trust.scrollIntoView({block:'start'});else scrollTo(0,document.documentElement.scrollHeight);});
+              await page.waitForTimeout(250);
+              const belowForm=await page.evaluate(()=>{const s=document.querySelector('.mobile-search-sticky');return{stickyVisible:!!s&&!s.hidden&&getComputedStyle(s).display!=='none'};});
               const topStickyWrong=top.inlineInViewport?top.visible:(!top.visible||top.height>64||top.rightClearance<72);
-              const bad=(response?.status()||0)!==200||errors.length||topStickyWrong||top.overflow||boundary.stickyVisible||!boundary.inlineVisible;report.push({name,top,boundary,errors,bad});if(bad)failed=true;await context.close();}
+              const bad=(response?.status()||0)!==200||errors.length||topStickyWrong||top.overflow||boundary.stickyVisible||!boundary.inlineVisible||belowForm.stickyVisible;report.push({name,top,boundary,belowForm,errors,bad});if(bad)failed=true;await context.close();}
             fs.writeFileSync('mobile-sticky-artifacts/report.json',JSON.stringify(report,null,2));await browser.close();if(failed)process.exit(1);})().catch(e=>{console.error(e);process.exit(1)});
           JS
           node mobile-sticky-visual.cjs
