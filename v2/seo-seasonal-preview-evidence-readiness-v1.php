@@ -2,6 +2,35 @@
 declare(strict_types=1);
 require_once __DIR__ . '/seo-seasonal-preview-readiness-v1.php';
 
+function v2_seo_seasonal_preview_identity_record_matches_key(array $identity, string $pageKey): bool
+{
+    $parts = explode(':', $pageKey);
+    $pageType = (string) ($identity['page_type'] ?? '');
+    $countryId = (int) ($identity['country_id'] ?? 0);
+    $regionId = $identity['region_id'] ?? null;
+    $departureId = (int) ($identity['departure_id'] ?? 0);
+    $year = (int) ($identity['year'] ?? 0);
+    $month = (int) ($identity['month'] ?? 0);
+
+    if (($parts[0] ?? '') === 'month') {
+        return count($parts) === 4
+            && $pageType === 'month'
+            && $departureId === (int) ($parts[1] ?? 0)
+            && $countryId === (int) ($parts[2] ?? 0)
+            && $regionId === null
+            && sprintf('%04d-%02d', $year, $month) === (string) ($parts[3] ?? '');
+    }
+    if (($parts[0] ?? '') === 'resort_month') {
+        return count($parts) === 5
+            && $pageType === 'resort_month'
+            && $departureId === (int) ($parts[1] ?? 0)
+            && $countryId === (int) ($parts[2] ?? 0)
+            && (int) $regionId === (int) ($parts[3] ?? 0)
+            && sprintf('%04d-%02d', $year, $month) === (string) ($parts[4] ?? '');
+    }
+    return false;
+}
+
 /**
  * Bind review-ready seasonal previews to a fresh exact production identity inventory.
  * This is evidence for review only and cannot authorize publication.
@@ -51,7 +80,8 @@ function v2_seo_seasonal_preview_evidence_readiness(array $identityInventory, ?i
             || (int) ($identity['evidence_checked_at_epoch'] ?? 0) <= 0
             || (int) ($identity['evidence_checked_at_epoch'] ?? 0) > $nowEpoch + 5
             || (int) ($identity['expires_at_epoch'] ?? 0) <= $nowEpoch
-            || (int) ($identity['freshness_seconds'] ?? 0) <= 0) {
+            || (int) ($identity['freshness_seconds'] ?? 0) <= 0
+            || !v2_seo_seasonal_preview_identity_record_matches_key($identity, $pageKey)) {
             $blocked[] = ['code' => 'invalid_or_stale_identity_record', 'page_key' => $pageKey];
             continue;
         }
