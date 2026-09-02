@@ -7,6 +7,7 @@ on:
       - 'v2/**'
       - 'tests/seo-turkey-hotel-review-catalog-smoke.php'
       - 'tests/seo-hotel-family-launch-readiness-smoke.php'
+      - 'tests/seo-hotel-family-integrity-smoke.php'
       - 'tests/seo-page-launch-readiness-smoke.php'
       - 'tests/seo-hotel-launch-candidate-smoke.php'
       - 'tests/seo-reference-visual-contract-smoke.php'
