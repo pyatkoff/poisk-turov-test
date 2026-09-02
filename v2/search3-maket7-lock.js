@@ -13,6 +13,7 @@ function placeAdvanced(form,grid,name,labelText,cls){
   var label=f.querySelector(':scope > span');if(label)label.textContent=labelText;
   if(f.parentNode!==grid)grid.appendChild(f);
 }
+function syncLabels(form){var dates=form.querySelector('.search3-dates>:scope > span,.search3-dates>span');if(dates)dates.textContent='Дата вылета';}
 function desktopLock(){
   var form=document.getElementById('tourSearch');if(!form)return;
   var main=form.querySelector('.search3-primary-grid');
@@ -20,7 +21,8 @@ function desktopLock(){
   var grid=quality&&quality.querySelector('.search3-quality__grid');
   var quick=form.querySelector('.search3-quick');
   var operatorField=field(form,'operator');
-  placeRegionInPrimary(form,main);
+  placeRegionInPrimary(form,main);syncLabels(form);
+  if(operatorField)operatorField.style.setProperty('display','none','important');
   if(window.innerWidth>760){
     if(quality){quality.hidden=false;quality.style.setProperty('display','block','important');}
     if(grid){
@@ -31,14 +33,12 @@ function desktopLock(){
       placeAdvanced(form,grid,'price_till','Бюджет на тур','search3-budget');
       placeAdvanced(form,grid,'hotel','Конкретный отель','search3-hotel');
     }
-    if(operatorField)operatorField.style.setProperty('display','none','important');
     if(quick&&quick.children.length){quick.hidden=false;quick.style.setProperty('display','flex','important');}
     form.classList.add('search3-desktop-two-row');
   }else{
     if(quality)quality.style.removeProperty('display');
     if(grid)grid.style.removeProperty('display');
     if(quick)quick.style.removeProperty('display');
-    if(operatorField)operatorField.style.removeProperty('display');
     form.classList.remove('search3-desktop-two-row');
   }
 }
