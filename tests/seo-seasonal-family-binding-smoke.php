@@ -8,7 +8,7 @@ $resorts=[
  ['type'=>'resort','path'=>'/country/turkey/side/','data'=>['search_state'=>['country'=>4,'region'=>80]]],
 ];
 $base=static fn(array $x):array=>array_merge([
- 'state'=>'fresh_review_identity','page_type'=>'month','country_id'=>4,'region_id'=>null,'departure_id'=>1,'year'=>2026,'month'=>10,
+ 'state'=>'fresh_review_identity','page_type'=>'month','country_id'=>4,'region_id'=>null,'departure_id'=>1,'year'=>2026,'month'=>10,'offer_count'=>5,
  'evidence_checked_at_epoch'=>1000,'expires_at_epoch'=>8200,'freshness_seconds'=>7200,'publication_allowed'=>false,'copy_allowed'=>false,
 ],$x);
 $inventory=[
@@ -16,7 +16,7 @@ $inventory=[
  'publication_allowed'=>false,'copy_allowed'=>false,'publication_candidates'=>[],
  'identities'=>[
   $base(['page_key'=>'month:1:4:2026-10']),
-  $base(['page_key'=>'resort_month:1:4:77:2026-10','page_type'=>'resort_month','region_id'=>77]),
+  $base(['page_key'=>'resort_month:1:4:77:2026-10','page_type'=>'resort_month','region_id'=>77,'offer_count'=>3]),
   $base(['page_key'=>'resort_month:1:4:999:2026-10','page_type'=>'resort_month','region_id'=>999]),
   $base(['page_key'=>'month:1:8:2026-10','country_id'=>8]),
   $base(['page_key'=>'month:1:4:2026-10']),
@@ -28,14 +28,18 @@ if(($out['bound_count']??0)!==2||($out['blocked_count']??0)!==3)seasonal_binding
 if(($out['registered_region_count']??0)!==2)seasonal_binding_fail('region_count');
 if(($out['evidence_valid_until_epoch']??0)!==8200)seasonal_binding_fail('clock_passthrough');
 if(($out['publication_candidates']??null)!==[]||($out['publication_allowed']??true)!==false||($out['copy_allowed']??true)!==false)seasonal_binding_fail('boundary');
-$parents=[];foreach($out['bound'] as $row)$parents[$row['page_key']]=$row['parent_path'];
+$parents=[];$depth=[];foreach($out['bound'] as $row){$parents[$row['page_key']]=$row['parent_path'];$depth[$row['page_key']]=$row['offer_count']??0;}
 if(($parents['month:1:4:2026-10']??'')!=='/country/turkey/')seasonal_binding_fail('country_parent');
 if(($parents['resort_month:1:4:77:2026-10']??'')!=='/country/turkey/kemer/')seasonal_binding_fail('resort_parent');
+if(($depth['month:1:4:2026-10']??0)!==5||($depth['resort_month:1:4:77:2026-10']??0)!==3)seasonal_binding_fail('offer_depth_passthrough');
 $errors=array_merge(...array_map(static fn(array $x):array=>$x['errors']??[],$out['blocked']));
 foreach(['unregistered_region_identity','country_identity_mismatch','duplicate_page_key'] as $required)if(!in_array($required,$errors,true))seasonal_binding_fail($required);
+$emptyDepth=$inventory;$emptyDepth['identities']=[ $base(['page_key'=>'month:1:4:2026-11','month'=>11,'offer_count'=>0]) ];
+$emptyOut=v2_seo_seasonal_family_binding($country,$resorts,$emptyDepth,$now);
+if(($emptyOut['bound_count']??-1)!==0||!in_array('empty_offer_depth',$emptyOut['blocked'][0]['errors']??[],true))seasonal_binding_fail('empty_offer_depth');
 $badResorts=$resorts;$badResorts[]=['type'=>'resort','path'=>'/country/turkey/fake/','data'=>['search_state'=>['country'=>4,'region'=>77]]];
 try{v2_seo_seasonal_family_binding($country,$badResorts,$inventory,$now);seasonal_binding_fail('duplicate_region_not_rejected');}catch(InvalidArgumentException $e){}
 $unsafe=$inventory;$unsafe['publication_allowed']=true;
 try{v2_seo_seasonal_family_binding($country,$resorts,$unsafe,$now);seasonal_binding_fail('unsafe_inventory_not_rejected');}catch(InvalidArgumentException $e){}
 try{v2_seo_seasonal_family_binding($country,$resorts,$inventory,8200);seasonal_binding_fail('expired_inventory_not_rejected');}catch(InvalidArgumentException $e){}
-echo "SEO_SEASONAL_BINDING_OK bound=2 blocked=3 replayBlocked=1 publication=0\n";
+echo "SEO_SEASONAL_BINDING_OK bound=2 blocked=3 depth=1 replayBlocked=1 publication=0\n";
