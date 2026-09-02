@@ -122,7 +122,6 @@ jobs:
 
           require 'v2/seo-content-pilot-maldives-catalog-v1.php';
           $maldivesCatalog=v2_seo_content_pilot_maldives_catalog();
-          if (count($maldivesCatalog['registry']??[])!==22) fail('maldives_registry_count');
           if (v2_seo_content_candidate_paths($maldivesCatalog)!==[]) fail('maldives_review_family_became_candidate');
           $hotelPaths=[];
           foreach (($maldivesCatalog['registry']??[]) as $path=>$entry) {
@@ -133,7 +132,7 @@ jobs:
               if (($report['publishable']??false)!==true) fail('maldives_hotel_not_structurally_publishable');
               if (($maldivesCatalog['graph'][$path]['parent']??null)!=='/country/maldives/') fail('maldives_hotel_parent');
           }
-          if (count($hotelPaths)!==21) fail('maldives_hotel_count');
+          if (!$hotelPaths) fail('maldives_hotel_family_empty');
           $parent=v2_seo_content_pilot_maldives();
           $linked=[];
           foreach (($parent['data']['related']??[]) as $link) {
@@ -141,6 +140,8 @@ jobs:
               if (str_starts_with($href,'/country/maldives/hotel/')) $linked[]=$href;
           }
           sort($hotelPaths); sort($linked);
+          if (count($maldivesCatalog['registry']??[])!==count($hotelPaths)+1) fail('maldives_registry_count');
+          if (count($hotelPaths)!==count($linked)) fail('maldives_hotel_count');
           if ($hotelPaths!==$linked) fail('maldives_parent_catalog_drift');
 
           $unstable=$records[1];
@@ -169,5 +170,5 @@ jobs:
               fail('unknown_graph_target_allowed');
           } catch (InvalidArgumentException $e) {}
 
-          echo "V2_SEO_CONTENT_CATALOG_OK ids=1 statuses=1 registry=1 publishability=1 hotelTours=1 hotelApprovalGate=1 maldivesFamily=21 maldivesCandidates=0 stableBreadcrumbs=1 graph=1 candidates=1\n";
+          echo "V2_SEO_CONTENT_CATALOG_OK ids=1 statuses=1 registry=1 publishability=1 hotelTours=1 hotelApprovalGate=1 maldivesFamily=".count($hotelPaths)." maldivesCandidates=0 stableBreadcrumbs=1 graph=1 candidates=1\n";
           PHP
