@@ -56,3 +56,85 @@ function v2_seo_hotel_launch_candidate_proposal(array $readinessRows, array $pri
 
     return $proposal;
 }
+
+/**
+ * Build the small AnyTour Turkey/Maldives/Egypt pilot proposal without ranking.
+ *
+ * Buckets are explicit and ordered by the caller. Every path still must be 100/100
+ * ready. This helper only adds country-balance and hard-size constraints on top of
+ * the proposal-only gate; it has no publication consumers.
+ */
+function v2_seo_hotel_country_launch_slice_proposal(
+    array $readinessRows,
+    array $countryBuckets,
+    array $requiredCountryIds = [4, 8, 1],
+    int $maxPerCountry = 5,
+    int $maxTotal = 15
+): array {
+    if ($maxPerCountry < 1 || $maxPerCountry > 10) {
+        throw new InvalidArgumentException('Hotel launch country slice maxPerCountry must be between 1 and 10');
+    }
+    if ($maxTotal < 1 || $maxTotal > 30) {
+        throw new InvalidArgumentException('Hotel launch country slice maxTotal must be between 1 and 30');
+    }
+
+    $required = [];
+    foreach ($requiredCountryIds as $countryId) {
+        $countryId = (int)$countryId;
+        if ($countryId <= 0 || isset($required[$countryId])) {
+            throw new InvalidArgumentException('Hotel launch country slice requires unique positive country IDs');
+        }
+        $required[$countryId] = true;
+    }
+    if (!$required) throw new InvalidArgumentException('Hotel launch country slice requires countries');
+
+    $seenCountries = [];
+    $flatPaths = [];
+    $bucketCounts = [];
+    foreach ($countryBuckets as $bucket) {
+        if (!is_array($bucket)) throw new InvalidArgumentException('Hotel launch country slice bucket must be an array');
+        $countryId = (int)($bucket['country_id'] ?? 0);
+        $paths = is_array($bucket['paths'] ?? null) ? array_values($bucket['paths']) : [];
+        if (!isset($required[$countryId]) || isset($seenCountries[$countryId])) {
+            throw new InvalidArgumentException('Hotel launch country slice contains unexpected or duplicate country');
+        }
+        if (!$paths || count($paths) > $maxPerCountry) {
+            throw new InvalidArgumentException('Hotel launch country slice country bucket is empty or exceeds cap');
+        }
+        $seenCountries[$countryId] = true;
+        $bucketCounts[$countryId] = count($paths);
+        foreach ($paths as $path) $flatPaths[] = $path;
+    }
+
+    if (array_diff_key($required, $seenCountries) || array_diff_key($seenCountries, $required)) {
+        throw new InvalidArgumentException('Hotel launch country slice must include every required country exactly once');
+    }
+    if (count($flatPaths) > $maxTotal) {
+        throw new InvalidArgumentException('Hotel launch country slice exceeds total cap');
+    }
+
+    $proposal = v2_seo_hotel_launch_candidate_proposal($readinessRows, $flatPaths, $maxTotal);
+    $byCountry = [];
+    foreach ($proposal as $row) {
+        $countryId = (int)($row['country_id'] ?? 0);
+        if (!isset($required[$countryId])) {
+            throw new InvalidArgumentException('Hotel launch country slice proposal escaped required countries');
+        }
+        $byCountry[$countryId][] = $row;
+    }
+    foreach ($bucketCounts as $countryId => $expectedCount) {
+        if (count($byCountry[$countryId] ?? []) !== $expectedCount) {
+            throw new InvalidArgumentException('Hotel launch country slice path country mismatch');
+        }
+    }
+
+    return [
+        'state' => 'proposal_only_requires_launch_approval',
+        'required_country_ids' => array_map('intval', array_keys($required)),
+        'max_per_country' => $maxPerCountry,
+        'max_total' => $maxTotal,
+        'total' => count($proposal),
+        'countries' => $byCountry,
+        'proposal' => $proposal,
+    ];
+}
