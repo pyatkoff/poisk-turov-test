@@ -1,0 +1,24 @@
+name: Validate SEO production identity boundary
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-production-identity-collector-v1.php'
+      - 'tests/seo-production-identity-core-gate-contract-smoke.php'
+      - '.github/workflows/validate-seo-production-identity-boundary.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  protected-hotel-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify protected hotel remains review-only
+        run: |
+          set -euo pipefail
+          php -l tests/seo-production-identity-core-gate-contract-smoke.php >/dev/null
+          php tests/seo-production-identity-core-gate-contract-smoke.php
