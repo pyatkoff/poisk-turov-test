@@ -10,6 +10,7 @@ on:
       - 'v2/data/migrate-matrix-collection-v1.php'
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
+      - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
       - 'v2/data/top500-daily-collector-v1.php'
@@ -26,6 +27,7 @@ on:
       - 'v2/data/migrate-matrix-collection-v1.php'
       - 'v2/data/matrix-collector-v1.php'
       - 'v2/data/top-hotels-v1.php'
+      - 'v2/data/sync-priority-hotels-v1.php'
       - 'v2/data/top500-coverage-v1.php'
       - 'v2/data/top500-daily-plan-v1.php'
       - 'v2/data/top500-daily-collector-v1.php'
@@ -67,6 +69,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          php -l v2/data/sync-priority-hotels-v1.php >/dev/null
           php -l v2/data/top500-daily-plan-v1.php >/dev/null
           php -l v2/data/top500-daily-collector-v1.php >/dev/null
           php -l tests/top500-daily-plan-smoke.php >/dev/null
@@ -127,6 +130,7 @@ jobs:
             v2/data/scheduled-collector-v1.php \
             v2/data/migrate-matrix-collection-v1.php \
             v2/data/top-hotels-v1.php \
+            v2/data/sync-priority-hotels-v1.php \
             v2/data/top500-coverage-v1.php \
             v2/data/top500-daily-plan-v1.php \
             v2/data/top500-daily-collector-v1.php \
@@ -137,10 +141,14 @@ jobs:
           ssh "${opts[@]}" "$remote" "
             set -euo pipefail
             root=\"\$HOME/www/anytoour.ru/data\"
+            php -l \"\$root/sync-priority-hotels-v1.php\" >/dev/null
             php -l \"\$root/top500-daily-plan-v1.php\" >/dev/null
             php -l \"\$root/top500-daily-collector-v1.php\" >/dev/null
             php \"\$root/migrate-collection-attempts-v1.php\"
             php \"\$root/migrate-matrix-collection-v1.php\"
+            reconcile_status=0
+            php \"\$root/sync-priority-hotels-v1.php\" --limit=500 || reconcile_status=\$?
+            if [ \"\$reconcile_status\" -ne 0 ]; then echo \"PRIORITY_HOTEL_SYNC_WARNING status=\$reconcile_status\"; fi
             php \"\$root/top500-coverage-v1.php\"
             php \"\$root/top500-daily-collector-v1.php\" --preferred-departure-id=1 --start-days=1
             if [ '${{ github.event_name }}' = 'workflow_dispatch' ]; then
