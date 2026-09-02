@@ -41,8 +41,9 @@ try {
     }
     $country=is_array($familyRecord['country']??null)?$familyRecord['country']:[];
     $resorts=is_array($familyRecord['resorts']??null)?$familyRecord['resorts']:[];
+    $supportedPageTypes=is_array($familyRecord['supported_page_types']??null)?$familyRecord['supported_page_types']:[];
     $countryId=(int)($familyRecord['country_id']??0);
-    if($countryId<=0) throw new InvalidArgumentException('Verified family has no country identity');
+    if($countryId<=0||$supportedPageTypes===[]) throw new InvalidArgumentException('Verified family has no usable seasonal capability');
 
     $readiness=seasonal_plan_json($readinessPath,'readiness');
     $inventory=seasonal_plan_json($identitiesPath,'identities');
@@ -52,26 +53,31 @@ try {
     }
 
     $filtered=$inventory;
-    $filtered['identities']=array_values(array_filter($inventory['identities']??[],static fn($row):bool=>is_array($row)&&(int)($row['country_id']??0)===$countryId));
+    $filtered['identities']=array_values(array_filter($inventory['identities']??[],static fn($row):bool=>is_array($row)
+        &&(int)($row['country_id']??0)===$countryId
+        &&in_array((string)($row['page_type']??''),$supportedPageTypes,true)));
     $filtered['identity_count']=count($filtered['identities']);
     $filtered['blocked']=[];
     $filtered['blocked_count']=0;
-    if($filtered['identity_count']===0) throw new InvalidArgumentException('No identities for verified family country');
+    if($filtered['identity_count']===0) throw new InvalidArgumentException('No supported identities for verified family country');
 
+    $defaultResortMin=in_array('resort_month',$supportedPageTypes,true)?1:0;
     $policy=[
         'country_id'=>$countryId,
         'min_month_identities'=>(int)(seasonal_plan_arg($argv,'min-month-identities')??'1'),
-        'min_resort_month_identities'=>(int)(seasonal_plan_arg($argv,'min-resort-month-identities')??'1'),
+        'min_resort_month_identities'=>(int)(seasonal_plan_arg($argv,'min-resort-month-identities')??(string)$defaultResortMin),
         'min_freshness_seconds'=>(int)(seasonal_plan_arg($argv,'min-freshness-seconds')??'1800'),
         'min_offers_per_snapshot'=>(int)(seasonal_plan_arg($argv,'min-offers-per-snapshot')??'1'),
     ];
     $coverage=v2_seo_seasonal_coverage_assess($readiness,$policy);
     if(($coverage['review_ready']??false)!==true) throw new InvalidArgumentException('Seasonal coverage is not review-ready: '.implode(',',array_map('strval',$coverage['errors']??[])));
     $binding=v2_seo_seasonal_family_binding($country,$resorts,$filtered);
+    if((int)($binding['blocked_count']??0)!==0) throw new InvalidArgumentException('Supported seasonal identities failed family binding');
     $keys=array_values(array_filter(array_map('trim',preg_split('/\s*,\s*/',$rawKeys,-1,PREG_SPLIT_NO_EMPTY)?:[]),static fn(string $v):bool=>$v!==''));
     $maxItems=(int)(seasonal_plan_arg($argv,'max-items')??'12');
     $plan=v2_seo_seasonal_review_plan($coverage,$binding,$keys,null,$maxItems);
     $plan['family']=$family;
+    $plan['supported_page_types']=$supportedPageTypes;
     $plan['source_identity_count']=$filtered['identity_count'];
     $plan['family_bound_count']=(int)($binding['bound_count']??0);
     $plan['family_blocked_count']=(int)($binding['blocked_count']??0);
