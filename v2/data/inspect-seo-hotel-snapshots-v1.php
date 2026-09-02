@@ -17,10 +17,16 @@ function hotel_snapshot_arg(array $argv, string $name): ?string
     return null;
 }
 
+function hotel_snapshot_flag(array $argv, string $name): bool
+{
+    return in_array('--' . $name, $argv, true);
+}
+
 $country = filter_var(hotel_snapshot_arg($argv, 'country') ?? '', FILTER_VALIDATE_INT);
 $limit = filter_var(hotel_snapshot_arg($argv, 'limit') ?? '20', FILTER_VALIDATE_INT);
+$identityOnly = hotel_snapshot_flag($argv, 'identity-only');
 if ($country === false || (int)$country <= 0) {
-    fwrite(STDERR, "Usage: php v2/data/inspect-seo-hotel-snapshots-v1.php --country=8 [--limit=20]\n");
+    fwrite(STDERR, "Usage: php v2/data/inspect-seo-hotel-snapshots-v1.php --country=8 [--limit=20] [--identity-only]\n");
     exit(2);
 }
 $country = (int)$country;
@@ -48,6 +54,7 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute(['country_id'=>$country]);
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 foreach ($rows as &$row) {
+    $row['country_id'] = $country;
     $row['hotel_id'] = (int)$row['hotel_id'];
     $row['category'] = $row['category'] !== null ? (int)$row['category'] : null;
     $row['rating'] = $row['rating'] !== null ? (float)$row['rating'] : null;
@@ -60,5 +67,16 @@ foreach ($rows as &$row) {
     $row['freshness_seconds'] = (int)$row['freshness_seconds'];
 }
 unset($row);
+
+if ($identityOnly) {
+    $rows = array_map(static fn(array $row): array => [
+        'country_id' => $row['country_id'],
+        'hotel_id' => $row['hotel_id'],
+        'hotel_name' => (string)$row['hotel_name'],
+        'hotel_slug' => (string)$row['hotel_slug'],
+        'evidence_epoch' => $row['evidence_epoch'],
+        'freshness_seconds' => $row['freshness_seconds'],
+    ], $rows);
+}
 
 echo json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT) . "\n";
