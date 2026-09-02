@@ -1,0 +1,1 @@
+Scope: deterministic production identity collector checks only; live network collection remains non-blocking; hotel_tours stay review/noindex/out of sitemap.
