@@ -1,0 +1,70 @@
+{
+  "state": "manual_serp_snapshot_review_only",
+  "observed_at_epoch": 1788391016,
+  "observed_at_utc": "2026-09-02T23:16:56Z",
+  "method": "manual_serp_review",
+  "notes": "Observed current Russian-language search results with dedicated commercial month-specific tour landing pages. No search volume, clicks, impressions, prices or ranking claims are inferred by this snapshot.",
+  "rows": [
+    {
+      "preview_key": "antalya-september",
+      "path": "/_preview/seo2/seasonal/antalya-september/",
+      "page_key": "resort_month:1:4:20:2026-09",
+      "query_cluster": "туры в Анталью в сентябре",
+      "demand": {
+        "page_key": "resort_month:1:4:20:2026-09",
+        "query_cluster": "туры в Анталью в сентябре",
+        "source_class": "manual_serp_review",
+        "source_ref": "https://www.coral.ru/main/turkey/antalya/sentyabr/|https://pegas-touristik.ru/tours/turkey/antalya/month_september/|https://level.travel/explore/Moscow-Russia/Antalya-Turkey/september",
+        "observed_at_epoch": 1788391016,
+        "status": "confirmed",
+        "serp_intent": "commercial"
+      },
+      "uniqueness": {
+        "page_key": "resort_month:1:4:20:2026-09",
+        "page_path": "/_preview/seo2/seasonal/antalya-september/",
+        "query_cluster": "туры в Анталью в сентябре",
+        "source_class": "manual_serp_review",
+        "source_ref": "https://www.coral.ru/main/turkey/antalya/sentyabr/|https://pegas-touristik.ru/tours/turkey/antalya/month_september/|https://level.travel/explore/Moscow-Russia/Antalya-Turkey/september",
+        "observed_at_epoch": 1788391016,
+        "status": "confirmed",
+        "decision": "distinct",
+        "competing_paths": [
+          "/country/turkey/antalya/"
+        ]
+      }
+    },
+    {
+      "preview_key": "maldives-september",
+      "path": "/_preview/seo2/seasonal/maldives-september/",
+      "page_key": "month:1:8:2026-09",
+      "query_cluster": "туры на Мальдивы в сентябре",
+      "demand": {
+        "page_key": "month:1:8:2026-09",
+        "query_cluster": "туры на Мальдивы в сентябре",
+        "source_class": "manual_serp_review",
+        "source_ref": "https://pegas-touristik.ru/tours/maldives/month_september/|https://pgtourist.com/countries/maldivy/tury-na-sentyabr-maldivy/|https://www.intrust-tour.ru/country/maldives/search/september/",
+        "observed_at_epoch": 1788391016,
+        "status": "confirmed",
+        "serp_intent": "commercial"
+      },
+      "uniqueness": {
+        "page_key": "month:1:8:2026-09",
+        "page_path": "/_preview/seo2/seasonal/maldives-september/",
+        "query_cluster": "туры на Мальдивы в сентябре",
+        "source_class": "manual_serp_review",
+        "source_ref": "https://pegas-touristik.ru/tours/maldives/month_september/|https://pgtourist.com/countries/maldivy/tury-na-sentyabr-maldivy/|https://www.intrust-tour.ru/country/maldives/search/september/",
+        "observed_at_epoch": 1788391016,
+        "status": "confirmed",
+        "decision": "distinct",
+        "competing_paths": [
+          "/country/maldives/"
+        ]
+      }
+    }
+  ],
+  "publication_candidates": [],
+  "publication_allowed": false,
+  "indexation_allowed": false,
+  "sitemap_allowed": false,
+  "route_launch_allowed": false
+}
