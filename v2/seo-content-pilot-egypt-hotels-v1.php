@@ -9,6 +9,9 @@ function v2_seo_egypt_hotel_manifest(): array
         ['file'=>'seo-content-pilot-egypt-mirage-bay-v1.php','function'=>'v2_seo_content_pilot_egypt_mirage_bay','label'=>'Туры в MIRAGE BAY RESORT & AQUAPARK','href'=>'/country/egypt/hotel/mirage-bay-resort-aquapark-299/'],
         ['file'=>'seo-content-pilot-egypt-sand-beach-v1.php','function'=>'v2_seo_content_pilot_egypt_sand_beach','label'=>'Туры в SAND BEACH','href'=>'/country/egypt/hotel/sand-beach-405/'],
         ['file'=>'seo-content-pilot-egypt-il-mercato-v1.php','function'=>'v2_seo_content_pilot_egypt_il_mercato','label'=>'Туры в IL MERCATO SPLASH AQUA PARK','href'=>'/country/egypt/hotel/il-mercato-splash-aqua-park-2904/'],
+        ['file'=>'seo-content-pilot-egypt-mazar-v1.php','function'=>'v2_seo_content_pilot_egypt_mazar','label'=>'Туры в MAZAR RESORT & SPA','href'=>'/country/egypt/hotel/mazar-resort-spa-56104/'],
+        ['file'=>'seo-content-pilot-egypt-coral-hills-v1.php','function'=>'v2_seo_content_pilot_egypt_coral_hills','label'=>'Туры в CORAL HILLS RESORT','href'=>'/country/egypt/hotel/coral-hills-resort-162/'],
+        ['file'=>'seo-content-pilot-egypt-tropitel-dahab-v1.php','function'=>'v2_seo_content_pilot_egypt_tropitel_dahab','label'=>'Туры в TROPITEL DAHAB OASIS','href'=>'/country/egypt/hotel/tropitel-dahab-oasis-512/'],
     ];
 }
 
