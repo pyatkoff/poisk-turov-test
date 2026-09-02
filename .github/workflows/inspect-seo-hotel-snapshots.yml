@@ -12,6 +12,26 @@ on:
         required: false
         default: '40'
         type: string
+      catalog_file:
+        description: 'Optional repo-relative PHP catalog file to validate, e.g. v2/seo-content-pilot-egypt-hotel-review-catalog-v1.php'
+        required: false
+        default: ''
+        type: string
+      catalog_function:
+        description: 'Optional catalog function paired with catalog_file'
+        required: false
+        default: ''
+        type: string
+      only:
+        description: 'Optional comma-separated hotel IDs to require in both catalog and fresh snapshot'
+        required: false
+        default: ''
+        type: string
+      require_all:
+        description: 'Require every hotel-tour record in the selected catalog to exist in the fresh snapshot'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -25,12 +45,26 @@ jobs:
         env:
           COUNTRY: ${{ inputs.country }}
           LIMIT: ${{ inputs.limit }}
+          CATALOG_FILE: ${{ inputs.catalog_file }}
+          CATALOG_FUNCTION: ${{ inputs.catalog_function }}
+          ONLY: ${{ inputs.only }}
         shell: bash
         run: |
           set -euo pipefail
           [[ "$COUNTRY" =~ ^[1-9][0-9]*$ ]] || { echo 'Invalid country ID' >&2; exit 2; }
           [[ "$LIMIT" =~ ^[1-9][0-9]*$ ]] || { echo 'Invalid limit' >&2; exit 2; }
           (( LIMIT >= 1 && LIMIT <= 100 )) || { echo 'Limit must be 1-100' >&2; exit 2; }
+          if [[ -n "$CATALOG_FILE" || -n "$CATALOG_FUNCTION" ]]; then
+            [[ -n "$CATALOG_FILE" && -n "$CATALOG_FUNCTION" ]] || { echo 'catalog_file and catalog_function must be supplied together' >&2; exit 2; }
+            [[ "$CATALOG_FILE" =~ ^v2/[A-Za-z0-9._/-]+\.php$ ]] || { echo 'Invalid catalog file' >&2; exit 2; }
+            [[ "$CATALOG_FILE" != *'..'* && "$CATALOG_FILE" != *'//'* ]] || { echo 'Unsafe catalog file path' >&2; exit 2; }
+            [[ "$CATALOG_FUNCTION" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo 'Invalid catalog function' >&2; exit 2; }
+          fi
+          if [[ -n "$ONLY" ]]; then
+            [[ "$ONLY" =~ ^[1-9][0-9]*(,[1-9][0-9]*)*$ ]] || { echo 'Invalid only hotel IDs' >&2; exit 2; }
+          fi
+
+      - uses: actions/checkout@v4
 
       - name: Prepare production SSH key
         env:
@@ -62,5 +96,21 @@ jobs:
           remote="$NEW_USER@$NEW_HOST"
           echo "SEO_HOTEL_SNAPSHOT_BEGIN country=$COUNTRY limit=$LIMIT identity_only=1"
           timeout 45s ssh "${opts[@]}" "$remote" \
-            "php \"\$HOME/www/anytoour.ru/data/inspect-seo-hotel-snapshots-v1.php\" --country=$COUNTRY --limit=$LIMIT --identity-only"
+            "php \"\$HOME/www/anytoour.ru/data/inspect-seo-hotel-snapshots-v1.php\" --country=$COUNTRY --limit=$LIMIT --identity-only" \
+            | tee "$RUNNER_TEMP/seo-hotel-snapshot.json"
           echo 'SEO_HOTEL_SNAPSHOT_END'
+
+      - name: Validate selected catalog against fresh snapshot
+        if: ${{ inputs.catalog_file != '' }}
+        env:
+          CATALOG_FILE: ${{ inputs.catalog_file }}
+          CATALOG_FUNCTION: ${{ inputs.catalog_function }}
+          ONLY: ${{ inputs.only }}
+          REQUIRE_ALL: ${{ inputs.require_all }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=("--catalog-file=$CATALOG_FILE" "--catalog-function=$CATALOG_FUNCTION")
+          if [[ -n "$ONLY" ]]; then args+=("--only=$ONLY"); fi
+          if [[ "$REQUIRE_ALL" == 'true' ]]; then args+=(--require-all); fi
+          php v2/data/validate-seo-hotel-snapshot-identities-v1.php "${args[@]}" < "$RUNNER_TEMP/seo-hotel-snapshot.json"
