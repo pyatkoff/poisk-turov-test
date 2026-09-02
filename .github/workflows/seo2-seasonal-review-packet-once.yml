@@ -1,0 +1,99 @@
+name: SEO2 seasonal review packet once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-seasonal-review-packet-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  packet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Build fresh Antalya and Maldives review packets
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          work="$RUNNER_TEMP/seo2-seasonal-packets"
+          mkdir -p "$work"
+          root='~/www/anytoour.ru'
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data/seo2-packet-once" && test -s "$HOME/www/anytoour.ru/config.php"'
+          scp "${opts[@]}" v2/data/db-v1.php v2/data/inspect-seo-seasonal-identities-v1.php v2/seo-seasonal-identity-v1.php "$remote:$root/data/seo2-packet-once/"
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            base="$HOME/www/anytoour.ru"
+            mkdir -p "$base/data/seo2-packet-once/v2/data" "$base/data/seo2-packet-once/v2"
+            cp "$base/config.php" "$base/data/seo2-packet-once/v2/config.php"
+            chmod 600 "$base/data/seo2-packet-once/v2/config.php"
+            cp "$base/data/seo2-packet-once/db-v1.php" "$base/data/seo2-packet-once/v2/data/db-v1.php"
+            cp "$base/data/seo2-packet-once/inspect-seo-seasonal-identities-v1.php" "$base/data/seo2-packet-once/v2/data/inspect-seo-seasonal-identities-v1.php"
+            cp "$base/data/seo2-packet-once/seo-seasonal-identity-v1.php" "$base/data/seo2-packet-once/v2/seo-seasonal-identity-v1.php"
+            php "$base/data/seo2-packet-once/v2/data/inspect-seo-seasonal-identities-v1.php" --countries=4,8 --require-identities=1 > "$base/data/seo2-packet-once/identities.json"
+            rm -f "$base/data/seo2-packet-once/v2/config.php"
+          '
+          scp "${opts[@]}" "$remote:$root/data/seo2-packet-once/identities.json" "$work/identities.json"
+          cat > "$work/build.php" <<'PHP'
+          <?php
+          declare(strict_types=1);
+          require $argv[1].'/v2/seo-seasonal-review-content-v1.php';
+          require $argv[1].'/v2/seo-seasonal-editorial-review-v1.php';
+          require $argv[1].'/v2/seo-seasonal-content-packet-v1.php';
+          $inventory=json_decode(file_get_contents($argv[2]),true,512,JSON_THROW_ON_ERROR);
+          $targets=[
+            'antalya-september'=>['key'=>'resort_month:1:4:20:2026-09','family'=>'turkey','parent'=>'/country/turkey/antalya/'],
+            'maldives-september'=>['key'=>'month:1:8:2026-09','family'=>'maldives','parent'=>'/country/maldives/'],
+          ];
+          $byKey=[];
+          foreach(($inventory['identities']??[]) as $row){$key=(string)($row['page_key']??''); if(isset($byKey[$key])) throw new RuntimeException('duplicate production identity'); $byKey[$key]=$row;}
+          $records=v2_seo_seasonal_review_content_prototypes();
+          $out=['state'=>'review_only_seasonal_packet_report','publication_candidates'=>[],'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'packets'=>[]];
+          foreach($targets as $name=>$target){
+            $key=$target['key']; if(!isset($byKey[$key])) throw new RuntimeException('missing fresh production identity '.$key);
+            $row=$byKey[$key]; $expires=(int)($row['expires_at_epoch']??0); $checked=(int)($row['evidence_checked_at_epoch']??0);
+            if($expires<=time()||$checked<=0) throw new RuntimeException('stale production identity '.$key);
+            $item=['state'=>'review_only_seasonal_dataset_item','family'=>$target['family'],'page_key'=>$key,'page_type'=>(string)$row['page_type'],'country_id'=>(int)$row['country_id'],'region_id'=>$row['region_id']??null,'departure_id'=>(int)$row['departure_id'],'year'=>(int)$row['year'],'month'=>(int)$row['month'],'parent_path'=>$target['parent'],'evidence_checked_at_epoch'=>$checked,'expires_at_epoch'=>$expires,'publication_allowed'=>false,'copy_allowed'=>false];
+            $dataset=['state'=>'review_only_seasonal_dataset','family_count'=>1,'item_count'=>1,'evidence_valid_until_epoch'=>$expires,'publication_candidates'=>[],'publication_allowed'=>false,'feed_publish_allowed'=>false,'copy_allowed'=>false,'items'=>[$item]];
+            $content=v2_seo_seasonal_render_review_content($records[$name],time());
+            if(($content['state']??'')!=='rendered_review_only_seasonal_content') throw new RuntimeException('content evidence blocked '.$key);
+            $verified=['state'=>'review_ready','review_ready'=>true,'claims'=>$content['claims'],'blocked'=>[],'publication_allowed'=>false,'copy_allowed_without_evidence'=>false,'hotel_tours_publication_allowed'=>false];
+            $editorial=v2_seo_seasonal_editorial_review_bundle($dataset,$verified,[$key],time(),2);
+            $packet=v2_seo_seasonal_content_packet($content,$editorial,$key);
+            $out['packets'][]=['state'=>$packet['state'],'page_key'=>$packet['page_key'],'claim_count'=>count($packet['claims']??[]),'section_count'=>count($packet['sections']??[]),'evidence_valid_until_epoch'=>$packet['evidence_valid_until_epoch'],'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_creation_allowed'=>false];
+          }
+          if(count($out['packets'])!==2) throw new RuntimeException('packet count mismatch');
+          file_put_contents($argv[3],json_encode($out,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n");
+          foreach($out['packets'] as $p) printf("SEO2_REVIEW_PACKET %s claims=%d sections=%d valid_until=%d\n",$p['page_key'],$p['claim_count'],$p['section_count'],$p['evidence_valid_until_epoch']);
+          PHP
+          php "$work/build.php" "$GITHUB_WORKSPACE" "$work/identities.json" "$work/review-packets.json"
+      - name: Upload disposable packet report
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo2-seasonal-review-packets-${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/seo2-seasonal-packets/review-packets.json
+          retention-days: 3
