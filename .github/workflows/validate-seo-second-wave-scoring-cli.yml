@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - 'v2/data/report-seo-second-wave-country-scoring-v1.php'
+      - 'v2/data/report-seo-second-wave-evidence-template-v1.php'
       - 'v2/seo-second-wave-country-scoring-review-v1.php'
       - 'v2/seo-opportunity-evidence-packet-v1.php'
       - 'v2/seo-production-identity-evidence-v1.php'
       - 'v2/seo-opportunity-scoring-policy-v1.php'
       - 'tests/seo-second-wave-country-scoring-cli-smoke.php'
+      - 'tests/seo-second-wave-evidence-template-smoke.php'
       - '.github/workflows/validate-seo-second-wave-scoring-cli.yml'
 
 permissions:
@@ -26,9 +28,16 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/data/report-seo-second-wave-country-scoring-v1.php >/dev/null
+          php -l v2/data/report-seo-second-wave-evidence-template-v1.php >/dev/null
           php -l tests/seo-second-wave-country-scoring-cli-smoke.php >/dev/null
+          php -l tests/seo-second-wave-evidence-template-smoke.php >/dev/null
       - name: Verify external-evidence fail-closed CLI
         shell: bash
         run: |
           set -euo pipefail
           php tests/seo-second-wave-country-scoring-cli-smoke.php
+      - name: Verify blank collection template has no invented evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/seo-second-wave-evidence-template-smoke.php
