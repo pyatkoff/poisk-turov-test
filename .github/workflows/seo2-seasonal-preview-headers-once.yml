@@ -1,0 +1,34 @@
+name: SEO2 seasonal preview headers once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-seasonal-preview-headers-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  headers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify live review-only headers and identity handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          check(){
+            local name="$1" url="$2" handoff="$3" forbidden="$4"
+            curl -fsSL -D "/tmp/$name.headers" -o "/tmp/$name.html" --max-time 30 "$url"
+            grep -Eiq '^x-robots-tag:[[:space:]]*noindex,[[:space:]]*follow([[:space:]]*|\r)$' "/tmp/$name.headers"
+            grep -Fq '<meta name="robots" content="noindex,follow">' "/tmp/$name.html"
+            ! grep -Fq 'rel="canonical"' "/tmp/$name.html"
+            ! grep -Fq 'property="og:url"' "/tmp/$name.html"
+            grep -Fq "$handoff" "/tmp/$name.html"
+            if [[ -n "$forbidden" ]]; then ! grep -Fq "$forbidden" "/tmp/$name.html"; fi
+            printf 'SEO2_PREVIEW_HEADER_OK %s xrobots=noindex,follow canonical=absent\n' "$name"
+          }
+          check antalya 'https://anytoour.ru/_preview/seo2/seasonal/antalya-september/' '/poisk-turov/?country=4&amp;region=20' ''
+          check maldives 'https://anytoour.ru/_preview/seo2/seasonal/maldives-september/' '/poisk-turov/?country=8' '/poisk-turov/?country=8&amp;region='
