@@ -27,15 +27,4 @@ $siteParams=is_array($params??null)?$params:[];$form=v2_form_defaults($_GET,$sit
 <section id="resultsTools" class="results-tools results-tools--ds2" hidden><div><strong>Предложения</strong><span id="resultSummary">Актуальные варианты</span></div><div class="results-tools__actions"><label>Сортировка <select id="sortResults"><option value="price">Сначала дешевле</option><option value="rating">По рейтингу</option><option value="stars">По звёздам</option><option value="sea">Ближе к морю</option></select></label><div class="results-view-switch" aria-label="Вид результатов"><button type="button" class="is-active" data-results-view="list" aria-label="Список">☰</button><button type="button" data-results-view="grid" aria-label="Сетка">▦</button><button type="button" class="results-map-button" data-results-map>На карте</button></div></div></section>
 <div class="results-layout"><aside class="results-filter-rail" aria-label="Фильтры результатов"></aside><section id="results" class="results"></section></div><section id="selectedTour" class="selected-tour" hidden></section></main>
 <?php v2_render_site_footer($sitePhone, $phoneHref); ?>
-<?php
-$webConsultantHost = strtolower(trim((string)($_SERVER['HTTP_HOST'] ?? '')));
-$webConsultantHost = preg_replace('/:\d+$/', '', $webConsultantHost) ?: $webConsultantHost;
-if (in_array($webConsultantHost, ['anytoour.ru', 'www.anytoour.ru'], true)):
-    // Approved canonical Web Consultant dependency from #234. Keep the generic dependency-closure guard strict for every other cross-project reference.
-    $webConsultantBase = 'https://anytour.online/' . 'max-search/web-consultant/';
-?>
-<script src="<?=e($webConsultantBase . 'widget.js')?>" defer data-anytour-webchat="1"></script>
-<script src="<?=e($webConsultantBase . 'widget-a11y.js')?>" defer data-anytour-webchat-a11y="1"></script>
-<script src="<?=e($webConsultantBase . 'widget-context.js')?>" defer data-anytour-webchat-context="1"></script>
-<?php endif; ?>
 <script>window.V2_CONFIG={api:<?=json_encode(v2_public_path('api-v2.php'),JSON_UNESCAPED_SLASHES)?>,leadApi:<?=json_encode(v2_public_path('lead-adapter-v2.php'),JSON_UNESCAPED_SLASHES)?>,privacyUrl:<?=json_encode($privacyUrl,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?>,metrikaCounter:<?=json_encode($metrikaCounter,JSON_UNESCAPED_SLASHES)?>};</script><script src="<?=e(v2_bundle_asset('js'))?>"></script></body></html>

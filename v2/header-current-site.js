@@ -1,9 +1,7 @@
 (function(){'use strict';
 var cfg=window.V2_CONFIG||{},apiPath=String(cfg.api||''),runtimeBase=apiPath.replace(/\/api-v2\.php(?:\?.*)?$/,'').replace(/\/$/,'');
 function runtimePath(file){return (runtimeBase||'')+'/'+String(file||'').replace(/^\//,'');}
-var standalone=String(window.location.hostname||'').toLowerCase()==='anytoour.ru',legacyOrigin=standalone?'https://anytour.online':'';
-var standalonePaths=['/poisk-turov/','/country/','/country/turkey/','/country/egypt/','/country/tailand/','/country/oae/','/country/russia/','/hot/','/rb/','/contacts/','/how-to-buy/'];
-function siteHref(path){if(standalone&&standalonePaths.indexOf(path)!==-1)return path;return legacyOrigin+path;}
+function siteHref(path){return path;}
 function normalizeSearchNavigation(){
   var desired=[['/poisk-turov/','Поиск туров'],['/country/','Страны'],['/hot/','Горящие туры'],['/rb/','Раннее бронирование'],['/how-to-buy/','Как купить'],['/contacts/','Контакты']];
   var desktop=document.querySelector('.at-site-nav>ul');
@@ -18,7 +16,7 @@ function normalizeSearchNavigation(){
   }
 }
 normalizeSearchNavigation();
-if(standalone){Array.prototype.forEach.call(document.querySelectorAll('.at-site-header a[href^="/"]'),function(link){var href=link.getAttribute('href')||'';if(href&&href!=='/')link.setAttribute('href',siteHref(href));});}
+Array.prototype.forEach.call(document.querySelectorAll('.at-site-header a[href^="/"]'),function(link){var href=link.getAttribute('href')||'';if(href&&href!=='/')link.setAttribute('href',siteHref(href));});
 var phone=document.querySelector('.at-site-phone');
 if(phone&&(!phone.textContent||phone.textContent.trim()==='Array')){
   fetch(runtimePath('phone-config.php'),{credentials:'same-origin',cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(!d||!d.phone)return;phone.textContent=d.phone;if(d.href)phone.setAttribute('href','tel:'+d.href);}).catch(function(){});
