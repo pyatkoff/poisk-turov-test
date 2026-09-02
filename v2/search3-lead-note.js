@@ -1,0 +1,3 @@
+(function(){'use strict';
+function ensure(){const root=document.getElementById('selectedTour'),form=root&&root.querySelector('.lead-form');if(!form)return;let note=form.querySelector('.search3-lead-protection');if(note)return;note=document.createElement('p');note.className='search3-lead-protection';note.innerHTML='<span aria-hidden="true">♢</span> Ваши данные защищены. Мы не передаём их третьим лицам.';form.appendChild(note);const comment=form.querySelector('textarea[name="comment"]');if(comment&&comment.closest('label'))comment.closest('label').classList.add('search3-lead-comment');}
+window.addEventListener('v2:tour-selected',()=>setTimeout(ensure,0));window.addEventListener('v2:booking-review',()=>setTimeout(ensure,0));})();
