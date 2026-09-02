@@ -1,5 +1,11 @@
 /* Desktop Tour Details convergence against approved DS2 booking boards. Presentation only. */
 @media(min-width:1000px){
+/* Search3 owns the booking sequence on desktop. Hide legacy checkout navigation and
+   the direct-to-lead shortcut so Tour Details has one clear next action: flights. */
+body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .checkout-journey,
+body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .checkout-facts-heading,
+body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-lead-cta,
+body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-lead-cta-note{display:none!important}
 body.search3-preview #selectedTour:not(.search3-final-review) .facts{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:0!important;padding:0!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important;overflow:hidden!important}
 body.search3-preview #selectedTour:not(.search3-final-review) .facts>div{min-width:0!important;padding:11px 12px!important;border:0!important;border-right:1px solid var(--at-line-soft)!important;border-bottom:1px solid var(--at-line-soft)!important;background:#fff!important}
 body.search3-preview #selectedTour:not(.search3-final-review) .facts>div:nth-child(5n){border-right:0!important}
