@@ -17,8 +17,35 @@ function summaryHtml(t){const h=t&&t.hotel||{};const pic=t&&t.picture||h.picture
 '<div class="search3-booking-summary__place">'+esc(place(t))+'</div>'+
 '<dl><div><dt>Дата</dt><dd>'+esc(text(t&&t.date)||'—')+'</dd></div><div><dt>Ночей</dt><dd>'+esc(text(t&&t.nights)||'—')+'</dd></div><div><dt>Туристы</dt><dd>'+esc(people(t))+'</dd></div><div><dt>Номер</dt><dd>'+esc(text(t&&t.roomType)||'—')+'</dd></div><div><dt>Питание</dt><dd>'+esc(meal(t))+'</dd></div><div><dt>Оператор</dt><dd>'+esc(operator(t))+'</dd></div><div><dt>Перелёт</dt><dd class="search3-booking-summary__flight">'+esc(flightLabel(lastFlight))+'</dd></div></dl>'+
 flightMoneyHtml(lastFlight)+'<div class="search3-booking-summary__total"><span>Стоимость тура</span><strong>'+money(t&&t.price)+'</strong></div><p class="search3-booking-summary__price-note">Стоимость тура показана отдельно от параметров выбранного варианта рейса.</p></aside>';}
-function render(){const root=document.getElementById('selectedTour'),form=root&&root.querySelector('.lead-form');if(!form||!lastTour)return;let shell=form.closest('.search3-lead-shell');if(!shell){shell=document.createElement('div');shell.className='search3-lead-shell';form.parentNode.insertBefore(shell,form);shell.appendChild(form);}const old=shell.querySelector('.search3-booking-summary');if(old)old.remove();shell.insertAdjacentHTML('beforeend',summaryHtml(lastTour));}
-window.addEventListener('v2:tour-selected',e=>{lastTour=e.detail&&e.detail.tour||null;lastFlight=null;setTimeout(render,0);});
-window.addEventListener('v2:flight-selected',e=>{lastFlight=e.detail&&e.detail.flight||null;setTimeout(render,0);});
-window.addEventListener('v2:lead-success',()=>setTimeout(render,0));
+function syncLayout(){
+  const root=document.getElementById('selectedTour'),form=root&&root.querySelector('.lead-form'),shell=form&&form.closest('.search3-lead-shell'),summary=shell&&shell.querySelector('.search3-booking-summary');
+  if(!root||!form||!shell||!summary)return;
+  const finalDesktop=root.classList.contains('search3-final-review')&&window.matchMedia('(min-width:1000px)').matches;
+  if(finalDesktop){
+    /* The final board is a two-column grid owned by #selectedTour. display:contents
+       lets the real lead form and real booking summary participate in that grid
+       without duplicating or fabricating any booking data. */
+    shell.style.setProperty('display','contents','important');
+    form.style.setProperty('grid-column','1','important');
+    summary.style.setProperty('display','block','important');
+    summary.style.setProperty('grid-column','2','important');
+    summary.style.setProperty('grid-row','4 / 12','important');
+  }else{
+    shell.style.removeProperty('display');
+    form.style.removeProperty('grid-column');
+    summary.style.removeProperty('display');
+    summary.style.removeProperty('grid-column');
+    summary.style.removeProperty('grid-row');
+  }
+}
+function render(){const root=document.getElementById('selectedTour'),form=root&&root.querySelector('.lead-form');if(!form||!lastTour)return;let shell=form.closest('.search3-lead-shell');if(!shell){shell=document.createElement('div');shell.className='search3-lead-shell';form.parentNode.insertBefore(shell,form);shell.appendChild(form);}const old=shell.querySelector('.search3-booking-summary');if(old)old.remove();shell.insertAdjacentHTML('beforeend',summaryHtml(lastTour));syncLayout();}
+function renderSoon(){setTimeout(render,0)}
+function layoutSoon(){setTimeout(syncLayout,0)}
+window.addEventListener('v2:tour-selected',e=>{lastTour=e.detail&&e.detail.tour||null;lastFlight=null;renderSoon();});
+window.addEventListener('v2:flight-selected',e=>{lastFlight=e.detail&&e.detail.flight||null;renderSoon();});
+window.addEventListener('v2:booking-review',layoutSoon);
+window.addEventListener('v2:lead-success',renderSoon);
+window.addEventListener('resize',layoutSoon);
+document.addEventListener('click',e=>{if(e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-flight-continue button'))layoutSoon();});
+window.Search3BookingSummary={render,syncLayout,version:2};
 })();

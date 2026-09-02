@@ -21,9 +21,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     try {
       if (anchor) {
         const loc = page.locator(anchor).first();
-        if (await loc.count()) await loc.scrollIntoViewIfNeeded().catch(() => {});
+        if (await loc.count()) {
+          await loc.evaluate(el => {
+            const y = el.getBoundingClientRect().top + window.scrollY - 12;
+            window.scrollTo(0, Math.max(0, y));
+          }).catch(() => {});
+        }
         await sleep(250);
-      } else await page.evaluate(() => scrollTo(0, 0));
+      } else {
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await sleep(100);
+      }
       const file = path.join(outDir, `${name}.png`);
       await page.screenshot({ path: file, fullPage: false, animations: 'disabled' });
       report.states.push({ name, ok: true, file, url: page.url() });
@@ -34,6 +42,21 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   async function waitVisible(selector, timeout = 90000) {
     try { await page.locator(selector).first().waitFor({ state: 'visible', timeout }); return true; }
     catch (_) { return false; }
+  }
+
+  async function waitAttached(selector, timeout = 90000) {
+    try { await page.locator(selector).first().waitFor({ state: 'attached', timeout }); return true; }
+    catch (_) { return false; }
+  }
+
+  async function settleImages(selector, timeout = 8000) {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      const pending = await page.locator(selector).evaluateAll(images => images.filter(img => img && img.tagName === 'IMG' && img.src && !img.complete).length).catch(() => 0);
+      if (!pending) return true;
+      await sleep(180);
+    }
+    return false;
   }
 
   async function forceLeadState(state, detail = {}) {
@@ -79,9 +102,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     if (await submit.count()) {
       await submit.click();
       const hasResults = await waitVisible('#results .hotel-card', 120000);
-      const searchComplete = hasResults ? await waitVisible('#status .search-progress-done', 120000) : false;
+      /* The settled-results design intentionally hides the completed status banner.
+         The marker must still exist in the DOM so QA proves the search really ended. */
+      const searchComplete = hasResults ? await waitAttached('#status .search-progress-done', 120000) : false;
       report.search = { submitted: true, hasResults, complete: searchComplete };
       if (hasResults && !searchComplete) report.errors.push('results became visible but search never reached completed state before screenshots');
+      if (hasResults) await settleImages('#results .hotel-card img', 8000);
       await sleep(350);
       await snap('02-results', '#resultsTools');
 
@@ -103,6 +129,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
             const detailReady = await waitVisible('#selectedTour .selected-head h2, #selectedTour .selected-picture', 60000);
             report.tourDetailsReady = detailReady;
             if (!detailReady) report.errors.push('tour details stayed in loading state before screenshot');
+            await settleImages('#selectedTour img', 5000);
             await sleep(500);
             await snap('04-tour-details', '#selectedTour');
 
@@ -125,6 +152,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
               await waitVisible('#selectedTour.search3-final-review', 5000);
             }
             report.finalReviewMode = finalMode;
+            await settleImages('#selectedTour img', 3000);
             await sleep(400);
             await snap('06-final-review', '#selectedTour');
 
