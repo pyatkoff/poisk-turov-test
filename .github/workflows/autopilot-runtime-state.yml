@@ -3,7 +3,7 @@ name: Autopilot runtime state
 on:
   workflow_run:
     workflows:
-      - "Deploy V2 only"
+      - "Deploy anytoour.ru"
     types: [completed]
   workflow_dispatch:
 
