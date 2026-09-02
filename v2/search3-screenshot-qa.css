@@ -57,12 +57,21 @@
   html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights{grid-column:1/3!important;grid-row:6!important;margin-top:12px!important}
   html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .search3-final-sections{grid-column:1/3!important}
   html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail{display:block!important;grid-column:3!important;grid-row:3/8!important;width:auto!important;position:sticky!important;top:18px!important}
+  html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review)>.search3-stage-nav{display:none!important}
   /* Lead belongs after review/confirmation, never inside Tour Details. */
   html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .search3-lead-shell,
   html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review)>.lead-form{display:none!important}
+  html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review)>.lead-submit,
+  html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review)>button[type="submit"]{display:none!important}
   html body.search3-preview.search3-selected-open #selectedTour .tour-flights[hidden],
   html body.search3-preview.search3-selected-open #selectedTour .flight-variants[hidden]{display:none!important}
   html body.search3-preview.search3-selected-open #selectedTour .search3-booking-stepper button{white-space:nowrap!important;word-break:normal!important;overflow-wrap:normal!important}
+
+  /* Flight choice: use the full left content lane, like the approved flight board. */
+  html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights{width:100%!important;max-width:none!important}
+  html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-variants{width:100%!important;max-width:none!important}
+  html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-variant{width:100%!important;box-sizing:border-box!important}
+  html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .search3-flight-continue{grid-column:1/3!important;width:100%!important;max-width:none!important;margin:12px 0 0!important}
 
   /* Final review returns to content + cost rail and exposes the lead form. */
   html body.search3-preview.search3-selected-open #selectedTour.search3-final-review{display:grid!important;grid-template-columns:minmax(0,1fr) 300px!important;column-gap:14px!important;align-items:start!important}
@@ -74,6 +83,8 @@
   html body.search3-preview.search3-selected-open #selectedTour.search3-final-review .facts,
   html body.search3-preview.search3-selected-open #selectedTour.search3-final-review .tour-flights,
   html body.search3-preview.search3-selected-open #selectedTour.search3-final-review .search3-final-sections{grid-column:1!important}
-  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review .search3-lead-shell{grid-column:1/-1!important;display:grid!important}
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review .search3-lead-shell{grid-column:1/-1!important;display:grid!important;margin-top:14px!important}
   html body.search3-preview.search3-selected-open #selectedTour.search3-final-review .search3-tour-detail-rail{display:none!important}
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review .search3-booking-summary{grid-column:2!important;grid-row:4/10!important;align-self:start!important;position:sticky!important;top:18px!important;margin:0!important}
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review .search3-final-sections{margin-bottom:12px!important}
 }
