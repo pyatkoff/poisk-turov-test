@@ -18,7 +18,7 @@ function v2_seo_search_feedback_evidence(array $record, ?int $nowEpoch=null): ar
     $periodStart=(int)($record['period_start_epoch']??0);
     $periodEnd=(int)($record['period_end_epoch']??0);
     $allowedSources=['google_search_console_export','yandex_webmaster_export'];
-    $launchPaths=v2_seo_turkey_launch_paths();
+    $launchPaths=v2_seo_controlled_launch_paths();
 
     if(!in_array($path,$launchPaths,true))$errors[]='path_not_in_launched_scope';
     if(!in_array($sourceClass,$allowedSources,true))$errors[]='unsupported_source_class';
@@ -86,7 +86,7 @@ function v2_seo_search_feedback_evidence(array $record, ?int $nowEpoch=null): ar
 function v2_seo_search_feedback_intake(array $rows, ?int $nowEpoch=null): array
 {
     $nowEpoch??=time();
-    $launchPaths=v2_seo_turkey_launch_paths();
+    $launchPaths=v2_seo_controlled_launch_paths();
     $byPath=[]; $errors=[];
     foreach($rows as $i=>$raw){
         if(!is_array($raw)){ $errors[]='invalid_row_'.$i; continue; }
@@ -102,7 +102,7 @@ function v2_seo_search_feedback_intake(array $rows, ?int $nowEpoch=null): array
     if($rows===[])$errors[]='no_feedback_evidence_supplied';
 
     $fingerprint=hash('sha256',json_encode([
-        'launch_scope'=>'turkey_country_resort_v1',
+        'launch_scope'=>'controlled_country_resort_v2',
         'rows'=>array_map(static fn(array $row):string=>(string)($row['feedback_sha256']??''),$byPath),
         'missing_paths'=>$missing,
     ],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
@@ -110,7 +110,7 @@ function v2_seo_search_feedback_intake(array $rows, ?int $nowEpoch=null): array
     return [
         'state'=>$errors===[]?'search_feedback_intake_ready':'search_feedback_intake_blocked',
         'domain'=>'anytoour.ru',
-        'launch_scope'=>'turkey_country_resort_v1',
+        'launch_scope'=>'controlled_country_resort_v2',
         'launched_path_count'=>count($launchPaths),
         'observed_count'=>count($byPath),
         'observed_paths'=>$observed,
