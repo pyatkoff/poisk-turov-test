@@ -33,6 +33,9 @@ function v2_seo_egypt_hotel_manifest(): array
         ['file'=>'seo-content-pilot-egypt-geisum-v1.php','function'=>'v2_seo_content_pilot_egypt_geisum','label'=>'Туры в GEISUM VILLAGE','href'=>'/country/egypt/hotel/geisum-village-1969/'],
         ['file'=>'seo-content-pilot-egypt-onatti-v1.php','function'=>'v2_seo_content_pilot_egypt_onatti','label'=>'Туры в ONATTI BEACH RESORT','href'=>'/country/egypt/hotel/onatti-beach-resort-ex-otium-senses-onatti-1974/'],
         ['file'=>'seo-content-pilot-egypt-viva-blue-v1.php','function'=>'v2_seo_content_pilot_egypt_viva_blue','label'=>'Туры в VIVA BLUE RESORT AND DIVING SPORT','href'=>'/country/egypt/hotel/viva-blue-resort-and-diving-sport-64291/'],
+        ['file'=>'seo-content-pilot-egypt-new-badawia-v1.php','function'=>'v2_seo_content_pilot_egypt_new_badawia','label'=>'Туры в NEW BADAWIA SHARM RESORT','href'=>'/country/egypt/hotel/new-badawia-sharm-resort-169/'],
+        ['file'=>'seo-content-pilot-egypt-kiroseiz-v1.php','function'=>'v2_seo_content_pilot_egypt_kiroseiz','label'=>'Туры в XPERIENCE KIROSEIZ PREMIER','href'=>'/country/egypt/hotel/xperience-kiroseiz-premier-39260/'],
+        ['file'=>'seo-content-pilot-egypt-rehana-royal-v1.php','function'=>'v2_seo_content_pilot_egypt_rehana_royal','label'=>'Туры в REHANA ROYAL BEACH RESORT AQUA PARK & SPA','href'=>'/country/egypt/hotel/rehana-royal-beach-resort-aqua-park-spa-381/'],
     ];
 }
 
