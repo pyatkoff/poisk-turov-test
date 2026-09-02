@@ -34,19 +34,56 @@ jobs:
             grep -Fq "name=\"robots\" content=\"$robots" "$out"
             grep -Fq '/images/logo.svg' "$out"
           }
+          check_search_handoff(){
+            local out="$1" country_id="$2" region_id="${3:-}"
+            python3 - "$out" "$country_id" "$region_id" <<'PY'
+          import html
+          import sys
+          from html.parser import HTMLParser
+          from urllib.parse import parse_qs, urlparse
+
+          file_name, expected_country, expected_region = sys.argv[1:4]
+
+          class Links(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.hrefs = []
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() != 'a':
+                      return
+                  href = dict(attrs).get('href')
+                  if href:
+                      self.hrefs.append(html.unescape(href))
+
+          parser = Links()
+          with open(file_name, encoding='utf-8') as fh:
+              parser.feed(fh.read())
+
+          for href in parser.hrefs:
+              parsed = urlparse(href)
+              if parsed.path != '/poisk-turov/':
+                  continue
+              query = parse_qs(parsed.query)
+              if query.get('country') != [expected_country]:
+                  continue
+              if expected_region and query.get('region') != [expected_region]:
+                  continue
+              sys.exit(0)
+          sys.exit(1)
+          PY
+          }
           check_country_handoff(){
             local slug="$1" country_id="$2" out
             out="$(page_out "/country/$slug/")"
-            grep -Eq "href=['\"]\/poisk-turov\/\?country=${country_id}['\"]" "$out"
-            echo "/country/$slug/ -> /poisk-turov/?country=$country_id OK"
+            check_search_handoff "$out" "$country_id"
+            echo "/country/$slug/ -> /poisk-turov/ country=$country_id OK"
           }
           check_resort_handoff(){
             local slug="$1" region_id="$2" out
             out="$(page_out "/country/turkey/$slug/")"
-            grep -Fq "href=\"/poisk-turov/?country=4&amp;region=${region_id}\"" "$out"
+            check_search_handoff "$out" 4 "$region_id"
             if grep -Fq 'sp-offer-snapshot' "$out"; then
               grep -Fq 'Посмотреть туры' "$out"
-              grep -Fq "country=4&amp;region=${region_id}" "$out"
               echo "/country/turkey/$slug/ fresh offer block OK"
             fi
             echo "/country/turkey/$slug/ -> country=4 region=$region_id OK"
