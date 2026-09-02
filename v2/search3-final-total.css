@@ -32,6 +32,7 @@ body.search3-preview #selectedTour .search3-booking-summary__total span{font-siz
 body.search3-preview #selectedTour .search3-booking-summary__total strong{font-size:23px!important}
 body.search3-preview #selectedTour .search3-booking-summary__price-note{font-size:8px!important;line-height:1.4!important}
 body.search3-preview #selectedTour .lead-form button[type=submit]{min-height:48px!important;background:#ff5a0a!important;border-color:#ff5a0a!important;border-radius:10px!important}
+body.search3-preview #selectedTour.search3-final-review .lead-form.search3-has-summary-submit:not([data-search3-lead-state])>button[type=submit]{display:none!important}
 body.search3-preview #selectedTour.search3-final-review .search3-review-heading{grid-column:1/-1!important;grid-row:3!important;margin-top:2px!important}
 body.search3-preview #selectedTour.search3-final-review .selected-picture{grid-row:4!important;height:176px!important;border-radius:14px 0 0 14px!important}
 body.search3-preview #selectedTour.search3-final-review .selected-head{grid-row:4!important;min-height:176px!important;border-radius:0 14px 14px 0!important;padding:18px 20px!important}
