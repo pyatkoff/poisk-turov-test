@@ -45,7 +45,7 @@ jobs:
               $url=v2_bundle_asset($type);
               if (!str_contains($url,'bundle-v1.php?type='.$type.'&v='.$a)) {fwrite(STDERR,"bad $type url: $url\n"); exit(5);}
           }
-          if (count($manifest['css'])!==37) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
+          if (count($manifest['css'])!==38) {fwrite(STDERR,'unexpected css count '.count($manifest['css'])."\n"); exit(6);}
           if (($manifest['css'][0]??'')!=='design-system-v2.css') {fwrite(STDERR,"AnyTour Design System 2.0 token layer must load first\n"); exit(8);}
           if (in_array('design-system-v1.css',$manifest['css'],true)) {fwrite(STDERR,"retired Design System 1.0 token layer must not be active\n"); exit(29);}
           if (!in_array('site-header-v2.css',$manifest['css'],true)) {fwrite(STDERR,"canonical site header css missing\n"); exit(12);}
@@ -54,13 +54,17 @@ jobs:
           if (!in_array('current-price-calendar-v1.css',$manifest['css'],true)) {fwrite(STDERR,"current price calendar css missing\n"); exit(18);}
           if (!in_array('sales-leader-ui-v1.css',$manifest['css'],true)) {fwrite(STDERR,"sales leader css missing\n"); exit(23);}
           if (!in_array('search-params-filter-rail-v1.css',$manifest['css'],true)) {fwrite(STDERR,"parameter/filter split css missing\n"); exit(27);}
-          if (($manifest['css'][count($manifest['css'])-7]??'')!=='search-header-layout-guard-v1.css') {fwrite(STDERR,"search header layout guard must stay before footer rhythm and shared-shell override\n"); exit(9);}
-          if (($manifest['css'][count($manifest['css'])-6]??'')!=='search-footer-rhythm-v1.css') {fwrite(STDERR,"search footer rhythm must stay directly before shared-shell override\n"); exit(10);}
-          if (($manifest['css'][count($manifest['css'])-5]??'')!=='search-header-shared-shell-v1.css') {fwrite(STDERR,"search shared-shell override must stay directly before DS2 overrides\n"); exit(11);}
-          if (($manifest['css'][count($manifest['css'])-4]??'')!=='ds2-search-intro-v1.css') {fwrite(STDERR,"DS2 search intro override must stay directly before tablet and selected-tour convergence\n"); exit(21);}
-          if (($manifest['css'][count($manifest['css'])-3]??'')!=='ds2-search-tablet-filters-v1.css') {fwrite(STDERR,"DS2 tablet filters must stay directly before selected-tour convergence\n"); exit(26);}
-          if (($manifest['css'][count($manifest['css'])-2]??'')!=='ds2-selected-tour-convergence-v1.css') {fwrite(STDERR,"DS2 selected-tour convergence must stay directly before Search 2.0 results layer\n"); exit(25);}
-          if (($manifest['css'][count($manifest['css'])-1]??'')!=='ds2-search.css') {fwrite(STDERR,"approved Search 2.0 results layer must load last\n"); exit(30);}
+          $expectedCssTail=[
+              'search-header-layout-guard-v1.css',
+              'search-footer-rhythm-v1.css',
+              'search-header-shared-shell-v1.css',
+              'ds2-search-intro-v1.css',
+              'ds2-search-tablet-filters-v1.css',
+              'ds2-selected-tour-convergence-v1.css',
+              'ds2-search.css',
+              'selected-tour-layout-guard-v1.css',
+          ];
+          if (array_slice($manifest['css'],-count($expectedCssTail))!==$expectedCssTail) {fwrite(STDERR,"unexpected protected CSS tail order\n"); exit(30);}
           if (count($manifest['js'])!==44) {fwrite(STDERR,'unexpected js count '.count($manifest['js'])."\n"); exit(7);}
           if (!in_array('catalog-local-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"local catalog router missing\n"); exit(15);}
           if (!in_array('country-matrix-routing-v1.js',$manifest['js'],true)) {fwrite(STDERR,"country matrix router missing\n"); exit(20);}
@@ -135,6 +139,7 @@ jobs:
           grep -Fq 'AnyTour Design System 2.0 — tablet advanced-filter convergence' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'AnyTour Design System 2.0 selected-tour convergence' "$RUNNER_TEMP/bundle.css"
           grep -Fq 'approved Search 2.0 results layer' "$RUNNER_TEMP/bundle.css"
+          grep -Fq 'Final selected-tour responsive layout guard' "$RUNNER_TEMP/bundle.css"
           echo "BUNDLE_HTTP_CACHE_OK"
       - name: Validate startup request collapse
         shell: bash
