@@ -93,6 +93,30 @@ jobs:
           if (!in_array('missing_intro',$catalog['reports']['/season/new-year/']['errors']??[],true)) fail('thin_error');
           if (($catalog['graph']['/resort/antalya/']['parent']??null)!=='/country/turkey/') fail('graph_passthrough');
 
+          $hotelRecord=[
+              'id'=>'hotel_tours.maldives.westin-65108.v1',
+              'status'=>'review',
+              'path'=>'/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/',
+              'type'=>'hotel_tours',
+              'data'=>full_page('The Westin Maldives Miriandhoo Resort','Туры в The Westin Maldives Miriandhoo Resort','Редакционная страница для сравнения пакетных туров в конкретный отель на Мальдивах с переходом к актуальному поиску AnyTour.',[
+                  ['label'=>'Главная','href'=>'/'],['label'=>'Мальдивы','href'=>'/country/maldives/'],['label'=>'Туры в The Westin Maldives Miriandhoo Resort']
+              ],[['label'=>'Мальдивы','href'=>'/country/maldives/']],['country'=>8,'hotel'=>65108]),
+          ];
+          $hotelCatalog=v2_seo_content_catalog([$hotelRecord]);
+          $hotelPath=$hotelRecord['path'];
+          if (($hotelCatalog['reports'][$hotelPath]['publishable']??false)!==true) fail('hotel_review_quality');
+          if (($hotelCatalog['reports'][$hotelPath]['status']??'')!=='review') fail('hotel_review_status');
+          if (v2_seo_content_candidate_paths($hotelCatalog)!==[]) fail('hotel_review_became_candidate');
+
+          $approvedHotel=$hotelRecord;
+          $approvedHotel['status']='approved';
+          try {
+              v2_seo_content_catalog([$approvedHotel]);
+              fail('hotel_approved_allowed');
+          } catch (InvalidArgumentException $e) {
+              if (!str_contains($e->getMessage(),'review-only')) fail('hotel_approved_wrong_error');
+          }
+
           $unstable=$records[1];
           $unstable['status']='approved';
           $unstable['data']['breadcrumbs'][1]['href']='/country/turkey/?country=4';
@@ -119,5 +143,5 @@ jobs:
               fail('unknown_graph_target_allowed');
           } catch (InvalidArgumentException $e) {}
 
-          echo "V2_SEO_CONTENT_CATALOG_OK ids=1 statuses=1 registry=1 publishability=1 stableBreadcrumbs=1 graph=1 candidates=1\n";
+          echo "V2_SEO_CONTENT_CATALOG_OK ids=1 statuses=1 registry=1 publishability=1 hotelTours=1 hotelApprovalGate=1 stableBreadcrumbs=1 graph=1 candidates=1\n";
           PHP
