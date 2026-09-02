@@ -1,9 +1,10 @@
 <?php
 $css = file_get_contents(__DIR__ . '/../v2/seo-editorial-reference-v1.css');
+$editorialCss = file_get_contents(__DIR__ . '/../v2/editorial-ds2-convergence-v1.css');
 $shell = file_get_contents(__DIR__ . '/../v2/site-page-shell-v1.php');
 $resort = file_get_contents(__DIR__ . '/../v2/seo-resort-page-v1.php');
 $hotel = file_get_contents(__DIR__ . '/../v2/seo-hotel-tour-page-v1.php');
-if ($css === false || trim($css) === '' || $shell === false || $resort === false || $hotel === false) exit(1);
+if ($css === false || trim($css) === '' || $editorialCss === false || $shell === false || $resort === false || $hotel === false) exit(1);
 $required = [
     '.sp-hero-actions{display:flex;align-items:center',
     '.sp-hero-actions .sp-primary{min-height:48px',
@@ -23,16 +24,26 @@ foreach ($required as $token) {
         exit(2);
     }
 }
+$breadcrumbTokens = [
+    '.sp-breadcrumbs .sp-wrap{display:flex;align-items:center;gap:6px;overflow:hidden;white-space:nowrap}',
+    '.sp-breadcrumbs [aria-current="page"]{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+];
+foreach ($breadcrumbTokens as $token) {
+    if (strpos($editorialCss, $token) === false) {
+        fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:breadcrumb:$token\n");
+        exit(3);
+    }
+}
 if (strpos($shell, "string \$actionHref='',string \$actionLabel=''") === false || strpos($shell, 'sp-hero-actions') === false) {
     fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:hero_optional_action\n");
-    exit(3);
+    exit(4);
 }
 if (strpos($resort, "'Подобрать тур в ' . \$resortName") === false || strpos($resort, "v2_seo_search_handoff_url('/poisk-turov/', \$page['search_state'])") === false) {
     fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:resort_hero_handoff\n");
-    exit(4);
+    exit(5);
 }
 if (strpos($hotel, "'Найти туры в этот отель'") === false || strpos($hotel, "v2_seo_search_handoff_url('/poisk-turov/', \$page['search_state'])") === false) {
     fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:hotel_hero_handoff\n");
-    exit(5);
+    exit(6);
 }
-echo "SEO_REFERENCE_VISUAL_OK desktop=3 tablet=2 mobile=1 leadCard=1 balancedTail=1 heroCta=1\n";
+echo "SEO_REFERENCE_VISUAL_OK desktop=3 tablet=2 mobile=1 leadCard=1 balancedTail=1 heroCta=1 breadcrumbClamp=1\n";
