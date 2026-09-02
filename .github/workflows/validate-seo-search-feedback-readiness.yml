@@ -1,0 +1,42 @@
+name: Validate SEO search feedback readiness
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-search-feedback-readiness-v1.php'
+      - 'v2/data/report-seo-search-feedback-readiness-v1.php'
+      - 'tests/seo-search-feedback-readiness-smoke.php'
+      - '.github/workflows/validate-seo-search-feedback-readiness.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/seo-search-feedback-readiness-v1.php'
+      - 'v2/data/report-seo-search-feedback-readiness-v1.php'
+      - 'tests/seo-search-feedback-readiness-smoke.php'
+      - '.github/workflows/validate-seo-search-feedback-readiness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-seo-search-feedback-readiness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate search feedback readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-search-feedback-readiness-v1.php >/dev/null
+          php -l v2/data/report-seo-search-feedback-readiness-v1.php >/dev/null
+          php -l tests/seo-search-feedback-readiness-smoke.php >/dev/null
+          php tests/seo-search-feedback-readiness-smoke.php
+          php v2/data/report-seo-search-feedback-readiness-v1.php > /tmp/readiness.json
+          php -r '$x=json_decode(file_get_contents("/tmp/readiness.json"),true); if(($x["launch_path_count"]??0)!==8) exit(1); if(($x["counts"]["missing"]??0)!==8) exit(2); if(($x["policy_status"]??"")!=="missing") exit(3); if(($x["review_ready"]??true)!==false) exit(4); if(($x["publication_candidates"]??null)!==[]) exit(5); echo "SEO_SEARCH_FEEDBACK_READINESS_CLI_OK missing=8 reviewReady=0 publication=0\n";'
