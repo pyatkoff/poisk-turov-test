@@ -2,7 +2,7 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. PR #948 is now fully production-green: Deploy anytoour.ru 33601413531 and Deploy V2 only 33601413471 both succeeded on merge 32bc0f28dc819feb51ca95ec7598ec8a8e35b826, including Verify V2 and Live search smoke. Next reproduced recovery defect is pending-lead search-reset unlock: lead-ui-race-guard-v1.js unconditionally handled v2:search-reset with clearPending(), so a programmatic reset could release protected flight/back/tour/search controls before the in-flight lead reached success/error. Narrow PR #959 changes only the UI race guard plus its existing targeted workflow so search-reset preserves the pending lock while a request is active and remains harmless when idle. PR head 95adba09653178a4c665438bf13077f4de4f57df; PR checks are running. External lead transport/persistence/idempotency, Metrika, Tourvisor, pricing and logo are untouched.",
+    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. PR #959 merged to main as eca0426f83b5ba44518ee3bf114e5ac99231ba15 after all 10 PR checks completed green; production evidence is pending. Next confirmed recovery defect: after an accepted lead success, guard-owned flight/back/tour/search controls remain locked when the user uses the canonical success return-to-results path, because leadPending stayed true and v2:tour-returned did not release those locks. Narrow PR #974 changes only v2/lead-ui-race-guard-v1.js plus the existing targeted lead-recovery workflow: accepted success settles the pending request without immediately unlocking the confirmation view; v2:tour-returned then releases only guard-owned locks. External lead transport/persistence/idempotency, Metrika, Tourvisor, pricing and logo remain untouched.",
     "done": [
       "P0/P1 progressive 25→100, local narrowing, widening/server lifecycle, stale async protection and counters have prior accepted evidence.",
       "PR #842 strengthened local facet safety for meal/category/rating/sea completeness and is released to production.",
@@ -13,9 +13,10 @@
       "PR #922 fixed the pending-lead back-to-results race; production evidence green.",
       "PR #930 fixed pending-lead tour switching by freezing guard-owned direct-tour actions while pending.",
       "PR #948 fixed pending-lead new-search mutation; merge 32bc0f28dc819feb51ca95ec7598ec8a8e35b826; Deploy anytoour.ru 33601413531 and Deploy V2 only 33601413471 both succeeded.",
-      "Selected-tour return/restored-state re-audit PASS on current main: back-results and lead-success-back preserve existing results state and restore source focus or fall back to results."
+      "Selected-tour return/restored-state re-audit PASS on current main for pre-success return behavior: existing results state is preserved and source focus is restored or falls back to results.",
+      "PR #959 fixed programmatic search-reset unlocking an in-flight lead; all 10 PR checks green; merged to main as eca0426f83b5ba44518ee3bf114e5ac99231ba15."
     ],
-    "next": "Finish PR #959 existing gates; if green, merge narrowly, collect existing production evidence and continue remaining selected-tour submit/retry/recovery boundaries. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead-adapter semantics.",
+    "next": "Finish PR #974 existing gates; if green, merge narrowly and collect existing production evidence. In parallel/afterward continue remaining selected-tour submit/retry/recovery boundaries. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead-adapter semantics.",
     "blocked": [
       "HIGH issue #850: production lead adapter idempotency semantics differ from the validated helper contract; changing the external lead mechanism requires explicit approval.",
       "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence.",
@@ -27,6 +28,7 @@
       "Local filtering is safe only when the loaded payload is complete enough for the selected facet.",
       "Lead UI async acceptance must be scoped to both tourId and searchId.",
       "A pending lead submission must freeze user choices that would make visible state diverge from the request snapshot; search-reset must not release those locks before current success/error.",
+      "After accepted lead success, confirmation-state locks must be released when the canonical success return-to-results path completes so browsing can continue.",
       "Selected-tour return should preserve useful result state and source identity rather than re-searching or rebuilding results."
     ]
   },
@@ -46,9 +48,9 @@
       "Preserve external lead contract, Metrika and pricing semantics"
     ],
     "evidence": [
-      "PR #948 Deploy anytoour.ru 33601413531 succeeded on exact merge SHA 32bc0f28dc819feb51ca95ec7598ec8a8e35b826.",
-      "PR #948 Deploy V2 only 33601413471 succeeded on exact merge SHA, closing Verify V2 + Live search smoke evidence.",
-      "PR #959 reproduces pending-lead search-reset unlock and patches only lead-ui-race-guard-v1.js plus the existing targeted lead UI race workflow; head 95adba09653178a4c665438bf13077f4de4f57df; CI running.",
+      "PR #948 fully production-green on merge 32bc0f28dc819feb51ca95ec7598ec8a8e35b826.",
+      "PR #959 all 10 PR checks green and merged to main as eca0426f83b5ba44518ee3bf114e5ac99231ba15; production evidence pending.",
+      "PR #974 reproduces post-success return leaving guard-owned browsing controls frozen and patches only lead-ui-race-guard-v1.js plus the existing targeted lead recovery workflow; head 79005fd2b29c248a6c2737ff2be55f798c5cb23c; CI starting.",
       "HIGH issue #850 remains approval-gated and lead-adapter.php must not be changed without explicit owner approval."
     ],
     "parent_task": "P0_P1_PRODUCT_STABILITY"
@@ -56,7 +58,7 @@
   "queue": [
     {"id":"SEARCH_RESULTS_FILTER_ARCHITECTURE","priority":1,"status":"RELEASED_PRODUCTION","latest_pr":842,"latest_merge_sha":"923fa8eb30ed8e65630653f3924a147c86a59f45"},
     {"id":"RESULTS_DEPTH_100","priority":1,"status":"DONE_WITH_PRIOR_EVIDENCE"},
-    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_IMPLEMENTATION_QA","latest_pr":959,"latest_head_sha":"95adba09653178a4c665438bf13077f4de4f57df"},
+    {"id":"SELECTED_TOUR_END_TO_END","priority":1,"status":"ACTIVE_IMPLEMENTATION_QA","latest_pr":974,"latest_head_sha":"79005fd2b29c248a6c2737ff2be55f798c5cb23c"},
     {"id":"FLIGHT_STATE_RECOVERY_REAUDIT","priority":1,"status":"PASS_CURRENT_MAIN_NO_DEFECT_REPRODUCED"},
     {"id":"LEAD_IDEMPOTENCY_CONTRACT","priority":1,"status":"BLOCKED_APPROVAL_HIGH","issue":850},
     {"id":"DESIGN_SYSTEM_2","priority":2,"status":"CONTINUE_TARGETED_CONVERGENCE"},
@@ -68,9 +70,9 @@
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"DONE_ENHANCED_CONTRACTS"}
   ],
   "last_signal": {
-    "source": "lead_pending_search_reset_race",
-    "status": "PR959_OPEN_CI_RUNNING_PR948_FULL_PRODUCTION_GREEN",
-    "sha": "95adba09653178a4c665438bf13077f4de4f57df"
+    "source": "lead_success_return_unlock",
+    "status": "PR974_OPEN_CI_STARTING_PR959_MERGED",
+    "sha": "79005fd2b29c248a6c2737ff2be55f798c5cb23c"
   },
   "blocked": [
     {"scope":"lead adapter idempotency semantics","type":"approval_gate_high","reason":"Issue #850 would require changing protected external lead mechanism semantics.","action":"Do not modify lead-adapter.php without explicit owner approval; continue independent MEDIUM recovery work."},
