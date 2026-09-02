@@ -6,6 +6,7 @@ on:
     paths:
       - 'v2/seo-*.php'
       - 'v2/data/report-seo-launch-readiness-v1.php'
+      - 'v2/data/report-seo-hotel-pilot-opportunity-evidence-v1.php'
       - 'tests/seo-turkey-hotel-review-catalog-smoke.php'
       - 'tests/seo-hotel-family-launch-readiness-smoke.php'
       - 'tests/seo-page-launch-readiness-smoke.php'
@@ -23,6 +24,7 @@ on:
       - 'tests/seo-hotel-pilot-opportunity-packets-smoke.php'
       - 'tests/seo-hotel-pilot-scoring-review-smoke.php'
       - 'tests/seo-hotel-pilot-opportunity-evidence-intake-smoke.php'
+      - 'tests/seo-hotel-pilot-opportunity-evidence-cli-smoke.php'
       - '.github/workflows/validate-v2-seo-readiness.yml'
   workflow_dispatch:
 
@@ -46,6 +48,7 @@ jobs:
           set -euo pipefail
           for file in v2/seo-*.php; do php -l "$file" >/dev/null; done
           php -l v2/data/report-seo-launch-readiness-v1.php >/dev/null
+          php -l v2/data/report-seo-hotel-pilot-opportunity-evidence-v1.php >/dev/null
           echo V2_SEO_PHP_OK
 
       - name: Validate Turkey hotel review family isolation
@@ -91,6 +94,8 @@ jobs:
           php tests/seo-hotel-pilot-scoring-review-smoke.php
           php -l tests/seo-hotel-pilot-opportunity-evidence-intake-smoke.php >/dev/null
           php tests/seo-hotel-pilot-opportunity-evidence-intake-smoke.php
+          php -l tests/seo-hotel-pilot-opportunity-evidence-cli-smoke.php >/dev/null
+          php tests/seo-hotel-pilot-opportunity-evidence-cli-smoke.php
           php v2/data/report-seo-launch-readiness-v1.php --catalog-file=v2/seo-content-pilot-maldives-catalog-v1.php --catalog-function=v2_seo_content_pilot_maldives_catalog </dev/null > /tmp/seo-readiness.json
           php -r '$x=json_decode(file_get_contents("/tmp/seo-readiness.json"),true); if(($x["state"]??"")!=="review_only_launch_readiness_report") exit(1); if(($x["blocked_count"]??0)<1) exit(2); echo "SEO_READINESS_CLI_OK\n";'
           if php v2/data/report-seo-launch-readiness-v1.php --catalog-file=v2/seo-content-pilot-maldives-catalog-v1.php --catalog-function=v2_seo_content_pilot_maldives_catalog --require-ready=999 </dev/null >/tmp/seo-readiness-required.json 2>/tmp/seo-readiness-required.err; then
