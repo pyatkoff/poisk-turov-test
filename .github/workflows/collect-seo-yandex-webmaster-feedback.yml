@@ -2,6 +2,16 @@ name: Collect SEO Yandex Webmaster feedback
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/collect-seo-yandex-webmaster-feedback.yml'
+      - 'scripts/collect-yandex-webmaster-query-analytics.sh'
+      - 'v2/seo-yandex-webmaster-feedback-v1.php'
+      - 'v2/data/report-seo-yandex-webmaster-feedback-v1.php'
+      - 'v2/seo-search-feedback-evidence-v1.php'
+      - 'v2/seo-search-feedback-readiness-v1.php'
+      - 'v2/data/report-seo-search-feedback-readiness-v1.php'
   schedule:
     - cron: '17 5 * * *'
 
