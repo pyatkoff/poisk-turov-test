@@ -1,0 +1,102 @@
+name: SEO2 reference visual once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-reference-visual-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Start local SEO reference runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:8099 -t v2 > /tmp/seo2-reference-php.log 2>&1 &
+          echo $! > /tmp/seo2-reference-php.pid
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8099/country/turkey/kemer/ >/dev/null; then exit 0; fi
+            sleep 0.25
+          done
+          cat /tmp/seo2-reference-php.log >&2
+          exit 1
+
+      - name: Capture Kemer and Westin DS2 references
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p seo2-reference-visual
+          cat > /tmp/seo2-reference-visual.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const refs = [
+            ['kemer','http://127.0.0.1:8099/country/turkey/kemer/'],
+            ['westin','http://127.0.0.1:8099/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/'],
+          ];
+          const viewports = [
+            ['mobile-375',375,812],
+            ['desktop-1440',1440,1000],
+          ];
+          (async()=>{
+            const browser = await chromium.launch({headless:true});
+            const report=[];
+            let failed=false;
+            for(const [key,url] of refs){
+              for(const [vp,width,height] of viewports){
+                const context=await browser.newContext({viewport:{width,height}});
+                const page=await context.newPage();
+                const errors=[];
+                page.on('pageerror',e=>errors.push(String(e).slice(0,500)));
+                const response=await page.goto(url,{waitUntil:'networkidle',timeout:30000});
+                const state=await page.evaluate(()=>({
+                  title:document.title,
+                  h1:document.querySelectorAll('h1').length,
+                  hero:!!document.querySelector('.sp-hero'),
+                  editorial:!!document.querySelector('.sp-seo-editorial-page'),
+                  grid:!!document.querySelector('.sp-editorial-grid'),
+                  callout:!!document.querySelector('.sp-search-callout'),
+                  robots:document.querySelector('meta[name="robots"]')?.content||'',
+                  overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,
+                  width:document.documentElement.clientWidth,
+                  scrollWidth:document.documentElement.scrollWidth,
+                }));
+                await page.screenshot({path:`seo2-reference-visual/${key}-${vp}.png`,fullPage:true});
+                const item={key,vp,http:response?.status()||0,errors,...state};
+                report.push(item);
+                const hotelNoindex=key!=='westin'||state.robots.includes('noindex');
+                const bad=item.http!==200||errors.length||state.h1!==1||!state.hero||!state.editorial||!state.grid||!state.callout||state.overflow||!hotelNoindex;
+                if(bad) failed=true;
+                console.log(`SEO2_REF_VISUAL key=${key} vp=${vp} http=${item.http} h1=${state.h1} overflow=${state.overflow} robots=${state.robots}`);
+                await context.close();
+              }
+            }
+            fs.writeFileSync('seo2-reference-visual/report.json',JSON.stringify(report,null,2));
+            await browser.close();
+            if(failed)process.exit(1);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node /tmp/seo2-reference-visual.cjs
+
+      - name: Upload disposable visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo2-reference-visual-${{ github.event.pull_request.number }}
+          path: seo2-reference-visual/
+          retention-days: 3
