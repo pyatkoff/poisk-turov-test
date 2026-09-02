@@ -41,7 +41,8 @@ function v2_seo_opportunity_readiness(array $page, array $signals, ?int $nowEpoc
     foreach($definitions as $key=>$definition){
         $row=is_array($signals[$key]??null)?$signals[$key]:[];
         $status=(string)($row['status']??'unknown');
-        $score=array_key_exists('score',$row)?(int)$row['score']:null;
+        $rawScore=$row['score']??null;
+        $score=(is_int($rawScore)||is_float($rawScore))?(int)$rawScore:null;
         $observed=(int)($row['observed_at_epoch']??0);
         $source=(string)($row['source']??'');
         $required=(bool)$definition['required'];
