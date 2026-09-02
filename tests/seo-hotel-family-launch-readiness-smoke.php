@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../v2/seo-hotel-family-launch-readiness-v1.php';
+require_once __DIR__ . '/../v2/seo-ds2-reference-pages-v1.php';
 
 function family_summary_fail(string $message): void
 {
@@ -111,4 +112,22 @@ try {
     if (!str_contains($e->getMessage(), 'Duplicate')) family_summary_fail('duplicate_key_wrong_error');
 }
 
-echo "SEO_HOTEL_FAMILY_SUMMARY_OK families=2 ready=1 staleBlocked=1\n";
+$reference = v2_seo_ds2_reference_pages();
+if (($reference['destination']['path'] ?? '') !== '/country/turkey/kemer/') family_summary_fail('reference_destination_path');
+if (($reference['destination']['renderer'] ?? '') !== 'v2_seo_render_resort') family_summary_fail('reference_destination_renderer');
+if (($reference['hotel_tours']['path'] ?? '') !== '/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/') family_summary_fail('reference_hotel_path');
+if (($reference['hotel_tours']['renderer'] ?? '') !== 'v2_seo_render_hotel_tour_review') family_summary_fail('reference_hotel_renderer');
+if (($reference['hotel_tours']['country_id'] ?? 0) !== 8 || ($reference['hotel_tours']['hotel_id'] ?? 0) !== 65108) family_summary_fail('reference_hotel_identity');
+if (($reference['hotel_tours']['publication_state'] ?? '') !== 'review_noindex_requires_launch_approval') family_summary_fail('reference_hotel_state');
+if (v2_seo_ds2_reference_viewports() !== [375, 430, 768, 1024, 1440]) family_summary_fail('reference_viewports');
+
+foreach ($reference as $item) {
+    $routeFile = __DIR__ . '/../v2/' . trim((string)$item['path'], '/') . '/index.php';
+    if (!is_file($routeFile)) family_summary_fail('reference_route_missing:' . $item['path']);
+    $routeSource = file_get_contents($routeFile);
+    if ($routeSource === false || !str_contains($routeSource, (string)$item['renderer'])) {
+        family_summary_fail('reference_route_renderer_drift:' . $item['path']);
+    }
+}
+
+echo "SEO_HOTEL_FAMILY_SUMMARY_OK families=2 ready=1 staleBlocked=1 ds2References=2\n";
