@@ -73,11 +73,10 @@ $unsafe['publication_candidates'][]=$hotelPath;
 $unsafeManifest=v2_seo_launch_manifest($unsafe,$evidence,$now);
 if(($unsafeManifest['integrity_ok']??true)!==false||!in_array('hotel_tours_publication_candidate_leak',$unsafeManifest['errors']??[],true)) unified_ready_fail('manifest_hotel_candidate_leak');
 
-$duplicate=$catalog;
-$duplicate['registry'][$hotelPath]['page']['search_state']['hotel']=77;
-$duplicate['registry'][$resortPath]['page']['search_state']['region']=77;
-$duplicateManifest=v2_seo_launch_manifest($duplicate,$evidence,$now);
-if(($duplicateManifest['integrity_ok']??true)!==false) unified_ready_fail('manifest_invalid_identity_not_blocked');
+$invalid=$catalog;
+$invalid['registry'][$hotelPath]['page']['search_state']['hotel']=0;
+$invalidManifest=v2_seo_launch_manifest($invalid,$evidence,$now);
+if(($invalidManifest['integrity_ok']??true)!==false||!in_array('duplicate_or_invalid_search_identity',$invalidManifest['errors']??[],true)) unified_ready_fail('manifest_invalid_identity_not_blocked');
 
 $thinRecords=$records;
 $thinRecords[1]['data']=page_data('Test Resort',['country'=>9,'region'=>77],false);
