@@ -1,6 +1,6 @@
 name: Validate V2 lead form guard v1
 on:
-  push:
+  pull_request:
     branches: [main]
     paths:
       - 'v2/lead-form-guard-v1.js'
