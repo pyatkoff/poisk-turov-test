@@ -8,6 +8,12 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/validate-anytoour-content-live.yml'
+      - 'v2/seo-launch-slice-v1.php'
+      - 'v2/seo-controlled-launch-catalog-v1.php'
+      - 'v2/seo-content-pilot-seasonal-september-v1.php'
+      - 'v2/seo-seasonal-page-v1.php'
+      - 'v2/country/turkey/antalya/september/**'
+      - 'v2/country/maldives/september/**'
   workflow_dispatch:
 
 jobs:
@@ -19,10 +25,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          page_out(){
-            local path="$1"
-            printf '/tmp/page-%s.html' "$(echo "$path" | tr '/-' '__')"
-          }
+          page_out(){ local path="$1"; printf '/tmp/page-%s.html' "$(echo "$path" | tr '/-' '__')"; }
           check_page(){
             local path="$1" marker="$2" canonical="$3" robots="${4:-noindex,follow}" out code
             out="$(page_out "$path")"
@@ -40,66 +43,37 @@ jobs:
           import sys
           from html.parser import HTMLParser
           from urllib.parse import parse_qs, urlparse
-
           file_name, expected_country, expected_region = sys.argv[1:4]
-
           class Links(HTMLParser):
-              def __init__(self):
-                  super().__init__()
-                  self.hrefs = []
+              def __init__(self): super().__init__(); self.hrefs=[]
               def handle_starttag(self, tag, attrs):
-                  if tag.lower() != 'a':
-                      return
-                  href = dict(attrs).get('href')
-                  if href:
-                      # HTMLParser already resolves character references in attributes.
-                      self.hrefs.append(href)
-
-          parser = Links()
-          with open(file_name, encoding='utf-8') as fh:
-              parser.feed(fh.read())
-
-          candidates = []
+                  if tag.lower()=='a':
+                      href=dict(attrs).get('href')
+                      if href: self.hrefs.append(href)
+          parser=Links()
+          with open(file_name,encoding='utf-8') as fh: parser.feed(fh.read())
+          candidates=[]
           for href in parser.hrefs:
-              parsed = urlparse(href)
-              if parsed.path != '/poisk-turov/':
-                  continue
-              candidates.append(href)
-              query = parse_qs(parsed.query)
-              if query.get('country') != [expected_country]:
-                  continue
-              if expected_region and query.get('region') != [expected_region]:
-                  continue
+              parsed=urlparse(href)
+              if parsed.path!='/poisk-turov/': continue
+              candidates.append(href); query=parse_qs(parsed.query)
+              if query.get('country') != [expected_country]: continue
+              if expected_region and query.get('region') != [expected_region]: continue
               sys.exit(0)
-
-          print(
-              'SEARCH_HANDOFF_MISMATCH',
-              f'expected_country={expected_country}',
-              f'expected_region={expected_region or "-"}',
-              'candidates=' + repr(candidates),
-              file=sys.stderr,
-          )
+          print('SEARCH_HANDOFF_MISMATCH',f'expected_country={expected_country}',f'expected_region={expected_region or "-"}','candidates='+repr(candidates),file=sys.stderr)
           sys.exit(1)
           PY
           }
-          check_country_handoff(){
-            local slug="$1" country_id="$2" out
-            out="$(page_out "/country/$slug/")"
-            check_search_handoff "$out" "$country_id"
-            echo "/country/$slug/ -> /poisk-turov/ country=$country_id OK"
-          }
+          check_country_handoff(){ local slug="$1" country_id="$2"; check_search_handoff "$(page_out "/country/$slug/")" "$country_id"; }
           check_resort_handoff(){
-            local slug="$1" region_id="$2" out
-            out="$(page_out "/country/turkey/$slug/")"
-            check_search_handoff "$out" 4 "$region_id"
-            if grep -Fq '<section class="sp-card sp-offer-snapshot"' "$out"; then
-              grep -Fq 'Посмотреть туры' "$out"
-              echo "/country/turkey/$slug/ fresh offer block OK"
-            else
-              echo "/country/turkey/$slug/ fresh offer block absent (allowed; no stale claim inferred from CSS)"
-            fi
-            echo "/country/turkey/$slug/ -> country=4 region=$region_id OK"
+            local slug="$1" region_id="$2" out; out="$(page_out "/country/turkey/$slug/")"; check_search_handoff "$out" 4 "$region_id"
+            if grep -Fq '<section class="sp-card sp-offer-snapshot"' "$out"; then grep -Fq 'Посмотреть туры' "$out"; fi
           }
+          check_seasonal_handoff(){
+            local path="$1" country_id="$2" region_id="${3:-}" out; out="$(page_out "$path")"; check_search_handoff "$out" "$country_id" "$region_id"
+            if grep -Fq '<section class="sp-card sp-offer-snapshot"' "$out"; then grep -Fq 'Посмотреть туры' "$out"; fi
+          }
+
           check_page '/contacts/' 'Свяжитесь с AnyTour' 'https://anytoour.ru/contacts/'
           check_page '/how-to-buy/' 'Как купить тур онлайн' 'https://anytoour.ru/how-to-buy/'
           check_page '/hot/' 'Горящие туры из живых поисков' 'https://anytoour.ru/hot/'
@@ -116,6 +90,9 @@ jobs:
           check_page '/country/turkey/side/' 'Туры в Сиде' 'https://anytoour.ru/country/turkey/side/' 'index,follow'
           check_page '/country/turkey/belek/' 'Туры в Белек' 'https://anytoour.ru/country/turkey/belek/' 'index,follow'
           check_page '/country/turkey/alanya/' 'Туры в Аланью' 'https://anytoour.ru/country/turkey/alanya/' 'index,follow'
+          check_page '/country/turkey/antalya/september/' 'Туры в Анталью в сентябре' 'https://anytoour.ru/country/turkey/antalya/september/' 'index,follow'
+          check_page '/country/maldives/september/' 'Туры на Мальдивы в сентябре' 'https://anytoour.ru/country/maldives/september/' 'index,follow'
+
           check_country_handoff turkey 4
           check_country_handoff egypt 1
           check_country_handoff maldives 8
@@ -127,4 +104,6 @@ jobs:
           check_resort_handoff side 23
           check_resort_handoff belek 21
           check_resort_handoff alanya 19
-          echo 'ANYTOOUR_MIGRATED_CONTENT_OK controlled_indexable=8'
+          check_seasonal_handoff '/country/turkey/antalya/september/' 4 20
+          check_seasonal_handoff '/country/maldives/september/' 8
+          echo 'ANYTOOUR_MIGRATED_CONTENT_OK controlled_indexable=10 seasonal=2'
