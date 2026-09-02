@@ -1,0 +1,48 @@
+name: Collect SEO production evidence
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seo-production-evidence
+  cancel-in-progress: true
+
+jobs:
+  live-production-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect live identity evidence
+        id: collect
+        shell: bash
+        run: |
+          set +e
+          php v2/data/report-seo-production-identity-v1.php > seo-production-identity.json 2> seo-production-identity.err
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          if [ -s seo-production-identity.err ]; then cat seo-production-identity.err >&2; fi
+          exit 0
+
+      - name: Upload production evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-production-identity-${{ github.run_id }}
+          path: |
+            seo-production-identity.json
+            seo-production-identity.err
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Fail on production identity drift
+        if: always()
+        shell: bash
+        run: |
+          test "${{ steps.collect.outputs.exit_code }}" = "0"
