@@ -1,0 +1,85 @@
+name: SEO2 reference visual audit once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-reference-visual-audit-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Start local SEO reference runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:8099 -t v2 >/tmp/seo2-audit-php.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:8099/country/turkey/kemer/ >/dev/null; then exit 0; fi
+            sleep 0.25
+          done
+          cat /tmp/seo2-audit-php.log >&2
+          exit 1
+      - name: Capture full reference pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p seo2-reference-audit
+          cat >/tmp/seo2-audit.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const refs = [
+            ['kemer','http://127.0.0.1:8099/country/turkey/kemer/'],
+            ['westin','http://127.0.0.1:8099/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/'],
+          ];
+          const vps = [['mobile-375',375,812],['mobile-430',430,900],['tablet-768',768,1000],['desktop-1440',1440,1000]];
+          (async()=>{
+            const browser = await chromium.launch({headless:true});
+            const report=[];
+            let failed=false;
+            for (const [key,url] of refs) for (const [vp,width,height] of vps) {
+              const context=await browser.newContext({viewport:{width,height}});
+              const page=await context.newPage();
+              const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+              const response=await page.goto(url,{waitUntil:'networkidle',timeout:30000});
+              const state=await page.evaluate(()=>({
+                h1:document.querySelectorAll('h1').length,
+                overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
+                scrollWidth:document.documentElement.scrollWidth,
+                clientWidth:document.documentElement.clientWidth,
+                hero:!!document.querySelector('.sp-hero-actions .sp-primary'),
+                related:!!document.querySelector('.sp-related-card'),
+                callout:!!document.querySelector('.sp-search-callout'),
+                robots:document.querySelector('meta[name="robots"]')?.content||'',
+              }));
+              await page.screenshot({path:`seo2-reference-audit/${key}-${vp}.png`,fullPage:true});
+              report.push({key,vp,http:response?.status()||0,errors,...state});
+              if ((response?.status()||0)!==200 || errors.length || state.h1!==1 || state.overflow || !state.hero || !state.related || !state.callout || (key==='westin'&&!state.robots.includes('noindex'))) failed=true;
+              await context.close();
+            }
+            fs.writeFileSync('seo2-reference-audit/report.json',JSON.stringify(report,null,2));
+            await browser.close();
+            if(failed) process.exit(1);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          NODE_PATH="$PWD/node_modules" node /tmp/seo2-audit.cjs
+      - name: Upload disposable visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo2-reference-audit-${{ github.event.pull_request.number }}
+          path: seo2-reference-audit/
+          retention-days: 3
