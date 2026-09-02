@@ -43,6 +43,7 @@ jobs:
           php -l v2/seo-seasonal-content-packet-v1.php >/dev/null
           php -l v2/seo-seasonal-review-page-v1.php >/dev/null
           php -l v2/_preview/seo2/seasonal/antalya-september/index.php >/dev/null
+          php -l v2/_preview/seo2/seasonal/maldives-september/index.php >/dev/null
           php -l tests/seo-seasonal-content-evidence-smoke.php >/dev/null
           php -l tests/seo-seasonal-source-registry-smoke.php >/dev/null
           php -l tests/seo-seasonal-verified-content-evidence-smoke.php >/dev/null
