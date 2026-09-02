@@ -9,15 +9,6 @@ on:
       - 'v2/site-header-v2.css'
       - 'v2/site-page-shell-v1.php'
       - '.github/workflows/validate-standalone-navigation.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'v2/index.php'
-      - 'v2/home-v1.php'
-      - 'v2/site-header-v2.php'
-      - 'v2/site-header-v2.css'
-      - 'v2/site-page-shell-v1.php'
-      - '.github/workflows/validate-standalone-navigation.yml'
 
 jobs:
   navigation-contract:
