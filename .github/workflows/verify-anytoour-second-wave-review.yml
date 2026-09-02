@@ -1,0 +1,108 @@
+name: Verify anytoour.ru second-wave review
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-second-wave-country-review-v1.php'
+      - 'tests/seo-second-wave-country-review-smoke.php'
+      - '.github/workflows/verify-anytoour-second-wave-review.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/seo-second-wave-country-review-v1.php'
+      - 'tests/seo-second-wave-country-review-smoke.php'
+      - '.github/workflows/verify-anytoour-second-wave-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-anytoour-second-wave-review-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  review-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate review-only opportunity packet
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-second-wave-country-review-v1.php >/dev/null
+          php -l tests/seo-second-wave-country-review-smoke.php >/dev/null
+          php tests/seo-second-wave-country-review-smoke.php
+
+      - name: Capture fresh production identity evidence
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          base='https://anytoour.ru'
+          paths=('/country/egypt/' '/country/maldives/')
+          curl -fsSL --max-time 30 "$base/sitemap.xml" -o /tmp/sitemap.xml
+          : > /tmp/second-wave.tsv
+
+          for path in "${paths[@]}"; do
+            safe="$(printf '%s' "$path" | tr '/-' '__')"
+            file="/tmp/review-${safe}.html"
+            code="$(curl -fsSL -o "$file" -w '%{http_code}' --max-time 35 "$base$path")"
+            test "$code" = '200'
+            grep -Eq '<meta name="robots" content="noindex,follow[^\"]*"' "$file"
+            canonical="${base}${path}"
+            grep -Fq "<link rel=\"canonical\" href=\"$canonical\">" "$file"
+            if grep -Fq "$canonical" /tmp/sitemap.xml; then
+              echo "SECOND_WAVE_PREMATURE_SITEMAP_MEMBER:$path" >&2
+              exit 1
+            fi
+            printf '%s\t%s\t%s\n' "$path" "$code" "$file" >> /tmp/second-wave.tsv
+          done
+
+          BASE="$base" SOURCE_SHA="$SOURCE_SHA" python3 - <<'PY'
+          import datetime, hashlib, json, os, re
+          rows=[]
+          with open('/tmp/second-wave.tsv',encoding='utf-8') as fh:
+              for line in fh:
+                  path,code,filename=line.rstrip('\n').split('\t')
+                  html=open(filename,encoding='utf-8').read()
+                  robots=re.search(r'<meta name="robots" content="([^\"]+)"',html)
+                  canonical=re.search(r'<link rel="canonical" href="([^\"]+)"',html)
+                  rows.append({
+                      'path':path,
+                      'http_status':int(code),
+                      'robots':robots.group(1) if robots else None,
+                      'canonical':canonical.group(1) if canonical else None,
+                      'sitemap_member':False,
+                  })
+          payload={
+              'state':'fresh_second_wave_production_identity_evidence',
+              'domain':'anytoour.ru',
+              'observed_at_utc':datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat(),
+              'source_sha':os.environ.get('SOURCE_SHA',''),
+              'scope':'egypt_maldives_country_review_v1',
+              'pages':rows,
+              'production_identity_fresh':True,
+              'publication_scope_expanded':False,
+              'indexation_allowed':False,
+              'sitemap_allowed':False,
+              'hotel_tours_indexation_allowed':False,
+          }
+          stable=dict(payload); stable.pop('observed_at_utc',None)
+          payload['evidence_sha256']=hashlib.sha256(json.dumps(stable,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          with open('/tmp/anytoour-second-wave-production-evidence.json','w',encoding='utf-8') as fh:
+              json.dump(payload,fh,ensure_ascii=False,indent=2); fh.write('\n')
+          print('ANYTOOUR_SECOND_WAVE_IDENTITY_OK pages=2 indexation=0 evidence_sha256='+payload['evidence_sha256'])
+          PY
+
+      - name: Upload second-wave production evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: anytoour-second-wave-production-evidence-${{ github.run_id }}
+          path: /tmp/anytoour-second-wave-production-evidence.json
+          if-no-files-found: error
+          retention-days: 30
