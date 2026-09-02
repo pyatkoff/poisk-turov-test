@@ -85,13 +85,18 @@ if ($hotelPaths !== $expectedPaths) egypt_hotel_review_fail('manifest_registry_p
 if (count($hotelPaths) !== $expectedHotelCount) egypt_hotel_review_fail('manifest_registry_count_mismatch_' . $expectedHotelCount . '_' . count($hotelPaths));
 if (count($registry) !== $expectedHotelCount + 1) egypt_hotel_review_fail('expected_parent_plus_manifest_hotels');
 
-$productionParent = v2_seo_content_pilot_egypt();
-foreach (($productionParent['data']['related'] ?? []) as $link) {
-    $href = (string)($link['href'] ?? '');
-    if (str_starts_with($href, '/country/egypt/hotel/')) egypt_hotel_review_fail('production_parent_exposes_review_hotel_link');
+$editorialParent = v2_seo_content_pilot_egypt();
+if (($editorialParent['status'] ?? '') !== 'review') egypt_hotel_review_fail('editorial_parent_not_review');
+$parentLinks = [];
+foreach (($editorialParent['data']['related'] ?? []) as $link) {
+    $href = trim((string)($link['href'] ?? ''));
+    if ($href !== '') $parentLinks[] = $href;
 }
+sort($parentLinks, SORT_STRING);
+if ($parentLinks !== $expectedPaths) egypt_hotel_review_fail('editorial_parent_manifest_link_drift');
+
 $reviewParent = $registry['/country/egypt/'] ?? [];
 if (($reports['/country/egypt/']['status'] ?? '') !== 'review') egypt_hotel_review_fail('isolated_parent_not_review');
 if (($reviewParent['type'] ?? '') !== 'country') egypt_hotel_review_fail('isolated_parent_type');
 
-echo 'SEO_EGYPT_HOTEL_REVIEW_OK hotels=' . $expectedHotelCount . ' candidates=0 parentIsolation=1 country=1 uniqueHotelIds=' . count($manifestHotelIds) . ' uniqueEditorial=' . count($editorialFingerprints) . PHP_EOL;
+echo 'SEO_EGYPT_HOTEL_REVIEW_OK hotels=' . $expectedHotelCount . ' candidates=0 parentReview=1 country=1 uniqueHotelIds=' . count($manifestHotelIds) . ' uniqueEditorial=' . count($editorialFingerprints) . PHP_EOL;
