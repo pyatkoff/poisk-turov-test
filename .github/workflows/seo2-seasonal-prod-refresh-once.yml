@@ -40,6 +40,7 @@ jobs:
           work="$RUNNER_TEMP/seo2-seasonal-prod"
           mkdir -p "$work"
           root='~/www/anytoour.ru'
+          ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/data/seo2-once" && test -s "$HOME/www/anytoour.ru/config.php"'
           scp "${opts[@]}" \
             v2/data/db-v1.php \
             v2/data/inspect-seo-data-readiness-v1.php \
@@ -51,6 +52,8 @@ jobs:
             set -euo pipefail
             base="$HOME/www/anytoour.ru"
             mkdir -p "$base/data/seo2-once/v2/data" "$base/data/seo2-once/v2"
+            cp "$base/config.php" "$base/data/seo2-once/v2/config.php"
+            chmod 600 "$base/data/seo2-once/v2/config.php"
             cp "$base/data/seo2-once/db-v1.php" "$base/data/seo2-once/v2/data/db-v1.php"
             cp "$base/data/seo2-once/inspect-seo-data-readiness-v1.php" "$base/data/seo2-once/v2/data/inspect-seo-data-readiness-v1.php"
             cp "$base/data/seo2-once/inspect-seo-seasonal-identities-v1.php" "$base/data/seo2-once/v2/data/inspect-seo-seasonal-identities-v1.php"
@@ -58,6 +61,7 @@ jobs:
             cp "$base/data/seo2-once/seo-seasonal-identity-v1.php" "$base/data/seo2-once/v2/seo-seasonal-identity-v1.php"
             php "$base/data/seo2-once/v2/data/inspect-seo-data-readiness-v1.php" --countries=1,4,8 --require-countries=3 --require-snapshots=1 > "$base/data/seo2-once/readiness.json"
             php "$base/data/seo2-once/v2/data/inspect-seo-seasonal-identities-v1.php" --countries=1,4,8 --require-identities=1 > "$base/data/seo2-once/identities.json"
+            rm -f "$base/data/seo2-once/v2/config.php"
           '
           scp "${opts[@]}" "$remote:$root/data/seo2-once/readiness.json" "$work/readiness.json"
           scp "${opts[@]}" "$remote:$root/data/seo2-once/identities.json" "$work/identities.json"
