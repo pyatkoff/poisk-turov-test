@@ -1,0 +1,71 @@
+name: SEO2 seasonal production refresh once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-seasonal-prod-refresh-once.yml'
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Inspect fresh production seasonal evidence
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          work="$RUNNER_TEMP/seo2-seasonal-prod"
+          mkdir -p "$work"
+          root='~/www/anytoour.ru'
+          scp "${opts[@]}" \
+            v2/data/db-v1.php \
+            v2/data/inspect-seo-data-readiness-v1.php \
+            v2/data/inspect-seo-seasonal-identities-v1.php \
+            v2/seo-data-readiness-v1.php \
+            v2/seo-seasonal-identity-v1.php \
+            "$remote:$root/data/seo2-once/"
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            base="$HOME/www/anytoour.ru"
+            mkdir -p "$base/data/seo2-once/v2/data" "$base/data/seo2-once/v2"
+            cp "$base/data/seo2-once/db-v1.php" "$base/data/seo2-once/v2/data/db-v1.php"
+            cp "$base/data/seo2-once/inspect-seo-data-readiness-v1.php" "$base/data/seo2-once/v2/data/inspect-seo-data-readiness-v1.php"
+            cp "$base/data/seo2-once/inspect-seo-seasonal-identities-v1.php" "$base/data/seo2-once/v2/data/inspect-seo-seasonal-identities-v1.php"
+            cp "$base/data/seo2-once/seo-data-readiness-v1.php" "$base/data/seo2-once/v2/seo-data-readiness-v1.php"
+            cp "$base/data/seo2-once/seo-seasonal-identity-v1.php" "$base/data/seo2-once/v2/seo-seasonal-identity-v1.php"
+            php "$base/data/seo2-once/v2/data/inspect-seo-data-readiness-v1.php" --countries=1,4,8 --require-countries=3 --require-snapshots=1 > "$base/data/seo2-once/readiness.json"
+            php "$base/data/seo2-once/v2/data/inspect-seo-seasonal-identities-v1.php" --countries=1,4,8 --require-identities=1 > "$base/data/seo2-once/identities.json"
+          '
+          scp "${opts[@]}" "$remote:$root/data/seo2-once/readiness.json" "$work/readiness.json"
+          scp "${opts[@]}" "$remote:$root/data/seo2-once/identities.json" "$work/identities.json"
+          php -r '$j=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR); printf("SEO2_PROD_READINESS countries=%d snapshots=%d offers=%d min_freshness=%d valid_until=%d\n",$j["country_count"]??0,$j["usable_snapshot_count"]??0,$j["offer_count"]??0,$j["min_freshness_seconds"]??0,$j["evidence_valid_until_epoch"]??0);' "$work/readiness.json"
+          php -r '$j=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR); printf("SEO2_PROD_IDENTITIES count=%d valid_until=%d publication=%s copy=%s\n",$j["identity_count"]??0,$j["evidence_valid_until_epoch"]??0,($j["publication_allowed"]??false)?"true":"false",($j["copy_allowed"]??false)?"true":"false");' "$work/identities.json"
+      - name: Upload disposable evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo2-seasonal-prod-${{ github.event.pull_request.number }}
+          path: ${{ runner.temp }}/seo2-seasonal-prod/*.json
+          retention-days: 3
