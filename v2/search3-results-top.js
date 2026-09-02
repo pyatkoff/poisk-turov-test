@@ -1,5 +1,5 @@
 (function(){'use strict';
-function ensureMaket7Contract(){if(document.getElementById('search3-maket7-contract'))return;var link=document.createElement('link');link.id='search3-maket7-contract';link.rel='stylesheet';link.href='/_preview/search3/search3-form-maket7.css?v=2';document.head.appendChild(link);}
+function ensureMaket7Contract(){if(document.getElementById('search3-maket7-contract'))return;var link=document.createElement('link');link.id='search3-maket7-contract';link.rel='stylesheet';link.href='/_preview/search3/search3-form-maket7.css?v=3';document.head.appendChild(link);}
 ensureMaket7Contract();
 var form=document.getElementById('tourSearch'),tools=document.getElementById('resultsTools'),heading=tools&&tools.querySelector('strong'),summary=document.getElementById('resultSummary'),searchSummary=document.getElementById('resultsSearchSummary'),edit=document.getElementById('resultsSearchEdit'),results=document.getElementById('results');
 if(!form||!tools||!heading||!summary)return;
