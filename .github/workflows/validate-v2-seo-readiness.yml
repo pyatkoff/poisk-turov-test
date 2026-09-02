@@ -15,6 +15,7 @@ on:
       - 'tests/seo-page-launch-readiness-smoke.php'
       - 'tests/seo-hotel-launch-candidate-smoke.php'
       - 'tests/seo-reference-visual-contract-smoke.php'
+      - 'tests/seo-ds2-reference-acceptance-smoke.php'
       - 'tests/seo-resort-family-integrity-smoke.php'
       - 'tests/seo-hotel-review-pilot-report-smoke.php'
       - 'tests/seo-hotel-review-opportunity-gate-smoke.php'
@@ -80,6 +81,8 @@ jobs:
           php tests/seo-hotel-launch-candidate-smoke.php
           php -l tests/seo-reference-visual-contract-smoke.php >/dev/null
           php tests/seo-reference-visual-contract-smoke.php
+          php -l tests/seo-ds2-reference-acceptance-smoke.php >/dev/null
+          php tests/seo-ds2-reference-acceptance-smoke.php
           php -l tests/seo-resort-family-integrity-smoke.php >/dev/null
           php tests/seo-resort-family-integrity-smoke.php
           php -l tests/seo-hotel-review-pilot-report-smoke.php >/dev/null
