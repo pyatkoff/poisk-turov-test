@@ -45,7 +45,6 @@ function v2_seo_postlaunch_feedback_validate(array $input, ?int $nowEpoch=null):
 
     $allowedPaths=array_fill_keys($cohort['paths'],true);
     $supportedSources=['google_search_console','yandex_webmaster','manual_serp_review'];
-    $analyticsSources=['google_search_console','yandex_webmaster'];
     $allowedIndexation=['indexed','not_indexed','unknown'];
     $allowedCannibal=['none','suspected','confirmed','unknown'];
     $maxAge=86400*31;
@@ -112,7 +111,14 @@ function v2_seo_postlaunch_feedback_validate(array $input, ?int $nowEpoch=null):
         if($path!=='')$seen[$path]=true;
         $hasAnalytics=array_filter($metrics,static fn($v):bool=>$v!==null)!==[];
         $hasObservation=$hasAnalytics||$indexation!=='unknown'||$queries!==[]||$cannibal!=='unknown';
-        $state=$rowErrors!==[]?'invalid':(!$fresh?'stale':($hasObservation?'measured':'unknown'));
+        $nonFreshnessErrors=array_values(array_diff($rowErrors,['evidence_stale']));
+        if(in_array('evidence_stale',$rowErrors,true)&&$nonFreshnessErrors===[]){
+            $state='stale';
+        } elseif($rowErrors!==[]){
+            $state='invalid';
+        } else {
+            $state=$fresh?($hasObservation?'measured':'unknown'):'stale';
+        }
         $decision=$cannibal==='confirmed'&&$rowErrors===[]?'REVIEW_CANNIBALIZATION':'OBSERVE';
         if($state==='invalid'||$state==='stale')$decision='HOLD';
 
