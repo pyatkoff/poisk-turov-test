@@ -64,7 +64,7 @@ jobs:
               if(!is_array($arr))continue;
               foreach($arr as $id)$add((int)$id,(int)$r['country_id'],'matrix_attempt');
             }
-            $snaps=$pdo->query("SELECT country_id,offers_json FROM seo_offer_snapshots WHERE offers_json IS NOT NULL AND country_id IS NOT NULL ORDER BY captured_at DESC LIMIT 5000")->fetchAll(PDO::FETCH_ASSOC)?:[];
+            $snaps=$pdo->query("SELECT country_id,offers_json FROM seo_offer_snapshots WHERE offers_json IS NOT NULL AND country_id IS NOT NULL ORDER BY observed_at DESC LIMIT 5000")->fetchAll(PDO::FETCH_ASSOC)?:[];
             foreach($snaps as $r){
               $offers=json_decode((string)$r['offers_json'],true);
               if(!is_array($offers))continue;
