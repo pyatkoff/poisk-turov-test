@@ -12,17 +12,23 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
         include:
           - key: turkey
             country: '4'
+            catalog_file: v2/seo-content-pilot-turkey-hotel-review-catalog-v1.php
+            catalog_function: v2_seo_content_pilot_turkey_hotel_review_catalog
           - key: maldives
             country: '8'
+            catalog_file: v2/seo-content-pilot-maldives-catalog-v1.php
+            catalog_function: v2_seo_content_pilot_maldives_catalog
           - key: egypt
             country: '1'
+            catalog_file: v2/seo-content-pilot-egypt-hotel-review-catalog-v1.php
+            catalog_function: v2_seo_content_pilot_egypt_hotel_review_catalog
     steps:
       - uses: actions/checkout@v4
       - name: Prepare production SSH key
@@ -52,7 +58,45 @@ jobs:
           test -n "$NEW_HOST" && test -n "$NEW_USER"
           opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
           remote="$NEW_USER@$NEW_HOST"
+          evidence="$RUNNER_TEMP/seo2-$KEY-evidence.json"
           echo "SEO2_LAUNCH_EVIDENCE_BEGIN key=$KEY country=$COUNTRY limit=100"
           timeout 45s ssh "${opts[@]}" "$remote" \
-            "php \"\$HOME/www/anytoour.ru/data/inspect-seo-hotel-snapshots-v1.php\" --country=$COUNTRY --limit=100 --identity-only"
+            "php \"\$HOME/www/anytoour.ru/data/inspect-seo-hotel-snapshots-v1.php\" --country=$COUNTRY --limit=100 --identity-only" \
+            | tee "$evidence"
           echo "SEO2_LAUNCH_EVIDENCE_END key=$KEY"
+      - name: Report launch readiness from fresh evidence
+        env:
+          KEY: ${{ matrix.key }}
+          CATALOG_FILE: ${{ matrix.catalog_file }}
+          CATALOG_FUNCTION: ${{ matrix.catalog_function }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/seo2-$KEY-evidence.json"
+          echo "SEO2_READINESS_BEGIN key=$KEY"
+          php v2/data/report-seo-launch-readiness-v1.php \
+            --catalog-file="$CATALOG_FILE" \
+            --catalog-function="$CATALOG_FUNCTION" \
+            --evidence-file="$evidence" \
+            --require-ready=1
+          echo "SEO2_READINESS_END key=$KEY"
+
+  verify-production-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Verify deployed DS2 reference pages and hotel noindex boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          kemer="$RUNNER_TEMP/kemer.html"
+          westin="$RUNNER_TEMP/westin.html"
+          curl -fsSL --max-time 30 https://anytoour.ru/country/turkey/kemer/ -o "$kemer"
+          curl -fsSL --max-time 30 https://anytoour.ru/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/ -o "$westin"
+          grep -Fq 'sp-seo-editorial-page sp-resort-page' "$kemer"
+          grep -Fq 'sp-seo-editorial-page sp-hotel-tour-page' "$westin"
+          grep -Fq 'name="robots" content="noindex,follow,max-image-preview:large"' "$westin"
+          grep -Fq 'rel="canonical" href="https://anytoour.ru/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/"' "$westin"
+          grep -Fq 'country=8' "$westin"
+          grep -Fq 'hotel=65108' "$westin"
+          echo SEO2_PRODUCTION_REFERENCE_OK kemer=200 westin=200 hotelNoindex=1 verifiedIdentity=8:65108
