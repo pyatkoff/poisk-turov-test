@@ -10,12 +10,15 @@ on:
       - 'v2/seo-seasonal-editorial-review-v1.php'
       - 'v2/seo-seasonal-review-content-v1.php'
       - 'v2/seo-seasonal-content-packet-v1.php'
+      - 'v2/seo-seasonal-review-page-v1.php'
+      - 'v2/_preview/seo2/seasonal/**'
       - 'tests/seo-seasonal-content-evidence-smoke.php'
       - 'tests/seo-seasonal-source-registry-smoke.php'
       - 'tests/seo-seasonal-verified-content-evidence-smoke.php'
       - 'tests/seo-seasonal-editorial-review-smoke.php'
       - 'tests/seo-seasonal-review-content-smoke.php'
       - 'tests/seo-seasonal-content-packet-smoke.php'
+      - 'tests/seo-seasonal-review-page-smoke.php'
       - '.github/workflows/validate-seo-seasonal-content-evidence.yml'
   workflow_dispatch:
 
@@ -38,15 +41,19 @@ jobs:
           php -l v2/seo-seasonal-editorial-review-v1.php >/dev/null
           php -l v2/seo-seasonal-review-content-v1.php >/dev/null
           php -l v2/seo-seasonal-content-packet-v1.php >/dev/null
+          php -l v2/seo-seasonal-review-page-v1.php >/dev/null
+          php -l v2/_preview/seo2/seasonal/antalya-september/index.php >/dev/null
           php -l tests/seo-seasonal-content-evidence-smoke.php >/dev/null
           php -l tests/seo-seasonal-source-registry-smoke.php >/dev/null
           php -l tests/seo-seasonal-verified-content-evidence-smoke.php >/dev/null
           php -l tests/seo-seasonal-editorial-review-smoke.php >/dev/null
           php -l tests/seo-seasonal-review-content-smoke.php >/dev/null
           php -l tests/seo-seasonal-content-packet-smoke.php >/dev/null
+          php -l tests/seo-seasonal-review-page-smoke.php >/dev/null
           php tests/seo-seasonal-content-evidence-smoke.php
           php tests/seo-seasonal-source-registry-smoke.php
           php tests/seo-seasonal-verified-content-evidence-smoke.php
           php tests/seo-seasonal-editorial-review-smoke.php
           php tests/seo-seasonal-review-content-smoke.php
           php tests/seo-seasonal-content-packet-smoke.php
+          php tests/seo-seasonal-review-page-smoke.php
