@@ -1,0 +1,25 @@
+/* Search3 full-cycle DS2 visual contract. Preview-only visual layer. */
+@media(min-width:1000px){
+body.search3-preview.search3-selected-open #selectedTour{max-width:1180px!important;grid-template-columns:300px minmax(0,1fr)!important;margin-top:18px!important}
+body.search3-preview #selectedTour .back-results{border:0!important;background:transparent!important;padding:0!important;color:#075cff!important}
+body.search3-preview #selectedTour .selected-picture{height:176px!important;border-radius:12px 0 0 12px!important}
+body.search3-preview #selectedTour .selected-head{min-height:176px!important;padding:18px 22px!important;border-radius:0 12px 12px 0!important}
+body.search3-preview #selectedTour .selected-head h2{font-size:23px!important}
+body.search3-preview #selectedTour .selected-price{font-size:24px!important}
+body.search3-preview #selectedTour .facts{margin-top:10px!important;border-radius:12px!important}
+body.search3-preview #selectedTour .facts>div{padding:11px 14px!important}
+body.search3-preview #selectedTour .hotel-desc,body.search3-preview #selectedTour .tour-flights,body.search3-preview #selectedTour .lead-form{margin-top:12px!important;padding:16px 18px!important;border-radius:12px!important}
+body.search3-preview #selectedTour .section-heading{margin-bottom:10px!important}
+body.search3-preview #selectedTour .section-heading strong{font-size:17px!important}
+body.search3-preview #selectedTour .flight-variant{border-radius:10px!important;box-shadow:none!important}
+body.search3-preview #selectedTour .lead-form button[type=submit]{min-height:46px!important;border-radius:8px!important;background:#ff4f0a!important}
+}
+@media(max-width:640px){
+body.search3-preview #selectedTour{margin-top:8px!important}
+body.search3-preview #selectedTour .selected-picture{height:178px!important;border-radius:10px 10px 0 0!important}
+body.search3-preview #selectedTour .selected-head{padding:10px 11px!important}
+body.search3-preview #selectedTour .selected-head h2{font-size:18px!important}
+body.search3-preview #selectedTour .facts{border-radius:0 0 10px 10px!important}
+body.search3-preview #selectedTour .hotel-desc,body.search3-preview #selectedTour .tour-flights,body.search3-preview #selectedTour .lead-form{padding:10px!important;border-radius:10px!important}
+body.search3-preview #selectedTour .lead-form button[type=submit]{min-height:46px!important;background:#ff4f0a!important}
+}
