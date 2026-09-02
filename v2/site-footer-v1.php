@@ -8,7 +8,6 @@ if (isset($params) && is_array($params) && array_key_exists('PHONE', $params)) {
 /** Canonical factual AnyTour DS2 footer; primary mobile community/app actions keep a 44px tap target. */
 function v2_render_site_footer(string $phone, string $phoneHref): void
 {
-    $legacy = 'https://anytour.online';
     $mobileActionStyle = 'min-height:44px;display:inline-flex;align-items:center;';
     ?>
     <footer class="ds2-site-footer">
@@ -36,9 +35,9 @@ function v2_render_site_footer(string $phone, string $phoneHref): void
 
       <div class="ds2-site-footer__meta">
         <nav class="ds2-site-footer__legal" aria-label="Служебные ссылки">
-          <a href="<?=$legacy?>/payment/">Оплата туров</a>
-          <a href="<?=$legacy?>/personal-data/">Согласие на обработку персональных данных</a>
-          <a href="<?=$legacy?>/politika-konfidentsialnosti/">Политика конфиденциальности</a>
+          <a href="/payment/">Оплата туров</a>
+          <a href="/personal-data/">Согласие на обработку персональных данных</a>
+          <a href="/politika-konfidentsialnosti/">Политика конфиденциальности</a>
         </nav>
         <div class="ds2-site-footer__payments" aria-label="Платёжные системы">
           <span>MasterCard</span><span>Visa</span><span>Мир</span>
@@ -54,14 +53,13 @@ function v2_render_site_footer(string $phone, string $phoneHref): void
 
 function v2_render_standalone_canonical_footer(): void
 {
-    $legacy = 'https://anytour.online';
     ?>
     <footer class="at-site-footer">
       <nav class="at-site-footer-menu" aria-label="Служебные ссылки">
         <ul>
-          <li><a href="<?=$legacy?>/payment/">Оплата туров</a></li>
-          <li><a href="<?=$legacy?>/personal-data/">Согласие на обработку персональных данных</a></li>
-          <li><a href="<?=$legacy?>/politika-konfidentsialnosti/">Политика конфиденциальности</a></li>
+          <li><a href="/payment/">Оплата туров</a></li>
+          <li><a href="/personal-data/">Согласие на обработку персональных данных</a></li>
+          <li><a href="/politika-konfidentsialnosti/">Политика конфиденциальности</a></li>
         </ul>
       </nav>
       <p class="at-site-footer-copy">© 2026 «ТУРАГЕНТСТВО ANYTour» Москва | Все права защищены.</p>
