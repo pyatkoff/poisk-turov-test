@@ -20,9 +20,9 @@ $rows=[
         'metrics'=>['impressions'=>1000,'clicks'=>80,'avg_position'=>6.4,'ctr'=>0.08,'query_count'=>42],
     ],
     [
-        'path'=>'/country/turkey/kemer/',
+        'path'=>'/country/egypt/',
         'source_class'=>'yandex_webmaster_export',
-        'source_ref'=>'fixture://webmaster/export-1',
+        'source_ref'=>'fixture://webmaster/export-egypt',
         'collected_at_epoch'=>$now-120,
         'period_start_epoch'=>$now-7*86400,
         'period_end_epoch'=>$now-7200,
@@ -31,8 +31,8 @@ $rows=[
 ];
 $intake=v2_seo_search_feedback_intake($rows,$now);
 if(($intake['state']??'')!=='search_feedback_intake_ready') feedback_fail('state');
-if(($intake['domain']??'')!=='anytoour.ru'||($intake['observed_count']??0)!==2) feedback_fail('scope');
-if(count($intake['missing_paths']??[])!==4||($intake['missing_feedback_semantics']??'')!=='unknown_not_zero') feedback_fail('missing_semantics');
+if(($intake['domain']??'')!=='anytoour.ru'||($intake['launch_scope']??'')!=='controlled_country_resort_v2'||($intake['launched_path_count']??0)!==8||($intake['observed_count']??0)!==2) feedback_fail('scope');
+if(count($intake['missing_paths']??[])!==6||($intake['missing_feedback_semantics']??'')!=='unknown_not_zero') feedback_fail('missing_semantics');
 if(($intake['recommendation_state']??'')!=='requires_explicit_feedback_policy') feedback_fail('policy_boundary');
 foreach($intake['rows'] as $row){
     if(($row['state']??'')!=='search_feedback_evidence_valid'||($row['fresh']??false)!==true) feedback_fail('row_validity');
@@ -64,6 +64,6 @@ $blocked=v2_seo_search_feedback_intake([$badCtr],$now);
 if(($blocked['state']??'')!=='search_feedback_intake_blocked') feedback_fail('bad_ctr_not_blocked');
 
 $empty=v2_seo_search_feedback_intake([],$now);
-if(($empty['state']??'')!=='search_feedback_intake_blocked'||count($empty['missing_paths']??[])!==6) feedback_fail('empty_not_unknown');
+if(($empty['state']??'')!=='search_feedback_intake_blocked'||count($empty['missing_paths']??[])!==8) feedback_fail('empty_not_unknown');
 
-echo "SEO_SEARCH_FEEDBACK_EVIDENCE_OK launched=6 observedFixture=2 missingUnknown=4 autoRecommendation=0 autoDeindex=0 hotelTours=0\n";
+echo "SEO_SEARCH_FEEDBACK_EVIDENCE_OK launched=8 observedFixture=2 missingUnknown=6 secondWave=1 autoRecommendation=0 autoDeindex=0 hotelTours=0\n";
