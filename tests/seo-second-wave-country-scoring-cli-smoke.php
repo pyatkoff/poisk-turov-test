@@ -83,7 +83,7 @@ $policy=[
 $write=static function(string $file,array $value):void{
     file_put_contents($file,json_encode($value,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
 };
-$run=static function(array $files,int $now,bool $require=true):array use($cli){
+$run=static function(array $files,int $now,bool $require=true) use($cli):array{
     $cmd='php '.escapeshellarg($cli)
         .' --identity='.escapeshellarg($files['identity'])
         .' --demand='.escapeshellarg($files['demand'])
