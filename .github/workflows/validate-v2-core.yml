@@ -15,6 +15,14 @@ on:
       - 'v2/privacy-config.php'
       - 'v2/asset-version-v1.php'
       - 'v2/catalog-cache-v1.php'
+      - 'v2/data/hotels-select-v1.php'
+      - 'v2/data/destinations-v1.php'
+      - 'v2/data/sync-departures-v1.php'
+      - 'v2/data/migrate-departure-countries-v1.php'
+      - 'v2/data/price-observer-v1.php'
+      - 'v2/data/observe-search-v1.php'
+      - 'v2/data/schema-v1.sql'
+      - 'v2/bundle-manifest-v1.php'
       - 'diagnostics/search_results_recovery_test.cjs'
       - 'scripts/ci/validate_search_hotel_placement.py'
       - '.github/workflows/deploy.yml'
@@ -63,6 +71,37 @@ jobs:
           grep -Fq "window.addEventListener('v2:search-reset'" v2/current-price-calendar-v1.js
           grep -Fq "window.V2SearchLifecycle.submit" v2/current-price-calendar-v1.js
           echo CURRENT_PRICE_CALENDAR_CONTRACT_OK
+
+      - name: Validate local catalog routing
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/hotels-select-v1.php >/dev/null
+          php -l v2/data/destinations-v1.php >/dev/null
+          php -l v2/data/sync-departures-v1.php >/dev/null
+          php -l v2/data/migrate-departure-countries-v1.php >/dev/null
+          node --check v2/catalog-local-routing-v1.js
+          node --check v2/country-matrix-routing-v1.js
+          grep -Fq "action==='countries'" v2/catalog-local-routing-v1.js
+          grep -Fq "!params.onlyDirect&&!params.onlyCharter" v2/country-matrix-routing-v1.js
+          grep -Fq "return upstream(action,params,options)" v2/country-matrix-routing-v1.js
+          grep -Fq 'catalog_departure_countries' v2/data/destinations-v1.php
+          grep -Fq "v2_data_tv_get('/countries'" v2/data/sync-departures-v1.php
+          echo LOCAL_DEPARTURE_COUNTRY_ROUTING_OK
+
+      - name: Validate passive price observer
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/price-observer-v1.php >/dev/null
+          php -l v2/data/observe-search-v1.php >/dev/null
+          node --check v2/passive-price-observer-v1.js
+          grep -Fq "'passive-price-observer-v1.js'" v2/bundle-manifest-v1.php
+          grep -Fq "v2_data_tv_get('/tours/search/'" v2/data/observe-search-v1.php
+          grep -Fq 'INSERT IGNORE INTO tour_price_observations' v2/data/price-observer-v1.php
+          grep -Fq "source ENUM('user_search','scheduled_monitor','hot_tours')" v2/data/schema-v1.sql
+          php -r 'require "v2/data/price-observer-v1.php"; if (v2_price_observer_child_signature([7,3]) !== "7,3") exit(1); if (v2_price_observer_date("01.09.2026")->format("Y-m-d") !== "2026-09-01") exit(2); echo "PASSIVE_PRICE_OBSERVER_HELPERS_OK\n";'
+          echo PASSIVE_PRICE_OBSERVER_CONTRACT_OK
 
       - name: Validate results sorting and partial-data contract
         shell: bash
