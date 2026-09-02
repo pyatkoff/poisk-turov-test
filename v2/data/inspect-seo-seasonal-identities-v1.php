@@ -27,7 +27,10 @@ if($limit<1||$limit>5000){fwrite(STDERR,"SEO_SEASONAL_IDENTITY_FAIL:limit must b
 $pdo=v2_data_db();
 $placeholders=implode(',',array_fill(0,count($countries),'?'));
 $sql="SELECT s.page_key,s.page_type,s.country_id,s.region_id,s.departure_id,s.departure_year,s.departure_month,
-             s.offer_count,s.observed_at,s.expires_at,TIMESTAMPDIFF(SECOND,NOW(),s.expires_at) AS freshness_seconds
+             s.offer_count,s.observed_at,s.expires_at,
+             UNIX_TIMESTAMP(NOW()) AS evidence_checked_at_epoch,
+             UNIX_TIMESTAMP(s.expires_at) AS expires_at_epoch,
+             TIMESTAMPDIFF(SECOND,NOW(),s.expires_at) AS freshness_seconds
         FROM seo_offer_snapshots s
        WHERE s.country_id IN ($placeholders)
          AND s.page_type IN ('month','resort_month')
