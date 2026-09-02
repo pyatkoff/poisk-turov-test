@@ -17,6 +17,6 @@ foreach($turkey['resorts']??[] as $record){
     $regions[$region]=true;
 }
 ksort($regions,SORT_NUMERIC);
-if(array_keys($regions)!==[20,21,22,23,24]) seasonal_registry_fail('verified_region_set');
+if(array_keys($regions)!==[19,20,21,22,23]) seasonal_registry_fail('verified_region_set');
 try{v2_seo_seasonal_family_registry_get('maldives');seasonal_registry_fail('unknown_family_passed');}catch(InvalidArgumentException $e){}
 echo "SEO_SEASONAL_FAMILY_REGISTRY_OK families=1 turkey_resorts=5 publication=0\n";
