@@ -25,24 +25,55 @@ function v2_seo_hotel_review_launch_slice(
         $nowEpoch
     );
 
+    $validatedAt=(int)($proposal['validated_at_epoch']??0);
+    if ($validatedAt<=0) throw new InvalidArgumentException('Hotel review launch slice requires a validation clock');
+
     $identityRows=[];
+    $validUntil=null;
+    $countryFreshness=[];
     foreach (($proposal['proposal'] ?? []) as $row) {
         if (!is_array($row)) throw new InvalidArgumentException('Hotel review launch slice proposal row must be an array');
         $path=trim((string)($row['path']??''));
         $countryId=(int)($row['country_id']??0);
         $hotelId=(int)($row['hotel_id']??0);
+        $observed=(int)($row['evidence_epoch']??0);
         $expires=(int)($row['evidence_expires_epoch']??0);
-        if ($path==='' || $countryId<=0 || $hotelId<=0 || $expires<=0 || (int)($row['score']??0)!==100) {
-            throw new InvalidArgumentException('Hotel review launch slice contains incomplete readiness identity');
+        if ($path==='' || $countryId<=0 || $hotelId<=0 || $observed<=0 || $observed>$validatedAt || $expires<=$validatedAt || (int)($row['score']??0)!==100) {
+            throw new InvalidArgumentException('Hotel review launch slice contains incomplete or non-current readiness identity');
         }
-        $identityRows[]=['path'=>$path,'country_id'=>$countryId,'hotel_id'=>$hotelId,'score'=>100,'evidence_expires_epoch'=>$expires];
+        $identityRows[]=[
+            'path'=>$path,
+            'country_id'=>$countryId,
+            'hotel_id'=>$hotelId,
+            'score'=>100,
+            'evidence_epoch'=>$observed,
+            'evidence_expires_epoch'=>$expires,
+        ];
+        $validUntil=$validUntil===null ? $expires : min($validUntil,$expires);
+        if (!isset($countryFreshness[$countryId])) {
+            $countryFreshness[$countryId]=[
+                'item_count'=>0,
+                'oldest_evidence_epoch'=>$observed,
+                'evidence_valid_until_epoch'=>$expires,
+            ];
+        }
+        $countryFreshness[$countryId]['item_count']++;
+        $countryFreshness[$countryId]['oldest_evidence_epoch']=min($countryFreshness[$countryId]['oldest_evidence_epoch'],$observed);
+        $countryFreshness[$countryId]['evidence_valid_until_epoch']=min($countryFreshness[$countryId]['evidence_valid_until_epoch'],$expires);
     }
     usort($identityRows,static fn(array $a,array $b):int=>strcmp($a['path'],$b['path']));
+    ksort($countryFreshness,SORT_NUMERIC);
     $fingerprint=hash('sha256',json_encode($identityRows,JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
+    $validUntil=(int)($validUntil??0);
+    if ($validUntil<=$validatedAt) throw new InvalidArgumentException('Hotel review launch slice evidence window is already expired');
 
     return [
         'state'=>'review_only_requires_separate_indexation_approval',
-        'validated_at_epoch'=>(int)($proposal['validated_at_epoch']??0),
+        'validated_at_epoch'=>$validatedAt,
+        'evidence_valid_until_epoch'=>$validUntil,
+        'evidence_remaining_seconds'=>$validUntil-$validatedAt,
+        'evidence_fresh'=>true,
+        'country_evidence_freshness'=>$countryFreshness,
         'required_country_ids'=>array_values($proposal['required_country_ids']??[]),
         'max_per_country'=>(int)($proposal['max_per_country']??0),
         'max_total'=>(int)($proposal['max_total']??0),
