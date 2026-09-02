@@ -15,6 +15,7 @@ on:
       - 'v2/seo-seasonal-family-binding-v1.php'
       - 'v2/data/report-seo-seasonal-evidence-v1.php'
       - 'v2/data/report-seo-seasonal-coverage-v1.php'
+      - 'v2/data/report-seo-feed-review-plan-v1.php'
       - 'v2/data/inspect-seo-data-readiness-v1.php'
       - 'v2/data/inspect-seo-seasonal-identities-v1.php'
       - 'tests/seo-seasonal-evidence-smoke.php'
@@ -53,6 +54,7 @@ jobs:
           php -l v2/seo-seasonal-family-binding-v1.php >/dev/null
           php -l v2/data/report-seo-seasonal-evidence-v1.php >/dev/null
           php -l v2/data/report-seo-seasonal-coverage-v1.php >/dev/null
+          php -l v2/data/report-seo-feed-review-plan-v1.php >/dev/null
           php -l v2/data/inspect-seo-data-readiness-v1.php >/dev/null
           php -l v2/data/inspect-seo-seasonal-identities-v1.php >/dev/null
           php -l tests/seo-seasonal-evidence-smoke.php >/dev/null
@@ -83,6 +85,34 @@ jobs:
           grep -Fq 's.expires_at > NOW()' v2/data/inspect-seo-seasonal-identities-v1.php
           ! grep -Fq 'min_price' v2/data/inspect-seo-seasonal-identities-v1.php
           ! grep -Fq 'offers_json' v2/data/inspect-seo-seasonal-identities-v1.php
+
+      - name: Validate feed review plan CLI fail-closed behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          now=$(date +%s)
+          expires=$((now+3600))
+          cat > /tmp/feed-binding.json <<JSON
+          {"state":"review_only_feed_family_binding","feed_publish_allowed":false,"publication_allowed":false,"publication_candidates":[],"bound":[{"state":"review_only_family_bound_feed_evidence","family_key":"turkey","hotel_path":"/country/turkey/hotel/test-1039/","country_id":4,"hotel_id":1039,"tour_id":"tour-verified","source_page_key":"month:1:4:2026-09","expires_at_epoch":${expires},"feed_publish_allowed":false,"publication_allowed":false}]}
+          JSON
+          cat > /tmp/feed-selectors.json <<JSON
+          [{"country_id":4,"hotel_id":1039,"tour_id":"tour-verified"}]
+          JSON
+          php v2/data/report-seo-feed-review-plan-v1.php --binding=/tmp/feed-binding.json --selectors=/tmp/feed-selectors.json --max-items=3 --now-epoch="$now" --require-review-ready > /tmp/feed-plan.json
+          php -r '$x=json_decode(file_get_contents("/tmp/feed-plan.json"),true); if(($x["state"]??"")!=="review_only_feed_plan"||($x["item_count"]??0)!==1) exit(1); if(($x["publication_candidates"]??null)!==[]||($x["feed_publish_allowed"]??true)!==false) exit(2); if(isset($x["items"][0]["price"])||isset($x["items"][0]["availability"])) exit(3); echo "SEO_FEED_REVIEW_PLAN_CLI_OK\n";'
+          cat > /tmp/feed-missing.json <<JSON
+          [{"country_id":4,"hotel_id":9999,"tour_id":"unknown"}]
+          JSON
+          if php v2/data/report-seo-feed-review-plan-v1.php --binding=/tmp/feed-binding.json --selectors=/tmp/feed-missing.json --max-items=3 --now-epoch="$now" --require-review-ready >/tmp/feed-blocked.json 2>/tmp/feed-blocked.err; then
+            echo 'SEO_FEED_REVIEW_PLAN_CLI_FAIL:unknown selector passed' >&2
+            exit 1
+          fi
+          expired=$((now-1))
+          sed "s/\"expires_at_epoch\":${expires}/\"expires_at_epoch\":${expired}/" /tmp/feed-binding.json > /tmp/feed-expired-binding.json
+          if php v2/data/report-seo-feed-review-plan-v1.php --binding=/tmp/feed-expired-binding.json --selectors=/tmp/feed-selectors.json --max-items=3 --now-epoch="$now" --require-review-ready >/tmp/feed-expired.json 2>/tmp/feed-expired.err; then
+            echo 'SEO_FEED_REVIEW_PLAN_CLI_FAIL:expired selected evidence passed' >&2
+            exit 1
+          fi
 
       - name: Validate seasonal evidence CLI fail-closed behavior
         shell: bash
