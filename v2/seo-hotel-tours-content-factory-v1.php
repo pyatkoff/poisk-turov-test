@@ -41,7 +41,9 @@ function v2_seo_hotel_tours_content_record(array $hotel, array $editorial): arra
     $contentNotes = is_array($editorial['content_notes'] ?? null) ? array_values($editorial['content_notes']) : [];
 
     return [
-        'id' => 'hotel_tours.' . $countrySlug . '.' . $hotelSlug . '.v1',
+        // Editorial identity follows the verified immutable hotel ID rather than
+        // the human-readable slug, which may be long or change after renaming.
+        'id' => 'hotel_tours.' . $countrySlug . '.' . $hotelId . '.v1',
         'status' => 'review',
         'path' => $path,
         'type' => 'hotel_tours',
