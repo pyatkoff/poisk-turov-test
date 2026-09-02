@@ -1,8 +1,8 @@
 <?php
 /**
  * Once-daily refresh for the owner priority hotel source set.
- * Every priority hotel with a current factual country mapping is searched exactly once per run,
- * in country-safe batches of <=30. Unresolvable source IDs remain explicit in the report.
+ * Every priority hotel with a current factual country mapping and active departure route is searched exactly once per run,
+ * in country-safe batches of <=30. Unsearchable source IDs remain explicit in the report.
  * This is inventory collection only; it does not publish SEO pages or feeds.
  */
 declare(strict_types=1);
@@ -97,8 +97,11 @@ $departureRows = $pdo->query("SELECT dc.departure_id,dc.country_id,dc.is_active 
 $plan = v2_top500_daily_plan($priorityIds, $hotelRows, $departureRows, $dateFrom, $dateTo, $preferredDepartureId);
 
 if ((int)$plan['source_hotel_count'] !== count($priorityIds) || (int)$plan['hotel_count'] <= 0 || (int)$plan['max_batch_size'] > 30) throw new RuntimeException('invalid top500 daily plan');
-echo 'TOP500_DAILY_PLAN source_hotels='.$plan['source_hotel_count'].' hotels='.$plan['hotel_count'].' unavailable='.$plan['unavailable_count'].' batches='.$plan['batch_count'].' max_batch='.$plan['max_batch_size'].' from='.$dateFrom.' to='.$dateTo."\n";
-if ((int)$plan['unavailable_count'] > 0) echo 'TOP500_DAILY_UNAVAILABLE_IDS '.implode(',', $plan['unavailable_priority_ids'])."\n";
+echo 'TOP500_DAILY_PLAN source_hotels='.$plan['source_hotel_count'].' catalog_hotels='.$plan['catalog_hotel_count'].' searchable='.$plan['hotel_count'].' unavailable='.$plan['unavailable_count'].' missing_catalog='.$plan['missing_catalog_count'].' no_departure='.$plan['no_departure_count'].' batches='.$plan['batch_count'].' max_batch='.$plan['max_batch_size'].' from='.$dateFrom.' to='.$dateTo."\n";
+if ((int)$plan['missing_catalog_count'] > 0) echo 'TOP500_DAILY_MISSING_CATALOG_IDS '.implode(',', $plan['missing_catalog_ids'])."\n";
+if ((int)$plan['no_departure_count'] > 0) {
+    foreach ($plan['no_departure_hotels'] as $blocked) echo 'TOP500_DAILY_NO_DEPARTURE hotel='.$blocked['hotel_id'].' country='.$blocked['country_id'].' name='.$blocked['country_name']."\n";
+}
 
 $success = 0; $empty = 0; $failed = 0; $searchedHotels = 0; $writtenTotal = 0;
 foreach ($plan['targets'] as $target) {
@@ -164,12 +167,12 @@ foreach ($plan['targets'] as $target) {
             echo 'TOP500_DAILY_OK country='.$target['country_id'].' returned_hotels='.count($trusted).' written='.$written."\n";
         }
     } catch (Throwable $e) {
-        top500_daily_attempt_finish($pdo, $attemptId, 'error', $searchId, 0, 0, $e->getMessage());
+        top500_daily_attempt_finish($pdo, $attemptId, 'failure', $searchId, 0, 0, $e->getMessage());
         $failed++;
         fwrite(STDERR, 'TOP500_DAILY_ERROR country='.$target['country_id'].' hotels='.implode(',', $hotelIds).' message='.str_replace(["\r","\n"],' ', $e->getMessage())."\n");
     }
 }
 
-if ($searchedHotels !== (int)$plan['hotel_count']) throw new RuntimeException('top500 daily run did not attempt every resolvable priority hotel');
-echo 'TOP500_DAILY_DONE source_hotels='.$plan['source_hotel_count'].' hotels='.$searchedHotels.' unavailable='.$plan['unavailable_count'].' batches='.count($plan['targets']).' success='.$success.' empty='.$empty.' failed='.$failed.' observations_written='.$writtenTotal."\n";
+if ($searchedHotels !== (int)$plan['hotel_count']) throw new RuntimeException('top500 daily run did not attempt every searchable priority hotel');
+echo 'TOP500_DAILY_DONE source_hotels='.$plan['source_hotel_count'].' searchable='.$searchedHotels.' unavailable='.$plan['unavailable_count'].' missing_catalog='.$plan['missing_catalog_count'].' no_departure='.$plan['no_departure_count'].' batches='.count($plan['targets']).' success='.$success.' empty='.$empty.' failed='.$failed.' observations_written='.$writtenTotal."\n";
 if ($failed > 0) exit(2);
