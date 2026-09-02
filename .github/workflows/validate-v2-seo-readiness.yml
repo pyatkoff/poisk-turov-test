@@ -22,6 +22,7 @@ on:
       - 'tests/seo-opportunity-scoring-policy-smoke.php'
       - 'tests/seo-hotel-pilot-opportunity-packets-smoke.php'
       - 'tests/seo-hotel-pilot-scoring-review-smoke.php'
+      - 'tests/seo-hotel-pilot-opportunity-evidence-intake-smoke.php'
       - '.github/workflows/validate-v2-seo-readiness.yml'
   workflow_dispatch:
 
@@ -88,6 +89,8 @@ jobs:
           php tests/seo-hotel-pilot-opportunity-packets-smoke.php
           php -l tests/seo-hotel-pilot-scoring-review-smoke.php >/dev/null
           php tests/seo-hotel-pilot-scoring-review-smoke.php
+          php -l tests/seo-hotel-pilot-opportunity-evidence-intake-smoke.php >/dev/null
+          php tests/seo-hotel-pilot-opportunity-evidence-intake-smoke.php
           php v2/data/report-seo-launch-readiness-v1.php --catalog-file=v2/seo-content-pilot-maldives-catalog-v1.php --catalog-function=v2_seo_content_pilot_maldives_catalog </dev/null > /tmp/seo-readiness.json
           php -r '$x=json_decode(file_get_contents("/tmp/seo-readiness.json"),true); if(($x["state"]??"")!=="review_only_launch_readiness_report") exit(1); if(($x["blocked_count"]??0)<1) exit(2); echo "SEO_READINESS_CLI_OK\n";'
           if php v2/data/report-seo-launch-readiness-v1.php --catalog-file=v2/seo-content-pilot-maldives-catalog-v1.php --catalog-function=v2_seo_content_pilot_maldives_catalog --require-ready=999 </dev/null >/tmp/seo-readiness-required.json 2>/tmp/seo-readiness-required.err; then
