@@ -42,6 +42,10 @@ function v2_seo_turkey_hotel_manifest(): array
         ['file'=>'seo-content-pilot-turkey-perre-delta-v1.php','function'=>'v2_seo_content_pilot_turkey_perre_delta','label'=>'Туры в PERRE DELTA','href'=>'/country/turkey/hotel/perre-delta-ex-ganita-delta-resort-55200/'],
         ['file'=>'seo-content-pilot-turkey-club-selen-marmaris-v1.php','function'=>'v2_seo_content_pilot_turkey_club_selen_marmaris','label'=>'Туры в CLUB SELEN MARMARIS','href'=>'/country/turkey/hotel/club-selen-marmaris-ex-selen-hotel-9332/'],
         ['file'=>'seo-content-pilot-turkey-afytos-bodrum-city-v1.php','function'=>'v2_seo_content_pilot_turkey_afytos_bodrum_city','label'=>'Туры в AFYTOS BODRUM CITY','href'=>'/country/turkey/hotel/afytos-bodrum-city-71506/'],
+        ['file'=>'seo-content-pilot-turkey-juniper-v1.php','function'=>'v2_seo_content_pilot_turkey_juniper','label'=>'Туры в JUNIPER ADULTS ONLY 16+','href'=>'/country/turkey/hotel/juniper-adults-only-16-16777/'],
+        ['file'=>'seo-content-pilot-turkey-fortuna-marmaris-v1.php','function'=>'v2_seo_content_pilot_turkey_fortuna_marmaris','label'=>'Туры в FORTUNA MARMARIS','href'=>'/country/turkey/hotel/fortuna-marmaris-42576/'],
+        ['file'=>'seo-content-pilot-turkey-camyuva-luna-v1.php','function'=>'v2_seo_content_pilot_turkey_camyuva_luna','label'=>'Туры в CAMYUVA LUNA','href'=>'/country/turkey/hotel/camyuva-luna-ex-larissa-inn-1454/'],
+        ['file'=>'seo-content-pilot-turkey-prestige-alanya-v1.php','function'=>'v2_seo_content_pilot_turkey_prestige_alanya','label'=>'Туры в PRESTIGE ALANYA','href'=>'/country/turkey/hotel/prestige-alanya-ex-euphoria-comfort-beach-alanya-1236/'],
     ];
 }
 
