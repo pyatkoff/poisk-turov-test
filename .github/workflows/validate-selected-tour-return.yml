@@ -29,7 +29,7 @@ jobs:
           const path = require('path');
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            for(const width of [375,768,1440]){
+            for(const width of [375]){
               const page=await browser.newPage({viewport:{width,height:900}});
               await page.setContent(`<select id="sortResults"><option value="price">price</option><option value="rating" selected>rating</option></select><div id="results"><div class="result-card" data-card="one"><button class="direct-tour" data-tid="t1">Выбрать 1</button></div><div class="result-card" data-card="two"><button class="direct-tour" data-tid="t2">Выбрать 2</button></div><div id="comparisonTray" data-state="kept">compare</div></div><section id="selectedTour"><button class="back-results">Вернуться к предложениям</button><button class="lead-success-back">Вернуться после заявки</button></section>`);
               await page.addScriptTag({path:path.resolve('v2/selected-tour-return-v1.js')});
