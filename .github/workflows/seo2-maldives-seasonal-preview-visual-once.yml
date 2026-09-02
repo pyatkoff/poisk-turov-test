@@ -1,0 +1,70 @@
+name: SEO2 Maldives seasonal preview visual once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-maldives-seasonal-preview-visual-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Capture production Maldives preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p seo2-maldives-seasonal-preview
+          cat >/tmp/seo2-maldives-seasonal-preview.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const url='https://anytoour.ru/_preview/seo2/seasonal/maldives-september/';
+          const vps=[['mobile-375',375,812],['desktop-1440',1440,1000]];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const report=[]; let failed=false;
+            for(const [vp,width,height] of vps){
+              const context=await browser.newContext({viewport:{width,height}});
+              const page=await context.newPage();
+              const response=await page.goto(url,{waitUntil:'networkidle',timeout:30000});
+              const state=await page.evaluate(()=>({
+                h1:document.querySelectorAll('h1').length,
+                overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2,
+                robots:document.querySelector('meta[name="robots"]')?.content||'',
+                canonical:document.querySelector('link[rel="canonical"]')?.href||'',
+                title:document.querySelector('h1')?.textContent?.trim()||'',
+                primaryCtaHeight:document.querySelector('.sp-hero-actions .sp-primary')?.getBoundingClientRect().height||0,
+                handoff:document.querySelector('.sp-hero-actions .sp-primary')?.getAttribute('href')||'',
+                reviewNotice:[...document.querySelectorAll('p')].some(p=>p.textContent.includes('не включена в sitemap')),
+                localizedSource:[...document.querySelectorAll('p')].some(p=>p.textContent.includes('Официальная климатическая страница Maldives Meteorological Service')),
+              }));
+              await page.screenshot({path:`seo2-maldives-seasonal-preview/${vp}.png`,fullPage:true});
+              report.push({vp,http:response?.status()||0,...state});
+              if((response?.status()||0)!==200||state.h1!==1||state.overflow||state.robots!=='noindex,follow'||state.canonical!==''||state.title!=='Мальдивы в сентябре'||state.primaryCtaHeight<48||!state.handoff.includes('country=8')||state.handoff.includes('region=')||!state.reviewNotice||!state.localizedSource) failed=true;
+              await context.close();
+            }
+            fs.writeFileSync('seo2-maldives-seasonal-preview/report.json',JSON.stringify(report,null,2));
+            await browser.close();
+            if(failed) process.exit(1);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          NODE_PATH="$PWD/node_modules" node /tmp/seo2-maldives-seasonal-preview.cjs
+      - name: Upload disposable visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo2-maldives-seasonal-preview-${{ github.event.pull_request.number }}
+          path: seo2-maldives-seasonal-preview/
+          retention-days: 3
