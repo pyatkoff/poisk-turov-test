@@ -31,7 +31,7 @@ $rows=[
     ],
 ];
 $intake=v2_seo_search_feedback_intake($rows,$now);
-if(($intake['state']??'')!=='search_feedback_intake_ready') search_feedback_policy_fail('intake');
+if(($intake['state']??'')!=='search_feedback_intake_ready'||($intake['launched_path_count']??0)!==8) search_feedback_policy_fail('intake');
 
 $policy=[
     'policy_id'=>'fixture-feedback-review',
@@ -59,7 +59,7 @@ $policy=[
 ];
 $review=v2_seo_search_feedback_review($intake,$policy,$now);
 if(($review['state']??'')!=='search_feedback_review_ready') search_feedback_policy_fail('review_state');
-if(($review['observed_count']??0)!==2||($review['missing_count']??0)!==4) search_feedback_policy_fail('counts');
+if(($review['observed_count']??0)!==2||($review['missing_count']??0)!==6) search_feedback_policy_fail('counts');
 $recommendations=[];
 foreach($review['recommendations'] as $row)$recommendations[(string)$row['path']]=$row['recommendation']??null;
 if(($recommendations['/country/turkey/']??null)!=='improve_review') search_feedback_policy_fail('turkey_recommendation');
@@ -106,4 +106,4 @@ $badField['rules'][0]['conditions'][0]['field']='metrics.revenue';
 $invalid=v2_seo_search_feedback_policy($badField,$now);
 if(($invalid['state']??'')!=='search_feedback_policy_invalid') search_feedback_policy_fail('arbitrary_metric_allowed');
 
-echo "SEO_SEARCH_FEEDBACK_POLICY_SMOKE_OK explicitPolicy=1 defaults=0 missingUnknown=4 recommendationsReviewOnly=1 autoDeindex=0 hotelTours=0\n";
+echo "SEO_SEARCH_FEEDBACK_POLICY_SMOKE_OK explicitPolicy=1 defaults=0 missingUnknown=6 recommendationsReviewOnly=1 autoDeindex=0 hotelTours=0\n";

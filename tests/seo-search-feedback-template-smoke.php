@@ -14,12 +14,13 @@ exec(escapeshellarg(PHP_BINARY).' '.escapeshellarg($template).' 2>&1',$out,$code
 if($code!==0) search_feedback_template_fail('exit_'.$code.'_'.implode('|',$out));
 $decoded=json_decode(implode("\n",$out),true);
 if(!is_array($decoded)||($decoded['state']??'')!=='search_feedback_collection_template') search_feedback_template_fail('state');
-if(($decoded['domain']??'')!=='anytoour.ru'||($decoded['launch_scope']??'')!=='turkey_country_resort_v1') search_feedback_template_fail('scope');
+if(($decoded['domain']??'')!=='anytoour.ru'||($decoded['launch_scope']??'')!=='controlled_country_resort_v2') search_feedback_template_fail('scope');
 $rows=$decoded['rows']??null;
-if(!is_array($rows)||count($rows)!==6) search_feedback_template_fail('row_count');
-$expected=v2_seo_turkey_launch_paths();
+if(!is_array($rows)||count($rows)!==8) search_feedback_template_fail('row_count');
+$expected=v2_seo_controlled_launch_paths();
 $paths=array_map(static fn(array $row):string=>(string)($row['path']??''),$rows);
 if($paths!==$expected) search_feedback_template_fail('paths');
+if(!in_array('/country/egypt/',$paths,true)||!in_array('/country/maldives/',$paths,true)) search_feedback_template_fail('second_wave_missing');
 foreach($rows as $row){
     if(str_contains((string)($row['path']??''),'/hotel/')) search_feedback_template_fail('hotel_leak');
     if(($row['source_class']??null)!==''||($row['source_ref']??null)!=='') search_feedback_template_fail('source_not_blank');
@@ -38,4 +39,4 @@ foreach(['automatic_recommendation_allowed','automatic_deindex_allowed','publica
 }
 if(($decoded['publication_candidates']??null)!==[]) search_feedback_template_fail('publication_candidates');
 
-echo "SEO_SEARCH_FEEDBACK_TEMPLATE_SMOKE_OK rows=6 blankMetrics=1 hotelTours=0 autoDeindex=0\n";
+echo "SEO_SEARCH_FEEDBACK_TEMPLATE_SMOKE_OK rows=8 secondWave=2 blankMetrics=1 hotelTours=0 autoDeindex=0\n";

@@ -163,7 +163,7 @@ function v2_seo_search_feedback_review(array $intake, array $policy, ?int $nowEp
     return [
         'state'=>$errors===[]?'search_feedback_review_ready':'search_feedback_review_blocked',
         'domain'=>'anytoour.ru',
-        'launch_scope'=>'turkey_country_resort_v1',
+        'launch_scope'=>(string)($intake['launch_scope']??'controlled_country_resort_v2'),
         'observed_count'=>(int)($intake['observed_count']??0),
         'missing_count'=>count($missing),
         'recommendations'=>$recommendations,
