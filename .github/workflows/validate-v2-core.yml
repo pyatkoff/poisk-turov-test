@@ -25,7 +25,6 @@ on:
       - 'v2/bundle-manifest-v1.php'
       - 'diagnostics/search_results_recovery_test.cjs'
       - 'scripts/ci/validate_search_hotel_placement.py'
-      - '.github/workflows/deploy.yml'
       - '.github/workflows/deploy-anytoour.yml'
       - '.github/workflows/validate-v2-core.yml'
   workflow_dispatch:
@@ -283,9 +282,8 @@ jobs:
           grep -Fq -- "- 'v2/**'" "$canonical"
           grep -Fq -- 'tar -C v2 -czf "$archive" .' "$canonical"
           grep -Fq -- "root='~/www/anytoour.ru'" "$canonical"
-          grep -Fq -- 'workflow_dispatch:' "$legacy"
-          ! grep -Eq -- '^[[:space:]]+push:' "$legacy"
-          grep -Fq -- 'scp "${ssh_opts[@]}" -r v2/.' "$legacy"
-          grep -Fq -- 'poisk-turov-test/v2/' "$legacy"
-          ! grep -Eq -- 'scp .*anytour\.com|scp .*max-search|scp .*poisk-turov-tg' "$legacy"
+          test ! -e "$legacy"
+          grep -Fq -- 'lead-receiver-v1.php' "$canonical"
+          ! grep -Fq -- 'https://anytour.online/images/logo.svg' "$canonical"
+          ! grep -Fq -- 'anytoour-config.php' "$canonical"
           echo V2_ISOLATION_OK
