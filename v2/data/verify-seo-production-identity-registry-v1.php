@@ -19,13 +19,13 @@ $evidence=[
     'pages'=>$pages,
 ];
 $expected=[
-    ['path'=>'/country/turkey/','type'=>'country','robots'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/alanya/','type'=>'resort','robots'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/antalya/','type'=>'resort','robots'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/belek/','type'=>'resort','robots'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/kemer/','type'=>'resort','robots'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/side/','type'=>'resort','robots'=>'index,follow','sitemap_member'=>true],
-    ['path'=>'/country/turkey/hotel/aegean-park-1601/','type'=>'hotel_tours','robots'=>'noindex,follow','sitemap_member'=>false],
+    ['path'=>'/country/turkey/','type'=>'country','robots_prefix'=>'index,follow','sitemap_member'=>true],
+    ['path'=>'/country/turkey/alanya/','type'=>'resort','robots_prefix'=>'index,follow','sitemap_member'=>true],
+    ['path'=>'/country/turkey/antalya/','type'=>'resort','robots_prefix'=>'index,follow','sitemap_member'=>true],
+    ['path'=>'/country/turkey/belek/','type'=>'resort','robots_prefix'=>'index,follow','sitemap_member'=>true],
+    ['path'=>'/country/turkey/kemer/','type'=>'resort','robots_prefix'=>'index,follow','sitemap_member'=>true],
+    ['path'=>'/country/turkey/side/','type'=>'resort','robots_prefix'=>'index,follow','sitemap_member'=>true],
+    ['path'=>'/country/turkey/hotel/aegean-park-1601/','type'=>'hotel_tours','robots_prefix'=>'noindex,follow','sitemap_member'=>false],
 ];
 $result=v2_seo_production_identity_registry_validate($evidence,$expected);
 if(($result['integrity_ok']??false)!==true){
