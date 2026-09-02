@@ -24,6 +24,86 @@ function v2_seo_seasonal_preview_catalog(): array
     ];
 }
 
+/**
+ * Validate the review-preview registry against content identity and physical routes.
+ * This is deliberately a review boundary, never a publication manifest.
+ */
+function v2_seo_seasonal_preview_integrity(?string $v2Root = null): array
+{
+    $catalog=v2_seo_seasonal_preview_catalog();
+    $records=v2_seo_seasonal_review_content_prototypes();
+    $blocked=[]; $seenPaths=[]; $seenContent=[];
+
+    foreach($catalog as $key=>$preview){
+        if(!is_array($preview)){ $blocked[]=['key'=>(string)$key,'code'=>'invalid_preview_record']; continue; }
+        $path=(string)($preview['path']??'');
+        $contentKey=(string)($preview['content_key']??'');
+        $parentPath=(string)($preview['parent_path']??'');
+        $searchState=is_array($preview['search_state']??null)?$preview['search_state']:[];
+        $countryId=(int)($searchState['country']??0);
+
+        if(!preg_match('#^/_preview/seo2/seasonal/[a-z0-9-]+/$#',$path)){ $blocked[]=['key'=>(string)$key,'code'=>'preview_path_outside_review_namespace']; continue; }
+        if($path!=='/_preview/seo2/seasonal/'.(string)$key.'/'){ $blocked[]=['key'=>(string)$key,'code'=>'preview_key_path_mismatch']; continue; }
+        if(isset($seenPaths[$path])){ $blocked[]=['key'=>(string)$key,'code'=>'duplicate_preview_path']; continue; }
+        $seenPaths[$path]=true;
+        if($contentKey===''||isset($seenContent[$contentKey])){ $blocked[]=['key'=>(string)$key,'code'=>'duplicate_or_missing_content_key']; continue; }
+        $seenContent[$contentKey]=true;
+        if(!str_starts_with($parentPath,'/country/')||str_starts_with($parentPath,'/_preview/')){ $blocked[]=['key'=>(string)$key,'code'=>'invalid_public_parent_path']; continue; }
+        if($countryId<=0){ $blocked[]=['key'=>(string)$key,'code'=>'missing_search_country']; continue; }
+        if(!isset($records[$contentKey])||!is_array($records[$contentKey])){ $blocked[]=['key'=>(string)$key,'code'=>'missing_content_record']; continue; }
+
+        $record=$records[$contentKey];
+        $recordPageKey=(string)($record['page_key']??'');
+        if($recordPageKey===''){ $blocked[]=['key'=>(string)$key,'code'=>'missing_content_page_key']; continue; }
+        $parts=explode(':',$recordPageKey);
+        if(count($parts)<4||(int)($parts[2]??0)!==$countryId){ $blocked[]=['key'=>(string)$key,'code'=>'content_country_search_mismatch']; continue; }
+        if(($parts[0]??'')==='resort_month'){
+            $regionId=(int)($searchState['region']??0);
+            if(count($parts)!==5||$regionId<=0||(int)$parts[3]!==$regionId){ $blocked[]=['key'=>(string)$key,'code'=>'content_region_search_mismatch']; continue; }
+        } elseif(($parts[0]??'')==='month'){
+            if(count($parts)!==4||array_key_exists('region',$searchState)){ $blocked[]=['key'=>(string)$key,'code'=>'country_month_region_leak']; continue; }
+        } else {
+            $blocked[]=['key'=>(string)$key,'code'=>'unsupported_preview_page_type']; continue;
+        }
+
+        foreach(($record['claims']??[]) as $claimIndex=>$claim){
+            if(!is_array($claim)||(string)($claim['page_key']??'')!==$recordPageKey||(int)($claim['country_id']??0)!==$countryId){
+                $blocked[]=['key'=>(string)$key,'code'=>'claim_identity_mismatch','claim_index'=>$claimIndex];
+                continue 2;
+            }
+        }
+        foreach(['publication_allowed','indexation_allowed','sitemap_allowed','route_creation_allowed'] as $flag){
+            if(($record[$flag]??true)!==false){ $blocked[]=['key'=>(string)$key,'code'=>'content_launch_boundary_'.$flag]; continue 2; }
+        }
+
+        if($v2Root!==null){
+            $root=rtrim($v2Root,'/');
+            $route=$root.$path.'index.php';
+            if(!is_file($route)){ $blocked[]=['key'=>(string)$key,'code'=>'missing_physical_preview_route']; continue; }
+            $source=file_get_contents($route);
+            if($source===false||!str_contains($source,"v2_seo_render_seasonal_preview('".(string)$key."')")){ $blocked[]=['key'=>(string)$key,'code'=>'physical_route_renderer_mismatch']; continue; }
+        }
+    }
+
+    return [
+        'state'=>$blocked===[]&&$catalog!==[]?'review_ready':'blocked',
+        'review_ready'=>$blocked===[]&&$catalog!==[],
+        'preview_count'=>count($catalog),
+        'blocked'=>$blocked,
+        'publication_candidates'=>[],
+        'publication_allowed'=>false,
+        'indexation_allowed'=>false,
+        'sitemap_allowed'=>false,
+        'canonical_allowed'=>false,
+        'route_launch_allowed'=>false,
+    ];
+}
+
+function v2_seo_seasonal_preview_headers(): array
+{
+    return ['X-Robots-Tag: noindex, follow'];
+}
+
 function v2_seo_seasonal_preview_head(array $context): void
 {
     ?>
@@ -32,6 +112,9 @@ function v2_seo_seasonal_preview_head(array $context): void
 
 function v2_seo_render_seasonal_preview(string $previewKey, ?int $nowEpoch = null): void
 {
+    $integrity=v2_seo_seasonal_preview_integrity();
+    if(($integrity['state']??'')!=='review_ready') throw new RuntimeException('Seasonal preview registry integrity is blocked');
+
     $catalog=v2_seo_seasonal_preview_catalog();
     if(!isset($catalog[$previewKey])) throw new InvalidArgumentException('Unknown seasonal preview key');
     $preview=$catalog[$previewKey];
@@ -45,6 +128,7 @@ function v2_seo_render_seasonal_preview(string $previewKey, ?int $nowEpoch = nul
     }
     if(($content['publication_candidates']??null)!==[]) throw new RuntimeException('Seasonal preview cannot expose publication candidates');
 
+    foreach(v2_seo_seasonal_preview_headers() as $header){ if(!headers_sent()) header($header,true); }
     $path=(string)$preview['path'];
     $description='Review-only предпросмотр AnyTour: '.trim((string)$content['intro']);
     $context=sp_context($path,(string)$content['title'].' — preview | AnyTour',$description);
