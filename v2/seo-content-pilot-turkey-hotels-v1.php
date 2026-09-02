@@ -15,6 +15,9 @@ function v2_seo_turkey_hotel_manifest(): array
         ['file'=>'seo-content-pilot-turkey-aroma-butik-v1.php','function'=>'v2_seo_content_pilot_turkey_aroma_butik','label'=>'Туры в AROMA BUTIK HOTEL','href'=>'/country/turkey/hotel/aroma-butik-hotel-70447/'],
         ['file'=>'seo-content-pilot-turkey-aegean-park-v1.php','function'=>'v2_seo_content_pilot_turkey_aegean_park','label'=>'Туры в AEGEAN PARK','href'=>'/country/turkey/hotel/aegean-park-1601/'],
         ['file'=>'seo-content-pilot-turkey-agon-v1.php','function'=>'v2_seo_content_pilot_turkey_agon','label'=>'Туры в AGON HOTEL','href'=>'/country/turkey/hotel/agon-hotel-65881/'],
+        ['file'=>'seo-content-pilot-turkey-britannia-v1.php','function'=>'v2_seo_content_pilot_turkey_britannia','label'=>'Туры в BRITANNIA HOTEL & VILLAS','href'=>'/country/turkey/hotel/britannia-hotel-villas-1063/'],
+        ['file'=>'seo-content-pilot-turkey-parus-kemer-v1.php','function'=>'v2_seo_content_pilot_turkey_parus_kemer','label'=>'Туры в PARUS HOTEL KEMER','href'=>'/country/turkey/hotel/parus-hotel-kemer-28539/'],
+        ['file'=>'seo-content-pilot-turkey-carmen-suite-v1.php','function'=>'v2_seo_content_pilot_turkey_carmen_suite','label'=>'Туры в CARMEN SUITE','href'=>'/country/turkey/hotel/carmen-suite-56421/'],
     ];
 }
 
