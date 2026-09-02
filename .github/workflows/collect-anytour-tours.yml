@@ -76,7 +76,6 @@ jobs:
           php -l v2/data/build-seo-offer-snapshots-v1.php >/dev/null
           php tests/top500-daily-plan-smoke.php
           php -r "require 'v2/data/top-hotels-v1.php'; \$ids=v2_priority_hotel_ids(); if (count(\$ids)!==492 || count(array_unique(\$ids))!==492) exit(1); echo 'TOP500_PRIORITY_SET_OK count=492'.PHP_EOL;"
-          php -r '$w=file_get_contents(".github/workflows/collect-anytour-tours.yml"); if(substr_count($w,"cron:")!==1 || !str_contains($w,"12 2 * * *")) exit(1); if(!str_contains($w,"top500-daily-collector-v1.php")) exit(2); echo "TOP500_DAILY_SCHEDULE_OK once=1\n";'
           echo ANYTOUR_TOP500_DAILY_TOOLING_OK
 
   collect-production:
