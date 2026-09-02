@@ -5,22 +5,35 @@ on:
     workflows: ['Deploy anytoour.ru']
     types: [completed]
   workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-anytoour-seo-launch.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-anytoour-seo-launch.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: verify-anytoour-seo-launch
+  group: verify-anytoour-seo-launch-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
   production-seo:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - name: Verify controlled Turkey country/resort launch
         shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           base='https://anytoour.ru'
@@ -32,6 +45,9 @@ jobs:
             '/country/turkey/kemer/'
             '/country/turkey/side/'
           )
+
+          curl -fsSL --max-time 30 "$base/robots.txt" -o /tmp/robots.txt
+          grep -Fq 'Sitemap: https://anytoour.ru/sitemap.xml' /tmp/robots.txt
 
           curl -fsSL --max-time 30 "$base/sitemap.xml" -o /tmp/sitemap.xml
           BASE="$base" python3 - <<'PY'
@@ -52,6 +68,7 @@ jobs:
           print('ANYTOOUR_SEO_SITEMAP_OK', len(actual))
           PY
 
+          : > /tmp/page-status.tsv
           for path in "${paths[@]}"; do
             safe="$(printf '%s' "$path" | tr '/-' '__')"
             file="/tmp/seo-${safe}.html"
@@ -60,6 +77,7 @@ jobs:
             grep -Eq '<meta name="robots" content="index,follow[^\"]*"' "$file"
             canonical="${base}${path}"
             grep -Fq "<link rel=\"canonical\" href=\"$canonical\">" "$file"
+            printf '%s\t%s\t%s\n' "$path" "$code" "$file" >> /tmp/page-status.tsv
           done
 
           protected='/country/turkey/hotel/aegean-park-1601/'
@@ -71,4 +89,61 @@ jobs:
             exit 1
           fi
 
-          echo 'ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=6 hotel_tours_indexed=0'
+          BASE="$base" SOURCE_SHA="$SOURCE_SHA" EVENT_NAME="$EVENT_NAME" PROTECTED="$protected" PROTECTED_CODE="$protected_code" python3 - <<'PY'
+          import datetime, hashlib, json, os, re, xml.etree.ElementTree as ET
+
+          base=os.environ['BASE']
+          sitemap={node.text.strip() for node in ET.parse('/tmp/sitemap.xml').getroot().iter() if node.tag.endswith('loc') and node.text}
+          rows=[]
+          with open('/tmp/page-status.tsv', encoding='utf-8') as fh:
+              for line in fh:
+                  path, code, filename=line.rstrip('\n').split('\t')
+                  html=open(filename, encoding='utf-8').read()
+                  robots=re.search(r'<meta name="robots" content="([^\"]+)"', html)
+                  canonical=re.search(r'<link rel="canonical" href="([^\"]+)"', html)
+                  rows.append({
+                      'path': path,
+                      'http_status': int(code),
+                      'robots': robots.group(1) if robots else None,
+                      'canonical': canonical.group(1) if canonical else None,
+                      'sitemap_member': base+path in sitemap,
+                  })
+          protected_html=open('/tmp/hotel-review.html', encoding='utf-8').read()
+          protected_robots=re.search(r'<meta name="robots" content="([^\"]+)"', protected_html)
+          payload={
+              'state':'controlled_seo_postlaunch_baseline',
+              'domain':'anytoour.ru',
+              'observed_at_utc':datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat(),
+              'source_sha':os.environ.get('SOURCE_SHA',''),
+              'trigger':os.environ.get('EVENT_NAME',''),
+              'launch_scope':'turkey_country_resort_v1',
+              'launch_url_count':len(rows),
+              'pages':rows,
+              'robots_sitemap_declared':True,
+              'sitemap_url_count':len(sitemap),
+              'protected_hotel_tour':{
+                  'path':os.environ['PROTECTED'],
+                  'http_status':int(os.environ['PROTECTED_CODE']),
+                  'robots':protected_robots.group(1) if protected_robots else None,
+                  'sitemap_member':base+os.environ['PROTECTED'] in sitemap,
+              },
+              'search_console_metrics_state':'not_collected_by_this_workflow',
+              'publication_scope_expanded':False,
+              'hotel_tours_indexation_allowed':False,
+          }
+          stable=dict(payload)
+          stable.pop('observed_at_utc',None)
+          payload['baseline_sha256']=hashlib.sha256(json.dumps(stable,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          with open('/tmp/anytoour-seo-baseline.json','w',encoding='utf-8') as fh:
+              json.dump(payload,fh,ensure_ascii=False,indent=2)
+              fh.write('\n')
+          print('ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=6 hotel_tours_indexed=0 baseline_sha256='+payload['baseline_sha256'])
+          PY
+
+      - name: Upload production SEO baseline
+        uses: actions/upload-artifact@v4
+        with:
+          name: anytoour-seo-baseline-${{ github.run_id }}
+          path: /tmp/anytoour-seo-baseline.json
+          if-no-files-found: error
+          retention-days: 30
