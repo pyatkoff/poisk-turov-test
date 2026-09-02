@@ -21,14 +21,16 @@ function setPendingLocked(locked){setFlightLocked(locked);setReturnLocked(locked
 function startPending(){leadPending=true;setPendingLocked(true);}
 function clearPending(){leadPending=false;setPendingLocked(false);}
 function handleError(event){if(protect(event))clearPending();}
-function handleSuccess(event){protect(event);}
+function handleSuccess(event){if(protect(event))leadPending=false;}
 function handleSearchReset(){if(leadPending){setPendingLocked(true);return false;}clearPending();return true;}
+function handleTourReturned(){if(!leadPending)clearPending();}
 function handleSearchSubmit(event){const form=event&&event.target;if(!leadPending||!form||form.id!=='tourSearch')return true;if(typeof event.preventDefault==='function')event.preventDefault();if(typeof event.stopImmediatePropagation==='function')event.stopImmediatePropagation();return false;}
 window.addEventListener('v2:lead-started',startPending);
 window.addEventListener('v2:lead-error',handleError);
 window.addEventListener('v2:lead-success',handleSuccess);
 window.addEventListener('v2:tour-selected',()=>{if(!leadPending)setPendingLocked(false);});
 window.addEventListener('v2:search-reset',handleSearchReset);
+window.addEventListener('v2:tour-returned',handleTourReturned);
 window.addEventListener('submit',handleSearchSubmit,true);
-window.V2LeadUiRaceGuardV1={tourId,searchId,eventTourId,eventSearchId,isCurrent,protect,selectedRoot,searchForm,flightChoices,returnAction,tourActions,stickySearchActions,setFlightLocked,setReturnLocked,setTourActionsLocked,setSearchLocked,setPendingLocked,startPending,clearPending,handleError,handleSuccess,handleSearchReset,handleSearchSubmit,get leadPending(){return leadPending;},version:7};
+window.V2LeadUiRaceGuardV1={tourId,searchId,eventTourId,eventSearchId,isCurrent,protect,selectedRoot,searchForm,flightChoices,returnAction,tourActions,stickySearchActions,setFlightLocked,setReturnLocked,setTourActionsLocked,setSearchLocked,setPendingLocked,startPending,clearPending,handleError,handleSuccess,handleSearchReset,handleTourReturned,handleSearchSubmit,get leadPending(){return leadPending;},version:8};
 })();
