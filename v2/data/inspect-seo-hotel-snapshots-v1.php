@@ -30,7 +30,8 @@ $pdo = v2_data_db();
 $sql = "SELECT s.hotel_id,h.name AS hotel_name,h.slug AS hotel_slug,h.category,h.rating,
                h.region_id,h.region_name,h.subregion_id,h.subregion_name,
                COUNT(*) AS snapshot_count,SUM(s.offer_count) AS offer_count,
-               MIN(s.min_price) AS min_price,MAX(s.observed_at) AS observed_at,MAX(s.expires_at) AS expires_at
+               MIN(s.min_price) AS min_price,MAX(s.observed_at) AS observed_at,MAX(s.expires_at) AS expires_at,
+               TIMESTAMPDIFF(SECOND,NOW(),MAX(s.expires_at)) AS freshness_seconds
           FROM seo_offer_snapshots s
           JOIN catalog_hotels h ON h.id=s.hotel_id AND h.is_active=1
          WHERE s.country_id=:country_id
@@ -54,6 +55,7 @@ foreach ($rows as &$row) {
     $row['snapshot_count'] = (int)$row['snapshot_count'];
     $row['offer_count'] = (int)$row['offer_count'];
     $row['min_price'] = (float)$row['min_price'];
+    $row['freshness_seconds'] = (int)$row['freshness_seconds'];
 }
 unset($row);
 
