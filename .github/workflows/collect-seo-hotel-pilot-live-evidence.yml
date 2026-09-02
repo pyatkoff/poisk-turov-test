@@ -1,0 +1,74 @@
+name: Collect SEO hotel pilot live evidence
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-hotel-pilot-live-evidence-v1.php'
+      - 'v2/data/report-seo-hotel-pilot-live-evidence-v1.php'
+      - 'tests/seo-hotel-pilot-live-evidence-smoke.php'
+      - '.github/workflows/collect-seo-hotel-pilot-live-evidence.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/seo-hotel-pilot-live-evidence-v1.php'
+      - 'v2/seo-hotel-tour-page-v1.php'
+      - 'v2/seo-offer-snapshot-v1.php'
+      - 'v2/seo-hotel-launch-pilot-v1.php'
+      - 'v2/seo-content-pilot-*-catalog-v1.php'
+      - 'v2/seo-content-pilot-*-hotel-review-catalog-v1.php'
+      - 'v2/data/report-seo-hotel-pilot-live-evidence-v1.php'
+      - '.github/workflows/collect-seo-hotel-pilot-live-evidence.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fast-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate review-only live evidence collector
+        run: |
+          set -euo pipefail
+          php -l v2/seo-hotel-pilot-live-evidence-v1.php >/dev/null
+          php -l v2/data/report-seo-hotel-pilot-live-evidence-v1.php >/dev/null
+          php -l tests/seo-hotel-pilot-live-evidence-smoke.php >/dev/null
+          php tests/seo-hotel-pilot-live-evidence-smoke.php
+
+  live-evidence:
+    if: github.event_name != 'pull_request'
+    needs: fast-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect live 3x3 review evidence
+        id: collect
+        shell: bash
+        run: |
+          set +e
+          php v2/data/report-seo-hotel-pilot-live-evidence-v1.php > seo-hotel-pilot-live-evidence.json 2> seo-hotel-pilot-live-evidence.err
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          if [ -s seo-hotel-pilot-live-evidence.err ]; then cat seo-hotel-pilot-live-evidence.err >&2; fi
+          exit 0
+      - name: Upload hotel pilot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-hotel-pilot-live-evidence-${{ github.run_id }}
+          path: |
+            seo-hotel-pilot-live-evidence.json
+            seo-hotel-pilot-live-evidence.err
+          if-no-files-found: error
+          retention-days: 14
+      - name: Reject collector errors but allow review hold
+        if: always()
+        shell: bash
+        run: |
+          code="${{ steps.collect.outputs.exit_code }}"
+          test "$code" = "0" || test "$code" = "3"
+          echo "hotel pilot review evidence exit=$code (0=ready, 3=review hold)"
