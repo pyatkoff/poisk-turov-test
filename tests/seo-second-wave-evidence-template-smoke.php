@@ -28,11 +28,14 @@ foreach($specs as $i=>$spec){
         if(($d[$field]??null)!==$expected||($u[$field]??null)!==$expected)second_wave_template_fail('identity_'.$field.'_'.$i);
     }
     if(($u['page_path']??null)!==(string)$spec['path'])second_wave_template_fail('path_'.$i);
-    if(($d['source_class']??null)!==''||($d['source_ref']??null)!==''||($d['status']??null)!=='unknown'||($d['observed_at_epoch']??'not-null')!==null||($d['serp_intent']??null)!=='')second_wave_template_fail('demand_blank_'.$i);
+    $dObservedNull=array_key_exists('observed_at_epoch',$d)&&$d['observed_at_epoch']===null;
+    if(($d['source_class']??null)!==''||($d['source_ref']??null)!==''||($d['status']??null)!=='unknown'||!$dObservedNull||($d['serp_intent']??null)!=='')second_wave_template_fail('demand_blank_'.$i);
     foreach(['impressions','clicks','avg_position','monthly_searches'] as $metric){
         if(!array_key_exists($metric,$d['metrics']??[])||$d['metrics'][$metric]!==null)second_wave_template_fail('metric_not_null_'.$metric.'_'.$i);
     }
-    if(($u['source_class']??null)!==''||($u['source_ref']??null)!==''||($u['status']??null)!=='unknown'||($u['observed_at_epoch']??'not-null')!==null||($u['decision']??null)!=='unknown'||($u['overlap_ratio']??'not-null')!==null)second_wave_template_fail('uniqueness_blank_'.$i);
+    $uObservedNull=array_key_exists('observed_at_epoch',$u)&&$u['observed_at_epoch']===null;
+    $uOverlapNull=array_key_exists('overlap_ratio',$u)&&$u['overlap_ratio']===null;
+    if(($u['source_class']??null)!==''||($u['source_ref']??null)!==''||($u['status']??null)!=='unknown'||!$uObservedNull||($u['decision']??null)!=='unknown'||!$uOverlapNull)second_wave_template_fail('uniqueness_blank_'.$i);
     if(($u['competing_paths']??null)!==[])second_wave_template_fail('competing_paths_'.$i);
 }
 foreach(['automatic_scoring_allowed','automatic_launch_allowed','publication_allowed','indexation_allowed','sitemap_allowed','canonical_launch_allowed','route_launch_allowed','hotel_tours_indexation_allowed','hotel_tours_sitemap_allowed'] as $flag){
