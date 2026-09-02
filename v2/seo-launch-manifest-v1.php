@@ -16,16 +16,16 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
     $errors = [];
 
     if ($registry === []) $errors[] = 'empty_registry';
-    if (array_keys($registry) !== array_keys($reports) || array_keys($registry) !== array_keys($graph)) {
-        $errors[] = 'registry_report_graph_parity';
-    }
+    $registryKeys=array_keys($registry); $reportKeys=array_keys($reports); $graphKeys=array_keys($graph);
+    sort($registryKeys,SORT_STRING); sort($reportKeys,SORT_STRING); sort($graphKeys,SORT_STRING);
+    if ($registryKeys !== $reportKeys || $registryKeys !== $graphKeys) $errors[] = 'registry_report_graph_parity';
 
     $candidateSet = [];
     foreach ($candidates as $path) {
         $path = (string)$path;
         if ($path === '' || isset($candidateSet[$path]) || !isset($registry[$path])) $errors[] = 'invalid_publication_candidate';
         $candidateSet[$path] = true;
-        if (($registry[$path]['type'] ?? '') === 'hotel_tours') $errors[] = 'hotel_tours_publication_candidate_leak';
+        if (isset($registry[$path]) && ($registry[$path]['type'] ?? '') === 'hotel_tours') $errors[] = 'hotel_tours_publication_candidate_leak';
     }
 
     $identitySet = [];
@@ -38,7 +38,6 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
         $page = is_array($entry['page'] ?? null) ? $entry['page'] : [];
         $state = is_array($page['search_state'] ?? null) ? $page['search_state'] : [];
         $countryId = (int)($state['country'] ?? 0);
-        $identity = '';
         if ($type === 'country') $identity = 'country:' . $countryId;
         elseif ($type === 'resort') $identity = 'resort:' . $countryId . ':' . (int)($state['region'] ?? 0);
         else $identity = 'hotel:' . $countryId . ':' . (int)($state['hotel'] ?? 0);
@@ -68,6 +67,7 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
     $readyByType = ['country'=>0,'resort'=>0,'hotel_tours'=>0];
     $blockedByType = ['country'=>0,'resort'=>0,'hotel_tours'=>0];
     $hotelEvidenceValidUntil = [];
+    $scoreTotal=0; $scoreRows=0;
     foreach ($readiness as $row) {
         if (!is_array($row)) { $errors[]='invalid_readiness_row'; continue; }
         $path=(string)($row['path']??''); $type=(string)($row['type']??'');
@@ -75,29 +75,36 @@ function v2_seo_launch_manifest(array $catalog, array $hotelSnapshotEvidence = [
         $seenReadiness[$path]=true;
         if (isset($readyByType[$type])) {
             if (($row['ready_for_launch_review']??false)===true) $readyByType[$type]++; else $blockedByType[$type]++;
+            $scoreTotal+=max(0,min(100,(int)($row['score']??0))); $scoreRows++;
         }
         if ($type==='hotel_tours' && (int)($row['evidence_expires_epoch']??0)>0) $hotelEvidenceValidUntil[]=(int)$row['evidence_expires_epoch'];
     }
 
     usort($structuralRows, static fn(array $a,array $b):int => strcmp($a['path'],$b['path']));
-    $fingerprintPayload = [
-        'rows'=>$structuralRows,
-        'publication_candidates'=>array_values(array_map('strval',$candidates)),
-        'type_counts'=>$typeCounts,
-    ];
+    $normalizedCandidates=array_values(array_map('strval',$candidates)); sort($normalizedCandidates,SORT_STRING);
+    $fingerprintPayload = ['rows'=>$structuralRows,'publication_candidates'=>$normalizedCandidates,'type_counts'=>$typeCounts];
     $fingerprint = hash('sha256', json_encode($fingerprintPayload, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
     $errors = array_values(array_unique($errors));
+    $readyCount=array_sum($readyByType); $blockedCount=array_sum($blockedByType);
+    $qualityScore=$scoreRows>0?(int)round($scoreTotal/$scoreRows):0;
+    $reviewReady=$errors===[] && $scoreRows>0 && $blockedCount===0;
 
     return [
         'state'=>$errors===[]?'review_manifest_valid':'review_manifest_blocked',
         'integrity_ok'=>$errors===[],
+        'review_ready'=>$reviewReady,
+        'quality_score'=>$qualityScore,
         'registry_count'=>count($registry),
+        'readiness_row_count'=>$scoreRows,
+        'ready_count'=>$readyCount,
+        'blocked_count'=>$blockedCount,
         'type_counts'=>$typeCounts,
         'ready_by_type'=>$readyByType,
         'blocked_by_type'=>$blockedByType,
         'readiness_summary'=>$readinessSummary,
         'publication_candidate_count'=>count($candidates),
         'hotel_tours_publication_candidate_count'=>count(array_filter($candidates,static fn($p):bool=>isset($registry[$p])&&($registry[$p]['type']??'')==='hotel_tours')),
+        'hotel_tours_review_ready_count'=>$readyByType['hotel_tours'],
         'hotel_evidence_valid_until_epoch'=>$hotelEvidenceValidUntil===[]?0:min($hotelEvidenceValidUntil),
         'manifest_sha256'=>$fingerprint,
         'errors'=>$errors,
