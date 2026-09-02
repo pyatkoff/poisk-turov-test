@@ -1,0 +1,77 @@
+name: Validate selected-tour tablet layout
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/selected-tour-layout-guard-v1.css'
+      - 'v2/bundle-manifest-v1.php'
+      - '.github/workflows/validate-selected-tour-tablet-layout.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tablet-selected-tour:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Verify selected-tour stack against production
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > check-selected-tablet.cjs <<'JS'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            try{
+              const page=await browser.newPage({viewport:{width:820,height:1000},extraHTTPHeaders:{'X-AnyTour-CI':'1'}});
+              const iso=days=>new Date(Date.now()+days*86400000).toISOString().slice(0,10);
+              const u=new URL('https://anytoour.ru/poisk-turov/');
+              Object.entries({from:'1',country:'4',dateFrom:iso(2),dateTo:iso(22),daysFrom:'7',daysTill:'7',count_people:'2',ci_test:'1'}).forEach(([k,v])=>u.searchParams.set(k,v));
+              const response=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000});
+              if(!response||response.status()!==200)throw new Error('HTTP '+(response&&response.status()));
+              await page.waitForSelector('.hotel-card .tour-row .direct-tour[data-tid]:not([data-tid=""])',{timeout:90000});
+              await page.addStyleTag({path:'v2/selected-tour-layout-guard-v1.css'});
+              for(const width of [820,768]){
+                await page.setViewportSize({width,height:1000});
+                await page.waitForTimeout(120);
+                const choose=page.locator('.hotel-card .tour-row .direct-tour[data-tid]:not([data-tid=""])').first();
+                await choose.scrollIntoViewIfNeeded();
+                await choose.click({timeout:10000});
+                await page.waitForSelector('#selectedTour:not([hidden]) .selected-head.checkout-head',{timeout:20000});
+                await page.waitForSelector('#selectedTour:not([hidden]) .lead-form',{timeout:10000});
+                await page.waitForTimeout(180);
+                const state=await page.evaluate(()=>{
+                  const root=document.querySelector('#selectedTour:not([hidden])');
+                  const head=root?.querySelector('.selected-head.checkout-head');
+                  const title=head?.querySelector('h2');
+                  const price=head?.querySelector('.selected-price');
+                  const box=el=>{if(!el)return null;const r=el.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom};};
+                  const css=head?getComputedStyle(head):null;
+                  return {root:box(root),head:box(head),title:box(title),price:box(price),display:css&&css.display,columns:css&&css.gridTemplateColumns,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+                });
+                console.log('SELECTED_TABLET_GUARD_STATE_'+width,JSON.stringify(state));
+                if(!state.root||!state.head||!state.title||!state.price)throw new Error(width+': selected header missing');
+                if(state.display!=='grid')throw new Error(width+': selected header not grid: '+state.display);
+                if(state.price.y<state.title.bottom-4)throw new Error(width+': selected price did not stack: '+JSON.stringify({title:state.title,price:state.price,columns:state.columns}));
+                if(state.price.x<state.head.x-2||state.price.right>state.head.right+2)throw new Error(width+': selected price escapes header');
+                if(state.price.w>Math.min(242,state.head.w+2))throw new Error(width+': selected price unexpectedly wide: '+state.price.w);
+                if(state.overflow)throw new Error(width+': horizontal overflow');
+                await page.locator('#selectedTour .back-results').click({timeout:10000});
+                await page.waitForSelector('.hotel-card',{state:'visible',timeout:10000});
+              }
+              await page.close();
+            }finally{await browser.close();}
+            console.log('SELECTED_TOUR_TABLET_LAYOUT_OK');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node check-selected-tablet.cjs
