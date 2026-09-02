@@ -1,5 +1,5 @@
 <?php
-/** Build an exact once-per-day collection plan for owner priority hotels. */
+/** Build a once-per-day collection plan for every currently resolvable owner priority hotel. */
 declare(strict_types=1);
 
 function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $departureCountryRows, string $dateFrom, string $dateTo, int $preferredDepartureId = 1): array
@@ -28,9 +28,13 @@ function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $
         ];
     }
 
-    $missing = [];
-    foreach ($priority as $id) if (!isset($hotelById[$id])) $missing[] = $id;
-    if ($missing !== []) throw new RuntimeException('priority hotels missing/inactive in catalog: '.implode(',', $missing));
+    $unavailable = [];
+    $eligible = [];
+    foreach ($priority as $id) {
+        if (isset($hotelById[$id])) $eligible[] = $id;
+        else $unavailable[] = $id;
+    }
+    if ($eligible === []) throw new RuntimeException('no priority hotels have a factual active catalog mapping');
 
     $departuresByCountry = [];
     foreach ($departureCountryRows as $row) {
@@ -50,7 +54,7 @@ function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $
     unset($ids);
 
     $byCountry = [];
-    foreach ($priority as $id) {
+    foreach ($eligible as $id) {
         $hotel = $hotelById[$id];
         $country = $hotel['country_id'];
         if (!isset($departuresByCountry[$country][0])) throw new RuntimeException('no active departure for country '.$country.' hotel '.$id);
@@ -84,10 +88,13 @@ function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $
         }
     }
 
-    if (count($covered) !== count($priority)) throw new RuntimeException('daily plan does not cover every priority hotel');
+    if (count($covered) !== count($eligible)) throw new RuntimeException('daily plan does not cover every resolvable priority hotel');
     return [
-        'state' => 'top500_daily_exact_plan',
-        'hotel_count' => count($priority),
+        'state' => $unavailable === [] ? 'top500_daily_exact_plan' : 'top500_daily_resolvable_plan',
+        'source_hotel_count' => count($priority),
+        'hotel_count' => count($eligible),
+        'unavailable_count' => count($unavailable),
+        'unavailable_priority_ids' => $unavailable,
         'batch_count' => count($targets),
         'max_batch_size' => $targets === [] ? 0 : max(array_map(static fn(array $x): int => count($x['hotel_ids']), $targets)),
         'date_from' => $dateFrom,
