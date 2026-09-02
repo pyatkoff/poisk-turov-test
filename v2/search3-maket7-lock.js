@@ -11,7 +11,7 @@ function placeAdvanced(form,grid,name,labelText,cls){
   var f=field(form,name);if(!f||!grid)return;
   f.classList.add(cls);
   var label=f.querySelector(':scope > span');if(label)label.textContent=labelText;
-  if(f.parentNode!==grid)grid.appendChild(f);
+  grid.appendChild(f);
 }
 function syncLabels(form){var dates=form.querySelector('.search3-dates>:scope > span,.search3-dates>span');if(dates)dates.textContent='Дата вылета';}
 function desktopLock(){
