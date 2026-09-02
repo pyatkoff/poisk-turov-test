@@ -46,6 +46,7 @@ function v2_seo_content_pilot_maldives(): array
                 ['label' => 'Туры в Royal Island Resort & Spa', 'href' => '/country/maldives/hotel/royal-island-resort-spa-2477/'],
                 ['label' => 'Туры в Villa Nautica', 'href' => '/country/maldives/hotel/villa-nautica-ex-paradise-island-resort-spa-2472/'],
                 ['label' => 'Туры в Coco Bodu Hithi', 'href' => '/country/maldives/hotel/coco-bodu-hithi-2433/'],
+                ['label' => 'Туры в The Westin Maldives Miriandhoo Resort', 'href' => '/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/'],
             ],
             'internal_links' => [['title'=>'Подбор тура','links'=>[['label'=>'Поиск туров AnyTour','href'=>'/poisk-turov/']]]],
             'search_state' => ['country' => 8],
