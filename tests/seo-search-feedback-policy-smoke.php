@@ -65,7 +65,7 @@ foreach($review['recommendations'] as $row)$recommendations[(string)$row['path']
 if(($recommendations['/country/turkey/']??null)!=='improve_review') search_feedback_policy_fail('turkey_recommendation');
 if(($recommendations['/country/turkey/kemer/']??null)!=='expand_review') search_feedback_policy_fail('kemer_recommendation');
 foreach($review['missing'] as $row){
-    if(($row['status']??'')!=='unknown_no_evidence'||($row['recommendation']??'sentinel')!==null) search_feedback_policy_fail('missing_not_unknown');
+    if(($row['status']??'')!=='unknown_no_evidence'||!array_key_exists('recommendation',$row)||$row['recommendation']!==null) search_feedback_policy_fail('missing_not_unknown');
 }
 if(($review['recommendation_semantics']??'')!=='review_only_no_execution'||($review['explicit_user_approval_required']??false)!==true) search_feedback_policy_fail('review_boundary');
 foreach(['automatic_execution_allowed','automatic_deindex_allowed','publication_allowed','indexation_change_allowed','sitemap_change_allowed','canonical_change_allowed','route_change_allowed','hotel_tours_indexation_allowed'] as $flag){
