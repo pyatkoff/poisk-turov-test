@@ -10,6 +10,7 @@ on:
       - 'v2/seo-publishability-v1.php'
       - 'v2/seo-page-registry-v1.php'
       - 'v2/seo-page-graph-v1.php'
+      - 'v2/data/validate-seo-hotel-snapshot-identities-v1.php'
       - '.github/workflows/validate-v2-seo-content-catalog.yml'
   workflow_dispatch:
 
@@ -28,6 +29,7 @@ jobs:
           set -euo pipefail
           php -l v2/seo-content-catalog-v1.php
           php -l v2/seo-content-pilot-maldives-catalog-v1.php
+          php -l v2/data/validate-seo-hotel-snapshot-identities-v1.php
           php <<'PHP'
           <?php
           require 'v2/seo-content-catalog-v1.php';
@@ -172,3 +174,17 @@ jobs:
 
           echo "V2_SEO_CONTENT_CATALOG_OK ids=1 statuses=1 registry=1 publishability=1 hotelTours=1 hotelApprovalGate=1 maldivesFamily=".count($hotelPaths)." maldivesCandidates=0 stableBreadcrumbs=1 graph=1 candidates=1\n";
           PHP
+
+          good='[{"hotel_id":65108,"hotel_slug":"the-westin-maldives-miriandhoo-resort-65108"}]'
+          printf '%s\n' "$good" | php v2/data/validate-seo-hotel-snapshot-identities-v1.php --only=65108
+
+          bad='[{"hotel_id":65108,"hotel_slug":"wrong-hotel-65108"}]'
+          if printf '%s\n' "$bad" | php v2/data/validate-seo-hotel-snapshot-identities-v1.php --only=65108; then
+            echo 'SEO_CATALOG_FAIL:identity_validator_allowed_slug_mismatch' >&2
+            exit 1
+          fi
+
+          if printf '[]\n' | php v2/data/validate-seo-hotel-snapshot-identities-v1.php --only=65108; then
+            echo 'SEO_CATALOG_FAIL:identity_validator_allowed_missing_snapshot' >&2
+            exit 1
+          fi
