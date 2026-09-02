@@ -92,9 +92,11 @@ jobs:
             local slug="$1" region_id="$2" out
             out="$(page_out "/country/turkey/$slug/")"
             check_search_handoff "$out" 4 "$region_id"
-            if grep -Fq 'sp-offer-snapshot' "$out"; then
+            if grep -Fq '<section class="sp-card sp-offer-snapshot"' "$out"; then
               grep -Fq 'Посмотреть туры' "$out"
               echo "/country/turkey/$slug/ fresh offer block OK"
+            else
+              echo "/country/turkey/$slug/ fresh offer block absent (allowed; no stale claim inferred from CSS)"
             fi
             echo "/country/turkey/$slug/ -> country=4 region=$region_id OK"
           }
