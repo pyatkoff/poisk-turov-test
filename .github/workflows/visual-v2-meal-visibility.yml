@@ -9,6 +9,7 @@ on:
       - 'v2/search-params-filter-rail-v1.css'
       - 'v2/search-params-filter-rail-v1.js'
       - 'v2/ds2-search-tablet-filters-v1.css'
+      - 'v2/bundle-manifest-v1.php'
       - '.github/workflows/visual-v2-meal-visibility.yml'
   workflow_dispatch:
 
