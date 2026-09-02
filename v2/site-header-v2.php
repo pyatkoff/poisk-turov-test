@@ -17,10 +17,12 @@ function v2_render_site_header(string $phone, string $phoneHref, string $activeP
     $activePath = '/' . trim($activePath, '/') . ($activePath === '/' ? '' : '/');
     if ($activePath === '//') $activePath = '/';
 
+    // Keep every destination real while matching the approved Search 3 desktop hierarchy.
+    // Hotel/about routes are not introduced here until first-class destinations exist.
     $nav = [
         ['/poisk-turov/', 'Поиск туров'],
+        ['/hot/', '🔥 Горящие туры'],
         ['/country/', 'Страны'],
-        ['/hot/', 'Горящие туры'],
         ['/rb/', 'Раннее бронирование'],
         ['/how-to-buy/', 'Как купить'],
         ['/contacts/', 'Контакты'],
