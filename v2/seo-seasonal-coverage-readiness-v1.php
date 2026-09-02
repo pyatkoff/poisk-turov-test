@@ -6,7 +6,7 @@
  * explicit review policy; missing or invalid policy fails closed. The result is
  * only suitable for prioritising further editorial/data review.
  */
-function v2_seo_seasonal_coverage_assess(array $dataReadiness, array $policy): array
+function v2_seo_seasonal_coverage_assess(array $dataReadiness, array $policy, ?int $nowEpoch = null): array
 {
     $errors = [];
     $countryId = (int)($policy['country_id'] ?? 0);
@@ -14,6 +14,7 @@ function v2_seo_seasonal_coverage_assess(array $dataReadiness, array $policy): a
     $minResortMonth = (int)($policy['min_resort_month_identities'] ?? -1);
     $minFreshness = (int)($policy['min_freshness_seconds'] ?? 0);
     $minOffers = (int)($policy['min_offers_per_snapshot'] ?? 0);
+    $nowEpoch = $nowEpoch ?? time();
 
     if ($countryId <= 0) $errors[] = 'invalid_policy_country';
     if ($minMonth <= 0) $errors[] = 'invalid_policy_month_identity_floor';
@@ -21,6 +22,16 @@ function v2_seo_seasonal_coverage_assess(array $dataReadiness, array $policy): a
     if ($minFreshness <= 0) $errors[] = 'invalid_policy_freshness_floor';
     if ($minOffers <= 0) $errors[] = 'invalid_policy_offer_floor';
     if (($dataReadiness['state'] ?? '') !== 'review_only_data_readiness') $errors[] = 'invalid_data_readiness_state';
+
+    $checkedEpoch = (int)($dataReadiness['evidence_checked_at_epoch'] ?? 0);
+    $validUntilEpoch = (int)($dataReadiness['evidence_valid_until_epoch'] ?? 0);
+    if (($dataReadiness['evidence_clock_valid'] ?? false) !== true || $checkedEpoch <= 0 || $validUntilEpoch <= $checkedEpoch) {
+        $errors[] = 'evidence_clock_missing_or_invalid';
+    } elseif ($nowEpoch < $checkedEpoch) {
+        $errors[] = 'evidence_clock_from_future';
+    } elseif ($nowEpoch >= $validUntilEpoch) {
+        $errors[] = 'evidence_expired';
+    }
 
     $country = null;
     foreach (($dataReadiness['countries'] ?? []) as $row) {
@@ -61,9 +72,17 @@ function v2_seo_seasonal_coverage_assess(array $dataReadiness, array $policy): a
         'resort_month_identity_coverage' => ['actual'=>$resortMonthIds,'required'=>$minResortMonth,'pass'=>$resortMonthIds >= $minResortMonth],
         'freshness_floor_seconds' => $minFreshness,
         'offer_floor_per_snapshot' => $minOffers,
+        'evidence_clock' => [
+            'checked_at_epoch'=>$checkedEpoch,
+            'valid_until_epoch'=>$validUntilEpoch,
+            'evaluated_at_epoch'=>$nowEpoch,
+            'pass'=>!in_array('evidence_clock_missing_or_invalid',$errors,true)
+                && !in_array('evidence_clock_from_future',$errors,true)
+                && !in_array('evidence_expired',$errors,true),
+        ],
     ];
     $passed = 0;
-    $total = 4;
+    $total = 5;
     if ($monthIds >= $minMonth) $passed++;
     if ($resortMonthIds >= $minResortMonth) $passed++;
     $freshPass = true;
@@ -78,6 +97,7 @@ function v2_seo_seasonal_coverage_assess(array $dataReadiness, array $policy): a
     }
     if ($freshPass) $passed++;
     if ($offerPass) $passed++;
+    if (($checks['evidence_clock']['pass'] ?? false) === true) $passed++;
 
     return [
         'state'=>$errors === [] ? 'review_ready' : 'review_blocked',
