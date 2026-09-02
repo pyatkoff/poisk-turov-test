@@ -7,6 +7,7 @@ on:
       - 'v2/**'
       - 'tests/seo-turkey-hotel-review-catalog-smoke.php'
       - 'tests/seo-hotel-family-launch-readiness-smoke.php'
+      - 'tests/seo-page-launch-readiness-smoke.php'
       - '.github/workflows/validate-v2-pr.yml'
 
 concurrency:
@@ -168,9 +169,11 @@ jobs:
           php -l tests/seo-turkey-hotel-review-catalog-smoke.php >/dev/null
           php tests/seo-turkey-hotel-review-catalog-smoke.php
 
-      - name: Validate hotel family launch-readiness summary
+      - name: Validate SEO launch-readiness controls
         shell: bash
         run: |
           set -euo pipefail
           php -l tests/seo-hotel-family-launch-readiness-smoke.php >/dev/null
           php tests/seo-hotel-family-launch-readiness-smoke.php
+          php -l tests/seo-page-launch-readiness-smoke.php >/dev/null
+          php tests/seo-page-launch-readiness-smoke.php
