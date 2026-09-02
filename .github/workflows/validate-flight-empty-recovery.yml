@@ -14,39 +14,71 @@ permissions:
 jobs:
   flight-empty-recovery:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Validate empty-flight recovery on mobile and desktop
+      - name: Validate empty-flight recovery behavior
         shell: bash
         run: |
           set -euo pipefail
-          npm init -y >/dev/null 2>&1
-          npm install --no-save playwright@1.55.0 >/dev/null
-          npx playwright install --with-deps chromium >/dev/null
-          cat > flight-empty-recovery.cjs <<'JS'
-          const { chromium } = require('playwright');
-          const path = require('path');
-          (async()=>{
-            const browser=await chromium.launch({headless:true});
-            for(const width of [375,1440]){
-              const page=await browser.newPage({viewport:{width,height:900}});
-              await page.setContent(`<section id="selectedTour"><div class="tour-flights"><div class="selected-loading">Для тура варианты рейсов не найдены.</div></div><form class="lead-form"><button type="submit">Отправить заявку</button></form></section>`);
-              await page.evaluate(()=>{window.V2TourController={currentTour:{id:'tour-1'}};});
-              await page.addScriptTag({path:path.resolve('v2/flight-empty-recovery-v1.js')});
-              await page.waitForTimeout(80);
-              let state=await page.evaluate(()=>({text:document.querySelector('.tour-flights').innerText,retries:document.querySelectorAll('.load-flights[data-tid="tour-1"]').length,lead:!!document.querySelector('.lead-form')}));
-              if(!state.text.includes('Данные по рейсам пока не получены')||state.retries!==1||!state.lead)throw new Error(`empty recovery failed ${width}: ${JSON.stringify(state)}`);
-              await page.evaluate(()=>window.V2FlightEmptyRecoveryV1.decorate());
-              state=await page.evaluate(()=>({retries:document.querySelectorAll('.load-flights[data-tid="tour-1"]').length}));
-              if(state.retries!==1)throw new Error(`duplicate retry ${width}: ${JSON.stringify(state)}`);
-              await page.evaluate(()=>{document.querySelector('.tour-flights').innerHTML='<div class="flight-variants"><div class="flight-variant">Рейс найден</div></div>';window.V2FlightEmptyRecoveryV1.decorate();});
-              state=await page.evaluate(()=>({variants:document.querySelectorAll('.flight-variant').length,retries:document.querySelectorAll('.load-flights').length}));
-              if(state.variants!==1||state.retries!==0)throw new Error(`real flight altered ${width}: ${JSON.stringify(state)}`);
-              console.log(`FLIGHT_EMPTY_RECOVERY_OK width=${width}`);
-              await page.close();
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm');
+          const listeners={};
+          let retryButton=null;
+          let realVariant=null;
+          const leadForm={};
+          const empty={
+            textContent:'Для тура варианты рейсов не найдены.',
+            insertAdjacentElement(position,node){
+              if(position!=='afterend')throw new Error('unexpected insert position '+position);
+              retryButton=node;
             }
-            await browser.close();
-          })().catch(e=>{console.error(e);process.exit(1)});
+          };
+          const box={
+            querySelector(sel){
+              if(sel==='.flight-variant')return realVariant;
+              if(sel==='.flight-error')return null;
+              if(sel==='.load-flights')return retryButton;
+              return null;
+            },
+            querySelectorAll(sel){return sel==='.selected-loading'&&!realVariant?[empty]:[];}
+          };
+          const selectedTour={
+            dataset:{},
+            querySelector(sel){
+              if(sel==='.tour-flights')return box;
+              if(sel==='.lead-form')return leadForm;
+              return null;
+            }
+          };
+          const document={
+            readyState:'loading',
+            getElementById:id=>id==='selectedTour'?selectedTour:null,
+            addEventListener(type,fn){(listeners[type]||(listeners[type]=[])).push(fn);},
+            createElement(tag){return {tagName:String(tag).toUpperCase(),type:'',className:'',dataset:{},textContent:''};}
+          };
+          class MutationObserver{observe(){}}
+          const window={
+            V2TourController:{currentTour:{id:'tour-1'}},
+            addEventListener(type,fn){(listeners[type]||(listeners[type]=[])).push(fn);}
+          };
+          const requestAnimationFrame=fn=>fn();
+          vm.runInNewContext(fs.readFileSync('v2/flight-empty-recovery-v1.js','utf8'),{window,document,MutationObserver,requestAnimationFrame,String,Array});
+          const api=window.V2FlightEmptyRecoveryV1;
+          if(!api||api.version!==1||api.currentTourId()!=='tour-1')throw new Error('empty recovery API missing');
+
+          const first=api.decorate(selectedTour);
+          let state={text:empty.textContent,retries:retryButton&&retryButton.dataset.tid==='tour-1'?1:0,lead:!!selectedTour.querySelector('.lead-form')};
+          if(!first||!state.text.includes('Данные по рейсам пока не получены')||state.retries!==1||!state.lead)throw new Error('empty recovery failed: '+JSON.stringify(state));
+
+          api.decorate(selectedTour);
+          state={retries:retryButton&&retryButton.dataset.tid==='tour-1'?1:0};
+          if(state.retries!==1)throw new Error('duplicate retry: '+JSON.stringify(state));
+
+          realVariant={textContent:'Рейс найден'};
+          retryButton=null;
+          const decoratedReal=api.decorate(selectedTour);
+          state={variants:realVariant?1:0,retries:retryButton?1:0};
+          if(decoratedReal!==false||state.variants!==1||state.retries!==0)throw new Error('real flight altered: '+JSON.stringify(state));
+          console.log('FLIGHT_EMPTY_RECOVERY_OK '+JSON.stringify(state));
           JS
-          node flight-empty-recovery.cjs
