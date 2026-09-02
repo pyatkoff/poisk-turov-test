@@ -1,5 +1,5 @@
 <?php
-/** Build a once-per-day collection plan for every currently resolvable owner priority hotel. */
+/** Build a once-per-day collection plan for every currently searchable owner priority hotel. */
 declare(strict_types=1);
 
 function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $departureCountryRows, string $dateFrom, string $dateTo, int $preferredDepartureId = 1): array
@@ -28,13 +28,8 @@ function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $
         ];
     }
 
-    $unavailable = [];
-    $eligible = [];
-    foreach ($priority as $id) {
-        if (isset($hotelById[$id])) $eligible[] = $id;
-        else $unavailable[] = $id;
-    }
-    if ($eligible === []) throw new RuntimeException('no priority hotels have a factual active catalog mapping');
+    $missingCatalog = [];
+    foreach ($priority as $id) if (!isset($hotelById[$id])) $missingCatalog[] = $id;
 
     $departuresByCountry = [];
     foreach ($departureCountryRows as $row) {
@@ -53,11 +48,27 @@ function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $
     }
     unset($ids);
 
+    $noDeparture = [];
+    $eligible = [];
+    foreach ($priority as $id) {
+        if (!isset($hotelById[$id])) continue;
+        $country = (int)$hotelById[$id]['country_id'];
+        if (!isset($departuresByCountry[$country][0])) {
+            $noDeparture[] = [
+                'hotel_id' => $id,
+                'country_id' => $country,
+                'country_name' => (string)$hotelById[$id]['country_name'],
+            ];
+            continue;
+        }
+        $eligible[] = $id;
+    }
+    if ($eligible === []) throw new RuntimeException('no priority hotels have both a factual active catalog mapping and an active departure route');
+
     $byCountry = [];
     foreach ($eligible as $id) {
         $hotel = $hotelById[$id];
         $country = $hotel['country_id'];
-        if (!isset($departuresByCountry[$country][0])) throw new RuntimeException('no active departure for country '.$country.' hotel '.$id);
         if (!isset($byCountry[$country])) $byCountry[$country] = ['country_name'=>$hotel['country_name'], 'ids'=>[]];
         $byCountry[$country]['ids'][] = $id;
     }
@@ -88,13 +99,18 @@ function v2_top500_daily_plan(array $priorityHotelIds, array $hotelRows, array $
         }
     }
 
-    if (count($covered) !== count($eligible)) throw new RuntimeException('daily plan does not cover every resolvable priority hotel');
+    if (count($covered) !== count($eligible)) throw new RuntimeException('daily plan does not cover every searchable priority hotel');
+    $unavailableCount = count($missingCatalog) + count($noDeparture);
     return [
-        'state' => $unavailable === [] ? 'top500_daily_exact_plan' : 'top500_daily_resolvable_plan',
+        'state' => $unavailableCount === 0 ? 'top500_daily_exact_plan' : 'top500_daily_searchable_plan',
         'source_hotel_count' => count($priority),
+        'catalog_hotel_count' => count($hotelById),
         'hotel_count' => count($eligible),
-        'unavailable_count' => count($unavailable),
-        'unavailable_priority_ids' => $unavailable,
+        'unavailable_count' => $unavailableCount,
+        'missing_catalog_count' => count($missingCatalog),
+        'missing_catalog_ids' => $missingCatalog,
+        'no_departure_count' => count($noDeparture),
+        'no_departure_hotels' => $noDeparture,
         'batch_count' => count($targets),
         'max_batch_size' => $targets === [] ? 0 : max(array_map(static fn(array $x): int => count($x['hotel_ids']), $targets)),
         'date_from' => $dateFrom,
