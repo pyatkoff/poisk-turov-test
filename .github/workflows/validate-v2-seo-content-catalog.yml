@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'v2/seo-content-catalog-v1.php'
+      - 'v2/seo-content-pilot-maldives-*-v1.php'
+      - 'v2/seo-content-pilot-maldives-v1.php'
       - 'v2/seo-publishability-v1.php'
       - 'v2/seo-page-registry-v1.php'
       - 'v2/seo-page-graph-v1.php'
@@ -25,6 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/seo-content-catalog-v1.php
+          php -l v2/seo-content-pilot-maldives-catalog-v1.php
           php <<'PHP'
           <?php
           require 'v2/seo-content-catalog-v1.php';
@@ -117,6 +120,29 @@ jobs:
               if (!str_contains($e->getMessage(),'review-only')) fail('hotel_approved_wrong_error');
           }
 
+          require 'v2/seo-content-pilot-maldives-catalog-v1.php';
+          $maldivesCatalog=v2_seo_content_pilot_maldives_catalog();
+          if (count($maldivesCatalog['registry']??[])!==22) fail('maldives_registry_count');
+          if (v2_seo_content_candidate_paths($maldivesCatalog)!==[]) fail('maldives_review_family_became_candidate');
+          $hotelPaths=[];
+          foreach (($maldivesCatalog['registry']??[]) as $path=>$entry) {
+              if (($entry['type']??'')!=='hotel_tours') continue;
+              $hotelPaths[]=$path;
+              $report=$maldivesCatalog['reports'][$path]??[];
+              if (($report['status']??'')!=='review') fail('maldives_hotel_not_review');
+              if (($report['publishable']??false)!==true) fail('maldives_hotel_not_structurally_publishable');
+              if (($maldivesCatalog['graph'][$path]['parent']??null)!=='/country/maldives/') fail('maldives_hotel_parent');
+          }
+          if (count($hotelPaths)!==21) fail('maldives_hotel_count');
+          $parent=v2_seo_content_pilot_maldives();
+          $linked=[];
+          foreach (($parent['data']['related']??[]) as $link) {
+              $href=(string)($link['href']??'');
+              if (str_starts_with($href,'/country/maldives/hotel/')) $linked[]=$href;
+          }
+          sort($hotelPaths); sort($linked);
+          if ($hotelPaths!==$linked) fail('maldives_parent_catalog_drift');
+
           $unstable=$records[1];
           $unstable['status']='approved';
           $unstable['data']['breadcrumbs'][1]['href']='/country/turkey/?country=4';
@@ -143,5 +169,5 @@ jobs:
               fail('unknown_graph_target_allowed');
           } catch (InvalidArgumentException $e) {}
 
-          echo "V2_SEO_CONTENT_CATALOG_OK ids=1 statuses=1 registry=1 publishability=1 hotelTours=1 hotelApprovalGate=1 stableBreadcrumbs=1 graph=1 candidates=1\n";
+          echo "V2_SEO_CONTENT_CATALOG_OK ids=1 statuses=1 registry=1 publishability=1 hotelTours=1 hotelApprovalGate=1 maldivesFamily=21 maldivesCandidates=0 stableBreadcrumbs=1 graph=1 candidates=1\n";
           PHP
