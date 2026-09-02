@@ -7,7 +7,9 @@ require_once __DIR__ . '/seo-content-pilot-maldives-ayada-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-banyan-vabbinfaru-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-barcelo-nasandhura-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-brennia-kottefaru-v1.php';
+require_once __DIR__ . '/seo-content-pilot-maldives-cinnamon-hakuraa-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-coco-bodu-hithi-v1.php';
+require_once __DIR__ . '/seo-content-pilot-maldives-dhawa-ihuru-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-furaveri-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-grand-park-kodhipparu-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-hard-rock-v1.php';
@@ -29,10 +31,6 @@ require_once __DIR__ . '/seo-content-pilot-maldives-villa-nautica-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-villa-park-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-westin-v1.php';
 
-/**
- * Review-only Maldives country -> hotel-tour catalog.
- * It has no routing, sitemap, canonical or indexation side effects.
- */
 function v2_seo_content_pilot_maldives_catalog(): array
 {
     $records = [
@@ -43,7 +41,9 @@ function v2_seo_content_pilot_maldives_catalog(): array
         v2_seo_content_pilot_maldives_banyan_vabbinfaru(),
         v2_seo_content_pilot_maldives_barcelo_nasandhura(),
         v2_seo_content_pilot_maldives_brennia_kottefaru(),
+        v2_seo_content_pilot_maldives_cinnamon_hakuraa(),
         v2_seo_content_pilot_maldives_coco_bodu_hithi(),
+        v2_seo_content_pilot_maldives_dhawa_ihuru(),
         v2_seo_content_pilot_maldives_furaveri(),
         v2_seo_content_pilot_maldives_grand_park_kodhipparu(),
         v2_seo_content_pilot_maldives_hard_rock(),
@@ -72,6 +72,5 @@ function v2_seo_content_pilot_maldives_catalog(): array
         if ($path === '') throw new InvalidArgumentException('Maldives hotel-tour catalog record is missing path');
         $relations[$path] = ['parent' => '/country/maldives/'];
     }
-
     return v2_seo_content_catalog($records, $relations);
 }
