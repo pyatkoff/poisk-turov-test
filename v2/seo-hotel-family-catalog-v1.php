@@ -5,6 +5,7 @@ require_once __DIR__ . '/seo-content-catalog-v1.php';
  * Build a review-only hotel-tour family around one country editorial record.
  *
  * This helper keeps the family relationship explicit and fail-closed:
+ * - the parent itself must be an isolated review record;
  * - every hotel child must belong to the same verified country ID;
  * - every child route must live below the country `/hotel/` namespace;
  * - the country editorial `related` list must match the hotel record set exactly;
@@ -16,6 +17,9 @@ function v2_seo_hotel_family_catalog(array $countryRecord, array $hotelRecords):
 {
     if (($countryRecord['type'] ?? '') !== 'country') {
         throw new InvalidArgumentException('SEO hotel family requires a country parent record');
+    }
+    if (($countryRecord['status'] ?? '') !== 'review') {
+        throw new InvalidArgumentException('SEO hotel family parent must remain review-only');
     }
 
     $countryPath = v2_seo_registry_path($countryRecord['path'] ?? '');
