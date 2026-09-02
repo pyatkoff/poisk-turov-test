@@ -12,6 +12,7 @@ body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:no
 body.search3-preview.search3-has-results .results-search-summary{width:100%!important;max-width:none!important;margin-left:0!important;margin-right:0!important}
 /* The shared DS2 result-state also enlarges mature production cards. Search3 owns the compact maket7 card geometry in preview. */
 @media(min-width:1025px){
+body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) .results-tools--ds2{padding-left:224px!important;padding-right:0!important}
 body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-main{display:grid!important;grid-template-columns:276px minmax(0,1fr)!important;align-items:stretch!important;gap:0!important;min-height:156px!important}
 body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo{width:auto!important;height:156px!important;min-height:156px!important;max-height:156px!important;border-radius:0!important}
 body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-body{display:grid!important;grid-template-columns:minmax(0,1fr) 180px!important;grid-template-rows:auto auto auto 1fr auto!important;column-gap:16px!important;min-width:0!important;padding:12px 14px 11px!important}
