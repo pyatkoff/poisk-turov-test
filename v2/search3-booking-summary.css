@@ -9,9 +9,14 @@
 .search3-booking-summary dl>div{display:grid;grid-template-columns:82px minmax(0,1fr);gap:10px;padding:7px 0;border-top:1px solid var(--at-line-soft)}
 .search3-booking-summary dt{color:var(--at-muted);font:700 8px/1.3 var(--at-font)}
 .search3-booking-summary dd{min-width:0;margin:0;color:var(--at-ink);font:800 9px/1.3 var(--at-font);overflow-wrap:anywhere}
+.search3-booking-summary__flight-costs{display:grid;gap:6px;margin-top:9px;padding:9px 10px;border-radius:8px;background:var(--at-soft-blue)}
+.search3-booking-summary__flight-costs>div{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.search3-booking-summary__flight-costs span{color:var(--at-muted);font:750 8px/1.25 var(--at-font)}
+.search3-booking-summary__flight-costs b{color:var(--at-ink);font:900 9px/1 var(--at-font);white-space:nowrap}
 .search3-booking-summary__total{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-top:10px;padding-top:11px;border-top:1px solid var(--at-line)}
 .search3-booking-summary__total span{color:var(--at-muted);font:800 9px/1.2 var(--at-font)}
 .search3-booking-summary__total strong{color:var(--at-ink);font:950 19px/1 var(--at-font);white-space:nowrap}
+.search3-booking-summary__price-note{margin:7px 0 0;color:var(--at-muted);font:700 7px/1.35 var(--at-font)}
 @media(min-width:1000px){
 body.search3-preview #selectedTour .search3-lead-shell{grid-column:1/-1;grid-template-columns:minmax(0,1fr) 290px;align-items:start;margin-top:12px}
 body.search3-preview #selectedTour .search3-lead-shell>.lead-form{grid-column:1;margin-top:0!important;min-height:100%}
