@@ -35,6 +35,22 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     catch (_) { return false; }
   }
 
+  async function forceLeadState(state, detail = {}) {
+    const event = state === 'sending' ? 'lead-started' : state === 'success' ? 'lead-success' : 'lead-error';
+    await page.evaluate(({ event, detail }) => window.dispatchEvent(new CustomEvent('v2:' + event, { detail: Object.assign({ previewSimulation: true }, detail) })), { event, detail });
+    try {
+      await page.waitForFunction(expected => {
+        const form = document.querySelector('#selectedTour .lead-form');
+        return !!form && form.dataset.search3LeadState === expected;
+      }, state, { timeout: 3000 });
+      return true;
+    } catch (_) {
+      const actual = await page.locator('#selectedTour .lead-form').first().getAttribute('data-search3-lead-state').catch(() => null);
+      report.errors.push(`lead state mismatch: expected ${state}, got ${actual || 'none'}`);
+      return false;
+    }
+  }
+
   try {
     const response = await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
     report.http = response ? response.status() : 0;
@@ -92,15 +108,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
             }
             report.finalReviewMode = finalMode;
             await sleep(400);
-            await snap('06-final-review', '#selectedTour .search3-lead-shell, #selectedTour .lead-form, #selectedTour');
+            await snap('06-final-review', '#selectedTour');
 
             const leadForm = page.locator('#selectedTour .lead-form').first();
             if (await leadForm.count()) {
-              await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-started', { detail: { previewSimulation: true } })));
+              report.leadStates = {};
+              report.leadStates.sending = await forceLeadState('sending');
               await sleep(250); await snap('07-lead-sending', '#selectedTour .lead-form');
-              await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-success', { detail: { previewSimulation: true, leadId: 'PREVIEW' } })));
+              report.leadStates.success = await forceLeadState('success', { leadId: 'PREVIEW' });
               await sleep(250); await snap('08-lead-success', '#selectedTour .lead-form');
-              await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-error', { detail: { previewSimulation: true } })));
+              report.leadStates.error = await forceLeadState('error');
               await sleep(250); await snap('09-lead-error', '#selectedTour .lead-form');
             } else report.errors.push('lead form missing after final review');
           }
