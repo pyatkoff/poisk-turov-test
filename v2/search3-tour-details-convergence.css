@@ -37,4 +37,25 @@ html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final
 html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .room-detail-toggle{width:100%!important;min-height:48px!important;border-radius:10px!important;text-align:left!important}
 html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights{grid-column:1/3!important;grid-row:9!important;margin-top:12px!important}
 html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .search3-flight-continue{grid-column:1/3!important;grid-row:10!important}
+/* Keep the sticky real-tour rail alongside the full flight-selection area. The previous
+   grid span ended before row 9, so it disappeared exactly when QA scrolled to flights. */
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail{grid-column:3!important;grid-row:3/11!important;align-self:start!important;position:sticky!important;top:18px!important}
+/* Tourvisor returns paired outbound/return variants. Preserve that pairing and all data,
+   but present each pair compactly like the approved flight board instead of two tall cards. */
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-variant{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;align-items:stretch!important;border-radius:11px!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-choice{grid-column:1/-1!important;min-height:42px!important;padding:8px 10px!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-segment{min-width:0!important;padding:9px 10px!important;border-top:1px solid var(--at-line-soft)!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-segment:nth-of-type(2){border-right:1px solid var(--at-line-soft)!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-segment-title{margin-bottom:6px!important;gap:8px!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-segment-title strong{font-size:9px!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-segment-title span{font-size:7.5px!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-route{grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)!important;gap:5px!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-route b{font-size:9px!important;line-height:1.15!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-route span{font-size:7.5px!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-arrow{font-size:11px!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-baggage{margin-top:6px!important;font-size:7.5px!important}
+html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .flight-fuel{grid-column:1/-1!important;padding:7px 10px!important;font-size:7.5px!important}
+}
+@media(max-width:999px){
+body.search3-preview #selectedTour:not(.search3-final-review) .flight-variant{display:block!important}
 }
