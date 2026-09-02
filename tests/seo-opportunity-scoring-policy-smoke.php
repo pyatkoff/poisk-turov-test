@@ -46,7 +46,7 @@ if(($p['state']??'')!=='opportunity_scoring_policy_invalid'||!in_array('weights_
 
 $noMatch=$packet; $noMatch['demand']['metrics']['impressions']=0;
 $r=v2_seo_opportunity_score_evidence_packet($noMatch,$policy);
-if(($r['state']??'')!=='opportunity_scoring_blocked'||($r['score']??1)!==null||!in_array('demand_no_matching_rule',$r['errors']??[],true))scoring_fail('no_match');
+if(($r['state']??'')!=='opportunity_scoring_blocked'||!array_key_exists('score',$r)||$r['score']!==null||!in_array('demand_no_matching_rule',$r['errors']??[],true))scoring_fail('no_match');
 
 $stale=$packet; $stale['evidence_fresh']=false;
 $r=v2_seo_opportunity_score_evidence_packet($stale,$policy);
