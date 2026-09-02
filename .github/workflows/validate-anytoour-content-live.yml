@@ -59,16 +59,26 @@ jobs:
           with open(file_name, encoding='utf-8') as fh:
               parser.feed(fh.read())
 
+          candidates = []
           for href in parser.hrefs:
               parsed = urlparse(href)
               if parsed.path != '/poisk-turov/':
                   continue
+              candidates.append(href)
               query = parse_qs(parsed.query)
               if query.get('country') != [expected_country]:
                   continue
               if expected_region and query.get('region') != [expected_region]:
                   continue
               sys.exit(0)
+
+          print(
+              'SEARCH_HANDOFF_MISMATCH',
+              f'expected_country={expected_country}',
+              f'expected_region={expected_region or "-"}',
+              'candidates=' + repr(candidates),
+              file=sys.stderr,
+          )
           sys.exit(1)
           PY
           }
