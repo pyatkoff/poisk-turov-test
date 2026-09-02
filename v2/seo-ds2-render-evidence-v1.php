@@ -23,7 +23,18 @@ function v2_seo_ds2_render_evidence(array $rows, ?int $nowEpoch=null): array
         $fresh=$captured>0&&$captured<=$nowEpoch&&$nowEpoch-$captured<=86400;
         if(!$fresh)$errors[]='stale_render_evidence:'.$key;
         if($source==='')$errors[]='missing_source_ref:'.$key;
-        foreach(['http_ok','no_horizontal_overflow','primary_action_height_ok','search_handoff_contract_ok','editorial_hierarchy_ok','fresh_claim_boundary_ok'] as $check){
+        foreach([
+            'http_ok',
+            'no_horizontal_overflow',
+            'primary_action_height_ok',
+            'search_handoff_contract_ok',
+            'secondary_search_action_height_ok',
+            'secondary_search_handoff_contract_ok',
+            'editorial_hierarchy_ok',
+            'related_navigation_ok',
+            'content_order_ok',
+            'fresh_claim_boundary_ok',
+        ] as $check){
             if(($row[$check]??false)!==true)$errors[]='failed_'.$check.':'.$key;
         }
         if($family==='hotel_tours'){
