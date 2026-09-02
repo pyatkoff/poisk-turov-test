@@ -15,6 +15,9 @@ function v2_seo_egypt_hotel_manifest(): array
         ['file'=>'seo-content-pilot-egypt-tivoli-v1.php','function'=>'v2_seo_content_pilot_egypt_tivoli','label'=>'Туры в TIVOLI HOTEL AQUA PARK','href'=>'/country/egypt/hotel/tivoli-hotel-aqua-park-511/'],
         ['file'=>'seo-content-pilot-egypt-old-vic-v1.php','function'=>'v2_seo_content_pilot_egypt_old_vic','label'=>'Туры в OLD VIC SHARM','href'=>'/country/egypt/hotel/old-vic-sharm-56094/'],
         ['file'=>'seo-content-pilot-egypt-faraana-v1.php','function'=>'v2_seo_content_pilot_egypt_faraana','label'=>'Туры в FARAANA HEIGHTS AQUA PARK','href'=>'/country/egypt/hotel/faraana-heights-aqua-park-1968/'],
+        ['file'=>'seo-content-pilot-egypt-el-khan-v1.php','function'=>'v2_seo_content_pilot_egypt_el_khan','label'=>'Туры в EL KHAN SHARM HOTEL','href'=>'/country/egypt/hotel/el-khan-sharm-hotel-81245/'],
+        ['file'=>'seo-content-pilot-egypt-swiss-heaven-v1.php','function'=>'v2_seo_content_pilot_egypt_swiss_heaven','label'=>'Туры в SWISS HEAVEN SHARMING INN','href'=>'/country/egypt/hotel/swiss-heaven-sharming-inn-453/'],
+        ['file'=>'seo-content-pilot-egypt-viking-v1.php','function'=>'v2_seo_content_pilot_egypt_viking','label'=>'Туры в VIKING CLUB','href'=>'/country/egypt/hotel/viking-club-518/'],
     ];
 }
 
