@@ -39,6 +39,9 @@ function v2_seo_content_catalog(array $records, array $relations = []): array
         $status = v2_seo_content_status($record['status'] ?? 'draft');
         $path = v2_seo_registry_path($record['path'] ?? '');
         $type = strtolower(trim((string)($record['type'] ?? '')));
+        if ($type === 'hotel_tours' && $status === 'approved') {
+            throw new InvalidArgumentException('Hotel-tour records are review-only until a separate indexation launch decision');
+        }
         $data = is_array($record['data'] ?? null) ? $record['data'] : [];
 
         $entries[] = ['path' => $path, 'type' => $type, 'data' => $data];
