@@ -39,6 +39,9 @@ function v2_seo_turkey_hotel_manifest(): array
         ['file'=>'seo-content-pilot-turkey-meril-beach-v1.php','function'=>'v2_seo_content_pilot_turkey_meril_beach','label'=>'Туры в MERIL BEACH HOTEL TURUNC ADULTS ONLY 16+','href'=>'/country/turkey/hotel/meril-beach-hotel-turunc-adults-only-16-42916/'],
         ['file'=>'seo-content-pilot-turkey-nora-family-club-v1.php','function'=>'v2_seo_content_pilot_turkey_nora_family_club','label'=>'Туры в THE NORA HOTELS FAMILY CLUB','href'=>'/country/turkey/hotel/the-nora-hotels-family-club-ex-scylax-family-club-71071/'],
         ['file'=>'seo-content-pilot-turkey-palmora-lara-v1.php','function'=>'v2_seo_content_pilot_turkey_palmora_lara','label'=>'Туры в PALMORA LARA HOTEL','href'=>'/country/turkey/hotel/palmora-lara-hotel-ex-jura-hotels-lara-resort-65770/'],
+        ['file'=>'seo-content-pilot-turkey-perre-delta-v1.php','function'=>'v2_seo_content_pilot_turkey_perre_delta','label'=>'Туры в PERRE DELTA','href'=>'/country/turkey/hotel/perre-delta-ex-ganita-delta-resort-55200/'],
+        ['file'=>'seo-content-pilot-turkey-club-selen-marmaris-v1.php','function'=>'v2_seo_content_pilot_turkey_club_selen_marmaris','label'=>'Туры в CLUB SELEN MARMARIS','href'=>'/country/turkey/hotel/club-selen-marmaris-ex-selen-hotel-9332/'],
+        ['file'=>'seo-content-pilot-turkey-afytos-bodrum-city-v1.php','function'=>'v2_seo_content_pilot_turkey_afytos_bodrum_city','label'=>'Туры в AFYTOS BODRUM CITY','href'=>'/country/turkey/hotel/afytos-bodrum-city-71506/'],
     ];
 }
 
