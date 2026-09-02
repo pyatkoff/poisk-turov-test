@@ -1,0 +1,106 @@
+name: SEO2 reference hero visual once
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/seo2-reference-hero-visual-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Start local SEO reference runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:8099 -t v2 > /tmp/seo2-reference-php.log 2>&1 &
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8099/country/turkey/kemer/ >/dev/null; then exit 0; fi
+            sleep 0.25
+          done
+          cat /tmp/seo2-reference-php.log >&2
+          exit 1
+
+      - name: Capture Kemer and Westin hero references
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p seo2-reference-hero-visual
+          cat > /tmp/seo2-reference-hero-visual.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          const refs = [
+            ['kemer','http://127.0.0.1:8099/country/turkey/kemer/','Подобрать тур в Кемер'],
+            ['westin','http://127.0.0.1:8099/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/','Найти туры в этот отель'],
+          ];
+          const viewports = [
+            ['mobile-375',375,812],
+            ['desktop-1440',1440,1000],
+          ];
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const report=[];
+            let failed=false;
+            for(const [key,url,label] of refs){
+              for(const [vp,width,height] of viewports){
+                const context=await browser.newContext({viewport:{width,height}});
+                const page=await context.newPage();
+                const errors=[];
+                page.on('pageerror',e=>errors.push(String(e).slice(0,500)));
+                const response=await page.goto(url,{waitUntil:'networkidle',timeout:30000});
+                const state=await page.evaluate(expected=>{
+                  const action=document.querySelector('.sp-hero-actions .sp-primary');
+                  const note=document.querySelector('.sp-hero-note');
+                  return {
+                    h1:document.querySelectorAll('h1').length,
+                    action:action?.textContent.trim()||'',
+                    href:action?.getAttribute('href')||'',
+                    note:note?.textContent.trim()||'',
+                    actionWidth:action?Math.round(action.getBoundingClientRect().width):0,
+                    viewport:document.documentElement.clientWidth,
+                    robots:document.querySelector('meta[name="robots"]')?.content||'',
+                    overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2||document.body.scrollWidth>document.documentElement.clientWidth+2,
+                    expected,
+                  };
+                },label);
+                await page.screenshot({path:`seo2-reference-hero-visual/${key}-${vp}.png`,fullPage:true});
+                const item={key,vp,http:response?.status()||0,errors,...state};
+                report.push(item);
+                const hrefOk=state.href.startsWith('/poisk-turov/')&&state.href.includes('country=');
+                const mobileWidthOk=width>560||state.actionWidth>=state.viewport-48;
+                const hotelNoindex=key!=='westin'||state.robots.includes('noindex');
+                const bad=item.http!==200||errors.length||state.h1!==1||state.action!==label||!hrefOk||!state.note.includes('Актуальные даты и стоимость')||state.overflow||!mobileWidthOk||!hotelNoindex;
+                if(bad) failed=true;
+                console.log(`SEO2_HERO_VISUAL key=${key} vp=${vp} http=${item.http} action=${JSON.stringify(state.action)} width=${state.actionWidth}/${state.viewport} overflow=${state.overflow}`);
+                await context.close();
+              }
+            }
+            fs.writeFileSync('seo2-reference-hero-visual/report.json',JSON.stringify(report,null,2));
+            await browser.close();
+            if(failed)process.exit(1);
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          NODE_PATH="$PWD/node_modules" node /tmp/seo2-reference-hero-visual.cjs
+
+      - name: Upload disposable hero visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo2-reference-hero-visual-${{ github.event.pull_request.number }}
+          path: seo2-reference-hero-visual/
+          retention-days: 3
