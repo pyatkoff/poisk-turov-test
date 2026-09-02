@@ -5,13 +5,17 @@ on:
     branches: [main]
     paths:
       - 'v2/seo-second-wave-country-review-v1.php'
+      - 'v2/seo-second-wave-country-launch-dossier-v1.php'
       - 'tests/seo-second-wave-country-review-smoke.php'
+      - 'tests/seo-second-wave-country-launch-dossier-smoke.php'
       - '.github/workflows/verify-anytoour-second-wave-review.yml'
   push:
     branches: [main]
     paths:
       - 'v2/seo-second-wave-country-review-v1.php'
+      - 'v2/seo-second-wave-country-launch-dossier-v1.php'
       - 'tests/seo-second-wave-country-review-smoke.php'
+      - 'tests/seo-second-wave-country-launch-dossier-smoke.php'
       - '.github/workflows/verify-anytoour-second-wave-review.yml'
   workflow_dispatch:
 
@@ -29,13 +33,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate review-only opportunity packet
+      - name: Validate review-only opportunity packet and prelaunch dossier
         shell: bash
         run: |
           set -euo pipefail
           php -l v2/seo-second-wave-country-review-v1.php >/dev/null
+          php -l v2/seo-second-wave-country-launch-dossier-v1.php >/dev/null
           php -l tests/seo-second-wave-country-review-smoke.php >/dev/null
+          php -l tests/seo-second-wave-country-launch-dossier-smoke.php >/dev/null
           php tests/seo-second-wave-country-review-smoke.php
+          php tests/seo-second-wave-country-launch-dossier-smoke.php
 
       - name: Capture fresh production identity evidence
         shell: bash
