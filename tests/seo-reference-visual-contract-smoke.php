@@ -23,6 +23,9 @@ $required = [
     '.sp-offer-action{width:100%!important;min-width:0',
     '.sp-related-card .sp-secondary',
     '.sp-seo-editorial-page .sp-search-callout',
+    '@media(min-width:769px){.sp-seo-editorial-page{gap:18px}',
+    '.sp-seo-editorial-page .sp-search-callout{display:grid;grid-template-columns:minmax(0,1fr) auto',
+    '.sp-seo-editorial-page .sp-search-callout .sp-actions{grid-column:2;grid-row:1/3',
 ];
 foreach ($required as $token) {
     if (strpos($css, $token) === false) {
@@ -52,4 +55,4 @@ if (strpos($hotel, "'Найти туры в этот отель'") === false || 
     fwrite(STDERR, "SEO_REFERENCE_VISUAL_FAIL:hotel_offer_focus\n");
     exit(6);
 }
-echo "SEO_REFERENCE_VISUAL_OK desktop=3 tablet=2 mobile=1 leadCard=1 balancedTail=1 heroCta=1 breadcrumbClamp=1 offerHierarchy=1 hotelOfferFocus=1\n";
+echo "SEO_REFERENCE_VISUAL_OK desktop=3 tablet=2 mobile=1 leadCard=1 balancedTail=1 heroCta=1 breadcrumbClamp=1 offerHierarchy=1 hotelOfferFocus=1 densityPass=1\n";
