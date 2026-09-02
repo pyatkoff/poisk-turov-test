@@ -1,0 +1,29 @@
+name: Validate SEO DS2 render evidence CLI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-ds2-render-evidence-v1.php'
+      - 'v2/seo-ds2-reference-acceptance-v1.php'
+      - 'v2/data/report-seo-ds2-render-evidence-v1.php'
+      - 'v2/data/report-seo-ds2-render-evidence-template-v1.php'
+      - 'tests/seo-ds2-render-evidence-cli-smoke.php'
+      - '.github/workflows/validate-seo-ds2-render-evidence-cli.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  ds2-render-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate review-only render intake
+        run: |
+          set -euo pipefail
+          php -l v2/data/report-seo-ds2-render-evidence-v1.php >/dev/null
+          php -l v2/data/report-seo-ds2-render-evidence-template-v1.php >/dev/null
+          php -l tests/seo-ds2-render-evidence-cli-smoke.php >/dev/null
+          php tests/seo-ds2-render-evidence-cli-smoke.php
