@@ -57,7 +57,8 @@ jobs:
           check_page '/country/' 'Туры по странам' 'https://anytoour.ru/country/'
           check_page '/rb/' 'Раннее бронирование без спешки' 'https://anytoour.ru/rb/'
           check_page '/country/turkey/' 'Туры в Турцию' 'https://anytoour.ru/country/turkey/' 'index,follow'
-          check_page '/country/egypt/' 'Туры в Египет' 'https://anytoour.ru/country/egypt/'
+          check_page '/country/egypt/' 'Туры в Египет' 'https://anytoour.ru/country/egypt/' 'index,follow'
+          check_page '/country/maldives/' 'Туры на Мальдивы' 'https://anytoour.ru/country/maldives/' 'index,follow'
           check_page '/country/oae/' 'Туры в ОАЭ' 'https://anytoour.ru/country/oae/'
           check_page '/country/tailand/' 'Туры в Таиланд' 'https://anytoour.ru/country/tailand/'
           check_page '/country/russia/' 'Туры по России' 'https://anytoour.ru/country/russia/'
@@ -68,6 +69,7 @@ jobs:
           check_page '/country/turkey/alanya/' 'Туры в Аланью' 'https://anytoour.ru/country/turkey/alanya/' 'index,follow'
           check_country_handoff turkey 4
           check_country_handoff egypt 1
+          check_country_handoff maldives 8
           check_country_handoff oae 9
           check_country_handoff tailand 2
           check_country_handoff russia 47
@@ -76,4 +78,4 @@ jobs:
           check_resort_handoff side 23
           check_resort_handoff belek 21
           check_resort_handoff alanya 19
-          echo 'ANYTOOUR_MIGRATED_CONTENT_OK'
+          echo 'ANYTOOUR_MIGRATED_CONTENT_OK controlled_indexable=8'
