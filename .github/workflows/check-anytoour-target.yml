@@ -2,10 +2,6 @@ name: Check anytoour.ru target
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/check-anytoour-target.yml'
 
 jobs:
   preflight:
