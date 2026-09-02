@@ -1,0 +1,24 @@
+/* Search3 flight selection visual contract. Uses only existing real flight data/controls. */
+body.search3-preview #selectedTour .tour-flights{scroll-margin-top:18px}
+body.search3-preview #selectedTour .flight-variants{display:grid;gap:10px}
+body.search3-preview #selectedTour .flight-variant{padding:0!important;border:1px solid var(--at-line)!important;background:#fff!important;overflow:hidden!important}
+body.search3-preview #selectedTour .flight-variant.is-selected{border-color:var(--at-brand)!important;background:#fff!important;box-shadow:0 0 0 1px var(--at-brand) inset!important}
+body.search3-preview #selectedTour .flight-choice{display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:9px!important;margin:0!important;padding:11px 13px!important;border-bottom:1px solid var(--at-line-soft)!important;background:#fafcff!important;cursor:pointer!important}
+body.search3-preview #selectedTour .flight-choice input{width:16px!important;height:16px!important;margin:0!important;accent-color:var(--at-brand)!important}
+body.search3-preview #selectedTour .flight-choice span{color:var(--at-ink)!important;font:850 11px/1.25 var(--at-font)!important}
+body.search3-preview #selectedTour .flight-choice b{color:var(--at-ink)!important;font:950 13px/1 var(--at-font)!important;white-space:nowrap!important}
+body.search3-preview #selectedTour .flight-segment{padding:12px 13px!important;border:0!important;border-top:1px solid var(--at-line-soft)!important;background:#fff!important}
+body.search3-preview #selectedTour .flight-choice+.flight-segment{border-top:0!important}
+body.search3-preview #selectedTour .flight-segment-title{display:flex!important;align-items:baseline!important;justify-content:space-between!important;gap:12px!important;margin-bottom:9px!important}
+body.search3-preview #selectedTour .flight-segment-title strong{color:var(--at-ink)!important;font:900 11px/1.2 var(--at-font)!important}
+body.search3-preview #selectedTour .flight-segment-title span{min-width:0;color:var(--at-muted)!important;font:750 9px/1.25 var(--at-font)!important;text-align:right!important}
+body.search3-preview #selectedTour .flight-route{display:grid!important;grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr)!important;align-items:center!important;gap:8px!important}
+body.search3-preview #selectedTour .flight-route>div:not(.flight-arrow){display:grid!important;gap:3px!important}
+body.search3-preview #selectedTour .flight-route b{color:var(--at-ink)!important;font:900 11px/1.2 var(--at-font)!important}
+body.search3-preview #selectedTour .flight-route span{color:var(--at-muted)!important;font:750 9px/1.25 var(--at-font)!important}
+body.search3-preview #selectedTour .flight-arrow{display:grid!important;place-items:center!important;color:var(--at-brand)!important;font-size:15px!important}
+body.search3-preview #selectedTour .flight-baggage,body.search3-preview #selectedTour .flight-fuel{margin-top:9px!important;color:var(--at-muted)!important;font:750 9px/1.35 var(--at-font)!important}
+body.search3-preview #selectedTour .flight-fuel{padding:9px 13px!important;margin-top:0!important;border-top:1px solid var(--at-line-soft)!important;background:#fafcff!important}
+body.search3-preview #selectedTour .lead-form{scroll-margin-top:18px}
+@media(min-width:1000px){body.search3-preview #selectedTour .tour-flights{padding:18px 20px!important}body.search3-preview #selectedTour .flight-variants{grid-template-columns:1fr!important}.flight-segment-title span{max-width:55%}}
+@media(max-width:640px){body.search3-preview #selectedTour .flight-choice{padding:9px 10px!important;gap:7px!important}body.search3-preview #selectedTour .flight-choice span{font-size:9px!important}body.search3-preview #selectedTour .flight-choice b{font-size:11px!important}body.search3-preview #selectedTour .flight-segment{padding:10px!important}body.search3-preview #selectedTour .flight-segment-title{align-items:flex-start!important;flex-direction:column!important;gap:2px!important}body.search3-preview #selectedTour .flight-segment-title span{text-align:left!important}body.search3-preview #selectedTour .flight-route{grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr)!important;gap:5px!important}body.search3-preview #selectedTour .flight-route b{font-size:9px!important}body.search3-preview #selectedTour .flight-route span,body.search3-preview #selectedTour .flight-baggage,body.search3-preview #selectedTour .flight-fuel{font-size:8px!important}}
