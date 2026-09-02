@@ -1,0 +1,27 @@
+name: Validate SEO seasonal content evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-seasonal-content-evidence-v1.php'
+      - 'tests/seo-seasonal-content-evidence-smoke.php'
+      - '.github/workflows/validate-seo-seasonal-content-evidence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  content-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate review-only content evidence boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-seasonal-content-evidence-v1.php >/dev/null
+          php -l tests/seo-seasonal-content-evidence-smoke.php >/dev/null
+          php tests/seo-seasonal-content-evidence-smoke.php
