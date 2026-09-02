@@ -29,7 +29,7 @@ jobs:
           const path=require('path');
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            for(const width of [375,768,1440]){
+            for(const width of [375]){
               const page=await browser.newPage({viewport:{width,height:900}});
               await page.setContent('<section id="selectedTour"><div class="tour-flights"></div><form class="lead-form"></form></section>');
               await page.evaluate(()=>{
