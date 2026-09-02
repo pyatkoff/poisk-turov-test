@@ -65,6 +65,12 @@ jobs:
           '
           scp "${opts[@]}" "$remote:$root/data/seo2-plan-once/readiness.json" "$work/readiness.json"
           scp "${opts[@]}" "$remote:$root/data/seo2-plan-once/identities.json" "$work/identities.json"
+      - name: Diagnose family binding safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/seo2-seasonal-plan"
+          php -r 'require "v2/seo-seasonal-family-registry-v1.php";require "v2/seo-seasonal-family-binding-v1.php";$j=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);foreach(["egypt","turkey","maldives"] as $f){$r=v2_seo_seasonal_family_registry_get($f);$types=$r["supported_page_types"];$x=$j;$x["identities"]=array_values(array_filter($j["identities"],fn($v)=>is_array($v)&&(int)($v["country_id"]??0)===(int)$r["country_id"]&&in_array((string)($v["page_type"]??""),$types,true)));$x["identity_count"]=count($x["identities"]);$x["blocked"]=[];$x["blocked_count"]=0;$b=v2_seo_seasonal_family_binding($r["country"],$r["resorts"],$x);$codes=[];foreach($b["blocked"] as $row)foreach(($row["errors"]??[]) as $e)$codes[$e]=($codes[$e]??0)+1;ksort($codes);printf("SEO2_BINDING family=%s source=%d bound=%d blocked=%d errors=%s\n",$f,$x["identity_count"],$b["bound_count"],$b["blocked_count"],json_encode($codes));}' "$work/identities.json"
       - name: Build explicit review-only plans
         shell: bash
         run: |
@@ -75,6 +81,7 @@ jobs:
           php v2/data/report-seo-seasonal-review-plan-v1.php --readiness="$work/readiness.json" --identities="$work/identities.json" --family=maldives --page-keys=month:1:8:2026-09 --max-items=1 --require-items=1 > "$work/maldives-plan.json"
           php -r '$files=array_slice($argv,1);foreach($files as $f){$j=json_decode(file_get_contents($f),true,512,JSON_THROW_ON_ERROR);if(($j["publication_allowed"]??true)!==false||($j["copy_allowed"]??true)!==false||($j["publication_candidates"]??null)!==[])exit(2);printf("SEO2_SEASONAL_PLAN family=%s items=%d score=%d blocked=%d valid_until=%d\n",$j["family"]??"",$j["item_count"]??0,$j["coverage_score"]??0,$j["family_blocked_count"]??0,$j["evidence_valid_until_epoch"]??0);}' "$work/egypt-plan.json" "$work/turkey-plan.json" "$work/maldives-plan.json"
       - name: Upload disposable plans
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: seo2-seasonal-three-country-plan-${{ github.event.pull_request.number }}
