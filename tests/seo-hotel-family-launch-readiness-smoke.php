@@ -131,3 +131,4 @@ foreach ($reference as $item) {
 }
 
 echo "SEO_HOTEL_FAMILY_SUMMARY_OK families=2 ready=1 staleBlocked=1 ds2References=2\n";
+require __DIR__ . '/seo-hotel-family-integrity-smoke.php';
