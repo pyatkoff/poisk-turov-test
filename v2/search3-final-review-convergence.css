@@ -87,3 +87,45 @@ html body.search3-preview.search3-selected-open #selectedTour.search3-final-revi
 html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell{display:grid!important;grid-column:1/-1!important;margin:0!important}
 html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell>.lead-form{display:block!important;grid-column:1!important;grid-row:1!important;margin:0!important}
 html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell>.search3-booking-summary{display:block!important;grid-column:2!important;grid-row:1!important;margin:0!important}
+
+/* Maket7 desktop final-review: compact hotel card + content rail, cost-only sticky aside.
+   The data attribute is set only for the real final-review state by search3-booking-summary.js,
+   giving these rules enough specificity to outrank the older screenshot QA layer. */
+@media(min-width:1000px){
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"]{display:grid!important;grid-template-columns:260px minmax(0,1fr) 300px!important;column-gap:14px!important;row-gap:0!important;align-items:start!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .back-results{grid-column:1/-1!important;grid-row:1!important;margin-bottom:10px!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-stepper{grid-column:1/-1!important;grid-row:2!important;margin:0 0 12px!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-review-heading{grid-column:1/-1!important;grid-row:3!important;margin:0 0 10px!important;padding:0!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-picture{display:block!important;grid-column:1!important;grid-row:4!important;width:100%!important;height:164px!important;min-height:164px!important;margin:0!important;border:1px solid var(--at-line)!important;border-right:0!important;border-radius:12px 0 0 12px!important;overflow:hidden!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-picture img{width:100%!important;height:100%!important;object-fit:cover!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-head{display:grid!important;grid-column:2!important;grid-row:4!important;grid-template-columns:minmax(0,1fr)!important;align-content:center!important;min-height:164px!important;height:164px!important;margin:0!important;padding:18px 20px!important;border:1px solid var(--at-line)!important;border-left:0!important;border-radius:0 12px 12px 0!important;background:#fff!important;box-sizing:border-box!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-head h2{font-size:22px!important;line-height:1.08!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-head p{font-size:10px!important;line-height:1.35!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-price{display:none!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .facts,
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .facts-secondary-toggle,
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-choice-summary,
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .hotel-desc,
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .hotel-desc-toggle,
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .room-details-host,
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-confidence,
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-tour-detail-rail{display:none!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .tour-flights{display:block!important;grid-column:1/3!important;grid-row:5!important;width:100%!important;max-width:none!important;margin:12px 0 0!important;padding:14px 16px!important;box-sizing:border-box!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-final-sections{display:block!important;grid-column:1/3!important;grid-row:6!important;width:100%!important;margin:12px 0 0!important;box-sizing:border-box!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-lead-shell{display:contents!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary{display:block!important;grid-column:3!important;grid-row:4/7!important;align-self:start!important;position:sticky!important;top:18px!important;margin:0!important;padding:18px!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important;box-sizing:border-box!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__image,
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__hotel,
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__place,
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary dl{display:none!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__title{margin:0 0 14px!important;font-size:17px!important;line-height:1.15!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__flight-costs{margin:0 0 12px!important;padding:10px 12px!important;border-radius:9px!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__flight-costs>div{min-height:24px!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__total{margin:0!important;padding:14px 0 0!important;border-top:1px solid var(--at-line)!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__total span{font-size:10px!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__total strong{font-size:26px!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__price-note{margin:8px 0 0!important;font-size:8px!important;line-height:1.4!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-summary-actions{display:block!important;margin-top:16px!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-summary-submit{width:100%!important;min-height:48px!important;border-radius:8px!important;font-size:11px!important}
+html body.search3-preview.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-summary-actions p{margin:8px 0 0!important;font-size:7.5px!important;line-height:1.4!important}
+}
