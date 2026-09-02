@@ -5,6 +5,8 @@ require_once __DIR__ . '/seo-seasonal-verified-content-evidence-v1.php';
 /** Authored review-only seasonal content prototypes backed by official source claims. */
 function v2_seo_seasonal_review_content_prototypes(): array
 {
+    $trUrl='https://www.mgm.gov.tr/veridegerlendirme/il-ve-ilceler-istatistik.aspx?m=ANTALYA';
+    $mvUrl='https://www.meteorology.gov.mv/climate';
     return [
         'antalya-september'=>[
             'state'=>'authored_review_only_requires_fresh_identity_rebind','page_key'=>'resort_month:1:4:20:2026-09','country_id'=>4,'region_id'=>20,
@@ -15,11 +17,11 @@ function v2_seo_seasonal_review_content_prototypes(): array
                 ['heading'=>'Осадки','text_template'=>'Средний месячный объём осадков в сентябре — {{precipitation}}, а среднее число дождливых дней — {{rainy_days}}.','claim_keys'=>['precipitation','rainy_days']],
             ],
             'claims'=>[
-                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'avg_temp','type'=>'climate_temperature','value'=>'25,3 °C','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>'https://www.mgm.gov.tr/veridegerlendirme/il-ve-ilceler-istatistik.aspx?m=ANTALYA','observed_at'=>'2026-09-02T11:17:00Z'],
-                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'avg_high','type'=>'climate_temperature','value'=>'31,2 °C','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>'https://www.mgm.gov.tr/veridegerlendirme/il-ve-ilceler-istatistik.aspx?m=ANTALYA','observed_at'=>'2026-09-02T11:17:00Z'],
-                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'avg_low','type'=>'climate_temperature','value'=>'19,6 °C','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>'https://www.mgm.gov.tr/veridegerlendirme/il-ve-ilceler-istatistik.aspx?m=ANTALYA','observed_at'=>'2026-09-02T11:17:00Z'],
-                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'precipitation','type'=>'climate_precipitation','value'=>'16,7 мм','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>'https://www.mgm.gov.tr/veridegerlendirme/il-ve-ilceler-istatistik.aspx?m=ANTALYA','observed_at'=>'2026-09-02T11:17:00Z'],
-                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'rainy_days','type'=>'climate_precipitation','value'=>'1,71 дня','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>'https://www.mgm.gov.tr/veridegerlendirme/il-ve-ilceler-istatistik.aspx?m=ANTALYA','observed_at'=>'2026-09-02T11:17:00Z'],
+                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'avg_temp','type'=>'climate_temperature','value'=>'25,3 °C','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
+                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'avg_high','type'=>'climate_temperature','value'=>'31,2 °C','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
+                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'avg_low','type'=>'climate_temperature','value'=>'19,6 °C','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
+                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'precipitation','type'=>'climate_precipitation','value'=>'16,7 мм','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
+                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'rainy_days','type'=>'climate_precipitation','value'=>'1,71 дня','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
             ],
             'source_note'=>'MGM official climate statistics; source shows measurement period 1930–2025. Revalidate source and fresh production identity before any publication decision.',
             'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_creation_allowed'=>false,
@@ -34,9 +36,9 @@ function v2_seo_seasonal_review_content_prototypes(): array
                 ['heading'=>'Солнечный свет','text_template'=>'Для месяцев вне января–марта MMS указывает в среднем {{daylight_range}} солнечного света; этот ориентир относится и к сентябрю.','claim_keys'=>['daylight_range']],
             ],
             'claims'=>[
-                ['country_id'=>8,'page_key'=>'month:1:8:2026-09','claim_key'=>'temperature_range','type'=>'climate_temperature','value'=>'25–32 °C','source_class'=>'official_meteorological','source_id'=>'mv-mms-climate','source_url'=>'https://www.meteorology.gov.mv/climate','observed_at'=>'2026-09-02T11:17:00Z'],
-                ['country_id'=>8,'page_key'=>'month:1:8:2026-09','claim_key'=>'wet_season','type'=>'climate_precipitation','value'=>'влажный сезон обычно продолжается с середины мая до ноября, а в период юго-западного муссона осадков больше','source_class'=>'official_meteorological','source_id'=>'mv-mms-climate','source_url'=>'https://www.meteorology.gov.mv/climate','observed_at'=>'2026-09-02T11:17:00Z'],
-                ['country_id'=>8,'page_key'=>'month:1:8:2026-09','claim_key'=>'daylight_range','type'=>'daylight','value'=>'7–9 часов','source_class'=>'official_meteorological','source_id'=>'mv-mms-climate','source_url'=>'https://www.meteorology.gov.mv/climate','observed_at'=>'2026-09-02T11:17:00Z'],
+                ['country_id'=>8,'page_key'=>'month:1:8:2026-09','claim_key'=>'temperature_range','type'=>'climate_temperature','value'=>'25–32 °C','source_class'=>'official_meteorological','source_id'=>'mv-mms-climate','source_url'=>$mvUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
+                ['country_id'=>8,'page_key'=>'month:1:8:2026-09','claim_key'=>'wet_season','type'=>'climate_precipitation','value'=>'влажный сезон обычно продолжается с середины мая до ноября, а в период юго-западного муссона осадков больше','source_class'=>'official_meteorological','source_id'=>'mv-mms-climate','source_url'=>$mvUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
+                ['country_id'=>8,'page_key'=>'month:1:8:2026-09','claim_key'=>'daylight_range','type'=>'daylight','value'=>'7–9 часов','source_class'=>'official_meteorological','source_id'=>'mv-mms-climate','source_url'=>$mvUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
             ],
             'source_note'=>'Maldives Meteorological Service official climate page. Revalidate source and fresh production identity before any publication decision.',
             'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_creation_allowed'=>false,
@@ -48,7 +50,19 @@ function v2_seo_seasonal_render_review_content(array $record, ?int $nowEpoch=nul
 {
     if(($record['state']??'')!=='authored_review_only_requires_fresh_identity_rebind') throw new InvalidArgumentException('Seasonal content prototype state is invalid');
     foreach(['publication_allowed','indexation_allowed','sitemap_allowed','route_creation_allowed'] as $flag) if(($record[$flag]??true)!==false) throw new InvalidArgumentException('Seasonal content prototype crossed launch boundary');
-    $evidence=v2_seo_seasonal_verified_content_evidence($record['claims']??[],$nowEpoch);
+    $pageKey=trim((string)($record['page_key']??'')); $countryId=(int)($record['country_id']??0); $regionId=$record['region_id']??null;
+    if($pageKey===''||$countryId<=0) throw new InvalidArgumentException('Seasonal content prototype identity is invalid');
+    $claims=is_array($record['claims']??null)?$record['claims']:[];
+    if($claims===[]) throw new InvalidArgumentException('Seasonal content prototype requires claims');
+    foreach($claims as $claim){
+        if(!is_array($claim)||(string)($claim['page_key']??'')!==$pageKey||(int)($claim['country_id']??0)!==$countryId) throw new InvalidArgumentException('Seasonal content claim identity mismatch');
+    }
+    $parts=explode(':',$pageKey);
+    if(($parts[0]??'')==='month') { if($regionId!==null) throw new InvalidArgumentException('Seasonal country prototype region mismatch'); }
+    elseif(($parts[0]??'')==='resort_month') { if((int)($parts[3]??0)<=0||(int)$regionId!==(int)$parts[3]) throw new InvalidArgumentException('Seasonal resort prototype region mismatch'); }
+    else throw new InvalidArgumentException('Seasonal content prototype page type is invalid');
+
+    $evidence=v2_seo_seasonal_verified_content_evidence($claims,$nowEpoch);
     if(($evidence['state']??'')!=='review_ready') return ['state'=>'blocked','blocked'=>$evidence['blocked']??[]];
     $values=[]; foreach(($evidence['claims']??[]) as $claim) $values[(string)$claim['claim_key']]=(string)$claim['value'];
     $sections=[];
@@ -59,5 +73,5 @@ function v2_seo_seasonal_render_review_content(array $record, ?int $nowEpoch=nul
         if(preg_match('/\{\{[^}]+\}\}/u',$text)) throw new InvalidArgumentException('Seasonal content template contains unresolved claims');
         $sections[]=['heading'=>(string)($section['heading']??''),'text'=>$text,'claim_keys'=>array_values($keys)];
     }
-    return ['state'=>'rendered_review_only_seasonal_content','page_key'=>(string)$record['page_key'],'title'=>(string)$record['title'],'h1'=>(string)$record['h1'],'intro'=>(string)$record['intro'],'sections'=>$sections,'claims'=>$evidence['claims'],'source_note'=>(string)($record['source_note']??''),'publication_candidates'=>[],'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_creation_allowed'=>false,'requires_fresh_identity_rebind'=>true];
+    return ['state'=>'rendered_review_only_seasonal_content','page_key'=>$pageKey,'title'=>(string)$record['title'],'h1'=>(string)$record['h1'],'intro'=>(string)$record['intro'],'sections'=>$sections,'claims'=>$evidence['claims'],'source_note'=>(string)($record['source_note']??''),'publication_candidates'=>[],'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_creation_allowed'=>false,'requires_fresh_identity_rebind'=>true];
 }
