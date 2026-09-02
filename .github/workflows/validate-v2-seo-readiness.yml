@@ -12,6 +12,7 @@ on:
       - 'v2/data/report-seo-hotel-pilot-opportunity-evidence-template-v1.php'
       - 'v2/data/report-seo-search-feedback-v1.php'
       - 'v2/data/report-seo-search-feedback-template-v1.php'
+      - 'v2/data/report-seo-phase-readiness-v1.php'
       - 'tests/seo-turkey-hotel-review-catalog-smoke.php'
       - 'tests/seo-hotel-family-launch-readiness-smoke.php'
       - 'tests/seo-page-launch-readiness-smoke.php'
@@ -20,6 +21,7 @@ on:
       - 'tests/seo-ds2-reference-acceptance-smoke.php'
       - 'tests/seo-ds2-render-evidence-smoke.php'
       - 'tests/seo-phase-readiness-gate-smoke.php'
+      - 'tests/seo-phase-readiness-cli-smoke.php'
       - 'tests/seo-resort-family-integrity-smoke.php'
       - 'tests/seo-hotel-review-pilot-report-smoke.php'
       - 'tests/seo-hotel-review-opportunity-gate-smoke.php'
@@ -70,6 +72,7 @@ jobs:
           php -l v2/data/report-seo-hotel-pilot-opportunity-evidence-template-v1.php >/dev/null
           php -l v2/data/report-seo-search-feedback-v1.php >/dev/null
           php -l v2/data/report-seo-search-feedback-template-v1.php >/dev/null
+          php -l v2/data/report-seo-phase-readiness-v1.php >/dev/null
           echo V2_SEO_PHP_OK
 
       - name: Validate Turkey hotel review family isolation
@@ -97,6 +100,8 @@ jobs:
           php tests/seo-ds2-render-evidence-smoke.php
           php -l tests/seo-phase-readiness-gate-smoke.php >/dev/null
           php tests/seo-phase-readiness-gate-smoke.php
+          php -l tests/seo-phase-readiness-cli-smoke.php >/dev/null
+          php tests/seo-phase-readiness-cli-smoke.php
           php -l tests/seo-resort-family-integrity-smoke.php >/dev/null
           php tests/seo-resort-family-integrity-smoke.php
           php -l tests/seo-hotel-review-pilot-report-smoke.php >/dev/null
