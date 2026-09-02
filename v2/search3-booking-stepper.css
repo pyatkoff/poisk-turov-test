@@ -1,6 +1,7 @@
 /* Search3 booking progress, matching approved three-step booking boards. */
 .search3-booking-stepper{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--at-line);border-radius:12px;background:#fff}
-.search3-booking-step{position:relative;display:flex;align-items:center;gap:8px;min-width:0;color:var(--at-muted);font:800 9px/1.2 var(--at-font)}
+.search3-booking-step{position:relative;display:flex;align-items:center;gap:8px;min-width:0;margin:0;padding:0;border:0;background:transparent;text-align:left;color:var(--at-muted);font:800 9px/1.2 var(--at-font);cursor:pointer}
+.search3-booking-step:focus-visible{outline:2px solid var(--at-brand);outline-offset:4px;border-radius:6px}
 .search3-booking-step:not(:last-child):after{content:'';position:absolute;left:30px;right:-8px;top:12px;height:1px;background:var(--at-line-soft);z-index:0}
 .search3-booking-step span{position:relative;z-index:1;display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border:1px solid var(--at-line);border-radius:50%;background:#fff;color:var(--at-muted);font:900 9px/1 var(--at-font)}
 .search3-booking-step b{position:relative;z-index:1;min-width:0;background:#fff;padding-right:6px;color:inherit;font:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
