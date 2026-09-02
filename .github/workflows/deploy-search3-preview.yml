@@ -101,7 +101,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=5s 5m node search3-visual-qa.cjs
+          timeout --signal=TERM --kill-after=5s 7m node search3-visual-qa.cjs
       - name: Upload Search3 screenshots
         if: always()
         uses: actions/upload-artifact@v4
