@@ -11,17 +11,6 @@ on:
       - 'scripts/ci/validate_technical_refactor_lock.py'
       - '.github/workflows/validate-owner-priority.yml'
       - '.github/workflows/validate-technical-refactor-lock.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'OWNER_PRIORITY.json'
-      - 'TECHNICAL_REFACTOR_LOCK.json'
-      - 'AUTOPILOT.md'
-      - 'AUTOPILOT_STATE.json'
-      - 'scripts/ci/validate_owner_priority.py'
-      - 'scripts/ci/validate_technical_refactor_lock.py'
-      - '.github/workflows/validate-owner-priority.yml'
-      - '.github/workflows/validate-technical-refactor-lock.yml'
   workflow_dispatch:
 
 jobs:
