@@ -1,0 +1,38 @@
+<?php
+require_once __DIR__ . '/../v2/seo-hotel-family-integrity-v1.php';
+require_once __DIR__ . '/../v2/seo-content-pilot-turkey-hotel-review-catalog-v1.php';
+require_once __DIR__ . '/../v2/seo-content-pilot-maldives-catalog-v1.php';
+require_once __DIR__ . '/../v2/seo-content-pilot-egypt-hotel-review-catalog-v1.php';
+
+function family_integrity_fail(string $message): void
+{
+    fwrite(STDERR, "SEO_HOTEL_FAMILY_INTEGRITY_FAIL:$message\n");
+    exit(1);
+}
+
+$families = [
+    ['key'=>'turkey','country_id'=>4,'catalog'=>v2_seo_content_pilot_turkey_hotel_review_catalog()],
+    ['key'=>'maldives','country_id'=>8,'catalog'=>v2_seo_content_pilot_maldives_catalog()],
+    ['key'=>'egypt','country_id'=>1,'catalog'=>v2_seo_content_pilot_egypt_hotel_review_catalog()],
+];
+$report = v2_seo_hotel_family_integrity($families);
+if (($report['family_count']??0)!==3) family_integrity_fail('family_count');
+if (($report['hotel_count']??0)<3) family_integrity_fail('hotel_count');
+if (($report['hotel_count']??0)!==($report['unique_paths']??-1)) family_integrity_fail('path_identity_parity');
+if (($report['hotel_count']??0)!==($report['unique_country_hotel_identities']??-1)) family_integrity_fail('identity_parity');
+if (($report['publication_candidates']??-1)!==0) family_integrity_fail('candidate_leak');
+if (($report['state']??'')!=='review_noindex_integrity_only') family_integrity_fail('state');
+foreach (($report['families']??[]) as $family) {
+    if (($family['hotel_count']??0)<1) family_integrity_fail('empty_family');
+    if (($family['publication_candidates']??-1)!==0) family_integrity_fail('family_candidate_leak');
+    if (($family['state']??'')!=='review_noindex_integrity_only') family_integrity_fail('family_state');
+}
+
+try {
+    v2_seo_hotel_family_integrity([$families[0], ['key'=>'turkey-copy','country_id'=>4,'catalog'=>$families[0]['catalog']]]);
+    family_integrity_fail('cross_family_duplicate_paths_allowed');
+} catch (InvalidArgumentException $e) {
+    if (!str_contains($e->getMessage(), 'Duplicate hotel-tour path')) family_integrity_fail('duplicate_wrong_error');
+}
+
+echo 'SEO_HOTEL_FAMILY_INTEGRITY_OK families=3 hotels='.(int)$report['hotel_count']." candidates=0 globalIdentity=1\n";
