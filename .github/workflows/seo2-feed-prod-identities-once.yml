@@ -80,6 +80,7 @@ jobs:
           declare(strict_types=1);
           $root=$argv[1];$inventory=json_decode(file_get_contents($argv[2]),true,512,JSON_THROW_ON_ERROR);
           require $root.'/v2/seo-feed-family-binding-v1.php';
+          require $root.'/v2/seo-feed-review-plan-v1.php';
           require $root.'/v2/seo-content-pilot-turkey-hotel-review-catalog-v1.php';
           require $root.'/v2/seo-content-pilot-maldives-catalog-v1.php';
           require $root.'/v2/seo-content-pilot-egypt-hotel-review-catalog-v1.php';
@@ -93,26 +94,43 @@ jobs:
             $items[]=['state'=>'fresh_feed_evidence','country_id'=>(int)$row['country_id'],'hotel_id'=>(int)$row['hotel_id'],'tour_id'=>(string)$row['tour_id'],'source_page_key'=>(string)$row['source_page_key'],'expires_at_epoch'=>(int)$row['expires_at_epoch'],'feed_publish_allowed'=>false];
           }
           $report=['state'=>'review_only_feed_evidence','feed_publish_allowed'=>false,'items'=>$items];
-          $binding=v2_seo_feed_family_binding($families,[$report],(int)($inventory['checked_at_epoch']??time()));
+          $checked=(int)($inventory['checked_at_epoch']??time());
+          $binding=v2_seo_feed_family_binding($families,[$report],$checked);
           $byCountry=[];$safe=[];
           foreach(($binding['bound']??[]) as $item){
             $cid=(int)$item['country_id'];$byCountry[$cid]=($byCountry[$cid]??0)+1;
             $safe[]=['country_id'=>$cid,'hotel_id'=>(int)$item['hotel_id'],'tour_id'=>(string)$item['tour_id'],'family_key'=>(string)$item['family_key'],'source_page_key'=>(string)$item['source_page_key'],'expires_at_epoch'=>(int)$item['expires_at_epoch']];
           }
           usort($safe,static fn($a,$b)=>[$a['country_id'],$a['hotel_id'],$a['tour_id']]<=>[$b['country_id'],$b['hotel_id'],$b['tour_id']]);
-          $out=['state'=>'review_only_verified_feed_identity_inventory','checked_at_epoch'=>(int)($inventory['checked_at_epoch']??0),'snapshot_count'=>(int)($inventory['snapshot_count']??0),'verified_hotel_identity_count'=>(int)($binding['verified_hotel_identity_count']??0),'bound_count'=>(int)($binding['bound_count']??0),'blocked_count'=>(int)($binding['blocked_count']??0),'by_country'=>$byCountry,'feed_publish_allowed'=>false,'publication_allowed'=>false,'publication_candidates'=>[],'items'=>$safe];
+          $out=['state'=>'review_only_verified_feed_identity_inventory','checked_at_epoch'=>$checked,'snapshot_count'=>(int)($inventory['snapshot_count']??0),'verified_hotel_identity_count'=>(int)($binding['verified_hotel_identity_count']??0),'bound_count'=>(int)($binding['bound_count']??0),'blocked_count'=>(int)($binding['blocked_count']??0),'by_country'=>$byCountry,'feed_publish_allowed'=>false,'publication_allowed'=>false,'publication_candidates'=>[],'items'=>$safe];
           file_put_contents($argv[3],json_encode($out,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n");
           echo 'SEO2_FEED_PROD_IDENTITIES snapshots='.$out['snapshot_count'].' verified_hotels='.$out['verified_hotel_identity_count'].' bound='.$out['bound_count'].' blocked='.$out['blocked_count']."\n";
           foreach($byCountry as $cid=>$count) echo 'SEO2_FEED_PROD_COUNTRY country='.$cid.' bound='.$count."\n";
-          foreach(array_slice($safe,0,30) as $x) echo 'SEO2_FEED_IDENTITY country='.$x['country_id'].' hotel='.$x['hotel_id'].' tour='.str_replace(["\r","\n"],'',(string)$x['tour_id']).' expires='.$x['expires_at_epoch']."\n";
+
+          $selectors=[
+            ['country_id'=>1,'hotel_id'=>162,'tour_id'=>'11267892915437'],
+            ['country_id'=>4,'hotel_id'=>1039,'tour_id'=>'13273072115753'],
+            ['country_id'=>8,'hotel_id'=>2461,'tour_id'=>'18269678775465'],
+          ];
+          $plan=v2_seo_feed_review_plan($binding,$selectors,$checked,3);
+          if(($plan['state']??'')!=='review_only_feed_plan'||($plan['item_count']??0)!==3) throw new RuntimeException('explicit feed review plan did not produce three items');
+          if(($plan['publication_candidates']??null)!==[]) throw new RuntimeException('feed review plan publication candidates leaked');
+          foreach(['feed_publish_allowed','publication_allowed','copy_allowed','route_creation_allowed'] as $flag){ if(($plan[$flag]??true)!==false) throw new RuntimeException('feed review plan boundary crossed: '.$flag); }
+          foreach(($plan['items']??[]) as $item){
+            if(array_key_exists('price',$item)||array_key_exists('availability',$item)) throw new RuntimeException('volatile commercial payload leaked into feed plan');
+          }
+          file_put_contents($argv[4],json_encode($plan,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n");
+          foreach(($plan['items']??[]) as $x) echo 'SEO2_FEED_REVIEW_PLAN country='.$x['country_id'].' hotel='.$x['hotel_id'].' tour='.str_replace(["\r","\n"],'',(string)$x['tour_id']).' valid_until='.$x['expires_at_epoch']."\n";
           if(($out['publication_candidates']??null)!==[]||($out['feed_publish_allowed']??true)!==false) exit(10);
           PHP
-          php "$work/bind.php" "$GITHUB_WORKSPACE" "$work/inventory.json" "$work/report.json"
+          php "$work/bind.php" "$GITHUB_WORKSPACE" "$work/inventory.json" "$work/report.json" "$work/plan.json"
 
       - name: Upload disposable identity report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: seo2-feed-prod-identities-${{ github.event.pull_request.number }}
-          path: ${{ runner.temp }}/seo2-feed-prod-once/report.json
+          path: |
+            ${{ runner.temp }}/seo2-feed-prod-once/report.json
+            ${{ runner.temp }}/seo2-feed-prod-once/plan.json
           retention-days: 3
