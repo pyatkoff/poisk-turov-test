@@ -171,3 +171,20 @@ jobs:
             if (strpos($html, "id=\"v2-search-title\"") === false) exit(5);
             echo "V2_SEARCH_ROUTE_SEO_OK\n";
           '
+
+      - name: Validate Web Consultant contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          index=v2/index.php
+          grep -Fq "in_array(\$webConsultantHost, ['anytoour.ru', 'www.anytoour.ru'], true)" "$index"
+          grep -Fq "\$webConsultantBase = 'https://anytour.online/' . 'max-search/web-consultant/';" "$index"
+          test "$(grep -Fc "data-anytour-webchat=\"1\"" "$index")" -eq 1
+          test "$(grep -Fc "data-anytour-webchat-a11y=\"1\"" "$index")" -eq 1
+          test "$(grep -Fc "data-anytour-webchat-context=\"1\"" "$index")" -eq 1
+          grep -Fq "\$webConsultantBase . 'widget.js'" "$index"
+          grep -Fq "\$webConsultantBase . 'widget-a11y.js'" "$index"
+          grep -Fq "\$webConsultantBase . 'widget-context.js'" "$index"
+          ! grep -Fq '/max-search/' "$index"
+          test "$(grep -Fc 'https://anytour.online/' "$index")" -eq 1
+          echo WEB_CONSULTANT_CONTRACT_OK
