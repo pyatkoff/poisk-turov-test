@@ -2,7 +2,7 @@
   "schema_version": 3,
   "mode": "active_pilot",
   "resume": {
-    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. Search/results local-filter completeness remains released. PR #878 canonical DS2 post-success messenger handoff now has green production/post-deploy evidence. PR #884 fixed a reproduced same-tour/different-room async leak in room details and merged to main as 28f59b20c7b9d5a6f8c15537613631e925360f1f; production evidence is pending for that merge.",
+    "now": "Continue P0/P1 selected-tour end-to-end re-audit on current main. Search/results local-filter completeness remains released. PR #884 room state isolation is now production-green: Deploy anytoour.ru run 33581218590, Deploy V2 only run 33581218603 including Verify V2 and Live search smoke, and selected-tour post-deploy visual run 33581442966 all succeeded. Current-main flight stale-state, pending-price/fuel and retry paths were re-audited and no new defect was reproduced.",
     "done": [
       "P0/P1 progressive 25→100, local narrowing, widening/server lifecycle, stale async protection and counters have prior accepted evidence.",
       "Hotel/room, selected-tour/flight and post-success lead handoff were released narrowly to main.",
@@ -12,10 +12,11 @@
       "PR #855 fixed a reproduced lead UI race by requiring both tourId and searchId to match before late lead success/error can decorate the current form. It merged to main as baf2790f27416d4cdf5a34d7344439c39c8e1469 and its production deploy/live search smoke passed.",
       "PR #861 fixed the 768px selected-tour structural stacking defect and merged as 90443fc0f5a79fecac9ae61350cf2c98bddff72b; later production evidence is green.",
       "PR #870 normalized selected-tour back-results and hotel-description actions to canonical 44px touch targets; merge 4ddf997599d69fadf96fd0842cc4ff9e561e187b deployed successfully and post-deploy selected-tour verification passed.",
-      "PR #878 fixed the canonical DS2 post-success messenger handoff lookup and now has successful production/post-deploy visual evidence on merge 1989b7a33220708009680fa1192cb5bb638b155f.",
-      "PR #884 fixed a reproduced room-details stale async race where the same tourId with a changed room identity could accept the previous room response. Room requests/hosts are now scoped by tourId plus deterministic room key; the existing second-tour state-isolation guard reproduces the delayed-response case at 375/768/1440. Targeted state isolation, Security and affected V2/visual gates passed before merge."
+      "PR #878 fixed the canonical DS2 post-success messenger handoff lookup and has successful production/post-deploy visual evidence on merge 1989b7a33220708009680fa1192cb5bb638b155f.",
+      "PR #884 fixed the reproduced same-tour/different-room room-details async leak by scoping acceptance to tourId plus deterministic room key. It merged as 28f59b20c7b9d5a6f8c15537613631e925360f1f and is production-green: Deploy anytoour.ru 33581218590, Deploy V2 only 33581218603 with Verify V2 + Live search smoke, and selected-tour post-deploy visual 33581442966 all succeeded.",
+      "Current-main flight state/recovery PASS: loadFlights binds responses to flightGeneration plus current tour identity, empty/error recovery retries only the current tour, pending/unpriced flight selection resets any stale priced display while preserving selected fuel context and emits pricePending, and lead submit errors keep form data and re-enable retry. No runtime defect was reproduced, so no speculative product change was made."
     ],
-    "next": "Finish production evidence for #884, then continue selected-tour E2E with flight state isolation and remaining error/retry/recovery paths. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead adapter semantics.",
+    "next": "Continue selected-tour E2E with remaining searchId/tourId consistency at submission/recovery boundaries and tour-load/restored-state retry coherence. Keep HIGH idempotency issue #850 approval-gated because resolving it would change protected lead adapter semantics.",
     "blocked": [
       "HIGH issue #850: production lead adapter idempotency semantics differ from the validated helper contract; changing the external lead mechanism requires explicit approval.",
       "Bulk integration from feature/search-core to main remains intentionally blocked by branch divergence.",
@@ -29,7 +30,8 @@
       "Lead UI async acceptance must be scoped to both tourId and searchId, not tourId alone.",
       "Responsive selected-tour structure should not depend on optional decoration classes when the canonical DOM structure is stable.",
       "Post-success handoff must consume canonical DS2 footer destinations; removed legacy footer selectors are not a valid runtime dependency.",
-      "Room-details async acceptance cannot rely on tourId alone; the selected room identity must also still match before a delayed response decorates the current host."
+      "Room-details async acceptance cannot rely on tourId alone; the selected room identity must also still match before a delayed response decorates the current host.",
+      "Flight async acceptance is already generation-scoped and current-tour-scoped; preserve those guards when touching flight lifecycle."
     ]
   },
   "active_task": {
@@ -53,7 +55,9 @@
       "PR #855 prevents stale lead UI success/error from an older search when the same tourId is selected again by requiring matching searchId.",
       "PR #861 and #870 have production evidence for selected-tour tablet structure and 44px touch-target convergence.",
       "PR #878 has successful production/post-deploy evidence for the canonical DS2 messenger handoff.",
-      "PR #884 merged as 28f59b20c7b9d5a6f8c15537613631e925360f1f after the existing second-tour isolation guard passed its new same-tour/different-room delayed-response reproduction at 375/768/1440 plus Security and affected V2/visual gates; production evidence is pending.",
+      "PR #884 merged as 28f59b20c7b9d5a6f8c15537613631e925360f1f and now has green standalone deploy, V2 deploy with Verify V2 + Live search smoke, and selected-tour post-deploy visual evidence.",
+      "Current-main flight lifecycle re-audit found no new defect: generation/current-tour guards reject stale flight responses, retry stays scoped to current tour, and priced→pending transitions preserve coherent base price, fuel, confidence and lead context.",
+      "Lead submit error UX preserves form values and restores a retry action; external lead transport remains untouched.",
       "HIGH issue #850 remains approval-gated and must not be fixed by changing lead-adapter.php without explicit owner approval."
     ],
     "parent_task": "P0_P1_PRODUCT_STABILITY"
@@ -66,7 +70,8 @@
     {"id":"SELECTED_TOUR_TABLET_VISUAL","priority":1,"status":"RELEASED_PRODUCTION","pr":861,"merge_sha":"90443fc0f5a79fecac9ae61350cf2c98bddff72b"},
     {"id":"SELECTED_TOUR_TOUCH_TARGETS","priority":1,"status":"RELEASED_PRODUCTION","pr":870,"merge_sha":"4ddf997599d69fadf96fd0842cc4ff9e561e187b"},
     {"id":"LEAD_SUCCESS_DS2_HANDOFF","priority":1,"status":"RELEASED_PRODUCTION","pr":878,"merge_sha":"1989b7a33220708009680fa1192cb5bb638b155f"},
-    {"id":"ROOM_DETAILS_STATE_ISOLATION","priority":1,"status":"MERGED_AWAITING_PRODUCTION_EVIDENCE","pr":884,"merge_sha":"28f59b20c7b9d5a6f8c15537613631e925360f1f"},
+    {"id":"ROOM_DETAILS_STATE_ISOLATION","priority":1,"status":"RELEASED_PRODUCTION","pr":884,"merge_sha":"28f59b20c7b9d5a6f8c15537613631e925360f1f","deploy_anytoour_run":33581218590,"deploy_v2_run":33581218603,"postdeploy_visual_run":33581442966},
+    {"id":"FLIGHT_STATE_RECOVERY_REAUDIT","priority":1,"status":"PASS_CURRENT_MAIN_NO_DEFECT_REPRODUCED"},
     {"id":"LEAD_IDEMPOTENCY_CONTRACT","priority":1,"status":"BLOCKED_APPROVAL_HIGH","issue":850},
     {"id":"REDESIGN_SEARCH_RESULTS","priority":2,"status":"RELEASED_MAIN_PRODUCTION"},
     {"id":"SEARCH_STATE_PERFORMANCE","priority":2,"status":"CONTINUE_TARGETED_REAUDIT"},
@@ -77,8 +82,8 @@
     {"id":"AUTOPILOT_V2_STATE_CONSOLIDATION","priority":4,"status":"DONE_ENHANCED_CONTRACTS"}
   ],
   "last_signal": {
-    "source": "selected_tour_room_state_isolation",
-    "status": "PR884_MERGED_AWAITING_PRODUCTION_EVIDENCE_CONTINUE_E2E",
+    "source": "selected_tour_flight_recovery_reaudit",
+    "status": "PR884_PRODUCTION_GREEN_FLIGHT_RECOVERY_PASS_CONTINUE_E2E",
     "sha": "28f59b20c7b9d5a6f8c15537613631e925360f1f"
   },
   "blocked": [
