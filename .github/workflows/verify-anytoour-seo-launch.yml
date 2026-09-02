@@ -1,0 +1,74 @@
+name: Verify anytoour.ru SEO launch
+
+on:
+  workflow_run:
+    workflows: ['Deploy anytoour.ru']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-anytoour-seo-launch
+  cancel-in-progress: true
+
+jobs:
+  production-seo:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify controlled Turkey country/resort launch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://anytoour.ru'
+          paths=(
+            '/country/turkey/'
+            '/country/turkey/alanya/'
+            '/country/turkey/antalya/'
+            '/country/turkey/belek/'
+            '/country/turkey/kemer/'
+            '/country/turkey/side/'
+          )
+
+          curl -fsSL --max-time 30 "$base/sitemap.xml" -o /tmp/sitemap.xml
+          BASE="$base" python3 - <<'PY'
+          import os, xml.etree.ElementTree as ET
+          base=os.environ['BASE']
+          expected={
+            base+'/country/turkey/',
+            base+'/country/turkey/alanya/',
+            base+'/country/turkey/antalya/',
+            base+'/country/turkey/belek/',
+            base+'/country/turkey/kemer/',
+            base+'/country/turkey/side/',
+          }
+          root=ET.parse('/tmp/sitemap.xml').getroot()
+          actual={node.text.strip() for node in root.iter() if node.tag.endswith('loc') and node.text}
+          assert actual == expected, (actual, expected)
+          assert not any('/hotel/' in u or '/poisk-turov/' in u for u in actual)
+          print('ANYTOOUR_SEO_SITEMAP_OK', len(actual))
+          PY
+
+          for path in "${paths[@]}"; do
+            safe="$(printf '%s' "$path" | tr '/-' '__')"
+            file="/tmp/seo-${safe}.html"
+            code="$(curl -fsSL -o "$file" -w '%{http_code}' --max-time 35 "$base$path")"
+            test "$code" = '200'
+            grep -Eq '<meta name="robots" content="index,follow[^\"]*"' "$file"
+            canonical="${base}${path}"
+            grep -Fq "<link rel=\"canonical\" href=\"$canonical\">" "$file"
+          done
+
+          protected='/country/turkey/hotel/aegean-park-1601/'
+          protected_code="$(curl -fsSL -o /tmp/hotel-review.html -w '%{http_code}' --max-time 35 "$base$protected")"
+          test "$protected_code" = '200'
+          grep -Eq '<meta name="robots" content="noindex,follow[^\"]*"' /tmp/hotel-review.html
+          if grep -Fq "$protected" /tmp/sitemap.xml; then
+            echo 'HOTEL_TOUR_SITEMAP_LEAK' >&2
+            exit 1
+          fi
+
+          echo 'ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=6 hotel_tours_indexed=0'
