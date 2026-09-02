@@ -128,4 +128,4 @@ jobs:
             --catalog-function="$CATALOG_FUNCTION" \
             --evidence-file="$RUNNER_TEMP/seo-hotel-snapshot.json" \
             | tee "$RUNNER_TEMP/seo-launch-readiness.json"
-          php -r '$x=json_decode(file_get_contents(getenv("RUNNER_TEMP")."/seo-launch-readiness.json"),true); if(($x["state"]??"")!=="review_only_launch_readiness_report") exit(1); echo "SEO_HOTEL_READINESS_REPORT_OK ready=".($x["ready_count"]??0)." blocked=".($x["blocked_count"]??0).PHP_EOL;'
+          php -r '$x=json_decode(file_get_contents(getenv("RUNNER_TEMP")."/seo-launch-readiness.json"),true); if(($x["state"]??"")!=="review_only_launch_readiness_report"||!isset($x["quality_by_type"],$x["family_quality_floor"],$x["manifest_sha256"],$x["hotel_evidence_sha256"],$x["review_contract_sha256"])) exit(1); if(($x["publication_allowed"]??true)!==false||($x["hotel_tours_publication_allowed"]??true)!==false||($x["hotel_tours_indexation_allowed"]??true)!==false) exit(1); echo "SEO_HOTEL_READINESS_REPORT_OK ready=".($x["ready_count"]??0)." blocked=".($x["blocked_count"]??0)." family_floor=".($x["family_quality_floor"]??0).PHP_EOL;'
