@@ -23,6 +23,11 @@ body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:no
 body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-bottom{margin:0!important;padding:1px 0 0 14px!important;gap:0!important}
 body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-price{margin-top:4px!important;font-size:19px!important;line-height:1!important}
 }
+/* Opening tour packages must not add a focus/glow frame around the whole desktop hotel card. */
+@media(min-width:761px){
+body.search3-preview #results .hotel-card:has(.search3-show-tours[aria-expanded="true"]){outline:0!important;border-color:#e2e8f0!important;box-shadow:0 2px 8px rgba(16,24,40,.03)!important;filter:none!important}
+body.search3-preview #results .hotel-card:has(.search3-show-tours[aria-expanded="true"])::before,body.search3-preview #results .hotel-card:has(.search3-show-tours[aria-expanded="true"])::after{content:none!important;display:none!important;outline:0!important;box-shadow:none!important;filter:none!important}
+}
 /* Search 3 owns the mobile filter toolbar/drawer; suppress the older DS2 mobile filter UI in preview only. */
 body.search3-preview .mrf-bar,body.search3-preview .mrf-sheet{display:none!important}
 @media(max-width:999px){body.search3-preview .results-layout{display:block!important;width:100%!important;max-width:none!important;margin:0 0 48px!important}}
