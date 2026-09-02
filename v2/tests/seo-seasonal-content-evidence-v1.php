@@ -32,7 +32,7 @@ if ((v2_seo_seasonal_content_evidence($untrusted, $now)['state'] ?? '') !== 'blo
 
 $volatile = $base;
 $volatile[0]['type'] = 'entry_requirement';
-if ((v2_seo_seo = v2_seo_seasonal_content_evidence($volatile, $now))['state'] !== 'blocked') {
+if ((v2_seo_seasonal_content_evidence($volatile, $now)['state'] ?? '') !== 'blocked') {
     fwrite(STDERR, "volatile evidence without expiry was accepted\n"); exit(1);
 }
 
