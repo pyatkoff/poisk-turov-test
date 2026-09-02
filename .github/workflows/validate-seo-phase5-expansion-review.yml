@@ -1,0 +1,26 @@
+name: Validate SEO phase5 expansion review
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-phase5-expansion-review-gate-v1.php'
+      - 'tests/seo-phase5-expansion-review-gate-smoke.php'
+      - '.github/workflows/validate-seo-phase5-expansion-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase5-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fast ordered expansion review checks
+        run: |
+          set -euo pipefail
+          php -l v2/seo-phase5-expansion-review-gate-v1.php >/dev/null
+          php -l tests/seo-phase5-expansion-review-gate-smoke.php >/dev/null
+          php tests/seo-phase5-expansion-review-gate-smoke.php
