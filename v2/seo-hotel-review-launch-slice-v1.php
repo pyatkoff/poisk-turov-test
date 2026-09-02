@@ -14,7 +14,8 @@ function v2_seo_hotel_review_launch_slice(
     array $requiredCountryIds = [4, 8, 1],
     int $maxPerCountry = 5,
     int $maxTotal = 15,
-    ?int $nowEpoch = null
+    ?int $nowEpoch = null,
+    array $reviewManifest = []
 ): array {
     $proposal = v2_seo_hotel_country_launch_slice_proposal(
         $readinessRows,
@@ -67,6 +68,34 @@ function v2_seo_hotel_review_launch_slice(
     $validUntil=(int)($validUntil??0);
     if ($validUntil<=$validatedAt) throw new InvalidArgumentException('Hotel review launch slice evidence window is already expired');
 
+    $manifestBound=$reviewManifest!==[];
+    $manifestSha='';
+    $hotelEvidenceSha='';
+    $reviewContractSha='';
+    if ($manifestBound) {
+        $manifestSha=(string)($reviewManifest['manifest_sha256']??'');
+        $hotelEvidenceSha=(string)($reviewManifest['hotel_evidence_sha256']??'');
+        $reviewContractSha=(string)($reviewManifest['review_contract_sha256']??'');
+        foreach ([$manifestSha,$hotelEvidenceSha,$reviewContractSha] as $sha) {
+            if (!preg_match('/^[a-f0-9]{64}$/',$sha)) throw new InvalidArgumentException('Hotel review launch slice requires valid manifest fingerprints');
+        }
+        if (($reviewManifest['integrity_ok']??false)!==true
+            || ($reviewManifest['hotel_evidence_fresh']??false)!==true
+            || (int)($reviewManifest['family_quality_floor']??0)!==100
+            || (int)($reviewManifest['hotel_tours_review_ready_count']??0)<count($identityRows)
+            || ($reviewManifest['publication_allowed']??true)!==false
+            || ($reviewManifest['hotel_tours_publication_allowed']??true)!==false
+            || ($reviewManifest['hotel_tours_indexation_allowed']??true)!==false) {
+            throw new InvalidArgumentException('Hotel review launch slice manifest is not review-safe');
+        }
+    }
+    $sliceContractFingerprint=hash('sha256',json_encode([
+        'evidence_manifest_sha256'=>$fingerprint,
+        'review_contract_sha256'=>$reviewContractSha,
+        'validated_at_epoch'=>$validatedAt,
+        'evidence_valid_until_epoch'=>$validUntil,
+    ],JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
+
     return [
         'state'=>'review_only_requires_separate_indexation_approval',
         'validated_at_epoch'=>$validatedAt,
@@ -81,6 +110,11 @@ function v2_seo_hotel_review_launch_slice(
         'countries'=>$proposal['countries']??[],
         'review_items'=>$proposal['proposal']??[],
         'evidence_manifest_sha256'=>$fingerprint,
+        'manifest_bound'=>$manifestBound,
+        'manifest_sha256'=>$manifestSha,
+        'hotel_evidence_sha256'=>$hotelEvidenceSha,
+        'review_contract_sha256'=>$reviewContractSha,
+        'slice_contract_sha256'=>$sliceContractFingerprint,
         'publication_candidates'=>[],
         'publication_allowed'=>false,
         'indexation_allowed'=>false,
