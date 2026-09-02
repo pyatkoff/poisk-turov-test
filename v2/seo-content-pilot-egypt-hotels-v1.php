@@ -27,6 +27,9 @@ function v2_seo_egypt_hotel_manifest(): array
         ['file'=>'seo-content-pilot-egypt-falcon-naama-v1.php','function'=>'v2_seo_content_pilot_egypt_falcon_naama','label'=>'Туры в FALCON NAAMA STAR','href'=>'/country/egypt/hotel/falcon-naama-star-210/'],
         ['file'=>'seo-content-pilot-egypt-parrotel-lagoon-v1.php','function'=>'v2_seo_content_pilot_egypt_parrotel_lagoon','label'=>'Туры в PARROTEL LAGOON WATERPARK RESORT','href'=>'/country/egypt/hotel/parrotel-lagoon-waterpark-resort-71147/'],
         ['file'=>'seo-content-pilot-egypt-parrotel-aqua-v1.php','function'=>'v2_seo_content_pilot_egypt_parrotel_aqua','label'=>'Туры в PARROTEL AQUA PARK RESORT','href'=>'/country/egypt/hotel/parrotel-aqua-park-resort-ex-park-inn-by-radisson-352/'],
+        ['file'=>'seo-content-pilot-egypt-rehana-sharm-v1.php','function'=>'v2_seo_content_pilot_egypt_rehana_sharm','label'=>'Туры в REHANA SHARM RESORT AQUA PARK & SPA','href'=>'/country/egypt/hotel/rehana-sharm-resort-aqua-park-spa-380/'],
+        ['file'=>'seo-content-pilot-egypt-retac-qunay-v1.php','function'=>'v2_seo_content_pilot_egypt_retac_qunay','label'=>'Туры в RETAC QUNAY RESORT & SPA','href'=>'/country/egypt/hotel/retac-qunay-resort-spa-ex-le-meridien-dahab-resort-295/'],
+        ['file'=>'seo-content-pilot-egypt-parrotel-beach-v1.php','function'=>'v2_seo_content_pilot_egypt_parrotel_beach','label'=>'Туры в PARROTEL BEACH RESORT','href'=>'/country/egypt/hotel/parrotel-beach-resort-ex-radisson-blu-resort-365/'],
     ];
 }
 
