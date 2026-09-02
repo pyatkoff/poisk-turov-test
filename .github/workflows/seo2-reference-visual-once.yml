@@ -91,7 +91,7 @@ jobs:
             if(failed)process.exit(1);
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node /tmp/seo2-reference-visual.cjs
+          NODE_PATH="$PWD/node_modules" node /tmp/seo2-reference-visual.cjs
 
       - name: Upload disposable visual evidence
         if: always()
