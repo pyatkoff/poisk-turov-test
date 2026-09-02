@@ -76,6 +76,45 @@ jobs:
           $datedReport=v2_seo_publishability_report($dated);
           if (!in_array('transient_search_state',$datedReport['errors'],true)) fail('dated_state_allowed');
 
+          $hotelOnResort=$record;
+          $hotelOnResort['page']['search_state']['hotel']=65108;
+          $hotelOnResortReport=v2_seo_publishability_report($hotelOnResort);
+          if (!in_array('transient_search_state',$hotelOnResortReport['errors'],true)) fail('hotel_state_allowed_on_resort');
+
+          $hotelRegistry=v2_seo_page_registry([[
+              'path'=>'/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/',
+              'type'=>'hotel_tours',
+              'data'=>[
+                  'name'=>'The Westin Maldives Miriandhoo Resort',
+                  'h1'=>'Туры в The Westin Maldives Miriandhoo Resort',
+                  'description'=>'Редакционная страница для сравнения пакетных туров в конкретный отель на Мальдивах с переходом к актуальному поиску AnyTour.',
+                  'intro'=>'Сравните пакетные туры по датам, продолжительности, питанию и городу вылета перед выбором конкретного предложения.',
+                  'breadcrumbs'=>[
+                      ['label'=>'Главная','href'=>'/'],
+                      ['label'=>'Мальдивы','href'=>'/country/maldives/'],
+                      ['label'=>'Туры в The Westin Maldives Miriandhoo Resort'],
+                  ],
+                  'sections'=>[
+                      ['id'=>'compare','title'=>'Как сравнивать туры','paragraphs'=>['Сопоставляйте предложения на одинаковые даты и продолжительность.']],
+                      ['id'=>'package','title'=>'Что проверить в пакете','paragraphs'=>['Перед заявкой проверьте состав конкретного турпакета.']],
+                  ],
+                  'internal_links'=>[['title'=>'Подбор тура','links'=>[['label'=>'Поиск туров AnyTour','href'=>'/poisk-turov/']]]],
+                  'search_state'=>['country'=>8,'hotel'=>65108],
+              ],
+          ]]);
+          $hotelRecord=$hotelRegistry['/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/'];
+          $hotelReport=v2_seo_publishability_report($hotelRecord);
+          if (!$hotelReport['publishable'] || $hotelReport['errors']!==[]) fail('hotel_tours_complete_rejected');
+
+          foreach (['country','hotel'] as $requiredKey) {
+              $invalidHotel=$hotelRecord;
+              unset($invalidHotel['page']['search_state'][$requiredKey]);
+              $invalidHotelReport=v2_seo_publishability_report($invalidHotel);
+              $expected='hotel_tours_'.$requiredKey.'_required';
+              if (!in_array($expected,$invalidHotelReport['errors'],true)) fail('hotel_tours_missing_'.$requiredKey.'_allowed');
+              if ($invalidHotelReport['publishable']) fail('hotel_tours_missing_'.$requiredKey.'_publishable');
+          }
+
           $badCurrent=$record;
           $badCurrent['page']['breadcrumbs'][2]['href']='/resort/antalya/';
           $currentReport=v2_seo_publishability_report($badCurrent);
@@ -103,5 +142,5 @@ jobs:
           $sectionReport=v2_seo_publishability_report($duplicateSection);
           if (!in_array('duplicate_or_empty_section_title',$sectionReport['errors'],true)) fail('duplicate_section_allowed');
 
-          echo "V2_SEO_PUBLISHABILITY_OK complete=1 thinRejected=1 transientRejected=1 breadcrumbs=1 stableBreadcrumbs=1 sections=1\n";
+          echo "V2_SEO_PUBLISHABILITY_OK complete=1 thinRejected=1 transientRejected=1 hotelTours=1 hotelBoundary=1 breadcrumbs=1 stableBreadcrumbs=1 sections=1\n";
           PHP
