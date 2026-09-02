@@ -1,0 +1,29 @@
+name: Validate SEO hotel pilot review evidence CLI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-hotel-pilot-review-dossier-v1.php'
+      - 'v2/seo-hotel-launch-pilot-v1.php'
+      - 'v2/data/report-seo-hotel-pilot-review-evidence-v1.php'
+      - 'v2/data/report-seo-hotel-pilot-review-evidence-template-v1.php'
+      - 'tests/seo-hotel-pilot-review-evidence-cli-smoke.php'
+      - '.github/workflows/validate-seo-hotel-pilot-review-evidence-cli.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  hotel-pilot-review-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate review-only hotel evidence intake
+        run: |
+          set -euo pipefail
+          php -l v2/data/report-seo-hotel-pilot-review-evidence-v1.php >/dev/null
+          php -l v2/data/report-seo-hotel-pilot-review-evidence-template-v1.php >/dev/null
+          php -l tests/seo-hotel-pilot-review-evidence-cli-smoke.php >/dev/null
+          php tests/seo-hotel-pilot-review-evidence-cli-smoke.php

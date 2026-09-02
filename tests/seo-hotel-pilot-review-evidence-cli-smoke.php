@@ -1,0 +1,9 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../v2/seo-hotel-launch-pilot-v1.php';
+function fail_hotel_pilot_cli(string $x):never{fwrite(STDERR,"SEO_HOTEL_PILOT_REVIEW_EVIDENCE_CLI_FAIL:$x\n");exit(1);} 
+$now=1788377000;$rows=[];
+foreach(v2_seo_hotel_launch_pilot_spec()['countries'] as $bucket)foreach($bucket['paths'] as $path)$rows[]=['path'=>$path,'country_id'=>$bucket['country_id'],'captured_at_epoch'=>$now-60,'source_ref'=>'fixture://hotel-pilot'.$path,'quality_score'=>100,'identity_verified'=>true,'catalog_integrity_ok'=>true,'fresh_offer_evidence'=>true,'review_status_ok'=>true,'noindex_ok'=>true,'out_of_sitemap_ok'=>true,'publication_candidate_absent'=>true];
+$tmp=tempnam(sys_get_temp_dir(),'hotel-pilot-');file_put_contents($tmp,json_encode(['rows'=>$rows],JSON_THROW_ON_ERROR));$cli=__DIR__.'/../v2/data/report-seo-hotel-pilot-review-evidence-v1.php';$out=[];$code=0;exec('php '.escapeshellarg($cli).' --evidence='.escapeshellarg($tmp).' --now-epoch='.$now.' --require-ready 2>&1',$out,$code);@unlink($tmp);if($code!==0)fail_hotel_pilot_cli('ready_exit');$json=json_decode(implode("\n",$out),true);if(($json['state']??'')!=='review_only_hotel_pilot_evidence_ready'||($json['observed_hotel_count']??0)!==9)fail_hotel_pilot_cli('ready_state');if(($json['publication_candidates']??null)!==[])fail_hotel_pilot_cli('publication_candidates');
+$rows[0]['quality_score']=99;$tmp=tempnam(sys_get_temp_dir(),'hotel-pilot-');file_put_contents($tmp,json_encode(['rows'=>$rows],JSON_THROW_ON_ERROR));$out=[];$code=0;exec('php '.escapeshellarg($cli).' --evidence='.escapeshellarg($tmp).' --now-epoch='.$now.' --require-ready 2>&1',$out,$code);@unlink($tmp);if($code!==3)fail_hotel_pilot_cli('quality_boundary');
+echo "SEO_HOTEL_PILOT_REVIEW_EVIDENCE_CLI_OK hotels=9 publication=0 indexation=0\n";
