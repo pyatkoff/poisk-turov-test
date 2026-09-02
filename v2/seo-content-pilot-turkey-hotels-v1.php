@@ -18,6 +18,9 @@ function v2_seo_turkey_hotel_manifest(): array
         ['file'=>'seo-content-pilot-turkey-britannia-v1.php','function'=>'v2_seo_content_pilot_turkey_britannia','label'=>'Туры в BRITANNIA HOTEL & VILLAS','href'=>'/country/turkey/hotel/britannia-hotel-villas-1063/'],
         ['file'=>'seo-content-pilot-turkey-parus-kemer-v1.php','function'=>'v2_seo_content_pilot_turkey_parus_kemer','label'=>'Туры в PARUS HOTEL KEMER','href'=>'/country/turkey/hotel/parus-hotel-kemer-28539/'],
         ['file'=>'seo-content-pilot-turkey-carmen-suite-v1.php','function'=>'v2_seo_content_pilot_turkey_carmen_suite','label'=>'Туры в CARMEN SUITE','href'=>'/country/turkey/hotel/carmen-suite-56421/'],
+        ['file'=>'seo-content-pilot-turkey-kleopatra-ikiz-v1.php','function'=>'v2_seo_content_pilot_turkey_kleopatra_ikiz','label'=>'Туры в KLEOPATRA IKIZ','href'=>'/country/turkey/hotel/kleopatra-ikiz-28482/'],
+        ['file'=>'seo-content-pilot-turkey-kleopatra-smile-v1.php','function'=>'v2_seo_content_pilot_turkey_kleopatra_smile','label'=>'Туры в KLEOPATRA SMILE HOTEL','href'=>'/country/turkey/hotel/kleopatra-smile-hotel-75706/'],
+        ['file'=>'seo-content-pilot-turkey-belkon-v1.php','function'=>'v2_seo_content_pilot_turkey_belkon','label'=>'Туры в BELKON HOTEL','href'=>'/country/turkey/hotel/belkon-hotel-2121/'],
     ];
 }
 
