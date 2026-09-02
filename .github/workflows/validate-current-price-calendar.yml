@@ -7,12 +7,6 @@ on:
       - 'v2/current-price-calendar-v1.js'
       - 'v2/current-price-calendar-v1.css'
       - '.github/workflows/validate-current-price-calendar.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'v2/current-price-calendar-v1.js'
-      - 'v2/current-price-calendar-v1.css'
-      - '.github/workflows/validate-current-price-calendar.yml'
   workflow_dispatch:
 
 jobs:
