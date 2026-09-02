@@ -22,6 +22,13 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
+      - name: Prepare canonical brand asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p v2/images
+          curl -fsSL --max-time 30 https://anytoour.ru/images/logo.svg -o v2/images/logo.svg
+          grep -qi '<svg' v2/images/logo.svg
       - name: Start local SEO reference runtime
         shell: bash
         run: |
@@ -64,10 +71,12 @@ jobs:
                 related:!!document.querySelector('.sp-related-card'),
                 callout:!!document.querySelector('.sp-search-callout'),
                 robots:document.querySelector('meta[name="robots"]')?.content||'',
+                headerLogoOk:(()=>{const img=document.querySelector('.at-global-header__logo img');return !!img&&img.complete&&img.naturalWidth>0;})(),
+                footerLogoOk:(()=>{const img=document.querySelector('.ds2-site-footer__logo img');return !!img&&img.complete&&img.naturalWidth>0;})(),
               }));
               await page.screenshot({path:`seo2-reference-audit/${key}-${vp}.png`,fullPage:true});
               report.push({key,vp,http:response?.status()||0,errors,...state});
-              if ((response?.status()||0)!==200 || errors.length || state.h1!==1 || state.overflow || !state.hero || !state.related || !state.callout || (key==='westin'&&!state.robots.includes('noindex'))) failed=true;
+              if ((response?.status()||0)!==200 || errors.length || state.h1!==1 || state.overflow || !state.hero || !state.related || !state.callout || !state.headerLogoOk || !state.footerLogoOk || (key==='westin'&&!state.robots.includes('noindex'))) failed=true;
               await context.close();
             }
             fs.writeFileSync('seo2-reference-audit/report.json',JSON.stringify(report,null,2));
