@@ -1,0 +1,17 @@
+/* Search3 final-total convergence. Presentation only: all values remain sourced from real selected tour/flight data. */
+@media(min-width:1000px){
+body.search3-preview #selectedTour .search3-lead-shell{grid-template-columns:minmax(0,1fr) 320px!important;gap:18px!important;align-items:start!important}
+body.search3-preview #selectedTour .search3-lead-shell>.lead-form{padding:22px 24px!important;border-radius:14px!important}
+body.search3-preview #selectedTour .search3-booking-summary{padding:18px!important;border-radius:14px!important;top:18px!important}
+body.search3-preview #selectedTour .search3-booking-summary__title{font-size:18px!important;margin-bottom:12px!important}
+body.search3-preview #selectedTour .search3-booking-summary__image{height:148px!important;border-radius:10px!important}
+body.search3-preview #selectedTour .search3-booking-summary__hotel{font-size:17px!important;line-height:1.15!important}
+body.search3-preview #selectedTour .search3-booking-summary dl>div{grid-template-columns:92px minmax(0,1fr)!important;padding:8px 0!important}
+body.search3-preview #selectedTour .search3-booking-summary dt{font-size:9px!important}
+body.search3-preview #selectedTour .search3-booking-summary dd{font-size:10px!important}
+body.search3-preview #selectedTour .search3-booking-summary__total{margin-top:14px!important;padding-top:14px!important}
+body.search3-preview #selectedTour .search3-booking-summary__total span{font-size:10px!important}
+body.search3-preview #selectedTour .search3-booking-summary__total strong{font-size:23px!important}
+body.search3-preview #selectedTour .search3-booking-summary__price-note{font-size:8px!important;line-height:1.4!important}
+body.search3-preview #selectedTour .lead-form button[type=submit]{min-height:48px!important;background:#ff5a0a!important;border-color:#ff5a0a!important;border-radius:10px!important}
+}
