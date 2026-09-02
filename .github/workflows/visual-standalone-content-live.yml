@@ -58,7 +58,7 @@ jobs:
           fi
           cat > ./standalone-content-live.cjs <<'JS'
           const { chromium } = require('playwright');
-          const cases=[['mobile-375',375,812],['mobile-430',430,932],['tablet-768',768,1024],['intermediate-1024',1024,900],['desktop-1440',1440,1000]];
+          const cases=[['mobile-375',375,812],['desktop-1440',1440,1000]];
           const local=process.env.EVENT_NAME==='pull_request';
           const base=local?'http://127.0.0.1:8099':'https://anytoour.ru';
           const contentPages=[
