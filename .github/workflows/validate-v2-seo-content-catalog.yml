@@ -178,30 +178,42 @@ jobs:
           PHP
 
           now=$(date +%s)
-          good=$(printf '[{"hotel_id":65108,"hotel_slug":"the-westin-maldives-miriandhoo-resort-65108","evidence_epoch":%s,"freshness_seconds":600}]' "$now")
+          good=$(printf '[{"country_id":8,"hotel_id":65108,"hotel_slug":"the-westin-maldives-miriandhoo-resort-65108","evidence_epoch":%s,"freshness_seconds":600}]' "$now")
           printf '%s\n' "$good" | php v2/data/validate-seo-hotel-snapshot-identities-v1.php --only=65108
 
-          bad=$(printf '[{"hotel_id":65108,"hotel_slug":"wrong-hotel-65108","evidence_epoch":%s,"freshness_seconds":600}]' "$now")
-          if printf '%s\n' "$bad" | php v2/data/validate-seo-hotel-snapshot-identities-v1.php --only=65108; then
+          bad_slug=$(printf '[{"country_id":8,"hotel_id":65108,"hotel_slug":"wrong-hotel-65108","evidence_epoch":%s,"freshness_seconds":600}]' "$now")
+          if printf '%s\n' "$bad_slug" | php v2/data/validate-seo-hotel-snapshot-identities-v1.php --only=65108; then
             echo 'SEO_CATALOG_FAIL:identity_validator_allowed_slug_mismatch' >&2
             exit 1
           fi
 
+          bad_country=$(printf '[{"country_id":4,"hotel_id":65108,"hotel_slug":"the-westin-maldives-miriandhoo-resort-65108","evidence_epoch":%s,"freshness_seconds":600}]' "$now")
+          if printf '%s\n' "$bad_country" | php v2/data/validate-seo-hotel-snapshot-identities-v1.php --only=65108; then
+            echo 'SEO_CATALOG_FAIL:identity_validator_allowed_country_mismatch' >&2
+            exit 1
+          fi
+
+          missing_country=$(printf '[{"hotel_id":65108,"hotel_slug":"the-westin-maldives-miriandhoo-resort-65108","evidence_epoch":%s,"freshness_seconds":600}]' "$now")
+          if printf '%s\n' "$missing_country" | php v2/data/validate-seo-hotel-snapshot-identities-v1.php --only=65108; then
+            echo 'SEO_CATALOG_FAIL:identity_validator_allowed_countryless_evidence' >&2
+            exit 1
+          fi
+
           stale_epoch=$((now - 1200))
-          stale=$(printf '[{"hotel_id":65108,"hotel_slug":"the-westin-maldives-miriandhoo-resort-65108","evidence_epoch":%s,"freshness_seconds":600}]' "$stale_epoch")
+          stale=$(printf '[{"country_id":8,"hotel_id":65108,"hotel_slug":"the-westin-maldives-miriandhoo-resort-65108","evidence_epoch":%s,"freshness_seconds":600}]' "$stale_epoch")
           if printf '%s\n' "$stale" | php v2/data/validate-seo-hotel-snapshot-identities-v1.php --only=65108; then
             echo 'SEO_CATALOG_FAIL:identity_validator_allowed_expired_evidence' >&2
             exit 1
           fi
 
-          missing_freshness=$(printf '[{"hotel_id":65108,"hotel_slug":"the-westin-maldives-miriandhoo-resort-65108","evidence_epoch":%s}]' "$now")
+          missing_freshness=$(printf '[{"country_id":8,"hotel_id":65108,"hotel_slug":"the-westin-maldives-miriandhoo-resort-65108","evidence_epoch":%s}]' "$now")
           if printf '%s\n' "$missing_freshness" | php v2/data/validate-seo-hotel-snapshot-identities-v1.php --only=65108; then
             echo 'SEO_CATALOG_FAIL:identity_validator_allowed_untimed_evidence' >&2
             exit 1
           fi
 
           future_epoch=$((now + 900))
-          future=$(printf '[{"hotel_id":65108,"hotel_slug":"the-westin-maldives-miriandhoo-resort-65108","evidence_epoch":%s,"freshness_seconds":600}]' "$future_epoch")
+          future=$(printf '[{"country_id":8,"hotel_id":65108,"hotel_slug":"the-westin-maldives-miriandhoo-resort-65108","evidence_epoch":%s,"freshness_seconds":600}]' "$future_epoch")
           if printf '%s\n' "$future" | php v2/data/validate-seo-hotel-snapshot-identities-v1.php --only=65108; then
             echo 'SEO_CATALOG_FAIL:identity_validator_allowed_future_evidence' >&2
             exit 1

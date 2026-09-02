@@ -3,9 +3,10 @@
  * Compare review-only hotel-tour editorial identities with a fresh snapshot JSON.
  * Read-only CLI utility: no DB/API calls and no writes.
  *
- * Snapshot rows must carry evidence_epoch + freshness_seconds from the production
- * DB inspector. The validator recomputes expiry against the current runner clock,
- * so a once-fresh JSON file cannot be reused after its evidence window has expired.
+ * Snapshot rows must carry country_id, evidence_epoch and freshness_seconds from
+ * the production DB inspector. The validator verifies country + hotel + slug and
+ * recomputes expiry against the current runner clock, so saved evidence fails
+ * closed once its production validity window has elapsed.
  *
  * Usage:
  *   php v2/data/validate-seo-hotel-snapshot-identities-v1.php \
@@ -60,8 +61,10 @@ $snapshotById = [];
 $slugToId = [];
 foreach ($snapshot as $row) {
     if (!is_array($row)) seo_identity_fail('snapshot_row_invalid');
+    $countryId = (int)($row['country_id'] ?? 0);
     $hotelId = (int)($row['hotel_id'] ?? 0);
     $slug = trim((string)($row['hotel_slug'] ?? ''));
+    if ($countryId <= 0) seo_identity_fail('snapshot_country_id_missing_' . $hotelId);
     if ($hotelId <= 0 || $slug === '') seo_identity_fail('snapshot_identity_missing');
 
     $evidenceEpoch = filter_var($row['evidence_epoch'] ?? null, FILTER_VALIDATE_INT);
@@ -75,7 +78,7 @@ foreach ($snapshot as $row) {
 
     if (isset($snapshotById[$hotelId])) seo_identity_fail('snapshot_duplicate_hotel_id_' . $hotelId);
     if (isset($slugToId[$slug]) && $slugToId[$slug] !== $hotelId) seo_identity_fail('snapshot_duplicate_slug_' . $slug);
-    $snapshotById[$hotelId] = $slug;
+    $snapshotById[$hotelId] = ['country' => $countryId, 'slug' => $slug];
     $slugToId[$slug] = $hotelId;
 }
 
@@ -86,11 +89,13 @@ foreach ($registry as $path => $entry) {
     if (($entry['type'] ?? '') !== 'hotel_tours') continue;
     $page = is_array($entry['page'] ?? null) ? $entry['page'] : [];
     $state = is_array($page['search_state'] ?? null) ? $page['search_state'] : [];
+    $countryId = (int)($state['country'] ?? 0);
     $hotelId = (int)($state['hotel'] ?? 0);
+    if ($countryId <= 0) seo_identity_fail('catalog_country_id_missing_' . $path);
     if ($hotelId <= 0) seo_identity_fail('catalog_hotel_id_missing_' . $path);
     if (isset($catalogById[$hotelId])) seo_identity_fail('catalog_duplicate_hotel_id_' . $hotelId);
     if (!preg_match('~/hotel/([^/]+)/$~', (string)$path, $match)) seo_identity_fail('catalog_hotel_path_invalid_' . $hotelId);
-    $catalogById[$hotelId] = ['slug' => $match[1], 'path' => (string)$path];
+    $catalogById[$hotelId] = ['country' => $countryId, 'slug' => $match[1], 'path' => (string)$path];
 }
 
 $only = [];
@@ -111,9 +116,12 @@ foreach ($catalogById as $hotelId => $record) {
         $skipped++;
         continue;
     }
-    $snapshotSlug = $snapshotById[$hotelId];
-    if ($record['slug'] !== $snapshotSlug) {
-        seo_identity_fail('slug_mismatch_hotel_' . $hotelId . '_catalog_' . $record['slug'] . '_snapshot_' . $snapshotSlug);
+    $snapshotRecord = $snapshotById[$hotelId];
+    if ($record['country'] !== $snapshotRecord['country']) {
+        seo_identity_fail('country_mismatch_hotel_' . $hotelId . '_catalog_' . $record['country'] . '_snapshot_' . $snapshotRecord['country']);
+    }
+    if ($record['slug'] !== $snapshotRecord['slug']) {
+        seo_identity_fail('slug_mismatch_hotel_' . $hotelId . '_catalog_' . $record['slug'] . '_snapshot_' . $snapshotRecord['slug']);
     }
     $checked++;
 }
