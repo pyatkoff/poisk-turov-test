@@ -13,6 +13,9 @@ on:
       - 'v2/site-footer-v1.css'
       - 'v2/country-page-v1.php'
       - 'v2/country/**'
+      - 'v2/seo-content-pilot-maldives-v1.php'
+      - 'v2/seo-content-pilot-maldives-*-v1.php'
+      - 'v2/seo-hotel-tours-content-factory-v1.php'
       - 'v2/hot/**'
       - 'v2/contacts/**'
       - 'v2/how-to-buy/**'
@@ -31,6 +34,9 @@ on:
       - 'v2/site-footer-v1.css'
       - 'v2/country-page-v1.php'
       - 'v2/country/**'
+      - 'v2/seo-content-pilot-maldives-v1.php'
+      - 'v2/seo-content-pilot-maldives-*-v1.php'
+      - 'v2/seo-hotel-tours-content-factory-v1.php'
       - 'v2/hot/**'
       - 'v2/contacts/**'
       - 'v2/how-to-buy/**'
@@ -98,3 +104,69 @@ jobs:
             if(strpos($country,"Помощь менеджера")===false) exit(35);
             echo "STANDALONE_CONTENT_UX_OK\n";
           '
+      - name: Validate Maldives hotel-tour family integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          require 'v2/seo-content-pilot-maldives-v1.php';
+          function fail_family(string $message): void {
+              fwrite(STDERR, "MALDIVES_HOTEL_FAMILY_FAIL:$message\n");
+              exit(1);
+          }
+
+          $record = v2_seo_content_pilot_maldives();
+          $parentSlugs = [];
+          foreach (($record['data']['related'] ?? []) as $link) {
+              $href = trim((string)($link['href'] ?? ''));
+              if (!preg_match('#^/country/maldives/hotel/([a-z0-9-]+)/$#', $href, $m)) continue;
+              if (isset($parentSlugs[$m[1]])) fail_family('duplicate_parent_link:'.$m[1]);
+              $parentSlugs[$m[1]] = true;
+          }
+
+          $routeSlugs = [];
+          foreach (glob('v2/country/maldives/hotel/*/index.php') ?: [] as $routeFile) {
+              $slug = basename(dirname($routeFile));
+              if (isset($routeSlugs[$slug])) fail_family('duplicate_route:'.$slug);
+              $routeSlugs[$slug] = true;
+              $source = file_get_contents($routeFile);
+              if ($source === false || strpos($source, 'v2_seo_render_hotel_tour_review') === false) {
+                  fail_family('route_not_review_renderer:'.$slug);
+              }
+              exec('php -l '.escapeshellarg($routeFile).' 2>&1', $lintOutput, $lintCode);
+              if ($lintCode !== 0) fail_family('route_syntax:'.$slug);
+          }
+
+          $contentSlugs = [];
+          foreach (glob('v2/seo-content-pilot-maldives-*-v1.php') ?: [] as $contentFile) {
+              $source = file_get_contents($contentFile);
+              if ($source === false || strpos($source, 'v2_seo_hotel_tours_content_record') === false) continue;
+              if (!preg_match("/'hotel_slug'\\s*=>\\s*'([a-z0-9-]+)'/", $source, $m)) {
+                  fail_family('content_slug_missing:'.basename($contentFile));
+              }
+              $slug = $m[1];
+              if (isset($contentSlugs[$slug])) fail_family('duplicate_content_slug:'.$slug);
+              $contentSlugs[$slug] = true;
+              exec('php -l '.escapeshellarg($contentFile).' 2>&1', $lintOutput, $lintCode);
+              if ($lintCode !== 0) fail_family('content_syntax:'.$slug);
+          }
+
+          $normalize = static function(array $set): array {
+              $keys = array_keys($set);
+              sort($keys, SORT_STRING);
+              return $keys;
+          };
+          $parent = $normalize($parentSlugs);
+          $routes = $normalize($routeSlugs);
+          $content = $normalize($contentSlugs);
+          if ($parent !== $routes) {
+              fail_family('parent_route_drift parent='.implode(',', $parent).' routes='.implode(',', $routes));
+          }
+          if ($routes !== $content) {
+              fail_family('route_content_drift routes='.implode(',', $routes).' content='.implode(',', $content));
+          }
+          if (!$routes) fail_family('empty_family');
+
+          echo 'MALDIVES_HOTEL_FAMILY_OK count='.count($routes)."\n";
+          PHP
