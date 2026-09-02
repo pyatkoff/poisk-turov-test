@@ -3,9 +3,10 @@ declare(strict_types=1);
 require_once __DIR__.'/../seo-search-feedback-evidence-v1.php';
 
 /**
- * CLI boundary for real search-performance exports covering the six already
- * launched Turkey country/resort pages. This command validates evidence only;
- * it never invents missing metrics and never changes indexation/publication.
+ * CLI boundary for real search-performance exports covering the exact eight
+ * country/resort URLs in the controlled anytoour.ru SEO launch. This command
+ * validates evidence only; it never invents missing metrics and never changes
+ * indexation/publication.
  */
 function v2_seo_search_feedback_cli_fail(string $message, int $code=2): never
 {
@@ -35,8 +36,8 @@ $report=v2_seo_search_feedback_intake($rows,(int)$now);
 $output=[
     'state'=>$report['state']??'search_feedback_intake_blocked',
     'domain'=>$report['domain']??'anytoour.ru',
-    'launch_scope'=>$report['launch_scope']??'turkey_country_resort_v1',
-    'launched_path_count'=>$report['launched_path_count']??6,
+    'launch_scope'=>$report['launch_scope']??'controlled_country_resort_v2',
+    'launched_path_count'=>$report['launched_path_count']??8,
     'observed_count'=>$report['observed_count']??0,
     'observed_paths'=>$report['observed_paths']??[],
     'missing_paths'=>$report['missing_paths']??[],
