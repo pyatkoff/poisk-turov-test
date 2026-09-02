@@ -53,6 +53,8 @@ function v2_seo_content_pilot_maldives(): array
                 ['label'=>'Туры в Brennia Kottefaru','href'=>'/country/maldives/hotel/brennia-kottefaru-72602/'],
                 ['label'=>'Туры в Ifuru Island Maldives','href'=>'/country/maldives/hotel/ifuru-island-maldives-108164/'],
                 ['label'=>'Туры в Angsana Velavaru','href'=>'/country/maldives/hotel/angsana-velavaru-74701/'],
+                ['label'=>'Туры в Cinnamon Hakuraa Huraa Maldives','href'=>'/country/maldives/hotel/cinnamon-hakuraa-huraa-maldives-ex-chaaya-lagoon-hakuraahuraa-2429/'],
+                ['label'=>'Туры в Dhawa Ihuru','href'=>'/country/maldives/hotel/dhawa-ihuru-ex-angsana-ihuru-resort-spa-2419/'],
             ],
             'internal_links' => [['title'=>'Подбор тура','links'=>[['label'=>'Поиск туров AnyTour','href'=>'/poisk-turov/']]]],
             'search_state' => ['country' => 8],
