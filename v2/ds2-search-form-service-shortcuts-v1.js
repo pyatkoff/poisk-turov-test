@@ -9,8 +9,8 @@ function norm(v){return String(v||'').toLowerCase().replace(/ё/g,'е').replace(
 function isInitial(){return form.classList.contains('ds2-search-initial');}
 function trustedRole(label){
   var s=norm(label);
-  if(/(^|\s)(первая линия|1[- ]?я линия|1 линия|first line)(\s|$)/.test(s))return{key:'first-line',label:'Первая линия'};
-  if(/(^|\s)(для детей|с детьми|отдых с детьми|семейный отдых)(\s|$)/.test(s))return{key:'children',label:'С детьми'};
+  if(['первая линия','1-я линия','1 линия','first line'].indexOf(s)>=0)return{key:'first-line',label:'Первая линия'};
+  if(['для детей','с детьми','отдых с детьми','семейный отдых','семейный'].indexOf(s)>=0)return{key:'children',label:'С детьми'};
   return null;
 }
 function quickTarget(){return form.querySelector('.ds2-search-quick-stars .stars-quick');}
