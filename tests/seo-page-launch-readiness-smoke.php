@@ -67,7 +67,13 @@ if(($manifest['registry_count']??0)!==3||($manifest['readiness_row_count']??0)!=
 if(($manifest['hotel_tours_review_ready_count']??0)!==1||($manifest['hotel_tours_publication_candidate_count']??-1)!==0) unified_ready_fail('manifest_hotel_counts');
 if(($manifest['hotel_tours_publication_allowed']??true)!==false||($manifest['hotel_tours_indexation_allowed']??true)!==false||($manifest['publication_allowed']??true)!==false) unified_ready_fail('manifest_publication_boundary');
 if(($manifest['hotel_evidence_valid_until_epoch']??0)!==($now+600)) unified_ready_fail('manifest_evidence_clock');
-if(!preg_match('/^[a-f0-9]{64}$/',(string)($manifest['manifest_sha256']??''))) unified_ready_fail('manifest_fingerprint');
+if(($manifest['hotel_evidence_remaining_seconds']??0)!==600||($manifest['hotel_evidence_fresh']??false)!==true||($manifest['validated_at_epoch']??0)!==$now) unified_ready_fail('manifest_evidence_freshness');
+foreach(['manifest_sha256','hotel_evidence_sha256','review_contract_sha256'] as $fingerprintField) if(!preg_match('/^[a-f0-9]{64}$/',(string)($manifest[$fingerprintField]??''))) unified_ready_fail('manifest_fingerprint_'.$fingerprintField);
+$changedEvidence=$evidence;
+$changedEvidence[0]['evidence_epoch']=$now-1;
+$changedManifest=v2_seo_launch_manifest($catalog,$changedEvidence,$now);
+if(($changedManifest['manifest_sha256']??'')!==($manifest['manifest_sha256']??'')) unified_ready_fail('structural_manifest_changed_with_evidence');
+if(($changedManifest['hotel_evidence_sha256']??'')===($manifest['hotel_evidence_sha256']??'')||($changedManifest['review_contract_sha256']??'')===($manifest['review_contract_sha256']??'')) unified_ready_fail('evidence_manifest_not_bound');
 
 $reviewRows=[];
 foreach([[4,4004,'turkey'],[8,8008,'maldives'],[1,1001,'egypt']] as [$countryId,$hotelId,$slug]){
@@ -122,4 +128,4 @@ if(!in_array('editorial_depth',$thinResort['errors']??[],true)) unified_ready_fa
 $thinManifest=v2_seo_launch_manifest($thinCatalog,$evidence,$now);
 if(($thinManifest['integrity_ok']??false)!==true||($thinManifest['review_ready']??true)!==false||($thinManifest['quality_score']??100)>=100||($thinManifest['blocked_by_type']['resort']??0)!==1) unified_ready_fail('manifest_quality_block');
 
-echo "SEO_UNIFIED_READINESS_OK country=100 resort=100 hotel=100 manifest=100 hotelBoundary=1 reviewSliceBoundary=1 reviewFreshness=1 thinResortBlocked=1\n";
+echo "SEO_UNIFIED_READINESS_OK country=100 resort=100 hotel=100 manifest=100 hotelBoundary=1 evidenceFingerprint=1 reviewSliceBoundary=1 reviewFreshness=1 thinResortBlocked=1\n";
