@@ -12,6 +12,9 @@ on:
       - 'v2/seo-seasonal-coverage-readiness-v1.php'
       - 'v2/seo-seasonal-identity-v1.php'
       - 'v2/seo-seasonal-family-binding-v1.php'
+      - 'v2/seo-seasonal-content-evidence-v1.php'
+      - 'v2/seo-seasonal-source-registry-v1.php'
+      - 'v2/seo-seasonal-verified-content-evidence-v1.php'
       - 'v2/data/report-seo-seasonal-evidence-v1.php'
       - 'v2/data/report-seo-seasonal-coverage-v1.php'
       - 'v2/data/inspect-seo-data-readiness-v1.php'
@@ -24,6 +27,9 @@ on:
       - 'tests/seo-seasonal-coverage-readiness-smoke.php'
       - 'tests/seo-seasonal-identity-smoke.php'
       - 'tests/seo-seasonal-family-binding-smoke.php'
+      - 'tests/seo-seasonal-content-evidence-smoke.php'
+      - 'tests/seo-seasonal-source-registry-smoke.php'
+      - 'tests/seo-seasonal-verified-content-evidence-smoke.php'
       - '.github/workflows/validate-seo-seasonal-evidence.yml'
   workflow_dispatch:
 
@@ -33,7 +39,7 @@ permissions:
 jobs:
   seasonal-evidence:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
       - name: Validate seasonal, feed and data readiness contracts
@@ -78,6 +84,20 @@ jobs:
           grep -Fq 's.expires_at > NOW()' v2/data/inspect-seo-seasonal-identities-v1.php
           ! grep -Fq 'min_price' v2/data/inspect-seo-seasonal-identities-v1.php
           ! grep -Fq 'offers_json' v2/data/inspect-seo-seasonal-identities-v1.php
+
+      - name: Validate review-only content evidence boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-seasonal-content-evidence-v1.php >/dev/null
+          php -l v2/seo-seasonal-source-registry-v1.php >/dev/null
+          php -l v2/seo-seasonal-verified-content-evidence-v1.php >/dev/null
+          php -l tests/seo-seasonal-content-evidence-smoke.php >/dev/null
+          php -l tests/seo-seasonal-source-registry-smoke.php >/dev/null
+          php -l tests/seo-seasonal-verified-content-evidence-smoke.php >/dev/null
+          php tests/seo-seasonal-content-evidence-smoke.php
+          php tests/seo-seasonal-source-registry-smoke.php
+          php tests/seo-seasonal-verified-content-evidence-smoke.php
 
       - name: Validate seasonal evidence CLI fail-closed behavior
         shell: bash
