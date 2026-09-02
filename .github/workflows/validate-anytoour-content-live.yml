@@ -37,7 +37,6 @@ jobs:
           check_search_handoff(){
             local out="$1" country_id="$2" region_id="${3:-}"
             python3 - "$out" "$country_id" "$region_id" <<'PY'
-          import html
           import sys
           from html.parser import HTMLParser
           from urllib.parse import parse_qs, urlparse
@@ -53,7 +52,8 @@ jobs:
                       return
                   href = dict(attrs).get('href')
                   if href:
-                      self.hrefs.append(html.unescape(href))
+                      # HTMLParser already resolves character references in attributes.
+                      self.hrefs.append(href)
 
           parser = Links()
           with open(file_name, encoding='utf-8') as fh:
