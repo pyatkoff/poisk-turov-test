@@ -36,7 +36,7 @@ jobs:
           test "${#assets[@]}" -gt 0
           for asset in "${assets[@]}"; do
             test -f "v2/$asset"
-            node --check "$asset" 2>/dev/null || node --check "v2/$asset"
+            node --check "v2/$asset"
           done
           echo V2_JS_OK
 
