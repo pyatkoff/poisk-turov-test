@@ -18,7 +18,7 @@ jobs:
         run: |
           set -euo pipefail
           fail(){ echo "CATALOG_LIVE_FAIL:$1"; exit 1; }
-          base="https://anytour.online/poisk-turov-test/v2/api-v2.php"
+          base="https://anytoour.ru/api-v2.php"
           get(){ local name="$1"; shift; local code; code="$(curl -k -L -sS -o "/tmp/v2-catalog-$name.json" -w "%{http_code}" --max-time 45 --get "$base" "$@")"; test "$code" = "200" || fail "${name}_http_${code}"; }
 
           get departures --data-urlencode "action=departures" --data-urlencode "departureCountryId=1"
