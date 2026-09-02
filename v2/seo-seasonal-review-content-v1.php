@@ -23,7 +23,7 @@ function v2_seo_seasonal_review_content_prototypes(): array
                 ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'precipitation','type'=>'climate_precipitation','value'=>'16,7 мм','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
                 ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-09','claim_key'=>'rainy_days','type'=>'climate_precipitation','value'=>'1,71 дня','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
             ],
-            'source_note'=>'MGM official climate statistics; source shows measurement period 1930–2025. Revalidate source and fresh production identity before any publication decision.',
+            'source_note'=>'Официальная климатическая статистика MGM; источник указывает период наблюдений 1930–2025. Перед любым решением о публикации повторно проверьте источник и свежую production identity.',
             'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_creation_allowed'=>false,
         ],
         'maldives-september'=>[
@@ -40,7 +40,7 @@ function v2_seo_seasonal_review_content_prototypes(): array
                 ['country_id'=>8,'page_key'=>'month:1:8:2026-09','claim_key'=>'wet_season','type'=>'climate_precipitation','value'=>'влажный сезон обычно продолжается с середины мая до ноября, а в период юго-западного муссона осадков больше','source_class'=>'official_meteorological','source_id'=>'mv-mms-climate','source_url'=>$mvUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
                 ['country_id'=>8,'page_key'=>'month:1:8:2026-09','claim_key'=>'daylight_range','type'=>'daylight','value'=>'7–9 часов','source_class'=>'official_meteorological','source_id'=>'mv-mms-climate','source_url'=>$mvUrl,'observed_at'=>'2026-09-02T11:17:00Z'],
             ],
-            'source_note'=>'Maldives Meteorological Service official climate page. Revalidate source and fresh production identity before any publication decision.',
+            'source_note'=>'Официальная климатическая страница Maldives Meteorological Service. Перед любым решением о публикации повторно проверьте источник и свежую production identity.',
             'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_creation_allowed'=>false,
         ],
     ];
