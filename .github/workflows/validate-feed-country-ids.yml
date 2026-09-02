@@ -1,0 +1,60 @@
+name: Validate feed country IDs
+
+on:
+  pull_request:
+    paths:
+      - 'feed/catalog_feed_any.yml'
+      - 'v2/country/**/index.php'
+  push:
+    branches:
+      - feature/search-core
+    paths:
+      - 'feed/catalog_feed_any.yml'
+      - 'v2/country/**/index.php'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate XML and country IDs
+        run: |
+          python3 - <<'PY'
+          import re
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          feed = Path('feed/catalog_feed_any.yml')
+          ET.parse(feed)
+          text = feed.read_text(encoding='utf-8')
+
+          checks = {
+              'turkey': 'country_turkey',
+              'egypt': 'country_egypt',
+              'tailand': 'country_tailand',
+              'sri-lanka': 'country_srilanka',
+              'maldives': 'country_maldives',
+          }
+
+          errors = []
+          for slug, prefix in checks.items():
+              page = Path(f'v2/country/{slug}/index.php')
+              if not page.exists():
+                  continue
+              page_text = page.read_text(encoding='utf-8')
+              match = re.search(r"['\"]countryId['\"]\s*=>\s*(\d+)", page_text)
+              if not match:
+                  continue
+              expected = match.group(1)
+              ids = set(re.findall(
+                  rf'<collection\s+id="{re.escape(prefix)}[^"\s]*".*?<url>[^<]*[?&]country=(\d+)</url>',
+                  text,
+                  flags=re.S,
+              ))
+              if ids and ids != {expected}:
+                  errors.append(f'{slug}: feed={sorted(ids)}, expected={expected}')
+
+          if errors:
+              raise SystemExit('Feed country ID mismatch: ' + '; '.join(errors))
+          print('FEED_COUNTRY_IDS_OK')
+          PY
