@@ -18,7 +18,7 @@ function v2_seo_publishability_report(array $record): array
     }
 
     $type = strtolower(trim((string)($record['type'] ?? '')));
-    if (!in_array($type, ['country', 'resort', 'seasonal'], true)) $errors[] = 'invalid_type';
+    if (!in_array($type, ['country', 'resort', 'seasonal', 'hotel_tours'], true)) $errors[] = 'invalid_type';
 
     try {
         $page = v2_seo_page_contract($page);
@@ -75,12 +75,25 @@ function v2_seo_publishability_report(array $record): array
     if (!$hasRelated && !$hasInternal) $errors[] = 'missing_curated_internal_links';
 
     $searchState = is_array($page['search_state'] ?? null) ? $page['search_state'] : [];
-    $transientKeys = ['dateFrom','dateTo','daysFrom','daysTill','price_from','price_till','hotel','operator'];
+    $transientKeys = ['dateFrom','dateTo','daysFrom','daysTill','price_from','price_till','operator'];
     foreach ($transientKeys as $key) {
         if (array_key_exists($key, $searchState) && trim((string)$searchState[$key]) !== '') {
             $errors[] = 'transient_search_state';
             break;
         }
+    }
+
+    $hotelValue = trim((string)($searchState['hotel'] ?? ''));
+    if ($type === 'hotel_tours') {
+        $countryValue = trim((string)($searchState['country'] ?? ''));
+        if ($countryValue === '' || !ctype_digit($countryValue) || (int)$countryValue <= 0) {
+            $errors[] = 'hotel_tours_country_required';
+        }
+        if ($hotelValue === '' || !ctype_digit($hotelValue) || (int)$hotelValue <= 0) {
+            $errors[] = 'hotel_tours_hotel_required';
+        }
+    } elseif ($hotelValue !== '') {
+        $errors[] = 'transient_search_state';
     }
 
     return [
