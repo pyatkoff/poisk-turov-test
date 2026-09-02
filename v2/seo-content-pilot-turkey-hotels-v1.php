@@ -27,6 +27,9 @@ function v2_seo_turkey_hotel_manifest(): array
         ['file'=>'seo-content-pilot-turkey-ares-city-v1.php','function'=>'v2_seo_content_pilot_turkey_ares_city','label'=>'Туры в ARES CITY','href'=>'/country/turkey/hotel/ares-city-ex-kami-hotel-1282/'],
         ['file'=>'seo-content-pilot-turkey-club-wasa-v1.php','function'=>'v2_seo_content_pilot_turkey_club_wasa','label'=>'Туры в CLUB WASA HOLIDAY VILLAGE','href'=>'/country/turkey/hotel/club-wasa-holiday-village-ex-larissa-holiday-beach-club-81900/'],
         ['file'=>'seo-content-pilot-turkey-seray-v1.php','function'=>'v2_seo_content_pilot_turkey_seray','label'=>'Туры в SERAY','href'=>'/country/turkey/hotel/seray-ex-aryes-deluxe-9336/'],
+        ['file'=>'seo-content-pilot-turkey-ares-blue-v1.php','function'=>'v2_seo_content_pilot_turkey_ares_blue','label'=>'Туры в ARES BLUE','href'=>'/country/turkey/hotel/ares-blue-ex-larissa-blue-1326/'],
+        ['file'=>'seo-content-pilot-turkey-kleopatra-ada-v1.php','function'=>'v2_seo_content_pilot_turkey_kleopatra_ada','label'=>'Туры в KLEOPATRA ADA HOTEL','href'=>'/country/turkey/hotel/kleopatra-ada-hotel-1299/'],
+        ['file'=>'seo-content-pilot-turkey-sun-fire-beach-v1.php','function'=>'v2_seo_content_pilot_turkey_sun_fire_beach','label'=>'Туры в SUN FIRE BEACH HOTEL','href'=>'/country/turkey/hotel/sun-fire-beach-hotel-1525/'],
     ];
 }
 
