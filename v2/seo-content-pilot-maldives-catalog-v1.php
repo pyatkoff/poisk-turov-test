@@ -1,14 +1,17 @@
 <?php
 require_once __DIR__ . '/seo-content-catalog-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-v1.php';
+require_once __DIR__ . '/seo-content-pilot-maldives-angsana-velavaru-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-avani-fares-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-ayada-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-banyan-vabbinfaru-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-barcelo-nasandhura-v1.php';
+require_once __DIR__ . '/seo-content-pilot-maldives-brennia-kottefaru-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-coco-bodu-hithi-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-furaveri-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-grand-park-kodhipparu-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-hard-rock-v1.php';
+require_once __DIR__ . '/seo-content-pilot-maldives-ifuru-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-kagi-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-kandima-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-kurumba-v1.php';
@@ -28,23 +31,23 @@ require_once __DIR__ . '/seo-content-pilot-maldives-westin-v1.php';
 
 /**
  * Review-only Maldives country -> hotel-tour catalog.
- *
- * This makes the existing hotel family part of the shared SEO2 registry/graph.
- * It has no routing, sitemap, canonical or indexation side effects. All child
- * records remain review-only and therefore cannot become publication candidates.
+ * It has no routing, sitemap, canonical or indexation side effects.
  */
 function v2_seo_content_pilot_maldives_catalog(): array
 {
     $records = [
         v2_seo_content_pilot_maldives(),
+        v2_seo_content_pilot_maldives_angsana_velavaru(),
         v2_seo_content_pilot_maldives_avani_fares(),
         v2_seo_content_pilot_maldives_ayada(),
         v2_seo_content_pilot_maldives_banyan_vabbinfaru(),
         v2_seo_content_pilot_maldives_barcelo_nasandhura(),
+        v2_seo_content_pilot_maldives_brennia_kottefaru(),
         v2_seo_content_pilot_maldives_coco_bodu_hithi(),
         v2_seo_content_pilot_maldives_furaveri(),
         v2_seo_content_pilot_maldives_grand_park_kodhipparu(),
         v2_seo_content_pilot_maldives_hard_rock(),
+        v2_seo_content_pilot_maldives_ifuru(),
         v2_seo_content_pilot_maldives_kagi(),
         v2_seo_content_pilot_maldives_kandima(),
         v2_seo_content_pilot_maldives_kurumba(),
@@ -66,9 +69,7 @@ function v2_seo_content_pilot_maldives_catalog(): array
     $relations = [];
     foreach (array_slice($records, 1) as $record) {
         $path = (string)($record['path'] ?? '');
-        if ($path === '') {
-            throw new InvalidArgumentException('Maldives hotel-tour catalog record is missing path');
-        }
+        if ($path === '') throw new InvalidArgumentException('Maldives hotel-tour catalog record is missing path');
         $relations[$path] = ['parent' => '/country/maldives/'];
     }
 
