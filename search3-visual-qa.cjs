@@ -84,27 +84,39 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
             await sleep(700);
             await snap('05-flights', '#selectedTour .tour-flights');
 
+            let finalMode = 'preview-simulation';
             const cont = page.locator('#selectedTour .search3-flight-continue button').first();
-            if (await cont.count()) {
+            if (await cont.count() && await cont.isVisible().catch(() => false)) {
               await cont.click();
-              await waitVisible('#selectedTour.search3-final-review', 20000);
-              await sleep(500);
-              await snap('06-final-review', '#selectedTour .search3-lead-shell, #selectedTour .lead-form');
+              if (await waitVisible('#selectedTour.search3-final-review', 20000)) finalMode = 'real-continue';
+            }
+            if (finalMode !== 'real-continue') {
+              await page.evaluate(() => {
+                const root = document.getElementById('selectedTour');
+                if (root) root.classList.add('search3-final-review');
+                window.dispatchEvent(new CustomEvent('v2:booking-review', { detail: { active: true, previewSimulation: true } }));
+              });
+              await waitVisible('#selectedTour.search3-final-review', 5000);
+            }
+            report.finalReviewMode = finalMode;
+            await sleep(400);
+            await snap('06-final-review', '#selectedTour .search3-lead-shell, #selectedTour .lead-form, #selectedTour');
 
-              const leadForm = page.locator('#selectedTour .lead-form').first();
-              if (await leadForm.count()) {
-                await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-started', { detail: { previewSimulation: true } })));
-                await sleep(250);
-                await snap('07-lead-sending', '#selectedTour .lead-form');
+            const leadForm = page.locator('#selectedTour .lead-form').first();
+            if (await leadForm.count()) {
+              await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-started', { detail: { previewSimulation: true } })));
+              await sleep(250);
+              await snap('07-lead-sending', '#selectedTour .lead-form');
 
-                await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-success', { detail: { previewSimulation: true, leadId: 'PREVIEW' } })));
-                await sleep(250);
-                await snap('08-lead-success', '#selectedTour .lead-form');
+              await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-success', { detail: { previewSimulation: true, leadId: 'PREVIEW' } })));
+              await sleep(250);
+              await snap('08-lead-success', '#selectedTour .lead-form');
 
-                await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-error', { detail: { previewSimulation: true } })));
-                await sleep(250);
-                await snap('09-lead-error', '#selectedTour .lead-form');
-              }
+              await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:lead-error', { detail: { previewSimulation: true } })));
+              await sleep(250);
+              await snap('09-lead-error', '#selectedTour .lead-form');
+            } else {
+              report.errors.push('lead form missing after final review');
             }
           }
         }
@@ -117,6 +129,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     await snap('99-failure').catch(() => {});
   } finally {
     report.finishedAt = new Date().toISOString();
+    report.captureComplete = ['01-search','02-results','03-expanded-hotel','04-tour-details','05-flights','06-final-review','07-lead-sending','08-lead-success','09-lead-error'].every(name => report.states.some(s => s.name === name && s.ok));
     fs.writeFileSync(path.join(outDir, 'report.json'), JSON.stringify(report, null, 2));
     await browser.close();
   }
