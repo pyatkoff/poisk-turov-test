@@ -36,7 +36,13 @@ function v2_seo_render_hotel_tour_review(array $record): void
     sp_head($context);
     sp_header($context);
     sp_breadcrumbs($page['breadcrumbs']);
-    sp_hero($page['eyebrow'] ?: 'AnyTour · туры в отель', $page['h1'], $page['intro']);
+    sp_hero(
+        $page['eyebrow'] ?: 'AnyTour · туры в отель',
+        $page['h1'],
+        $page['intro'],
+        v2_seo_search_handoff_url('/poisk-turov/', $page['search_state']),
+        'Найти туры в этот отель'
+    );
 
     echo '<main class="sp-main sp-seo-editorial-page sp-hotel-tour-page">';
     echo '<div class="sp-editorial-grid">';
