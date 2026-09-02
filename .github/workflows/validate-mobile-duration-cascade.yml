@@ -13,7 +13,7 @@ permissions:
 jobs:
   mobile-duration:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - name: Install Chromium
@@ -23,7 +23,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium >/dev/null
-      - name: Verify branch guard contains production mobile duration
+      - name: Verify branch guard against production layout
         shell: bash
         run: |
           set -euo pipefail
@@ -52,8 +52,37 @@ jobs:
                 if(state.pageOverflow)throw new Error(`${width}: page overflow`);
                 await page.close();
               }
+
+              const width=1440;
+              const page=await browser.newPage({viewport:{width,height:1000},extraHTTPHeaders:{'X-AnyTour-CI':'1'}});
+              const iso=days=>new Date(Date.now()+days*86400000).toISOString().slice(0,10);
+              const u=new URL('https://anytoour.ru/poisk-turov/');
+              Object.entries({from:'1',country:'4',dateFrom:iso(2),dateTo:iso(22),daysFrom:'7',daysTill:'7',count_people:'2',ci_test:'1'}).forEach(([k,v])=>u.searchParams.set(k,v));
+              const r=await page.goto(u.toString(),{waitUntil:'domcontentloaded',timeout:45000});
+              if(!r||r.status()!==200)throw new Error(`desktop: HTTP ${r&&r.status()}`);
+              await page.waitForSelector('#resultsTools:not([hidden])',{timeout:90000});
+              await page.waitForSelector('.hotel-card',{timeout:90000});
+              await page.addStyleTag({path:'v2/results-layout-guard-v1.css'});
+              await page.waitForTimeout(180);
+              const desktop=await page.evaluate(()=>{
+                const c=el=>{if(!el)return null;const x=el.getBoundingClientRect();return{x:x.x,w:x.width,right:x.right};};
+                const shell=document.querySelector('.v2-shell'),tools=document.querySelector('#resultsTools'),layout=document.querySelector('.results-layout'),rail=document.querySelector('.results-filter-rail'),card=document.querySelector('.hotel-card'),photo=card?.querySelector('.hotel-photo'),body=card?.querySelector('.hotel-body');
+                return {shell:c(shell),tools:c(tools),layout:c(layout),rail:c(rail),card:c(card),photo:c(photo),body:c(body),formDisplay:getComputedStyle(document.querySelector('#tourSearch')).display,pageOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2};
+              });
+              console.log('DESKTOP_RESULTS_GUARD_STATE',JSON.stringify(desktop));
+              if(!desktop.shell||!desktop.tools||!desktop.layout||!desktop.rail||!desktop.card||!desktop.photo||!desktop.body)throw new Error('desktop: results structure missing');
+              if(desktop.formDisplay!=='none')throw new Error('desktop: search form must stay hidden in results state');
+              if(desktop.shell.w<1100)throw new Error(`desktop: shell too narrow ${desktop.shell.w}`);
+              if(desktop.tools.w<1100)throw new Error(`desktop: tools still trapped in stale outer column ${desktop.tools.w}`);
+              if(desktop.layout.w<1100)throw new Error(`desktop: results layout too narrow ${desktop.layout.w}`);
+              if(desktop.rail.w<240)throw new Error(`desktop: filter rail collapsed ${desktop.rail.w}`);
+              if(desktop.card.w<850)throw new Error(`desktop: result card too narrow ${desktop.card.w}`);
+              if(desktop.photo.w<280)throw new Error(`desktop: hotel photo too narrow ${desktop.photo.w}`);
+              if(desktop.body.w<500)throw new Error(`desktop: hotel body too narrow ${desktop.body.w}`);
+              if(desktop.pageOverflow)throw new Error('desktop: page overflow');
+              await page.close();
             } finally { await browser.close(); }
-            console.log('MOBILE_DURATION_CASCADE_OK');
+            console.log('RESULTS_LAYOUT_GUARD_OK');
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
           node check-duration.cjs
