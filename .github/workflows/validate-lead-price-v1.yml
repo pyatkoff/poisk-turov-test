@@ -5,12 +5,6 @@ on:
       - 'v2/lead-price-v1.php'
       - 'scripts/ci/lead/validate-price.php'
       - '.github/workflows/validate-lead-price-v1.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'v2/lead-price-v1.php'
-      - 'scripts/ci/lead/validate-price.php'
-      - '.github/workflows/validate-lead-price-v1.yml'
   workflow_dispatch:
 concurrency:
   group: ci-validate-lead-price-v1-${{ github.ref }}
