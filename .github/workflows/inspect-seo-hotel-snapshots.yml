@@ -114,3 +114,18 @@ jobs:
           if [[ -n "$ONLY" ]]; then args+=("--only=$ONLY"); fi
           if [[ "$REQUIRE_ALL" == 'true' ]]; then args+=(--require-all); fi
           php v2/data/validate-seo-hotel-snapshot-identities-v1.php "${args[@]}" < "$RUNNER_TEMP/seo-hotel-snapshot.json"
+
+      - name: Report selected catalog launch readiness
+        if: ${{ inputs.catalog_file != '' }}
+        env:
+          CATALOG_FILE: ${{ inputs.catalog_file }}
+          CATALOG_FUNCTION: ${{ inputs.catalog_function }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          php v2/data/report-seo-launch-readiness-v1.php \
+            --catalog-file="$CATALOG_FILE" \
+            --catalog-function="$CATALOG_FUNCTION" \
+            --evidence-file="$RUNNER_TEMP/seo-hotel-snapshot.json" \
+            | tee "$RUNNER_TEMP/seo-launch-readiness.json"
+          php -r '$x=json_decode(file_get_contents(getenv("RUNNER_TEMP")."/seo-launch-readiness.json"),true); if(($x["state"]??"")!=="review_only_launch_readiness_report") exit(1); echo "SEO_HOTEL_READINESS_REPORT_OK ready=".($x["ready_count"]??0)." blocked=".($x["blocked_count"]??0).PHP_EOL;'
