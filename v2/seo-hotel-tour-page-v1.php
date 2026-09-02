@@ -91,9 +91,3 @@ function v2_seo_render_hotel_tour_review(array $record): void
     echo '</main>';
     sp_end($context);
 }
-
-/** Compatibility alias for any early callers using the pluralized helper name. */
-function v2_seo_render_hotel_tours_review(array $record): void
-{
-    v2_seo_render_hotel_tour_review($record);
-}
