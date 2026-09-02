@@ -3,15 +3,19 @@ name: Validate anytoour.ru standalone
 on:
   pull_request:
     paths:
-      - 'v2/**'
-      - '!v2/data/**'
+      - 'v2/**/*.php'
+      - 'v2/header-current-site.js'
+      - 'v2/robots.txt'
+      - 'v2/sitemap.xml'
       - '.github/workflows/validate-anytoour-standalone.yml'
       - '.github/workflows/deploy-anytoour.yml'
   push:
     branches: [main]
     paths:
-      - 'v2/**'
-      - '!v2/data/**'
+      - 'v2/**/*.php'
+      - 'v2/header-current-site.js'
+      - 'v2/robots.txt'
+      - 'v2/sitemap.xml'
       - '.github/workflows/validate-anytoour-standalone.yml'
       - '.github/workflows/deploy-anytoour.yml'
 
