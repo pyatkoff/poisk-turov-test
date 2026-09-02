@@ -1,7 +1,17 @@
 (function(){'use strict';
 var selected=document.getElementById('selectedTour');if(!selected)return;
 function injectMobileConvergence(){if(document.getElementById('search3-mobile-convergence-style'))return;var s=document.createElement('style');s.id='search3-mobile-convergence-style';s.textContent='@media(max-width:640px){'+
-'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-lead-cta,html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-lead-cta-note{display:none!important}'+
+'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-lead-cta,html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-lead-cta-note,html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-choice-summary,html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .facts-secondary-toggle,html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-confidence,html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .search3-booking-stepper,html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .search3-lead-shell,html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review)>.lead-form{display:none!important}'+
+'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review){display:flex!important;flex-direction:column!important}'+
+'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .back-results{order:0!important}'+
+'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-picture{order:1!important}'+
+'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-head{order:2!important}'+
+'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .facts{order:3!important}'+
+'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc{order:4!important}'+
+'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc-toggle{order:5!important;align-self:flex-start!important}'+
+'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .room-details-host{order:6!important;width:100%!important}'+
+'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .search3-final-sections{order:7!important;width:100%!important}'+
+'html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights{order:8!important;width:100%!important}'+
 'html body.search3-preview.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry){display:flex!important;flex-direction:column!important;max-width:none!important;margin:10px var(--at-page-edge) 36px!important}'+
 'html body.search3-preview.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .back-results{order:0!important}'+
 'html body.search3-preview.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .search3-booking-stepper{order:1!important;width:100%!important;margin:0 0 10px!important}'+
@@ -30,7 +40,7 @@ injectMobileConvergence();
 var bar=document.createElement('div');bar.className='search3-selected-mobile-bar';bar.hidden=true;bar.innerHTML='<div class="search3-selected-mobile-bar__price"><small>Точная стоимость тура</small><strong data-s3-selected-price>—</strong></div><button type="button" data-s3-selected-lead>Продолжить</button>';
 document.body.appendChild(bar);
 function actionButton(){return bar.querySelector('[data-s3-selected-lead]')}
-function sync(){var visible=!selected.hidden&&getComputedStyle(selected).display!=='none'&&selected.children.length>0;document.body.classList.toggle('search3-selected-open',visible);var leadEntry=selected.classList.contains('search3-lead-entry');bar.hidden=!visible||leadEntry;if(!visible)return;var source=selected.querySelector('.selected-price');var target=bar.querySelector('[data-s3-selected-price]');if(source&&target){var text=String(source.textContent||'').replace(/^Стоимость\s*/i,'').trim();target.textContent=text||'—';}var btn=actionButton();if(!btn)return;btn.textContent=selected.classList.contains('search3-final-review')?'Перейти к заявке':'Продолжить';}
+function sync(){var visible=!selected.hidden&&getComputedStyle(selected).display!=='none'&&selected.children.length>0;document.body.classList.toggle('search3-selected-open',visible);var leadEntry=selected.classList.contains('search3-lead-entry'),finalReview=selected.classList.contains('search3-final-review');bar.hidden=!visible||leadEntry||finalReview;if(!visible)return;var source=selected.querySelector('.selected-price');var target=bar.querySelector('[data-s3-selected-price]');if(source&&target){var text=String(source.textContent||'').replace(/^Стоимость\s*/i,'').trim();target.textContent=text||'—';}var btn=actionButton();if(!btn)return;btn.textContent='Продолжить';}
 function continueFlow(){
   if(selected.classList.contains('search3-lead-entry'))return;
   if(selected.classList.contains('search3-final-review')){
@@ -45,5 +55,5 @@ document.addEventListener('click',function(e){var btn=e.target&&e.target.closest
 ['v2:tour-selected','v2:selected-tour-opened','v2:selected-tour-closed','v2:results-rendered','v2:booking-review','search3:lead-entry','v2:lead-started','v2:lead-success','v2:lead-error'].forEach(function(name){window.addEventListener(name,function(){setTimeout(sync,0)});});
 new MutationObserver(sync).observe(selected,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','class','style']});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync,{once:true});else sync();
-window.Search3SelectedTourMobile={sync,continueFlow,version:5};
+window.Search3SelectedTourMobile={sync,continueFlow,version:6};
 })();
