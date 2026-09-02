@@ -10,6 +10,13 @@ body.search3-preview #selectedTour.search3-final-review .selected-head .eyebrow{
 body.search3-preview #selectedTour.search3-final-review .selected-head{align-items:center!important}
 body.search3-preview #selectedTour.search3-final-review .facts{margin-top:10px!important}
 body.search3-preview #selectedTour.search3-final-review .tour-flights,body.search3-preview #selectedTour.search3-final-review .search3-final-sections,body.search3-preview #selectedTour.search3-final-review .search3-lead-shell{margin-top:12px!important}
+.search3-summary-actions{display:grid;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--at-line)}
+.search3-summary-actions[hidden]{display:none!important}
+.search3-summary-submit{width:100%;min-height:48px;border:0;border-radius:10px;background:#ff5a0a;color:#fff;font:900 12px/1 var(--at-font);cursor:pointer}
+.search3-summary-submit:hover{filter:brightness(.98)}
+.search3-summary-submit:focus-visible{outline:2px solid var(--at-brand);outline-offset:3px}
+.search3-summary-submit:disabled{cursor:default;opacity:.58;filter:none}
+.search3-summary-actions p{margin:0;color:var(--at-muted);font:700 8px/1.4 var(--at-font)}
 @media(min-width:1000px){
 body.search3-preview #selectedTour .search3-lead-shell{grid-template-columns:minmax(0,1fr) 320px!important;gap:18px!important;align-items:start!important}
 body.search3-preview #selectedTour .search3-lead-shell>.lead-form{padding:22px 24px!important;border-radius:14px!important}
@@ -31,5 +38,6 @@ body.search3-preview #selectedTour.search3-final-review .selected-head{grid-row:
 body.search3-preview #selectedTour.search3-final-review .selected-head h2{font-size:22px!important}
 body.search3-preview #selectedTour.search3-final-review .selected-price{font-size:22px!important}
 body.search3-preview #selectedTour.search3-final-review .facts{grid-row:5!important;border-radius:12px!important}
+body.search3-preview #selectedTour.search3-final-review .search3-booking-summary{border-color:#dfe5ef!important;box-shadow:0 8px 24px rgba(31,52,109,.06)!important}
 }
-@media(max-width:640px){.search3-review-heading{order:2;margin:2px 0 7px;padding:2px 0}.search3-review-heading h2{font-size:19px}.search3-review-heading p{font-size:8px}.search3-review-heading>b{width:24px;height:24px;flex-basis:24px;font-size:11px}body.search3-preview #selectedTour.search3-final-review .selected-picture{order:3!important}body.search3-preview #selectedTour.search3-final-review .selected-head{order:4!important}body.search3-preview #selectedTour.search3-final-review .facts{order:5!important}}
+@media(max-width:640px){.search3-review-heading{order:2;margin:2px 0 7px;padding:2px 0}.search3-review-heading h2{font-size:19px}.search3-review-heading p{font-size:8px}.search3-review-heading>b{width:24px;height:24px;flex-basis:24px;font-size:11px}body.search3-preview #selectedTour.search3-final-review .selected-picture{order:3!important}body.search3-preview #selectedTour.search3-final-review .selected-head{order:4!important}body.search3-preview #selectedTour.search3-final-review .facts{order:5!important}.search3-summary-submit{min-height:46px}.search3-summary-actions p{font-size:8px}}
