@@ -5,6 +5,7 @@ on:
     branches: [feature/search3-preview]
     paths:
       - 'v2/**'
+      - 'search3-visual-qa.cjs'
       - '.github/workflows/deploy-search3-preview.yml'
   workflow_dispatch:
 
@@ -72,3 +73,34 @@ jobs:
           echo json_encode(['ok'=>false,'preview'=>true,'message'=>'Lead submission is disabled on Search 3 preview'], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
           PHP
           REMOTE
+
+  visual-qa:
+    needs: deploy-preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Capture Search3 key states
+        env:
+          SEARCH3_PREVIEW_URL: https://anytoour.ru/_preview/search3/poisk-turov/
+          SEARCH3_QA_OUT: search3-visual-artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          node search3-visual-qa.cjs
+      - name: Upload Search3 screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-visual-${{ github.run_number }}-${{ github.sha }}
+          path: search3-visual-artifacts/
+          retention-days: 30
