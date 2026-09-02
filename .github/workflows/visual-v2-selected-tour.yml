@@ -45,9 +45,6 @@ jobs:
           const url = process.env.V2_URL;
           const viewports = [
             ['mobile-375',375,812],
-            ['mobile-430',430,932],
-            ['tablet-768',768,1024],
-            ['intermediate-1024',1024,900],
             ['desktop-1440',1440,1000],
           ];
           const root = path.resolve('v2');
