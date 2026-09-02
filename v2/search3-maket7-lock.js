@@ -19,23 +19,26 @@ function desktopLock(){
   var quality=document.getElementById('search3AdvancedSearch')||form.querySelector('.search3-quality');
   var grid=quality&&quality.querySelector('.search3-quality__grid');
   var quick=form.querySelector('.search3-quick');
+  var operatorField=field(form,'operator');
   placeRegionInPrimary(form,main);
   if(window.innerWidth>760){
     if(quality){quality.hidden=false;quality.style.setProperty('display','block','important');}
     if(grid){
       grid.style.setProperty('display','grid','important');
       placeAdvanced(form,grid,'stars','Категория отеля','search3-stars');
+      placeAdvanced(form,grid,'rating','Оценка отеля','search3-rating');
       placeAdvanced(form,grid,'food','Питание','search3-meal');
       placeAdvanced(form,grid,'price_till','Бюджет на тур','search3-budget');
       placeAdvanced(form,grid,'hotel','Конкретный отель','search3-hotel');
-      placeAdvanced(form,grid,'operator','Туроператор','search3-operator');
     }
+    if(operatorField)operatorField.style.setProperty('display','none','important');
     if(quick&&quick.children.length){quick.hidden=false;quick.style.setProperty('display','flex','important');}
     form.classList.add('search3-desktop-two-row');
   }else{
     if(quality)quality.style.removeProperty('display');
     if(grid)grid.style.removeProperty('display');
     if(quick)quick.style.removeProperty('display');
+    if(operatorField)operatorField.style.removeProperty('display');
     form.classList.remove('search3-desktop-two-row');
   }
 }
