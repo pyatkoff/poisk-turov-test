@@ -4,6 +4,9 @@ body.search3-preview.search3-has-results #tourSearch{display:none!important}
 body.search3-preview.search3-has-results.search3-editing-search #tourSearch{display:block!important;margin-bottom:12px!important}
 body.search3-preview.search3-has-results.search3-editing-search .results-search-summary{display:none!important}
 body.search3-preview.search3-has-results #v2ResultsConfidence,body.search3-preview.search3-has-results #v2AgencyTrust{display:none!important}
+/* A completed-search banner is useful while searching, but maket7's settled results state starts
+   directly with the compact search summary. Keep empty/error/in-progress status UI untouched. */
+body.search3-preview.search3-has-results #status:has(.search-progress-done){display:none!important}
 body.search3-preview .results-search-summary{display:grid!important;grid-template-columns:minmax(0,1.55fr) .68fr .68fr .72fr 122px!important;align-items:stretch!important;gap:0!important;max-width:1120px!important;width:calc(100% - 32px)!important;margin:0 auto 10px!important;padding:0!important;border:1px solid #e2e8f0!important;border-radius:10px!important;background:#fff!important;box-shadow:none!important;overflow:hidden!important}
 body.search3-preview .results-search-summary__route{grid-column:1!important;grid-row:1!important;padding:8px 13px!important;border-right:1px solid #edf0f5!important}
 body.search3-preview .results-search-summary__route strong{display:block!important;margin-bottom:3px!important;color:#98a2b3!important;font-size:7px!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.02em!important}
