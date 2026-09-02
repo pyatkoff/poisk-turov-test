@@ -1,0 +1,98 @@
+name: Audit SEO2 pilot fresh evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-seo2-pilot-fresh-evidence.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit-pilot-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare production SSH key
+        env:
+          SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$SSH_KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$SSH_KEY" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$SSH_KEY" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Fetch fresh country identity snapshots
+        env:
+          NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          NEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NEW_HOST" && test -n "$NEW_USER"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$NEW_USER@$NEW_HOST"
+          for country in 4 8 1; do
+            echo "SEO2_PILOT_SNAPSHOT_BEGIN country=$country"
+            timeout 45s ssh "${opts[@]}" "$remote" \
+              "php \"\$HOME/www/anytoour.ru/data/inspect-seo-hotel-snapshots-v1.php\" --country=$country --limit=100 --identity-only" \
+              | tee "$RUNNER_TEMP/pilot-$country.json"
+            echo "SEO2_PILOT_SNAPSHOT_END country=$country"
+          done
+
+      - name: Validate exact Turkey pilot identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          php v2/data/validate-seo-hotel-snapshot-identities-v1.php \
+            --catalog-file=v2/seo-content-pilot-turkey-hotel-review-catalog-v1.php \
+            --catalog-function=v2_seo_content_pilot_turkey_hotel_review_catalog \
+            --only=1601,71506,65881 \
+            < "$RUNNER_TEMP/pilot-4.json"
+
+      - name: Validate exact Maldives pilot identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          php v2/data/validate-seo-hotel-snapshot-identities-v1.php \
+            --catalog-file=v2/seo-content-pilot-maldives-catalog-v1.php \
+            --catalog-function=v2_seo_content_pilot_maldives_catalog \
+            --only=65108,74701,82538 \
+            < "$RUNNER_TEMP/pilot-8.json"
+
+      - name: Validate exact Egypt pilot identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          php v2/data/validate-seo-hotel-snapshot-identities-v1.php \
+            --catalog-file=v2/seo-content-pilot-egypt-hotel-review-catalog-v1.php \
+            --catalog-function=v2_seo_content_pilot_egypt_hotel_review_catalog \
+            --only=162,388,322 \
+            < "$RUNNER_TEMP/pilot-1.json"
+
+      - name: Report scoped readiness per country
+        shell: bash
+        run: |
+          set -euo pipefail
+          php v2/data/report-seo-launch-readiness-v1.php --catalog-file=v2/seo-content-pilot-turkey-hotel-review-catalog-v1.php --catalog-function=v2_seo_content_pilot_turkey_hotel_review_catalog --evidence-file="$RUNNER_TEMP/pilot-4.json" > "$RUNNER_TEMP/readiness-4.json"
+          php v2/data/report-seo-launch-readiness-v1.php --catalog-file=v2/seo-content-pilot-maldives-catalog-v1.php --catalog-function=v2_seo_content_pilot_maldives_catalog --evidence-file="$RUNNER_TEMP/pilot-8.json" > "$RUNNER_TEMP/readiness-8.json"
+          php v2/data/report-seo-launch-readiness-v1.php --catalog-file=v2/seo-content-pilot-egypt-hotel-review-catalog-v1.php --catalog-function=v2_seo_content_pilot_egypt_hotel_review_catalog --evidence-file="$RUNNER_TEMP/pilot-1.json" > "$RUNNER_TEMP/readiness-1.json"
+          php -r '
+            foreach ([4,8,1] as $country) {
+              $x=json_decode(file_get_contents(getenv("RUNNER_TEMP")."/readiness-$country.json"),true);
+              if(($x["state"]??"")!=="review_only_launch_readiness_report") exit(10+$country);
+              if(($x["publication_allowed"]??true)!==false||($x["hotel_tours_publication_allowed"]??true)!==false||($x["hotel_tours_indexation_allowed"]??true)!==false) exit(20+$country);
+              printf("SEO2_PILOT_COUNTRY_OK country=%d ready=%d blocked=%d floor=%d evidenceFresh=%d manifest=%s evidence=%s review=%s\n",$country,(int)($x["ready_count"]??0),(int)($x["blocked_count"]??0),(int)($x["family_quality_floor"]??0),($x["hotel_evidence_fresh"]??false)?1:0,(string)($x["manifest_sha256"]??""),(string)($x["hotel_evidence_sha256"]??""),(string)($x["review_contract_sha256"]??""));
+            }
+            echo "SEO2_PILOT_FRESH_EVIDENCE_OK hotels=9 countries=3 publication=0 indexation=0\n";
+          '
