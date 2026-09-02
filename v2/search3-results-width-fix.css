@@ -7,8 +7,8 @@ body.search3-preview #results .hotel-main{width:100%!important;min-width:0!impor
 /* Keep the native hidden contract authoritative before results exist. Search3 presentation rules must not resurrect empty controls/rails. */
 body.search3-preview .results-search-summary[hidden],body.search3-preview .results-tools--ds2[hidden]{display:none!important}
 body.search3-preview:not(.search3-has-results) .results-layout{display:none!important}
-/* Results remain one coherent page flow: shared result-state layout must not place the page intro beside the compact search summary. */
-body.search3-preview.search3-has-results .v2-shell{display:block!important}
+/* Results remain one coherent page flow. Match the shared DS2 result-state selector specificity so its two-column search shell cannot leak into Search3. */
+body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) .v2-shell{display:block!important}
 body.search3-preview.search3-has-results .results-search-summary{width:100%!important;max-width:none!important;margin-left:0!important;margin-right:0!important}
 /* Search 3 owns the mobile filter toolbar/drawer; suppress the older DS2 mobile filter UI in preview only. */
 body.search3-preview .mrf-bar,body.search3-preview .mrf-sheet{display:none!important}
