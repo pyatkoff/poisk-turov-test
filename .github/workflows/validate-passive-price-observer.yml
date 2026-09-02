@@ -9,14 +9,6 @@ on:
       - 'v2/passive-price-observer-v1.js'
       - 'v2/bundle-manifest-v1.php'
       - '.github/workflows/validate-passive-price-observer.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'v2/data/price-observer-v1.php'
-      - 'v2/data/observe-search-v1.php'
-      - 'v2/passive-price-observer-v1.js'
-      - 'v2/bundle-manifest-v1.php'
-      - '.github/workflows/validate-passive-price-observer.yml'
   workflow_dispatch:
 
 jobs:
