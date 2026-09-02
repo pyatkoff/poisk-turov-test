@@ -49,6 +49,8 @@ function v2_seo_hotel_launch_candidate_proposal(array $readinessRows, array $pri
             'path' => $path,
             'country_id' => (int)($row['country_id'] ?? 0),
             'hotel_id' => (int)($row['hotel_id'] ?? 0),
+            'evidence_epoch' => (int)($row['evidence_epoch'] ?? 0),
+            'evidence_expires_epoch' => (int)($row['evidence_expires_epoch'] ?? 0),
             'score' => 100,
             'state' => 'proposal_only_requires_launch_approval',
         ];
@@ -61,15 +63,16 @@ function v2_seo_hotel_launch_candidate_proposal(array $readinessRows, array $pri
  * Build the small AnyTour Turkey/Maldives/Egypt pilot proposal without ranking.
  *
  * Buckets are explicit and ordered by the caller. Every path still must be 100/100
- * ready. This helper only adds country-balance and hard-size constraints on top of
- * the proposal-only gate; it has no publication consumers.
+ * ready. This helper adds country-balance, hard-size and current evidence-expiry
+ * constraints on top of the proposal-only gate; it has no publication consumers.
  */
 function v2_seo_hotel_country_launch_slice_proposal(
     array $readinessRows,
     array $countryBuckets,
     array $requiredCountryIds = [4, 8, 1],
     int $maxPerCountry = 5,
-    int $maxTotal = 15
+    int $maxTotal = 15,
+    ?int $nowEpoch = null
 ): array {
     if ($maxPerCountry < 1 || $maxPerCountry > 10) {
         throw new InvalidArgumentException('Hotel launch country slice maxPerCountry must be between 1 and 10');
@@ -77,6 +80,7 @@ function v2_seo_hotel_country_launch_slice_proposal(
     if ($maxTotal < 1 || $maxTotal > 30) {
         throw new InvalidArgumentException('Hotel launch country slice maxTotal must be between 1 and 30');
     }
+    $nowEpoch = $nowEpoch ?? time();
 
     $required = [];
     foreach ($requiredCountryIds as $countryId) {
@@ -88,15 +92,15 @@ function v2_seo_hotel_country_launch_slice_proposal(
     }
     if (!$required) throw new InvalidArgumentException('Hotel launch country slice requires countries');
 
-    $readinessCountryByPath = [];
+    $readinessByPath = [];
     foreach ($readinessRows as $row) {
         if (!is_array($row)) continue;
         $path = trim((string)($row['path'] ?? ''));
         if ($path === '') continue;
-        if (isset($readinessCountryByPath[$path])) {
+        if (isset($readinessByPath[$path])) {
             throw new InvalidArgumentException('Duplicate hotel launch-readiness path: ' . $path);
         }
-        $readinessCountryByPath[$path] = (int)($row['country_id'] ?? 0);
+        $readinessByPath[$path] = $row;
     }
 
     $seenCountries = [];
@@ -116,11 +120,17 @@ function v2_seo_hotel_country_launch_slice_proposal(
         $bucketCounts[$countryId] = count($paths);
         foreach ($paths as $path) {
             $path = trim((string)$path);
-            if ($path === '' || !array_key_exists($path, $readinessCountryByPath)) {
+            $row = $readinessByPath[$path] ?? null;
+            if ($path === '' || !is_array($row)) {
                 throw new InvalidArgumentException('Hotel launch country slice path is missing readiness evidence: ' . $path);
             }
-            if ($readinessCountryByPath[$path] !== $countryId) {
+            if ((int)($row['country_id'] ?? 0) !== $countryId) {
                 throw new InvalidArgumentException('Hotel launch country slice path country mismatch: ' . $path);
+            }
+            $evidenceEpoch = (int)($row['evidence_epoch'] ?? 0);
+            $evidenceExpires = (int)($row['evidence_expires_epoch'] ?? 0);
+            if ($evidenceEpoch <= 0 || $evidenceExpires < $nowEpoch) {
+                throw new InvalidArgumentException('Hotel launch country slice requires currently fresh identity evidence: ' . $path);
             }
             $flatPaths[] = $path;
         }
@@ -150,6 +160,7 @@ function v2_seo_hotel_country_launch_slice_proposal(
 
     return [
         'state' => 'proposal_only_requires_launch_approval',
+        'validated_at_epoch' => $nowEpoch,
         'required_country_ids' => array_map('intval', array_keys($required)),
         'max_per_country' => $maxPerCountry,
         'max_total' => $maxTotal,
