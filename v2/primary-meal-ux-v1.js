@@ -18,7 +18,9 @@ function items(){var opts=Array.from(select.options||[]).filter(function(o){retu
 function standardAiOption(){return Array.from(select.options||[]).find(function(o){var value=String(o.value||''),s=lower(o.textContent);return value&&((s.indexOf('all inclusive')>=0)||(s.indexOf('все включ')>=0))&&s.indexOf('ультра')<0&&s.indexOf('ultra')<0&&s.indexOf('uai')<0;})||null;}
 function syncInitialMealShortcut(){
   var target=form.querySelector('.ds2-search-quick-stars .stars-quick');if(!target)return;
-  var existing=target.querySelector('.meal-shortcut'),option=loaded?standardAiOption():null;
+  var existing=target.querySelector('.meal-shortcut');
+  if(!form.classList.contains('ds2-search-initial')){if(existing)existing.remove();return;}
+  var option=loaded?standardAiOption():null;
   if(!option){if(existing)existing.remove();return;}
   if(!existing){existing=document.createElement('button');existing.type='button';existing.className='stars-choice meal-shortcut';existing.textContent='All Inclusive';existing.dataset.ds2QuickRole='meal';existing.addEventListener('click',function(){var current=standardAiOption();if(!current)return;select.value=String(current.value);select.dispatchEvent(new Event('change',{bubbles:true}));sync();});target.appendChild(existing);target.setAttribute('aria-label','Быстрые фильтры');}
   existing.dataset.value=String(option.value);var active=String(select.value||'')===String(option.value);existing.classList.toggle('is-active',active);existing.setAttribute('aria-pressed',active?'true':'false');
@@ -35,7 +37,7 @@ function syncAdditionalSummary(){if(!details)return;var summary=details.querySel
 if(details)details.addEventListener('click',function(e){var target=e.target instanceof Element?e.target:null,reset=target&&target.closest('.search-filters-reset');if(!reset)return;var starValue=stars?String(stars.value||''):'',mealValue=String(select.value||'');setTimeout(function(){if(stars){stars.value=starValue;stars.dispatchEvent(new Event('change',{bubbles:true}));}select.value=mealValue;select.dispatchEvent(new Event('change',{bubbles:true}));syncAdditionalSummary();},0);},true);
 render();syncAdditionalSummary();
 setTimeout(function(){if(document.visibilityState==='visible')loadMeals();},2200);
-window.V2PrimaryMealUXV1={render:render,loadMeals:loadMeals,version:5};
+window.V2PrimaryMealUXV1={render:render,loadMeals:loadMeals,version:6};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
