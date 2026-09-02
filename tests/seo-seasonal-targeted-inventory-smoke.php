@@ -13,7 +13,7 @@ $by=[];foreach($json['targets'] as $row)$by[(string)($row['preview_key']??'')]=$
 if(($by['antalya-september']['page_key']??'')!=='resort_month:1:4:20:2026-09')targeted_inventory_fail('antalya_key');
 if((int)($by['antalya-september']['country_id']??0)!==4||(int)($by['antalya-september']['region_id']??0)!==20)targeted_inventory_fail('antalya_identity');
 if(($by['maldives-september']['page_key']??'')!=='month:1:8:2026-09')targeted_inventory_fail('maldives_key');
-if((int)($by['maldives-september']['country_id']??0)!==8||($by['maldives-september']['region_id']??'x')!==null)targeted_inventory_fail('maldives_identity');
+if((int)($by['maldives-september']['country_id']??0)!==8||!array_key_exists('region_id',$by['maldives-september'])||$by['maldives-september']['region_id']!==null)targeted_inventory_fail('maldives_identity');
 foreach($by as $row){
     if(($row['departure_id']??0)!==1)targeted_inventory_fail('departure');
     if(($row['date_from']??'')!=='2026-09-04'||($row['date_to']??'')!=='2026-09-24')targeted_inventory_fail('window');
