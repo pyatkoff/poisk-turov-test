@@ -41,7 +41,7 @@ $html=ob_get_clean();
 if(substr_count($html,'<h1')!==1) seasonal_preview_fail('antalya_h1');
 if(!str_contains($html,'<meta name="robots" content="noindex,follow">')) seasonal_preview_fail('antalya_robots');
 if(str_contains($html,'rel="canonical"')) seasonal_preview_fail('antalya_canonical_present');
-if(!str_contains($html,'Анталья в сентябре')) seasonal_preview_fail('antalya_identity_copy');
+if(!str_contains($html,'Туры в Анталью в сентябре')) seasonal_preview_fail('antalya_identity_copy');
 foreach(['25,3 °C','31,2 °C','19,6 °C','16,7 мм','1,71 дня'] as $fact) if(!str_contains($html,$fact)) seasonal_preview_fail('antalya_missing_fact');
 if(!str_contains($html,'/poisk-turov/?country=4&amp;region=20')) seasonal_preview_fail('antalya_handoff');
 if(!str_contains($html,'Официальная климатическая статистика MGM')) seasonal_preview_fail('antalya_source_note');
