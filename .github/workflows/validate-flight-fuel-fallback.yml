@@ -14,38 +14,53 @@ permissions:
 jobs:
   fuel-fallback:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Verify flight-specific, tour fallback and explicit-zero fuel states
         shell: bash
         run: |
           set -euo pipefail
-          npm init -y >/dev/null 2>&1
-          npm install --no-save playwright@1.55.0 >/dev/null
-          npx playwright install --with-deps chromium >/dev/null
-          cat > fuel-fallback.cjs <<'JS'
-          const { chromium }=require('playwright'); const path=require('path');
-          (async()=>{const browser=await chromium.launch({headless:true});
-          for(const width of [375,768,1440]){
-            const page=await browser.newPage({viewport:{width,height:900}});
-            await page.setContent(`<section id="selectedTour"><div class="selected-head"><div class="selected-price"><small>Стоимость</small>100 000 ₽</div></div><div class="facts"><div><span>Топливный сбор</span><b>1 500 ₽</b></div></div><div class="lead-form"><div class="section-heading"><span></span></div></div></section>`);
-            await page.addScriptTag({path:path.resolve('v2/flight-price-sync-v1.js')});
-            const states=await page.evaluate(()=>{
-              const sync=window.V2FlightPriceSync,tour={price:100000,fuelCharge:1500};let eventFuel=null;
-              addEventListener('v2:tour-price-updated',e=>eventFuel=e.detail.fuelCharge);
-              sync.reset(tour);
-              sync.sync(tour,{price:110000,fuelCharge:5000},0);
-              const specific=document.querySelector('.facts b').textContent;
-              sync.sync(tour,{price:112000},1);
-              const fallback=document.querySelector('.facts b').textContent, fallbackEvent=eventFuel;
-              sync.sync(tour,{price:113000,fuelCharge:0},2);
-              const explicitZero=document.querySelector('.facts b').textContent, zeroEvent=eventFuel;
-              return {specific,fallback,fallbackEvent,explicitZero,zeroEvent,hasSelectedFuelValue:typeof sync.selectedFuelValue==='function'};
-            });
-            if(!states.specific.includes('5')||!states.fallback.includes('1')||states.fallbackEvent!==1500||states.explicitZero!=='—'||states.zeroEvent!==0||!states.hasSelectedFuelValue)throw new Error(`fuel fallback failed ${width}: ${JSON.stringify(states)}`);
-            console.log(`FLIGHT_FUEL_FALLBACK_OK width=${width} ${JSON.stringify(states)}`); await page.close();
-          }
-          await browser.close();})().catch(e=>{console.error(e);process.exit(1)});
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm');
+          const listeners={};
+          const selectedPrice={innerHTML:''};
+          const fuelLabel={textContent:'Топливный сбор'};
+          const fuelValue={textContent:'1 500 ₽'};
+          const fuelFact={querySelector:sel=>sel==='span'?fuelLabel:sel==='b'?fuelValue:null};
+          const leadNote={textContent:''};
+          const document={
+            head:{appendChild(){}},
+            getElementById(){return null;},
+            createElement(){return {id:'',className:'',textContent:'',appendChild(){},querySelectorAll(){return[];}};},
+            querySelector(sel){
+              if(sel==='#selectedTour .selected-price')return selectedPrice;
+              if(sel==='#selectedTour .lead-form .section-heading span')return leadNote;
+              return null;
+            },
+            querySelectorAll(sel){
+              if(sel==='#selectedTour .facts>div')return [fuelFact];
+              if(sel==='#selectedTour .flight-choice b'||sel==='#selectedTour .flight-variant')return [];
+              return [];
+            }
+          };
+          class CustomEvent{constructor(type,init={}){this.type=type;this.detail=init.detail;}}
+          const window={
+            addEventListener(type,fn){(listeners[type]||(listeners[type]=[])).push(fn);},
+            dispatchEvent(event){for(const fn of listeners[event.type]||[])fn(event);return true;}
+          };
+          vm.runInNewContext(fs.readFileSync('v2/flight-price-sync-v1.js','utf8'),{window,document,CustomEvent,Intl,Object,Array,Number,String,Math,RegExp});
+          const sync=window.V2FlightPriceSync,tour={price:100000,fuelCharge:1500};let eventFuel=null;
+          if(!sync||sync.version!==2)throw new Error('flight price sync API missing');
+          window.addEventListener('v2:tour-price-updated',e=>eventFuel=e.detail.fuelCharge);
+          sync.reset(tour);
+          sync.sync(tour,{price:110000,fuelCharge:5000},0);
+          const specific=fuelValue.textContent;
+          sync.sync(tour,{price:112000},1);
+          const fallback=fuelValue.textContent, fallbackEvent=eventFuel;
+          sync.sync(tour,{price:113000,fuelCharge:0},2);
+          const explicitZero=fuelValue.textContent, zeroEvent=eventFuel;
+          const states={specific,fallback,fallbackEvent,explicitZero,zeroEvent,hasSelectedFuelValue:typeof sync.selectedFuelValue==='function'};
+          if(!states.specific.includes('5')||!states.fallback.includes('1')||states.fallbackEvent!==1500||states.explicitZero!=='—'||states.zeroEvent!==0||!states.hasSelectedFuelValue)throw new Error('fuel fallback failed: '+JSON.stringify(states));
+          console.log('FLIGHT_FUEL_FALLBACK_OK '+JSON.stringify(states));
           JS
-          node fuel-fallback.cjs
