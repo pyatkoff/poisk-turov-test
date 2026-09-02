@@ -9,6 +9,7 @@ on:
       - 'tests/seo-hotel-family-launch-readiness-smoke.php'
       - 'tests/seo-page-launch-readiness-smoke.php'
       - 'tests/seo-hotel-launch-candidate-smoke.php'
+      - 'tests/seo-reference-visual-contract-smoke.php'
       - '.github/workflows/validate-v2-pr.yml'
 
 concurrency:
@@ -180,6 +181,8 @@ jobs:
           php tests/seo-page-launch-readiness-smoke.php
           php -l tests/seo-hotel-launch-candidate-smoke.php >/dev/null
           php tests/seo-hotel-launch-candidate-smoke.php
+          php -l tests/seo-reference-visual-contract-smoke.php >/dev/null
+          php tests/seo-reference-visual-contract-smoke.php
           php -l v2/data/report-seo-launch-readiness-v1.php >/dev/null
           php v2/data/report-seo-launch-readiness-v1.php --catalog-file=v2/seo-content-pilot-maldives-catalog-v1.php --catalog-function=v2_seo_content_pilot_maldives_catalog </dev/null > /tmp/seo-readiness.json
           php -r '$x=json_decode(file_get_contents("/tmp/seo-readiness.json"),true); if(($x["state"]??"")!=="review_only_launch_readiness_report") exit(1); if(($x["blocked_count"]??0)<1) exit(2); echo "SEO_READINESS_CLI_OK\n";'
