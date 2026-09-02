@@ -1,0 +1,27 @@
+/* Search3 desktop tour-details rail. Real selected-tour data only. */
+.search3-tour-detail-rail{display:none}
+@media(min-width:1000px){
+body.search3-preview #selectedTour:not(.search3-final-review){grid-template-columns:260px minmax(0,1fr) 250px!important;column-gap:14px!important;align-items:start!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .back-results{grid-column:1/-1!important;grid-row:1!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .search3-booking-stepper{grid-column:1/-1!important;grid-row:2!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .selected-picture{grid-column:1!important;grid-row:3!important;height:176px!important;border-radius:12px 0 0 12px!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .selected-head{grid-column:2!important;grid-row:3!important;min-height:176px!important;border-radius:0 12px 12px 0!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .facts{grid-column:1/3!important;grid-row:4!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .hotel-desc{grid-column:1/3!important;grid-row:5!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights{grid-column:1/3!important;grid-row:6!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .search3-final-sections{grid-column:1/3!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .search3-lead-shell{grid-column:1/3!important}
+body.search3-preview #selectedTour:not(.search3-final-review) .search3-tour-detail-rail{display:block;grid-column:3!important;grid-row:3/8!important;position:sticky;top:18px;margin:0;padding:16px;border:1px solid var(--at-line);border-radius:12px;background:#fff;box-shadow:0 8px 28px rgba(31,52,109,.06)}
+body.search3-preview .search3-tour-detail-rail h3{margin:0 0 12px;color:var(--at-ink);font:900 15px/1.15 var(--at-font)}
+body.search3-preview .search3-tour-detail-rail dl{margin:0;padding:0}
+body.search3-preview .search3-tour-detail-rail dl>div{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;padding:8px 0;border-bottom:1px solid var(--at-line-soft)}
+body.search3-preview .search3-tour-detail-rail dt{color:var(--at-muted);font:800 8px/1.3 var(--at-font)}
+body.search3-preview .search3-tour-detail-rail dd{margin:0;color:var(--at-ink);font:850 9px/1.35 var(--at-font);overflow-wrap:anywhere}
+body.search3-preview .search3-tour-detail-rail__price{display:grid;gap:5px;margin-top:14px;padding-top:12px;border-top:1px solid var(--at-line)}
+body.search3-preview .search3-tour-detail-rail__price span{color:var(--at-muted);font:800 9px/1.2 var(--at-font)}
+body.search3-preview .search3-tour-detail-rail__price strong{color:var(--at-ink);font:950 22px/1 var(--at-font)}
+body.search3-preview .search3-tour-detail-rail__price small{color:var(--at-muted);font:700 8px/1.25 var(--at-font)}
+body.search3-preview .search3-tour-detail-rail__continue{width:100%;min-height:44px;margin-top:12px;border:0;border-radius:8px;background:#ff4f0a;color:#fff;font:900 11px/1 var(--at-font);cursor:pointer}
+body.search3-preview .search3-tour-detail-rail__continue:focus-visible{outline:2px solid var(--at-brand);outline-offset:3px}
+}
+@media(max-width:999px){.search3-tour-detail-rail{display:none!important}}
