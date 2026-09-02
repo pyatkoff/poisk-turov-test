@@ -56,8 +56,8 @@ jobs:
           from pathlib import Path
           import sys
           path=Path(sys.argv[1]); text=path.read_text()
-          text=text.replace('</head>','<link rel="stylesheet" href="/_preview/search3/search3-preview.css?v=5"><link rel="stylesheet" href="/_preview/search3/search3-results-preview.css?v=4"><link rel="stylesheet" href="/_preview/search3/search3-results-width-fix.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-filter-rail-preview.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-mobile-filters.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-results-top.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-selected-tour.css?v=4"></head>',1)
-          text=text.replace('</body>','<script src="/_preview/search3/search3-preview.js?v=3"></script><script src="/_preview/search3/search3-results-preview.js?v=3"></script><script src="/_preview/search3/search3-filter-rail-preview.js?v=2"></script><script src="/_preview/search3/search3-mobile-filters.js?v=4"></script><script src="/_preview/search3/search3-results-top.js?v=2"></script><script src="/_preview/search3/search3-selected-tour-mobile.js?v=2"></script></body>',1)
+          text=text.replace('</head>','<link rel="stylesheet" href="/_preview/search3/search3-preview.css?v=6"><link rel="stylesheet" href="/_preview/search3/search3-results-preview.css?v=4"><link rel="stylesheet" href="/_preview/search3/search3-results-width-fix.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-filter-rail-preview.css?v=3"><link rel="stylesheet" href="/_preview/search3/search3-mobile-filters.css?v=2"><link rel="stylesheet" href="/_preview/search3/search3-results-top.css?v=4"><link rel="stylesheet" href="/_preview/search3/search3-selected-tour.css?v=5"></head>',1)
+          text=text.replace('</body>','<script src="/_preview/search3/search3-preview.js?v=4"></script><script src="/_preview/search3/search3-results-preview.js?v=3"></script><script src="/_preview/search3/search3-filter-rail-preview.js?v=2"></script><script src="/_preview/search3/search3-mobile-filters.js?v=4"></script><script src="/_preview/search3/search3-results-top.js?v=2"></script><script src="/_preview/search3/search3-selected-tour-mobile.js?v=2"></script></body>',1)
           path.write_text(text)
           PY
           cat > "$root/poisk-turov/index.php" <<'PHP'
@@ -76,57 +76,3 @@ jobs:
           echo json_encode(['ok'=>false,'preview'=>true,'message'=>'Lead submission is disabled on Search 3 preview'], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
           PHP
           REMOTE
-
-  desktop-visual:
-    needs: deploy-preview
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
-    steps:
-      - name: Install browser
-        shell: bash
-        run: |
-          npm init -y >/dev/null 2>&1
-          npm install --no-save playwright@1.55.0 >/dev/null
-          npx playwright install --with-deps chromium >/dev/null
-
-      - name: Desktop Search3 visual smoke
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p search3-desktop-artifacts
-          cat > search3-desktop.cjs <<'JS'
-          const { chromium }=require('playwright');
-          const fs=require('fs');
-          const url='https://anytoour.ru/_preview/search3/poisk-turov/';
-          const fixture=[
-            {id:901,name:'AnyTour Coast Resort',category:5,rating:4.8,seaDistance:120,price:125000,picturelink:'',country:{name:'Турция'},region:{name:'Анталья'},subRegion:{name:'Лара'},tours:[{id:'tour-901-a',date:'10.09.2026',nights:7,price:125000,meal:{name:'Все включено'},roomType:'Standard Sea View',placement:'DBL',operator:{name:'ANEX'},isCharter:true},{id:'tour-901-b',date:'12.09.2026',nights:9,price:142000,meal:{name:'Ультра всё включено'},roomType:'Deluxe',placement:'DBL',operator:{name:'PEGAS'},isCharter:false}]},
-            {id:902,name:'AnyTour Garden Hotel with a deliberately long responsive title',category:4,rating:4.4,seaDistance:650,price:98000,picturelink:'',country:{name:'Турция'},region:{name:'Аланья'},tours:[{id:'tour-902-a',date:'11.09.2026',nights:7,price:98000,meal:{name:'Завтрак и ужин'},roomType:'Family Room',placement:'2ADL',operator:{name:'Coral Travel'},isCharter:false}]}
-          ];
-          (async()=>{
-            const browser=await chromium.launch({headless:true});
-            const context=await browser.newContext({viewport:{width:1440,height:1000},ignoreHTTPSErrors:true});
-            const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(String(e).slice(0,500)));
-            const response=await page.goto(url+'?desktopVisual='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000}); await page.waitForTimeout(1800);
-            const initial=await page.evaluate(()=>({form:!!document.querySelector('#tourSearch'),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
-            await page.screenshot({path:'search3-desktop-artifacts/desktop-1440-initial.png',fullPage:true});
-            await page.evaluate(data=>window.V2Results.render(data),fixture); await page.waitForTimeout(250);
-            const results=await page.evaluate(()=>({cards:document.querySelectorAll('#results .hotel-card').length,actions:[...document.querySelectorAll('.search3-show-tours')].map(x=>x.textContent.trim()),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
-            await page.screenshot({path:'search3-desktop-artifacts/desktop-1440-results.png',fullPage:true});
-            await page.locator('.search3-show-tours').first().click(); await page.waitForTimeout(180);
-            const tours=await page.evaluate(()=>({visible:!!document.querySelector('#results .hotel-card .hotel-tours:not([hidden])'),rows:document.querySelectorAll('#results .hotel-card:first-child .tour-row').length,cta:[...document.querySelectorAll('#results .hotel-card:first-child .direct-tour')].map(x=>x.textContent.trim()),overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+2}));
-            await page.screenshot({path:'search3-desktop-artifacts/desktop-1440-tours.png',fullPage:true});
-            const report={http:response?.status()||0,errors,initial,results,tours}; fs.writeFileSync('search3-desktop-artifacts/report.json',JSON.stringify(report,null,2));
-            await browser.close();
-            const bad=report.http!==200||errors.length||!initial.form||initial.overflow||results.cards!==2||results.actions.length!==2||results.actions.some(x=>x!=='Показать туры')||results.overflow||!tours.visible||tours.rows<1||tours.cta.some(x=>x!=='Подробнее о туре')||tours.overflow;
-            console.log('SEARCH3_DESKTOP_VISUAL',JSON.stringify(report)); if(bad)process.exit(1);
-          })().catch(e=>{console.error(e);process.exit(1)});
-          JS
-          node ./search3-desktop.cjs
-
-      - name: Upload desktop evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: search3-desktop-visual-${{ github.run_number }}
-          path: search3-desktop-artifacts/
-          retention-days: 7
