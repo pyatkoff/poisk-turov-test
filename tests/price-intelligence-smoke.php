@@ -92,17 +92,17 @@ $smallDrop = v2_price_intelligence_summary($rows, 147000);
 assert_true(($smallDrop['showPromoDrop'] ?? true) === false, 'sub-5-percent promo drop must be suppressed');
 assert_true(($smallDrop['showHistoricalDrop'] ?? true) === false, 'sub-5-percent historical drop must be suppressed');
 
-$manyRowsOneSearch = $rows;
-foreach ($manyRowsOneSearch as &$row) {
+$manyRawFewSearches = $rows;
+foreach ($manyRawFewSearches as $i => &$row) {
     $row['observation_count'] = 20;
-    $row['independent_search_count'] = 1;
+    $row['independent_search_count'] = $i < 4 ? 1 : 0;
 }
 unset($row);
-$notIndependent = v2_price_intelligence_summary($manyRowsOneSearch, 120000);
+$notIndependent = v2_price_intelligence_summary($manyRawFewSearches, 120000);
 assert_true(($notIndependent['observationCount'] ?? 0) === 140, 'raw observations retained');
-assert_true(($notIndependent['independentSearchCount'] ?? -1) === 7, 'independent searches counted separately');
-assert_true(($notIndependent['showPromoDrop'] ?? true) === false, 'repeated raw rows cannot authorize promo');
-assert_true(($notIndependent['showHistoricalDrop'] ?? true) === false, 'repeated raw rows cannot authorize historical drop');
+assert_true(($notIndependent['independentSearchCount'] ?? -1) === 4, 'independent searches counted separately');
+assert_true(($notIndependent['showPromoDrop'] ?? true) === false, 'raw rows cannot replace five independent searches');
+assert_true(($notIndependent['showHistoricalDrop'] ?? true) === false, 'raw rows cannot authorize historical drop');
 
 $duplicate = $rows;
 $duplicate[] = $rows[0];
