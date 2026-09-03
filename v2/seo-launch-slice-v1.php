@@ -60,12 +60,10 @@ function v2_seo_static_controlled_launch_paths(): array
  */
 function v2_seo_controlled_launch_paths(): array
 {
-    $paths=array_values(array_unique(array_merge(
+    return array_values(array_unique(array_merge(
         v2_seo_static_controlled_launch_paths(),
         v2_seo_core_resort_launch_paths()
     )));
-    sort($paths,SORT_STRING);
-    return $paths;
 }
 
 function v2_seo_turkey_launch_site_params(array $siteParams, bool $launchEnabled): array
