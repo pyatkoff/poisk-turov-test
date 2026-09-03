@@ -65,4 +65,41 @@ foreach(['publication_allowed','indexation_change_allowed','sitemap_change_allow
 }
 if(($result['publication_candidates']??null)!==[])yw_feedback_fail('publication_candidates');
 
-echo "SEO_YANDEX_WEBMASTER_FEEDBACK_OK cohort=10 observed=2 ignoredOutside=2 dates=7 unknownMissing=8 seasonalUnknown=2 hotelTours=0 execution=0\n";
+$positionOnly=[];
+foreach($dates as $date)$positionOnly[]=['date'=>$date,'field'=>'POSITION','value'=>9.0];
+$partial=v2_seo_yandex_webmaster_feedback([
+    'host_id'=>'https:anytoour.ru:443',
+    'responses'=>[['text_indicator_to_statistics'=>[[
+        'text_indicator'=>['type'=>'URL','value'=>'https://anytoour.ru/country/turkey/'],
+        'statistics'=>$positionOnly,
+    ]]]],
+],$collected);
+if(($partial['state']??'')!=='yandex_webmaster_feedback_partial')yw_feedback_fail('missing_counter_state');
+$partialMetrics=$partial['rows'][0]['metrics']??null;
+if(!is_array($partialMetrics))yw_feedback_fail('missing_counter_metrics');
+if(array_key_exists('impressions',$partialMetrics)||array_key_exists('clicks',$partialMetrics)||array_key_exists('ctr',$partialMetrics)||array_key_exists('avg_position',$partialMetrics))yw_feedback_fail('missing_counter_fabricated_zero');
+$partialErrors=implode('|',(array)($partial['errors']??[]));
+if(!str_contains($partialErrors,'impressions_unavailable')||!str_contains($partialErrors,'clicks_unavailable'))yw_feedback_fail('missing_counter_diagnostics');
+$partialIntake=v2_seo_search_feedback_intake((array)($partial['rows']??[]),$collected);
+if(($partialIntake['state']??'')!=='search_feedback_intake_blocked')yw_feedback_fail('missing_counter_intake_must_block');
+
+$zeroStats=[];
+foreach($dates as $date){
+    $zeroStats[]=['date'=>$date,'field'=>'IMPRESSIONS','value'=>0.0];
+    $zeroStats[]=['date'=>$date,'field'=>'CLICKS','value'=>0.0];
+}
+$zero=v2_seo_yandex_webmaster_feedback([
+    'host_id'=>'https:anytoour.ru:443',
+    'responses'=>[['text_indicator_to_statistics'=>[[
+        'text_indicator'=>['type'=>'URL','value'=>'https://anytoour.ru/country/turkey/'],
+        'statistics'=>$zeroStats,
+    ]]]],
+],$collected);
+if(($zero['state']??'')!=='yandex_webmaster_feedback_ready')yw_feedback_fail('observed_zero_state_'.implode(',',(array)($zero['errors']??[])));
+$zeroMetrics=$zero['rows'][0]['metrics']??[];
+if(($zeroMetrics['impressions']??null)!==0||($zeroMetrics['clicks']??null)!==0)yw_feedback_fail('observed_zero_counts');
+if(array_key_exists('avg_position',$zeroMetrics)||array_key_exists('ctr',$zeroMetrics))yw_feedback_fail('observed_zero_position_ctr_not_unknown');
+$zeroEvidence=v2_seo_search_feedback_evidence($zero['rows'][0],$collected);
+if(($zeroEvidence['state']??'')!=='search_feedback_evidence_valid')yw_feedback_fail('observed_zero_evidence');
+
+echo "SEO_YANDEX_WEBMASTER_FEEDBACK_OK cohort=10 observed=2 ignoredOutside=2 dates=7 unknownMissing=8 seasonalUnknown=2 missingCountersUnknown=1 observedZeroValid=1 hotelTours=0 execution=0\n";
