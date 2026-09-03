@@ -1,4 +1,11 @@
 (function(){'use strict';
+function ensureSelectedConfidenceGridLock(){
+  if(document.getElementById('search3-selected-confidence-grid-lock'))return;
+  var style=document.createElement('style');
+  style.id='search3-selected-confidence-grid-lock';
+  style.textContent='@media(min-width:1000px){html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-confidence{grid-column:1/3!important;width:100%!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important}html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-confidence>div:first-child{min-width:180px!important}html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .selected-confidence-steps{min-width:0!important}}';
+  document.head.appendChild(style);
+}
 function field(form,name){var el=form&&form.elements&&form.elements[name];return el&&el.closest?el.closest('.field'):null;}
 function placeRegionInPrimary(form,main){
   var f=field(form,'region'),dates=main&&main.querySelector('.search3-dates');
@@ -15,6 +22,7 @@ function placeAdvanced(form,grid,name,labelText,cls){
 }
 function syncLabels(form){var dates=form.querySelector('.search3-dates>:scope > span,.search3-dates>span');if(dates)dates.textContent='Дата вылета';}
 function desktopLock(){
+  ensureSelectedConfidenceGridLock();
   var form=document.getElementById('tourSearch');if(!form)return;
   var main=form.querySelector('.search3-primary-grid');
   var quality=document.getElementById('search3AdvancedSearch')||form.querySelector('.search3-quality');
@@ -42,7 +50,7 @@ function desktopLock(){
     form.classList.remove('search3-desktop-two-row');
   }
 }
-function lock(){desktopLock();setTimeout(desktopLock,80);setTimeout(desktopLock,180);setTimeout(desktopLock,550);}
+function lock(){ensureSelectedConfidenceGridLock();desktopLock();setTimeout(desktopLock,80);setTimeout(desktopLock,180);setTimeout(desktopLock,550);}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',lock,{once:true});else lock();
 window.addEventListener('resize',desktopLock);
 window.addEventListener('v2:search-reset',lock);
