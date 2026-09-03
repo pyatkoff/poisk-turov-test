@@ -20,6 +20,7 @@ function v2_price_intelligence_summary(array $dailyRows, float $currentPrice, in
     $series = [];
     $seenDates = [];
     $observationCount = 0;
+    $independentSearchCount = 0;
 
     foreach ($dailyRows as $row) {
         if (!is_array($row)) continue;
@@ -37,24 +38,31 @@ function v2_price_intelligence_summary(array $dailyRows, float $currentPrice, in
         $median = (float)($row['median_price'] ?? 0);
         $max = (float)($row['max_price'] ?? 0);
         $count = (int)($row['observation_count'] ?? 0);
-        if ($min <= 0 || $median <= 0 || $max <= 0 || $count <= 0 || $min > $median || $median > $max) {
+        $searchCount = (int)($row['independent_search_count'] ?? 0);
+        if (
+            $min <= 0 || $median <= 0 || $max <= 0 || $count <= 0
+            || $searchCount < 0 || $searchCount > $count
+            || $min > $median || $median > $max
+        ) {
             return ['ok' => false, 'state' => 'invalid_history', 'reason' => 'invalid_daily_price_aggregate'];
         }
 
         $seenDates[$date] = true;
         $observationCount += $count;
+        $independentSearchCount += $searchCount;
         $series[] = [
             'date' => $date,
             'minPrice' => $min,
             'medianPrice' => $median,
             'maxPrice' => $max,
             'observationCount' => $count,
+            'independentSearchCount' => $searchCount,
         ];
     }
 
     usort($series, static fn(array $a, array $b): int => strcmp($a['date'], $b['date']));
     $observedDays = count($series);
-    $stage = v2_price_confidence_stage($observationCount, $observedDays);
+    $stage = v2_price_confidence_stage($independentSearchCount, $observedDays);
 
     if ($series === [] || $currentPrice <= 0) {
         return [
@@ -63,6 +71,7 @@ function v2_price_intelligence_summary(array $dailyRows, float $currentPrice, in
             'showHistoricalDrop' => false,
             'observedDays' => $observedDays,
             'observationCount' => $observationCount,
+            'independentSearchCount' => $independentSearchCount,
             'series' => $series,
         ];
     }
@@ -84,11 +93,11 @@ function v2_price_intelligence_summary(array $dailyRows, float $currentPrice, in
     $dropPercent = (int)round($dropPercentRaw);
 
     // Historical reference is the maximum of comparable DAILY MINIMUM prices,
-    // never the raw max_price of unrelated offers. A visible percentage requires
-    // at least 15 observations spread across 7 independent days.
+    // never raw max_price. A visible percentage requires enough independent
+    // Tourvisor searches and seven distinct observation days.
     $showHistoricalDrop =
         v2_price_confidence_rank($stage) >= 2
-        && $observationCount >= 15
+        && $independentSearchCount >= 15
         && $observedDays >= 7
         && $referencePrice > $currentPrice
         && $dropPercent >= $minimumDropPercent;
@@ -104,6 +113,7 @@ function v2_price_intelligence_summary(array $dailyRows, float $currentPrice, in
         'currentPrice' => $currentPrice,
         'observedDays' => $observedDays,
         'observationCount' => $observationCount,
+        'independentSearchCount' => $independentSearchCount,
         'historicalLowPrice' => $historicalLow,
         'historicalLowDate' => $historicalLowDate,
         'medianDailyPrice' => $medianReference,
