@@ -15,7 +15,7 @@ if($raw===false)seasonal_serp_fail('snapshot_missing');
 try{$snapshot=json_decode($raw,true,512,JSON_THROW_ON_ERROR);}catch(JsonException){seasonal_serp_fail('snapshot_json');}
 $rows=is_array($snapshot['rows']??null)?$snapshot['rows']:[];
 $observed=(int)($snapshot['observed_at_epoch']??0);
-if($observed!==1788391016||count($rows)!==2)seasonal_serp_fail('snapshot_identity');
+if($observed!==1788435960||count($rows)!==4)seasonal_serp_fail('snapshot_identity');
 foreach($rows as $row){
     if(($row['demand']['source_class']??'')!=='manual_serp_review')seasonal_serp_fail('demand_source');
     if(($row['uniqueness']['source_class']??'')!=='manual_serp_review')seasonal_serp_fail('uniqueness_source');
@@ -27,7 +27,7 @@ foreach($rows as $row){
 
 $now=$observed+60;
 $result=v2_seo_seasonal_preview_opportunity_evidence($rows,$now);
-if(($result['state']??'')!=='review_only_seasonal_serp_evidence_ready'||($result['ready_count']??0)!==2)seasonal_serp_fail('ready');
+if(($result['state']??'')!=='review_only_seasonal_serp_evidence_ready'||($result['ready_count']??0)!==4||($result['preview_count']??0)!==4)seasonal_serp_fail('ready');
 foreach($result['rows'] as $row){
     if(($row['evidence_fresh']??false)!==true||($row['evidence_confirmed']??false)!==true||($row['uniqueness_distinct']??false)!==true)seasonal_serp_fail('row_evidence');
     if(($row['scoring_policy_pending']??false)!==true)seasonal_serp_fail('policy_pending');
@@ -51,6 +51,6 @@ exec('php '.escapeshellarg($cli).' --input='.escapeshellarg($tmp).' --now-epoch=
 @unlink($tmp);
 if($code!==0)seasonal_serp_fail('cli_exit_'.$code);
 $cliResult=json_decode(implode("\n",$out),true);
-if(!is_array($cliResult)||($cliResult['ready_count']??0)!==2)seasonal_serp_fail('cli_ready');
+if(!is_array($cliResult)||($cliResult['ready_count']??0)!==4||($cliResult['preview_count']??0)!==4)seasonal_serp_fail('cli_ready');
 
-echo "SEO_SEASONAL_SERP_EVIDENCE_OK previews=2 commercialIntent=2 distinct=2 fabricatedMetrics=0 publication=0\n";
+echo "SEO_SEASONAL_SERP_EVIDENCE_OK previews=4 commercialIntent=4 distinct=4 fabricatedMetrics=0 publication=0\n";

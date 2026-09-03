@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/v2/seo-seasonal-review-content-v1.php';
-$now=strtotime('2026-09-02T11:30:00Z');
+$now=strtotime('2026-09-03T12:00:00Z');
 $records=v2_seo_seasonal_review_content_prototypes();
-if(array_keys($records)!==['antalya-september','maldives-september']) exit(1);
+if(array_keys($records)!==['antalya-september','maldives-september','antalya-october','maldives-october']) exit(1);
 $tr=v2_seo_seasonal_render_review_content($records['antalya-september'],$now);
 if(($tr['state']??'')!=='rendered_review_only_seasonal_content'||($tr['page_key']??'')!=='resort_month:1:4:20:2026-09') exit(2);
 if(($tr['publication_candidates']??null)!==[]||($tr['publication_allowed']??true)!==false||($tr['indexation_allowed']??true)!==false||($tr['sitemap_allowed']??true)!==false||($tr['route_creation_allowed']??true)!==false||($tr['requires_fresh_identity_rebind']??false)!==true) exit(3);
@@ -16,6 +16,18 @@ if(($mv['state']??'')!=='rendered_review_only_seasonal_content'||($mv['page_key'
 $text=implode("\n",array_column($mv['sections'],'text'));
 foreach(['25–32 °C','с середины мая до ноября','7–9 часов'] as $fact) if(!str_contains($text,$fact)) exit(8);
 foreach($mv['claims'] as $claim) if(($claim['geography_scope']['level']??'')!=='country'||($claim['geography_scope']['country_id']??0)!==8) exit(9);
+
+$octTr=v2_seo_seasonal_render_review_content($records['antalya-october'],$now);
+if(($octTr['state']??'')!=='rendered_review_only_seasonal_content'||($octTr['page_key']??'')!=='resort_month:1:4:20:2026-10') exit(16);
+$text=implode("\n",array_column($octTr['sections'],'text'));
+foreach(['20,6 °C','26,6 °C','15,4 °C','70,6 мм','5,38 дня'] as $fact) if(!str_contains($text,$fact)) exit(17);
+if(($octTr['publication_candidates']??null)!==[]||($octTr['indexation_allowed']??true)!==false) exit(18);
+$octMv=v2_seo_seasonal_render_review_content($records['maldives-october'],$now);
+if(($octMv['state']??'')!=='rendered_review_only_seasonal_content'||($octMv['page_key']??'')!=='month:1:8:2026-10') exit(19);
+$text=implode("\n",array_column($octMv['sections'],'text'));
+foreach(['25–32 °C','с середины мая до ноября','Октябрь попадает'] as $fact) if(!str_contains($text,$fact)) exit(20);
+if(($octMv['publication_candidates']??null)!==[]||($octMv['sitemap_allowed']??true)!==false) exit(21);
+
 $bad=$records['antalya-september']; $bad['claims'][0]['source_url']='https://www.mgm.gov.tr/eng/forecast-cities.aspx?m=ANTALYA';
 if((v2_seo_seasonal_render_review_content($bad,$now)['state']??'')!=='blocked') exit(10);
 $bad=$records['antalya-september']; $bad['page_key']='month:1:4:2026-09';
@@ -28,4 +40,4 @@ $bad=$records['maldives-september']; $bad['indexation_allowed']=true;
 try { v2_seo_seasonal_render_review_content($bad,$now); exit(14); } catch (InvalidArgumentException $e) {}
 $bad=$records['maldives-september']; $bad['claims'][0]['page_key']='month:1:4:2026-09';
 try { v2_seo_seasonal_render_review_content($bad,$now); exit(15); } catch (InvalidArgumentException $e) {}
-echo "SEO_SEASONAL_REVIEW_CONTENT_OK\n";
+echo "SEO_SEASONAL_REVIEW_CONTENT_OK previews=4 october=2 publication=0\n";

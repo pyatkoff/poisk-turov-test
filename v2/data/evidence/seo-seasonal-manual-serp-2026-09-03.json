@@ -1,7 +1,7 @@
 {
   "state": "manual_serp_snapshot_review_only",
-  "observed_at_epoch": 1788391016,
-  "observed_at_utc": "2026-09-02T23:16:56Z",
+  "observed_at_epoch": 1788435960,
+  "observed_at_utc": "2026-09-03T11:46:00Z",
   "method": "manual_serp_review",
   "notes": "Observed current Russian-language search results with dedicated commercial month-specific tour landing pages. No search volume, clicks, impressions, prices or ranking claims are inferred by this snapshot.",
   "rows": [
@@ -28,9 +28,7 @@
         "observed_at_epoch": 1788391016,
         "status": "confirmed",
         "decision": "distinct",
-        "competing_paths": [
-          "/country/turkey/antalya/"
-        ]
+        "competing_paths": ["/country/turkey/antalya/"]
       }
     },
     {
@@ -56,9 +54,59 @@
         "observed_at_epoch": 1788391016,
         "status": "confirmed",
         "decision": "distinct",
-        "competing_paths": [
-          "/country/maldives/"
-        ]
+        "competing_paths": ["/country/maldives/"]
+      }
+    },
+    {
+      "preview_key": "antalya-october",
+      "path": "/_preview/seo2/seasonal/antalya-october/",
+      "page_key": "resort_month:1:4:20:2026-10",
+      "query_cluster": "туры в Анталью в октябре",
+      "demand": {
+        "page_key": "resort_month:1:4:20:2026-10",
+        "query_cluster": "туры в Анталью в октябре",
+        "source_class": "manual_serp_review",
+        "source_ref": "https://level.travel/explore/Moscow-Russia/Antalya-Turkey/october",
+        "observed_at_epoch": 1788435960,
+        "status": "confirmed",
+        "serp_intent": "commercial"
+      },
+      "uniqueness": {
+        "page_key": "resort_month:1:4:20:2026-10",
+        "page_path": "/_preview/seo2/seasonal/antalya-october/",
+        "query_cluster": "туры в Анталью в октябре",
+        "source_class": "manual_serp_review",
+        "source_ref": "https://level.travel/explore/Moscow-Russia/Antalya-Turkey/october",
+        "observed_at_epoch": 1788435960,
+        "status": "confirmed",
+        "decision": "distinct",
+        "competing_paths": ["/country/turkey/antalya/", "/country/turkey/antalya/september/"]
+      }
+    },
+    {
+      "preview_key": "maldives-october",
+      "path": "/_preview/seo2/seasonal/maldives-october/",
+      "page_key": "month:1:8:2026-10",
+      "query_cluster": "туры на Мальдивы в октябре",
+      "demand": {
+        "page_key": "month:1:8:2026-10",
+        "query_cluster": "туры на Мальдивы в октябре",
+        "source_class": "manual_serp_review",
+        "source_ref": "https://pegas-touristik.ru/tours/maldives/month_october/|https://level.travel/explore/Moscow-Russia/Maldives/october|https://pgtourist.com/countries/maldivy/tury-na-oktyabr-maldivy/",
+        "observed_at_epoch": 1788435960,
+        "status": "confirmed",
+        "serp_intent": "commercial"
+      },
+      "uniqueness": {
+        "page_key": "month:1:8:2026-10",
+        "page_path": "/_preview/seo2/seasonal/maldives-october/",
+        "query_cluster": "туры на Мальдивы в октябре",
+        "source_class": "manual_serp_review",
+        "source_ref": "https://pegas-touristik.ru/tours/maldives/month_october/|https://level.travel/explore/Moscow-Russia/Maldives/october|https://pgtourist.com/countries/maldivy/tury-na-oktyabr-maldivy/",
+        "observed_at_epoch": 1788435960,
+        "status": "confirmed",
+        "decision": "distinct",
+        "competing_paths": ["/country/maldives/", "/country/maldives/september/"]
       }
     }
   ],

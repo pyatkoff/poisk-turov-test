@@ -6,13 +6,9 @@ require_once __DIR__.'/seo-seasonal-preview-evidence-readiness-v1.php';
 require_once __DIR__.'/seo-seasonal-preview-opportunity-evidence-v1.php';
 
 /**
- * Compose the exact two seasonal review previews into one evidence-first launch
- * dossier. GO_REVIEW is only a review recommendation: it never creates a public
- * route, publication candidate, sitemap entry, canonical or indexation change.
- *
- * A tiny exact batch does not need an invented numeric opportunity score. The
- * deterministic gates are structural/content readiness, fresh SERP demand and
- * distinctness evidence, and fresh exact first-party inventory identity.
+ * Compose the exact seasonal review cohort into one evidence-first launch dossier.
+ * GO_REVIEW is only a review recommendation: it never creates a public route,
+ * publication candidate, sitemap entry, canonical or indexation change.
  */
 function v2_seo_seasonal_preview_launch_dossier(
     array $serpRows,
@@ -42,7 +38,9 @@ function v2_seo_seasonal_preview_launch_dossier(
     $packets=is_array($serp['packets_by_preview']??null)?$serp['packets_by_preview']:[];
     $rows=[];$go=0;$holds=0;$errors=[];
     $structuralPages=is_array($structural['pages']??null)?$structural['pages']:[];
-    if (count($structuralPages)!==2) $errors[]='structural_preview_count_must_be_2';
+    $expectedCount=count(v2_seo_seasonal_preview_catalog());
+    if ($expectedCount<1) $errors[]='seasonal_review_cohort_empty';
+    if (count($structuralPages)!==$expectedCount) $errors[]='structural_preview_count_mismatch';
 
     foreach ($structuralPages as $previewKey=>$page) {
         if (!is_array($page)) { $errors[]='invalid_structural_page:'.(string)$previewKey; continue; }
@@ -95,39 +93,25 @@ function v2_seo_seasonal_preview_launch_dossier(
             'decision'=>$decision,
             'blocked_dimensions'=>$blocked,
             'dimensions'=>[
-                'technical'=>[
-                    'status'=>$technicalReady?'confirmed':'blocked',
-                    'score'=>$technicalReady?100:null,
-                    'source'=>'seasonal_preview_readiness',
-                ],
-                'content'=>[
-                    'status'=>$contentReady?'confirmed':'blocked',
-                    'source'=>'verified_seasonal_content_evidence',
-                ],
+                'technical'=>['status'=>$technicalReady?'confirmed':'blocked','score'=>$technicalReady?100:null,'source'=>'seasonal_preview_readiness'],
+                'content'=>['status'=>$contentReady?'confirmed':'blocked','source'=>'verified_seasonal_content_evidence'],
                 'demand'=>[
-                    'status'=>$demandReady?'confirmed':'unknown',
-                    'source_class'=>(string)($demand['source_class']??''),
-                    'source_ref'=>(string)($demand['source_ref']??''),
-                    'observed_at_epoch'=>(int)($demand['observed_at_epoch']??0),
+                    'status'=>$demandReady?'confirmed':'unknown','source_class'=>(string)($demand['source_class']??''),
+                    'source_ref'=>(string)($demand['source_ref']??''),'observed_at_epoch'=>(int)($demand['observed_at_epoch']??0),
                     'serp_intent'=>(string)($demand['serp_intent']??''),
                 ],
                 'uniqueness'=>[
-                    'status'=>$uniquenessReady?'confirmed':'unknown',
-                    'decision'=>(string)($uniqueness['decision']??'unknown'),
-                    'source_class'=>(string)($uniqueness['source_class']??''),
-                    'source_ref'=>(string)($uniqueness['source_ref']??''),
+                    'status'=>$uniquenessReady?'confirmed':'unknown','decision'=>(string)($uniqueness['decision']??'unknown'),
+                    'source_class'=>(string)($uniqueness['source_class']??''),'source_ref'=>(string)($uniqueness['source_ref']??''),
                     'observed_at_epoch'=>(int)($uniqueness['observed_at_epoch']??0),
                 ],
                 'identity'=>[
-                    'status'=>$identityReady?'confirmed':'unknown',
-                    'evidence_checked_at_epoch'=>(int)($identityPage['identity_evidence_checked_at_epoch']??0),
+                    'status'=>$identityReady?'confirmed':'unknown','evidence_checked_at_epoch'=>(int)($identityPage['identity_evidence_checked_at_epoch']??0),
                     'evidence_valid_until_epoch'=>(int)($identityPage['identity_evidence_valid_until_epoch']??0),
                 ],
                 'commercial_inventory'=>[
-                    'status'=>$inventoryReady?'confirmed':'unknown',
-                    'offer_count'=>$inventoryReady?(int)$inventory['offer_count']:null,
-                    'source'=>$inventoryReady?'seasonal_identity_inventory:first_party_offer_snapshot':'',
-                    'expires_at_epoch'=>$inventoryReady?(int)$inventory['expires_at_epoch']:0,
+                    'status'=>$inventoryReady?'confirmed':'unknown','offer_count'=>$inventoryReady?(int)$inventory['offer_count']:null,
+                    'source'=>$inventoryReady?'seasonal_identity_inventory:first_party_offer_snapshot':'','expires_at_epoch'=>$inventoryReady?(int)$inventory['expires_at_epoch']:0,
                 ],
             ],
             'opportunity_packet_state'=>(string)($packet['state']??'missing'),
@@ -137,40 +121,22 @@ function v2_seo_seasonal_preview_launch_dossier(
     }
 
     usort($rows,static fn(array $a,array $b):int=>strcmp($a['preview_key'],$b['preview_key']));
-    $allGo=$errors===[]&&count($rows)===2&&$go===2&&$holds===0;
+    $allGo=$errors===[]&&$expectedCount>0&&count($rows)===$expectedCount&&$go===$expectedCount&&$holds===0;
     $fingerprint=hash('sha256',json_encode([
-        'rows'=>$rows,
-        'structural_state'=>$structural['state']??'',
-        'serp_state'=>$serp['state']??'',
-        'serp_sha256'=>$serp['evidence_sha256']??'',
-        'identity_state'=>$identity['state']??'',
+        'rows'=>$rows,'structural_state'=>$structural['state']??'','serp_state'=>$serp['state']??'',
+        'serp_sha256'=>$serp['evidence_sha256']??'','identity_state'=>$identity['state']??'',
         'identity_valid_until'=>$identity['evidence_valid_until_epoch']??0,
     ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
 
     return [
         'state'=>$allGo?'review_only_seasonal_launch_dossier_go_review':'review_only_seasonal_launch_dossier_hold',
-        'preview_count'=>count($rows),
-        'go_review_count'=>$go,
-        'hold_count'=>$holds,
-        'all_go_review'=>$allGo,
-        'rows'=>$rows,
-        'structural_state'=>(string)($structural['state']??''),
-        'serp_evidence_state'=>(string)($serp['state']??''),
-        'identity_evidence_state'=>(string)($identity['state']??''),
-        'dossier_sha256'=>$fingerprint,
-        'errors'=>array_values(array_unique($errors)),
-        'publication_candidates'=>[],
-        'publication_allowed'=>false,
-        'indexation_allowed'=>false,
-        'sitemap_allowed'=>false,
-        'canonical_launch_allowed'=>false,
-        'route_launch_allowed'=>false,
-        'automatic_execution_allowed'=>false,
-        'go_review_is_publication_approval'=>false,
-        'search_contract_changes'=>false,
-        'tourvisor_contract_changes'=>false,
-        'pricing_contract_changes'=>false,
-        'lead_contract_changes'=>false,
-        'metrika_contract_changes'=>false,
+        'preview_count'=>count($rows),'go_review_count'=>$go,'hold_count'=>$holds,'all_go_review'=>$allGo,'rows'=>$rows,
+        'structural_state'=>(string)($structural['state']??''),'serp_evidence_state'=>(string)($serp['state']??''),
+        'identity_evidence_state'=>(string)($identity['state']??''),'dossier_sha256'=>$fingerprint,
+        'errors'=>array_values(array_unique($errors)),'publication_candidates'=>[],'publication_allowed'=>false,
+        'indexation_allowed'=>false,'sitemap_allowed'=>false,'canonical_launch_allowed'=>false,'route_launch_allowed'=>false,
+        'automatic_execution_allowed'=>false,'go_review_is_publication_approval'=>false,
+        'search_contract_changes'=>false,'tourvisor_contract_changes'=>false,'pricing_contract_changes'=>false,
+        'lead_contract_changes'=>false,'metrika_contract_changes'=>false,
     ];
 }
