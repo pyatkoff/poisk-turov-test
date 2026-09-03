@@ -5,7 +5,7 @@ const path = require('path');
 const baseUrl = process.env.SEARCH3_PREVIEW_URL || 'https://anytoour.ru/_preview/search3/poisk-turov/';
 const outDir = process.env.SEARCH3_QA_OUT || 'search3-visual-tablet-artifacts';
 fs.mkdirSync(outDir, { recursive: true });
-const required = ['t00-footer','t01-search','t02-results','t02a-filters-open','t03-tour-details','t04-flights','t05-final-review','t06-lead-entry','t07-lead-sending','t08-lead-success','t09-lead-error'];
+const required = ['t00-footer','t01-search','t02-results','t02a-filters-open','t02b-filter-subpanel','t03-tour-details','t04-flights','t05-final-review','t06-lead-entry','t07-lead-sending','t08-lead-success','t09-lead-error'];
 const report = { mode:'tablet', url:baseUrl, startedAt:new Date().toISOString(), states:[], errors:[] };
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
@@ -44,6 +44,7 @@ function knownExternalConsoleNoise(text){return /WebSocket connection to ['"]wss
   if(report.resultCardContract.desktopActionsVisible)throw new Error('desktop results controls visible in mobile flow');
   await snap(page,'t02-results','#resultsTools');
   if(!await clickVisible(page,'[data-s3-open-filters]',5000))throw new Error('mobile filters trigger missing');if(!await visible(page,'body.search3-filter-open .results-filter-rail',5000))throw new Error('mobile filter drawer missing');await snap(page,'t02a-filters-open','.results-filter-rail');
+  if(!await clickVisible(page,'.results-filter-rail .search3-filter-edit-row[data-s3-panel]',5000))throw new Error('mobile filter subpanel trigger missing');if(!await visible(page,'.results-filter-rail .search3-filter-subpanel',5000))throw new Error('mobile filter subpanel missing');await snap(page,'t02b-filter-subpanel','.search3-filter-subpanel');if(!await clickVisible(page,'.search3-filter-subpanel [data-s3-subpanel-back]',5000))throw new Error('mobile filter subpanel back missing');
   await page.evaluate(()=>{document.body.classList.remove('search3-filter-open');const o=document.querySelector('.search3-filter-overlay');if(o)o.hidden=true;const r=document.querySelector('.results-filter-rail');if(r){r.removeAttribute('aria-modal');r.removeAttribute('role')}});
   if(!await clickVisible(page,'#results .search3-show-tours'))throw new Error('mobile show tours missing');if(!await visible(page,'#results .hotel-card .hotel-tours:not([hidden])',20000))throw new Error('mobile tour list missing');if(!await clickVisible(page,'#results .hotel-tours:not([hidden]) .direct-tour'))throw new Error('mobile direct tour missing');if(!await visible(page,'#selectedTour:not([hidden])',45000))throw new Error('mobile selected tour missing');report.tourDetailsReady=await visible(page,'#selectedTour .selected-head h2, #selectedTour .selected-picture',45000);if(!report.tourDetailsReady)throw new Error('mobile tour details loading');await settleImages(page,'#selectedTour img');await snap(page,'t03-tour-details','#selectedTour');
   if(!await visible(page,'#selectedTour .tour-flights',30000))throw new Error('mobile flights missing');if(!await visible(page,'#selectedTour .flight-variant',45000))throw new Error('mobile flight variants missing');if(!await visible(page,'#selectedTour .search3-flight-continue button',6000))throw new Error('mobile flight continue missing');await snap(page,'t04-flights','#selectedTour .tour-flights');
