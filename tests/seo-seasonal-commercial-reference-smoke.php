@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/../v2/seo-seasonal-review-content-v1.php';
 require_once __DIR__.'/../v2/seo-seasonal-intent-v1.php';
+require_once __DIR__.'/../v2/seo-seasonal-offer-snapshot-v1.php';
 function seasonal_commercial_fail(string $m):void{fwrite(STDERR,"SEO_SEASONAL_COMMERCIAL_REFERENCE_FAIL:$m\n");exit(1);}
 $records=v2_seo_seasonal_review_content_prototypes();
 $r=$records['antalya-september']??null;
@@ -20,4 +21,19 @@ $intent=v2_seo_seasonal_intent_contract([
 ]);
 if(($intent['state']??'')!=='review_intent_ready'||($intent['review_ready']??false)!==true)seasonal_commercial_fail('intent');
 if(($intent['publication_allowed']??true)!==false||($intent['indexation_allowed']??true)!==false)seasonal_commercial_fail('intent_boundary');
-echo "SEO_SEASONAL_COMMERCIAL_REFERENCE_OK h1=1 country=4 region=20 publication=0 indexation=0\n";
+
+$offers=[
+    ['id'=>'cheap','price'=>100000,'departureDate'=>'2026-09-10'],
+    ['id'=>'plain-near','price'=>101000,'departureDate'=>'2026-09-11'],
+    ['id'=>'promo-strong','price'=>108000,'departureDate'=>'2026-09-12','priceIntelligence'=>['showPromoDrop'=>true,'historicalDropPercent'=>18]],
+    ['id'=>'promo-recent','price'=>106000,'departureDate'=>'2026-09-13','priceIntelligence'=>['showPromoDrop'=>true,'historicalDropPercent'=>9]],
+    ['id'=>'promo-too-expensive','price'=>113000,'departureDate'=>'2026-09-14','priceIntelligence'=>['showPromoDrop'=>true,'historicalDropPercent'=>30]],
+    ['id'=>'plain','price'=>104000,'departureDate'=>'2026-09-15'],
+];
+$ranked=v2_seo_rank_seasonal_offer_cards($offers,4);
+$ids=array_column($ranked,'id');
+if($ids!==['cheap','promo-strong','promo-recent','plain-near'])seasonal_commercial_fail('promo_ranking_'.implode(',',$ids));
+if(($ranked[0]['price']??0)!==100000)seasonal_commercial_fail('cheapest_not_retained');
+if(in_array('promo-too-expensive',$ids,true))seasonal_commercial_fail('price_guard');
+
+echo "SEO_SEASONAL_COMMERCIAL_REFERENCE_OK h1=1 country=4 region=20 publication=0 indexation=0 promoSelection=1 cheapestRetained=1 priceGuard=12pct\n";
