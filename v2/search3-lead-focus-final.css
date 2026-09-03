@@ -1,4 +1,7 @@
 /* Search3 mobile focus isolation for approved booking + lead flow. Preview only. */
+body.search3-preview #selectedTour .lead-form[data-search3-lead-state] > :not(.search3-lead-status){
+  display:none!important;
+}
 @media(max-width:760px){
   html body.search3-preview:has(#selectedTour:not([hidden])) #resultsTools,
   html body.search3-preview:has(#selectedTour:not([hidden])) #resultsSearchSummary,
