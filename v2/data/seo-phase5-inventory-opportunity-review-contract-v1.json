@@ -1,0 +1,24 @@
+{
+  "state": "review_only_contract",
+  "scope": ["resort", "seasonal"],
+  "route_authority": "controlled_identity_registry_only",
+  "catalog_slugs": "hints_only_not_routes",
+  "inventory_freshness": "fresh_observation_within_3d_required",
+  "demand": "unknown_until_real_search_feedback_is_joined",
+  "publication_candidates": [],
+  "publication_allowed": false,
+  "indexation_allowed": false,
+  "sitemap_allowed": false,
+  "canonical_launch_allowed": false,
+  "route_launch_allowed": false,
+  "hotel_tours_publication_allowed": false,
+  "hotel_tours_indexation_allowed": false,
+  "separate_user_hotel_indexation_approval_required": true,
+  "protected_contract_changes": {
+    "search": false,
+    "tourvisor": false,
+    "pricing": false,
+    "lead": false,
+    "metrika": false
+  }
+}
