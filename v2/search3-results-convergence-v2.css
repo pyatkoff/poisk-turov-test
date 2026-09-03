@@ -24,6 +24,13 @@ body.search3-preview #results .hotel-photo,
 body.search3-preview #results .hotel-body{margin:0!important}
 .search3-mobile-search-entry{display:none}
 @media(min-width:1000px){
+  body.search3-preview.search3-has-results .results-tools--ds2{
+    position:static!important;
+    top:auto!important;
+    z-index:auto!important;
+    -webkit-backdrop-filter:none!important;
+    backdrop-filter:none!important;
+  }
   body.search3-preview.search3-has-results #results .hotel-photo{border-radius:0!important}
   body.search3-preview.search3-has-results #results .hotel-main{overflow:hidden!important;border-radius:11px!important}
   body.search3-preview.search3-has-results #results .search3-hotel-facts{max-width:100%!important}
