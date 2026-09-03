@@ -4,22 +4,40 @@ require_once __DIR__.'/seo-launch-slice-v1.php';
 
 /**
  * Immutable launch cohort for measured SEO feedback.
- * The baseline identity fingerprint was collected from live anytoour.ru after
- * the Egypt/Maldives country launch. Feedback may observe this cohort but never
- * expand indexation or promote hotel_tours.
+ *
+ * This baseline was collected from live anytoour.ru after the controlled
+ * country/resort launch plus the two evidence-backed September seasonal pages.
+ * The paths are intentionally pinned instead of being read dynamically from the
+ * current launch allowlist: a future launch expansion must explicitly refresh
+ * this evidence baseline before feedback for the new cohort is accepted.
  */
 function v2_seo_postlaunch_feedback_cohort(): array
 {
-    $paths=v2_seo_controlled_launch_paths();
+    $paths=[
+        '/country/egypt/',
+        '/country/maldives/',
+        '/country/maldives/september/',
+        '/country/turkey/',
+        '/country/turkey/alanya/',
+        '/country/turkey/antalya/',
+        '/country/turkey/antalya/september/',
+        '/country/turkey/belek/',
+        '/country/turkey/kemer/',
+        '/country/turkey/side/',
+    ];
     sort($paths,SORT_STRING);
+    $current=v2_seo_controlled_launch_paths();
+    sort($current,SORT_STRING);
     return [
-        'cohort_id'=>'controlled_country_resort_v2',
+        'cohort_id'=>'controlled_country_resort_seasonal_v3',
         'domain'=>'anytoour.ru',
-        'launch_source_sha'=>'c8855c4f227b4432a200fbdf054d75fa9612dc66',
-        'launch_identity_registry_sha256'=>'0298d2e13c2d8987846ab38057fe6d8fdc0106ee27dbfa12793375b6e3f1de70',
-        'launch_identity_observed_at_epoch'=>1788385620,
+        'launch_source_sha'=>'9a721eb387bbdeae28e9979dcebde8959dd31bbd',
+        'launch_baseline_sha256'=>'515921b352d69c9b57b37d45605ec1c3751f5deb587744e8e757c1605939c043',
+        'launch_identity_registry_sha256'=>'df2679a82e43043b46daadffa6d3a216bc8fc09b82a4e43152ea7203b882a024',
+        'launch_identity_observed_at_epoch'=>1788394228,
         'paths'=>$paths,
         'path_count'=>count($paths),
+        'current_launch_scope_matches_baseline'=>$current===$paths,
         'hotel_tours_in_cohort'=>false,
     ];
 }
@@ -39,6 +57,7 @@ function v2_seo_postlaunch_feedback_validate(array $input, ?int $nowEpoch=null):
     $domain=trim((string)($input['domain']??''));
     $cohortId=trim((string)($input['cohort_id']??''));
     $launchSha=trim((string)($input['launch_source_sha']??''));
+    if(($cohort['current_launch_scope_matches_baseline']??false)!==true)$errors[]='launch_cohort_baseline_drift';
     if($domain!==$cohort['domain'])$errors[]='domain_mismatch';
     if($cohortId!==$cohort['cohort_id'])$errors[]='cohort_mismatch';
     if($launchSha!==$cohort['launch_source_sha'])$errors[]='launch_source_sha_mismatch';
