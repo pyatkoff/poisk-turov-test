@@ -53,6 +53,7 @@ jobs:
           php -l v2/seo-seasonal-preview-launch-dossier-v1.php >/dev/null
           php -l v2/data/report-seo-seasonal-preview-launch-dossier-v1.php >/dev/null
           php -l tests/seo-seasonal-targeted-inventory-smoke.php >/dev/null
+          grep -Fq "fresh-hours=72 --expires-hours=72" .github/workflows/collect-seo-seasonal-live-evidence.yml
           php tests/seo-seasonal-targeted-inventory-smoke.php
           php tests/seo-seasonal-preview-launch-dossier-smoke.php
           php tests/seo-seasonal-preview-launch-dossier-cli-smoke.php
@@ -109,7 +110,7 @@ jobs:
               root="$HOME/www/anytoour.ru/data"
               php -l "$root/collect-seo-seasonal-preview-inventory-v1.php" >/dev/null
               php "$root/collect-seo-seasonal-preview-inventory-v1.php"
-              php "$root/build-seo-offer-snapshots-v1.php" --fresh-hours=48 --expires-hours=8 --offers-per-page=10
+              php "$root/build-seo-offer-snapshots-v1.php" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
             ' >> seo-seasonal-targeted-collection.log 2>&1
             code=$?
           fi
