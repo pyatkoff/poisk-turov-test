@@ -4,6 +4,68 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/data/db-v1.php';
 
+/**
+ * Read fresh package-tour snapshots for one country from first-party observations.
+ * Fails closed when data is unavailable or stale and never calls Tourvisor.
+ */
+function v2_seo_country_snapshot_offers(int $countryId, int $limit = 6): array
+{
+    if ($countryId <= 0) return [];
+    $limit = max(1, min(12, $limit));
+
+    try {
+        $pdo = v2_data_db();
+        $stmt = $pdo->prepare(
+            "SELECT s.departure_id,s.offers_json,s.observed_at,s.expires_at,COALESCE(d.name,'') departure_name
+               FROM seo_offer_snapshots s
+               LEFT JOIN catalog_departures d ON d.id=s.departure_id
+              WHERE s.page_type='country'
+                AND s.country_id=:country_id
+                AND s.expires_at>=NOW()
+                AND s.offer_count>0
+                AND s.currency='RUB'
+              ORDER BY s.observed_at DESC,s.min_price ASC
+              LIMIT 24"
+        );
+        $stmt->execute(['country_id' => $countryId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    $offers = [];
+    $seen = [];
+    foreach ($rows as $row) {
+        $decoded = json_decode((string)($row['offers_json'] ?? ''), true);
+        if (!is_array($decoded)) continue;
+        foreach ($decoded as $offer) {
+            if (!is_array($offer)) continue;
+            $hotelId = (int)($offer['hotelId'] ?? 0);
+            $price = (float)($offer['price'] ?? 0);
+            $departureDate = trim((string)($offer['departureDate'] ?? ''));
+            $nights = (int)($offer['nights'] ?? 0);
+            if ($hotelId <= 0 || $price <= 0 || $departureDate === '' || $nights <= 0) continue;
+
+            $departureId = (int)($row['departure_id'] ?? 0);
+            $key = $departureId . ':' . $hotelId . ':' . $departureDate . ':' . $nights;
+            if (isset($seen[$key])) continue;
+            $seen[$key] = true;
+            $offer['departureId'] = $departureId;
+            $offer['departureName'] = trim((string)$row['departure_name']);
+            $offer['snapshotObservedAt'] = (string)$row['observed_at'];
+            $offers[] = $offer;
+        }
+    }
+
+    usort($offers, static function (array $a, array $b): int {
+        $price = ((float)$a['price']) <=> ((float)$b['price']);
+        if ($price !== 0) return $price;
+        return strcmp((string)$a['departureDate'], (string)$b['departureDate']);
+    });
+
+    return array_slice($offers, 0, $limit);
+}
+
 function v2_seo_resort_snapshot_offers(int $countryId, int $regionId, int $limit = 6): array
 {
     if ($countryId <= 0 || $regionId <= 0) return [];
