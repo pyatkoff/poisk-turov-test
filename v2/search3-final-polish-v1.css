@@ -1,0 +1,26 @@
+/* Search3 final small visual fixes shared across approved boards. No data/transport semantics. */
+@media(min-width:641px){
+  html body.search3-preview #selectedTour.search3-lead-entry .lead-selection-summary{
+    display:grid!important;
+    gap:8px!important;
+    min-width:0!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .lead-selection-summary>span{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:baseline!important;
+    column-gap:8px!important;
+    row-gap:3px!important;
+    min-width:0!important;
+    overflow-wrap:anywhere!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .lead-selection-summary>span>*{
+    min-width:0!important;
+    max-width:100%!important;
+    overflow-wrap:anywhere!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .lead-selection-summary strong,
+  html body.search3-preview #selectedTour.search3-lead-entry .lead-selection-summary b{
+    white-space:normal!important;
+  }
+}
