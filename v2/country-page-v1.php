@@ -55,7 +55,7 @@ function cp_render(array $page): void
     $relatedDestinations = cp_related_destinations($slug);
     $countryId = isset($page['countryId']) ? (int)$page['countryId'] : 0;
     $searchState = $countryId > 0 ? ['country' => $countryId] : [];
-    $searchHref = v2_seo_search_handoff_url('/poisk-turov/', $searchState);
+    $searchHref = '/poisk-turov/' . ($countryId > 0 ? '?country=' . $countryId : '');
     $searchLabel = $countryId > 0 ? ('Найти туры в ' . $name) : 'Открыть поиск туров';
     $offers = $countryId > 0 ? v2_seo_country_snapshot_offers($countryId, 6) : [];
     $c = sp_context('/country/' . $slug . '/', $title, $description);
