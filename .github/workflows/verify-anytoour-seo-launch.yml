@@ -74,7 +74,7 @@ jobs:
           actual={n.text.strip() for n in ET.parse('v2/sitemap.xml').getroot().iter() if n.tag.endswith('loc') and n.text}
           assert actual == expected, (actual, expected)
           assert not any('/hotel/' in u or '/poisk-turov/' in u for u in actual)
-          print('ANYTOOUR_PREDEPLOY_SEO_CONTRACT_OK paths=10 seasonal=2 hotel_tours=0')
+          print('ANYTOOUR_PREDEPLOY_SEO_CONTRACT_OK paths=10 seasonal=2 hotel_tours=0 live_offer_coverage=observational')
           PY
 
   production-seo:
@@ -146,23 +146,50 @@ jobs:
           import datetime, hashlib, json, os, re, xml.etree.ElementTree as ET
           base=os.environ['BASE']
           sitemap={node.text.strip() for node in ET.parse('/tmp/sitemap.xml').getroot().iter() if node.tag.endswith('loc') and node.text}
+          country_paths={'/country/egypt/','/country/maldives/','/country/turkey/'}
           rows=[]
+          coverage={'country':{'pages':0,'with_offers':0,'cards':0},'resort':{'pages':0,'with_offers':0,'cards':0},'seasonal':{'pages':0,'with_offers':0,'cards':0}}
           with open('/tmp/page-status.tsv',encoding='utf-8') as fh:
               for line in fh:
                   path,code,filename=line.rstrip('\n').split('\t')
                   html=open(filename,encoding='utf-8').read()
                   robots=re.search(r'<meta name="robots" content="([^\"]+)"',html)
                   canonical=re.search(r'<link rel="canonical" href="([^\"]+)"',html)
-                  rows.append({'path':path,'http_status':int(code),'robots':robots.group(1) if robots else None,'canonical':canonical.group(1) if canonical else None,'sitemap_member':base+path in sitemap})
+                  page_type='country' if path in country_paths else ('seasonal' if path.endswith('/september/') else 'resort')
+                  offer_snapshot_present='sp-offer-snapshot' in html
+                  offer_card_count=len(re.findall(r'class="[^\"]*\bsp-offer-item\b[^\"]*"',html))
+                  if offer_snapshot_present and offer_card_count <= 0:
+                      raise AssertionError('offer snapshot without cards: '+path)
+                  if offer_card_count > 0 and not offer_snapshot_present:
+                      raise AssertionError('offer cards without snapshot section: '+path)
+                  if offer_card_count > 6:
+                      raise AssertionError('offer card limit exceeded: '+path)
+                  coverage[page_type]['pages']+=1
+                  coverage[page_type]['with_offers']+=1 if offer_snapshot_present else 0
+                  coverage[page_type]['cards']+=offer_card_count
+                  rows.append({
+                      'path':path,'type':page_type,'http_status':int(code),
+                      'robots':robots.group(1) if robots else None,
+                      'canonical':canonical.group(1) if canonical else None,
+                      'sitemap_member':base+path in sitemap,
+                      'offer_snapshot_present':offer_snapshot_present,
+                      'offer_card_count':offer_card_count,
+                  })
           protected_html=open('/tmp/hotel-review.html',encoding='utf-8').read()
           protected_robots=re.search(r'<meta name="robots" content="([^\"]+)"',protected_html)
           protected_canonical=re.search(r'<link rel="canonical" href="([^\"]+)"',protected_html)
+          pages_with_offers=sum(v['with_offers'] for v in coverage.values())
+          cards_total=sum(v['cards'] for v in coverage.values())
           payload={
               'state':'controlled_seo_postlaunch_baseline','domain':'anytoour.ru',
               'observed_at_utc':datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat(),
               'source_sha':os.environ.get('SOURCE_SHA',''),'trigger':os.environ.get('EVENT_NAME',''),
               'launch_scope':'turkey_egypt_maldives_country_resort_seasonal_v3','launch_url_count':len(rows),'pages':rows,
               'robots_sitemap_declared':True,'sitemap_url_count':len(sitemap),
+              'offer_snapshot_evidence':{
+                  'semantics':'observed_rendered_presence_only_missing_block_is_not_zero_inventory',
+                  'pages_with_offers':pages_with_offers,'offer_card_count_total':cards_total,'by_type':coverage,
+              },
               'protected_hotel_tour':{'path':os.environ['PROTECTED'],'http_status':int(os.environ['PROTECTED_CODE']),'robots':protected_robots.group(1) if protected_robots else None,'canonical':protected_canonical.group(1) if protected_canonical else None,'sitemap_member':base+os.environ['PROTECTED'] in sitemap},
               'search_console_metrics_state':'not_collected_by_this_workflow','publication_scope_expanded':True,
               'publication_scope_expansion':'evidence_backed_seasonal_pair','hotel_tours_indexation_allowed':False,
@@ -170,6 +197,8 @@ jobs:
           stable=dict(payload);stable.pop('observed_at_utc',None)
           payload['baseline_sha256']=hashlib.sha256(json.dumps(stable,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
           with open('/tmp/anytoour-seo-baseline.json','w',encoding='utf-8') as fh: json.dump(payload,fh,ensure_ascii=False,indent=2);fh.write('\n')
+          print('ANYTOOUR_LIVE_OFFER_COVERAGE pages_with_offers={}/10 cards={} country={}/3 resort={}/5 seasonal={}/2'.format(
+              pages_with_offers,cards_total,coverage['country']['with_offers'],coverage['resort']['with_offers'],coverage['seasonal']['with_offers']))
           print('ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=10 seasonal=2 hotel_tours_indexed=0 baseline_sha256='+payload['baseline_sha256'])
           PY
 
