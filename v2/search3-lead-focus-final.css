@@ -1,0 +1,25 @@
+/* Search3 mobile focus isolation for approved booking + lead flow. Preview only. */
+@media(max-width:760px){
+  html body.search3-preview:has(#selectedTour:not([hidden])) #resultsTools,
+  html body.search3-preview:has(#selectedTour:not([hidden])) #resultsSearchSummary,
+  html body.search3-preview:has(#selectedTour:not([hidden])) .search3-mobile-toolbar,
+  html body.search3-preview:has(#selectedTour:not([hidden])) .results-layout,
+  html body.search3-preview:has(#selectedTour:not([hidden])) #status:not(:has(.search3-lead-status)){
+    display:none!important;
+  }
+  html body.search3-preview:has(#selectedTour:not([hidden])) .v2-shell{
+    display:block!important;
+  }
+  html body.search3-preview:has(#selectedTour:not([hidden])) #selectedTour{
+    width:100%!important;
+    max-width:100%!important;
+    margin-top:0!important;
+  }
+  html body.search3-preview:has(#selectedTour.search3-lead-entry:not([hidden])) .search3-page-intro,
+  html body.search3-preview:has(#selectedTour.search3-lead-entry:not([hidden])) #tourSearch{
+    display:none!important;
+  }
+  html body.search3-preview:has(#selectedTour.search3-lead-entry:not([hidden])) #selectedTour{
+    padding-top:0!important;
+  }
+}
