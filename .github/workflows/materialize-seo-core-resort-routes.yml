@@ -1,0 +1,79 @@
+name: Materialize SEO core resort routes
+
+on:
+  workflow_run:
+    workflows: ['Deploy anytoour.ru']
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: seo-core-resort-materialize-production
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate resort materializer
+        run: |
+          set -euo pipefail
+          php -l v2/seo-core-resort-runtime-v1.php >/dev/null
+          php -l v2/data/materialize-seo-core-resort-routes-v1.php >/dev/null
+          php -l tests/seo-core-resort-materializer-smoke.php >/dev/null
+          php tests/seo-core-resort-cohort-smoke.php
+          php tests/seo-core-resort-materializer-smoke.php
+
+  materialize:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare SSH key
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$RUNNER_TEMP/anytoour_key"; else printf '%s' "$KEY" | base64 --decode > "$RUNNER_TEMP/anytoour_key"; fi
+          chmod 600 "$RUNNER_TEMP/anytoour_key"
+          ssh-keygen -y -f "$RUNNER_TEMP/anytoour_key" >/dev/null
+      - name: Build Egypt and Maldives resort routes on production
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST" && test -n "$USER"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          remote="$USER@$HOST"
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            root="$HOME/www/anytoour.ru"
+            php "$root/data/materialize-seo-core-resort-routes-v1.php" --root="$root" --limit=80 --require-count=1 --apply
+            test -s "$root/data/generated/seo-core-resort-routes-v1.json"
+            php -r '\''$j=json_decode(file_get_contents($argv[1]),true); if(!is_array($j)||($j["state"]??"")!=="core_resort_routes_materialized"||($j["generated_resorts"]??0)<1||($j["generated_route_count"]??0)<13)exit(1); echo "SEO_CORE_RESORT_MANIFEST_OK resorts=".$j["generated_resorts"]." routes=".$j["generated_route_count"].PHP_EOL;'\'' "$root/data/generated/seo-core-resort-routes-v1.json"
+          '
+      - name: Verify representative public resort URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 45 https://anytoour.ru/sitemap.xml -o /tmp/sitemap.xml
+          grep -Eq '<loc>https://anytoour.ru/country/(egypt|maldives)/[a-z0-9-]+/</loc>' /tmp/sitemap.xml
+          url="$(grep -Eo 'https://anytoour.ru/country/(egypt|maldives)/[a-z0-9-]+/' /tmp/sitemap.xml | head -1)"
+          test -n "$url"
+          code="$(curl -fsSL -o /tmp/resort.html -w '%{http_code}' --max-time 45 "$url")"
+          test "$code" = "200"
+          grep -qi '<meta name="robots" content="index,follow"' /tmp/resort.html
+          grep -q '/poisk-turov/' /tmp/resort.html
+          month_url="${url}september/"
+          month_code="$(curl -fsSL -o /tmp/resort-month.html -w '%{http_code}' --max-time 45 "$month_url")"
+          test "$month_code" = "200"
+          grep -qi '<meta name="robots" content="index,follow"' /tmp/resort-month.html
+          echo "SEO_CORE_RESORT_PUBLIC_OK base=$url month=$month_url"
