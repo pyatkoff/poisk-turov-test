@@ -46,11 +46,11 @@ pc_assert(($calendar['missing_semantics'] ?? '') === 'unknown_not_zero', 'missin
 $byDate = [];
 foreach ($calendar['series'] as $point) $byDate[$point['date']] = $point;
 pc_assert(($byDate['2026-09-11']['observed'] ?? true) === false, 'missing day is not observed');
-pc_assert(($byDate['2026-09-11']['minPrice'] ?? 'sentinel') === null, 'missing day price is null, never zero');
+pc_assert(array_key_exists('minPrice', $byDate['2026-09-11']) && $byDate['2026-09-11']['minPrice'] === null, 'missing day price is null, never zero');
 pc_assert(($byDate['2026-09-12']['best'] ?? false) === true, 'best date marked');
 
 $single = v2_price_calendar_build([$rows[0]], '2026-09-10', '2026-09-10');
-pc_assert(($single['bestDate'] ?? 'sentinel') === null, 'one observed day must not manufacture a best badge');
+pc_assert(array_key_exists('bestDate', $single) && $single['bestDate'] === null, 'one observed day must not manufacture a best badge');
 
 try {
     v2_price_calendar_build([], '2026-02-31', '2026-03-01');
