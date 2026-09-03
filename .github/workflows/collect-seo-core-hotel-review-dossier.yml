@@ -1,0 +1,112 @@
+name: Collect SEO Top500 hotel review dossier
+
+on:
+  workflow_run:
+    workflows: ['Bootstrap AnyTour data database']
+    types: [completed]
+  workflow_dispatch:
+  schedule:
+    - cron: '11 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: collect-seo-top500-hotel-review-dossier
+  cancel-in-progress: true
+
+jobs:
+  collect:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate review-only dossier tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/report-seo-core-hotel-cohort-v1.php >/dev/null
+          php -l v2/data/seo-core-hotel-cohort-source-v1.php >/dev/null
+          php -l v2/seo-core-hotel-cohort-v1.php >/dev/null
+          php tests/seo-core-hotel-cohort-smoke.php
+
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"
+          else
+            printf '%s' "$KEY_VALUE" | base64 --decode > "$key"
+          fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+
+      - name: Collect fresh production review dossier
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          root='~/www/anytoour.ru'
+          ssh "${opts[@]}" "$remote" 'set -euo pipefail; root="$HOME/www/anytoour.ru"; php "$root/data/report-seo-core-hotel-cohort-v1.php" --limit=500 > /tmp/seo-top500-hotel-review-dossier.json; test -s /tmp/seo-top500-hotel-review-dossier.json'
+          scp "${opts[@]}" "$remote:/tmp/seo-top500-hotel-review-dossier.json" "$RUNNER_TEMP/seo-top500-hotel-review-dossier.json"
+
+      - name: Fail closed unless all 500 records remain review-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="$RUNNER_TEMP/seo-top500-hotel-review-dossier.json" python3 - <<'PY'
+          import json, os, re
+          p=os.environ['FILE']
+          data=json.load(open(p,encoding='utf-8'))
+          assert data.get('state')=='review_only_core_hotel_cohort_ready', data.get('state')
+          assert data.get('count')==500, data.get('count')
+          assert len(data.get('records') or [])==500
+          assert data.get('publication_candidates')==[]
+          for key in ('publication_allowed','indexation_allowed','sitemap_allowed','canonical_launch_allowed','route_launch_allowed','search_contract_changes','tourvisor_contract_changes'):
+              assert data.get(key) is False, (key,data.get(key))
+          assert data.get('explicit_user_indexation_approval_required') is True
+          assert data.get('source')=='first_party_catalog_plus_price_observations'
+          assert data.get('selection_window_days')==30
+          assert data.get('country_scope')==[1,4,8]
+          seen=set()
+          counts={1:0,4:0,8:0}
+          for row in data['records']:
+              assert row.get('type')=='hotel_tours'
+              assert row.get('status')=='review'
+              for key in ('publication_allowed','indexation_allowed','sitemap_allowed','canonical_launch_allowed','route_launch_allowed'):
+                  assert row.get(key) is False, (row.get('path'),key,row.get(key))
+              assert row.get('explicit_user_indexation_approval_required') is True
+              path=row.get('path','')
+              assert re.fullmatch(r'/country/[a-z0-9-]+/hotel/[a-z0-9-]+-[0-9]+/',path), path
+              assert path not in seen, path
+              seen.add(path)
+              state=row.get('data',{}).get('search_state',{})
+              country=state.get('country')
+              hotel=state.get('hotel')
+              assert country in counts and isinstance(hotel,int) and hotel>0
+              counts[country]+=1
+              ev=row.get('cohort_evidence',{})
+              assert int(ev.get('observation_count',0))>0
+              assert str(ev.get('last_observed_at','')).strip()
+              assert ev.get('selection_basis')=='fresh_first_party_inventory_observation_coverage'
+          print('SEO_TOP500_REVIEW_DOSSIER_OK count=500 countries='+','.join(f'{k}:{v}' for k,v in counts.items())+' publication=0 indexation=0 sitemap=0 route_launch=0')
+          PY
+
+      - name: Upload review dossier artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-top500-hotel-review-dossier
+          path: ${{ runner.temp }}/seo-top500-hotel-review-dossier.json
+          retention-days: 7
