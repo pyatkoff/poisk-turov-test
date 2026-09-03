@@ -120,4 +120,32 @@ $partialDailyIntake=v2_seo_search_feedback_intake((array)($partialDaily['rows']?
 if(($partialDailyIntake['state']??'')!=='search_feedback_intake_blocked')yw_feedback_fail('partial_daily_intake_must_block');
 if(($partialDaily['daily_coverage_semantics']??'')!=='partial_daily_metrics_unknown_not_aggregate')yw_feedback_fail('partial_daily_semantics');
 
-echo "SEO_YANDEX_WEBMASTER_FEEDBACK_OK cohort=10 observed=2 ignoredOutside=2 dates=7 unknownMissing=8 seasonalUnknown=2 missingCountersUnknown=1 observedZeroValid=1 partialDailyBlocked=1 hotelTours=0 execution=0\n";
+$identicalStats=$stats($dates,100.0,10.0,8.0);
+$identicalStats[]=['date'=>'2026-09-02','field'=>'CLICKS','value'=>10.0];
+$identical=v2_seo_yandex_webmaster_feedback([
+    'host_id'=>'https:anytoour.ru:443',
+    'responses'=>[['text_indicator_to_statistics'=>[[
+        'text_indicator'=>['type'=>'URL','value'=>'https://anytoour.ru/country/turkey/'],
+        'statistics'=>$identicalStats,
+    ]]]],
+],$collected);
+if(($identical['state']??'')!=='yandex_webmaster_feedback_ready')yw_feedback_fail('identical_duplicate_state');
+if(($identical['identical_duplicate_stat_count']??0)!==1||($identical['conflicting_duplicate_stat_count']??0)!==0)yw_feedback_fail('identical_duplicate_counts');
+if((($identical['rows'][0]['metrics']['clicks']??null)!==70))yw_feedback_fail('identical_duplicate_not_deduped');
+
+$conflictingStats=$stats($dates,100.0,10.0,8.0);
+$conflictingStats[]=['date'=>'2026-09-02','field'=>'CLICKS','value'=>11.0];
+$conflicting=v2_seo_yandex_webmaster_feedback([
+    'host_id'=>'https:anytoour.ru:443',
+    'responses'=>[['text_indicator_to_statistics'=>[[
+        'text_indicator'=>['type'=>'URL','value'=>'https://anytoour.ru/country/turkey/'],
+        'statistics'=>$conflictingStats,
+    ]]]],
+],$collected);
+if(($conflicting['state']??'')!=='yandex_webmaster_feedback_partial')yw_feedback_fail('conflicting_duplicate_state');
+if(($conflicting['conflicting_duplicate_stat_count']??0)!==1)yw_feedback_fail('conflicting_duplicate_count');
+$conflictingErrors=implode('|',(array)($conflicting['errors']??[]));
+if(!str_contains($conflictingErrors,'conflicting_duplicate_stat:/country/turkey/:2026-09-02:CLICKS'))yw_feedback_fail('conflicting_duplicate_diagnostic');
+if(($conflicting['duplicate_stat_semantics']??'')!=='identical_deduped_conflicts_fail_closed')yw_feedback_fail('duplicate_semantics');
+
+echo "SEO_YANDEX_WEBMASTER_FEEDBACK_OK cohort=10 observed=2 ignoredOutside=2 dates=7 unknownMissing=8 seasonalUnknown=2 missingCountersUnknown=1 observedZeroValid=1 partialDailyBlocked=1 identicalDuplicateDeduped=1 conflictingDuplicateBlocked=1 hotelTours=0 execution=0\n";
