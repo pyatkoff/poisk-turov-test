@@ -4,7 +4,7 @@
 Ветка: `feature/search3-preview`  
 Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`  
 Последний проверенный implementation baseline: `ecedaeb1396b553c7150e37d7c4031a5915dcd51`  
-Текущий filter candidate: `569bb3bb2a0320f0b81c38903922309175a542ac`; live preview уже отдаёт новые filter sub-screens и commit/cancel contract
+Текущий mobile-flow candidate: `ec72a23a551391943da0496051edb6435e17cb9d`; filter sub-screens и реальный MAX/Telegram handoff включены в единый QA
 
 ## Источник истины: 8 утверждённых макетов
 
@@ -20,7 +20,7 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 | 5 | Дизайн страницы бронирования тура AnyTour | selected hotel, room/meal, flights, composition, total | desktop + mobile | REVIEW | Дожать геометрию Tour Details без изменения booking-семантики |
 | 6 | UI-кит заявки на тур AnyTour | entry, sending, success, error, MAX/Telegram handoff | desktop + mobile | REVIEW | Все 4 lead-состояния теперь обязательны в desktop/tablet/mobile QA; проверить свежие artifacts и retry |
 | 7 | Спецификация футера AnyTour: десктоп и мобильная версия | navigation, support, social, apps, trust, legal | desktop + mobile | REVIEW | Desktop readability/grid и canonical links исправлены; подтвердить tablet/mobile screenshots |
-| 8 | Цельный mobile flow AnyTour: бронирование тура и общение | search → results → hotel → tour → flight → total → lead → messenger | mobile | IN PROGRESS | Прогнать как один сценарий и сопоставить каждый шаг с макетами 1–7 |
+| 8 | Цельный mobile flow AnyTour: бронирование тура и общение | search → results → hotel → tour → flight → total → lead → messenger | mobile | REVIEW | Полный путь и реальный MAX/Telegram handoff покрыты QA; проверить свежие mobile screenshots |
 
 ## Матрица QA
 
@@ -58,7 +58,7 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 3. **P1 — Filters (макет 2):** подтвердить свежие tablet/mobile screenshots, apply/cancel и chips.
 4. **P1 — Tour details + flights + total (макеты 3–5):** единая геометрия и цена после выбора рейса.
 5. **P1 — Lead kit (макет 6):** entry/sending/success/error/MAX/TG, включая retry.
-6. **P1 — Mobile E2E (макет 8):** финальная последовательная сверка.
+6. **P1 — Mobile E2E (макет 8):** проверить свежие screenshots и переходы success → MAX/TG.
 7. **Final:** единый QA одного head на desktop/tablet/mobile и owner visual approval.
 
 ## Правила реализации
@@ -81,6 +81,9 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 - 2026-09-03 — QA макета №6 усилен: entry/sending/success/error обязательны на desktop/tablet/mobile.
 - 2026-09-03 — для макета №2 добавлены mobile/tablet filter sub-screens на фактических form controls; reset очищает весь filter set, apply и cancel разделены.
 - 2026-09-03 — QA макета №2 теперь обязан снять вложенный filter-screen; live DOM подтверждает 4 panel rows и commit CTA.
+- 2026-09-03 — вручную пройден desktop Search3: 97 отелей → выбранный тур → 57 flight variants → final total → lead entry; overflow не обнаружен.
+- 2026-09-03 — success-state получает реальные MAX/Telegram URL из конфигурации либо factual footer; общий канал не называется чатом менеджера.
+- 2026-09-03 — QA всех трёх viewport требует активные HTTPS handoff-ссылки на `max.ru` и `t.me`/`telegram.me`.
 
 ## Definition of done
 
