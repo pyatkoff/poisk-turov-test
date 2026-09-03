@@ -37,4 +37,7 @@ if(($r['blocked_candidates'][0]['errors'][0]??'')==='')p5inv_fail('blocked_error
 foreach(['publication_allowed','indexation_allowed','sitemap_allowed','canonical_launch_allowed','route_launch_allowed','hotel_tours_publication_allowed','hotel_tours_indexation_allowed'] as $flag)if(($r[$flag]??true)!==false)p5inv_fail($flag);
 $stale=$report;$stale['candidates'][0]['inventory']['fresh_observation_within_3d']=false;$s=v2_seo_phase5_inventory_opportunity_review($chain,$stale);if(($s['review_candidate_count']??0)!==1)p5inv_fail('stale_candidate_not_blocked');
 $bad=$report;$bad['publication_allowed']=true;if((v2_seo_phase5_inventory_opportunity_review($chain,$bad)['state']??'')!=='phase5_inventory_opportunity_review_blocked')p5inv_fail('report_boundary');
-echo "SEO_PHASE5_INVENTORY_REVIEW_OK review=2 blocked=1 country=ignored publication=0 hotel_tours=0\n";
+$badChain=$chain;$badChain['state']='fresh_evidence_chain_blocked';$empty=$report;$empty['candidates']=[];$e=v2_seo_phase5_inventory_opportunity_review($badChain,$empty);if(($e['state']??'')!=='phase5_inventory_opportunity_review_blocked')p5inv_fail('empty_candidates_bypass_upstream');
+if(!in_array('upstream_evidence_chain_not_ready',$e['errors']??[],true))p5inv_fail('upstream_error_missing');
+$leakChain=$chain;$leakChain['hotel_tours_indexation_allowed']=true;if((v2_seo_phase5_inventory_opportunity_review($leakChain,$empty)['state']??'')!=='phase5_inventory_opportunity_review_blocked')p5inv_fail('hotel_upstream_boundary');
+echo "SEO_PHASE5_INVENTORY_REVIEW_OK review=2 blocked=1 upstream_failclosed=1 country=ignored publication=0 hotel_tours=0\n";
