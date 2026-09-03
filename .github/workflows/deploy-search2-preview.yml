@@ -146,9 +146,12 @@ jobs:
                 const steps=allSteps.slice(0,5);
                 const button=form.querySelector('.search-submit');
                 const quickLane=form.querySelector('.ds2-search-quick-stars');
+                const filtersSummary=form.querySelector(':scope>details.extras>summary,:scope>details.extras-secondary>summary');
                 const rects=steps.map(el=>el.getBoundingClientRect());
                 const buttonRect=button?.getBoundingClientRect();
                 const quickRect=quickLane?.getBoundingClientRect();
+                const filtersRect=filtersSummary?.getBoundingClientRect();
+                const quickStyle=quickLane?getComputedStyle(quickLane):null;
                 const bg=button?getComputedStyle(button).backgroundColor:'';
                 const starQuick=[...form.querySelectorAll('.ds2-search-quick-stars .stars-choice:not(.meal-shortcut):not(.service-shortcut)')];
                 const mealShortcut=form.querySelector('.ds2-search-quick-stars .meal-shortcut');
@@ -163,7 +166,9 @@ jobs:
                 return {
                   steps:rects.length,primaryCount:allSteps.length,foodInMain:!!form.elements.food?.closest('.main-fields'),starQuick:starQuick.length,mealShortcut:String(mealShortcut?.textContent||'').trim(),mealPressed:mealShortcut?.getAttribute('aria-pressed')||'',mealValue:String(form.elements.food?.value||''),serviceShortcuts,serviceCatalog,selectedServices,
                   cta:String(button?.querySelector('span')?.textContent||button?.textContent||'').trim(),bg,nights,filterLabel,
-                  sameRow,stacked,ctaBeforeQuick:!!(buttonRect&&quickRect&&buttonRect.bottom<=quickRect.top+2),buttonRight:buttonRect?.right||0,viewport:innerWidth,
+                  sameRow,stacked,ctaBeforeQuick:!!(buttonRect&&quickRect&&buttonRect.bottom<=quickRect.top+2),quickBeforeFilters:!!(quickRect&&filtersRect&&quickRect.bottom<=filtersRect.top+2),
+                  quickScrollable:!!(quickLane&&quickLane.scrollWidth>quickLane.clientWidth+3&&/auto|scroll/.test(quickStyle?.overflowX||'')),quickOverflowX:quickStyle?.overflowX||'',quickClientWidth:quickLane?.clientWidth||0,quickScrollWidth:quickLane?.scrollWidth||0,
+                  buttonRight:buttonRect?.right||0,viewport:innerWidth,
                   docScrollWidth:document.documentElement.scrollWidth,docClientWidth:document.documentElement.clientWidth,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth+3,overflowNodes
                 };
               });
@@ -172,7 +177,7 @@ jobs:
               const blue=/rgb\((18,\s*97,\s*246|14,\s*85,\s*219)\)/.test(state.bg);
               const serviceLabels=state.serviceShortcuts.map(x=>x.label).join('|');
               const serviceBound=state.serviceShortcuts.length===2&&serviceLabels==='Первая линия|С детьми'&&state.serviceShortcuts.every(x=>x.pressed==='true'&&x.value&&state.selectedServices.includes(x.value));
-              const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.primaryCount!==5||state.foodInMain||state.starQuick!==5||state.mealShortcut!=='All Inclusive'||state.mealPressed!=='true'||!state.mealValue||!serviceBound||state.cta!=='Найти туры'||!state.nights||state.filterLabel!=='Все фильтры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked)||(width<=700&&!state.ctaBeforeQuick);
+              const bad=(response?.status()||0)!==200||errors.length||state.steps!==5||state.primaryCount!==5||state.foodInMain||state.starQuick!==5||state.mealShortcut!=='All Inclusive'||state.mealPressed!=='true'||!state.mealValue||!serviceBound||state.cta!=='Найти туры'||!state.nights||state.filterLabel!=='Все фильтры'||!blue||state.overflow||(expectedRow&&!state.sameRow)||(expectedStack&&!state.stacked)||(width<=900&&(!state.ctaBeforeQuick||!state.quickBeforeFilters))||(width<=430&&!state.quickScrollable);
               report.push({name,width,height,state,errors,bad}); if(bad) failed=true;
               await page.screenshot({path:`search2-form-evidence/${name}.png`,fullPage:false,animations:'disabled'});
               await context.close();
