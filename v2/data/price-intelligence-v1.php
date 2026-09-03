@@ -68,6 +68,7 @@ function v2_price_intelligence_summary(array $dailyRows, float $currentPrice, in
         return [
             'ok' => true,
             'state' => $stage,
+            'showPromoDrop' => false,
             'showHistoricalDrop' => false,
             'observedDays' => $observedDays,
             'observationCount' => $observationCount,
@@ -91,16 +92,27 @@ function v2_price_intelligence_summary(array $dailyRows, float $currentPrice, in
     $dropAmount = max(0.0, $referencePrice - $currentPrice);
     $dropPercentRaw = $referencePrice > 0 ? ($dropAmount / $referencePrice) * 100 : 0.0;
     $dropPercent = (int)round($dropPercentRaw);
+    $hasMaterialDrop = $referencePrice > $currentPrice && $dropPercent >= $minimumDropPercent;
 
-    // Historical reference is the maximum of comparable DAILY MINIMUM prices,
-    // never raw max_price. A visible percentage requires enough independent
-    // Tourvisor searches and seven distinct observation days.
+    // Tourism prices move quickly, so the first commercial signal should not
+    // wait for a week of history. Promo display is still grounded in an exact
+    // comparable segment and requires five independent searches across two
+    // distinct days. It means "we recently observed this exact segment higher",
+    // not "this is the long-term normal price".
+    $showPromoDrop =
+        v2_price_confidence_rank($stage) >= 1
+        && $independentSearchCount >= 5
+        && $observedDays >= 2
+        && $hasMaterialDrop;
+
+    // The stronger historical wording/crossed-out reference requires the
+    // guarded-delta stage: fifteen independent searches across three days.
+    // Seven days / thirty searches remain reserved for full history readiness.
     $showHistoricalDrop =
         v2_price_confidence_rank($stage) >= 2
         && $independentSearchCount >= 15
-        && $observedDays >= 7
-        && $referencePrice > $currentPrice
-        && $dropPercent >= $minimumDropPercent;
+        && $observedDays >= 3
+        && $hasMaterialDrop;
 
     $goodPrice =
         v2_price_confidence_rank($stage) >= 1
@@ -122,6 +134,7 @@ function v2_price_intelligence_summary(array $dailyRows, float $currentPrice, in
         'referenceMethod' => 'max_of_daily_min_exact_comparable_segment',
         'historicalDropAmount' => $dropAmount,
         'historicalDropPercent' => $dropPercent,
+        'showPromoDrop' => $showPromoDrop,
         'showHistoricalDrop' => $showHistoricalDrop,
         'goodPrice' => $goodPrice,
         'historyReady' => $stage === 'history_ready',
