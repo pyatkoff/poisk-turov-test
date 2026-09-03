@@ -3,6 +3,7 @@ require_once __DIR__ . '/../v2/seo-config.php';
 require_once __DIR__ . '/../v2/seo-launch-slice-v1.php';
 require_once __DIR__ . '/../v2/seo-content-pilot-turkey-catalog-v1.php';
 require_once __DIR__ . '/../v2/seo-controlled-launch-catalog-v1.php';
+require_once __DIR__ . '/../v2/data/seo-controlled-route-identities-v1.php';
 
 function seo_launch_fail(string $message): void
 {
@@ -26,6 +27,18 @@ if($paths!==$expected)seo_launch_fail('unexpected_controlled_paths');
 if(in_array('/poisk-turov/',$paths,true))seo_launch_fail('search_route_must_not_be_indexable');
 if(count($paths)!==count(array_unique($paths)))seo_launch_fail('duplicate_path');
 foreach($paths as $path)if(str_contains($path,'/hotel/'))seo_launch_fail('hotel_tours_launch_leak');
+
+$routeBindings=v2_seo_controlled_route_identities();
+$routePaths=array_values($routeBindings);
+sort($routePaths,SORT_STRING);
+$launchPaths=$paths;
+sort($launchPaths,SORT_STRING);
+if($routePaths!==$launchPaths)seo_launch_fail('controlled_route_registry_drift');
+if(count($routeBindings)!==count($paths))seo_launch_fail('controlled_route_identity_count');
+foreach($routeBindings as $identity=>$path){
+    if(!is_string($identity)||$identity==='')seo_launch_fail('empty_route_identity');
+    if(!in_array($path,$paths,true))seo_launch_fail('route_identity_outside_launch_scope');
+}
 
 $disabled=v2_seo_controlled_launch_site_params(['OTHER'=>'keep'],false);
 if(!empty($disabled['SEO_INDEXABLE'])||($disabled['SEO_INDEXABLE_PATHS']??null)!==[])seo_launch_fail('disabled_gate');
@@ -65,4 +78,4 @@ catch(InvalidArgumentException $e){if(!str_contains($e->getMessage(),'separate l
 try{v2_seo_sitemap_candidate_urls($rogue,true,[$roguePath]);seo_launch_fail('hotel_tours_sitemap_fence_bypassed');}
 catch(InvalidArgumentException $e){if(!str_contains($e->getMessage(),'separate launch decision'))seo_launch_fail('hotel_tours_sitemap_fence_wrong_error');}
 
-echo "SEO_LAUNCH_SLICE_OK paths=10 turkey=6 secondWave=2 seasonal=2 indexGate=1 sitemapGate=1 noSearchLeak=1 hotelTours=0\n";
+echo "SEO_LAUNCH_SLICE_OK paths=10 turkey=6 secondWave=2 seasonal=2 routeAuthority=10 indexGate=1 sitemapGate=1 noSearchLeak=1 hotelTours=0\n";
