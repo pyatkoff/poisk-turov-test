@@ -29,6 +29,7 @@ html body.search3-preview.search3-selected-open #tourSearch,
 html body.search3-preview.search3-selected-open #status,
 html body.search3-preview.search3-selected-open #resultsSearchSummary,
 html body.search3-preview.search3-selected-open #resultsTools,
+html body.search3-preview.search3-selected-open .search3-mobile-toolbar,
 html body.search3-preview.search3-selected-open .results-layout{display:none!important}
 html body.search3-preview.search3-selected-open #selectedTour{margin-top:8px!important;margin-bottom:18px!important}
 }
