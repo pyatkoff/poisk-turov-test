@@ -43,6 +43,39 @@ function v2_seo_seasonal_review_content_prototypes(): array
             'source_note'=>'Официальная климатическая страница Maldives Meteorological Service. Перед любым решением о публикации повторно проверьте источник и свежую production identity.',
             'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_creation_allowed'=>false,
         ],
+        'antalya-october'=>[
+            'state'=>'authored_review_only_requires_fresh_identity_rebind','page_key'=>'resort_month:1:4:20:2026-10','country_id'=>4,'region_id'=>20,
+            'title'=>'Туры в Анталью в октябре: климатические ориентиры для поездки','h1'=>'Туры в Анталью в октябре',
+            'intro'=>'Для выбора тура в Анталью на октябрь климатические ориентиры полезно сверять с официальной статистикой, а даты, состав пакета, стоимость и доступность — только с актуальной выдачей поиска AnyTour.',
+            'sections'=>[
+                ['heading'=>'Температура в октябре','text_template'=>'По данным MGM для Антальи, средняя температура октября — {{avg_temp}}, средняя максимальная — {{avg_high}}, а средняя минимальная — {{avg_low}}.','claim_keys'=>['avg_temp','avg_high','avg_low']],
+                ['heading'=>'Осадки','text_template'=>'Средний месячный объём осадков в октябре — {{precipitation}}, а среднее число дождливых дней — {{rainy_days}}.','claim_keys'=>['precipitation','rainy_days']],
+            ],
+            'claims'=>[
+                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-10','claim_key'=>'avg_temp','type'=>'climate_temperature','value'=>'20,6 °C','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-03T11:46:00Z'],
+                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-10','claim_key'=>'avg_high','type'=>'climate_temperature','value'=>'26,6 °C','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-03T11:46:00Z'],
+                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-10','claim_key'=>'avg_low','type'=>'climate_temperature','value'=>'15,4 °C','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-03T11:46:00Z'],
+                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-10','claim_key'=>'precipitation','type'=>'climate_precipitation','value'=>'70,6 мм','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-03T11:46:00Z'],
+                ['country_id'=>4,'page_key'=>'resort_month:1:4:20:2026-10','claim_key'=>'rainy_days','type'=>'climate_precipitation','value'=>'5,38 дня','source_class'=>'official_meteorological','source_id'=>'tr-mgm-climate','source_url'=>$trUrl,'observed_at'=>'2026-09-03T11:46:00Z'],
+            ],
+            'source_note'=>'Официальная климатическая статистика MGM; источник указывает период наблюдений 1930–2025. Перед любым решением о публикации повторно проверьте источник и свежую production identity.',
+            'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_creation_allowed'=>false,
+        ],
+        'maldives-october'=>[
+            'state'=>'authored_review_only_requires_fresh_identity_rebind','page_key'=>'month:1:8:2026-10','country_id'=>8,'region_id'=>null,
+            'title'=>'Мальдивы в октябре: климат и особенности сезона','h1'=>'Мальдивы в октябре',
+            'intro'=>'Для октябрьской поездки на Мальдивы полезно отделять общие климатические ориентиры от краткосрочного прогноза и от наличия конкретных туров.',
+            'sections'=>[
+                ['heading'=>'Температура','text_template'=>'Maldives Meteorological Service описывает климат страны как тёплый и влажный круглый год; средняя температура находится в диапазоне {{temperature_range}}.','claim_keys'=>['temperature_range']],
+                ['heading'=>'Осадки и сезон','text_template'=>'По данным MMS, {{wet_season}}. Октябрь попадает в этот сезонный период.','claim_keys'=>['wet_season']],
+            ],
+            'claims'=>[
+                ['country_id'=>8,'page_key'=>'month:1:8:2026-10','claim_key'=>'temperature_range','type'=>'climate_temperature','value'=>'25–32 °C','source_class'=>'official_meteorological','source_id'=>'mv-mms-climate','source_url'=>$mvUrl,'observed_at'=>'2026-09-03T11:46:00Z'],
+                ['country_id'=>8,'page_key'=>'month:1:8:2026-10','claim_key'=>'wet_season','type'=>'climate_precipitation','value'=>'влажный сезон обычно продолжается с середины мая до ноября','source_class'=>'official_meteorological','source_id'=>'mv-mms-climate','source_url'=>$mvUrl,'observed_at'=>'2026-09-03T11:46:00Z'],
+            ],
+            'source_note'=>'Официальная климатическая страница Maldives Meteorological Service. Перед любым решением о публикации повторно проверьте источник и свежую production identity.',
+            'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_creation_allowed'=>false,
+        ],
     ];
 }
 
