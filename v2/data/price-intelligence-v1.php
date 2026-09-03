@@ -79,13 +79,19 @@ function v2_price_intelligence_summary(array $dailyRows, float $currentPrice, in
 
     $dailyMins = array_column($series, 'minPrice');
     $dailyMedians = array_column($series, 'medianPrice');
-    $referencePrice = max($dailyMins);
+    $dailyMaxes = array_column($series, 'maxPrice');
+
+    // tour_price_daily_exact is keyed by the strict exact-comparable fingerprint:
+    // departure, hotel, exact departure date, nights, tourists, meal, room,
+    // operator and currency. Its maximum is therefore a real observed price of
+    // the same product, not a maximum borrowed from a different tour.
+    $referencePrice = max($dailyMaxes);
     $historicalLow = min($dailyMins);
     $medianReference = v2_price_intelligence_median($dailyMedians);
     $referenceDate = null;
     $historicalLowDate = null;
     foreach ($series as $point) {
-        if ((float)$point['minPrice'] === (float)$referencePrice) $referenceDate = $point['date'];
+        if ((float)$point['maxPrice'] === (float)$referencePrice) $referenceDate = $point['date'];
         if ($historicalLowDate === null && (float)$point['minPrice'] === (float)$historicalLow) $historicalLowDate = $point['date'];
     }
 
@@ -94,25 +100,14 @@ function v2_price_intelligence_summary(array $dailyRows, float $currentPrice, in
     $dropPercent = (int)round($dropPercentRaw);
     $hasMaterialDrop = $referencePrice > $currentPrice && $dropPercent >= $minimumDropPercent;
 
-    // Tourism prices move quickly, so the first commercial signal should not
-    // wait for a week of history. Promo display is still grounded in an exact
-    // comparable segment and requires five independent searches across two
-    // distinct days. It means "we recently observed this exact segment higher",
-    // not "this is the long-term normal price".
-    $showPromoDrop =
-        v2_price_confidence_rank($stage) >= 1
-        && $independentSearchCount >= 5
-        && $observedDays >= 2
-        && $hasMaterialDrop;
-
-    // The stronger historical wording/crossed-out reference requires the
-    // guarded-delta stage: fifteen independent searches across three days.
-    // Seven days / thirty searches remain reserved for full history readiness.
-    $showHistoricalDrop =
-        v2_price_confidence_rank($stage) >= 2
-        && $independentSearchCount >= 15
-        && $observedDays >= 3
-        && $hasMaterialDrop;
+    // Commercial price-drop claims need evidence, not an arbitrary waiting
+    // period. Two exact comparable observations are enough to establish that
+    // this same tour was really observed at two prices. Longer history remains
+    // useful for stronger analytics (weekly lows, normal-price bands, trends),
+    // but it no longer blocks the truthful crossed-out observed price.
+    $hasComparableHistory = $observationCount >= 2;
+    $showPromoDrop = $hasComparableHistory && $hasMaterialDrop;
+    $showHistoricalDrop = $hasComparableHistory && $hasMaterialDrop;
 
     $goodPrice =
         v2_price_confidence_rank($stage) >= 1
@@ -131,7 +126,7 @@ function v2_price_intelligence_summary(array $dailyRows, float $currentPrice, in
         'medianDailyPrice' => $medianReference,
         'referencePrice' => $referencePrice,
         'referenceDate' => $referenceDate,
-        'referenceMethod' => 'max_of_daily_min_exact_comparable_segment',
+        'referenceMethod' => 'max_observed_price_exact_comparable_segment',
         'historicalDropAmount' => $dropAmount,
         'historicalDropPercent' => $dropPercent,
         'showPromoDrop' => $showPromoDrop,

@@ -125,8 +125,10 @@ try {
                 'historicalDropPercent' => $summary['historicalDropPercent'] ?? null,
                 'historicalLowPrice' => $summary['historicalLowPrice'] ?? null,
                 'observedDays' => $summary['observedDays'] ?? 0,
+                'observationCount' => $summary['observationCount'] ?? 0,
                 'independentSearchCount' => $summary['independentSearchCount'] ?? 0,
                 'historicalDropReady' => ($summary['showHistoricalDrop'] ?? false) === true,
+                'historyReady' => ($summary['historyReady'] ?? false) === true,
                 'referenceMethod' => $summary['referenceMethod'] ?? null,
                 'pageType' => $offer['pageType'],
                 'pageKey' => $offer['pageKey'],
@@ -135,10 +137,10 @@ try {
     }
 
     usort($examples, static function (array $a, array $b): int {
-        $strong = ((int)($b['historicalDropReady'] ?? false)) <=> ((int)($a['historicalDropReady'] ?? false));
-        if ($strong !== 0) return $strong;
         $drop = ((int)($b['historicalDropPercent'] ?? 0)) <=> ((int)($a['historicalDropPercent'] ?? 0));
         if ($drop !== 0) return $drop;
+        $observations = ((int)($b['observationCount'] ?? 0)) <=> ((int)($a['observationCount'] ?? 0));
+        if ($observations !== 0) return $observations;
         return ((int)($b['independentSearchCount'] ?? 0)) <=> ((int)($a['independentSearchCount'] ?? 0));
     });
     if ($exampleLimit >= 0) $examples = array_slice($examples, 0, $exampleLimit);
@@ -147,22 +149,21 @@ try {
         'state' => 'price_intelligence_readiness',
         'window_days' => $days,
         'from_date' => $fromDate,
-        'reference_method' => 'max_of_daily_min_exact_comparable_segment',
+        'reference_method' => 'max_observed_price_exact_comparable_segment',
         'promo_drop_gate' => [
-            'minimum_independent_searches' => 5,
-            'minimum_observed_days' => 2,
+            'minimum_exact_observations' => 2,
             'minimum_drop_percent' => 5,
-            'meaning' => 'recent_exact_segment_price_drop',
+            'meaning' => 'real_observed_exact_segment_price_drop',
         ],
         'historical_drop_gate' => [
-            'minimum_independent_searches' => 15,
-            'minimum_observed_days' => 3,
+            'minimum_exact_observations' => 2,
             'minimum_drop_percent' => 5,
-            'meaning' => 'guarded_exact_segment_price_drop',
+            'meaning' => 'crossed_real_observed_exact_segment_price',
         ],
         'full_history_gate' => [
             'minimum_independent_searches' => 30,
             'minimum_observed_days' => 7,
+            'meaning' => 'stronger_weekly_and_normal_price_analytics_only',
         ],
         'fresh_snapshot_rows' => count($snapshotRows),
         'snapshot_offer_rows' => $snapshotOfferRows,

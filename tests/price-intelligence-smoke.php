@@ -51,8 +51,9 @@ foreach ($mins as $i => $min) {
         'price_date' => sprintf('2026-08-%02d', 25 + $i),
         'min_price' => $min,
         'median_price' => $min + 3000,
-        // A deliberately huge raw max must NOT become the crossed-out reference price.
-        'max_price' => $min + 100000,
+        // This is an exact-comparable segment, so the daily maximum is a real
+        // observed price for the same tour and may be used as the reference.
+        'max_price' => $min + 3000,
         'observation_count' => 5,
         'independent_search_count' => 3,
     ];
@@ -62,47 +63,52 @@ assert_true(($summary['ok'] ?? false) === true, 'summary ok');
 assert_true(($summary['observedDays'] ?? 0) === 7, '7 observed days');
 assert_true(($summary['observationCount'] ?? 0) === 35, '35 raw observations');
 assert_true(($summary['independentSearchCount'] ?? 0) === 21, '21 independent searches');
-assert_true((float)($summary['referencePrice'] ?? 0) === 151000.0, 'reference uses max of daily minima');
-assert_true(($summary['referenceMethod'] ?? '') === 'max_of_daily_min_exact_comparable_segment', 'reference method');
-assert_true(($summary['historicalDropPercent'] ?? 0) === 21, 'rounded historical drop');
+assert_true((float)($summary['referencePrice'] ?? 0) === 154000.0, 'reference uses maximum exact observed price');
+assert_true(($summary['referenceMethod'] ?? '') === 'max_observed_price_exact_comparable_segment', 'reference method');
+assert_true(($summary['historicalDropPercent'] ?? 0) === 22, 'rounded historical drop');
 assert_true(($summary['showPromoDrop'] ?? false) === true, 'eligible promo drop');
-assert_true(($summary['showHistoricalDrop'] ?? false) === true, 'eligible historical drop');
+assert_true(($summary['showHistoricalDrop'] ?? false) === true, 'eligible crossed reference price');
+
+// Two real observations of the same exact segment are enough, even on the
+// same day. This is the commercial rule; long history is only for stronger
+// analytics such as weekly lows and normal-price claims.
+$sameDayTwoPrices = [[
+    'price_date' => '2026-09-03',
+    'min_price' => 120000,
+    'median_price' => 135500,
+    'max_price' => 151000,
+    'observation_count' => 2,
+    'independent_search_count' => 1,
+]];
+$immediate = v2_price_intelligence_summary($sameDayTwoPrices, 120000);
+assert_true(($immediate['observedDays'] ?? 0) === 1, 'same-day drop uses one observed day');
+assert_true(($immediate['observationCount'] ?? 0) === 2, 'same-day drop has two real observations');
+assert_true(($immediate['showPromoDrop'] ?? false) === true, 'two exact observations may display promo immediately');
+assert_true(($immediate['showHistoricalDrop'] ?? false) === true, 'two exact observations may display crossed observed price');
+assert_true((float)($immediate['referencePrice'] ?? 0) === 151000.0, 'same-day exact maximum is the observed reference');
+assert_true(($immediate['historicalDropPercent'] ?? 0) === 21, 'same-day drop percent');
+assert_true(($immediate['historyReady'] ?? true) === false, 'immediate promo is not full history readiness');
 
 $fastPromo = v2_price_intelligence_summary(array_slice($rows, 0, 2), 120000);
-assert_true(($fastPromo['observedDays'] ?? 0) === 2, 'promo uses two distinct days');
-assert_true(($fastPromo['independentSearchCount'] ?? 0) === 6, 'promo has five-plus independent searches');
-assert_true(($fastPromo['showPromoDrop'] ?? false) === true, 'two-day tourism promo may display');
-assert_true(($fastPromo['showHistoricalDrop'] ?? true) === false, 'two-day promo must not claim stronger history');
+assert_true(($fastPromo['observedDays'] ?? 0) === 2, 'two-day history retained');
+assert_true(($fastPromo['showPromoDrop'] ?? false) === true, 'two-day exact promo displays');
+assert_true(($fastPromo['showHistoricalDrop'] ?? false) === true, 'two-day exact crossed reference displays');
 
-$guardedRows = array_slice($rows, 0, 3);
-foreach ($guardedRows as &$row) {
-    $row['observation_count'] = 5;
-    $row['independent_search_count'] = 5;
-}
-unset($row);
-$guarded = v2_price_intelligence_summary($guardedRows, 120000);
-assert_true(($guarded['independentSearchCount'] ?? 0) === 15, 'guarded delta has 15 searches');
-assert_true(($guarded['showHistoricalDrop'] ?? false) === true, 'three-day guarded historical drop may display');
-assert_true(($guarded['historyReady'] ?? true) === false, 'three days is not full history readiness');
-
-$oneDay = v2_price_intelligence_summary(array_slice($rows, 0, 1), 120000);
-assert_true(($oneDay['showPromoDrop'] ?? true) === false, 'one day must not authorize promo');
-
-$smallDrop = v2_price_intelligence_summary($rows, 147000);
+$smallDrop = v2_price_intelligence_summary($rows, 149000);
 assert_true(($smallDrop['showPromoDrop'] ?? true) === false, 'sub-5-percent promo drop must be suppressed');
-assert_true(($smallDrop['showHistoricalDrop'] ?? true) === false, 'sub-5-percent historical drop must be suppressed');
+assert_true(($smallDrop['showHistoricalDrop'] ?? true) === false, 'sub-5-percent crossed reference must be suppressed');
 
-$manyRawFewSearches = $rows;
-foreach ($manyRawFewSearches as $i => &$row) {
-    $row['observation_count'] = 20;
-    $row['independent_search_count'] = $i < 4 ? 1 : 0;
-}
-unset($row);
-$notIndependent = v2_price_intelligence_summary($manyRawFewSearches, 120000);
-assert_true(($notIndependent['observationCount'] ?? 0) === 140, 'raw observations retained');
-assert_true(($notIndependent['independentSearchCount'] ?? -1) === 4, 'independent searches counted separately');
-assert_true(($notIndependent['showPromoDrop'] ?? true) === false, 'raw rows cannot replace five independent searches');
-assert_true(($notIndependent['showHistoricalDrop'] ?? true) === false, 'raw rows cannot authorize historical drop');
+$oneObservation = [[
+    'price_date' => '2026-09-03',
+    'min_price' => 151000,
+    'median_price' => 151000,
+    'max_price' => 151000,
+    'observation_count' => 1,
+    'independent_search_count' => 1,
+]];
+$notEnough = v2_price_intelligence_summary($oneObservation, 120000);
+assert_true(($notEnough['showPromoDrop'] ?? true) === false, 'one observation cannot establish a price change');
+assert_true(($notEnough['showHistoricalDrop'] ?? true) === false, 'one observation cannot establish a crossed reference');
 
 $duplicate = $rows;
 $duplicate[] = $rows[0];

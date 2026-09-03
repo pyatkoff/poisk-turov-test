@@ -103,7 +103,7 @@ jobs:
           grep -Fq "fresh-hours=72 --expires-hours=72" .github/workflows/collect-anytour-tours.yml
           grep -Fq "'fresh-hours'), 72, 72, 168" v2/data/build-seo-offer-snapshots-v1.php
           grep -Fq "'expires-hours'), 72, 72, 168" v2/data/build-seo-offer-snapshots-v1.php
-          grep -Fq 'max_of_daily_min_exact_comparable_segment' v2/data/price-intelligence-v1.php
+          grep -Fq 'max_observed_price_exact_comparable_segment' v2/data/price-intelligence-v1.php
           grep -Fq 'segmentFingerprint' v2/data/build-seo-offer-snapshots-v1.php
           echo ANYTOUR_TOP500_DAILY_TOOLING_OK
 
