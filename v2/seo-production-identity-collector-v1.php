@@ -7,28 +7,20 @@ require_once __DIR__.'/seo-ds2-reference-pages-v1.php';
 function v2_seo_production_identity_expected_rows(): array
 {
     $rows=[];
-    $seasonal=array_fill_keys(v2_seo_seasonal_september_launch_paths(),true);
+    $seasonal=array_fill_keys(array_merge(v2_seo_seasonal_september_launch_paths(),v2_seo_seasonal_october_launch_paths()),true);
     $turkeyResorts=array_fill_keys(array_values(array_diff(v2_seo_turkey_launch_paths(),['/country/turkey/'])),true);
     foreach(v2_seo_controlled_launch_paths() as $path){
         $type=isset($seasonal[$path])?'seasonal':(isset($turkeyResorts[$path])?'resort':'country');
         $rows[]=[
-            'path'=>$path,
-            'type'=>$type,
-            'http_status'=>200,
-            'robots_prefix'=>'index,follow',
-            'canonical'=>'https://anytoour.ru'.$path,
-            'sitemap_member'=>true,
+            'path'=>$path,'type'=>$type,'http_status'=>200,'robots_prefix'=>'index,follow',
+            'canonical'=>'https://anytoour.ru'.$path,'sitemap_member'=>true,
         ];
     }
     $hotel=(string)v2_seo_ds2_reference_pages()['hotel_tours']['path'];
-    $rows[]=[
-        'path'=>$hotel,'type'=>'hotel_tours','http_status'=>200,'robots_prefix'=>'noindex,follow',
-        'canonical'=>'https://anytoour.ru'.$hotel,'sitemap_member'=>false,
-    ];
+    $rows[]=['path'=>$hotel,'type'=>'hotel_tours','http_status'=>200,'robots_prefix'=>'noindex,follow','canonical'=>'https://anytoour.ru'.$hotel,'sitemap_member'=>false];
     return $rows;
 }
 
-/** Collect normalized production evidence using an injected fetcher. */
 function v2_seo_collect_production_identity(callable $fetch, ?int $nowEpoch=null): array
 {
     $nowEpoch??=time();$expected=v2_seo_production_identity_expected_rows();$sitemap=(array)$fetch('https://anytoour.ru/sitemap.xml');$sitemapBody=(string)($sitemap['body']??'');$pages=[];
