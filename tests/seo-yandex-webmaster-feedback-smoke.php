@@ -55,9 +55,14 @@ if(abs((float)($turkey['metrics']['avg_position']??0)-8.0)>0.000001||abs((float)
 if(($egypt['metrics']['impressions']??null)!==350||($egypt['metrics']['clicks']??null)!==35||abs((float)($egypt['metrics']['avg_position']??0)-12.0)>0.000001)yw_feedback_fail('egypt_metrics');
 $intake=v2_seo_search_feedback_intake(array_values($result['rows']),$collected);
 if(($intake['state']??'')!=='search_feedback_intake_ready'||($intake['observed_count']??0)!==2||count($intake['missing_paths']??[])!==8)yw_feedback_fail('intake');
+$missing=array_fill_keys((array)($intake['missing_paths']??[]),true);
+foreach(['/country/turkey/september/','/country/maldives/september/'] as $seasonalPath){
+    if(!isset($missing[$seasonalPath]))yw_feedback_fail('seasonal_missing_not_unknown_'.$seasonalPath);
+}
+if(($intake['missing_feedback_semantics']??'')!=='unknown_not_zero')yw_feedback_fail('missing_semantics');
 foreach(['publication_allowed','indexation_change_allowed','sitemap_change_allowed','canonical_change_allowed','route_change_allowed','hotel_tours_indexation_allowed'] as $flag){
     if(($result[$flag]??true)!==false)yw_feedback_fail('boundary_'.$flag);
 }
 if(($result['publication_candidates']??null)!==[])yw_feedback_fail('publication_candidates');
 
-echo "SEO_YANDEX_WEBMASTER_FEEDBACK_OK cohort=10 observed=2 ignoredOutside=2 dates=7 unknownMissing=8 seasonal=2 hotelTours=0 execution=0\n";
+echo "SEO_YANDEX_WEBMASTER_FEEDBACK_OK cohort=10 observed=2 ignoredOutside=2 dates=7 unknownMissing=8 seasonalUnknown=2 hotelTours=0 execution=0\n";
