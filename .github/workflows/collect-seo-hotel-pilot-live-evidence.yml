@@ -1,6 +1,9 @@
 name: Collect SEO hotel pilot live evidence
 
 on:
+  workflow_run:
+    workflows: ['Collect SEO Top500 hotel review dossier']
+    types: [completed]
   workflow_dispatch:
   schedule:
     - cron: '47 */12 * * *'
@@ -37,6 +40,7 @@ concurrency:
 
 jobs:
   fast-contract:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -54,7 +58,7 @@ jobs:
           php tests/seo-hotel-pilot-readiness-status-cli-smoke.php
 
   live-evidence:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     needs: fast-contract
     runs-on: ubuntu-latest
     timeout-minutes: 5
