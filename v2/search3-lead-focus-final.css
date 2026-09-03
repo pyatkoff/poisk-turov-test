@@ -2,6 +2,60 @@
 body.search3-preview #selectedTour .lead-form[data-search3-lead-state] > :not(.search3-lead-status){
   display:none!important;
 }
+@media(min-width:1000px){
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]){
+    align-items:start!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .lead-form[data-search3-lead-state]{
+    min-height:0!important;
+    height:auto!important;
+    align-self:start!important;
+    padding:18px 20px!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary{
+    position:static!important;
+    top:auto!important;
+    padding:12px!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__title{
+    margin-bottom:7px!important;
+    font-size:13px!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__image{
+    height:88px!important;
+    margin-bottom:7px!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__hotel{
+    font-size:13px!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__place{
+    margin-top:2px!important;
+    font-size:8px!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary dl{
+    margin-top:7px!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary dl>div{
+    grid-template-columns:76px minmax(0,1fr)!important;
+    gap:8px!important;
+    padding:4px 0!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__flight-costs{
+    gap:4px!important;
+    margin-top:6px!important;
+    padding:6px 8px!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__total{
+    margin-top:7px!important;
+    padding-top:7px!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__total strong{
+    font-size:18px!important;
+  }
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__price-note{
+    margin-top:5px!important;
+  }
+}
 @media(max-width:760px){
   html body.search3-preview:has(#selectedTour:not([hidden])) #resultsTools,
   html body.search3-preview:has(#selectedTour:not([hidden])) #resultsSearchSummary,
