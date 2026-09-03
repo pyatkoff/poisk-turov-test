@@ -3,6 +3,7 @@ require_once __DIR__ . '/site-page-shell-v1.php';
 require_once __DIR__ . '/seo-page-contract-v1.php';
 require_once __DIR__ . '/seo-offer-snapshot-v1.php';
 require_once __DIR__ . '/seo-price-calendar-v1.php';
+require_once __DIR__ . '/seo-core-month-navigation-v1.php';
 
 /**
  * Render a curated resort page on its final clean path.
@@ -56,6 +57,8 @@ function v2_seo_render_resort(array $record): void
         echo '</section>';
     }
     echo '</div>';
+
+    echo v2_seo_render_core_month_navigation($path, 'Туры по месяцам');
 
     $countryId = (int)($page['search_state']['country'] ?? 0);
     $regionId = (int)($page['search_state']['region'] ?? 0);
