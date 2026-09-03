@@ -2,6 +2,8 @@ name: Collect SEO DS2 render evidence
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '17 */12 * * *'
   push:
     branches: [main]
     paths:
