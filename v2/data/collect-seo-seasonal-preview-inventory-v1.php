@@ -1,10 +1,11 @@
 <?php
 /**
- * Targeted first-party inventory refresh for the exact two current seasonal SEO previews.
+ * Targeted first-party inventory refresh for the exact seasonal SEO review previews.
  *
- * This is a background data collector only. It performs at most two bounded Tourvisor
- * searches and persists returned rows through the existing price observer. It does not
- * render, publish, index, canonicalize or add any SEO route to a sitemap.
+ * This is a background data collector only. It performs at most four bounded Tourvisor
+ * searches (Antalya/Maldives x September/October) and persists returned rows through
+ * the existing price observer. It does not render, publish, index, canonicalize or
+ * add any SEO route to a sitemap.
  */
 declare(strict_types=1);
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
@@ -63,34 +64,38 @@ function seasonal_target_business_today():DateTimeImmutable
 {
     return new DateTimeImmutable('today',seasonal_target_business_timezone());
 }
+function seasonal_target_month_window(DateTimeImmutable $today,string $month):?array
+{
+    $timezone=seasonal_target_business_timezone();
+    $monthStart=new DateTimeImmutable($month.'-01',$timezone);
+    $monthEnd=$monthStart->modify('last day of this month');
+    $from=$today->modify('+1 day');
+    if($from<$monthStart)$from=$monthStart;
+    if($from>$monthEnd)return null;
+    $to=$from->modify('+20 days');
+    if($to>$monthEnd)$to=$monthEnd;
+    return ['date_from'=>$from->format('Y-m-d'),'date_to'=>$to->format('Y-m-d')];
+}
 
-/** Exact pilot identities. Keeping this allowlist explicit prevents accidental broad collection. */
+/** Exact review identities. Keeping this allowlist explicit prevents accidental broad collection. */
 function v2_seo_seasonal_preview_collection_targets(?DateTimeImmutable $today=null):array
 {
     $timezone=seasonal_target_business_timezone();
     $today=($today??seasonal_target_business_today())->setTimezone($timezone)->setTime(0,0);
-    $monthStart=new DateTimeImmutable('2026-09-01',$timezone);
-    $monthEnd=new DateTimeImmutable('2026-09-30',$timezone);
-    $from=$today->modify('+1 day');
-    if($from<$monthStart)$from=$monthStart;
-    if($from>$monthEnd)return [];
-    $to=$from->modify('+20 days');
-    if($to>$monthEnd)$to=$monthEnd;
-    $dateFrom=$from->format('Y-m-d');$dateTo=$to->format('Y-m-d');
-    return [
-        [
-            'preview_key'=>'antalya-september',
-            'page_key'=>'resort_month:1:4:20:2026-09',
-            'departure_id'=>1,'country_id'=>4,'region_id'=>20,
-            'date_from'=>$dateFrom,'date_to'=>$dateTo,
-        ],
-        [
-            'preview_key'=>'maldives-september',
-            'page_key'=>'month:1:8:2026-09',
-            'departure_id'=>1,'country_id'=>8,'region_id'=>null,
-            'date_from'=>$dateFrom,'date_to'=>$dateTo,
-        ],
+    $definitions=[
+        ['preview_key'=>'antalya-september','page_key'=>'resort_month:1:4:20:2026-09','month'=>'2026-09','departure_id'=>1,'country_id'=>4,'region_id'=>20],
+        ['preview_key'=>'maldives-september','page_key'=>'month:1:8:2026-09','month'=>'2026-09','departure_id'=>1,'country_id'=>8,'region_id'=>null],
+        ['preview_key'=>'antalya-october','page_key'=>'resort_month:1:4:20:2026-10','month'=>'2026-10','departure_id'=>1,'country_id'=>4,'region_id'=>20],
+        ['preview_key'=>'maldives-october','page_key'=>'month:1:8:2026-10','month'=>'2026-10','departure_id'=>1,'country_id'=>8,'region_id'=>null],
     ];
+    $targets=[];
+    foreach($definitions as $definition){
+        $window=seasonal_target_month_window($today,(string)$definition['month']);
+        if($window===null)continue;
+        unset($definition['month']);
+        $targets[]=$definition+$window;
+    }
+    return $targets;
 }
 
 $businessTimezone=seasonal_target_business_timezone();
