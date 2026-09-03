@@ -1,0 +1,150 @@
+name: Collect SEO price calendar quality comparison
+
+on:
+  workflow_run:
+    workflows: ['Verify SEO price calendar production evidence']
+    types: [completed]
+  workflow_dispatch:
+  schedule:
+    - cron: '56 4 * * *'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/collect-seo-price-calendar-quality.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: collect-seo-price-calendar-quality-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate comparison workflow contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq "external_demand_state':'not_collected'" .github/workflows/collect-seo-price-calendar-quality.yml
+          grep -Fq "publication_scope_expanded':False" .github/workflows/collect-seo-price-calendar-quality.yml
+          grep -Fq "hotel_tours_indexation_allowed':False" .github/workflows/collect-seo-price-calendar-quality.yml
+          grep -Fq "unknown_day':'no_fresh_observation_not_no_tours'" .github/workflows/collect-seo-price-calendar-quality.yml
+          echo SEO_PRICE_CALENDAR_QUALITY_CONTRACT_OK
+
+  compare:
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare controlled country resort seasonal calendar quality
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          base='https://anytoour.ru'
+          paths=(
+            '/country/egypt/'
+            '/country/maldives/'
+            '/country/maldives/september/'
+            '/country/turkey/'
+            '/country/turkey/alanya/'
+            '/country/turkey/antalya/'
+            '/country/turkey/antalya/september/'
+            '/country/turkey/belek/'
+            '/country/turkey/kemer/'
+            '/country/turkey/side/'
+          )
+          : > /tmp/seo-price-calendar-quality-pages.tsv
+          for path in "${paths[@]}"; do
+            safe="$(printf '%s' "$path" | tr '/-' '__')"
+            file="/tmp/calendar-quality-${safe}.html"
+            code="$(curl -fsSL -o "$file" -w '%{http_code}' --max-time 35 "$base$path")"
+            test "$code" = '200'
+            printf '%s\t%s\t%s\n' "$path" "$code" "$file" >> /tmp/seo-price-calendar-quality-pages.tsv
+          done
+          BASE="$base" SOURCE_SHA="$SOURCE_SHA" EVENT_NAME="$EVENT_NAME" python3 - <<'PY'
+          import datetime, hashlib, json, os, re
+
+          country_paths={'/country/egypt/','/country/maldives/','/country/turkey/'}
+          by_type={t:{'pages':0,'with_calendar':0,'observed_days':0,'unknown_days':0,'total_days':0} for t in ('country','resort','seasonal')}
+          rows=[]
+          with open('/tmp/seo-price-calendar-quality-pages.tsv',encoding='utf-8') as fh:
+              for line in fh:
+                  path,code,filename=line.rstrip('\n').split('\t')
+                  html=open(filename,encoding='utf-8').read()
+                  page_type='country' if path in country_paths else ('seasonal' if path.endswith('/september/') else 'resort')
+                  present='data-seo-price-calendar' in html
+                  observed=len(re.findall(r'<a\b[^>]*class="[^"]*\bsp-price-day\b[^"]*"',html,re.I))
+                  unknown=len(re.findall(r'class="[^"]*\bsp-price-day--unknown\b[^"]*"',html,re.I))
+                  total=observed+unknown
+                  if present and observed < 3:
+                      raise AssertionError('rendered price calendar has fewer than 3 observed days: '+path)
+                  if not present and total:
+                      raise AssertionError('calendar day fragments without section: '+path)
+                  share=(observed/total) if total else None
+                  row={
+                      'path':path,'type':page_type,'http_status':int(code),
+                      'calendar_present':present,'observed_day_count':observed,
+                      'unknown_day_count':unknown,'total_day_count':total,
+                      'observed_day_share':round(share,4) if share is not None else None,
+                  }
+                  rows.append(row)
+                  b=by_type[page_type]
+                  b['pages']+=1
+                  b['with_calendar']+=1 if present else 0
+                  b['observed_days']+=observed
+                  b['unknown_days']+=unknown
+                  b['total_days']+=total
+
+          for b in by_type.values():
+              b['calendar_coverage_share']=round(b['with_calendar']/b['pages'],4) if b['pages'] else None
+              b['observed_day_share']=round(b['observed_days']/b['total_days'],4) if b['total_days'] else None
+
+          ranked=[r for r in rows if r['calendar_present'] and r['observed_day_share'] is not None]
+          ranked.sort(key=lambda r:(r['observed_day_share'],r['observed_day_count'],r['path']))
+          weakest=ranked[:3]
+          payload={
+              'state':'controlled_seo_price_calendar_quality_comparison',
+              'domain':'anytoour.ru',
+              'observed_at_utc':datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat(),
+              'source_sha':os.environ.get('SOURCE_SHA',''),
+              'trigger':os.environ.get('EVENT_NAME',''),
+              'pages':rows,
+              'by_type':by_type,
+              'weakest_observed_coverage_pages':weakest,
+              'interpretation':{
+                  'observed_day_share':'share_of_rendered_calendar_days_with_fresh_first_party_price_observation',
+                  'unknown_day':'no_fresh_observation_not_no_tours',
+                  'external_demand_state':'not_collected',
+                  'ranking_use':'diagnostic_priority_only_not_publication_or_demand_evidence',
+              },
+              'publication_scope_expanded':False,
+              'hotel_tours_indexation_allowed':False,
+          }
+          stable=dict(payload); stable.pop('observed_at_utc',None)
+          payload['evidence_sha256']=hashlib.sha256(json.dumps(stable,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          with open('/tmp/anytoour-seo-price-calendar-quality.json','w',encoding='utf-8') as out:
+              json.dump(payload,out,ensure_ascii=False,indent=2); out.write('\n')
+          print('SEO_PRICE_CALENDAR_QUALITY country={:.1%} resort={:.1%} seasonal={:.1%} weakest={}'.format(
+              by_type['country']['observed_day_share'] or 0,
+              by_type['resort']['observed_day_share'] or 0,
+              by_type['seasonal']['observed_day_share'] or 0,
+              ','.join(x['path'] for x in weakest)))
+          print('SEO_PRICE_CALENDAR_QUALITY_OK sha256='+payload['evidence_sha256'])
+          PY
+
+      - name: Upload quality comparison evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: anytoour-seo-price-calendar-quality-${{ github.run_id }}
+          path: /tmp/anytoour-seo-price-calendar-quality.json
+          if-no-files-found: error
+          retention-days: 30
