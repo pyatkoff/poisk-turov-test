@@ -1,3 +1,4 @@
+@import url("./search3-mobile-back-final.css?v=1");
 /* Search3 mobile search visual convergence to approved Maket 1/2. Preview only. */
 @media(max-width:760px){
   html body.search3-preview:not(.search3-has-results) #tourSearch .search-submit{
