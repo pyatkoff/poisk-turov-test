@@ -91,7 +91,8 @@ try {
         'invalid_history' => 0,
     ];
     $historySegments = 0;
-    $dropReady = 0;
+    $promoDropReady = 0;
+    $historicalDropReady = 0;
     $goodPrice = 0;
     $totalIndependentSearches = 0;
     $maxObservedDays = 0;
@@ -111,8 +112,9 @@ try {
         $totalIndependentSearches += (int)($summary['independentSearchCount'] ?? 0);
         $maxObservedDays = max($maxObservedDays, (int)($summary['observedDays'] ?? 0));
         if (($summary['goodPrice'] ?? false) === true) $goodPrice++;
-        if (($summary['showHistoricalDrop'] ?? false) === true) {
-            $dropReady++;
+        if (($summary['showHistoricalDrop'] ?? false) === true) $historicalDropReady++;
+        if (($summary['showPromoDrop'] ?? false) === true) {
+            $promoDropReady++;
             $examples[] = [
                 'hotelId' => $offer['hotelId'],
                 'hotelName' => $offer['hotelName'],
@@ -124,6 +126,7 @@ try {
                 'historicalLowPrice' => $summary['historicalLowPrice'] ?? null,
                 'observedDays' => $summary['observedDays'] ?? 0,
                 'independentSearchCount' => $summary['independentSearchCount'] ?? 0,
+                'historicalDropReady' => ($summary['showHistoricalDrop'] ?? false) === true,
                 'referenceMethod' => $summary['referenceMethod'] ?? null,
                 'pageType' => $offer['pageType'],
                 'pageKey' => $offer['pageKey'],
@@ -132,6 +135,8 @@ try {
     }
 
     usort($examples, static function (array $a, array $b): int {
+        $strong = ((int)($b['historicalDropReady'] ?? false)) <=> ((int)($a['historicalDropReady'] ?? false));
+        if ($strong !== 0) return $strong;
         $drop = ((int)($b['historicalDropPercent'] ?? 0)) <=> ((int)($a['historicalDropPercent'] ?? 0));
         if ($drop !== 0) return $drop;
         return ((int)($b['independentSearchCount'] ?? 0)) <=> ((int)($a['independentSearchCount'] ?? 0));
@@ -143,10 +148,21 @@ try {
         'window_days' => $days,
         'from_date' => $fromDate,
         'reference_method' => 'max_of_daily_min_exact_comparable_segment',
+        'promo_drop_gate' => [
+            'minimum_independent_searches' => 5,
+            'minimum_observed_days' => 2,
+            'minimum_drop_percent' => 5,
+            'meaning' => 'recent_exact_segment_price_drop',
+        ],
         'historical_drop_gate' => [
             'minimum_independent_searches' => 15,
-            'minimum_observed_days' => 7,
+            'minimum_observed_days' => 3,
             'minimum_drop_percent' => 5,
+            'meaning' => 'guarded_exact_segment_price_drop',
+        ],
+        'full_history_gate' => [
+            'minimum_independent_searches' => 30,
+            'minimum_observed_days' => 7,
         ],
         'fresh_snapshot_rows' => count($snapshotRows),
         'snapshot_offer_rows' => $snapshotOfferRows,
@@ -155,7 +171,8 @@ try {
         'segments_without_exact_history' => max(0, count($currentOffers) - $historySegments),
         'stage_counts' => $stageCounts,
         'good_price_ready' => $goodPrice,
-        'historical_drop_ready' => $dropReady,
+        'promo_drop_ready' => $promoDropReady,
+        'historical_drop_ready' => $historicalDropReady,
         'max_observed_days' => $maxObservedDays,
         'summed_independent_searches_across_current_segments' => $totalIndependentSearches,
         'examples' => $examples,
