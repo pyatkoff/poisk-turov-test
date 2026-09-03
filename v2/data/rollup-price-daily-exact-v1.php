@@ -56,7 +56,7 @@ if ($date !== null) {
 
 $pdo = v2_data_db();
 $select = $pdo->prepare("SELECT
-        DATE(observed_at) AS price_date,
+        DATE(observed_at) AS price_date,search_id,
         departure_id,country_id,region_id,subregion_id,hotel_id,departure_date,nights,adults,
         children_count,child_ages_signature,meal_id,room_id,room_type,operator_id,currency,price
     FROM tour_price_observations
@@ -71,11 +71,11 @@ $select->execute(['from_value' => $from . ' 00:00:00', 'to_value' => $to . ' 00:
 $upsert = $pdo->prepare("INSERT INTO tour_price_daily_exact (
         segment_fingerprint,price_date,departure_id,country_id,region_id,subregion_id,hotel_id,departure_date,
         nights,adults,children_count,child_ages_signature,meal_id,room_id,room_type,operator_id,currency,
-        min_price,median_price,max_price,observation_count,calculated_at
+        min_price,median_price,max_price,observation_count,independent_search_count,calculated_at
     ) VALUES (
         :segment_fingerprint,:price_date,:departure_id,:country_id,:region_id,:subregion_id,:hotel_id,:departure_date,
         :nights,:adults,:children_count,:child_ages_signature,:meal_id,:room_id,:room_type,:operator_id,:currency,
-        :min_price,:median_price,:max_price,:observation_count,:calculated_at
+        :min_price,:median_price,:max_price,:observation_count,:independent_search_count,:calculated_at
     ) ON DUPLICATE KEY UPDATE
         country_id=VALUES(country_id),region_id=VALUES(region_id),subregion_id=VALUES(subregion_id),
         departure_id=VALUES(departure_id),hotel_id=VALUES(hotel_id),departure_date=VALUES(departure_date),
@@ -83,16 +83,18 @@ $upsert = $pdo->prepare("INSERT INTO tour_price_daily_exact (
         child_ages_signature=VALUES(child_ages_signature),meal_id=VALUES(meal_id),room_id=VALUES(room_id),
         room_type=VALUES(room_type),operator_id=VALUES(operator_id),currency=VALUES(currency),
         min_price=VALUES(min_price),median_price=VALUES(median_price),max_price=VALUES(max_price),
-        observation_count=VALUES(observation_count),calculated_at=VALUES(calculated_at)");
+        observation_count=VALUES(observation_count),independent_search_count=VALUES(independent_search_count),
+        calculated_at=VALUES(calculated_at)");
 
 $currentKey = null;
 $current = null;
 $prices = [];
+$searchIds = [];
 $groups = 0;
 $observations = 0;
 $calculatedAt = (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 
-$flush = static function () use (&$current, &$prices, &$groups, $upsert, $calculatedAt): void {
+$flush = static function () use (&$current, &$prices, &$searchIds, &$groups, $upsert, $calculatedAt): void {
     if ($current === null || $prices === []) return;
     $fingerprint = v2_price_segment_fingerprint($current);
     $upsert->execute([
@@ -117,6 +119,7 @@ $flush = static function () use (&$current, &$prices, &$groups, $upsert, $calcul
         'median_price' => exact_rollup_median($prices),
         'max_price' => max($prices),
         'observation_count' => count($prices),
+        'independent_search_count' => count($searchIds),
         'calculated_at' => $calculatedAt,
     ]);
     $groups++;
@@ -131,12 +134,15 @@ try {
         if ($currentKey !== null && $key !== $currentKey) {
             $flush();
             $prices = [];
+            $searchIds = [];
         }
         if ($key !== $currentKey) {
             $currentKey = $key;
             $current = $row;
         }
         $prices[] = (float)$row['price'];
+        $searchId = (int)($row['search_id'] ?? 0);
+        if ($searchId > 0) $searchIds[$searchId] = true;
     }
     $flush();
 
