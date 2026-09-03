@@ -1,4 +1,6 @@
-/* Search3 final small visual fixes shared across approved boards. No data/transport semantics. */
+/* Search3 final visual convergence shared across approved boards. Presentation only: no data, pricing, Tourvisor or lead semantics. */
+
+/* Keep lead summaries readable on tablet/desktop. */
 @media(min-width:641px){
   html body.search3-preview #selectedTour.search3-lead-entry .lead-selection-summary{
     display:grid!important;
@@ -22,5 +24,257 @@
   html body.search3-preview #selectedTour.search3-lead-entry .lead-selection-summary strong,
   html body.search3-preview #selectedTour.search3-lead-entry .lead-selection-summary b{
     white-space:normal!important;
+  }
+}
+
+/* Approved board 3: compact, scannable paired flight variants using the existing real API fields. */
+html body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights{
+  border-radius:14px!important;
+  background:#fff!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights .section-heading{
+  align-items:flex-end!important;
+  margin-bottom:10px!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights .section-heading strong{
+  font-size:18px!important;
+  line-height:1.15!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights .section-heading span{
+  max-width:360px!important;
+  font-size:9px!important;
+  line-height:1.35!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-variants{
+  gap:8px!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-variant{
+  border-radius:10px!important;
+  box-shadow:none!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-variant.is-selected{
+  border-color:var(--at-brand)!important;
+  box-shadow:0 0 0 1px var(--at-brand) inset!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-choice{
+  min-height:40px!important;
+  padding:8px 10px!important;
+  gap:8px!important;
+  background:#fff!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-variant.is-selected .flight-choice{
+  background:#f7f9ff!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-choice span{
+  font-size:10px!important;
+  line-height:1.2!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-choice b{
+  font-size:12px!important;
+  line-height:1!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-segment{
+  padding:8px 10px!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-segment-title{
+  margin-bottom:5px!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-segment-title strong{
+  font-size:9px!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-segment-title span{
+  font-size:8px!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-route{
+  grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr)!important;
+  gap:5px!important;
+  padding:0!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-route>div:not(.flight-arrow) b{
+  font-size:10px!important;
+  line-height:1.15!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-route>div:not(.flight-arrow) span{
+  font-size:8px!important;
+  line-height:1.25!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-arrow{
+  width:22px!important;
+  height:22px!important;
+  font-size:12px!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-baggage{
+  margin-top:5px!important;
+  padding-top:0!important;
+  font-size:8px!important;
+  line-height:1.25!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .flight-fuel{
+  min-height:24px!important;
+  padding:6px 10px!important;
+  font-size:8px!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .search3-flight-continue{
+  margin-top:10px!important;
+}
+html body.search3-preview #selectedTour:not(.search3-final-review) .search3-flight-continue button{
+  min-height:42px!important;
+  border-radius:8px!important;
+}
+
+@media(min-width:1000px){
+  /* Direct variants become a dense outbound/return pair, matching the approved comparison rhythm. */
+  html body.search3-preview #selectedTour:not(.search3-final-review) .flight-variant{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    align-items:stretch!important;
+    overflow:hidden!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .flight-choice{
+    grid-column:1/-1!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .flight-segment{
+    min-width:0!important;
+    border-top:0!important;
+    border-right:1px solid var(--at-line-soft)!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .flight-segment:nth-last-child(1),
+  html body.search3-preview #selectedTour:not(.search3-final-review) .flight-segment:nth-last-child(2){
+    border-right:0!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .flight-fuel{
+    grid-column:1/-1!important;
+  }
+}
+
+/* Approved board 4: final review keeps the selected real flight pair concise and strengthens the factual cost rail. */
+html body.search3-preview #selectedTour.search3-final-review .tour-flights .section-heading{
+  margin-bottom:8px!important;
+}
+html body.search3-preview #selectedTour.search3-final-review .tour-flights .section-heading strong{
+  font-size:16px!important;
+}
+html body.search3-preview #selectedTour.search3-final-review .flight-variant.is-selected{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  border-radius:10px!important;
+  overflow:hidden!important;
+}
+html body.search3-preview #selectedTour.search3-final-review .flight-segment{
+  min-width:0!important;
+  padding:9px 10px!important;
+  border-top:0!important;
+  border-right:1px solid var(--at-line-soft)!important;
+}
+html body.search3-preview #selectedTour.search3-final-review .flight-segment:last-of-type{
+  border-right:0!important;
+}
+html body.search3-preview #selectedTour.search3-final-review .flight-route{
+  grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr)!important;
+  gap:5px!important;
+  padding:0!important;
+}
+html body.search3-preview #selectedTour.search3-final-review .flight-route b{
+  font-size:10px!important;
+}
+html body.search3-preview #selectedTour.search3-final-review .flight-route span,
+html body.search3-preview #selectedTour.search3-final-review .flight-baggage,
+html body.search3-preview #selectedTour.search3-final-review .flight-segment-title span{
+  font-size:8px!important;
+}
+html body.search3-preview #selectedTour.search3-final-review .flight-arrow{
+  width:20px!important;
+  height:20px!important;
+  font-size:11px!important;
+}
+html body.search3-preview #selectedTour.search3-final-review .flight-fuel{
+  grid-column:1/-1!important;
+  padding:6px 10px!important;
+  font-size:8px!important;
+}
+html body.search3-preview #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__flight-costs{
+  display:grid!important;
+  gap:0!important;
+  margin:8px 0 0!important;
+  padding:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+}
+html body.search3-preview #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__flight-costs>div{
+  min-height:28px!important;
+  padding:6px 0!important;
+  border-top:1px solid var(--at-line-soft)!important;
+}
+html body.search3-preview #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__flight-costs span{
+  font-size:8px!important;
+}
+html body.search3-preview #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__flight-costs b{
+  font-size:9px!important;
+}
+html body.search3-preview #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__total{
+  margin-top:8px!important;
+  padding-top:10px!important;
+}
+html body.search3-preview #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__total strong{
+  font-size:24px!important;
+}
+html body.search3-preview #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__price-note{
+  margin-top:8px!important;
+  font-size:8px!important;
+  line-height:1.4!important;
+}
+
+@media(max-width:640px){
+  /* Mobile board: selected flight stays detailed; alternatives collapse to one comparison row. */
+  html body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights{
+    padding:12px 10px!important;
+    border-radius:12px!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights .section-heading{
+    display:block!important;
+    margin-bottom:8px!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights .section-heading strong{
+    font-size:17px!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .tour-flights .section-heading span{
+    display:block!important;
+    margin-top:3px!important;
+    text-align:left!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .flight-choice{
+    min-height:44px!important;
+    padding:8px 9px!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) .flight-choice{
+    border-bottom:0!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .flight-variant.is-selected .flight-segment{
+    padding:8px 9px!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .flight-route,
+  html body.search3-preview #selectedTour.search3-final-review .flight-route{
+    grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)!important;
+    gap:4px!important;
+  }
+  html body.search3-preview #selectedTour:not(.search3-final-review) .flight-arrow,
+  html body.search3-preview #selectedTour.search3-final-review .flight-arrow{
+    width:18px!important;
+    height:18px!important;
+    transform:none!important;
+  }
+  html body.search3-preview #selectedTour.search3-final-review .flight-variant.is-selected{
+    display:block!important;
+  }
+  html body.search3-preview #selectedTour.search3-final-review .flight-segment{
+    padding:8px 9px!important;
+    border-right:0!important;
+    border-top:1px solid var(--at-line-soft)!important;
+  }
+  html body.search3-preview #selectedTour.search3-final-review .flight-segment:first-of-type{
+    border-top:0!important;
+  }
+  html body.search3-preview #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__flight-costs{
+    display:grid!important;
   }
 }
