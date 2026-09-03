@@ -89,3 +89,37 @@
     margin-top:12px!important;
   }
 }
+
+/* Match the legacy mobile lifecycle selector specificity: secondary blocks must span the card. */
+@media(max-width:760px){
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state="success"] .search3-lead-id{
+    grid-column:1 / -1!important;
+    grid-row:3!important;
+    justify-self:stretch!important;
+    width:100%!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state="success"] .search3-lead-status>strong{
+    grid-column:1 / -1!important;
+    grid-row:4!important;
+    justify-self:stretch!important;
+    width:100%!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state="success"] .search3-messenger-actions{
+    grid-column:1 / -1!important;
+    grid-row:5!important;
+    justify-self:stretch!important;
+    width:100%!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state="error"] .search3-error-actions{
+    grid-column:1 / -1!important;
+    grid-row:3!important;
+    justify-self:stretch!important;
+    width:100%!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state="error"] .search3-error-preserve-note{
+    grid-column:1 / -1!important;
+    grid-row:4!important;
+    justify-self:stretch!important;
+    width:100%!important;
+  }
+}
