@@ -21,6 +21,7 @@ $root=rtrim(hotel_materialize_arg($argv,'root')??dirname(__DIR__),'/');
 $limit=(int)(hotel_materialize_arg($argv,'limit')??500);$limit=max(1,min(500,$limit));
 $requireCount=(int)(hotel_materialize_arg($argv,'require-count')??0);$requireCount=max(0,min(500,$requireCount));
 $dryRun=in_array('--dry-run',$argv,true);
+if(!$dryRun){fwrite(STDERR,"SEO_CORE_HOTEL_MATERIALIZE_FAIL route_launch_locked explicit_user_approval_required\n");exit(5);}
 if(!is_dir($root)||!is_file($root.'/seo-core-hotel-review-runtime-v1.php')){fwrite(STDERR,"SEO_CORE_HOTEL_MATERIALIZE_FAIL invalid_root\n");exit(2);}
 
 $pdo=v2_data_db();$rows=v2_seo_core_hotel_cohort_source_rows($pdo,$limit);$cohort=v2_seo_core_hotel_cohort_records($rows,$limit);$records=$cohort['records']??[];
@@ -41,22 +42,13 @@ foreach($records as $record){
         if(!str_contains($existing,'SEO_CORE_HOTEL_GENERATED_V1')){$preserved++;continue;}
         if($existing===$routeBody)continue;$updated++;
     }else{$created++;}
-    if(!$dryRun)hotel_materialize_atomic($routeFile,$routeBody);
 }
 ksort($registry,SORT_STRING);sort($current,SORT_STRING);
 $removed=0;
 foreach($previous as $oldPath){
     $oldPath=(string)$oldPath;if(in_array($oldPath,$current,true)||!preg_match('#^/country/(egypt|turkey|maldives)/hotel/[a-z0-9-]+-[0-9]+/$#',$oldPath))continue;
     $routeFile=$root.'/'.ltrim($oldPath,'/').'index.php';
-    if(is_file($routeFile)&&str_contains((string)file_get_contents($routeFile),'SEO_CORE_HOTEL_GENERATED_V1')){
-        $removed++;if(!$dryRun){@unlink($routeFile);$dir=dirname($routeFile);@rmdir($dir);}
-    }
-}
-if(!$dryRun){
-    $registryPhp="<?php\ndeclare(strict_types=1);\n/* Generated from first-party catalog + fresh observed inventory. hotel_tours remain review/noindex. */\nreturn ".var_export($registry,true).";\n";
-    hotel_materialize_atomic($registryFile,$registryPhp);
-    $manifest=['state'=>'review_only_core_hotel_routes_materialized','generated_at_utc'=>gmdate('c'),'count'=>count($registry),'generated_routes'=>$current,'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'explicit_user_indexation_approval_required'=>true];
-    hotel_materialize_atomic($manifestFile,json_encode($manifest,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR)."\n");
+    if(is_file($routeFile)&&str_contains((string)file_get_contents($routeFile),'SEO_CORE_HOTEL_GENERATED_V1'))$removed++;
 }
 
-echo 'SEO_CORE_HOTEL_MATERIALIZE_OK count='.count($registry).' created='.$created.' updated='.$updated.' curated_preserved='.$preserved.' removed='.$removed.' dry_run='.($dryRun?'1':'0').' publication=0 indexation=0 sitemap=0'."\n";
+echo 'SEO_CORE_HOTEL_MATERIALIZE_DRY_RUN_OK count='.count($registry).' would_create='.$created.' would_update='.$updated.' curated_preserved='.$preserved.' would_remove='.$removed.' dry_run=1 publication=0 indexation=0 sitemap=0 route_launch=0'."\n";
