@@ -1,27 +1,29 @@
 # Search3 — карта работ
 
-Последнее обновление: 2026-09-03  
+Последнее обновление: 2026-09-04  
 Ветка: `feature/search3-preview`  
 Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`  
-Последний проверенный implementation head: `9e166741ca1a7773662f703a854a392a4689610a`  
+Последний проверенный implementation head: `da9fb79bceef303a297079a73228d3ab3cc94aed`  
 Текущий implementation candidate: совпадает с проверенным head.  
-Последний полный QA: **run 452 — SUCCESS** (`deploy-preview`, `visual-qa desktop`, `visual-qa tablet`, `visual-qa mobile`).
+Последний полный QA: **run 464 — SUCCESS** (`deploy-preview`, `visual-qa desktop`, `visual-qa tablet`, `visual-qa mobile`).
+
+> Историческая оговорка: run 463 на `c801f286` в первой попытке получил одинаковый transient search/Tourvisor timeout на всех трёх viewport; rerun failed jobs на том же commit прошёл полностью зелёным. Run 464 затем прошёл зелёным с первой попытки.
 
 ## Источник истины: 8 утверждённых макетов
 
 Единственный канонический набор — `/AnyTour/Search3 Design Final/00_CURRENT_FULL_CYCLE`.
-Архив `99_ARCHIVE_ITERATIONS` и одиночные ранние макеты в проверку не входят.
+Архив `99_ARCHIVE_ITERATIONS` и одиночные ранние макеты в приёмку не входят.
 
-| № | Утверждённый макет | Покрываемые состояния | Статус | Что уже сделано / что проверить |
+| № | Утверждённый макет | Основные состояния | Статус | Текущее состояние |
 |---:|---|---|---|---|
-| 1 | Интерфейс поиска туров AnyTour | search, results, hotel tours | REVIEW | Верх выдачи и hotel cards уплотнены; desktop card/photo 166px; mobile price/CTA разнесены по строкам и защищены QA на candidate `978fae59`; нужен зелёный run 440 |
-| 2 | Макет фильтров поиска туров AnyTour | filters, sorting, sub-screens, reset/apply/cancel | REVIEW | Реальные mobile/tablet sub-screens, reset/apply/cancel; в основном drawer добавлен утверждённый back-control и QA на него; ждём свежий run |
-| 3 | Выбор рейсов AnyTour | outbound/inbound, baggage, delta, total, continue | REVIEW | Порядок selected hotel → stepper stage 3 → flights выровнен на desktop/tablet/mobile; реальные варианты и fallback до 3 офферов проходят run 438 |
-| 4 | Итог тура AnyTour | hotel, room, flights, services, tourists, total, submit | REVIEW | Mobile порядок hotel → flights → services → total/CTA закреплён отдельным geometry assertion; overlap устранён, run 438 зелёный |
-| 5 | Страница бронирования тура AnyTour | selected hotel, room/meal, flights, composition, total | REVIEW | Selected-tour изолирован; desktop/tablet/mobile stepper и блоки тура приведены к утверждённой последовательности; run 438 зелёный |
-| 6 | UI-кит заявки на тур AnyTour | entry, sending, success, error, MAX/Telegram | REVIEW | Все 4 lead-state обязательны; summary разделяет факты, имя видно сразу и остаётся необязательным, комментарий отдельно; базовый пакет прошёл run 449, nested badges разделены и проверены run 452 |
-| 7 | Спецификация футера AnyTour | navigation, support, social, apps, trust, legal | REVIEW | Grid/readability и canonical `anytoour.ru` links исправлены; нужен финальный screenshot diff |
-| 8 | Цельный mobile flow AnyTour | search → results → hotel → tour → flight → total → lead → messenger | REVIEW | Полный flow, filter subflows, selected-tour isolation, final review и реальные MAX/Telegram handoff проходят на одном head; нужен финальный visual diff |
+| 1 | Интерфейс поиска туров AnyTour | search, results, hotel tours | REVIEW | Mobile primary CTA синий, filters — orange outline, trust hints low-chrome; search/results проходят run 464. Нужен финальный прямой visual diff. |
+| 2 | Макет фильтров поиска туров AnyTour | filters, sorting, sub-screens, reset/apply/cancel | REVIEW | Mobile/tablet drawer и sub-screen, reset/apply/back работают; свежий mobile artifact проверен. Нужен финальный прямой visual diff. |
+| 3 | Выбор рейсов AnyTour | outbound/inbound, baggage, delta, total, continue | REVIEW | Responsive convergence и реальные варианты сохранены; desktop/tablet/mobile проходят run 464. |
+| 4 | Итог тура AnyTour | hotel, room, flights, services, tourists, total, submit | REVIEW | Порядок блоков и mobile CTA geometry закреплены QA; run 464 зелёный. |
+| 5 | Страница бронирования тура AnyTour | selected hotel, room/meal, flights, composition, total | REVIEW | Selected-tour изолирован, compact back-control без дубля; desktop/tablet/mobile run 464 зелёный. |
+| 6 | UI-кит заявки на тур AnyTour | entry, sending, success, error, MAX/Telegram | REVIEW | Entry low-chrome, optional comment secondary, sending progress cue, success actions full-width, error preserve-note больше не обрезается. Все 4 lead-state проходят run 464; свежие mobile screenshots проверены. |
+| 7 | Спецификация футера AnyTour | navigation, support, social, apps, trust, legal | REVIEW | Maket7 dark-card structure, mobile accordions/apps/legal и canonical `anytoour.ru` links собраны; run 464 зелёный. Нужен финальный прямой visual diff. |
+| 8 | Цельный mobile flow AnyTour | search → results → hotel → tour → flight → total → lead → messenger | REVIEW | Цельный flow, compact back, lead lifecycle и messenger handoff проходят на одном head; свежий run 464 зелёный. Нужна финальная визуальная приёмка владельца. |
 
 ## Матрица обязательного QA
 
@@ -42,22 +44,30 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 
 ## Текущий фактический статус
 
-- Изолированный preview, noindex и production-lock: **DONE**.
-- Функциональный путь search → tour → flights → final → lead success/error: **DONE на текущем head**.
-- Run 452: deploy + desktop + tablet + mobile = **SUCCESS** на `9e166741`; mobile final geometry, price/CTA, filter back-control, visible name и readable lead summary проходят.
-- Макеты 3–5 прошли responsive convergence: selected hotel → stepper → flights, compact variants, joined mobile final card, строгий порядок flights/services/summary и CTA no-overlap.
-- Визуальное одобрение владельца: **LOCKED**, пока не завершён финальный screenshot-by-screenshot diff всех 8 макетов.
+- Изолированный preview, `noindex` и production-lock: **DONE**.
+- Функциональный путь search → tour → flights → final → lead sending/success/error: **DONE на текущем head**.
+- Run 464 на `da9fb79b`: deploy + desktop + tablet + mobile = **SUCCESS**.
+- Свежий mobile `m09-lead-error`: сохранённые данные отображаются на полной ширине карточки, без clipping — **P1 CLOSED**.
+- Свежие mobile search, filters и footer также проверены после run 464; критических регрессий не обнаружено.
+- Визуальное одобрение владельца: **LOCKED**, пока не завершён финальный screenshot-by-screenshot diff всех 8 утверждённых макетов.
 - Production rollout: **LOCKED** до отдельного явного подтверждения владельца.
+
+## Последний convergence-пакет
+
+- PR #1274 — mobile search palette.
+- PR #1275 — compact mobile back-controls.
+- PR #1276 — mobile lead lifecycle layout.
+- PR #1277 — lighter mobile lead entry chrome + back/action fixes.
+- PR #1278 — optional comment demotion + robust success/error/back fixes; run 463 rerun fully green.
+- PR #1282 — mobile error preserved-data note width/clipping fix; merge head `da9fb79b`, run 464 fully green.
 
 ## Что делаем дальше
 
-1. Финальный visual diff макетов 1 и 2: search/results/cards + filters/sorting/sub-screens.
-2. Финальный visual diff макетов 6 и 7: lead kit + footer.
-3. Цельная проверка макета 8 по свежему mobile artifact от search до messenger handoff.
-4. Одним пакетом закрыть оставшиеся визуальные P1 без изменения данных, Tourvisor/pricing/Metrika/lead contracts.
-5. Один финальный QA одного implementation head на desktop/tablet/mobile.
-6. Отдать preview владельцу на визуальную приёмку.
-7. Production — только после явного одобрения.
+1. Финальный screenshot-by-screenshot visual diff всех 8 макетов на artifact run 464.
+2. Закрывать только конкретные оставшиеся визуальные P1; не менять бизнес-логику и данные ради косметики.
+3. После каждого изменения сохранять один общий implementation head для desktop/tablet/mobile QA.
+4. Когда visual P1 = 0 — отдать preview владельцу на визуальную приёмку.
+5. Production — только после явного одобрения владельца.
 
 ## Правила реализации
 
@@ -67,28 +77,6 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 - Сохранять progressive loading, stale-state guards, Metrika, lead transport и pricing.
 - Production запрещён до явного визуального одобрения владельца.
 
-## Последние изменения
-
-- run 416 — полностью зелёный baseline на `6cdbf58f`.
-- `9ac9690e` — уплотнены flight variants и final review без изменения flight semantics.
-- `e5aa58a4` — mobile final hotel/room/meal собраны в единый booking-card и добавлен самый поздний preview visual layer.
-- `0e08c1da` — tablet flight-choice stabilization.
-- `21d857e0` — устранено перекрытие mobile final CTA блоком рейсов.
-- run 430 — полностью зелёный на `21d857e0`.
-- `6cdbf58f` — selected-tour mobile booking view изолирован от лишних блоков.
-- `3985a4c1` — tablet tour price удерживается в одну строку.
-- run 431 — полностью зелёный: deploy + desktop + tablet + mobile на `3985a4c1`.
-- `6ef9c13a` — tablet flights перенесены сразу после booking stepper.
-- `649c4e38`, `af86e00e`, `002e49f5` — активирован и усилен mobile final-board layout.
-- `2c11a909` — добавлен geometry contract для порядка flights → services → summary.
-- `c5b1e9cd`, `38e4a68b` — desktop/mobile QA повторяет поиск на следующем реальном оффере при transient Tourvisor 500.
-- run 438 — полностью зелёный на `38e4a68b`; новый mobile final geometry contract проходит.
-- `7e34bbe4`, `978fae59` — mobile hotel price и CTA разнесены по grid-row; обязательный QA на видимую цену перед CTA прошёл в run 440.
-- `d1f21769`, `783b5bf0`, `d5d86dfa` — lead summary получил явные разделители; QA запрещает склеенные факты.
-- `f35c933b`, `09ac416a`, `4940b4ec` — имя показано сразу как необязательное, под toggle оставлен только комментарий; desktop/mobile QA это проверяет.
-- `530ddabb`, `1c30eadc`, `96b14044` — в mobile filter drawer добавлен back-control как в макете 2 и обязательная QA-проверка; run 449 полностью зелёный.
-- `947edeca`, `7c54571e`, `9e166741` — вложенные flight badges разделяются рекурсивно; QA запрещает склейку `ценаПрямой/ценаЧартер`; run 452 полностью зелёный.
-
 ## Definition of done
 
 Search3 готов к визуальному одобрению только если:
@@ -96,7 +84,7 @@ Search3 готов к визуальному одобрению только е�
 - P0 = 0 и визуальный P1 = 0;
 - все 8 утверждённых макетов имеют закрытые обязательные состояния;
 - desktop, tablet и mobile проходят один и тот же implementation head;
-- все обязательные screenshots созданы;
+- все обязательные screenshots созданы и визуально просмотрены;
 - нет горизонтального overflow, перекрытий и скачков layout;
 - поиск и booking-flow проходят до sending/success/error;
 - соблюдены Tourvisor, pricing, Metrika, lead и production-lock контракты.
