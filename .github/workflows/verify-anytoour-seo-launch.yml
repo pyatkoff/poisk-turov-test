@@ -13,7 +13,7 @@ on:
       - '.github/workflows/verify-anytoour-seo-launch.yml'
       - 'v2/seo-launch-slice-v1.php'
       - 'v2/seo-controlled-launch-catalog-v1.php'
-      - 'v2/seo-content-pilot-seasonal-september-v1.php'
+      - 'v2/seo-content-pilot-seasonal-october-v1.php'
       - 'v2/seo-seasonal-page-v1.php'
       - 'v2/sitemap.xml'
       - 'v2/seo-production-identity-registry-v1.php'
@@ -25,19 +25,19 @@ on:
       - '.github/workflows/verify-anytoour-seo-launch.yml'
       - 'v2/seo-launch-slice-v1.php'
       - 'v2/seo-controlled-launch-catalog-v1.php'
-      - 'v2/seo-content-pilot-seasonal-september-v1.php'
+      - 'v2/seo-content-pilot-seasonal-october-v1.php'
       - 'v2/seo-seasonal-page-v1.php'
       - 'v2/sitemap.xml'
-      - 'v2/country/turkey/antalya/september/**'
-      - 'v2/country/maldives/september/**'
+      - 'v2/country/turkey/antalya/october/**'
+      - 'v2/country/maldives/october/**'
       - 'tests/seo-launch-slice-smoke.php'
+      - 'tests/seo-production-turkey-launch-smoke.php'
       - 'v2/seo-production-identity-registry-v1.php'
       - 'v2/seo-production-identity-collector-v1.php'
       - 'v2/data/verify-seo-production-identity-registry-v1.php'
 
 permissions:
   contents: read
-
 concurrency:
   group: verify-anytoour-seo-launch-${{ github.event_name }}
   cancel-in-progress: true
@@ -56,25 +56,26 @@ jobs:
           php -l v2/seo-launch-slice-v1.php >/dev/null
           php -l v2/seo-controlled-launch-catalog-v1.php >/dev/null
           php -l v2/seo-content-pilot-seasonal-september-v1.php >/dev/null
+          php -l v2/seo-content-pilot-seasonal-october-v1.php >/dev/null
           php -l v2/seo-seasonal-page-v1.php >/dev/null
-          php -l v2/seo-seasonal-offer-snapshot-v1.php >/dev/null
-          php -l v2/country/turkey/antalya/september/index.php >/dev/null
-          php -l v2/country/maldives/september/index.php >/dev/null
+          php -l v2/country/turkey/antalya/october/index.php >/dev/null
+          php -l v2/country/maldives/october/index.php >/dev/null
           php -l v2/seo-production-identity-collector-v1.php >/dev/null
           php tests/seo-launch-slice-smoke.php
+          php tests/seo-production-turkey-launch-smoke.php
           php tests/seo-production-identity-collector-smoke.php
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
           base='https://anytoour.ru'
           expected={
-            base+'/country/egypt/', base+'/country/maldives/', base+'/country/maldives/september/', base+'/country/turkey/',
-            base+'/country/turkey/alanya/', base+'/country/turkey/antalya/', base+'/country/turkey/antalya/september/',
-            base+'/country/turkey/belek/', base+'/country/turkey/kemer/', base+'/country/turkey/side/',
+            base+'/country/egypt/',base+'/country/maldives/',base+'/country/maldives/september/',base+'/country/maldives/october/',base+'/country/turkey/',
+            base+'/country/turkey/alanya/',base+'/country/turkey/antalya/',base+'/country/turkey/antalya/september/',base+'/country/turkey/antalya/october/',
+            base+'/country/turkey/belek/',base+'/country/turkey/kemer/',base+'/country/turkey/side/',
           }
           actual={n.text.strip() for n in ET.parse('v2/sitemap.xml').getroot().iter() if n.tag.endswith('loc') and n.text}
-          assert actual == expected, (actual, expected)
+          assert actual==expected,(actual,expected)
           assert not any('/hotel/' in u or '/poisk-turov/' in u for u in actual)
-          print('ANYTOOUR_PREDEPLOY_SEO_CONTRACT_OK paths=10 seasonal=2 hotel_tours=0 live_offer_coverage=observational')
+          print('ANYTOOUR_PREDEPLOY_SEO_CONTRACT_OK paths=12 seasonal=4 october=2 hotel_tours=0')
           PY
 
   production-seo:
@@ -83,7 +84,6 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-
       - name: Verify controlled country/resort/seasonal launch
         shell: bash
         env:
@@ -93,120 +93,60 @@ jobs:
           set -euo pipefail
           base='https://anytoour.ru'
           paths=(
-            '/country/egypt/'
-            '/country/maldives/'
-            '/country/maldives/september/'
-            '/country/turkey/'
-            '/country/turkey/alanya/'
-            '/country/turkey/antalya/'
-            '/country/turkey/antalya/september/'
-            '/country/turkey/belek/'
-            '/country/turkey/kemer/'
-            '/country/turkey/side/'
+            '/country/egypt/' '/country/maldives/' '/country/maldives/september/' '/country/maldives/october/'
+            '/country/turkey/' '/country/turkey/alanya/' '/country/turkey/antalya/' '/country/turkey/antalya/september/' '/country/turkey/antalya/october/'
+            '/country/turkey/belek/' '/country/turkey/kemer/' '/country/turkey/side/'
           )
-
           curl -fsSL --max-time 30 "$base/robots.txt" -o /tmp/robots.txt
           grep -Fq 'Sitemap: https://anytoour.ru/sitemap.xml' /tmp/robots.txt
           curl -fsSL --max-time 30 "$base/sitemap.xml" -o /tmp/sitemap.xml
           BASE="$base" python3 - <<'PY'
-          import os, xml.etree.ElementTree as ET
+          import os,xml.etree.ElementTree as ET
           base=os.environ['BASE']
-          expected={
-            base+'/country/egypt/', base+'/country/maldives/', base+'/country/maldives/september/', base+'/country/turkey/',
-            base+'/country/turkey/alanya/', base+'/country/turkey/antalya/', base+'/country/turkey/antalya/september/',
-            base+'/country/turkey/belek/', base+'/country/turkey/kemer/', base+'/country/turkey/side/',
-          }
-          actual={node.text.strip() for node in ET.parse('/tmp/sitemap.xml').getroot().iter() if node.tag.endswith('loc') and node.text}
-          assert actual == expected, (actual, expected)
+          expected={base+p for p in ['/country/egypt/','/country/maldives/','/country/maldives/september/','/country/maldives/october/','/country/turkey/','/country/turkey/alanya/','/country/turkey/antalya/','/country/turkey/antalya/september/','/country/turkey/antalya/october/','/country/turkey/belek/','/country/turkey/kemer/','/country/turkey/side/']}
+          actual={n.text.strip() for n in ET.parse('/tmp/sitemap.xml').getroot().iter() if n.tag.endswith('loc') and n.text}
+          assert actual==expected,(actual,expected)
           assert not any('/hotel/' in u or '/poisk-turov/' in u for u in actual)
           print('ANYTOOUR_SEO_SITEMAP_OK',len(actual))
           PY
-
-          : > /tmp/page-status.tsv
+          : >/tmp/page-status.tsv
           for path in "${paths[@]}"; do
-            safe="$(printf '%s' "$path" | tr '/-' '__')"
-            file="/tmp/seo-${safe}.html"
-            code="$(curl -fsSL -o "$file" -w '%{http_code}' --max-time 35 "$base$path")"
-            test "$code" = '200'
+            safe="$(printf '%s' "$path"|tr '/-' '__')"; file="/tmp/seo-${safe}.html"
+            code="$(curl -fsSL -o "$file" -w '%{http_code}' --max-time 35 "$base$path")"; test "$code" = '200'
             grep -Eq '<meta name="robots" content="index,follow[^\"]*"' "$file"
-            canonical="${base}${path}"
-            grep -Fq "<link rel=\"canonical\" href=\"$canonical\">" "$file"
-            printf '%s\t%s\t%s\n' "$path" "$code" "$file" >> /tmp/page-status.tsv
+            grep -Fq "<link rel=\"canonical\" href=\"${base}${path}\">" "$file"
+            printf '%s\t%s\t%s\n' "$path" "$code" "$file" >>/tmp/page-status.tsv
           done
-
           protected='/country/maldives/hotel/the-westin-maldives-miriandhoo-resort-65108/'
-          protected_code="$(curl -fsSL -o /tmp/hotel-review.html -w '%{http_code}' --max-time 35 "$base$protected")"
-          test "$protected_code" = '200'
+          protected_code="$(curl -fsSL -o /tmp/hotel-review.html -w '%{http_code}' --max-time 35 "$base$protected")";test "$protected_code" = '200'
           grep -Eq '<meta name="robots" content="noindex,follow[^\"]*"' /tmp/hotel-review.html
-          protected_canonical="${base}${protected}"
-          grep -Fq "<link rel=\"canonical\" href=\"$protected_canonical\">" /tmp/hotel-review.html
-          if grep -Fq "$protected_canonical" /tmp/sitemap.xml; then echo 'HOTEL_TOUR_SITEMAP_LEAK' >&2; exit 1; fi
-
+          grep -Fq "<link rel=\"canonical\" href=\"${base}${protected}\">" /tmp/hotel-review.html
+          ! grep -Fq "${base}${protected}" /tmp/sitemap.xml
           BASE="$base" SOURCE_SHA="$SOURCE_SHA" EVENT_NAME="$EVENT_NAME" PROTECTED="$protected" PROTECTED_CODE="$protected_code" python3 - <<'PY'
-          import datetime, hashlib, json, os, re, xml.etree.ElementTree as ET
-          base=os.environ['BASE']
-          sitemap={node.text.strip() for node in ET.parse('/tmp/sitemap.xml').getroot().iter() if node.tag.endswith('loc') and node.text}
+          import datetime,hashlib,json,os,re,xml.etree.ElementTree as ET
+          base=os.environ['BASE'];sitemap={n.text.strip() for n in ET.parse('/tmp/sitemap.xml').getroot().iter() if n.tag.endswith('loc') and n.text}
           country_paths={'/country/egypt/','/country/maldives/','/country/turkey/'}
-          rows=[]
-          coverage={'country':{'pages':0,'with_offers':0,'cards':0},'resort':{'pages':0,'with_offers':0,'cards':0},'seasonal':{'pages':0,'with_offers':0,'cards':0}}
-          with open('/tmp/page-status.tsv',encoding='utf-8') as fh:
-              for line in fh:
-                  path,code,filename=line.rstrip('\n').split('\t')
-                  html=open(filename,encoding='utf-8').read()
-                  robots=re.search(r'<meta name="robots" content="([^\"]+)"',html)
-                  canonical=re.search(r'<link rel="canonical" href="([^\"]+)"',html)
-                  page_type='country' if path in country_paths else ('seasonal' if path.endswith('/september/') else 'resort')
-                  offer_snapshot_present='sp-offer-snapshot' in html
-                  offer_card_count=len(re.findall(r'class="[^\"]*\bsp-offer-item\b[^\"]*"',html))
-                  if offer_snapshot_present and offer_card_count <= 0:
-                      raise AssertionError('offer snapshot without cards: '+path)
-                  if offer_card_count > 0 and not offer_snapshot_present:
-                      raise AssertionError('offer cards without snapshot section: '+path)
-                  if offer_card_count > 6:
-                      raise AssertionError('offer card limit exceeded: '+path)
-                  coverage[page_type]['pages']+=1
-                  coverage[page_type]['with_offers']+=1 if offer_snapshot_present else 0
-                  coverage[page_type]['cards']+=offer_card_count
-                  rows.append({
-                      'path':path,'type':page_type,'http_status':int(code),
-                      'robots':robots.group(1) if robots else None,
-                      'canonical':canonical.group(1) if canonical else None,
-                      'sitemap_member':base+path in sitemap,
-                      'offer_snapshot_present':offer_snapshot_present,
-                      'offer_card_count':offer_card_count,
-                  })
-          protected_html=open('/tmp/hotel-review.html',encoding='utf-8').read()
-          protected_robots=re.search(r'<meta name="robots" content="([^\"]+)"',protected_html)
-          protected_canonical=re.search(r'<link rel="canonical" href="([^\"]+)"',protected_html)
-          pages_with_offers=sum(v['with_offers'] for v in coverage.values())
-          cards_total=sum(v['cards'] for v in coverage.values())
-          payload={
-              'state':'controlled_seo_postlaunch_baseline','domain':'anytoour.ru',
-              'observed_at_utc':datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat(),
-              'source_sha':os.environ.get('SOURCE_SHA',''),'trigger':os.environ.get('EVENT_NAME',''),
-              'launch_scope':'turkey_egypt_maldives_country_resort_seasonal_v3','launch_url_count':len(rows),'pages':rows,
-              'robots_sitemap_declared':True,'sitemap_url_count':len(sitemap),
-              'offer_snapshot_evidence':{
-                  'semantics':'observed_rendered_presence_only_missing_block_is_not_zero_inventory',
-                  'pages_with_offers':pages_with_offers,'offer_card_count_total':cards_total,'by_type':coverage,
-              },
-              'protected_hotel_tour':{'path':os.environ['PROTECTED'],'http_status':int(os.environ['PROTECTED_CODE']),'robots':protected_robots.group(1) if protected_robots else None,'canonical':protected_canonical.group(1) if protected_canonical else None,'sitemap_member':base+os.environ['PROTECTED'] in sitemap},
-              'search_console_metrics_state':'not_collected_by_this_workflow','publication_scope_expanded':True,
-              'publication_scope_expansion':'evidence_backed_seasonal_pair','hotel_tours_indexation_allowed':False,
-          }
-          stable=dict(payload);stable.pop('observed_at_utc',None)
-          payload['baseline_sha256']=hashlib.sha256(json.dumps(stable,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
-          with open('/tmp/anytoour-seo-baseline.json','w',encoding='utf-8') as fh: json.dump(payload,fh,ensure_ascii=False,indent=2);fh.write('\n')
-          print('ANYTOOUR_LIVE_OFFER_COVERAGE pages_with_offers={}/10 cards={} country={}/3 resort={}/5 seasonal={}/2'.format(
-              pages_with_offers,cards_total,coverage['country']['with_offers'],coverage['resort']['with_offers'],coverage['seasonal']['with_offers']))
-          print('ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=10 seasonal=2 hotel_tours_indexed=0 baseline_sha256='+payload['baseline_sha256'])
+          rows=[];coverage={t:{'pages':0,'with_offers':0,'cards':0} for t in ('country','resort','seasonal')}
+          for line in open('/tmp/page-status.tsv',encoding='utf-8'):
+              path,code,filename=line.rstrip('\n').split('\t');html=open(filename,encoding='utf-8').read()
+              robots=re.search(r'<meta name="robots" content="([^\"]+)"',html);canonical=re.search(r'<link rel="canonical" href="([^\"]+)"',html)
+              seasonal=path.endswith('/september/') or path.endswith('/october/')
+              page_type='country' if path in country_paths else ('seasonal' if seasonal else 'resort')
+              present='sp-offer-snapshot' in html;cards=len(re.findall(r'class="[^\"]*\bsp-offer-item\b[^\"]*"',html))
+              if present and cards<=0:raise AssertionError('offer snapshot without cards:'+path)
+              if cards>6:raise AssertionError('offer card limit exceeded:'+path)
+              coverage[page_type]['pages']+=1;coverage[page_type]['with_offers']+=1 if present else 0;coverage[page_type]['cards']+=cards
+              rows.append({'path':path,'type':page_type,'http_status':int(code),'robots':robots.group(1) if robots else None,'canonical':canonical.group(1) if canonical else None,'sitemap_member':base+path in sitemap,'offer_snapshot_present':present,'offer_card_count':cards})
+          ph=open('/tmp/hotel-review.html',encoding='utf-8').read();pr=re.search(r'<meta name="robots" content="([^\"]+)"',ph);pc=re.search(r'<link rel="canonical" href="([^\"]+)"',ph)
+          pages_with_offers=sum(v['with_offers'] for v in coverage.values());cards_total=sum(v['cards'] for v in coverage.values())
+          payload={'state':'controlled_seo_postlaunch_baseline','domain':'anytoour.ru','observed_at_utc':datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat(),'source_sha':os.environ.get('SOURCE_SHA',''),'trigger':os.environ.get('EVENT_NAME',''),'launch_scope':'turkey_egypt_maldives_country_resort_seasonal_v4','launch_url_count':len(rows),'pages':rows,'robots_sitemap_declared':True,'sitemap_url_count':len(sitemap),'offer_snapshot_evidence':{'semantics':'observed_rendered_presence_only_missing_block_is_not_zero_inventory','pages_with_offers':pages_with_offers,'offer_card_count_total':cards_total,'by_type':coverage},'protected_hotel_tour':{'path':os.environ['PROTECTED'],'http_status':int(os.environ['PROTECTED_CODE']),'robots':pr.group(1) if pr else None,'canonical':pc.group(1) if pc else None,'sitemap_member':base+os.environ['PROTECTED'] in sitemap},'search_console_metrics_state':'not_collected_by_this_workflow','publication_scope_expanded':True,'publication_scope_expansion':'evidence_backed_october_seasonal_pair','hotel_tours_indexation_allowed':False}
+          stable=dict(payload);stable.pop('observed_at_utc',None);payload['baseline_sha256']=hashlib.sha256(json.dumps(stable,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          json.dump(payload,open('/tmp/anytoour-seo-baseline.json','w',encoding='utf-8'),ensure_ascii=False,indent=2)
+          print('ANYTOOUR_LIVE_OFFER_COVERAGE pages_with_offers={}/12 cards={} country={}/3 resort={}/5 seasonal={}/4'.format(pages_with_offers,cards_total,coverage['country']['with_offers'],coverage['resort']['with_offers'],coverage['seasonal']['with_offers']))
+          print('ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=12 seasonal=4 october=2 hotel_tours_indexed=0 baseline_sha256='+payload['baseline_sha256'])
           PY
-
-          php -l v2/seo-production-identity-registry-v1.php >/dev/null
-          php -l v2/data/verify-seo-production-identity-registry-v1.php >/dev/null
-          php v2/data/verify-seo-production-identity-registry-v1.php --baseline-file=/tmp/anytoour-seo-baseline.json > /tmp/anytoour-seo-identity-registry.json
-          php -r '$x=json_decode(file_get_contents("/tmp/anytoour-seo-identity-registry.json"),true); if(($x["integrity_ok"]??false)!==true) exit(1); if(($x["hotel_tours_indexation_allowed"]??true)!==false) exit(2); echo "ANYTOOUR_IDENTITY_REGISTRY_OK ".($x["identity_registry_sha256"]??"")."\n";'
-
+          php v2/data/verify-seo-production-identity-registry-v1.php --baseline-file=/tmp/anytoour-seo-baseline.json >/tmp/anytoour-seo-identity-registry.json
+          php -r '$x=json_decode(file_get_contents("/tmp/anytoour-seo-identity-registry.json"),true);if(($x["integrity_ok"]??false)!==true)exit(1);if(($x["hotel_tours_indexation_allowed"]??true)!==false)exit(2);echo "ANYTOOUR_IDENTITY_REGISTRY_OK ".($x["identity_registry_sha256"]??"")."\n";'
       - name: Upload production SEO baseline
         uses: actions/upload-artifact@v4
         with:
