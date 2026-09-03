@@ -21,6 +21,7 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/data/sync-catalog-v1.php >/dev/null
+          php -l v2/data/sync-observed-hotel-taxonomy-v1.php >/dev/null
           php -l v2/seo-core-resort-review-runtime-v1.php >/dev/null
           php -l v2/data/materialize-seo-core-resort-review-routes-v1.php >/dev/null
           php tests/sync-catalog-hotel-taxonomy-contract-smoke.php
@@ -50,6 +51,7 @@ jobs:
             set -euo pipefail
             root="$HOME/www/anytoour.ru"
             php "$root/data/sync-catalog-v1.php" --country=1,8
+            php "$root/data/sync-observed-hotel-taxonomy-v1.php" --country=1,8 --days=30 --limit=500
             php "$root/data/materialize-seo-core-resort-review-routes-v1.php" --root="$root" --limit=80 --require-count=1 --apply
             php -r '\''$j=json_decode(file_get_contents($argv[1]),true); if(!is_array($j)||($j["state"]??"")!=="core_resort_review_routes_materialized"||($j["generated_resorts"]??0)<1||($j["generated_route_count"]??0)<13||($j["indexation_allowed"]??true)!==false||($j["sitemap_allowed"]??true)!==false)exit(1); echo "SEO_CORE_RESORT_REVIEW_MANIFEST_OK resorts=".$j["generated_resorts"]." routes=".$j["generated_route_count"].PHP_EOL;'\'' "$root/data/generated/seo-core-resort-review-routes-v1.json"
           '
