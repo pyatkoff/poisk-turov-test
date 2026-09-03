@@ -176,6 +176,38 @@ CREATE TABLE IF NOT EXISTS tour_price_daily (
     KEY idx_price_daily_destination_month (country_id, region_id, departure_year, departure_month, price_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS tour_price_daily_exact (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    segment_fingerprint CHAR(64) NOT NULL,
+    price_date DATE NOT NULL,
+    departure_id INT UNSIGNED NOT NULL,
+    country_id INT UNSIGNED NOT NULL,
+    region_id INT UNSIGNED DEFAULT NULL,
+    subregion_id INT UNSIGNED DEFAULT NULL,
+    hotel_id INT UNSIGNED NOT NULL,
+    departure_date DATE NOT NULL,
+    nights TINYINT UNSIGNED NOT NULL,
+    adults TINYINT UNSIGNED NOT NULL,
+    children_count TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    child_ages_signature VARCHAR(40) NOT NULL DEFAULT '',
+    meal_id INT UNSIGNED NOT NULL DEFAULT 0,
+    room_id INT UNSIGNED NOT NULL DEFAULT 0,
+    room_type VARCHAR(255) NOT NULL DEFAULT '',
+    operator_id INT UNSIGNED NOT NULL DEFAULT 0,
+    currency CHAR(8) NOT NULL DEFAULT 'RUB',
+    min_price DECIMAL(12,2) NOT NULL,
+    median_price DECIMAL(12,2) NOT NULL,
+    max_price DECIMAL(12,2) NOT NULL,
+    observation_count INT UNSIGNED NOT NULL,
+    independent_search_count INT UNSIGNED NOT NULL DEFAULT 0,
+    calculated_at DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_price_daily_exact_segment (price_date, segment_fingerprint),
+    KEY idx_price_daily_exact_segment_time (segment_fingerprint, price_date),
+    KEY idx_price_daily_exact_hotel_departure (hotel_id, departure_date, price_date),
+    KEY idx_price_daily_exact_destination (country_id, region_id, departure_date, price_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS hot_tours_current (
     snapshot_key CHAR(64) NOT NULL,
     tour_id VARCHAR(220) NOT NULL,

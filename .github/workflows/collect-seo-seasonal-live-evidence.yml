@@ -9,6 +9,7 @@ on:
     paths:
       - 'v2/data/collect-seo-seasonal-preview-inventory-v1.php'
       - 'v2/data/inspect-seo-seasonal-identities-v1.php'
+      - 'v2/data/price-segment-v1.php'
       - 'v2/data/build-seo-offer-snapshots-v1.php'
       - 'v2/seo-seasonal-identity-v1.php'
       - 'v2/seo-seasonal-preview-launch-dossier-v1.php'
@@ -21,6 +22,7 @@ on:
     paths:
       - 'v2/data/collect-seo-seasonal-preview-inventory-v1.php'
       - 'v2/data/inspect-seo-seasonal-identities-v1.php'
+      - 'v2/data/price-segment-v1.php'
       - 'v2/data/build-seo-offer-snapshots-v1.php'
       - 'v2/seo-seasonal-identity-v1.php'
       - 'v2/seo-seasonal-preview-launch-dossier-v1.php'
@@ -48,12 +50,14 @@ jobs:
           set -euo pipefail
           php -l v2/data/collect-seo-seasonal-preview-inventory-v1.php >/dev/null
           php -l v2/data/inspect-seo-seasonal-identities-v1.php >/dev/null
+          php -l v2/data/price-segment-v1.php >/dev/null
           php -l v2/data/build-seo-offer-snapshots-v1.php >/dev/null
           php -l v2/seo-seasonal-identity-v1.php >/dev/null
           php -l v2/seo-seasonal-preview-launch-dossier-v1.php >/dev/null
           php -l v2/data/report-seo-seasonal-preview-launch-dossier-v1.php >/dev/null
           php -l tests/seo-seasonal-targeted-inventory-smoke.php >/dev/null
           grep -Fq "fresh-hours=72 --expires-hours=72" .github/workflows/collect-seo-seasonal-live-evidence.yml
+          grep -Fq 'v2/data/price-segment-v1.php' .github/workflows/collect-seo-seasonal-live-evidence.yml
           php tests/seo-seasonal-targeted-inventory-smoke.php
           php tests/seo-seasonal-preview-launch-dossier-smoke.php
           php tests/seo-seasonal-preview-launch-dossier-cli-smoke.php
@@ -98,6 +102,7 @@ jobs:
             v2/data/db-v1.php \
             v2/data/tourvisor-client-v1.php \
             v2/data/price-observer-v1.php \
+            v2/data/price-segment-v1.php \
             v2/data/collect-seo-seasonal-preview-inventory-v1.php \
             v2/data/build-seo-offer-snapshots-v1.php \
             v2/data/inspect-seo-seasonal-identities-v1.php \
@@ -108,6 +113,7 @@ jobs:
             ssh "${opts[@]}" "$remote" '
               set -euo pipefail
               root="$HOME/www/anytoour.ru/data"
+              php -l "$root/price-segment-v1.php" >/dev/null
               php -l "$root/collect-seo-seasonal-preview-inventory-v1.php" >/dev/null
               php "$root/collect-seo-seasonal-preview-inventory-v1.php"
               php "$root/build-seo-offer-snapshots-v1.php" --fresh-hours=72 --expires-hours=72 --offers-per-page=10

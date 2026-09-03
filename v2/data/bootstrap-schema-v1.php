@@ -60,6 +60,7 @@ try {
         'catalog_sync_state',
         'tour_price_observations',
         'tour_price_daily',
+        'tour_price_daily_exact',
         'hot_tours_current',
         'seo_offer_snapshots',
     ];
