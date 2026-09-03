@@ -39,6 +39,8 @@ jobs:
           grep -Fq "hotel_tours_indexation_allowed':False" .github/workflows/collect-seo-price-calendar-quality.yml
           grep -Fq "unknown_day':'no_fresh_observation_not_no_tours'" .github/workflows/collect-seo-price-calendar-quality.yml
           grep -Fq "date_sequence_state':'unique_ascending'" .github/workflows/collect-seo-price-calendar-quality.yml
+          grep -Fq "freshness='данные ≤ 72 ч' in html" .github/workflows/collect-seo-price-calendar-quality.yml
+          grep -Fq "unknown_semantics='Прочерк означает, что по дате нет свежего наблюдения, а не что туров нет.' in html" .github/workflows/collect-seo-price-calendar-quality.yml
           echo SEO_PRICE_CALENDAR_QUALITY_CONTRACT_OK
 
   compare:
@@ -108,12 +110,16 @@ jobs:
                       else:
                           raise AssertionError('calendar day has ambiguous observed/unknown state: '+path+' '+date)
                   total=len(cards)
+                  freshness='данные ≤ 72 ч' in html
+                  unknown_semantics='Прочерк означает, что по дате нет свежего наблюдения, а не что туров нет.' in html
+                  if not present and (total or freshness or unknown_semantics):
+                      raise AssertionError('price-calendar fragments without section: '+path)
                   if present and observed < 3:
                       raise AssertionError('rendered price calendar has fewer than 3 observed days: '+path)
-                  if not present and total:
-                      raise AssertionError('calendar day fragments without section: '+path)
                   if present and total > 21:
                       raise AssertionError('rendered price calendar exceeds controlled maximum span: '+path)
+                  if present and (not freshness or not unknown_semantics):
+                      raise AssertionError('rendered price calendar missing freshness/unknown semantics: '+path)
                   if len(dates) != len(set(dates)):
                       raise AssertionError('rendered price calendar contains duplicate dates: '+path)
                   if dates != sorted(dates):
@@ -127,6 +133,8 @@ jobs:
                       'unknown_day_count':unknown,'total_day_count':total,
                       'unique_date_count':len(set(dates)),
                       'date_sequence_state':'unique_ascending' if dates else 'absent',
+                      'freshness_copy_present':freshness,
+                      'unknown_means_no_fresh_observation_copy_present':unknown_semantics,
                       'observed_day_share':round(share,4) if share is not None else None,
                   }
                   rows.append(row)
