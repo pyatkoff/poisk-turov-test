@@ -21,10 +21,10 @@ function v2_seo_core_resort_cohort_source_rows(PDO $pdo,int $limit=80): array
       FROM catalog_regions cr
       JOIN catalog_countries c ON c.id=cr.country_id AND c.is_active=1
       JOIN tour_price_observations o ON o.region_id=cr.id AND o.country_id=cr.country_id
-     WHERE cr.country_id IN (1,8)
+     WHERE c.slug IN ('egypt','maldives')
        AND cr.name IS NOT NULL AND cr.name<>''
        AND cr.slug IS NOT NULL AND cr.slug<>''
-       AND c.slug IS NOT NULL AND c.slug<>''
+       AND c.name IS NOT NULL AND c.name<>''
        AND o.observed_at>=DATE_SUB(NOW(),INTERVAL 30 DAY)
        AND o.departure_date>=CURDATE()
        AND o.price>0 AND o.currency='RUB'
