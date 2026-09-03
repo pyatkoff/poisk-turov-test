@@ -38,6 +38,7 @@ jobs:
           grep -Fq "publication_scope_expanded':False" .github/workflows/collect-seo-price-calendar-quality.yml
           grep -Fq "hotel_tours_indexation_allowed':False" .github/workflows/collect-seo-price-calendar-quality.yml
           grep -Fq "unknown_day':'no_fresh_observation_not_no_tours'" .github/workflows/collect-seo-price-calendar-quality.yml
+          grep -Fq "date_sequence_state':'unique_ascending'" .github/workflows/collect-seo-price-calendar-quality.yml
           echo SEO_PRICE_CALENDAR_QUALITY_CONTRACT_OK
 
   compare:
@@ -86,18 +87,46 @@ jobs:
                   html=open(filename,encoding='utf-8').read()
                   page_type='country' if path in country_paths else ('seasonal' if path.endswith('/september/') else 'resort')
                   present='data-seo-price-calendar' in html
-                  observed=len(re.findall(r'<a\b[^>]*class="[^"]*\bsp-price-day\b[^"]*"',html,re.I))
-                  unknown=len(re.findall(r'class="[^"]*\bsp-price-day--unknown\b[^"]*"',html,re.I))
-                  total=observed+unknown
+                  cards=re.findall(r'<(a|div)\b[^>]*class="([^"]*\bsp-price-day\b[^"]*)"[^>]*>(.*?)</\1>',html,re.I|re.S)
+                  dates=[]
+                  observed=0
+                  unknown=0
+                  for tag,classes,body in cards:
+                      match=re.search(r'<time\b[^>]*datetime="([^"]+)"',body,re.I)
+                      if match is None:
+                          raise AssertionError('calendar day missing machine-readable date: '+path)
+                      date=match.group(1)
+                      try:
+                          datetime.date.fromisoformat(date)
+                      except ValueError as exc:
+                          raise AssertionError('calendar day has invalid ISO date: '+path+' '+date) from exc
+                      dates.append(date)
+                      if 'sp-price-day--unknown' in classes.split():
+                          unknown += 1
+                      elif tag.lower() == 'a':
+                          observed += 1
+                      else:
+                          raise AssertionError('calendar day has ambiguous observed/unknown state: '+path+' '+date)
+                  total=len(cards)
                   if present and observed < 3:
                       raise AssertionError('rendered price calendar has fewer than 3 observed days: '+path)
                   if not present and total:
                       raise AssertionError('calendar day fragments without section: '+path)
+                  if present and total > 21:
+                      raise AssertionError('rendered price calendar exceeds controlled maximum span: '+path)
+                  if len(dates) != len(set(dates)):
+                      raise AssertionError('rendered price calendar contains duplicate dates: '+path)
+                  if dates != sorted(dates):
+                      raise AssertionError('rendered price calendar dates are not ascending: '+path)
+                  if observed + unknown != total:
+                      raise AssertionError('calendar day state counts do not reconcile: '+path)
                   share=(observed/total) if total else None
                   row={
                       'path':path,'type':page_type,'http_status':int(code),
                       'calendar_present':present,'observed_day_count':observed,
                       'unknown_day_count':unknown,'total_day_count':total,
+                      'unique_date_count':len(set(dates)),
+                      'date_sequence_state':'unique_ascending' if dates else 'absent',
                       'observed_day_share':round(share,4) if share is not None else None,
                   }
                   rows.append(row)
@@ -124,8 +153,14 @@ jobs:
               'pages':rows,
               'by_type':by_type,
               'weakest_observed_coverage_pages':weakest,
+              'integrity':{
+                  'date_sequence_state':'unique_ascending',
+                  'date_identity':'time_datetime_iso_date',
+                  'duplicate_dates_allowed':False,
+                  'maximum_rendered_span_days':21,
+              },
               'interpretation':{
-                  'observed_day_share':'share_of_rendered_calendar_days_with_fresh_first_party_price_observation',
+                  'observed_day_share':'share_of_unique_rendered_calendar_dates_with_fresh_first_party_price_observation',
                   'unknown_day':'no_fresh_observation_not_no_tours',
                   'external_demand_state':'not_collected',
                   'ranking_use':'diagnostic_priority_only_not_publication_or_demand_evidence',
@@ -142,7 +177,8 @@ jobs:
               by_type['resort']['observed_day_share'] or 0,
               by_type['seasonal']['observed_day_share'] or 0,
               ','.join(x['path'] for x in weakest)))
-          print('SEO_PRICE_CALENDAR_QUALITY_OK sha256='+payload['evidence_sha256'])
+          print('SEO_PRICE_CALENDAR_DATE_INTEGRITY_OK unique_dates={} sha256={}'.format(
+              sum(r['unique_date_count'] for r in rows),payload['evidence_sha256']))
           PY
 
       - name: Upload quality comparison evidence
