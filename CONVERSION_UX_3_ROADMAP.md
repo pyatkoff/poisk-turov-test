@@ -1,5 +1,9 @@
 # Conversion UX 3.0 roadmap
 
+> Historical implementation snapshot. Its `DONE` labels refer to the older V2
+> scope and do not certify Search3 or current production release readiness.
+> Current execution lives in `docs/project/MASTER_PLAN.md`.
+
 ## Objective
 Raise conversion by reducing cognitive load and scrolling across the complete V2 journey while preserving Tourvisor/search correctness, analytics contracts, Yandex Metrika configuration/goals, and the existing lead-sending mechanism.
 

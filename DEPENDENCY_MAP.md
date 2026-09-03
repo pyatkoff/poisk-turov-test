@@ -29,14 +29,14 @@ When the active bundle changes, update the manifest and relevant tests; do not m
 | --- | --- | --- | --- |
 | Tour search page | `v2/index.php` | ACTIVE | Canonical search implementation behind `/poisk-turov/`. |
 | Search API | `v2/api-v2.php` | ACTIVE / PROTECTED | Preserve Tourvisor-facing behavior and contract. |
-| Lead adapter | `v2/lead-adapter-v2.php` | ACTIVE / PROTECTED | Preserve the external lead contract and field mapping. |
+| Lead source adapter/public endpoint name | `v2/lead-adapter-v2.php` + deploy-selected `v2/lead-bridge-v1.php` | ACTIVE / PROTECTED | Source adapter is copied to the legacy receiver; production publishes the bridge under the public adapter name. Preserve the whole external contract and field mapping. |
 | Browser asset manifest | `v2/bundle-manifest-v1.php` | ACTIVE | Ordered browser-asset source of truth. |
 | Browser bundle endpoint | `v2/bundle-v1.php` | ACTIVE | Resolves the ordered manifest; current order is behavior-sensitive. |
 | Asset URL/version layer | `v2/assets.php` | ACTIVE | Required by the search entrypoint and current bundling/versioning path. |
 | Shared standalone header | `v2/site-header-v2.php` + `v2/site-header-v2.css` | ACTIVE | Canonical header direction for public standalone pages. |
 | Shared standalone page shell | `v2/site-page-shell-v1.php` + `v2/site-page-v1.css` | ACTIVE | Canonical content-page composition. |
 | Shared footer | `v2/site-footer-v1.php` + `v2/site-footer-v1.css` | ACTIVE | Search and standalone consumers should converge here; do not create another footer. |
-| Design-system implementation | `v2/design-system-v1.css` | ACTIVE | Implementation filename is historical; canonical product terminology is **AnyTour Design System 2.0**. Do not mass-rename without mapped migration. |
+| Design-system implementation | `v2/design-system-v2.css` | ACTIVE | Selected by the active manifest and standalone shells; canonical product terminology is **AnyTour Design System 2.0**. |
 | Homepage | `v2/home-entry-v1.php` -> `v2/home-v1.php` | ACTIVE | Standalone discovery entrypoint. |
 | Country pages | `v2/country-page-v1.php` + `v2/country/**/index.php` | ACTIVE | Shared country renderer plus route wrappers. |
 | Search compatibility route | `v2/poisk-turov/index.php` | COMPATIBILITY | Route wrapper only; business logic belongs in the canonical search implementation. |
@@ -58,9 +58,9 @@ Current active families include the shared header/footer layers, search lifecycl
 
 ## Server-side/support modules currently active
 
-The canonical search entrypoint directly requires `assets.php`, `form-defaults.php`, `analytics-config.php`, `privacy-config.php`, `seo-config.php` and `site-footer-v1.php`. `assets.php` requires `asset-version-v1.php` and `bundle-manifest-v1.php`. `v2/index.php` publishes `api-v2.php` and `lead-adapter-v2.php` through `window.V2_CONFIG`, making those the current canonical endpoint generations.
+The canonical search entrypoint directly requires `assets.php`, `form-defaults.php`, `analytics-config.php`, `privacy-config.php`, `seo-config.php`, `site-header-v2.php` and `site-footer-v1.php`. `assets.php` requires `asset-version-v1.php` and `bundle-manifest-v1.php`. `v2/index.php` publishes `api-v2.php` and the public `lead-adapter-v2.php` URL through `window.V2_CONFIG`; deployment supplies the protected bridge at that public lead URL.
 
-Lead receiver/bridge/idempotency/price helpers are **PROTECTED** until the deploy and external receiver graph is audited end-to-end.
+Lead receiver/bridge/direct adapter/idempotency/price helpers and their deploy copy/substitution rules are one **PROTECTED** graph. Search3 presentation work must not change any part of that graph or its payload/mapping.
 
 The SEO family (`seo-config.php`, `seo-content-catalog-v1.php`, `seo-internal-links-v1.php`, `seo-page-contract-v1.php`, `seo-page-graph-v1.php`, `seo-page-primitives-v1.php`, `seo-page-registry-v1.php`, `seo-page-types-v1.php`, `seo-publication-manifest-v1.php`, `seo-publishability-v1.php`) is **ACTIVE/FOUNDATION** where referenced by current standalone/SEO routes and CI. SEO pages must hand off to the common search rather than duplicating transactional search logic.
 
@@ -76,7 +76,7 @@ Similar filenames are evidence for an audit, not evidence for deletion.
 
 ## Shared-shell duplication currently known
 
-Standalone pages use `site-header-v2.php` / `.at-global-header`, while the search entrypoint still has a legacy search-header seam. This is a confirmed duplicate concept, but not permission for a broad rewrite. The canonical destination is the shared header/navigation layer; migration must preserve current search affordances and leave search/results/tour/lead behavior unchanged.
+Standalone pages and the search entrypoint use `site-header-v2.php` / `.at-global-header`. Search-specific header CSS remains compatibility/layout styling around the shared component, not a second header owner. Search3 migration must preserve the current shared implementation and search affordances.
 
 The footer already uses `v2_render_site_footer()` in the search path. New footer implementations are forbidden; migrate consumers toward the shared component.
 
@@ -87,7 +87,7 @@ The footer already uses `v2_render_site_footer()` in the search path. New footer
 | Dependency | Status | Rule |
 | --- | --- | --- |
 | legacy `/poisk-turov-test/v2/` surface | COMPATIBILITY | Canonical public search remains `/poisk-turov/`; do not add product logic specifically for the legacy route. |
-| `anytour.online/max-search/web-consultant/` scripts consumed by `v2/index.php` | COMPATIBILITY / APPROVED EXTERNAL DEPENDENCY | May be consumed here; neighboring project code must not be modified. |
+| `https://app.anytoour.ru/web-consultant/widget.js` consumed by `v2/index.php` | ACTIVE / APPROVED EXTERNAL DEPENDENCY | Preserve this current integration. Do not port Search3's retired `anytour.online/max-search/web-consultant/` scripts or modify the neighboring consultant project. |
 | legacy `anytour.online` deploy/lead-bridge sourcing | COMPATIBILITY / MIGRATION DEBT | Decouple only in separately proven slices. Lead bridge migration remains HIGH risk. |
 
 ## Asset-loader constraint blocking safe folder moves
