@@ -102,4 +102,22 @@ if(array_key_exists('avg_position',$zeroMetrics)||array_key_exists('ctr',$zeroMe
 $zeroEvidence=v2_seo_search_feedback_evidence($zero['rows'][0],$collected);
 if(($zeroEvidence['state']??'')!=='search_feedback_evidence_valid')yw_feedback_fail('observed_zero_evidence');
 
-echo "SEO_YANDEX_WEBMASTER_FEEDBACK_OK cohort=10 observed=2 ignoredOutside=2 dates=7 unknownMissing=8 seasonalUnknown=2 missingCountersUnknown=1 observedZeroValid=1 hotelTours=0 execution=0\n";
+$partialDailyStats=$stats($dates,100.0,10.0,8.0);
+$partialDailyStats=array_values(array_filter($partialDailyStats,static fn(array $stat):bool=>!($stat['date']==='2026-09-01'&&$stat['field']==='CLICKS')));
+$partialDaily=v2_seo_yandex_webmaster_feedback([
+    'host_id'=>'https:anytoour.ru:443',
+    'responses'=>[['text_indicator_to_statistics'=>[[
+        'text_indicator'=>['type'=>'URL','value'=>'https://anytoour.ru/country/turkey/'],
+        'statistics'=>$partialDailyStats,
+    ]]]],
+],$collected);
+if(($partialDaily['state']??'')!=='yandex_webmaster_feedback_partial')yw_feedback_fail('partial_daily_state');
+$partialDailyMetrics=$partialDaily['rows'][0]['metrics']??[];
+if(array_key_exists('clicks',$partialDailyMetrics)||array_key_exists('ctr',$partialDailyMetrics))yw_feedback_fail('partial_daily_counter_aggregated');
+$partialDailyErrors=implode('|',(array)($partialDaily['errors']??[]));
+if(!str_contains($partialDailyErrors,'clicks_partial_daily_coverage'))yw_feedback_fail('partial_daily_diagnostic');
+$partialDailyIntake=v2_seo_search_feedback_intake((array)($partialDaily['rows']??[]),$collected);
+if(($partialDailyIntake['state']??'')!=='search_feedback_intake_blocked')yw_feedback_fail('partial_daily_intake_must_block');
+if(($partialDaily['daily_coverage_semantics']??'')!=='partial_daily_metrics_unknown_not_aggregate')yw_feedback_fail('partial_daily_semantics');
+
+echo "SEO_YANDEX_WEBMASTER_FEEDBACK_OK cohort=10 observed=2 ignoredOutside=2 dates=7 unknownMissing=8 seasonalUnknown=2 missingCountersUnknown=1 observedZeroValid=1 partialDailyBlocked=1 hotelTours=0 execution=0\n";
