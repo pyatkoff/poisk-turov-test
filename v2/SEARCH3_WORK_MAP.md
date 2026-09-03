@@ -4,7 +4,7 @@
 Ветка: `feature/search3-preview`  
 Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`  
 Последний проверенный implementation baseline: `ecedaeb1396b553c7150e37d7c4031a5915dcd51`  
-Текущий mobile-flow candidate: `ec72a23a551391943da0496051edb6435e17cb9d`; filter sub-screens и реальный MAX/Telegram handoff включены в единый QA
+Текущий visual candidate: `647818e375076d61468298c6dc0bece95ace19dc`; макет №1 уплотнён, filter sub-screens и реальный MAX/Telegram handoff включены в единый QA
 
 ## Источник истины: 8 утверждённых макетов
 
@@ -13,7 +13,7 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 
 | № | Утверждённый макет | Покрываемые состояния | Viewport | Статус | Следующее действие |
 |---:|---|---|---|---|---|
-| 1 | Интерфейс поиска туров AnyTour | search, results, hotel tours | desktop + mobile | REVIEW | Дожать плотность верхней выдачи и карточек; не подменять реальные данные демонстрационными |
+| 1 | Интерфейс поиска туров AnyTour | search, results, hotel tours | desktop + mobile | REVIEW | Карточки уплотнены до hotel-level иерархии; проверить свежий desktop/tablet/mobile artifact |
 | 2 | Макет фильтров поиска туров AnyTour | filter entry, popular, hotel, amenities, meal, room, tourists, flight, price, sorting | mobile; desktop rail как адаптация | REVIEW | Реализованы реальные sub-screens category/rating/meal/direct, full reset и apply/cancel staging; проверить tablet/mobile artifacts |
 | 3 | Выбор рейсов AnyTour: десктоп и мобильная версия | outbound/inbound variants, baggage, price delta, total, continue | desktop + mobile | REVIEW | Сверить структуру вариантов и sticky/summary на всех viewport |
 | 4 | Итог тура AnyTour: десктоп и мобильная версии | hotel, room, flights, services, tourists, total, submit | desktop + mobile | REVIEW | Проверить секции и цену после выбора рейса; убрать визуальные склейки |
@@ -84,6 +84,8 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 - 2026-09-03 — вручную пройден desktop Search3: 97 отелей → выбранный тур → 57 flight variants → final total → lead entry; overflow не обнаружен.
 - 2026-09-03 — success-state получает реальные MAX/Telegram URL из конфигурации либо factual footer; общий канал не называется чатом менеджера.
 - 2026-09-03 — QA всех трёх viewport требует активные HTTPS handoff-ссылки на `max.ru` и `t.me`/`telegram.me`.
+
+- 2026-09-03 — макет №1: desktop-карточка уплотнена до hotel-level решения; повторяющиеся room/operator/flight tiles скрыты из сводки, фактические данные сохранены в facts/tour details.
 
 ## Definition of done
 
