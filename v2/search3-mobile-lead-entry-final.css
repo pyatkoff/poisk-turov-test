@@ -1,5 +1,25 @@
 /* Search3 mobile lead-entry density convergence to approved lead UI kit. Preview only. */
 @media(max-width:760px){
+  html body.search3-preview.search3-selected-open #selectedTour.search3-lead-entry .lead-form:not([data-search3-lead-state]) .lead-optional-toggle{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    justify-self:start!important;
+    width:auto!important;
+    min-width:0!important;
+    min-height:32px!important;
+    margin:7px 0 0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    color:#155eef!important;
+    font-size:9px!important;
+    font-weight:800!important;
+    line-height:1.2!important;
+    text-decoration:none!important;
+  }
   html body.search3-preview.search3-selected-open #selectedTour.search3-lead-entry .lead-form:not([data-search3-lead-state]) .lead-consent{
     display:flex!important;
     align-items:flex-start!important;
