@@ -1,0 +1,55 @@
+const { chromium } = require('playwright');
+const fs = require('fs');
+const path = require('path');
+
+const baseUrl = process.env.SEARCH3_PREVIEW_URL || 'https://anytoour.ru/_preview/search3/poisk-turov/';
+const outDir = process.env.SEARCH3_QA_OUT || 'search3-visual-tablet-artifacts';
+fs.mkdirSync(outDir, { recursive: true });
+const required = ['t00-footer','t01-search','t02-results','t02a-filters-open','t03-tour-details','t04-flights','t05-final-review','t06-lead-entry','t07-lead-success'];
+const report = { mode:'tablet', url:baseUrl, startedAt:new Date().toISOString(), states:[], errors:[] };
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+async function visible(page, selector, timeout=15000){try{await page.locator(selector).first().waitFor({state:'visible',timeout});return true}catch(_){return false}}
+async function attached(page, selector, timeout=15000){try{await page.locator(selector).first().waitFor({state:'attached',timeout});return true}catch(_){return false}}
+async function clickVisible(page, selector, timeout=7000){const loc=page.locator(selector).first();try{if(!await loc.count()||!await loc.isVisible())return false;await loc.click({timeout});return true}catch(e){report.errors.push(`click ${selector}: ${String(e)}`);return false}}
+async function settleImages(page, selector, timeout=5000){const end=Date.now()+timeout;while(Date.now()<end){const pending=await page.locator(selector).evaluateAll(xs=>xs.filter(x=>x&&x.tagName==='IMG'&&x.src&&!x.complete).length).catch(()=>0);if(!pending)return true;await sleep(150)}return false}
+async function overflowCheck(page,name){const s=await page.evaluate(()=>({w:innerWidth,d:document.documentElement.scrollWidth,b:document.body?document.body.scrollWidth:0}));if(Math.max(s.d,s.b)>s.w+2)throw new Error(`horizontal overflow at ${name}: viewport=${s.w}, document=${s.d}, body=${s.b}`)}
+async function snap(page,name,anchor){try{if(anchor){const loc=page.locator(anchor).first();if(await loc.count())await loc.evaluate(el=>{const y=el.getBoundingClientRect().top+scrollY-8;scrollTo(0,Math.max(0,y))}).catch(()=>{});await sleep(150)}else{await page.evaluate(()=>scrollTo(0,0));await sleep(80)}await overflowCheck(page,name);const file=path.join(outDir,`${name}.png`);await page.screenshot({path:file,fullPage:false,animations:'disabled'});report.states.push({name,ok:true,file});console.log(`[tablet] ${name}`);return true}catch(e){report.states.push({name,ok:false,error:String(e)});report.errors.push(`${name}: ${String(e)}`);return false}}
+async function footerCheck(page){const state=await page.evaluate(()=>{const f=document.querySelector('.ds2-site-footer');if(!f)return null;const c=getComputedStyle(f),desktop=document.querySelector('.search3-footer-support-desktop'),dc=desktop?getComputedStyle(desktop):null,groups=Array.from(document.querySelectorAll('.search3-footer-group'));return{background:c.backgroundColor,color:c.color,desktopSupportVisible:!!(desktop&&dc&&dc.display!=='none'&&dc.visibility!=='hidden'&&desktop.getClientRects().length),openGroups:groups.filter(d=>d.open).length}});report.footer=state;if(!state)throw new Error('mobile footer missing');if(state.background==='rgba(0, 0, 0, 0)'||state.background==='rgb(255, 255, 255)')throw new Error(`mobile footer is not dark: ${state.background}`);}
+async function forceLeadState(page,state,detail={}){const r=await page.evaluate(({state,detail})=>{const form=document.querySelector('#selectedTour .lead-form');if(!form)return false;delete form.dataset.search3LeadState;window.dispatchEvent(new CustomEvent('search3:preview-lead-state',{detail:Object.assign({previewSimulation:true,state},detail)}));return form.dataset.search3LeadState===state&&!!form.querySelector('.search3-lead-status:not([hidden])')},{state,detail});return r&&visible(page,`#selectedTour .lead-form[data-search3-lead-state="${state}"] .search3-lead-status`,4000)}
+function knownExternalConsoleNoise(text){return /WebSocket connection to ['"]wss:\/\/mc\.yandex\.com\/solid\.ws/i.test(String(text||''));}
+
+(async()=>{
+ const browser=await chromium.launch({headless:true});
+ const context=await browser.newContext({viewport:{width:834,height:1112},deviceScaleFactor:1,isMobile:true,hasTouch:true,ignoreHTTPSErrors:true});
+ const page=await context.newPage();page.setDefaultTimeout(10000);page.setDefaultNavigationTimeout(60000);
+ page.on('pageerror',e=>report.errors.push(`pageerror: ${String(e)}`));
+ page.on('console',m=>{if(m.type()==='error'){const text=m.text();if(knownExternalConsoleNoise(text))return;report.errors.push(`console: ${text}`)}});
+ try{
+  const response=await page.goto(baseUrl,{waitUntil:'domcontentloaded',timeout:60000});report.http=response?response.status():0;
+  await page.waitForSelector('body.search3-preview, #tourSearch',{timeout:20000});
+  await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}'});await sleep(500);
+  await footerCheck(page);await snap(page,'t00-footer','.ds2-site-footer');await snap(page,'t01-search');
+  if(!await clickVisible(page,'#tourSearch .search-submit',10000))throw new Error('mobile search submit missing');
+  const hasResults=await visible(page,'#results .hotel-card',120000);const complete=hasResults&&await attached(page,'#status .search-progress-done',120000);report.search={submitted:true,hasResults,complete};if(!hasResults||!complete)throw new Error('mobile search incomplete');
+  await settleImages(page,'#results .hotel-card img');
+  report.resultCardContract=await page.evaluate(()=>{const card=document.querySelector('#results .hotel-card'),filter=document.querySelector('.search3-mobile-filter-button'),sort=document.querySelector('.search3-mobile-sort-button'),desktop=document.querySelector('#resultsTools .results-tools__actions'),intro=document.querySelector('.search3-page-intro');if(!card||!filter||!sort)return null;const fr=filter.getBoundingClientRect(),sr=sort.getBoundingClientRect(),dc=desktop&&getComputedStyle(desktop),ic=intro&&getComputedStyle(intro);return{highlightCount:card.querySelectorAll('.search3-hotel-highlight').length,width:card.getBoundingClientRect().width,viewport:innerWidth,documentWidth:document.documentElement.scrollWidth,toolbarTopGap:Math.abs(fr.top-sr.top),toolbarWidthGap:Math.abs(fr.width-sr.width),desktopActionsVisible:!!(desktop&&dc.display!=='none'&&desktop.getClientRects().length),introVisible:!!(intro&&ic.display!=='none'&&intro.getClientRects().length)};});
+  if(!report.resultCardContract||report.resultCardContract.highlightCount<1)throw new Error('mobile enriched hotel facts missing');
+  if(report.resultCardContract.documentWidth>report.resultCardContract.viewport+2)throw new Error('mobile result card causes horizontal overflow');
+  if(report.resultCardContract.toolbarTopGap>2||report.resultCardContract.toolbarWidthGap>3)throw new Error('mobile filter/sort controls must share one equal-width row');
+  if(report.resultCardContract.desktopActionsVisible)throw new Error('desktop results controls visible in mobile flow');
+  await snap(page,'t02-results','#resultsTools');
+  if(!await clickVisible(page,'[data-s3-open-filters]',5000))throw new Error('mobile filters trigger missing');if(!await visible(page,'body.search3-filter-open .results-filter-rail',5000))throw new Error('mobile filter drawer missing');await snap(page,'t02a-filters-open','.results-filter-rail');
+  await page.evaluate(()=>{document.body.classList.remove('search3-filter-open');const o=document.querySelector('.search3-filter-overlay');if(o)o.hidden=true;const r=document.querySelector('.results-filter-rail');if(r){r.removeAttribute('aria-modal');r.removeAttribute('role')}});
+  if(!await clickVisible(page,'#results .search3-show-tours'))throw new Error('mobile show tours missing');if(!await visible(page,'#results .hotel-card .hotel-tours:not([hidden])',20000))throw new Error('mobile tour list missing');if(!await clickVisible(page,'#results .hotel-tours:not([hidden]) .direct-tour'))throw new Error('mobile direct tour missing');if(!await visible(page,'#selectedTour:not([hidden])',45000))throw new Error('mobile selected tour missing');report.tourDetailsReady=await visible(page,'#selectedTour .selected-head h2, #selectedTour .selected-picture',45000);if(!report.tourDetailsReady)throw new Error('mobile tour details loading');await settleImages(page,'#selectedTour img');await snap(page,'t03-tour-details','#selectedTour');
+  if(!await visible(page,'#selectedTour .tour-flights',30000))throw new Error('mobile flights missing');if(!await visible(page,'#selectedTour .flight-variant',45000))throw new Error('mobile flight variants missing');if(!await visible(page,'#selectedTour .search3-flight-continue button',6000))throw new Error('mobile flight continue missing');await snap(page,'t04-flights','#selectedTour .tour-flights');
+  if(!await clickVisible(page,'#selectedTour .search3-flight-continue button',7000))throw new Error('mobile flight continue did not click');if(!await visible(page,'#selectedTour.search3-final-review',10000))throw new Error('mobile final review missing');await snap(page,'t05-final-review','#selectedTour');
+  console.log('[tablet] entering lead');
+  if(!await clickVisible(page,'#selectedTour .search3-summary-submit',7000))throw new Error('mobile lead CTA did not click');
+  if(!await visible(page,'#selectedTour.search3-lead-entry .lead-form',6000))throw new Error('mobile lead entry did not open');
+  if(!await visible(page,'#selectedTour.search3-lead-entry .lead-form:not([data-search3-lead-state]) button[type="submit"]',4000))throw new Error('mobile lead submit missing');
+  await snap(page,'t06-lead-entry','#selectedTour .lead-form');
+  if(!await forceLeadState(page,'success',{leadId:'PREVIEW'}))throw new Error('mobile success state missing');await snap(page,'t07-lead-success','#selectedTour .lead-form');report.mobileFlow=true;
+ }catch(e){report.errors.push(String(e));console.error(e)}finally{report.finishedAt=new Date().toISOString();report.captureComplete=required.every(n=>report.states.some(s=>s.name===n&&s.ok));fs.writeFileSync(path.join(outDir,'report-mobile.json'),JSON.stringify(report,null,2));await context.close().catch(()=>{});await browser.close().catch(()=>{})}
+ const search=report.search&&report.search.hasResults&&report.search.complete;const pass=report.http>0&&report.http<400&&search&&report.captureComplete&&report.tourDetailsReady&&report.mobileFlow===true&&report.errors.length===0;if(!pass){console.error('Mobile Search3 QA failed',JSON.stringify(report));process.exit(2)}
+})().catch(e=>{console.error(e);process.exit(1)});
