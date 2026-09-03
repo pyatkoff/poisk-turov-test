@@ -1,0 +1,1 @@
+<?php declare(strict_types=1); require_once dirname(dirname(dirname(dirname(__DIR__)))).'/seo-seasonal-page-v1.php'; require_once dirname(dirname(dirname(dirname(__DIR__)))).'/seo-core-month-route-resolver-v1.php'; v2_seo_render_seasonal(v2_seo_core_month_record_for_path('/country/turkey/side/may/'));
