@@ -7,10 +7,14 @@ on:
       - 'v2/seo-*.php'
       - 'v2/sitemap.xml'
       - 'v2/data/seo-controlled-route-identities-v1.php'
+      - 'v2/data/seo-core-hotel-cohort-source-v1.php'
+      - 'v2/data/materialize-seo-core-hotel-review-routes-v1.php'
+      - 'v2/data/report-seo-core-hotel-cohort-v1.php'
       - 'tests/seo-core-month-content-smoke.php'
       - 'tests/seo-launch-slice-smoke.php'
       - 'tests/seo-controlled-growth-guard.php'
       - 'tests/seo-core-hotel-cohort-smoke.php'
+      - 'tests/seo-core-hotel-review-runtime-smoke.php'
       - '.github/workflows/validate-v2-seo-readiness.yml'
   workflow_dispatch:
 
@@ -37,9 +41,14 @@ jobs:
           php -l v2/seo-production-identity-collector-v1.php >/dev/null
           php -l v2/seo-core-hotel-cohort-v1.php >/dev/null
           php -l v2/seo-hotel-tour-page-v1.php >/dev/null
+          php -l v2/seo-core-hotel-review-runtime-v1.php >/dev/null
+          php -l v2/data/seo-core-hotel-cohort-source-v1.php >/dev/null
+          php -l v2/data/materialize-seo-core-hotel-review-routes-v1.php >/dev/null
+          php -l v2/data/report-seo-core-hotel-cohort-v1.php >/dev/null
           php tests/seo-core-month-content-smoke.php
           php tests/seo-launch-slice-smoke.php
           php tests/seo-controlled-growth-guard.php
           php tests/seo-production-identity-collector-smoke.php
           php tests/seo-core-hotel-cohort-smoke.php
-          echo 'V2_SEO_CORE_OK public=104 core_months=96 hotel_tours_indexed=0'
+          php tests/seo-core-hotel-review-runtime-smoke.php
+          echo 'V2_SEO_CORE_OK public=104 core_months=96 hotel_tours_indexed=0 top500_review_runtime=1'
