@@ -3,6 +3,7 @@ declare(strict_types=1);
 require_once __DIR__.'/site-page-shell-v1.php';
 require_once __DIR__.'/seo-page-contract-v1.php';
 require_once __DIR__.'/seo-seasonal-offer-snapshot-v1.php';
+require_once __DIR__.'/seo-price-calendar-v1.php';
 
 /** Render an approved/review seasonal page on its final clean URL. */
 function v2_seo_render_seasonal(array $record): void
@@ -49,6 +50,22 @@ function v2_seo_render_seasonal(array $record): void
         }
         echo '</div></section>';
     }
+
+    $countryId=(int)($identity['country_id']??($page['search_state']['country']??0));
+    $regionId=(int)($identity['region_id']??($page['search_state']['region']??0));
+    $year=(int)($identity['year']??0);
+    $month=(int)($identity['month']??0);
+    $monthFrom=null;$monthTo=null;
+    if($year>=2020&&$year<=2100&&$month>=1&&$month<=12){
+        try{
+            $monthStart=v2_price_calendar_date(sprintf('%04d-%02d-01',$year,$month));
+            $monthFrom=$monthStart->format('Y-m-d');
+            $monthTo=$monthStart->modify('last day of this month')->format('Y-m-d');
+        }catch(Throwable){$monthFrom=null;$monthTo=null;}
+    }
+    $calendarOffers=($countryId>0&&$monthFrom!==null&&$monthTo!==null)?v2_seo_seasonal_snapshot_offers($pageKey,12):[];
+    $priceCalendar=$calendarOffers?v2_seo_price_calendar($calendarOffers,$countryId,$regionId,14,$monthFrom,$monthTo):[];
+    echo v2_seo_render_price_calendar($priceCalendar,$page['search_state'],'Цены по датам вылета в выбранном месяце');
 
     $links=[];foreach($page['related'] as $link){if(!is_array($link))continue;$href=v2_seo_stable_internal_href($link['href']??'');$label=trim((string)($link['label']??''));if($href!==null&&$label!=='')$links[$href]=$label;}
     if($links){echo '<section class="sp-card sp-related-card"><h2>'.sp_e($page['related_title']?:'Другие направления').'</h2><div class="sp-actions">';foreach($links as $href=>$label)echo '<a class="sp-secondary" href="'.sp_e($href).'">'.sp_e($label).'</a>';echo '</div></section>';}

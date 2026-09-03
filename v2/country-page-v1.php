@@ -2,6 +2,7 @@
 require_once __DIR__ . '/site-page-shell-v1.php';
 require_once __DIR__ . '/seo-page-primitives-v1.php';
 require_once __DIR__ . '/seo-offer-snapshot-v1.php';
+require_once __DIR__ . '/seo-price-calendar-v1.php';
 
 function cp_related_destinations(string $slug): array
 {
@@ -57,7 +58,9 @@ function cp_render(array $page): void
     $searchState = $countryId > 0 ? ['country' => $countryId] : [];
     $searchHref = '/poisk-turov/' . ($countryId > 0 ? '?country=' . $countryId : '');
     $searchLabel = $countryId > 0 ? ('Найти туры в ' . $name) : 'Открыть поиск туров';
-    $offers = $countryId > 0 ? v2_seo_country_snapshot_offers($countryId, 6) : [];
+    $offerCandidates = $countryId > 0 ? v2_seo_country_snapshot_offers($countryId, 12) : [];
+    $offers = array_slice($offerCandidates, 0, 6);
+    $priceCalendar = $countryId > 0 ? v2_seo_price_calendar($offerCandidates, $countryId, 0, 14) : [];
     $c = sp_context('/country/' . $slug . '/', $title, $description);
     sp_head($c); sp_header($c);
     sp_breadcrumbs([['label'=>'Главная','href'=>'/'],['label'=>'Страны','href'=>'/country/'],['label'=>$h1]]);
@@ -70,6 +73,7 @@ function cp_render(array $page): void
       <?php if ($facts): ?><section aria-labelledby="country-guide-title"><div class="sp-section-head"><h2 id="country-guide-title">Что важно при выборе</h2><p>Короткие ориентиры перед тем, как сравнивать отели, даты и конкретные варианты тура.</p></div><div class="sp-grid sp-grid--balanced-three"><?php foreach ($facts as $fact): ?><article class="sp-card"><h3><?=sp_e((string)($fact['title'] ?? 'Важно знать'))?></h3><p><?=sp_e((string)($fact['text'] ?? ''))?></p></article><?php endforeach; ?></div></section><?php endif; ?>
       <?php foreach ($editorialSections as $section): $sectionTitle=trim((string)($section['title']??'')); $paragraphs=array_values(array_filter(array_map(fn($p)=>trim((string)$p),(array)($section['paragraphs']??[])))); if($sectionTitle===''||!$paragraphs) continue; ?><section class="sp-card"><h2><?=sp_e($sectionTitle)?></h2><?php foreach($paragraphs as $paragraph): ?><p><?=sp_e($paragraph)?></p><?php endforeach; ?></section><?php endforeach; ?>
       <?php if ($offers): ?><section class="sp-card sp-offer-snapshot" data-country-offer-snapshot><h2>Актуальные туры</h2><p>Предложения собраны из свежих ценовых наблюдений AnyTour. Стоимость и доступность перепроверяются в поиске перед заявкой.</p><div class="sp-offer-list"><?php foreach ($offers as $offer): $hotel=trim((string)($offer['hotelName']??''))?:'Отель'; $departure=trim((string)($offer['departureName']??'')); $date=v2_seo_offer_date_label((string)($offer['departureDate']??'')); $nights=(int)($offer['nights']??0); $priceMarkup=v2_seo_offer_price_markup($offer); $offerSearchState=$searchState; $departureId=(int)($offer['departureId']??0); if($departureId>0)$offerSearchState['from']=$departureId; $offerHref=v2_seo_search_handoff_url('/poisk-turov/',$offerSearchState); ?><article class="sp-offer-item"><h3><?=sp_e($hotel)?></h3><div class="sp-offer-meta"><?php if($departure!==''): ?><span class="sp-offer-fact">Вылет из <?=sp_e($departure)?></span><?php endif; ?><span class="sp-offer-fact"><?=sp_e($date)?></span><span class="sp-offer-fact"><?=sp_e((string)$nights)?> ночей</span></div><div class="sp-offer-bottom"><?=$priceMarkup?><a class="sp-secondary sp-offer-action" href="<?=sp_e($offerHref)?>">Посмотреть туры</a></div></article><?php endforeach; ?></div></section><?php endif; ?>
+      <?=v2_seo_render_price_calendar($priceCalendar, $searchState, 'Цены на туры в ' . $name . ' по датам вылета')?>
       <?php if ($hotelTourLinks): ?><section class="sp-card" data-hotel-tour-links><h2>Туры в отели</h2><p>Перейдите на страницу конкретного отеля, чтобы посмотреть свежие пакетные предложения и продолжить подбор с уже выбранным отелем.</p><div class="sp-actions"><?php foreach ($hotelTourLinks as $href=>$label): ?><a class="sp-secondary" href="<?=sp_e($href)?>"><?=sp_e($label)?></a><?php endforeach; ?></div></section><?php endif; ?>
       <?php if ($relatedDestinations): ?><section aria-labelledby="country-related-title" data-related-destinations><div class="sp-section-head"><h2 id="country-related-title">Сравните похожие направления</h2><p>Если даты или формат отдыха ещё не окончательные, посмотрите несколько альтернатив и затем сравните живые предложения в общем поиске.</p></div><div class="sp-country-grid sp-country-grid--related"><?php foreach ($relatedDestinations as [$relatedName,$relatedHref,$relatedNote]): ?><a class="sp-country" href="<?=sp_e($relatedHref)?>"><span><?=sp_e($relatedName)?></span><small><?=sp_e($relatedNote)?></small><span class="sp-country-action">Открыть направление</span></a><?php endforeach; ?></div></section><?php endif; ?>
     </main>

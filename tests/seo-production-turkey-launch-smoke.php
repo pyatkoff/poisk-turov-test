@@ -79,9 +79,12 @@ foreach($secondDossier['rows'] as $row){
 }
 
 // Country pages may expose commercial inventory only from fresh first-party snapshots.
+// A wider 12-offer snapshot window is allowed solely to plan the calendar; visible
+// tour cards remain capped to the original first six.
 $snapshotSource=file_get_contents(__DIR__.'/../v2/seo-offer-snapshot-v1.php');
 $countryPageSource=file_get_contents(__DIR__.'/../v2/country-page-v1.php');
-if($snapshotSource===false||$countryPageSource===false) production_launch_fail('country_offer_source_missing');
+$calendarSource=file_get_contents(__DIR__.'/../v2/seo-price-calendar-v1.php');
+if($snapshotSource===false||$countryPageSource===false||$calendarSource===false) production_launch_fail('country_offer_source_missing');
 foreach([
     'function v2_seo_country_snapshot_offers',
     "s.page_type='country'",
@@ -90,15 +93,25 @@ foreach([
 ] as $needle) if(!str_contains($snapshotSource,$needle)) production_launch_fail('country_snapshot_contract:'.$needle);
 foreach([
     "require_once __DIR__ . '/seo-offer-snapshot-v1.php'",
-    'v2_seo_country_snapshot_offers($countryId, 6)',
+    "require_once __DIR__ . '/seo-price-calendar-v1.php'",
+    'v2_seo_country_snapshot_offers($countryId, 12)',
+    'array_slice($offerCandidates, 0, 6)',
     'data-country-offer-snapshot',
     'Стоимость и доступность перепроверяются в поиске перед заявкой.',
     "v2_seo_search_handoff_url('/poisk-turov/'",
+    'v2_seo_render_price_calendar',
 ] as $needle) if(!str_contains($countryPageSource,$needle)) production_launch_fail('country_offer_render_contract:'.$needle);
+foreach([
+    'tour_price_observations',
+    'INTERVAL 72 HOUR',
+    'v2_price_calendar_build',
+    'cachedPriceIsFinal',
+] as $needle) if(!str_contains($calendarSource,$needle)) production_launch_fail('country_calendar_contract:'.$needle);
 if(str_contains($countryPageSource,'tourvisor-client-v1.php')||str_contains($countryPageSource,'v2_data_tv_')||str_contains($countryPageSource,'curl_')) production_launch_fail('country_page_live_provider_call');
+if(str_contains($calendarSource,'tourvisor-client-v1.php')||str_contains($calendarSource,'v2_data_tv_')||str_contains($calendarSource,'curl_')) production_launch_fail('calendar_live_provider_call');
 
 // Seasonal authorization itself is evidence-bound by the dedicated live dossier; this
 // smoke only confirms that no path outside the exact approved pair leaked into launch.
 foreach($seasonal as $path) if(str_contains($path,'/hotel/')||!str_ends_with($path,'/september/')) production_launch_fail('seasonal_path_boundary');
 
-echo "SEO_PRODUCTION_CONTROLLED_LAUNCH_OK paths=10 turkey=6 secondWave=2 seasonal=2 sitemap=10 hotelTours=0 rollback=1 evidence=1 countryOffers=firstPartyFreshOnly\n";
+echo "SEO_PRODUCTION_CONTROLLED_LAUNCH_OK paths=10 turkey=6 secondWave=2 seasonal=2 sitemap=10 hotelTours=0 rollback=1 evidence=1 countryOffers=firstPartyFreshOnly calendar=firstParty72h visibleCards=6\n";
