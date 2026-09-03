@@ -6,7 +6,7 @@ function seasonal_boundary_fail(string $code): void { fwrite(STDERR,"SEO_SEASONA
 
 $catalog=v2_seo_seasonal_preview_catalog();
 $records=v2_seo_seasonal_review_content_prototypes();
-if(count($catalog)!==2) seasonal_boundary_fail('unexpected_preview_count');
+if(count($catalog)!==4) seasonal_boundary_fail('unexpected_preview_count');
 $seen=[];
 foreach($catalog as $key=>$preview){
     if(!is_array($preview)) seasonal_boundary_fail('invalid_preview');
