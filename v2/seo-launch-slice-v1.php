@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/seo-sitemap-candidates-v1.php';
 require_once __DIR__ . '/seo-core-month-matrix-v1.php';
+require_once __DIR__ . '/seo-core-resort-launch-state-v1.php';
 
 /** First production SEO rollout slice retained for compatibility and rollback. */
 function v2_seo_turkey_launch_paths(): array
@@ -33,7 +34,7 @@ function v2_seo_seasonal_september_launch_paths(): array
     ];
 }
 
-/** Core scalable country/resort month family: 36 country-month + 60 resort-month. */
+/** Core scalable country/resort month family: 36 country-month + 60 Turkey resort-month. */
 function v2_seo_core_month_launch_paths(): array
 {
     return array_values(array_map(
@@ -42,13 +43,26 @@ function v2_seo_core_month_launch_paths(): array
     ));
 }
 
-/** Single exact-path production indexation allowlist. hotel_tours are absent. */
-function v2_seo_controlled_launch_paths(): array
+/** Source-controlled baseline. Dynamic Egypt/Maldives resort routes are added separately. */
+function v2_seo_static_controlled_launch_paths(): array
 {
     return array_values(array_unique(array_merge(
         v2_seo_turkey_launch_paths(),
         v2_seo_second_wave_country_launch_paths(),
         v2_seo_core_month_launch_paths()
+    )));
+}
+
+/**
+ * Single exact-path production indexation allowlist.
+ * Generated Egypt/Maldives resort routes enter only after the production
+ * materializer writes a validated launch manifest. hotel_tours stay absent.
+ */
+function v2_seo_controlled_launch_paths(): array
+{
+    return array_values(array_unique(array_merge(
+        v2_seo_static_controlled_launch_paths(),
+        v2_seo_core_resort_launch_paths()
     )));
 }
 
