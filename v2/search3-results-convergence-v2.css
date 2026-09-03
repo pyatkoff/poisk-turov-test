@@ -170,3 +170,15 @@ html body.search3-preview.search3-has-results #results .hotel-card .hotel-best-o
  html body.search3-preview.search3-has-results #selectedTour{order:5!important}
  html body.search3-preview.search3-has-results #resultsTools strong{font-size:18px!important}
 }
+
+/* Tablet card density: preserve the desktop hierarchy without crushing the content column. */
+@media(min-width:761px) and (max-width:999px){
+ html body.search3-preview.search3-has-results #results .hotel-main{grid-template-columns:232px minmax(0,1fr)!important}
+ html body.search3-preview.search3-has-results #results .hotel-body{grid-template-columns:minmax(0,1fr) 150px!important;column-gap:12px!important;padding:12px!important}
+ html body.search3-preview.search3-has-results #results .hotel-title{font-size:14px!important}
+ html body.search3-preview.search3-has-results #results .hotel-bottom{padding-left:12px!important}
+ html body.search3-preview.search3-has-results #results .hotel-price{font-size:18px!important}
+ html body.search3-preview.search3-has-results #results .search3-hotel-highlight--room{display:none!important}
+ html body.search3-preview.search3-has-results #results .search3-hotel-highlight b{max-width:92px!important}
+ html body.search3-preview.search3-has-results #results .search3-hotel-action{grid-template-columns:minmax(0,1fr) 150px!important;gap:12px!important}
+}
