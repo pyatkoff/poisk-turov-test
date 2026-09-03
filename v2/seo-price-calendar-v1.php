@@ -80,7 +80,7 @@ function v2_seo_price_calendar_plan(
     $nightCounts = (array)$chosen['nights'];
     uksort($nightCounts, static function ($a, $b) use ($nightCounts): int {
         $count = ((int)$nightCounts[$b]) <=> ((int)$nightCounts[$a]);
-        return $count !== 0 ? $count : ((int)$a <=> (int)$b;
+        return $count !== 0 ? $count : ((int)$a <=> (int)$b);
     });
     $nights = (int)array_key_first($nightCounts);
     if ($nights <= 0) return null;
