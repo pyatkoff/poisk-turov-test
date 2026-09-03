@@ -149,3 +149,5 @@ body.search3-preview #results .hotel-body{margin:0!important}
 
 /* The normalized price already contains the “от” prefix. */
 body.search3-preview #results .hotel-best-offer>small{display:none!important}
+
+html body.search3-preview.search3-has-results #results .hotel-card .hotel-best-offer>small{display:none!important}
