@@ -21,6 +21,10 @@ html body.search3-preview .ds2-site-footer__legal{gap:16px!important}
 html body.search3-preview .ds2-site-footer__payments span{display:inline-flex!important;align-items:center!important;justify-content:center!important}
 }
 
+/* Do not depend on a platform-specific Apple glyph that is absent in the active webfont. */
+html body.search3-preview .search3-footer-apps a:first-child{font-size:0!important}
+html body.search3-preview .search3-footer-apps a:first-child b{font-size:10px!important}
+
 /* Approved full mobile flow: after choosing a concrete tour the booking journey is a separate view.
    Header and selected-tour/back control stay visible; search/results return when selected-open is removed. */
 @media(max-width:640px){
