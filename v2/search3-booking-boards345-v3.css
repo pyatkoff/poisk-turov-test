@@ -1,0 +1,157 @@
+/* Search3 approved boards 3–5: final responsive convergence.
+   Visual-only layer. Does not alter Tourvisor data, pricing, flight selection or lead transport. */
+
+/* Keep factual flight information dense and scan-friendly. */
+html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-variants{
+  gap:10px!important;
+}
+html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-variant{
+  border-radius:12px!important;
+}
+html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-choice{
+  min-height:44px!important;
+}
+html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-segment{
+  border-radius:0!important;
+}
+
+@media(max-width:640px){
+  /* Approved mobile flight card keeps departure and arrival on one row. */
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights{
+    padding:10px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-variants{
+    gap:8px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-variant{
+    overflow:hidden!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-choice{
+    grid-template-columns:auto minmax(0,1fr) auto!important;
+    gap:6px 8px!important;
+    padding:9px 10px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-choice span{
+    font-size:10px!important;
+    line-height:1.2!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-choice b{
+    font-size:11px!important;
+    line-height:1.1!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-choice-summary{
+    margin-top:2px!important;
+    font-size:9px!important;
+    line-height:1.25!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-segment{
+    padding:8px 9px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-segment-title{
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:8px!important;
+    margin-bottom:6px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-segment-title strong{
+    font-size:10px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-segment-title span{
+    max-width:62%!important;
+    font-size:8px!important;
+    line-height:1.2!important;
+    text-align:right!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-route{
+    grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)!important;
+    align-items:center!important;
+    gap:5px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-route>div:not(.flight-arrow){
+    gap:2px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-route b{
+    font-size:9px!important;
+    line-height:1.15!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-route span{
+    font-size:7.5px!important;
+    line-height:1.2!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-arrow{
+    width:auto!important;
+    height:auto!important;
+    transform:none!important;
+    justify-self:center!important;
+    background:transparent!important;
+    font-size:12px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-baggage{
+    margin-top:5px!important;
+    font-size:7.5px!important;
+    line-height:1.25!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-fuel{
+    padding:6px 9px!important;
+    font-size:7.5px!important;
+  }
+
+  /* Board 5: mobile final hotel summary should read as one compact card, not a tall hero. */
+  html body.search3-preview.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .selected-picture{
+    height:112px!important;
+    min-height:112px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .selected-head{
+    height:112px!important;
+    min-height:112px!important;
+    padding:10px 12px!important;
+    align-content:center!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .selected-head h2{
+    margin:0 0 4px!important;
+    font-size:18px!important;
+    line-height:1.08!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .selected-head p{
+    margin:0!important;
+    font-size:8px!important;
+    line-height:1.3!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .tour-flights{
+    margin-top:9px!important;
+  }
+}
+
+@media(min-width:641px) and (max-width:999px){
+  /* Tablet should keep flight routes horizontal and avoid oversized booking rows. */
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-segment{
+    padding:10px 11px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-route{
+    grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr)!important;
+    gap:6px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-route b{
+    font-size:10px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-route span{
+    font-size:8px!important;
+  }
+}
+
+@media(min-width:1000px){
+  /* Boards 3–5 desktop: reduce visual weight without removing real flight facts. */
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-choice{
+    padding:9px 11px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-segment{
+    padding:9px 11px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-segment-title{
+    margin-bottom:6px!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .tour-flights .flight-baggage{
+    margin-top:6px!important;
+  }
+}
