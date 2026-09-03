@@ -134,3 +134,9 @@ body.search3-preview #results .hotel-body{margin:0!important}
  body.search3-preview #results .hotel-photo{height:158px!important;min-height:158px!important}
  body.search3-preview #results .hotel-photo img{height:158px!important}
 }
+
+/* Keep the media column flush with the taller information column. */
+@media(min-width:761px){
+ body.search3-preview:not(.search3-hotel-tours-open) #results .hotel-card .hotel-main>.hotel-photo{height:auto!important;min-height:188px!important;align-self:stretch!important}
+ body.search3-preview:not(.search3-hotel-tours-open) #results .hotel-card .hotel-main>.hotel-photo>img{height:100%!important;min-height:188px!important}
+}
