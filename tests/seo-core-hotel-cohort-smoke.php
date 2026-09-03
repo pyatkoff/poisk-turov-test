@@ -14,7 +14,6 @@ for($i=1;$i<=520;$i++){
         'observation_count'=>600-$i,'last_observed_at'=>'2026-09-03 12:00:00',
     ];
 }
-// Existing already-id-suffixed catalog slugs remain stable rather than getting the id twice.
 $rows[1]['hotel_slug']='hotel-2-10002';
 $result=v2_seo_core_hotel_cohort_records($rows,500);
 if(($result['state']??'')!=='review_only_core_hotel_cohort_ready')exit(1);
@@ -28,9 +27,17 @@ if(($first['data']['search_state']??[])!==['country'=>1,'hotel'=>10001])exit(7);
 if(($first['path']??'')!=='/country/egypt/hotel/hotel-1-10001/')exit(8);
 if(($result['records'][1]['path']??'')!=='/country/turkey/hotel/hotel-2-10002/')exit(9);
 if(($first['cohort_evidence']['selection_basis']??'')!=='fresh_first_party_inventory_observation_coverage')exit(10);
+$related=$first['data']['related']??[];
+if(count($related)!==13)exit(11);
+$hrefs=array_column($related,'href');
+foreach(['/country/egypt/','/country/egypt/january/','/country/egypt/september/','/country/egypt/december/'] as $href)if(!in_array($href,$hrefs,true))exit(12);
+if(($first['data']['related_title']??'')!=='Туры в Египет по месяцам')exit(13);
+if(!str_contains((string)($first['data']['description']??''),'по месяцам'))exit(14);
+if(count($first['data']['sections']??[])!==3)exit(15);
+if(($first['data']['sections'][1]['id']??'')!=='choose-month')exit(16);
 $bad=$rows;
 $bad[0]['hotel_slug']='broken slug';
 $badResult=v2_seo_core_hotel_cohort_records($bad,500);
-if(($badResult['count']??0)!==500)exit(11); // invalid row skipped, next valid row fills cohort
-foreach($badResult['records'] as $record)if(($record['data']['search_state']['hotel']??0)===10001)exit(12);
-echo "SEO_CORE_HOTEL_COHORT_OK records=500 review=1 catalog_slug_plus_id=1 publication=0\n";
+if(($badResult['count']??0)!==500)exit(17);
+foreach($badResult['records'] as $record)if(($record['data']['search_state']['hotel']??0)===10001)exit(18);
+echo "SEO_CORE_HOTEL_COHORT_OK records=500 month_links=12 review=1 publication=0\n";
