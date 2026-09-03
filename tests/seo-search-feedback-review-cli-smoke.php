@@ -23,18 +23,11 @@ $feedback=['rows'=>[[
     'metrics'=>['impressions'=>1200,'clicks'=>72,'avg_position'=>12.0,'ctr'=>0.06,'query_count'=>40],
 ]]];
 $policy=[
-    'policy_id'=>'fixture-feedback-review-cli',
-    'version'=>'1',
-    'source_ref'=>'fixture://approved-policy',
-    'approved_at_epoch'=>$now-300,
-    'rules'=>[[
-        'rule_id'=>'visibility-needs-improvement',
-        'recommendation'=>'improve_review',
-        'conditions'=>[
-            ['field'=>'metrics.impressions','operator'=>'gte','value'=>1000],
-            ['field'=>'metrics.avg_position','operator'=>'gt','value'=>10],
-        ],
-    ]],
+    'policy_id'=>'fixture-feedback-review-cli','version'=>'1','source_ref'=>'fixture://approved-policy','approved_at_epoch'=>$now-300,
+    'rules'=>[['rule_id'=>'visibility-needs-improvement','recommendation'=>'improve_review','conditions'=>[
+        ['field'=>'metrics.impressions','operator'=>'gte','value'=>1000],
+        ['field'=>'metrics.avg_position','operator'=>'gt','value'=>10],
+    ]]],
 ];
 file_put_contents($feedbackFile,json_encode($feedback,JSON_THROW_ON_ERROR));
 file_put_contents($policyFile,json_encode($policy,JSON_THROW_ON_ERROR));
@@ -47,8 +40,8 @@ $out=[];$code=0;exec($cmd.' 2>&1',$out,$code);
 if($code!==0)search_feedback_review_cli_fail('valid_exit_'.$code.'_'.implode('|',$out));
 $decoded=json_decode(implode("\n",$out),true);
 if(!is_array($decoded)||($decoded['state']??'')!=='search_feedback_review_ready')search_feedback_review_cli_fail('valid_state');
-if(($decoded['launch_scope']??'')!=='controlled_country_resort_v2')search_feedback_review_cli_fail('scope');
-if(($decoded['observed_count']??0)!==1||($decoded['missing_count']??0)!==7)search_feedback_review_cli_fail('counts');
+if(($decoded['launch_scope']??'')!=='controlled_country_resort_seasonal_v3')search_feedback_review_cli_fail('scope');
+if(($decoded['observed_count']??0)!==1||($decoded['missing_count']??0)!==9)search_feedback_review_cli_fail('counts');
 if((($decoded['recommendations'][0]['recommendation']??null)!=='improve_review'))search_feedback_review_cli_fail('recommendation');
 if(($decoded['recommendation_semantics']??'')!=='review_only_no_execution'||($decoded['explicit_user_approval_required']??false)!==true)search_feedback_review_cli_fail('semantics');
 foreach(['automatic_execution_allowed','automatic_deindex_allowed','publication_allowed','indexation_change_allowed','sitemap_change_allowed','canonical_change_allowed','route_change_allowed','hotel_tours_indexation_allowed'] as $flag){
@@ -70,18 +63,13 @@ $decoded=json_decode(implode("\n",$out),true);
 if(!is_array($decoded)||($decoded['state']??'')!=='search_feedback_review_blocked')search_feedback_review_cli_fail('stale_state');
 
 file_put_contents($feedbackFile,json_encode($feedback,JSON_THROW_ON_ERROR));
-$noMatch=$policy;
-$noMatch['rules'][0]['conditions']=[['field'=>'metrics.impressions','operator'=>'gt','value'=>999999]];
+$noMatch=$policy;$noMatch['rules'][0]['conditions']=[['field'=>'metrics.impressions','operator'=>'gt','value'=>999999]];
 file_put_contents($policyFile,json_encode($noMatch,JSON_THROW_ON_ERROR));
 $out=[];$code=0;exec($cmd.' 2>&1',$out,$code);
 if($code!==3)search_feedback_review_cli_fail('no_match_exit_'.$code);
 
 $noindex=$policy;
-$noindex['rules'][0]=[
-    'rule_id'=>'review-noindex-only',
-    'recommendation'=>'noindex_review',
-    'conditions'=>[['field'=>'metrics.impressions','operator'=>'gte','value'=>0]],
-];
+$noindex['rules'][0]=['rule_id'=>'review-noindex-only','recommendation'=>'noindex_review','conditions'=>[['field'=>'metrics.impressions','operator'=>'gte','value'=>0]]];
 file_put_contents($policyFile,json_encode($noindex,JSON_THROW_ON_ERROR));
 $out=[];$code=0;exec($cmd.' 2>&1',$out,$code);
 if($code!==0)search_feedback_review_cli_fail('noindex_label_exit_'.$code);
@@ -89,12 +77,11 @@ $decoded=json_decode(implode("\n",$out),true);
 if(($decoded['recommendations'][0]['recommendation']??'')!=='noindex_review')search_feedback_review_cli_fail('noindex_label');
 if(($decoded['automatic_deindex_allowed']??true)!==false||($decoded['indexation_change_allowed']??true)!==false)search_feedback_review_cli_fail('noindex_execution_leak');
 
-$hotel=$feedback;
-$hotel['rows'][0]['path']='/country/turkey/hotel/aegean-park-1601/';
+$hotel=$feedback;$hotel['rows'][0]['path']='/country/turkey/hotel/aegean-park-1601/';
 file_put_contents($feedbackFile,json_encode($hotel,JSON_THROW_ON_ERROR));
 file_put_contents($policyFile,json_encode($policy,JSON_THROW_ON_ERROR));
 $out=[];$code=0;exec($cmd.' 2>&1',$out,$code);
 if($code!==3)search_feedback_review_cli_fail('hotel_exit_'.$code);
 
 @unlink($feedbackFile);@unlink($policyFile);
-echo "SEO_SEARCH_FEEDBACK_REVIEW_CLI_SMOKE_OK ready=1 cohort=8 missingUnknown=7 staleBlocked=1 noMatchBlocked=1 noindexReviewOnly=1 hotelBlocked=1\n";
+echo "SEO_SEARCH_FEEDBACK_REVIEW_CLI_SMOKE_OK ready=1 cohort=10 seasonal=2 missingUnknown=9 staleBlocked=1 noMatchBlocked=1 noindexReviewOnly=1 hotelBlocked=1\n";
