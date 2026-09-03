@@ -3,8 +3,8 @@
 Последнее обновление: 2026-09-03  
 Ветка: `feature/search3-preview`  
 Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`  
-Последний проверенный implementation baseline: `ecedaeb1396b553c7150e37d7c4031a5915dcd51`  
-Текущий visual candidate: `990fb0204d492de6779c4eea0abe61cde2971439`; текущий QA head: `bf59951aa7f3322d4df8f0c7af4033dc55e32223`; макет №1 уплотнён, filter sub-screens и реальный MAX/Telegram handoff включены в единый QA
+Последний проверенный implementation baseline: `990fb0204d492de6779c4eea0abe61cde2971439`  
+Текущий visual candidate: `990fb0204d492de6779c4eea0abe61cde2971439`; проверенный QA head: `bf59951aa7f3322d4df8f0c7af4033dc55e32223` (run 407: desktop/tablet/mobile SUCCESS); макет №1 уплотнён, filter sub-screens и реальный MAX/Telegram handoff включены в единый QA
 
 ## Источник истины: 8 утверждённых макетов
 
@@ -88,6 +88,8 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 - 2026-09-03 — макет №1: desktop-карточка уплотнена до hotel-level решения; повторяющиеся room/operator/flight tiles скрыты из сводки, фактические данные сохранены в facts/tour details.
 
 - 2026-09-03 — tablet QA теперь повторяет выбор на следующем реальном offer, если конкретный тур вернул 500/не дал flight variants; обязательный flights/final/lead контракт не ослаблен.
+
+- 2026-09-03 — run 407 полностью зелёный: deploy + desktop + tablet + mobile; живой desktop подтвердил 166px card/photo, 2 decision highlights и отсутствие overflow.
 
 ## Definition of done
 
