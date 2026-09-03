@@ -42,7 +42,7 @@ $payload=[
 ];
 $result=v2_seo_yandex_webmaster_feedback($payload,$collected);
 if(($result['state']??'')!=='yandex_webmaster_feedback_ready')yw_feedback_fail('state_'.implode(',',(array)($result['errors']??[])));
-if(($result['launch_scope']??'')!=='controlled_country_resort_v2'||($result['controlled_path_count']??0)!==8)yw_feedback_fail('scope');
+if(($result['launch_scope']??'')!=='controlled_country_resort_seasonal_v3'||($result['controlled_path_count']??0)!==10)yw_feedback_fail('scope');
 if(($result['selected_date_count']??0)!==7||($result['period_start_date']??'')!=='2026-08-27'||($result['period_end_date']??'')!=='2026-09-02')yw_feedback_fail('period');
 if(($result['observed_controlled_path_count']??0)!==2||($result['ignored_outside_cohort_count']??0)!==2)yw_feedback_fail('counts');
 $rows=[];foreach($result['rows'] as $row)$rows[$row['path']]=$row;
@@ -54,10 +54,10 @@ if(($turkey['metrics']['impressions']??null)!==700||($turkey['metrics']['clicks'
 if(abs((float)($turkey['metrics']['avg_position']??0)-8.0)>0.000001||abs((float)($turkey['metrics']['ctr']??0)-0.1)>0.000001)yw_feedback_fail('turkey_derived');
 if(($egypt['metrics']['impressions']??null)!==350||($egypt['metrics']['clicks']??null)!==35||abs((float)($egypt['metrics']['avg_position']??0)-12.0)>0.000001)yw_feedback_fail('egypt_metrics');
 $intake=v2_seo_search_feedback_intake(array_values($result['rows']),$collected);
-if(($intake['state']??'')!=='search_feedback_intake_ready'||($intake['observed_count']??0)!==2||count($intake['missing_paths']??[])!==6)yw_feedback_fail('intake');
+if(($intake['state']??'')!=='search_feedback_intake_ready'||($intake['observed_count']??0)!==2||count($intake['missing_paths']??[])!==8)yw_feedback_fail('intake');
 foreach(['publication_allowed','indexation_change_allowed','sitemap_change_allowed','canonical_change_allowed','route_change_allowed','hotel_tours_indexation_allowed'] as $flag){
     if(($result[$flag]??true)!==false)yw_feedback_fail('boundary_'.$flag);
 }
 if(($result['publication_candidates']??null)!==[])yw_feedback_fail('publication_candidates');
 
-echo "SEO_YANDEX_WEBMASTER_FEEDBACK_OK cohort=8 observed=2 ignoredOutside=2 dates=7 unknownMissing=6 hotelTours=0 execution=0\n";
+echo "SEO_YANDEX_WEBMASTER_FEEDBACK_OK cohort=10 observed=2 ignoredOutside=2 dates=7 unknownMissing=8 seasonal=2 hotelTours=0 execution=0\n";

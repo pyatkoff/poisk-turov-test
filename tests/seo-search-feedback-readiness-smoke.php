@@ -10,8 +10,9 @@ function feedback_readiness_fail(string $message): never
 
 $now=1800000000;
 $empty=v2_seo_search_feedback_readiness([],[],$now);
-if(($empty['state']??'')!=='search_feedback_readiness_blocked'||($empty['launch_path_count']??0)!==8)feedback_readiness_fail('empty_state');
-if(($empty['counts']['missing']??0)!==8||($empty['policy_status']??'')!=='missing'||($empty['review_ready']??true)!==false)feedback_readiness_fail('empty_counts');
+if(($empty['state']??'')!=='search_feedback_readiness_blocked'||($empty['launch_path_count']??0)!==10)feedback_readiness_fail('empty_state');
+if(($empty['launch_scope']??'')!=='controlled_country_resort_seasonal_v3')feedback_readiness_fail('scope');
+if(($empty['counts']['missing']??0)!==10||($empty['policy_status']??'')!=='missing'||($empty['review_ready']??true)!==false)feedback_readiness_fail('empty_counts');
 foreach($empty['pages'] as $page){
     if(($page['evidence_status']??'')!=='missing'||!array_key_exists('feedback_sha256',$page)||$page['feedback_sha256']!==null)feedback_readiness_fail('missing_semantics');
 }
@@ -42,7 +43,7 @@ $policy=[
 ];
 $ready=v2_seo_search_feedback_readiness($rows,$policy,$now);
 if(($ready['state']??'')!=='search_feedback_readiness_ready'||($ready['review_ready']??false)!==true)feedback_readiness_fail('ready_state');
-if(($ready['counts']['ready']??0)!==8||($ready['policy_status']??'')!=='ready'||($ready['evidence_complete']??false)!==true)feedback_readiness_fail('ready_counts');
+if(($ready['counts']['ready']??0)!==10||($ready['policy_status']??'')!=='ready'||($ready['evidence_complete']??false)!==true)feedback_readiness_fail('ready_counts');
 if(($ready['publication_candidates']??null)!==[])feedback_readiness_fail('publication_candidates');
 foreach(['automatic_execution_allowed','automatic_expand_allowed','automatic_deindex_allowed','publication_allowed','indexation_change_allowed','sitemap_change_allowed','canonical_change_allowed','route_change_allowed','hotel_tours_indexation_allowed','hotel_tours_sitemap_allowed','search_contract_changes','tourvisor_contract_changes','pricing_contract_changes','lead_contract_changes','metrika_contract_changes'] as $flag){
     if(($ready[$flag]??true)!==false)feedback_readiness_fail('boundary_'.$flag);
@@ -71,4 +72,4 @@ $rev=array_reverse($rows);
 $b=v2_seo_search_feedback_readiness($rev,$policy,$now);
 if(($a['readiness_sha256']??'')!==($b['readiness_sha256']??''))feedback_readiness_fail('fingerprint_order');
 
-echo "SEO_SEARCH_FEEDBACK_READINESS_OK cohort=8 ready=8 missingUnknown=8 staleBlocked=1 policyRequired=1 hotelTours=0 execution=0\n";
+echo "SEO_SEARCH_FEEDBACK_READINESS_OK cohort=10 ready=10 missingUnknown=10 seasonal=2 staleBlocked=1 policyRequired=1 hotelTours=0 execution=0\n";

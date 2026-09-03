@@ -81,7 +81,7 @@ function v2_seo_search_feedback_readiness(array $rows, array $policy=[], ?int $n
     $reviewReady=$evidenceComplete && $policyStatus==='ready';
     $stable=[
         'domain'=>'anytoour.ru',
-        'launch_scope'=>'controlled_country_resort_v2',
+        'launch_scope'=>'controlled_country_resort_seasonal_v3',
         'pages'=>$pages,
         'counts'=>$counts,
         'global_errors'=>$globalErrors,
@@ -93,7 +93,7 @@ function v2_seo_search_feedback_readiness(array $rows, array $policy=[], ?int $n
     return [
         'state'=>$reviewReady?'search_feedback_readiness_ready':'search_feedback_readiness_blocked',
         'domain'=>'anytoour.ru',
-        'launch_scope'=>'controlled_country_resort_v2',
+        'launch_scope'=>'controlled_country_resort_seasonal_v3',
         'launch_path_count'=>count($paths),
         'evidence_complete'=>$evidenceComplete,
         'review_ready'=>$reviewReady,

@@ -124,7 +124,7 @@ function v2_seo_yandex_webmaster_feedback(array $payload, ?int $collectedAtEpoch
     return [
         'state'=>$errors===[]?'yandex_webmaster_feedback_ready':'yandex_webmaster_feedback_partial',
         'domain'=>'anytoour.ru',
-        'launch_scope'=>'controlled_country_resort_v2',
+        'launch_scope'=>'controlled_country_resort_seasonal_v3',
         'host_id'=>$hostId,
         'collected_at_epoch'=>$collectedAtEpoch,
         'period_start_date'=>$periodStart,

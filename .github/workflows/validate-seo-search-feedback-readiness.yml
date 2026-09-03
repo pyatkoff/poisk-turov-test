@@ -39,4 +39,4 @@ jobs:
           php -l tests/seo-search-feedback-readiness-smoke.php >/dev/null
           php tests/seo-search-feedback-readiness-smoke.php
           php v2/data/report-seo-search-feedback-readiness-v1.php > /tmp/readiness.json
-          php -r '$x=json_decode(file_get_contents("/tmp/readiness.json"),true); if(($x["launch_path_count"]??0)!==8) exit(1); if(($x["counts"]["missing"]??0)!==8) exit(2); if(($x["policy_status"]??"")!=="missing") exit(3); if(($x["review_ready"]??true)!==false) exit(4); if(($x["publication_candidates"]??null)!==[]) exit(5); echo "SEO_SEARCH_FEEDBACK_READINESS_CLI_OK missing=8 reviewReady=0 publication=0\n";'
+          php -r '$x=json_decode(file_get_contents("/tmp/readiness.json"),true); if(($x["launch_scope"]??"")!=="controlled_country_resort_seasonal_v3") exit(1); if(($x["launch_path_count"]??0)!==10) exit(2); if(($x["counts"]["missing"]??0)!==10) exit(3); if(($x["policy_status"]??"")!=="missing") exit(4); if(($x["review_ready"]??true)!==false) exit(5); if(($x["publication_candidates"]??null)!==[]) exit(6); echo "SEO_SEARCH_FEEDBACK_READINESS_CLI_OK cohort=10 missing=10 seasonal=2 reviewReady=0 publication=0\n";'
