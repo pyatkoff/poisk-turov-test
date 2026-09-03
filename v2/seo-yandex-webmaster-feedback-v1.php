@@ -37,7 +37,7 @@ function v2_seo_yandex_webmaster_feedback(array $payload, ?int $collectedAtEpoch
     if(!is_array($responses))$responses=[];
     if(!array_is_list($responses))$responses=[$responses];
     $allowed=v2_seo_controlled_launch_paths();
-    $byPath=[];$dates=[];$ignored=0;$errors=[];
+    $byPath=[];$dates=[];$ignored=0;$errors=[];$identicalDuplicates=0;$conflictingDuplicates=0;
 
     foreach($responses as $responseIndex=>$response){
         if(!is_array($response)){$errors[]='invalid_response_'.$responseIndex;continue;}
@@ -62,7 +62,18 @@ function v2_seo_yandex_webmaster_feedback(array $payload, ?int $collectedAtEpoch
                 if(!in_array($field,['IMPRESSIONS','CLICKS','POSITION','CTR'],true))continue;
                 if(!is_int($value)&&!is_float($value)){$errors[]='stat_value_invalid:'.$path.':'.$field;continue;}
                 if((float)$value<0){$errors[]='stat_value_negative:'.$path.':'.$field;continue;}
-                $byPath[$path][$date][$field]=(float)$value;
+                $normalizedValue=(float)$value;
+                if(isset($byPath[$path][$date])&&array_key_exists($field,$byPath[$path][$date])){
+                    $existing=(float)$byPath[$path][$date][$field];
+                    if(abs($existing-$normalizedValue)<=0.000000001){
+                        $identicalDuplicates++;
+                        continue;
+                    }
+                    $conflictingDuplicates++;
+                    $errors[]='conflicting_duplicate_stat:'.$path.':'.$date.':'.$field;
+                    continue;
+                }
+                $byPath[$path][$date][$field]=$normalizedValue;
                 $dates[$date]=true;
             }
         }
@@ -70,7 +81,6 @@ function v2_seo_yandex_webmaster_feedback(array $payload, ?int $collectedAtEpoch
 
     $dateList=array_keys($dates); sort($dateList,SORT_STRING);
     if(count($dateList)>7)$dateList=array_slice($dateList,-7);
-    $dateSet=array_fill_keys($dateList,true);
     $periodStart=$dateList[0]??'';
     $periodEnd=$dateList!==[]?$dateList[count($dateList)-1]:'';
     $startEpoch=$periodStart!==''?(new DateTimeImmutable($periodStart.' 00:00:00',new DateTimeZone('UTC')))->getTimestamp():0;
@@ -139,6 +149,8 @@ function v2_seo_yandex_webmaster_feedback(array $payload, ?int $collectedAtEpoch
         'period_start'=>$periodStart,
         'period_end'=>$periodEnd,
         'rows'=>$rows,
+        'identical_duplicate_stat_count'=>$identicalDuplicates,
+        'conflicting_duplicate_stat_count'=>$conflictingDuplicates,
     ],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
 
     return [
@@ -153,12 +165,15 @@ function v2_seo_yandex_webmaster_feedback(array $payload, ?int $collectedAtEpoch
         'controlled_path_count'=>count($allowed),
         'observed_controlled_path_count'=>count($rows),
         'ignored_outside_cohort_count'=>$ignored,
+        'identical_duplicate_stat_count'=>$identicalDuplicates,
+        'conflicting_duplicate_stat_count'=>$conflictingDuplicates,
         'rows'=>$rows,
         'page_diagnostics'=>$pageDiagnostics,
         'collector_sha256'=>$fingerprint,
         'errors'=>array_values(array_unique($errors)),
         'missing_feedback_semantics'=>'unknown_not_zero',
         'daily_coverage_semantics'=>'partial_daily_metrics_unknown_not_aggregate',
+        'duplicate_stat_semantics'=>'identical_deduped_conflicts_fail_closed',
         'publication_candidates'=>[],
         'automatic_execution_allowed'=>false,
         'automatic_expand_allowed'=>false,
