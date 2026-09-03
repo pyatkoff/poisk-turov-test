@@ -4,9 +4,9 @@
   "mode": "technical_refactor",
   "phase": "DEFERRED_BY_OWNER",
   "status": "PAUSED_BY_OWNER_DIRECTION",
-  "authority": "explicit owner instruction 2026-08-31 pause technical_refactor and update design/search",
+  "authority": "explicit owner instruction 2026-08-31 pausing broad technical_refactor, preserved by the 2026-09-04 Search3 project-definition scope",
   "scope": "pyatkoff/poisk-turov-test",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "protected_contracts": ["yandex_metrika_configuration_and_goals","external_lead_contract","tourvisor_contract","neighboring_projects"],
-  "rule": "Technical refactor is deferred. Do not use this lock to redirect active work away from search UX or AnyTour Design System 2.0. Resume technical_refactor only after a new explicit owner direction."
+  "rule": "Broad technical refactor remains deferred. Behavior-required local organization is allowed only inside a separately approved product slice with focused and broader regression evidence; it does not resume the broad program. Do not start standalone cleanup, mass file moves, framework rewrites or PR #254 without new explicit owner direction."
 }

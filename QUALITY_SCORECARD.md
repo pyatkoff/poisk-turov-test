@@ -1,5 +1,10 @@
 # AnyTour V2 — Pre-traffic quality scorecard
 
+> Historical scoped assessment, not a current objective score or release gate.
+> It predates the Search3 audit and uses a different evidence boundary. Current
+> acceptance is defined in `docs/project/RELEASE_GATES.md`; a new score requires
+> a dated production baseline.
+
 Release target: every material core tour-search area >= 9/10 before paid traffic is enabled by the owner. Scores are product/UX engineering assessments from current production code, deterministic visual baselines and functional contracts; they are not conversion metrics.
 
 | Area | Current | Evidence / remaining gap | Next material move |

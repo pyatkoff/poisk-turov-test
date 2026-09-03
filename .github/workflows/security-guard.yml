@@ -43,36 +43,5 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          owner=json.loads(Path('OWNER_PRIORITY.json').read_text())
-          state=json.loads(Path('AUTOPILOT_STATE.json').read_text())
-          lock=json.loads(Path('TECHNICAL_REFACTOR_LOCK.json').read_text())
-          version=Path('DESIGN_SYSTEM_VERSION.md').read_text()
-          expected_mode='search_ux_ds2'
-          expected_phase='ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX'
-          expected_stage='SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE'
-          expected_ds='ANYTOUR DESIGN SYSTEM 2.0'
-          errors=[]
-          if owner.get('active_mode') != expected_mode or owner.get('active_phase') != expected_phase or owner.get('current_stage') != expected_stage:
-              errors.append('OWNER_PRIORITY drifted from current DS2 search-UX direction')
-          if owner.get('canonical_design_system') != expected_ds:
-              errors.append('OWNER_PRIORITY design-system generation drift')
-          current_stage=state.get('current_stage') or {}
-          if state.get('mode') != expected_mode or state.get('phase') != expected_phase or current_stage.get('id') != expected_stage:
-              errors.append('AUTOPILOT_STATE owner-direction drift')
-          if state.get('canonical_design_system') != expected_ds:
-              errors.append('AUTOPILOT_STATE design-system generation drift')
-          if lock.get('active') is not False or lock.get('status') != 'PAUSED_BY_OWNER_DIRECTION' or lock.get('phase') != 'DEFERRED_BY_OWNER':
-              errors.append('technical-refactor lock must remain paused')
-          if lock.get('canonical_design_system') != expected_ds:
-              errors.append('technical-refactor lock design-system drift')
-          if '# AnyTour Design System 2.0' not in version:
-              errors.append('canonical Design System 2.0 declaration was removed')
-          if errors:
-              print('OWNER_DIRECTION_SECURITY_GUARD_FAIL')
-              for error in errors: print('-', error)
-              raise SystemExit(1)
-          print('OWNER_DIRECTION_SECURITY_GUARD_OK mode=search_ux_ds2 stage=SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE design_system=2.0 technical_refactor=paused')
-          PY
+          python3 scripts/ci/validate_owner_priority.py
+          python3 scripts/ci/validate_technical_refactor_lock.py

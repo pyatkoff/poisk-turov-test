@@ -2,7 +2,7 @@
 
 Status: canonical architecture source of truth for `pyatkoff/poisk-turov-test`.
 
-This document describes how the product is intended to be structured. Operational progress belongs in `AUTOPILOT.md` / `AUTOPILOT_STATE.json`; product roadmap belongs in `PRODUCT_ROADMAP.md`; test ownership belongs in `TEST_MATRIX.md`. When those documents disagree with this file about architecture, this file wins unless a deliberate architecture change updates it in the same PR.
+This document describes how the product is intended to be structured. Operational progress belongs in `AUTOPILOT.md` / `AUTOPILOT_STATE.json`; current product direction and delivery order belong in `docs/project/PRODUCT_BRIEF.md` and `docs/project/MASTER_PLAN.md`; test ownership belongs in `TEST_MATRIX.md`. `PRODUCT_ROADMAP.md` is a historical strategy snapshot. When those documents disagree with this file about architecture, this file wins unless a deliberate architecture change updates it in the same PR.
 
 ## Core rule: one concept → one implementation
 
@@ -71,7 +71,7 @@ Canonical public shell target:
 
 `base template → shared header/navigation → page content slot → shared footer → consultant/integrations`
 
-The reusable `.at-global-header` / `site-header-v2` family is the canonical shared-header direction for public standalone pages. `/poisk-turov/` currently remains on legacy `.at-site-header`; that is an explicit temporary seam, not permission to build further variants.
+The reusable `.at-global-header` / `site-header-v2` family is the current canonical shared header for standalone pages **and** `/poisk-turov/`: `v2/index.php` requires `site-header-v2.php` and calls `v2_render_site_header()`. Historical `.at-site-header` assumptions are not a current migration seam. Search3 work must keep the shared header rather than porting a preview-specific header.
 
 Footer, navigation, mobile navigation, containers, typography, buttons, cards, forms, breadcrumbs and spacing tokens should converge on one shared implementation/design system.
 
@@ -126,7 +126,20 @@ A future canonical publication registry should own which routes are indexable an
 
 GitHub `main` is the source of truth. Deploy workflows release the allowed AnyTour scope and then verify production behavior.
 
-Current deployment still contains historical coupling to legacy `anytour.online` resources/lead bridge. Treat that coupling as a migration dependency, not desired architecture. Decouple incrementally, starting only with proven-safe dependencies; protected lead bridge behavior requires explicit high-risk review before architectural migration.
+Current deployment still contains historical coupling to the legacy
+`anytour.online` lead receiver. The production workflow copies the source
+adapter/helpers to that receiver path and publishes `lead-bridge-v1.php` under
+the public `lead-adapter-v2.php` name on `anytoour.ru`. Treat the complete path
+as one protected contract:
+
+`tour/checkout -> lead search context -> public bridge -> legacy receiver -> direct adapter -> idempotency/price helpers -> Bitrix`
+
+Do not infer the live lead implementation from one repository filename. Treat
+the coupling as migration debt and decouple only in a separately approved,
+high-risk slice with compatibility and rollback evidence. The browser
+consultant is a different dependency: current `v2/index.php` loads
+`https://app.anytoour.ru/web-consultant/widget.js`; retired Search3
+`anytour.online/max-search/web-consultant/` scripts are not canonical.
 
 ## Refactor policy
 
@@ -146,7 +159,11 @@ Do not perform a repository-wide rename/move/rewrite solely to match this target
 - `ARCHITECTURE.md` — architecture, boundaries, canonical implementations and target ownership.
 - `TEST_MATRIX.md` — CI/test tiers, protected behavior and coverage ownership.
 - `AGENTS.md` — autonomy, risk and execution rules.
+- `START_HERE.md` — short current source index and resume entrypoint.
 - `AUTOPILOT.md` — current operational phase and human-readable resume context.
 - `AUTOPILOT_STATE.json` — machine-readable current state.
-- `PRODUCT_ROADMAP.md` — product/brand roadmap.
+- `docs/project/PRODUCT_BRIEF.md` — current product goal and first-release scope.
+- `docs/project/MASTER_PLAN.md` — current phase/PR sequence.
+- `docs/project/SEARCH3_MIGRATION_MAP.md` — Search3 donor-to-canonical-owner mapping.
+- `PRODUCT_ROADMAP.md` — historical product/brand roadmap evidence.
 - historical audit/migration docs — evidence/history only; they must not override current architecture.

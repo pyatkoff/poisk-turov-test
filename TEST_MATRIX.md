@@ -2,7 +2,7 @@
 
 Status: canonical test/CI ownership map for `pyatkoff/poisk-turov-test`.
 
-This document defines what each test tier is for. The existing workflow set is intentionally not deleted or renamed by this documentation-only slice. Consolidation comes later, one proven-equivalent replacement at a time.
+This document defines what each test tier is for. The existing workflow set is intentionally not deleted or renamed by this documentation/governance-only slice. Consolidation comes later, one proven-equivalent replacement at a time.
 
 Verified workflow-by-workflow evidence is maintained in `CI_WORKFLOW_AUDIT.md`. This file remains the canonical policy/source-of-truth for test tiers and protected coverage.
 
@@ -99,6 +99,28 @@ The following must retain explicit regression ownership during CI consolidation:
 | Shared header/footer/navigation | PR BROWSER responsive + POST DEPLOY representative routes |
 | SEO canonical/sitemap/indexability | PR FAST render/contract + scheduled publication audit |
 | Security/scope | PR FAST |
+
+## Search3 release-critical coverage
+
+The owner-designated Search3 target/reference visuals add requirements, not permission to reduce current
+behavioral coverage. Before a production candidate, the canonical owners must
+prove this matrix without choosing a convenient happy-path offer:
+
+| State/transition | PR FAST owner | PR BROWSER / live evidence |
+| --- | --- | --- |
+| Search generation | request mapping, 25→100 progression, stale isolation | slow/partial/final, edit while pending, empty/error/retry |
+| Result facets | complete-data eligibility and reset invariants | desktop rail + mobile drawer; local changes make no supplier search |
+| Tour selection | normalized selected context and stale guards | first/cheapest selection, switch, back, delayed room response |
+| Flight resolution | atomic success/empty/error/timeout and price snapshots | success, retry and honest manager fallback for every failure class |
+| Booking progress | legal transition table and pending locks | stepper/CTA cannot enter unavailable states |
+| Review | payload context with and without flight | preserved facts, honest price uncertainty and back navigation |
+| Lead | complete payload/mapping/idempotency snapshots | real candidate sender: validation, pending, accepted, duplicate, error/retry |
+| Accessibility | semantic/ARIA source checks where stable | keyboard/focus/dialog/announcement/zoom at required widths |
+
+Preview state simulation and a screenshot-only pass cannot own lead or state
+coverage. Test fixtures may set a dedicated store/adapter response, but must not
+emit real analytics or lead success events as a substitute for controller
+behavior.
 
 ## Current workflow families observed on main
 

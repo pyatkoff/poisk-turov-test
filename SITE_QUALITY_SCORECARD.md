@@ -1,5 +1,9 @@
 # AnyTour — site-wide quality scorecard
 
+> Historical snapshot as of the date below. Do not combine these site-wide
+> scores with the differently scoped V2 scorecard or treat them as current
+> Search3 readiness. Use `START_HERE.md` for active direction.
+
 Updated: 2026-08-31
 
 This scorecard evaluates the **whole public anytoour.ru experience**, not only the mature tour-search flow.

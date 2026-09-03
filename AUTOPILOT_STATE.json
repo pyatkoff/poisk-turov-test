@@ -1,58 +1,128 @@
 {
-  "schema_version": 20,
+  "schema_version": 21,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-02T03:06:00+03:00",
-  "mode": "search_ux_ds2",
-  "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
+  "updated_at": "2026-09-04T02:40:00+03:00",
+  "mode": "search3_stabilization",
+  "phase": "ANYTOUR_SEARCH3_STABILIZATION",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "owner_priority_source": "OWNER_PRIORITY.json",
-  "owner_priority_lock": {
-    "active": true,
-    "planned_phase": "search_ux_ds2",
-    "rule": "Prioritize tour-search UX and site-wide user-facing convergence on AnyTour Design System 2.0. New design concepts require owner approval. Search 2.0 PR #810 may deploy only to the isolated /_preview/search2/ route because the owner explicitly approved preview publishing; it must not merge or deploy to production /poisk-turov/ until explicit production approval."
-  },
+  "program_source": "docs/project/MASTER_PLAN.md",
   "current_stage": {
-    "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "name": "Shared DS2 responsive convergence and Search 2.0 preview QA",
-    "status": "ACTIVE",
-    "last_material_progress": "Search 2.0 preview run #51 (33573157764) passed the full 375/430/768/1024/1440 evidence set on head efdd19f4fe9799e3e36332d00729f675b1e94530. The prior mobile document-overflow defect is closed: document width equals viewport width at all five sizes, primaryCount=5, food stays out of the primary row, CTA precedes quick filters on mobile, and the truthful All Inclusive shortcut writes canonical food=7. Visual inspection of 375 confirmed a coherent stacked form and internal quick-filter scrolling without page overflow; the nights summary remains on one line. Independently, PR #870 normalized the selected-tour back-results and hotel-description text actions from 40/38px to the canonical DS2 44px touch rhythm in the existing ds2-selected-tour-convergence-v1.css layer. All eight PR validation/visual workflows passed; merge 4ddf997599d69fadf96fd0842cc4ff9e561e187b deployed successfully in V2 run 33573370464 including Verify V2 and Live search smoke, and selected-tour post-deploy run 33573588616 passed. The generic V2 post-deploy run then exposed a stale CI assertion only: every five-width page/search/result assertion was green, but it still required removed legacy .v2-site-community. PR #872 updated that gate to require exactly one canonical .ds2-site-footer and zero legacy community blocks; security passed, it merged as 2ae43e3dffce44a607fb14254056438ca8de554b, and direct five-width production verification run 33573805145 passed. Search 2.0 production release lock for #810 remains active.",
-    "next_action": "Continue Search 2.0 only as preview-approved visual convergence, using run #51 as the current green five-width baseline. Inspect/repair only concrete remaining visual mismatches against the approved design inside existing canonical preview layers; do not add another CSS layer. Keep the target composition and truthful filter/search contracts unchanged. Do not merge #810 or deploy Search 2.0 to production without explicit owner visual approval. In parallel, continue independent shared DS2 wrapping/touch/hierarchy fixes only when a concrete production defect is confirmed, with full relevant PR/deploy/live evidence."
+    "id": "PROJECT_DEFINITION_AND_RELEASE_BASELINE",
+    "name": "Project definition and exact release baseline",
+    "status": "ACTIVE"
   },
-  "local_results_filtering": {
-    "mode": "instant_local",
-    "loaded_hotel_target": 100,
-    "rule": "Result filters for fields present in normalized loaded results filter that loaded set immediately. A facet is exposed only when the currently loaded normalized payload has complete data for that facet. New Tourvisor searches are reserved for real primary search-input changes or separately justified background expansion.",
-    "generic_client_pagination": "DO_NOT_INTRODUCE"
+  "current_task": {
+    "id": "foundation/project-definition",
+    "category": "PROGRAM_FOUNDATION",
+    "title": "Establish one current product, migration and release program",
+    "status": "IN_REVIEW",
+    "objective": "Replace contradictory Search2-era resume instructions with one reviewed Project Definition Pack without production runtime changes.",
+    "next_action": "Collect docs/governance PR CI and owner review; do not merge into the auto-deploying main branch in this Phase-0 scope. After an approved merge, update the state to baseline/release-audit."
   },
-  "site_wide_score": {
-    "value": 7.3,
-    "scale": 10,
-    "note": "Held at 7.3. Search 2.0 now has a fully green five-width preview baseline with the mobile overflow defect closed; selected-tour touch targets are live on the shared 44px DS2 rhythm; and the stale post-deploy footer assertion was corrected and reverified. Search 2.0 remains preview-only, so the whole-product score is intentionally unchanged."
+  "queue": [
+    {
+      "id": "foundation/project-definition",
+      "status": "IN_REVIEW",
+      "title": "Establish one current product, migration and release program"
+    },
+    {
+      "id": "baseline/release-audit",
+      "status": "READY_AFTER_FOUNDATION_MERGE",
+      "title": "Audit production and LKG identity gaps without mutation"
+    },
+    {
+      "id": "release/exact-sha-boundary",
+      "status": "BLOCKED_EXPLICIT_PLATFORM_APPROVAL",
+      "title": "Make candidate and rollback identity reproducible"
+    },
+    {
+      "id": "search3/reference-dossier",
+      "status": "QUEUED",
+      "title": "Preserve and classify target visual evidence under review"
+    },
+    {
+      "id": "search3/contract-boundaries",
+      "status": "QUEUED",
+      "title": "Snapshot protected behavior before UI migration"
+    },
+    {
+      "id": "search3/integration-scaffold",
+      "status": "QUEUED",
+      "title": "Create an isolated Search3 candidate from current main"
+    },
+    {
+      "id": "search3/failure-fixtures",
+      "status": "QUEUED",
+      "title": "Add deterministic flight and lead lifecycle fixtures"
+    },
+    {
+      "id": "search3/no-flight-fallback",
+      "status": "QUEUED_P0",
+      "title": "Guarantee selected-tour to lead recovery without a flight"
+    },
+    {
+      "id": "search3/truthful-state-machine",
+      "status": "QUEUED_P0",
+      "title": "Derive stepper and CTA eligibility from one booking state"
+    }
+  ],
+  "last_ci": {
+    "workflow": "Search3 preview visual QA",
+    "run_id": null,
+    "run_number": 467,
+    "head_sha": "e5baf32f455cdb0aa1a704964f28e5efbebf57ff",
+    "conclusion": "success",
+    "classification": "VISUAL_HAPPY_PATH_ONLY_NOT_RELEASE_EVIDENCE"
   },
+  "last_verified_commit": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
+  "verification_context": {
+    "meaning": "main snapshot audited for project definition; not claimed as exact production deployment",
+    "search3_branch_head": "6ce565620becaba8e91d50aff13529b5a52aba37",
+    "production_deployed_sha": "UNKNOWN_REQUIRES_BASELINE_TASK",
+    "last_known_good_sha": "UNKNOWN_REQUIRES_BASELINE_TASK"
+  },
+  "blocked": [
+    {
+      "id": "production_release_identity",
+      "blocks": "production rollout and any claim of enforceable Search3 release lock",
+      "status": "BLOCKED_EXPLICIT_PLATFORM_APPROVAL_AFTER_AUDIT",
+      "resolution_task": "baseline/release-audit then separately approved release/exact-sha-boundary"
+    },
+    {
+      "id": "lead_delivery_system_of_record",
+      "blocks": "north-star activation and full release evidence",
+      "status": "OWNER_OPERATIONS_DECISION_REQUIRED"
+    },
+    {
+      "id": "commercial_claims_approval",
+      "blocks": "unverified availability, guarantee, payment and timing copy",
+      "status": "CONTENT_OWNER_DECISION_REQUIRED"
+    }
+  ],
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
     "other_projects": "DO_NOT_MODIFY",
     "metrika_configuration": "DO_NOT_MODIFY",
     "metrika_goals": "DO_NOT_MODIFY",
+    "analytics_contract": "PRESERVE",
     "tourvisor_contract": "PRESERVE",
+    "pricing_semantics": "PRESERVE",
     "lead_sending_mechanism": "PRESERVE_EXTERNAL_CONTRACT_AND_FIELD_MAPPING",
+    "manager_operations": "DO_NOT_MODIFY",
     "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
     "design_system_1": "DO_NOT_REINTRODUCE",
     "anytour_logo": "PRESERVE",
     "verified_destinations": "PRESERVE",
-    "legal_payment_unresolved": "DEFER",
-    "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
-    "search2_preview_pr_810": "PREVIEW_DEPLOY_ALLOWED_ONLY_TO_/_preview/search2_; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_APPROVAL"
-  },
-  "deferred": {
-    "technical_refactor": "DEFER_UNTIL_EXPLICIT_OWNER_DIRECTION",
-    "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
-    "legal_payment": "DEFER_UNRESOLVED_CONTENT",
-    "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING"
+    "search3_production": "LOCKED_UNTIL_EXACT_CANDIDATE_GATES_AND_OWNER_APPROVAL",
+    "technical_refactor": "BROAD_PROGRAM_DEFERRED_TARGETED_PRODUCT_SLICES_ONLY"
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > search_user_journey > search2_initial_form_preview > results_filters_loaded_set > hotel_tour_cards_and_selected_tour > desktop_mobile_visual_consistency > shared_header_navigation_footer_ds2 > site_visual_convergence_ds2 > technical_refactor_deferred > content_seo > cosmetic_cleanup",
-    "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_preview-contract-only",
-    "on_blocker": "record/defer blocker and continue an independent safe DS2/search-UX task"
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > release_identity > contract_baseline > search3_failure_recovery > truthful_state > search3_view_migration > accessibility_performance > content_trust > controlled_release > measured_growth",
+    "on_ci_failure": "diagnose and fix a task-blocking regression; classify external or unrelated failures and continue only independent safe work",
+    "on_ci_success": "collect exact-SHA evidence, update state and advance one dependency-ready PR",
+    "on_blocker": "record scope and owner, then continue an independent safe task when possible",
+    "on_user_facing_change": "run focused and broader browser evidence including negative and recovery paths",
+    "on_release": "require all release gates, exact candidate identity, owner approval, staged observation and proven rollback"
   }
 }
