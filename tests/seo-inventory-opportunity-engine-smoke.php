@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/../v2/data/seo-inventory-opportunity-engine-v1.php';
 require_once __DIR__.'/../v2/data/seo-controlled-route-identities-v1.php';
+require_once __DIR__.'/../v2/seo-launch-slice-v1.php';
 
 function opp_fail(string $message): never
 {
@@ -11,6 +12,9 @@ function opp_fail(string $message): never
 
 $bindings=v2_seo_controlled_route_identities();
 if(count($bindings)!==10) opp_fail('controlled_route_identity_count');
+$bindingPaths=array_values($bindings);sort($bindingPaths,SORT_STRING);
+$launchPaths=v2_seo_controlled_launch_paths();sort($launchPaths,SORT_STRING);
+if($bindingPaths!==$launchPaths) opp_fail('controlled_route_registry_drift');
 if(($bindings['country:country=4']??'')!=='/country/turkey/') opp_fail('turkey_route_identity');
 if(($bindings['country:country=1']??'')!=='/country/egypt/') opp_fail('egypt_route_identity');
 if(($bindings['country:country=8']??'')!=='/country/maldives/') opp_fail('maldives_route_identity');
