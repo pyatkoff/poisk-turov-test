@@ -8,6 +8,7 @@ on:
       - 'v2/seo-phase5-expansion-review-gate-v1.php'
       - 'v2/data/seo-inventory-opportunity-engine-v1.php'
       - 'v2/data/seo-controlled-route-identities-v1.php'
+      - 'v2/data/seo-phase5-inventory-opportunity-review-contract-v1.json'
       - 'tests/seo-phase5-inventory-opportunity-review-smoke.php'
       - '.github/workflows/validate-seo-phase5-inventory-opportunity-review.yml'
   push:
@@ -17,6 +18,7 @@ on:
       - 'v2/seo-phase5-expansion-review-gate-v1.php'
       - 'v2/data/seo-inventory-opportunity-engine-v1.php'
       - 'v2/data/seo-controlled-route-identities-v1.php'
+      - 'v2/data/seo-phase5-inventory-opportunity-review-contract-v1.json'
       - 'tests/seo-phase5-inventory-opportunity-review-smoke.php'
       - '.github/workflows/validate-seo-phase5-inventory-opportunity-review.yml'
   workflow_dispatch:
@@ -36,6 +38,14 @@ jobs:
           php -l v2/seo-phase5-inventory-opportunity-review-v1.php >/dev/null
           php -l tests/seo-phase5-inventory-opportunity-review-smoke.php >/dev/null
           php tests/seo-phase5-inventory-opportunity-review-smoke.php
+          python3 - <<'PY'
+          import json
+          d=json.load(open('v2/data/seo-phase5-inventory-opportunity-review-contract-v1.json'))
+          assert d['publication_candidates']==[]
+          assert d['publication_allowed'] is False
+          assert d['indexation_allowed'] is False
+          assert d['hotel_tours_indexation_allowed'] is False
+          PY
           grep -Fq "publication_candidates'=>[]" v2/seo-phase5-inventory-opportunity-review-v1.php
-          grep -Fq "catalog slug" v2/seo-phase5-inventory-opportunity-review-v1.php
+          grep -Fq "Catalog slug" v2/seo-phase5-inventory-opportunity-review-v1.php
           ! grep -Eq 'INSERT[[:space:]]+INTO|UPDATE[[:space:]]+[a-zA-Z_]|DELETE[[:space:]]+FROM' v2/seo-phase5-inventory-opportunity-review-v1.php
