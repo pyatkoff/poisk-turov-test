@@ -40,6 +40,7 @@ async function forceLeadState(page,state,detail={}){const r=await page.evaluate(
   console.log('[mobile] entering lead');
   if(!await clickVisible(page,'#selectedTour .search3-summary-submit',7000))throw new Error('mobile lead CTA did not click');
   if(!await visible(page,'#selectedTour.search3-lead-entry .lead-form',6000))throw new Error('mobile lead entry did not open');
+  if(!await visible(page,'#selectedTour.search3-lead-entry .lead-form:not([data-search3-lead-state]) button[type="submit"]',4000))throw new Error('mobile lead submit missing');
   await snap(page,'m06-lead-entry','#selectedTour .lead-form');
   if(!await forceLeadState(page,'success',{leadId:'PREVIEW'}))throw new Error('mobile success state missing');await snap(page,'m07-lead-success','#selectedTour .lead-form');report.mobileFlow=true;
  }catch(e){report.errors.push(String(e));console.error(e)}finally{report.finishedAt=new Date().toISOString();report.captureComplete=required.every(n=>report.states.some(s=>s.name===n&&s.ok));fs.writeFileSync(path.join(outDir,'report-mobile.json'),JSON.stringify(report,null,2));await context.close().catch(()=>{});await browser.close().catch(()=>{})}
