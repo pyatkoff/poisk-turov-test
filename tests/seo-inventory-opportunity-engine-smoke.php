@@ -51,7 +51,7 @@ if(count($candidates)!==4) opp_fail('cartesian_candidate_growth');
 $byKey=[];
 foreach($candidates as $candidate){
     $byKey[$candidate['identity_key']]=$candidate;
-    if(($candidate['opportunity_score']??'not-null')!==null) opp_fail('invented_opportunity_score');
+    if(!array_key_exists('opportunity_score',$candidate)||$candidate['opportunity_score']!==null) opp_fail('invented_opportunity_score');
     $demand=$candidate['demand']??[];
     if(($demand['status']??'')!=='unknown') opp_fail('demand_not_unknown');
     foreach(['impressions','clicks','avg_position'] as $metric){
