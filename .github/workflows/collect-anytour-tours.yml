@@ -5,6 +5,12 @@ on:
     branches: [main]
     paths:
       - 'v2/data/price-observer-v1.php'
+      - 'v2/data/price-segment-v1.php'
+      - 'v2/data/price-confidence-v1.php'
+      - 'v2/data/price-intelligence-v1.php'
+      - 'v2/data/price-intelligence-read-v1.php'
+      - 'v2/data/migrate-price-daily-exact-v1.php'
+      - 'v2/data/rollup-price-daily-exact-v1.php'
       - 'v2/data/scheduled-collector-v1.php'
       - 'v2/data/migrate-collection-attempts-v1.php'
       - 'v2/data/migrate-matrix-collection-v1.php'
@@ -15,6 +21,7 @@ on:
       - 'v2/data/top500-daily-plan-v1.php'
       - 'v2/data/top500-daily-collector-v1.php'
       - 'tests/top500-daily-plan-smoke.php'
+      - 'tests/price-intelligence-smoke.php'
       - 'v2/data/rollup-price-daily-v1.php'
       - 'v2/data/build-seo-offer-snapshots-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
@@ -22,6 +29,12 @@ on:
     branches: [main]
     paths:
       - 'v2/data/price-observer-v1.php'
+      - 'v2/data/price-segment-v1.php'
+      - 'v2/data/price-confidence-v1.php'
+      - 'v2/data/price-intelligence-v1.php'
+      - 'v2/data/price-intelligence-read-v1.php'
+      - 'v2/data/migrate-price-daily-exact-v1.php'
+      - 'v2/data/rollup-price-daily-exact-v1.php'
       - 'v2/data/scheduled-collector-v1.php'
       - 'v2/data/migrate-collection-attempts-v1.php'
       - 'v2/data/migrate-matrix-collection-v1.php'
@@ -32,6 +45,7 @@ on:
       - 'v2/data/top500-daily-plan-v1.php'
       - 'v2/data/top500-daily-collector-v1.php'
       - 'tests/top500-daily-plan-smoke.php'
+      - 'tests/price-intelligence-smoke.php'
       - 'v2/data/rollup-price-daily-v1.php'
       - 'v2/data/build-seo-offer-snapshots-v1.php'
       - '.github/workflows/collect-anytour-tours.yml'
@@ -74,14 +88,23 @@ jobs:
           php -l v2/data/top500-daily-collector-v1.php >/dev/null
           php -l tests/top500-daily-plan-smoke.php >/dev/null
           php -l v2/data/price-observer-v1.php >/dev/null
+          php -l v2/data/price-segment-v1.php >/dev/null
+          php -l v2/data/price-intelligence-v1.php >/dev/null
+          php -l v2/data/price-intelligence-read-v1.php >/dev/null
+          php -l v2/data/migrate-price-daily-exact-v1.php >/dev/null
+          php -l v2/data/rollup-price-daily-exact-v1.php >/dev/null
+          php -l tests/price-intelligence-smoke.php >/dev/null
           php -l v2/data/top-hotels-v1.php >/dev/null
           php -l v2/data/rollup-price-daily-v1.php >/dev/null
           php -l v2/data/build-seo-offer-snapshots-v1.php >/dev/null
           php tests/top500-daily-plan-smoke.php
+          php tests/price-intelligence-smoke.php
           php -r "require 'v2/data/top-hotels-v1.php'; \$ids=v2_priority_hotel_ids(); if (count(\$ids)!==492 || count(array_unique(\$ids))!==492) exit(1); echo 'TOP500_PRIORITY_SET_OK count=492'.PHP_EOL;"
           grep -Fq "fresh-hours=72 --expires-hours=72" .github/workflows/collect-anytour-tours.yml
           grep -Fq "'fresh-hours'), 72, 72, 168" v2/data/build-seo-offer-snapshots-v1.php
           grep -Fq "'expires-hours'), 72, 72, 168" v2/data/build-seo-offer-snapshots-v1.php
+          grep -Fq 'max_of_daily_min_exact_comparable_segment' v2/data/price-intelligence-v1.php
+          grep -Fq 'segmentFingerprint' v2/data/build-seo-offer-snapshots-v1.php
           echo ANYTOUR_TOP500_DAILY_TOOLING_OK
 
   collect-production:
@@ -129,6 +152,11 @@ jobs:
             v2/data/db-v1.php \
             v2/data/tourvisor-client-v1.php \
             v2/data/price-observer-v1.php \
+            v2/data/price-segment-v1.php \
+            v2/data/price-confidence-v1.php \
+            v2/data/price-intelligence-v1.php \
+            v2/data/migrate-price-daily-exact-v1.php \
+            v2/data/rollup-price-daily-exact-v1.php \
             v2/data/migrate-collection-attempts-v1.php \
             v2/data/scheduled-collector-v1.php \
             v2/data/migrate-matrix-collection-v1.php \
@@ -149,6 +177,7 @@ jobs:
             php -l \"\$root/top500-daily-collector-v1.php\" >/dev/null
             php \"\$root/migrate-collection-attempts-v1.php\"
             php \"\$root/migrate-matrix-collection-v1.php\"
+            php \"\$root/migrate-price-daily-exact-v1.php\"
             reconcile_status=0
             php \"\$root/sync-priority-hotels-v1.php\" --limit=500 || reconcile_status=\$?
             if [ \"\$reconcile_status\" -ne 0 ]; then echo \"PRIORITY_HOTEL_SYNC_WARNING status=\$reconcile_status\"; fi
@@ -160,5 +189,6 @@ jobs:
             fi
             php \"\$root/top500-coverage-v1.php\"
             php \"\$root/rollup-price-daily-v1.php\" --days=31
+            php \"\$root/rollup-price-daily-exact-v1.php\" --days=31
             php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
           "
