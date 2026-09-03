@@ -14,7 +14,7 @@ exec(escapeshellarg(PHP_BINARY).' '.escapeshellarg($template).' 2>&1',$out,$code
 if($code!==0) search_feedback_template_fail('exit_'.$code.'_'.implode('|',$out));
 $decoded=json_decode(implode("\n",$out),true);
 if(!is_array($decoded)||($decoded['state']??'')!=='search_feedback_collection_template') search_feedback_template_fail('state');
-if(($decoded['domain']??'')!=='anytoour.ru'||($decoded['launch_scope']??'')!=='controlled_country_resort_month_v4') search_feedback_template_fail('scope');
+if(($decoded['domain']??'')!=='anytoour.ru'||($decoded['launch_scope']??'')!=='controlled_country_resort_seasonal_v3') search_feedback_template_fail('scope');
 $rows=$decoded['rows']??null;
 if(!is_array($rows)||count($rows)!==104) search_feedback_template_fail('row_count');
 $expected=v2_seo_controlled_launch_paths();
