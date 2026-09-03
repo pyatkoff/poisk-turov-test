@@ -126,28 +126,45 @@ function sync_catalog_hotels_for_country(PDO $pdo, int $countryId, string $now):
             $name = trim((string)($row['name'] ?? ''));
             $country = is_array($row['country'] ?? null) ? $row['country'] : [];
             $region = is_array($row['region'] ?? null) ? $row['region'] : [];
-            $sub = is_array($row['subRegion'] ?? null) ? $row['subRegion'] : [];
+            $sub = is_array($row['subRegion'] ?? null)
+                ? $row['subRegion']
+                : (is_array($row['subregion'] ?? null) ? $row['subregion'] : []);
             $common = is_array($row['common'] ?? null) ? $row['common'] : [];
             if ($id <= 0 || $name === '') continue;
+
+            $resolvedCountryId = (int)($country['id'] ?? ($row['countryId'] ?? $countryId));
+            $resolvedCountryName = trim((string)($country['name'] ?? ($row['countryName'] ?? '')));
+            $resolvedRegionId = isset($region['id'])
+                ? (int)$region['id']
+                : (isset($row['regionId']) ? (int)$row['regionId'] : null);
+            $resolvedRegionName = trim((string)($region['name'] ?? ($row['regionName'] ?? '')));
+            $resolvedRegionName = $resolvedRegionName !== '' ? $resolvedRegionName : null;
+            $resolvedSubregionId = isset($sub['id'])
+                ? (int)$sub['id']
+                : (isset($row['subregionId'])
+                    ? (int)$row['subregionId']
+                    : (isset($row['subRegionId']) ? (int)$row['subRegionId'] : null));
+            $resolvedSubregionName = trim((string)($sub['name'] ?? ($row['subregionName'] ?? ($row['subRegionName'] ?? ''))));
+            $resolvedSubregionName = $resolvedSubregionName !== '' ? $resolvedSubregionName : null;
 
             $normalized = v2_data_normalize_text($name);
             $parts = array_filter([
                 $normalized,
-                v2_data_normalize_text((string)($country['name'] ?? '')),
-                v2_data_normalize_text((string)($region['name'] ?? '')),
-                v2_data_normalize_text((string)($sub['name'] ?? '')),
+                v2_data_normalize_text($resolvedCountryName),
+                v2_data_normalize_text((string)$resolvedRegionName),
+                v2_data_normalize_text((string)$resolvedSubregionName),
             ]);
             $searchKey = implode(' ', array_values(array_unique($parts)));
             $slugBase = v2_data_slug($name) ?: 'hotel';
 
             $stmt->execute([
                 'id'=>$id,
-                'country_id'=>(int)($country['id'] ?? $countryId),
-                'country_name'=>(string)($country['name'] ?? ''),
-                'region_id'=>isset($region['id']) ? (int)$region['id'] : null,
-                'region_name'=>$region['name'] ?? null,
-                'subregion_id'=>isset($sub['id']) ? (int)$sub['id'] : null,
-                'subregion_name'=>$sub['name'] ?? null,
+                'country_id'=>$resolvedCountryId,
+                'country_name'=>$resolvedCountryName,
+                'region_id'=>$resolvedRegionId,
+                'region_name'=>$resolvedRegionName,
+                'subregion_id'=>$resolvedSubregionId,
+                'subregion_name'=>$resolvedSubregionName,
                 'name'=>$name,
                 'normalized_name'=>$normalized,
                 'search_key'=>$searchKey,
@@ -155,8 +172,12 @@ function sync_catalog_hotels_for_country(PDO $pdo, int $countryId, string $now):
                 'category'=>isset($row['category']) ? (int)$row['category'] : null,
                 'rating'=>isset($row['rating']) ? (float)$row['rating'] : null,
                 'hotel_type'=>isset($row['type']) ? (int)$row['type'] : null,
-                'latitude'=>isset($common['latitude']) ? (float)$common['latitude'] : null,
-                'longitude'=>isset($common['longitude']) ? (float)$common['longitude'] : null,
+                'latitude'=>isset($common['latitude'])
+                    ? (float)$common['latitude']
+                    : (isset($row['latitude']) ? (float)$row['latitude'] : null),
+                'longitude'=>isset($common['longitude'])
+                    ? (float)$common['longitude']
+                    : (isset($row['longitude']) ? (float)$row['longitude'] : null),
                 'first_seen'=>$now,
                 'last_seen'=>$now,
                 'synced'=>$now,
