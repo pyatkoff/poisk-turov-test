@@ -41,7 +41,6 @@ $metricSql=<<<'SQL'
 SQL;
 
 $baseWhere="o.departure_date >= CURDATE() AND o.price > 0 AND o.currency='RUB'";
-$sqlLimit=max(50,min(2000,$limitPerType*8));
 
 $queries=[];
 $queries['country']="SELECT
@@ -55,8 +54,7 @@ $queries['country']="SELECT
     WHERE {$baseWhere}
     GROUP BY c.id,c.name,c.slug
     HAVING observations_30d > 0
-    ORDER BY observations_30d DESC,hotels_30d DESC,departures_30d DESC,c.id ASC
-    LIMIT {$sqlLimit}";
+    ORDER BY observations_30d DESC,hotels_30d DESC,departures_30d DESC,c.id ASC";
 
 $queries['resort']="SELECT
         'resort' AS candidate_type,
@@ -70,8 +68,7 @@ $queries['resort']="SELECT
     WHERE {$baseWhere}
     GROUP BY c.id,c.name,c.slug,r.id,r.name,r.slug
     HAVING observations_30d > 0
-    ORDER BY observations_30d DESC,hotels_30d DESC,departures_30d DESC,c.id ASC,r.id ASC
-    LIMIT {$sqlLimit}";
+    ORDER BY observations_30d DESC,hotels_30d DESC,departures_30d DESC,c.id ASC,r.id ASC";
 
 $queries['country_month']="SELECT
         'country_month' AS candidate_type,
@@ -84,8 +81,7 @@ $queries['country_month']="SELECT
     WHERE {$baseWhere}
     GROUP BY c.id,c.name,c.slug,o.departure_year,o.departure_month
     HAVING observations_30d > 0
-    ORDER BY observations_30d DESC,hotels_30d DESC,departures_30d DESC,c.id ASC,o.departure_year ASC,o.departure_month ASC
-    LIMIT {$sqlLimit}";
+    ORDER BY observations_30d DESC,hotels_30d DESC,departures_30d DESC,c.id ASC,o.departure_year ASC,o.departure_month ASC";
 
 $queries['resort_month']="SELECT
         'resort_month' AS candidate_type,
@@ -99,8 +95,7 @@ $queries['resort_month']="SELECT
     WHERE {$baseWhere}
     GROUP BY c.id,c.name,c.slug,r.id,r.name,r.slug,o.departure_year,o.departure_month
     HAVING observations_30d > 0
-    ORDER BY observations_30d DESC,hotels_30d DESC,departures_30d DESC,c.id ASC,r.id ASC,o.departure_year ASC,o.departure_month ASC
-    LIMIT {$sqlLimit}";
+    ORDER BY observations_30d DESC,hotels_30d DESC,departures_30d DESC,c.id ASC,r.id ASC,o.departure_year ASC,o.departure_month ASC";
 
 try{
     $pdo=v2_data_db();
@@ -118,6 +113,7 @@ try{
         'departure_scope'=>'future_or_today_departures_only',
         'recent_reporting_window_days'=>30,
         'query_counts'=>$queryCounts,
+        'query_result_semantics'=>'all_observed_groups_before_output_limit',
         'source_table'=>'tour_price_observations',
         'catalog_tables'=>['catalog_countries','catalog_regions'],
         'writes_performed'=>false,
