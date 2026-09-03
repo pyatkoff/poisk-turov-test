@@ -4,7 +4,7 @@
 Ветка: `feature/search3-preview`  
 Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`  
 Последний проверенный implementation baseline: `ecedaeb1396b553c7150e37d7c4031a5915dcd51`  
-Текущий preview-head: `0c9508a939e7ef19431aab716f89c68ede51ef56` — live deployment подтверждён; тройной QA ожидает итогового статуса
+Текущий filter candidate: `569bb3bb2a0320f0b81c38903922309175a542ac`; live preview уже отдаёт новые filter sub-screens и commit/cancel contract
 
 ## Источник истины: 8 утверждённых макетов
 
@@ -14,7 +14,7 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 | № | Утверждённый макет | Покрываемые состояния | Viewport | Статус | Следующее действие |
 |---:|---|---|---|---|---|
 | 1 | Интерфейс поиска туров AnyTour | search, results, hotel tours | desktop + mobile | REVIEW | Дожать плотность верхней выдачи и карточек; не подменять реальные данные демонстрационными |
-| 2 | Макет фильтров поиска туров AnyTour | filter entry, popular, hotel, amenities, meal, room, tourists, flight, price, sorting | mobile; desktop rail как адаптация | IN PROGRESS | Проверить все подэкраны, выбранные chips, reset/apply и сохранение между поисками |
+| 2 | Макет фильтров поиска туров AnyTour | filter entry, popular, hotel, amenities, meal, room, tourists, flight, price, sorting | mobile; desktop rail как адаптация | REVIEW | Реализованы реальные sub-screens category/rating/meal/direct, full reset и apply/cancel staging; проверить tablet/mobile artifacts |
 | 3 | Выбор рейсов AnyTour: десктоп и мобильная версия | outbound/inbound variants, baggage, price delta, total, continue | desktop + mobile | REVIEW | Сверить структуру вариантов и sticky/summary на всех viewport |
 | 4 | Итог тура AnyTour: десктоп и мобильная версии | hotel, room, flights, services, tourists, total, submit | desktop + mobile | REVIEW | Проверить секции и цену после выбора рейса; убрать визуальные склейки |
 | 5 | Дизайн страницы бронирования тура AnyTour | selected hotel, room/meal, flights, composition, total | desktop + mobile | REVIEW | Дожать геометрию Tour Details без изменения booking-семантики |
@@ -55,7 +55,7 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 
 1. **P1 — Footer (макет 7):** восстановить полную структуру desktop/mobile на фактических ссылках и данных.
 2. **P1 — Results/cards (макет 1):** приблизить иерархию, высоту, факты и CTA к эталону без fake-data.
-3. **P1 — Filters (макет 2):** проверить все мобильные подэкраны, apply/reset/chips/persistence.
+3. **P1 — Filters (макет 2):** подтвердить свежие tablet/mobile screenshots, apply/cancel и chips.
 4. **P1 — Tour details + flights + total (макеты 3–5):** единая геометрия и цена после выбора рейса.
 5. **P1 — Lead kit (макет 6):** entry/sending/success/error/MAX/TG, включая retry.
 6. **P1 — Mobile E2E (макет 8):** финальная последовательная сверка.
@@ -79,6 +79,8 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 - 2026-09-03 — выполнена живая проверка desktop preview: results загружаются, overlap/overflow верхней выдачи не обнаружены.
 - 2026-09-03 — footer приведён к 1180px Search3-grid, увеличена читаемость desktop/mobile, legacy links заменены на canonical `anytoour.ru`.
 - 2026-09-03 — QA макета №6 усилен: entry/sending/success/error обязательны на desktop/tablet/mobile.
+- 2026-09-03 — для макета №2 добавлены mobile/tablet filter sub-screens на фактических form controls; reset очищает весь filter set, apply и cancel разделены.
+- 2026-09-03 — QA макета №2 теперь обязан снять вложенный filter-screen; live DOM подтверждает 4 panel rows и commit CTA.
 
 ## Definition of done
 
