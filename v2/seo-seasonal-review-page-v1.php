@@ -21,6 +21,20 @@ function v2_seo_seasonal_preview_catalog(): array
             'parent_label'=>'Мальдивы',
             'search_state'=>['country'=>8],
         ],
+        'antalya-october' => [
+            'path'=>'/_preview/seo2/seasonal/antalya-october/',
+            'content_key'=>'antalya-october',
+            'parent_path'=>'/country/turkey/antalya/',
+            'parent_label'=>'Анталья',
+            'search_state'=>['country'=>4,'region'=>20],
+        ],
+        'maldives-october' => [
+            'path'=>'/_preview/seo2/seasonal/maldives-october/',
+            'content_key'=>'maldives-october',
+            'parent_path'=>'/country/maldives/',
+            'parent_label'=>'Мальдивы',
+            'search_state'=>['country'=>8],
+        ],
     ];
 }
 
