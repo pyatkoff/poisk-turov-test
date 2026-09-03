@@ -14,6 +14,7 @@ on:
       - 'v2/data/materialize-seo-core-resort-review-routes-v1.php'
       - 'v2/data/report-seo-core-hotel-cohort-v1.php'
       - 'tests/seo-core-month-content-smoke.php'
+      - 'tests/seo-core-month-navigation-public-smoke.php'
       - 'tests/seo-structured-data-smoke.php'
       - 'tests/seo-launch-slice-smoke.php'
       - 'tests/seo-controlled-growth-guard.php'
@@ -44,6 +45,7 @@ jobs:
           set -euo pipefail
           php -l v2/site-page-shell-v1.php >/dev/null
           php -l v2/seo-structured-data-v1.php >/dev/null
+          php -l v2/seo-core-month-navigation-v1.php >/dev/null
           php -l v2/country-page-v1.php >/dev/null
           php -l v2/seo-core-month-content-v1.php >/dev/null
           php -l v2/seo-core-resort-launch-state-v1.php >/dev/null
@@ -59,6 +61,7 @@ jobs:
           php -l v2/data/materialize-seo-core-hotel-review-routes-v1.php >/dev/null
           php -l v2/data/report-seo-core-hotel-cohort-v1.php >/dev/null
           php tests/seo-core-month-content-smoke.php
+          php tests/seo-core-month-navigation-public-smoke.php
           php tests/seo-structured-data-smoke.php
           php tests/seo-core-resort-launch-state-smoke.php
           php tests/seo-core-resort-review-materializer-smoke.php
@@ -68,4 +71,4 @@ jobs:
           php tests/seo-production-identity-collector-smoke.php
           php tests/seo-core-hotel-cohort-smoke.php
           php tests/seo-core-hotel-review-runtime-smoke.php
-          echo 'V2_SEO_CORE_OK static_public=104 dynamic_resorts=manifest_gated structured_data=1 country_resort_links=1 hotel_tours_indexed=0 top500_review_runtime=1'
+          echo 'V2_SEO_CORE_OK static_public=104 dynamic_resorts=manifest_gated month_navigation=1 structured_data=1 country_resort_links=1 hotel_tours_indexed=0 top500_review_runtime=1'
