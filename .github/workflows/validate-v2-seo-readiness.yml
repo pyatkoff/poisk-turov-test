@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'v2/seo-*.php'
+      - 'v2/country-page-v1.php'
       - 'v2/sitemap.xml'
       - 'v2/data/seo-controlled-route-identities-v1.php'
       - 'v2/data/seo-core-hotel-cohort-source-v1.php'
@@ -16,6 +17,7 @@ on:
       - 'tests/seo-controlled-growth-guard.php'
       - 'tests/seo-core-resort-launch-state-smoke.php'
       - 'tests/seo-core-resort-review-materializer-smoke.php'
+      - 'tests/seo-core-resort-country-links-smoke.php'
       - 'tests/seo-core-hotel-cohort-smoke.php'
       - 'tests/seo-core-hotel-review-runtime-smoke.php'
       - '.github/workflows/validate-v2-seo-readiness.yml'
@@ -38,6 +40,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          php -l v2/country-page-v1.php >/dev/null
           php -l v2/seo-core-month-content-v1.php >/dev/null
           php -l v2/seo-core-resort-launch-state-v1.php >/dev/null
           php -l v2/seo-core-resort-review-runtime-v1.php >/dev/null
@@ -54,9 +57,10 @@ jobs:
           php tests/seo-core-month-content-smoke.php
           php tests/seo-core-resort-launch-state-smoke.php
           php tests/seo-core-resort-review-materializer-smoke.php
+          php tests/seo-core-resort-country-links-smoke.php
           php tests/seo-launch-slice-smoke.php
           php tests/seo-controlled-growth-guard.php
           php tests/seo-production-identity-collector-smoke.php
           php tests/seo-core-hotel-cohort-smoke.php
           php tests/seo-core-hotel-review-runtime-smoke.php
-          echo 'V2_SEO_CORE_OK static_public=104 dynamic_resorts=manifest_gated hotel_tours_indexed=0 top500_review_runtime=1'
+          echo 'V2_SEO_CORE_OK static_public=104 dynamic_resorts=manifest_gated country_resort_links=1 hotel_tours_indexed=0 top500_review_runtime=1'
