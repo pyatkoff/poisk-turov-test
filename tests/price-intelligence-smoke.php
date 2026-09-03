@@ -32,6 +32,9 @@ assert_true($fingerprint === v2_price_segment_fingerprint($segment), 'fingerprin
 $otherDate = $segment;
 $otherDate['departure_date'] = '2026-09-21';
 assert_true($fingerprint !== v2_price_segment_fingerprint($otherDate), 'departure date must affect fingerprint');
+$otherRoom = $segment;
+$otherRoom['room_type'] = 'standard room';
+assert_true($fingerprint !== v2_price_segment_fingerprint($otherRoom), 'room label differences must stay conservative');
 
 $mins = [151000, 148000, 145000, 140000, 136000, 130000, 125000];
 $rows = [];
@@ -42,13 +45,15 @@ foreach ($mins as $i => $min) {
         'median_price' => $min + 3000,
         // A deliberately huge raw max must NOT become the crossed-out reference price.
         'max_price' => $min + 100000,
-        'observation_count' => 3,
+        'observation_count' => 5,
+        'independent_search_count' => 3,
     ];
 }
 $summary = v2_price_intelligence_summary($rows, 120000);
 assert_true(($summary['ok'] ?? false) === true, 'summary ok');
 assert_true(($summary['observedDays'] ?? 0) === 7, '7 observed days');
-assert_true(($summary['observationCount'] ?? 0) === 21, '21 observations');
+assert_true(($summary['observationCount'] ?? 0) === 35, '35 raw observations');
+assert_true(($summary['independentSearchCount'] ?? 0) === 21, '21 independent searches');
 assert_true((float)($summary['referencePrice'] ?? 0) === 151000.0, 'reference uses max of daily minima');
 assert_true(($summary['referenceMethod'] ?? '') === 'max_of_daily_min_exact_comparable_segment', 'reference method');
 assert_true(($summary['historicalDropPercent'] ?? 0) === 21, 'rounded historical drop');
@@ -59,6 +64,17 @@ assert_true(($thin['showHistoricalDrop'] ?? true) === false, 'insufficient days 
 
 $smallDrop = v2_price_intelligence_summary($rows, 147000);
 assert_true(($smallDrop['showHistoricalDrop'] ?? true) === false, 'sub-5-percent drop must be suppressed');
+
+$manyRowsOneSearch = $rows;
+foreach ($manyRowsOneSearch as &$row) {
+    $row['observation_count'] = 20;
+    $row['independent_search_count'] = 1;
+}
+unset($row);
+$notIndependent = v2_price_intelligence_summary($manyRowsOneSearch, 120000);
+assert_true(($notIndependent['observationCount'] ?? 0) === 140, 'raw observations retained');
+assert_true(($notIndependent['independentSearchCount'] ?? -1) === 7, 'independent searches counted separately');
+assert_true(($notIndependent['showHistoricalDrop'] ?? true) === false, 'one repeated search per day cannot authorize discount');
 
 $duplicate = $rows;
 $duplicate[] = $rows[0];
