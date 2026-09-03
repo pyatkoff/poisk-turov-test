@@ -25,6 +25,7 @@ jobs:
           php -l v2/seo-core-resort-review-runtime-v1.php >/dev/null
           php -l v2/data/materialize-seo-core-resort-review-routes-v1.php >/dev/null
           php tests/sync-catalog-hotel-taxonomy-contract-smoke.php
+          php tests/sync-observed-hotel-taxonomy-contract-smoke.php
           php tests/seo-core-resort-cohort-smoke.php
           php tests/seo-core-resort-source-contract-smoke.php
           php tests/seo-core-resort-review-materializer-smoke.php
