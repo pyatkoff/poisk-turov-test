@@ -34,6 +34,7 @@ try {
         median_price DECIMAL(12,2) NOT NULL,
         max_price DECIMAL(12,2) NOT NULL,
         observation_count INT UNSIGNED NOT NULL,
+        independent_search_count INT UNSIGNED NOT NULL DEFAULT 0,
         calculated_at DATETIME NOT NULL,
         PRIMARY KEY (id),
         UNIQUE KEY uq_price_daily_exact_segment (price_date, segment_fingerprint),
@@ -41,6 +42,14 @@ try {
         KEY idx_price_daily_exact_hotel_departure (hotel_id, departure_date, price_date),
         KEY idx_price_daily_exact_destination (country_id, region_id, departure_date, price_date)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Keep the migration idempotent if an earlier branch/rehearsal created the
+    // table before independent-search confidence was added.
+    $column = $pdo->query("SHOW COLUMNS FROM tour_price_daily_exact LIKE 'independent_search_count'")->fetch(PDO::FETCH_ASSOC);
+    if (!$column) {
+        $pdo->exec("ALTER TABLE tour_price_daily_exact
+            ADD COLUMN independent_search_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER observation_count");
+    }
 
     echo "ANYTOUR_PRICE_DAILY_EXACT_SCHEMA_OK\n";
 } catch (Throwable $e) {
