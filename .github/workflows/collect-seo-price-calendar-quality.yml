@@ -7,6 +7,10 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '56 4 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/collect-seo-price-calendar-quality.yml'
   pull_request:
     branches: [main]
     paths:
