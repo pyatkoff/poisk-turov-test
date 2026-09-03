@@ -2,6 +2,17 @@
 body.search3-preview #selectedTour .lead-form[data-search3-lead-state] > :not(.search3-lead-status){
   display:none!important;
 }
+body.search3-preview #selectedTour .lead-form[data-search3-lead-state="error"] .search3-error-preserve-note{
+  max-width:none!important;
+  margin:13px 0 0!important;
+  padding:9px 11px!important;
+  border:1px solid var(--at-line-soft)!important;
+  border-radius:8px!important;
+  background:var(--at-soft)!important;
+  color:var(--at-muted)!important;
+  font-size:9px!important;
+  line-height:1.35!important;
+}
 @media(min-width:1000px){
   html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]){
     align-items:start!important;
