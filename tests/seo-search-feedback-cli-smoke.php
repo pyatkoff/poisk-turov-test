@@ -29,8 +29,8 @@ $out=[];$code=0;exec($cmd.' 2>&1',$out,$code);
 if($code!==0) search_feedback_cli_fail('valid_exit_'.$code.'_'.implode('|',$out));
 $decoded=json_decode(implode("\n",$out),true);
 if(!is_array($decoded)||($decoded['state']??'')!=='search_feedback_intake_ready') search_feedback_cli_fail('valid_state');
-if(($decoded['launch_scope']??'')!=='controlled_country_resort_v2'||($decoded['launched_path_count']??0)!==8) search_feedback_cli_fail('scope');
-if(($decoded['observed_count']??0)!==1||count($decoded['missing_paths']??[])!==7) search_feedback_cli_fail('partial_counts');
+if(($decoded['launch_scope']??'')!=='controlled_country_resort_seasonal_v3'||($decoded['launched_path_count']??0)!==10) search_feedback_cli_fail('scope');
+if(($decoded['observed_count']??0)!==1||count($decoded['missing_paths']??[])!==9) search_feedback_cli_fail('partial_counts');
 if(($decoded['missing_feedback_semantics']??'')!=='unknown_not_zero') search_feedback_cli_fail('missing_semantics');
 foreach(['automatic_recommendation_allowed','automatic_deindex_allowed','publication_allowed','indexation_change_allowed','sitemap_change_allowed','canonical_change_allowed','route_change_allowed','hotel_tours_indexation_allowed'] as $flag){
     if(($decoded[$flag]??true)!==false) search_feedback_cli_fail('boundary_'.$flag);
@@ -55,4 +55,4 @@ $decoded=json_decode(implode("\n",$out),true);
 if(!is_array($decoded)||($decoded['state']??'')!=='search_feedback_intake_blocked') search_feedback_cli_fail('hotel_state');
 
 @unlink($tmp);
-echo "SEO_SEARCH_FEEDBACK_CLI_SMOKE_OK observed=1 missingUnknown=7 secondWave=1 staleBlocked=1 hotelBlocked=1\n";
+echo "SEO_SEARCH_FEEDBACK_CLI_SMOKE_OK observed=1 missingUnknown=9 seasonal=2 staleBlocked=1 hotelBlocked=1\n";
