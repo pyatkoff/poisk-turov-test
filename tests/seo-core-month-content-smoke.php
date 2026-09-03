@@ -10,8 +10,8 @@ foreach($records as $record){
     $path=(string)($record['path']??'');
     if($path===''||isset($byPath[$path]))exit(2);
     $byPath[$path]=$record;
-    if(($record['status']??'')!=='review'||($record['type']??'')!=='seasonal')exit(3);
-    foreach(['publication_allowed','indexation_allowed','sitemap_allowed','route_launch_allowed'] as $flag)if(($record[$flag]??true)!==false)exit(4);
+    if(($record['status']??'')!=='approved'||($record['type']??'')!=='seasonal')exit(3);
+    foreach(['publication_allowed','indexation_allowed','sitemap_allowed','route_launch_allowed'] as $flag)if(($record[$flag]??false)!==true)exit(4);
     $data=$record['data']??[];
     foreach(['title','description','h1','intro','breadcrumbs','sections','related','search_state','seasonal_identity'] as $key)if(!array_key_exists($key,$data))exit(5);
     if(count($data['sections'])<3)exit(6);
@@ -32,4 +32,4 @@ if(($byPath['/country/maldives/september/']['data']['seasonal_identity']['page_k
 if(($byPath['/country/egypt/january/']['data']['seasonal_identity']['year']??0)!==2027)exit(13);
 if(($byPath['/country/egypt/december/']['data']['seasonal_identity']['year']??0)!==2026)exit(14);
 if(v2_seo_core_month_target_year(8,$now)!==2027||v2_seo_core_month_target_year(9,$now)!==2026)exit(15);
-echo "SEO_CORE_MONTH_CONTENT_OK records=96 rolling_periods=1 useful_sections=3 publication=0\n";
+echo "SEO_CORE_MONTH_CONTENT_OK records=96 approved=96 rolling_periods=1 publication=1\n";

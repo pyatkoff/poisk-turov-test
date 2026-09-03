@@ -6,46 +6,32 @@ require_once __DIR__.'/../v2/seo-core-month-content-v1.php';
 
 $errors=[];
 $launchPaths=v2_seo_controlled_launch_paths();
-$baselineLimit=10;
-
-if(count($launchPaths)>$baselineLimit){
-    $errors[]='controlled public SEO cohort expanded beyond the evidence-reviewed 10-path baseline';
-}
-
 $monthRecords=v2_seo_core_month_content_records(strtotime('2026-09-03T12:00:00Z'));
-if(count($monthRecords)!==96){
-    $errors[]='core month review matrix must contain exactly 96 records';
-}
+$expectedBase=8;
+$expectedMonths=96;
+$expectedPublic=$expectedBase+$expectedMonths;
+
+if(count($monthRecords)!==$expectedMonths)$errors[]='core month matrix must contain exactly 96 records';
+if(count($launchPaths)!==$expectedPublic)$errors[]='controlled public SEO cohort must be exactly 104 base+month paths';
+if(count($launchPaths)!==count(array_unique($launchPaths)))$errors[]='controlled public SEO cohort contains duplicate paths';
 
 $monthPaths=[];
 foreach($monthRecords as $record){
-    if(!is_array($record)){
-        $errors[]='core month record is not an array';
-        continue;
-    }
+    if(!is_array($record)){ $errors[]='core month record is not an array'; continue; }
     $path=(string)($record['path']??'');
-    if($path===''){
-        $errors[]='core month record has empty path';
-        continue;
-    }
+    if($path===''){ $errors[]='core month record has empty path'; continue; }
     $monthPaths[$path]=true;
-    if(($record['status']??null)!=='review')$errors[]="$path must remain review-only";
+    if(($record['status']??null)!=='approved')$errors[]="$path must be approved as a core month page";
     foreach(['publication_allowed','indexation_allowed','sitemap_allowed','route_launch_allowed'] as $flag){
-        if(($record[$flag]??null)!==false)$errors[]="$path must keep $flag=false";
+        if(($record[$flag]??null)!==true)$errors[]="$path must keep $flag=true";
     }
 }
 
-// These two September routes were launched earlier through a separate evidence-backed pilot.
-// Their duplicate records in the generic 96-page month matrix remain review-only and must not
-// authorize any additional month route.
-$grandfathered=[
-    '/country/turkey/antalya/september/',
-    '/country/maldives/september/',
-];
-$monthLaunchOverlap=array_values(array_intersect($launchPaths,array_keys($monthPaths)));
-$unexpected=array_values(array_diff($monthLaunchOverlap,$grandfathered));
-if($unexpected!==[]){
-    $errors[]='new review-only core month paths leaked into controlled launch: '.implode(',',$unexpected);
+$missing=array_values(array_diff(array_keys($monthPaths),$launchPaths));
+if($missing!==[])$errors[]='approved core month paths missing from controlled launch: '.implode(',',array_slice($missing,0,10));
+foreach($launchPaths as $path){
+    if(str_contains($path,'/hotel/'))$errors[]='hotel_tours must never enter controlled public baseline: '.$path;
+    if($path==='/poisk-turov/')$errors[]='search route must never enter controlled public baseline';
 }
 
 if($errors!==[]){
@@ -54,4 +40,4 @@ if($errors!==[]){
     exit(1);
 }
 
-echo 'SEO_CONTROLLED_GROWTH_GUARD_OK public_paths='.count($launchPaths).' core_month_review='.count($monthRecords).' grandfathered_month_overlap='.count($monthLaunchOverlap)."\n";
+echo "SEO_CONTROLLED_GROWTH_GUARD_OK public_paths=104 base=8 core_months=96 hotel_tours=0\n";

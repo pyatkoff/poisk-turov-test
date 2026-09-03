@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/seo-sitemap-candidates-v1.php';
+require_once __DIR__ . '/seo-core-month-matrix-v1.php';
 
 /** First production SEO rollout slice retained for compatibility and rollback. */
 function v2_seo_turkey_launch_paths(): array
@@ -23,7 +24,7 @@ function v2_seo_second_wave_country_launch_paths(): array
     ];
 }
 
-/** Third controlled wave: exact evidence-backed September seasonal pair only. */
+/** Compatibility helper for the first two seasonal pages launched earlier. */
 function v2_seo_seasonal_september_launch_paths(): array
 {
     return [
@@ -32,14 +33,23 @@ function v2_seo_seasonal_september_launch_paths(): array
     ];
 }
 
-/** Single exact-path production indexation allowlist. */
+/** Core scalable country/resort month family: 36 country-month + 60 resort-month. */
+function v2_seo_core_month_launch_paths(): array
+{
+    return array_values(array_map(
+        static fn(array $row): string => (string)$row['path'],
+        v2_seo_core_month_matrix()['rows']
+    ));
+}
+
+/** Single exact-path production indexation allowlist. hotel_tours are absent. */
 function v2_seo_controlled_launch_paths(): array
 {
-    return array_values(array_merge(
+    return array_values(array_unique(array_merge(
         v2_seo_turkey_launch_paths(),
         v2_seo_second_wave_country_launch_paths(),
-        v2_seo_seasonal_september_launch_paths()
-    ));
+        v2_seo_core_month_launch_paths()
+    )));
 }
 
 function v2_seo_turkey_launch_site_params(array $siteParams, bool $launchEnabled): array
