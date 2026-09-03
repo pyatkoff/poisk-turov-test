@@ -13,13 +13,24 @@ function v2_seo_month_labels(): array
     ];
 }
 
+/** Evergreen /month/ URLs always target the nearest non-past occurrence. */
+function v2_seo_core_month_target_year(int $month,?int $nowEpoch=null): int
+{
+    if($month<1||$month>12)throw new InvalidArgumentException('Invalid month');
+    $nowEpoch??=time();
+    $year=(int)gmdate('Y',$nowEpoch);
+    $currentMonth=(int)gmdate('n',$nowEpoch);
+    return $month<$currentMonth?$year+1:$year;
+}
+
 /**
  * Builds useful review-ready editorial records for the complete 96-page core
  * month matrix. Evergreen copy is deliberately conservative: changing weather,
  * prices, availability and departure facts remain snapshot/search driven.
  */
-function v2_seo_core_month_content_records(): array
+function v2_seo_core_month_content_records(?int $nowEpoch=null): array
 {
+    $nowEpoch??=time();
     $matrix=v2_seo_core_month_matrix();
     $families=v2_seo_seasonal_family_registry();
     $labels=v2_seo_month_labels();
@@ -39,8 +50,10 @@ function v2_seo_core_month_content_records(): array
         $data=is_array($parent['data']??null)?$parent['data']:[];
         $baseH1=trim((string)($data['h1']??''));
         $name=trim((string)($data['name']??''));
-        $month=$labels[(int)$row['month']]??null;
+        $monthNo=(int)$row['month'];
+        $month=$labels[$monthNo]??null;
         if($baseH1===''||$name===''||!is_array($month))throw new RuntimeException('Incomplete month content parent');
+        $targetYear=v2_seo_core_month_target_year($monthNo,$nowEpoch);
         $h1=$baseH1.' в '.$month['prep'];
         $searchState=['country'=>(int)$row['country_id']];
         if($row['region_id']!==null)$searchState['region']=(int)$row['region_id'];
@@ -56,11 +69,12 @@ function v2_seo_core_month_content_records(): array
         $related=[];
         foreach($matrix['rows'] as $peer){
             if($peer['family']!==$row['family']||(int)$peer['country_id']!==(int)$row['country_id']||$peer['region_id']!==$row['region_id'])continue;
-            if((int)$peer['month']===(int)$row['month'])continue;
+            if((int)$peer['month']===$monthNo)continue;
             $peerMonth=$labels[(int)$peer['month']];
             $related[]=['label'=>$baseH1.' в '.$peerMonth['prep'],'href'=>$peer['path']];
         }
 
+        $period=sprintf('%04d-%02d',$targetYear,$monthNo);
         $records[]=[
             'id'=>'seasonal.'.str_replace('/','.',trim($row['path'],'/')).'.v1',
             'status'=>'review',
@@ -72,7 +86,7 @@ function v2_seo_core_month_content_records(): array
                 'description'=>$h1.': сравните подходящие отели и варианты отдыха. Актуальные даты, цены, состав тура и доступность проверяйте в поиске AnyTour.',
                 'h1'=>$h1,
                 'eyebrow'=>'AnyTour · отдых по месяцам',
-                'intro'=>'Страница помогает спланировать поездку на '.$month['nom'].' и перейти от выбора направления к конкретным предложениям. Условия поездки зависят от дат и отеля, поэтому меняющиеся цены, наличие и параметры тура не фиксируются в постоянном SEO-тексте.',
+                'intro'=>'Страница помогает спланировать поездку на ближайший '.$month['nom'].' и перейти от выбора направления к конкретным предложениям. Условия поездки зависят от дат и отеля, поэтому меняющиеся цены, наличие и параметры тура не фиксируются в постоянном SEO-тексте.',
                 'breadcrumbs'=>$breadcrumbs,
                 'sections'=>[
                     ['id'=>'planning','title'=>'Как планировать поездку в '.$month['prep'],'paragraphs'=>[
@@ -93,8 +107,8 @@ function v2_seo_core_month_content_records(): array
                 'internal_links'=>[['title'=>'Подбор тура','links'=>[['label'=>'Поиск туров AnyTour','href'=>'/poisk-turov/'],['label'=>$baseH1,'href'=>$parentPath]]]],
                 'search_state'=>$searchState,
                 'seasonal_identity'=>[
-                    'page_key'=>($row['family']==='country_month'?'month:1:':'resort_month:1:').(int)$row['country_id'].($row['region_id']!==null?':'.(int)$row['region_id']:'').':2026-'.str_pad((string)$row['month'],2,'0',STR_PAD_LEFT),
-                    'country_id'=>(int)$row['country_id'],'region_id'=>$row['region_id'],'year'=>2026,'month'=>(int)$row['month'],
+                    'page_key'=>($row['family']==='country_month'?'month:1:':'resort_month:1:').(int)$row['country_id'].($row['region_id']!==null?':'.(int)$row['region_id']:'').':'.$period,
+                    'country_id'=>(int)$row['country_id'],'region_id'=>$row['region_id'],'year'=>$targetYear,'month'=>$monthNo,
                 ],
             ],
             'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_launch_allowed'=>false,
