@@ -182,3 +182,62 @@ html body.search3-preview.search3-has-results #results .hotel-card .hotel-best-o
  html body.search3-preview.search3-has-results #results .search3-hotel-highlight b{max-width:92px!important}
  html body.search3-preview.search3-has-results #results .search3-hotel-action{grid-template-columns:minmax(0,1fr) 150px!important;gap:12px!important}
 }
+
+
+/* Approved mockup #1: compact hotel-level decision hierarchy. */
+@media(min-width:1000px){
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-main{
+    min-height:166px!important;
+  }
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo,
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo>img{
+    min-height:166px!important;
+  }
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-body{
+    padding:10px 14px 9px!important;
+    row-gap:0!important;
+  }
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlights{
+    align-items:center!important;
+    gap:6px!important;
+    min-height:24px!important;
+    margin-top:5px!important;
+  }
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--room,
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--operator,
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--flight{
+    display:none!important;
+  }
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--rating,
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--sea{
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:4px!important;
+    width:auto!important;
+    min-height:22px!important;
+    padding:3px 7px!important;
+    border:0!important;
+    border-radius:6px!important;
+    background:#eaf8ef!important;
+  }
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--rating small,
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--rating b,
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--sea small,
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--sea b{
+    display:inline!important;
+    max-width:none!important;
+    margin:0!important;
+    color:#18794e!important;
+    font-size:9px!important;
+    line-height:1.15!important;
+    white-space:nowrap!important;
+  }
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-facts{
+    margin-top:5px!important;
+  }
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-action{
+    min-height:40px!important;
+    margin-top:5px!important;
+    padding-top:5px!important;
+  }
+}
