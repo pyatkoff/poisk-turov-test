@@ -9,19 +9,8 @@ function v2_seo_production_identity_expected_rows(): array
     $rows=[];
     $seasonal=array_fill_keys(v2_seo_core_month_launch_paths(),true);
     $turkeyResorts=array_fill_keys(array_values(array_diff(v2_seo_turkey_launch_paths(),['/country/turkey/'])),true);
-    $dynamicResorts=array_fill_keys(v2_seo_core_resort_launch_paths(),true);
     foreach(v2_seo_controlled_launch_paths() as $path){
-        if(isset($seasonal[$path])){
-            $type='seasonal';
-        } elseif(isset($turkeyResorts[$path])){
-            $type='resort';
-        } elseif(isset($dynamicResorts[$path])){
-            if(preg_match('#^/country/(?:egypt|maldives)/[a-z0-9-]+/$#',$path))$type='resort';
-            elseif(preg_match('#^/country/(?:egypt|maldives)/[a-z0-9-]+/(?:january|february|march|april|may|june|july|august|september|october|november|december)/$#',$path))$type='seasonal';
-            else throw new RuntimeException('Unexpected generated resort launch path: '.$path);
-        } else {
-            $type='country';
-        }
+        $type=isset($seasonal[$path])?'seasonal':(isset($turkeyResorts[$path])?'resort':'country');
         $rows[]=[
             'path'=>$path,
             'type'=>$type,
