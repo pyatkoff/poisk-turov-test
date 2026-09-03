@@ -12,6 +12,7 @@ $intake=v2_seo_search_feedback_intake($rows,$now);
 if(($intake['state']??'')!=='search_feedback_intake_ready')feedback_fail('state');
 if(($intake['domain']??'')!=='anytoour.ru'||($intake['launch_scope']??'')!=='controlled_country_resort_seasonal_v3'||($intake['launched_path_count']??0)!==10||($intake['observed_count']??0)!==2)feedback_fail('scope');
 if(count($intake['missing_paths']??[])!==8||($intake['missing_feedback_semantics']??'')!=='unknown_not_zero')feedback_fail('missing_semantics');
+if(($intake['zero_impression_metric_semantics']??'')!=='position_ctr_unknown_not_zero')feedback_fail('zero_impression_semantics');
 if(($intake['recommendation_state']??'')!=='requires_explicit_feedback_policy')feedback_fail('policy_boundary');
 foreach($intake['rows'] as $row){
     if(($row['state']??'')!=='search_feedback_evidence_valid'||($row['fresh']??false)!==true)feedback_fail('row_validity');
@@ -21,10 +22,25 @@ foreach(['automatic_recommendation_allowed','automatic_deindex_allowed','publica
 if(($intake['publication_candidates']??null)!==[]||($intake['publication_scope_expanded']??true)!==false)feedback_fail('publication_scope');
 foreach(['search_contract_changes','tourvisor_contract_changes','pricing_contract_changes','lead_contract_changes','metrika_contract_changes'] as $flag)if(($intake[$flag]??true)!==false)feedback_fail('contract_'.$flag);
 
+$zero=$rows[0];
+$zero['source_ref']='fixture://gsc/zero-impressions';
+$zero['metrics']=['impressions'=>0,'clicks'=>0,'query_count'=>0];
+$zeroIntake=v2_seo_search_feedback_intake([$zero],$now);
+if(($zeroIntake['state']??'')!=='search_feedback_intake_ready')feedback_fail('zero_impressions_not_valid_unknown');
+$zeroRow=$zeroIntake['rows'][0]??[];
+if(array_key_exists('avg_position',$zeroRow['metrics']??[])||array_key_exists('ctr',$zeroRow['metrics']??[]))feedback_fail('zero_impressions_fabricated_metrics');
+if(($zeroRow['zero_impression_metric_semantics']??'')!=='position_ctr_unknown_not_zero')feedback_fail('zero_row_semantics');
+
+$fakeZero=$zero;
+$fakeZero['metrics']['avg_position']=0;
+$fakeZero['metrics']['ctr']=0.0;
+$blocked=v2_seo_search_feedback_intake([$fakeZero],$now);
+if(($blocked['state']??'')!=='search_feedback_intake_blocked')feedback_fail('fabricated_zero_metrics_not_blocked');
+
 $hotel=$rows[0];$hotel['path']='/country/turkey/hotel/aegean-park-1601/';
 $blocked=v2_seo_search_feedback_intake([$hotel],$now);if(($blocked['state']??'')!=='search_feedback_intake_blocked')feedback_fail('hotel_scope_not_blocked');
 $stale=$rows[0];$stale['collected_at_epoch']=$now-8*86400;$stale['period_end_epoch']=$stale['collected_at_epoch']-3600;$stale['period_start_epoch']=$stale['period_end_epoch']-7*86400;
 $blocked=v2_seo_search_feedback_intake([$stale],$now);if(($blocked['state']??'')!=='search_feedback_intake_blocked')feedback_fail('stale_not_blocked');
 $badCtr=$rows[0];$badCtr['metrics']['ctr']=1.2;$blocked=v2_seo_search_feedback_intake([$badCtr],$now);if(($blocked['state']??'')!=='search_feedback_intake_blocked')feedback_fail('bad_ctr_not_blocked');
 $empty=v2_seo_search_feedback_intake([],$now);if(($empty['state']??'')!=='search_feedback_intake_blocked'||count($empty['missing_paths']??[])!==10)feedback_fail('empty_not_unknown');
-echo "SEO_SEARCH_FEEDBACK_EVIDENCE_OK launched=10 observedFixture=2 missingUnknown=8 seasonal=2 autoRecommendation=0 autoDeindex=0 hotelTours=0\n";
+echo "SEO_SEARCH_FEEDBACK_EVIDENCE_OK launched=10 observedFixture=2 missingUnknown=8 seasonal=2 zeroImpressionsUnknown=1 autoRecommendation=0 autoDeindex=0 hotelTours=0\n";
