@@ -14,8 +14,10 @@ on:
       - 'v2/data/report-seo-hotel-pilot-live-evidence-v1.php'
       - 'v2/seo-hotel-pilot-readiness-status-v1.php'
       - 'v2/data/report-seo-hotel-pilot-readiness-status-v1.php'
+      - 'v2/data/report-seo-hotel-pilot-gap-matrix-v1.php'
       - 'tests/seo-hotel-pilot-live-evidence-smoke.php'
       - 'tests/seo-hotel-pilot-readiness-status-cli-smoke.php'
+      - 'tests/seo-hotel-pilot-gap-matrix-smoke.php'
       - '.github/workflows/collect-seo-hotel-pilot-live-evidence.yml'
   push:
     branches: [main]
@@ -29,6 +31,8 @@ on:
       - 'v2/data/report-seo-hotel-pilot-live-evidence-v1.php'
       - 'v2/seo-hotel-pilot-readiness-status-v1.php'
       - 'v2/data/report-seo-hotel-pilot-readiness-status-v1.php'
+      - 'v2/data/report-seo-hotel-pilot-gap-matrix-v1.php'
+      - 'tests/seo-hotel-pilot-gap-matrix-smoke.php'
       - '.github/workflows/collect-seo-hotel-pilot-live-evidence.yml'
 
 permissions:
@@ -52,10 +56,13 @@ jobs:
           php -l v2/data/report-seo-hotel-pilot-live-evidence-v1.php >/dev/null
           php -l v2/seo-hotel-pilot-readiness-status-v1.php >/dev/null
           php -l v2/data/report-seo-hotel-pilot-readiness-status-v1.php >/dev/null
+          php -l v2/data/report-seo-hotel-pilot-gap-matrix-v1.php >/dev/null
           php -l tests/seo-hotel-pilot-live-evidence-smoke.php >/dev/null
           php -l tests/seo-hotel-pilot-readiness-status-cli-smoke.php >/dev/null
+          php -l tests/seo-hotel-pilot-gap-matrix-smoke.php >/dev/null
           php tests/seo-hotel-pilot-live-evidence-smoke.php
           php tests/seo-hotel-pilot-readiness-status-cli-smoke.php
+          php tests/seo-hotel-pilot-gap-matrix-smoke.php
 
   live-evidence:
     if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
@@ -95,6 +102,26 @@ jobs:
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           if [ -s seo-hotel-pilot-readiness-status.err ]; then cat seo-hotel-pilot-readiness-status.err >&2; fi
           exit 0
+      - name: Build explicit evidence gap matrix
+        id: gap
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          if [ -s seo-hotel-pilot-readiness-status.json ]; then
+            php v2/data/report-seo-hotel-pilot-gap-matrix-v1.php \
+              --status=seo-hotel-pilot-readiness-status.json \
+              > seo-hotel-pilot-gap-matrix.json \
+              2> seo-hotel-pilot-gap-matrix.err
+            code=$?
+          else
+            printf '%s\n' '{"state":"review_only_hotel_pilot_gap_matrix_unavailable","publication_candidates":[],"automatic_execution_allowed":false}' > seo-hotel-pilot-gap-matrix.json
+            printf '%s\n' 'missing readiness status json' > seo-hotel-pilot-gap-matrix.err
+            code=3
+          fi
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ -s seo-hotel-pilot-gap-matrix.err ]; then cat seo-hotel-pilot-gap-matrix.err >&2; fi
+          exit 0
       - name: Upload hotel pilot evidence and readiness status
         if: always()
         uses: actions/upload-artifact@v4
@@ -105,6 +132,8 @@ jobs:
             seo-hotel-pilot-live-evidence.err
             seo-hotel-pilot-readiness-status.json
             seo-hotel-pilot-readiness-status.err
+            seo-hotel-pilot-gap-matrix.json
+            seo-hotel-pilot-gap-matrix.err
           if-no-files-found: error
           retention-days: 14
       - name: Reject collector/status errors but allow review hold
@@ -113,6 +142,8 @@ jobs:
         run: |
           collector_code="${{ steps.collect.outputs.exit_code }}"
           status_code="${{ steps.status.outputs.exit_code }}"
+          gap_code="${{ steps.gap.outputs.exit_code }}"
           test "$collector_code" = "0" || test "$collector_code" = "3"
           test "$status_code" = "0"
-          echo "hotel pilot review evidence exit=$collector_code (0=ready, 3=review hold); readiness status exit=$status_code"
+          test "$gap_code" = "0"
+          echo "hotel pilot review evidence exit=$collector_code (0=ready, 3=review hold); readiness status exit=$status_code; gap matrix exit=$gap_code"
