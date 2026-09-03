@@ -7,12 +7,31 @@ require_once __DIR__ . '/data/price-calendar-core-v1.php';
 require_once __DIR__ . '/seo-page-primitives-v1.php';
 require_once __DIR__ . '/seo-offer-snapshot-v1.php';
 
-function v2_seo_price_calendar_plan(array $offers, int $days = 14, ?DateTimeImmutable $today = null): ?array
-{
+function v2_seo_price_calendar_plan(
+    array $offers,
+    int $days = 14,
+    ?DateTimeImmutable $today = null,
+    ?string $scopeDateFrom = null,
+    ?string $scopeDateTo = null
+): ?array {
     $days = max(7, min(21, $days));
     $businessTz = new DateTimeZone('Europe/Moscow');
     $today ??= new DateTimeImmutable('today', $businessTz);
     $today = v2_price_calendar_date($today->setTimezone($businessTz)->format('Y-m-d'));
+
+    $scopeFrom = null;
+    $scopeTo = null;
+    try {
+        if ($scopeDateFrom !== null && $scopeDateFrom !== '') $scopeFrom = v2_price_calendar_date($scopeDateFrom);
+        if ($scopeDateTo !== null && $scopeDateTo !== '') $scopeTo = v2_price_calendar_date($scopeDateTo);
+    } catch (Throwable) {
+        return null;
+    }
+    if ($scopeFrom !== null && $scopeTo !== null && $scopeTo < $scopeFrom) return null;
+
+    $effectiveFloor = $today;
+    if ($scopeFrom !== null && $scopeFrom > $effectiveFloor) $effectiveFloor = $scopeFrom;
+    if ($scopeTo !== null && $scopeTo < $effectiveFloor) return null;
 
     $groups = [];
     foreach ($offers as $offer) {
@@ -27,7 +46,7 @@ function v2_seo_price_calendar_plan(array $offers, int $days = 14, ?DateTimeImmu
         } catch (Throwable) {
             continue;
         }
-        if ($date < $today) continue;
+        if ($date < $effectiveFloor || ($scopeTo !== null && $date > $scopeTo)) continue;
         if (!isset($groups[$departureId])) {
             $groups[$departureId] = [
                 'departureId' => $departureId,
@@ -61,14 +80,16 @@ function v2_seo_price_calendar_plan(array $offers, int $days = 14, ?DateTimeImmu
     $nightCounts = (array)$chosen['nights'];
     uksort($nightCounts, static function ($a, $b) use ($nightCounts): int {
         $count = ((int)$nightCounts[$b]) <=> ((int)$nightCounts[$a]);
-        return $count !== 0 ? $count : ((int)$a <=> (int)$b);
+        return $count !== 0 ? $count : ((int)$a <=> (int)$b;
     });
     $nights = (int)array_key_first($nightCounts);
     if ($nights <= 0) return null;
 
     $dateFrom = v2_price_calendar_date((string)$chosen['earliest']);
-    if ($dateFrom < $today) $dateFrom = $today;
+    if ($dateFrom < $effectiveFloor) $dateFrom = $effectiveFloor;
     $dateTo = $dateFrom->modify('+' . ($days - 1) . ' days');
+    if ($scopeTo !== null && $dateTo > $scopeTo) $dateTo = $scopeTo;
+    if ($dateTo < $dateFrom) return null;
 
     return [
         'departureId' => (int)$chosen['departureId'],
@@ -76,14 +97,20 @@ function v2_seo_price_calendar_plan(array $offers, int $days = 14, ?DateTimeImmu
         'nights' => $nights,
         'dateFrom' => $dateFrom->format('Y-m-d'),
         'dateTo' => $dateTo->format('Y-m-d'),
-        'days' => $days,
+        'days' => (int)$dateFrom->diff($dateTo)->format('%a') + 1,
     ];
 }
 
-function v2_seo_price_calendar(array $offers, int $countryId, int $regionId = 0, int $days = 14): array
-{
+function v2_seo_price_calendar(
+    array $offers,
+    int $countryId,
+    int $regionId = 0,
+    int $days = 14,
+    ?string $scopeDateFrom = null,
+    ?string $scopeDateTo = null
+): array {
     if ($countryId <= 0) return [];
-    $plan = v2_seo_price_calendar_plan($offers, $days);
+    $plan = v2_seo_price_calendar_plan($offers, $days, null, $scopeDateFrom, $scopeDateTo);
     if ($plan === null) return [];
 
     try {
@@ -183,7 +210,7 @@ function v2_seo_render_price_calendar(array $calendar, array $searchState, strin
         $label = v2_seo_price_calendar_short_date($date);
         $observed = ($point['observed'] ?? false) === true && (float)($point['minPrice'] ?? 0) > 0;
         if (!$observed) {
-            $items[] = '<div class="sp-price-day sp-price-day--unknown"><time datetime="'.sp_e($date).'">'.sp_e($label).'</time><strong>—</strong><small>нет свежих данных</small></div>';
+            $items[] = '<div class="sp-price-day sp-price-day--unknown" role="listitem"><time datetime="'.sp_e($date).'">'.sp_e($label).'</time><strong>—</strong><small>нет свежих данных</small></div>';
             continue;
         }
         $state = $searchState;
@@ -197,7 +224,7 @@ function v2_seo_render_price_calendar(array $calendar, array $searchState, strin
         $price = v2_seo_offer_price_label((float)$point['minPrice'], 'RUB');
         $hotelCount = (int)($point['hotelCount'] ?? 0);
         $best = ($point['best'] ?? false) === true;
-        $items[] = '<a class="sp-price-day'.($best?' sp-price-day--best':'').'" href="'.sp_e($href).'">'
+        $items[] = '<a class="sp-price-day'.($best?' sp-price-day--best':'').'" role="listitem" href="'.sp_e($href).'">'
             .'<time datetime="'.sp_e($date).'">'.sp_e($label).'</time>'
             .'<strong>от '.sp_e($price).'</strong>'
             .'<small>'.($hotelCount > 0 ? sp_e($hotelCount . ' отелей') : 'свежая цена').'</small>'
