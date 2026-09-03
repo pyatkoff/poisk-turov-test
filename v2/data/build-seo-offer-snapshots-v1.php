@@ -69,8 +69,10 @@ function seo_snapshot_add(array &$groups, string $key, string $type, array $dims
     $g['seen_hotels'][$hotelId] = true;
 }
 
-$freshHours = seo_snapshot_int(seo_snapshot_arg($argv, 'fresh-hours'), 48, 1, 168);
-$expiresHours = seo_snapshot_int(seo_snapshot_arg($argv, 'expires-hours'), 8, 1, 48);
+// Product contract: once a real offer is captured for SEO/cache delivery, keep it
+// eligible and keep the materialized snapshot alive for at least 72 hours.
+$freshHours = seo_snapshot_int(seo_snapshot_arg($argv, 'fresh-hours'), 72, 72, 168);
+$expiresHours = seo_snapshot_int(seo_snapshot_arg($argv, 'expires-hours'), 72, 72, 168);
 $maxOffers = seo_snapshot_int(seo_snapshot_arg($argv, 'offers-per-page'), 10, 1, 30);
 $rowLimit = seo_snapshot_int(seo_snapshot_arg($argv, 'row-limit'), 100000, 1000, 250000);
 
