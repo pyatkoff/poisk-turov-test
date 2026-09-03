@@ -82,25 +82,32 @@ function v2_seo_yandex_webmaster_feedback(array $payload, ?int $collectedAtEpoch
     foreach($allowed as $path){
         if(!isset($byPath[$path]))continue;
         $impressions=0.0;$clicks=0.0;$positionWeighted=0.0;$positionWeight=0.0;
+        $impressionsObserved=false;$clicksObserved=false;
         $pageErrors=[];
         foreach($byPath[$path] as $date=>$fields){
             if(!isset($dateSet[$date]))continue;
             $dayImpressions=$fields['IMPRESSIONS']??null;
             $dayClicks=$fields['CLICKS']??null;
             $dayPosition=$fields['POSITION']??null;
-            if($dayImpressions!==null)$impressions+=(float)$dayImpressions;
-            if($dayClicks!==null)$clicks+=(float)$dayClicks;
+            if($dayImpressions!==null){$impressions+=(float)$dayImpressions;$impressionsObserved=true;}
+            if($dayClicks!==null){$clicks+=(float)$dayClicks;$clicksObserved=true;}
             if($dayPosition!==null&&$dayImpressions!==null&&(float)$dayImpressions>0){
                 $positionWeighted+=(float)$dayPosition*(float)$dayImpressions;
                 $positionWeight+=(float)$dayImpressions;
             }
         }
         $metrics=[];
-        if(floor($impressions)===$impressions)$metrics['impressions']=(int)$impressions; else $pageErrors[]='non_integer_impressions';
-        if(floor($clicks)===$clicks)$metrics['clicks']=(int)$clicks; else $pageErrors[]='non_integer_clicks';
-        if($positionWeight>0)$metrics['avg_position']=$positionWeighted/$positionWeight; else $pageErrors[]='position_unavailable';
-        if($impressions>0)$metrics['ctr']=$clicks/$impressions; else $pageErrors[]='ctr_unavailable';
-        if($clicks>$impressions)$pageErrors[]='clicks_exceed_impressions';
+        if($impressionsObserved){
+            if(floor($impressions)===$impressions)$metrics['impressions']=(int)$impressions; else $pageErrors[]='non_integer_impressions';
+        }else $pageErrors[]='impressions_unavailable';
+        if($clicksObserved){
+            if(floor($clicks)===$clicks)$metrics['clicks']=(int)$clicks; else $pageErrors[]='non_integer_clicks';
+        }else $pageErrors[]='clicks_unavailable';
+        if($impressionsObserved&&$impressions>0){
+            if($positionWeight>0)$metrics['avg_position']=$positionWeighted/$positionWeight; else $pageErrors[]='position_unavailable';
+            if($clicksObserved)$metrics['ctr']=$clicks/$impressions; else $pageErrors[]='ctr_unavailable';
+        }
+        if($impressionsObserved&&$clicksObserved&&$clicks>$impressions)$pageErrors[]='clicks_exceed_impressions';
         $rows[]=[
             'path'=>$path,
             'source_class'=>'yandex_webmaster_export',
