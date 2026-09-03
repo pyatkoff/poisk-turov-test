@@ -4,6 +4,7 @@
 Ветка: `feature/search3-preview`  
 Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`  
 Последний проверенный implementation baseline: `ecedaeb1396b553c7150e37d7c4031a5915dcd51`
+Текущий кандидат: `dd39045eb0bc9c7ae7d6d433623a4025a31a6d12` — тройной QA ожидает подтверждения
 
 ## Правила
 
@@ -20,6 +21,7 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 |---|---|---|---|
 | Изолированный preview | DONE | Preview отделён от production, noindex, lead submission выключен | Сохранять lock |
 | Полный функциональный путь | DONE (baseline) | Search → results → hotel tours → tour → flights → final → lead states | Повторить после финального visual pass |
+| Начальный экран поиска | REVIEW | Старый hero скрыт; 7 основных, 5 дополнительных и 5 quick-полей; CTA видна; overflow отсутствует | Новый contract добавлен во все три QA; дождаться результата |
 | Desktop: верх выдачи | REVIEW | Toolbar не перекрывает карточки и совпадает с шириной results | Сверить свежий screenshot с maket7 |
 | Desktop: карточки отелей | REVIEW | Реальные rating/sea/room/operator/flight, ровные media/content, без overflow | Проверить свежий artifact |
 | Mobile: верх выдачи | IN PROGRESS | `Найдено → изменить поиск → Фильтры/Сортировка → карточки`; одна строка равных кнопок | Подтвердить новым QA artifact |
@@ -43,6 +45,13 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 3. Исправить только визуальные/семантические расхождения без редизайна.
 4. Повторить полный regression.
 5. Обновить эту карту с доказательствами и новым baseline.
+
+## Журнал
+
+- 2026-09-03 — создана каноническая карта; обновления карты исключены из deploy-trigger.
+- 2026-09-03 — workflow расширен до desktop / tablet / mobile.
+- 2026-09-03 — добавлен формальный контракт начального состояния во все три viewport.
+- 2026-09-03 — mobile results order и tablet card density приведены к maket7-контракту.
 
 ## Definition of done
 
