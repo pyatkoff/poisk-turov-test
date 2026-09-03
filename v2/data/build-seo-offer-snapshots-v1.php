@@ -8,6 +8,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once __DIR__ . '/db-v1.php';
+require_once __DIR__ . '/price-segment-v1.php';
 
 function seo_snapshot_arg(array $argv, string $name): ?string
 {
@@ -28,6 +29,7 @@ function seo_snapshot_offer(array $row): array
 {
     return [
         'tourId' => (string)($row['tour_id'] ?? ''),
+        'segmentFingerprint' => v2_price_segment_fingerprint($row),
         'hotelId' => (int)$row['hotel_id'],
         'hotelName' => (string)$row['hotel_name'],
         'hotelCategory' => $row['hotel_category'] !== null ? (int)$row['hotel_category'] : null,
@@ -35,7 +37,11 @@ function seo_snapshot_offer(array $row): array
         'regionName' => (string)($row['region_name'] ?? ''),
         'departureDate' => (string)$row['departure_date'],
         'nights' => (int)$row['nights'],
+        'adults' => (int)$row['adults'],
+        'childrenCount' => (int)$row['children_count'],
         'mealId' => $row['meal_id'] !== null ? (int)$row['meal_id'] : null,
+        'roomId' => $row['room_id'] !== null ? (int)$row['room_id'] : null,
+        'roomType' => (string)($row['room_type'] ?? ''),
         'operatorId' => $row['operator_id'] !== null ? (int)$row['operator_id'] : null,
         'price' => (float)$row['price'],
         'currency' => (string)$row['currency'],
