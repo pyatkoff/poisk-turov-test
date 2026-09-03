@@ -3,8 +3,8 @@
 Последнее обновление: 2026-09-03  
 Ветка: `feature/search3-preview`  
 Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`  
-Последний проверенный implementation head: `6cdbf58f14c814e25d1a57173fb13cb4920bcf5e`  
-Последний полный QA: **run 416 — SUCCESS** (`deploy-preview`, `visual-qa desktop`, `visual-qa tablet`, `visual-qa mobile`).
+Последний проверенный implementation head: `21d857e0ee6311c72cf692d87eb47ace0c8d2c1d`  
+Последний полный QA: **run 430 — SUCCESS** (`deploy-preview`, `visual-qa desktop`, `visual-qa tablet`, `visual-qa mobile`).
 
 ## Источник истины: 8 утверждённых макетов
 
@@ -13,14 +13,14 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 
 | № | Утверждённый макет | Покрываемые состояния | Статус | Что уже сделано / что проверить |
 |---:|---|---|---|---|
-| 1 | Интерфейс поиска туров AnyTour | search, results, hotel tours | REVIEW | Верх выдачи и hotel cards уплотнены; desktop card/photo 166px; нужен финальный визуальный diff свежих artifacts |
+| 1 | Интерфейс поиска туров AnyTour | search, results, hotel tours | REVIEW | Верх выдачи и hotel cards уплотнены; desktop card/photo 166px; нужен финальный visual diff свежего head |
 | 2 | Макет фильтров поиска туров AnyTour | filters, sorting, sub-screens, reset/apply/cancel | REVIEW | Реальные mobile/tablet sub-screens, полный reset, apply/cancel staging; контракт проходит QA |
-| 3 | Выбор рейсов AnyTour | outbound/inbound, baggage, delta, total, continue | REVIEW | Responsive booking-board convergence внесён; flight variants остаются обязательными в QA; нужен визуальный diff |
-| 4 | Итог тура AnyTour | hotel, room, flights, services, tourists, total, submit | REVIEW | Исправлена tablet-геометрия итогового hotel heading; цена/итог проходят полный QA; нужен визуальный diff |
-| 5 | Страница бронирования тура AnyTour | selected hotel, room/meal, flights, composition, total | REVIEW | Mobile selected-tour booking view изолирован от лишних блоков; порядок booking sections уточнён; run 416 зелёный |
-| 6 | UI-кит заявки на тур AnyTour | entry, sending, success, error, MAX/Telegram | REVIEW | Mobile lead lifecycle приведён к утверждённому kit; все 4 состояния обязательны в desktop/tablet/mobile QA |
+| 3 | Выбор рейсов AnyTour | outbound/inbound, baggage, delta, total, continue | REVIEW | Рейсы уплотнены на desktop/mobile, реальные paired-variant semantics сохранены; run 430 проходит все viewport |
+| 4 | Итог тура AnyTour | hotel, room, flights, services, tourists, total, submit | REVIEW | Mobile hotel+room+meal собраны в единый review-card; flight block/CTA stacking исправлен; run 430 зелёный |
+| 5 | Страница бронирования тура AnyTour | selected hotel, room/meal, flights, composition, total | REVIEW | Booking view изолирован и уплотнён; tablet flight-choice стабилизирован; весь путь проходит на run 430 |
+| 6 | UI-кит заявки на тур AnyTour | entry, sending, success, error, MAX/Telegram | REVIEW | Все 4 lead-state обязательны в desktop/tablet/mobile QA; нужен финальный screenshot diff |
 | 7 | Спецификация футера AnyTour | navigation, support, social, apps, trust, legal | REVIEW | Grid/readability и canonical `anytoour.ru` links исправлены; нужен финальный screenshot diff |
-| 8 | Цельный mobile flow AnyTour | search → results → hotel → tour → flight → total → lead → messenger | REVIEW | Полный flow проходит; filter subflows и реальные MAX/Telegram handoff включены; нужен финальный визуальный diff |
+| 8 | Цельный mobile flow AnyTour | search → results → hotel → tour → flight → total → lead → messenger | REVIEW | Полный flow, filter subflows, final review и реальные MAX/Telegram handoff проходят на одном head; нужен финальный visual diff |
 
 ## Матрица обязательного QA
 
@@ -43,20 +43,20 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 
 - Изолированный preview, noindex и production-lock: **DONE**.
 - Функциональный путь search → tour → flights → final → lead success/error: **DONE на текущем head**.
-- Run 416: deploy + desktop + tablet + mobile = **SUCCESS**.
-- Последний head `6cdbf58f` закрывает mobile selected-tour booking isolation.
-- Перед ним закрыты: booking-board responsive convergence, tablet final hotel heading geometry и mobile lead lifecycle.
+- Run 430: deploy + desktop + tablet + mobile = **SUCCESS** на `21d857e0`.
+- Макеты 3–5 прошли отдельный responsive convergence: compact flights, joined mobile final hotel card, CTA no-overlap, tablet flight-choice stabilization.
 - Визуальное одобрение владельца: **LOCKED**, пока не завершён финальный screenshot-by-screenshot diff всех 8 макетов.
 - Production rollout: **LOCKED** до отдельного явного подтверждения владельца.
 
 ## Что делаем дальше
 
-1. Забрать свежие artifacts run 416 и сравнить `03 Tour Details / Flights`, `04 Final`, `05 Booking` с утверждёнными макетами на desktop/tablet/mobile.
-2. Одним пакетом исправить оставшиеся визуальные P1 без изменения данных, Tourvisor/pricing/Metrika/lead contracts.
-3. Затем сделать финальный diff макетов 1, 2, 6, 7, 8 и закрыть только реально совпавшие состояния.
-4. Один финальный QA одного implementation head на всех трёх viewport.
-5. Отдать preview владельцу на визуальную приёмку.
-6. Production — только после явного одобрения.
+1. Финальный visual diff макетов 1 и 2: search/results/cards + filters/sorting/sub-screens.
+2. Финальный visual diff макетов 6 и 7: lead kit + footer.
+3. Цельная проверка макета 8 по свежему mobile artifact от search до messenger handoff.
+4. Одним пакетом закрыть оставшиеся визуальные P1 без изменения данных, Tourvisor/pricing/Metrika/lead contracts.
+5. Один финальный QA одного implementation head на desktop/tablet/mobile.
+6. Отдать preview владельцу на визуальную приёмку.
+7. Production — только после явного одобрения.
 
 ## Правила реализации
 
@@ -68,12 +68,12 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 
 ## Последние изменения
 
-- run 407 — полностью зелёный baseline после card-density/filter/handoff работ.
-- `74b731a0` — подключён booking board convergence layer.
-- `69c1bfef` — закреплена tablet-геометрия итогового hotel heading.
-- `13840419` — mobile lead lifecycle приведён к approved kit.
-- `6cdbf58f` — изолирован selected-tour mobile booking view.
-- run 416 — полностью зелёный на `6cdbf58f`: deploy + desktop + tablet + mobile.
+- run 416 — полностью зелёный baseline на `6cdbf58f`.
+- `9ac9690e` — уплотнены flight variants и final review без изменения flight semantics.
+- `e5aa58a4` — mobile final hotel/room/meal собраны в единый booking-card и добавлен самый поздний preview visual layer.
+- `0e08c1da` — сохранён параллельный tablet flight-choice stabilization.
+- `21d857e0` — устранено перекрытие mobile final CTA блоком рейсов.
+- run 430 — полностью зелёный: deploy + desktop + tablet + mobile на `21d857e0`.
 
 ## Definition of done
 
