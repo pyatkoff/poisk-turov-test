@@ -5,6 +5,12 @@ function feedback_fail(string $m):never{fwrite(STDERR,"SEO_POSTLAUNCH_FEEDBACK_F
 $now=1800000000;
 $cohort=v2_seo_postlaunch_feedback_cohort();
 if(($cohort['domain']??'')!=='anytoour.ru'||($cohort['path_count']??0)!==10)feedback_fail('cohort');
+if(($cohort['cohort_id']??'')!=='controlled_country_resort_seasonal_v3')feedback_fail('cohort_id');
+if(($cohort['launch_source_sha']??'')!=='9a721eb387bbdeae28e9979dcebde8959dd31bbd')feedback_fail('launch_source_sha');
+if(($cohort['launch_baseline_sha256']??'')!=='515921b352d69c9b57b37d45605ec1c3751f5deb587744e8e757c1605939c043')feedback_fail('baseline_sha');
+if(($cohort['launch_identity_registry_sha256']??'')!=='df2679a82e43043b46daadffa6d3a216bc8fc09b82a4e43152ea7203b882a024')feedback_fail('identity_sha');
+if(($cohort['current_launch_scope_matches_baseline']??false)!==true)feedback_fail('launch_scope_drift');
+$current=v2_seo_controlled_launch_paths();sort($current,SORT_STRING);if($current!==$cohort['paths'])feedback_fail('pinned_paths_mismatch');
 foreach($cohort['paths'] as $path)if(str_contains($path,'/hotel/'))feedback_fail('hotel_in_cohort');
 
 $base=['domain'=>'anytoour.ru','cohort_id'=>$cohort['cohort_id'],'launch_source_sha'=>$cohort['launch_source_sha']];
@@ -29,4 +35,4 @@ $hotel=$unknownRow;$hotel['path']='/country/maldives/hotel/the-westin-maldives-m
 $bad=v2_seo_postlaunch_feedback_validate($base+['rows'=>[$hotel]],$now);if(($bad['state']??'')!=='postlaunch_feedback_invalid')feedback_fail('hotel_accepted');
 $stale=$unknownRow;$stale['observed_at_epoch']=$now-32*86400;$s=v2_seo_postlaunch_feedback_validate($base+['rows'=>[$stale]],$now);if(($s['stale_count']??0)!==1||($s['rows'][0]['decision']??'')!=='HOLD')feedback_fail('stale');
 $rev=$rows;shuffle($rev);$a=v2_seo_postlaunch_feedback_validate($base+['rows'=>$rows],$now);$b=v2_seo_postlaunch_feedback_validate($base+['rows'=>$rev],$now);if(($a['feedback_sha256']??'')!==($b['feedback_sha256']??''))feedback_fail('fingerprint_order');
-echo "SEO_POSTLAUNCH_FEEDBACK_OK cohort=10 measured=10 seasonal=2 unknownNotZero=1 hotelTours=0 autoExpand=0\n";
+echo "SEO_POSTLAUNCH_FEEDBACK_OK cohort=10 measured=10 seasonal=2 pinnedBaseline=1 unknownNotZero=1 hotelTours=0 autoExpand=0\n";
