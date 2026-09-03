@@ -1,0 +1,39 @@
+name: Validate price calendar
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/data/price-calendar-core-v1.php'
+      - 'v2/data/price-calendar-read-v1.php'
+      - 'tests/price-calendar-smoke.php'
+      - '.github/workflows/validate-price-calendar.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/data/price-calendar-core-v1.php'
+      - 'v2/data/price-calendar-read-v1.php'
+      - 'tests/price-calendar-smoke.php'
+      - '.github/workflows/validate-price-calendar.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate fail-closed calendar semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/price-calendar-core-v1.php >/dev/null
+          php -l v2/data/price-calendar-read-v1.php >/dev/null
+          php -l tests/price-calendar-smoke.php >/dev/null
+          php tests/price-calendar-smoke.php
+          grep -Fq 'INTERVAL 72 HOUR' v2/data/price-calendar-read-v1.php
+          grep -Fq "'missing_semantics' => 'unknown_not_zero'" v2/data/price-calendar-core-v1.php
+          grep -Fq "'cachedPriceIsFinal' => false" v2/data/price-calendar-read-v1.php
+          echo PRICE_CALENDAR_CONTRACT_OK
