@@ -1,6 +1,11 @@
-name: Materialize SEO Top500 hotel review routes
+name: Enforce SEO hotel review route lock
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/data/materialize-seo-core-hotel-review-routes-v1.php'
+      - '.github/workflows/materialize-seo-core-hotel-review.yml'
   workflow_run:
     workflows: ['Deploy anytoour.ru']
     types: [completed]
@@ -12,17 +17,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: materialize-seo-core-hotel-review-production
+  group: enforce-seo-hotel-review-route-lock-production
   cancel-in-progress: false
 
 jobs:
-  materialize:
+  enforce:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Validate materializer
+      - name: Validate review-only route lock
         shell: bash
         run: |
           set -euo pipefail
@@ -30,6 +35,7 @@ jobs:
           php -l v2/data/materialize-seo-core-hotel-review-routes-v1.php >/dev/null
           php -l v2/seo-core-hotel-review-runtime-v1.php >/dev/null
           php tests/seo-core-hotel-review-runtime-smoke.php
+          grep -Fq 'route_launch_locked explicit_user_approval_required' v2/data/materialize-seo-core-hotel-review-routes-v1.php
       - name: Prepare SSH key
         env:
           KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
@@ -41,7 +47,7 @@ jobs:
           if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
           chmod 600 "$key"
           ssh-keygen -y -f "$key" >/dev/null
-      - name: Materialize review-only Top500 on production
+      - name: Remove generated hotel review routes from production
         env:
           HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
@@ -54,8 +60,24 @@ jobs:
           ssh "${opts[@]}" "$remote" '
             set -euo pipefail
             root="$HOME/www/anytoour.ru"
-            php -l "$root/data/materialize-seo-core-hotel-review-routes-v1.php" >/dev/null
-            php "$root/data/materialize-seo-core-hotel-review-routes-v1.php" --root="$root" --limit=500 --require-count=500
-            php -r '\''$m=json_decode(file_get_contents($argv[1]),true); if(!is_array($m)||($m["count"]??0)!==500||($m["publication_allowed"]??true)!==false||($m["indexation_allowed"]??true)!==false||($m["sitemap_allowed"]??true)!==false) exit(1); echo "SEO_TOP500_REVIEW_ROUTES_OK count=500 publication=0 indexation=0 sitemap=0\n";'\'' "$root/data/generated/seo-core-hotel-review-routes-v1.json"
-            if grep -q "/hotel/" "$root/sitemap.xml"; then echo "HOTEL_SITEMAP_LEAK" >&2; exit 1; fi
+            removed=0
+            while IFS= read -r file; do
+              if grep -Fq "SEO_CORE_HOTEL_GENERATED_V1" "$file"; then
+                rm -f "$file"
+                dir="$(dirname "$file")"
+                rmdir "$dir" 2>/dev/null || true
+                removed=$((removed+1))
+              fi
+            done < <(find "$root/country" -type f -path "*/hotel/*/index.php" 2>/dev/null || true)
+            rm -f "$root/data/generated/seo-core-hotel-review-registry-v1.php"
+            rm -f "$root/data/generated/seo-core-hotel-review-routes-v1.json"
+            if find "$root/country" -type f -path "*/hotel/*/index.php" -exec grep -lF "SEO_CORE_HOTEL_GENERATED_V1" {} + 2>/dev/null | grep -q .; then
+              echo "HOTEL_REVIEW_ROUTE_LEAK" >&2
+              exit 1
+            fi
+            if grep -q "/hotel/" "$root/sitemap.xml"; then
+              echo "HOTEL_SITEMAP_LEAK" >&2
+              exit 1
+            fi
+            echo "SEO_HOTEL_REVIEW_ROUTE_LOCK_OK removed=$removed publication=0 indexation=0 sitemap=0 route_launch=0"
           '
