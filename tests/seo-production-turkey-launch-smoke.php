@@ -14,8 +14,10 @@ $_SERVER['HTTP_HOST']='anytoour.ru';
 $_SERVER['DOCUMENT_ROOT']='/tmp/seo-production-launch-no-site-conf';
 $turkey=v2_seo_turkey_launch_paths();
 $secondWave=v2_seo_second_wave_country_launch_paths();
+$seasonal=v2_seo_seasonal_september_launch_paths();
 $expected=v2_seo_controlled_launch_paths();
-if(count($turkey)!==6||count($secondWave)!==2||count($expected)!==8) production_launch_fail('launch_scope_count');
+if(count($turkey)!==6||count($secondWave)!==2||count($seasonal)!==2||count($expected)!==10) production_launch_fail('launch_scope_count');
+if($seasonal!==['/country/turkey/antalya/september/','/country/maldives/september/']) production_launch_fail('seasonal_scope');
 foreach($expected as $path){
     $_SERVER['REQUEST_URI']=$path;
     $ctx=sp_context($path,'Test','Test');
@@ -28,12 +30,12 @@ foreach(['/poisk-turov/','/country/oae/','/country/turkey/hotel/rogue-hotel-9999
     if(!str_starts_with((string)($ctx['robots']??''),'noindex,follow')) production_launch_fail('non_launch_path_indexable:'.$path);
 }
 
-// Emergency rollback remains available through the legacy production flag.
+// Emergency rollback must close the entire controlled cohort, including seasonal URLs.
 $tmp=sys_get_temp_dir().'/seo-launch-rollback-'.bin2hex(random_bytes(4));
 mkdir($tmp,0700,true);
 file_put_contents($tmp.'/site_conf.php',"<?php\n\$params=['SEO_TURKEY_LAUNCH'=>false];\n");
 $_SERVER['DOCUMENT_ROOT']=$tmp;
-foreach(['/country/turkey/','/country/egypt/','/country/maldives/'] as $path){
+foreach(['/country/turkey/','/country/egypt/','/country/maldives/','/country/turkey/antalya/september/','/country/maldives/september/'] as $path){
     $_SERVER['REQUEST_URI']=$path;
     $ctx=sp_context($path,'Test','Test');
     if(!str_starts_with((string)($ctx['robots']??''),'noindex,follow')) production_launch_fail('rollback_override_failed:'.$path);
@@ -48,6 +50,7 @@ $actual=array_values($matches[1]??[]);
 $expectedUrls=array_map(static fn(string $path):string=>'https://anytoour.ru'.$path,$expected);
 sort($actual,SORT_STRING); sort($expectedUrls,SORT_STRING);
 if($actual!==$expectedUrls) production_launch_fail('sitemap_allowlist_drift');
+if(count($actual)!==10) production_launch_fail('sitemap_scope_count');
 if(str_contains($xml,'/hotel/')||str_contains($xml,'/poisk-turov/')) production_launch_fail('sitemap_protected_route_leak');
 
 // The original Turkey dossier remains independently evidence-bound.
@@ -64,7 +67,7 @@ foreach($turkeyDossier['rows'] as $row){
 $turkeyStale=v2_seo_turkey_launch_dossier($turkeyNow+32*86400);
 if(($turkeyStale['state']??'')!=='controlled_country_resort_launch_blocked') production_launch_fail('turkey_stale_evidence_not_blocked');
 
-// Egypt/Maldives have their own prelaunch dossier; no numeric demand is fabricated.
+// Egypt/Maldives keep their own prelaunch dossier; no numeric demand is fabricated.
 $secondWaveNow=1788385200;
 $secondDossier=v2_seo_second_wave_country_launch_dossier($secondWaveNow);
 if(($secondDossier['state']??'')!=='second_wave_country_prelaunch_authorized') production_launch_fail('second_wave_dossier_not_authorized');
@@ -75,4 +78,8 @@ foreach($secondDossier['rows'] as $row){
     if(!array_key_exists('numeric_demand_score',$row)||$row['numeric_demand_score']!==null) production_launch_fail('second_wave_numeric_demand_invented');
 }
 
-echo "SEO_PRODUCTION_CONTROLLED_LAUNCH_OK paths=8 turkey=6 secondWave=2 sitemap=8 hotelTours=0 rollback=1 evidence=1\n";
+// Seasonal authorization itself is evidence-bound by the dedicated live dossier; this
+// smoke only confirms that no path outside the exact approved pair leaked into launch.
+foreach($seasonal as $path) if(str_contains($path,'/hotel/')||!str_ends_with($path,'/september/')) production_launch_fail('seasonal_path_boundary');
+
+echo "SEO_PRODUCTION_CONTROLLED_LAUNCH_OK paths=10 turkey=6 secondWave=2 seasonal=2 sitemap=10 hotelTours=0 rollback=1 evidence=1\n";
