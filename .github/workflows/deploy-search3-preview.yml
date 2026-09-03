@@ -5,6 +5,7 @@ on:
     branches: [feature/search3-preview]
     paths:
       - 'v2/**'
+      - '!v2/SEARCH3_WORK_MAP.md'
       - 'search3-visual-qa.cjs'
       - 'search3-visual-desktop.cjs'
       - 'search3-visual-mobile.cjs'
