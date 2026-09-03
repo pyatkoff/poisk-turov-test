@@ -1,0 +1,40 @@
+name: SEO controlled growth guard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/seo-launch-slice-v1.php'
+      - 'v2/seo-core-month-*.php'
+      - 'v2/sitemap.xml'
+      - 'tests/seo-controlled-growth-guard.php'
+      - '.github/workflows/seo-controlled-growth-guard.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-launch-slice-v1.php'
+      - 'v2/seo-core-month-*.php'
+      - 'v2/sitemap.xml'
+      - 'tests/seo-controlled-growth-guard.php'
+      - '.github/workflows/seo-controlled-growth-guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seo-controlled-growth-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Keep review-only month matrix out of public launch
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l tests/seo-controlled-growth-guard.php >/dev/null
+          php tests/seo-controlled-growth-guard.php
