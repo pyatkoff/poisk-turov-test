@@ -3,6 +3,7 @@ require_once __DIR__ . '/seo-content-pilot-turkey-catalog-v1.php';
 require_once __DIR__ . '/seo-content-pilot-egypt-v1.php';
 require_once __DIR__ . '/seo-content-pilot-maldives-v1.php';
 require_once __DIR__ . '/seo-content-pilot-seasonal-september-v1.php';
+require_once __DIR__ . '/seo-content-pilot-seasonal-october-v1.php';
 
 /** Exact controlled production SEO catalog. hotel_tours remain deliberately absent. */
 function v2_seo_controlled_launch_catalog(): array
@@ -19,6 +20,8 @@ function v2_seo_controlled_launch_catalog(): array
             v2_seo_content_pilot_maldives(),
             v2_seo_content_pilot_antalya_september(),
             v2_seo_content_pilot_maldives_september(),
+            v2_seo_content_pilot_antalya_october(),
+            v2_seo_content_pilot_maldives_october(),
         ],
         [
             '/country/turkey/kemer/' => ['parent'=>'/country/turkey/','related'=>['/country/turkey/antalya/','/country/turkey/side/']],
@@ -26,8 +29,10 @@ function v2_seo_controlled_launch_catalog(): array
             '/country/turkey/side/' => ['parent'=>'/country/turkey/','related'=>['/country/turkey/belek/','/country/turkey/alanya/']],
             '/country/turkey/belek/' => ['parent'=>'/country/turkey/','related'=>['/country/turkey/antalya/','/country/turkey/side/']],
             '/country/turkey/alanya/' => ['parent'=>'/country/turkey/','related'=>['/country/turkey/side/','/country/turkey/antalya/']],
-            '/country/turkey/antalya/september/' => ['parent'=>'/country/turkey/antalya/','related'=>['/country/turkey/','/country/turkey/kemer/','/country/turkey/belek/']],
-            '/country/maldives/september/' => ['parent'=>'/country/maldives/','related'=>[]],
+            '/country/turkey/antalya/september/' => ['parent'=>'/country/turkey/antalya/','related'=>['/country/turkey/antalya/october/','/country/turkey/','/country/turkey/kemer/']],
+            '/country/turkey/antalya/october/' => ['parent'=>'/country/turkey/antalya/','related'=>['/country/turkey/antalya/september/','/country/turkey/','/country/turkey/kemer/']],
+            '/country/maldives/september/' => ['parent'=>'/country/maldives/','related'=>['/country/maldives/october/']],
+            '/country/maldives/october/' => ['parent'=>'/country/maldives/','related'=>['/country/maldives/september/']],
         ]
     );
 }
