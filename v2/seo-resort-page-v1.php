@@ -2,6 +2,7 @@
 require_once __DIR__ . '/site-page-shell-v1.php';
 require_once __DIR__ . '/seo-page-contract-v1.php';
 require_once __DIR__ . '/seo-offer-snapshot-v1.php';
+require_once __DIR__ . '/seo-price-calendar-v1.php';
 
 /**
  * Render a curated resort page on its final clean path.
@@ -58,8 +59,12 @@ function v2_seo_render_resort(array $record): void
 
     $countryId = (int)($page['search_state']['country'] ?? 0);
     $regionId = (int)($page['search_state']['region'] ?? 0);
-    $offers = ($countryId > 0 && $regionId > 0)
-        ? v2_seo_resort_snapshot_offers($countryId, $regionId, 6)
+    $offerCandidates = ($countryId > 0 && $regionId > 0)
+        ? v2_seo_resort_snapshot_offers($countryId, $regionId, 12)
+        : [];
+    $offers = array_slice($offerCandidates, 0, 6);
+    $priceCalendar = ($countryId > 0 && $regionId > 0)
+        ? v2_seo_price_calendar($offerCandidates, $countryId, $regionId, 14)
         : [];
 
     if ($offers) {
@@ -90,6 +95,8 @@ function v2_seo_render_resort(array $record): void
         }
         echo '</div></section>';
     }
+
+    echo v2_seo_render_price_calendar($priceCalendar, $page['search_state'], 'Цены на туры в ' . $resortName . ' по датам вылета');
 
     $links = [];
     foreach ($page['related'] as $link) {
