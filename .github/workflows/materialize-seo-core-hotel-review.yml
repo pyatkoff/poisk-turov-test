@@ -1,0 +1,61 @@
+name: Materialize SEO Top500 hotel review routes
+
+on:
+  workflow_run:
+    workflows: ['Deploy anytoour.ru']
+    types: [completed]
+  workflow_dispatch:
+  schedule:
+    - cron: '43 3 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: materialize-seo-core-hotel-review-production
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate materializer
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/seo-core-hotel-cohort-source-v1.php >/dev/null
+          php -l v2/data/materialize-seo-core-hotel-review-routes-v1.php >/dev/null
+          php -l v2/seo-core-hotel-review-runtime-v1.php >/dev/null
+          php tests/seo-core-hotel-review-runtime-smoke.php
+      - name: Prepare SSH key
+        env:
+          KEY_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY_VALUE"
+          key="$RUNNER_TEMP/anytoour_key"
+          if [[ "$KEY_VALUE" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY_VALUE" | tr -d '\r' > "$key"; else printf '%s' "$KEY_VALUE" | base64 --decode > "$key"; fi
+          chmod 600 "$key"
+          ssh-keygen -y -f "$key" >/dev/null
+      - name: Materialize review-only Top500 on production
+        env:
+          HOST_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER_VALUE: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOST_VALUE" && test -n "$USER_VALUE"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15)
+          remote="$USER_VALUE@$HOST_VALUE"
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            root="$HOME/www/anytoour.ru"
+            php -l "$root/data/materialize-seo-core-hotel-review-routes-v1.php" >/dev/null
+            php "$root/data/materialize-seo-core-hotel-review-routes-v1.php" --root="$root" --limit=500 --require-count=500
+            php -r '\''$m=json_decode(file_get_contents($argv[1]),true); if(!is_array($m)||($m["count"]??0)!==500||($m["publication_allowed"]??true)!==false||($m["indexation_allowed"]??true)!==false||($m["sitemap_allowed"]??true)!==false) exit(1); echo "SEO_TOP500_REVIEW_ROUTES_OK count=500 publication=0 indexation=0 sitemap=0\n";'\'' "$root/data/generated/seo-core-hotel-review-routes-v1.json"
+            if grep -q "/hotel/" "$root/sitemap.xml"; then echo "HOTEL_SITEMAP_LEAK" >&2; exit 1; fi
+          '
