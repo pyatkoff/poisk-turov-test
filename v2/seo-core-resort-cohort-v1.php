@@ -38,8 +38,9 @@ function v2_seo_core_resort_cohort_records(array $rows,int $limit=80): array
         $observationCount=max(0,(int)($row['observation_count']??0));
         $hotelCount=max(0,(int)($row['hotel_count']??0));
         $lastObserved=trim((string)($row['last_observed_at']??''));
-        if(!in_array($countryId,[1,8],true)||$regionId<=0||$regionName===''||$countryName==='')continue;
-        if(!preg_match('/^[a-z0-9-]+$/',$regionSlug)||!preg_match('/^[a-z0-9-]+$/',$countrySlug))continue;
+        if($countryId<=0||$regionId<=0||$regionName===''||$countryName==='')continue;
+        if(!in_array($countrySlug,['egypt','maldives'],true))continue;
+        if(!preg_match('/^[a-z0-9-]+$/',$regionSlug))continue;
         if($observationCount<=0||$hotelCount<=0||$lastObserved==='')continue;
         $identity=$countryId.':'.$regionId;
         if(isset($seen[$identity]))continue;
@@ -94,7 +95,7 @@ function v2_seo_core_resort_cohort_records(array $rows,int $limit=80): array
     return [
         'state'=>'core_resort_cohort_ready',
         'records'=>$records,'count'=>count($records),'limit'=>$limit,
-        'country_scope'=>[1,8],
+        'country_scope'=>['egypt','maldives'],
         'publication_allowed'=>false,
         'indexation_allowed'=>false,
         'sitemap_allowed'=>false,
