@@ -51,3 +51,52 @@
     line-height:1!important;
   }
 }
+
+/* Beat the legacy dynamically injected mobile selectors without replacing the real buttons. */
+@media(max-width:760px){
+  html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review)>.back-results,
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry)>.back-results,
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-back:not([hidden]){
+    position:relative!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:36px!important;
+    min-width:36px!important;
+    max-width:36px!important;
+    height:36px!important;
+    min-height:36px!important;
+    max-height:36px!important;
+    margin:0 0 8px 2px!important;
+    padding:0!important;
+    overflow:hidden!important;
+    border:0!important;
+    border-radius:50%!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    color:transparent!important;
+    font-size:0!important;
+    line-height:0!important;
+    text-indent:-9999px!important;
+    white-space:nowrap!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review)>.back-results::before,
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry)>.back-results::before,
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-back:not([hidden])::before{
+    content:'←'!important;
+    position:absolute!important;
+    inset:0!important;
+    display:grid!important;
+    place-items:center!important;
+    color:#14213d!important;
+    font-size:20px!important;
+    font-weight:750!important;
+    line-height:1!important;
+    text-indent:0!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review)>.back-results::after,
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry)>.back-results::after,
+  html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-back:not([hidden])::after{
+    content:none!important;
+  }
+}
