@@ -71,7 +71,7 @@ function v2_seo_render_resort(array $record): void
             $departure = trim((string)($offer['departureName'] ?? ''));
             $date = v2_seo_offer_date_label((string)($offer['departureDate'] ?? ''));
             $nights = (int)($offer['nights'] ?? 0);
-            $price = v2_seo_offer_price_label((float)($offer['price'] ?? 0), (string)($offer['currency'] ?? 'RUB'));
+            $priceMarkup = v2_seo_offer_price_markup($offer);
             $searchState = $page['search_state'];
             $departureId = (int)($offer['departureId'] ?? 0);
             if ($departureId > 0) $searchState['from'] = $departureId;
@@ -84,7 +84,7 @@ function v2_seo_render_resort(array $record): void
             echo '<span class="sp-offer-fact">'.sp_e($date).'</span>';
             echo '<span class="sp-offer-fact">'.sp_e((string)$nights).' ночей</span>';
             echo '</div>';
-            echo '<div class="sp-offer-bottom"><div class="sp-offer-price"><span>от</span><strong>'.sp_e($price).'</strong></div>';
+            echo '<div class="sp-offer-bottom">'.$priceMarkup;
             echo '<a class="sp-secondary sp-offer-action" href="'.sp_e($href).'">Посмотреть туры</a></div>';
             echo '</article>';
         }
