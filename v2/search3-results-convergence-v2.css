@@ -241,3 +241,17 @@ html body.search3-preview.search3-has-results #results .hotel-card .hotel-best-o
     padding-top:5px!important;
   }
 }
+
+/* Win the legacy :has() 188px media lock for the compact desktop candidate. */
+@media(min-width:1000px){
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-main{
+    min-height:166px!important;
+  }
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo,
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo>img{
+    min-height:166px!important;
+  }
+  html body.search3-preview.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-body{
+    padding:10px 14px 9px!important;
+  }
+}
