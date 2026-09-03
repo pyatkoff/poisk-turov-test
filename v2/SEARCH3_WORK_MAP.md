@@ -4,7 +4,7 @@
 Ветка: `feature/search3-preview`  
 Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`  
 Последний проверенный implementation head: `38e4a68b97f9767297ec16cc0c965d1eae9447fc`  
-Текущий implementation candidate: `978fae593bc2272cbed21a33dd107fbbc3a592e9` — mobile price/CTA fix, run 440 ожидается.  
+Текущий implementation candidate: `96b140448e315cd32e15311d1f593ff51fd44e29` — mobile price, lead readability/name и filter back-control; свежий QA ожидается.  
 Последний полный QA: **run 438 — SUCCESS** (`deploy-preview`, `visual-qa desktop`, `visual-qa tablet`, `visual-qa mobile`).
 
 ## Источник истины: 8 утверждённых макетов
@@ -15,11 +15,11 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 | № | Утверждённый макет | Покрываемые состояния | Статус | Что уже сделано / что проверить |
 |---:|---|---|---|---|
 | 1 | Интерфейс поиска туров AnyTour | search, results, hotel tours | REVIEW | Верх выдачи и hotel cards уплотнены; desktop card/photo 166px; mobile price/CTA разнесены по строкам и защищены QA на candidate `978fae59`; нужен зелёный run 440 |
-| 2 | Макет фильтров поиска туров AnyTour | filters, sorting, sub-screens, reset/apply/cancel | REVIEW | Реальные mobile/tablet sub-screens, полный reset, apply/cancel staging; контракт проходит QA |
+| 2 | Макет фильтров поиска туров AnyTour | filters, sorting, sub-screens, reset/apply/cancel | REVIEW | Реальные mobile/tablet sub-screens, reset/apply/cancel; в основном drawer добавлен утверждённый back-control и QA на него; ждём свежий run |
 | 3 | Выбор рейсов AnyTour | outbound/inbound, baggage, delta, total, continue | REVIEW | Порядок selected hotel → stepper stage 3 → flights выровнен на desktop/tablet/mobile; реальные варианты и fallback до 3 офферов проходят run 438 |
 | 4 | Итог тура AnyTour | hotel, room, flights, services, tourists, total, submit | REVIEW | Mobile порядок hotel → flights → services → total/CTA закреплён отдельным geometry assertion; overlap устранён, run 438 зелёный |
 | 5 | Страница бронирования тура AnyTour | selected hotel, room/meal, flights, composition, total | REVIEW | Selected-tour изолирован; desktop/tablet/mobile stepper и блоки тура приведены к утверждённой последовательности; run 438 зелёный |
-| 6 | UI-кит заявки на тур AnyTour | entry, sending, success, error, MAX/Telegram | REVIEW | Все 4 lead-state обязательны в desktop/tablet/mobile QA; нужен финальный screenshot diff |
+| 6 | UI-кит заявки на тур AnyTour | entry, sending, success, error, MAX/Telegram | REVIEW | Все 4 lead-state обязательны; summary больше не склеивает факты, имя видно сразу и остаётся необязательным, комментарий отдельно; ждём свежий run |
 | 7 | Спецификация футера AnyTour | navigation, support, social, apps, trust, legal | REVIEW | Grid/readability и canonical `anytoour.ru` links исправлены; нужен финальный screenshot diff |
 | 8 | Цельный mobile flow AnyTour | search → results → hotel → tour → flight → total → lead → messenger | REVIEW | Полный flow, filter subflows, selected-tour isolation, final review и реальные MAX/Telegram handoff проходят на одном head; нужен финальный visual diff |
 
@@ -83,7 +83,10 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 - `2c11a909` — добавлен geometry contract для порядка flights → services → summary.
 - `c5b1e9cd`, `38e4a68b` — desktop/mobile QA повторяет поиск на следующем реальном оффере при transient Tourvisor 500.
 - run 438 — полностью зелёный на `38e4a68b`; новый mobile final geometry contract проходит.
-- `7e34bbe4`, `978fae59` — mobile hotel price и CTA разнесены по grid-row; добавлен обязательный QA на видимую цену перед CTA; run 440 выполняется.
+- `7e34bbe4`, `978fae59` — mobile hotel price и CTA разнесены по grid-row; обязательный QA на видимую цену перед CTA прошёл в run 440.
+- `d1f21769`, `783b5bf0`, `d5d86dfa` — lead summary получил явные разделители; QA запрещает склеенные факты.
+- `f35c933b`, `09ac416a`, `4940b4ec` — имя показано сразу как необязательное, под toggle оставлен только комментарий; desktop/mobile QA это проверяет.
+- `530ddabb`, `1c30eadc`, `96b14044` — в mobile filter drawer добавлен back-control как в макете 2 и обязательная QA-проверка.
 
 ## Definition of done
 
