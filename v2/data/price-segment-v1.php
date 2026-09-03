@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 function v2_price_segment_room_type(mixed $value): string
 {
-    $room = trim((string)$value);
-    if ($room === '') return '';
-    $room = preg_replace('/\s+/u', ' ', $room) ?? $room;
-    return mb_strtolower(mb_substr($room, 0, 180, 'UTF-8'), 'UTF-8');
+    // Deliberately preserve the stored room label exactly (apart from the DB-sized
+    // truncation). For price claims, false negatives are safer than merging two
+    // room products whose names only look similar after normalization.
+    return mb_substr((string)$value, 0, 180, 'UTF-8');
 }
 
 function v2_price_segment_date(mixed $value): string
