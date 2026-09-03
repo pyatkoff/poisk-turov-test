@@ -1,3 +1,4 @@
+@import url("./search3-mobile-lead-entry-final.css?v=1");
 /* Search3 mobile lifecycle layout convergence to approved lead UI kit. Preview only. */
 @media(max-width:760px){
   html body.search3-preview.search3-selected-open #selectedTour.search3-lead-entry .lead-form[data-search3-lead-state] .search3-lead-status{
