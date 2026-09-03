@@ -35,6 +35,14 @@ assert_true($fingerprint !== v2_price_segment_fingerprint($otherDate), 'departur
 $otherRoom = $segment;
 $otherRoom['room_type'] = 'standard room';
 assert_true($fingerprint !== v2_price_segment_fingerprint($otherRoom), 'room label differences must stay conservative');
+try {
+    $badDate = $segment;
+    $badDate['departure_date'] = '2026-02-31';
+    v2_price_segment_fingerprint($badDate);
+    assert_true(false, 'impossible departure date must fail');
+} catch (InvalidArgumentException) {
+    // expected
+}
 
 $mins = [151000, 148000, 145000, 140000, 136000, 130000, 125000];
 $rows = [];
