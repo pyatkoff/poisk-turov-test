@@ -65,13 +65,32 @@ assert_true(($summary['independentSearchCount'] ?? 0) === 21, '21 independent se
 assert_true((float)($summary['referencePrice'] ?? 0) === 151000.0, 'reference uses max of daily minima');
 assert_true(($summary['referenceMethod'] ?? '') === 'max_of_daily_min_exact_comparable_segment', 'reference method');
 assert_true(($summary['historicalDropPercent'] ?? 0) === 21, 'rounded historical drop');
+assert_true(($summary['showPromoDrop'] ?? false) === true, 'eligible promo drop');
 assert_true(($summary['showHistoricalDrop'] ?? false) === true, 'eligible historical drop');
 
-$thin = v2_price_intelligence_summary(array_slice($rows, 0, 2), 120000);
-assert_true(($thin['showHistoricalDrop'] ?? true) === false, 'insufficient days must suppress drop');
+$fastPromo = v2_price_intelligence_summary(array_slice($rows, 0, 2), 120000);
+assert_true(($fastPromo['observedDays'] ?? 0) === 2, 'promo uses two distinct days');
+assert_true(($fastPromo['independentSearchCount'] ?? 0) === 6, 'promo has five-plus independent searches');
+assert_true(($fastPromo['showPromoDrop'] ?? false) === true, 'two-day tourism promo may display');
+assert_true(($fastPromo['showHistoricalDrop'] ?? true) === false, 'two-day promo must not claim stronger history');
+
+$guardedRows = array_slice($rows, 0, 3);
+foreach ($guardedRows as &$row) {
+    $row['observation_count'] = 5;
+    $row['independent_search_count'] = 5;
+}
+unset($row);
+$guarded = v2_price_intelligence_summary($guardedRows, 120000);
+assert_true(($guarded['independentSearchCount'] ?? 0) === 15, 'guarded delta has 15 searches');
+assert_true(($guarded['showHistoricalDrop'] ?? false) === true, 'three-day guarded historical drop may display');
+assert_true(($guarded['historyReady'] ?? true) === false, 'three days is not full history readiness');
+
+$oneDay = v2_price_intelligence_summary(array_slice($rows, 0, 1), 120000);
+assert_true(($oneDay['showPromoDrop'] ?? true) === false, 'one day must not authorize promo');
 
 $smallDrop = v2_price_intelligence_summary($rows, 147000);
-assert_true(($smallDrop['showHistoricalDrop'] ?? true) === false, 'sub-5-percent drop must be suppressed');
+assert_true(($smallDrop['showPromoDrop'] ?? true) === false, 'sub-5-percent promo drop must be suppressed');
+assert_true(($smallDrop['showHistoricalDrop'] ?? true) === false, 'sub-5-percent historical drop must be suppressed');
 
 $manyRowsOneSearch = $rows;
 foreach ($manyRowsOneSearch as &$row) {
@@ -82,7 +101,8 @@ unset($row);
 $notIndependent = v2_price_intelligence_summary($manyRowsOneSearch, 120000);
 assert_true(($notIndependent['observationCount'] ?? 0) === 140, 'raw observations retained');
 assert_true(($notIndependent['independentSearchCount'] ?? -1) === 7, 'independent searches counted separately');
-assert_true(($notIndependent['showHistoricalDrop'] ?? true) === false, 'one repeated search per day cannot authorize discount');
+assert_true(($notIndependent['showPromoDrop'] ?? true) === false, 'repeated raw rows cannot authorize promo');
+assert_true(($notIndependent['showHistoricalDrop'] ?? true) === false, 'repeated raw rows cannot authorize historical drop');
 
 $duplicate = $rows;
 $duplicate[] = $rows[0];
