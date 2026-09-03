@@ -7,7 +7,7 @@ require_once __DIR__.'/seo-ds2-reference-pages-v1.php';
 function v2_seo_production_identity_expected_rows(): array
 {
     $rows=[];
-    $seasonal=array_fill_keys(v2_seo_seasonal_september_launch_paths(),true);
+    $seasonal=array_fill_keys(v2_seo_core_month_launch_paths(),true);
     $turkeyResorts=array_fill_keys(array_values(array_diff(v2_seo_turkey_launch_paths(),['/country/turkey/'])),true);
     foreach(v2_seo_controlled_launch_paths() as $path){
         $type=isset($seasonal[$path])?'seasonal':(isset($turkeyResorts[$path])?'resort':'country');
