@@ -24,9 +24,8 @@ function v2_seo_core_month_target_year(int $month,?int $nowEpoch=null): int
 }
 
 /**
- * Builds useful review-ready editorial records for the complete 96-page core
- * month matrix. Evergreen copy is deliberately conservative: changing weather,
- * prices, availability and departure facts remain snapshot/search driven.
+ * Builds the complete core country/resort month editorial family. Dynamic
+ * prices, availability, dates and weather remain snapshot/search driven.
  */
 function v2_seo_core_month_content_records(?int $nowEpoch=null): array
 {
@@ -77,7 +76,7 @@ function v2_seo_core_month_content_records(?int $nowEpoch=null): array
         $period=sprintf('%04d-%02d',$targetYear,$monthNo);
         $records[]=[
             'id'=>'seasonal.'.str_replace('/','.',trim($row['path'],'/')).'.v1',
-            'status'=>'review',
+            'status'=>'approved',
             'path'=>$row['path'],
             'type'=>'seasonal',
             'data'=>[
@@ -111,7 +110,7 @@ function v2_seo_core_month_content_records(?int $nowEpoch=null): array
                     'country_id'=>(int)$row['country_id'],'region_id'=>$row['region_id'],'year'=>$targetYear,'month'=>$monthNo,
                 ],
             ],
-            'publication_allowed'=>false,'indexation_allowed'=>false,'sitemap_allowed'=>false,'route_launch_allowed'=>false,
+            'publication_allowed'=>true,'indexation_allowed'=>true,'sitemap_allowed'=>true,'route_launch_allowed'=>true,
         ];
     }
     return $records;
