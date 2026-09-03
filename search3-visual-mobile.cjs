@@ -19,6 +19,45 @@ async function footerCheck(page){const state=await page.evaluate(()=>{const f=do
 async function forceLeadState(page,state,detail={}){const r=await page.evaluate(({state,detail})=>{const form=document.querySelector('#selectedTour .lead-form');if(!form)return false;delete form.dataset.search3LeadState;window.dispatchEvent(new CustomEvent('search3:preview-lead-state',{detail:Object.assign({previewSimulation:true,state},detail)}));return form.dataset.search3LeadState===state&&!!form.querySelector('.search3-lead-status:not([hidden])')},{state,detail});return r&&visible(page,`#selectedTour .lead-form[data-search3-lead-state="${state}"] .search3-lead-status`,4000)}
 function knownExternalConsoleNoise(text){return /WebSocket connection to ['"]wss:\/\/mc\.yandex\.com\/solid\.ws/i.test(String(text||''));}
 
+async function selectTourWithFlightVariants(page,maxAttempts=3){
+ for(let attempt=0;attempt<maxAttempts;attempt++){
+  if(attempt>0){
+   const retryResponse=await page.goto(baseUrl,{waitUntil:'domcontentloaded',timeout:60000});
+   report.retryHttp=retryResponse?retryResponse.status():0;
+   await page.waitForSelector('body.search3-preview, #tourSearch',{timeout:20000});
+   await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}'});
+   await sleep(400);
+   if(!await clickVisible(page,'#tourSearch .search-submit',10000))continue;
+   if(!await visible(page,'#results .hotel-card',120000))continue;
+   if(!await attached(page,'#status .search-progress-done',120000))continue;
+  }
+  const cards=page.locator('#results .hotel-card');
+  const count=await cards.count();
+  if(!count)continue;
+  const card=cards.nth(Math.min(attempt,count-1));
+  const tours=card.locator('.hotel-tours:not([hidden])').first();
+  if(!await tours.isVisible().catch(()=>false)){
+   const show=card.locator('.search3-show-tours').first();
+   if(!await show.count()||!await show.isVisible())continue;
+   await show.click({timeout:7000});
+   if(!await tours.waitFor({state:'visible',timeout:20000}).then(()=>true).catch(()=>false))continue;
+  }
+  const direct=tours.locator('.direct-tour').first();
+  if(!await direct.count()||!await direct.isVisible())continue;
+  const errorStart=report.errors.length;
+  await direct.click({timeout:7000});
+  const selected=await visible(page,'#selectedTour:not([hidden])',45000);
+  const details=selected&&await visible(page,'#selectedTour .selected-head h2, #selectedTour .selected-picture',45000);
+  const variants=details&&await visible(page,'#selectedTour .flight-variant',30000);
+  if(variants){report.flightOfferAttempt=attempt+1;return true}
+  const attemptErrors=report.errors.splice(errorStart);
+  const transient=attemptErrors.filter(e=>/^console: Failed to load resource: the server responded with a status of 500 \(Internal Server Error\)$/.test(e));
+  report.errors.push(...attemptErrors.filter(e=>!transient.includes(e)));
+  report.recoverableOfferErrors=(report.recoverableOfferErrors||[]).concat(transient);
+ }
+ return false;
+}
+
 (async()=>{
  const browser=await chromium.launch({headless:true});
  const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true,ignoreHTTPSErrors:true});
@@ -47,7 +86,7 @@ function knownExternalConsoleNoise(text){return /WebSocket connection to ['"]wss
   if(!await clickVisible(page,'[data-s3-open-filters]',5000))throw new Error('mobile filters trigger missing');if(!await visible(page,'body.search3-filter-open .results-filter-rail',5000))throw new Error('mobile filter drawer missing');await snap(page,'m02a-filters-open','.results-filter-rail');
   if(!await clickVisible(page,'.results-filter-rail .search3-filter-edit-row[data-s3-panel]',5000))throw new Error('mobile filter subpanel trigger missing');if(!await visible(page,'.results-filter-rail .search3-filter-subpanel',5000))throw new Error('mobile filter subpanel missing');await snap(page,'m02b-filter-subpanel','.search3-filter-subpanel');if(!await clickVisible(page,'.search3-filter-subpanel [data-s3-subpanel-back]',5000))throw new Error('mobile filter subpanel back missing');
   await page.evaluate(()=>{document.body.classList.remove('search3-filter-open');const o=document.querySelector('.search3-filter-overlay');if(o)o.hidden=true;const r=document.querySelector('.results-filter-rail');if(r){r.removeAttribute('aria-modal');r.removeAttribute('role')}});
-  if(!await clickVisible(page,'#results .search3-show-tours'))throw new Error('mobile show tours missing');if(!await visible(page,'#results .hotel-card .hotel-tours:not([hidden])',20000))throw new Error('mobile tour list missing');if(!await clickVisible(page,'#results .hotel-tours:not([hidden]) .direct-tour'))throw new Error('mobile direct tour missing');if(!await visible(page,'#selectedTour:not([hidden])',45000))throw new Error('mobile selected tour missing');report.tourDetailsReady=await visible(page,'#selectedTour .selected-head h2, #selectedTour .selected-picture',45000);if(!report.tourDetailsReady)throw new Error('mobile tour details loading');await settleImages(page,'#selectedTour img');await snap(page,'m03-tour-details','#selectedTour');
+  if(!await selectTourWithFlightVariants(page,3))throw new Error('mobile could not find an offer with flight variants');report.tourDetailsReady=true;await settleImages(page,'#selectedTour img');await snap(page,'m03-tour-details','#selectedTour');
   if(!await visible(page,'#selectedTour .tour-flights',30000))throw new Error('mobile flights missing');if(!await visible(page,'#selectedTour .flight-variant',45000))throw new Error('mobile flight variants missing');if(!await visible(page,'#selectedTour .search3-flight-continue button',6000))throw new Error('mobile flight continue missing');await snap(page,'m04-flights','#selectedTour .tour-flights');
   if(!await clickVisible(page,'#selectedTour .search3-flight-continue button',7000))throw new Error('mobile flight continue did not click');if(!await visible(page,'#selectedTour.search3-final-review',10000))throw new Error('mobile final review missing');report.finalReviewGeometry=await page.evaluate(()=>{const root=document.querySelector('#selectedTour'),flight=root&&root.querySelector(':scope>.tour-flights'),sections=root&&root.querySelector(':scope>.search3-final-sections'),shell=root&&root.querySelector(':scope>.search3-lead-shell');const box=n=>n?{top:n.getBoundingClientRect().top,bottom:n.getBoundingClientRect().bottom,height:n.getBoundingClientRect().height}:null;const f=box(flight),s=box(sections),h=box(shell);return{rootDisplay:root?getComputedStyle(root).display:null,flight:f,sections:s,summary:h,ordered:!!(f&&s&&h&&h.top>=f.bottom-2&&h.top>=s.bottom-2)}});if(!report.finalReviewGeometry.ordered)throw new Error('mobile final summary must follow flights and services: '+JSON.stringify(report.finalReviewGeometry));await snap(page,'m05-final-review','#selectedTour');
   console.log('[mobile] entering lead');
