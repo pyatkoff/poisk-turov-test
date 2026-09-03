@@ -3,8 +3,8 @@
 Последнее обновление: 2026-09-03  
 Ветка: `feature/search3-preview`  
 Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`  
-Последний проверенный implementation head: `21d857e0ee6311c72cf692d87eb47ace0c8d2c1d`  
-Последний полный QA: **run 430 — SUCCESS** (`deploy-preview`, `visual-qa desktop`, `visual-qa tablet`, `visual-qa mobile`).
+Последний проверенный implementation head: `3985a4c167bb2b8ab6347cd968859301b27064a7`  
+Последний полный QA: **run 431 — SUCCESS** (`deploy-preview`, `visual-qa desktop`, `visual-qa tablet`, `visual-qa mobile`).
 
 ## Источник истины: 8 утверждённых макетов
 
@@ -15,12 +15,12 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 |---:|---|---|---|---|
 | 1 | Интерфейс поиска туров AnyTour | search, results, hotel tours | REVIEW | Верх выдачи и hotel cards уплотнены; desktop card/photo 166px; нужен финальный visual diff свежего head |
 | 2 | Макет фильтров поиска туров AnyTour | filters, sorting, sub-screens, reset/apply/cancel | REVIEW | Реальные mobile/tablet sub-screens, полный reset, apply/cancel staging; контракт проходит QA |
-| 3 | Выбор рейсов AnyTour | outbound/inbound, baggage, delta, total, continue | REVIEW | Рейсы уплотнены на desktop/mobile, реальные paired-variant semantics сохранены; run 430 проходит все viewport |
-| 4 | Итог тура AnyTour | hotel, room, flights, services, tourists, total, submit | REVIEW | Mobile hotel+room+meal собраны в единый review-card; flight block/CTA stacking исправлен; run 430 зелёный |
-| 5 | Страница бронирования тура AnyTour | selected hotel, room/meal, flights, composition, total | REVIEW | Booking view изолирован и уплотнён; tablet flight-choice стабилизирован; весь путь проходит на run 430 |
+| 3 | Выбор рейсов AnyTour | outbound/inbound, baggage, delta, total, continue | REVIEW | Рейсы уплотнены, tablet flight-choice стабилизирован; run 431 проходит все viewport |
+| 4 | Итог тура AnyTour | hotel, room, flights, services, tourists, total, submit | REVIEW | Mobile hotel+room+meal собраны в единый review-card; flight block больше не перекрывает CTA; run 431 зелёный |
+| 5 | Страница бронирования тура AnyTour | selected hotel, room/meal, flights, composition, total | REVIEW | Selected-tour mobile booking view изолирован; tablet price удерживается в одну строку; весь путь проходит на run 431 |
 | 6 | UI-кит заявки на тур AnyTour | entry, sending, success, error, MAX/Telegram | REVIEW | Все 4 lead-state обязательны в desktop/tablet/mobile QA; нужен финальный screenshot diff |
 | 7 | Спецификация футера AnyTour | navigation, support, social, apps, trust, legal | REVIEW | Grid/readability и canonical `anytoour.ru` links исправлены; нужен финальный screenshot diff |
-| 8 | Цельный mobile flow AnyTour | search → results → hotel → tour → flight → total → lead → messenger | REVIEW | Полный flow, filter subflows, final review и реальные MAX/Telegram handoff проходят на одном head; нужен финальный visual diff |
+| 8 | Цельный mobile flow AnyTour | search → results → hotel → tour → flight → total → lead → messenger | REVIEW | Полный flow, filter subflows, selected-tour isolation, final review и реальные MAX/Telegram handoff проходят на одном head; нужен финальный visual diff |
 
 ## Матрица обязательного QA
 
@@ -43,8 +43,8 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 
 - Изолированный preview, noindex и production-lock: **DONE**.
 - Функциональный путь search → tour → flights → final → lead success/error: **DONE на текущем head**.
-- Run 430: deploy + desktop + tablet + mobile = **SUCCESS** на `21d857e0`.
-- Макеты 3–5 прошли отдельный responsive convergence: compact flights, joined mobile final hotel card, CTA no-overlap, tablet flight-choice stabilization.
+- Run 431: deploy + desktop + tablet + mobile = **SUCCESS** на `3985a4c1`.
+- Макеты 3–5 прошли отдельный responsive convergence: compact flights, joined mobile final hotel card, CTA no-overlap, selected-tour mobile isolation, tablet flight-choice stabilization и однострочная цена тура.
 - Визуальное одобрение владельца: **LOCKED**, пока не завершён финальный screenshot-by-screenshot diff всех 8 макетов.
 - Production rollout: **LOCKED** до отдельного явного подтверждения владельца.
 
@@ -71,9 +71,12 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 - run 416 — полностью зелёный baseline на `6cdbf58f`.
 - `9ac9690e` — уплотнены flight variants и final review без изменения flight semantics.
 - `e5aa58a4` — mobile final hotel/room/meal собраны в единый booking-card и добавлен самый поздний preview visual layer.
-- `0e08c1da` — сохранён параллельный tablet flight-choice stabilization.
+- `0e08c1da` — tablet flight-choice stabilization.
 - `21d857e0` — устранено перекрытие mobile final CTA блоком рейсов.
-- run 430 — полностью зелёный: deploy + desktop + tablet + mobile на `21d857e0`.
+- run 430 — полностью зелёный на `21d857e0`.
+- `6cdbf58f` — selected-tour mobile booking view изолирован от лишних блоков.
+- `3985a4c1` — tablet tour price удерживается в одну строку.
+- run 431 — полностью зелёный: deploy + desktop + tablet + mobile на `3985a4c1`.
 
 ## Definition of done
 
