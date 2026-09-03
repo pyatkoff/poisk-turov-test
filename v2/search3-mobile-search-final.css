@@ -1,0 +1,27 @@
+/* Search3 mobile search visual convergence to approved Maket 1/2. Preview only. */
+@media(max-width:760px){
+  html body.search3-preview:not(.search3-has-results) #tourSearch .search-submit{
+    background:#0066ff!important;
+    border-color:#0066ff!important;
+    box-shadow:none!important;
+    color:#fff!important;
+  }
+  html body.search3-preview:not(.search3-has-results) #tourSearch .search3-mobile-search-entry .search3-mobile-search-filter-button{
+    border-color:#ff5a00!important;
+    background:#fff!important;
+    color:#14213d!important;
+    box-shadow:none!important;
+  }
+  html body.search3-preview:not(.search3-has-results) #tourSearch .search3-mobile-search-entry .search3-mobile-search-filter-button>span{
+    color:#ff5a00!important;
+  }
+  html body.search3-preview:not(.search3-has-results) #tourSearch .search3-mobile-search-trust span{
+    padding:7px 2px!important;
+    border-radius:0!important;
+    background:transparent!important;
+  }
+  html body.search3-preview:not(.search3-has-results) #tourSearch .search3-mobile-search-trust b{
+    color:#0066ff!important;
+    font-size:11px!important;
+  }
+}
