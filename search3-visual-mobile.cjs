@@ -5,7 +5,7 @@ const path = require('path');
 const baseUrl = process.env.SEARCH3_PREVIEW_URL || 'https://anytoour.ru/_preview/search3/poisk-turov/';
 const outDir = process.env.SEARCH3_QA_OUT || 'search3-visual-mobile-artifacts';
 fs.mkdirSync(outDir, { recursive: true });
-const required = ['m00-footer','m01-search','m02-results','m02a-filters-open','m03-tour-details','m04-flights','m05-final-review','m06-lead-entry','m07-lead-success'];
+const required = ['m00-footer','m01-search','m02-results','m02a-filters-open','m03-tour-details','m04-flights','m05-final-review','m06-lead-entry','m07-lead-sending','m08-lead-success','m09-lead-error'];
 const report = { mode:'mobile', url:baseUrl, startedAt:new Date().toISOString(), states:[], errors:[] };
 const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
@@ -54,7 +54,7 @@ function knownExternalConsoleNoise(text){return /WebSocket connection to ['"]wss
   if(!await visible(page,'#selectedTour.search3-lead-entry .lead-form',6000))throw new Error('mobile lead entry did not open');
   if(!await visible(page,'#selectedTour.search3-lead-entry .lead-form:not([data-search3-lead-state]) button[type="submit"]',4000))throw new Error('mobile lead submit missing');
   await snap(page,'m06-lead-entry','#selectedTour .lead-form');
-  if(!await forceLeadState(page,'success',{leadId:'PREVIEW'}))throw new Error('mobile success state missing');await snap(page,'m07-lead-success','#selectedTour .lead-form');report.mobileFlow=true;
+  if(!await forceLeadState(page,'sending'))throw new Error('mobile sending state missing');await snap(page,'m07-lead-sending','#selectedTour .lead-form');if(!await forceLeadState(page,'success',{leadId:'PREVIEW'}))throw new Error('mobile success state missing');await snap(page,'m08-lead-success','#selectedTour .lead-form');if(!await forceLeadState(page,'error'))throw new Error('mobile error state missing');await snap(page,'m09-lead-error','#selectedTour .lead-form');report.mobileFlow=true;
  }catch(e){report.errors.push(String(e));console.error(e)}finally{report.finishedAt=new Date().toISOString();report.captureComplete=required.every(n=>report.states.some(s=>s.name===n&&s.ok));fs.writeFileSync(path.join(outDir,'report-mobile.json'),JSON.stringify(report,null,2));await context.close().catch(()=>{});await browser.close().catch(()=>{})}
  const search=report.search&&report.search.hasResults&&report.search.complete;const pass=report.http>0&&report.http<400&&search&&report.captureComplete&&report.tourDetailsReady&&report.mobileFlow===true&&report.errors.length===0;if(!pass){console.error('Mobile Search3 QA failed',JSON.stringify(report));process.exit(2)}
 })().catch(e=>{console.error(e);process.exit(1)});
