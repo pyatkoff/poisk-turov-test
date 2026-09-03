@@ -3,9 +3,9 @@ declare(strict_types=1);
 require_once __DIR__.'/../seo-launch-slice-v1.php';
 
 /**
- * Emits a blank collection skeleton for the exact ten country/resort/seasonal
- * URLs already live in the controlled SEO launch. Null/blank fields are
- * intentional: no search-performance fact is fabricated by this template.
+ * Emits a blank collection skeleton for the exact currently launched
+ * country/resort/month URLs. Null/blank fields are intentional: no search
+ * performance fact is fabricated by this template.
  */
 $rows=[];
 foreach(v2_seo_controlled_launch_paths() as $path){
@@ -29,7 +29,7 @@ foreach(v2_seo_controlled_launch_paths() as $path){
 echo json_encode([
     'state'=>'search_feedback_collection_template',
     'domain'=>'anytoour.ru',
-    'launch_scope'=>'controlled_country_resort_seasonal_v3',
+    'launch_scope'=>'controlled_country_resort_month_v4',
     'instructions'=>'Fill only from a real Google Search Console or Yandex Webmaster export. Keep unavailable values null; do not convert missing evidence to zero.',
     'supported_source_classes'=>['google_search_console_export','yandex_webmaster_export'],
     'rows'=>$rows,
