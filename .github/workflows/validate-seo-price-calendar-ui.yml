@@ -1,0 +1,54 @@
+name: Validate SEO price calendar UI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/data/price-calendar-core-v1.php'
+      - 'v2/seo-price-calendar-v1.php'
+      - 'v2/seo-price-calendar-v1.css'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/country-page-v1.php'
+      - 'v2/seo-resort-page-v1.php'
+      - 'v2/seo-seasonal-page-v1.php'
+      - 'tests/seo-price-calendar-ui-smoke.php'
+      - '.github/workflows/validate-seo-price-calendar-ui.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/data/price-calendar-core-v1.php'
+      - 'v2/seo-price-calendar-v1.php'
+      - 'v2/seo-price-calendar-v1.css'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/country-page-v1.php'
+      - 'v2/seo-resort-page-v1.php'
+      - 'v2/seo-seasonal-page-v1.php'
+      - 'tests/seo-price-calendar-ui-smoke.php'
+      - '.github/workflows/validate-seo-price-calendar-ui.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate server-rendered calendar contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/data/price-calendar-core-v1.php >/dev/null
+          php -l v2/seo-price-calendar-v1.php >/dev/null
+          php -l v2/country-page-v1.php >/dev/null
+          php -l v2/seo-resort-page-v1.php >/dev/null
+          php -l v2/seo-seasonal-page-v1.php >/dev/null
+          php -l tests/seo-price-calendar-ui-smoke.php >/dev/null
+          php tests/seo-price-calendar-ui-smoke.php
+          grep -Fq 'INTERVAL 72 HOUR' v2/seo-price-calendar-v1.php
+          grep -Fq "'missing_semantics' => 'unknown_not_zero'" v2/data/price-calendar-core-v1.php
+          grep -Fq 'data-seo-price-calendar' v2/seo-price-calendar-v1.php
+          grep -Fq "sp_inline_css('seo-price-calendar-v1.css')" v2/site-page-shell-v1.php
+          echo SEO_PRICE_CALENDAR_UI_CONTRACT_OK
