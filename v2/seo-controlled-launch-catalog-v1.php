@@ -30,6 +30,12 @@ function v2_seo_controlled_launch_catalog(): array
     }
     foreach($special as $record)$records[]=$record;
 
+    $registeredPaths=[];
+    foreach($records as $record){
+        $path=(string)($record['path']??'');
+        if($path!=='')$registeredPaths[$path]=true;
+    }
+
     $relations=[
         '/country/turkey/kemer/' => ['parent'=>'/country/turkey/','related'=>['/country/turkey/antalya/','/country/turkey/side/']],
         '/country/turkey/antalya/' => ['parent'=>'/country/turkey/','related'=>['/country/turkey/kemer/','/country/turkey/belek/']],
@@ -43,7 +49,9 @@ function v2_seo_controlled_launch_catalog(): array
         $parent=rtrim(dirname(rtrim($path,'/')),'/').'/';
         $related=[];
         foreach((array)($record['data']['related']??[]) as $link){
-            if(is_array($link)&&isset($link['href']))$related[]=(string)$link['href'];
+            if(!is_array($link))continue;
+            $href=(string)($link['href']??'');
+            if(isset($registeredPaths[$href]))$related[]=$href;
         }
         $relations[$path]=['parent'=>$parent,'related'=>array_values(array_unique($related))];
     }
