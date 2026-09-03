@@ -37,7 +37,7 @@ function injectMobileConvergence(){if(document.getElementById('search3-mobile-co
 'html body.search3-preview.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state] .search3-lead-status{display:grid!important;width:100%!important;grid-template-columns:1fr!important;gap:12px!important;padding:8px 2px!important}'+
 '.search3-selected-mobile-bar:not([hidden]){gap:12px!important}.search3-selected-mobile-bar__price{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:baseline!important;max-width:60%!important}.search3-selected-mobile-bar__price small{white-space:normal!important;line-height:1.2!important}.search3-selected-mobile-bar__price strong{display:block!important;margin-top:2px!important;line-height:1.2!important;white-space:normal!important}'+
 '}'+
-'@media(min-width:1000px){html body.search3-preview.search3-has-results .results-tools--ds2{box-sizing:border-box!important;width:calc(100% - var(--at-page-gutter) - 210px)!important;margin-left:calc(var(--at-page-edge) + 210px)!important;margin-right:var(--at-page-edge)!important}}';document.head.appendChild(s)}
+'@media(min-width:1000px){html body.search3-preview.search3-has-results .results-tools--ds2{position:relative!important;top:auto!important;z-index:1!important;box-sizing:border-box!important;width:calc(100% - var(--at-page-gutter) - 210px)!important;margin-left:calc(var(--at-page-edge) + 210px)!important;margin-right:var(--at-page-edge)!important;margin-bottom:10px!important}html body.search3-preview.search3-has-results .results-layout{clear:both!important;position:relative!important;z-index:0!important}}';document.head.appendChild(s)}
 injectMobileConvergence();
 var bar=document.createElement('div');bar.className='search3-selected-mobile-bar';bar.hidden=true;bar.innerHTML='<div class="search3-selected-mobile-bar__price"><small>Стоимость тура</small><strong data-s3-selected-price>—</strong></div><button type="button" data-s3-selected-lead>Продолжить</button>';
 document.body.appendChild(bar);
@@ -60,5 +60,5 @@ document.addEventListener('click',function(e){var btn=e.target&&e.target.closest
 ['v2:tour-selected','v2:selected-tour-opened','v2:selected-tour-closed','v2:results-rendered','v2:booking-review','search3:lead-entry','v2:lead-started','v2:lead-success','v2:lead-error'].forEach(function(name){window.addEventListener(name,scheduleSync);});
 new MutationObserver(scheduleSync).observe(selected,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','class','style']});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scheduleSync,{once:true});else scheduleSync();
-window.Search3SelectedTourMobile={sync,scheduleSync,continueFlow,normalizeLeadFields,version:9};
+window.Search3SelectedTourMobile={sync,scheduleSync,continueFlow,normalizeLeadFields,version:10};
 })();
