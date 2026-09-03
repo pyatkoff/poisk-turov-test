@@ -49,5 +49,5 @@ function v2_seo_seasonal_snapshot_offers(string $pageKey, int $limit=6): array
         $cmp=((float)$a['price'])<=>((float)$b['price']);
         return $cmp!==0?$cmp:strcmp((string)$a['departureDate'],(string)$b['departureDate']);
     });
-    return array_slice($offers,0,$limit);
+    return v2_seo_enrich_offer_prices(array_slice($offers,0,$limit));
 }

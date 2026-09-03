@@ -3,6 +3,97 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/data/db-v1.php';
+require_once __DIR__ . '/data/price-intelligence-v1.php';
+
+/**
+ * Attach read-only price intelligence to the small set of offers that will
+ * actually be rendered. This remains DB-only and fails open to the plain
+ * current-price card when exact history is unavailable.
+ */
+function v2_seo_enrich_offer_prices(array $offers, int $historyDays = 30): array
+{
+    if ($offers === []) return [];
+    $historyDays = max(7, min(90, $historyDays));
+    $segments = [];
+    foreach ($offers as $offer) {
+        if (!is_array($offer)) continue;
+        $segment = strtolower(trim((string)($offer['segmentFingerprint'] ?? '')));
+        $price = (float)($offer['price'] ?? 0);
+        if (preg_match('/^[a-f0-9]{64}$/', $segment) && $price > 0) $segments[$segment] = true;
+    }
+    if ($segments === []) return $offers;
+
+    try {
+        $pdo = v2_data_db();
+        $ids = array_keys($segments);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $fromDate = (new DateTimeImmutable('today'))->modify('-' . ($historyDays - 1) . ' days')->format('Y-m-d');
+        $stmt = $pdo->prepare(
+            "SELECT segment_fingerprint,price_date,min_price,median_price,max_price,observation_count,independent_search_count
+               FROM tour_price_daily_exact
+              WHERE segment_fingerprint IN ({$placeholders})
+                AND price_date>=?
+              ORDER BY segment_fingerprint,price_date"
+        );
+        $stmt->execute(array_merge($ids, [$fromDate]));
+        $history = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $segment = strtolower((string)($row['segment_fingerprint'] ?? ''));
+            if (isset($segments[$segment])) $history[$segment][] = $row;
+        }
+    } catch (Throwable $e) {
+        return $offers;
+    }
+
+    foreach ($offers as &$offer) {
+        if (!is_array($offer)) continue;
+        $segment = strtolower(trim((string)($offer['segmentFingerprint'] ?? '')));
+        $price = (float)($offer['price'] ?? 0);
+        if (!isset($segments[$segment]) || $price <= 0) continue;
+        $summary = v2_price_intelligence_summary($history[$segment] ?? [], $price);
+        if (($summary['ok'] ?? false) === true) $offer['priceIntelligence'] = $summary;
+    }
+    unset($offer);
+    return $offers;
+}
+
+/**
+ * Server-render the commercial price block. A crossed reference is always an
+ * actually observed price for the exact comparable segment, never a synthetic
+ * MSRP or raw maximum from a mixed search result.
+ */
+function v2_seo_offer_price_markup(array $offer): string
+{
+    $price = (float)($offer['price'] ?? 0);
+    $currency = (string)($offer['currency'] ?? 'RUB');
+    $current = htmlspecialchars(v2_seo_offer_price_label($price, $currency), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $intel = is_array($offer['priceIntelligence'] ?? null) ? $offer['priceIntelligence'] : [];
+    $promo = ($intel['showPromoDrop'] ?? false) === true;
+    $strong = ($intel['showHistoricalDrop'] ?? false) === true;
+    $good = ($intel['goodPrice'] ?? false) === true;
+
+    if ($promo) {
+        $referencePrice = (float)($intel['referencePrice'] ?? 0);
+        $drop = (int)($intel['historicalDropPercent'] ?? 0);
+        if ($referencePrice > $price && $drop >= 5) {
+            $reference = htmlspecialchars(v2_seo_offer_price_label($referencePrice, $currency), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $referenceDate = trim((string)($intel['referenceDate'] ?? ''));
+            $dateLabel = $referenceDate !== '' ? v2_seo_offer_date_label($referenceDate) : '';
+            $title = 'Ранее наблюдавшаяся цена этого же тура' . ($dateLabel !== '' ? ' — ' . $dateLabel : '');
+            $title = htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $note = $strong ? 'Цена снизилась' : 'Выгоднее недавней цены';
+            $mode = $strong ? 'guarded' : 'recent';
+            return '<div class="sp-offer-price sp-offer-price--promo" data-price-promo="'.$mode.'">'
+                .'<div class="sp-offer-price-flags"><span class="sp-offer-price-kicker">от</span><span class="sp-offer-discount-badge">−'.$drop.'%</span></div>'
+                .'<div class="sp-offer-price-values"><del title="'.$title.'">'.$reference.'</del><strong>'.$current.'</strong></div>'
+                .'<small class="sp-offer-price-note">'.$note.'</small></div>';
+        }
+    }
+
+    return '<div class="sp-offer-price"><span>от</span><strong>'.$current.'</strong>'
+        .($good ? '<small class="sp-offer-good-price">Хорошая цена</small>' : '')
+        .'</div>';
+}
 
 /**
  * Read fresh package-tour snapshots for one country from first-party observations.
@@ -63,7 +154,7 @@ function v2_seo_country_snapshot_offers(int $countryId, int $limit = 6): array
         return strcmp((string)$a['departureDate'], (string)$b['departureDate']);
     });
 
-    return array_slice($offers, 0, $limit);
+    return v2_seo_enrich_offer_prices(array_slice($offers, 0, $limit));
 }
 
 function v2_seo_resort_snapshot_offers(int $countryId, int $regionId, int $limit = 6): array
@@ -121,7 +212,7 @@ function v2_seo_resort_snapshot_offers(int $countryId, int $regionId, int $limit
         return strcmp((string)$a['departureDate'], (string)$b['departureDate']);
     });
 
-    return array_slice($offers, 0, $limit);
+    return v2_seo_enrich_offer_prices(array_slice($offers, 0, $limit));
 }
 
 /**

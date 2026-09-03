@@ -40,12 +40,12 @@ function v2_seo_render_seasonal(array $record): void
             $departure=trim((string)($offer['departureName']??''));
             $date=v2_seo_offer_date_label((string)($offer['departureDate']??''));
             $nights=(int)($offer['nights']??0);
-            $price=v2_seo_offer_price_label((float)($offer['price']??0),(string)($offer['currency']??'RUB'));
+            $priceMarkup=v2_seo_offer_price_markup($offer);
             $searchState=$page['search_state'];$departureId=(int)($offer['departureId']??0);if($departureId>0)$searchState['from']=$departureId;
             $href=v2_seo_search_handoff_url('/poisk-turov/',$searchState);
             echo '<article class="sp-offer-item"><h3>'.sp_e($hotel).'</h3><div class="sp-offer-meta">';
             if($departure!=='')echo '<span class="sp-offer-fact">Вылет из '.sp_e($departure).'</span>';
-            echo '<span class="sp-offer-fact">'.sp_e($date).'</span><span class="sp-offer-fact">'.sp_e((string)$nights).' ночей</span></div><div class="sp-offer-bottom"><div class="sp-offer-price"><span>от</span><strong>'.sp_e($price).'</strong></div><a class="sp-secondary sp-offer-action" href="'.sp_e($href).'">Посмотреть туры</a></div></article>';
+            echo '<span class="sp-offer-fact">'.sp_e($date).'</span><span class="sp-offer-fact">'.sp_e((string)$nights).' ночей</span></div><div class="sp-offer-bottom">'.$priceMarkup.'<a class="sp-secondary sp-offer-action" href="'.sp_e($href).'">Посмотреть туры</a></div></article>';
         }
         echo '</div></section>';
     }
