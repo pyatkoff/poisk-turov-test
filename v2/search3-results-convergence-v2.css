@@ -146,3 +146,6 @@ body.search3-preview #results .hotel-body{margin:0!important}
  html body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo{height:auto!important;min-height:188px!important;max-height:none!important;align-self:stretch!important}
  html body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo>img{height:100%!important;min-height:188px!important;max-height:none!important}
 }
+
+/* The normalized price already contains the “от” prefix. */
+body.search3-preview #results .hotel-best-offer>small{display:none!important}
