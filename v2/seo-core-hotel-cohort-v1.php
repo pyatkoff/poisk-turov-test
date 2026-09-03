@@ -22,8 +22,14 @@ function v2_seo_core_hotel_cohort_records(array $rows,int $limit=500): array
         if($hotelId<=0||$countryId<=0||$name===''||$countryName==='')continue;
         if(!in_array($countryId,[1,4,8],true))continue;
         if(!preg_match('/^[a-z0-9-]+$/',$hotelSlug)||!preg_match('/^[a-z0-9-]+$/',$countrySlug))continue;
-        if(!str_ends_with($hotelSlug,'-'.$hotelId))continue;
-        $path='/country/'.$countrySlug.'/hotel/'.$hotelSlug.'/';
+
+        // Catalog slugs are the human-readable hotel identity. Public review routes
+        // append the stable Tourvisor hotel id when it is not already present, matching
+        // the established /hotel/{slug}-{id}/ route contract without requiring the
+        // catalog itself to duplicate the id inside its slug column.
+        $routeHotelSlug=str_ends_with($hotelSlug,'-'.$hotelId)?$hotelSlug:rtrim($hotelSlug,'-').'-'.$hotelId;
+        if(!preg_match('/^[a-z0-9-]+-[0-9]+$/',$routeHotelSlug))continue;
+        $path='/country/'.$countrySlug.'/hotel/'.$routeHotelSlug.'/';
         if(isset($seenHotels[$hotelId])||isset($seenPaths[$path]))continue;
         $seenHotels[$hotelId]=true;$seenPaths[$path]=true;
         $observationCount=max(0,(int)($row['observation_count']??0));
