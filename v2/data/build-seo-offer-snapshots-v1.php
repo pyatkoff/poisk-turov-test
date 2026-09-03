@@ -33,6 +33,7 @@ function seo_snapshot_offer(array $row): array
         'hotelId' => (int)$row['hotel_id'],
         'hotelName' => (string)$row['hotel_name'],
         'hotelCategory' => $row['hotel_category'] !== null ? (int)$row['hotel_category'] : null,
+        'hotelImage' => trim((string)($row['hotel_image_url'] ?? '')),
         'regionId' => $row['region_id'] !== null ? (int)$row['region_id'] : null,
         'regionName' => (string)($row['region_name'] ?? ''),
         'departureDate' => (string)$row['departure_date'],
@@ -96,7 +97,7 @@ $sql = "WITH ranked AS (
        AND o.price>0
        AND o.currency='RUB'
 )
-SELECT r.*,h.name AS hotel_name,h.category AS hotel_category,
+SELECT r.*,h.name AS hotel_name,h.category AS hotel_category,h.primary_image_url AS hotel_image_url,
        COALESCE(c.slug,CAST(r.country_id AS CHAR)) AS country_slug,
        COALESCE(c.name,h.country_name,'') AS country_name,
        COALESCE(cr.slug,CAST(r.region_id AS CHAR)) AS region_slug,
