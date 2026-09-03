@@ -91,7 +91,7 @@
   /* Board 3 tablet: keep the critical tour price readable and give route/tradeoff copy its own flexible zone. */
   html body.search3-preview.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice{
     display:grid!important;
-    grid-template-columns:16px minmax(0,1fr) minmax(116px,132px)!important;
+    grid-template-columns:16px minmax(0,1fr) 146px!important;
     align-items:center!important;
     column-gap:8px!important;
     row-gap:0!important;
@@ -142,15 +142,16 @@
     display:block!important;
     grid-column:3!important;
     grid-row:1!important;
-    min-width:116px!important;
-    max-width:132px!important;
+    width:146px!important;
+    min-width:146px!important;
+    max-width:146px!important;
     justify-self:end!important;
     align-self:center!important;
     margin:0!important;
-    font-size:11px!important;
-    line-height:1.18!important;
+    font-size:10.5px!important;
+    line-height:1.1!important;
     text-align:right!important;
-    white-space:normal!important;
+    white-space:nowrap!important;
     word-break:normal!important;
     overflow-wrap:normal!important;
   }
