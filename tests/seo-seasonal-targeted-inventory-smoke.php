@@ -8,6 +8,7 @@ exec('php '.escapeshellarg($cli).' --dry-run=1 --now-date=2026-09-03 2>&1',$out,
 if($code!==0)targeted_inventory_fail('dry_run_exit_'.$code);
 $json=json_decode(implode("\n",$out),true);
 if(!is_array($json)||($json['state']??'')!=='review_only_seasonal_target_plan')targeted_inventory_fail('state');
+if(($json['business_timezone']??'')!=='Europe/Moscow'||($json['business_date']??'')!=='2026-09-03')targeted_inventory_fail('business_clock');
 if(($json['target_count']??0)!==2||count($json['targets']??[])!==2)targeted_inventory_fail('count');
 $by=[];foreach($json['targets'] as $row)$by[(string)($row['preview_key']??'')]=$row;
 if(($by['antalya-september']['page_key']??'')!=='resort_month:1:4:20:2026-09')targeted_inventory_fail('antalya_key');
@@ -20,8 +21,18 @@ foreach($by as $row){
 }
 foreach(['publication_allowed','indexation_allowed','sitemap_allowed','route_launch_allowed'] as $flag)if(($json[$flag]??true)!==false)targeted_inventory_fail('boundary_'.$flag);
 if(($json['tourvisor_calls_allowed']??true)!==false)targeted_inventory_fail('dry_run_network_boundary');
+
+// The production host and GitHub runner may use UTC or another OS timezone. The
+// collector must still derive its implicit business date from Europe/Moscow.
+$out=[];$code=0;
+exec('TZ=Pacific/Honolulu php '.escapeshellarg($cli).' --dry-run=1 2>&1',$out,$code);
+if($code!==0)targeted_inventory_fail('host_timezone_exit_'.$code);
+$clock=json_decode(implode("\n",$out),true);
+$expectedBusinessDate=(new DateTimeImmutable('today',new DateTimeZone('Europe/Moscow')))->format('Y-m-d');
+if(!is_array($clock)||($clock['business_timezone']??'')!=='Europe/Moscow'||($clock['business_date']??'')!==$expectedBusinessDate)targeted_inventory_fail('host_timezone_drift');
+
 $out=[];$code=0;exec('php '.escapeshellarg($cli).' --dry-run=1 --now-date=2026-10-01 2>&1',$out,$code);
 if($code!==0)targeted_inventory_fail('expired_exit');
 $expired=json_decode(implode("\n",$out),true);
 if(!is_array($expired)||($expired['target_count']??-1)!==0)targeted_inventory_fail('expired_target_leak');
-echo "SEO_SEASONAL_TARGETED_INVENTORY_OK targets=2 exact=2 networkInDryRun=0 publication=0\n";
+echo "SEO_SEASONAL_TARGETED_INVENTORY_OK targets=2 exact=2 timezone=Europe/Moscow networkInDryRun=0 publication=0\n";
