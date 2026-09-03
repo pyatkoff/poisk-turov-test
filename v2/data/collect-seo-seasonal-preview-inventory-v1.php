@@ -54,13 +54,23 @@ function seasonal_target_fetch_results(int $searchId):array
     }
     throw new RuntimeException('seasonal target results unavailable',0,$last);
 }
+function seasonal_target_business_timezone():DateTimeZone
+{
+    static $timezone=null;
+    return $timezone??=new DateTimeZone('Europe/Moscow');
+}
+function seasonal_target_business_today():DateTimeImmutable
+{
+    return new DateTimeImmutable('today',seasonal_target_business_timezone());
+}
 
 /** Exact pilot identities. Keeping this allowlist explicit prevents accidental broad collection. */
 function v2_seo_seasonal_preview_collection_targets(?DateTimeImmutable $today=null):array
 {
-    $today??=new DateTimeImmutable('today');
-    $monthStart=new DateTimeImmutable('2026-09-01');
-    $monthEnd=new DateTimeImmutable('2026-09-30');
+    $timezone=seasonal_target_business_timezone();
+    $today=($today??seasonal_target_business_today())->setTimezone($timezone)->setTime(0,0);
+    $monthStart=new DateTimeImmutable('2026-09-01',$timezone);
+    $monthEnd=new DateTimeImmutable('2026-09-30',$timezone);
     $from=$today->modify('+1 day');
     if($from<$monthStart)$from=$monthStart;
     if($from>$monthEnd)return [];
@@ -83,14 +93,18 @@ function v2_seo_seasonal_preview_collection_targets(?DateTimeImmutable $today=nu
     ];
 }
 
+$businessTimezone=seasonal_target_business_timezone();
 $nowDateRaw=trim((string)seasonal_target_arg($argv,'now-date',''));
-$today=$nowDateRaw===''?new DateTimeImmutable('today'):DateTimeImmutable::createFromFormat('!Y-m-d',$nowDateRaw);
+$today=$nowDateRaw===''?seasonal_target_business_today():DateTimeImmutable::createFromFormat('!Y-m-d',$nowDateRaw,$businessTimezone);
 if(!$today)throw new InvalidArgumentException('invalid --now-date');
+$today=$today->setTimezone($businessTimezone)->setTime(0,0);
 $targets=v2_seo_seasonal_preview_collection_targets($today);
 $dryRun=in_array(strtolower((string)seasonal_target_arg($argv,'dry-run','0')),['1','true','yes'],true);
 if($dryRun){
     echo json_encode([
         'state'=>'review_only_seasonal_target_plan',
+        'business_timezone'=>$businessTimezone->getName(),
+        'business_date'=>$today->format('Y-m-d'),
         'target_count'=>count($targets),
         'targets'=>$targets,
         'tourvisor_calls_allowed'=>false,
