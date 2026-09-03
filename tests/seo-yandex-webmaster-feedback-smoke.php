@@ -56,7 +56,7 @@ if(($egypt['metrics']['impressions']??null)!==350||($egypt['metrics']['clicks']?
 $intake=v2_seo_search_feedback_intake(array_values($result['rows']),$collected);
 if(($intake['state']??'')!=='search_feedback_intake_ready'||($intake['observed_count']??0)!==2||count($intake['missing_paths']??[])!==8)yw_feedback_fail('intake');
 $missing=array_fill_keys((array)($intake['missing_paths']??[]),true);
-foreach(['/country/turkey/september/','/country/maldives/september/'] as $seasonalPath){
+foreach(['/country/turkey/antalya/september/','/country/maldives/september/'] as $seasonalPath){
     if(!isset($missing[$seasonalPath]))yw_feedback_fail('seasonal_missing_not_unknown_'.$seasonalPath);
 }
 if(($intake['missing_feedback_semantics']??'')!=='unknown_not_zero')yw_feedback_fail('missing_semantics');
