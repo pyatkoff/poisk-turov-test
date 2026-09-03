@@ -66,12 +66,13 @@
 }
 @media(min-width:701px) and (max-width:900px){
  #tourSearch.ds2-search-initial{padding:11px!important;gap:9px!important}
- #tourSearch.ds2-search-initial .main-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:7px!important}
+ #tourSearch.ds2-search-initial .main-fields{order:1!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:7px!important}
  #tourSearch.ds2-search-initial .main-fields>.primary-step{min-height:56px!important;padding:8px 9px 7px 34px!important}
  #tourSearch.ds2-search-initial .main-fields>.primary-step-3{grid-column:1/-1!important}
- #tourSearch.ds2-search-initial .search-submit{height:52px!important;min-height:52px!important;border-radius:11px!important}
- #tourSearch.ds2-search-initial>.ds2-search-quick-stars{min-height:34px!important;height:34px!important}
+ #tourSearch.ds2-search-initial .search-submit{order:2!important;height:52px!important;min-height:52px!important;border-radius:11px!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars{order:3!important;min-height:34px!important;height:34px!important}
  #tourSearch.ds2-search-initial>.ds2-search-quick-stars .stars-choice{height:32px!important;min-height:32px!important;font-size:10px!important}
+ #tourSearch.ds2-search-initial>.extras,#tourSearch.ds2-search-initial>.extras-secondary{order:4!important}
  #tourSearch.ds2-search-initial>.extras>summary,#tourSearch.ds2-search-initial>.extras-secondary>summary{height:40px!important;min-height:40px!important}
 }
 @media(max-width:700px){
@@ -82,8 +83,9 @@
  #tourSearch.ds2-search-initial .main-fields>.primary-step:last-child{border-bottom:0!important;border-radius:0 0 11px 11px!important}
  #tourSearch.ds2-search-initial .main-fields>.primary-step:focus-within{border-radius:9px!important;box-shadow:inset 0 0 0 2px rgba(18,97,246,.16)!important}
  #tourSearch.ds2-search-initial .search-submit{order:2!important;margin-top:1px!important}
- #tourSearch.ds2-search-initial>.ds2-search-quick-stars{order:3!important;height:auto!important;min-height:38px!important;padding-bottom:2px!important;overflow:visible!important;contain:none!important}
- #tourSearch.ds2-search-initial>.ds2-search-quick-stars .stars-quick{width:100%!important;min-width:0!important;max-width:100%!important;flex-wrap:wrap!important;align-items:stretch!important}
- #tourSearch.ds2-search-initial>.ds2-search-quick-stars .stars-choice{height:38px!important;min-height:38px!important;font-size:12px!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars{order:3!important;height:auto!important;min-height:38px!important;padding-bottom:2px!important;overflow-x:auto!important;overflow-y:hidden!important;contain:inline-size!important;overscroll-behavior-inline:contain!important;scroll-snap-type:x proximity!important;scroll-padding-inline:1px!important;scrollbar-width:none!important;-webkit-overflow-scrolling:touch!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars::-webkit-scrollbar{display:none!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars .stars-quick{width:max-content!important;min-width:100%!important;max-width:none!important;flex-wrap:nowrap!important;align-items:stretch!important}
+ #tourSearch.ds2-search-initial>.ds2-search-quick-stars .stars-choice{height:38px!important;min-height:38px!important;font-size:12px!important;scroll-snap-align:start!important}
  #tourSearch.ds2-search-initial>.extras,#tourSearch.ds2-search-initial>.extras-secondary{order:4!important}
 }
