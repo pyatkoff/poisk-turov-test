@@ -5,7 +5,7 @@ require_once __DIR__.'/seo-seasonal-review-page-v1.php';
 require_once __DIR__.'/seo-opportunity-evidence-packet-v1.php';
 
 /**
- * Bind external demand/uniqueness evidence to the exact seasonal preview pair.
+ * Bind external demand/uniqueness evidence to the exact seasonal review cohort.
  * This is review-only evidence intake: no route, sitemap, canonical or indexing
  * behavior can be changed here.
  */
@@ -23,7 +23,8 @@ function v2_seo_seasonal_preview_opportunity_evidence(array $rows, ?int $nowEpoc
         if($pageKey===''||$path==='')throw new RuntimeException('Seasonal preview evidence identity is incomplete');
         $expected[(string)$previewKey]=['page_key'=>$pageKey,'path'=>$path];
     }
-    if(count($expected)!==2)throw new RuntimeException('Seasonal preview evidence requires exact reference pair');
+    $expectedCount=count($expected);
+    if($expectedCount<1)throw new RuntimeException('Seasonal preview evidence requires an explicit review cohort');
 
     $errors=[];$seen=[];$normalized=[];$packets=[];
     foreach($rows as $i=>$row){
@@ -60,17 +61,17 @@ function v2_seo_seasonal_preview_opportunity_evidence(array $rows, ?int $nowEpoc
         ];
     }
     foreach(array_keys($expected) as $previewKey)if(!isset($seen[$previewKey]))$errors[]='missing_preview_key:'.$previewKey;
-    if(count($rows)!==2)$errors[]='row_count_must_be_2';
+    if(count($rows)!==$expectedCount)$errors[]='row_count_must_match_preview_count';
     usort($normalized,static fn(array $a,array $b):int=>strcmp($a['preview_key'],$b['preview_key']));
     ksort($packets,SORT_STRING);
     $readyCount=count(array_filter($normalized,static fn(array $row):bool=>$row['packet_state']==='opportunity_evidence_review_ready'));
     $fingerprint=hash('sha256',json_encode($normalized,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR));
 
     return [
-        'state'=>$errors===[]&&$readyCount===2?'review_only_seasonal_serp_evidence_ready':'review_only_seasonal_serp_evidence_blocked',
-        'preview_count'=>2,
+        'state'=>$errors===[]&&$readyCount===$expectedCount?'review_only_seasonal_serp_evidence_ready':'review_only_seasonal_serp_evidence_blocked',
+        'preview_count'=>$expectedCount,
         'ready_count'=>$readyCount,
-        'blocked_count'=>2-$readyCount,
+        'blocked_count'=>$expectedCount-$readyCount,
         'rows'=>$normalized,
         'packets_by_preview'=>$packets,
         'evidence_sha256'=>$fingerprint,
