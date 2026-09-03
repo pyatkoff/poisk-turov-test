@@ -1,3 +1,4 @@
+@import url("./search3-mobile-lead-state-final.css?v=1");
 /* Search3 mobile back affordance convergence to approved selected/lead screens. Preview only. */
 @media(max-width:760px){
   html body.search3-preview.search3-selected-open #selectedTour .back-results,
@@ -20,6 +21,23 @@
     font-size:0!important;
     line-height:1!important;
     text-decoration:none!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .back-results>* ,
+  html body.search3-preview.search3-selected-open #selectedTour .search3-lead-back>*{
+    width:0!important;
+    height:0!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+    color:transparent!important;
+    font-size:0!important;
+    line-height:0!important;
+  }
+  html body.search3-preview.search3-selected-open #selectedTour .back-results>*::before,
+  html body.search3-preview.search3-selected-open #selectedTour .back-results>*::after,
+  html body.search3-preview.search3-selected-open #selectedTour .search3-lead-back>*::before,
+  html body.search3-preview.search3-selected-open #selectedTour .search3-lead-back>*::after{
+    content:none!important;
   }
   html body.search3-preview.search3-selected-open #selectedTour .back-results::before,
   html body.search3-preview.search3-selected-open #selectedTour .search3-lead-back::before{
