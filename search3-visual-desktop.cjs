@@ -18,6 +18,45 @@ async function footerCheck(page){const state=await page.evaluate(()=>{const f=do
 async function forceLeadState(page,state,detail={}){const r=await page.evaluate(({state,detail})=>{const form=document.querySelector('#selectedTour .lead-form');if(!form)return false;delete form.dataset.search3LeadState;window.dispatchEvent(new CustomEvent('search3:preview-lead-state',{detail:Object.assign({previewSimulation:true,state},detail)}));return form.dataset.search3LeadState===state&&!!form.querySelector('.search3-lead-status:not([hidden])')},{state,detail});return r&&visible(page,`#selectedTour .lead-form[data-search3-lead-state="${state}"] .search3-lead-status`,4000)}
 function knownExternalConsoleNoise(text){return /WebSocket connection to ['"]wss:\/\/mc\.yandex\.com\/solid\.ws/i.test(String(text||''));}
 
+async function selectTourWithFlightVariants(page,maxAttempts=3){
+ for(let attempt=0;attempt<maxAttempts;attempt++){
+  if(attempt>0){
+   const retryResponse=await page.goto(baseUrl,{waitUntil:'domcontentloaded',timeout:60000});
+   report.retryHttp=retryResponse?retryResponse.status():0;
+   await page.waitForSelector('body.search3-preview, #tourSearch',{timeout:20000});
+   await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}'});
+   await sleep(400);
+   if(!await clickVisible(page,'#tourSearch .search-submit',10000))continue;
+   if(!await visible(page,'#results .hotel-card',120000))continue;
+   if(!await attached(page,'#status .search-progress-done',120000))continue;
+  }
+  const cards=page.locator('#results .hotel-card');
+  const count=await cards.count();
+  if(!count)continue;
+  const card=cards.nth(Math.min(attempt,count-1));
+  const tours=card.locator('.hotel-tours:not([hidden])').first();
+  if(!await tours.isVisible().catch(()=>false)){
+   const show=card.locator('.search3-show-tours').first();
+   if(!await show.count()||!await show.isVisible())continue;
+   await show.click({timeout:7000});
+   if(!await tours.waitFor({state:'visible',timeout:20000}).then(()=>true).catch(()=>false))continue;
+  }
+  const direct=tours.locator('.direct-tour').first();
+  if(!await direct.count()||!await direct.isVisible())continue;
+  const errorStart=report.errors.length;
+  await direct.click({timeout:7000});
+  const selected=await visible(page,'#selectedTour:not([hidden])',45000);
+  const details=selected&&await visible(page,'#selectedTour .selected-head h2, #selectedTour .selected-picture',45000);
+  const variants=details&&await visible(page,'#selectedTour .flight-variant',30000);
+  if(variants){report.flightOfferAttempt=attempt+1;return true}
+  const attemptErrors=report.errors.splice(errorStart);
+  const transient=attemptErrors.filter(e=>/^console: Failed to load resource: the server responded with a status of 500 \(Internal Server Error\)$/.test(e));
+  report.errors.push(...attemptErrors.filter(e=>!transient.includes(e)));
+  report.recoverableOfferErrors=(report.recoverableOfferErrors||[]).concat(transient);
+ }
+ return false;
+}
+
 (async()=>{
  const browser=await chromium.launch({headless:true});
  const context=await browser.newContext({viewport:{width:1440,height:1000},deviceScaleFactor:1,ignoreHTTPSErrors:true});
@@ -43,7 +82,7 @@ function knownExternalConsoleNoise(text){return /WebSocket connection to ['"]wss
   {const g=report.resultsGeometry;if(!g.tools||!g.results||!g.firstCard)throw new Error('results flow geometry missing');if(g.tools.position!=='static')throw new Error(`results tools must be static, got ${g.tools.position}`);if(g.tools.bottom>g.firstCard.top+2)throw new Error(`results tools overlap first card: ${g.tools.bottom} > ${g.firstCard.top}`);if(Math.abs(g.tools.left-g.results.left)>2||Math.abs(g.tools.right-g.results.right)>2)throw new Error(`results tools misaligned with cards: tools=${g.tools.left}-${g.tools.right}, results=${g.results.left}-${g.results.right}`);}
   await snap(page,'02-results','#resultsTools');
   if(!await clickVisible(page,'#results .search3-show-tours'))throw new Error('show tours missing');if(!await visible(page,'#results .hotel-card .hotel-tours:not([hidden])',20000))throw new Error('tour list missing');await snap(page,'03-expanded-hotel','#results .hotel-card .hotel-tours:not([hidden])',150);
-  if(!await clickVisible(page,'#results .hotel-tours:not([hidden]) .direct-tour'))throw new Error('direct tour missing');if(!await visible(page,'#selectedTour:not([hidden])',45000))throw new Error('selected tour missing');report.tourDetailsReady=await visible(page,'#selectedTour .selected-head h2, #selectedTour .selected-picture',45000);if(!report.tourDetailsReady)throw new Error('tour details loading');if(!await visible(page,'#selectedTour .selected-confidence',6000))throw new Error('selected confidence missing');report.tourDetailsConfidenceWide=await page.evaluate(()=>{const n=document.querySelector('#selectedTour .selected-confidence');return !!n&&n.getBoundingClientRect().width>=600});if(!report.tourDetailsConfidenceWide)throw new Error('selected confidence collapsed');await settleImages(page,'#selectedTour img');await snap(page,'04-tour-details','#selectedTour');
+  if(!await selectTourWithFlightVariants(page,3))throw new Error('desktop could not find an offer with flight variants');report.tourDetailsReady=true;if(!await visible(page,'#selectedTour .selected-confidence',6000))throw new Error('selected confidence missing');report.tourDetailsConfidenceWide=await page.evaluate(()=>{const n=document.querySelector('#selectedTour .selected-confidence');return !!n&&n.getBoundingClientRect().width>=600});if(!report.tourDetailsConfidenceWide)throw new Error('selected confidence collapsed');await settleImages(page,'#selectedTour img');await snap(page,'04-tour-details','#selectedTour');
   if(!await visible(page,'#selectedTour .tour-flights',30000))throw new Error('flights missing');if(!await visible(page,'#selectedTour .flight-variant',45000))throw new Error('flight variants missing');if(!await visible(page,'#selectedTour .search3-flight-continue button',6000))throw new Error('flight continue render missing');await snap(page,'05-flights','#selectedTour .tour-flights');
   if(!await clickVisible(page,'#selectedTour .search3-flight-continue button'))throw new Error('flight continue missing');if(!await visible(page,'#selectedTour.search3-final-review',10000))throw new Error('final review missing');await snap(page,'06-final-review','#selectedTour');
   if(!await clickVisible(page,'#selectedTour .search3-summary-submit',7000))throw new Error('desktop lead CTA did not click');if(!await visible(page,'#selectedTour.search3-lead-entry .lead-form',6000))throw new Error('desktop lead entry did not open');await snap(page,'07-lead-entry','#selectedTour .lead-form');report.leadStates={};report.leadStates.sending=await forceLeadState(page,'sending');await snap(page,'08-lead-sending','#selectedTour .lead-form');report.leadStates.success=await forceLeadState(page,'success',{leadId:'PREVIEW'});await snap(page,'09-lead-success','#selectedTour .lead-form');report.messengerHandoff=await page.evaluate(()=>{const hrefs=Array.from(document.querySelectorAll('#selectedTour .search3-messenger-actions a[href]')).map(a=>a.href);return hrefs.some(h=>/^https:\/\/max\.ru\//i.test(h))&&hrefs.some(h=>/^https:\/\/(?:t\.me|telegram\.me)\//i.test(h));});if(!report.messengerHandoff)throw new Error('real MAX and Telegram handoff links missing');report.leadStates.error=await forceLeadState(page,'error');await snap(page,'10-lead-error','#selectedTour .lead-form');
