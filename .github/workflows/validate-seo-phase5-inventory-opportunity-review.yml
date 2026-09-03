@@ -1,0 +1,41 @@
+name: Validate SEO phase5 inventory opportunity review
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/seo-phase5-inventory-opportunity-review-v1.php'
+      - 'v2/seo-phase5-expansion-review-gate-v1.php'
+      - 'v2/data/seo-inventory-opportunity-engine-v1.php'
+      - 'v2/data/seo-controlled-route-identities-v1.php'
+      - 'tests/seo-phase5-inventory-opportunity-review-smoke.php'
+      - '.github/workflows/validate-seo-phase5-inventory-opportunity-review.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/seo-phase5-inventory-opportunity-review-v1.php'
+      - 'v2/seo-phase5-expansion-review-gate-v1.php'
+      - 'v2/data/seo-inventory-opportunity-engine-v1.php'
+      - 'v2/data/seo-controlled-route-identities-v1.php'
+      - 'tests/seo-phase5-inventory-opportunity-review-smoke.php'
+      - '.github/workflows/validate-seo-phase5-inventory-opportunity-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fast-core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Phase5 inventory review smoke
+        run: |
+          set -euo pipefail
+          php -l v2/seo-phase5-inventory-opportunity-review-v1.php >/dev/null
+          php -l tests/seo-phase5-inventory-opportunity-review-smoke.php >/dev/null
+          php tests/seo-phase5-inventory-opportunity-review-smoke.php
+          grep -Fq "publication_candidates'=>[]" v2/seo-phase5-inventory-opportunity-review-v1.php
+          grep -Fq "catalog slug" v2/seo-phase5-inventory-opportunity-review-v1.php
+          ! grep -Eq 'INSERT[[:space:]]+INTO|UPDATE[[:space:]]+[a-zA-Z_]|DELETE[[:space:]]+FROM' v2/seo-phase5-inventory-opportunity-review-v1.php
