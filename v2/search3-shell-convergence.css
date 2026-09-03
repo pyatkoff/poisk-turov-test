@@ -1,4 +1,4 @@
-/* Search3 desktop shell convergence: factual header/footer plus final vertical rhythm. */
+/* Search3 shell convergence: factual header/footer plus final vertical rhythm. */
 @media(min-width:1000px){
 html body.search3-preview{--at-page-gutter:48px!important}
 html body.search3-preview .at-global-header__inner{min-height:60px!important;gap:22px!important}
@@ -19,4 +19,16 @@ html body.search3-preview .ds2-site-footer{margin-top:16px!important}
 html body.search3-preview .ds2-site-footer__meta{min-height:46px!important;padding-left:calc((100vw - min(var(--at-shell),calc(100vw - var(--at-page-gutter)))) / 2)!important;padding-right:calc((100vw - min(var(--at-shell),calc(100vw - var(--at-page-gutter)))) / 2)!important}
 html body.search3-preview .ds2-site-footer__legal{gap:16px!important}
 html body.search3-preview .ds2-site-footer__payments span{display:inline-flex!important;align-items:center!important;justify-content:center!important}
+}
+
+/* Approved full mobile flow: after choosing a concrete tour the booking journey is a separate view.
+   Header and selected-tour/back control stay visible; search/results return when selected-open is removed. */
+@media(max-width:640px){
+html body.search3-preview.search3-selected-open .search3-page-intro,
+html body.search3-preview.search3-selected-open #tourSearch,
+html body.search3-preview.search3-selected-open #status,
+html body.search3-preview.search3-selected-open #resultsSearchSummary,
+html body.search3-preview.search3-selected-open #resultsTools,
+html body.search3-preview.search3-selected-open .results-layout{display:none!important}
+html body.search3-preview.search3-selected-open #selectedTour{margin-top:8px!important;margin-bottom:18px!important}
 }
