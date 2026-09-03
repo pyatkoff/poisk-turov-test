@@ -14,6 +14,8 @@ on:
       - 'v2/seo-launch-slice-v1.php'
       - 'v2/seo-controlled-launch-catalog-v1.php'
       - 'v2/seo-core-month-*.php'
+      - 'v2/seo-core-resort-*.php'
+      - 'v2/data/materialize-seo-core-resort-review-routes-v1.php'
       - 'v2/sitemap.xml'
   pull_request:
     branches: [main]
@@ -22,8 +24,12 @@ on:
       - 'v2/seo-launch-slice-v1.php'
       - 'v2/seo-controlled-launch-catalog-v1.php'
       - 'v2/seo-core-month-*.php'
+      - 'v2/seo-core-resort-*.php'
+      - 'v2/data/materialize-seo-core-resort-review-routes-v1.php'
       - 'v2/sitemap.xml'
       - 'tests/seo-launch-slice-smoke.php'
+      - 'tests/seo-core-resort-launch-state-smoke.php'
+      - 'tests/seo-core-resort-review-materializer-smoke.php'
 
 permissions:
   contents: read
@@ -44,12 +50,15 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/seo-launch-slice-v1.php >/dev/null
-          php -l v2/seo-controlled-launch-catalog-v1.php >/dev/null
-          php -l v2/seo-core-month-content-v1.php >/dev/null
+          php -l v2/seo-core-resort-launch-state-v1.php >/dev/null
+          php -l v2/seo-core-resort-review-runtime-v1.php >/dev/null
+          php -l v2/data/materialize-seo-core-resort-review-routes-v1.php >/dev/null
           php tests/seo-core-month-content-smoke.php
+          php tests/seo-core-resort-launch-state-smoke.php
+          php tests/seo-core-resort-review-materializer-smoke.php
           php tests/seo-launch-slice-smoke.php
           php tests/seo-production-identity-collector-smoke.php
-          php -r "require 'v2/seo-launch-slice-v1.php'; foreach(v2_seo_controlled_launch_paths() as \$p) echo 'https://anytoour.ru'.\$p,PHP_EOL;" | sort > /tmp/expected-sitemap.txt
+          php -r "require 'v2/seo-launch-slice-v1.php'; foreach(v2_seo_static_controlled_launch_paths() as \$p) echo 'https://anytoour.ru'.\$p,PHP_EOL;" | sort > /tmp/expected-sitemap.txt
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
           expected={x.strip() for x in open('/tmp/expected-sitemap.txt',encoding='utf-8') if x.strip()}
@@ -57,7 +66,7 @@ jobs:
           assert actual == expected, (len(actual),len(expected),sorted(actual^expected)[:20])
           assert len(actual)==104
           assert not any('/hotel/' in u or '/poisk-turov/' in u for u in actual)
-          print('ANYTOOUR_PREDEPLOY_SEO_CONTRACT_OK paths=104 core_months=96 hotel_tours=0')
+          print('ANYTOOUR_PREDEPLOY_SEO_CONTRACT_OK static_paths=104 dynamic_resorts=manifest_gated hotel_tours=0')
           PY
 
   production-seo:
@@ -74,15 +83,35 @@ jobs:
           curl -fsSL --max-time 30 "$base/robots.txt" -o /tmp/robots.txt
           grep -Fq 'Sitemap: https://anytoour.ru/sitemap.xml' /tmp/robots.txt
           curl -fsSL --max-time 30 "$base/sitemap.xml" -o /tmp/sitemap.xml
-          php -r "require 'v2/seo-launch-slice-v1.php'; foreach(v2_seo_controlled_launch_paths() as \$p) echo 'https://anytoour.ru'.\$p,PHP_EOL;" | sort > /tmp/expected-sitemap.txt
+          php -r "require 'v2/seo-launch-slice-v1.php'; foreach(v2_seo_static_controlled_launch_paths() as \$p) echo 'https://anytoour.ru'.\$p,PHP_EOL;" | sort > /tmp/static-sitemap.txt
           python3 - <<'PY'
-          import xml.etree.ElementTree as ET
-          expected={x.strip() for x in open('/tmp/expected-sitemap.txt',encoding='utf-8') if x.strip()}
+          import re, xml.etree.ElementTree as ET
+          static={x.strip() for x in open('/tmp/static-sitemap.txt',encoding='utf-8') if x.strip()}
           actual={n.text.strip() for n in ET.parse('/tmp/sitemap.xml').getroot().iter() if n.tag.endswith('loc') and n.text}
-          assert actual == expected, (len(actual),len(expected),sorted(actual^expected)[:20])
-          assert len(actual)==104
+          assert static <= actual, (len(static),len(actual),sorted(static-actual)[:20])
           assert not any('/hotel/' in u or '/poisk-turov/' in u for u in actual)
-          print('ANYTOOUR_SEO_SITEMAP_OK paths=104')
+          extras=sorted(actual-static)
+          month_re=re.compile(r'^https://anytoour\.ru/country/(egypt|maldives)/([a-z0-9-]+)/(january|february|march|april|may|june|july|august|september|october|november|december)/$')
+          base_re=re.compile(r'^https://anytoour\.ru/country/(egypt|maldives)/([a-z0-9-]+)/$')
+          groups={}
+          for url in extras:
+              m=base_re.match(url)
+              if m:
+                  assert m.group(2) not in {'hotel','january','february','march','april','may','june','july','august','september','october','november','december'}
+                  groups.setdefault(m.group(1,2),{'base':False,'months':set()})['base']=True
+                  continue
+              m=month_re.match(url)
+              assert m, url
+              groups.setdefault(m.group(1,2),{'base':False,'months':set()})['months'].add(m.group(3))
+          for key,g in groups.items():
+              assert g['base'] and len(g['months'])==12, (key,g)
+          assert len(extras)==13*len(groups)
+          print(f'ANYTOOUR_SEO_SITEMAP_OK paths={len(actual)} static=104 generated_resorts={len(groups)} generated_routes={len(extras)}')
+          with open('/tmp/generated-samples.txt','w',encoding='utf-8') as f:
+              for url in extras:
+                  if base_re.match(url): f.write(url.removeprefix('https://anytoour.ru')+'\n'); break
+              for url in extras:
+                  if month_re.match(url): f.write(url.removeprefix('https://anytoour.ru')+'\n'); break
           PY
 
           samples=(
@@ -96,6 +125,7 @@ jobs:
             '/country/turkey/kemer/june/'
             '/country/turkey/antalya/october/'
           )
+          while IFS= read -r path; do test -z "$path" || samples+=("$path"); done < /tmp/generated-samples.txt
           for path in "${samples[@]}"; do
             file="/tmp/page.html"
             code="$(curl -fsSL -o "$file" -w '%{http_code}' --max-time 35 "$base$path")"
@@ -109,4 +139,4 @@ jobs:
           test "$code" = '200'
           grep -Eq '<meta name="robots" content="noindex,follow[^\"]*"' /tmp/hotel-review.html
           if grep -Fq "${base}${protected}" /tmp/sitemap.xml; then echo 'HOTEL_TOUR_SITEMAP_LEAK' >&2; exit 1; fi
-          echo 'ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK paths=104 sampled=9 hotel_tours_indexed=0'
+          echo "ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK static=104 generated_samples=${#samples[@]} hotel_tours_indexed=0"

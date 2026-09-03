@@ -4,6 +4,7 @@ require_once __DIR__ . '/seo-page-contract-v1.php';
 require_once __DIR__ . '/seo-offer-snapshot-v1.php';
 require_once __DIR__ . '/seo-price-calendar-v1.php';
 require_once __DIR__ . '/seo-core-month-navigation-v1.php';
+require_once __DIR__ . '/seo-core-resort-launch-state-v1.php';
 
 /**
  * Render a curated resort page on its final clean path.
@@ -111,6 +112,13 @@ function v2_seo_render_resort(array $record): void
     if ($links) {
         echo '<section class="sp-card sp-related-card"><h2>'.sp_e($page['related_title'] ?: 'Другие направления').'</h2><div class="sp-actions">';
         foreach ($links as $href => $label) echo '<a class="sp-secondary" href="'.sp_e($href).'">'.sp_e($label).'</a>';
+        echo '</div></section>';
+    }
+
+    $siblingResorts=v2_seo_core_resort_sibling_links($path,8);
+    if($siblingResorts){
+        echo '<section class="sp-card sp-related-card" data-sibling-resort-links><h2>Другие курорты страны</h2><div class="sp-actions">';
+        foreach($siblingResorts as $href=>$label)echo '<a class="sp-secondary" href="'.sp_e($href).'">'.sp_e($label).'</a>';
         echo '</div></section>';
     }
 
