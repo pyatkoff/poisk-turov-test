@@ -8,8 +8,7 @@ if(PHP_SAPI!=='cli'){
 
 require_once __DIR__.'/db-v1.php';
 require_once __DIR__.'/seo-inventory-opportunity-engine-v1.php';
-$launchSlice=dirname(__DIR__).'/seo-launch-slice-v1.php';
-if(is_file($launchSlice)) require_once $launchSlice;
+require_once __DIR__.'/seo-controlled-route-identities-v1.php';
 
 $limitPerType=50;
 foreach(array_slice($argv,1) as $arg){
@@ -105,8 +104,8 @@ try{
         $queryCounts[$type]=count($part);
         foreach($part as $row) $rows[]=$row;
     }
-    $controlledPaths=function_exists('v2_seo_controlled_launch_paths')?v2_seo_controlled_launch_paths():[];
-    $report=v2_seo_inventory_opportunity_report($rows,$limitPerType,$controlledPaths);
+    $controlledRouteBindings=v2_seo_controlled_route_identities();
+    $report=v2_seo_inventory_opportunity_report($rows,$limitPerType,$controlledRouteBindings);
     $report['collector']=[
         'state'=>'read_only_first_party_db_aggregation',
         'currency'=>'RUB',
@@ -114,6 +113,7 @@ try{
         'recent_reporting_window_days'=>30,
         'query_counts'=>$queryCounts,
         'query_result_semantics'=>'all_observed_groups_before_output_limit',
+        'route_authority'=>'explicit_controlled_identity_registry_only',
         'source_table'=>'tour_price_observations',
         'catalog_tables'=>['catalog_countries','catalog_regions'],
         'writes_performed'=>false,
