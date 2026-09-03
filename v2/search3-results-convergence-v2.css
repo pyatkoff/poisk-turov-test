@@ -140,3 +140,9 @@ body.search3-preview #results .hotel-body{margin:0!important}
  body.search3-preview:not(.search3-hotel-tours-open) #results .hotel-card .hotel-main>.hotel-photo{height:auto!important;min-height:188px!important;align-self:stretch!important}
  body.search3-preview:not(.search3-hotel-tours-open) #results .hotel-card .hotel-main>.hotel-photo>img{height:100%!important;min-height:188px!important}
 }
+
+/* Match the results-width contract specificity, then replace its legacy 156px media lock. */
+@media(min-width:761px){
+ html body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo{height:auto!important;min-height:188px!important;max-height:none!important;align-self:stretch!important}
+ html body.search3-preview:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo>img{height:100%!important;min-height:188px!important;max-height:none!important}
+}
