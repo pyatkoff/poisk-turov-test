@@ -8,6 +8,7 @@ on:
     branches: [main]
     paths:
       - 'v2/data/seo-inventory-opportunity-engine-v1.php'
+      - 'v2/data/seo-controlled-route-identities-v1.php'
       - 'v2/data/report-seo-inventory-opportunities-v1.php'
       - 'tests/seo-inventory-opportunity-engine-smoke.php'
       - '.github/workflows/collect-seo-inventory-opportunities.yml'
@@ -15,6 +16,7 @@ on:
     branches: [main]
     paths:
       - 'v2/data/seo-inventory-opportunity-engine-v1.php'
+      - 'v2/data/seo-controlled-route-identities-v1.php'
       - 'v2/data/report-seo-inventory-opportunities-v1.php'
       - 'tests/seo-inventory-opportunity-engine-smoke.php'
       - '.github/workflows/collect-seo-inventory-opportunities.yml'
@@ -37,10 +39,12 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/data/seo-inventory-opportunity-engine-v1.php >/dev/null
+          php -l v2/data/seo-controlled-route-identities-v1.php >/dev/null
           php -l v2/data/report-seo-inventory-opportunities-v1.php >/dev/null
           php tests/seo-inventory-opportunity-engine-smoke.php
           grep -Fq "observed_database_groups_only_no_cartesian_generation" v2/data/seo-inventory-opportunity-engine-v1.php
           grep -Fq "not_joined_no_zero_imputation" v2/data/seo-inventory-opportunity-engine-v1.php
+          grep -Fq "catalog_slugs_are_hints_only" v2/data/seo-inventory-opportunity-engine-v1.php
           grep -Fq "'publication_candidates'=>[]" v2/data/seo-inventory-opportunity-engine-v1.php
           ! grep -Eq 'INSERT[[:space:]]+INTO|UPDATE[[:space:]]+[a-zA-Z_]|DELETE[[:space:]]+FROM' v2/data/report-seo-inventory-opportunities-v1.php
 
@@ -80,12 +84,14 @@ jobs:
           remote="$USER_VALUE@$HOST_VALUE"
           scp "${opts[@]}" \
             v2/data/seo-inventory-opportunity-engine-v1.php \
+            v2/data/seo-controlled-route-identities-v1.php \
             v2/data/report-seo-inventory-opportunities-v1.php \
             "$remote:~/www/anytoour.ru/data/"
           ssh "${opts[@]}" "$remote" '
             set -euo pipefail
             root="$HOME/www/anytoour.ru/data"
             php -l "$root/seo-inventory-opportunity-engine-v1.php" >/dev/null
+            php -l "$root/seo-controlled-route-identities-v1.php" >/dev/null
             php -l "$root/report-seo-inventory-opportunities-v1.php" >/dev/null
             php "$root/report-seo-inventory-opportunities-v1.php" --limit-per-type=50
           ' > seo-inventory-opportunities.json
@@ -105,25 +111,32 @@ jobs:
           assert report.get('hotel_tours_indexation_allowed') is False
           assert report.get('candidate_generation_semantics')=='observed_database_groups_only_no_cartesian_generation'
           assert report.get('ranking_semantics')=='inventory_components_only_no_combined_score'
+          assert report.get('route_semantics')=='only_explicit_identity_registry_bindings_are_routes_catalog_slugs_are_hints_only'
           for candidate in report.get('candidates',[]):
               assert candidate.get('candidate_type') in {'country','resort','country_month','resort_month'}
               assert candidate.get('opportunity_score') is None
               assert candidate.get('publication_allowed') is False
+              if candidate.get('path_exists_in_controlled_registry'):
+                  assert candidate.get('route_mapping_state')=='controlled_identity_registry_match'
+                  assert str(candidate.get('review_path','')).startswith('/country/')
+              else:
+                  assert candidate.get('route_mapping_state')=='unmapped_review_identity'
+                  assert candidate.get('review_path') is None
               demand=candidate.get('demand') or {}
               assert demand.get('status')=='unknown'
               assert demand.get('impressions') is None
               assert demand.get('clicks') is None
               assert demand.get('avg_position') is None
           by_type=report.get('by_type') or {}
-          print('SEO_INVENTORY_OPPORTUNITY_OK observed={} reported={} blocked={} sha256={}'.format(
-              report.get('observed_identity_count'),report.get('reported_candidate_count'),report.get('blocked_count'),report.get('evidence_sha256')))
+          print('SEO_INVENTORY_OPPORTUNITY_OK observed={} reported={} blocked={} controlled_routes={} sha256={}'.format(
+              report.get('observed_identity_count'),report.get('reported_candidate_count'),report.get('blocked_count'),report.get('controlled_route_match_count'),report.get('evidence_sha256')))
           for kind in ('country','resort','country_month','resort_month'):
               bucket=by_type.get(kind) or {}
               print('SEO_INVENTORY_TYPE {} observed={} reported={}'.format(kind,bucket.get('observed_identity_count',0),bucket.get('reported_count',0)))
               for row in (bucket.get('candidates') or [])[:5]:
                   inv=row.get('inventory') or {}
-                  print('SEO_INVENTORY_TOP type={} rank={} identity={} path={} obs30={} obs3={} hotels30={} departures30={} newest={} demand={}'.format(
-                      kind,row.get('inventory_rank'),row.get('identity_key'),row.get('review_path'),
+                  print('SEO_INVENTORY_TOP type={} rank={} identity={} route={} catalog_hint={} route_state={} obs30={} obs3={} hotels30={} departures30={} newest={} demand={}'.format(
+                      kind,row.get('inventory_rank'),row.get('identity_key'),row.get('review_path'),row.get('catalog_path_hint'),row.get('route_mapping_state'),
                       inv.get('observations_30d'),inv.get('observations_3d'),inv.get('distinct_hotels_30d'),inv.get('distinct_departures_30d'),
                       inv.get('newest_observed_at'),(row.get('demand') or {}).get('status')))
           PY

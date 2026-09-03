@@ -6,6 +6,7 @@ declare(strict_types=1);
  *
  * This layer ranks identities that already exist in first-party tour observations.
  * It does not generate Cartesian combinations, infer demand, or grant publication.
+ * Catalog slugs are diagnostic only and never act as SEO route authority.
  */
 
 function v2_seo_inventory_month_slug(int $month): ?string
@@ -17,7 +18,8 @@ function v2_seo_inventory_month_slug(int $month): ?string
     return $months[$month] ?? null;
 }
 
-function v2_seo_inventory_candidate_path(array $row): ?string
+/** Catalog-only path hint. This is never a launchable or canonical SEO route. */
+function v2_seo_inventory_catalog_path_hint(array $row): ?string
 {
     $type=(string)($row['candidate_type']??'');
     $countrySlug=trim((string)($row['country_slug']??''));
@@ -134,7 +136,10 @@ function v2_seo_inventory_normalize_row(array $row): array
         'departure_month'=>$isMonthly?$month:null,
         'period_key'=>$isMonthly?sprintf('%04d-%02d',$year,$month):null,
         'review_path'=>null,
-        'path_period_semantics'=>$isMonthly?'yearless_route_requires_period_review':'not_applicable',
+        'catalog_path_hint'=>null,
+        'route_mapping_state'=>'unmapped_review_identity',
+        'path_exists_in_controlled_registry'=>false,
+        'path_period_semantics'=>$isMonthly?'year_specific_identity_requires_explicit_route_binding':'not_applicable',
         'inventory'=>[
             'observations_total'=>$metrics['observations_total'],
             'observations_1d'=>$metrics['observations_1d'],
@@ -167,7 +172,7 @@ function v2_seo_inventory_normalize_row(array $row): array
         'sitemap_allowed'=>false,
         'route_launch_allowed'=>false,
     ];
-    $candidate['review_path']=v2_seo_inventory_candidate_path($candidate);
+    $candidate['catalog_path_hint']=v2_seo_inventory_catalog_path_hint($candidate);
     return ['ok'=>true,'candidate'=>$candidate,'raw_sha256'=>$rawSha];
 }
 
@@ -185,9 +190,9 @@ function v2_seo_inventory_candidate_compare(array $a,array $b): int
 
 /**
  * @param array<int,array> $rows rows collected only from observed DB groups
- * @param string[] $controlledPaths exact current controlled path registry
+ * @param array<string,string> $controlledRouteBindings exact identity => current public route bindings
  */
-function v2_seo_inventory_opportunity_report(array $rows,int $limitPerType=50,array $controlledPaths=[]): array
+function v2_seo_inventory_opportunity_report(array $rows,int $limitPerType=50,array $controlledRouteBindings=[]): array
 {
     $limitPerType=max(1,min(500,$limitPerType));
     $blocked=[];$groups=[];
@@ -214,9 +219,8 @@ function v2_seo_inventory_opportunity_report(array $rows,int $limitPerType=50,ar
         $unique[]=$items[0];
     }
 
-    $controlled=array_fill_keys(array_values($controlledPaths),true);
     $typeOrder=['country','resort','country_month','resort_month'];
-    $byType=[];$reported=[];$observedCounts=[];
+    $byType=[];$reported=[];$observedCounts=[];$controlledMatches=0;
     foreach($typeOrder as $type){
         $items=array_values(array_filter($unique,static fn(array $candidate):bool=>$candidate['candidate_type']===$type));
         usort($items,'v2_seo_inventory_candidate_compare');
@@ -224,8 +228,16 @@ function v2_seo_inventory_opportunity_report(array $rows,int $limitPerType=50,ar
         $items=array_slice($items,0,$limitPerType);
         foreach($items as $index=>&$candidate){
             $candidate['inventory_rank']=$index+1;
-            $path=$candidate['review_path'];
-            $candidate['path_exists_in_controlled_registry']=$path!==null&&isset($controlled[$path]);
+            $identity=(string)$candidate['identity_key'];
+            if(isset($controlledRouteBindings[$identity])){
+                $path=trim((string)$controlledRouteBindings[$identity]);
+                if($path!==''&&str_starts_with($path,'/country/')&&str_ends_with($path,'/')){
+                    $candidate['review_path']=$path;
+                    $candidate['route_mapping_state']='controlled_identity_registry_match';
+                    $candidate['path_exists_in_controlled_registry']=true;
+                    $controlledMatches++;
+                }
+            }
             $candidate['ranking_basis']='observations_30d_then_hotels_30d_then_departures_30d_then_observations_3d_then_recency';
         }
         unset($candidate);
@@ -251,9 +263,11 @@ function v2_seo_inventory_opportunity_report(array $rows,int $limitPerType=50,ar
         'observed_identity_count'=>count($unique),
         'reported_candidate_count'=>count($reported),
         'blocked_count'=>count($blocked),
+        'controlled_route_match_count'=>$controlledMatches,
         'limit_per_type'=>$limitPerType,
         'ranking_semantics'=>'inventory_components_only_no_combined_score',
         'candidate_generation_semantics'=>'observed_database_groups_only_no_cartesian_generation',
+        'route_semantics'=>'only_explicit_identity_registry_bindings_are_routes_catalog_slugs_are_hints_only',
         'demand_semantics'=>'unknown_until_real_search_feedback_is_joined_never_zero_imputed',
         'by_type'=>$byType,
         'candidates'=>$reported,
