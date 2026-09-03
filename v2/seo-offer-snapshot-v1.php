@@ -57,6 +57,27 @@ function v2_seo_enrich_offer_prices(array $offers, int $historyDays = 30): array
     return $offers;
 }
 
+function v2_seo_offer_image_url(array $offer): ?string
+{
+    $url = trim((string)($offer['hotelImage'] ?? ''));
+    if ($url === '') return null;
+    if (str_starts_with($url, '//')) $url = 'https:' . $url;
+    if (str_starts_with($url, 'http://')) $url = 'https://' . substr($url, 7);
+    if (!str_starts_with($url, 'https://') || strlen($url) > 1024) return null;
+    return filter_var($url, FILTER_VALIDATE_URL) !== false ? $url : null;
+}
+
+function v2_seo_offer_image_markup(array $offer): string
+{
+    $url = v2_seo_offer_image_url($offer);
+    if ($url === null) return '';
+    $hotel = trim((string)($offer['hotelName'] ?? '')) ?: 'Отель';
+    return '<div class="sp-offer-media"><img src="'
+        .htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+        .'" alt="'.htmlspecialchars($hotel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+        .'" loading="lazy" decoding="async"></div>';
+}
+
 /**
  * Server-render the commercial price block. A crossed reference is always an
  * actually observed price for the exact comparable segment, never a synthetic
@@ -67,6 +88,7 @@ function v2_seo_offer_price_markup(array $offer): string
     $price = (float)($offer['price'] ?? 0);
     $currency = (string)($offer['currency'] ?? 'RUB');
     $current = htmlspecialchars(v2_seo_offer_price_label($price, $currency), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $media = v2_seo_offer_image_markup($offer);
     $intel = is_array($offer['priceIntelligence'] ?? null) ? $offer['priceIntelligence'] : [];
     $promo = ($intel['showPromoDrop'] ?? false) === true;
     $strong = ($intel['showHistoricalDrop'] ?? false) === true;
@@ -83,14 +105,14 @@ function v2_seo_offer_price_markup(array $offer): string
             $title = htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             $note = $strong ? 'Цена снизилась' : 'Выгоднее недавней цены';
             $mode = $strong ? 'guarded' : 'recent';
-            return '<div class="sp-offer-price sp-offer-price--promo" data-price-promo="'.$mode.'">'
+            return $media.'<div class="sp-offer-price sp-offer-price--promo" data-price-promo="'.$mode.'">'
                 .'<div class="sp-offer-price-flags"><span class="sp-offer-price-kicker">от</span><span class="sp-offer-discount-badge">−'.$drop.'%</span></div>'
                 .'<div class="sp-offer-price-values"><del title="'.$title.'">'.$reference.'</del><strong>'.$current.'</strong></div>'
                 .'<small class="sp-offer-price-note">'.$note.'</small></div>';
         }
     }
 
-    return '<div class="sp-offer-price"><span>от</span><strong>'.$current.'</strong>'
+    return $media.'<div class="sp-offer-price"><span>от</span><strong>'.$current.'</strong>'
         .($good ? '<small class="sp-offer-good-price">Хорошая цена</small>' : '')
         .'</div>';
 }

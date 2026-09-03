@@ -29,6 +29,16 @@ function v2_price_observer_text($value, int $max = 255): string
     return mb_substr(trim((string)$value), 0, $max, 'UTF-8');
 }
 
+function v2_price_observer_image_url($value): ?string
+{
+    $url = trim((string)$value);
+    if ($url === '') return null;
+    if (str_starts_with($url, '//')) $url = 'https:' . $url;
+    if (str_starts_with($url, 'http://')) $url = 'https://' . substr($url, 7);
+    if (!str_starts_with($url, 'https://') || strlen($url) > 1024) return null;
+    return filter_var($url, FILTER_VALIDATE_URL) !== false ? $url : null;
+}
+
 function v2_price_observer_child_signature(array $ages): string
 {
     $clean = [];
@@ -82,9 +92,21 @@ function v2_data_observe_search_results(array $hotels, array $context): array
         :meal_id,:room_id,:room_type,:operator_id,:price,:fuel_charge,:currency
     )");
 
+    // Media persistence is deliberately fail-open so a not-yet-migrated production
+    // database can still accept price observations during a rolling deploy.
+    $photoStmt = null;
+    try {
+        $photoStmt = $pdo->prepare("UPDATE catalog_hotels
+            SET primary_image_url=:url,image_updated_at=:seen
+            WHERE id=:id AND (primary_image_url IS NULL OR primary_image_url='' OR primary_image_url<>:url_compare)");
+    } catch (Throwable $e) {
+        $photoStmt = null;
+    }
+
     $written = 0;
     $ignored = 0;
     $seenTours = 0;
+    $imagesCaptured = 0;
     foreach (array_slice($hotels, 0, $maxHotels) as $hotel) {
         if (!is_array($hotel)) continue;
         $hotelId = v2_price_observer_id($hotel['id'] ?? null);
@@ -93,6 +115,16 @@ function v2_data_observe_search_results(array $hotels, array $context): array
         $regionId = v2_price_observer_id($hotel['region'] ?? null);
         $subregionId = v2_price_observer_id($hotel['subRegion'] ?? $hotel['subregion'] ?? null);
         $tours = is_array($hotel['tours'] ?? null) ? $hotel['tours'] : [];
+
+        $imageUrl = v2_price_observer_image_url($hotel['picturelink'] ?? $hotel['picture'] ?? null);
+        if ($imageUrl !== null && $photoStmt instanceof PDOStatement) {
+            try {
+                $photoStmt->execute(['url'=>$imageUrl,'seen'=>$observedAt,'id'=>$hotelId,'url_compare'=>$imageUrl]);
+                if ($photoStmt->rowCount() > 0) $imagesCaptured++;
+            } catch (Throwable $e) {
+                // Image persistence must never block price collection.
+            }
+        }
 
         foreach ($tours as $tour) {
             if (!is_array($tour) || ++$seenTours > $maxTours) break 2;
@@ -144,5 +176,5 @@ function v2_data_observe_search_results(array $hotels, array $context): array
         }
     }
 
-    return ['written' => $written, 'ignored' => $ignored, 'seen' => $seenTours, 'source' => $source, 'maxHotels'=>$maxHotels, 'maxTours'=>$maxTours];
+    return ['written' => $written, 'ignored' => $ignored, 'seen' => $seenTours, 'source' => $source, 'maxHotels'=>$maxHotels, 'maxTours'=>$maxTours, 'imagesCaptured'=>$imagesCaptured];
 }
