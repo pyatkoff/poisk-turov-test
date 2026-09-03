@@ -47,6 +47,10 @@ function v2_seo_search_feedback_evidence(array $record, ?int $nowEpoch=null): ar
     if(array_key_exists('impressions',$normalized)){
         if($normalized['impressions']>0){
             foreach(['avg_position','ctr'] as $required)if(!array_key_exists($required,$normalized))$errors[]='missing_metric_'.$required;
+            if(isset($normalized['clicks'],$normalized['ctr'])){
+                $derivedCtr=$normalized['clicks']/$normalized['impressions'];
+                if(abs((float)$normalized['ctr']-$derivedCtr)>0.0001)$errors[]='ctr_inconsistent_with_clicks_impressions';
+            }
         }elseif($normalized['impressions']===0){
             if(array_key_exists('avg_position',$normalized))$errors[]='avg_position_requires_impressions';
             if(array_key_exists('ctr',$normalized))$errors[]='ctr_requires_impressions';
@@ -64,6 +68,7 @@ function v2_seo_search_feedback_evidence(array $record, ?int $nowEpoch=null): ar
         'collected_at_epoch'=>$collectedAt,'period_start_epoch'=>$periodStart,'period_end_epoch'=>$periodEnd,
         'fresh'=>$fresh,'metrics'=>$normalized,'feedback_sha256'=>$fingerprint,'errors'=>array_values(array_unique($errors)),
         'zero_impression_metric_semantics'=>'position_ctr_unknown_not_zero',
+        'ctr_consistency_semantics'=>'ctr_must_match_clicks_over_impressions',
         'requires_explicit_feedback_policy'=>true,'automatic_recommendation_allowed'=>false,'automatic_deindex_allowed'=>false,
         'publication_allowed'=>false,'indexation_change_allowed'=>false,'sitemap_change_allowed'=>false,'hotel_tours_indexation_allowed'=>false,
     ];
@@ -95,6 +100,7 @@ function v2_seo_search_feedback_intake(array $rows, ?int $nowEpoch=null): array
         'domain'=>'anytoour.ru','launch_scope'=>$launchScope,'launched_path_count'=>count($launchPaths),
         'observed_count'=>count($byPath),'observed_paths'=>$observed,'missing_paths'=>$missing,
         'missing_feedback_semantics'=>'unknown_not_zero','zero_impression_metric_semantics'=>'position_ctr_unknown_not_zero',
+        'ctr_consistency_semantics'=>'ctr_must_match_clicks_over_impressions',
         'rows'=>array_values($byPath),'feedback_intake_sha256'=>$fingerprint,
         'errors'=>array_values(array_unique($errors)),'recommendation_state'=>'requires_explicit_feedback_policy',
         'requires_explicit_feedback_policy'=>true,'automatic_recommendation_allowed'=>false,'automatic_deindex_allowed'=>false,
