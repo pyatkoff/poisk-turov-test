@@ -13,9 +13,8 @@ function v2_seo_schema_absolute_url(string $path): ?string
 function v2_seo_webpage_schema(string $path,string $title,string $description): array
 {
     $url=v2_seo_schema_absolute_url($path);
-    if($url===null)throw new InvalidArgumentException('Structured WebPage requires a clean internal path');
     $title=trim($title);$description=trim($description);
-    if($title==='')throw new InvalidArgumentException('Structured WebPage requires title');
+    if($url===null||$title==='')return [];
     return [
         '@context'=>'https://schema.org',
         '@type'=>'WebPage',
@@ -33,7 +32,7 @@ function v2_seo_webpage_schema(string $path,string $title,string $description): 
 function v2_seo_breadcrumb_schema(array $items,string $currentPath): array
 {
     $currentUrl=v2_seo_schema_absolute_url($currentPath);
-    if($currentUrl===null)throw new InvalidArgumentException('Structured breadcrumbs require a clean current path');
+    if($currentUrl===null)return [];
     $elements=[];
     foreach(array_values($items) as $item){
         if(!is_array($item))continue;
@@ -61,6 +60,7 @@ function v2_seo_breadcrumb_schema(array $items,string $currentPath): array
 
 function v2_seo_json_ld(array $schema): string
 {
+    if(!$schema)return '';
     return json_encode(
         $schema,
         JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR
