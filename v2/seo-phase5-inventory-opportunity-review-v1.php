@@ -10,6 +10,13 @@ require_once __DIR__.'/seo-phase5-expansion-review-gate-v1.php';
 function v2_seo_phase5_inventory_opportunity_review(array $freshnessChain,array $opportunityReport): array
 {
     $errors=[];
+    if(($freshnessChain['state']??'')!=='fresh_evidence_chain_ready_for_expansion_review')$errors[]='upstream_evidence_chain_not_ready';
+    if(($freshnessChain['expansion_review_allowed']??false)!==true)$errors[]='upstream_expansion_review_not_allowed';
+    foreach(['publication_allowed','hotel_tours_publication_allowed','hotel_tours_indexation_allowed','hotel_tours_sitemap_allowed','hotel_tours_canonical_launch_allowed','hotel_tours_route_launch_allowed'] as $flag){
+        if(($freshnessChain[$flag]??true)!==false)$errors[]='upstream_boundary_'.$flag;
+    }
+    if(($freshnessChain['hotel_tours_publication_candidates']??null)!==[])$errors[]='upstream_hotel_publication_candidates_present';
+
     if(($opportunityReport['state']??'')!=='review_only_inventory_opportunity_report')$errors[]='invalid_opportunity_report_state';
     if(($opportunityReport['publication_candidates']??null)!==[])$errors[]='opportunity_publication_candidates_present';
     foreach(['publication_allowed','automatic_execution_allowed','hotel_tours_indexation_allowed'] as $flag){
