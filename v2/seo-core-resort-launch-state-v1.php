@@ -75,3 +75,14 @@ function v2_seo_core_resort_country_links(string $countryPath): array
     asort($links,SORT_NATURAL|SORT_FLAG_CASE);
     return $links;
 }
+
+/** Other launched resorts in the same country, excluding the current page. */
+function v2_seo_core_resort_sibling_links(string $resortPath,int $limit=8): array
+{
+    $resortPath=rtrim($resortPath,'/').'/';
+    if(!preg_match('#^(/country/(?:egypt|maldives)/)[a-z0-9-]+/$#',$resortPath,$m))return [];
+    $links=v2_seo_core_resort_country_links($m[1]);
+    unset($links[$resortPath]);
+    $limit=max(1,min(20,$limit));
+    return array_slice($links,0,$limit,true);
+}
