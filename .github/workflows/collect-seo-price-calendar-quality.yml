@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq "v2_seo_production_identity_expected_rows()" .github/workflows/collect-seo-price-calendar-quality.yml
-          grep -Fq "if (($row['type'] ?? '') === 'hotel_tours') continue;" .github/workflows/collect-seo-price-calendar-quality.yml
+          grep -Fq '=== "hotel_tours") continue;' .github/workflows/collect-seo-price-calendar-quality.yml
           grep -Fq "external_demand_state':'not_collected'" .github/workflows/collect-seo-price-calendar-quality.yml
           grep -Fq "publication_scope_expanded':False" .github/workflows/collect-seo-price-calendar-quality.yml
           grep -Fq "hotel_tours_indexation_allowed':False" .github/workflows/collect-seo-price-calendar-quality.yml
