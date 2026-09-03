@@ -34,6 +34,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          grep -Fq "v2_seo_production_identity_expected_rows()" .github/workflows/collect-seo-price-calendar-quality.yml
+          grep -Fq '=== "hotel_tours") continue;' .github/workflows/collect-seo-price-calendar-quality.yml
           grep -Fq "external_demand_state':'not_collected'" .github/workflows/collect-seo-price-calendar-quality.yml
           grep -Fq "publication_scope_expanded':False" .github/workflows/collect-seo-price-calendar-quality.yml
           grep -Fq "hotel_tours_indexation_allowed':False" .github/workflows/collect-seo-price-calendar-quality.yml
@@ -57,37 +59,37 @@ jobs:
         run: |
           set -euo pipefail
           base='https://anytoour.ru'
-          paths=(
-            '/country/egypt/'
-            '/country/maldives/'
-            '/country/maldives/september/'
-            '/country/turkey/'
-            '/country/turkey/alanya/'
-            '/country/turkey/antalya/'
-            '/country/turkey/antalya/september/'
-            '/country/turkey/belek/'
-            '/country/turkey/kemer/'
-            '/country/turkey/side/'
-          )
+          php -r '
+            require "v2/seo-production-identity-collector-v1.php";
+            foreach (v2_seo_production_identity_expected_rows() as $row) {
+              if (($row["type"] ?? "") === "hotel_tours") continue;
+              $path=(string)($row["path"] ?? "");
+              $type=(string)($row["type"] ?? "");
+              if ($path === "" || !in_array($type,["country","resort","seasonal"],true)) exit(10);
+              echo $path,"\t",$type,"\n";
+            }
+          ' > /tmp/seo-price-calendar-quality-cohort.tsv
+          test -s /tmp/seo-price-calendar-quality-cohort.tsv
           : > /tmp/seo-price-calendar-quality-pages.tsv
-          for path in "${paths[@]}"; do
+          while IFS=$'\t' read -r path page_type; do
+            test -n "$path" && test -n "$page_type"
             safe="$(printf '%s' "$path" | tr '/-' '__')"
             file="/tmp/calendar-quality-${safe}.html"
             code="$(curl -fsSL -o "$file" -w '%{http_code}' --max-time 35 "$base$path")"
             test "$code" = '200'
-            printf '%s\t%s\t%s\n' "$path" "$code" "$file" >> /tmp/seo-price-calendar-quality-pages.tsv
-          done
+            printf '%s\t%s\t%s\t%s\n' "$path" "$page_type" "$code" "$file" >> /tmp/seo-price-calendar-quality-pages.tsv
+          done < /tmp/seo-price-calendar-quality-cohort.tsv
           BASE="$base" SOURCE_SHA="$SOURCE_SHA" EVENT_NAME="$EVENT_NAME" python3 - <<'PY'
           import datetime, hashlib, json, os, re
 
-          country_paths={'/country/egypt/','/country/maldives/','/country/turkey/'}
           by_type={t:{'pages':0,'with_calendar':0,'observed_days':0,'unknown_days':0,'total_days':0} for t in ('country','resort','seasonal')}
           rows=[]
           with open('/tmp/seo-price-calendar-quality-pages.tsv',encoding='utf-8') as fh:
               for line in fh:
-                  path,code,filename=line.rstrip('\n').split('\t')
+                  path,page_type,code,filename=line.rstrip('\n').split('\t')
+                  if page_type not in by_type:
+                      raise AssertionError('unexpected authoritative page type: '+page_type+' '+path)
                   html=open(filename,encoding='utf-8').read()
-                  page_type='country' if path in country_paths else ('seasonal' if path.endswith('/september/') else 'resort')
                   present='data-seo-price-calendar' in html
                   cards=re.findall(r'<(a|div)\b[^>]*class="([^"]*\bsp-price-day\b[^"]*)"[^>]*>(.*?)</\1>',html,re.I|re.S)
                   dates=[]
@@ -145,6 +147,8 @@ jobs:
                   b['unknown_days']+=unknown
                   b['total_days']+=total
 
+          if not rows:
+              raise AssertionError('authoritative controlled cohort is empty')
           for b in by_type.values():
               b['calendar_coverage_share']=round(b['with_calendar']/b['pages'],4) if b['pages'] else None
               b['observed_day_share']=round(b['observed_days']/b['total_days'],4) if b['total_days'] else None
@@ -158,6 +162,7 @@ jobs:
               'observed_at_utc':datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat(),
               'source_sha':os.environ.get('SOURCE_SHA',''),
               'trigger':os.environ.get('EVENT_NAME',''),
+              'cohort_source':'v2_seo_production_identity_expected_rows',
               'pages':rows,
               'by_type':by_type,
               'weakest_observed_coverage_pages':weakest,
@@ -185,8 +190,8 @@ jobs:
               by_type['resort']['observed_day_share'] or 0,
               by_type['seasonal']['observed_day_share'] or 0,
               ','.join(x['path'] for x in weakest)))
-          print('SEO_PRICE_CALENDAR_DATE_INTEGRITY_OK unique_dates={} sha256={}'.format(
-              sum(r['unique_date_count'] for r in rows),payload['evidence_sha256']))
+          print('SEO_PRICE_CALENDAR_DATE_INTEGRITY_OK authoritative_pages={} unique_dates={} sha256={}'.format(
+              len(rows),sum(r['unique_date_count'] for r in rows),payload['evidence_sha256']))
           PY
 
       - name: Upload quality comparison evidence
