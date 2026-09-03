@@ -1,0 +1,174 @@
+name: Verify SEO price calendar production evidence
+
+on:
+  workflow_run:
+    workflows: ['Deploy anytoour.ru']
+    types: [completed]
+  workflow_dispatch:
+  schedule:
+    - cron: '41 4 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-seo-price-calendar-production.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-seo-price-calendar-production.yml'
+      - 'v2/seo-price-calendar-v1.php'
+      - 'v2/seo-price-calendar-v1.css'
+      - 'v2/country-page-v1.php'
+      - 'v2/seo-resort-page-v1.php'
+      - 'v2/seo-seasonal-page-v1.php'
+      - 'tests/seo-price-calendar-ui-smoke.php'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-seo-price-calendar-production-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  predeploy-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate fail-closed calendar contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/seo-price-calendar-v1.php >/dev/null
+          php tests/seo-price-calendar-ui-smoke.php
+          grep -Fq 'data-seo-price-calendar' v2/seo-price-calendar-v1.php
+          grep -Fq 'данные ≤ 72 ч' v2/seo-price-calendar-v1.php
+          grep -Fq 'Прочерк означает, что по дате нет свежего наблюдения, а не что туров нет.' v2/seo-price-calendar-v1.php
+          echo 'SEO_PRICE_CALENDAR_PREDEPLOY_EVIDENCE_CONTRACT_OK'
+
+  production-evidence:
+    if: github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect controlled live price-calendar evidence
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          base='https://anytoour.ru'
+          paths=(
+            '/country/egypt/'
+            '/country/maldives/'
+            '/country/maldives/september/'
+            '/country/turkey/'
+            '/country/turkey/alanya/'
+            '/country/turkey/antalya/'
+            '/country/turkey/antalya/september/'
+            '/country/turkey/belek/'
+            '/country/turkey/kemer/'
+            '/country/turkey/side/'
+          )
+          : > /tmp/seo-price-calendar-pages.tsv
+          for path in "${paths[@]}"; do
+            safe="$(printf '%s' "$path" | tr '/-' '__')"
+            file="/tmp/calendar-${safe}.html"
+            code="$(curl -fsSL -o "$file" -w '%{http_code}' --max-time 35 "$base$path")"
+            test "$code" = '200'
+            printf '%s\t%s\t%s\n' "$path" "$code" "$file" >> /tmp/seo-price-calendar-pages.tsv
+          done
+          BASE="$base" SOURCE_SHA="$SOURCE_SHA" EVENT_NAME="$EVENT_NAME" python3 - <<'PY'
+          import datetime, hashlib, json, os, re
+
+          base=os.environ['BASE']
+          rows=[]
+          pages_with_calendar=0
+          observed_links_total=0
+          unknown_days_total=0
+          by_type={
+              'country': {'pages':0,'with_calendar':0,'observed_day_links':0,'unknown_days':0},
+              'resort': {'pages':0,'with_calendar':0,'observed_day_links':0,'unknown_days':0},
+              'seasonal': {'pages':0,'with_calendar':0,'observed_day_links':0,'unknown_days':0},
+          }
+          country_paths={'/country/egypt/','/country/maldives/','/country/turkey/'}
+          with open('/tmp/seo-price-calendar-pages.tsv', encoding='utf-8') as fh:
+              for line in fh:
+                  path,code,filename=line.rstrip('\n').split('\t')
+                  html=open(filename,encoding='utf-8').read()
+                  page_type='country' if path in country_paths else ('seasonal' if path.endswith('/september/') else 'resort')
+                  present='data-seo-price-calendar' in html
+                  observed_links=len(re.findall(r'<a\b[^>]*class="[^"]*\bsp-price-day\b[^"]*"',html,re.I))
+                  unknown_days=len(re.findall(r'class="[^"]*\bsp-price-day--unknown\b[^"]*"',html,re.I))
+                  freshness='данные ≤ 72 ч' in html
+                  unknown_semantics='Прочерк означает, что по дате нет свежего наблюдения, а не что туров нет.' in html
+                  if not present and (observed_links or unknown_days or freshness or unknown_semantics):
+                      raise AssertionError('price-calendar fragments without section: '+path)
+                  if present:
+                      if observed_links < 3:
+                          raise AssertionError('rendered price calendar has fewer than 3 observed days: '+path)
+                      if not freshness or not unknown_semantics:
+                          raise AssertionError('rendered price calendar missing freshness/unknown semantics: '+path)
+                      pages_with_calendar += 1
+                  observed_links_total += observed_links
+                  unknown_days_total += unknown_days
+                  bucket=by_type[page_type]
+                  bucket['pages'] += 1
+                  bucket['with_calendar'] += 1 if present else 0
+                  bucket['observed_day_links'] += observed_links
+                  bucket['unknown_days'] += unknown_days
+                  rows.append({
+                      'path':path,
+                      'type':page_type,
+                      'http_status':int(code),
+                      'calendar_present':present,
+                      'observed_day_link_count':observed_links,
+                      'unknown_day_count':unknown_days,
+                      'freshness_copy_present':freshness,
+                      'unknown_means_no_fresh_observation_copy_present':unknown_semantics,
+                  })
+
+          payload={
+              'state':'controlled_seo_price_calendar_production_evidence',
+              'domain':'anytoour.ru',
+              'observed_at_utc':datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat(),
+              'source_sha':os.environ.get('SOURCE_SHA',''),
+              'trigger':os.environ.get('EVENT_NAME',''),
+              'launch_url_count':len(rows),
+              'pages':rows,
+              'coverage':{
+                  'pages_with_calendar':pages_with_calendar,
+                  'observed_day_link_count_total':observed_links_total,
+                  'unknown_day_count_total':unknown_days_total,
+                  'by_type':by_type,
+              },
+              'semantics':{
+                  'calendar_absence':'unknown_not_zero_inventory',
+                  'unknown_day':'no_fresh_observation_not_no_tours',
+                  'price_evidence':'first_party_observed_minima_last_72h',
+                  'cached_price_is_final':False,
+                  'external_demand_state':'not_collected',
+              },
+              'publication_scope_expanded':False,
+              'hotel_tours_indexation_allowed':False,
+          }
+          stable=dict(payload); stable.pop('observed_at_utc',None)
+          payload['evidence_sha256']=hashlib.sha256(json.dumps(stable,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+          with open('/tmp/anytoour-seo-price-calendar-evidence.json','w',encoding='utf-8') as out:
+              json.dump(payload,out,ensure_ascii=False,indent=2); out.write('\n')
+          print('ANYTOOUR_SEO_PRICE_CALENDAR_EVIDENCE pages_with_calendar={}/10 observed_links={} unknown_days={} country={}/3 resort={}/5 seasonal={}/2 absence_semantics=unknown'.format(
+              pages_with_calendar, observed_links_total, unknown_days_total,
+              by_type['country']['with_calendar'],by_type['resort']['with_calendar'],by_type['seasonal']['with_calendar']))
+          print('ANYTOOUR_SEO_PRICE_CALENDAR_EVIDENCE_OK sha256='+payload['evidence_sha256'])
+          PY
+
+      - name: Upload production price-calendar evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: anytoour-seo-price-calendar-evidence-${{ github.run_id }}
+          path: /tmp/anytoour-seo-price-calendar-evidence.json
+          if-no-files-found: error
+          retention-days: 30
