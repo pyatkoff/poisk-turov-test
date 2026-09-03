@@ -45,6 +45,8 @@ jobs:
           grep -Fq 'data-seo-price-calendar' v2/seo-price-calendar-v1.php
           grep -Fq 'данные ≤ 72 ч' v2/seo-price-calendar-v1.php
           grep -Fq 'Прочерк означает, что по дате нет свежего наблюдения, а не что туров нет.' v2/seo-price-calendar-v1.php
+          grep -Fq "date_sequence_state':'unique_ascending'" .github/workflows/verify-seo-price-calendar-production.yml
+          grep -Fq "date_identity':'time_datetime_iso_date'" .github/workflows/verify-seo-price-calendar-production.yml
           echo 'SEO_PRICE_CALENDAR_PREDEPLOY_EVIDENCE_CONTRACT_OK'
 
   production-evidence:
@@ -89,10 +91,11 @@ jobs:
           pages_with_calendar=0
           observed_links_total=0
           unknown_days_total=0
+          unique_dates_total=0
           by_type={
-              'country': {'pages':0,'with_calendar':0,'observed_day_links':0,'unknown_days':0},
-              'resort': {'pages':0,'with_calendar':0,'observed_day_links':0,'unknown_days':0},
-              'seasonal': {'pages':0,'with_calendar':0,'observed_day_links':0,'unknown_days':0},
+              'country': {'pages':0,'with_calendar':0,'observed_day_links':0,'unknown_days':0,'unique_dates':0},
+              'resort': {'pages':0,'with_calendar':0,'observed_day_links':0,'unknown_days':0,'unique_dates':0},
+              'seasonal': {'pages':0,'with_calendar':0,'observed_day_links':0,'unknown_days':0,'unique_dates':0},
           }
           country_paths={'/country/egypt/','/country/maldives/','/country/turkey/'}
           with open('/tmp/seo-price-calendar-pages.tsv', encoding='utf-8') as fh:
@@ -101,25 +104,55 @@ jobs:
                   html=open(filename,encoding='utf-8').read()
                   page_type='country' if path in country_paths else ('seasonal' if path.endswith('/september/') else 'resort')
                   present='data-seo-price-calendar' in html
-                  observed_links=len(re.findall(r'<a\b[^>]*class="[^"]*\bsp-price-day\b[^"]*"',html,re.I))
-                  unknown_days=len(re.findall(r'class="[^"]*\bsp-price-day--unknown\b[^"]*"',html,re.I))
+                  cards=re.findall(r'<(a|div)\b[^>]*class="([^"]*\bsp-price-day\b[^"]*)"[^>]*>(.*?)</\1>',html,re.I|re.S)
+                  dates=[]
+                  observed_links=0
+                  unknown_days=0
+                  for tag,classes,body in cards:
+                      match=re.search(r'<time\b[^>]*datetime="([^"]+)"',body,re.I)
+                      if match is None:
+                          raise AssertionError('calendar day missing machine-readable date: '+path)
+                      date=match.group(1)
+                      try:
+                          datetime.date.fromisoformat(date)
+                      except ValueError as exc:
+                          raise AssertionError('calendar day has invalid ISO date: '+path+' '+date) from exc
+                      dates.append(date)
+                      if 'sp-price-day--unknown' in classes.split():
+                          unknown_days += 1
+                      elif tag.lower() == 'a':
+                          observed_links += 1
+                      else:
+                          raise AssertionError('calendar day has ambiguous observed/unknown state: '+path+' '+date)
+                  total_days=len(cards)
                   freshness='данные ≤ 72 ч' in html
                   unknown_semantics='Прочерк означает, что по дате нет свежего наблюдения, а не что туров нет.' in html
-                  if not present and (observed_links or unknown_days or freshness or unknown_semantics):
+                  if not present and (total_days or freshness or unknown_semantics):
                       raise AssertionError('price-calendar fragments without section: '+path)
                   if present:
                       if observed_links < 3:
                           raise AssertionError('rendered price calendar has fewer than 3 observed days: '+path)
+                      if total_days > 21:
+                          raise AssertionError('rendered price calendar exceeds controlled maximum span: '+path)
                       if not freshness or not unknown_semantics:
                           raise AssertionError('rendered price calendar missing freshness/unknown semantics: '+path)
                       pages_with_calendar += 1
+                  if len(dates) != len(set(dates)):
+                      raise AssertionError('rendered price calendar contains duplicate dates: '+path)
+                  if dates != sorted(dates):
+                      raise AssertionError('rendered price calendar dates are not ascending: '+path)
+                  if observed_links + unknown_days != total_days:
+                      raise AssertionError('calendar day state counts do not reconcile: '+path)
+                  unique_dates=len(set(dates))
                   observed_links_total += observed_links
                   unknown_days_total += unknown_days
+                  unique_dates_total += unique_dates
                   bucket=by_type[page_type]
                   bucket['pages'] += 1
                   bucket['with_calendar'] += 1 if present else 0
                   bucket['observed_day_links'] += observed_links
                   bucket['unknown_days'] += unknown_days
+                  bucket['unique_dates'] += unique_dates
                   rows.append({
                       'path':path,
                       'type':page_type,
@@ -127,6 +160,9 @@ jobs:
                       'calendar_present':present,
                       'observed_day_link_count':observed_links,
                       'unknown_day_count':unknown_days,
+                      'total_day_count':total_days,
+                      'unique_date_count':unique_dates,
+                      'date_sequence_state':'unique_ascending' if dates else 'absent',
                       'freshness_copy_present':freshness,
                       'unknown_means_no_fresh_observation_copy_present':unknown_semantics,
                   })
@@ -143,7 +179,14 @@ jobs:
                   'pages_with_calendar':pages_with_calendar,
                   'observed_day_link_count_total':observed_links_total,
                   'unknown_day_count_total':unknown_days_total,
+                  'unique_date_count_total':unique_dates_total,
                   'by_type':by_type,
+              },
+              'integrity':{
+                  'date_sequence_state':'unique_ascending',
+                  'date_identity':'time_datetime_iso_date',
+                  'duplicate_dates_allowed':False,
+                  'maximum_rendered_span_days':21,
               },
               'semantics':{
                   'calendar_absence':'unknown_not_zero_inventory',
@@ -159,10 +202,10 @@ jobs:
           payload['evidence_sha256']=hashlib.sha256(json.dumps(stable,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
           with open('/tmp/anytoour-seo-price-calendar-evidence.json','w',encoding='utf-8') as out:
               json.dump(payload,out,ensure_ascii=False,indent=2); out.write('\n')
-          print('ANYTOOUR_SEO_PRICE_CALENDAR_EVIDENCE pages_with_calendar={}/10 observed_links={} unknown_days={} country={}/3 resort={}/5 seasonal={}/2 absence_semantics=unknown'.format(
-              pages_with_calendar, observed_links_total, unknown_days_total,
+          print('ANYTOOUR_SEO_PRICE_CALENDAR_EVIDENCE pages_with_calendar={}/10 observed_links={} unknown_days={} unique_dates={} country={}/3 resort={}/5 seasonal={}/2 absence_semantics=unknown'.format(
+              pages_with_calendar, observed_links_total, unknown_days_total, unique_dates_total,
               by_type['country']['with_calendar'],by_type['resort']['with_calendar'],by_type['seasonal']['with_calendar']))
-          print('ANYTOOUR_SEO_PRICE_CALENDAR_EVIDENCE_OK sha256='+payload['evidence_sha256'])
+          print('ANYTOOUR_SEO_PRICE_CALENDAR_DATE_INTEGRITY_OK state=unique_ascending sha256='+payload['evidence_sha256'])
           PY
 
       - name: Upload production price-calendar evidence
