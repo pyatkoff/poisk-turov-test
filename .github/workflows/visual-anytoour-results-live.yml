@@ -102,7 +102,6 @@ jobs:
               await page.waitForTimeout(120);
               const choose=page.locator('.hotel-card .tour-row .direct-tour[data-tid]:not([data-tid=""])').first();
               if(await choose.count()===0)throw new Error(width+': populated choose-tour CTA missing');
-              await choose.scrollIntoViewIfNeeded();
               await choose.click({timeout:10000});
               await page.waitForSelector('#selectedTour:not([hidden]) .selected-head',{timeout:20000});
               await page.waitForSelector('#selectedTour:not([hidden]) .facts',{timeout:10000});
