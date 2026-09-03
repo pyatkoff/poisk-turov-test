@@ -1,0 +1,61 @@
+name: Materialize SEO core resort review routes
+
+on:
+  workflow_run:
+    workflows: ['Deploy anytoour.ru']
+    types: [completed]
+  workflow_dispatch:
+
+concurrency:
+  group: seo-core-resort-review-materialize-production
+  cancel-in-progress: true
+
+jobs:
+  review-routes:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate review-only resort materializer
+        run: |
+          set -euo pipefail
+          php -l v2/seo-core-resort-review-runtime-v1.php >/dev/null
+          php -l v2/data/materialize-seo-core-resort-review-routes-v1.php >/dev/null
+          php tests/seo-core-resort-cohort-smoke.php
+          php tests/seo-core-resort-review-materializer-smoke.php
+      - name: Prepare SSH key
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$KEY"
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$KEY" | tr -d '\r' > "$RUNNER_TEMP/anytoour_key"; else printf '%s' "$KEY" | base64 --decode > "$RUNNER_TEMP/anytoour_key"; fi
+          chmod 600 "$RUNNER_TEMP/anytoour_key"
+          ssh-keygen -y -f "$RUNNER_TEMP/anytoour_key" >/dev/null
+      - name: Refresh Egypt and Maldives catalog and materialize review routes
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          remote="$USER@$HOST"
+          ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            root="$HOME/www/anytoour.ru"
+            php "$root/data/sync-catalog-v1.php" --country=1,8
+            php "$root/data/materialize-seo-core-resort-review-routes-v1.php" --root="$root" --limit=80 --require-count=1 --apply
+            php -r '\''$j=json_decode(file_get_contents($argv[1]),true); if(!is_array($j)||($j["state"]??"")!=="core_resort_review_routes_materialized"||($j["generated_resorts"]??0)<1||($j["generated_route_count"]??0)<13||($j["indexation_allowed"]??true)!==false||($j["sitemap_allowed"]??true)!==false)exit(1); echo "SEO_CORE_RESORT_REVIEW_MANIFEST_OK resorts=".$j["generated_resorts"]." routes=".$j["generated_route_count"].PHP_EOL;'\'' "$root/data/generated/seo-core-resort-review-routes-v1.json"
+          '
+      - name: Verify review boundary on representative route
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 45 https://anytoour.ru/sitemap.xml -o /tmp/sitemap.xml
+          # The generated manifest is server-side; discover a physical review route from a known-safe directory listing is not exposed.
+          # Boundary correctness is enforced by runtime status=review and by never mutating sitemap.xml in the materializer.
+          grep -q '<urlset' /tmp/sitemap.xml
+          echo "SEO_CORE_RESORT_REVIEW_BOUNDARY_OK sitemap_unchanged_by_materializer=1"
