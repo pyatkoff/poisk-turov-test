@@ -8,6 +8,7 @@ on:
       - 'search3-visual-qa.cjs'
       - 'search3-visual-desktop.cjs'
       - 'search3-visual-mobile.cjs'
+      - 'search3-visual-tablet.cjs'
       - '.github/workflows/deploy-search3-preview.yml'
   workflow_dispatch:
 
@@ -87,7 +88,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [desktop, mobile]
+        mode: [desktop, tablet, mobile]
     permissions:
       contents: read
     steps:
