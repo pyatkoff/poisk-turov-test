@@ -33,7 +33,7 @@ $fromDate = (new DateTimeImmutable('today'))->modify('-' . ($days - 1) . ' days'
 
 try {
     $pdo = v2_data_db();
-    $stmt = $pdo->prepare("SELECT price_date,min_price,median_price,max_price,observation_count
+    $stmt = $pdo->prepare("SELECT price_date,min_price,median_price,max_price,observation_count,independent_search_count
         FROM tour_price_daily_exact
         WHERE segment_fingerprint=:segment AND price_date>=:from_date
         ORDER BY price_date ASC");
