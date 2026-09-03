@@ -39,11 +39,19 @@ function v2_seo_search_feedback_evidence(array $record, ?int $nowEpoch=null): ar
         if($value<0){$errors[]='negative_metric_'.$key;continue;}
         if(in_array($key,['impressions','clicks','query_count'],true)&&!is_int($value)){$errors[]='metric_must_be_integer_'.$key;continue;}
         if($key==='ctr'&&$value>1){$errors[]='ctr_out_of_range';continue;}
-        if($key==='avg_position'&&$value>0&&$value<1){$errors[]='avg_position_out_of_range';continue;}
+        if($key==='avg_position'&&$value<1){$errors[]='avg_position_out_of_range';continue;}
         $normalized[$key]=$value;
     }
-    foreach(['impressions','clicks','avg_position','ctr'] as $required)if(!array_key_exists($required,$normalized))$errors[]='missing_metric_'.$required;
+    foreach(['impressions','clicks'] as $required)if(!array_key_exists($required,$normalized))$errors[]='missing_metric_'.$required;
     if(isset($normalized['impressions'],$normalized['clicks'])&&$normalized['clicks']>$normalized['impressions'])$errors[]='clicks_exceed_impressions';
+    if(array_key_exists('impressions',$normalized)){
+        if($normalized['impressions']>0){
+            foreach(['avg_position','ctr'] as $required)if(!array_key_exists($required,$normalized))$errors[]='missing_metric_'.$required;
+        }elseif($normalized['impressions']===0){
+            if(array_key_exists('avg_position',$normalized))$errors[]='avg_position_requires_impressions';
+            if(array_key_exists('ctr',$normalized))$errors[]='ctr_requires_impressions';
+        }
+    }
 
     $fingerprint=hash('sha256',json_encode([
         'path'=>$path,'source_class'=>$sourceClass,'source_ref'=>$sourceRef,
@@ -55,6 +63,7 @@ function v2_seo_search_feedback_evidence(array $record, ?int $nowEpoch=null): ar
         'path'=>$path,'source_class'=>$sourceClass,'source_ref'=>$sourceRef,
         'collected_at_epoch'=>$collectedAt,'period_start_epoch'=>$periodStart,'period_end_epoch'=>$periodEnd,
         'fresh'=>$fresh,'metrics'=>$normalized,'feedback_sha256'=>$fingerprint,'errors'=>array_values(array_unique($errors)),
+        'zero_impression_metric_semantics'=>'position_ctr_unknown_not_zero',
         'requires_explicit_feedback_policy'=>true,'automatic_recommendation_allowed'=>false,'automatic_deindex_allowed'=>false,
         'publication_allowed'=>false,'indexation_change_allowed'=>false,'sitemap_change_allowed'=>false,'hotel_tours_indexation_allowed'=>false,
     ];
@@ -85,7 +94,8 @@ function v2_seo_search_feedback_intake(array $rows, ?int $nowEpoch=null): array
         'state'=>$errors===[]?'search_feedback_intake_ready':'search_feedback_intake_blocked',
         'domain'=>'anytoour.ru','launch_scope'=>$launchScope,'launched_path_count'=>count($launchPaths),
         'observed_count'=>count($byPath),'observed_paths'=>$observed,'missing_paths'=>$missing,
-        'missing_feedback_semantics'=>'unknown_not_zero','rows'=>array_values($byPath),'feedback_intake_sha256'=>$fingerprint,
+        'missing_feedback_semantics'=>'unknown_not_zero','zero_impression_metric_semantics'=>'position_ctr_unknown_not_zero',
+        'rows'=>array_values($byPath),'feedback_intake_sha256'=>$fingerprint,
         'errors'=>array_values(array_unique($errors)),'recommendation_state'=>'requires_explicit_feedback_policy',
         'requires_explicit_feedback_policy'=>true,'automatic_recommendation_allowed'=>false,'automatic_deindex_allowed'=>false,
         'publication_candidates'=>[],'publication_allowed'=>false,'publication_scope_expanded'=>false,
