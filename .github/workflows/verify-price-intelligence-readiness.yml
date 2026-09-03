@@ -41,13 +41,13 @@ jobs:
           php -l v2/data/inspect-price-intelligence-readiness-v1.php >/dev/null
           php -l tests/price-intelligence-smoke.php >/dev/null
           php tests/price-intelligence-smoke.php
-          grep -Fq 'max_of_daily_min_exact_comparable_segment' v2/data/inspect-price-intelligence-readiness-v1.php
+          grep -Fq 'max_observed_price_exact_comparable_segment' v2/data/inspect-price-intelligence-readiness-v1.php
           grep -Fq "'promo_drop_gate'" v2/data/inspect-price-intelligence-readiness-v1.php
-          grep -Fq "'minimum_independent_searches' => 5" v2/data/inspect-price-intelligence-readiness-v1.php
-          grep -Fq "'minimum_observed_days' => 2" v2/data/inspect-price-intelligence-readiness-v1.php
+          grep -Fq "'minimum_exact_observations' => 2" v2/data/inspect-price-intelligence-readiness-v1.php
           grep -Fq "'historical_drop_gate'" v2/data/inspect-price-intelligence-readiness-v1.php
-          grep -Fq "'minimum_independent_searches' => 15" v2/data/inspect-price-intelligence-readiness-v1.php
-          grep -Fq "'minimum_observed_days' => 3" v2/data/inspect-price-intelligence-readiness-v1.php
+          grep -Fq "'full_history_gate'" v2/data/inspect-price-intelligence-readiness-v1.php
+          grep -Fq "'minimum_independent_searches' => 30" v2/data/inspect-price-intelligence-readiness-v1.php
+          grep -Fq "'minimum_observed_days' => 7" v2/data/inspect-price-intelligence-readiness-v1.php
           echo PRICE_INTELLIGENCE_READINESS_CONTRACT_OK
 
   production-readiness:
@@ -102,7 +102,7 @@ jobs:
           p='price-intelligence-readiness.json'
           data=json.load(open(p,encoding='utf-8'))
           assert data.get('state') == 'price_intelligence_readiness'
-          assert data.get('reference_method') == 'max_of_daily_min_exact_comparable_segment'
+          assert data.get('reference_method') == 'max_observed_price_exact_comparable_segment'
           assert data.get('cached_price_is_final') is False
           print('PRICE_INTELLIGENCE_PRODUCTION_READINESS_OK',
                 'current_segments='+str(data.get('unique_current_exact_segments')),
