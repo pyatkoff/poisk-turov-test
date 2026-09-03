@@ -82,32 +82,45 @@ function v2_seo_yandex_webmaster_feedback(array $payload, ?int $collectedAtEpoch
     foreach($allowed as $path){
         if(!isset($byPath[$path]))continue;
         $impressions=0.0;$clicks=0.0;$positionWeighted=0.0;$positionWeight=0.0;
-        $impressionsObserved=false;$clicksObserved=false;
+        $impressionDays=0;$clickDays=0;$positiveImpressionDays=0;$positionDays=0;
         $pageErrors=[];
-        foreach($byPath[$path] as $date=>$fields){
-            if(!isset($dateSet[$date]))continue;
+        foreach($dateList as $date){
+            $fields=$byPath[$path][$date]??[];
             $dayImpressions=$fields['IMPRESSIONS']??null;
             $dayClicks=$fields['CLICKS']??null;
             $dayPosition=$fields['POSITION']??null;
-            if($dayImpressions!==null){$impressions+=(float)$dayImpressions;$impressionsObserved=true;}
-            if($dayClicks!==null){$clicks+=(float)$dayClicks;$clicksObserved=true;}
+            if($dayImpressions!==null){
+                $impressions+=(float)$dayImpressions;
+                $impressionDays++;
+                if((float)$dayImpressions>0)$positiveImpressionDays++;
+            }
+            if($dayClicks!==null){$clicks+=(float)$dayClicks;$clickDays++;}
             if($dayPosition!==null&&$dayImpressions!==null&&(float)$dayImpressions>0){
                 $positionWeighted+=(float)$dayPosition*(float)$dayImpressions;
                 $positionWeight+=(float)$dayImpressions;
+                $positionDays++;
             }
         }
+        $selectedDays=count($dateList);
+        $impressionsComplete=$selectedDays>0&&$impressionDays===$selectedDays;
+        $clicksComplete=$selectedDays>0&&$clickDays===$selectedDays;
+        $positionComplete=$positiveImpressionDays===0||$positionDays===$positiveImpressionDays;
         $metrics=[];
-        if($impressionsObserved){
+        if($impressionsComplete){
             if(floor($impressions)===$impressions)$metrics['impressions']=(int)$impressions; else $pageErrors[]='non_integer_impressions';
-        }else $pageErrors[]='impressions_unavailable';
-        if($clicksObserved){
+        }elseif($impressionDays===0)$pageErrors[]='impressions_unavailable';
+        else $pageErrors[]='impressions_partial_daily_coverage';
+        if($clicksComplete){
             if(floor($clicks)===$clicks)$metrics['clicks']=(int)$clicks; else $pageErrors[]='non_integer_clicks';
-        }else $pageErrors[]='clicks_unavailable';
-        if($impressionsObserved&&$impressions>0){
-            if($positionWeight>0)$metrics['avg_position']=$positionWeighted/$positionWeight; else $pageErrors[]='position_unavailable';
-            if($clicksObserved)$metrics['ctr']=$clicks/$impressions; else $pageErrors[]='ctr_unavailable';
+        }elseif($clickDays===0)$pageErrors[]='clicks_unavailable';
+        else $pageErrors[]='clicks_partial_daily_coverage';
+        if($impressionsComplete&&$impressions>0){
+            if($positionComplete&&$positionWeight>0)$metrics['avg_position']=$positionWeighted/$positionWeight;
+            else $pageErrors[]='position_partial_daily_coverage';
+            if($clicksComplete)$metrics['ctr']=$clicks/$impressions;
+            else $pageErrors[]='ctr_unavailable';
         }
-        if($impressionsObserved&&$clicksObserved&&$clicks>$impressions)$pageErrors[]='clicks_exceed_impressions';
+        if($impressionsComplete&&$clicksComplete&&$clicks>$impressions)$pageErrors[]='clicks_exceed_impressions';
         $rows[]=[
             'path'=>$path,
             'source_class'=>'yandex_webmaster_export',
@@ -145,6 +158,7 @@ function v2_seo_yandex_webmaster_feedback(array $payload, ?int $collectedAtEpoch
         'collector_sha256'=>$fingerprint,
         'errors'=>array_values(array_unique($errors)),
         'missing_feedback_semantics'=>'unknown_not_zero',
+        'daily_coverage_semantics'=>'partial_daily_metrics_unknown_not_aggregate',
         'publication_candidates'=>[],
         'automatic_execution_allowed'=>false,
         'automatic_expand_allowed'=>false,
