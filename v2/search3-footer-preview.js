@@ -1,4 +1,5 @@
 (function(){'use strict';
+if(!document.querySelector('link[data-search3-final-boards]')){var finalBoards=document.createElement('link');finalBoards.rel='stylesheet';finalBoards.href='/_preview/search3/search3-final-boards-v1.css?v=1';finalBoards.dataset.search3FinalBoards='1';document.head.appendChild(finalBoards);}
 var footer=document.querySelector('.ds2-site-footer');if(!footer||footer.dataset.search3Footer==='1')return;footer.dataset.search3Footer='1';
 footer.style.setProperty('background','#0b1324','important');footer.style.setProperty('background-color','#0b1324','important');footer.style.setProperty('color','#fff','important');
 function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
