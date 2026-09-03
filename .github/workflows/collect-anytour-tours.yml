@@ -79,6 +79,9 @@ jobs:
           php -l v2/data/build-seo-offer-snapshots-v1.php >/dev/null
           php tests/top500-daily-plan-smoke.php
           php -r "require 'v2/data/top-hotels-v1.php'; \$ids=v2_priority_hotel_ids(); if (count(\$ids)!==492 || count(array_unique(\$ids))!==492) exit(1); echo 'TOP500_PRIORITY_SET_OK count=492'.PHP_EOL;"
+          grep -Fq "fresh-hours=72 --expires-hours=72" .github/workflows/collect-anytour-tours.yml
+          grep -Fq "'fresh-hours'), 72, 72, 168" v2/data/build-seo-offer-snapshots-v1.php
+          grep -Fq "'expires-hours'), 72, 72, 168" v2/data/build-seo-offer-snapshots-v1.php
           echo ANYTOUR_TOP500_DAILY_TOOLING_OK
 
   collect-production:
@@ -157,5 +160,5 @@ jobs:
             fi
             php \"\$root/top500-coverage-v1.php\"
             php \"\$root/rollup-price-daily-v1.php\" --days=31
-            php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=48 --expires-hours=8 --offers-per-page=10
+            php \"\$root/build-seo-offer-snapshots-v1.php\" --fresh-hours=72 --expires-hours=72 --offers-per-page=10
           "
