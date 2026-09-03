@@ -68,7 +68,7 @@ cal_assert(str_contains($html, 'данные ≤ 72 ч'), 'freshness_copy');
 cal_assert(str_contains($html, 'нет свежих данных'), 'missing_copy');
 cal_assert(str_contains($html, 'лучшая цена'), 'best_badge');
 cal_assert(str_contains($html, 'от 107 500 ₽'), 'best_price');
-cal_assert(!str_contains($html, '0 ₽'), 'zero_price_must_never_render');
+cal_assert(preg_match('/>\s*(?:от\s+)?0\s*₽(?:\s*<|$)/u', $html) !== 1, 'zero_price_must_never_render');
 cal_assert(str_contains($html, 'dateFrom=2026-09-07'), 'handoff_date_from');
 cal_assert(str_contains($html, 'dateTo=2026-09-07'), 'handoff_date_to');
 cal_assert(str_contains($html, 'daysFrom=7'), 'handoff_nights_from');
