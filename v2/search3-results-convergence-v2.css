@@ -123,3 +123,14 @@ body.search3-preview #results .hotel-body{margin:0!important}
   body.search3-preview:not(.search3-hotel-tours-open) #results .search3-hotel-facts b{display:block!important;margin-top:2px!important;font-size:7.2px!important;line-height:1.15!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
   body.search3-preview:not(.search3-hotel-tours-open) #results .search3-hotel-action{grid-column:1/3!important;grid-row:5!important;margin-top:7px!important;padding-top:0!important;border-top:0!important}
 }
+
+/* Search3 live-card height sync */
+@media(min-width:761px){
+ body.search3-preview #results .hotel-main{min-height:188px!important}
+ body.search3-preview #results .hotel-photo{height:100%!important;min-height:188px!important;align-self:stretch!important}
+ body.search3-preview #results .hotel-photo img{height:100%!important;min-height:188px!important}
+}
+@media(max-width:760px){
+ body.search3-preview #results .hotel-photo{height:158px!important;min-height:158px!important}
+ body.search3-preview #results .hotel-photo img{height:158px!important}
+}
