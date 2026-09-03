@@ -4,7 +4,7 @@
 Ветка: `feature/search3-preview`  
 Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`  
 Последний проверенный implementation baseline: `ecedaeb1396b553c7150e37d7c4031a5915dcd51`  
-Текущий кандидат: `dd39045eb0bc9c7ae7d6d433623a4025a31a6d12` — требуется единый подтверждённый QA на desktop / tablet / mobile
+Текущий preview-head: `0c9508a939e7ef19431aab716f89c68ede51ef56` — live deployment подтверждён; тройной QA ожидает итогового статуса
 
 ## Источник истины: 8 утверждённых макетов
 
@@ -18,8 +18,8 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 | 3 | Выбор рейсов AnyTour: десктоп и мобильная версия | outbound/inbound variants, baggage, price delta, total, continue | desktop + mobile | REVIEW | Сверить структуру вариантов и sticky/summary на всех viewport |
 | 4 | Итог тура AnyTour: десктоп и мобильная версии | hotel, room, flights, services, tourists, total, submit | desktop + mobile | REVIEW | Проверить секции и цену после выбора рейса; убрать визуальные склейки |
 | 5 | Дизайн страницы бронирования тура AnyTour | selected hotel, room/meal, flights, composition, total | desktop + mobile | REVIEW | Дожать геометрию Tour Details без изменения booking-семантики |
-| 6 | UI-кит заявки на тур AnyTour | entry, sending, success, error, MAX/Telegram handoff | desktop + mobile | REVIEW | Добавить отдельные обязательные screenshots sending/error и проверить возврат/повтор |
-| 7 | Спецификация футера AnyTour: десктоп и мобильная версия | navigation, support, social, apps, trust, legal | desktop + mobile | IN PROGRESS | Привести текущую неполную структуру к спецификации на реальных ссылках |
+| 6 | UI-кит заявки на тур AnyTour | entry, sending, success, error, MAX/Telegram handoff | desktop + mobile | REVIEW | Все 4 lead-состояния теперь обязательны в desktop/tablet/mobile QA; проверить свежие artifacts и retry |
+| 7 | Спецификация футера AnyTour: десктоп и мобильная версия | navigation, support, social, apps, trust, legal | desktop + mobile | REVIEW | Desktop readability/grid и canonical links исправлены; подтвердить tablet/mobile screenshots |
 | 8 | Цельный mobile flow AnyTour: бронирование тура и общение | search → results → hotel → tour → flight → total → lead → messenger | mobile | IN PROGRESS | Прогнать как один сценарий и сопоставить каждый шаг с макетами 1–7 |
 
 ## Матрица QA
@@ -77,6 +77,8 @@ Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`
 - 2026-09-03 — mobile results order и tablet card density приведены к прежнему visual-contract.
 - 2026-09-03 — source-of-truth исправлен: вместо одного `maket7` зафиксированы все 8 файлов `00_CURRENT_FULL_CYCLE`.
 - 2026-09-03 — выполнена живая проверка desktop preview: results загружаются, overlap/overflow верхней выдачи не обнаружены.
+- 2026-09-03 — footer приведён к 1180px Search3-grid, увеличена читаемость desktop/mobile, legacy links заменены на canonical `anytoour.ru`.
+- 2026-09-03 — QA макета №6 усилен: entry/sending/success/error обязательны на desktop/tablet/mobile.
 
 ## Definition of done
 
