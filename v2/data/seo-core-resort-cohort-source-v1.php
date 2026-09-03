@@ -9,6 +9,10 @@ declare(strict_types=1);
  * not require observation.region_id or a second catalog_regions join because
  * both can be incomplete for otherwise valid first-party hotel rows.
  *
+ * Country route slugs are the stable AnyTour core routes for Tourvisor country
+ * IDs 1 and 8. catalog_countries.slug is a catalog transliteration field and is
+ * intentionally not used as the public SEO route identity.
+ *
  * Structural source only: no publication/indexation side effects.
  */
 function v2_seo_core_resort_cohort_source_rows(PDO $pdo,int $limit=80): array
@@ -18,7 +22,7 @@ function v2_seo_core_resort_cohort_source_rows(PDO $pdo,int $limit=80): array
         h.region_id AS region_id,
         h.country_id,
         h.region_name AS region_name,
-        c.slug AS country_slug,
+        CASE h.country_id WHEN 1 THEN 'egypt' WHEN 8 THEN 'maldives' END AS country_slug,
         c.name AS country_name,
         COUNT(*) AS observation_count,
         COUNT(DISTINCT o.hotel_id) AS hotel_count,
@@ -29,14 +33,13 @@ function v2_seo_core_resort_cohort_source_rows(PDO $pdo,int $limit=80): array
        AND h.is_active=1
       JOIN catalog_countries c ON c.id=h.country_id AND c.is_active=1
      WHERE h.country_id IN (1,8)
-       AND c.slug IN ('egypt','maldives')
        AND h.region_id IS NOT NULL AND h.region_id>0
        AND h.region_name IS NOT NULL AND h.region_name<>''
        AND c.name IS NOT NULL AND c.name<>''
        AND o.observed_at>=DATE_SUB(NOW(),INTERVAL 30 DAY)
        AND o.departure_date>=CURDATE()
        AND o.price>0 AND o.currency='RUB'
-     GROUP BY h.region_id,h.country_id,h.region_name,c.slug,c.name
+     GROUP BY h.region_id,h.country_id,h.region_name,c.name
      HAVING COUNT(*)>0 AND COUNT(DISTINCT o.hotel_id)>0
      ORDER BY observation_count DESC,hotel_count DESC,last_observed_at DESC,h.region_id ASC
      LIMIT {$limit}";
@@ -47,7 +50,7 @@ function v2_seo_core_resort_cohort_source_rows(PDO $pdo,int $limit=80): array
         $regionId=(int)($row['region_id']??0);
         $countrySlug=trim((string)($row['country_slug']??''));
         $regionName=trim((string)($row['region_name']??''));
-        if($regionId<=0||$countrySlug===''||$regionName==='')continue;
+        if($regionId<=0||!in_array($countrySlug,['egypt','maldives'],true)||$regionName==='')continue;
         $slug=v2_data_slug($regionName);
         if($slug==='')continue;
         $slugKey=$countrySlug.'/'.$slug;
