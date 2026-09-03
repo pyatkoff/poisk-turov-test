@@ -2,7 +2,8 @@
 declare(strict_types=1);
 require_once __DIR__.'/../v2/seo-core-month-content-v1.php';
 
-$records=v2_seo_core_month_content_records();
+$now=strtotime('2026-09-03 12:00:00 UTC');
+$records=v2_seo_core_month_content_records($now);
 if(count($records)!==96)exit(1);
 $byPath=[];
 foreach($records as $record){
@@ -26,6 +27,9 @@ $checks=[
 foreach($checks as $path=>$h1){if(($byPath[$path]['data']['h1']??'')!==$h1)exit(8);}
 if(($byPath['/country/turkey/kemer/june/']['data']['search_state']??[])!==['country'=>4,'region'=>22])exit(9);
 if(($byPath['/country/maldives/september/']['data']['search_state']??[])!==['country'=>8])exit(10);
-if(($byPath['/country/turkey/kemer/june/']['data']['seasonal_identity']['page_key']??'')!=='resort_month:1:4:22:2026-06')exit(11);
+if(($byPath['/country/turkey/kemer/june/']['data']['seasonal_identity']['page_key']??'')!=='resort_month:1:4:22:2027-06')exit(11);
 if(($byPath['/country/maldives/september/']['data']['seasonal_identity']['page_key']??'')!=='month:1:8:2026-09')exit(12);
-echo "SEO_CORE_MONTH_CONTENT_OK records=96 useful_sections=3 publication=0\n";
+if(($byPath['/country/egypt/january/']['data']['seasonal_identity']['year']??0)!==2027)exit(13);
+if(($byPath['/country/egypt/december/']['data']['seasonal_identity']['year']??0)!==2026)exit(14);
+if(v2_seo_core_month_target_year(8,$now)!==2027||v2_seo_core_month_target_year(9,$now)!==2026)exit(15);
+echo "SEO_CORE_MONTH_CONTENT_OK records=96 rolling_periods=1 useful_sections=3 publication=0\n";
