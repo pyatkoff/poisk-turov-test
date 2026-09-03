@@ -78,8 +78,27 @@ foreach($secondDossier['rows'] as $row){
     if(!array_key_exists('numeric_demand_score',$row)||$row['numeric_demand_score']!==null) production_launch_fail('second_wave_numeric_demand_invented');
 }
 
+// Country pages may expose commercial inventory only from fresh first-party snapshots.
+$snapshotSource=file_get_contents(__DIR__.'/../v2/seo-offer-snapshot-v1.php');
+$countryPageSource=file_get_contents(__DIR__.'/../v2/country-page-v1.php');
+if($snapshotSource===false||$countryPageSource===false) production_launch_fail('country_offer_source_missing');
+foreach([
+    'function v2_seo_country_snapshot_offers',
+    "s.page_type='country'",
+    's.expires_at>=NOW()',
+    "s.currency='RUB'",
+] as $needle) if(!str_contains($snapshotSource,$needle)) production_launch_fail('country_snapshot_contract:'.$needle);
+foreach([
+    "require_once __DIR__ . '/seo-offer-snapshot-v1.php'",
+    'v2_seo_country_snapshot_offers($countryId, 6)',
+    'data-country-offer-snapshot',
+    'Стоимость и доступность перепроверяются в поиске перед заявкой.',
+    "v2_seo_search_handoff_url('/poisk-turov/'",
+] as $needle) if(!str_contains($countryPageSource,$needle)) production_launch_fail('country_offer_render_contract:'.$needle);
+if(str_contains($countryPageSource,'tourvisor-client-v1.php')||str_contains($countryPageSource,'v2_data_tv_')||str_contains($countryPageSource,'curl_')) production_launch_fail('country_page_live_provider_call');
+
 // Seasonal authorization itself is evidence-bound by the dedicated live dossier; this
 // smoke only confirms that no path outside the exact approved pair leaked into launch.
 foreach($seasonal as $path) if(str_contains($path,'/hotel/')||!str_ends_with($path,'/september/')) production_launch_fail('seasonal_path_boundary');
 
-echo "SEO_PRODUCTION_CONTROLLED_LAUNCH_OK paths=10 turkey=6 secondWave=2 seasonal=2 sitemap=10 hotelTours=0 rollback=1 evidence=1\n";
+echo "SEO_PRODUCTION_CONTROLLED_LAUNCH_OK paths=10 turkey=6 secondWave=2 seasonal=2 sitemap=10 hotelTours=0 rollback=1 evidence=1 countryOffers=firstPartyFreshOnly\n";
