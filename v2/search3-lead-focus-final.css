@@ -51,10 +51,9 @@ body.search3-preview #selectedTour .lead-form[data-search3-lead-state="error"] .
     gap:8px!important;
     padding:4px 0!important;
   }
-  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__flight-costs{
-    gap:4px!important;
-    margin-top:6px!important;
-    padding:6px 8px!important;
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__flight-costs,
+  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__price-note{
+    display:none!important;
   }
   html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__total{
     margin-top:7px!important;
@@ -62,9 +61,6 @@ body.search3-preview #selectedTour .lead-form[data-search3-lead-state="error"] .
   }
   html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__total strong{
     font-size:18px!important;
-  }
-  html body.search3-preview #selectedTour.search3-lead-entry .search3-lead-shell:has(.lead-form[data-search3-lead-state]) .search3-booking-summary__price-note{
-    margin-top:5px!important;
   }
 }
 @media(max-width:760px){
