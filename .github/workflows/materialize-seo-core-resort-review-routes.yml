@@ -23,6 +23,7 @@ jobs:
           php -l v2/seo-core-resort-review-runtime-v1.php >/dev/null
           php -l v2/data/materialize-seo-core-resort-review-routes-v1.php >/dev/null
           php tests/seo-core-resort-cohort-smoke.php
+          php tests/seo-core-resort-source-contract-smoke.php
           php tests/seo-core-resort-review-materializer-smoke.php
       - name: Prepare SSH key
         env:
@@ -55,7 +56,5 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsSL --max-time 45 https://anytoour.ru/sitemap.xml -o /tmp/sitemap.xml
-          # The generated manifest is server-side; discover a physical review route from a known-safe directory listing is not exposed.
-          # Boundary correctness is enforced by runtime status=review and by never mutating sitemap.xml in the materializer.
           grep -q '<urlset' /tmp/sitemap.xml
           echo "SEO_CORE_RESORT_REVIEW_BOUNDARY_OK sitemap_unchanged_by_materializer=1"
