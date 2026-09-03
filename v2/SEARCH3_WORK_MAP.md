@@ -4,7 +4,7 @@
 Ветка: `feature/search3-preview`  
 Preview: `https://anytoour.ru/_preview/search3/poisk-turov/`  
 Последний проверенный implementation baseline: `ecedaeb1396b553c7150e37d7c4031a5915dcd51`  
-Текущий visual candidate: `c1ef321610a647af99515ec15b1bfd67dd1b4603`; макет №1 уплотнён, filter sub-screens и реальный MAX/Telegram handoff включены в единый QA
+Текущий visual candidate: `990fb0204d492de6779c4eea0abe61cde2971439`; макет №1 уплотнён, filter sub-screens и реальный MAX/Telegram handoff включены в единый QA
 
 ## Источник истины: 8 утверждённых макетов
 
