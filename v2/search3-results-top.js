@@ -3,6 +3,7 @@ function ensureMaket7Contract(){if(document.getElementById('search3-maket7-contr
 ensureMaket7Contract();
 var form=document.getElementById('tourSearch'),tools=document.getElementById('resultsTools'),heading=tools&&tools.querySelector('strong'),summary=document.getElementById('resultSummary'),searchSummary=document.getElementById('resultsSearchSummary'),edit=document.getElementById('resultsSearchEdit'),results=document.getElementById('results'),intro=document.querySelector('.search3-page-intro'),introTitle=intro&&intro.querySelector('h1'),introText=intro&&intro.querySelector('p'),breadcrumb=intro&&intro.querySelector('.search3-breadcrumb');
 if(!form||!tools||!heading||!summary)return;
+var mapButton=tools.querySelector('.results-map-button');if(mapButton){mapButton.textContent='';mapButton.setAttribute('aria-label','Карта');}
 function word(n,one,few,many){var x=Math.abs(Number(n)||0)%100,y=x%10;if(x>10&&x<20)return many;if(y===1)return one;if(y>=2&&y<=4)return few;return many;}
 function toursCount(items){return (Array.isArray(items)?items:[]).reduce(function(sum,h){return sum+(Array.isArray(h&&h.tours)?h.tours.length:0);},0);}
 function selectedText(name){var el=form.elements[name];if(!el)return'';if(el.tagName==='SELECT'){var o=el.options&&el.selectedIndex>=0?el.options[el.selectedIndex]:null;return o?String(o.textContent||'').trim():'';}return String(el.value||'').trim();}
