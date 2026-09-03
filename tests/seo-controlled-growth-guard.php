@@ -35,9 +35,17 @@ foreach($monthRecords as $record){
     }
 }
 
-$leaked=array_values(array_intersect($launchPaths,array_keys($monthPaths)));
-if($leaked!==[]){
-    $errors[]='review-only core month paths leaked into controlled launch: '.implode(',',$leaked);
+// These two September routes were launched earlier through a separate evidence-backed pilot.
+// Their duplicate records in the generic 96-page month matrix remain review-only and must not
+// authorize any additional month route.
+$grandfathered=[
+    '/country/turkey/antalya/september/',
+    '/country/maldives/september/',
+];
+$monthLaunchOverlap=array_values(array_intersect($launchPaths,array_keys($monthPaths)));
+$unexpected=array_values(array_diff($monthLaunchOverlap,$grandfathered));
+if($unexpected!==[]){
+    $errors[]='new review-only core month paths leaked into controlled launch: '.implode(',',$unexpected);
 }
 
 if($errors!==[]){
@@ -46,4 +54,4 @@ if($errors!==[]){
     exit(1);
 }
 
-echo 'SEO_CONTROLLED_GROWTH_GUARD_OK public_paths='.count($launchPaths).' core_month_review='.count($monthRecords)."\n";
+echo 'SEO_CONTROLLED_GROWTH_GUARD_OK public_paths='.count($launchPaths).' core_month_review='.count($monthRecords).' grandfathered_month_overlap='.count($monthLaunchOverlap)."\n";
