@@ -1202,17 +1202,21 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
     await harness.page.waitForFunction(() => {
       const results = document.getElementById('results');
       const sourceButton = document.querySelector('#results button[data-search3-production-label]');
-      return document.activeElement === results || document.activeElement === sourceButton;
+      const resumeButton = sourceButton?.closest('.hotel-card')?.querySelector('.search3-show-tours');
+      return document.activeElement === results
+        || document.activeElement === sourceButton
+        || document.activeElement === resumeButton;
     });
     const returned = await harness.page.evaluate(() => {
       const results = document.getElementById('results');
       const sourceButton = document.querySelector('#results button[data-search3-production-label]');
+      const resumeButton = sourceButton?.closest('.hotel-card')?.querySelector('.search3-show-tours');
       const active = document.activeElement;
       return {
         selectedHidden: document.getElementById('selectedTour')?.hidden === true,
         sourceText: sourceButton?.textContent.replace(/\s+/g, ' ').trim() || '',
-        returnFocused: active === results || active === sourceButton,
-        focusTarget: active === sourceButton ? 'source-tour' : active === results ? 'results' : 'other',
+        returnFocused: active === results || active === sourceButton || active === resumeButton,
+        focusTarget: active === resumeButton ? 'resume-tours' : active === sourceButton ? 'source-tour' : active === results ? 'results' : 'other',
       };
     });
     assert.deepEqual({
@@ -1224,7 +1228,7 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
       sourceText: fixture.presentation.productionOwnedDirectTourText,
       returnFocused: true,
     });
-    assert.ok(['source-tour', 'results'].includes(returned.focusTarget));
+    assert.ok(['resume-tours', 'source-tour', 'results'].includes(returned.focusTarget));
     manifest.presentationChecks.selectedTourHandoff = {
       loading,
       selected: selectedState,

@@ -1058,6 +1058,19 @@ syncGroups();window.addEventListener('resize',syncGroups);
     window.setTimeout(function () { window.requestAnimationFrame(settle); }, 0);
   }
 
+  function focusReturnedContext() {
+    window.requestAnimationFrame(function () {
+      var source = window.V2SelectedTourReturnV1 && window.V2SelectedTourReturnV1.sourceButton;
+      var card = source && source.closest && source.closest('.hotel-card');
+      var target = card && card.querySelector('.search3-show-tours');
+      if (!target || target.disabled || target.getClientRects().length === 0) {
+        target = results;
+        if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+      }
+      try { target.focus({ preventScroll: true }); } catch (_error) { target.focus(); }
+    });
+  }
+
   new MutationObserver(function () {
     syncBusy();
     restoreProductionLabels();
@@ -1085,6 +1098,7 @@ syncGroups();window.addEventListener('resize',syncGroups);
     selectedFocusRun += 1;
     selected.setAttribute('aria-busy', 'false');
     restoreProductionLabels();
+    focusReturnedContext();
   });
   window.addEventListener('v2:search-reset', function () {
     selectedFocusRun += 1;
@@ -1099,6 +1113,7 @@ syncGroups();window.addEventListener('resize',syncGroups);
     syncBusy: syncBusy,
     focusSelectedHeading: focusSelectedHeading,
     focusSelectedContext: focusSelectedContext,
-    scheduleSelectedContextFocus: scheduleSelectedContextFocus
+    scheduleSelectedContextFocus: scheduleSelectedContextFocus,
+    focusReturnedContext: focusReturnedContext
   });
 })();
