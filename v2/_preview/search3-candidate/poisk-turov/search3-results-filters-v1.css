@@ -293,13 +293,33 @@ body.search3-candidate #results .hotel-tours:not([hidden]){
 }
 body.search3-candidate #results .hotel-tours:not([hidden]) .tour-row{
   display:grid!important;
-  grid-template-columns:minmax(0,1fr) 176px!important;
+  grid-template-columns:minmax(0,1fr) 252px!important;
   gap:14px!important;
   margin:8px 0 0!important;
   padding:11px 12px!important;
   border:1px solid #e1e7f0!important;
   border-radius:10px!important;
   background:#fff!important;
+}
+body.search3-candidate #results .hotel-tours:not([hidden]) .tour-action{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 132px!important;
+  align-items:center!important;
+  gap:12px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+body.search3-candidate #results .hotel-tours:not([hidden]) .tour-action>b{
+  min-width:0!important;
+  font-size:18px!important;
+  line-height:1.2!important;
+  white-space:nowrap!important;
+  overflow-wrap:normal!important;
+  text-align:right!important;
+}
+body.search3-candidate #results .hotel-tours:not([hidden]) .tour-action>.direct-tour{
+  width:132px!important;
+  min-width:132px!important;
 }
 
 body.search3-candidate .search3-mobile-toolbar{display:none}

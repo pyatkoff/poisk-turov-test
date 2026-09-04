@@ -656,21 +656,39 @@ async function runDesktopPresentationEvidence(browser, manifest) {
       const card = document.querySelector('#results .hotel-card.search3-tours-open');
       const button = card?.querySelector('.search3-show-tours');
       const direct = card?.querySelector('.direct-tour');
+      const action = direct?.closest('.tour-action');
+      const price = action?.querySelector(':scope > b');
+      const priceBox = price?.getBoundingClientRect();
+      const directBox = direct?.getBoundingClientRect();
       return {
         openCards: document.querySelectorAll('#results .hotel-card.search3-tours-open').length,
         expanded: button?.getAttribute('aria-expanded') || '',
         buttonText: button?.textContent.replace(/\s+/g, ' ').trim() || '',
         directTourText: direct?.textContent.replace(/\s+/g, ' ').trim() || '',
         directTourCount: card?.querySelectorAll('.direct-tour').length || 0,
+        tourPriceText: price?.textContent.replace(/\s+/g, ' ').trim() || '',
+        tourPriceWhiteSpace: price ? getComputedStyle(price).whiteSpace : '',
+        tourActionOverflow: action ? action.scrollWidth > action.clientWidth + 1 : true,
+        tourPriceButtonGap: priceBox && directBox ? Math.round((directBox.left - priceBox.right) * 100) / 100 : -1,
       };
     });
-    assert.deepEqual(disclosure, {
+    assert.deepEqual({
+      openCards: disclosure.openCards,
+      expanded: disclosure.expanded,
+      buttonText: disclosure.buttonText,
+      directTourText: disclosure.directTourText,
+      directTourCount: disclosure.directTourCount,
+    }, {
       openCards: 1,
       expanded: 'true',
       buttonText: 'Скрыть туры',
       directTourText: fixture.presentation.productionOwnedDirectTourText,
       directTourCount: 1,
     });
+    assert.match(disclosure.tourPriceText, /^\d[\d ]* ₽$/, 'expanded tour price must remain readable');
+    assert.equal(disclosure.tourPriceWhiteSpace, 'nowrap', 'expanded tour price must stay on one line');
+    assert.equal(disclosure.tourActionOverflow, false, 'expanded tour action must not overflow');
+    assert.ok(disclosure.tourPriceButtonGap >= 10, 'expanded tour price and CTA must not overlap');
     assert.equal(apiCallCount(scenario), beforeDisclosureCalls, 'card disclosure must not request search data');
     await writePresentationScreenshot(harness.page, '1440-first-hotel-expanded.png', manifest, { disclosure });
 
