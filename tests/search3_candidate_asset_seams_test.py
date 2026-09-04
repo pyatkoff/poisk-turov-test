@@ -34,8 +34,8 @@ JS_LOAD_ORDER = (
     "search3-selected-flow-v2.js",
 )
 FROZEN_BASE_SHA256 = {
-    "search3-results-filters-v1.css": "2917a04a921fd00d95d9a23ed6db197f7e1aa5c6900b71da29a29ee136e89611",
-    "search3-results-filters-v1.js": "ea7395657ae095c204a2b90f35447c35f39b53de5449663915113309c8c6d5f2",
+    "search3-results-filters-v1.css": "056ca312c4f5356e1d3b8cc95e90355a0420420501e6467ae014e917df39fe7b",
+    "search3-results-filters-v1.js": "036403457cefb2f48060582b152b71c86a63274e66119fb96db0ea7787550067",
 }
 PROTECTED_RUNTIME_MARKERS = (
     "/api-v2.php",

@@ -57,9 +57,39 @@ body.search3-candidate #selectedTour .search3-flight-fallback-rail-action {
 }
 
 body.search3-candidate #selectedTour .search3-flight-continue--fallback button:focus-visible,
-body.search3-candidate #selectedTour .search3-flight-fallback-rail-action:focus-visible {
+body.search3-candidate #selectedTour .search3-flight-fallback-rail-action:focus-visible,
+body.search3-candidate #selectedTour .search3-flight-show-all:focus-visible {
   outline: 2px solid #2743cb;
   outline-offset: 3px;
+}
+
+body.search3-candidate #selectedTour .search3-booking-stepper {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body.search3-candidate #selectedTour .flight-variants[data-search3-flight-disclosure] > .flight-variant[hidden] {
+  display: none !important;
+}
+
+body.search3-candidate #selectedTour .search3-flight-show-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 0 16px;
+  border: 1px solid #cbd6ec;
+  border-radius: 9px;
+  background: #fff;
+  color: #2743cb;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+body.search3-candidate #selectedTour.search3-final-review .search3-flight-show-all[hidden] {
+  display: none !important;
 }
 
 body.search3-candidate #selectedTour.search3-flight-fallback .search3-booking-summary__flight {
@@ -100,5 +130,10 @@ body.search3-candidate #selectedTour.search3-lead-entry.search3-flight-fallback 
 
   body.search3-candidate #selectedTour .search3-flight-continue--fallback::after {
     max-width: none;
+  }
+
+  body.search3-candidate #selectedTour .search3-flight-show-all {
+    width: 100%;
+    min-height: 48px;
   }
 }

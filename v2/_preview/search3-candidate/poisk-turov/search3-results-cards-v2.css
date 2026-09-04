@@ -58,12 +58,67 @@ html body.search3-candidate.search3-results-active.search3-has-results:not(.sear
 
 html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
   #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .search3-hotel-facts small {
+  font-size:12px!important;
+  line-height:1.2!important;
+}
+
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .search3-hotel-facts b {
+  font-size:14px!important;
+  line-height:1.25!important;
+}
+
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .hotel-price-context {
+  font-size:12px!important;
+}
+
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
   #results .hotel-card .search3-hotel-action__copy {
   min-width:0!important;
   flex-wrap:wrap!important;
 }
 
+/* Give the 1024px result column enough room for truthful, unshortened flight facts. */
+@media(min-width:761px) and (max-width:1199px) {
+  html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+    #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+    #results .hotel-card .hotel-main {
+    grid-template-columns:232px minmax(0,1fr)!important;
+  }
+
+  html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+    #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+    #results .hotel-card .hotel-body {
+    grid-template-columns:minmax(0,1fr) 150px!important;
+    column-gap:12px!important;
+  }
+
+  html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+    #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+    #results .hotel-card .search3-hotel-action {
+    grid-template-columns:minmax(0,1fr) 150px!important;
+    gap:12px!important;
+  }
+
+  html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+    #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+    #results .hotel-card .search3-hotel-facts {
+    grid-template-columns:minmax(0,1.25fr) minmax(108px,.75fr)!important;
+  }
+}
+
 @media(max-width:760px) {
+  html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+    #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+    #results .hotel-card .search3-hotel-facts {
+    grid-template-columns:minmax(0,1.2fr) minmax(112px,.8fr)!important;
+  }
+
   html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
     #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
     #results .hotel-card .search3-hotel-action__copy {

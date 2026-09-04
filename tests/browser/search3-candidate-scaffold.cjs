@@ -207,13 +207,24 @@ function scenarioController(name) {
         return responseJson(route, limit >= 100 ? resultSets[100] : resultSets[25]);
       }
       if (action === 'tour') {
-        return responseJson(route, fixture.failureFixtures.selectedTour);
+        return responseJson(route, name === 'selected-price-family'
+          ? { ...fixture.failureFixtures.selectedTour, childs: 2, childAges: [6, 9] }
+          : fixture.failureFixtures.selectedTour);
       }
       if (action === 'flights') {
         if (name === 'flight-upstream-error') {
           return responseJson(route, { error: fixture.failureFixtures.flights.upstreamError }, fixture.failureFixtures.flights.upstreamStatus);
         }
         if (name === 'flight-empty') return responseJson(route, []);
+        if (name.startsWith('selected-price-')) {
+          return responseJson(route, Array.from({ length: 133 }, (_, index) => ({
+            isDefault: index === 0,
+            price: { value: index === 0 ? 101000 : index === 132 ? 1234567 : 113500 + index * 100 },
+            fuelCharge: { value: index === 0 ? 0 : 3500 },
+            forward: [],
+            backward: [],
+          })));
+        }
       }
       throw new Error(`${name}: unexpected API action ${action}`);
     },
@@ -644,6 +655,13 @@ async function geometry(page, width, state) {
         priceAriaLabel: price?.getAttribute('aria-label') || '',
         priceContextVisible: rendered(priceContext),
         priceContextBox: rect(priceContext),
+        factFits: [...(first?.querySelectorAll('.search3-hotel-facts > span') || [])].map(fact => ({
+          text: fact.textContent.replace(/\s+/g, ' ').trim(),
+          fits: [...fact.querySelectorAll('small,b')].every(node => (
+            node.scrollWidth <= node.clientWidth + 1 && node.scrollHeight <= node.clientHeight + 1
+          )),
+          valueSize: parseFloat(getComputedStyle(fact.querySelector('b')).fontSize),
+        })),
       },
       decoratedCount: document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length,
       disclosureCount: document.querySelectorAll('#results .search3-show-tours').length,
@@ -685,7 +703,9 @@ async function capture(page, width, state, expectedResultCount, manifest) {
     assert.ok(measured.disclosure.height >= 44, `${width}/${state}: disclosure touch target`);
     assert.ok(measured.typography.title >= 16, `${width}/${state}: hotel title is too small`);
     assert.ok(measured.typography.place >= 12, `${width}/${state}: hotel location is too small`);
-    assert.ok(measured.typography.factLabel >= 10, `${width}/${state}: hotel fact label is too small`);
+    assert.ok(measured.typography.factLabel >= 12, `${width}/${state}: hotel fact label is too small`);
+    assert.ok(measured.cardCopy.factFits.every(fact => fact.fits), `${width}/${state}: clipped hotel fact ${JSON.stringify(measured.cardCopy.factFits)}`);
+    assert.ok(measured.cardCopy.factFits.every(fact => fact.valueSize >= 14), `${width}/${state}: hotel fact value is too small`);
     assert.ok(measured.typography.disclosure >= 14, `${width}/${state}: disclosure label is too small`);
     assert.equal(measured.cardCopy.category, '5★', `${width}/${state}: hotel category must be visible beside the title`);
     assert.equal(measured.cardCopy.facts['Вылет'], '12 сент. 2099', `${width}/${state}: departure date must be human-readable`);
@@ -1233,10 +1253,10 @@ function assertSelectedPresentation(state, width) {
     mobile: 'За весь тур · 2 взрослых',
   });
   assert.deepEqual(state.ctas, {
-    detail: 'К выбору рейса',
-    inlineFallback: 'Проверить детали тура',
-    railFallback: 'Перейти к итогу тура',
-    mobile: 'К итогу тура',
+    detail: 'Далее: итог тура',
+    inlineFallback: 'Далее: итог тура',
+    railFallback: 'Далее: итог тура',
+    mobile: 'Далее: итог тура',
   });
   assert.equal(state.fallbackActive, true, `${width}: no-flight adapter must be active`);
   assert.deepEqual(state.rawTour, {
@@ -1265,9 +1285,9 @@ async function waitForSelectedPresentation(page) {
       && valueFor('#selectedTour .facts > div', 'span', 'b', 'Дата') === expected.date
       && valueFor('#selectedTour .search3-booking-summary dl > div', 'dt', 'dd', 'Питание') === expected.meal
       && valueFor('#selectedTour .search3-tour-detail-rail dl > div', 'dt', 'dd', 'Номер') === expected.room
-      && text('#selectedTour .search3-flight-continue--fallback button') === 'Проверить детали тура'
-      && text('#selectedTour .search3-flight-fallback-rail-action') === 'Перейти к итогу тура'
-      && text('.search3-selected-mobile-bar [data-s3-selected-lead]') === 'К итогу тура';
+      && text('#selectedTour .search3-flight-continue--fallback button') === 'Далее: итог тура'
+      && text('#selectedTour .search3-flight-fallback-rail-action') === 'Далее: итог тура'
+      && text('.search3-selected-mobile-bar [data-s3-selected-lead]') === 'Далее: итог тура';
   }, {
     date: '12 сент. 2099',
     meal: 'Всё включено',
@@ -1289,7 +1309,7 @@ async function assertMobileSelectedPresentationRepair(page) {
   });
   assert.deepEqual(state, {
     priceScope: 'За весь тур · 2 взрослых',
-    action: 'К итогу тура',
+    action: 'Далее: итог тура',
   }, 'mobile selected presentation must repair base label rewrites before the next task');
 }
 
@@ -1892,6 +1912,84 @@ async function selectedFailureState(page) {
   });
 }
 
+async function assertSelectedAmounts(page, expected, label) {
+  await page.waitForFunction(amount => {
+    const selectors = [
+      '#selectedTour .selected-price',
+      '#selectedTour .search3-booking-summary__total > strong',
+      '#selectedTour .search3-tour-detail-rail__price > strong',
+      '.search3-selected-mobile-bar [data-s3-selected-price]',
+    ];
+    const nodes = selectors.map(selector => document.querySelector(selector)).filter(Boolean);
+    return nodes.length >= 2 && nodes.every(node => {
+      const match = node.textContent.match(/([\d][\d\s\u00a0]*)\s*₽/);
+      return match && Number(match[1].replace(/\s/g, '')) === amount;
+    });
+  }, expected, { timeout: 12000 });
+  const state = await page.evaluate(() => {
+    const selected = document.getElementById('selectedTour');
+    const mobile = document.querySelector('.search3-selected-mobile-bar [data-s3-selected-price]');
+    const summary = selected?.querySelector('.search3-booking-summary__total > strong');
+    const scope = document.querySelector('.search3-selected-mobile-bar__price small');
+    return {
+      mobile: mobile?.textContent.replace(/\s+/g, ' ').trim() || '',
+      summary: summary?.textContent.replace(/\s+/g, ' ').trim() || '',
+      scope: scope?.textContent.replace(/\s+/g, ' ').trim() || '',
+      basePrice: window.V2TourController?.currentTour?.price,
+      flightPrice: window.V2TourController?.selectedFlight?.price,
+    };
+  });
+  assert.match(state.mobile, /^\d[\d ]* ₽$/, `${label}: mobile amount includes a traveler/price label`);
+  assert.equal(Number(state.mobile.replace(/[^0-9]/g, '')), expected, `${label}: mobile total`);
+  assert.equal(Number(state.summary.replace(/[^0-9]/g, '')), expected, `${label}: summary total`);
+  assert.match(state.scope, /^За весь тур · 2 взрослых/, `${label}: traveler scope missing`);
+  assert.equal(state.basePrice, fixture.failureFixtures.selectedTour.price, `${label}: UI mutated base tour price`);
+  return state;
+}
+
+async function runSelectedPriceConsistency(browser, manifest) {
+  manifest.presentationChecks.selectedPriceConsistency = [];
+  for (const width of [375, 1440]) {
+    const viewport = fixture.viewports.find(item => item.width === width);
+    const scenario = scenarioController(width === 375 ? 'selected-price-family' : 'selected-price-adults');
+    const harness = await createHarness(browser, viewport, scenario);
+    try {
+      await openSelectedFailureTour(harness.page);
+      await harness.page.waitForSelector('.flight-variants[data-search3-flight-disclosure]');
+      assert.equal(await harness.page.locator('#selectedTour .flight-variant').count(), 133);
+      const initial = await assertSelectedAmounts(harness.page, 101000, `${width}/initial`);
+      if (width === 375) assert.match(initial.scope, /2 (?:ребёнка|ребенка|детей)/);
+      const visibleCount = () => harness.page.locator('#selectedTour .flight-variant:visible').count();
+      assert.ok(await visibleCount() <= 7, `${width}: flight list must start compact`);
+      await harness.page.locator('.flight-variant[data-flight-index="1"] input').check();
+      await assertSelectedAmounts(harness.page, 113600, `${width}/second-flight`);
+      await harness.page.locator('.search3-flight-show-all').click();
+      assert.equal(await visibleCount(), 133, `${width}: every flight must remain available`);
+      await harness.page.locator('.flight-variant[data-flight-index="132"] input').check();
+      await assertSelectedAmounts(harness.page, 1234567, `${width}/long-total`);
+      await harness.page.locator('.search3-flight-show-all').click();
+      assert.ok(await harness.page.locator('.flight-variant[data-flight-index="132"]').isVisible(), `${width}: collapsing must retain selected flight`);
+      assert.ok(await visibleCount() <= 7, `${width}: collapsed list grew unexpectedly`);
+      await harness.page.locator('#selectedTour .search3-flight-continue button').click();
+      await harness.page.waitForSelector('#selectedTour.search3-final-review');
+      await assertSelectedAmounts(harness.page, 1234567, `${width}/review`);
+      await harness.page.locator('#selectedTour .search3-summary-submit').click();
+      await harness.page.waitForSelector('#selectedTour.search3-lead-entry .lead-form');
+      await assertSelectedAmounts(harness.page, 1234567, `${width}/lead`);
+      await harness.page.locator('#selectedTour .search3-lead-back').click();
+      await harness.page.waitForFunction(() => !document.getElementById('selectedTour').classList.contains('search3-lead-entry'));
+      await assertSelectedAmounts(harness.page, 1234567, `${width}/return`);
+      await assertClean(harness, `${width}/selected-price-consistency`);
+      manifest.presentationChecks.selectedPriceConsistency.push({
+        width, passed: true, prices: [101000, 113600, 1234567], variants: 133,
+        family: width === 375, leadRequests: 0, basePricePreserved: true,
+      });
+    } finally {
+      await harness.context.close();
+    }
+  }
+}
+
 function assertConversionShellPreserved(state) {
   assert.equal(state.tourId, fixture.failureFixtures.selectedTour.id);
   assert.equal(state.selectedVisible, true);
@@ -2048,6 +2146,7 @@ async function runFlightFailureFixtures(browser, manifest) {
       await runResponsiveFilterBoundaries(browser, manifest);
     }
     await runPresentationEvidence(browser, manifest);
+    await runSelectedPriceConsistency(browser, manifest);
     if (visualTier.runRaces) {
       await runPendingStatusRace(browser);
       await runPendingResultsRace(browser);
