@@ -514,6 +514,13 @@ async function geometry(page, width, state) {
     const title = first?.querySelector('.hotel-title') || null;
     const place = first?.querySelector('.hotel-place') || null;
     const factLabel = first?.querySelector('.search3-hotel-facts small') || null;
+    const category = first?.querySelector('.search3-hotel-category') || null;
+    const price = first?.querySelector('.hotel-price') || null;
+    const priceContext = first?.querySelector('.hotel-price-context') || null;
+    const factEntries = [...(first?.querySelectorAll('.search3-hotel-facts>span') || [])].map(node => [
+      (node.querySelector('small')?.textContent || '').trim(),
+      (node.querySelector('b')?.textContent || '').trim(),
+    ]);
     const layout = document.querySelector('.results-layout');
     const rail = document.querySelector('.results-filter-rail');
     const filterReset = rail?.querySelector('.filter-reset-link') || null;
@@ -568,6 +575,12 @@ async function geometry(page, width, state) {
         disclosure: disclosure ? parseFloat(getComputedStyle(disclosure).fontSize) : 0,
         filterOption: filterOption ? parseFloat(getComputedStyle(filterOption).fontSize) : 0,
       },
+      cardCopy: {
+        category: (category?.textContent || '').trim(),
+        facts: Object.fromEntries(factEntries),
+        priceContext: (priceContext?.textContent || '').replace(/\s+/g, ' ').trim(),
+        priceAriaLabel: price?.getAttribute('aria-label') || '',
+      },
       decoratedCount: document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length,
       disclosureCount: document.querySelectorAll('#results .search3-show-tours').length,
       collapsedToursCount: [...document.querySelectorAll('#results .hotel-tours')].filter(node => node.hidden).length,
@@ -610,6 +623,11 @@ async function capture(page, width, state, expectedResultCount, manifest) {
     assert.ok(measured.typography.place >= 12, `${width}/${state}: hotel location is too small`);
     assert.ok(measured.typography.factLabel >= 10, `${width}/${state}: hotel fact label is too small`);
     assert.ok(measured.typography.disclosure >= 14, `${width}/${state}: disclosure label is too small`);
+    assert.equal(measured.cardCopy.category, '5★', `${width}/${state}: hotel category must be visible beside the title`);
+    assert.equal(measured.cardCopy.facts['Вылет'], '12 сент. 2099', `${width}/${state}: departure date must be human-readable`);
+    assert.equal(measured.cardCopy.facts['Питание'], 'Всё включено', `${width}/${state}: meal code/name must be customer-readable`);
+    assert.equal(measured.cardCopy.priceContext, '8 ночей · 2 взрослых Чартерный перелёт · Всё включено', `${width}/${state}: price context must explain the package`);
+    assert.match(measured.cardCopy.priceAriaLabel, /за тур на 2 взрослых$/, `${width}/${state}: total price needs an accessible scope`);
     assert.equal(measured.filterAffordanceCount, 1, `${width}/${state}: expected exactly one visible filter affordance`);
     if (width === 375 && state === 'progressive-25') {
       assert.ok(

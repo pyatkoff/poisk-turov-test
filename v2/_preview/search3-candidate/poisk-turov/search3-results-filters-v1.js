@@ -635,16 +635,107 @@ syncGroups();window.addEventListener('resize',syncGroups);
     return 'туров';
   }
 
+  function plural(count, one, few, many) {
+    var n = Math.abs(Number(count) || 0);
+    var mod10 = n % 10;
+    var mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return one;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+    return many;
+  }
+
+  function formatTourDate(value) {
+    var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').trim());
+    if (!match) return String(value || '').trim();
+    var months = ['янв.', 'февр.', 'марта', 'апр.', 'мая', 'июня', 'июля', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
+    return String(Number(match[3])) + ' ' + months[Number(match[2]) - 1] + ' ' + match[1];
+  }
+
+  function mealLabel(value) {
+    var raw = textValue(value);
+    if (!raw) return '';
+    var key = raw.toUpperCase().replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    var labels = {
+      'RO': 'Без питания',
+      'ROOM ONLY': 'Без питания',
+      'BB': 'Завтраки',
+      'BREAKFAST': 'Завтраки',
+      'HB': 'Завтрак и ужин',
+      'HALF BOARD': 'Завтрак и ужин',
+      'FB': 'Трёхразовое питание',
+      'FULL BOARD': 'Трёхразовое питание',
+      'AI': 'Всё включено',
+      'ALL INCLUSIVE': 'Всё включено',
+      'UAI': 'Ультра всё включено',
+      'ULTRA ALL INCLUSIVE': 'Ультра всё включено'
+    };
+    return labels[key] || raw;
+  }
+
+  function guestLabel() {
+    var form = document.getElementById('tourSearch');
+    var adults = Number(form && form.elements && form.elements.count_people && form.elements.count_people.value || 2) || 2;
+    return adults + ' ' + plural(adults, 'взрослый', 'взрослых', 'взрослых');
+  }
+
   function cardFacts(hotel) {
     var tour = representativeTour(hotel);
     if (!tour) return [];
     var facts = [];
-    if (tour.date) facts.push(['Вылет', String(tour.date)]);
+    if (tour.date) facts.push(['Вылет', formatTourDate(tour.date)]);
     if (tour.nights) facts.push(['Ночей', String(tour.nights)]);
-    var meal = textValue(tour.meal);
+    var meal = mealLabel(tour.meal);
     if (meal) facts.push(['Питание', meal]);
     if (tour.isCharter === true) facts.push(['Рейс', 'Чартер']);
     return facts.slice(0, 4);
+  }
+
+  function decorateDecisionCopy(card, hotel) {
+    var rating = Number(hotel && hotel.rating || 0);
+    var ratingNode = card.querySelector('.hotel-decision-rating');
+    if (ratingNode && rating > 0) {
+      ratingNode.textContent = '★ ' + rating.toLocaleString('ru-RU', { maximumFractionDigits: 1 }) + '/5';
+      ratingNode.setAttribute('aria-label', 'Оценка отеля ' + rating.toLocaleString('ru-RU', { maximumFractionDigits: 1 }) + ' из 5');
+    }
+    var sea = Number(hotel && hotel.seaDistance || 0);
+    var seaNode = card.querySelector('.hotel-decision-sea');
+    if (seaNode && sea > 0) seaNode.textContent = 'До моря ' + new Intl.NumberFormat('ru-RU').format(sea) + ' м';
+  }
+
+  function decorateHeading(bodyNode, hotel) {
+    var title = bodyNode.querySelector('.hotel-title');
+    if (!title || title.parentElement.classList.contains('search3-hotel-heading')) return;
+    var heading = document.createElement('div');
+    heading.className = 'search3-hotel-heading';
+    title.parentNode.insertBefore(heading, title);
+    heading.appendChild(title);
+    var category = Number(hotel && hotel.category || 0);
+    if (category > 0) {
+      var stars = document.createElement('span');
+      stars.className = 'search3-hotel-category';
+      stars.textContent = category + '★';
+      stars.setAttribute('aria-label', 'Категория отеля ' + category + ' звёзд');
+      heading.appendChild(stars);
+    }
+  }
+
+  function decoratePriceContext(bodyNode, hotel) {
+    var tour = representativeTour(hotel);
+    var bestOffer = bodyNode.querySelector('.hotel-best-offer');
+    var label = bestOffer && bestOffer.querySelector(':scope > small:not(.hotel-price-context)');
+    var price = bestOffer && bestOffer.querySelector('.hotel-price');
+    var context = bestOffer && bestOffer.querySelector('.hotel-price-context');
+    if (label) label.textContent = 'За весь тур';
+    if (price) price.setAttribute('aria-label', (price.textContent || '').replace(/\s+/g, ' ').trim() + ', за тур на ' + guestLabel());
+    if (!tour || !context) return;
+    var primary = [];
+    if (tour.nights) primary.push(tour.nights + ' ' + plural(tour.nights, 'ночь', 'ночи', 'ночей'));
+    primary.push(guestLabel());
+    var secondary = [];
+    secondary.push(tour.isCharter === true ? 'Чартерный перелёт' : 'Перелёт включён');
+    var meal = mealLabel(tour.meal);
+    if (meal) secondary.push(meal);
+    context.innerHTML = '<span>' + safe(primary.join(' · ')) + '</span><span>' + safe(secondary.join(' · ')) + '</span>';
   }
 
   function collapseCard(card) {
@@ -672,6 +763,9 @@ syncGroups();window.addEventListener('resize',syncGroups);
     if (!hotel || !bodyNode || !tours) return;
 
     card.dataset.search3ResultsV1 = '1';
+    decorateHeading(bodyNode, hotel);
+    decorateDecisionCopy(card, hotel);
+    decoratePriceContext(bodyNode, hotel);
     var facts = cardFacts(hotel);
     if (facts.length) {
       var factsNode = document.createElement('div');
@@ -791,7 +885,7 @@ syncGroups();window.addEventListener('resize',syncGroups);
   }
 
   window.Search3CandidateResultsV1 = Object.freeze({
-    version: 1,
+    version: 2,
     status: 'REFERENCE_IMPLEMENTATION_IN_PROGRESS',
     approvedPixelsCompared: false,
     decorate: decorate,
