@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "project": "pyatkoff/poisk-turov-test",
+  "status": "REFERENCE_ONLY_REVIEW_LOCKED",
+  "captured_at": "2026-09-04T08:20:50Z",
+  "routes": {
+    "production": "https://anytoour.ru/poisk-turov/",
+    "preview": "https://anytoour.ru/_preview/search3/poisk-turov/"
+  },
+  "source_identity": {
+    "branch": "feature/search3-preview",
+    "branch_head": "6ce565620becaba8e91d50aff13529b5a52aba37",
+    "branch_tree": "232320be541dc08271fb6a32fb997c60970b103e",
+    "implementation_commit": "e5baf32f455cdb0aa1a704964f28e5efbebf57ff",
+    "implementation_tree": "2c88a4e3786cdadc6a0eec2b88fafb1f388ba541",
+    "implementation_relation": "branch_head_is_docs_only_descendant_of_implementation_commit",
+    "source_files": [
+      {
+        "path": ".github/workflows/deploy-search3-preview.yml",
+        "git_blob": "8aa17d782542c51c26ce1cabd961a5d8973204b0",
+        "sha256": "28590e2d840b1a90ca6c0977cb6a92483a24ca367e1fa88395ac9a793db14237"
+      },
+      {
+        "path": "search3-visual-desktop.cjs",
+        "git_blob": "c6a59bfc2cdbceefe571eaf11867725c217f79c9",
+        "sha256": "62adc1b1b3fd10d705d1b48e08052b34cec526523b0e78b9dd6219c5722765cd"
+      },
+      {
+        "path": "search3-visual-tablet.cjs",
+        "git_blob": "73c60cdbd028b08294a8233914633ef867254154",
+        "sha256": "7a497df868509bcc2dd21e00911c0cf191bbcbdf6731112c1b48f8dbe0685cad"
+      },
+      {
+        "path": "search3-visual-mobile.cjs",
+        "git_blob": "1f50930fd94a501fbac90a747852b75fb297323c",
+        "sha256": "f8b4b7c9721662234491fcfde01c43be890865f844127a7e5ac04c39251a21d2"
+      },
+      {
+        "path": "v2/SEARCH3_PREVIEW_TARGET.md",
+        "git_blob": "6bf245cdc9c37395e9bb1e849758c476ad33c786",
+        "sha256": "959e44784ca7541ff353aacd193c0bef68e2f72ed8b22cf4fbc476920f49a325"
+      },
+      {
+        "path": "v2/SEARCH3_WORK_MAP.md",
+        "git_blob": "6e43a1c8f2ab35e5a6a1e290b68de4fa1232659f",
+        "sha256": "1619806950982c3e03066356bb34d613e4d31e54ff3b3926a970de53742ab907"
+      }
+    ]
+  },
+  "design_reference": {
+    "canonical_set_label": "/AnyTour/Search3 Design Final/00_CURRENT_FULL_CYCLE",
+    "archive_label": "99_ARCHIVE_ITERATIONS",
+    "pixels_vendored_in_repository": false,
+    "integrity_status": "IDENTITY_RECORDED_PIXELS_NOT_VENDORED",
+    "rule": "Only the eight layouts below are admissible reference inputs; archive iterations are excluded."
+  },
+  "layouts": [
+    {
+      "id": 1,
+      "name": "Интерфейс поиска туров AnyTour",
+      "states": ["search", "results", "hotel_tours"],
+      "status": "REVIEW",
+      "migration_owner": "production_runtime_plus_selected_search3_patterns"
+    },
+    {
+      "id": 2,
+      "name": "Макет фильтров поиска туров AnyTour",
+      "states": ["filters", "sorting", "sub_screens", "reset", "apply", "cancel"],
+      "status": "REVIEW",
+      "migration_owner": "search3_pattern_candidate"
+    },
+    {
+      "id": 3,
+      "name": "Выбор рейсов AnyTour",
+      "states": ["outbound", "inbound", "baggage", "price_delta", "total", "continue"],
+      "status": "REVIEW",
+      "migration_owner": "search3_pattern_candidate_preserving_atomic_tourvisor_variant"
+    },
+    {
+      "id": 4,
+      "name": "Итог тура AnyTour",
+      "states": ["hotel", "room", "flights", "services", "tourists", "total", "submit"],
+      "status": "REVIEW",
+      "migration_owner": "search3_pattern_candidate"
+    },
+    {
+      "id": 5,
+      "name": "Страница бронирования тура AnyTour",
+      "states": ["selected_hotel", "room_meal", "flights", "composition", "total"],
+      "status": "REVIEW",
+      "migration_owner": "search3_pattern_candidate"
+    },
+    {
+      "id": 6,
+      "name": "UI-кит заявки на тур AnyTour",
+      "states": ["entry", "sending", "success", "error", "max", "telegram"],
+      "status": "REVIEW",
+      "migration_owner": "visual_states_only_external_lead_contract_stays_canonical"
+    },
+    {
+      "id": 7,
+      "name": "Спецификация футера AnyTour",
+      "states": ["navigation", "support", "social", "apps", "trust", "legal"],
+      "status": "REVIEW",
+      "migration_owner": "shared_ds2_footer_is_canonical_search3_is_visual_reference_only"
+    },
+    {
+      "id": 8,
+      "name": "Цельный mobile flow AnyTour",
+      "states": ["search", "results", "hotel", "tour", "flight", "total", "lead", "messenger"],
+      "status": "REVIEW",
+      "migration_owner": "acceptance_journey_not_runtime_source"
+    }
+  ],
+  "run_467": {
+    "workflow": "Deploy Search 3 preview",
+    "workflow_file": ".github/workflows/deploy-search3-preview.yml",
+    "run_number": 467,
+    "implementation_commit": "e5baf32f455cdb0aa1a704964f28e5efbebf57ff",
+    "attestation_source": "https://github.com/pyatkoff/poisk-turov-test/pull/1293",
+    "conclusion": "SUCCESS",
+    "jobs": ["deploy-preview", "visual-qa desktop", "visual-qa tablet", "visual-qa mobile"],
+    "artifact_retention_days": 30,
+    "artifact_ids_recorded": false,
+    "artifact_bytes_vendored": false,
+    "evidence_level": "SOURCE_AND_MERGED_ATTESTATION_WITHOUT_DURABLE_PIXELS",
+    "viewports": [
+      {
+        "mode": "desktop",
+        "width": 1440,
+        "height": 1000,
+        "states": ["d00-footer", "01-search", "02-results", "03-expanded-hotel", "04-tour-details", "05-flights", "06-final-review", "07-lead-entry", "08-lead-sending", "09-lead-success", "10-lead-error"]
+      },
+      {
+        "mode": "tablet",
+        "width": 834,
+        "height": 1112,
+        "states": ["t00-footer", "t01-search", "t02-results", "t02a-filters-open", "t02b-filter-subpanel", "t03-tour-details", "t04-flights", "t05-final-review", "t06-lead-entry", "t07-lead-sending", "t08-lead-success", "t09-lead-error"]
+      },
+      {
+        "mode": "mobile",
+        "width": 390,
+        "height": 844,
+        "states": ["m00-footer", "m01-search", "m02-results", "m02a-filters-open", "m02b-filter-subpanel", "m03-tour-details", "m04-flights", "m05-final-review", "m06-lead-entry", "m07-lead-sending", "m08-lead-success", "m09-lead-error"]
+      }
+    ]
+  },
+  "live_observation": {
+    "observed_at": "2026-09-04T08:20:50Z",
+    "method": "read_only_cloud_browser_dom_and_viewport_inspection",
+    "preview": {
+      "reachable": true,
+      "canonical": "https://anytoour.ru/_preview/search3/poisk-turov/",
+      "robots_meta": "noindex,follow,max-image-preview:large",
+      "body_class": "search3-preview",
+      "search3_asset_version_prefix": "e5baf32f455c",
+      "horizontal_overflow_observed": false,
+      "h1_count": 2,
+      "zero_area_h1_count": 1,
+      "visible_h1": "Поиск туров"
+    },
+    "production": {
+      "reachable": true,
+      "canonical": "https://anytoour.ru/poisk-turov/",
+      "robots_meta": "noindex,follow,max-image-preview:large",
+      "search3_asset_count": 0,
+      "h1_count": 1,
+      "visible_h1": "Поиск тура, который действительно подходит вам"
+    }
+  },
+  "ownership": [
+    {
+      "area": "public_routes_and_canonical_urls",
+      "canonical_owner": "main",
+      "search3_use": "REJECT_RUNTIME_COPY",
+      "reason": "Existing routes are protected."
+    },
+    {
+      "area": "initial_search_and_shared_ds2_shell",
+      "canonical_owner": "main",
+      "search3_use": "REVIEW_PATTERNS_ONLY",
+      "reason": "The live Search3 entry screen is visually behind the current production DS2 entry screen."
+    },
+    {
+      "area": "tourvisor_search_and_progressive_loading",
+      "canonical_owner": "main",
+      "search3_use": "REJECT_RUNTIME_COPY",
+      "reason": "Tourvisor semantics, progressive loading and stale-response guards are protected."
+    },
+    {
+      "area": "results_filters_cards_selected_tour_flights_review",
+      "canonical_owner": "main",
+      "search3_use": "ADOPT_VALIDATED_VISUAL_PATTERNS",
+      "reason": "These are the useful downstream donor states, migrated one isolated slice at a time."
+    },
+    {
+      "area": "lead_ui_states",
+      "canonical_owner": "main",
+      "search3_use": "ADOPT_VISUAL_STATES_ONLY",
+      "reason": "Preview states are simulated and the preview adapter returns 403; transport and mapping stay canonical."
+    },
+    {
+      "area": "analytics_metrika",
+      "canonical_owner": "main",
+      "search3_use": "REJECT_RUNTIME_COPY",
+      "reason": "Configuration, goals and event contract are protected."
+    },
+    {
+      "area": "shared_footer",
+      "canonical_owner": "main_shared_ds2_footer",
+      "search3_use": "REVIEW_COMPOSITION_ONLY",
+      "reason": "Search3 may inform composition but must not fork the shared footer implementation."
+    },
+    {
+      "area": "preview_deploy_and_state_simulator",
+      "canonical_owner": "preview_only",
+      "search3_use": "REJECT_PRODUCTION_IMPORT",
+      "reason": "Deployment overlay, disabled lead endpoint and simulated lifecycle are evidence infrastructure only."
+    }
+  ],
+  "protected_contracts": [
+    {"name": "public_urls_and_routes", "change_allowed": false},
+    {"name": "tourvisor_external_contract", "change_allowed": false},
+    {"name": "lead_payload_field_mapping_delivery", "change_allowed": false},
+    {"name": "yandex_metrika_configuration_goals_events", "change_allowed": false},
+    {"name": "pricing_semantics", "change_allowed": false},
+    {"name": "progressive_loading_and_stale_state_guards", "change_allowed": false}
+  ],
+  "visual_diff_backlog": [
+    {
+      "id": "S3-REF-001",
+      "severity": "P1_REVIEW_BLOCKER",
+      "status": "OPEN",
+      "layouts": [1, 8],
+      "finding": "Search3 initial entry is visually older than the current production DS2 entry; choose ownership before migrating layout 1."
+    },
+    {
+      "id": "S3-REF-002",
+      "severity": "P1_REVIEW_BLOCKER",
+      "status": "OPEN",
+      "layouts": [1],
+      "finding": "Live Search3 preview exposes two h1 elements; one has zero rendered area while the visible heading says 'Поиск туров'."
+    },
+    {
+      "id": "S3-REF-003",
+      "severity": "P1_REVIEW_BLOCKER",
+      "status": "OPEN",
+      "layouts": [1, 2, 4, 5, 7, 8],
+      "finding": "Direct screenshot-by-screenshot comparison against the six remaining approved layouts is not closed."
+    },
+    {
+      "id": "S3-REF-004",
+      "severity": "P1_EVIDENCE",
+      "status": "OPEN",
+      "layouts": [1, 2, 3, 4, 5, 6, 7, 8],
+      "finding": "Run 467 artifacts retained for 30 days were not identified by immutable artifact IDs and their pixels are not vendored."
+    },
+    {
+      "id": "S3-REF-005",
+      "severity": "P1_COVERAGE",
+      "status": "OPEN",
+      "layouts": [1, 2, 4, 5, 7, 8],
+      "finding": "Run 467 uses 390/834/1440 only; canonical responsive widths 375/430/768/1024/1440 are not all represented."
+    },
+    {
+      "id": "S3-REF-006",
+      "severity": "P1_CORRECTNESS",
+      "status": "OPEN",
+      "layouts": [4, 6, 8],
+      "finding": "Visual lead states are simulated and do not prove the protected transport, payload or field mapping."
+    },
+    {
+      "id": "S3-REF-007",
+      "severity": "P1_CORRECTNESS",
+      "status": "OPEN",
+      "layouts": [3, 4, 5, 8],
+      "finding": "Live-search happy-path QA is non-deterministic and does not freeze empty-flight, Tourvisor error or timeout reference states."
+    }
+  ],
+  "release_lock": {
+    "visual_owner_approval": "LOCKED",
+    "merge_to_main": "NOT_AUTHORIZED_BY_THIS_DOSSIER",
+    "production_deploy": "LOCKED",
+    "unlock_condition": "All P0/P1 reference blockers closed, protected contract checks green, owner explicitly approves production."
+  },
+  "next_stage": "search3/contract-boundaries"
+}
