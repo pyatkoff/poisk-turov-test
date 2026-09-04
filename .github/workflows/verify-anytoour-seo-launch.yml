@@ -64,9 +64,9 @@ jobs:
           expected={x.strip() for x in open('/tmp/expected-sitemap.txt',encoding='utf-8') if x.strip()}
           actual={n.text.strip() for n in ET.parse('v2/sitemap.xml').getroot().iter() if n.tag.endswith('loc') and n.text}
           assert actual == expected, (len(actual),len(expected),sorted(actual^expected)[:20])
-          assert len(actual)==104
+          assert len(actual)==106
           assert not any('/hotel/' in u or '/poisk-turov/' in u for u in actual)
-          print('ANYTOOUR_PREDEPLOY_SEO_CONTRACT_OK static_paths=104 dynamic_resorts=manifest_gated hotel_tours=0')
+          print('ANYTOOUR_PREDEPLOY_SEO_CONTRACT_OK static_paths=106 hubs=2 catalog_paths=104 dynamic_resorts=manifest_gated hotel_tours=0')
           PY
 
   production-seo:
@@ -106,7 +106,7 @@ jobs:
           for key,g in groups.items():
               assert g['base'] and len(g['months'])==12, (key,g)
           assert len(extras)==13*len(groups)
-          print(f'ANYTOOUR_SEO_SITEMAP_OK paths={len(actual)} static=104 generated_resorts={len(groups)} generated_routes={len(extras)}')
+          print(f'ANYTOOUR_SEO_SITEMAP_OK paths={len(actual)} static=106 generated_resorts={len(groups)} generated_routes={len(extras)}')
           with open('/tmp/generated-samples.txt','w',encoding='utf-8') as f:
               for url in extras:
                   if base_re.match(url): f.write(url.removeprefix('https://anytoour.ru')+'\n'); break
@@ -115,6 +115,8 @@ jobs:
           PY
 
           samples=(
+            '/'
+            '/country/'
             '/country/turkey/'
             '/country/egypt/'
             '/country/maldives/'
@@ -139,4 +141,4 @@ jobs:
           test "$code" = '200'
           grep -Eq '<meta name="robots" content="noindex,follow[^\"]*"' /tmp/hotel-review.html
           if grep -Fq "${base}${protected}" /tmp/sitemap.xml; then echo 'HOTEL_TOUR_SITEMAP_LEAK' >&2; exit 1; fi
-          echo "ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK static=104 generated_samples=${#samples[@]} hotel_tours_indexed=0"
+          echo "ANYTOOUR_CONTROLLED_SEO_LAUNCH_OK static=106 hubs=2 catalog_paths=104 generated_samples=${#samples[@]} hotel_tours_indexed=0"
