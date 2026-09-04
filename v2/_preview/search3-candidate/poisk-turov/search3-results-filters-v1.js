@@ -1039,7 +1039,6 @@ syncGroups();window.addEventListener('resize',syncGroups);
         if (attempts < 6) window.requestAnimationFrame(settle);
         return;
       }
-      if (active && active !== selected && selected.contains(active) && active !== heading) return;
       if (active !== heading) focusSelectedHeading();
       if (attempts < 6) window.requestAnimationFrame(settle);
     }
@@ -1057,6 +1056,12 @@ syncGroups();window.addEventListener('resize',syncGroups);
     attributes: true,
     attributeFilter: ['disabled']
   });
+
+  function cancelPendingFocus(event) {
+    if (event.target && selected.contains(event.target)) selectedFocusRun += 1;
+  }
+  selected.addEventListener('pointerdown', cancelPendingFocus, true);
+  selected.addEventListener('keydown', cancelPendingFocus, true);
 
   window.addEventListener('v2:tour-selected', function () {
     selected.setAttribute('aria-busy', 'false');
