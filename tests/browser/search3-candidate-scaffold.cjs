@@ -2180,6 +2180,21 @@ async function runFlightFailureFixtures(browser, manifest) {
   manifest.environment.browserVersion = browser.version();
   try {
     await runFiveWidthEvidence(browser, manifest);
+    for (const width of [1920, 2048]) {
+      const wide = await createHarness(browser, {width, height:1100}, scenarioController('progressive'));
+      try {
+        await setSearchValues(wide.page);
+        const positions = await wide.page.evaluate(() => {
+          const grid=document.querySelector('#tourSearch .search3-primary-grid');
+          return [...grid.children].filter(el=>getComputedStyle(el).display!=='none').map(el=>({x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().bottom,right:el.getBoundingClientRect().right}));
+        });
+        assert.equal(positions.length,7);
+        assert.ok(Math.max(...positions.map(p=>p.y))-Math.min(...positions.map(p=>p.y))<=3, `${width}: primary button must share the field row`);
+        assert.ok(positions.every(p=>p.x>=0&&p.right<=width), `${width}: primary fields overflow`);
+        await wide.page.screenshot({path:path.join(outputDir,`${width}-entry-wide.jpg`),type:'jpeg'});
+      } finally { await wide.context.close(); }
+    }
+
     if (visualTier.runResponsiveBoundaries) {
       await runResponsiveFilterBoundaries(browser, manifest);
     }
