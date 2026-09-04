@@ -5,7 +5,7 @@ $c=sp_context('/hot/','Горящие туры — AnyTour','Горящие ту
 $hotFrom=(new DateTimeImmutable('tomorrow'))->format('Y-m-d');
 $hotTo=(new DateTimeImmutable('tomorrow +14 days'))->format('Y-m-d');
 $hotBase=['dateFrom'=>$hotFrom,'dateTo'=>$hotTo];
-$hotSearch='/poisk-turov/?'.http_build_query($hotBase);
+$hotSearch=v2_site_href('/poisk-turov/?'.http_build_query($hotBase));
 $hotScenarios=[
   ['title'=>'На неделю','note'=>'7 ночей · ближайшие две недели','days'=>7],
   ['title'=>'На 10 ночей','note'=>'Чуть больше времени на отдых','days'=>10],
@@ -24,7 +24,7 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
 <main class="sp-main">
 <section class="sp-card sp-search-callout">
   <h2>Проверить ближайшие вылеты</h2><p>Выберите город вылета и страну. Даты на ближайшие две недели уже заданы — их можно изменить в поиске.</p>
-  <div class="sp-actions"><a class="sp-primary" href="<?=sp_e($hotSearch)?>">Искать на ближайшие даты</a><a class="sp-secondary" href="/contacts/">Помощь менеджера</a></div>
+  <div class="sp-actions"><a class="sp-primary" href="<?=sp_e($hotSearch)?>">Искать на ближайшие даты</a><a class="sp-secondary" href="<?=sp_e(v2_site_href('/contacts/'))?>">Помощь менеджера</a></div>
 </section>
 <?php if($hotOffers): ?>
 <section aria-labelledby="hot-live-title" class="sp-hot-live-section">
@@ -32,7 +32,7 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
   <div class="sp-grid sp-grid--balanced-three">
     <?php foreach($hotOffers as $offer):
       $date=(string)$offer['departure_date'];$nights=(int)$offer['nights'];
-      $href='/poisk-turov/?'.http_build_query(['from'=>(int)$offer['departure_id'],'country'=>(int)$offer['country_id'],'dateFrom'=>$date,'dateTo'=>$date,'daysFrom'=>$nights,'daysTill'=>$nights,'count_people'=>2]);
+      $href=v2_site_href('/poisk-turov/?'.http_build_query(['from'=>(int)$offer['departure_id'],'country'=>(int)$offer['country_id'],'dateFrom'=>$date,'dateTo'=>$date,'daysFrom'=>$nights,'daysTill'=>$nights,'count_people'=>2]));
       $where=array_values(array_filter([(string)($offer['country_name']??''),(string)($offer['region_name']??'')]));
       $departure=trim((string)($offer['departure_name']??''));
       $category=max(0,(int)($offer['hotel_category']??0));
@@ -52,7 +52,7 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
 <section>
   <div class="sp-section-head"><h2>Быстрый старт по длительности</h2><p>Выберите привычный формат отдыха — откроем общий поиск на ближайшие даты с уже заданным количеством ночей.</p></div>
   <div class="sp-grid sp-grid--balanced-three">
-    <?php foreach($hotScenarios as $scenario): $href='/poisk-turov/?'.http_build_query($hotBase+['daysFrom'=>$scenario['days'],'daysTill'=>$scenario['days']]); ?>
+    <?php foreach($hotScenarios as $scenario): $href=v2_site_href('/poisk-turov/?'.http_build_query($hotBase+['daysFrom'=>$scenario['days'],'daysTill'=>$scenario['days']])); ?>
       <a class="sp-country" href="<?=sp_e($href)?>"><strong><?=sp_e($scenario['title'])?></strong><small><?=sp_e($scenario['note'])?></small></a>
     <?php endforeach; ?>
   </div>
