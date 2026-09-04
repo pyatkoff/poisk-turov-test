@@ -25,6 +25,11 @@ if SPEC is None or SPEC.loader is None:
 builder = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(builder)
 
+FROZEN_COMPATIBILITY_ASSET_SHA256 = {
+    "search3-results-filters-v1.css": "2917a04a921fd00d95d9a23ed6db197f7e1aa5c6900b71da29a29ee136e89611",
+    "search3-results-filters-v1.js": "ea7395657ae095c204a2b90f35447c35f39b53de5449663915113309c8c6d5f2",
+}
+
 
 def git(repo: Path, *arguments: str, text: bool = True) -> str | bytes:
     output = subprocess.check_output(
@@ -104,7 +109,8 @@ class Search3CandidateArtifactTest(unittest.TestCase):
             "presentationAssets": assets,
             "screenshots": [{"file": f"lifecycle-{index}.png"} for index in range(15)],
             "presentationScreenshots": [
-                {"file": f"presentation-{index}.png"} for index in range(3)
+                {"file": f"presentation-{index}.png"}
+                for index in range(6)
             ],
             "behaviorStates": [
                 {"name": name, "passed": True}
@@ -200,7 +206,14 @@ class Search3CandidateArtifactTest(unittest.TestCase):
         self.assertEqual(summary["candidate_sha"], self.candidate_sha)
         self.assertEqual(summary["repository_tree_sha"], self.tree_sha)
         self.assertEqual(summary["candidate_subtree_sha"], self.subtree_sha)
-        self.assertEqual(summary["file_count"], 3)
+        self.assertEqual(summary["file_count"], 9)
+
+    def test_compatibility_base_assets_are_frozen(self) -> None:
+        for filename, expected_sha256 in FROZEN_COMPATIBILITY_ASSET_SHA256.items():
+            source_path = f"{builder.SOURCE_ROOT}/{filename}"
+            data = git(self.repo, "show", f"{self.candidate_sha}:{source_path}", text=False)
+            self.assertIsInstance(data, bytes)
+            self.assertEqual(builder.sha256_bytes(data), expected_sha256, filename)
 
     def test_cli_build_and_verify(self) -> None:
         output = self.root / "cli-output"
@@ -298,7 +311,7 @@ class Search3CandidateArtifactTest(unittest.TestCase):
 
     def test_dirty_worktree_is_rejected(self) -> None:
         dirty = self.clone_fixture("dirty")
-        path = dirty / builder.SOURCE_ROOT / "search3-results-filters-v1.css"
+        path = dirty / builder.SOURCE_ROOT / "search3-entry-v1.css"
         path.write_bytes(path.read_bytes() + b"\n/* dirty */\n")
         with self.assertRaisesRegex(builder.CandidateArtifactError, "worktree is dirty"):
             builder.build_release(
@@ -364,9 +377,9 @@ class Search3CandidateArtifactTest(unittest.TestCase):
 
     def test_symlink_and_submodule_sources_are_rejected(self) -> None:
         symlink_repo = self.clone_fixture("symlink")
-        css = symlink_repo / builder.SOURCE_ROOT / "search3-results-filters-v1.css"
+        css = symlink_repo / builder.SOURCE_ROOT / "search3-entry-v1.css"
         css.unlink()
-        css.symlink_to("search3-results-filters-v1.js")
+        css.symlink_to("search3-entry-v1.js")
         subprocess.run(["git", "-C", str(symlink_repo), "add", "-A"], check=True)
         subprocess.run(["git", "-C", str(symlink_repo), "commit", "-qm", "symlink"], check=True)
         symlink_sha = str(git(symlink_repo, "rev-parse", "HEAD"))
@@ -398,7 +411,7 @@ class Search3CandidateArtifactTest(unittest.TestCase):
         subprocess.run(["git", "-C", str(extra_repo), "add", str(extra)], check=True)
         subprocess.run(["git", "-C", str(extra_repo), "commit", "-qm", "extra"], check=True)
         extra_sha = str(git(extra_repo, "rev-parse", "HEAD"))
-        with self.assertRaisesRegex(builder.CandidateArtifactError, "three-file allowlist"):
+        with self.assertRaisesRegex(builder.CandidateArtifactError, "exact source allowlist"):
             builder.candidate_entries(extra_repo, extra_sha)
 
     def test_source_tested_sha_and_asset_evidence_must_match_git(self) -> None:
@@ -415,7 +428,7 @@ class Search3CandidateArtifactTest(unittest.TestCase):
             )
 
         wrong_tier = self.root / "wrong-tier.json"
-        self.write_evidence(wrong_tier, visualTier="pr")
+        self.write_evidence(wrong_tier, visualTier="smoke")
         with self.assertRaisesRegex(builder.CandidateArtifactError, "visualTier"):
             builder.build_release(
                 self.repo,
@@ -442,7 +455,7 @@ class Search3CandidateArtifactTest(unittest.TestCase):
         self.write_evidence(
             wrong_presentation_type, presentationScreenshots="abc"
         )
-        with self.assertRaisesRegex(builder.CandidateArtifactError, "3 presentation"):
+        with self.assertRaisesRegex(builder.CandidateArtifactError, "6 presentation"):
             builder.build_release(
                 self.repo,
                 self.candidate_sha,
@@ -450,6 +463,23 @@ class Search3CandidateArtifactTest(unittest.TestCase):
                 self.artifact_id,
                 self.artifact_digest,
                 self.root / "wrong-presentation-type-output",
+            )
+
+        stale_presentation_count = self.root / "stale-presentation-count.json"
+        self.write_evidence(
+            stale_presentation_count,
+            presentationScreenshots=[
+                {"file": f"presentation-{index}.png"} for index in range(3)
+            ],
+        )
+        with self.assertRaisesRegex(builder.CandidateArtifactError, "6 presentation"):
+            builder.build_release(
+                self.repo,
+                self.candidate_sha,
+                stale_presentation_count,
+                self.artifact_id,
+                self.artifact_digest,
+                self.root / "stale-presentation-count-output",
             )
 
         wrong_tested = self.root / "wrong-tested.json"
@@ -512,7 +542,7 @@ class Search3CandidateArtifactTest(unittest.TestCase):
         shutil.copytree(self.first, forged)
         files = builder.read_archive(forged / builder.ARCHIVE_NAME)
         manifest = json.loads(files["control/manifest.json"][0])
-        target = "poisk-turov/search3-results-filters-v1.css"
+        target = "poisk-turov/search3-results-cards-v2.css"
         member = f"payload/{target}"
         forged_data = files[member][0] + b"\n/* forged outside Git */\n"
         files[member] = (forged_data, files[member][1])

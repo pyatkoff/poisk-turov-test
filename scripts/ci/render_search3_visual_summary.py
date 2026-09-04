@@ -30,7 +30,7 @@ def render(manifest_path: Path, output_dir: Path) -> tuple[Path, Path]:
     if manifest.get("schemaVersion") != 2:
         raise ValueError("Search3 visual manifest schemaVersion must be 2")
     tier = str(manifest.get("visualTier", ""))
-    if tier not in {"pr", "candidate"}:
+    if tier not in {"smoke", "candidate"}:
         raise ValueError(f"unsupported visual tier: {tier!r}")
     source_sha = str(manifest.get("sourceSha", ""))
     tested_sha = str(manifest.get("testedSha", ""))

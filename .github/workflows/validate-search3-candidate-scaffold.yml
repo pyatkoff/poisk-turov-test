@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'v2/**'
+      - 'v2/_preview/search3-candidate/poisk-turov/**'
       - 'tests/fixtures/search3-candidate-scaffold.json'
       - 'tests/browser/search3-candidate-scaffold.cjs'
       - 'tests/contracts/search3-boundaries.fixture.json'
@@ -13,30 +13,15 @@ on:
       - 'docs/project/search3-reference-dossier.json'
       - 'docs/project/search3-approved-mockups.json'
       - 'docs/project/SEARCH3_REFERENCE_DOSSIER.md'
+      - 'docs/project/SEARCH3_VISUAL_REVIEW_LOOP.md'
       - 'scripts/ci/validate_search3_reference_dossier.py'
       - 'scripts/ci/validate_search3_approved_mockups.py'
       - 'scripts/ci/render_search3_visual_summary.py'
+      - 'scripts/release/build_search3_candidate_preview.py'
+      - 'tests/search3_candidate_asset_seams_test.py'
       - 'tests/search3_reference_dossier_test.py'
       - 'tests/search3_approved_mockups_test.py'
-      - 'tests/search3_visual_summary_test.py'
-      - '.github/workflows/validate-search3-candidate-scaffold.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'v2/**'
-      - 'tests/fixtures/search3-candidate-scaffold.json'
-      - 'tests/browser/search3-candidate-scaffold.cjs'
-      - 'tests/contracts/search3-boundaries.fixture.json'
-      - 'tests/contracts/search3-boundaries.test.cjs'
-      - 'diagnostics/search_results_recovery_test.cjs'
-      - 'docs/project/search3-reference-dossier.json'
-      - 'docs/project/search3-approved-mockups.json'
-      - 'docs/project/SEARCH3_REFERENCE_DOSSIER.md'
-      - 'scripts/ci/validate_search3_reference_dossier.py'
-      - 'scripts/ci/validate_search3_approved_mockups.py'
-      - 'scripts/ci/render_search3_visual_summary.py'
-      - 'tests/search3_reference_dossier_test.py'
-      - 'tests/search3_approved_mockups_test.py'
+      - 'tests/search3_candidate_release_artifact_test.py'
       - 'tests/search3_visual_summary_test.py'
       - '.github/workflows/validate-search3-candidate-scaffold.yml'
   workflow_dispatch:
@@ -44,10 +29,10 @@ on:
       visual_tier:
         description: Browser evidence tier
         required: true
-        default: candidate
+        default: smoke
         type: choice
         options:
-          - pr
+          - smoke
           - candidate
 
 permissions:
@@ -81,16 +66,31 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/_preview/search3-candidate/poisk-turov/index.php
-          test -s v2/_preview/search3-candidate/poisk-turov/search3-results-filters-v1.css
-          node --check v2/_preview/search3-candidate/poisk-turov/search3-results-filters-v1.js
+          for file in \
+            search3-results-filters-v1.css \
+            search3-entry-v1.css \
+            search3-results-cards-v2.css \
+            search3-selected-flow-v2.css; do
+            test -s "v2/_preview/search3-candidate/poisk-turov/$file"
+          done
+          for file in \
+            search3-results-filters-v1.js \
+            search3-entry-v1.js \
+            search3-results-cards-v2.js \
+            search3-selected-flow-v2.js; do
+            node --check "v2/_preview/search3-candidate/poisk-turov/$file"
+          done
           node --check tests/browser/search3-candidate-scaffold.cjs
-          node -e "const f=require('./tests/fixtures/search3-candidate-scaffold.json'); if(f.schemaVersion!==2||Object.keys(f.visualTiers).join(',')!=='pr,candidate'||f.viewports.map(v=>v.width).join(',')!=='375,430,768,1024,1440') process.exit(1)"
+          node -e "const f=require('./tests/fixtures/search3-candidate-scaffold.json'); if(f.schemaVersion!==2||Object.keys(f.visualTiers).join(',')!=='smoke,candidate'||f.viewports.map(v=>v.width).join(',')!=='375,430,768,1024,1440') process.exit(1)"
           node tests/contracts/search3-boundaries.test.cjs
           node diagnostics/search_results_recovery_test.cjs
+          python3 -B tests/search3_candidate_asset_seams_test.py
+          python3 -B tests/search3_candidate_release_artifact_test.py
           python3 -B scripts/ci/validate_search3_reference_dossier.py
           python3 -B scripts/ci/validate_search3_approved_mockups.py
           python3 -B tests/search3_reference_dossier_test.py
           python3 -B -m unittest tests.search3_approved_mockups_test
+          python3 -B -m unittest tests.search3_candidate_release_artifact_test
           python3 -B tests/search3_visual_summary_test.py
 
       - name: Validate production activation layout
@@ -122,7 +122,29 @@ jobs:
           test "$ready" -eq 1
           grep -Eiq '^X-Robots-Tag: noindex, *follow' "$RUNNER_TEMP/search3-production-layout.headers"
           grep -Fq 'body class="search3-candidate"' "$RUNNER_TEMP/search3-production-layout.html"
-          grep -Fq 'search3-results-filters-v1-style' "$RUNNER_TEMP/search3-production-layout.html"
+          python3 - <<'PY'
+          from pathlib import Path
+          html = Path("${{ runner.temp }}/search3-production-layout.html").read_text(encoding="utf-8")
+          for suffix, names in {
+              "style": (
+                  "search3-results-filters-v1",
+                  "search3-entry-v1",
+                  "search3-results-cards-v2",
+                  "search3-selected-flow-v2",
+              ),
+              "script": (
+                  "search3-results-filters-v1",
+                  "search3-entry-v1",
+                  "search3-results-cards-v2",
+                  "search3-selected-flow-v2",
+              ),
+          }.items():
+              markers = [f'id="{name}-{suffix}"' for name in names]
+              positions = [html.index(marker) for marker in markers]
+              assert positions == sorted(positions), (suffix, positions)
+              assert all(html.count(marker) == 1 for marker in markers), (suffix, markers)
+          print("SEARCH3_OVERLAY_ASSET_ORDER_OK")
+          PY
           grep -Fq 'leadApi:"/_preview/search3-candidate/poisk-turov/?lead=disabled"' "$RUNNER_TEMP/search3-production-layout.html"
           grep -Fq 'metrikaCounter:0' "$RUNNER_TEMP/search3-production-layout.html"
           if grep -Fq 'PRODUCTION_HOME_SELECTED' "$RUNNER_TEMP/search3-production-layout.html"; then exit 15; fi
@@ -135,7 +157,8 @@ jobs:
           echo "SEARCH3_PRODUCTION_LAYOUT_OK"
 
   browser:
-    name: Search3 browser (${{ github.event_name == 'workflow_dispatch' && inputs.visual_tier || github.event.pull_request.head.ref == 'search3-zip-visual-implementation' && 'candidate' || 'pr' }})
+    name: Search3 browser (${{ github.event_name == 'workflow_dispatch' && inputs.visual_tier || startsWith(github.head_ref, 'visual/search3-candidate-') && 'candidate' || 'smoke' }})
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && (startsWith(github.head_ref, 'visual/search3-smoke-') || startsWith(github.head_ref, 'visual/search3-candidate-'))) }}
     needs: fast
     outputs:
       evidence_artifact_id: ${{ steps.evidence.outputs.artifact-id }}
@@ -143,7 +166,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      SEARCH3_VISUAL_TIER: ${{ github.event_name == 'workflow_dispatch' && inputs.visual_tier || github.event.pull_request.head.ref == 'search3-zip-visual-implementation' && 'candidate' || 'pr' }}
+      SEARCH3_VISUAL_TIER: ${{ github.event_name == 'workflow_dispatch' && inputs.visual_tier || startsWith(github.head_ref, 'visual/search3-candidate-') && 'candidate' || 'smoke' }}
       SEARCH3_EXACT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
@@ -188,7 +211,7 @@ jobs:
           manifest=json.loads(Path('search3-candidate-artifacts/manifest.json').read_text(encoding='utf-8'))
           assert manifest['schemaVersion'] == 2
           assert manifest['visualTier'] == os.environ['SEARCH3_VISUAL_TIER']
-          expected={'pr':15,'candidate':21}[manifest['visualTier']]
+          expected={'smoke':12,'candidate':21}[manifest['visualTier']]
           actual=len(list(Path('search3-candidate-artifacts').glob('*.png')))
           assert actual == expected, (actual, expected)
           print(f"SEARCH3_VISUAL_TIER_OK tier={manifest['visualTier']} screenshots={actual}")
@@ -210,7 +233,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: search3-${{ env.SEARCH3_VISUAL_TIER }}-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: search3-${{ env.SEARCH3_VISUAL_TIER }}-${{ env.SEARCH3_EXACT_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: search3-candidate-artifacts/
           if-no-files-found: warn
           retention-days: 30
@@ -219,7 +242,7 @@ jobs:
   release:
     name: Build exact Search3 preview artifact
     needs: browser
-    if: ${{ needs.browser.result == 'success' && (github.event_name == 'workflow_dispatch' && inputs.visual_tier == 'candidate' || github.event.pull_request.head.ref == 'search3-zip-visual-implementation') }}
+    if: ${{ needs.browser.result == 'success' && ((github.event_name == 'workflow_dispatch' && inputs.visual_tier == 'candidate') || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'visual/search3-candidate-'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
