@@ -34,7 +34,7 @@ html body.search3-candidate #resultsSearchSummary .search3-entry-summary-detail{
   }
 }
 
-@media(max-width:760px){
+@media(max-width:999px){
   html body.search3-candidate.search3-results-active #status.status:has(.search-progress-done){
     width:calc(100% - 24px)!important;
     min-height:30px!important;
@@ -181,3 +181,20 @@ html body.search3-candidate #resultsSearchSummary .search3-entry-summary-detail{
     max-width:100%!important;
   }
 }
+
+/* Common shell boundaries and verified search benefits. */
+html body.search3-candidate .search3-footer-benefits{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+html body.search3-candidate .search3-footer-apps{grid-column:1/-1!important}
+@media(max-width:999px){
+ html body.search3-candidate.search3-results-active .search3-mobile-toolbar{display:grid!important}
+ html body.search3-candidate .search3-mobile-sort{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;min-height:44px!important;border:1px solid #d7deeb!important;border-radius:8px!important;background:#fff!important;color:#14213d!important;font-size:13px!important}
+ html body.search3-candidate .search3-mobile-sort select{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;opacity:0!important;cursor:pointer!important}
+ html body.search3-candidate .search3-footer-benefits{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+/* Real form controls receive the tap directly, including on mobile Safari. */
+html body.search3-candidate #tourSearch :is(.search3-dates,.search3-nights) .search3-composite__control{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;align-items:center!important;gap:5px!important;height:auto!important;min-height:46px!important;padding:0 4px!important;overflow:visible!important}
+html body.search3-candidate #tourSearch .search3-direct-control{position:static!important;display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;height:44px!important;min-height:44px!important;padding:0 4px!important;border:0!important;background:transparent!important;opacity:1!important;pointer-events:auto!important;font-size:16px!important;box-sizing:border-box!important}
+html body.search3-candidate #tourSearch .search3-direct-control:focus{outline:2px solid #2743cb!important;outline-offset:-2px!important}
+html body.search3-candidate #tourSearch .search3-direct-control::-webkit-date-and-time-value{text-align:center}
+html body.search3-candidate #tourSearch .search3-nights .search3-direct-control{text-align:center!important}

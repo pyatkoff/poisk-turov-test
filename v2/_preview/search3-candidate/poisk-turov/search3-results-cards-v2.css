@@ -130,3 +130,10 @@ html body.search3-candidate.search3-results-active.search3-has-results:not(.sear
     line-height:1.2!important;
   }
 }
+
+/* Expanded offers use the same readable scale as hotel facts. */
+html body.search3-candidate #results .tour-facts :is(span,small){font-size:12px!important;line-height:1.4!important}
+html body.search3-candidate #results .tour-facts b{font-size:14px!important;line-height:1.4!important}
+@media(min-width:761px) and (max-width:999px){
+ html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card .search3-hotel-facts{height:auto!important;max-height:none!important;min-height:72px!important;overflow:visible!important}
+}

@@ -696,7 +696,8 @@ async function capture(page, width, state, expectedResultCount, manifest) {
   assert.equal(measured.resultCount, expectedResultCount, `${width}/${state}: result count drifted before capture`);
   assert.equal(measured.horizontalOverflow, false, `${width}/${state}: horizontal overflow`);
   if (expectedResultCount > 0) {
-    if (width <= 760) {
+    if (width <= 999) {
+      assert.ok(await page.locator('.search3-mobile-sort select').isVisible(), `${width}: sorting is hidden`);
       assert.equal(measured.summaryDetail.length, 1, `${width}: compact search context missing`);
       assert.ok(measured.summaryDetail[0].visible && measured.summaryDetail[0].fits, `${width}: compact search context is clipped`);
       assert.match(measured.summaryDetail[0].text, /2 взрослых/, `${width}: traveler context missing`);
@@ -796,6 +797,16 @@ async function runFiveWidthEvidence(browser, manifest) {
     const harness = await createHarness(browser, viewport, scenario);
     try {
       await setSearchValues(harness.page);
+      for (const [name, value] of Object.entries({dateFrom:'2099-09-13',dateTo:'2099-09-20',daysFrom:'8',daysTill:'12'})) {
+        const control = harness.page.locator(`#tourSearch [name="${name}"]`);
+        assert.ok(await control.isVisible(), `${viewport.width}: ${name} is hidden`);
+        await control.click();
+        await control.fill(value);
+        assert.equal(await control.inputValue(), value, `${viewport.width}: ${name} cannot be edited`);
+        const usable = await control.evaluate(el => ({height:el.getBoundingClientRect().height,pointer:getComputedStyle(el).pointerEvents}));
+        assert.ok(usable.height >= 44 && usable.pointer !== 'none', `${viewport.width}: ${name} is not tappable`);
+      }
+      await setSearchValues(harness.page);
       if (captureLifecycle) await capture(harness.page, viewport.width, 'initial', 0, manifest);
 
       await harness.page.evaluate(() => window.V2SearchLifecycle.submit());
@@ -813,6 +824,8 @@ async function runFiveWidthEvidence(browser, manifest) {
       await harness.page.locator('#status').scrollIntoViewIfNeeded();
       await capture(harness.page, viewport.width, 'final-100', fixture.progressive.finalLimit, manifest);
 
+      const range = harness.page.locator('[data-s3-price]');
+      assert.equal(await range.inputValue(), await range.getAttribute('max'), `${viewport.width}: untouched price filter falsely limits the result set`);
       const APIResults = scenario.calls.filter(call => call.action === 'search_results');
       assert.ok(APIResults.some(call => call.limit === 25), `${viewport.width}: missing progressive limit=25`);
       assert.ok(APIResults.some(call => call.limit === 100), `${viewport.width}: missing final limit=100`);
@@ -1993,6 +2006,9 @@ async function runSelectedPriceConsistency(browser, manifest) {
       await harness.page.locator('#selectedTour .search3-summary-submit').click();
       await harness.page.waitForSelector('#selectedTour.search3-lead-entry .lead-form');
       await assertSelectedAmounts(harness.page, 1234567, `${width}/lead`);
+      await harness.page.waitForFunction(() => /^1[\s\u00a0]234[\s\u00a0]567 ₽$/.test(document.querySelector('.lead-selection-summary > span:first-child b')?.textContent || ''));
+      const readable = await harness.page.locator('.lead-selection-summary > span:first-child b').evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize));
+      assert.ok(readable >= 20, `${width}: lead amount is too small`);
       await harness.page.locator('#selectedTour .search3-lead-back').click();
       await harness.page.waitForFunction(() => !document.getElementById('selectedTour').classList.contains('search3-lead-entry'));
       await assertSelectedAmounts(harness.page, 1234567, `${width}/return`);

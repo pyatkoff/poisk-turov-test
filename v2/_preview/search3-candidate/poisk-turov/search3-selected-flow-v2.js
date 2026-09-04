@@ -237,8 +237,21 @@
     if (retained) retained.classList.remove('search3-flight-continue--fallback');
   }
 
+  function syncLeadCopy() {
+    var box = selected.querySelector('.lead-selection-summary');
+    if (!box) return;
+    var price = box.querySelector(':scope > span:first-child b');
+    setText(price, money(currentTotal));
+    var choice = selected.querySelector('.flight-variant.is-selected .flight-choice > span');
+    if (choice) {
+      var pieces = Array.from(choice.childNodes).map(function (node) { return text(node); }).filter(Boolean);
+      setText(box.querySelector(':scope > span:nth-child(2) b'), pieces.join(' · '));
+    }
+  }
+
   function sync() {
     syncDisplayedPrice();
+    syncLeadCopy();
     syncFlightDisclosure();
     if (noFlightState()) {
       selected.classList.add('search3-flight-fallback');
