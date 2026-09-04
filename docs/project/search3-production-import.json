@@ -53,6 +53,20 @@
   },
   "candidateEvidence": {
     "productionLeadDeliveryVerified": false,
-    "liveMobileDeviceVerified": false
+    "liveMobileDeviceVerified": false,
+    "runId": 33923199267,
+    "evidenceArtifactId": 9955858154,
+    "releaseArtifactId": 9955862230,
+    "previewDeploymentRunId": 33923417084,
+    "previewDeploymentSucceeded": true,
+    "fiveWidthBrowserChecksPassed": true,
+    "mobileTouchEditingPassed": true,
+    "viewports": [
+      375,
+      430,
+      768,
+      1024,
+      1440
+    ]
   }
 }
