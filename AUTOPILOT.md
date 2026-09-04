@@ -72,8 +72,12 @@ do not merge or deploy them to production.
 - preview implementation: `e5baf32f455cdb0aa1a704964f28e5efbebf57ff`;
 - visual run 467 is green at 390/834/1440, but remains visual happy-path
   evidence;
-- production deployed SHA and last-known-good SHA are not yet exposed/verified
-  for this program.
+- latest successful deploy run 587 makes
+  `fa58a0cba6dcfc8624d98c20d64fa06330eae309` the strongest control-plane
+  inference; live browser bundles are byte-compatible with that tree but cannot
+  distinguish its SHA, and exact live identity is not exposed or verified;
+- no last-known-good SHA is designated or reproducible. The read-only evidence
+  and containment order are in `docs/project/RELEASE_BASELINE_AUDIT.md`.
 
 The repository advances frequently. Fetch `main` and record the new exact base
 before every implementation branch.
@@ -97,9 +101,11 @@ Required sequence:
 ## Resume point
 
 `foundation/project-definition` is the active slice until its PR checks and
-review are complete. After merge and an explicit state update, advance to the
-read-only `baseline/release-audit`; then follow `docs/project/MASTER_PLAN.md`
-one PR at a time. Runtime/platform work remains separately gated.
+review are complete. The read-only `baseline/release-audit` has been prepared
+as a stacked review slice; do not pre-advance the machine state before the
+foundation merge. After merge and an explicit state update, review/land that
+evidence, then follow `docs/project/MASTER_PLAN.md` one PR at a time.
+Runtime/platform work remains separately gated.
 
 Do not use earlier numerical scorecards as current release readiness. They are
 dated assessments with different scopes. Establish a measured production

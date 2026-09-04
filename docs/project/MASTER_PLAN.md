@@ -77,6 +77,13 @@ require the approvals defined by `AGENTS.md` and this program.
 | 18 | `release/search3-candidate` | One exact candidate SHA passes all gates and controlled release | owner approval; preflight; live search/lead/shell/widget; rollback proof | HIGH |
 | 19 | `cleanup/search-preview-layers` | Proven-dead Search2/Search3 preview assets are removed separately | repository-wide consumer proof; full regression | MEDIUM |
 
+The read-only `baseline/release-audit` refined umbrella slice 3 into four narrow
+reviews: build-only `release/package-contract`,
+`release/deploy-cancellation-containment`, `release/exact-sha-boundary`, and
+`release/atomic-current-lkg`. The latter three remain HIGH risk; no production
+workflow or server-layout change is authorized by the audit. See
+`docs/project/RELEASE_BASELINE_AUDIT.md` for evidence and exit criteria.
+
 SEO/content growth is an independent program after the transactional journey is
 stable. It must not expand indexable inventory faster than quality, canonical,
 internal-link and conversion handoff checks can validate it.
@@ -146,3 +153,5 @@ external lead mechanism unchanged.
 | 2026-09-04 | Rebuild Search3 from current `main` | The preview branch diverged substantially and lacks later safety fixes |
 | 2026-09-04 | Treat no-flight lead recovery as P0 | Current preview happy-path QA can skip the conversion-blocking case |
 | 2026-09-04 | Defer analytics implementation | Existing Metrica/goals are protected; measurement needs separate approval |
+| 2026-09-04 | Treat `fa58a0c…` as probable, not verified, production source | Run 587 points to that SHA; live bundles are compatible but cannot independently identify it, and no public SHA, immutable artifact, LKG or atomic release boundary exists |
+| 2026-09-04 | Contain the public lead-file deployment window before Search3 release work | Current tar briefly publishes the direct Bitrix adapter at the public bridge path and cancellations have occurred during remote mutation |
