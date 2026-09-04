@@ -5,22 +5,26 @@ html body.search3-candidate #tourSearch .search3-primary-grid > .search-submit{
 }
 
 @media(min-width:761px) and (max-width:999px){
-  html body.search3-candidate #tourSearch .search3-primary-grid{
+  html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid,
+  html body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid{
     grid-template-columns:repeat(4,minmax(0,1fr))!important;
     gap:10px 12px!important;
   }
-  html body.search3-candidate #tourSearch .search3-primary-grid > .search-submit{
+  html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid > .search-submit,
+  html body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid > .search-submit{
     grid-column:3/-1!important;
     width:100%!important;
     min-width:0!important;
     max-width:100%!important;
     box-sizing:border-box!important;
   }
-  html body.search3-candidate #tourSearch .search3-quality__grid{
+  html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-quality__grid,
+  html body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-quality__grid{
     grid-template-columns:repeat(3,minmax(0,1fr))!important;
     gap:10px 12px!important;
   }
-  html body.search3-candidate #tourSearch .search3-quick{
+  html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-quick,
+  html body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-quick{
     flex-wrap:wrap!important;
     gap:10px 20px!important;
   }
