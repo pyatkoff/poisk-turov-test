@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/phone-value.php';
+require_once __DIR__ . '/site-path-v1.php';
 
 if (isset($params) && is_array($params) && array_key_exists('PHONE', $params)) {
     $params['PHONE'] = v2_site_phone($params, '8 (800) 100 - 61 - 50');
@@ -13,7 +14,7 @@ function v2_render_site_footer(string $phone, string $phoneHref): void
     <footer class="ds2-site-footer" data-site-footer="shared" data-search3-footer="1">
       <div class="ds2-site-footer__inner">
         <div class="ds2-site-footer__brand">
-          <a class="ds2-site-footer__logo" href="/" aria-label="AnyTour — главная">
+          <a class="ds2-site-footer__logo" href="<?=htmlspecialchars(v2_site_href('/'), ENT_QUOTES, 'UTF-8')?>" aria-label="AnyTour — главная">
             <img src="/images/logo.svg" alt="AnyTour">
           </a>
           <strong>AnyTour всегда рядом</strong>
@@ -27,14 +28,14 @@ function v2_render_site_footer(string $phone, string $phoneHref): void
 
         <nav class="ds2-site-footer__navigation" aria-label="Навигация в подвале">
           <div><strong>Туры</strong>
-            <a href="/poisk-turov/">Поиск туров</a>
-            <a href="/country/">Страны</a>
-            <a href="/hot/">Горящие туры</a>
-            <a href="/rb/">Раннее бронирование</a>
+            <a href="<?=htmlspecialchars(v2_site_href('/poisk-turov/'), ENT_QUOTES, 'UTF-8')?>">Поиск туров</a>
+            <a href="<?=htmlspecialchars(v2_site_href('/country/'), ENT_QUOTES, 'UTF-8')?>">Страны</a>
+            <a href="<?=htmlspecialchars(v2_site_href('/hot/'), ENT_QUOTES, 'UTF-8')?>">Горящие туры</a>
+            <a href="<?=htmlspecialchars(v2_site_href('/rb/'), ENT_QUOTES, 'UTF-8')?>">Раннее бронирование</a>
           </div>
           <div><strong>О компании</strong>
-            <a href="/how-to-buy/">Как купить</a>
-            <a href="/contacts/">Контакты</a>
+            <a href="<?=htmlspecialchars(v2_site_href('/how-to-buy/'), ENT_QUOTES, 'UTF-8')?>">Как купить</a>
+            <a href="<?=htmlspecialchars(v2_site_href('/contacts/'), ENT_QUOTES, 'UTF-8')?>">Контакты</a>
           </div>
         </nav>
         <div class="ds2-site-footer__support">
@@ -50,9 +51,9 @@ function v2_render_site_footer(string $phone, string $phoneHref): void
 
       <div class="ds2-site-footer__meta">
         <nav class="ds2-site-footer__legal" aria-label="Служебные ссылки">
-          <a href="/payment/">Оплата туров</a>
-          <a href="/personal-data/">Согласие на обработку персональных данных</a>
-          <a href="/politika-konfidentsialnosti/">Политика конфиденциальности</a>
+          <a href="<?=htmlspecialchars(v2_site_href('/payment/'), ENT_QUOTES, 'UTF-8')?>">Оплата туров</a>
+          <a href="<?=htmlspecialchars(v2_site_href('/personal-data/'), ENT_QUOTES, 'UTF-8')?>">Согласие на обработку персональных данных</a>
+          <a href="<?=htmlspecialchars(v2_site_href('/politika-konfidentsialnosti/'), ENT_QUOTES, 'UTF-8')?>">Политика конфиденциальности</a>
         </nav>
         <div class="ds2-site-footer__payments" aria-label="Платёжные системы">
           <span>MasterCard</span><span>Visa</span><span>Мир</span>
@@ -72,9 +73,9 @@ function v2_render_standalone_canonical_footer(): void
     <footer class="at-site-footer">
       <nav class="at-site-footer-menu" aria-label="Служебные ссылки">
         <ul>
-          <li><a href="/payment/">Оплата туров</a></li>
-          <li><a href="/personal-data/">Согласие на обработку персональных данных</a></li>
-          <li><a href="/politika-konfidentsialnosti/">Политика конфиденциальности</a></li>
+          <li><a href="<?=htmlspecialchars(v2_site_href('/payment/'), ENT_QUOTES, 'UTF-8')?>">Оплата туров</a></li>
+          <li><a href="<?=htmlspecialchars(v2_site_href('/personal-data/'), ENT_QUOTES, 'UTF-8')?>">Согласие на обработку персональных данных</a></li>
+          <li><a href="<?=htmlspecialchars(v2_site_href('/politika-konfidentsialnosti/'), ENT_QUOTES, 'UTF-8')?>">Политика конфиденциальности</a></li>
         </ul>
       </nav>
       <p class="at-site-footer-copy">© 2026 «ТУРАГЕНТСТВО ANYTour» Москва | Все права защищены.</p>
