@@ -11,27 +11,34 @@ deterministic evidence. Neither replaces the other:
 | Layer | Trigger | Purpose | Output |
 | --- | --- | --- | --- |
 | PR FAST | every relevant PR | syntax, route isolation, protected contracts, reference integrity | logs, immediate fail/pass |
-| PR BROWSER | every relevant PR after FAST | responsive behavior with deterministic fixture data | 12 PNG files, manifest, review index |
-| CANDIDATE EVIDENCE | manual exact-SHA run | full five-width lifecycle evidence before preview publication | 18 PNG files, manifest, review index |
-| BUILT-IN BROWSER | after an approved exact-SHA isolated publication | subjective parity, real content, interaction quality | owner review decision and prioritized gaps |
+| BUILT-IN/LOCAL BROWSER | each UI edit | inspect only the changed slice at mobile and desktop | immediate human judgment, no retained archive |
+| LANE SMOKE | manual exact-SHA run after a lane is complete | lifecycle at 375/1440 plus focused presentation interactions | 12 PNG files, manifest, review index |
+| CANDIDATE EVIDENCE | one manual exact-SHA run after integration | full five-width lifecycle and regression evidence before preview publication | 21 PNG files, manifest, review index, release artifact |
+| LIVE BUILT-IN BROWSER | after an approved exact-SHA isolated publication | subjective parity, real content, interaction quality | owner review decision and prioritized gaps |
 
-The PR tier captures complete lifecycle states at 375 and 1440, final results
-at 430, 768 and 1024, and the desktop disclosure plus both mobile filter
-interactions. It still runs the race and seven failure-state assertions.
+The `smoke` tier captures complete lifecycle states at 375 and 1440 plus the
+six focused presentation interactions. It does not run the responsive-boundary,
+race or seven failure-state suites.
 
 The candidate tier captures initial, progressive-25 and final-100 at all five
-canonical widths, plus the same three interaction captures. It is the retained
-evidence set used to bind a reviewed source SHA to a later manual preview.
+canonical widths, plus the same six interaction captures. It also runs the
+responsive-boundary, race and seven failure-state suites. It is the retained
+evidence set used to bind a reviewed integration SHA to a later manual preview.
+Only a successful `candidate` dispatch builds the release artifact; a `smoke`
+dispatch cannot do so.
 
 ## Fast iteration protocol
 
 1. A worker changes one owned UI slice without changing Tourvisor, pricing,
    lead delivery/payload, Metrika or production routes.
-2. Local/static checks run first.
-3. Draft PR CI produces deterministic fixture evidence at the `pr` tier.
-4. The generated `review.html` is inspected before another full CI cycle.
-5. Only an integration head selected for owner review receives a manual
-   `candidate` evidence run.
+2. After each edit, the built-in or local browser checks only that changed
+   slice at 375 and 1440. Add an edge width only when the slice needs it.
+3. Local/static checks run first. Pull requests run only the FAST job; neither
+   PR updates nor `main` pushes start Chromium or upload visual evidence.
+4. When the lane is complete, manually dispatch the default `smoke` tier for
+   its exact SHA and inspect the generated `review.html`.
+5. After the completed lanes are integrated, that integration head receives
+   one manual `candidate` evidence run.
 6. Only that exact evidence-bound SHA may be considered for an isolated
    preview publication.
 7. The built-in browser then checks the live candidate at 375, 430 and 1440,
@@ -78,8 +85,9 @@ archive cannot truthfully contain its own final digest.
 
 ## Definition of done
 
-A UI branch is `DONE / awaiting visual approval` when FAST and PR BROWSER are
-green and the review index has been inspected. It becomes a candidate only
-after integration, full candidate evidence and owner comparison. It is not a
-production release until a separately authorized exact-SHA release passes the
-production gates and rollback requirements.
+A UI branch is `DONE / awaiting integration` when FAST and its manually
+dispatched smoke are green and the review index has been inspected. It becomes
+`DONE / awaiting visual approval` only after integration, one full candidate
+run and owner comparison. It is not a production release until a separately
+authorized exact-SHA release passes the production gates and rollback
+requirements.

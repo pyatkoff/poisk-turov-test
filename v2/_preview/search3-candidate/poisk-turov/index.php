@@ -60,19 +60,41 @@ if ($metrikaConfigCount !== 1 || !is_string($html)) {
 }
 
 $candidateAssets = [
-    'css' => 'search3-results-filters-v1.css',
-    'js' => 'search3-results-filters-v1.js',
+    'css' => [
+        ['filename' => 'search3-results-filters-v1.css', 'id' => 'search3-results-filters-v1-style'],
+        ['filename' => 'search3-entry-v1.css', 'id' => 'search3-entry-v1-style'],
+        ['filename' => 'search3-results-cards-v2.css', 'id' => 'search3-results-cards-v2-style'],
+        ['filename' => 'search3-selected-flow-v2.css', 'id' => 'search3-selected-flow-v2-style'],
+    ],
+    'js' => [
+        ['filename' => 'search3-results-filters-v1.js', 'id' => 'search3-results-filters-v1-script'],
+        ['filename' => 'search3-entry-v1.js', 'id' => 'search3-entry-v1-script'],
+        ['filename' => 'search3-results-cards-v2.js', 'id' => 'search3-results-cards-v2-script'],
+        ['filename' => 'search3-selected-flow-v2.js', 'id' => 'search3-selected-flow-v2-script'],
+    ],
 ];
-$assetUrls = [];
-foreach ($candidateAssets as $type => $filename) {
-    $path = __DIR__ . '/' . $filename;
-    $hash = is_file($path) ? hash_file('sha256', $path) : false;
-    if (!is_string($hash) || !preg_match('/^[0-9a-f]{64}$/', $hash)) {
-        http_response_code(500);
-        echo 'Search3 candidate presentation asset error';
-        exit;
+$assetTags = ['css' => '', 'js' => ''];
+foreach ($candidateAssets as $type => $assets) {
+    foreach ($assets as $asset) {
+        $filename = $asset['filename'];
+        $path = __DIR__ . '/' . $filename;
+        $hash = is_file($path) ? hash_file('sha256', $path) : false;
+        if (!is_string($hash) || !preg_match('/^[0-9a-f]{64}$/', $hash)) {
+            http_response_code(500);
+            echo 'Search3 candidate presentation asset error';
+            exit;
+        }
+        $url = SEARCH3_CANDIDATE_ASSET_BASE . $filename . '?v=' . substr($hash, 0, 16);
+        $escapedId = htmlspecialchars($asset['id'], ENT_QUOTES, 'UTF-8');
+        $escapedUrl = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+        if ($type === 'css') {
+            $assetTags['css'] .= '<link id="' . $escapedId . '" rel="stylesheet" href="'
+                . $escapedUrl . '">';
+        } else {
+            $assetTags['js'] .= '<script id="' . $escapedId . '" src="'
+                . $escapedUrl . '"></script>';
+        }
     }
-    $assetUrls[$type] = SEARCH3_CANDIDATE_ASSET_BASE . $filename . '?v=' . substr($hash, 0, 16);
 }
 
 $primaryBundleScript = '<script src="'
@@ -94,11 +116,9 @@ $tabletFilterRestore = '<script id="search3-tablet-filter-restore">'
 
 $presentationMarkers = [
     '<body>' => '<body class="search3-candidate">',
-    '</head>' => '<link id="search3-results-filters-v1-style" rel="stylesheet" href="'
-        . htmlspecialchars($assetUrls['css'], ENT_QUOTES, 'UTF-8') . '"></head>',
+    '</head>' => $assetTags['css'] . '</head>',
     $primaryBundleScript => $tabletFilterBootstrap . $primaryBundleScript . $tabletFilterRestore,
-    '</body>' => '<script id="search3-results-filters-v1-script" src="'
-        . htmlspecialchars($assetUrls['js'], ENT_QUOTES, 'UTF-8') . '"></script></body>',
+    '</body>' => $assetTags['js'] . '</body>',
 ];
 foreach ($presentationMarkers as $needle => $replacement) {
     if (substr_count($html, $needle) !== 1) {

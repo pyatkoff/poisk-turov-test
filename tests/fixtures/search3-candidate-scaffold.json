@@ -19,7 +19,13 @@
     "productionOwnedDirectTourText": "Проверить тур",
     "assets": [
       "search3-results-filters-v1.css",
-      "search3-results-filters-v1.js"
+      "search3-entry-v1.css",
+      "search3-results-cards-v2.css",
+      "search3-selected-flow-v2.css",
+      "search3-results-filters-v1.js",
+      "search3-entry-v1.js",
+      "search3-results-cards-v2.js",
+      "search3-selected-flow-v2.js"
     ],
     "captures": [
       "1440-first-hotel-expanded.png",
@@ -38,9 +44,9 @@
     {"width": 1440, "height": 1000}
   ],
   "visualTiers": {
-    "pr": {
+    "smoke": {
       "lifecycleWidths": [375, 1440],
-      "finalOnlyWidths": [430, 768, 1024],
+      "finalOnlyWidths": [],
       "presentationCaptures": [
         "1440-first-hotel-expanded.png",
         "375-first-hotel-expanded.png",
@@ -49,8 +55,9 @@
         "430-filters-open.png",
         "375-filters-open.png"
       ],
-      "runRaces": true,
-      "runFailureStates": true
+      "runResponsiveBoundaries": false,
+      "runRaces": false,
+      "runFailureStates": false
     },
     "candidate": {
       "lifecycleWidths": [375, 430, 768, 1024, 1440],
@@ -63,6 +70,7 @@
         "430-filters-open.png",
         "375-filters-open.png"
       ],
+      "runResponsiveBoundaries": true,
       "runRaces": true,
       "runFailureStates": true
     }

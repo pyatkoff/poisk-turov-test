@@ -21,8 +21,8 @@ const baseUrl = String(process.env.SEARCH3_BASE_URL || 'http://anytoour.ru:18083
 const serverUrl = String(process.env.SEARCH3_SERVER_URL || 'http://127.0.0.1:18083').replace(/\/$/, '');
 const outputDir = path.resolve(process.env.SEARCH3_ARTIFACT_DIR || 'search3-candidate-artifacts');
 const expectedStates = ['initial', 'progressive-25', 'final-100'];
-const visualTierName = String(process.env.SEARCH3_VISUAL_TIER || 'candidate');
-assert.ok(['pr', 'candidate'].includes(visualTierName), `unsupported visual tier ${visualTierName}`);
+const visualTierName = String(process.env.SEARCH3_VISUAL_TIER || 'smoke');
+assert.ok(['smoke', 'candidate'].includes(visualTierName), `unsupported visual tier ${visualTierName}`);
 const visualTier = fixture.visualTiers && fixture.visualTiers[visualTierName];
 assert.ok(visualTier, `missing visual tier configuration for ${visualTierName}`);
 const expectedPresentationCaptures = visualTier.presentationCaptures;
@@ -42,14 +42,19 @@ const contextProfile = Object.freeze({
 
 assert.equal(fixture.schemaVersion, 2);
 assert.deepEqual(fixture.viewports.map(item => item.width), [375, 430, 768, 1024, 1440]);
-assert.deepEqual(Object.keys(fixture.visualTiers), ['pr', 'candidate']);
+assert.deepEqual(Object.keys(fixture.visualTiers), ['smoke', 'candidate']);
 for (const [name, tier] of Object.entries(fixture.visualTiers)) {
   const widths = [...tier.lifecycleWidths, ...tier.finalOnlyWidths];
   assert.equal(new Set(widths).size, widths.length, `${name}: duplicate visual width`);
-  assert.deepEqual(widths.slice().sort((a, b) => a - b), fixture.viewports.map(item => item.width));
+  const expectedWidths = name === 'candidate'
+    ? fixture.viewports.map(item => item.width)
+    : [375, 1440];
+  assert.deepEqual(widths.slice().sort((a, b) => a - b), expectedWidths, `${name}: visual width contract`);
   assert.deepEqual(tier.presentationCaptures, fixture.presentation.captures);
-  assert.equal(tier.runRaces, true);
-  assert.equal(tier.runFailureStates, true);
+  const exhaustive = name === 'candidate';
+  assert.equal(tier.runResponsiveBoundaries, exhaustive, `${name}: responsive boundary contract`);
+  assert.equal(tier.runRaces, exhaustive, `${name}: race contract`);
+  assert.equal(tier.runFailureStates, exhaustive, `${name}: failure-state contract`);
 }
 assert.equal(fixture.progressive.firstLimit, 25);
 assert.equal(fixture.progressive.finalLimit, 100);
@@ -79,7 +84,16 @@ assert.deepEqual(fixture.presentation, {
   donorCommit: 'e5baf32f455cdb0aa1a704964f28e5efbebf57ff',
   donorRunId: '33813829683',
   productionOwnedDirectTourText: 'Проверить тур',
-  assets: ['search3-results-filters-v1.css', 'search3-results-filters-v1.js'],
+  assets: [
+    'search3-results-filters-v1.css',
+    'search3-entry-v1.css',
+    'search3-results-cards-v2.css',
+    'search3-selected-flow-v2.css',
+    'search3-results-filters-v1.js',
+    'search3-entry-v1.js',
+    'search3-results-cards-v2.js',
+    'search3-selected-flow-v2.js',
+  ],
   captures: expectedPresentationCaptures,
 });
 assert.match(sourceSha, /^[0-9a-f]{40}$/, 'SEARCH3_SOURCE_SHA must identify the exact candidate head');
@@ -256,11 +270,15 @@ function presentationAssetEvidence() {
 }
 
 function assertCandidateDoesNotOwnDirectTour() {
-  const script = fs.readFileSync(
-    path.resolve(__dirname, '../../v2/_preview/search3-candidate/poisk-turov/search3-results-filters-v1.js'),
-    'utf8',
-  );
-  assert.doesNotMatch(script, /\.direct-tour|Проверить тур|Выбрать тур/, 'candidate presentation must not own the production tour CTA');
+  const root = path.resolve(__dirname, '../../v2/_preview/search3-candidate/poisk-turov');
+  for (const file of fixture.presentation.assets.filter(name => name.endsWith('.js'))) {
+    const script = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.doesNotMatch(
+      script,
+      /\.direct-tour|Проверить тур|Выбрать тур/,
+      `${file}: candidate presentation must not own the production tour CTA`,
+    );
+  }
 }
 
 function consumeExpectedApiHttpFailures(harness, action, status, count, label) {
@@ -414,8 +432,18 @@ async function createHarness(browser, viewport, scenario) {
     tabletFilterRestoreCount: document.querySelectorAll('#search3-tablet-filter-restore').length,
     matchMediaOverrideRestored: typeof window.__search3CandidateNativeMatchMedia === 'undefined',
     matchMediaIdentityRestored: document.documentElement.dataset.search3MatchMediaRestored || '',
-    candidateCss: document.getElementById('search3-results-filters-v1-style')?.getAttribute('href') || '',
-    candidateScript: document.getElementById('search3-results-filters-v1-script')?.getAttribute('src') || '',
+    candidateCss: [
+      'search3-results-filters-v1-style',
+      'search3-entry-v1-style',
+      'search3-results-cards-v2-style',
+      'search3-selected-flow-v2-style',
+    ].map(id => document.getElementById(id)?.getAttribute('href') || ''),
+    candidateScript: [
+      'search3-results-filters-v1-script',
+      'search3-entry-v1-script',
+      'search3-results-cards-v2-script',
+      'search3-selected-flow-v2-script',
+    ].map(id => document.getElementById(id)?.getAttribute('src') || ''),
     presentationStatus: window.Search3CandidateResultsV1?.status || '',
     approvedPixelsCompared: window.Search3CandidateResultsV1?.approvedPixelsCompared,
     selectedHandoffVersion: window.Search3CandidateSelectedHandoffV1?.version || 0,
@@ -442,11 +470,28 @@ async function createHarness(browser, viewport, scenario) {
   assert.equal(identity.tabletFilterRestoreCount, 1, 'candidate tablet filter restore must be injected exactly once');
   assert.equal(identity.matchMediaOverrideRestored, true, 'candidate matchMedia bootstrap must not outlive bundle startup');
   assert.equal(identity.matchMediaIdentityRestored, '1', 'candidate must restore the exact original matchMedia function');
-  assert.match(identity.candidateCss, /^\/_preview\/search3-candidate\/poisk-turov\/search3-results-filters-v1\.css\?v=[0-9a-f]{16}$/);
-  assert.match(identity.candidateScript, /^\/_preview\/search3-candidate\/poisk-turov\/search3-results-filters-v1\.js\?v=[0-9a-f]{16}$/);
   const diskAssets = presentationAssetEvidence();
-  assert.equal(new URL(identity.candidateCss, baseUrl).searchParams.get('v'), diskAssets.find(item => item.file.endsWith('.css')).sha256.slice(0, 16));
-  assert.equal(new URL(identity.candidateScript, baseUrl).searchParams.get('v'), diskAssets.find(item => item.file.endsWith('.js')).sha256.slice(0, 16));
+  const expectedCss = fixture.presentation.assets.filter(file => file.endsWith('.css'));
+  const expectedScript = fixture.presentation.assets.filter(file => file.endsWith('.js'));
+  assert.deepEqual(
+    identity.candidateCss.map(url => new URL(url, baseUrl).pathname.split('/').pop()),
+    expectedCss,
+  );
+  assert.deepEqual(
+    identity.candidateScript.map(url => new URL(url, baseUrl).pathname.split('/').pop()),
+    expectedScript,
+  );
+  for (const [file, url] of [
+    ...expectedCss.map((file, index) => [file, identity.candidateCss[index]]),
+    ...expectedScript.map((file, index) => [file, identity.candidateScript[index]]),
+  ]) {
+    assert.match(url, /^\/_preview\/search3-candidate\/poisk-turov\/[a-z0-9-]+\.(?:css|js)\?v=[0-9a-f]{16}$/);
+    assert.equal(
+      new URL(url, baseUrl).searchParams.get('v'),
+      diskAssets.find(item => item.file === file).sha256.slice(0, 16),
+      `${file}: candidate asset URL must carry its exact content hash`,
+    );
+  }
   assert.equal(identity.presentationStatus, fixture.presentation.status);
   assert.equal(identity.approvedPixelsCompared, false);
   assert.equal(identity.selectedHandoffVersion, 1);
@@ -716,7 +761,7 @@ async function runFiveWidthEvidence(browser, manifest) {
   for (const viewport of fixture.viewports) {
     const captureLifecycle = visualTier.lifecycleWidths.includes(viewport.width);
     const captureFinalOnly = visualTier.finalOnlyWidths.includes(viewport.width);
-    assert.ok(captureLifecycle || captureFinalOnly, `${visualTierName}: width ${viewport.width} is not assigned`);
+    if (!captureLifecycle && !captureFinalOnly) continue;
     const scenario = scenarioController('progressive');
     const harness = await createHarness(browser, viewport, scenario);
     try {
@@ -1932,7 +1977,9 @@ async function runFlightFailureFixtures(browser, manifest) {
   manifest.environment.browserVersion = browser.version();
   try {
     await runFiveWidthEvidence(browser, manifest);
-    await runResponsiveFilterBoundaries(browser, manifest);
+    if (visualTier.runResponsiveBoundaries) {
+      await runResponsiveFilterBoundaries(browser, manifest);
+    }
     await runPresentationEvidence(browser, manifest);
     if (visualTier.runRaces) {
       await runPendingStatusRace(browser);
@@ -1948,9 +1995,12 @@ async function runFlightFailureFixtures(browser, manifest) {
 
   assert.equal(manifest.screenshots.length, expectedEvidenceScreenshotCount);
   assert.equal(new Set(manifest.screenshots.map(item => item.file)).size, expectedEvidenceScreenshotCount);
-  assert.equal(manifest.presentationScreenshots.length, 6);
+  assert.equal(manifest.presentationScreenshots.length, expectedPresentationCaptures.length);
   assert.deepEqual(manifest.presentationScreenshots.map(item => item.file), expectedPresentationCaptures);
-  assert.equal(new Set(manifest.presentationScreenshots.map(item => item.file)).size, 6);
+  assert.equal(
+    new Set(manifest.presentationScreenshots.map(item => item.file)).size,
+    expectedPresentationCaptures.length,
+  );
   assert.equal(manifest.presentation.status, 'REFERENCE_IMPLEMENTATION_IN_PROGRESS');
   assert.equal(manifest.presentation.approvedPixelsCompared, false);
   assert.deepEqual(
@@ -1968,9 +2018,11 @@ async function runFlightFailureFixtures(browser, manifest) {
   }
   fs.writeFileSync(path.join(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(
-    `SEARCH3_CANDIDATE_SCAFFOLD_OK tier=${visualTierName} widths=375,430,768,1024,1440 `
+    `SEARCH3_CANDIDATE_SCAFFOLD_OK tier=${visualTierName} widths=${[...visualTier.lifecycleWidths, ...visualTier.finalOnlyWidths].join(',')} `
     + `screenshots=${expectedEvidenceScreenshotCount + expectedPresentationCaptures.length} `
-    + 'races=status,results behaviorStates=7 presentation=REFERENCE_IMPLEMENTATION_IN_PROGRESS',
+    + `responsiveBoundaries=${visualTier.runResponsiveBoundaries ? '5' : '0'} `
+    + `races=${visualTier.runRaces ? 'status,results' : 'none'} `
+    + `behaviorStates=${manifest.behaviorStates.length} presentation=REFERENCE_IMPLEMENTATION_IN_PROGRESS`,
   );
 })().catch(error => {
   console.error(error);

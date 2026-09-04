@@ -16,7 +16,7 @@ import tarfile
 from typing import Iterable
 
 
-BUILDER_SCHEMA_VERSION = 1
+BUILDER_SCHEMA_VERSION = 2
 EVIDENCE_SCHEMA_VERSION = 2
 TARGET = "search3-candidate-preview"
 SOURCE_ROOT = "v2/_preview/search3-candidate/poisk-turov"
@@ -30,8 +30,14 @@ CHECKSUMS_NAME = "SHA256SUMS"
 
 SOURCE_TO_TARGET = {
     f"{SOURCE_ROOT}/index.php": "poisk-turov/index.php",
+    f"{SOURCE_ROOT}/search3-entry-v1.css": "poisk-turov/search3-entry-v1.css",
+    f"{SOURCE_ROOT}/search3-entry-v1.js": "poisk-turov/search3-entry-v1.js",
     f"{SOURCE_ROOT}/search3-results-filters-v1.css": "poisk-turov/search3-results-filters-v1.css",
     f"{SOURCE_ROOT}/search3-results-filters-v1.js": "poisk-turov/search3-results-filters-v1.js",
+    f"{SOURCE_ROOT}/search3-results-cards-v2.css": "poisk-turov/search3-results-cards-v2.css",
+    f"{SOURCE_ROOT}/search3-results-cards-v2.js": "poisk-turov/search3-results-cards-v2.js",
+    f"{SOURCE_ROOT}/search3-selected-flow-v2.css": "poisk-turov/search3-selected-flow-v2.css",
+    f"{SOURCE_ROOT}/search3-selected-flow-v2.js": "poisk-turov/search3-selected-flow-v2.js",
 }
 
 FULL_SHA_RE = re.compile(r"[0-9a-f]{40}")
@@ -46,9 +52,16 @@ EXPECTED_BEHAVIOR_STATES = (
     "flight-upstream-error",
     "lead-ui-no-delivery",
 )
+EXPECTED_PRESENTATION_SCREENSHOT_COUNT = 6
 EXPECTED_PRESENTATION_FILES = {
+    "search3-entry-v1.css",
+    "search3-entry-v1.js",
+    "search3-results-cards-v2.css",
+    "search3-results-cards-v2.js",
     "search3-results-filters-v1.css",
     "search3-results-filters-v1.js",
+    "search3-selected-flow-v2.css",
+    "search3-selected-flow-v2.js",
 }
 
 
@@ -204,7 +217,7 @@ def candidate_entries(repo: Path, candidate_sha: str) -> dict[str, tuple[str, st
         missing = sorted(expected - actual)
         extra = sorted(actual - expected)
         raise CandidateArtifactError(
-            f"candidate route differs from the three-file allowlist: missing={missing} extra={extra}"
+            f"candidate route differs from the exact source allowlist: missing={missing} extra={extra}"
         )
     return entries
 
@@ -286,8 +299,14 @@ def load_evidence(
     presentation_screenshots = raw.get("presentationScreenshots")
     if not isinstance(screenshots, list) or len(screenshots) != 15:
         raise CandidateArtifactError("evidence must contain exactly 15 lifecycle screenshots")
-    if not isinstance(presentation_screenshots, list) or len(presentation_screenshots) != 3:
-        raise CandidateArtifactError("evidence must contain exactly 3 presentation screenshots")
+    if (
+        not isinstance(presentation_screenshots, list)
+        or len(presentation_screenshots) != EXPECTED_PRESENTATION_SCREENSHOT_COUNT
+    ):
+        raise CandidateArtifactError(
+            f"evidence must contain exactly {EXPECTED_PRESENTATION_SCREENSHOT_COUNT} "
+            "presentation screenshots"
+        )
     behavior = raw.get("behaviorStates")
     if not isinstance(behavior, list) or tuple(
         item.get("name") if isinstance(item, dict) else None for item in behavior
