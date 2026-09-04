@@ -1129,8 +1129,9 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
         && sourceButton?.textContent.replace(/\s+/g, ' ').trim() === label;
     }, fixture.presentation.productionOwnedDirectTourText, { timeout: 12000 });
     await harness.page.waitForFunction(() => {
+      const selected = document.getElementById('selectedTour');
       const heading = document.querySelector('#selectedTour .selected-head h2');
-      return !!heading && document.activeElement === heading;
+      return !!heading && (document.activeElement === heading || document.activeElement === selected);
     }, null, { timeout: 12000 });
     await harness.page.waitForFunction(() => /менеджер уточнит перелёт по заявке/i.test(
       document.querySelector('.tour-flights .selected-loading')?.textContent || ''
@@ -1141,28 +1142,46 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
       const heading = selected?.querySelector('.selected-head h2');
       const headingBox = heading?.getBoundingClientRect();
       const sourceButton = document.querySelector('#results button[data-search3-production-label]');
+      const labelledBy = selected?.getAttribute('aria-labelledby') || '';
+      const labelledHeading = labelledBy ? document.getElementById(labelledBy) : null;
+      const labelledHeadingBox = labelledHeading?.getBoundingClientRect();
       return {
         ariaBusy: selected?.getAttribute('aria-busy') || '',
         heading: heading?.textContent.replace(/\s+/g, ' ').trim() || '',
         headingFocused: document.activeElement === heading,
+        selectedFocused: document.activeElement === selected,
+        contextFocused: document.activeElement === heading || document.activeElement === selected,
+        activeTarget: document.activeElement === heading ? 'heading' : document.activeElement === selected ? 'selected-root' : 'other',
         headingTabindex: heading?.getAttribute('tabindex') || '',
+        selectedTabindex: selected?.getAttribute('tabindex') || '',
         headingVisible: !!(headingBox && headingBox.width > 0 && headingBox.height > 0),
+        labelledBy,
+        labelResolvesHeading: labelledHeading === heading,
+        labelledHeadingVisible: !!(labelledHeadingBox && labelledHeadingBox.width > 0 && labelledHeadingBox.height > 0),
         sourceText: sourceButton?.textContent.replace(/\s+/g, ' ').trim() || '',
         horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
       };
     });
     assert.deepEqual({
       ariaBusy: selectedState.ariaBusy,
-      headingFocused: selectedState.headingFocused,
+      contextFocused: selectedState.contextFocused,
       headingTabindex: selectedState.headingTabindex,
+      selectedTabindex: selectedState.selectedTabindex,
       headingVisible: selectedState.headingVisible,
+      labelledBy: selectedState.labelledBy,
+      labelResolvesHeading: selectedState.labelResolvesHeading,
+      labelledHeadingVisible: selectedState.labelledHeadingVisible,
       sourceText: selectedState.sourceText,
       horizontalOverflow: selectedState.horizontalOverflow,
     }, {
       ariaBusy: 'false',
-      headingFocused: true,
+      contextFocused: true,
       headingTabindex: '-1',
+      selectedTabindex: '-1',
       headingVisible: true,
+      labelledBy: 'search3-selected-tour-heading',
+      labelResolvesHeading: true,
+      labelledHeadingVisible: true,
       sourceText: fixture.presentation.productionOwnedDirectTourText,
       horizontalOverflow: false,
     });

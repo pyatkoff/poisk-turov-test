@@ -1019,27 +1019,40 @@ syncGroups();window.addEventListener('resize',syncGroups);
     selected.setAttribute('aria-busy', isTourLoading() ? 'true' : 'false');
   }
 
+  function prepareSelectedContext() {
+    var heading = selected.querySelector('.selected-head h2,.search3-review-heading h2');
+    if (!heading) return null;
+    if (!heading.id) heading.id = 'search3-selected-tour-heading';
+    heading.setAttribute('tabindex', '-1');
+    selected.setAttribute('tabindex', '-1');
+    selected.setAttribute('aria-labelledby', heading.id);
+    return heading;
+  }
+
   function focusSelectedHeading() {
     if (selected.hidden) return;
-    var heading = selected.querySelector('.selected-head h2,.search3-review-heading h2');
+    var heading = prepareSelectedContext();
     if (!heading) return;
-    heading.setAttribute('tabindex', '-1');
     try { heading.focus({ preventScroll: true }); } catch (_error) { heading.focus(); }
   }
 
-  function scheduleSelectedHeadingFocus() {
+  function focusSelectedContext() {
+    if (selected.hidden || !prepareSelectedContext()) return;
+    try { selected.focus({ preventScroll: true }); } catch (_error) { selected.focus(); }
+  }
+
+  function scheduleSelectedContextFocus() {
     var run = ++selectedFocusRun;
     var attempts = 0;
     function settle() {
       if (run !== selectedFocusRun || selected.hidden) return;
-      var heading = selected.querySelector('.selected-head h2,.search3-review-heading h2');
-      var active = document.activeElement;
+      var heading = prepareSelectedContext();
       attempts += 1;
       if (!heading || !heading.isConnected) {
         if (attempts < 6) window.requestAnimationFrame(settle);
         return;
       }
-      if (active !== heading) focusSelectedHeading();
+      if (document.activeElement !== heading && document.activeElement !== selected) focusSelectedContext();
       if (attempts < 6) window.requestAnimationFrame(settle);
     }
     window.setTimeout(function () { window.requestAnimationFrame(settle); }, 0);
@@ -1066,7 +1079,7 @@ syncGroups();window.addEventListener('resize',syncGroups);
   window.addEventListener('v2:tour-selected', function () {
     selected.setAttribute('aria-busy', 'false');
     restoreProductionLabels();
-    scheduleSelectedHeadingFocus();
+    scheduleSelectedContextFocus();
   });
   window.addEventListener('v2:tour-returned', function () {
     selectedFocusRun += 1;
@@ -1085,6 +1098,7 @@ syncGroups();window.addEventListener('resize',syncGroups);
     restoreProductionLabels: restoreProductionLabels,
     syncBusy: syncBusy,
     focusSelectedHeading: focusSelectedHeading,
-    scheduleSelectedHeadingFocus: scheduleSelectedHeadingFocus
+    focusSelectedContext: focusSelectedContext,
+    scheduleSelectedContextFocus: scheduleSelectedContextFocus
   });
 })();
