@@ -16,6 +16,13 @@ deterministic evidence. Neither replaces the other:
 | CANDIDATE EVIDENCE | one manual exact-SHA run after integration | full five-width lifecycle and regression evidence before preview publication | 21 PNG files, manifest, review index, release artifact |
 | LIVE BUILT-IN BROWSER | after an approved exact-SHA isolated publication | subjective parity, real content, interaction quality | owner review decision and prioritized gaps |
 
+Before this workflow exists on `main`, GitHub cannot expose its
+`workflow_dispatch` control. During that bootstrap only, an explicit draft PR
+from `visual/search3-smoke-*` or `visual/search3-candidate-*` is the manual
+exact-SHA trigger. Ordinary feature and integration PRs still run FAST only;
+the `candidate` prefix is the only PR bridge allowed to build a release
+artifact.
+
 The `smoke` tier captures complete lifecycle states at 375 and 1440 plus the
 six focused presentation interactions. It does not run the responsive-boundary,
 race or seven failure-state suites.

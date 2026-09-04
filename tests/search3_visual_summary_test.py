@@ -13,7 +13,7 @@ from scripts.ci.render_search3_visual_summary import render
 
 
 class Search3VisualSummaryTest(unittest.TestCase):
-    def test_workflow_runs_browser_manually_and_releases_candidate_only(self):
+    def test_workflow_runs_browser_only_by_explicit_opt_in_and_releases_candidate_only(self):
         repository = Path(__file__).resolve().parents[1]
         workflow = (
             repository / ".github/workflows/validate-search3-candidate-scaffold.yml"
@@ -22,9 +22,18 @@ class Search3VisualSummaryTest(unittest.TestCase):
         self.assertNotIn("- 'v2/**'", workflow)
         self.assertIn("- 'v2/_preview/search3-candidate/poisk-turov/**'", workflow)
         self.assertIn("default: smoke", workflow)
-        self.assertIn("if: ${{ github.event_name == 'workflow_dispatch' }}", workflow)
+        self.assertIn("startsWith(github.head_ref, 'visual/search3-smoke-')", workflow)
+        self.assertIn("startsWith(github.head_ref, 'visual/search3-candidate-')", workflow)
         self.assertIn(
-            "if: ${{ needs.browser.result == 'success' && inputs.visual_tier == 'candidate' }}",
+            "SEARCH3_EXACT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}",
+            workflow,
+        )
+        self.assertIn(
+            "github.event_name == 'workflow_dispatch' && inputs.visual_tier == 'candidate'",
+            workflow,
+        )
+        self.assertIn(
+            "github.event_name == 'pull_request' && startsWith(github.head_ref, 'visual/search3-candidate-')",
             workflow,
         )
 
