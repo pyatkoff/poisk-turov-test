@@ -2,7 +2,7 @@ name: Validate SEO public cohort editorial link readiness
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, seo/public-cohort-reconciliation]
     paths:
       - '.github/workflows/validate-seo-public-cohort-editorial-link-readiness.yml'
       - 'docs/seo-public-cohort-editorial-link-readiness.json'

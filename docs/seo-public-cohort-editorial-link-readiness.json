@@ -3,7 +3,7 @@
   "artifact": "anytour_public_seo_cohort_editorial_link_readiness",
   "status": "review_only_blocked_on_fresh_production_identity",
   "scope": {
-    "base_commit": "200c215eafe0e0e74b48609c9673ef1aaa029147",
+    "base_commit": "e477a050dd03edecc0e738915ace9a1534d82057",
     "base_tree": "5ae4ede90959360a1061496895a2a08aa36f5f81",
     "publication_side_effects": false,
     "runtime_changes": false,

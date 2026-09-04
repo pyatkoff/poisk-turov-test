@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 
-BASE_COMMIT = "200c215eafe0e0e74b48609c9673ef1aaa029147"
+BASE_COMMIT = "e477a050dd03edecc0e738915ace9a1534d82057"
 BASE_TREE = "5ae4ede90959360a1061496895a2a08aa36f5f81"
 SITEMAP_SHA = "cf61ea3d1d86e6d727c4a0eecc23dd24517950d19a2ac9fde359eea011365b87"
 URL_LIST_SHA = "9e480e824bf465b9a6a6f1db5499b1114956effd35ae5786256907d6a18c96aa"
@@ -274,7 +274,7 @@ def expected_workflow() -> str:
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, seo/public-cohort-reconciliation]
     paths:
 {rendered}
   push:
