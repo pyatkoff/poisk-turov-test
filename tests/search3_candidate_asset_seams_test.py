@@ -35,7 +35,7 @@ JS_LOAD_ORDER = (
 )
 FROZEN_BASE_SHA256 = {
     "search3-results-filters-v1.css": "056ca312c4f5356e1d3b8cc95e90355a0420420501e6467ae014e917df39fe7b",
-    "search3-results-filters-v1.js": "feac5b5e152dc499dd76e7d7733d376e1ace57f6c1e5d8568ef2f55af0efdf58",
+    "search3-results-filters-v1.js": "59902609494edbecb014a1ebd3049b12071c799b88f939ff92fc7ca76883202f",
 }
 PROTECTED_RUNTIME_MARKERS = (
     "/api-v2.php",

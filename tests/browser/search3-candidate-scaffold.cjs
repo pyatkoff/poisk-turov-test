@@ -535,7 +535,7 @@ async function setSearchValues(page) {
     const form = document.getElementById('tourSearch');
     for (const [name, value] of Object.entries(values)) {
       const field = form.elements[name];
-      if (field) field.value = value;
+      if (field) { field.value = value; field.dispatchEvent(new Event('change', {bubbles:true})); }
     }
     form.elements.child_count.value = '0';
   }, fixture.search);
@@ -799,11 +799,14 @@ async function runFiveWidthEvidence(browser, manifest) {
     try {
       await setSearchValues(harness.page);
       for (const [name, value] of Object.entries({dateFrom:'2099-09-13',dateTo:'2099-09-20',daysFrom:'8',daysTill:'12'})) {
-        const control = harness.page.locator(`#tourSearch [name="${name}"]`);
+        const isNight = name.startsWith('days');
+        const control = harness.page.locator(isNight ? `#tourSearch select[data-search3-night="${name}"]` : `#tourSearch [name="${name}"]`);
         assert.ok(await control.isVisible(), `${viewport.width}: ${name} is hidden`);
         if (viewport.width <= 430) await control.tap();
         else await control.click();
-        await control.fill(value);
+        if (isNight) await control.selectOption(value);
+        else await control.fill(value);
+        assert.equal(await harness.page.locator(`#tourSearch [name="${name}"]`).inputValue(), value);
         assert.equal(await control.inputValue(), value, `${viewport.width}: ${name} cannot be edited`);
         const usable = await control.evaluate(el => ({height:el.getBoundingClientRect().height,pointer:getComputedStyle(el).pointerEvents}));
         assert.ok(usable.height >= 44 && usable.pointer !== 'none', `${viewport.width}: ${name} is not tappable`);
