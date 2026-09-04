@@ -1,1 +1,59 @@
-/* Search3 entry presentation overlay slot. Initial seam is intentionally empty. */
+/* Search3 entry presentation overlay. Preview only. */
+html body.search3-candidate #tourSearch .search3-primary-grid > .search-submit{
+  background:#0066ff!important;
+  box-shadow:0 4px 10px rgba(0,102,255,.18)!important;
+}
+
+@media(max-width:760px){
+  html body.search3-candidate #tourSearch,
+  html body.search3-candidate #tourSearch .search3-primary-grid,
+  html body.search3-candidate #tourSearch .search3-quality__grid{
+    min-width:0!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+  html body.search3-candidate #tourSearch .search3-primary-grid > *,
+  html body.search3-candidate #tourSearch .search3-quality__grid > *{
+    min-width:0!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Hide the sixth primary field before the entry decorator settles. */
+  html body.search3-candidate #tourSearch .search3-primary-grid > .search3-region{
+    display:none!important;
+  }
+  /* CSS fallback: region is still reachable if the decorator cannot reparent it. */
+  html body.search3-candidate #tourSearch.search3-mobile-advanced-open .search3-primary-grid > .search3-region{
+    display:block!important;
+  }
+  html body.search3-candidate #tourSearch .search3-quality__grid > .search3-region{
+    display:block!important;
+    order:-1!important;
+  }
+
+  html body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) .search3-quality,
+  html body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) .search3-quick{
+    display:none!important;
+  }
+  html body.search3-candidate:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quality{
+    display:block!important;
+    margin-top:12px!important;
+    padding-top:12px!important;
+    border-top:1px solid #edf0f5!important;
+  }
+  html body.search3-candidate:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quality__grid{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:9px!important;
+  }
+  html body.search3-candidate:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quick{
+    display:grid!important;
+  }
+
+  html body.search3-candidate #tourSearch .search3-primary-grid > .search-submit{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+}
