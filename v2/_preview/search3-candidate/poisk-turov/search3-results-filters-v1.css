@@ -3410,7 +3410,5 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
 /* Candidate lifecycle guard: the tested completion status remains visible and scrollable. */
 html body.search3-candidate.search3-results-active.search3-has-results #status:has(.search-progress-done){display:block!important}
 
-/* Candidate accessibility guard: keep the mobile hotel disclosure a 44px touch target. */
-@media(max-width:999px){
-  html body.search3-candidate.search3-results-active:not(.search3-hotel-tours-open) #results .search3-show-tours{min-height:44px!important;font-size:14px!important}
-}
+/* Candidate accessibility guard: keep every hotel disclosure a 44px touch target. */
+html body.search3-candidate.search3-results-active:not(.search3-hotel-tours-open) #results .search3-show-tours{min-height:44px!important;font-size:14px!important}
