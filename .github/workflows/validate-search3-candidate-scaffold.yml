@@ -1,0 +1,275 @@
+name: Validate Search3 candidate scaffold
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - 'tests/fixtures/search3-candidate-scaffold.json'
+      - 'tests/browser/search3-candidate-scaffold.cjs'
+      - 'tests/contracts/search3-boundaries.fixture.json'
+      - 'tests/contracts/search3-boundaries.test.cjs'
+      - 'diagnostics/search_results_recovery_test.cjs'
+      - 'docs/project/search3-reference-dossier.json'
+      - 'docs/project/search3-approved-mockups.json'
+      - 'docs/project/SEARCH3_REFERENCE_DOSSIER.md'
+      - 'scripts/ci/validate_search3_reference_dossier.py'
+      - 'scripts/ci/validate_search3_approved_mockups.py'
+      - 'scripts/ci/render_search3_visual_summary.py'
+      - 'tests/search3_reference_dossier_test.py'
+      - 'tests/search3_approved_mockups_test.py'
+      - 'tests/search3_visual_summary_test.py'
+      - '.github/workflows/validate-search3-candidate-scaffold.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - 'tests/fixtures/search3-candidate-scaffold.json'
+      - 'tests/browser/search3-candidate-scaffold.cjs'
+      - 'tests/contracts/search3-boundaries.fixture.json'
+      - 'tests/contracts/search3-boundaries.test.cjs'
+      - 'diagnostics/search_results_recovery_test.cjs'
+      - 'docs/project/search3-reference-dossier.json'
+      - 'docs/project/search3-approved-mockups.json'
+      - 'docs/project/SEARCH3_REFERENCE_DOSSIER.md'
+      - 'scripts/ci/validate_search3_reference_dossier.py'
+      - 'scripts/ci/validate_search3_approved_mockups.py'
+      - 'scripts/ci/render_search3_visual_summary.py'
+      - 'tests/search3_reference_dossier_test.py'
+      - 'tests/search3_approved_mockups_test.py'
+      - 'tests/search3_visual_summary_test.py'
+      - '.github/workflows/validate-search3-candidate-scaffold.yml'
+  workflow_dispatch:
+    inputs:
+      visual_tier:
+        description: Browser evidence tier
+        required: true
+        default: candidate
+        type: choice
+        options:
+          - pr
+          - candidate
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-search3-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    name: Search3 fast contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Bind fast checks to exact source head
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Validate scaffold sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/_preview/search3-candidate/poisk-turov/index.php
+          test -s v2/_preview/search3-candidate/poisk-turov/search3-results-filters-v1.css
+          node --check v2/_preview/search3-candidate/poisk-turov/search3-results-filters-v1.js
+          node --check tests/browser/search3-candidate-scaffold.cjs
+          node -e "const f=require('./tests/fixtures/search3-candidate-scaffold.json'); if(f.schemaVersion!==2||Object.keys(f.visualTiers).join(',')!=='pr,candidate'||f.viewports.map(v=>v.width).join(',')!=='375,430,768,1024,1440') process.exit(1)"
+          node tests/contracts/search3-boundaries.test.cjs
+          node diagnostics/search_results_recovery_test.cjs
+          python3 -B scripts/ci/validate_search3_reference_dossier.py
+          python3 -B scripts/ci/validate_search3_approved_mockups.py
+          python3 -B tests/search3_reference_dossier_test.py
+          python3 -B -m unittest tests.search3_approved_mockups_test
+          python3 -B tests/search3_visual_summary_test.py
+
+      - name: Validate production activation layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          activation_root="$RUNNER_TEMP/search3-production-layout"
+          mkdir -p "$activation_root"
+          cp -a v2/. "$activation_root/"
+          cp v2/index.php "$activation_root/search-page-v2.php"
+          printf '%s\n' '<?php http_response_code(599); echo "PRODUCTION_HOME_SELECTED";' > "$activation_root/index.php"
+          php -S 127.0.0.1:18084 -t "$activation_root" >"$RUNNER_TEMP/search3-production-layout.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for _ in {1..40}; do
+            if curl -fsS -H 'Host: anytoour.ru' -D "$RUNNER_TEMP/search3-production-layout.headers" \
+              http://127.0.0.1:18084/_preview/search3-candidate/poisk-turov/ \
+              -o "$RUNNER_TEMP/search3-production-layout.html"; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$php_pid" >/dev/null 2>&1; then
+              cat "$RUNNER_TEMP/search3-production-layout.log" >&2
+              exit 14
+            fi
+            sleep .25
+          done
+          test "$ready" -eq 1
+          grep -Eiq '^X-Robots-Tag: noindex, *follow' "$RUNNER_TEMP/search3-production-layout.headers"
+          grep -Fq 'body class="search3-candidate"' "$RUNNER_TEMP/search3-production-layout.html"
+          grep -Fq 'search3-results-filters-v1-style' "$RUNNER_TEMP/search3-production-layout.html"
+          grep -Fq 'leadApi:"/_preview/search3-candidate/poisk-turov/?lead=disabled"' "$RUNNER_TEMP/search3-production-layout.html"
+          grep -Fq 'metrikaCounter:0' "$RUNNER_TEMP/search3-production-layout.html"
+          if grep -Fq 'PRODUCTION_HOME_SELECTED' "$RUNNER_TEMP/search3-production-layout.html"; then exit 15; fi
+          lead_code="$(curl -sS -o "$RUNNER_TEMP/search3-production-layout-lead.json" -w '%{http_code}' \
+            -H 'Host: anytoour.ru' -H 'Content-Type: application/json' \
+            --data '{"synthetic":true}' \
+            'http://127.0.0.1:18084/_preview/search3-candidate/poisk-turov/?lead=disabled')"
+          test "$lead_code" = "403"
+          grep -Fq 'PREVIEW_LEAD_DISABLED' "$RUNNER_TEMP/search3-production-layout-lead.json"
+          echo "SEARCH3_PRODUCTION_LAYOUT_OK"
+
+  browser:
+    name: Search3 browser (${{ github.event_name == 'workflow_dispatch' && inputs.visual_tier || github.event.pull_request.head.ref == 'search3-zip-visual-implementation' && 'candidate' || 'pr' }})
+    needs: fast
+    outputs:
+      evidence_artifact_id: ${{ steps.evidence.outputs.artifact-id }}
+      evidence_artifact_digest: ${{ steps.evidence.outputs.artifact-digest }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SEARCH3_VISUAL_TIER: ${{ github.event_name == 'workflow_dispatch' && inputs.visual_tier || github.event.pull_request.head.ref == 'search3-zip-visual-implementation' && 'candidate' || 'pr' }}
+      SEARCH3_EXACT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Exercise canonical lifecycle through candidate route
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:18083 -t v2 >"$RUNNER_TEMP/search3-candidate-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for _ in {1..40}; do
+            if curl -fsS http://127.0.0.1:18083/_preview/search3-candidate/poisk-turov/ >/dev/null; then ready=1; break; fi
+            if ! kill -0 "$php_pid" >/dev/null 2>&1; then cat "$RUNNER_TEMP/search3-candidate-php.log" >&2; exit 12; fi
+            sleep .25
+          done
+          if [ "$ready" -ne 1 ]; then cat "$RUNNER_TEMP/search3-candidate-php.log" >&2; exit 13; fi
+          test "$(git rev-parse HEAD)" = "$SEARCH3_EXACT_SHA"
+          SEARCH3_BASE_URL=http://anytoour.ru:18083 \
+            SEARCH3_SERVER_URL=http://127.0.0.1:18083 \
+            SEARCH3_ARTIFACT_DIR=search3-candidate-artifacts \
+            SEARCH3_SOURCE_SHA="$SEARCH3_EXACT_SHA" \
+            SEARCH3_TESTED_SHA="$SEARCH3_EXACT_SHA" \
+            SEARCH3_RUN_ID="${{ github.run_id }}" \
+            SEARCH3_RUN_ATTEMPT="${{ github.run_attempt }}" \
+            node tests/browser/search3-candidate-scaffold.cjs
+          test -s search3-candidate-artifacts/manifest.json
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          manifest=json.loads(Path('search3-candidate-artifacts/manifest.json').read_text(encoding='utf-8'))
+          assert manifest['schemaVersion'] == 2
+          assert manifest['visualTier'] == os.environ['SEARCH3_VISUAL_TIER']
+          expected={'pr':12,'candidate':18}[manifest['visualTier']]
+          actual=len(list(Path('search3-candidate-artifacts').glob('*.png')))
+          assert actual == expected, (actual, expected)
+          print(f"SEARCH3_VISUAL_TIER_OK tier={manifest['visualTier']} screenshots={actual}")
+          PY
+
+      - name: Build human visual review index
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B scripts/ci/render_search3_visual_summary.py \
+            --manifest search3-candidate-artifacts/manifest.json \
+            --output-dir search3-candidate-artifacts
+          test -s search3-candidate-artifacts/review.html
+          test -s search3-candidate-artifacts/review.md
+          cat search3-candidate-artifacts/review.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Search3 candidate evidence
+        id: evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-${{ env.SEARCH3_VISUAL_TIER }}-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: search3-candidate-artifacts/
+          if-no-files-found: warn
+          retention-days: 30
+
+
+  release:
+    name: Build exact Search3 preview artifact
+    needs: browser
+    if: ${{ needs.browser.result == 'success' && (github.event_name == 'workflow_dispatch' && inputs.visual_tier == 'candidate' || github.event.pull_request.head.ref == 'search3-zip-visual-implementation') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      EVIDENCE_ARTIFACT_ID: ${{ needs.browser.outputs.evidence_artifact_id }}
+      EVIDENCE_ARTIFACT_DIGEST: sha256:${{ needs.browser.outputs.evidence_artifact_digest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Download exact candidate evidence
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.browser.outputs.evidence_artifact_id }}
+          path: ${{ runner.temp }}/search3-evidence
+          merge-multiple: true
+
+      - name: Build and verify deterministic preview artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -s "$RUNNER_TEMP/search3-evidence/manifest.json"
+          tree_sha="$(git rev-parse "$SOURCE_SHA^{tree}")"
+          subtree_sha="$(git rev-parse "$SOURCE_SHA:v2/_preview/search3-candidate/poisk-turov")"
+          evidence_manifest_sha="$(sha256sum "$RUNNER_TEMP/search3-evidence/manifest.json" | cut -d' ' -f1)"
+          python3 -B scripts/release/build_search3_candidate_preview.py build \
+            --repo . \
+            --candidate-sha "$SOURCE_SHA" \
+            --evidence-manifest "$RUNNER_TEMP/search3-evidence/manifest.json" \
+            --evidence-artifact-id "$EVIDENCE_ARTIFACT_ID" \
+            --evidence-artifact-digest "$EVIDENCE_ARTIFACT_DIGEST" \
+            --output-dir "$RUNNER_TEMP/search3-release"
+          python3 -B scripts/release/build_search3_candidate_preview.py verify \
+            --repo . \
+            --artifact-dir "$RUNNER_TEMP/search3-release" \
+            --candidate-sha "$SOURCE_SHA" \
+            --repository-tree-sha "$tree_sha" \
+            --candidate-subtree-tree-sha "$subtree_sha" \
+            --evidence-run-id "${{ github.run_id }}" \
+            --evidence-run-attempt "${{ github.run_attempt }}" \
+            --evidence-artifact-id "$EVIDENCE_ARTIFACT_ID" \
+            --evidence-artifact-digest "$EVIDENCE_ARTIFACT_DIGEST" \
+            --evidence-manifest-sha256 "$evidence_manifest_sha"
+
+      - name: Upload exact Search3 preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-release-${{ env.SOURCE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/search3-release/
+          if-no-files-found: error
+          retention-days: 30
