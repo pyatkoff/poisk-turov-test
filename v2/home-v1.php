@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/site-header-v2.php';
+require_once __DIR__ . '/site-path-v1.php';
 $homeSiteParams = is_array($params ?? null) ? $params : [];
 $homeForm = v2_form_defaults($_GET, $homeSiteParams);
 $homePhone = v2_site_phone($homeSiteParams, '8 (800) 100 - 61 - 50');
@@ -8,7 +9,7 @@ $homeDescription = 'AnyTour — удобный поиск туров с акту
 $homeCanonical = 'https://anytoour.ru/';
 $homeRobots = v2_seo_robots_content(v2_seo_indexable($homeSiteParams));
 $homeSchema = v2_seo_schema($homePhone, $homeDescription);
-$homeLegacyBase = '';
+$homeLegacyBase = v2_site_base_path();
 function home_e($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 ?><!doctype html>
 <html lang="ru">
@@ -54,7 +55,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
     </div>
   </section>
 
-  <form class="at-home-search" action="/poisk-turov/" method="get" autocomplete="off" data-home-search>
+  <form class="at-home-search" action="<?=home_e(v2_site_href('/poisk-turov/'))?>" method="get" autocomplete="off" data-home-search>
     <div class="at-home-search__grid">
       <label class="at-home-field"><span>Вылет из</span><select name="from" data-home-departures required><option value="<?=home_e($homeForm['from'])?>">Загружаем города…</option></select></label>
       <label class="at-home-field"><span>Страна</span><select name="country" data-home-countries required><option value="<?=home_e($homeForm['country'])?>">Загружаем страны…</option></select></label>
@@ -67,7 +68,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
       <div class="at-home-child-ages" data-home-child-ages></div>
       <button type="submit">Найти туры</button>
     </div>
-    <a class="at-home-search__more" href="/poisk-turov/">Расширенный поиск и все фильтры →</a>
+    <a class="at-home-search__more" href="<?=home_e(v2_site_href('/poisk-turov/'))?>">Расширенный поиск и все фильтры →</a>
   </form>
 
   <section class="at-home-section at-home-section--discovery">
@@ -76,7 +77,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
       <a class="at-home-direction at-home-direction--primary" href="<?=home_e($homeLegacyBase)?>/country/"><strong>Страны и курорты</strong><span>Выберите направление и перейдите к актуальным турам</span></a>
       <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/hot/"><strong>Горящие туры</strong><span>Поиск вариантов на ближайшие даты</span></a>
       <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/rb/"><strong>Раннее бронирование</strong><span>Сравните варианты заранее без спешки</span></a>
-      <a class="at-home-direction" href="/poisk-turov/"><strong>Полный поиск</strong><span>Все фильтры, отели, питание и актуальные предложения</span></a>
+      <a class="at-home-direction" href="<?=home_e(v2_site_href('/poisk-turov/'))?>"><strong>Полный поиск</strong><span>Все фильтры, отели, питание и актуальные предложения</span></a>
       <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/how-to-buy/"><strong>Как купить тур</strong><span>Понятный путь от выбора до бронирования</span></a>
     </div>
   </section>
