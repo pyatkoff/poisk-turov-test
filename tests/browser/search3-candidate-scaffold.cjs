@@ -67,7 +67,9 @@ assert.equal(fixture.failureFixtures.flights.upstreamAttempts, 2);
 assert.equal(new URL(baseUrl).hostname, 'anytoour.ru', 'browser host simulation must stay on anytoour.ru');
 assert.equal(new URL(serverUrl).origin, 'http://127.0.0.1:18083', 'lead guard probe must stay on loopback');
 assert.deepEqual(fixture.visualBaseline, {
-  status: 'BLOCKED_MISSING_APPROVED_DESIGN_PIXELS',
+  status: 'REFERENCE_PIXELS_AVAILABLE_COMPARISON_PENDING',
+  referenceCount: 8,
+  referenceManifestSha256: 'cbecdac4080b7a7a541a3b9b5de4a4f8448203717728f7ca7afa4ea6373f45b8',
   baselineCompared: false,
   ownerVisualApproval: false,
 });
