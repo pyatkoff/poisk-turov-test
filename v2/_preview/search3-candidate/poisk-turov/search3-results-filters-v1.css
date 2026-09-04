@@ -3407,6 +3407,12 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
   }
 }
 
+/* Candidate compact filter guard: retain the production drawer below the 1000px breakpoint. */
+@media(max-width:999px){
+  html body.search3-candidate .mrf-sheet{display:block!important}
+  html body.search3-candidate .mrf-sheet.is-open{visibility:visible!important;pointer-events:auto!important}
+}
+
 /* Candidate desktop grid guard: the 220px rail and 14px gap must occupy distinct columns. */
 @media(min-width:1000px){
   html body.search3-candidate.search3-results-active.search3-has-results .results-layout{
