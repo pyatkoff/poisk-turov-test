@@ -39,6 +39,7 @@ authorize:
 | Active browser asset order | `v2/bundle-manifest-v1.php` |
 | Test ownership and required tiers | `TEST_MATRIX.md` |
 | Release acceptance | `docs/project/RELEASE_GATES.md` |
+| Observed production release baseline | `docs/project/RELEASE_BASELINE_AUDIT.md` |
 | Deploy, canary and rollback procedure | `docs/project/ROLLOUT_RUNBOOK.md` |
 | Proposed funnel semantics and KPI | `docs/project/FUNNEL_SPEC.md` |
 | Human/machine resume state | `AUTOPILOT.md` / `AUTOPILOT_STATE.json` |
@@ -59,7 +60,8 @@ it is not a production deployment claim.
 | Search3 visual workflow | run 467, green on desktop/tablet/mobile |
 | Search3 preview | `https://anytoour.ru/_preview/search3/poisk-turov/` |
 | Preview indexing | HTTP `X-Robots-Tag: noindex, nofollow` confirmed |
-| Production release SHA / last-known-good SHA | **not yet exposed and not verified in this planning slice** |
+| Probable production source | `fa58a0cba6dcfc8624d98c20d64fa06330eae309` via successful deploy run 587; public exact identity remains unverified |
+| Last-known-good SHA | **undefined: no designation, retained artifact or LKG pointer** |
 
 The repository is active and `main` may advance. Every implementation branch
 must therefore start from a freshly fetched `main` and record its exact base.
@@ -107,8 +109,10 @@ Deliverables:
 
 ## Next implementation sequence
 
-1. `baseline/release-audit` — map production baseline, deployed/LKG identity
-   gaps and the safest correction without changing the platform.
+1. `baseline/release-audit` — evidence is recorded in
+   `docs/project/RELEASE_BASELINE_AUDIT.md` on a stacked review branch; it maps
+   the probable production source, missing exact identity/LKG and safest
+   correction without changing the platform.
 2. `release/exact-sha-boundary` — only after explicit platform approval, make
    candidate and rollback identity reproducible.
 3. `search3/reference-dossier` — preserve the target mockups, outstanding
