@@ -408,6 +408,10 @@ async function createHarness(browser, viewport, scenario) {
     css: document.getElementById('v2-primary-search-ux-style')?.getAttribute('href') || '',
     script: [...document.scripts].map(node => node.getAttribute('src') || '').find(src => src.includes('bundle-v1.php')) || '',
     candidateClass: document.body.classList.contains('search3-candidate'),
+    tabletFilterBootstrapCount: document.querySelectorAll('#search3-tablet-filter-bootstrap').length,
+    tabletFilterRestoreCount: document.querySelectorAll('#search3-tablet-filter-restore').length,
+    matchMediaOverrideRestored: typeof window.__search3CandidateNativeMatchMedia === 'undefined',
+    matchMediaIdentityRestored: document.documentElement.dataset.search3MatchMediaRestored || '',
     candidateCss: document.getElementById('search3-results-filters-v1-style')?.getAttribute('href') || '',
     candidateScript: document.getElementById('search3-results-filters-v1-script')?.getAttribute('src') || '',
     presentationStatus: window.Search3CandidateResultsV1?.status || '',
@@ -424,6 +428,10 @@ async function createHarness(browser, viewport, scenario) {
   assert.match(identity.css, /^\/bundle-v1\.php\?type=css&/);
   assert.match(identity.script, /^\/bundle-v1\.php\?type=js&/);
   assert.equal(identity.candidateClass, true);
+  assert.equal(identity.tabletFilterBootstrapCount, 1, 'candidate tablet filter bootstrap must be injected exactly once');
+  assert.equal(identity.tabletFilterRestoreCount, 1, 'candidate tablet filter restore must be injected exactly once');
+  assert.equal(identity.matchMediaOverrideRestored, true, 'candidate matchMedia bootstrap must not outlive bundle startup');
+  assert.equal(identity.matchMediaIdentityRestored, '1', 'candidate must restore the exact original matchMedia function');
   assert.match(identity.candidateCss, /^\/_preview\/search3-candidate\/poisk-turov\/search3-results-filters-v1\.css\?v=[0-9a-f]{16}$/);
   assert.match(identity.candidateScript, /^\/_preview\/search3-candidate\/poisk-turov\/search3-results-filters-v1\.js\?v=[0-9a-f]{16}$/);
   const diskAssets = presentationAssetEvidence();
@@ -469,6 +477,32 @@ async function geometry(page, width, state) {
         height: Math.round(box.height * 100) / 100,
       };
     };
+    const rendered = node => {
+      if (!node || node.hidden) return false;
+      const box = node.getBoundingClientRect();
+      const css = getComputedStyle(node);
+      return box.width > 0 && box.height > 0 && css.display !== 'none' && css.visibility !== 'hidden';
+    };
+    const clippedRect = node => {
+      if (!rendered(node)) return null;
+      const box = node.getBoundingClientRect();
+      const left = Math.max(0, box.left);
+      const top = Math.max(0, box.top);
+      const right = Math.min(window.innerWidth, box.right);
+      const bottom = Math.min(window.innerHeight, box.bottom);
+      if (right <= left || bottom <= top) return null;
+      return { left, top, right, bottom, width: right - left, height: bottom - top };
+    };
+    const intersection = (left, right) => {
+      if (!left || !right) return { width: 0, height: 0, area: 0 };
+      const width = Math.max(0, Math.min(left.right, right.right) - Math.max(left.left, right.left));
+      const height = Math.max(0, Math.min(left.bottom, right.bottom) - Math.max(left.top, right.top));
+      return {
+        width: Math.round(width * 100) / 100,
+        height: Math.round(height * 100) / 100,
+        area: Math.round(width * height * 100) / 100,
+      };
+    };
     const cards = document.querySelectorAll('#results .hotel-card');
     const first = cards[0] || null;
     const firstPhoto = first?.querySelector('.hotel-photo') || null;
@@ -484,9 +518,18 @@ async function geometry(page, width, state) {
     const filterOption = rail?.querySelector('.filter-option') || null;
     const h1 = document.querySelector('h1');
     const status = document.getElementById('status');
+    const mobileToolbar = document.querySelector('.search3-mobile-toolbar');
+    const mobileFilter = mobileToolbar?.querySelector('.mrf-open') || null;
     const documentWidth = document.documentElement.scrollWidth;
     const bodyWidth = document.body.scrollWidth;
     const clientWidth = document.documentElement.clientWidth;
+    const clippedStatus = clippedRect(status);
+    const clippedToolbar = clippedRect(mobileToolbar);
+    const toolbarCenter = clippedToolbar
+      ? { x: clippedToolbar.left + clippedToolbar.width / 2, y: clippedToolbar.top + clippedToolbar.height / 2 }
+      : null;
+    const toolbarCenterNode = toolbarCenter ? document.elementFromPoint(toolbarCenter.x, toolbarCenter.y) : null;
+    const visibleFilterAffordances = [rail, mobileFilter].filter(rendered);
     return {
       state: expectedState,
       viewportWidth: expectedWidth,
@@ -502,9 +545,14 @@ async function geometry(page, width, state) {
       status: rect(status),
       resultsSummary: rect(document.querySelector('.results-search-summary')),
       resultsTools: rect(document.getElementById('resultsTools')),
-      mobileToolbar: rect(document.querySelector('.search3-mobile-toolbar')),
+      mobileToolbar: rect(mobileToolbar),
       resultsLayout: rect(layout),
       filterRail: rect(rail),
+      filterAffordanceCount: visibleFilterAffordances.length,
+      mobileFilter: rect(mobileFilter),
+      statusPosition: status ? getComputedStyle(status).position : '',
+      statusToolbarIntersection: intersection(clippedStatus, clippedToolbar),
+      toolbarOwnsVisibleCenter: !!(mobileToolbar && toolbarCenterNode && mobileToolbar.contains(toolbarCenterNode)),
       firstResult: rect(first),
       firstPhoto: rect(firstPhoto),
       firstBody: rect(firstBody),
@@ -534,7 +582,7 @@ async function capture(page, width, state, expectedResultCount, manifest) {
       document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length === count
       && document.querySelectorAll('#results .search3-show-tours').length === count
     ), expectedResultCount, { timeout: 12000 });
-    if (width <= 760) await page.waitForSelector('.search3-mobile-toolbar', { state: 'visible' });
+    if (width <= 999) await page.waitForSelector('.search3-mobile-toolbar', { state: 'visible' });
     await page.locator('#results .hotel-card').first().scrollIntoViewIfNeeded();
   }
   const filename = `${width}-${state}.png`;
@@ -560,6 +608,15 @@ async function capture(page, width, state, expectedResultCount, manifest) {
     assert.ok(measured.typography.place >= 12, `${width}/${state}: hotel location is too small`);
     assert.ok(measured.typography.factLabel >= 10, `${width}/${state}: hotel fact label is too small`);
     assert.ok(measured.typography.disclosure >= 14, `${width}/${state}: disclosure label is too small`);
+    assert.equal(measured.filterAffordanceCount, 1, `${width}/${state}: expected exactly one visible filter affordance`);
+    if (width === 375 && state === 'progressive-25') {
+      assert.ok(
+        measured.statusToolbarIntersection.height <= 1,
+        `${width}/${state}: status overlaps mobile toolbar by ${measured.statusToolbarIntersection.height}px`,
+      );
+      assert.equal(measured.toolbarOwnsVisibleCenter, true, `${width}/${state}: status intercepts the toolbar center`);
+      assert.notEqual(measured.statusPosition, 'sticky', `${width}/${state}: progressive status must stay in flow`);
+    }
     if (width >= 1000) {
       assert.ok(measured.firstResult.height >= 208 && measured.firstResult.height <= 214, `${width}/${state}: desktop card height`);
       assert.ok(measured.firstPhoto.height >= 208 && measured.firstPhoto.height <= 212, `${width}/${state}: desktop photo height`);
@@ -572,7 +629,8 @@ async function capture(page, width, state, expectedResultCount, manifest) {
     } else if (width > 760) {
       assert.ok(measured.firstResult.height >= 216 && measured.firstResult.height <= 222, `${width}/${state}: tablet card height`);
       assert.equal(Math.round(measured.firstResult.width), width - 48, `${width}/${state}: tablet card width`);
-      for (const [surface, box] of Object.entries({ summary: measured.resultsSummary, tools: measured.resultsTools, layout: measured.resultsLayout })) {
+      assert.ok(measured.mobileFilter.height >= 44, `${width}/${state}: tablet filter touch target`);
+      for (const [surface, box] of Object.entries({ summary: measured.resultsSummary, tools: measured.resultsTools, toolbar: measured.mobileToolbar, layout: measured.resultsLayout })) {
         assert.ok(Math.abs(box.x - measured.firstResult.x) <= 1, `${width}/${state}: tablet ${surface} left edge`);
         assert.ok(Math.abs(box.width - measured.firstResult.width) <= 1, `${width}/${state}: tablet ${surface} width`);
       }
@@ -643,6 +701,102 @@ async function runFiveWidthEvidence(browser, manifest) {
       assert.ok(APIResults.some(call => call.limit === 25), `${viewport.width}: missing progressive limit=25`);
       assert.ok(APIResults.some(call => call.limit === 100), `${viewport.width}: missing final limit=100`);
       await assertClean(harness, `${viewport.width}/evidence`);
+    } finally {
+      await harness.context.close();
+    }
+  }
+}
+
+async function runResponsiveFilterBoundaries(browser, manifest) {
+  const widths = [760, 761, 768, 999, 1000];
+  manifest.presentationChecks.responsiveFilters = {};
+  for (const width of widths) {
+    const scenario = scenarioController(`filter-boundary-${width}`);
+    const harness = await createHarness(browser, { width, height: 900 }, scenario);
+    try {
+      await harness.page.evaluate(items => window.V2Results.render(items), resultSets[25]);
+      await harness.page.waitForFunction(count => (
+        document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length === count
+      ), resultSets[25].length, { timeout: 12000 });
+      if (width <= 999) {
+        await harness.page.waitForSelector('.search3-mobile-toolbar .mrf-open', { state: 'visible' });
+      }
+
+      const closed = await harness.page.evaluate(() => {
+        const visible = node => {
+          if (!node || node.hidden) return false;
+          const box = node.getBoundingClientRect();
+          const css = getComputedStyle(node);
+          return box.width > 0 && box.height > 0 && css.display !== 'none' && css.visibility !== 'hidden';
+        };
+        const button = document.querySelector('.search3-mobile-toolbar .mrf-open');
+        const rail = document.querySelector('.results-filter-rail');
+        return {
+          buttonVisible: visible(button),
+          buttonEnabled: !!button && !button.disabled,
+          buttonHeight: button ? Math.round(button.getBoundingClientRect().height * 100) / 100 : 0,
+          railVisible: visible(rail),
+          visibleAffordances: [button, rail].filter(visible).length,
+        };
+      });
+      assert.equal(closed.visibleAffordances, 1, `${width}: expected exactly one closed filter affordance`);
+
+      if (width <= 999) {
+        assert.deepEqual(
+          { buttonVisible: closed.buttonVisible, buttonEnabled: closed.buttonEnabled, railVisible: closed.railVisible },
+          { buttonVisible: true, buttonEnabled: true, railVisible: false },
+          `${width}: compact filter ownership`,
+        );
+        assert.ok(closed.buttonHeight >= 44, `${width}: compact filter target is too short`);
+        const button = harness.page.locator('.search3-mobile-toolbar .mrf-open');
+        await button.click();
+        await harness.page.waitForSelector('.mrf-sheet.is-open .mrf-panel[role="dialog"]', { state: 'visible' });
+        await harness.page.waitForFunction(() => document.querySelector('.mrf-panel')?.contains(document.activeElement));
+        const open = await harness.page.evaluate(() => {
+          const sheet = document.querySelector('.mrf-sheet');
+          const panel = document.querySelector('.mrf-panel[role="dialog"]');
+          return {
+            expanded: document.querySelector('.search3-mobile-toolbar .mrf-open')?.getAttribute('aria-expanded') || '',
+            open: !!sheet?.classList.contains('is-open'),
+            focusInside: !!panel?.contains(document.activeElement),
+            role: panel?.getAttribute('role') || '',
+          };
+        });
+        assert.deepEqual(open, { expanded: 'true', open: true, focusInside: true, role: 'dialog' }, `${width}: filter dialog open state`);
+        await harness.page.keyboard.press('Shift+Tab');
+        const wrappedBackward = await harness.page.evaluate(() => (
+          document.activeElement?.classList.contains('mrf-apply') === true
+          && document.querySelector('.mrf-panel')?.contains(document.activeElement) === true
+        ));
+        assert.equal(wrappedBackward, true, `${width}: filter dialog must wrap backward focus`);
+        await harness.page.keyboard.press('Tab');
+        const wrappedForward = await harness.page.evaluate(() => (
+          document.activeElement?.classList.contains('mrf-close') === true
+          && document.querySelector('.mrf-panel')?.contains(document.activeElement) === true
+        ));
+        assert.equal(wrappedForward, true, `${width}: filter dialog must wrap forward focus`);
+        await harness.page.keyboard.press('Escape');
+        await harness.page.waitForFunction(() => !document.querySelector('.mrf-sheet')?.classList.contains('is-open'));
+        await harness.page.waitForFunction(() => document.activeElement?.classList.contains('mrf-open'));
+        const closedAfterEscape = await button.getAttribute('aria-expanded');
+        assert.equal(closedAfterEscape, 'false', `${width}: Escape did not close the filter dialog`);
+        manifest.presentationChecks.responsiveFilters[String(width)] = {
+          owner: 'dialog-button',
+          touchHeight: closed.buttonHeight,
+          dialogFocused: true,
+          focusTrapped: true,
+          escapeFocusReturned: true,
+        };
+      } else {
+        assert.deepEqual(
+          { buttonVisible: closed.buttonVisible, railVisible: closed.railVisible },
+          { buttonVisible: false, railVisible: true },
+          `${width}: desktop filter ownership`,
+        );
+        manifest.presentationChecks.responsiveFilters[String(width)] = { owner: 'desktop-rail' };
+      }
+      assert.equal(apiCallCount(scenario), 0, `${width}: responsive filter availability must not request search data`);
+      await assertClean(harness, `filter-boundary-${width}`);
     } finally {
       await harness.context.close();
     }
@@ -1220,6 +1374,7 @@ async function runFlightFailureFixtures(browser, manifest) {
   manifest.environment.browserVersion = browser.version();
   try {
     await runFiveWidthEvidence(browser, manifest);
+    await runResponsiveFilterBoundaries(browser, manifest);
     await runPresentationEvidence(browser, manifest);
     if (visualTier.runRaces) {
       await runPendingStatusRace(browser);

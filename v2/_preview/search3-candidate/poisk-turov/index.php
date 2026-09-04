@@ -75,10 +75,28 @@ foreach ($candidateAssets as $type => $filename) {
     $assetUrls[$type] = SEARCH3_CANDIDATE_ASSET_BASE . $filename . '?v=' . substr($hash, 0, 16);
 }
 
+$primaryBundleScript = '<script src="'
+    . htmlspecialchars(v2_bundle_asset('js'), ENT_QUOTES, 'UTF-8') . '"></script>';
+$tabletFilterBootstrap = '<script id="search3-tablet-filter-bootstrap">'
+    . '(function(){"use strict";if(!window.matchMedia)return;'
+    . 'var nativeMatchMedia=window.matchMedia;'
+    . 'window.__search3CandidateNativeMatchMedia=nativeMatchMedia;'
+    . 'window.matchMedia=function(query){return nativeMatchMedia.call(window,'
+    . 'String(query)==="(max-width:760px)"?"(max-width:999px)":query);};})();'
+    . '</script>';
+$tabletFilterRestore = '<script id="search3-tablet-filter-restore">'
+    . '(function(){"use strict";var nativeMatchMedia=window.__search3CandidateNativeMatchMedia;'
+    . 'if(typeof nativeMatchMedia!=="function")return;window.matchMedia=nativeMatchMedia;'
+    . 'document.documentElement.dataset.search3MatchMediaRestored='
+    . 'window.matchMedia===nativeMatchMedia?"1":"0";'
+    . 'delete window.__search3CandidateNativeMatchMedia;})();'
+    . '</script>';
+
 $presentationMarkers = [
     '<body>' => '<body class="search3-candidate">',
     '</head>' => '<link id="search3-results-filters-v1-style" rel="stylesheet" href="'
         . htmlspecialchars($assetUrls['css'], ENT_QUOTES, 'UTF-8') . '"></head>',
+    $primaryBundleScript => $tabletFilterBootstrap . $primaryBundleScript . $tabletFilterRestore,
     '</body>' => '<script id="search3-results-filters-v1-script" src="'
         . htmlspecialchars($assetUrls['js'], ENT_QUOTES, 'UTF-8') . '"></script></body>',
 ];

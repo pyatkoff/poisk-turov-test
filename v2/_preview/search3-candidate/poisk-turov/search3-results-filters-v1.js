@@ -1,6 +1,13 @@
 (function () {
   'use strict';
 
+  var nativeMatchMedia = window.__search3CandidateNativeMatchMedia;
+  if (typeof nativeMatchMedia === 'function') {
+    window.matchMedia = nativeMatchMedia;
+    document.documentElement.dataset.search3MatchMediaRestored = window.matchMedia === nativeMatchMedia ? '1' : '0';
+    delete window.__search3CandidateNativeMatchMedia;
+  }
+
   if (window.Search3CandidateResultsV1) return;
 
   var body = document.body;
@@ -170,6 +177,40 @@
     button.setAttribute('aria-expanded', open ? 'true' : 'false');
     button.textContent = open ? 'Скрыть туры' : 'Показать туры';
   }, true);
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Tab') return;
+    var sheet = document.querySelector('.mrf-sheet.is-open');
+    var panel = sheet && sheet.querySelector('.mrf-panel[role="dialog"]');
+    if (!panel) return;
+    var focusable = Array.prototype.filter.call(
+      panel.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'),
+      function (node) {
+        var box = node.getBoundingClientRect();
+        var style = window.getComputedStyle(node);
+        return box.width > 0 && box.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+      }
+    );
+    if (!focusable.length) return;
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+    if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
+  if (window.matchMedia) {
+    var compactResults = window.matchMedia('(max-width:999px)');
+    if (compactResults.addEventListener) {
+      compactResults.addEventListener('change', function (event) {
+        if (event.matches) window.setTimeout(mountMobileToolbar, 0);
+      });
+    }
+  }
 
   window.Search3CandidateResultsV1 = Object.freeze({
     version: 1,
