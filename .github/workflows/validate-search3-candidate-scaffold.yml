@@ -137,6 +137,9 @@ jobs:
   browser:
     name: Search3 browser (${{ github.event_name == 'workflow_dispatch' && inputs.visual_tier || github.event.pull_request.head.ref == 'search3-zip-visual-implementation' && 'candidate' || 'pr' }})
     needs: fast
+    outputs:
+      evidence_artifact_id: ${{ steps.evidence.outputs.artifact-id }}
+      evidence_artifact_digest: ${{ steps.evidence.outputs.artifact-digest }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -203,10 +206,69 @@ jobs:
           cat search3-candidate-artifacts/review.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Search3 candidate evidence
+        id: evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: search3-${{ env.SEARCH3_VISUAL_TIER }}-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: search3-candidate-artifacts/
           if-no-files-found: warn
+          retention-days: 30
+
+
+  release:
+    name: Build exact Search3 preview artifact
+    needs: browser
+    if: ${{ needs.browser.result == 'success' && (github.event_name == 'workflow_dispatch' && inputs.visual_tier == 'candidate' || github.event.pull_request.head.ref == 'search3-zip-visual-implementation') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      EVIDENCE_ARTIFACT_ID: ${{ needs.browser.outputs.evidence_artifact_id }}
+      EVIDENCE_ARTIFACT_DIGEST: ${{ needs.browser.outputs.evidence_artifact_digest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Download exact candidate evidence
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.browser.outputs.evidence_artifact_id }}
+          path: ${{ runner.temp }}/search3-evidence
+
+      - name: Build and verify deterministic preview artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -s "$RUNNER_TEMP/search3-evidence/manifest.json"
+          tree_sha="$(git rev-parse "$SOURCE_SHA^{tree}")"
+          subtree_sha="$(git rev-parse "$SOURCE_SHA:v2/_preview/search3-candidate/poisk-turov")"
+          evidence_manifest_sha="$(sha256sum "$RUNNER_TEMP/search3-evidence/manifest.json" | cut -d' ' -f1)"
+          python3 -B scripts/release/build_search3_candidate_preview.py build \
+            --repo . \
+            --candidate-sha "$SOURCE_SHA" \
+            --evidence-manifest "$RUNNER_TEMP/search3-evidence/manifest.json" \
+            --evidence-artifact-id "$EVIDENCE_ARTIFACT_ID" \
+            --evidence-artifact-digest "$EVIDENCE_ARTIFACT_DIGEST" \
+            --output-dir "$RUNNER_TEMP/search3-release"
+          python3 -B scripts/release/build_search3_candidate_preview.py verify \
+            --repo . \
+            --artifact-dir "$RUNNER_TEMP/search3-release" \
+            --candidate-sha "$SOURCE_SHA" \
+            --repository-tree-sha "$tree_sha" \
+            --candidate-subtree-tree-sha "$subtree_sha" \
+            --evidence-run-id "${{ github.run_id }}" \
+            --evidence-run-attempt "${{ github.run_attempt }}" \
+            --evidence-artifact-id "$EVIDENCE_ARTIFACT_ID" \
+            --evidence-artifact-digest "$EVIDENCE_ARTIFACT_DIGEST" \
+            --evidence-manifest-sha256 "$evidence_manifest_sha"
+
+      - name: Upload exact Search3 preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-release-${{ env.SOURCE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/search3-release/
+          if-no-files-found: error
           retention-days: 30
