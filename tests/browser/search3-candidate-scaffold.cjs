@@ -38,6 +38,16 @@ assert.deepEqual(fixture.viewports.map(item => item.width), [375, 430, 768, 1024
 assert.equal(fixture.progressive.firstLimit, 25);
 assert.equal(fixture.progressive.finalLimit, 100);
 assert.equal(fixture.leadApi, '/_preview/search3-candidate/poisk-turov/?lead=disabled');
+assert.deepEqual(fixture.failureFixtures.states, [
+  'search-empty',
+  'search-timeout',
+  'search-upstream-error',
+  'flight-empty',
+  'flight-timeout',
+  'flight-upstream-error',
+  'lead-ui-no-delivery',
+]);
+assert.equal(fixture.failureFixtures.flights.upstreamAttempts, 2);
 assert.equal(new URL(baseUrl).hostname, 'anytoour.ru', 'browser host simulation must stay on anytoour.ru');
 assert.equal(new URL(serverUrl).origin, 'http://127.0.0.1:18083', 'lead guard probe must stay on loopback');
 assert.deepEqual(fixture.visualBaseline, {
@@ -112,6 +122,9 @@ function scenarioController(name) {
         return responseJson(route, fixture.catalogs[action]);
       }
       if (action === 'search_start') {
+        if (name === 'search-upstream-error') {
+          return responseJson(route, { error: fixture.failureFixtures.search.upstreamError }, fixture.failureFixtures.search.upstreamStatus);
+        }
         if (name === 'error-start') return responseJson(route, {});
         const id = name === 'pending-status'
           ? fixture.races.pendingStatusSearchId
@@ -119,7 +132,9 @@ function scenarioController(name) {
             ? fixture.races.pendingResultsSearchId
             : name === 'empty'
               ? fixture.emptySearchId
-              : fixture.progressive.searchId;
+              : name === 'search-timeout'
+                ? fixture.failureFixtures.search.timeoutSearchId
+                : fixture.progressive.searchId;
         return responseJson(route, { searchId: id });
       }
       if (action === 'search_status') {
@@ -150,6 +165,15 @@ function scenarioController(name) {
         if (name === 'empty') return responseJson(route, []);
         return responseJson(route, limit >= 100 ? resultSets[100] : resultSets[25]);
       }
+      if (action === 'tour') {
+        return responseJson(route, fixture.failureFixtures.selectedTour);
+      }
+      if (action === 'flights') {
+        if (name === 'flight-upstream-error') {
+          return responseJson(route, { error: fixture.failureFixtures.flights.upstreamError }, fixture.failureFixtures.flights.upstreamStatus);
+        }
+        if (name === 'flight-empty') return responseJson(route, []);
+      }
       throw new Error(`${name}: unexpected API action ${action}`);
     },
   };
@@ -163,6 +187,33 @@ async function waitFor(predicate, message, timeoutMs = 12000) {
     await new Promise(resolve => setTimeout(resolve, 20));
   }
   throw new Error(message);
+}
+
+async function injectDeterministicApiFailure(page, action, failure) {
+  await page.evaluate(({ targetAction, injectedFailure }) => {
+    const runtime = window.V2Runtime;
+    if (!runtime || typeof runtime.api !== 'function') throw new Error('V2Runtime API unavailable');
+    const original = runtime.api.bind(runtime);
+    window.__search3InjectedFailureCalls = window.__search3InjectedFailureCalls || {};
+    runtime.api = async (requestedAction, params, options) => {
+      if (requestedAction !== targetAction) return original(requestedAction, params, options);
+      window.__search3InjectedFailureCalls[targetAction] = Number(window.__search3InjectedFailureCalls[targetAction] || 0) + 1;
+      const error = new Error(injectedFailure.message);
+      error.code = injectedFailure.code;
+      if (injectedFailure.status) error.status = injectedFailure.status;
+      throw error;
+    };
+  }, { targetAction: action, injectedFailure: failure });
+}
+
+async function injectedFailureCalls(page, action) {
+  return page.evaluate(targetAction => Number(window.__search3InjectedFailureCalls?.[targetAction] || 0), action);
+}
+
+function recordBehavior(manifest, name, details) {
+  assert.ok(fixture.failureFixtures.states.includes(name), `undeclared behavior state ${name}`);
+  assert.ok(!manifest.behaviorStates.some(item => item.name === name), `duplicate behavior state ${name}`);
+  manifest.behaviorStates.push({ name, passed: true, ...details });
 }
 
 async function assertPreviewLeadGuard() {
@@ -221,12 +272,17 @@ async function createHarness(browser, viewport, scenario) {
   const pageErrors = [];
   const unexpectedFailures = [];
   const productionLeadRequests = [];
+  const candidateLeadRequests = [];
   page.on('console', message => {
     if (message.type() === 'error') consoleErrors.push(message.text());
   });
   page.on('pageerror', error => pageErrors.push(String(error)));
   page.on('request', request => {
-    if (new URL(request.url()).pathname.endsWith('/lead-adapter-v2.php')) productionLeadRequests.push(request.url());
+    const requestUrl = new URL(request.url());
+    if (requestUrl.pathname.endsWith('/lead-adapter-v2.php')) productionLeadRequests.push(request.url());
+    if (request.method() === 'POST' && requestUrl.pathname === fixture.route && requestUrl.searchParams.get('lead') === 'disabled') {
+      candidateLeadRequests.push(request.url());
+    }
   });
   page.on('requestfailed', request => {
     if (!/^https:\/\/mc\.yandex\.(?:ru|com)\//.test(request.url())) {
@@ -292,6 +348,7 @@ async function createHarness(browser, viewport, scenario) {
     unexpectedFailures,
     unexpectedOutbound,
     productionLeadRequests,
+    candidateLeadRequests,
   };
 }
 
@@ -373,6 +430,7 @@ async function assertClean(harness, label) {
   assert.deepEqual(harness.unexpectedFailures, [], `${label}: unexpected request failures`);
   assert.deepEqual(harness.unexpectedOutbound, [], `${label}: unexpected outbound request attempted`);
   assert.deepEqual(harness.productionLeadRequests, [], `${label}: production lead endpoint must not be fetched`);
+  assert.deepEqual(harness.candidateLeadRequests, [], `${label}: browser lead form must remain unsubmitted`);
   assert.equal(new URL(harness.page.url()).pathname, fixture.route, `${label}: URL changed`);
 }
 
@@ -459,7 +517,14 @@ async function runPendingResultsRace(browser) {
   }
 }
 
-async function runEmptyAndError(browser) {
+async function currentSearchValues(page) {
+  return page.evaluate(names => {
+    const form = document.getElementById('tourSearch');
+    return Object.fromEntries(names.map(name => [name, String(form.elements[name]?.value || '')]));
+  }, Object.keys(fixture.search));
+}
+
+async function runSearchFailureFixtures(browser, manifest) {
   const emptyScenario = scenarioController('empty');
   const emptyHarness = await createHarness(browser, fixture.viewports[0], emptyScenario);
   try {
@@ -468,11 +533,92 @@ async function runEmptyAndError(browser) {
     await emptyHarness.page.waitForSelector('.search-progress-empty', { timeout: 12000 });
     assert.equal(await emptyHarness.page.locator('#results .hotel-card').count(), 0);
     assert.equal(await emptyHarness.page.locator('#results .empty').count(), 1);
+    assert.deepEqual(await currentSearchValues(emptyHarness.page), fixture.search);
+    const emptyActions = await emptyHarness.page.locator('.search-progress-empty-actions button').count();
+    assert.ok(emptyActions >= 3, 'search-empty must expose recovery actions');
+    recordBehavior(manifest, 'search-empty', {
+      resultCount: 0,
+      recoveryActions: emptyActions,
+      parametersRetained: true,
+    });
     await assertClean(emptyHarness, 'empty');
   } finally {
     await emptyHarness.context.close();
   }
 
+  const timeoutScenario = scenarioController('search-timeout');
+  const timeoutHarness = await createHarness(browser, fixture.viewports[0], timeoutScenario);
+  try {
+    await setSearchValues(timeoutHarness.page);
+    await injectDeterministicApiFailure(timeoutHarness.page, 'search_status', {
+      code: fixture.failureFixtures.search.timeoutCode,
+      message: fixture.failureFixtures.search.timeoutMessage,
+    });
+    await timeoutHarness.page.evaluate(() => window.V2SearchLifecycle.submit());
+    await timeoutHarness.page.waitForSelector('.search-progress-error[role="alert"]', { timeout: 12000 });
+    const timeoutState = await timeoutHarness.page.evaluate(() => ({
+      pending: window.V2SearchLifecycle.pending,
+      searchId: window.V2SearchLifecycle.searchId,
+      retry: !!document.querySelector('.search-progress-retry'),
+      submitEnabled: !document.querySelector('#tourSearch .search-submit')?.disabled,
+      resultCount: document.querySelectorAll('#results .hotel-card').length,
+      text: document.querySelector('.search-progress-error')?.textContent.replace(/\s+/g, ' ').trim() || '',
+    }));
+    assert.equal(timeoutState.pending, false);
+    assert.equal(timeoutState.searchId, fixture.failureFixtures.search.timeoutSearchId);
+    assert.equal(timeoutState.retry, true);
+    assert.equal(timeoutState.submitEnabled, true);
+    assert.equal(timeoutState.resultCount, 0);
+    assert.match(timeoutState.text, /Tourvisor отвечает дольше обычного/);
+    assert.deepEqual(await currentSearchValues(timeoutHarness.page), fixture.search);
+    const timeoutCalls = await injectedFailureCalls(timeoutHarness.page, 'search_status');
+    assert.equal(timeoutCalls, 1, 'TIMEOUT must not be automatically retried');
+    recordBehavior(manifest, 'search-timeout', {
+      injectedCalls: timeoutCalls,
+      retryVisible: true,
+      parametersRetained: true,
+    });
+    await assertClean(timeoutHarness, 'search-timeout');
+  } finally {
+    await timeoutHarness.context.close();
+  }
+
+  const upstreamScenario = scenarioController('search-upstream-error');
+  const upstreamHarness = await createHarness(browser, fixture.viewports[0], upstreamScenario);
+  try {
+    await setSearchValues(upstreamHarness.page);
+    await upstreamHarness.page.evaluate(() => window.V2SearchLifecycle.submit());
+    await upstreamHarness.page.waitForSelector('.search-progress-error[role="alert"]', { timeout: 12000 });
+    const upstreamState = await upstreamHarness.page.evaluate(() => ({
+      pending: window.V2SearchLifecycle.pending,
+      searchId: window.V2SearchLifecycle.searchId,
+      retry: !!document.querySelector('.search-progress-retry'),
+      submitEnabled: !document.querySelector('#tourSearch .search-submit')?.disabled,
+      text: document.querySelector('.search-progress-error')?.textContent.replace(/\s+/g, ' ').trim() || '',
+    }));
+    assert.deepEqual(upstreamState, {
+      pending: false,
+      searchId: 0,
+      retry: true,
+      submitEnabled: true,
+      text: upstreamState.text,
+    });
+    assert.match(upstreamState.text, /Не удалось запустить поиск/);
+    assert.deepEqual(await currentSearchValues(upstreamHarness.page), fixture.search);
+    const upstreamCalls = upstreamScenario.calls.filter(call => call.action === 'search_start').length;
+    assert.equal(upstreamCalls, 1, 'search_start upstream failures must not be automatically retried');
+    recordBehavior(manifest, 'search-upstream-error', {
+      httpStatus: fixture.failureFixtures.search.upstreamStatus,
+      actionCalls: upstreamCalls,
+      retryVisible: true,
+      parametersRetained: true,
+    });
+    await assertClean(upstreamHarness, 'search-upstream-error');
+  } finally {
+    await upstreamHarness.context.close();
+  }
+
+  // Preserve the scaffold's original semantic start-error coverage as a separate guard.
   const errorScenario = scenarioController('error-start');
   const errorHarness = await createHarness(browser, fixture.viewports[0], errorScenario);
   try {
@@ -485,6 +631,162 @@ async function runEmptyAndError(browser) {
   } finally {
     await errorHarness.context.close();
   }
+}
+
+function selectedTourResult() {
+  const tour = fixture.failureFixtures.selectedTour;
+  return {
+    ...tour.hotel,
+    price: tour.price,
+    tours: [{
+      id: tour.id,
+      price: tour.price,
+      date: tour.date,
+      nights: tour.nights,
+      meal: tour.meal,
+      roomType: tour.roomType,
+      placement: tour.placement,
+      operator: tour.operator,
+      isCharter: tour.isCharter,
+    }],
+  };
+}
+
+async function openSelectedFailureTour(page) {
+  await page.evaluate(({ result, searchId }) => {
+    window.V2Runtime.setSearchId(searchId);
+    window.V2Results.render([result]);
+  }, {
+    result: selectedTourResult(),
+    searchId: fixture.failureFixtures.selectedTour.searchId,
+  });
+  await page.locator(`.direct-tour[data-tid="${fixture.failureFixtures.selectedTour.id}"]`).click();
+  await page.waitForFunction(tourId => (
+    window.V2TourController?.currentTour?.id === tourId
+    && !!document.querySelector('#selectedTour .lead-form')
+  ), fixture.failureFixtures.selectedTour.id, { timeout: 12000 });
+}
+
+async function selectedFailureState(page) {
+  return page.evaluate(() => {
+    const selected = document.getElementById('selectedTour');
+    const lead = selected?.querySelector('.lead-form');
+    const submit = lead?.querySelector('button[type="submit"]');
+    return {
+      tourId: String(window.V2TourController?.currentTour?.id || ''),
+      selectedVisible: !!selected && !selected.hidden,
+      leadVisible: !!lead && !lead.hidden,
+      leadSubmitEnabled: !!submit && !submit.disabled,
+      leadSummary: selected?.querySelector('.lead-selection-summary')?.textContent.replace(/\s+/g, ' ').trim() || '',
+      fallbackText: selected?.querySelector('.tour-flights .selected-loading')?.textContent.replace(/\s+/g, ' ').trim() || '',
+      flightError: selected?.querySelector('.tour-flights .flight-error')?.textContent.replace(/\s+/g, ' ').trim() || '',
+      flightErrorRole: selected?.querySelector('.tour-flights .flight-error')?.getAttribute('role') || '',
+      retryVisible: !!selected?.querySelector('.tour-flights .load-flights'),
+      selectedPrice: selected?.querySelector('.selected-price')?.textContent.replace(/\s+/g, ' ').trim() || '',
+    };
+  });
+}
+
+function assertConversionShellPreserved(state) {
+  assert.equal(state.tourId, fixture.failureFixtures.selectedTour.id);
+  assert.equal(state.selectedVisible, true);
+  assert.equal(state.leadVisible, true);
+  assert.equal(state.leadSubmitEnabled, true);
+  assert.match(state.selectedPrice, /101[\s\u00a0]?000/);
+  assert.equal(state.retryVisible, true);
+}
+
+async function runFlightFailureFixtures(browser, manifest) {
+  let leadUiDetails = null;
+  const emptyScenario = scenarioController('flight-empty');
+  const emptyHarness = await createHarness(browser, fixture.viewports[0], emptyScenario);
+  try {
+    await openSelectedFailureTour(emptyHarness.page);
+    await emptyHarness.page.waitForFunction(() => /\u043cенеджер уточнит перелёт по заявке/i.test(
+      document.querySelector('.tour-flights .selected-loading')?.textContent || ''
+    ), null, { timeout: 12000 });
+    let emptyState = await selectedFailureState(emptyHarness.page);
+    assertConversionShellPreserved(emptyState);
+    assert.match(emptyState.fallbackText, /менеджер уточнит перелёт по заявке/i);
+    assert.match(emptyState.leadSummary, /Рейс\s*Не выбран/i);
+    assert.equal(emptyScenario.calls.filter(call => call.action === 'flights').length, 1);
+
+    await emptyHarness.page.locator('.tour-flights .load-flights').click();
+    await emptyHarness.page.waitForFunction(() => /\u043cенеджер уточнит перелёт по заявке/i.test(
+      document.querySelector('.tour-flights .selected-loading')?.textContent || ''
+    ), null, { timeout: 12000 });
+    emptyState = await selectedFailureState(emptyHarness.page);
+    assertConversionShellPreserved(emptyState);
+    const emptyCalls = emptyScenario.calls.filter(call => call.action === 'flights').length;
+    assert.equal(emptyCalls, 2, 'empty flights retry must request flights exactly once more');
+    recordBehavior(manifest, 'flight-empty', {
+      actionCallsAfterRetry: emptyCalls,
+      retryVisible: true,
+      selectedTourPreserved: true,
+      managerClarificationVisible: true,
+    });
+    leadUiDetails = {
+      leadVisible: true,
+      leadSubmitEnabled: true,
+      candidateLeadRequests: emptyHarness.candidateLeadRequests.length,
+      productionLeadRequests: emptyHarness.productionLeadRequests.length,
+    };
+    await assertClean(emptyHarness, 'flight-empty');
+  } finally {
+    await emptyHarness.context.close();
+  }
+
+  const timeoutScenario = scenarioController('flight-timeout');
+  const timeoutHarness = await createHarness(browser, fixture.viewports[0], timeoutScenario);
+  try {
+    await injectDeterministicApiFailure(timeoutHarness.page, 'flights', {
+      code: fixture.failureFixtures.flights.timeoutCode,
+      message: fixture.failureFixtures.flights.timeoutMessage,
+    });
+    await openSelectedFailureTour(timeoutHarness.page);
+    await timeoutHarness.page.waitForSelector('.tour-flights .flight-error[role="alert"]');
+    const timeoutState = await selectedFailureState(timeoutHarness.page);
+    assertConversionShellPreserved(timeoutState);
+    assert.match(timeoutState.flightError, /Не удалось загрузить варианты рейсов/);
+    assert.equal(timeoutState.flightErrorRole, 'alert');
+    const timeoutCalls = await injectedFailureCalls(timeoutHarness.page, 'flights');
+    assert.equal(timeoutCalls, 1, 'flight TIMEOUT must not be automatically retried');
+    recordBehavior(manifest, 'flight-timeout', {
+      injectedCalls: timeoutCalls,
+      retryVisible: true,
+      selectedTourPreserved: true,
+      leadVisible: true,
+    });
+    await assertClean(timeoutHarness, 'flight-timeout');
+  } finally {
+    await timeoutHarness.context.close();
+  }
+
+  const upstreamScenario = scenarioController('flight-upstream-error');
+  const upstreamHarness = await createHarness(browser, fixture.viewports[0], upstreamScenario);
+  try {
+    await openSelectedFailureTour(upstreamHarness.page);
+    await upstreamHarness.page.waitForSelector('.tour-flights .flight-error[role="alert"]', { timeout: 12000 });
+    const upstreamState = await selectedFailureState(upstreamHarness.page);
+    assertConversionShellPreserved(upstreamState);
+    assert.match(upstreamState.flightError, /Не удалось загрузить варианты рейсов/);
+    assert.equal(upstreamState.flightErrorRole, 'alert');
+    const upstreamCalls = upstreamScenario.calls.filter(call => call.action === 'flights').length;
+    assert.equal(upstreamCalls, fixture.failureFixtures.flights.upstreamAttempts);
+    recordBehavior(manifest, 'flight-upstream-error', {
+      httpStatus: fixture.failureFixtures.flights.upstreamStatus,
+      actionCalls: upstreamCalls,
+      retryVisible: true,
+      selectedTourPreserved: true,
+      leadVisible: true,
+    });
+    await assertClean(upstreamHarness, 'flight-upstream-error');
+  } finally {
+    await upstreamHarness.context.close();
+  }
+
+  assert.ok(leadUiDetails, 'lead UI evidence missing from flight-empty state');
+  recordBehavior(manifest, 'lead-ui-no-delivery', leadUiDetails);
 }
 
 (async () => {
@@ -512,6 +814,7 @@ async function runEmptyAndError(browser) {
       ...contextProfile,
     },
     screenshots: [],
+    behaviorStates: [],
   };
   const candidateHost = new URL(baseUrl).hostname;
   const launchArgs = candidateHost === 'anytoour.ru'
@@ -523,19 +826,22 @@ async function runEmptyAndError(browser) {
     await runFiveWidthEvidence(browser, manifest);
     await runPendingStatusRace(browser);
     await runPendingResultsRace(browser);
-    await runEmptyAndError(browser);
+    await runSearchFailureFixtures(browser, manifest);
+    await runFlightFailureFixtures(browser, manifest);
   } finally {
     await browser.close();
   }
 
   assert.equal(manifest.screenshots.length, 15);
   assert.equal(new Set(manifest.screenshots.map(item => item.file)).size, 15);
+  assert.deepEqual(manifest.behaviorStates.map(item => item.name), fixture.failureFixtures.states);
+  assert.equal(manifest.behaviorStates.every(item => item.passed === true), true);
   for (const item of manifest.screenshots) {
     const bytes = fs.readFileSync(path.join(outputDir, item.file));
     assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), item.sha256);
   }
   fs.writeFileSync(path.join(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-  console.log('SEARCH3_CANDIDATE_SCAFFOLD_OK widths=375,430,768,1024,1440 screenshots=15 races=status,results states=empty,error');
+  console.log('SEARCH3_CANDIDATE_SCAFFOLD_OK widths=375,430,768,1024,1440 screenshots=15 races=status,results behaviorStates=7');
 })().catch(error => {
   console.error(error);
   process.exit(1);

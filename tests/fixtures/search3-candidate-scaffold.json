@@ -49,6 +49,56 @@
     "pendingResultsSearchId": 3202
   },
   "emptySearchId": 3301,
+  "failureFixtures": {
+    "states": [
+      "search-empty",
+      "search-timeout",
+      "search-upstream-error",
+      "flight-empty",
+      "flight-timeout",
+      "flight-upstream-error",
+      "lead-ui-no-delivery"
+    ],
+    "search": {
+      "timeoutSearchId": 3401,
+      "timeoutCode": "TIMEOUT",
+      "timeoutMessage": "Tourvisor не ответил вовремя",
+      "upstreamStatus": 502,
+      "upstreamError": "Fixture search upstream unavailable"
+    },
+    "selectedTour": {
+      "searchId": 3501,
+      "id": "fixture-tour-no-flight",
+      "price": 101000,
+      "date": "2099-09-12",
+      "nights": 8,
+      "adults": 2,
+      "childs": 0,
+      "meal": {"id": 7, "name": "All Inclusive"},
+      "roomType": "Standard",
+      "placement": "2 взрослых",
+      "operator": {"id": 41, "name": "Fixture Operator"},
+      "departure": {"id": 1, "name": "Москва"},
+      "isCharter": true,
+      "hotel": {
+        "id": "fixture-hotel-no-flight",
+        "name": "Fixture Hotel No Flight",
+        "country": {"id": 4, "name": "Турция"},
+        "region": {"id": 21, "name": "Анталья"},
+        "subRegion": {"id": 31, "name": "Лара"},
+        "category": 5,
+        "rating": 4.8,
+        "seaDistance": 250
+      }
+    },
+    "flights": {
+      "timeoutCode": "TIMEOUT",
+      "timeoutMessage": "Tourvisor не ответил вовремя",
+      "upstreamStatus": 503,
+      "upstreamError": "Fixture flights upstream unavailable",
+      "upstreamAttempts": 2
+    }
+  },
   "hotelTemplate": {
     "namePrefix": "Fixture Hotel",
     "country": {"id": 4, "name": "Турция"},
