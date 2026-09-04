@@ -87,12 +87,15 @@
         button.dataset.search3SelectedFlowAria = button.getAttribute('aria-label') || '';
       }
       button.dataset.search3SelectedFlowAction = '1';
-      button.textContent = 'К итогу тура';
-      button.setAttribute('aria-label', 'Перейти к итогу тура без выбранного рейса');
+      if (text(button) !== 'К итогу тура') button.textContent = 'К итогу тура';
+      if (button.getAttribute('aria-label') !== 'Перейти к итогу тура без выбранного рейса') {
+        button.setAttribute('aria-label', 'Перейти к итогу тура без выбранного рейса');
+      }
       return;
     }
     if (button.dataset.search3SelectedFlowAction !== '1') return;
-    button.textContent = button.dataset.search3SelectedFlowLabel || 'Продолжить';
+    var label = button.dataset.search3SelectedFlowLabel || 'Продолжить';
+    if (text(button) !== label) button.textContent = label;
     var aria = button.dataset.search3SelectedFlowAria || '';
     if (aria) button.setAttribute('aria-label', aria);
     else button.removeAttribute('aria-label');
@@ -133,12 +136,21 @@
     });
   }
 
-  new MutationObserver(schedule).observe(selected, {
+  var observer = new MutationObserver(schedule);
+  observer.observe(selected, {
     childList: true,
     subtree: true,
     attributes: true,
     attributeFilter: ['hidden', 'class']
   });
+  var mobileButton = document.querySelector('.search3-selected-mobile-bar [data-s3-selected-lead]');
+  if (mobileButton) {
+    observer.observe(mobileButton, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+  }
 
   schedule();
   window.Search3SelectedFlowV2 = Object.freeze({
