@@ -922,6 +922,17 @@ async function runDesktopPresentationEvidence(browser, manifest) {
       const priceBox = price?.getBoundingClientRect();
       const directBox = direct?.getBoundingClientRect();
       const priceScopeBox = priceScope?.getBoundingClientRect();
+      const priceButtonOverlap = priceBox && directBox
+        ? Math.max(0, Math.min(priceBox.right, directBox.right) - Math.max(priceBox.left, directBox.left))
+          * Math.max(0, Math.min(priceBox.bottom, directBox.bottom) - Math.max(priceBox.top, directBox.top))
+        : -1;
+      const priceButtonGap = priceBox && directBox
+        ? directBox.top >= priceBox.bottom
+          ? directBox.top - priceBox.bottom
+          : directBox.left >= priceBox.right
+            ? directBox.left - priceBox.right
+            : -1
+        : -1;
       return {
         openCards: document.querySelectorAll('#results .hotel-card.search3-tours-open').length,
         expanded: button?.getAttribute('aria-expanded') || '',
@@ -938,7 +949,8 @@ async function runDesktopPresentationEvidence(browser, manifest) {
         tourFacts,
         tourPriceWhiteSpace: price ? getComputedStyle(price).whiteSpace : '',
         tourActionOverflow: action ? action.scrollWidth > action.clientWidth + 1 : true,
-        tourPriceButtonGap: priceBox && directBox ? Math.round((directBox.left - priceBox.right) * 100) / 100 : -1,
+        tourPriceButtonOverlap: Math.round(priceButtonOverlap * 100) / 100,
+        tourPriceButtonGap: Math.round(priceButtonGap * 100) / 100,
       };
     });
     assert.deepEqual({
@@ -966,7 +978,8 @@ async function runDesktopPresentationEvidence(browser, manifest) {
     assert.equal(disclosure.tourFacts['Размещение'], '2 взрослых');
     assert.equal(disclosure.tourPriceWhiteSpace, 'nowrap', 'expanded tour price must stay on one line');
     assert.equal(disclosure.tourActionOverflow, false, 'expanded tour action must not overflow');
-    assert.ok(disclosure.tourPriceButtonGap >= 10, 'expanded tour price and CTA must not overlap');
+    assert.equal(disclosure.tourPriceButtonOverlap, 0, 'expanded tour price and CTA must not overlap');
+    assert.ok(disclosure.tourPriceButtonGap >= 6, 'expanded tour price and CTA need a visible gap');
     assert.equal(apiCallCount(scenario), beforeDisclosureCalls, 'card disclosure must not request search data');
     await writePresentationScreenshot(harness.page, '1440-first-hotel-expanded.png', manifest, { disclosure });
 
