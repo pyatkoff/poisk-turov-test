@@ -25,6 +25,7 @@
       "1440-first-hotel-expanded.png",
       "375-first-hotel-expanded.png",
       "375-selected-tour-handoff.png",
+      "1440-selected-tour-presentation.png",
       "430-filters-open.png",
       "375-filters-open.png"
     ]
@@ -44,6 +45,7 @@
         "1440-first-hotel-expanded.png",
         "375-first-hotel-expanded.png",
         "375-selected-tour-handoff.png",
+        "1440-selected-tour-presentation.png",
         "430-filters-open.png",
         "375-filters-open.png"
       ],
@@ -57,6 +59,7 @@
         "1440-first-hotel-expanded.png",
         "375-first-hotel-expanded.png",
         "375-selected-tour-handoff.png",
+        "1440-selected-tour-presentation.png",
         "430-filters-open.png",
         "375-filters-open.png"
       ],
@@ -124,7 +127,7 @@
       "childs": 0,
       "meal": {"id": 7, "name": "All Inclusive"},
       "roomType": "Standard",
-      "placement": "2 взрослых",
+      "placement": "DBL",
       "operator": {"id": 41, "name": "Fixture Operator"},
       "departure": {"id": 1, "name": "Москва"},
       "isCharter": true,

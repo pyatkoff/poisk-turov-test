@@ -419,6 +419,12 @@ async function createHarness(browser, viewport, scenario) {
     presentationStatus: window.Search3CandidateResultsV1?.status || '',
     approvedPixelsCompared: window.Search3CandidateResultsV1?.approvedPixelsCompared,
     selectedHandoffVersion: window.Search3CandidateSelectedHandoffV1?.version || 0,
+    selectedPresentationVersion: window.Search3CandidateSelectedPresentationV1?.version || 0,
+    unknownPresentationValues: [
+      window.Search3CandidateResultsV1?.mealLabel('Fixture meal') || '',
+      window.Search3CandidateResultsV1?.roomLabel('Fixture room') || '',
+      window.Search3CandidateResultsV1?.placementLabel('Fixture placement') || '',
+    ],
     partyLabels: [0, 1, 2, 5].map(children => window.Search3CandidateResultsV1?.partyLabel(2, children) || ''),
   }));
   assert.equal(identity.h1Count, 1);
@@ -444,6 +450,8 @@ async function createHarness(browser, viewport, scenario) {
   assert.equal(identity.presentationStatus, fixture.presentation.status);
   assert.equal(identity.approvedPixelsCompared, false);
   assert.equal(identity.selectedHandoffVersion, 1);
+  assert.equal(identity.selectedPresentationVersion, 1);
+  assert.deepEqual(identity.unknownPresentationValues, ['Fixture meal', 'Fixture room', 'Fixture placement']);
   assert.deepEqual(identity.partyLabels, [
     '2 взрослых',
     '2 взрослых и 1 ребёнок',
@@ -1078,6 +1086,132 @@ async function renderSelectedTourOffer(page) {
   await page.waitForFunction(() => !document.querySelector('#results .hotel-tours')?.hidden);
 }
 
+async function selectedPresentationState(page) {
+  return page.evaluate(() => {
+    const rows = (selector, labelSelector, valueSelector) => Object.fromEntries(
+      [...document.querySelectorAll(selector)].map(row => [
+        row.querySelector(labelSelector)?.textContent.replace(/\s+/g, ' ').trim() || '',
+        row.querySelector(valueSelector)?.textContent.replace(/\s+/g, ' ').trim() || '',
+      ]).filter(entry => entry[0]),
+    );
+    const services = rows('#selectedTour .search3-final-services > article', 'span', 'strong');
+    const roomService = [...document.querySelectorAll('#selectedTour .search3-final-services > article')].find(article => (
+      article.querySelector('span')?.textContent.trim().toLowerCase() === 'номер'
+    ));
+    const current = window.V2TourController?.currentTour || {};
+    const rawText = value => value && typeof value === 'object'
+      ? String(value.russianName || value.fullRussianName || value.name || value.title || '')
+      : String(value || '');
+    return {
+      version: window.Search3CandidateSelectedPresentationV1?.version || 0,
+      marker: document.getElementById('selectedTour')?.dataset.search3SelectedPresentation || '',
+      facts: rows('#selectedTour .facts > div', 'span', 'b'),
+      services,
+      servicePlacement: roomService?.querySelector('small')?.textContent.replace(/\s+/g, ' ').trim() || '',
+      summary: rows('#selectedTour .search3-booking-summary dl > div', 'dt', 'dd'),
+      detail: rows('#selectedTour .search3-tour-detail-rail dl > div', 'dt', 'dd'),
+      priceScopes: {
+        selected: document.querySelector('#selectedTour .selected-price > small')?.textContent.replace(/\s+/g, ' ').trim() || '',
+        summary: document.querySelector('#selectedTour .search3-booking-summary__total > span')?.textContent.replace(/\s+/g, ' ').trim() || '',
+        detail: document.querySelector('#selectedTour .search3-tour-detail-rail__price > span')?.textContent.replace(/\s+/g, ' ').trim() || '',
+        mobile: document.querySelector('.search3-selected-mobile-bar__price small')?.textContent.replace(/\s+/g, ' ').trim() || '',
+      },
+      ctas: {
+        detail: document.querySelector('#selectedTour .search3-tour-detail-rail__continue')?.textContent.replace(/\s+/g, ' ').trim() || '',
+        mobile: document.querySelector('.search3-selected-mobile-bar [data-s3-selected-lead]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+      },
+      rawTour: {
+        date: String(current.date || ''),
+        meal: rawText(current.meal),
+        room: rawText(current.roomType),
+        placement: rawText(current.placement),
+      },
+      pathname: location.pathname,
+      horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+    };
+  });
+}
+
+function assertSelectedPresentation(state, width) {
+  assert.equal(state.version, 1);
+  assert.equal(state.marker, '1');
+  assert.deepEqual({
+    date: state.facts['Дата'],
+    meal: state.facts['Питание'],
+    room: state.facts['Номер'],
+    placement: state.facts['Размещение'],
+  }, {
+    date: '12 сент. 2099',
+    meal: 'Всё включено',
+    room: 'Стандартный номер',
+    placement: 'Двухместное',
+  });
+  assert.deepEqual({
+    meal: state.services['Питание'],
+    room: state.services['Номер'],
+    placement: state.servicePlacement,
+  }, {
+    meal: 'Всё включено',
+    room: 'Стандартный номер',
+    placement: 'Двухместное',
+  });
+  assert.deepEqual({
+    date: state.summary['Дата'],
+    meal: state.summary['Питание'],
+    room: state.summary['Номер'],
+  }, {
+    date: '12 сент. 2099',
+    meal: 'Всё включено',
+    room: 'Стандартный номер',
+  });
+  assert.deepEqual({
+    date: state.detail['Дата'],
+    meal: state.detail['Питание'],
+    room: state.detail['Номер'],
+  }, {
+    date: '12 сент. 2099 · 8 ночей',
+    meal: 'Всё включено',
+    room: 'Стандартный номер',
+  });
+  assert.deepEqual(state.priceScopes, {
+    selected: 'За весь тур · 2 взрослых',
+    summary: 'За весь тур · 2 взрослых',
+    detail: 'За весь тур · 2 взрослых',
+    mobile: 'За весь тур · 2 взрослых',
+  });
+  assert.deepEqual(state.ctas, {
+    detail: 'К выбору рейса',
+    mobile: 'К выбору рейса',
+  });
+  assert.deepEqual(state.rawTour, {
+    date: fixture.failureFixtures.selectedTour.date,
+    meal: fixture.failureFixtures.selectedTour.meal.name,
+    room: fixture.failureFixtures.selectedTour.roomType,
+    placement: fixture.failureFixtures.selectedTour.placement,
+  }, `${width}: presentation must not mutate Tourvisor-derived tour data`);
+  assert.equal(state.pathname, fixture.route);
+  assert.equal(state.horizontalOverflow, false, `${width}: selected presentation must not overflow`);
+}
+
+async function waitForSelectedPresentation(page) {
+  await page.waitForFunction(expected => {
+    const valueFor = (rows, labelSelector, valueSelector, label) => {
+      const row = [...document.querySelectorAll(rows)].find(item => (
+        item.querySelector(labelSelector)?.textContent.replace(/\s+/g, ' ').trim() === label
+      ));
+      return row?.querySelector(valueSelector)?.textContent.replace(/\s+/g, ' ').trim() || '';
+    };
+    return document.getElementById('selectedTour')?.dataset.search3SelectedPresentation === '1'
+      && valueFor('#selectedTour .facts > div', 'span', 'b', 'Дата') === expected.date
+      && valueFor('#selectedTour .search3-booking-summary dl > div', 'dt', 'dd', 'Питание') === expected.meal
+      && valueFor('#selectedTour .search3-tour-detail-rail dl > div', 'dt', 'dd', 'Номер') === expected.room;
+  }, {
+    date: '12 сент. 2099',
+    meal: 'Всё включено',
+    room: 'Стандартный номер',
+  }, { timeout: 12000 });
+}
+
 async function runMobileSelectedHandoffEvidence(browser, manifest) {
   const viewport = fixture.viewports.find(item => item.width === 375);
   const scenario = scenarioController('flight-empty');
@@ -1136,6 +1270,7 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
     await harness.page.waitForFunction(() => /менеджер уточнит перелёт по заявке/i.test(
       document.querySelector('.tour-flights .selected-loading')?.textContent || ''
     ), null, { timeout: 12000 });
+    await waitForSelectedPresentation(harness.page);
 
     const selectedState = await harness.page.evaluate(() => {
       const selected = document.getElementById('selectedTour');
@@ -1186,6 +1321,8 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
       horizontalOverflow: false,
     });
     assert.equal(selectedState.heading, fixture.failureFixtures.selectedTour.hotel.name);
+    selectedState.presentation = await selectedPresentationState(harness.page);
+    assertSelectedPresentation(selectedState.presentation, 375);
     await writePresentationScreenshot(harness.page, '375-selected-tour-handoff.png', manifest, {
       geometry: { viewportWidth: 375, state: 'selected-tour-handoff' },
       selected: selectedState,
@@ -1284,6 +1421,31 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
   }
 }
 
+async function runDesktopSelectedPresentationEvidence(browser, manifest) {
+  const viewport = fixture.viewports.find(item => item.width === 1440);
+  const scenario = scenarioController('flight-empty');
+  const harness = await createHarness(browser, viewport, scenario);
+  try {
+    await openSelectedFailureTour(harness.page);
+    await harness.page.waitForFunction(() => /менеджер уточнит перелёт по заявке/i.test(
+      document.querySelector('.tour-flights .selected-loading')?.textContent || ''
+    ), null, { timeout: 12000 });
+    await waitForSelectedPresentation(harness.page);
+    const presentation = await selectedPresentationState(harness.page);
+    assertSelectedPresentation(presentation, 1440);
+    await writePresentationScreenshot(harness.page, '1440-selected-tour-presentation.png', manifest, {
+      geometry: { viewportWidth: 1440, state: 'selected-tour-presentation' },
+      selected: presentation,
+    });
+    manifest.presentationChecks.desktopSelectedTour = presentation;
+    assert.equal(harness.candidateLeadRequests.length, 0);
+    assert.equal(harness.productionLeadRequests.length, 0);
+    await assertClean(harness, '1440-selected-tour-presentation');
+  } finally {
+    await harness.context.close();
+  }
+}
+
 async function runMobileFilterEvidence(browser, manifest, width, filename, closeMode) {
   const viewport = fixture.viewports.find(item => item.width === width);
   const scenario = scenarioController(`mobile-filter-${width}`);
@@ -1358,6 +1520,7 @@ async function runPresentationEvidence(browser, manifest) {
   await runDesktopPresentationEvidence(browser, manifest);
   await runMobileExpandedOfferEvidence(browser, manifest);
   await runMobileSelectedHandoffEvidence(browser, manifest);
+  await runDesktopSelectedPresentationEvidence(browser, manifest);
   await runMobileFilterEvidence(browser, manifest, 430, '430-filters-open.png', 'escape');
   await runMobileFilterEvidence(browser, manifest, 375, '375-filters-open.png', 'backdrop');
 }
@@ -1772,9 +1935,9 @@ async function runFlightFailureFixtures(browser, manifest) {
 
   assert.equal(manifest.screenshots.length, expectedEvidenceScreenshotCount);
   assert.equal(new Set(manifest.screenshots.map(item => item.file)).size, expectedEvidenceScreenshotCount);
-  assert.equal(manifest.presentationScreenshots.length, 5);
+  assert.equal(manifest.presentationScreenshots.length, 6);
   assert.deepEqual(manifest.presentationScreenshots.map(item => item.file), expectedPresentationCaptures);
-  assert.equal(new Set(manifest.presentationScreenshots.map(item => item.file)).size, 5);
+  assert.equal(new Set(manifest.presentationScreenshots.map(item => item.file)).size, 6);
   assert.equal(manifest.presentation.status, 'REFERENCE_IMPLEMENTATION_IN_PROGRESS');
   assert.equal(manifest.presentation.approvedPixelsCompared, false);
   assert.deepEqual(

@@ -188,7 +188,7 @@ jobs:
           manifest=json.loads(Path('search3-candidate-artifacts/manifest.json').read_text(encoding='utf-8'))
           assert manifest['schemaVersion'] == 2
           assert manifest['visualTier'] == os.environ['SEARCH3_VISUAL_TIER']
-          expected={'pr':14,'candidate':20}[manifest['visualTier']]
+          expected={'pr':15,'candidate':21}[manifest['visualTier']]
           actual=len(list(Path('search3-candidate-artifacts').glob('*.png')))
           assert actual == expected, (actual, expected)
           print(f"SEARCH3_VISUAL_TIER_OK tier={manifest['visualTier']} screenshots={actual}")
