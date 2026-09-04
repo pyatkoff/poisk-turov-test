@@ -3407,6 +3407,18 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
   }
 }
 
+/* Candidate desktop geometry guard: prevent donor 166px locks from clipping the 210px result card. */
+@media(min-width:1000px){
+  html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-main,
+  html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo,
+  html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo>img,
+  html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-body{
+    height:210px!important;
+    min-height:210px!important;
+    max-height:210px!important;
+  }
+}
+
 /* Candidate lifecycle guard: the tested completion status remains visible and scrollable. */
 html body.search3-candidate.search3-results-active.search3-has-results #status:has(.search-progress-done){display:block!important}
 
