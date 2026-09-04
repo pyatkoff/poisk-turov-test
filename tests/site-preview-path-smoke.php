@@ -13,9 +13,9 @@ $_SERVER['SCRIPT_NAME'] = $mode === 'preview'
     ? '/_preview/search3-site-candidate/poisk-turov/index.php'
     : '/poisk-turov/index.php';
 
+define('V2_PUBLIC_BASE_PATH', $mode === 'preview' ? '/_preview/search3-site-candidate' : '');
 if ($mode === 'preview') {
     define('V2_SITE_BASE_PATH', '/_preview/search3-site-candidate');
-    define('V2_PUBLIC_BASE_PATH', '/_preview/search3-site-candidate');
     define('V2_API_PUBLIC_PATH', '/api-v2.php');
     define('V2_LEAD_PUBLIC_PATH', '/_preview/search3-site-candidate/preview-lead-disabled.php');
 }
