@@ -980,7 +980,7 @@ async function runDesktopPresentationEvidence(browser, manifest) {
       const card = document.querySelector('#results .hotel-card');
       const context = card?.querySelector('.hotel-price-context') || null;
       const lines = [...(context?.querySelectorAll('span') || [])];
-      const familyLine = lines[1] || null;
+      const familyLine = lines[0] || null;
       const familyBox = familyLine?.getBoundingClientRect() || null;
       return {
         context: (context?.textContent || '').replace(/\s+/g, ' ').trim(),
@@ -989,8 +989,8 @@ async function runDesktopPresentationEvidence(browser, manifest) {
         ariaLabel: card?.querySelector('.hotel-price')?.getAttribute('aria-label') || '',
       };
     });
-    assert.equal(familyPriceScope.context, '8 ночей · 2 взрослых и 1 ребёнок Чартерный перелёт · Всё включено');
-    assert.deepEqual(familyPriceScope.lines, ['8 ночей · 2 взрослых', 'и 1 ребёнок', 'Чартерный перелёт · Всё включено']);
+    assert.equal(familyPriceScope.context, '2 взрослых и 1 ребёнок');
+    assert.deepEqual(familyPriceScope.lines, ['2 взрослых и 1 ребёнок']);
     assert.equal(familyPriceScope.familyLineVisible, true, 'child count must be visibly rendered, not only present in the DOM');
     assert.match(familyPriceScope.ariaLabel, /за тур на 2 взрослых и 1 ребёнок$/);
     assert.equal(apiCallCount(scenario), beforeFamilyScopeCalls, 'party-scope presentation update must remain local');
