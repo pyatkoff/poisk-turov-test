@@ -1,0 +1,913 @@
+name: Deploy Search3 candidate preview (one shot)
+
+on:
+  push:
+    branches:
+      - deploy/search3-candidate-2ade549a-v1
+    paths:
+      - '.github/workflows/deploy-search3-candidate-v2.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+# Share the production deployment lock because a production copy also contains
+# _preview/. This workflow itself is restricted to the isolated Search3 target.
+concurrency:
+  group: deploy-anytoour-production
+  cancel-in-progress: false
+
+env:
+  CONTROL_BRANCH: deploy/search3-candidate-2ade549a-v1
+  WORKFLOW_PATH: .github/workflows/deploy-search3-candidate-v2.yml
+  CANDIDATE_SHA: 2ade549a314c16dc819c7a3a82fdff36115bc664
+  CANDIDATE_TREE_SHA: 88f38229182eab3fd98930206608cb2cc0ddb6fb
+  CANDIDATE_SUBTREE_SHA: 1af71852da39084bf6480dcbb2b66dab8b8bb4cd
+  CANDIDATE_WORKFLOW: .github/workflows/validate-search3-candidate-scaffold.yml
+  EVIDENCE_RUN_ID: '33918210098'
+  EVIDENCE_RUN_ATTEMPT: '1'
+  EVIDENCE_ARTIFACT_ID: '9954008270'
+  EVIDENCE_ARTIFACT_DIGEST: sha256:8772e6c4ce6673e1e5bc07094f9970702a50ec1eaa863bd44d0bd3e381c90542
+  EVIDENCE_MANIFEST_SHA256: 1949565771f52ad8f476286f23b2cef8f21a16f7c2e5704d3fb19388a59694a1
+  RELEASE_ARTIFACT_ID: '9954014169'
+  RELEASE_ARTIFACT_DIGEST: sha256:e7fb4f286b9af056f00c7ee0c80275fb39b33d6a7438c625bc7d87c27d23c5f1
+  PREVIEW_ROUTE: /_preview/search3-candidate/poisk-turov/
+  PREVIEW_URL: https://anytoour.ru/_preview/search3-candidate/poisk-turov/
+
+jobs:
+  deploy_candidate:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/deploy/search3-candidate-2ade549a-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out one-shot control commit
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Bind control commit to exact candidate
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = push
+          test "$GITHUB_REF" = "refs/heads/$CONTROL_BRANCH"
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          [[ "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$CANDIDATE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$CANDIDATE_TREE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$CANDIDATE_SUBTREE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$EVIDENCE_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          test "$EVIDENCE_RUN_ATTEMPT" = 1
+          [[ "$EVIDENCE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$EVIDENCE_ARTIFACT_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$EVIDENCE_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$RELEASE_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$RELEASE_ARTIFACT_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-list --parents -n 1 HEAD | wc -w)" -eq 2
+          test "$(git rev-parse HEAD^)" = "$CANDIDATE_SHA"
+          test "$(git rev-parse "$CANDIDATE_SHA^{tree}")" = "$CANDIDATE_TREE_SHA"
+          test "$(git rev-parse "$CANDIDATE_SHA:v2/_preview/search3-candidate/poisk-turov")" = "$CANDIDATE_SUBTREE_SHA"
+          mapfile -t changed < <(git diff --name-only "$CANDIDATE_SHA" HEAD)
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = "$WORKFLOW_PATH"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          echo "SEARCH3_CONTROL_IDENTITY_OK control=$GITHUB_SHA candidate=$CANDIDATE_SHA"
+
+      - name: Verify successful candidate run and exact artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          API_URL: ${{ github.api_url }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          headers = {
+              "Accept": "application/vnd.github+json",
+              "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+              "X-GitHub-Api-Version": "2022-11-28",
+          }
+          base = f"{os.environ['API_URL']}/repos/{os.environ['REPOSITORY']}"
+
+          def get(path):
+              request = urllib.request.Request(base + path, headers=headers)
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return json.load(response)
+
+          run_id = os.environ["EVIDENCE_RUN_ID"]
+          run = get(f"/actions/runs/{run_id}")
+          expected_run = {
+              "conclusion": "success",
+              "head_sha": os.environ["CANDIDATE_SHA"],
+              "path": os.environ["CANDIDATE_WORKFLOW"],
+              "run_attempt": int(os.environ["EVIDENCE_RUN_ATTEMPT"]),
+              "status": "completed",
+          }
+          mismatches = {
+              key: {"expected": expected, "actual": run.get(key)}
+              for key, expected in expected_run.items()
+              if run.get(key) != expected
+          }
+          if mismatches:
+              raise SystemExit(
+                  "SEARCH3_CANDIDATE_RUN_MISMATCH "
+                  + json.dumps(mismatches, sort_keys=True)
+              )
+
+          attempt = os.environ["EVIDENCE_RUN_ATTEMPT"]
+          expected = {
+              f"search3-candidate-{os.environ['CANDIDATE_SHA']}-{run_id}-{attempt}": (
+                  os.environ["EVIDENCE_ARTIFACT_ID"],
+                  os.environ["EVIDENCE_ARTIFACT_DIGEST"],
+              ),
+              f"search3-release-{os.environ['CANDIDATE_SHA']}-{run_id}-{attempt}": (
+                  os.environ["RELEASE_ARTIFACT_ID"],
+                  os.environ["RELEASE_ARTIFACT_DIGEST"],
+              ),
+          }
+          artifacts = get(f"/actions/runs/{run_id}/artifacts?per_page=100").get(
+              "artifacts", []
+          )
+          for name, (artifact_id, digest) in expected.items():
+              matches = [
+                  item
+                  for item in artifacts
+                  if item.get("name") == name and not item.get("expired")
+              ]
+              if len(matches) != 1:
+                  raise SystemExit(
+                      f"SEARCH3_ARTIFACT_NAME_MISMATCH name={name} matches={len(matches)}"
+                  )
+              artifact = matches[0]
+              if str(artifact.get("id")) != artifact_id:
+                  raise SystemExit(f"SEARCH3_ARTIFACT_ID_MISMATCH name={name}")
+              if artifact.get("digest") != digest:
+                  raise SystemExit(f"SEARCH3_ARTIFACT_DIGEST_MISMATCH name={name}")
+              if artifact.get("workflow_run", {}).get("id") not in (None, int(run_id)):
+                  raise SystemExit(f"SEARCH3_ARTIFACT_RUN_MISMATCH name={name}")
+              print(
+                  "SEARCH3_ARTIFACT_PROVENANCE_OK",
+                  f"name={name}",
+                  f"id={artifact_id}",
+                  f"digest={digest}",
+              )
+          PY
+
+      - name: Download exact schema-2 release artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ env.RELEASE_ARTIFACT_ID }}
+          path: ${{ runner.temp }}/search3-release
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.EVIDENCE_RUN_ID }}
+
+      - name: Verify exact release bytes without executing candidate code
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_root="$RUNNER_TEMP/search3-release"
+          test -d "$artifact_root" && test ! -L "$artifact_root"
+          test -z "$(find "$artifact_root" -mindepth 1 -maxdepth 1 -type l -print -quit)"
+          actual_release="$(find "$artifact_root" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          expected_release="$(printf '%s\n' SHA256SUMS release-build.json search3-candidate-preview.tar.gz search3-candidate-preview.tar.gz.sha256 | LC_ALL=C sort)"
+          test "$actual_release" = "$expected_release"
+          test "$(find "$artifact_root" -mindepth 1 -maxdepth 1 | wc -l)" -eq 4
+          (cd "$artifact_root" && sha256sum -c SHA256SUMS)
+          (cd "$artifact_root" && sha256sum -c search3-candidate-preview.tar.gz.sha256)
+          extract_root="$RUNNER_TEMP/search3-release-verify"
+          test ! -e "$extract_root" && test ! -L "$extract_root"
+          mkdir "$extract_root"
+          python3 - <<'PY'
+          import shutil
+          import tarfile
+          from pathlib import Path, PurePosixPath
+
+          artifact = Path(__import__("os").environ["RUNNER_TEMP"]) / "search3-release" / "search3-candidate-preview.tar.gz"
+          target = Path(__import__("os").environ["RUNNER_TEMP"]) / "search3-release-verify"
+          expected_dirs = {"control", "payload", "payload/poisk-turov"}
+          expected_files = {
+              "control/manifest.json",
+              "control/payload.sha256",
+              "payload/poisk-turov/index.php",
+              "payload/poisk-turov/search3-entry-v1.css",
+              "payload/poisk-turov/search3-entry-v1.js",
+              "payload/poisk-turov/search3-results-cards-v2.css",
+              "payload/poisk-turov/search3-results-cards-v2.js",
+              "payload/poisk-turov/search3-results-filters-v1.css",
+              "payload/poisk-turov/search3-results-filters-v1.js",
+              "payload/poisk-turov/search3-selected-flow-v2.css",
+              "payload/poisk-turov/search3-selected-flow-v2.js",
+          }
+          seen_dirs = set()
+          seen_files = set()
+          with tarfile.open(artifact, "r:gz") as archive:
+              members = archive.getmembers()
+              for member in members:
+                  name = member.name.rstrip("/")
+                  pure = PurePosixPath(name)
+                  if not name or pure.is_absolute() or ".." in pure.parts or "\\" in name:
+                      raise SystemExit(f"SEARCH3_UNSAFE_ARCHIVE_PATH {member.name!r}")
+                  if member.isdir():
+                      if name in seen_dirs:
+                          raise SystemExit(f"SEARCH3_DUPLICATE_ARCHIVE_DIR {name}")
+                      seen_dirs.add(name)
+                  elif member.isreg():
+                      if name in seen_files:
+                          raise SystemExit(f"SEARCH3_DUPLICATE_ARCHIVE_FILE {name}")
+                      seen_files.add(name)
+                  else:
+                      raise SystemExit(f"SEARCH3_UNSAFE_ARCHIVE_TYPE {name}")
+              if seen_dirs != expected_dirs or seen_files != expected_files:
+                  raise SystemExit("SEARCH3_ARCHIVE_ALLOWLIST_MISMATCH")
+              for member in members:
+                  name = member.name.rstrip("/")
+                  destination = target.joinpath(*PurePosixPath(name).parts)
+                  if member.isdir():
+                      destination.mkdir(mode=0o755, parents=True, exist_ok=False)
+                      continue
+                  destination.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+                  source = archive.extractfile(member)
+                  if source is None:
+                      raise SystemExit(f"SEARCH3_ARCHIVE_READ_ERROR {name}")
+                  with source, destination.open("xb") as output:
+                      shutil.copyfileobj(source, output)
+          print("SEARCH3_SAFE_ARCHIVE_EXTRACTION_OK")
+          PY
+          test -z "$(find "$extract_root" -type l -print -quit)"
+          actual_payload="$(find "$extract_root/payload/poisk-turov" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          expected_payload="$(printf '%s\n' \
+            index.php \
+            search3-entry-v1.css \
+            search3-entry-v1.js \
+            search3-results-cards-v2.css \
+            search3-results-cards-v2.js \
+            search3-results-filters-v1.css \
+            search3-results-filters-v1.js \
+            search3-selected-flow-v2.css \
+            search3-selected-flow-v2.js | LC_ALL=C sort)"
+          test "$actual_payload" = "$expected_payload"
+          test "$(find "$extract_root/payload/poisk-turov" -mindepth 1 -maxdepth 1 | wc -l)" -eq 9
+          actual_controls="$(find "$extract_root/control" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          test "$actual_controls" = "$(printf '%s\n' manifest.json payload.sha256 | LC_ALL=C sort)"
+          test "$(find "$extract_root/control" -mindepth 1 -maxdepth 1 | wc -l)" -eq 2
+          (cd "$extract_root/payload" && sha256sum -c "$extract_root/control/payload.sha256")
+          while IFS= read -r file; do
+            source_path="v2/_preview/search3-candidate/poisk-turov/$file"
+            expected_blob="$(git rev-parse "$CANDIDATE_SHA:$source_path")"
+            actual_blob="$(git hash-object "$extract_root/payload/poisk-turov/$file")"
+            test "$actual_blob" = "$expected_blob"
+          done <<< "$expected_payload"
+
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          artifact_root = Path(os.environ["RUNNER_TEMP"]) / "search3-release"
+          extract_root = Path(os.environ["RUNNER_TEMP"]) / "search3-release-verify"
+          summary = json.loads((artifact_root / "release-build.json").read_text(encoding="utf-8"))
+          manifest_path = extract_root / "control" / "manifest.json"
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+          def digest(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          expected_summary = {
+              "schema_version": 2,
+              "candidate_sha": os.environ["CANDIDATE_SHA"],
+              "repository_tree_sha": os.environ["CANDIDATE_TREE_SHA"],
+              "candidate_subtree_sha": os.environ["CANDIDATE_SUBTREE_SHA"],
+              "file_count": 9,
+              "target": "search3-candidate-preview",
+          }
+          for key, value in expected_summary.items():
+              if summary.get(key) != value:
+                  raise SystemExit(f"SEARCH3_RELEASE_SUMMARY_MISMATCH key={key}")
+          expected_evidence = {
+              "artifact_digest": os.environ["EVIDENCE_ARTIFACT_DIGEST"],
+              "artifact_id": int(os.environ["EVIDENCE_ARTIFACT_ID"]),
+              "manifest_sha256": os.environ["EVIDENCE_MANIFEST_SHA256"],
+              "run_attempt": int(os.environ["EVIDENCE_RUN_ATTEMPT"]),
+              "run_id": int(os.environ["EVIDENCE_RUN_ID"]),
+              "source_sha": os.environ["CANDIDATE_SHA"],
+              "tested_sha": os.environ["CANDIDATE_SHA"],
+              "visual_tier": "candidate",
+              "workflow": os.environ["CANDIDATE_WORKFLOW"],
+          }
+          if summary.get("evidence") != expected_evidence:
+              raise SystemExit("SEARCH3_RELEASE_EVIDENCE_MISMATCH")
+          if manifest.get("evidence") != expected_evidence:
+              raise SystemExit("SEARCH3_MANIFEST_EVIDENCE_MISMATCH")
+          expected_manifest = {
+              "schema_version": 2,
+              "candidate_sha": os.environ["CANDIDATE_SHA"],
+              "repository_tree_sha": os.environ["CANDIDATE_TREE_SHA"],
+              "route": "/_preview/search3-candidate/poisk-turov/",
+              "canonical": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/",
+              "target": "search3-candidate-preview",
+          }
+          for key, value in expected_manifest.items():
+              if manifest.get(key) != value:
+                  raise SystemExit(f"SEARCH3_MANIFEST_MISMATCH key={key}")
+          if manifest.get("source_subtree") != {
+              "path": "v2/_preview/search3-candidate/poisk-turov",
+              "tree_sha": os.environ["CANDIDATE_SUBTREE_SHA"],
+          }:
+              raise SystemExit("SEARCH3_MANIFEST_SUBTREE_MISMATCH")
+          if manifest.get("invariants") != {
+              "metrika_counter": 0,
+              "production_lead_delivery": False,
+              "robots": "noindex,follow,max-image-preview:large",
+          }:
+              raise SystemExit("SEARCH3_MANIFEST_INVARIANTS_MISMATCH")
+          if len(manifest.get("files", [])) != 9:
+              raise SystemExit("SEARCH3_MANIFEST_FILE_COUNT_MISMATCH")
+          if digest(manifest_path) != summary.get("manifest_sha256"):
+              raise SystemExit("SEARCH3_CONTROL_MANIFEST_DIGEST_MISMATCH")
+          archive_path = artifact_root / "search3-candidate-preview.tar.gz"
+          payload_path = extract_root / "control" / "payload.sha256"
+          if digest(archive_path) != summary.get("archive_sha256"):
+              raise SystemExit("SEARCH3_ARCHIVE_DIGEST_MISMATCH")
+          if digest(payload_path) != summary.get("payload_checksums_sha256"):
+              raise SystemExit("SEARCH3_PAYLOAD_MANIFEST_DIGEST_MISMATCH")
+          for item in manifest["files"]:
+              payload_file = extract_root / "payload" / item["path"]
+              if digest(payload_file) != item.get("sha256") or payload_file.stat().st_size != item.get("size"):
+                  raise SystemExit(f"SEARCH3_PAYLOAD_FILE_MISMATCH path={item.get('path')}")
+          outputs = {
+              "archive_sha256": summary["archive_sha256"],
+              "payload_checksums_sha256": summary["payload_checksums_sha256"],
+          }
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              for key, value in outputs.items():
+                  handle.write(f"{key}={value}\n")
+          print("SEARCH3_SCHEMA2_RELEASE_OK files=9 controls=2 candidate_code_executed=0")
+          PY
+
+      - name: Prepare isolated SSH identity and one-run known_hosts
+        id: ssh
+        env:
+          KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$HOST" && test -n "$USER" && test -n "$KEY"
+          [[ "$HOST" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]
+          [[ "$USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$ ]]
+          key_path="$(mktemp "$RUNNER_TEMP/search3-deploy-key.XXXXXXXXXXXX")"
+          scan_path="$(mktemp "$RUNNER_TEMP/search3-known-hosts-scan.XXXXXXXXXXXX")"
+          known_hosts_path="$(mktemp "$RUNNER_TEMP/search3-known-hosts.XXXXXXXXXXXX")"
+          for path in "$key_path" "$scan_path" "$known_hosts_path"; do
+            test -f "$path" && test ! -L "$path"
+            test "$(stat -c '%h' "$path")" = 1
+          done
+          if [[ "$KEY" == *"PRIVATE KEY"* ]]; then
+            printf '%s\n' "$KEY" | tr -d '\r' > "$key_path"
+          else
+            printf '%s' "$KEY" | base64 --decode > "$key_path"
+          fi
+          chmod 600 "$key_path"
+          test -s "$key_path" && test ! -L "$key_path"
+          ssh-keygen -y -f "$key_path" >/dev/null
+          ssh-keyscan -T 15 -t ed25519 "$HOST" > "$scan_path"
+          test -s "$scan_path" && test ! -L "$scan_path"
+          scanned_fingerprints="$(ssh-keygen -lf "$scan_path" -E sha256 | awk '{print $2}' | LC_ALL=C sort -u)"
+          test "$(printf '%s\n' "$scanned_fingerprints" | wc -l)" -eq 1
+          [[ "$scanned_fingerprints" =~ ^SHA256:[A-Za-z0-9+/]{43}$ ]]
+          LC_ALL=C sort -u "$scan_path" > "$known_hosts_path"
+          test -s "$known_hosts_path" && test ! -L "$known_hosts_path"
+          chmod 600 "$known_hosts_path"
+          ssh-keygen -F "$HOST" -f "$known_hosts_path" >/dev/null
+          echo "key_path=$key_path" >> "$GITHUB_OUTPUT"
+          echo "known_hosts_path=$known_hosts_path" >> "$GITHUB_OUTPUT"
+          echo "SEARCH3_ONE_RUN_SSH_TRANSPORT_OK keys=$(wc -l < "$known_hosts_path")"
+
+      - name: Bind SSH write target to CA-authenticated HTTPS origin
+        id: binding
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          KEY_PATH: ${{ steps.ssh.outputs.key_path }}
+          KNOWN_HOSTS_PATH: ${{ steps.ssh.outputs.known_hosts_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          [[ "$USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$ ]]
+          test -f "$KEY_PATH" && test ! -L "$KEY_PATH" && test -s "$KNOWN_HOSTS_PATH" && test ! -L "$KNOWN_HOSTS_PATH"
+          opts=(-i "$KEY_PATH" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$KNOWN_HOSTS_PATH" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          remote="$USER@$HOST"
+          nonce="$(openssl rand -hex 32)"
+          [[ "$nonce" =~ ^[0-9a-f]{64}$ ]]
+          binding_name="search3-binding-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-$(openssl rand -hex 16).txt"
+          [[ "$binding_name" =~ ^search3-binding-[1-9][0-9]*-1-[0-9a-f]{32}\.txt$ ]]
+          name_file="$RUNNER_TEMP/search3-binding-name"
+          nonce_file="$RUNNER_TEMP/search3-binding-nonce"
+          response_file="$RUNNER_TEMP/search3-binding-response"
+          for path in "$name_file" "$nonce_file" "$response_file"; do test ! -e "$path" && test ! -L "$path"; done
+          printf '%s' "$binding_name" > "$name_file"
+          printf '%s' "$nonce" > "$nonce_file"
+          chmod 600 "$name_file" "$nonce_file"
+          timeout 60s ssh "${opts[@]}" "$remote" bash -s -- "$binding_name" "$nonce" <<'REMOTE'
+          set -euo pipefail
+          name="$1"; nonce="$2"
+          [[ "$name" =~ ^search3-binding-[1-9][0-9]*-1-[0-9a-f]{32}\.txt$ ]]
+          [[ "$nonce" =~ ^[0-9a-f]{64}$ ]]
+          root="$HOME/www/anytoour.ru"
+          target="$root/_preview/search3-candidate/poisk-turov"
+          path="$target/$name"
+          test -d "$root" && test ! -L "$root"
+          test -d "$target" && test ! -L "$target"
+          test "$(readlink -f "$target")" = "$(readlink -f "$root")/_preview/search3-candidate/poisk-turov"
+          test ! -e "$path" && test ! -L "$path"
+          BINDING_PATH="$path" BINDING_NONCE="$nonce" python3 - <<'PY'
+          import os
+          import stat
+
+          path = os.environ["BINDING_PATH"]
+          nonce = os.environ["BINDING_NONCE"].encode("ascii")
+          flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+          fd = os.open(path, flags, 0o644)
+          try:
+              written = os.write(fd, nonce)
+              if written != len(nonce):
+                  raise SystemExit("SEARCH3_BINDING_SHORT_WRITE")
+              os.fsync(fd)
+          finally:
+              os.close(fd)
+          info = os.lstat(path)
+          if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+              raise SystemExit("SEARCH3_BINDING_UNSAFE_FILE")
+          PY
+          test -f "$path" && test ! -L "$path" && test "$(stat -c '%h' "$path")" = 1
+          REMOTE
+          binding_url="https://anytoour.ru/_preview/search3-candidate/poisk-turov/$binding_name"
+          binding_code="$(curl --proto '=https' --tlsv1.2 --max-redirs 0 -sS -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -o "$response_file" -w '%{http_code}' --max-time 30 "$binding_url?created=1")"
+          test "$binding_code" = 200
+          test -f "$response_file" && test ! -L "$response_file"
+          cmp -s "$nonce_file" "$response_file"
+          timeout 60s ssh "${opts[@]}" "$remote" bash -s -- "$binding_name" <<'REMOTE'
+          set -euo pipefail
+          name="$1"
+          [[ "$name" =~ ^search3-binding-[1-9][0-9]*-1-[0-9a-f]{32}\.txt$ ]]
+          root="$HOME/www/anytoour.ru"
+          target="$root/_preview/search3-candidate/poisk-turov"
+          path="$target/$name"
+          test -d "$target" && test ! -L "$target"
+          test "$(readlink -f "$target")" = "$(readlink -f "$root")/_preview/search3-candidate/poisk-turov"
+          test -f "$path" && test ! -L "$path" && test "$(stat -c '%h' "$path")" = 1
+          rm -f -- "$path"
+          test ! -e "$path" && test ! -L "$path"
+          REMOTE
+          removed_code="$(curl --proto '=https' --tlsv1.2 --max-redirs 0 -sS -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -o /dev/null -w '%{http_code}' --max-time 30 "$binding_url?removed=1")"
+          case "$removed_code" in 404|410) ;; *) exit 1 ;; esac
+          echo 'bound=true' >> "$GITHUB_OUTPUT"
+          echo SEARCH3_SSH_HTTPS_CHANNEL_BINDING_OK
+
+      - name: Clean binding nonce after any binding outcome
+        if: ${{ always() && steps.ssh.outcome == 'success' }}
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          KEY_PATH: ${{ steps.ssh.outputs.key_path }}
+          KNOWN_HOSTS_PATH: ${{ steps.ssh.outputs.known_hosts_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          name_file="$RUNNER_TEMP/search3-binding-name"
+          nonce_file="$RUNNER_TEMP/search3-binding-nonce"
+          response_file="$RUNNER_TEMP/search3-binding-response"
+          if test ! -f "$name_file" || test -L "$name_file"; then
+            test ! -e "$name_file" && test ! -L "$name_file"
+            exit 0
+          fi
+          binding_name="$(cat "$name_file")"
+          [[ "$binding_name" =~ ^search3-binding-[1-9][0-9]*-1-[0-9a-f]{32}\.txt$ ]]
+          [[ "$USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$ ]]
+          test -f "$KEY_PATH" && test ! -L "$KEY_PATH" && test -s "$KNOWN_HOSTS_PATH" && test ! -L "$KNOWN_HOSTS_PATH"
+          opts=(-i "$KEY_PATH" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$KNOWN_HOSTS_PATH" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER@$HOST"
+          timeout 60s ssh "${opts[@]}" "$remote" bash -s -- "$binding_name" <<'REMOTE'
+          set -euo pipefail
+          name="$1"
+          [[ "$name" =~ ^search3-binding-[1-9][0-9]*-1-[0-9a-f]{32}\.txt$ ]]
+          root="$HOME/www/anytoour.ru"
+          target="$root/_preview/search3-candidate/poisk-turov"
+          path="$target/$name"
+          test -d "$target" && test ! -L "$target"
+          test "$(readlink -f "$target")" = "$(readlink -f "$root")/_preview/search3-candidate/poisk-turov"
+          if test -e "$path" || test -L "$path"; then
+            test -f "$path" && test ! -L "$path" && test "$(stat -c '%h' "$path")" = 1
+            rm -f -- "$path"
+          fi
+          test ! -e "$path" && test ! -L "$path"
+          REMOTE
+          binding_url="https://anytoour.ru/_preview/search3-candidate/poisk-turov/$binding_name"
+          removed_code="$(curl --proto '=https' --tlsv1.2 --max-redirs 0 -sS -H 'Cache-Control: no-cache, no-store' -H 'Pragma: no-cache' -o /dev/null -w '%{http_code}' --max-time 30 "$binding_url?removed=cleanup")"
+          case "$removed_code" in 404|410) ;; *) exit 1 ;; esac
+          rm -f -- "$name_file" "$nonce_file" "$response_file"
+          echo SEARCH3_BINDING_NONCE_ABSENT
+
+      - name: Record protected production fingerprint before mutation
+        id: fingerprint
+        env:
+          BINDING_OK: ${{ steps.binding.outputs.bound }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          KEY_PATH: ${{ steps.ssh.outputs.key_path }}
+          KNOWN_HOSTS_PATH: ${{ steps.ssh.outputs.known_hosts_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$BINDING_OK" = true
+          test -n "$HOST" && test -n "$USER"
+          [[ "$USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$ ]]
+          test -f "$KEY_PATH" && test ! -L "$KEY_PATH" && test -s "$KNOWN_HOSTS_PATH" && test ! -L "$KNOWN_HOSTS_PATH"
+          opts=(-i "$KEY_PATH" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$KNOWN_HOSTS_PATH" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          remote="$USER@$HOST"
+          timeout 60s ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            root="$HOME/www/anytoour.ru"
+            test -d "$root" && test ! -L "$root"
+            cd "$root"
+            for path in \
+              index.php \
+              search-page-v2.php \
+              poisk-turov/index.php \
+              assets.php \
+              api-v2.php \
+              lead-adapter-v2.php \
+              lead-bridge-v1.php \
+              lead-receiver-v1.php \
+              lead-price-v1.php \
+              lead-idempotency-v1.php \
+              analytics-config.php \
+              bundle-manifest-v1.php \
+              config.php; do
+              test -f "$path" && test ! -L "$path"
+              sha256sum "$path"
+            done
+          ' > "$RUNNER_TEMP/search3-production-before.sha256"
+          test "$(wc -l < "$RUNNER_TEMP/search3-production-before.sha256")" -eq 13
+          echo 'recorded=true' >> "$GITHUB_OUTPUT"
+          echo SEARCH3_PRODUCTION_FINGERPRINT_BEFORE_OK
+
+      - name: Upload and atomically activate only Search3 payload
+        id: activate
+        env:
+          ARCHIVE_SHA256: ${{ steps.release.outputs.archive_sha256 }}
+          PAYLOAD_CHECKSUMS_SHA256: ${{ steps.release.outputs.payload_checksums_sha256 }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          KEY_PATH: ${{ steps.ssh.outputs.key_path }}
+          KNOWN_HOSTS_PATH: ${{ steps.ssh.outputs.known_hosts_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$ ]]
+          test -f "$KEY_PATH" && test ! -L "$KEY_PATH" && test -s "$KNOWN_HOSTS_PATH" && test ! -L "$KNOWN_HOSTS_PATH"
+          opts=(-i "$KEY_PATH" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$KNOWN_HOSTS_PATH" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          remote="$USER@$HOST"
+          archive="$RUNNER_TEMP/search3-release/search3-candidate-preview.tar.gz"
+          test "$(sha256sum "$archive" | awk '{print $1}')" = "$ARCHIVE_SHA256"
+          remote_archive="$(timeout 60s ssh "${opts[@]}" "$remote" 'umask 077; path=$(mktemp /tmp/search3-candidate-v2.XXXXXXXXXXXX.tar.gz); test -f "$path" && test ! -L "$path"; printf "%s" "$path"')"
+          [[ "$remote_archive" =~ ^/tmp/search3-candidate-v2\.[A-Za-z0-9]{12}\.tar\.gz$ ]]
+          timeout 90s scp "${opts[@]}" "$archive" "$remote:$remote_archive"
+          timeout 120s ssh "${opts[@]}" "$remote" bash -s -- \
+            "$CANDIDATE_SHA" "$CANDIDATE_TREE_SHA" "$CANDIDATE_SUBTREE_SHA" \
+            "$EVIDENCE_RUN_ID" "$EVIDENCE_ARTIFACT_ID" "$RELEASE_ARTIFACT_ID" \
+            "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$ARCHIVE_SHA256" \
+            "$PAYLOAD_CHECKSUMS_SHA256" "$remote_archive" <<'REMOTE'
+          set -euo pipefail
+          candidate_sha="$1"; candidate_tree="$2"; candidate_subtree="$3"
+          evidence_run_id="$4"; evidence_artifact_id="$5"; release_artifact_id="$6"
+          run_id="$7"; run_attempt="$8"; archive_sha="$9"; payload_sha="${10}"; archive="${11}"
+          root="$HOME/www/anytoour.ru"
+          parent="$root/_preview/search3-candidate"
+          target="$parent/poisk-turov"
+          stage="$parent/.poisk-turov-stage-$run_id-$run_attempt"
+          staged="$stage/payload/poisk-turov"
+          backup="$parent/.poisk-turov-backup-$run_id-$run_attempt"
+          failed="$parent/.poisk-turov-failed-$run_id-$run_attempt"
+          owner="$parent/.poisk-turov-owner"
+          owner_backup="$parent/.poisk-turov-owner-backup-$run_id-$run_attempt"
+          new_owner="$parent/.poisk-turov-owner-new-$run_id-$run_attempt"
+          lock="$parent/.deploy-lock"
+          case "$parent" in "$HOME/www/anytoour.ru/_preview/search3-candidate") ;; *) exit 30 ;; esac
+          [[ "$archive" =~ ^/tmp/search3-candidate-v2\.[A-Za-z0-9]{12}\.tar\.gz$ ]]
+          test -f "$archive" && test ! -L "$archive"
+          test "$(stat -c '%u' "$archive")" = "$(id -u)"
+          test "$(stat -c '%h' "$archive")" = 1
+          test -d "$root" && test ! -L "$root"
+          if test -e "$root/_preview" || test -L "$root/_preview"; then test -d "$root/_preview" && test ! -L "$root/_preview"; fi
+          mkdir -p "$parent"
+          test ! -L "$root/_preview" && test ! -L "$parent"
+          test "$(readlink -f "$parent")" = "$(readlink -f "$root")/_preview/search3-candidate"
+          test ! -e "$stage" && test ! -L "$stage"
+          test ! -e "$backup" && test ! -L "$backup"
+          test ! -e "$failed" && test ! -L "$failed"
+          test ! -e "$owner_backup" && test ! -L "$owner_backup"
+          test ! -e "$new_owner" && test ! -L "$new_owner"
+          if test -e "$target" || test -L "$target"; then test -d "$target" && test ! -L "$target"; fi
+          if test -e "$owner" || test -L "$owner"; then test -f "$owner" && test ! -L "$owner" && test -d "$target"; fi
+          mkdir "$lock"
+          printf '%s\n' "$$" > "$lock/pid"
+          activated=0
+          owner_saved=0
+          target_saved=0
+          new_owner_installed=0
+          cleanup() {
+            status=$?
+            if test "$status" -ne 0; then
+              if test "$activated" -eq 1 && test -d "$target" && test ! -L "$target"; then mv "$target" "$failed" || true; fi
+              if test "$target_saved" -eq 1 && test ! -e "$target" && test -d "$backup" && test ! -L "$backup"; then mv "$backup" "$target" || true; fi
+              if test "$new_owner_installed" -eq 1 && test -f "$owner" && test ! -L "$owner"; then rm -f "$owner"; fi
+              if test "$owner_saved" -eq 1 && test -f "$owner_backup" && test ! -L "$owner_backup" && test ! -e "$owner"; then mv "$owner_backup" "$owner" || true; fi
+            fi
+            if test -d "$stage" && test ! -L "$stage"; then rm -rf "$stage"; fi
+            rm -f "$new_owner" "$lock/pid" "$archive"
+            rmdir "$lock" 2>/dev/null || true
+            return "$status"
+          }
+          trap cleanup EXIT
+          test "$(sha256sum "$archive" | awk '{print $1}')" = "$archive_sha"
+          mkdir "$stage"
+          tar -xzf "$archive" -C "$stage"
+          test -d "$staged" && test ! -L "$staged"
+          test -d "$stage/control" && test ! -L "$stage/control"
+          test -z "$(find "$stage" -type l -print -quit)"
+          actual_payload="$(find "$staged" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          expected_payload="$(printf '%s\n' index.php search3-entry-v1.css search3-entry-v1.js search3-results-cards-v2.css search3-results-cards-v2.js search3-results-filters-v1.css search3-results-filters-v1.js search3-selected-flow-v2.css search3-selected-flow-v2.js | LC_ALL=C sort)"
+          test "$actual_payload" = "$expected_payload"
+          test "$(find "$staged" -mindepth 1 -maxdepth 1 | wc -l)" -eq 9
+          actual_controls="$(find "$stage/control" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          test "$actual_controls" = "$(printf '%s\n' manifest.json payload.sha256 | LC_ALL=C sort)"
+          test "$(find "$stage/control" -mindepth 1 -maxdepth 1 | wc -l)" -eq 2
+          test "$(sha256sum "$stage/control/payload.sha256" | awk '{print $1}')" = "$payload_sha"
+          (cd "$stage/payload" && sha256sum -c "$stage/control/payload.sha256")
+          php -l "$staged/index.php" >/dev/null
+          php -r '
+            $d=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);
+            $ok=($d["schema_version"]??null)===2
+              && ($d["candidate_sha"]??"")===$argv[2]
+              && ($d["repository_tree_sha"]??"")===$argv[3]
+              && (($d["source_subtree"]["tree_sha"]??"")===$argv[4])
+              && (($d["evidence"]["run_id"]??null)===(int)$argv[5])
+              && (($d["evidence"]["artifact_id"]??null)===(int)$argv[6])
+              && ($d["route"]??"")==="/_preview/search3-candidate/poisk-turov/"
+              && (($d["invariants"]["metrika_counter"]??null)===0)
+              && (($d["invariants"]["production_lead_delivery"]??null)===false);
+            exit($ok?0:1);
+          ' "$stage/control/manifest.json" "$candidate_sha" "$candidate_tree" "$candidate_subtree" "$evidence_run_id" "$evidence_artifact_id"
+          printf '{"schema_version":2,"candidate_sha":"%s","payload_checksums_sha256":"%s","deploy_run_id":"%s","deploy_run_attempt":"%s","release_artifact_id":"%s"}\n' \
+            "$candidate_sha" "$payload_sha" "$run_id" "$run_attempt" "$release_artifact_id" > "$new_owner"
+          chmod 600 "$new_owner"
+          if test -e "$owner"; then mv "$owner" "$owner_backup"; owner_saved=1; fi
+          if test -e "$target"; then mv "$target" "$backup"; target_saved=1; fi
+          if ! mv "$staged" "$target"; then exit 31; fi
+          activated=1
+          mv "$new_owner" "$owner"
+          new_owner_installed=1
+          rm -rf "$stage"
+          rm -f "$lock/pid" "$archive"
+          rmdir "$lock"
+          activated=0
+          trap - EXIT
+          echo "SEARCH3_ISOLATED_ACTIVATION_OK candidate=$candidate_sha files=9 controls_deployed=0"
+          REMOTE
+          echo 'activated=true' >> "$GITHUB_OUTPUT"
+
+      - name: Verify live candidate and unchanged protected contracts
+        env:
+          PAYLOAD_CHECKSUMS_SHA256: ${{ steps.release.outputs.payload_checksums_sha256 }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          KEY_PATH: ${{ steps.ssh.outputs.key_path }}
+          KNOWN_HOSTS_PATH: ${{ steps.ssh.outputs.known_hosts_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$ ]]
+          test -f "$KEY_PATH" && test ! -L "$KEY_PATH" && test -s "$KNOWN_HOSTS_PATH" && test ! -L "$KNOWN_HOSTS_PATH"
+          opts=(-i "$KEY_PATH" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$KNOWN_HOSTS_PATH" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          remote="$USER@$HOST"
+          preview_root="$RUNNER_TEMP/search3-release-verify/payload/poisk-turov"
+          ready=0
+          for _ in {1..12}; do
+            if curl -fsS -D "$RUNNER_TEMP/search3-live.headers" --max-time 30 "$PREVIEW_URL" -o "$RUNNER_TEMP/search3-live.html"; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" -eq 1
+          grep -Eiq '^X-Robots-Tag: noindex, *follow' "$RUNNER_TEMP/search3-live.headers"
+          grep -Fq '<meta name="robots" content="noindex,follow,max-image-preview:large">' "$RUNNER_TEMP/search3-live.html"
+          grep -Fq '<link rel="canonical" href="https://anytoour.ru/_preview/search3-candidate/poisk-turov/">' "$RUNNER_TEMP/search3-live.html"
+          grep -Fq 'body class="search3-candidate"' "$RUNNER_TEMP/search3-live.html"
+          grep -Fq 'api:"/api-v2.php"' "$RUNNER_TEMP/search3-live.html"
+          grep -Fq 'leadApi:"/_preview/search3-candidate/poisk-turov/?lead=disabled"' "$RUNNER_TEMP/search3-live.html"
+          if grep -Fq 'leadApi:"/lead-adapter-v2.php"' "$RUNNER_TEMP/search3-live.html"; then exit 40; fi
+          grep -Fq 'metrikaCounter:0' "$RUNNER_TEMP/search3-live.html"
+          test "$(grep -oE '<h1([[:space:]>])' "$RUNNER_TEMP/search3-live.html" | wc -l)" -eq 1
+          for file in \
+            search3-entry-v1.css search3-entry-v1.js \
+            search3-results-cards-v2.css search3-results-cards-v2.js \
+            search3-results-filters-v1.css search3-results-filters-v1.js \
+            search3-selected-flow-v2.css search3-selected-flow-v2.js; do
+            digest="$(sha256sum "$preview_root/$file" | awk '{print $1}')"
+            grep -Fq "$file?v=${digest:0:16}" "$RUNNER_TEMP/search3-live.html"
+            curl -fsS --max-time 30 "https://anytoour.ru/_preview/search3-candidate/poisk-turov/$file?v=${digest:0:16}" -o "$RUNNER_TEMP/live-$file"
+            test "$(sha256sum "$RUNNER_TEMP/live-$file" | awk '{print $1}')" = "$digest"
+          done
+          lead_code="$(curl -sS -o "$RUNNER_TEMP/search3-live-lead.json" -w '%{http_code}' --max-time 30 -H 'Content-Type: application/json' --data '{"synthetic":true}' "${PREVIEW_URL}?lead=disabled")"
+          test "$lead_code" = 403
+          grep -Fq PREVIEW_LEAD_DISABLED "$RUNNER_TEMP/search3-live-lead.json"
+          test "$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 30 https://anytoour.ru/)" = 200
+          test "$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 30 https://anytoour.ru/poisk-turov/)" = 200
+          curl -fsS --max-time 30 'https://anytoour.ru/api-v2.php?action=health' | grep -Fq tourvisor-direct
+          curl -fsS --max-time 30 https://anytoour.ru/lead-adapter-v2.php | grep -Fq v2-hmac-bridge-bitrix-lead
+          timeout 60s ssh "${opts[@]}" "$remote" bash -s -- "$CANDIDATE_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$RELEASE_ARTIFACT_ID" "$PAYLOAD_CHECKSUMS_SHA256" <<'REMOTE'
+          set -euo pipefail
+          candidate_sha="$1"; run_id="$2"; run_attempt="$3"; release_artifact_id="$4"; payload_sha="$5"
+          parent="$HOME/www/anytoour.ru/_preview/search3-candidate"
+          target="$parent/poisk-turov"
+          owner="$parent/.poisk-turov-owner"
+          test -d "$target" && test ! -L "$target"
+          test -f "$owner" && test ! -L "$owner"
+          actual="$(find "$target" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+          expected="$(printf '%s\n' index.php search3-entry-v1.css search3-entry-v1.js search3-results-cards-v2.css search3-results-cards-v2.js search3-results-filters-v1.css search3-results-filters-v1.js search3-selected-flow-v2.css search3-selected-flow-v2.js | LC_ALL=C sort)"
+          test "$actual" = "$expected"
+          test "$(find "$target" -mindepth 1 -maxdepth 1 | wc -l)" -eq 9
+          generated="$(cd "$parent" && sha256sum ./poisk-turov/index.php ./poisk-turov/search3-entry-v1.css ./poisk-turov/search3-entry-v1.js ./poisk-turov/search3-results-cards-v2.css ./poisk-turov/search3-results-cards-v2.js ./poisk-turov/search3-results-filters-v1.css ./poisk-turov/search3-results-filters-v1.js ./poisk-turov/search3-selected-flow-v2.css ./poisk-turov/search3-selected-flow-v2.js | sha256sum | awk '{print $1}')"
+          test "$generated" = "$payload_sha"
+          php -r '$d=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);$ok=($d["candidate_sha"]??"")===$argv[2]&&($d["deploy_run_id"]??"")===$argv[3]&&($d["deploy_run_attempt"]??"")===$argv[4]&&($d["release_artifact_id"]??"")===$argv[5]&&($d["payload_checksums_sha256"]??"")===$argv[6];exit($ok?0:1);' "$owner" "$candidate_sha" "$run_id" "$run_attempt" "$release_artifact_id" "$payload_sha"
+          echo SEARCH3_REMOTE_PAYLOAD_IDENTITY_OK
+          REMOTE
+          timeout 60s ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            cd "$HOME/www/anytoour.ru"
+            for path in index.php search-page-v2.php poisk-turov/index.php assets.php api-v2.php lead-adapter-v2.php lead-bridge-v1.php lead-receiver-v1.php lead-price-v1.php lead-idempotency-v1.php analytics-config.php bundle-manifest-v1.php config.php; do
+              test -f "$path" && test ! -L "$path"
+              sha256sum "$path"
+            done
+          ' > "$RUNNER_TEMP/search3-production-after.sha256"
+          diff -u "$RUNNER_TEMP/search3-production-before.sha256" "$RUNNER_TEMP/search3-production-after.sha256"
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ["RUNNER_TEMP"])
+          evidence = {
+              "schema_version": 2,
+              "candidate_sha": os.environ["CANDIDATE_SHA"],
+              "candidate_tree_sha": os.environ["CANDIDATE_TREE_SHA"],
+              "candidate_subtree_sha": os.environ["CANDIDATE_SUBTREE_SHA"],
+              "candidate_run_id": int(os.environ["EVIDENCE_RUN_ID"]),
+              "candidate_run_attempt": int(os.environ["EVIDENCE_RUN_ATTEMPT"]),
+              "evidence_artifact_id": int(os.environ["EVIDENCE_ARTIFACT_ID"]),
+              "release_artifact_id": int(os.environ["RELEASE_ARTIFACT_ID"]),
+              "route": os.environ["PREVIEW_URL"],
+              "http_status": 200,
+              "robots": "noindex,follow,max-image-preview:large",
+              "metrika_counter": 0,
+              "production_lead_delivery": False,
+              "candidate_lead_probe_status": 403,
+              "payload_file_count": 9,
+              "control_file_count_deployed": 0,
+              "rollback_backup_retained": True,
+              "production_fingerprint_before_sha256": hashlib.sha256(
+                  (root / "search3-production-before.sha256").read_bytes()
+              ).hexdigest(),
+              "production_fingerprint_after_sha256": hashlib.sha256(
+                  (root / "search3-production-after.sha256").read_bytes()
+              ).hexdigest(),
+              "production_fingerprint_unchanged": True,
+          }
+          (root / "search3-deployment-evidence.json").write_text(
+              json.dumps(evidence, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          echo "SEARCH3_LIVE_PREVIEW_OK candidate=$CANDIDATE_SHA production_unchanged=1"
+
+      - name: Roll back isolated preview after failure
+        if: ${{ failure() && steps.ssh.outcome == 'success' && steps.activate.outcome != 'skipped' }}
+        env:
+          PAYLOAD_CHECKSUMS_SHA256: ${{ steps.release.outputs.payload_checksums_sha256 }}
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          KEY_PATH: ${{ steps.ssh.outputs.key_path }}
+          KNOWN_HOSTS_PATH: ${{ steps.ssh.outputs.known_hosts_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$ ]]
+          test -f "$KEY_PATH" && test ! -L "$KEY_PATH" && test -s "$KNOWN_HOSTS_PATH" && test ! -L "$KNOWN_HOSTS_PATH"
+          opts=(-i "$KEY_PATH" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$KNOWN_HOSTS_PATH" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER@$HOST"
+          timeout 120s ssh "${opts[@]}" "$remote" bash -s -- "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$CANDIDATE_SHA" "$RELEASE_ARTIFACT_ID" "$PAYLOAD_CHECKSUMS_SHA256" <<'REMOTE'
+          set -euo pipefail
+          run_id="$1"; run_attempt="$2"; candidate_sha="$3"; release_artifact_id="$4"; payload_sha="$5"
+          root="$HOME/www/anytoour.ru"
+          parent="$root/_preview/search3-candidate"
+          target="$parent/poisk-turov"
+          backup="$parent/.poisk-turov-backup-$run_id-$run_attempt"
+          failed="$parent/.poisk-turov-failed-$run_id-$run_attempt"
+          owner="$parent/.poisk-turov-owner"
+          owner_backup="$parent/.poisk-turov-owner-backup-$run_id-$run_attempt"
+          lock="$parent/.deploy-lock"
+          case "$parent" in "$HOME/www/anytoour.ru/_preview/search3-candidate") ;; *) exit 50 ;; esac
+          test -d "$root" && test ! -L "$root"
+          test -d "$parent" && test ! -L "$parent"
+          test "$(readlink -f "$parent")" = "$(readlink -f "$root")/_preview/search3-candidate"
+          locked=0
+          for _ in $(seq 1 15); do if mkdir "$lock" 2>/dev/null; then locked=1; break; fi; sleep 2; done
+          test "$locked" -eq 1
+          printf '%s\n' "$$" > "$lock/pid"
+          trap 'rm -f "$lock/pid"; rmdir "$lock" 2>/dev/null || true' EXIT
+          owns=0
+          if test -f "$owner" && test ! -L "$owner"; then
+            if php -r '$d=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);$ok=($d["candidate_sha"]??"")===$argv[2]&&($d["deploy_run_id"]??"")===$argv[3]&&($d["deploy_run_attempt"]??"")===$argv[4]&&($d["release_artifact_id"]??"")===$argv[5]&&($d["payload_checksums_sha256"]??"")===$argv[6];exit($ok?0:1);' "$owner" "$candidate_sha" "$run_id" "$run_attempt" "$release_artifact_id" "$payload_sha"; then owns=1; fi
+          fi
+          if test "$owns" -eq 1; then
+            test -d "$target" && test ! -L "$target"
+            test ! -e "$failed" && test ! -L "$failed"
+            actual="$(find "$target" -mindepth 1 -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)"
+            expected="$(printf '%s\n' index.php search3-entry-v1.css search3-entry-v1.js search3-results-cards-v2.css search3-results-cards-v2.js search3-results-filters-v1.css search3-results-filters-v1.js search3-selected-flow-v2.css search3-selected-flow-v2.js | LC_ALL=C sort)"
+            test "$actual" = "$expected"
+            test "$(find "$target" -mindepth 1 -maxdepth 1 | wc -l)" -eq 9
+            generated="$(cd "$parent" && sha256sum ./poisk-turov/index.php ./poisk-turov/search3-entry-v1.css ./poisk-turov/search3-entry-v1.js ./poisk-turov/search3-results-cards-v2.css ./poisk-turov/search3-results-cards-v2.js ./poisk-turov/search3-results-filters-v1.css ./poisk-turov/search3-results-filters-v1.js ./poisk-turov/search3-selected-flow-v2.css ./poisk-turov/search3-selected-flow-v2.js | sha256sum | awk '{print $1}')"
+            test "$generated" = "$payload_sha"
+            mv "$target" "$failed"
+            rm -f "$owner"
+            if test -d "$backup" && test ! -L "$backup"; then mv "$backup" "$target"; fi
+            if test -f "$owner_backup" && test ! -L "$owner_backup"; then mv "$owner_backup" "$owner"; fi
+            echo SEARCH3_PREVIEW_ROLLBACK_OK
+          elif test ! -e "$target" && test -d "$backup" && test ! -L "$backup"; then
+            mv "$backup" "$target"
+            if test -f "$owner_backup" && test ! -L "$owner_backup"; then mv "$owner_backup" "$owner"; fi
+            echo SEARCH3_PREVIEW_ROLLBACK_OK recovered_partial_swap=1
+          elif test -e "$backup" || test -e "$owner_backup"; then
+            echo SEARCH3_PREVIEW_ROLLBACK_AMBIGUOUS >&2
+            exit 51
+          else
+            echo SEARCH3_PREVIEW_ROLLBACK_NOOP current_run_not_active=1
+          fi
+          rm -f "$lock/pid"
+          rmdir "$lock"
+          trap - EXIT
+          REMOTE
+
+      - name: Confirm final protected production fingerprint
+        if: ${{ always() && steps.fingerprint.outputs.recorded == 'true' && steps.ssh.outcome == 'success' }}
+        env:
+          HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          KEY_PATH: ${{ steps.ssh.outputs.key_path }}
+          KNOWN_HOSTS_PATH: ${{ steps.ssh.outputs.known_hosts_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$USER" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$ ]]
+          test -f "$KEY_PATH" && test ! -L "$KEY_PATH" && test -s "$KNOWN_HOSTS_PATH" && test ! -L "$KNOWN_HOSTS_PATH"
+          opts=(-i "$KEY_PATH" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$KNOWN_HOSTS_PATH" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$USER@$HOST"
+          timeout 60s ssh "${opts[@]}" "$remote" '
+            set -euo pipefail
+            cd "$HOME/www/anytoour.ru"
+            for path in index.php search-page-v2.php poisk-turov/index.php assets.php api-v2.php lead-adapter-v2.php lead-bridge-v1.php lead-receiver-v1.php lead-price-v1.php lead-idempotency-v1.php analytics-config.php bundle-manifest-v1.php config.php; do
+              test -f "$path" && test ! -L "$path"
+              sha256sum "$path"
+            done
+          ' > "$RUNNER_TEMP/search3-production-final.sha256"
+          diff -u "$RUNNER_TEMP/search3-production-before.sha256" "$RUNNER_TEMP/search3-production-final.sha256"
+          echo SEARCH3_PRODUCTION_FINAL_FINGERPRINT_UNCHANGED
+
+      - name: Upload deployment evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-candidate-deployment-evidence-${{ env.CANDIDATE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/search3-deployment-evidence.json
+            ${{ runner.temp }}/search3-live.headers
+            ${{ runner.temp }}/search3-live-lead.json
+            ${{ runner.temp }}/search3-production-before.sha256
+            ${{ runner.temp }}/search3-production-after.sha256
+            ${{ runner.temp }}/search3-production-final.sha256
+          if-no-files-found: warn
+          retention-days: 30
