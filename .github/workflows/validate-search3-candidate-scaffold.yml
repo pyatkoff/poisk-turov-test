@@ -225,7 +225,7 @@ jobs:
     env:
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       EVIDENCE_ARTIFACT_ID: ${{ needs.browser.outputs.evidence_artifact_id }}
-      EVIDENCE_ARTIFACT_DIGEST: ${{ needs.browser.outputs.evidence_artifact_digest }}
+      EVIDENCE_ARTIFACT_DIGEST: sha256:${{ needs.browser.outputs.evidence_artifact_digest }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -236,6 +236,7 @@ jobs:
         with:
           artifact-ids: ${{ needs.browser.outputs.evidence_artifact_id }}
           path: ${{ runner.temp }}/search3-evidence
+          merge-multiple: true
 
       - name: Build and verify deterministic preview artifact
         shell: bash
