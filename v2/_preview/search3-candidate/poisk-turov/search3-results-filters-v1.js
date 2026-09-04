@@ -735,7 +735,7 @@ syncGroups();window.addEventListener('resize',syncGroups);
     secondary.push(tour.isCharter === true ? 'Чартерный перелёт' : 'Перелёт включён');
     var meal = mealLabel(tour.meal);
     if (meal) secondary.push(meal);
-    context.innerHTML = '<span>' + safe(primary.join(' · ')) + '</span><span>' + safe(secondary.join(' · ')) + '</span>';
+    context.innerHTML = '<span>' + safe(primary.join(' · ')) + '</span> <span>' + safe(secondary.join(' · ')) + '</span>';
   }
 
   function collapseCard(card) {
