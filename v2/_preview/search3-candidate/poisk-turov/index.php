@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 const SEARCH3_CANDIDATE_LEAD_API = '/_preview/search3-candidate/poisk-turov/?lead=disabled';
+const SEARCH3_CANDIDATE_ASSET_BASE = '/_preview/search3-candidate/poisk-turov/';
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_GET['lead'] ?? '') === 'disabled') {
     if (!headers_sent()) {
@@ -51,6 +52,38 @@ if ($metrikaConfigCount !== 1 || !is_string($html)) {
     http_response_code(500);
     echo 'Search3 candidate analytics isolation error';
     exit;
+}
+
+$candidateAssets = [
+    'css' => 'search3-results-filters-v1.css',
+    'js' => 'search3-results-filters-v1.js',
+];
+$assetUrls = [];
+foreach ($candidateAssets as $type => $filename) {
+    $path = __DIR__ . '/' . $filename;
+    $hash = is_file($path) ? hash_file('sha256', $path) : false;
+    if (!is_string($hash) || !preg_match('/^[0-9a-f]{64}$/', $hash)) {
+        http_response_code(500);
+        echo 'Search3 candidate presentation asset error';
+        exit;
+    }
+    $assetUrls[$type] = SEARCH3_CANDIDATE_ASSET_BASE . $filename . '?v=' . substr($hash, 0, 16);
+}
+
+$presentationMarkers = [
+    '<body>' => '<body class="search3-candidate">',
+    '</head>' => '<link id="search3-results-filters-v1-style" rel="stylesheet" href="'
+        . htmlspecialchars($assetUrls['css'], ENT_QUOTES, 'UTF-8') . '"></head>',
+    '</body>' => '<script id="search3-results-filters-v1-script" src="'
+        . htmlspecialchars($assetUrls['js'], ENT_QUOTES, 'UTF-8') . '"></script></body>',
+];
+foreach ($presentationMarkers as $needle => $replacement) {
+    if (substr_count($html, $needle) !== 1) {
+        http_response_code(500);
+        echo 'Search3 candidate presentation injection error';
+        exit;
+    }
+    $html = str_replace($needle, $replacement, $html);
 }
 
 echo $html;

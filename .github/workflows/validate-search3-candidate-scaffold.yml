@@ -50,6 +50,8 @@ jobs:
         run: |
           set -euo pipefail
           php -l v2/_preview/search3-candidate/poisk-turov/index.php
+          test -s v2/_preview/search3-candidate/poisk-turov/search3-results-filters-v1.css
+          node --check v2/_preview/search3-candidate/poisk-turov/search3-results-filters-v1.js
           node --check tests/browser/search3-candidate-scaffold.cjs
           node -e "const f=require('./tests/fixtures/search3-candidate-scaffold.json'); if(f.schemaVersion!==1||f.viewports.map(v=>v.width).join(',')!=='375,430,768,1024,1440') process.exit(1)"
           node tests/contracts/search3-boundaries.test.cjs
@@ -87,7 +89,7 @@ jobs:
             SEARCH3_RUN_ID="${{ github.run_id }}" \
             SEARCH3_RUN_ATTEMPT="${{ github.run_attempt }}" \
             node tests/browser/search3-candidate-scaffold.cjs
-          test "$(find search3-candidate-artifacts -maxdepth 1 -name '*.png' | wc -l)" -eq 15
+          test "$(find search3-candidate-artifacts -maxdepth 1 -name '*.png' | wc -l)" -eq 18
           test -s search3-candidate-artifacts/manifest.json
 
       - name: Upload Search3 candidate evidence

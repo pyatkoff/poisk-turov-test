@@ -21,6 +21,11 @@ const baseUrl = String(process.env.SEARCH3_BASE_URL || 'http://anytoour.ru:18083
 const serverUrl = String(process.env.SEARCH3_SERVER_URL || 'http://127.0.0.1:18083').replace(/\/$/, '');
 const outputDir = path.resolve(process.env.SEARCH3_ARTIFACT_DIR || 'search3-candidate-artifacts');
 const expectedStates = ['initial', 'progressive-25', 'final-100'];
+const expectedPresentationCaptures = [
+  '1440-first-hotel-expanded.png',
+  '430-filters-open.png',
+  '375-filters-open.png',
+];
 const sourceSha = String(process.env.SEARCH3_SOURCE_SHA || '');
 const testedSha = String(process.env.SEARCH3_TESTED_SHA || '');
 const workflowRunId = String(process.env.SEARCH3_RUN_ID || '');
@@ -54,6 +59,15 @@ assert.deepEqual(fixture.visualBaseline, {
   status: 'BLOCKED_MISSING_APPROVED_DESIGN_PIXELS',
   baselineCompared: false,
   ownerVisualApproval: false,
+});
+assert.deepEqual(fixture.presentation, {
+  status: 'DONOR_RECONSTRUCTION',
+  approvedPixelsCompared: false,
+  donorCommit: 'e5baf32f455cdb0aa1a704964f28e5efbebf57ff',
+  donorRunId: '33813829683',
+  productionOwnedDirectTourText: 'Проверить тур',
+  assets: ['search3-results-filters-v1.css', 'search3-results-filters-v1.js'],
+  captures: expectedPresentationCaptures,
 });
 assert.match(sourceSha, /^[0-9a-f]{40}$/, 'SEARCH3_SOURCE_SHA must identify the exact candidate head');
 assert.match(testedSha, /^[0-9a-f]{40}$/, 'SEARCH3_TESTED_SHA must identify the exact tested checkout');
@@ -216,6 +230,26 @@ function recordBehavior(manifest, name, details) {
   manifest.behaviorStates.push({ name, passed: true, ...details });
 }
 
+function presentationAssetEvidence() {
+  const root = path.resolve(__dirname, '../../v2/_preview/search3-candidate/poisk-turov');
+  return fixture.presentation.assets.map(file => {
+    const bytes = fs.readFileSync(path.join(root, file));
+    return {
+      file,
+      bytes: bytes.length,
+      sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+    };
+  });
+}
+
+function assertCandidateDoesNotOwnDirectTour() {
+  const script = fs.readFileSync(
+    path.resolve(__dirname, '../../v2/_preview/search3-candidate/poisk-turov/search3-results-filters-v1.js'),
+    'utf8',
+  );
+  assert.doesNotMatch(script, /\.direct-tour|Проверить тур|Выбрать тур/, 'candidate presentation must not own the production tour CTA');
+}
+
 function consumeExpectedApiHttpFailures(harness, action, status, count, label) {
   const marker = `status of ${status} (`;
   assert.equal(harness.httpErrorResponses.length, count, `${label}: unexpected HTTP error response count`);
@@ -362,6 +396,11 @@ async function createHarness(browser, viewport, scenario) {
     metrikaCounter: Number(window.V2_CONFIG?.metrikaCounter || 0),
     css: document.getElementById('v2-primary-search-ux-style')?.getAttribute('href') || '',
     script: [...document.scripts].map(node => node.getAttribute('src') || '').find(src => src.includes('bundle-v1.php')) || '',
+    candidateClass: document.body.classList.contains('search3-candidate'),
+    candidateCss: document.getElementById('search3-results-filters-v1-style')?.getAttribute('href') || '',
+    candidateScript: document.getElementById('search3-results-filters-v1-script')?.getAttribute('src') || '',
+    presentationStatus: window.Search3CandidateResultsV1?.status || '',
+    approvedPixelsCompared: window.Search3CandidateResultsV1?.approvedPixelsCompared,
   }));
   assert.equal(identity.h1Count, 1);
   assert.equal(identity.visibleH1Count, 1);
@@ -373,6 +412,14 @@ async function createHarness(browser, viewport, scenario) {
   assert.equal(identity.metrikaCounter, 0, 'candidate preview must not send production Metrika events');
   assert.match(identity.css, /^\/bundle-v1\.php\?type=css&/);
   assert.match(identity.script, /^\/bundle-v1\.php\?type=js&/);
+  assert.equal(identity.candidateClass, true);
+  assert.match(identity.candidateCss, /^\/_preview\/search3-candidate\/poisk-turov\/search3-results-filters-v1\.css\?v=[0-9a-f]{16}$/);
+  assert.match(identity.candidateScript, /^\/_preview\/search3-candidate\/poisk-turov\/search3-results-filters-v1\.js\?v=[0-9a-f]{16}$/);
+  const diskAssets = presentationAssetEvidence();
+  assert.equal(new URL(identity.candidateCss, baseUrl).searchParams.get('v'), diskAssets.find(item => item.file.endsWith('.css')).sha256.slice(0, 16));
+  assert.equal(new URL(identity.candidateScript, baseUrl).searchParams.get('v'), diskAssets.find(item => item.file.endsWith('.js')).sha256.slice(0, 16));
+  assert.equal(identity.presentationStatus, fixture.presentation.status);
+  assert.equal(identity.approvedPixelsCompared, false);
   assert.equal(new URL(page.url()).pathname, fixture.route);
 
   return {
@@ -412,6 +459,13 @@ async function geometry(page, width, state) {
       };
     };
     const cards = document.querySelectorAll('#results .hotel-card');
+    const first = cards[0] || null;
+    const firstPhoto = first?.querySelector('.hotel-photo') || null;
+    const firstBody = first?.querySelector('.hotel-body') || null;
+    const disclosure = first?.querySelector('.search3-show-tours') || null;
+    const directTour = first?.querySelector('.direct-tour') || null;
+    const layout = document.querySelector('.results-layout');
+    const rail = document.querySelector('.results-filter-rail');
     const h1 = document.querySelector('h1');
     const status = document.getElementById('status');
     const documentWidth = document.documentElement.scrollWidth;
@@ -430,13 +484,31 @@ async function geometry(page, width, state) {
       h1: rect(h1),
       searchForm: rect(document.getElementById('tourSearch')),
       status: rect(status),
-      firstResult: rect(cards[0]),
+      resultsTools: rect(document.getElementById('resultsTools')),
+      resultsLayout: rect(layout),
+      filterRail: rect(rail),
+      firstResult: rect(first),
+      firstPhoto: rect(firstPhoto),
+      firstBody: rect(firstBody),
+      disclosure: rect(disclosure),
+      decoratedCount: document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length,
+      disclosureCount: document.querySelectorAll('#results .search3-show-tours').length,
+      collapsedToursCount: [...document.querySelectorAll('#results .hotel-tours')].filter(node => node.hidden).length,
+      directTourText: (directTour?.textContent || '').replace(/\s+/g, ' ').trim(),
+      resultsActive: document.body.classList.contains('search3-results-active'),
     };
   }, { expectedWidth: width, expectedState: state });
 }
 
 async function capture(page, width, state, expectedResultCount, manifest) {
   assert.ok(expectedStates.includes(state));
+  if (expectedResultCount > 0) {
+    await page.waitForFunction(count => (
+      document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length === count
+      && document.querySelectorAll('#results .search3-show-tours').length === count
+    ), expectedResultCount, { timeout: 12000 });
+    await page.locator('#results .hotel-card').first().scrollIntoViewIfNeeded();
+  }
   const filename = `${width}-${state}.png`;
   const absolute = path.join(outputDir, filename);
   await page.screenshot({ path: absolute, animations: 'disabled' });
@@ -445,6 +517,33 @@ async function capture(page, width, state, expectedResultCount, manifest) {
   assert.equal(measured.h1Count, 1);
   assert.equal(measured.resultCount, expectedResultCount, `${width}/${state}: result count drifted before capture`);
   assert.equal(measured.horizontalOverflow, false, `${width}/${state}: horizontal overflow`);
+  if (expectedResultCount > 0) {
+    assert.equal(measured.resultsActive, true, `${width}/${state}: candidate result state missing`);
+    assert.equal(measured.decoratedCount, expectedResultCount, `${width}/${state}: undecorated result card`);
+    assert.equal(measured.disclosureCount, expectedResultCount, `${width}/${state}: disclosure count`);
+    assert.equal(measured.collapsedToursCount, expectedResultCount, `${width}/${state}: tour rows must start collapsed`);
+    assert.equal(
+      measured.directTourText,
+      fixture.presentation.productionOwnedDirectTourText,
+      `${width}/${state}: production-owned tour CTA copy changed`,
+    );
+    if (width >= 1000) {
+      assert.ok(measured.firstResult.height >= 166 && measured.firstResult.height <= 170, `${width}/${state}: desktop card height`);
+      assert.ok(measured.firstPhoto.height >= 164 && measured.firstPhoto.height <= 168, `${width}/${state}: desktop photo height`);
+      assert.ok(measured.filterRail.width >= 188 && measured.filterRail.width <= 192, `${width}/${state}: desktop rail width`);
+      const gap = measured.firstResult.x - (measured.filterRail.x + measured.filterRail.width);
+      assert.ok(gap >= 12 && gap <= 16, `${width}/${state}: desktop rail gap`);
+    } else if (width > 760) {
+      assert.ok(measured.firstResult.height >= 186 && measured.firstResult.height <= 192, `${width}/${state}: tablet card height`);
+      assert.equal(Math.round(measured.firstResult.width), width - 48, `${width}/${state}: tablet card width`);
+    } else {
+      assert.equal(Math.round(measured.firstResult.width), width - 48, `${width}/${state}: mobile card width`);
+      assert.ok(measured.firstPhoto.height >= 124 && measured.firstPhoto.height <= 128, `${width}/${state}: mobile photo height`);
+      assert.ok(measured.disclosure.height >= 44, `${width}/${state}: mobile disclosure touch target`);
+    }
+  } else {
+    assert.equal(measured.resultsActive, false, `${width}/${state}: empty page leaked result state`);
+  }
   manifest.screenshots.push({
     file: filename,
     sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
@@ -500,6 +599,165 @@ async function runFiveWidthEvidence(browser, manifest) {
       await harness.context.close();
     }
   }
+}
+
+async function writePresentationScreenshot(page, filename, manifest, details) {
+  assert.ok(expectedPresentationCaptures.includes(filename), `unexpected presentation capture ${filename}`);
+  const absolute = path.join(outputDir, filename);
+  await page.screenshot({ path: absolute, animations: 'disabled' });
+  const bytes = fs.readFileSync(absolute);
+  manifest.presentationScreenshots.push({
+    file: filename,
+    sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+    bytes: bytes.length,
+    ...details,
+  });
+}
+
+function apiCallCount(scenario) {
+  return scenario.calls.filter(call => call.action === 'search_start' || call.action === 'search_results').length;
+}
+
+async function loadCompleteResults(harness, scenario) {
+  await setSearchValues(harness.page);
+  await harness.page.evaluate(() => window.V2SearchLifecycle.submit());
+  await harness.page.waitForFunction(count => (
+    document.querySelectorAll('#results .hotel-card').length === count
+    && document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length === count
+  ), fixture.progressive.finalLimit, { timeout: 12000 });
+  await harness.page.locator('#results .hotel-card').first().scrollIntoViewIfNeeded();
+  assert.ok(scenario.calls.some(call => call.action === 'search_results' && call.limit === 100));
+}
+
+async function runDesktopPresentationEvidence(browser, manifest) {
+  const viewport = fixture.viewports.find(item => item.width === 1440);
+  const scenario = scenarioController('complete-presentation');
+  const harness = await createHarness(browser, viewport, scenario);
+  try {
+    await loadCompleteResults(harness, scenario);
+    const beforeDisclosureCalls = apiCallCount(scenario);
+    await harness.page.locator('#results .search3-show-tours').first().click();
+    await harness.page.waitForFunction(() => (
+      document.querySelectorAll('#results .hotel-card.search3-tours-open').length === 1
+      && !document.querySelector('#results .hotel-card.search3-tours-open .hotel-tours')?.hidden
+    ));
+    const disclosure = await harness.page.evaluate(() => {
+      const card = document.querySelector('#results .hotel-card.search3-tours-open');
+      const button = card?.querySelector('.search3-show-tours');
+      const direct = card?.querySelector('.direct-tour');
+      return {
+        openCards: document.querySelectorAll('#results .hotel-card.search3-tours-open').length,
+        expanded: button?.getAttribute('aria-expanded') || '',
+        buttonText: button?.textContent.replace(/\s+/g, ' ').trim() || '',
+        directTourText: direct?.textContent.replace(/\s+/g, ' ').trim() || '',
+        directTourCount: card?.querySelectorAll('.direct-tour').length || 0,
+      };
+    });
+    assert.deepEqual(disclosure, {
+      openCards: 1,
+      expanded: 'true',
+      buttonText: 'Скрыть туры',
+      directTourText: fixture.presentation.productionOwnedDirectTourText,
+      directTourCount: 1,
+    });
+    assert.equal(apiCallCount(scenario), beforeDisclosureCalls, 'card disclosure must not request search data');
+    await writePresentationScreenshot(harness.page, '1440-first-hotel-expanded.png', manifest, { disclosure });
+
+    await harness.page.locator('#results .search3-show-tours').first().click();
+    const beforeFilterCalls = apiCallCount(scenario);
+    await harness.page.locator('.results-filter-rail [data-ds2-price]').evaluate(node => {
+      node.value = '125000';
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await harness.page.waitForFunction(() => document.querySelectorAll('#results .hotel-card').length === 25);
+    assert.equal(apiCallCount(scenario), beforeFilterCalls, 'desktop loaded-result filter must remain local');
+    assert.equal(new URL(harness.page.url()).pathname, fixture.route);
+    assert.deepEqual(await currentSearchValues(harness.page), fixture.search);
+    manifest.presentationChecks.desktopLocalFilter = {
+      resultCount: 25,
+      newSearchCalls: 0,
+      urlPreserved: true,
+    };
+    await assertClean(harness, 'desktop-presentation');
+  } finally {
+    await harness.context.close();
+  }
+}
+
+async function runMobileFilterEvidence(browser, manifest, width, filename, closeMode) {
+  const viewport = fixture.viewports.find(item => item.width === width);
+  const scenario = scenarioController(`mobile-filter-${width}`);
+  const harness = await createHarness(browser, viewport, scenario);
+  try {
+    await loadCompleteResults(harness, scenario);
+    const openButton = harness.page.locator('.search3-mobile-toolbar .mrf-open');
+    await openButton.waitFor({ state: 'visible' });
+    const touchHeight = await openButton.evaluate(node => node.getBoundingClientRect().height);
+    assert.ok(touchHeight >= 44, `${width}: mobile filter target is too short`);
+    const sortProxy = harness.page.locator('.search3-mobile-sort select');
+    await sortProxy.focus();
+    const sortFocus = await sortProxy.evaluate(node => {
+      const label = node.closest('.search3-mobile-sort');
+      const style = getComputedStyle(label);
+      return {
+        active: document.activeElement === node,
+        outlineStyle: style.outlineStyle,
+        outlineWidth: parseFloat(style.outlineWidth) || 0,
+      };
+    });
+    assert.deepEqual(sortFocus, { active: true, outlineStyle: 'solid', outlineWidth: 3 });
+    const beforeCalls = apiCallCount(scenario);
+    await openButton.click();
+    await harness.page.waitForSelector('.mrf-sheet.is-open .mrf-panel[role="dialog"]');
+    await harness.page.waitForFunction(() => document.querySelector('.mrf-panel')?.contains(document.activeElement));
+    const drawer = await harness.page.evaluate(expectedWidth => {
+      const sheet = document.querySelector('.mrf-sheet');
+      const panel = document.querySelector('.mrf-panel');
+      const box = panel.getBoundingClientRect();
+      return {
+        width: Math.round(box.width),
+        height: Math.round(box.height),
+        viewportWidth: expectedWidth,
+        open: sheet.classList.contains('is-open'),
+        focusInside: panel.contains(document.activeElement),
+        overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+      };
+    }, width);
+    assert.ok(Math.abs(drawer.width - width) <= 1, `${width}: drawer must span the viewport width`);
+    assert.ok(Math.abs(drawer.height - viewport.height) <= 2, `${width}: drawer must span the viewport height`);
+    assert.equal(drawer.viewportWidth, width);
+    assert.equal(drawer.open, true);
+    assert.equal(drawer.focusInside, true);
+    assert.equal(drawer.overflow, false);
+    assert.equal(apiCallCount(scenario), beforeCalls, `${width}: opening filters must not request search data`);
+    await writePresentationScreenshot(harness.page, filename, manifest, { drawer, closeMode });
+
+    if (closeMode === 'escape') {
+      await harness.page.keyboard.press('Escape');
+    } else {
+      await harness.page.locator('.mrf-backdrop').dispatchEvent('click');
+    }
+    await harness.page.waitForFunction(() => !document.querySelector('.mrf-sheet')?.classList.contains('is-open'));
+    await harness.page.waitForFunction(() => document.activeElement?.classList.contains('mrf-open'));
+    assert.equal(apiCallCount(scenario), beforeCalls, `${width}: closing filters must not request search data`);
+    assert.deepEqual(await currentSearchValues(harness.page), fixture.search);
+    manifest.presentationChecks.mobileFilters[String(width)] = {
+      touchHeight,
+      closeMode,
+      focusReturned: true,
+      sortFocusVisible: true,
+      newSearchCalls: 0,
+    };
+    await assertClean(harness, `${width}-filter-presentation`);
+  } finally {
+    await harness.context.close();
+  }
+}
+
+async function runPresentationEvidence(browser, manifest) {
+  await runDesktopPresentationEvidence(browser, manifest);
+  await runMobileFilterEvidence(browser, manifest, 430, '430-filters-open.png', 'escape');
+  await runMobileFilterEvidence(browser, manifest, 375, '375-filters-open.png', 'backdrop');
 }
 
 async function runPendingStatusRace(browser) {
@@ -706,11 +964,22 @@ async function openSelectedFailureTour(page) {
     result: selectedTourResult(),
     searchId: fixture.failureFixtures.selectedTour.searchId,
   });
+  await page.locator('.search3-show-tours').click();
+  await page.waitForFunction(() => !document.querySelector('#results .hotel-tours')?.hidden);
   await page.locator(`.direct-tour[data-tid="${fixture.failureFixtures.selectedTour.id}"]`).click();
   await page.waitForFunction(tourId => (
     window.V2TourController?.currentTour?.id === tourId
     && !!document.querySelector('#selectedTour .lead-form')
   ), fixture.failureFixtures.selectedTour.id, { timeout: 12000 });
+  const disclosureState = await page.evaluate(() => ({
+    openCards: document.querySelectorAll('#results .hotel-card.search3-tours-open').length,
+    visibleTourGroups: [...document.querySelectorAll('#results .hotel-tours')].filter(node => !node.hidden).length,
+  }));
+  assert.deepEqual(
+    disclosureState,
+    { openCards: 0, visibleTourGroups: 0 },
+    'selecting a tour must collapse candidate disclosure before returning to results',
+  );
 }
 
 async function selectedFailureState(page) {
@@ -855,6 +1124,8 @@ async function runFlightFailureFixtures(browser, manifest) {
     route: fixture.route,
     canonical: fixture.canonical,
     visualBaseline: fixture.visualBaseline,
+    presentation: fixture.presentation,
+    presentationAssets: presentationAssetEvidence(),
     widths: fixture.viewports.map(item => item.width),
     states: expectedStates,
     environment: {
@@ -869,9 +1140,12 @@ async function runFlightFailureFixtures(browser, manifest) {
       ...contextProfile,
     },
     screenshots: [],
+    presentationScreenshots: [],
+    presentationChecks: { desktopLocalFilter: null, mobileFilters: {} },
     behaviorStates: [],
   };
   const candidateHost = new URL(baseUrl).hostname;
+  assertCandidateDoesNotOwnDirectTour();
   const launchArgs = candidateHost === 'anytoour.ru'
     ? ['--host-resolver-rules=MAP anytoour.ru 127.0.0.1']
     : [];
@@ -879,6 +1153,7 @@ async function runFlightFailureFixtures(browser, manifest) {
   manifest.environment.browserVersion = browser.version();
   try {
     await runFiveWidthEvidence(browser, manifest);
+    await runPresentationEvidence(browser, manifest);
     await runPendingStatusRace(browser);
     await runPendingResultsRace(browser);
     await runSearchFailureFixtures(browser, manifest);
@@ -889,14 +1164,23 @@ async function runFlightFailureFixtures(browser, manifest) {
 
   assert.equal(manifest.screenshots.length, 15);
   assert.equal(new Set(manifest.screenshots.map(item => item.file)).size, 15);
+  assert.equal(manifest.presentationScreenshots.length, 3);
+  assert.deepEqual(manifest.presentationScreenshots.map(item => item.file), expectedPresentationCaptures);
+  assert.equal(new Set(manifest.presentationScreenshots.map(item => item.file)).size, 3);
+  assert.equal(manifest.presentation.status, 'DONOR_RECONSTRUCTION');
+  assert.equal(manifest.presentation.approvedPixelsCompared, false);
   assert.deepEqual(manifest.behaviorStates.map(item => item.name), fixture.failureFixtures.states);
   assert.equal(manifest.behaviorStates.every(item => item.passed === true), true);
   for (const item of manifest.screenshots) {
     const bytes = fs.readFileSync(path.join(outputDir, item.file));
     assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), item.sha256);
   }
+  for (const item of manifest.presentationScreenshots) {
+    const bytes = fs.readFileSync(path.join(outputDir, item.file));
+    assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), item.sha256);
+  }
   fs.writeFileSync(path.join(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-  console.log('SEARCH3_CANDIDATE_SCAFFOLD_OK widths=375,430,768,1024,1440 screenshots=15 races=status,results behaviorStates=7');
+  console.log('SEARCH3_CANDIDATE_SCAFFOLD_OK widths=375,430,768,1024,1440 screenshots=18 races=status,results behaviorStates=7 presentation=DONOR_RECONSTRUCTION');
 })().catch(error => {
   console.error(error);
   process.exit(1);

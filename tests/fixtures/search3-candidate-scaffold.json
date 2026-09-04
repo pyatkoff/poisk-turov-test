@@ -9,6 +9,22 @@
     "baselineCompared": false,
     "ownerVisualApproval": false
   },
+  "presentation": {
+    "status": "DONOR_RECONSTRUCTION",
+    "approvedPixelsCompared": false,
+    "donorCommit": "e5baf32f455cdb0aa1a704964f28e5efbebf57ff",
+    "donorRunId": "33813829683",
+    "productionOwnedDirectTourText": "Проверить тур",
+    "assets": [
+      "search3-results-filters-v1.css",
+      "search3-results-filters-v1.js"
+    ],
+    "captures": [
+      "1440-first-hotel-expanded.png",
+      "430-filters-open.png",
+      "375-filters-open.png"
+    ]
+  },
   "viewports": [
     {"width": 375, "height": 812},
     {"width": 430, "height": 932},
