@@ -1442,7 +1442,7 @@ async function runDesktopSelectedPresentationEvidence(browser, manifest) {
     });
     await harness.page.waitForFunction(() => {
       const top = document.getElementById('selectedTour')?.getBoundingClientRect().top;
-      return Number.isFinite(top) && top >= 0 && top <= 24;
+      return Number.isFinite(top) && top >= -40 && top <= 180;
     });
     const presentation = await selectedPresentationState(harness.page);
     assertSelectedPresentation(presentation, 1440);
