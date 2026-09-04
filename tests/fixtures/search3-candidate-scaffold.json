@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "route": "/_preview/search3-candidate/poisk-turov/",
   "canonical": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/",
   "leadApi": "/_preview/search3-candidate/poisk-turov/?lead=disabled",
@@ -32,6 +32,30 @@
     {"width": 1024, "height": 900},
     {"width": 1440, "height": 1000}
   ],
+  "visualTiers": {
+    "pr": {
+      "lifecycleWidths": [375, 1440],
+      "finalOnlyWidths": [430, 768, 1024],
+      "presentationCaptures": [
+        "1440-first-hotel-expanded.png",
+        "430-filters-open.png",
+        "375-filters-open.png"
+      ],
+      "runRaces": true,
+      "runFailureStates": true
+    },
+    "candidate": {
+      "lifecycleWidths": [375, 430, 768, 1024, 1440],
+      "finalOnlyWidths": [],
+      "presentationCaptures": [
+        "1440-first-hotel-expanded.png",
+        "430-filters-open.png",
+        "375-filters-open.png"
+      ],
+      "runRaces": true,
+      "runFailureStates": true
+    }
+  },
   "search": {
     "from": "1",
     "country": "4",

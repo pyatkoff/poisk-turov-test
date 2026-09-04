@@ -21,11 +21,13 @@ const baseUrl = String(process.env.SEARCH3_BASE_URL || 'http://anytoour.ru:18083
 const serverUrl = String(process.env.SEARCH3_SERVER_URL || 'http://127.0.0.1:18083').replace(/\/$/, '');
 const outputDir = path.resolve(process.env.SEARCH3_ARTIFACT_DIR || 'search3-candidate-artifacts');
 const expectedStates = ['initial', 'progressive-25', 'final-100'];
-const expectedPresentationCaptures = [
-  '1440-first-hotel-expanded.png',
-  '430-filters-open.png',
-  '375-filters-open.png',
-];
+const visualTierName = String(process.env.SEARCH3_VISUAL_TIER || 'candidate');
+assert.ok(['pr', 'candidate'].includes(visualTierName), `unsupported visual tier ${visualTierName}`);
+const visualTier = fixture.visualTiers && fixture.visualTiers[visualTierName];
+assert.ok(visualTier, `missing visual tier configuration for ${visualTierName}`);
+const expectedPresentationCaptures = visualTier.presentationCaptures;
+const expectedEvidenceScreenshotCount = visualTier.lifecycleWidths.length * expectedStates.length
+  + visualTier.finalOnlyWidths.length;
 const sourceSha = String(process.env.SEARCH3_SOURCE_SHA || '');
 const testedSha = String(process.env.SEARCH3_TESTED_SHA || '');
 const workflowRunId = String(process.env.SEARCH3_RUN_ID || '');
@@ -38,8 +40,17 @@ const contextProfile = Object.freeze({
   deviceScaleFactor: 1,
 });
 
-assert.equal(fixture.schemaVersion, 1);
+assert.equal(fixture.schemaVersion, 2);
 assert.deepEqual(fixture.viewports.map(item => item.width), [375, 430, 768, 1024, 1440]);
+assert.deepEqual(Object.keys(fixture.visualTiers), ['pr', 'candidate']);
+for (const [name, tier] of Object.entries(fixture.visualTiers)) {
+  const widths = [...tier.lifecycleWidths, ...tier.finalOnlyWidths];
+  assert.equal(new Set(widths).size, widths.length, `${name}: duplicate visual width`);
+  assert.deepEqual(widths.slice().sort((a, b) => a - b), fixture.viewports.map(item => item.width));
+  assert.deepEqual(tier.presentationCaptures, fixture.presentation.captures);
+  assert.equal(tier.runRaces, true);
+  assert.equal(tier.runFailureStates, true);
+}
 assert.equal(fixture.progressive.firstLimit, 25);
 assert.equal(fixture.progressive.finalLimit, 100);
 assert.equal(fixture.leadApi, '/_preview/search3-candidate/poisk-turov/?lead=disabled');
@@ -604,17 +615,22 @@ async function assertClean(harness, label) {
 
 async function runFiveWidthEvidence(browser, manifest) {
   for (const viewport of fixture.viewports) {
+    const captureLifecycle = visualTier.lifecycleWidths.includes(viewport.width);
+    const captureFinalOnly = visualTier.finalOnlyWidths.includes(viewport.width);
+    assert.ok(captureLifecycle || captureFinalOnly, `${visualTierName}: width ${viewport.width} is not assigned`);
     const scenario = scenarioController('progressive');
     const harness = await createHarness(browser, viewport, scenario);
     try {
       await setSearchValues(harness.page);
-      await capture(harness.page, viewport.width, 'initial', 0, manifest);
+      if (captureLifecycle) await capture(harness.page, viewport.width, 'initial', 0, manifest);
 
       await harness.page.evaluate(() => window.V2SearchLifecycle.submit());
       await harness.page.waitForFunction(count => document.querySelectorAll('#results .hotel-card').length === count, fixture.progressive.firstLimit, { timeout: 12000 });
       await waitFor(() => scenario.heldFinalStatus, `${viewport.width}: final status response was not held`);
       await harness.page.locator('#status').scrollIntoViewIfNeeded();
-      await capture(harness.page, viewport.width, 'progressive-25', fixture.progressive.firstLimit, manifest);
+      if (captureLifecycle) {
+        await capture(harness.page, viewport.width, 'progressive-25', fixture.progressive.firstLimit, manifest);
+      }
 
       await scenario.heldFinalStatus();
 
@@ -1166,7 +1182,8 @@ async function runFlightFailureFixtures(browser, manifest) {
 (async () => {
   await assertPreviewLeadGuard();
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    visualTier: visualTierName,
     sourceSha,
     testedSha,
     workflowRunId,
@@ -1204,22 +1221,29 @@ async function runFlightFailureFixtures(browser, manifest) {
   try {
     await runFiveWidthEvidence(browser, manifest);
     await runPresentationEvidence(browser, manifest);
-    await runPendingStatusRace(browser);
-    await runPendingResultsRace(browser);
-    await runSearchFailureFixtures(browser, manifest);
-    await runFlightFailureFixtures(browser, manifest);
+    if (visualTier.runRaces) {
+      await runPendingStatusRace(browser);
+      await runPendingResultsRace(browser);
+    }
+    if (visualTier.runFailureStates) {
+      await runSearchFailureFixtures(browser, manifest);
+      await runFlightFailureFixtures(browser, manifest);
+    }
   } finally {
     await browser.close();
   }
 
-  assert.equal(manifest.screenshots.length, 15);
-  assert.equal(new Set(manifest.screenshots.map(item => item.file)).size, 15);
+  assert.equal(manifest.screenshots.length, expectedEvidenceScreenshotCount);
+  assert.equal(new Set(manifest.screenshots.map(item => item.file)).size, expectedEvidenceScreenshotCount);
   assert.equal(manifest.presentationScreenshots.length, 3);
   assert.deepEqual(manifest.presentationScreenshots.map(item => item.file), expectedPresentationCaptures);
   assert.equal(new Set(manifest.presentationScreenshots.map(item => item.file)).size, 3);
   assert.equal(manifest.presentation.status, 'DONOR_RECONSTRUCTION');
   assert.equal(manifest.presentation.approvedPixelsCompared, false);
-  assert.deepEqual(manifest.behaviorStates.map(item => item.name), fixture.failureFixtures.states);
+  assert.deepEqual(
+    manifest.behaviorStates.map(item => item.name),
+    visualTier.runFailureStates ? fixture.failureFixtures.states : [],
+  );
   assert.equal(manifest.behaviorStates.every(item => item.passed === true), true);
   for (const item of manifest.screenshots) {
     const bytes = fs.readFileSync(path.join(outputDir, item.file));
@@ -1230,7 +1254,11 @@ async function runFlightFailureFixtures(browser, manifest) {
     assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), item.sha256);
   }
   fs.writeFileSync(path.join(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-  console.log('SEARCH3_CANDIDATE_SCAFFOLD_OK widths=375,430,768,1024,1440 screenshots=18 races=status,results behaviorStates=7 presentation=DONOR_RECONSTRUCTION');
+  console.log(
+    `SEARCH3_CANDIDATE_SCAFFOLD_OK tier=${visualTierName} widths=375,430,768,1024,1440 `
+    + `screenshots=${expectedEvidenceScreenshotCount + expectedPresentationCaptures.length} `
+    + 'races=status,results behaviorStates=7 presentation=DONOR_RECONSTRUCTION',
+  );
 })().catch(error => {
   console.error(error);
   process.exit(1);
