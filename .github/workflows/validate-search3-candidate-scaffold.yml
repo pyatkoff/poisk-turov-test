@@ -1,0 +1,143 @@
+name: Validate Search3 candidate scaffold
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - 'tests/fixtures/search3-candidate-scaffold.json'
+      - 'tests/browser/search3-candidate-scaffold.cjs'
+      - 'tests/contracts/search3-boundaries.fixture.json'
+      - 'tests/contracts/search3-boundaries.test.cjs'
+      - 'diagnostics/search_results_recovery_test.cjs'
+      - 'docs/project/search3-reference-dossier.json'
+      - 'docs/project/SEARCH3_REFERENCE_DOSSIER.md'
+      - 'scripts/ci/validate_search3_reference_dossier.py'
+      - 'tests/search3_reference_dossier_test.py'
+      - '.github/workflows/validate-search3-candidate-scaffold.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - 'tests/fixtures/search3-candidate-scaffold.json'
+      - 'tests/browser/search3-candidate-scaffold.cjs'
+      - 'tests/contracts/search3-boundaries.fixture.json'
+      - 'tests/contracts/search3-boundaries.test.cjs'
+      - 'diagnostics/search_results_recovery_test.cjs'
+      - 'docs/project/search3-reference-dossier.json'
+      - 'docs/project/SEARCH3_REFERENCE_DOSSIER.md'
+      - 'scripts/ci/validate_search3_reference_dossier.py'
+      - 'tests/search3_reference_dossier_test.py'
+      - '.github/workflows/validate-search3-candidate-scaffold.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-search3-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  candidate-scaffold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate scaffold sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l v2/_preview/search3-candidate/poisk-turov/index.php
+          test -s v2/_preview/search3-candidate/poisk-turov/search3-results-filters-v1.css
+          node --check v2/_preview/search3-candidate/poisk-turov/search3-results-filters-v1.js
+          node --check tests/browser/search3-candidate-scaffold.cjs
+          node -e "const f=require('./tests/fixtures/search3-candidate-scaffold.json'); if(f.schemaVersion!==1||f.viewports.map(v=>v.width).join(',')!=='375,430,768,1024,1440') process.exit(1)"
+          node tests/contracts/search3-boundaries.test.cjs
+          node diagnostics/search_results_recovery_test.cjs
+          python3 -B scripts/ci/validate_search3_reference_dossier.py
+          python3 -B tests/search3_reference_dossier_test.py
+
+      - name: Validate production activation layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          activation_root="$RUNNER_TEMP/search3-production-layout"
+          mkdir -p "$activation_root"
+          cp -a v2/. "$activation_root/"
+          cp v2/index.php "$activation_root/search-page-v2.php"
+          printf '%s\n' '<?php http_response_code(599); echo "PRODUCTION_HOME_SELECTED";' > "$activation_root/index.php"
+          php -S 127.0.0.1:18084 -t "$activation_root" >"$RUNNER_TEMP/search3-production-layout.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for _ in {1..40}; do
+            if curl -fsS -H 'Host: anytoour.ru' -D "$RUNNER_TEMP/search3-production-layout.headers" \
+              http://127.0.0.1:18084/_preview/search3-candidate/poisk-turov/ \
+              -o "$RUNNER_TEMP/search3-production-layout.html"; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$php_pid" >/dev/null 2>&1; then
+              cat "$RUNNER_TEMP/search3-production-layout.log" >&2
+              exit 14
+            fi
+            sleep .25
+          done
+          test "$ready" -eq 1
+          grep -Eiq '^X-Robots-Tag: noindex, *follow' "$RUNNER_TEMP/search3-production-layout.headers"
+          grep -Fq 'body class="search3-candidate"' "$RUNNER_TEMP/search3-production-layout.html"
+          grep -Fq 'search3-results-filters-v1-style' "$RUNNER_TEMP/search3-production-layout.html"
+          grep -Fq 'leadApi:"/_preview/search3-candidate/poisk-turov/?lead=disabled"' "$RUNNER_TEMP/search3-production-layout.html"
+          grep -Fq 'metrikaCounter:0' "$RUNNER_TEMP/search3-production-layout.html"
+          if grep -Fq 'PRODUCTION_HOME_SELECTED' "$RUNNER_TEMP/search3-production-layout.html"; then exit 15; fi
+          lead_code="$(curl -sS -o "$RUNNER_TEMP/search3-production-layout-lead.json" -w '%{http_code}' \
+            -H 'Host: anytoour.ru' -H 'Content-Type: application/json' \
+            --data '{"synthetic":true}' \
+            'http://127.0.0.1:18084/_preview/search3-candidate/poisk-turov/?lead=disabled')"
+          test "$lead_code" = "403"
+          grep -Fq 'PREVIEW_LEAD_DISABLED' "$RUNNER_TEMP/search3-production-layout-lead.json"
+          echo "SEARCH3_PRODUCTION_LAYOUT_OK"
+
+      - name: Install Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+
+      - name: Exercise canonical lifecycle through candidate route
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:18083 -t v2 >"$RUNNER_TEMP/search3-candidate-php.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for _ in {1..40}; do
+            if curl -fsS http://127.0.0.1:18083/_preview/search3-candidate/poisk-turov/ >/dev/null; then ready=1; break; fi
+            if ! kill -0 "$php_pid" >/dev/null 2>&1; then cat "$RUNNER_TEMP/search3-candidate-php.log" >&2; exit 12; fi
+            sleep .25
+          done
+          if [ "$ready" -ne 1 ]; then cat "$RUNNER_TEMP/search3-candidate-php.log" >&2; exit 13; fi
+          SEARCH3_BASE_URL=http://anytoour.ru:18083 \
+            SEARCH3_SERVER_URL=http://127.0.0.1:18083 \
+            SEARCH3_ARTIFACT_DIR=search3-candidate-artifacts \
+            SEARCH3_SOURCE_SHA="${{ github.event.pull_request.head.sha || github.sha }}" \
+            SEARCH3_TESTED_SHA="${{ github.sha }}" \
+            SEARCH3_RUN_ID="${{ github.run_id }}" \
+            SEARCH3_RUN_ATTEMPT="${{ github.run_attempt }}" \
+            node tests/browser/search3-candidate-scaffold.cjs
+          test "$(find search3-candidate-artifacts -maxdepth 1 -name '*.png' | wc -l)" -eq 18
+          test -s search3-candidate-artifacts/manifest.json
+
+      - name: Upload Search3 candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: search3-candidate-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: search3-candidate-artifacts/
+          if-no-files-found: warn
+          retention-days: 30
