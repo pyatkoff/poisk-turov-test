@@ -1,7 +1,7 @@
 <?php
 require_once dirname(__DIR__).'/site-page-shell-v1.php';
 require_once dirname(__DIR__).'/data/hot-tours-read-v1.php';
-$c=sp_context('/hot/','Горящие туры — AnyTour','Горящие туры AnyTour: свежие предложения из накопленной базы и живая проверка конкретного тура перед заявкой.');
+$c=sp_context('/hot/','Горящие туры — AnyTour','Горящие туры AnyTour: предложения на ближайшие даты с проверкой стоимости и наличия перед бронированием.');
 $hotFrom=(new DateTimeImmutable('tomorrow'))->format('Y-m-d');
 $hotTo=(new DateTimeImmutable('tomorrow +14 days'))->format('Y-m-d');
 $hotBase=['dateFrom'=>$hotFrom,'dateTo'=>$hotTo];
@@ -20,15 +20,15 @@ function hot_price($value,$currency='RUB'): string {
 function hot_date_label($value): string {
   try { return (new DateTimeImmutable((string)$value))->format('d.m'); } catch(Throwable $e) { return (string)$value; }
 }
-sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'],['label'=>'Горящие туры','href'=>'']]);sp_hero('AnyTour · горящие туры','Горящие туры из живых поисков','Сохраняем свежие предложения, которые уже видели в поиске AnyTour, и перед заявкой всё равно перепроверяем выбранный вариант в Tourvisor.'); ?>
+sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'],['label'=>'Горящие туры','href'=>'']]);sp_hero('AnyTour · горящие туры','Горящие туры','Выберите отдых на ближайшие даты. Сравните предложения и проверьте стоимость, перелёт и условия выбранного тура.'); ?>
 <main class="sp-main">
 <section class="sp-card sp-search-callout">
-  <h2>Проверить ближайшие вылеты</h2><p>Откроем тот же живой поиск, которым пользуется основной сценарий AnyTour, уже с диапазоном на ближайшие две недели.</p>
+  <h2>Проверить ближайшие вылеты</h2><p>Выберите город вылета и страну. Даты на ближайшие две недели уже заданы — их можно изменить в поиске.</p>
   <div class="sp-actions"><a class="sp-primary" href="<?=sp_e($hotSearch)?>">Искать на ближайшие даты</a><a class="sp-secondary" href="/contacts/">Помощь менеджера</a></div>
 </section>
 <?php if($hotOffers): ?>
 <section aria-labelledby="hot-live-title" class="sp-hot-live-section">
-  <div class="sp-section-head"><h2 id="hot-live-title">Свежие предложения из базы AnyTour</h2><p>Это цены, недавно полученные в реальных поисках на 2 взрослых без детей. Они помогают быстро найти интересный вариант, но не заменяют финальную проверку доступности и цены.</p></div>
+  <div class="sp-section-head"><h2 id="hot-live-title">Предложения для двух взрослых</h2><p>Указана цена за весь тур для двух взрослых без детей. Цены и наличие меняются — проверьте выбранный вариант перед бронированием.</p></div>
   <div class="sp-grid sp-grid--balanced-three">
     <?php foreach($hotOffers as $offer):
       $date=(string)$offer['departure_date'];$nights=(int)$offer['nights'];
@@ -37,7 +37,7 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
       $departure=trim((string)($offer['departure_name']??''));
       $category=max(0,(int)($offer['hotel_category']??0));
       $stars=$category>0?implode('&#8288;',array_fill(0,$category,'★')):'';
-      $meta=implode(' · ',array_filter([implode(', ',$where),$departure!==''?'из '.$departure:'',hot_date_label($date),$nights.' ноч.'])); ?>
+      $meta=implode(' · ',array_filter([implode(', ',$where),$departure!==''?'Вылет: '.$departure:'',hot_date_label($date),$nights.' ноч.'])); ?>
       <section class="sp-card sp-hot-offer-card">
         <h3><?=sp_e((string)$offer['hotel_name'])?><?php if($category>0): ?> <span class="sp-hot-offer-stars" style="white-space:nowrap" aria-label="<?=sp_e($category.' звёзд')?>"><?=$stars?></span><?php endif; ?></h3>
         <p class="sp-hot-offer-meta"><?=sp_e($meta)?></p>
@@ -46,7 +46,7 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
       </section>
     <?php endforeach; ?>
   </div>
-  <div class="sp-note">Витрина строится из накопленных свежих результатов AnyTour. Если предложение устарело или изменилось, живой поиск покажет уже текущую доступность и цену.</div>
+  <div class="sp-note">Нажмите «Проверить варианты», чтобы увидеть доступные предложения на указанные даты.</div>
 </section>
 <?php endif; ?>
 <section>
@@ -65,5 +65,5 @@ sp_head($c);sp_header($c);sp_breadcrumbs([['label'=>'Главная','href'=>'/'
     <section class="sp-card"><h3>Проверяем перед заявкой</h3><p>Откройте конкретный тур — покажем детали и итоговую стоимость до передачи менеджеру.</p></section>
   </div>
 </section>
-<div class="sp-note">Горящие предложения быстро меняются. Поэтому накопленная база помогает отобрать свежие варианты, а окончательная проверка всегда остаётся за живым поиском.</div>
+<div class="sp-note">Горящие предложения быстро меняются. Перед бронированием ещё раз проверим стоимость и наличие выбранного тура.</div>
 </main><?php sp_end($c);

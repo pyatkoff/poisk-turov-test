@@ -1,7 +1,7 @@
 {
   "schema_version": 20,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-04T23:11:02+00:00",
+  "updated_at": "2026-09-04T23:34:20+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Search3 candidate 470474414a3930f1f6c095a8dbbc187075b253c0 published to the isolated search preview via #1339; CI 33925976956 and deploy 33926206799 passed. Mobile images/price, native dates/night selects and wide-screen form corrected. Draft #1334 additionally prepares homepage night/child controls, date/night/party handoff, customer copy and the old-search route; these are not published on the main site. The owner confirmed iPhone calendar opening; system night picker and Safari alignment still need device confirmation.",
-    "next_action": "Converge shared buttons/header/footer/spacing across page families in release/search3-production-ready-v1, then publish a coherent whole-site preview with the already prepared homepage/content changes. Follow issue #996. Do not resume Search2 #810 or merge/deploy production #1334 without owner visual approval.",
+    "last_material_progress": "Shared footer, primary action styles and canonical header convergence prepared in draft #1334, with office map links. Applicable CI passed at c46d76a973a4cb89b1c50eb985a6c4a2f155c454; visual run 33929767087 includes actual Search3 and legacy search, with mobile/desktop evidence 9958121988 inspected. Hot-page technical wording and departure label cleaned in follow-up. Public preview and production unchanged.",
+    "next_action": "Build an exact reviewed whole-site preview artifact and isolated publication path; existing search-only deployment permits nine search files only. Do not widen its allowlist to deploy an arbitrary PR or invoke production deploy. Then verify real catalogues and page-to-search handoff. Hourly continuation is configured; verify the first background execution separately.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -60,32 +60,24 @@
     "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > confirmed_search_and_mobile_defects > shared_header_navigation_footer_and_buttons_ds2 > whole_site_preview_and_search_handoff > truthful_content_working_links_and_offer_freshness > phone_desktop_journey_acceptance > owner_approved_migration_with_legacy_and_rollback > technical_refactor_deferred > mass_seo_expansion_deferred",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_preview-contract-only",
     "on_blocker": "Record/defer the affected blocker and continue an independent safe task from the Search3 site-completion queue.",
-    "runtime_signal": "Issue #2 is machine-maintained CI signal only; issue #996 and this state own the active product queue. No continuously running worker is implied."
+    "runtime_signal": "Issue #2 is a machine-maintained CI signal; issue #996 and this state own the product queue. An enabled hourly scheduled task resumes actual development; a completed PR is not a stop condition."
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_SITE_SHELL",
-    "category": "VISUAL",
+    "id": "S3_WHOLE_SITE_PREVIEW",
     "status": "READY",
-    "title": "Converge site-wide buttons, header, footer and spacing",
+    "category": "VISUAL",
+    "title": "Prepare and publish a coherent whole-site preview of the verified draft",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
     "acceptance": [
-      "Use approved DS2 composition and verified site facts across all representative page families.",
-      "Preserve search values, native controls, logo and protected contracts.",
-      "Inspect relevant mobile/tablet/desktop evidence after the coherent implementation batch."
+      "Use an exact reviewed site artifact; existing search-only deploy allowlist cannot publish the whole site.",
+      "Keep preview lead delivery disabled, preserve protected production fingerprints and retain rollback.",
+      "Verify navigation, real catalogue loading and date/night/party/child-age handoff in the whole-site preview."
     ]
   },
   "queue": [
-    {
-      "id": "S3_WHOLE_SITE_PREVIEW",
-      "status": "QUEUED",
-      "depends_on": [
-        "S3_SITE_SHELL"
-      ],
-      "title": "Publish whole-site preview and verify navigation plus date/night/party/child-age handoff"
-    },
     {
       "id": "S3_FACTS_LINKS_MAPS",
       "status": "QUEUED",
@@ -175,6 +167,12 @@
       "conclusion": "applicable checks passed",
       "sha": "55baa5183fedfd18a3ace6be793c30074a565b5f",
       "scope": "core/handoff, navigation, family controls, content visual and applicable SEO checks; configured migration-only check skipped; no production acceptance"
+    },
+    "site_shell": {
+      "conclusion": "success",
+      "sha": "c46d76a973a4cb89b1c50eb985a6c4a2f155c454",
+      "visual_run": 33929767087,
+      "scope": "All applicable PR gates passed; migration-only check skipped by configured condition. Actual Search3, legacy search and content templates on mobile/desktop. Runtime catalogue unavailable in CI; not a production defect."
     }
   },
   "last_verified_commit": "470474414a3930f1f6c095a8dbbc187075b253c0",
@@ -194,5 +192,25 @@
       ],
       "reason": "Locate existing approved materials first; defer unavailable/unapproved content. No invented legal terms."
     }
-  ]
+  ],
+  "completed_preparation": [
+    {
+      "id": "S3_SITE_SHELL",
+      "status": "PREPARED_AWAITING_WHOLE_SITE_PREVIEW",
+      "sha": "c46d76a973a4cb89b1c50eb985a6c4a2f155c454",
+      "ci_run": 33929767087,
+      "evidence_artifact": 9958121988,
+      "scope": "Shared PHP footer and navigation, canonical shared header without donor CSS replacement, common primary action colour, office map links; mobile/desktop screenshots inspected including actual Search3 route."
+    }
+  ],
+  "scheduled_execution": {
+    "status": "ENABLED",
+    "automation_id": "6a9b55c965ac81918c5327b6b43faed2",
+    "title": "Продолжать разработку AnyTour",
+    "rrule": "FREQ=HOURLY",
+    "timezone": "Europe/Amsterdam",
+    "mode": "development_not_monitoring_only",
+    "rule": "Do not stop after one PR when time remains for the next safe task. Preserve production approval and all protected boundaries; record/defer a blocker and continue independent work.",
+    "first_background_run_verified": false
+  }
 }

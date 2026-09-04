@@ -4,7 +4,7 @@
 .at-home-search{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)));border-color:var(--at-line);background:var(--at-surface);border-radius:var(--at-radius-xl)}
 .at-home-field>span{color:var(--at-muted)}
 .at-home-field select,.at-home-field input{border-color:var(--at-line);border-radius:var(--at-control-radius);color:var(--at-text)}
-.at-home-search button{background:#0666ff;border-radius:var(--at-control-radius)}
+.at-home-search button{background:#0066ff;border-radius:var(--at-control-radius)}
 .at-home-search__more{color:var(--at-brand)}
 .at-home-section{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))}
 .at-home-section--discovery{margin-top:var(--at-section-space);margin-bottom:var(--at-section-space)}

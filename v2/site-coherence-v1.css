@@ -53,7 +53,7 @@
 }
 
 /* Main next-step actions share the search form colour across site pages. */
-.sp-main .sp-primary,.sp-hero .sp-primary{background:#0666ff;color:#fff;min-height:44px}
+.sp-main .sp-primary,.sp-hero .sp-primary{background:#0066ff;color:#fff;min-height:44px}
 .sp-main .sp-primary:hover,.sp-hero .sp-primary:hover{background:#0754d1}
 
 .sp-office-card .sp-office-map{display:flex;align-items:center;min-height:44px;width:fit-content;max-width:100%;font-size:14px;line-height:1.5;margin-top:4px}

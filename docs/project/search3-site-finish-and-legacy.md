@@ -33,13 +33,13 @@ Live browser inspected homepage, contacts, how-to-buy, early booking, hot tours,
 | Priority | Area | Finding and action | State |
 | --- | --- | --- | --- |
 | Before migration | Legal/payment | `/payment/` still renders Not Found. Earlier privacy/consent 404s remain unresolved; obtain valid pages/content. Do not invent legal terms. | Blocking open work |
-| Before migration | Common shell | Search preview footer/form differ from existing homepage/content pages. Converge spacing, button roles and footer content across page families in a whole-site preview. | Open |
+| Before migration | Common shell | Search preview footer/form differ from existing homepage/content pages. Converge spacing, button roles and footer content across page families in a whole-site preview. | Prepared in draft; whole-site preview pending |
 | Before migration | Search handoff | Snapshot links now retain supported dates/nights/two-adult scope; month CTA retains a future date range in its month. Exact hotel selection is not promised. Verify these prepared changes in the whole-site preview. | Prepared in production draft, not published |
 | Before migration | Client copy | Technical SEO instructions visible on Turkey and month pages. Replace relevant country/month template copy with customer-facing price-check explanation. | Prepared in production draft, not published |
 | Before migration | Price freshness | Turkey/month has 04.09 departure at review time; use explicit departure timezone and availability cutoff. Do not reuse the earlier audit's date assumption. | Open |
 | Next design pass | Homepage | Independent native night range, children/ages and extended-search state preservation are implemented and checked. Verify with the real catalogues in the whole-site preview. | Prepared in production draft, not published |
-| Next design pass | Contacts | Four offices and call links present; add map actions from verified addresses. Hours/photos require factual source. | Open |
-| Next design pass | Hot offers | Readable but contains internal wording and `из Москва`; fix city label consistently. | Open |
+| Next design pass | Contacts | Four map-search actions added using the existing office addresses. Hours/photos still require factual sources. | Prepared in draft, not published |
+| Next design pass | Hot offers | Technical copy replaced with customer-facing explanations; neutral `Вылет: Москва` avoids incorrect inflection. | Prepared in draft, not published |
 | Confirmed working | Turkey links | Month links and similar destinations are populated; the earlier claim of empty blocks is not currently true for Turkey. | No fix needed |
 | Retain | Buying flow | How-to-buy explains that a request is not confirmed booking/payment. Keep this consistent with tour UI. | Retain |
 
@@ -53,3 +53,13 @@ Do not expand mass SEO pages, analytics, transport or supplier contracts as part
 - Home uses independent native night range controls and child-age selectors. Search page restores validated ages (0–17, up to three children) from existing `child_age[]` query values. Extended-search link retains entered form values.
 - Draft CI verifies offer-to-form parameters, independent night range and child ages 0/17; home mobile/desktop layout inspected from CI screenshots. Local CI catalogue loading lacks production catalogue service and is not a finding of production failure.
 - These main-site changes remain in the production draft. Common footer/button convergence, legal/payment pages, freshness cutoffs and office map actions are still open; no production switch is authorized by this follow-up.
+
+## Shared site shell follow-up
+
+Shared server-rendered footer now owns navigation, existing social/app links and contact phone on every page. Its marker prevents the Search3 donor from replacing the DOM. Removed donor-only header/legacy-footer CSS overrides from the production import; selected-tour footer hiding is retained. Primary search/content actions use the same blue; header search action is secondary. Four office map searches use the published addresses. Hot-page internal data-source wording and departure label are cleaned up. Legal/payment destinations remain unresolved and are not represented as repaired.
+
+At `c46d76a973a4cb89b1c50eb985a6c4a2f155c454`, all applicable gates passed; visual run `33929767087`, artifact `9958121988`. Inspected phone/desktop evidence of the actual Search3 route as well as the shared footer and contacts. The older audit had rendered the legacy `/index.php`; CI now also exercises canonical Search3 using a local standalone wrapper. Failed catalogue loading in isolated CI is a fixture limitation, not live-site evidence.
+
+Next task is the whole-site preview artifact/publication. The existing preview deployment is limited to nine search files and cannot publish these shared PHP/home changes. Keep its allowlist intact; prepare a separately reviewed site preview instead of calling the production deploy workflow. This draft has not changed the public preview or main site. Hourly scheduled development is enabled (Europe/Amsterdam). Continue beyond one PR when time remains for another safe step. The first background execution has not yet been verified.
+
+Owner continuation rule: **do not stop after one PR if the current run has time for the next safe step**. Update the handoff after each checked change and continue. A final production visual-approval gate blocks production publication only, not other authorized safe preparation.

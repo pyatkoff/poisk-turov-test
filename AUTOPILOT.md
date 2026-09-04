@@ -8,7 +8,7 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priorit
 
 AnyTour Design System 2.0 is the only canonical design system. Do not restore, introduce or reference Design System 1.0 as current. Treat the public site as one product across homepage → destination/country → hot/search → results → selected tour → lead.
 
-Active owner-directed continuation is [Search3 site completion, issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996). Finish the new design across the site before expanding SEO or refactoring. The next task is shared button/header/footer convergence, followed by a whole-site preview of draft #1334. The stable DS2 mode/phase/stage identifiers remain unchanged; Search3 is the active substage.
+Active owner-directed continuation is [Search3 site completion, issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996). Finish the new design across the site before expanding SEO or refactoring. Shared button/header/footer convergence is prepared and checked in draft #1334. The next task is a whole-site preview, using a separately reviewed artifact because the existing preview deploy accepts only nine search files. The stable DS2 mode/phase/stage identifiers remain unchanged; Search3 is the active substage.
 
 Priority order after emergency overrides is: confirmed search/mobile defects → common site presentation → whole-site preview and handoff → truthful content/working links and offer freshness → end-to-end acceptance → owner-approved migration. Technical refactor and mass SEO expansion remain deferred.
 
@@ -69,4 +69,6 @@ Continue from `AUTOPILOT_STATE.json` current task/queue and [issue #996](https:/
 4. Verify phone/desktop home → search → hotel → tour → flights or clarification → summary → lead form, including long values, families and recovery states. Preview lead delivery remains disabled.
 5. Obtain owner visual approval on a specific release, retain previous deployment artifact/configuration, verify rollback and `/poisk-turov-old/`, then execute the approved migration and post-deploy verification.
 
-Detailed status and legacy-search limits: `docs/project/search3-site-finish-and-legacy.md`. Issue #2 is a machine-maintained CI signal, not the product task list. This plan does not imply a continuously running background worker. PR #254, technical refactor and unresolved legal-content authoring remain deferred.
+Detailed status and legacy-search limits: `docs/project/search3-site-finish-and-legacy.md`. Issue #2 is a machine-maintained CI signal, not the product task list. An hourly scheduled development task is enabled. It must continue beyond one PR whenever time remains for another safe step; it is not a nonstop process. PR #254, technical refactor and unresolved legal-content authoring remain deferred.
+
+Owner continuation rule: **do not stop after one PR if the current run has time for the next safe step**. Update the handoff after each checked change and continue. A final production visual-approval gate blocks production publication only, not other authorized safe preparation.
