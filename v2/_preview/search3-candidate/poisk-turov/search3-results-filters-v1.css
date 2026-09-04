@@ -3407,6 +3407,14 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
   }
 }
 
+/* Candidate desktop grid guard: the 220px rail and 14px gap must occupy distinct columns. */
+@media(min-width:1000px){
+  html body.search3-candidate.search3-results-active.search3-has-results .results-layout{
+    grid-template-columns:220px minmax(0,1fr)!important;
+    gap:14px!important;
+  }
+}
+
 /* Candidate desktop geometry guard: prevent donor 166px locks from clipping the 210px result card. */
 @media(min-width:1000px){
   html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-main,
