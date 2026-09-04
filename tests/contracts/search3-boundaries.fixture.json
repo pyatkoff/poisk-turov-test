@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "tourvisor": {
+    "clientSearchParams": {
+      "departureId": "1",
+      "countryId": "4",
+      "dateFrom": "2099-09-10",
+      "dateTo": "2099-09-17",
+      "nightsFrom": "7",
+      "nightsTo": "10",
+      "adults": "2",
+      "childs": [6, 9],
+      "meal": "7",
+      "hotelCategory": "4",
+      "hotelRating": "5",
+      "hotelTypes": ["2"],
+      "hotelIds": ["88"],
+      "hotelServices": ["wifi", "pool"],
+      "arrivalId": "11",
+      "regionIds": ["21"],
+      "subregionIds": ["31"],
+      "operatorIds": ["41"],
+      "priceFrom": "80000",
+      "priceTo": "200000",
+      "currency": "RUB",
+      "onlyCharter": "true",
+      "onlyDirect": "false"
+    },
+    "gatewayActions": {
+      "health": {"transport": "tv_get", "path": "'/departures'", "params": []},
+      "departures": {"transport": "v2_catalog_get", "path": "'/departures'", "params": ["departureCountryId"]},
+      "countries": {"transport": "v2_catalog_get", "path": "'/countries'", "params": ["departureId", "onlyCharter", "onlyDirect"]},
+      "arrivals": {"transport": "v2_catalog_get", "path": "'/arrivals'", "params": ["departureId", "onlyCharter", "onlyDirect"]},
+      "regions": {"transport": "v2_catalog_get", "path": "'/regions'", "params": ["countryId", "arrivalId"]},
+      "subregions": {"transport": "v2_catalog_get", "path": "'/subregions'", "params": ["countryId", "regionId"]},
+      "meals": {"transport": "v2_catalog_get", "path": "'/meals'", "params": []},
+      "operators": {"transport": "v2_catalog_get", "path": "'/operators'", "params": ["departureId", "countryId"]},
+      "hotel_types": {"transport": "v2_catalog_get", "path": "'/hotel-types'", "params": ["countryId"]},
+      "hotel_services": {"transport": "v2_catalog_get", "path": "'/hotel-group-services'", "params": ["countryId", "regionIds"]},
+      "hotels": {"transport": "tv_get", "path": "'/hotels'", "params": ["countryId", "regionId", "category", "types", "rating", "page", "limit"]},
+      "hotel_details": {"transport": "tv_get", "path": "'/hotels/'.$id", "params": []},
+      "dates": {"transport": "tv_get", "path": "'/tours/dates'", "params": ["departureId", "countryId", "arrivalId", "onlyCharter"]},
+      "search_start": {"transport": "tv_get", "path": "'/tours/search'", "params": ["departureId", "countryId", "dateFrom", "dateTo", "nightsFrom", "nightsTo", "adults", "childs", "meal", "hotelCategory", "hotelRating", "hotelTypes", "hotelIds", "hotelServices", "arrivalId", "regionIds", "subregionIds", "operatorIds", "priceFrom", "priceTo", "currency", "onlyCharter", "onlyDirect"]},
+      "search_continue": {"transport": "tv_get", "path": "'/tours/search/'.$id.'/continue'", "params": []},
+      "search_status": {"transport": "tv_get", "path": "'/tours/search/'.$id.'/status'", "params": ["operatorStatus"]},
+      "search_results": {"transport": "tv_get", "path": "'/tours/search/'.$id", "params": ["limit"]},
+      "tour": {"transport": "tv_get", "path": "'/tours/'.rawurlencode($id)", "params": ["currency"]},
+      "flights": {"transport": "tv_get", "path": "'/tours/'.rawurlencode($id).'/flights'", "params": ["currency"]},
+      "rooms": {"transport": "tv_get", "path": "'/rooms'", "params": ["ids"]}
+    },
+    "progressive": {"initialLimit": 25, "finalLimit": 100, "refreshProgressStep": 10, "refreshMaxAgeMs": 7000}
+  },
+  "pricing": {
+    "basePrice": 100000,
+    "selectedFlightPrice": 112500,
+    "selectedFlightFuel": 3500,
+    "selectedDelta": 12500,
+    "pendingFlightFuel": 4000
+  },
+  "lead": {
+    "publicEndpoint": "lead-adapter-v2.php",
+    "bridgeReceiver": "https://anytour.online/poisk-turov-test/v2/lead-receiver-v1.php",
+    "signatureHeader": "X-Anytoour-Signature",
+    "browserPayloadKeys": ["name", "phone", "comment", "consent", "sessid", "tourId", "searchId", "hotel", "country", "region", "departure", "date", "nights", "adults", "childs", "meal", "roomType", "placement", "operator", "price", "currency", "page", "flight", "flightPrice", "flightFuel", "yclid", "yaclient", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"],
+    "adapterLeadKeys": ["name", "phone", "tourId", "searchId", "hotel", "country", "region", "departure", "date", "nights", "adults", "childs", "childAges", "meal", "roomType", "placement", "operator", "price", "currency", "flight", "flightPrice", "flightFuel", "comment", "page", "yclid", "yaclient", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "consent", "basePrice", "selectedPrice", "priceDelta"],
+    "bitrixConstants": {"V2_LEAD_IBLOCK_ID": 4, "V2_LEAD_SECTION_ID": 12, "V2_LEAD_STATUS_ID": 9, "V2_LEAD_SOURCE_ID": 26},
+    "bitrixPropertyKeys": ["DATE", "NAME", "PHONE", "COMMENTS", "DEPARTURE", "PEOPLE", "COUNTRY", "STATUS", "SOURCE", "YA_CLIENT", "YA_CLID", "YA_UTM_SOURCE", "YA_UTM_MEDIUM", "YA_UTM_CAMPAIGN", "YA_UTM_CONTENT", "YA_UTM_TERM", "MEAL", "NIGHTS", "IS_ANYTOUR_ONLINE"]
+  },
+  "analytics": {
+    "counterConfigKey": "metrikaCounter",
+    "counterConstant": "METRIKA_COUNTER_ID",
+    "safeKeys": ["searchId", "durationMs", "resultsCount", "sort", "tourId", "hotelId", "hotel", "region", "country", "price", "currency", "flightIndex", "flightNumber", "isDefault", "flightPrice", "priceDelta", "previousResultsCount", "addedResultsCount", "phase", "errorCode", "leadId", "deduplicated"],
+    "eventGoals": {
+      "v2:search-started": "V2_SEARCH_STARTED",
+      "v2:search-complete": "V2_SEARCH_COMPLETE",
+      "v2:search-error": "V2_SEARCH_ERROR",
+      "v2:search-continued": "V2_SEARCH_CONTINUED",
+      "v2:tour-selected": "V2_TOUR_SELECTED",
+      "v2:flight-selected": "V2_FLIGHT_SELECTED",
+      "v2:lead-started": "V2_LEAD_STARTED",
+      "v2:lead-submitted": "V2_LEAD_SUBMITTED",
+      "v2:lead-error": "V2_LEAD_ERROR"
+    },
+    "metrikaInit": {"clickmap": true, "trackLinks": true, "accurateTrackBounce": true, "webvisor": false}
+  }
+}
