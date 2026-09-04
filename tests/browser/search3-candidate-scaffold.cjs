@@ -680,11 +680,6 @@ async function geometry(page, width, state) {
 async function capture(page, width, state, expectedResultCount, manifest) {
   assert.ok(expectedStates.includes(state));
   if (expectedResultCount > 0) {
-    if (width <= 760) {
-      assert.equal(measured.summaryDetail.length, 1, `${width}: compact search context missing`);
-      assert.ok(measured.summaryDetail[0].visible && measured.summaryDetail[0].fits, `${width}: compact search context is clipped`);
-      assert.match(measured.summaryDetail[0].text, /2 взрослых/, `${width}: traveler context missing`);
-    }
     await page.waitForFunction(count => (
       document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length === count
       && document.querySelectorAll('#results .search3-show-tours').length === count
@@ -701,6 +696,11 @@ async function capture(page, width, state, expectedResultCount, manifest) {
   assert.equal(measured.resultCount, expectedResultCount, `${width}/${state}: result count drifted before capture`);
   assert.equal(measured.horizontalOverflow, false, `${width}/${state}: horizontal overflow`);
   if (expectedResultCount > 0) {
+    if (width <= 760) {
+      assert.equal(measured.summaryDetail.length, 1, `${width}: compact search context missing`);
+      assert.ok(measured.summaryDetail[0].visible && measured.summaryDetail[0].fits, `${width}: compact search context is clipped`);
+      assert.match(measured.summaryDetail[0].text, /2 взрослых/, `${width}: traveler context missing`);
+    }
     assert.equal(measured.resultsActive, true, `${width}/${state}: candidate result state missing`);
     assert.equal(measured.decoratedCount, expectedResultCount, `${width}/${state}: undecorated result card`);
     assert.equal(measured.disclosureCount, expectedResultCount, `${width}/${state}: disclosure count`);
