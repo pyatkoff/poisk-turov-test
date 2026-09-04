@@ -36,6 +36,10 @@ function sp_context(string $path,string $title,string $description): array {
   return ['path'=>$path,'title'=>$title,'description'=>$description,'phone'=>$phone,'phoneHref'=>v2_phone_href($phone),'robots'=>v2_seo_robots_content(v2_seo_indexable($siteParams))];
 }
 function sp_head(array $c): void {
+  if(v2_site_preview_mode()&&empty($GLOBALS['SP_PREVIEW_NAV_BUFFER'])){
+    ob_start('v2_site_rewrite_preview_navigation');
+    $GLOBALS['SP_PREVIEW_NAV_BUFFER']=true;
+  }
   $canonical='https://anytoour.ru'.($c['path']==='/'?'/':rtrim($c['path'],'/').'/');
   $GLOBALS['SP_SCHEMA_CURRENT_PATH']=(string)($c['path']??'');
   $webPageSchema=v2_seo_webpage_schema((string)($c['path']??''),(string)($c['title']??''),(string)($c['description']??''));
@@ -49,4 +53,11 @@ function sp_breadcrumbs(array $items): void {
   ?><nav class="sp-breadcrumbs" aria-label="Хлебные крошки"><div class="sp-wrap"><?php foreach(array_values($items) as $i=>$item): $label=(string)($item['label']??'');$href=(string)($item['href']??'');$last=$i===count($items)-1; ?><?php if(!$last&&$href!==''): ?><a href="<?=sp_e(v2_site_href($href))?>"><?=sp_e($label)?></a><span aria-hidden="true">/</span><?php else: ?><span aria-current="page"><?=sp_e($label)?></span><?php endif; ?><?php endforeach; ?></div></nav><?php if($breadcrumbSchema): ?><script type="application/ld+json"><?=v2_seo_json_ld($breadcrumbSchema)?></script><?php endif; ?><?php
 }
 function sp_hero(string $kicker,string $h1,string $copy,string $actionHref='',string $actionLabel='',string $modifier=''): void { $class='sp-hero'.($modifier!==''?' sp-hero--'.preg_replace('/[^a-z0-9-]+/','',strtolower($modifier)):''); ?><section class="<?=sp_e($class)?>"><div class="sp-wrap"><span class="sp-kicker"><?=sp_e($kicker)?></span><h1><?=sp_e($h1)?></h1><p><?=sp_e($copy)?></p><?php if($actionHref!==''&&$actionLabel!==''): ?><div class="sp-actions sp-hero-actions"><a class="sp-primary" href="<?=sp_e(v2_site_href($actionHref))?>"><?=sp_e($actionLabel)?></a><span class="sp-hero-note">Актуальные даты и стоимость проверяются в поиске</span></div><?php endif; ?></div></section><?php }
-function sp_end(array $c): void { v2_render_site_footer($c['phone'],$c['phoneHref']); echo '</body></html>'; }
+function sp_end(array $c): void {
+  v2_render_site_footer($c['phone'],$c['phoneHref']);
+  echo '</body></html>';
+  if(!empty($GLOBALS['SP_PREVIEW_NAV_BUFFER'])){
+    $GLOBALS['SP_PREVIEW_NAV_BUFFER']=false;
+    ob_end_flush();
+  }
+}
