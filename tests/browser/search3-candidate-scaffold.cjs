@@ -216,6 +216,28 @@ function recordBehavior(manifest, name, details) {
   manifest.behaviorStates.push({ name, passed: true, ...details });
 }
 
+function consumeExpectedApiHttpFailures(harness, action, status, count, label) {
+  const marker = `status of ${status} (`;
+  assert.equal(harness.httpErrorResponses.length, count, `${label}: unexpected HTTP error response count`);
+  for (const response of harness.httpErrorResponses) {
+    assert.deepEqual(response, {
+      origin: new URL(baseUrl).origin,
+      pathname: '/api-v2.php',
+      action,
+      status,
+      method: 'GET',
+    }, `${label}: HTTP error did not come from the intended candidate API action`);
+  }
+  assert.equal(harness.consoleErrors.length, count, `${label}: unexpected console error count`);
+  for (const message of harness.consoleErrors) {
+    assert.ok(message.startsWith('Failed to load resource:'), `${label}: unexpected console error`);
+    assert.ok(message.includes(marker), `${label}: expected HTTP ${status} console evidence`);
+  }
+  harness.httpErrorResponses.length = 0;
+  harness.consoleErrors.length = 0;
+  return { responses: count, consoleErrors: count };
+}
+
 async function assertPreviewLeadGuard() {
   const payload = JSON.stringify({ synthetic: true });
   const target = new URL(fixture.leadApi, serverUrl);
@@ -273,6 +295,7 @@ async function createHarness(browser, viewport, scenario) {
   const unexpectedFailures = [];
   const productionLeadRequests = [];
   const candidateLeadRequests = [];
+  const httpErrorResponses = [];
   page.on('console', message => {
     if (message.type() === 'error') consoleErrors.push(message.text());
   });
@@ -288,6 +311,18 @@ async function createHarness(browser, viewport, scenario) {
     if (!/^https:\/\/mc\.yandex\.(?:ru|com)\//.test(request.url())) {
       unexpectedFailures.push(`${request.method()} ${request.url()} ${request.failure() && request.failure().errorText}`);
     }
+  });
+  page.on('response', response => {
+    const status = response.status();
+    if (status < 400) return;
+    const responseUrl = new URL(response.url());
+    httpErrorResponses.push({
+      origin: responseUrl.origin,
+      pathname: responseUrl.pathname,
+      action: responseUrl.searchParams.get('action') || '',
+      status,
+      method: response.request().method(),
+    });
   });
 
   await page.route('**/images/logo.svg', route => route.fulfill({
@@ -349,6 +384,7 @@ async function createHarness(browser, viewport, scenario) {
     unexpectedOutbound,
     productionLeadRequests,
     candidateLeadRequests,
+    httpErrorResponses,
   };
 }
 
@@ -431,6 +467,7 @@ async function assertClean(harness, label) {
   assert.deepEqual(harness.unexpectedOutbound, [], `${label}: unexpected outbound request attempted`);
   assert.deepEqual(harness.productionLeadRequests, [], `${label}: production lead endpoint must not be fetched`);
   assert.deepEqual(harness.candidateLeadRequests, [], `${label}: browser lead form must remain unsubmitted`);
+  assert.deepEqual(harness.httpErrorResponses, [], `${label}: unexpected HTTP error response`);
   assert.equal(new URL(harness.page.url()).pathname, fixture.route, `${label}: URL changed`);
 }
 
@@ -607,9 +644,18 @@ async function runSearchFailureFixtures(browser, manifest) {
     assert.deepEqual(await currentSearchValues(upstreamHarness.page), fixture.search);
     const upstreamCalls = upstreamScenario.calls.filter(call => call.action === 'search_start').length;
     assert.equal(upstreamCalls, 1, 'search_start upstream failures must not be automatically retried');
+    const expectedHttpErrors = consumeExpectedApiHttpFailures(
+      upstreamHarness,
+      'search_start',
+      fixture.failureFixtures.search.upstreamStatus,
+      upstreamCalls,
+      'search-upstream-error'
+    );
     recordBehavior(manifest, 'search-upstream-error', {
       httpStatus: fixture.failureFixtures.search.upstreamStatus,
       actionCalls: upstreamCalls,
+      expectedHttpErrorResponses: expectedHttpErrors.responses,
+      expectedHttpConsoleErrors: expectedHttpErrors.consoleErrors,
       retryVisible: true,
       parametersRetained: true,
     });
@@ -773,9 +819,18 @@ async function runFlightFailureFixtures(browser, manifest) {
     assert.equal(upstreamState.flightErrorRole, 'alert');
     const upstreamCalls = upstreamScenario.calls.filter(call => call.action === 'flights').length;
     assert.equal(upstreamCalls, fixture.failureFixtures.flights.upstreamAttempts);
+    const expectedHttpErrors = consumeExpectedApiHttpFailures(
+      upstreamHarness,
+      'flights',
+      fixture.failureFixtures.flights.upstreamStatus,
+      upstreamCalls,
+      'flight-upstream-error'
+    );
     recordBehavior(manifest, 'flight-upstream-error', {
       httpStatus: fixture.failureFixtures.flights.upstreamStatus,
       actionCalls: upstreamCalls,
+      expectedHttpErrorResponses: expectedHttpErrors.responses,
+      expectedHttpConsoleErrors: expectedHttpErrors.consoleErrors,
       retryVisible: true,
       selectedTourPreserved: true,
       leadVisible: true,
