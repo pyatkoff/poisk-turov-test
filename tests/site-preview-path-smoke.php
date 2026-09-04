@@ -37,6 +37,10 @@ if (v2_site_base_path() !== $prefix) $fail('site base mismatch');
 if (v2_site_href('/poisk-turov/') !== $expectedSearch) $fail('search path mismatch');
 if (v2_site_href($expectedSearch) !== $expectedSearch) $fail('site path helper is not idempotent');
 if (v2_site_href('https://example.com/') !== 'https://example.com/') $fail('external URL changed');
+$sample = '<a href="/country/turkey/">Turkey</a><form action="/poisk-turov/"></form><img src="/images/logo.svg">';
+$rewritten = v2_site_rewrite_preview_navigation($sample);
+$expectedSample = '<a href="' . $prefix . '/country/turkey/">Turkey</a><form action="' . $prefix . '/poisk-turov/"></form><img src="/images/logo.svg">';
+if ($rewritten !== $expectedSample) $fail('content navigation rewrite mismatch');
 
 $asset = v2_public_path('app.css');
 $expectedAsset = $prefix . '/app.css';
