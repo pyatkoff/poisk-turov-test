@@ -8,8 +8,8 @@ body.search3-candidate.search3-results-active .results-tools--ds2{
   position:static!important;
   top:auto!important;
   z-index:auto!important;
-  width:min(916px,calc(100% - 204px))!important;
-  max-width:916px!important;
+  width:min(886px,calc(100% - 234px))!important;
+  max-width:886px!important;
   margin:0 max(0px,calc((100% - 1120px)/2)) 10px auto!important;
   padding:12px 14px!important;
   border-radius:12px!important;
@@ -17,7 +17,7 @@ body.search3-candidate.search3-results-active .results-tools--ds2{
 }
 body.search3-candidate.search3-results-active .results-layout{
   display:grid!important;
-  grid-template-columns:190px minmax(0,1fr)!important;
+  grid-template-columns:220px minmax(0,1fr)!important;
   gap:14px!important;
   align-items:start!important;
   width:min(1120px,100%)!important;
@@ -41,7 +41,7 @@ body.search3-candidate.search3-results-active .results-filter-rail{
   position:sticky!important;
   top:18px!important;
   display:block!important;
-  width:190px!important;
+  width:220px!important;
   max-height:calc(100vh - 36px)!important;
   overflow:auto!important;
   padding:14px 12px!important;
@@ -61,17 +61,17 @@ body.search3-candidate .results-filter-rail .filter-rail-head{
 }
 body.search3-candidate .results-filter-rail .filter-rail-title{
   color:#14213d!important;
-  font-size:14px!important;
+  font-size:16px!important;
   line-height:1!important;
   font-weight:900!important;
 }
 body.search3-candidate .results-filter-rail .filter-reset-link{
-  min-height:24px!important;
-  padding:0!important;
+  min-height:44px!important;
+  padding:0 4px!important;
   border:0!important;
   background:transparent!important;
   color:#155eef!important;
-  font-size:9px!important;
+  font-size:12px!important;
   font-weight:800!important;
 }
 body.search3-candidate .results-filter-rail .filter-range,
@@ -87,14 +87,14 @@ body.search3-candidate .results-filter-rail .filter-range>span,
 body.search3-candidate .results-filter-rail fieldset legend{
   margin:0 0 9px!important;
   color:#344054!important;
-  font-size:10px!important;
+  font-size:12px!important;
   font-weight:900!important;
 }
 body.search3-candidate .results-filter-rail .filter-range>small{
   display:block!important;
   margin:5px 0 7px!important;
   color:#14213d!important;
-  font-size:9px!important;
+  font-size:12px!important;
   font-weight:800!important;
 }
 body.search3-candidate .results-filter-rail input[type=range]{
@@ -105,27 +105,27 @@ body.search3-candidate .results-filter-rail .filter-option{
   display:flex!important;
   align-items:center!important;
   gap:7px!important;
-  min-height:28px!important;
+  min-height:44px!important;
   color:#475467!important;
-  font-size:9px!important;
+  font-size:12px!important;
   font-weight:750!important;
 }
 body.search3-candidate .results-filter-rail .filter-option input{
-  width:15px!important;
-  height:15px!important;
-  flex:0 0 15px!important;
+  width:18px!important;
+  height:18px!important;
+  flex:0 0 18px!important;
   accent-color:#1463ff!important;
 }
 body.search3-candidate .results-filter-rail .filter-rail-result{
   padding:12px 0 2px!important;
   color:#667085!important;
-  font-size:9px!important;
+  font-size:12px!important;
 }
 body.search3-candidate .results-filter-rail .filter-rail-result strong{
   display:block!important;
   margin-top:3px!important;
   color:#14213d!important;
-  font-size:12px!important;
+  font-size:14px!important;
 }
 
 body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card{
@@ -147,23 +147,23 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   align-items:stretch!important;
   width:100%!important;
   min-width:0!important;
-  height:166px!important;
-  min-height:166px!important;
+  height:210px!important;
+  min-height:210px!important;
   gap:0!important;
 }
 body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-photo{
   width:auto!important;
-  height:166px!important;
-  min-height:166px!important;
-  max-height:166px!important;
+  height:210px!important;
+  min-height:210px!important;
+  max-height:210px!important;
   margin:0!important;
   border-radius:0!important;
 }
 body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-photo>img{
   width:100%!important;
   height:100%!important;
-  min-height:166px!important;
-  max-height:166px!important;
+  min-height:210px!important;
+  max-height:210px!important;
   object-fit:cover!important;
 }
 body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-body{
@@ -172,7 +172,7 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   grid-template-rows:auto auto auto auto 1fr auto!important;
   column-gap:15px!important;
   min-width:0!important;
-  height:166px!important;
+  height:210px!important;
   margin:0!important;
   padding:10px 14px 9px!important;
 }
@@ -180,7 +180,7 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   grid-column:1!important;
   margin:0!important;
   color:#14213d!important;
-  font-size:16px!important;
+  font-size:18px!important;
   line-height:1.15!important;
   font-weight:900!important;
 }
@@ -188,7 +188,7 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   grid-column:1!important;
   margin-top:3px!important;
   color:#667085!important;
-  font-size:9px!important;
+  font-size:12px!important;
 }
 body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-decision-line{
   grid-column:1!important;
@@ -202,7 +202,7 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   border-radius:6px!important;
   background:#eaf8ef!important;
   color:#18794e!important;
-  font-size:9px!important;
+  font-size:11px!important;
   font-weight:800!important;
 }
 body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-bottom{
@@ -226,7 +226,7 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
 body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-price-context{
   margin-top:5px!important;
   color:#667085!important;
-  font-size:8px!important;
+  font-size:11px!important;
 }
 body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-compare-toggle,
 body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-actions,
@@ -255,8 +255,8 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   text-overflow:ellipsis!important;
   white-space:nowrap!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts small{color:#98a2b3!important;font-size:7px!important}
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts b{margin-top:2px!important;color:#344054!important;font-size:8px!important}
+body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts small{color:#667085!important;font-size:10px!important}
+body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts b{margin-top:2px!important;color:#344054!important;font-size:11px!important}
 body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-action{
   grid-column:1/3!important;
   grid-row:6!important;
@@ -268,18 +268,18 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   padding-top:5px!important;
   border-top:1px solid #eef1f5!important;
 }
-body.search3-candidate .search3-hotel-action__copy{display:flex!important;gap:6px!important;color:#177245!important;font-size:8px!important}
+body.search3-candidate .search3-hotel-action__copy{display:flex!important;gap:6px!important;color:#177245!important;font-size:11px!important}
 body.search3-candidate .search3-show-tours{
   display:inline-flex!important;
   align-items:center!important;
   justify-content:center!important;
   width:100%!important;
-  min-height:36px!important;
+  min-height:44px!important;
   border:0!important;
   border-radius:7px!important;
   background:#ff510c!important;
   color:#fff!important;
-  font-size:10px!important;
+  font-size:14px!important;
   font-weight:900!important;
   cursor:pointer!important;
 }
@@ -347,18 +347,18 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
   body.search3-candidate.search3-results-active .results-filter-rail{display:none!important}
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-main{
     grid-template-columns:232px minmax(0,1fr)!important;
-    height:188px!important;
-    min-height:188px!important;
+    height:218px!important;
+    min-height:218px!important;
   }
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-photo,
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-photo>img{
-    height:188px!important;
-    min-height:188px!important;
-    max-height:188px!important;
+    height:218px!important;
+    min-height:218px!important;
+    max-height:218px!important;
   }
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-body{
     grid-template-columns:minmax(0,1fr) 150px!important;
-    height:188px!important;
+    height:218px!important;
     column-gap:12px!important;
     padding:12px!important;
   }
@@ -428,7 +428,7 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
   }
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-title,
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-place{grid-column:1/3!important}
-  body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-title{font-size:14px!important}
+  body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-title{font-size:16px!important}
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-decision-line{grid-column:1/3!important}
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts{grid-column:1/3!important}
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-bottom{
@@ -490,6 +490,6 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
   body.search3-candidate.search3-results-active .results-search-summary,
   body.search3-candidate.search3-results-active .results-tools--ds2,
   body.search3-candidate.search3-results-active .search3-mobile-toolbar{margin-left:var(--search3-results-inline-gutter)!important;margin-right:var(--search3-results-inline-gutter)!important}
-  body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts small{font-size:6px!important}
-  body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts b{font-size:7px!important}
+  body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts small{font-size:10px!important}
+  body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts b{font-size:11px!important}
 }

@@ -464,8 +464,13 @@ async function geometry(page, width, state) {
     const firstBody = first?.querySelector('.hotel-body') || null;
     const disclosure = first?.querySelector('.search3-show-tours') || null;
     const directTour = first?.querySelector('.direct-tour') || null;
+    const title = first?.querySelector('.hotel-title') || null;
+    const place = first?.querySelector('.hotel-place') || null;
+    const factLabel = first?.querySelector('.search3-hotel-facts small') || null;
     const layout = document.querySelector('.results-layout');
     const rail = document.querySelector('.results-filter-rail');
+    const filterReset = rail?.querySelector('.filter-reset-link') || null;
+    const filterOption = rail?.querySelector('.filter-option') || null;
     const h1 = document.querySelector('h1');
     const status = document.getElementById('status');
     const documentWidth = document.documentElement.scrollWidth;
@@ -493,6 +498,15 @@ async function geometry(page, width, state) {
       firstPhoto: rect(firstPhoto),
       firstBody: rect(firstBody),
       disclosure: rect(disclosure),
+      filterReset: rect(filterReset),
+      filterOption: rect(filterOption),
+      typography: {
+        title: title ? parseFloat(getComputedStyle(title).fontSize) : 0,
+        place: place ? parseFloat(getComputedStyle(place).fontSize) : 0,
+        factLabel: factLabel ? parseFloat(getComputedStyle(factLabel).fontSize) : 0,
+        disclosure: disclosure ? parseFloat(getComputedStyle(disclosure).fontSize) : 0,
+        filterOption: filterOption ? parseFloat(getComputedStyle(filterOption).fontSize) : 0,
+      },
       decoratedCount: document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length,
       disclosureCount: document.querySelectorAll('#results .search3-show-tours').length,
       collapsedToursCount: [...document.querySelectorAll('#results .hotel-tours')].filter(node => node.hidden).length,
@@ -530,14 +544,22 @@ async function capture(page, width, state, expectedResultCount, manifest) {
       fixture.presentation.productionOwnedDirectTourText,
       `${width}/${state}: production-owned tour CTA copy changed`,
     );
+    assert.ok(measured.disclosure.height >= 44, `${width}/${state}: disclosure touch target`);
+    assert.ok(measured.typography.title >= 16, `${width}/${state}: hotel title is too small`);
+    assert.ok(measured.typography.place >= 12, `${width}/${state}: hotel location is too small`);
+    assert.ok(measured.typography.factLabel >= 10, `${width}/${state}: hotel fact label is too small`);
+    assert.ok(measured.typography.disclosure >= 14, `${width}/${state}: disclosure label is too small`);
     if (width >= 1000) {
-      assert.ok(measured.firstResult.height >= 166 && measured.firstResult.height <= 170, `${width}/${state}: desktop card height`);
-      assert.ok(measured.firstPhoto.height >= 164 && measured.firstPhoto.height <= 168, `${width}/${state}: desktop photo height`);
-      assert.ok(measured.filterRail.width >= 188 && measured.filterRail.width <= 192, `${width}/${state}: desktop rail width`);
+      assert.ok(measured.firstResult.height >= 208 && measured.firstResult.height <= 214, `${width}/${state}: desktop card height`);
+      assert.ok(measured.firstPhoto.height >= 208 && measured.firstPhoto.height <= 212, `${width}/${state}: desktop photo height`);
+      assert.ok(measured.filterRail.width >= 218 && measured.filterRail.width <= 222, `${width}/${state}: desktop rail width`);
+      assert.ok(measured.filterReset.height >= 44, `${width}/${state}: filter reset touch target`);
+      assert.ok(measured.filterOption.height >= 44, `${width}/${state}: filter option touch target`);
+      assert.ok(measured.typography.filterOption >= 12, `${width}/${state}: filter option label is too small`);
       const gap = measured.firstResult.x - (measured.filterRail.x + measured.filterRail.width);
       assert.ok(gap >= 12 && gap <= 16, `${width}/${state}: desktop rail gap`);
     } else if (width > 760) {
-      assert.ok(measured.firstResult.height >= 186 && measured.firstResult.height <= 192, `${width}/${state}: tablet card height`);
+      assert.ok(measured.firstResult.height >= 216 && measured.firstResult.height <= 222, `${width}/${state}: tablet card height`);
       assert.equal(Math.round(measured.firstResult.width), width - 48, `${width}/${state}: tablet card width`);
       for (const [surface, box] of Object.entries({ summary: measured.resultsSummary, tools: measured.resultsTools, layout: measured.resultsLayout })) {
         assert.ok(Math.abs(box.x - measured.firstResult.x) <= 1, `${width}/${state}: tablet ${surface} left edge`);
@@ -546,7 +568,6 @@ async function capture(page, width, state, expectedResultCount, manifest) {
     } else {
       assert.equal(Math.round(measured.firstResult.width), width - 48, `${width}/${state}: mobile card width`);
       assert.ok(measured.firstPhoto.height >= 124 && measured.firstPhoto.height <= 128, `${width}/${state}: mobile photo height`);
-      assert.ok(measured.disclosure.height >= 44, `${width}/${state}: mobile disclosure touch target`);
       for (const [surface, box] of Object.entries({ summary: measured.resultsSummary, tools: measured.resultsTools, toolbar: measured.mobileToolbar, layout: measured.resultsLayout })) {
         assert.ok(Math.abs(box.x - measured.firstResult.x) <= 1, `${width}/${state}: mobile ${surface} left edge`);
         assert.ok(Math.abs(box.width - measured.firstResult.width) <= 1, `${width}/${state}: mobile ${surface} width`);
