@@ -22,6 +22,90 @@ EXPECTED = {
     "visual_evidence_reviewer": ("gpt-5.6-terra", "high", "read-only"),
     "integration_reviewer": ("gpt-5.6-sol", "high", "read-only"),
 }
+CONFIG_KEYS = {"agents"}
+AGENT_CONFIG_KEYS = {
+    "enabled",
+    "max_concurrent_threads_per_session",
+    "default_subagent_model",
+    "default_subagent_reasoning_effort",
+    "interrupt_message",
+}
+CUSTOM_AGENT_KEYS = {
+    "name",
+    "description",
+    "model",
+    "model_reasoning_effort",
+    "sandbox_mode",
+    "developer_instructions",
+}
+IMPLEMENTATION_WORKERS = {
+    "search_contract_worker",
+    "search_ui_worker",
+    "seo_foundation_worker",
+}
+READ_ONLY_AGENTS = {
+    "anytour_release_architect",
+    "visual_evidence_reviewer",
+    "integration_reviewer",
+}
+REQUIRED_AGENT_PHRASES = {
+    "anytour_orchestrator": (
+        "accountable day-to-day AnyTour program orchestrator",
+        "allow at most three concurrent write-heavy lanes",
+        "Use search_ui_worker only after",
+        "Escalate cross-program architecture",
+        "Never infer merge or deploy authority",
+    ),
+    "anytour_release_architect": (
+        "Stay read-only",
+        "last-known-good target",
+        "serialized deployment writers",
+        "Never merge or deploy",
+    ),
+    "search_contract_worker": (
+        "assigned worktree and branch",
+        "Do not change v2 runtime behavior",
+        "stop and report the collision",
+        "Never merge or deploy",
+    ),
+    "search_ui_worker": (
+        "assigned worktree and branch",
+        "approved reference identity",
+        "protected contract baseline",
+        "Stop on a file-owner collision",
+        "Never merge or deploy",
+    ),
+    "seo_foundation_worker": (
+        "assigned worktree and branch",
+        "never duplicate Tourvisor",
+        "Do not change public routes",
+        "Avoid files owned by active Search3",
+        "Never merge or deploy",
+    ),
+    "visual_evidence_reviewer": (
+        "Stay read-only",
+        "Verify 375, 430, 768, 1024, and 1440",
+        "Never claim missing or expiring pixels",
+        "do not edit product code",
+    ),
+    "integration_reviewer": (
+        "declared exact base",
+        "another active draft PR touches the same files",
+        "Never mark a branch ready solely because CI is green",
+        "Never merge or deploy",
+    ),
+}
+REQUIRED_DOCUMENT_CLAUSES = (
+    "Status: execution governance only. It does not authorize merge, preview deployment, or production deployment.",
+    "up to three concurrent write-heavy worktrees",
+    "Keep no more than four active change lanes plus one parked HIGH-review lane.",
+    "The currently recorded user authority is `push + draft PR`, with no merge or deploy.",
+    "no workflow may be dispatched and no branch that auto-deploys may be pushed.",
+    "#1295 project definition",
+    "#1296 release baseline",
+    "#1297 exact-SHA containment",
+    "#1298 Search3 reference dossier",
+)
 PROTECTED_TERMS = (
     "Tourvisor",
     "lead payload/field mapping/delivery",
@@ -38,7 +122,14 @@ def validate(root: Path = ROOT) -> list[str]:
     except (OSError, tomllib.TOMLDecodeError) as exc:
         return [f"config unreadable: {exc}"]
 
+    unknown_config = set(config) - CONFIG_KEYS
+    if unknown_config:
+        errors.append(f"unsupported project config keys: {sorted(unknown_config)}")
+
     agents = config.get("agents") or {}
+    unknown_agent_config = set(agents) - AGENT_CONFIG_KEYS
+    if unknown_agent_config:
+        errors.append(f"unsupported agents config keys: {sorted(unknown_agent_config)}")
     if agents.get("enabled") is not True:
         errors.append("subagents must be explicitly enabled")
     if agents.get("max_concurrent_threads_per_session") != 6:
@@ -61,6 +152,9 @@ def validate(root: Path = ROOT) -> list[str]:
             continue
         if name in found:
             errors.append(f"duplicate agent name: {name}")
+        unknown_custom = set(item) - CUSTOM_AGENT_KEYS
+        if unknown_custom:
+            errors.append(f"unsupported custom agent keys in {path.name}: {sorted(unknown_custom)}")
         found[name] = item
 
     if set(found) != set(EXPECTED):
@@ -73,14 +167,24 @@ def validate(root: Path = ROOT) -> list[str]:
             errors.append(f"{name} model/reasoning/sandbox drift: expected {expected}, got {actual}")
         if not item.get("description") or not item.get("developer_instructions"):
             errors.append(f"{name} missing description or developer instructions")
+        instructions = str(item.get("developer_instructions", ""))
+        for phrase in REQUIRED_AGENT_PHRASES.get(name, ()):
+            if phrase not in instructions:
+                errors.append(f"{name} missing required safeguard: {phrase}")
 
     ultra_agents = [name for name, item in found.items() if item.get("model_reasoning_effort") == "ultra"]
     if ultra_agents != ["anytour_release_architect"]:
         errors.append(f"Ultra must be reserved for the release architect, got {ultra_agents}")
 
-    for reviewer in ("anytour_release_architect", "visual_evidence_reviewer", "integration_reviewer"):
+    for reviewer in sorted(READ_ONLY_AGENTS):
         if (found.get(reviewer) or {}).get("sandbox_mode") != "read-only":
             errors.append(f"{reviewer} must remain read-only")
+
+    if len(IMPLEMENTATION_WORKERS) != 3 or not IMPLEMENTATION_WORKERS.issubset(found):
+        errors.append("implementation writer set must remain exactly three bounded roles")
+    for worker in sorted(IMPLEMENTATION_WORKERS):
+        if (found.get(worker) or {}).get("sandbox_mode") == "read-only":
+            errors.append(f"{worker} must remain an implementation-capable bounded worker")
 
     try:
         document = (root / DOCUMENT.relative_to(ROOT)).read_text(encoding="utf-8")
@@ -92,6 +196,20 @@ def validate(root: Path = ROOT) -> list[str]:
     for authority in ("push", "draft PR", "merge", "preview deploy", "production deploy"):
         if authority not in document:
             errors.append(f"permission level missing from document: {authority}")
+    for clause in REQUIRED_DOCUMENT_CLAUSES:
+        if clause not in document:
+            errors.append(f"parallel delivery policy clause missing: {clause}")
+
+    workflow_path = root / ".github/workflows/validate-anytour-agent-orchestration.yml"
+    try:
+        workflow = workflow_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        errors.append(f"orchestration workflow unreadable: {exc}")
+    else:
+        if "permissions:\n  contents: read" not in workflow:
+            errors.append("orchestration workflow permissions must remain contents: read")
+        if "workflow_dispatch:" in workflow:
+            errors.append("orchestration validation workflow must not be dispatchable")
 
     return errors
 

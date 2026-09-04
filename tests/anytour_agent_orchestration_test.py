@@ -19,16 +19,32 @@ SPEC.loader.exec_module(VALIDATOR)
 
 
 class AnyTourAgentOrchestrationTest(unittest.TestCase):
+    def copied_root(self, temporary: str) -> Path:
+        root = Path(temporary)
+        shutil.copytree(ROOT / ".codex", root / ".codex")
+        (root / "docs/project").mkdir(parents=True)
+        shutil.copy2(ROOT / "docs/project/PARALLEL_DELIVERY.md", root / "docs/project/PARALLEL_DELIVERY.md")
+        (root / ".github/workflows").mkdir(parents=True)
+        shutil.copy2(
+            ROOT / ".github/workflows/validate-anytour-agent-orchestration.yml",
+            root / ".github/workflows/validate-anytour-agent-orchestration.yml",
+        )
+        return root
+
     def validate_mutation(self, relative_path: str, old: str, new: str) -> list[str]:
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            shutil.copytree(ROOT / ".codex", root / ".codex")
-            (root / "docs/project").mkdir(parents=True)
-            shutil.copy2(ROOT / "docs/project/PARALLEL_DELIVERY.md", root / "docs/project/PARALLEL_DELIVERY.md")
+            root = self.copied_root(temporary)
             path = root / relative_path
             text = path.read_text(encoding="utf-8")
             self.assertIn(old, text)
             path.write_text(text.replace(old, new, 1), encoding="utf-8")
+            return VALIDATOR.validate(root)
+
+    def validate_append(self, relative_path: str, addition: str) -> list[str]:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = self.copied_root(temporary)
+            path = root / relative_path
+            path.write_text(path.read_text(encoding="utf-8") + addition, encoding="utf-8")
             return VALIDATOR.validate(root)
 
     def test_checked_in_topology_is_valid(self) -> None:
@@ -65,6 +81,41 @@ class AnyTourAgentOrchestrationTest(unittest.TestCase):
             'sandbox_mode = "workspace-write"',
         )
         self.assertTrue(any("must remain read-only" in error for error in errors))
+
+    def test_rejects_unsupported_project_config_key(self) -> None:
+        errors = self.validate_append(".codex/config.toml", '\nunsupported_policy_bypass = true\n')
+        self.assertTrue(any("unsupported agents config keys" in error for error in errors))
+
+    def test_rejects_removed_ui_worker_safeguard(self) -> None:
+        errors = self.validate_mutation(
+            ".codex/agents/search-ui-worker.toml",
+            "Stop on a file-owner collision.",
+            "Continue through a file-owner collision.",
+        )
+        self.assertTrue(any("search_ui_worker missing required safeguard" in error for error in errors))
+
+    def test_rejects_authority_inversion(self) -> None:
+        errors = self.validate_mutation(
+            "docs/project/PARALLEL_DELIVERY.md",
+            "The currently recorded user authority is `push + draft PR`, with no merge or deploy.",
+            "The currently recorded user authority allows merge, preview deploy, production deploy, and workflow dispatch.",
+        )
+        self.assertTrue(any("policy clause missing" in error for error in errors))
+
+    def test_rejects_dependency_identity_drift(self) -> None:
+        errors = self.validate_mutation(
+            "docs/project/PARALLEL_DELIVERY.md",
+            "#1295 project definition",
+            "#9999 project definition",
+        )
+        self.assertTrue(any("#1295 project definition" in error for error in errors))
+
+    def test_rejects_dispatchable_orchestration_workflow(self) -> None:
+        errors = self.validate_append(
+            ".github/workflows/validate-anytour-agent-orchestration.yml",
+            "\n# forbidden mutation\nworkflow_dispatch:\n",
+        )
+        self.assertTrue(any("must not be dispatchable" in error for error in errors))
 
 
 if __name__ == "__main__":
