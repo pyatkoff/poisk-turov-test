@@ -1,5 +1,5 @@
 {
-  "candidateSourceSha": "a1cb434d77098b6e45b8e2174a7948437a91b293",
+  "candidateSourceSha": "470474414a3930f1f6c095a8dbbc187075b253c0",
   "productionBaseSha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
   "status": "mobile input and final design corrections imported; exact candidate verification recorded in PR; owner production approval required",
   "transformations": [
@@ -53,6 +53,17 @@
   },
   "candidateEvidence": {
     "productionLeadDeliveryVerified": false,
-    "liveMobileDeviceVerified": false
+    "liveMobileDeviceVerified": false,
+    "runId": 33925976956,
+    "evidenceArtifactId": 9956839979,
+    "releaseArtifactId": 9956844875,
+    "previewDeploymentPr": 1339,
+    "wideDesktopWidths": [
+      1920,
+      2048
+    ],
+    "wideDesktopChecksPassed": true,
+    "siteHandoffValidationRunId": 33925923850,
+    "siteVisualRunId": 33925923945
   }
 }
