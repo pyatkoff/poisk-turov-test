@@ -74,7 +74,7 @@ assert.deepEqual(fixture.visualBaseline, {
   ownerVisualApproval: false,
 });
 assert.deepEqual(fixture.presentation, {
-  status: 'DONOR_RECONSTRUCTION',
+  status: 'REFERENCE_IMPLEMENTATION_IN_PROGRESS',
   approvedPixelsCompared: false,
   donorCommit: 'e5baf32f455cdb0aa1a704964f28e5efbebf57ff',
   donorRunId: '33813829683',
@@ -1395,7 +1395,7 @@ async function runFlightFailureFixtures(browser, manifest) {
   assert.equal(manifest.presentationScreenshots.length, 3);
   assert.deepEqual(manifest.presentationScreenshots.map(item => item.file), expectedPresentationCaptures);
   assert.equal(new Set(manifest.presentationScreenshots.map(item => item.file)).size, 3);
-  assert.equal(manifest.presentation.status, 'DONOR_RECONSTRUCTION');
+  assert.equal(manifest.presentation.status, 'REFERENCE_IMPLEMENTATION_IN_PROGRESS');
   assert.equal(manifest.presentation.approvedPixelsCompared, false);
   assert.deepEqual(
     manifest.behaviorStates.map(item => item.name),
@@ -1414,7 +1414,7 @@ async function runFlightFailureFixtures(browser, manifest) {
   console.log(
     `SEARCH3_CANDIDATE_SCAFFOLD_OK tier=${visualTierName} widths=375,430,768,1024,1440 `
     + `screenshots=${expectedEvidenceScreenshotCount + expectedPresentationCaptures.length} `
-    + 'races=status,results behaviorStates=7 presentation=DONOR_RECONSTRUCTION',
+    + 'races=status,results behaviorStates=7 presentation=REFERENCE_IMPLEMENTATION_IN_PROGRESS',
   );
 })().catch(error => {
   console.error(error);
