@@ -129,6 +129,9 @@ html body.search3-candidate #resultsSearchSummary .search3-entry-summary-detail{
     min-width:0!important;
   }
 
+}
+
+@media(max-width:760px){
   html body.search3-candidate #tourSearch,
   html body.search3-candidate #tourSearch .search3-primary-grid,
   html body.search3-candidate #tourSearch .search3-quality__grid{
@@ -198,3 +201,14 @@ html body.search3-candidate #tourSearch .search3-direct-control{position:static!
 html body.search3-candidate #tourSearch .search3-direct-control:focus{outline:2px solid #2743cb!important;outline-offset:-2px!important}
 html body.search3-candidate #tourSearch .search3-direct-control::-webkit-date-and-time-value{text-align:center}
 html body.search3-candidate #tourSearch .search3-nights .search3-direct-control{text-align:center!important}
+
+@media(min-width:761px){
+ html body.search3-candidate #tourSearch .search3-primary-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;align-items:end!important;gap:12px!important}
+ html body.search3-candidate #tourSearch .search3-from{order:1!important}
+ html body.search3-candidate #tourSearch .search3-country{order:2!important}
+ html body.search3-candidate #tourSearch .search3-region{order:3!important}
+ html body.search3-candidate #tourSearch .search3-tourists{order:4!important}
+ html body.search3-candidate #tourSearch .search3-dates{order:5!important;grid-column:span 2!important}
+ html body.search3-candidate #tourSearch .search3-nights{order:6!important}
+ html body.search3-candidate #tourSearch .search-submit{order:7!important;grid-column:auto!important;width:100%!important;min-width:0!important;height:46px!important}
+}
