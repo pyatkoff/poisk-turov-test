@@ -999,6 +999,7 @@ syncGroups();window.addEventListener('resize',syncGroups);
   var selected = document.getElementById('selectedTour');
   var results = document.getElementById('results');
   if (!selected || !results || !document.body.classList.contains('search3-candidate')) return;
+  var selectedFocusRun = 0;
 
   function restoreProductionLabels() {
     results.querySelectorAll('button[data-search3-production-label]').forEach(function (button) {
@@ -1026,6 +1027,25 @@ syncGroups();window.addEventListener('resize',syncGroups);
     try { heading.focus({ preventScroll: true }); } catch (_error) { heading.focus(); }
   }
 
+  function scheduleSelectedHeadingFocus() {
+    var run = ++selectedFocusRun;
+    var attempts = 0;
+    function settle() {
+      if (run !== selectedFocusRun || selected.hidden) return;
+      var heading = selected.querySelector('.selected-head h2,.search3-review-heading h2');
+      var active = document.activeElement;
+      attempts += 1;
+      if (!heading || !heading.isConnected) {
+        if (attempts < 6) window.requestAnimationFrame(settle);
+        return;
+      }
+      if (active && active !== selected && selected.contains(active) && active !== heading) return;
+      if (active !== heading) focusSelectedHeading();
+      if (attempts < 6) window.requestAnimationFrame(settle);
+    }
+    window.setTimeout(function () { window.requestAnimationFrame(settle); }, 0);
+  }
+
   new MutationObserver(function () {
     syncBusy();
     restoreProductionLabels();
@@ -1040,16 +1060,16 @@ syncGroups();window.addEventListener('resize',syncGroups);
 
   window.addEventListener('v2:tour-selected', function () {
     selected.setAttribute('aria-busy', 'false');
-    window.setTimeout(function () {
-      restoreProductionLabels();
-      focusSelectedHeading();
-    }, 0);
+    restoreProductionLabels();
+    scheduleSelectedHeadingFocus();
   });
   window.addEventListener('v2:tour-returned', function () {
+    selectedFocusRun += 1;
     selected.setAttribute('aria-busy', 'false');
     restoreProductionLabels();
   });
   window.addEventListener('v2:search-reset', function () {
+    selectedFocusRun += 1;
     selected.setAttribute('aria-busy', 'false');
   });
 
@@ -1059,6 +1079,7 @@ syncGroups();window.addEventListener('resize',syncGroups);
     version: 1,
     restoreProductionLabels: restoreProductionLabels,
     syncBusy: syncBusy,
-    focusSelectedHeading: focusSelectedHeading
+    focusSelectedHeading: focusSelectedHeading,
+    scheduleSelectedHeadingFocus: scheduleSelectedHeadingFocus
   });
 })();

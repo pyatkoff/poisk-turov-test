@@ -1117,19 +1117,21 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
     assert.equal(loading.originalLabel, fixture.presentation.productionOwnedDirectTourText);
 
     await harness.page.evaluate(() => window.__search3ResolveSelectedTour());
-    await harness.page.waitForFunction(({ tourId, label }) => {
+    await harness.page.waitForFunction(tourId => {
       const selected = document.getElementById('selectedTour');
-      const heading = selected?.querySelector('.selected-head h2');
-      const sourceButton = document.querySelector('#results button[data-search3-production-label]');
       return window.V2TourController?.currentTour?.id === tourId
         && selected?.getAttribute('aria-busy') === 'false'
-        && document.activeElement === heading
-        && sourceButton?.disabled === false
+        && !!selected?.querySelector('.selected-head h2');
+    }, fixture.failureFixtures.selectedTour.id, { timeout: 12000 });
+    await harness.page.waitForFunction(label => {
+      const sourceButton = document.querySelector('#results button[data-search3-production-label]');
+      return sourceButton?.disabled === false
         && sourceButton?.textContent.replace(/\s+/g, ' ').trim() === label;
-    }, {
-      tourId: fixture.failureFixtures.selectedTour.id,
-      label: fixture.presentation.productionOwnedDirectTourText,
-    }, { timeout: 12000 });
+    }, fixture.presentation.productionOwnedDirectTourText, { timeout: 12000 });
+    await harness.page.waitForFunction(() => {
+      const heading = document.querySelector('#selectedTour .selected-head h2');
+      return !!heading && document.activeElement === heading;
+    }, null, { timeout: 12000 });
     await harness.page.waitForFunction(() => /менеджер уточнит перелёт по заявке/i.test(
       document.querySelector('.tour-flights .selected-loading')?.textContent || ''
     ), null, { timeout: 12000 });
