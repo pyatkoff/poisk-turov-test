@@ -1,4 +1,10 @@
 /* Search3 selected/final/lead presentation overlay. Preview only. */
+/* The existing checkout decorator can reinsert these after a phase change. */
+html body.search3-candidate #selectedTour .checkout-journey,
+html body.search3-candidate #selectedTour .checkout-facts-heading {
+  display: none !important;
+}
+
 body.search3-candidate #selectedTour.search3-flight-fallback .tour-flights {
   border-color: #d9e2f5 !important;
   background: linear-gradient(180deg, #fff, #fbfcff) !important;

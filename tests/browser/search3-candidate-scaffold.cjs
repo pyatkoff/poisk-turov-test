@@ -1951,6 +1951,8 @@ async function assertSelectedAmounts(page, expected, label) {
       scope: scope?.textContent.replace(/\s+/g, ' ').trim() || '',
       basePrice: window.V2TourController?.currentTour?.price,
       flightPrice: window.V2TourController?.selectedFlight?.price,
+      visibleLegacyCheckout: [...selected.querySelectorAll('.checkout-journey,.checkout-facts-heading')]
+        .filter(node => node.getBoundingClientRect().height > 0 && getComputedStyle(node).display !== 'none').length,
     };
   });
   assert.match(state.mobile, /^\d[\d ]* ₽$/, `${label}: mobile amount includes a traveler/price label`);
@@ -1958,6 +1960,7 @@ async function assertSelectedAmounts(page, expected, label) {
   assert.equal(Number(state.summary.replace(/[^0-9]/g, '')), expected, `${label}: summary total`);
   assert.match(state.scope, /^За весь тур · 2 взрослых/, `${label}: traveler scope missing`);
   assert.equal(state.basePrice, fixture.failureFixtures.selectedTour.price, `${label}: UI mutated base tour price`);
+  assert.equal(state.visibleLegacyCheckout, 0, `${label}: previous checkout headings/stages reappeared`);
   return state;
 }
 
