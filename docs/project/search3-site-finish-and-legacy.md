@@ -2,6 +2,19 @@
 
 Owner priority: finish the new design, then switch the canonical search. Preview deployment authorized; production visual approval still pending.
 
+Canonical project task: [Search3 — завершить новый дизайн сайта и подготовить перенос #996](https://github.com/pyatkoff/poisk-turov-test/issues/996). Working implementation: draft [#1334](https://github.com/pyatkoff/poisk-turov-test/pull/1334). `AUTOPILOT_STATE.json` records the same queue in this active branch; the main branch has not received these draft changes.
+
+## Ordered remaining work
+
+1. **Next:** unify button roles/labels, header, footer and spacing across homepage, search, country/resort/month, hot tours, early booking, contacts and how-to-buy.
+2. Publish a whole-site preview of the prepared draft; verify links and preservation of city, dates, nights, party and child ages.
+3. Fix confirmed customer-copy/city-inflection issues, map actions from verified office addresses and broken legal/payment links using existing approved materials. Defer missing/unapproved legal terms, hours and unsupported advantages.
+4. Exclude past departures using an explicit timezone and verified availability rules for same-day departures. Preserve departure city across handoffs. A new remembered city shared by every data showcase is a separate product extension if it requires changing the data source.
+5. Complete one relevant phone/desktop acceptance pass through the actual search to the lead form, including iPhone controls, long values, family composition and recovery. Preview does not establish receipt of a real lead.
+6. Obtain visual approval of the concrete release, retain prior deployment/configuration and verify rollback/old search, then perform the authorized production migration and post-deploy checks. Confirm real lead delivery separately with a controlled agreed test.
+
+Completed implementation is distinguished below from preview publication and production acceptance. Mass SEO expansion and technical refactor are outside this finish pass.
+
 ## Preserve the previous search
 
 - Source archive: `archive/search-before-search3-2026-09-04`, exact main `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. This records source/assets; it is not a database or server-configuration backup.
@@ -11,7 +24,7 @@ Owner priority: finish the new design, then switch the canonical search. Preview
 
 ## Latest search correction
 
-Candidate `cc4e0362db3d52131d95542e185b8c074d3bc6f6`: native select controls for nights 1–28, synchronized with original named inputs/events; Safari date-value alignment. CI 33924709725 passed five widths and canonical-value synchronization. Evidence 9956390145; deploy PR #1338. Physical iPhone system UI still requires confirmation. Previous calendar opening was confirmed by the owner.
+Published candidate `470474414a3930f1f6c095a8dbbc187075b253c0`: native select controls for nights 1–28 synchronized with original named inputs/events; readable two-row desktop form including 1920/2048 and reduced initial footer gap. CI 33925976956 passed the five standard widths plus wide-screen checks; evidence 9956839979, deploy PR #1339 and successful deployment 33926206799. Physical iPhone system night-picker UI and Safari alignment still require confirmation. Calendar opening was confirmed by the owner. Earlier `cc4e` / #1338 evidence is superseded by this candidate.
 
 ## Site review scope and findings
 
@@ -21,10 +34,10 @@ Live browser inspected homepage, contacts, how-to-buy, early booking, hot tours,
 | --- | --- | --- | --- |
 | Before migration | Legal/payment | `/payment/` still renders Not Found. Earlier privacy/consent 404s remain unresolved; obtain valid pages/content. Do not invent legal terms. | Blocking open work |
 | Before migration | Common shell | Search preview footer/form differ from existing homepage/content pages. Converge spacing, button roles and footer content across page families in a whole-site preview. | Open |
-| Before migration | Search handoff | Turkey price cards pass only departure city/country, losing displayed date/nights. Month CTA passes only country. Preserve supported dates/nights/party parameters; do not imply exact hotel selection unless supported. | Open |
+| Before migration | Search handoff | Snapshot links now retain supported dates/nights/two-adult scope; month CTA retains a future date range in its month. Exact hotel selection is not promised. Verify these prepared changes in the whole-site preview. | Prepared in production draft, not published |
 | Before migration | Client copy | Technical SEO instructions visible on Turkey and month pages. Replace relevant country/month template copy with customer-facing price-check explanation. | Prepared in production draft, not published |
 | Before migration | Price freshness | Turkey/month has 04.09 departure at review time; use explicit departure timezone and availability cutoff. Do not reuse the earlier audit's date assumption. | Open |
-| Next design pass | Homepage | Night field differs from search; no child selector in compact form. Ensure consistent parameters and native controls before canonical handoff. | Open |
+| Next design pass | Homepage | Independent native night range, children/ages and extended-search state preservation are implemented and checked. Verify with the real catalogues in the whole-site preview. | Prepared in production draft, not published |
 | Next design pass | Contacts | Four offices and call links present; add map actions from verified addresses. Hours/photos require factual source. | Open |
 | Next design pass | Hot offers | Readable but contains internal wording and `из Москва`; fix city label consistently. | Open |
 | Confirmed working | Turkey links | Month links and similar destinations are populated; the earlier claim of empty blocks is not currently true for Turkey. | No fix needed |

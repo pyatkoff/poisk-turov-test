@@ -1,7 +1,7 @@
 {
   "schema_version": 20,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-02T03:06:00+03:00",
+  "updated_at": "2026-09-04T23:11:02+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -9,14 +9,15 @@
   "owner_priority_lock": {
     "active": true,
     "planned_phase": "search_ux_ds2",
-    "rule": "Prioritize tour-search UX and site-wide user-facing convergence on AnyTour Design System 2.0. New design concepts require owner approval. Search 2.0 PR #810 may deploy only to the isolated /_preview/search2/ route because the owner explicitly approved preview publishing; it must not merge or deploy to production /poisk-turov/ until explicit production approval."
+    "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, finish the approved Search3 design across the site, publish a coherent preview, verify the user journey and prepare a reversible migration. Production draft #1334 must not merge or deploy until explicit owner visual approval of the concrete release. Preview publishing and draft preparation are authorized. Preserve AnyTour Design System 2.0, logo, Tourvisor/API contract, price arithmetic, lead transport/field mapping, Metrika/goals and repository isolation. Keep technical refactor and mass SEO expansion deferred. Do not invent benefits, operating hours or legal/payment terms."
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "name": "Shared DS2 responsive convergence and Search 2.0 preview QA",
+    "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Search 2.0 preview run #51 (33573157764) passed the full 375/430/768/1024/1440 evidence set on head efdd19f4fe9799e3e36332d00729f675b1e94530. The prior mobile document-overflow defect is closed: document width equals viewport width at all five sizes, primaryCount=5, food stays out of the primary row, CTA precedes quick filters on mobile, and the truthful All Inclusive shortcut writes canonical food=7. Visual inspection of 375 confirmed a coherent stacked form and internal quick-filter scrolling without page overflow; the nights summary remains on one line. Independently, PR #870 normalized the selected-tour back-results and hotel-description text actions from 40/38px to the canonical DS2 44px touch rhythm in the existing ds2-selected-tour-convergence-v1.css layer. All eight PR validation/visual workflows passed; merge 4ddf997599d69fadf96fd0842cc4ff9e561e187b deployed successfully in V2 run 33573370464 including Verify V2 and Live search smoke, and selected-tour post-deploy run 33573588616 passed. The generic V2 post-deploy run then exposed a stale CI assertion only: every five-width page/search/result assertion was green, but it still required removed legacy .v2-site-community. PR #872 updated that gate to require exactly one canonical .ds2-site-footer and zero legacy community blocks; security passed, it merged as 2ae43e3dffce44a607fb14254056438ca8de554b, and direct five-width production verification run 33573805145 passed. Search 2.0 production release lock for #810 remains active.",
-    "next_action": "Continue Search 2.0 only as preview-approved visual convergence, using run #51 as the current green five-width baseline. Inspect/repair only concrete remaining visual mismatches against the approved design inside existing canonical preview layers; do not add another CSS layer. Keep the target composition and truthful filter/search contracts unchanged. Do not merge #810 or deploy Search 2.0 to production without explicit owner visual approval. In parallel, continue independent shared DS2 wrapping/touch/hierarchy fixes only when a concrete production defect is confirmed, with full relevant PR/deploy/live evidence."
+    "last_material_progress": "Search3 candidate 470474414a3930f1f6c095a8dbbc187075b253c0 published to the isolated search preview via #1339; CI 33925976956 and deploy 33926206799 passed. Mobile images/price, native dates/night selects and wide-screen form corrected. Draft #1334 additionally prepares homepage night/child controls, date/night/party handoff, customer copy and the old-search route; these are not published on the main site. The owner confirmed iPhone calendar opening; system night picker and Safari alignment still need device confirmation.",
+    "next_action": "Converge shared buttons/header/footer/spacing across page families in release/search3-production-ready-v1, then publish a coherent whole-site preview with the already prepared homepage/content changes. Follow issue #996. Do not resume Search2 #810 or merge/deploy production #1334 without owner visual approval.",
+    "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
     "mode": "instant_local",
@@ -27,7 +28,8 @@
   "site_wide_score": {
     "value": 7.3,
     "scale": 10,
-    "note": "Held at 7.3. Search 2.0 now has a fully green five-width preview baseline with the mobile overflow defect closed; selected-tour touch targets are live on the shared 44px DS2 rhythm; and the stale post-deploy footer assertion was corrected and reverified. Search 2.0 remains preview-only, so the whole-product score is intentionally unchanged."
+    "note": "Historical assessment from 2026-09-02. Not reevaluated for Search3 and not a current acceptance score.",
+    "status": "HISTORICAL_NOT_REEVALUATED"
   },
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -42,17 +44,155 @@
     "verified_destinations": "PRESERVE",
     "legal_payment_unresolved": "DEFER",
     "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
-    "search2_preview_pr_810": "PREVIEW_DEPLOY_ALLOWED_ONLY_TO_/_preview/search2_; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_APPROVAL"
+    "search2_preview_pr_810": "PREVIEW_DEPLOY_ALLOWED_ONLY_TO_/_preview/search2_; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_APPROVAL",
+    "search3_production_pr_1334": "PREVIEW_AND_DRAFT_PREPARATION_ALLOWED; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_VISUAL_APPROVAL_OF_CONCRETE_RELEASE",
+    "price_arithmetic": "PRESERVE"
   },
   "deferred": {
     "technical_refactor": "DEFER_UNTIL_EXPLICIT_OWNER_DIRECTION",
     "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
     "legal_payment": "DEFER_UNRESOLVED_CONTENT",
-    "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING"
+    "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
+    "mass_seo_expansion": "AFTER_NEW_DESIGN_ACCEPTANCE",
+    "site_wide_remembered_city": "Separate product extension if it requires data-source redesign; preserve existing departure-city handoff now."
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > search_user_journey > search2_initial_form_preview > results_filters_loaded_set > hotel_tour_cards_and_selected_tour > desktop_mobile_visual_consistency > shared_header_navigation_footer_ds2 > site_visual_convergence_ds2 > technical_refactor_deferred > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > confirmed_search_and_mobile_defects > shared_header_navigation_footer_and_buttons_ds2 > whole_site_preview_and_search_handoff > truthful_content_working_links_and_offer_freshness > phone_desktop_journey_acceptance > owner_approved_migration_with_legacy_and_rollback > technical_refactor_deferred > mass_seo_expansion_deferred",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_preview-contract-only",
-    "on_blocker": "record/defer blocker and continue an independent safe DS2/search-UX task"
-  }
+    "on_blocker": "Record/defer the affected blocker and continue an independent safe task from the Search3 site-completion queue.",
+    "runtime_signal": "Issue #2 is machine-maintained CI signal only; issue #996 and this state own the active product queue. No continuously running worker is implied."
+  },
+  "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
+  "current_task": {
+    "id": "S3_SITE_SHELL",
+    "category": "VISUAL",
+    "status": "READY",
+    "title": "Converge site-wide buttons, header, footer and spacing",
+    "branch": "release/search3-production-ready-v1",
+    "pr": 1334,
+    "issue": 996,
+    "acceptance": [
+      "Use approved DS2 composition and verified site facts across all representative page families.",
+      "Preserve search values, native controls, logo and protected contracts.",
+      "Inspect relevant mobile/tablet/desktop evidence after the coherent implementation batch."
+    ]
+  },
+  "queue": [
+    {
+      "id": "S3_WHOLE_SITE_PREVIEW",
+      "status": "QUEUED",
+      "depends_on": [
+        "S3_SITE_SHELL"
+      ],
+      "title": "Publish whole-site preview and verify navigation plus date/night/party/child-age handoff"
+    },
+    {
+      "id": "S3_FACTS_LINKS_MAPS",
+      "status": "QUEUED",
+      "title": "Correct confirmed copy/city-label issues and maps; resolve broken legal/payment links with approved source content only"
+    },
+    {
+      "id": "S3_OFFER_FRESHNESS",
+      "status": "QUEUED",
+      "title": "Exclude past departures using explicit timezone and verified same-day availability rules; preserve selected departure city"
+    },
+    {
+      "id": "S3_JOURNEY_ACCEPTANCE",
+      "status": "QUEUED",
+      "depends_on": [
+        "S3_WHOLE_SITE_PREVIEW",
+        "S3_FACTS_LINKS_MAPS",
+        "S3_OFFER_FRESHNESS"
+      ],
+      "title": "Verify phone/Safari and desktop journey to lead form with family, long-value and recovery states; preview delivery remains disabled"
+    },
+    {
+      "id": "S3_OWNER_APPROVAL_AND_MIGRATION",
+      "status": "GATED",
+      "depends_on": [
+        "S3_JOURNEY_ACCEPTANCE"
+      ],
+      "title": "Owner approves concrete release; retain previous artifact/config, verify rollback and old-search route, deploy and verify production",
+      "gate": "Explicit owner visual production approval; real lead receipt needs a controlled agreed test"
+    }
+  ],
+  "release_status": {
+    "search_preview": {
+      "status": "PUBLISHED",
+      "url": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/",
+      "candidate_sha": "470474414a3930f1f6c095a8dbbc187075b253c0",
+      "ci_run": 33925976956,
+      "deploy_run": 33926206799,
+      "deploy_pr": 1339,
+      "evidence_artifact": 9956839979
+    },
+    "site_draft": {
+      "status": "PREPARED_NOT_PUBLISHED",
+      "branch": "release/search3-production-ready-v1",
+      "pr": 1334,
+      "implementation_verified_sha": "55baa5183fedfd18a3ace6be793c30074a565b5f",
+      "includes": [
+        "home native independent night range and child ages",
+        "offer/month date/night/party handoff",
+        "customer-facing country/month copy",
+        "Search3 production import",
+        "old-search compatibility route"
+      ]
+    },
+    "production": {
+      "status": "OWNER_VISUAL_APPROVAL_PENDING",
+      "last_observed_main_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
+      "migration_performed": false
+    },
+    "legacy": {
+      "source_archive_branch": "archive/search-before-search3-2026-09-04",
+      "source_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
+      "route": "/poisk-turov-old/",
+      "route_status": "PREPARED_NOT_PUBLISHED",
+      "limitation": "Maintained old presentation with shared runtime. Source archive is not a database/server-config backup; retain previous deploy artifact and configuration before migration."
+    }
+  },
+  "last_ci": {
+    "search_preview": {
+      "conclusion": "success",
+      "run_id": 33925976956,
+      "sha": "470474414a3930f1f6c095a8dbbc187075b253c0",
+      "widths": [
+        375,
+        430,
+        768,
+        1024,
+        1440,
+        1920,
+        2048
+      ]
+    },
+    "preview_deploy": {
+      "conclusion": "success",
+      "run_id": 33926206799
+    },
+    "site_draft": {
+      "conclusion": "applicable checks passed",
+      "sha": "55baa5183fedfd18a3ace6be793c30074a565b5f",
+      "scope": "core/handoff, navigation, family controls, content visual and applicable SEO checks; configured migration-only check skipped; no production acceptance"
+    }
+  },
+  "last_verified_commit": "470474414a3930f1f6c095a8dbbc187075b253c0",
+  "last_verified_commit_scope": "Published search preview; does not certify whole-site draft or real lead delivery.",
+  "blocked": [
+    {
+      "id": "PRODUCTION_VISUAL_APPROVAL",
+      "blocks": [
+        "S3_OWNER_APPROVAL_AND_MIGRATION"
+      ],
+      "reason": "Owner approval of concrete finished preview is pending; preparation continues."
+    },
+    {
+      "id": "APPROVED_LEGAL_PAYMENT_CONTENT",
+      "blocks": [
+        "legal/payment publication within S3_FACTS_LINKS_MAPS"
+      ],
+      "reason": "Locate existing approved materials first; defer unavailable/unapproved content. No invented legal terms."
+    }
+  ]
 }
