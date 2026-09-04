@@ -5,7 +5,9 @@
   "leadApi": "/_preview/search3-candidate/poisk-turov/?lead=disabled",
   "robots": "noindex,follow,max-image-preview:large",
   "visualBaseline": {
-    "status": "BLOCKED_MISSING_APPROVED_DESIGN_PIXELS",
+    "status": "REFERENCE_PIXELS_AVAILABLE_COMPARISON_PENDING",
+    "referenceCount": 8,
+    "referenceManifestSha256": "cbecdac4080b7a7a541a3b9b5de4a4f8448203717728f7ca7afa4ea6373f45b8",
     "baselineCompared": false,
     "ownerVisualApproval": false
   },
