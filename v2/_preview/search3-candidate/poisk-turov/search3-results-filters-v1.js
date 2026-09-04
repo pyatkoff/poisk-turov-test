@@ -672,10 +672,19 @@ syncGroups();window.addEventListener('resize',syncGroups);
     return labels[key] || raw;
   }
 
+  function guestCountLabel(adults, children) {
+    adults = Math.max(1, Number(adults) || 2);
+    children = Math.max(0, Number(children) || 0);
+    var label = adults + ' ' + plural(adults, 'взрослый', 'взрослых', 'взрослых');
+    if (children > 0) label += ' и ' + children + ' ' + plural(children, 'ребёнок', 'ребёнка', 'детей');
+    return label;
+  }
+
   function guestLabel() {
     var form = document.getElementById('tourSearch');
     var adults = Number(form && form.elements && form.elements.count_people && form.elements.count_people.value || 2) || 2;
-    return adults + ' ' + plural(adults, 'взрослый', 'взрослых', 'взрослых');
+    var children = Number(form && form.elements && form.elements.child_count && form.elements.child_count.value || 0) || 0;
+    return guestCountLabel(adults, children);
   }
 
   function cardFacts(hotel) {
@@ -730,12 +739,17 @@ syncGroups();window.addEventListener('resize',syncGroups);
     if (!tour || !context) return;
     var primary = [];
     if (tour.nights) primary.push(tour.nights + ' ' + plural(tour.nights, 'ночь', 'ночи', 'ночей'));
-    primary.push(guestLabel());
+    var guests = guestLabel();
+    var family = guests.split(' и ');
+    primary.push(family[0]);
     var secondary = [];
     secondary.push(tour.isCharter === true ? 'Чартерный перелёт' : 'Перелёт включён');
     var meal = mealLabel(tour.meal);
     if (meal) secondary.push(meal);
-    context.innerHTML = '<span>' + safe(primary.join(' · ')) + '</span> <span>' + safe(secondary.join(' · ')) + '</span>';
+    var lines = [primary.join(' · ')];
+    if (family.length > 1) lines.push('и ' + family.slice(1).join(' и '));
+    lines.push(secondary.join(' · '));
+    context.innerHTML = lines.map(function (line) { return '<span>' + safe(line) + '</span>'; }).join(' ');
   }
 
   function collapseCard(card) {
@@ -885,9 +899,10 @@ syncGroups();window.addEventListener('resize',syncGroups);
   }
 
   window.Search3CandidateResultsV1 = Object.freeze({
-    version: 2,
+    version: 3,
     status: 'REFERENCE_IMPLEMENTATION_IN_PROGRESS',
     approvedPixelsCompared: false,
+    partyLabel: guestCountLabel,
     decorate: decorate,
     collapseAll: collapseAll
   });

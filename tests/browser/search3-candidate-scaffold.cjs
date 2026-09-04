@@ -418,6 +418,7 @@ async function createHarness(browser, viewport, scenario) {
     candidateScript: document.getElementById('search3-results-filters-v1-script')?.getAttribute('src') || '',
     presentationStatus: window.Search3CandidateResultsV1?.status || '',
     approvedPixelsCompared: window.Search3CandidateResultsV1?.approvedPixelsCompared,
+    partyLabels: [0, 1, 2, 5].map(children => window.Search3CandidateResultsV1?.partyLabel(2, children) || ''),
   }));
   assert.equal(identity.h1Count, 1);
   assert.equal(identity.visibleH1Count, 1);
@@ -441,6 +442,12 @@ async function createHarness(browser, viewport, scenario) {
   assert.equal(new URL(identity.candidateScript, baseUrl).searchParams.get('v'), diskAssets.find(item => item.file.endsWith('.js')).sha256.slice(0, 16));
   assert.equal(identity.presentationStatus, fixture.presentation.status);
   assert.equal(identity.approvedPixelsCompared, false);
+  assert.deepEqual(identity.partyLabels, [
+    '2 взрослых',
+    '2 взрослых и 1 ребёнок',
+    '2 взрослых и 2 ребёнка',
+    '2 взрослых и 5 детей',
+  ]);
   assert.equal(new URL(page.url()).pathname, fixture.route);
 
   return {
@@ -861,6 +868,38 @@ async function runDesktopPresentationEvidence(browser, manifest) {
   const harness = await createHarness(browser, viewport, scenario);
   try {
     await loadCompleteResults(harness, scenario);
+    const beforeFamilyScopeCalls = apiCallCount(scenario);
+    await harness.page.evaluate(() => {
+      document.getElementById('tourSearch').elements.child_count.value = '1';
+      window.V2Results.rerender();
+    });
+    await harness.page.waitForFunction(count => (
+      document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length === count
+    ), fixture.progressive.finalLimit);
+    const familyPriceScope = await harness.page.evaluate(() => {
+      const card = document.querySelector('#results .hotel-card');
+      const context = card?.querySelector('.hotel-price-context') || null;
+      const lines = [...(context?.querySelectorAll('span') || [])];
+      const familyLine = lines[1] || null;
+      const familyBox = familyLine?.getBoundingClientRect() || null;
+      return {
+        context: (context?.textContent || '').replace(/\s+/g, ' ').trim(),
+        lines: lines.map(node => (node.textContent || '').replace(/\s+/g, ' ').trim()),
+        familyLineVisible: !!(familyBox && familyBox.width > 0 && familyBox.height > 0),
+        ariaLabel: card?.querySelector('.hotel-price')?.getAttribute('aria-label') || '',
+      };
+    });
+    assert.equal(familyPriceScope.context, '8 ночей · 2 взрослых и 1 ребёнок Чартерный перелёт · Всё включено');
+    assert.deepEqual(familyPriceScope.lines, ['8 ночей · 2 взрослых', 'и 1 ребёнок', 'Чартерный перелёт · Всё включено']);
+    assert.equal(familyPriceScope.familyLineVisible, true, 'child count must be visibly rendered, not only present in the DOM');
+    assert.match(familyPriceScope.ariaLabel, /за тур на 2 взрослых и 1 ребёнок$/);
+    assert.equal(apiCallCount(scenario), beforeFamilyScopeCalls, 'party-scope presentation update must remain local');
+    manifest.presentationChecks.familyPriceScope = {
+      children: 1,
+      context: familyPriceScope.context,
+      ariaLabel: familyPriceScope.ariaLabel,
+      newSearchCalls: 0,
+    };
     const beforeDisclosureCalls = apiCallCount(scenario);
     await harness.page.locator('#results .search3-show-tours').first().click();
     await harness.page.waitForFunction(() => (
