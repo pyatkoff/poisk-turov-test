@@ -7,8 +7,14 @@ on:
       - 'v2/**/*.js'
       - 'v2/current-price-calendar-v1.css'
       - 'v2/index.php'
+      - 'v2/home-entry-v1.php'
+      - 'v2/poisk-turov/index.php'
       - 'v2/api-v2.php'
+      - 'v2/lead-bridge-v1.php'
+      - 'v2/lead-receiver-v1.php'
       - 'v2/lead-adapter-v2.php'
+      - 'v2/lead-price-v1.php'
+      - 'v2/lead-idempotency-v1.php'
       - 'v2/assets.php'
       - 'v2/form-defaults.php'
       - 'v2/analytics-config.php'
@@ -25,7 +31,14 @@ on:
       - 'v2/bundle-manifest-v1.php'
       - 'diagnostics/search_results_recovery_test.cjs'
       - 'scripts/ci/validate_search_hotel_placement.py'
+      - 'scripts/release/build_anytoour_release.py'
+      - 'scripts/release/remote_activate_anytoour_legacy_lead.sh'
+      - 'scripts/release/remote_activate_anytoour_public.sh'
+      - 'tests/anytoour_release_artifact_test.py'
+      - '.github/workflows/build-anytoour-release.yml'
       - '.github/workflows/deploy-anytoour.yml'
+      - '.github/workflows/verify-anytoour-seo-launch.yml'
+      - '.github/workflows/verify-seo-price-calendar-production.yml'
       - '.github/workflows/validate-v2-core.yml'
   workflow_dispatch:
 
@@ -41,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Validate search hotel placement
         run: python3 scripts/ci/validate_search_hotel_placement.py
@@ -277,11 +290,144 @@ jobs:
         run: |
           set -euo pipefail
           canonical=.github/workflows/deploy-anytoour.yml
+          builder=.github/workflows/build-anytoour-release.yml
+          seo_launch=.github/workflows/verify-anytoour-seo-launch.yml
+          price_evidence=.github/workflows/verify-seo-price-calendar-production.yml
+          validator=.github/workflows/validate-v2-core.yml
           legacy=.github/workflows/deploy.yml
+          checkout_action='actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803'
+          upload_action='actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02'
+          download_action='actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093'
+          workflow_run_main_only() {
+            awk '
+              $0 == "  workflow_run:" { scope=1; next }
+              scope && $0 == "    branches: [main]" { found=1 }
+              scope && $0 ~ /^  [^ ]/ { exit }
+              END { exit !found }
+            ' "$1"
+          }
           grep -Fq -- 'name: Deploy anytoour.ru' "$canonical"
-          grep -Fq -- "- 'v2/**'" "$canonical"
-          grep -Fq -- 'tar -C v2 -czf "$archive" .' "$canonical"
-          grep -Fq -- "root='~/www/anytoour.ru'" "$canonical"
+          grep -Fq -- 'workflow_dispatch:' "$canonical"
+          ! grep -Eq '^  push:' "$canonical"
+          grep -Fq -- 'release_sha:' "$canonical"
+          grep -Fq -- 'build_run_id:' "$canonical"
+          grep -Fq -- 'expected_current_sha:' "$canonical"
+          grep -Fq -- 'confirmation:' "$canonical"
+          grep -Fq -- 'queue: max' "$canonical"
+          grep -Fq -- 'cancel-in-progress: false' "$canonical"
+          grep -Fq -- 'environment: anytoour-production' "$canonical"
+          test "$(grep -Fc -- "uses: $checkout_action" "$canonical")" -eq 2
+          test "$(grep -Fc -- "uses: $download_action" "$canonical")" -eq 1
+          grep -Fq -- '--repo .' "$canonical"
+          grep -Fq -- 'name: Verify exact artifact, mappings and run binding' "$canonical"
+          test "$(grep -Fc -- '        id: artifact' "$canonical")" -eq 1
+          grep -Fq -- 'legacy_archive_sha=$legacy_archive_sha" >> "$GITHUB_OUTPUT"' "$canonical"
+          grep -Fq -- 'public_archive_sha=$public_archive_sha" >> "$GITHUB_OUTPUT"' "$canonical"
+          grep -Fq -- 'test "$(sha256sum "$legacy_archive"' "$canonical"
+          grep -Fq -- 'test "$(sha256sum "$public_archive"' "$canonical"
+          grep -Fq -- 'name: Prepare both hosts before first mutation' "$canonical"
+          grep -Fq -- 'VERIFIED_LEGACY_ARCHIVE_SHA:' "$canonical"
+          grep -Fq -- 'VERIFIED_PUBLIC_ARCHIVE_SHA:' "$canonical"
+          grep -Fq -- 'test "$legacy_archive_sha" = "$VERIFIED_LEGACY_ARCHIVE_SHA"' "$canonical"
+          grep -Fq -- 'test "$public_archive_sha" = "$VERIFIED_PUBLIC_ARCHIVE_SHA"' "$canonical"
+          grep -Fq -- 'StrictHostKeyChecking=yes' "$canonical"
+          grep -Fq -- 'ANYTOOUR_DEPLOY_KNOWN_HOSTS' "$canonical"
+          grep -Fq -- 'DEPLOY_KNOWN_HOSTS' "$canonical"
+          ! grep -Fq -- 'StrictHostKeyChecking=no' "$canonical"
+          ! grep -Fq -- 'UserKnownHostsFile=/dev/null' "$canonical"
+          grep -Fq -- 'scripts/release/remote_activate_anytoour_legacy_lead.sh' "$canonical"
+          grep -Fq -- 'scripts/release/remote_activate_anytoour_public.sh' "$canonical"
+          ! grep -Fq -- 'tar -C v2 -czf' "$canonical"
+          ! grep -Fq -- 'cp "$root/lead-bridge-v1.php" "$root/lead-adapter-v2.php"' "$canonical"
+          grep -Fq -- 'name: Build anytoour.ru release' "$builder"
+          grep -Fq -- "- 'v2/**'" "$builder"
+          grep -Fq -- 'scripts/release/build_anytoour_release.py build' "$builder"
+          grep -Fq -- '--repo .' "$builder"
+          test "$(grep -Fc -- "uses: $checkout_action" "$builder")" -eq 1
+          test "$(grep -Fc -- "uses: $upload_action" "$builder")" -eq 1
+          grep -Fq -- 'retention-days: 30' "$builder"
+          grep -Fq -- '"lead-adapter-v2.php": "v2/lead-bridge-v1.php"' scripts/release/build_anytoour_release.py
+          grep -Fq -- '"search-page-v2.php": "v2/index.php"' scripts/release/build_anytoour_release.py
+          grep -Fq -- '"index.php": "v2/home-entry-v1.php"' scripts/release/build_anytoour_release.py
+          grep -Fq -- 'mv -f -- "$temporary" "$destination"' scripts/release/remote_activate_anytoour_public.sh
+          grep -Fq -- 'atomic_install "$stage/control/release.json" "$identity" 600' scripts/release/remote_activate_anytoour_public.sh
+          for activator in scripts/release/remote_activate_anytoour_legacy_lead.sh scripts/release/remote_activate_anytoour_public.sh; do
+            grep -Fq -- 'assert_private_file "$identity" || return 1' "$activator"
+            grep -Fq -- 'verify_live_file_metadata' "$activator"
+            test "$(grep -Fc -- 'if test -e "$root/.anytoour-bridge-secret" || test -L "$root/.anytoour-bridge-secret"; then' "$activator")" -eq 2
+          done
+          grep -Fq -- 'prepare "$public_token"' "$canonical"
+          grep -Fq -- 'activate "$LEGACY_TOKEN"' "$canonical"
+          grep -Fq -- 'activate "$PUBLIC_TOKEN"' "$canonical"
+          grep -Fq -- 'name: Confirm release identity remained stable' "$canonical"
+          grep -Fq -- 'cmp -- /tmp/anytoour-release.json /tmp/anytoour-release-final.json' "$canonical"
+          grep -Fq -- 'cmp -- /tmp/anytoour-release-expected.json /tmp/anytoour-release-final.json' "$canonical"
+          grep -Fq -- 'cmp -- /tmp/anytoour-legacy-release-expected.json /tmp/anytoour-legacy-release-final.json' "$canonical"
+          grep -Fq -- '.anytoour-public-release-manifest-${RELEASE_SHA}.json' "$canonical"
+          grep -Fq -- '.anytoour-legacy-lead-release.json' "$canonical"
+          grep -Fq -- "stat -c '%u' --" "$canonical"
+          grep -Fq -- "stat -c '%a' --" "$canonical"
+          workflow_run_main_only "$seo_launch"
+          workflow_run_main_only "$price_evidence"
+          for verification in "$seo_launch" "$price_evidence"; do
+            grep -Fq -- "github.event_name == 'workflow_run'" "$verification"
+            grep -Fq -- "github.event.workflow_run.conclusion == 'success'" "$verification"
+            grep -Fq -- "github.event.workflow_run.head_branch == 'main'" "$verification"
+            grep -Fq -- "github.event.workflow_run.event == 'workflow_dispatch'" "$verification"
+            grep -Fq -- "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'" "$verification"
+            grep -Fq -- 'github.event.workflow_run.head_sha || github.sha' "$verification"
+            test "$(grep -Fc -- "uses: $checkout_action" "$verification")" -eq 2
+          done
+          test "$(grep -Fc -- "uses: $upload_action" "$price_evidence")" -eq 1
+          test "$(grep -Fc -- "uses: $checkout_action" "$validator")" -eq 1
+          ! grep -Eq 'uses:[[:space:]]+actions/(checkout|upload-artifact|download-artifact)@v[0-9]+' \
+            "$canonical" "$builder" "$seo_launch" "$price_evidence" "$validator"
+          bash -n scripts/release/remote_activate_anytoour_legacy_lead.sh
+          bash -n scripts/release/remote_activate_anytoour_public.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          import tempfile
+
+          scripts = (
+              Path('scripts/release/remote_activate_anytoour_legacy_lead.sh'),
+              Path('scripts/release/remote_activate_anytoour_public.sh'),
+          )
+          snippets = []
+          for script in scripts:
+              lines = script.read_text(encoding='utf-8').splitlines()
+              cursor = 0
+              while cursor < len(lines):
+                  if "php -r '" not in lines[cursor]:
+                      cursor += 1
+                      continue
+                  start = cursor + 1
+                  cursor = start
+                  while cursor < len(lines) and not lines[cursor].lstrip().startswith("' "):
+                      cursor += 1
+                  if cursor == len(lines):
+                      raise SystemExit(f'UNCLOSED_REMOTE_PHP {script}:{start}')
+                  snippets.append((script, start + 1, '\n'.join(lines[start:cursor]) + '\n'))
+                  cursor += 1
+          if len(snippets) != 10:
+              raise SystemExit(f'REMOTE_PHP_SNIPPET_COUNT {len(snippets)}')
+          with tempfile.TemporaryDirectory(prefix='anytoour-remote-php-lint-') as directory:
+              for index, (script, line, snippet) in enumerate(snippets):
+                  destination = Path(directory) / f'snippet-{index}.php'
+                  destination.write_text('<?php\n' + snippet, encoding='utf-8')
+                  result = subprocess.run(
+                      ['php', '-l', str(destination)],
+                      text=True,
+                      stdout=subprocess.PIPE,
+                      stderr=subprocess.STDOUT,
+                  )
+                  if result.returncode:
+                      raise SystemExit(
+                          f'REMOTE_PHP_LINT_FAILED {script}:{line}\n{result.stdout}'
+                      )
+          print('ANYTOOUR_REMOTE_PHP_SNIPPETS_OK', len(snippets))
+          PY
+          PYTHONDONTWRITEBYTECODE=1 python3 tests/anytoour_release_artifact_test.py
           test ! -e "$legacy"
           grep -Fq -- 'lead-receiver-v1.php' "$canonical"
           ! grep -Fq -- 'https://anytour.online/images/logo.svg' "$canonical"

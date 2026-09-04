@@ -1,144 +1,418 @@
 name: Deploy anytoour.ru
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'v2/**'
-      - '.github/workflows/deploy-anytoour.yml'
   workflow_dispatch:
+    inputs:
+      release_sha:
+        description: Full 40-character workflow SHA retained in main history
+        required: true
+        type: string
+      build_run_id:
+        description: Successful Build anytoour.ru release workflow run ID
+        required: true
+        type: string
+      build_run_attempt:
+        description: Exact build run attempt containing the retained artifact
+        required: true
+        default: '1'
+        type: string
+      expected_current_sha:
+        description: Current active release SHA, or absent for the one-time identity bootstrap
+        required: true
+        type: string
+      allow_identity_bootstrap:
+        description: Allow the one-time transition from no public release identity
+        required: true
+        default: false
+        type: boolean
+      confirmation:
+        description: Type DEPLOY_ANYTOUR_EXACT_SHA
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
 
 concurrency:
   group: deploy-anytoour-production
-  cancel-in-progress: true
+  queue: max
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
+    outputs:
+      artifact_name: ${{ steps.release.outputs.artifact_name }}
+      build_run_attempt: ${{ steps.release.outputs.build_run_attempt }}
+      build_run_id: ${{ steps.release.outputs.build_run_id }}
+      bootstrap: ${{ steps.release.outputs.bootstrap }}
+      expected_current_sha: ${{ steps.release.outputs.expected_current_sha }}
+      release_sha: ${{ steps.release.outputs.release_sha }}
+      tree_sha: ${{ steps.release.outputs.tree_sha }}
+      v2_tree_sha: ${{ steps.release.outputs.v2_tree_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
 
-      - name: Validate standalone release
+      - name: Bind request to exact trusted main SHA
+        id: release
+        env:
+          ALLOW_IDENTITY_BOOTSTRAP: ${{ inputs.allow_identity_bootstrap }}
+          BUILD_RUN_ATTEMPT: ${{ inputs.build_run_attempt }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          CONTROL_SHA: ${{ github.sha }}
+          EXPECTED_CURRENT_SHA: ${{ inputs.expected_current_sha }}
+          RELEASE_SHA: ${{ inputs.release_sha }}
         shell: bash
         run: |
           set -euo pipefail
-          for f in v2/index.php v2/home-entry-v1.php v2/home-v1.php v2/poisk-turov/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/lead-receiver-v1.php v2/lead-adapter-v2.php v2/lead-price-v1.php v2/lead-idempotency-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php v2/seo-config.php; do
-            php -l "$f" >/dev/null
-          done
-          mapfile -t assets < <(grep -oE "v2_asset\('[^']+\.js'\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\1/" | sort -u)
-          test "${#assets[@]}" -gt 0
-          for asset in "${assets[@]}"; do node --check "v2/$asset"; done
-          grep -Fq "'results-layout-guard-v1.css'" v2/bundle-manifest-v1.php
-          mkdir -p /tmp/empty-document-root
-          php -d display_errors=1 -r '
-            $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
-            $_SERVER["SCRIPT_NAME"]="/index.php";
-            $_SERVER["HTTP_HOST"]="anytoour.ru";
-            $_GET=[];
-            ob_start(); include "v2/home-entry-v1.php"; $html=ob_get_clean();
-            if (strpos($html, "action=\"/poisk-turov/\"") === false) exit(10);
-            if (strpos($html, "AnyTour — поиск и подбор туров онлайн") === false) exit(11);
-          '
-          php -d display_errors=1 -r '
-            $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
-            $_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php";
-            $_SERVER["HTTP_HOST"]="anytoour.ru";
-            $_GET=[];
-            ob_start(); include "v2/poisk-turov/index.php"; $html=ob_get_clean();
-            if (strpos($html, "api:\"/api-v2.php\"") === false) exit(20);
-            if (strpos($html, "leadApi:\"/lead-adapter-v2.php\"") === false) exit(21);
-            if (strpos($html, "https://anytoour.ru/poisk-turov/") === false) exit(22);
-          '
-          echo "ANYTOOUR_RELEASE_VALIDATE_OK"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$CONFIRMATION" = "DEPLOY_ANYTOUR_EXACT_SHA"
+          [[ "$CONTROL_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$BUILD_RUN_ATTEMPT" =~ ^[0-9]+$ ]]
+          [[ "$EXPECTED_CURRENT_SHA" == "absent" || "$EXPECTED_CURRENT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$ALLOW_IDENTITY_BOOTSTRAP" == "true" || "$ALLOW_IDENTITY_BOOTSTRAP" == "false" ]]
+          if [[ "$EXPECTED_CURRENT_SHA" == "absent" ]]; then
+            test "$ALLOW_IDENTITY_BOOTSTRAP" = "true"
+          else
+            test "$ALLOW_IDENTITY_BOOTSTRAP" = "false"
+          fi
+          test "$RELEASE_SHA" = "$CONTROL_SHA"
+          test "$(git rev-parse HEAD)" = "$CONTROL_SHA"
+          git fetch --no-tags origin main
+          test "$(git rev-parse --verify "$RELEASE_SHA^{commit}")" = "$RELEASE_SHA"
+          git merge-base --is-ancestor "$RELEASE_SHA" origin/main
+          if [[ "$EXPECTED_CURRENT_SHA" != "absent" ]]; then
+            git cat-file -e "$EXPECTED_CURRENT_SHA^{commit}"
+            git merge-base --is-ancestor "$EXPECTED_CURRENT_SHA" "$RELEASE_SHA"
+          fi
+          tree_sha="$(git rev-parse "$RELEASE_SHA^{tree}")"
+          v2_tree_sha="$(git rev-parse "$RELEASE_SHA:v2")"
+          [[ "$tree_sha" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$v2_tree_sha" =~ ^[0-9a-f]{40}$ ]]
+          artifact_name="anytoour-release-${RELEASE_SHA}-${BUILD_RUN_ID}-${BUILD_RUN_ATTEMPT}"
+          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
+          echo "build_run_attempt=$BUILD_RUN_ATTEMPT" >> "$GITHUB_OUTPUT"
+          echo "build_run_id=$BUILD_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "bootstrap=$ALLOW_IDENTITY_BOOTSTRAP" >> "$GITHUB_OUTPUT"
+          echo "expected_current_sha=$EXPECTED_CURRENT_SHA" >> "$GITHUB_OUTPUT"
+          echo "release_sha=$RELEASE_SHA" >> "$GITHUB_OUTPUT"
+          echo "tree_sha=$tree_sha" >> "$GITHUB_OUTPUT"
+          echo "v2_tree_sha=$v2_tree_sha" >> "$GITHUB_OUTPUT"
+          echo "ANYTOOUR_DEPLOY_REQUEST_BOUND sha=$RELEASE_SHA build_run=$BUILD_RUN_ID attempt=$BUILD_RUN_ATTEMPT"
+
+      - name: Verify retained candidate provenance
+        env:
+          API_URL: ${{ github.api_url }}
+          BUILD_RUN_ATTEMPT: ${{ steps.release.outputs.build_run_attempt }}
+          BUILD_RUN_ID: ${{ steps.release.outputs.build_run_id }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ steps.release.outputs.release_sha }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          run_id = os.environ['BUILD_RUN_ID']
+          request = urllib.request.Request(
+              f"{os.environ['API_URL']}/repos/{os.environ['REPOSITORY']}/actions/runs/{run_id}",
+              headers={
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': f"Bearer {os.environ['GH_TOKEN']}",
+                  'X-GitHub-Api-Version': '2022-11-28',
+              },
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              run = json.load(response)
+          expected = {
+              'conclusion': 'success',
+              'head_branch': 'main',
+              'head_sha': os.environ['RELEASE_SHA'],
+              'path': '.github/workflows/build-anytoour-release.yml',
+              'run_attempt': int(os.environ['BUILD_RUN_ATTEMPT']),
+              'status': 'completed',
+          }
+          mismatches = {
+              key: {'expected': value, 'actual': run.get(key)}
+              for key, value in expected.items()
+              if run.get(key) != value
+          }
+          if run.get('event') not in {'push', 'workflow_dispatch'}:
+              mismatches['event'] = {
+                  'expected': ['push', 'workflow_dispatch'],
+                  'actual': run.get('event'),
+              }
+          if mismatches:
+              raise SystemExit('BUILD_RUN_PROVENANCE_MISMATCH ' + json.dumps(mismatches, sort_keys=True))
+          print('ANYTOOUR_BUILD_RUN_PROVENANCE_OK', run_id)
+          PY
+
+  deploy:
+    needs: preflight
+    environment: anytoour-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Download exact retained release candidate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ${{ needs.preflight.outputs.artifact_name }}
+          path: ${{ runner.temp }}/anytoour-release
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.preflight.outputs.build_run_id }}
+
+      - name: Verify exact artifact, mappings and run binding
+        id: artifact
+        env:
+          BUILD_RUN_ATTEMPT: ${{ needs.preflight.outputs.build_run_attempt }}
+          BUILD_RUN_ID: ${{ needs.preflight.outputs.build_run_id }}
+          CONTROL_SHA: ${{ github.sha }}
+          RELEASE_SHA: ${{ needs.preflight.outputs.release_sha }}
+          RELEASE_TREE_SHA: ${{ needs.preflight.outputs.tree_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$CONTROL_SHA" = "$RELEASE_SHA"
+          test "$(git rev-parse HEAD)" = "$CONTROL_SHA"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$RELEASE_SHA" origin/main
+          artifact_dir="$RUNNER_TEMP/anytoour-release"
+          legacy_archive="$artifact_dir/anytoour-legacy-lead.tar.gz"
+          public_archive="$artifact_dir/anytoour-public.tar.gz"
+          legacy_archive_sha="$(sha256sum "$legacy_archive" | awk '{print $1}')"
+          public_archive_sha="$(sha256sum "$public_archive" | awk '{print $1}')"
+          [[ "$legacy_archive_sha" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$public_archive_sha" =~ ^[0-9a-f]{64}$ ]]
+          (
+            cd "$artifact_dir"
+            sha256sum -c SHA256SUMS
+          )
+          python3 scripts/release/build_anytoour_release.py verify \
+            --repo . \
+            --artifact-dir "$artifact_dir" \
+            --release-sha "$RELEASE_SHA" \
+            --repository-tree-sha "$RELEASE_TREE_SHA" \
+            --control-sha "$CONTROL_SHA" \
+            --run-id "$BUILD_RUN_ID" \
+            --run-attempt "$BUILD_RUN_ATTEMPT"
+          test "$(sha256sum "$legacy_archive" | awk '{print $1}')" = "$legacy_archive_sha"
+          test "$(sha256sum "$public_archive" | awk '{print $1}')" = "$public_archive_sha"
+          echo "legacy_archive_sha=$legacy_archive_sha" >> "$GITHUB_OUTPUT"
+          echo "public_archive_sha=$public_archive_sha" >> "$GITHUB_OUTPUT"
+          echo "ANYTOOUR_EXACT_ARTIFACT_VERIFIED sha=$RELEASE_SHA"
 
       - name: Prepare SSH keys
         env:
           NEW_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          NEW_KNOWN_HOSTS: ${{ secrets.ANYTOOUR_DEPLOY_KNOWN_HOSTS }}
           OLD_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          OLD_HOST: ${{ secrets.DEPLOY_HOST }}
+          OLD_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         shell: bash
         run: |
           set -euo pipefail
-          write_key(){
+          write_key() {
             local raw="$1" path="$2"
             test -n "$raw"
-            if [[ "$raw" == *"PRIVATE KEY"* ]]; then printf '%s\n' "$raw" | tr -d '\r' > "$path"; else printf '%s' "$raw" | base64 --decode > "$path"; fi
+            if [[ "$raw" == *"PRIVATE KEY"* ]]; then
+              printf '%s\n' "$raw" | tr -d '\r' > "$path"
+            else
+              printf '%s' "$raw" | base64 --decode > "$path"
+            fi
             chmod 600 "$path"
             ssh-keygen -y -f "$path" >/dev/null
           }
+          write_known_hosts() {
+            local raw="$1" path="$2" host="$3"
+            test -n "$raw" && test -n "$host"
+            printf '%s\n' "$raw" | tr -d '\r' > "$path"
+            chmod 600 "$path"
+            ssh-keygen -F "$host" -f "$path" >/dev/null
+          }
           write_key "$NEW_KEY" "$RUNNER_TEMP/anytoour_key"
           write_key "$OLD_KEY" "$RUNNER_TEMP/legacy_key"
+          write_known_hosts "$NEW_KNOWN_HOSTS" "$RUNNER_TEMP/anytoour_known_hosts" "$NEW_HOST"
+          write_known_hosts "$OLD_KNOWN_HOSTS" "$RUNNER_TEMP/legacy_known_hosts" "$OLD_HOST"
 
-      - name: Prepare authenticated legacy lead receiver
+      - name: Prepare both hosts before first mutation
+        id: prepared
         env:
+          ALLOW_IDENTITY_BOOTSTRAP: ${{ needs.preflight.outputs.bootstrap }}
+          BUILD_RUN_ATTEMPT: ${{ needs.preflight.outputs.build_run_attempt }}
+          BUILD_RUN_ID: ${{ needs.preflight.outputs.build_run_id }}
+          EXPECTED_CURRENT_SHA: ${{ needs.preflight.outputs.expected_current_sha }}
           OLD_HOST: ${{ secrets.DEPLOY_HOST }}
           OLD_USER: ${{ secrets.DEPLOY_USER }}
+          NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          NEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          RELEASE_SHA: ${{ needs.preflight.outputs.release_sha }}
+          RELEASE_TREE_SHA: ${{ needs.preflight.outputs.tree_sha }}
+          VERIFIED_LEGACY_ARCHIVE_SHA: ${{ steps.artifact.outputs.legacy_archive_sha }}
+          VERIFIED_PUBLIC_ARCHIVE_SHA: ${{ steps.artifact.outputs.public_archive_sha }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$OLD_HOST" && test -n "$OLD_USER"
-          opts=(-i "$RUNNER_TEMP/legacy_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
-          remote="$OLD_USER@$OLD_HOST"
-          old_root='~/www/anytour.online/poisk-turov-test/v2'
-
-          scp "${opts[@]}" \
-            v2/lead-receiver-v1.php \
-            v2/lead-adapter-v2.php \
-            v2/lead-price-v1.php \
-            v2/lead-idempotency-v1.php \
-            "$remote:$old_root/"
-          ssh "${opts[@]}" "$remote" '
-            set -euo pipefail
-            root="$HOME/www/anytour.online/poisk-turov-test/v2"
-            for f in lead-receiver-v1.php lead-adapter-v2.php lead-price-v1.php lead-idempotency-v1.php; do
-              php -l "$root/$f" >/dev/null
-              chmod 644 "$root/$f"
-            done
-            if ! test -s "$root/.anytoour-bridge-secret"; then
-              umask 077
-              openssl rand -hex 32 > "$root/.anytoour-bridge-secret"
+          test -n "$OLD_HOST" && test -n "$OLD_USER" && test -n "$NEW_HOST" && test -n "$NEW_USER"
+          legacy_opts=(-i "$RUNNER_TEMP/legacy_key" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/legacy_known_hosts" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          public_opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/anytoour_known_hosts" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          legacy_remote="$OLD_USER@$OLD_HOST"
+          public_remote="$NEW_USER@$NEW_HOST"
+          legacy_token=''
+          public_token=''
+          cleanup_prepared() {
+            local script="$1" remote="$2" token="$3" archive_sha="$4"
+            shift 4
+            test -z "$token" || timeout 90s ssh "$@" "$remote" bash -s -- \
+              cleanup "$token" "$RELEASE_SHA" "$RELEASE_TREE_SHA" \
+              "$BUILD_RUN_ID" "$BUILD_RUN_ATTEMPT" "$archive_sha" \
+              "$EXPECTED_CURRENT_SHA" "$ALLOW_IDENTITY_BOOTSTRAP" < "$script" || true
+          }
+          on_exit() {
+            local status=$?
+            trap - EXIT
+            if [[ "$status" -ne 0 ]]; then
+              cleanup_prepared scripts/release/remote_activate_anytoour_public.sh "$public_remote" "$public_token" "$public_archive_sha" "${public_opts[@]}"
+              cleanup_prepared scripts/release/remote_activate_anytoour_legacy_lead.sh "$legacy_remote" "$legacy_token" "$legacy_archive_sha" "${legacy_opts[@]}"
             fi
-            chmod 600 "$root/.anytoour-bridge-secret"
-          '
-          scp "${opts[@]}" "$remote:$old_root/.anytoour-bridge-secret" "$RUNNER_TEMP/anytoour-bridge-secret"
+            exit "$status"
+          }
+          legacy_archive="$RUNNER_TEMP/anytoour-release/anytoour-legacy-lead.tar.gz"
+          public_archive="$RUNNER_TEMP/anytoour-release/anytoour-public.tar.gz"
+          legacy_archive_sha="$(sha256sum "$legacy_archive" | awk '{print $1}')"
+          public_archive_sha="$(sha256sum "$public_archive" | awk '{print $1}')"
+          [[ "$VERIFIED_LEGACY_ARCHIVE_SHA" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$VERIFIED_PUBLIC_ARCHIVE_SHA" =~ ^[0-9a-f]{64}$ ]]
+          test "$legacy_archive_sha" = "$VERIFIED_LEGACY_ARCHIVE_SHA"
+          test "$public_archive_sha" = "$VERIFIED_PUBLIC_ARCHIVE_SHA"
+          echo "ANYTOOUR_PREPARE_ARCHIVES_REBOUND legacy=$legacy_archive_sha public=$public_archive_sha"
+          trap on_exit EXIT
+
+          legacy_response="$(timeout 60s ssh "${legacy_opts[@]}" "$legacy_remote" '
+            set -euo pipefail
+            umask 077
+            handle="$(mktemp -d "$HOME/.anytoour-legacy-prepared.XXXXXXXXXX")"
+            printf "%s\n" "${handle##*.}"
+          ')"
+          legacy_token="${legacy_response##*$'\n'}"
+          [[ "$legacy_token" =~ ^[A-Za-z0-9]{10}$ ]]
+          timeout 90s scp "${legacy_opts[@]}" "$legacy_archive" "$legacy_remote:.anytoour-legacy-prepared.$legacy_token/release.tar.gz"
+          timeout 480s ssh "${legacy_opts[@]}" "$legacy_remote" bash -s -- \
+            prepare "$legacy_token" "$RELEASE_SHA" "$RELEASE_TREE_SHA" \
+            "$BUILD_RUN_ID" "$BUILD_RUN_ATTEMPT" "$legacy_archive_sha" \
+            "$EXPECTED_CURRENT_SHA" "$ALLOW_IDENTITY_BOOTSTRAP" \
+            < scripts/release/remote_activate_anytoour_legacy_lead.sh
+          timeout 60s scp "${legacy_opts[@]}" "$legacy_remote:.anytoour-legacy-prepared.$legacy_token/bridge-secret" "$RUNNER_TEMP/anytoour-bridge-secret"
           chmod 600 "$RUNNER_TEMP/anytoour-bridge-secret"
           test -s "$RUNNER_TEMP/anytoour-bridge-secret"
-          curl -fsSL --max-time 30 https://anytour.online/poisk-turov-test/v2/lead-receiver-v1.php | grep -q 'anytoour-hmac-bitrix-session'
-          echo "LEGACY_LEAD_RECEIVER_READY"
 
-      - name: Copy release to anytoour.ru
+          public_response="$(timeout 60s ssh "${public_opts[@]}" "$public_remote" '
+            set -euo pipefail
+            umask 077
+            handle="$(mktemp -d "$HOME/.anytoour-public-prepared.XXXXXXXXXX")"
+            printf "%s\n" "${handle##*.}"
+          ')"
+          public_token="${public_response##*$'\n'}"
+          [[ "$public_token" =~ ^[A-Za-z0-9]{10}$ ]]
+          timeout 90s scp "${public_opts[@]}" "$public_archive" "$public_remote:.anytoour-public-prepared.$public_token/release.tar.gz"
+          timeout 60s scp "${public_opts[@]}" "$RUNNER_TEMP/anytoour-bridge-secret" "$public_remote:.anytoour-public-prepared.$public_token/bridge-secret"
+          timeout 720s ssh "${public_opts[@]}" "$public_remote" bash -s -- \
+            prepare "$public_token" "$RELEASE_SHA" "$RELEASE_TREE_SHA" \
+            "$BUILD_RUN_ID" "$BUILD_RUN_ATTEMPT" "$public_archive_sha" \
+            "$EXPECTED_CURRENT_SHA" "$ALLOW_IDENTITY_BOOTSTRAP" \
+            < scripts/release/remote_activate_anytoour_public.sh
+          echo "legacy_token=$legacy_token" >> "$GITHUB_OUTPUT"
+          echo "public_token=$public_token" >> "$GITHUB_OUTPUT"
+          echo "legacy_archive_sha=$legacy_archive_sha" >> "$GITHUB_OUTPUT"
+          echo "public_archive_sha=$public_archive_sha" >> "$GITHUB_OUTPUT"
+          trap - EXIT
+          echo "ANYTOOUR_BOTH_HOSTS_PREPARED sha=$RELEASE_SHA"
+
+      - name: Recheck trusted main history immediately before mutation
         env:
+          CONTROL_SHA: ${{ github.sha }}
+          RELEASE_SHA: ${{ needs.preflight.outputs.release_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CONTROL_SHA" = "$RELEASE_SHA"
+          test "$(git rev-parse HEAD)" = "$CONTROL_SHA"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$RELEASE_SHA" origin/main
+          echo "ANYTOOUR_PREMUTATION_MAIN_HISTORY_OK sha=$RELEASE_SHA"
+
+      - name: Activate exact legacy lead component
+        env:
+          ALLOW_IDENTITY_BOOTSTRAP: ${{ needs.preflight.outputs.bootstrap }}
+          BUILD_RUN_ATTEMPT: ${{ needs.preflight.outputs.build_run_attempt }}
+          BUILD_RUN_ID: ${{ needs.preflight.outputs.build_run_id }}
+          EXPECTED_CURRENT_SHA: ${{ needs.preflight.outputs.expected_current_sha }}
+          LEGACY_ARCHIVE_SHA: ${{ steps.prepared.outputs.legacy_archive_sha }}
+          LEGACY_TOKEN: ${{ steps.prepared.outputs.legacy_token }}
+          OLD_HOST: ${{ secrets.DEPLOY_HOST }}
+          OLD_USER: ${{ secrets.DEPLOY_USER }}
+          RELEASE_SHA: ${{ needs.preflight.outputs.release_sha }}
+          RELEASE_TREE_SHA: ${{ needs.preflight.outputs.tree_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          opts=(-i "$RUNNER_TEMP/legacy_key" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/legacy_known_hosts" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          remote="$OLD_USER@$OLD_HOST"
+          timeout 480s ssh "${opts[@]}" "$remote" bash -s -- \
+            activate "$LEGACY_TOKEN" "$RELEASE_SHA" "$RELEASE_TREE_SHA" \
+            "$BUILD_RUN_ID" "$BUILD_RUN_ATTEMPT" "$LEGACY_ARCHIVE_SHA" \
+            "$EXPECTED_CURRENT_SHA" "$ALLOW_IDENTITY_BOOTSTRAP" \
+            < scripts/release/remote_activate_anytoour_legacy_lead.sh
+          curl -fsSL --max-time 30 https://anytour.online/poisk-turov-test/v2/lead-receiver-v1.php | grep -q 'anytoour-hmac-bitrix-session'
+          echo "LEGACY_LEAD_RECEIVER_READY sha=$RELEASE_SHA"
+
+      - name: Activate exact public component
+        env:
+          ALLOW_IDENTITY_BOOTSTRAP: ${{ needs.preflight.outputs.bootstrap }}
+          BUILD_RUN_ATTEMPT: ${{ needs.preflight.outputs.build_run_attempt }}
+          BUILD_RUN_ID: ${{ needs.preflight.outputs.build_run_id }}
+          EXPECTED_CURRENT_SHA: ${{ needs.preflight.outputs.expected_current_sha }}
           NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           NEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          PUBLIC_ARCHIVE_SHA: ${{ steps.prepared.outputs.public_archive_sha }}
+          PUBLIC_TOKEN: ${{ steps.prepared.outputs.public_token }}
+          RELEASE_SHA: ${{ needs.preflight.outputs.release_sha }}
+          RELEASE_TREE_SHA: ${{ needs.preflight.outputs.tree_sha }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "$NEW_HOST" && test -n "$NEW_USER"
-          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/anytoour_known_hosts" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
           remote="$NEW_USER@$NEW_HOST"
-          root='~/www/anytoour.ru'
-          timeout 60s ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/images" "$HOME/www/anytoour.ru/poisk-turov" && test -s "$HOME/www/anytoour.ru/config.php" && test -s "$HOME/www/anytoour.ru/images/logo.svg"'
-          archive="$RUNNER_TEMP/anytoour-v2.tar.gz"
-          tar -C v2 -czf "$archive" .
-          timeout 90s scp "${opts[@]}" "$archive" "$remote:/tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz"
-          timeout 90s ssh "${opts[@]}" "$remote" "tar -xzf /tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz -C \"\$HOME/www/anytoour.ru\" && rm -f /tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz"
-          timeout 60s scp "${opts[@]}" "$RUNNER_TEMP/anytoour-bridge-secret" "$remote:$root/.anytoour-bridge-secret"
-          timeout 90s ssh "${opts[@]}" "$remote" '
-            set -euo pipefail
-            root="$HOME/www/anytoour.ru"
-            cp "$root/lead-bridge-v1.php" "$root/lead-adapter-v2.php"
-            cp "$root/index.php" "$root/search-page-v2.php"
-            cp "$root/home-entry-v1.php" "$root/index.php"
-            test -s "$root/config.php"
-            test -s "$root/images/logo.svg"
-            php -l "$root/config.php" >/dev/null
-            chmod 600 "$root/config.php" "$root/.anytoour-bridge-secret"
-            rm -f "$root/index.html"
-            for f in index.php search-page-v2.php home-entry-v1.php home-v1.php poisk-turov/index.php assets.php api-v2.php lead-adapter-v2.php bundle-v1.php analytics-config.php privacy-config.php seo-config.php; do php -l "$root/$f" >/dev/null; done
-            echo "ANYTOOUR_FILES_ACTIVATED"
-          '
+          timeout 900s ssh "${opts[@]}" "$remote" bash -s -- \
+            activate "$PUBLIC_TOKEN" "$RELEASE_SHA" "$RELEASE_TREE_SHA" \
+            "$BUILD_RUN_ID" "$BUILD_RUN_ATTEMPT" "$PUBLIC_ARCHIVE_SHA" \
+            "$EXPECTED_CURRENT_SHA" "$ALLOW_IDENTITY_BOOTSTRAP" \
+            < scripts/release/remote_activate_anytoour_public.sh
 
-      - name: Verify public pages
+      - name: Verify public pages and exact release identity
+        env:
+          NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          NEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          RELEASE_SHA: ${{ needs.preflight.outputs.release_sha }}
+          RELEASE_TREE_SHA: ${{ needs.preflight.outputs.tree_sha }}
+          RUN_ID: ${{ github.run_id }}
         shell: bash
         run: |
           set -euo pipefail
@@ -146,6 +420,10 @@ jobs:
           search_code="$(curl -fsSL -o /tmp/anytoour-search.html -w '%{http_code}' --max-time 45 https://anytoour.ru/poisk-turov/)"
           api_code="$(curl -fsSL -o /tmp/anytoour-health.json -w '%{http_code}' --max-time 50 'https://anytoour.ru/api-v2.php?action=health')"
           lead_code="$(curl -fsSL -o /tmp/anytoour-lead-health.json -w '%{http_code}' --max-time 30 https://anytoour.ru/lead-adapter-v2.php)"
+          opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/anytoour_known_hosts" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          remote="$NEW_USER@$NEW_HOST"
+          timeout 60s scp "${opts[@]}" "$remote:.anytoour-public-release.json" /tmp/anytoour-release.json
+          timeout 60s scp "${opts[@]}" "$remote:.anytoour-public-release-manifest-${RELEASE_SHA}.json" /tmp/anytoour-release-manifest.json
           echo "HOME=$home_code SEARCH=$search_code API=$api_code LEAD=$lead_code"
           test "$home_code" = "200"
           test "$search_code" = "200"
@@ -161,7 +439,37 @@ jobs:
           grep -q 'tourvisor-direct' /tmp/anytoour-health.json
           grep -q 'v2-hmac-bridge-bitrix-lead' /tmp/anytoour-lead-health.json
           curl -fsSL --max-time 30 https://anytoour.ru/images/logo.svg | grep -qi '<svg'
-          echo "ANYTOOUR_PUBLIC_PAGES_OK"
+          MANIFEST_FILE=/tmp/anytoour-release-manifest.json RELEASE_FILE=/tmp/anytoour-release.json RELEASE_SHA="$RELEASE_SHA" RELEASE_TREE_SHA="$RELEASE_TREE_SHA" python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+
+          with open(os.environ['RELEASE_FILE'], encoding='utf-8') as handle:
+              release = json.load(handle)
+          manifest_bytes = open(os.environ['MANIFEST_FILE'], 'rb').read()
+          manifest = json.loads(manifest_bytes)
+          expected = {
+              'release_sha': os.environ['RELEASE_SHA'],
+              'repository_tree_sha': os.environ['RELEASE_TREE_SHA'],
+              'schema_version': 1,
+              'state': 'active',
+              'target': 'anytoour-public',
+          }
+          for key, value in expected.items():
+              if release.get(key) != value:
+                  raise SystemExit(f'LIVE_RELEASE_IDENTITY_MISMATCH {key}')
+          if release.get('manifest_file') != f".anytoour-public-release-manifest-{os.environ['RELEASE_SHA']}.json":
+              raise SystemExit('LIVE_RELEASE_MANIFEST_FILE_MISMATCH')
+          if hashlib.sha256(manifest_bytes).hexdigest() != release.get('manifest_sha256'):
+              raise SystemExit('LIVE_RELEASE_MANIFEST_DIGEST_MISMATCH')
+          for key, value in expected.items():
+              if key == 'state':
+                  continue
+              if manifest.get(key) != value:
+                  raise SystemExit(f'LIVE_RELEASE_MANIFEST_IDENTITY_MISMATCH {key}')
+          print('ANYTOOUR_LIVE_RELEASE_IDENTITY_OK', release['release_sha'])
+          PY
+          echo "ANYTOOUR_PUBLIC_PAGES_OK sha=$RELEASE_SHA"
 
       - name: Verify lead bridge reaches unchanged production adapter
         shell: bash
@@ -197,7 +505,10 @@ jobs:
           for attempt in $(seq 1 36); do
             sleep 2
             curl -fsSL --max-time 45 "$base?action=search_status&searchId=$search_id" -o /tmp/search-status.json
-            if grep -Eq '"progress"[[:space:]]*:[[:space:]]*100|"status"[[:space:]]*:[[:space:]]*"complete"' /tmp/search-status.json; then complete=1; break; fi
+            if grep -Eq '"progress"[[:space:]]*:[[:space:]]*100|"status"[[:space:]]*:[[:space:]]*"complete"' /tmp/search-status.json; then
+              complete=1
+              break
+            fi
           done
           test "$complete" = "1"
           curl -fsSL --max-time 45 "$base?action=search_results&searchId=$search_id&limit=25" -o /tmp/search-results.json
@@ -209,3 +520,153 @@ jobs:
           assert len(ids)==len(set(ids))
           print('ANYTOOUR_SEARCH_SMOKE_OK', len(data))
           PY
+
+      - name: Confirm release identity remained stable
+        env:
+          NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          NEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          OLD_HOST: ${{ secrets.DEPLOY_HOST }}
+          OLD_USER: ${{ secrets.DEPLOY_USER }}
+          RELEASE_SHA: ${{ needs.preflight.outputs.release_sha }}
+          RELEASE_TREE_SHA: ${{ needs.preflight.outputs.tree_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$OLD_HOST" && test -n "$OLD_USER" && test -n "$NEW_HOST" && test -n "$NEW_USER"
+          legacy_opts=(-i "$RUNNER_TEMP/legacy_key" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/legacy_known_hosts" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          public_opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/anytoour_known_hosts" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          legacy_remote="$OLD_USER@$OLD_HOST"
+          public_remote="$NEW_USER@$NEW_HOST"
+          tar -xOf "$RUNNER_TEMP/anytoour-release/anytoour-public.tar.gz" control/release.json > /tmp/anytoour-release-expected.json
+          tar -xOf "$RUNNER_TEMP/anytoour-release/anytoour-public.tar.gz" control/manifest.json > /tmp/anytoour-release-manifest-expected.json
+          tar -xOf "$RUNNER_TEMP/anytoour-release/anytoour-legacy-lead.tar.gz" control/release.json > /tmp/anytoour-legacy-release-expected.json
+          timeout 60s scp "${public_opts[@]}" "$public_remote:.anytoour-public-release.json" /tmp/anytoour-release-final.json
+          timeout 60s scp "${public_opts[@]}" "$public_remote:.anytoour-public-release-manifest-${RELEASE_SHA}.json" /tmp/anytoour-release-manifest-final.json
+          timeout 60s scp "${legacy_opts[@]}" "$legacy_remote:.anytoour-legacy-lead-release.json" /tmp/anytoour-legacy-release-final.json
+          cmp -- /tmp/anytoour-release.json /tmp/anytoour-release-final.json
+          cmp -- /tmp/anytoour-release-manifest.json /tmp/anytoour-release-manifest-final.json
+          cmp -- /tmp/anytoour-release-expected.json /tmp/anytoour-release-final.json
+          cmp -- /tmp/anytoour-release-manifest-expected.json /tmp/anytoour-release-manifest-final.json
+          cmp -- /tmp/anytoour-legacy-release-expected.json /tmp/anytoour-legacy-release-final.json
+          timeout 60s ssh "${public_opts[@]}" "$public_remote" bash -s -- "$RELEASE_SHA" <<'REMOTE'
+          set -euo pipefail
+          release_sha="$1"
+          [[ "$release_sha" =~ ^[0-9a-f]{40}$ ]]
+          deploy_uid="$(id -u)"
+          assert_private_file() {
+            local path="$1"
+            test -f "$path" && test -s "$path" && test ! -L "$path"
+            test "$(stat -c '%u' -- "$path")" = "$deploy_uid"
+            test "$(stat -c '%a' -- "$path")" = "600"
+          }
+          assert_private_file "$HOME/.anytoour-public-release.json"
+          assert_private_file "$HOME/.anytoour-public-release-manifest-${release_sha}.json"
+          echo "ANYTOOUR_PUBLIC_PRIVATE_CONTROL_FILES_OK uid=$deploy_uid"
+          REMOTE
+          timeout 60s ssh "${legacy_opts[@]}" "$legacy_remote" bash -s -- <<'REMOTE'
+          set -euo pipefail
+          deploy_uid="$(id -u)"
+          assert_private_file() {
+            local path="$1"
+            test -f "$path" && test -s "$path" && test ! -L "$path"
+            test "$(stat -c '%u' -- "$path")" = "$deploy_uid"
+            test "$(stat -c '%a' -- "$path")" = "600"
+          }
+          assert_private_file "$HOME/.anytoour-legacy-lead-release.json"
+          assert_private_file "$HOME/www/anytour.online/poisk-turov-test/v2/.anytoour-bridge-secret"
+          echo "ANYTOOUR_LEGACY_PRIVATE_CONTROL_FILES_OK uid=$deploy_uid"
+          REMOTE
+          LEGACY_RELEASE_FILE=/tmp/anytoour-legacy-release-final.json \
+          MANIFEST_FILE=/tmp/anytoour-release-manifest-final.json \
+          RELEASE_FILE=/tmp/anytoour-release-final.json \
+          RELEASE_SHA="$RELEASE_SHA" RELEASE_TREE_SHA="$RELEASE_TREE_SHA" python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          def load_object(path, label):
+              value = json.loads(Path(path).read_bytes())
+              if not isinstance(value, dict):
+                  raise SystemExit(f'{label}_NOT_OBJECT')
+              return value
+
+          def require_fields(value, expected, label):
+              for key, wanted in expected.items():
+                  actual = value.get(key)
+                  if actual != wanted or (key == 'schema_version' and type(actual) is not int):
+                      raise SystemExit(f'{label}_MISMATCH {key}')
+
+          release = load_object(os.environ['RELEASE_FILE'], 'PUBLIC_RELEASE_IDENTITY')
+          legacy_release = load_object(os.environ['LEGACY_RELEASE_FILE'], 'LEGACY_RELEASE_IDENTITY')
+          manifest_bytes = Path(os.environ['MANIFEST_FILE']).read_bytes()
+          manifest = json.loads(manifest_bytes)
+          if not isinstance(manifest, dict):
+              raise SystemExit('PUBLIC_RELEASE_MANIFEST_NOT_OBJECT')
+
+          common = {
+              'release_sha': os.environ['RELEASE_SHA'],
+              'repository_tree_sha': os.environ['RELEASE_TREE_SHA'],
+              'schema_version': 1,
+          }
+          require_fields(release, {
+              **common,
+              'state': 'active',
+              'target': 'anytoour-public',
+          }, 'PUBLIC_RELEASE_IDENTITY')
+          require_fields(manifest, {
+              **common,
+              'target': 'anytoour-public',
+          }, 'PUBLIC_RELEASE_MANIFEST')
+          require_fields(legacy_release, {
+              **common,
+              'state': 'active',
+              'target': 'anytoour-legacy-lead',
+          }, 'LEGACY_RELEASE_IDENTITY')
+
+          expected_manifest_file = f".anytoour-public-release-manifest-{os.environ['RELEASE_SHA']}.json"
+          if release.get('manifest_file') != expected_manifest_file:
+              raise SystemExit('PUBLIC_RELEASE_MANIFEST_FILE_MISMATCH')
+          if hashlib.sha256(manifest_bytes).hexdigest() != release.get('manifest_sha256'):
+              raise SystemExit('PUBLIC_RELEASE_MANIFEST_DIGEST_MISMATCH')
+          print('ANYTOOUR_RELEASE_STABLE_AFTER_SMOKE', release['release_sha'])
+          PY
+
+      - name: Clean prepared directories
+        if: ${{ always() }}
+        env:
+          ALLOW_IDENTITY_BOOTSTRAP: ${{ needs.preflight.outputs.bootstrap }}
+          BUILD_RUN_ATTEMPT: ${{ needs.preflight.outputs.build_run_attempt }}
+          BUILD_RUN_ID: ${{ needs.preflight.outputs.build_run_id }}
+          EXPECTED_CURRENT_SHA: ${{ needs.preflight.outputs.expected_current_sha }}
+          LEGACY_ARCHIVE_SHA: ${{ steps.prepared.outputs.legacy_archive_sha }}
+          LEGACY_TOKEN: ${{ steps.prepared.outputs.legacy_token }}
+          NEW_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          NEW_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          OLD_HOST: ${{ secrets.DEPLOY_HOST }}
+          OLD_USER: ${{ secrets.DEPLOY_USER }}
+          PUBLIC_ARCHIVE_SHA: ${{ steps.prepared.outputs.public_archive_sha }}
+          PUBLIC_TOKEN: ${{ steps.prepared.outputs.public_token }}
+          RELEASE_SHA: ${{ needs.preflight.outputs.release_sha }}
+          RELEASE_TREE_SHA: ${{ needs.preflight.outputs.tree_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          legacy_opts=(-i "$RUNNER_TEMP/legacy_key" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/legacy_known_hosts" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          public_opts=(-i "$RUNNER_TEMP/anytoour_key" -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$RUNNER_TEMP/anytoour_known_hosts" -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o ConnectTimeout=15)
+          if [[ -n "$PUBLIC_TOKEN" && -s "$RUNNER_TEMP/anytoour_key" && -s "$RUNNER_TEMP/anytoour_known_hosts" ]]; then
+            timeout 90s ssh "${public_opts[@]}" "$NEW_USER@$NEW_HOST" bash -s -- \
+              cleanup "$PUBLIC_TOKEN" "$RELEASE_SHA" "$RELEASE_TREE_SHA" \
+              "$BUILD_RUN_ID" "$BUILD_RUN_ATTEMPT" "$PUBLIC_ARCHIVE_SHA" \
+              "$EXPECTED_CURRENT_SHA" "$ALLOW_IDENTITY_BOOTSTRAP" \
+              < scripts/release/remote_activate_anytoour_public.sh || status=1
+          fi
+          if [[ -n "$LEGACY_TOKEN" && -s "$RUNNER_TEMP/legacy_key" && -s "$RUNNER_TEMP/legacy_known_hosts" ]]; then
+            timeout 90s ssh "${legacy_opts[@]}" "$OLD_USER@$OLD_HOST" bash -s -- \
+              cleanup "$LEGACY_TOKEN" "$RELEASE_SHA" "$RELEASE_TREE_SHA" \
+              "$BUILD_RUN_ID" "$BUILD_RUN_ATTEMPT" "$LEGACY_ARCHIVE_SHA" \
+              "$EXPECTED_CURRENT_SHA" "$ALLOW_IDENTITY_BOOTSTRAP" \
+              < scripts/release/remote_activate_anytoour_legacy_lead.sh || status=1
+          fi
+          exit "$status"
