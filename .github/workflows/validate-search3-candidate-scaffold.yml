@@ -135,12 +135,12 @@ jobs:
           echo "SEARCH3_PRODUCTION_LAYOUT_OK"
 
   browser:
-    name: Search3 browser (${{ github.event_name == 'workflow_dispatch' && inputs.visual_tier || 'pr' }})
+    name: Search3 browser (${{ github.event_name == 'workflow_dispatch' && inputs.visual_tier || github.event.pull_request.head.ref == 'search3-zip-visual-implementation' && 'candidate' || 'pr' }})
     needs: fast
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      SEARCH3_VISUAL_TIER: ${{ github.event_name == 'workflow_dispatch' && inputs.visual_tier || 'pr' }}
+      SEARCH3_VISUAL_TIER: ${{ github.event_name == 'workflow_dispatch' && inputs.visual_tier || github.event.pull_request.head.ref == 'search3-zip-visual-implementation' && 'candidate' || 'pr' }}
       SEARCH3_EXACT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
