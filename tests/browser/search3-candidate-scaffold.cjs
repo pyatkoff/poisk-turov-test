@@ -1203,9 +1203,10 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
       const results = document.getElementById('results');
       const sourceButton = document.querySelector('#results button[data-search3-production-label]');
       const resumeButton = sourceButton?.closest('.hotel-card')?.querySelector('.search3-show-tours');
-      return document.activeElement === results
+      return ['results', 'resume-tours'].includes(results?.dataset.search3ReturnFocus)
+        && (document.activeElement === results
         || document.activeElement === sourceButton
-        || document.activeElement === resumeButton;
+        || document.activeElement === resumeButton);
     });
     const returned = await harness.page.evaluate(() => {
       const results = document.getElementById('results');
@@ -1217,16 +1218,19 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
         sourceText: sourceButton?.textContent.replace(/\s+/g, ' ').trim() || '',
         returnFocused: active === results || active === sourceButton || active === resumeButton,
         focusTarget: active === resumeButton ? 'resume-tours' : active === sourceButton ? 'source-tour' : active === results ? 'results' : 'other',
+        focusMarker: results?.dataset.search3ReturnFocus || '',
       };
     });
     assert.deepEqual({
       selectedHidden: returned.selectedHidden,
       sourceText: returned.sourceText,
       returnFocused: returned.returnFocused,
+      focusMarker: returned.focusMarker,
     }, {
       selectedHidden: true,
       sourceText: fixture.presentation.productionOwnedDirectTourText,
       returnFocused: true,
+      focusMarker: returned.focusTarget === 'results' ? 'results' : 'resume-tours',
     });
     assert.ok(['resume-tours', 'source-tour', 'results'].includes(returned.focusTarget));
     manifest.presentationChecks.selectedTourHandoff = {

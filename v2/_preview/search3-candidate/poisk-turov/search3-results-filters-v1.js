@@ -1000,6 +1000,7 @@ syncGroups();window.addEventListener('resize',syncGroups);
   var results = document.getElementById('results');
   if (!selected || !results || !document.body.classList.contains('search3-candidate')) return;
   var selectedFocusRun = 0;
+  var returnFocusRun = 0;
 
   function restoreProductionLabels() {
     results.querySelectorAll('button[data-search3-production-label]').forEach(function (button) {
@@ -1058,17 +1059,32 @@ syncGroups();window.addEventListener('resize',syncGroups);
     window.setTimeout(function () { window.requestAnimationFrame(settle); }, 0);
   }
 
-  function focusReturnedContext() {
-    window.requestAnimationFrame(function () {
-      var source = window.V2SelectedTourReturnV1 && window.V2SelectedTourReturnV1.sourceButton;
-      var card = source && source.closest && source.closest('.hotel-card');
+  function isVisibleFocusTarget(target) {
+    return !!(target && target.isConnected && !target.disabled && target.getClientRects().length > 0);
+  }
+
+  function focusReturnedContext(sourceHint) {
+    var run = ++returnFocusRun;
+    var attempts = 0;
+    var source = sourceHint || (window.V2SelectedTourReturnV1 && window.V2SelectedTourReturnV1.sourceButton);
+    var card = source && source.closest && source.closest('.hotel-card');
+
+    function settle() {
+      if (run !== returnFocusRun || !selected.hidden) return;
       var target = card && card.querySelector('.search3-show-tours');
-      if (!target || target.disabled || target.getClientRects().length === 0) {
+      if (!isVisibleFocusTarget(target)) {
         target = results;
         if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
       }
-      try { target.focus({ preventScroll: true }); } catch (_error) { target.focus(); }
-    });
+      results.dataset.search3ReturnFocus = target === results ? 'results' : 'resume-tours';
+      if (document.activeElement !== target) {
+        try { target.focus({ preventScroll: true }); } catch (_error) { target.focus(); }
+      }
+      attempts += 1;
+      if (attempts < 8) window.requestAnimationFrame(settle);
+    }
+
+    window.setTimeout(function () { window.requestAnimationFrame(settle); }, 0);
   }
 
   new MutationObserver(function () {
@@ -1086,22 +1102,28 @@ syncGroups();window.addEventListener('resize',syncGroups);
   function cancelPendingFocus(event) {
     if (event.target && selected.contains(event.target)) selectedFocusRun += 1;
   }
+  function cancelReturnFocus() {
+    if (selected.hidden) returnFocusRun += 1;
+  }
   selected.addEventListener('pointerdown', cancelPendingFocus, true);
   selected.addEventListener('keydown', cancelPendingFocus, true);
+  document.addEventListener('pointerdown', cancelReturnFocus, true);
+  document.addEventListener('keydown', cancelReturnFocus, true);
 
   window.addEventListener('v2:tour-selected', function () {
     selected.setAttribute('aria-busy', 'false');
     restoreProductionLabels();
     scheduleSelectedContextFocus();
   });
-  window.addEventListener('v2:tour-returned', function () {
+  window.addEventListener('v2:tour-returned', function (event) {
     selectedFocusRun += 1;
     selected.setAttribute('aria-busy', 'false');
     restoreProductionLabels();
-    focusReturnedContext();
+    focusReturnedContext(event && event.detail && event.detail.source);
   });
   window.addEventListener('v2:search-reset', function () {
     selectedFocusRun += 1;
+    returnFocusRun += 1;
     selected.setAttribute('aria-busy', 'false');
   });
 
