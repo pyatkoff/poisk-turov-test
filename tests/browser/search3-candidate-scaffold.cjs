@@ -580,6 +580,8 @@ async function geometry(page, width, state) {
         facts: Object.fromEntries(factEntries),
         priceContext: (priceContext?.textContent || '').replace(/\s+/g, ' ').trim(),
         priceAriaLabel: price?.getAttribute('aria-label') || '',
+        priceContextVisible: rendered(priceContext),
+        priceContextBox: rect(priceContext),
       },
       decoratedCount: document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length,
       disclosureCount: document.querySelectorAll('#results .search3-show-tours').length,
@@ -628,6 +630,8 @@ async function capture(page, width, state, expectedResultCount, manifest) {
     assert.equal(measured.cardCopy.facts['Питание'], 'Всё включено', `${width}/${state}: meal code/name must be customer-readable`);
     assert.equal(measured.cardCopy.priceContext, '8 ночей · 2 взрослых Чартерный перелёт · Всё включено', `${width}/${state}: price context must explain the package`);
     assert.match(measured.cardCopy.priceAriaLabel, /за тур на 2 взрослых$/, `${width}/${state}: total price needs an accessible scope`);
+    assert.equal(measured.cardCopy.priceContextVisible, true, `${width}/${state}: price context must be visibly rendered`);
+    assert.ok(measured.cardCopy.priceContextBox.height >= 20, `${width}/${state}: both price-context lines must remain visible`);
     assert.equal(measured.filterAffordanceCount, 1, `${width}/${state}: expected exactly one visible filter affordance`);
     if (width === 375 && state === 'progressive-25') {
       assert.ok(

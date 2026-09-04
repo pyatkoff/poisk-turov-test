@@ -3472,7 +3472,7 @@ html body.search3-candidate.search3-results-active #results .hotel-best-offer>sm
   letter-spacing:.02em!important;
   text-transform:uppercase!important;
 }
-html body.search3-candidate.search3-results-active #results .hotel-price-context{
+html body.search3-candidate.search3-results-active.search3-has-results #results .hotel-card .hotel-best-offer>small.hotel-price-context{
   display:grid!important;
   gap:3px!important;
   margin-top:7px!important;
