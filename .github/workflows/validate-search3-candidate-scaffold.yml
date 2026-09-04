@@ -80,6 +80,7 @@ jobs:
           done
           if [ "$ready" -ne 1 ]; then cat "$RUNNER_TEMP/search3-candidate-php.log" >&2; exit 13; fi
           SEARCH3_BASE_URL=http://anytoour.ru:18083 \
+            SEARCH3_SERVER_URL=http://127.0.0.1:18083 \
             SEARCH3_ARTIFACT_DIR=search3-candidate-artifacts \
             SEARCH3_SOURCE_SHA="${{ github.event.pull_request.head.sha || github.sha }}" \
             SEARCH3_TESTED_SHA="${{ github.sha }}" \

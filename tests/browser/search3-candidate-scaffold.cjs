@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
+const http = require('node:http');
 const path = require('node:path');
 
 let chromium;
@@ -17,6 +18,7 @@ try {
 const fixturePath = path.resolve(__dirname, '../fixtures/search3-candidate-scaffold.json');
 const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
 const baseUrl = String(process.env.SEARCH3_BASE_URL || 'http://anytoour.ru:18083').replace(/\/$/, '');
+const serverUrl = String(process.env.SEARCH3_SERVER_URL || 'http://127.0.0.1:18083').replace(/\/$/, '');
 const outputDir = path.resolve(process.env.SEARCH3_ARTIFACT_DIR || 'search3-candidate-artifacts');
 const expectedStates = ['initial', 'progressive-25', 'final-100'];
 const sourceSha = String(process.env.SEARCH3_SOURCE_SHA || '');
@@ -35,6 +37,9 @@ assert.equal(fixture.schemaVersion, 1);
 assert.deepEqual(fixture.viewports.map(item => item.width), [375, 430, 768, 1024, 1440]);
 assert.equal(fixture.progressive.firstLimit, 25);
 assert.equal(fixture.progressive.finalLimit, 100);
+assert.equal(fixture.leadApi, '/_preview/search3-candidate/poisk-turov/?lead=disabled');
+assert.equal(new URL(baseUrl).hostname, 'anytoour.ru', 'browser host simulation must stay on anytoour.ru');
+assert.equal(new URL(serverUrl).origin, 'http://127.0.0.1:18083', 'lead guard probe must stay on loopback');
 assert.deepEqual(fixture.visualBaseline, {
   status: 'BLOCKED_MISSING_APPROVED_DESIGN_PIXELS',
   baselineCompared: false,
@@ -160,6 +165,36 @@ async function waitFor(predicate, message, timeoutMs = 12000) {
   throw new Error(message);
 }
 
+async function assertPreviewLeadGuard() {
+  const payload = JSON.stringify({ synthetic: true });
+  const target = new URL(fixture.leadApi, serverUrl);
+  assert.equal(target.origin, new URL(serverUrl).origin, 'lead guard target escaped loopback');
+  const response = await new Promise((resolve, reject) => {
+    const request = http.request(target, {
+      method: 'POST',
+      headers: {
+        Host: new URL(baseUrl).host,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+    }, incoming => {
+      const chunks = [];
+      incoming.on('data', chunk => chunks.push(chunk));
+      incoming.on('end', () => resolve({
+        status: incoming.statusCode,
+        body: JSON.parse(Buffer.concat(chunks).toString('utf8')),
+      }));
+    });
+    request.on('error', reject);
+    request.setTimeout(5000, () => request.destroy(new Error('preview lead guard probe timed out')));
+    request.end(payload);
+  });
+  assert.deepEqual(response, {
+    status: 403,
+    body: { ok: false, error: 'PREVIEW_LEAD_DISABLED' },
+  });
+}
+
 async function createHarness(browser, viewport, scenario) {
   const context = await browser.newContext({
     viewport,
@@ -248,20 +283,6 @@ async function createHarness(browser, viewport, scenario) {
   assert.match(identity.css, /^\/bundle-v1\.php\?type=css&/);
   assert.match(identity.script, /^\/bundle-v1\.php\?type=js&/);
   assert.equal(new URL(page.url()).pathname, fixture.route);
-
-  const leadGuard = await page.evaluate(async () => {
-    const response = await fetch(window.V2_CONFIG.leadApi, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ synthetic: true }),
-    });
-    return { status: response.status, body: await response.json() };
-  });
-  assert.deepEqual(leadGuard, {
-    status: 403,
-    body: { ok: false, error: 'PREVIEW_LEAD_DISABLED' },
-  });
 
   return {
     context,
@@ -467,6 +488,7 @@ async function runEmptyAndError(browser) {
 }
 
 (async () => {
+  await assertPreviewLeadGuard();
   const manifest = {
     schemaVersion: 1,
     sourceSha,
