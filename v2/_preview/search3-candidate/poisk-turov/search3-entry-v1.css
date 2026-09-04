@@ -57,3 +57,24 @@ html body.search3-candidate #tourSearch .search3-primary-grid > .search-submit{
     max-width:100%!important;
   }
 }
+
+/* Tablet keeps the full seven-control entry flow without narrow one-line fields. */
+@media(min-width:761px) and (max-width:999px){
+  html body.search3-candidate #tourSearch .search3-primary-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+  html body.search3-candidate #tourSearch .search3-primary-grid > .search-submit{
+    grid-column:3/-1!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+  html body.search3-candidate #tourSearch .search3-quality__grid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  html body.search3-candidate #tourSearch .search3-quick{
+    flex-wrap:wrap!important;
+    gap:10px 20px!important;
+  }
+}
