@@ -31,7 +31,12 @@ $params = is_array($params ?? null) ? $params : [];
 $params['SEO_INDEXABLE'] = false;
 
 ob_start();
-require dirname(dirname(dirname(__DIR__))) . '/index.php';
+$documentRoot = dirname(dirname(dirname(__DIR__)));
+$productionSearchPage = $documentRoot . '/search-page-v2.php';
+$sourceSearchPage = is_file($productionSearchPage)
+    ? $productionSearchPage
+    : $documentRoot . '/index.php';
+require $sourceSearchPage;
 $html = (string)ob_get_clean();
 $productionLeadConfig = 'leadApi:"/lead-adapter-v2.php"';
 

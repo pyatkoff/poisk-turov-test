@@ -59,6 +59,47 @@ jobs:
           python3 -B scripts/ci/validate_search3_reference_dossier.py
           python3 -B tests/search3_reference_dossier_test.py
 
+      - name: Validate production activation layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          activation_root="$RUNNER_TEMP/search3-production-layout"
+          mkdir -p "$activation_root"
+          cp -a v2/. "$activation_root/"
+          cp v2/index.php "$activation_root/search-page-v2.php"
+          printf '%s\n' '<?php http_response_code(599); echo "PRODUCTION_HOME_SELECTED";' > "$activation_root/index.php"
+          php -S 127.0.0.1:18084 -t "$activation_root" >"$RUNNER_TEMP/search3-production-layout.log" 2>&1 &
+          php_pid=$!
+          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
+          ready=0
+          for _ in {1..40}; do
+            if curl -fsS -H 'Host: anytoour.ru' -D "$RUNNER_TEMP/search3-production-layout.headers" \
+              http://127.0.0.1:18084/_preview/search3-candidate/poisk-turov/ \
+              -o "$RUNNER_TEMP/search3-production-layout.html"; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$php_pid" >/dev/null 2>&1; then
+              cat "$RUNNER_TEMP/search3-production-layout.log" >&2
+              exit 14
+            fi
+            sleep .25
+          done
+          test "$ready" -eq 1
+          grep -Eiq '^X-Robots-Tag: noindex, *follow' "$RUNNER_TEMP/search3-production-layout.headers"
+          grep -Fq 'body class="search3-candidate"' "$RUNNER_TEMP/search3-production-layout.html"
+          grep -Fq 'search3-results-filters-v1-style' "$RUNNER_TEMP/search3-production-layout.html"
+          grep -Fq 'leadApi:"/_preview/search3-candidate/poisk-turov/?lead=disabled"' "$RUNNER_TEMP/search3-production-layout.html"
+          grep -Fq 'metrikaCounter:0' "$RUNNER_TEMP/search3-production-layout.html"
+          if grep -Fq 'PRODUCTION_HOME_SELECTED' "$RUNNER_TEMP/search3-production-layout.html"; then exit 15; fi
+          lead_code="$(curl -sS -o "$RUNNER_TEMP/search3-production-layout-lead.json" -w '%{http_code}' \
+            -H 'Host: anytoour.ru' -H 'Content-Type: application/json' \
+            --data '{"synthetic":true}' \
+            'http://127.0.0.1:18084/_preview/search3-candidate/poisk-turov/?lead=disabled')"
+          test "$lead_code" = "403"
+          grep -Fq 'PREVIEW_LEAD_DISABLED' "$RUNNER_TEMP/search3-production-layout-lead.json"
+          echo "SEARCH3_PRODUCTION_LAYOUT_OK"
+
       - name: Install Chromium
         shell: bash
         run: |
