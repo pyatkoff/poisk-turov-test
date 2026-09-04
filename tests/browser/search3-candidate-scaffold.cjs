@@ -484,7 +484,9 @@ async function geometry(page, width, state) {
       h1: rect(h1),
       searchForm: rect(document.getElementById('tourSearch')),
       status: rect(status),
+      resultsSummary: rect(document.querySelector('.results-search-summary')),
       resultsTools: rect(document.getElementById('resultsTools')),
+      mobileToolbar: rect(document.querySelector('.search3-mobile-toolbar')),
       resultsLayout: rect(layout),
       filterRail: rect(rail),
       firstResult: rect(first),
@@ -507,6 +509,7 @@ async function capture(page, width, state, expectedResultCount, manifest) {
       document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length === count
       && document.querySelectorAll('#results .search3-show-tours').length === count
     ), expectedResultCount, { timeout: 12000 });
+    if (width <= 760) await page.waitForSelector('.search3-mobile-toolbar', { state: 'visible' });
     await page.locator('#results .hotel-card').first().scrollIntoViewIfNeeded();
   }
   const filename = `${width}-${state}.png`;
@@ -536,10 +539,18 @@ async function capture(page, width, state, expectedResultCount, manifest) {
     } else if (width > 760) {
       assert.ok(measured.firstResult.height >= 186 && measured.firstResult.height <= 192, `${width}/${state}: tablet card height`);
       assert.equal(Math.round(measured.firstResult.width), width - 48, `${width}/${state}: tablet card width`);
+      for (const [surface, box] of Object.entries({ summary: measured.resultsSummary, tools: measured.resultsTools, layout: measured.resultsLayout })) {
+        assert.ok(Math.abs(box.x - measured.firstResult.x) <= 1, `${width}/${state}: tablet ${surface} left edge`);
+        assert.ok(Math.abs(box.width - measured.firstResult.width) <= 1, `${width}/${state}: tablet ${surface} width`);
+      }
     } else {
       assert.equal(Math.round(measured.firstResult.width), width - 48, `${width}/${state}: mobile card width`);
       assert.ok(measured.firstPhoto.height >= 124 && measured.firstPhoto.height <= 128, `${width}/${state}: mobile photo height`);
       assert.ok(measured.disclosure.height >= 44, `${width}/${state}: mobile disclosure touch target`);
+      for (const [surface, box] of Object.entries({ summary: measured.resultsSummary, tools: measured.resultsTools, toolbar: measured.mobileToolbar, layout: measured.resultsLayout })) {
+        assert.ok(Math.abs(box.x - measured.firstResult.x) <= 1, `${width}/${state}: mobile ${surface} left edge`);
+        assert.ok(Math.abs(box.width - measured.firstResult.width) <= 1, `${width}/${state}: mobile ${surface} width`);
+      }
     }
   } else {
     assert.equal(measured.resultsActive, false, `${width}/${state}: empty page leaked result state`);
