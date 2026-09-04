@@ -2189,7 +2189,7 @@ async function runFlightFailureFixtures(browser, manifest) {
           return [...grid.children].filter(el=>getComputedStyle(el).display!=='none').map(el=>({x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().bottom,right:el.getBoundingClientRect().right}));
         });
         assert.equal(positions.length,7);
-        assert.ok(Math.max(...positions.map(p=>p.y))-Math.min(...positions.map(p=>p.y))<=3, `${width}: primary button must share the field row`);
+        assert.ok(Math.max(...positions.slice(4).map(p=>p.y))-Math.min(...positions.slice(4).map(p=>p.y))<=3, `${width}: primary button must share the field row`);
         assert.ok(positions.every(p=>p.x>=0&&p.right<=width), `${width}: primary fields overflow`);
         await wide.page.screenshot({path:path.join(outputDir,`${width}-entry-wide.jpg`),type:'jpeg'});
       } finally { await wide.context.close(); }

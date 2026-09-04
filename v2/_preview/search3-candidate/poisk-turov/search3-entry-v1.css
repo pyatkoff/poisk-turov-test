@@ -222,9 +222,7 @@ html body.search3-candidate #tourSearch .search3-nights select.search3-direct-co
  html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid,
  html body.search3-candidate.search3-editing-search #tourSearch .search3-primary-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}
 }
-@media(min-width:1600px){
- html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid,
- html body.search3-candidate.search3-editing-search #tourSearch .search3-primary-grid{grid-template-columns:1fr 1fr 1fr 1.15fr 1.8fr 1fr 1fr!important}
- html body.search3-candidate #tourSearch .search3-primary-grid>.search3-dates{grid-column:auto!important}
-}
+
 html body.search3-candidate #tourSearch .search3-dates .search3-direct-control::-webkit-date-and-time-value{line-height:44px!important}
+
+html body.search3-candidate:not(.search3-has-results) .ds2-site-footer{margin-top:24px!important}
