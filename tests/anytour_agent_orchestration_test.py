@@ -117,6 +117,21 @@ class AnyTourAgentOrchestrationTest(unittest.TestCase):
         )
         self.assertTrue(any("must not be dispatchable" in error for error in errors))
 
+    def test_rejects_dispatch_key_with_yaml_whitespace(self) -> None:
+        errors = self.validate_append(
+            ".github/workflows/validate-anytour-agent-orchestration.yml",
+            "\n# alternate valid YAML spelling\nworkflow_dispatch :\n",
+        )
+        self.assertTrue(any("must not be dispatchable" in error for error in errors))
+
+    def test_rejects_job_level_write_permission_override(self) -> None:
+        errors = self.validate_mutation(
+            ".github/workflows/validate-anytour-agent-orchestration.yml",
+            "  validate:\n    runs-on: ubuntu-latest",
+            "  validate:\n    permissions:\n      contents: write\n    runs-on: ubuntu-latest",
+        )
+        self.assertTrue(any("exactly one top-level permissions block" in error for error in errors))
+
 
 if __name__ == "__main__":
     unittest.main()

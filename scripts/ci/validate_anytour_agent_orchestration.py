@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import tomllib
 from pathlib import Path
 
@@ -106,6 +107,49 @@ REQUIRED_DOCUMENT_CLAUSES = (
     "#1297 exact-SHA containment",
     "#1298 Search3 reference dossier",
 )
+
+
+def workflow_policy_errors(workflow: str) -> list[str]:
+    """Validate the small security-relevant YAML surface without a YAML dependency."""
+    errors: list[str] = []
+    code_lines = [line.split("#", 1)[0].rstrip() for line in workflow.splitlines()]
+
+    if any(re.search(r"\bworkflow_dispatch\b", line) for line in code_lines):
+        errors.append("orchestration validation workflow must not be dispatchable")
+
+    headers: list[tuple[int, int, str]] = []
+    permission_pattern = re.compile(r"^(\s*)[\"']?permissions[\"']?\s*:\s*(.*?)\s*$")
+    for index, line in enumerate(code_lines):
+        match = permission_pattern.match(line)
+        if match:
+            headers.append((index, len(match.group(1)), match.group(2)))
+
+    if len(headers) != 1:
+        errors.append("workflow must declare exactly one top-level permissions block")
+        return errors
+
+    index, indent, inline = headers[0]
+    if indent != 0 or inline:
+        errors.append("orchestration workflow permissions must be a top-level mapping")
+        return errors
+
+    entries: list[tuple[str, str]] = []
+    entry_pattern = re.compile(r"^\s{2}([A-Za-z0-9_-]+)\s*:\s*([^\s]+)\s*$")
+    for line in code_lines[index + 1 :]:
+        if not line.strip():
+            continue
+        current_indent = len(line) - len(line.lstrip())
+        if current_indent == 0:
+            break
+        match = entry_pattern.match(line)
+        if not match:
+            errors.append("orchestration workflow permissions block has unsupported structure")
+            return errors
+        entries.append((match.group(1), match.group(2)))
+
+    if entries != [("contents", "read")]:
+        errors.append(f"orchestration workflow permissions must remain only contents: read, got {entries}")
+    return errors
 PROTECTED_TERMS = (
     "Tourvisor",
     "lead payload/field mapping/delivery",
@@ -206,10 +250,7 @@ def validate(root: Path = ROOT) -> list[str]:
     except OSError as exc:
         errors.append(f"orchestration workflow unreadable: {exc}")
     else:
-        if "permissions:\n  contents: read" not in workflow:
-            errors.append("orchestration workflow permissions must remain contents: read")
-        if "workflow_dispatch:" in workflow:
-            errors.append("orchestration validation workflow must not be dispatchable")
+        errors.extend(workflow_policy_errors(workflow))
 
     return errors
 
