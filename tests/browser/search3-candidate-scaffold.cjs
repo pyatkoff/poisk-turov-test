@@ -1431,6 +1431,13 @@ async function runDesktopSelectedPresentationEvidence(browser, manifest) {
       document.querySelector('.tour-flights .selected-loading')?.textContent || ''
     ), null, { timeout: 12000 });
     await waitForSelectedPresentation(harness.page);
+    await harness.page.locator('#selectedTour').evaluate(node => {
+      node.scrollIntoView({ behavior: 'instant', block: 'start' });
+    });
+    await harness.page.waitForFunction(() => {
+      const top = document.getElementById('selectedTour')?.getBoundingClientRect().top;
+      return Number.isFinite(top) && top >= 0 && top <= 24;
+    });
     const presentation = await selectedPresentationState(harness.page);
     assertSelectedPresentation(presentation, 1440);
     await writePresentationScreenshot(harness.page, '1440-selected-tour-presentation.png', manifest, {
