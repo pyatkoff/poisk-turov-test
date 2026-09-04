@@ -680,6 +680,32 @@ syncGroups();window.addEventListener('resize',syncGroups);
     return label;
   }
 
+  function roomLabel(value) {
+    var raw = textValue(value);
+    if (!raw) return '';
+    var key = raw.toLowerCase().replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    var labels = {
+      'standard': 'Стандартный номер',
+      'standard room': 'Стандартный номер',
+      'std': 'Стандартный номер',
+      'std room': 'Стандартный номер',
+      'std room without air conditioner': 'Стандартный номер без кондиционера'
+    };
+    return labels[key] || raw;
+  }
+
+  function placementLabel(value) {
+    var raw = textValue(value);
+    if (!raw) return '';
+    var labels = {
+      'SGL': 'Одноместное',
+      'DBL': 'Двухместное',
+      'TRPL': 'Трёхместное',
+      'QUAD': 'Четырёхместное'
+    };
+    return labels[raw.toUpperCase()] || raw;
+  }
+
   function guestLabel() {
     var form = document.getElementById('tourSearch');
     var adults = Number(form && form.elements && form.elements.count_people && form.elements.count_people.value || 2) || 2;
@@ -752,6 +778,48 @@ syncGroups();window.addEventListener('resize',syncGroups);
     context.innerHTML = lines.map(function (line) { return '<span>' + safe(line) + '</span>'; }).join(' ');
   }
 
+  function ensureTourListHead(toursNode, hotel) {
+    if (!toursNode || toursNode.querySelector('.search3-tour-list-head')) return;
+    var count = Array.isArray(hotel && hotel.tours) ? hotel.tours.length : toursNode.querySelectorAll('.tour-row').length;
+    var head = document.createElement('div');
+    head.className = 'search3-tour-list-head';
+    head.innerHTML = '<div><strong>Лучшее предложение</strong><span>Сравните дату, номер, питание и цену</span></div>'
+      + '<b>' + count + ' ' + tourWord(count) + '</b>';
+    toursNode.insertBefore(head, toursNode.firstChild);
+  }
+
+  function decorateTourRows(toursNode, hotel) {
+    if (!toursNode) return;
+    ensureTourListHead(toursNode, hotel);
+    toursNode.querySelectorAll('.tour-row').forEach(function (row) {
+      if (row.dataset.search3OfferV2 === '1') return;
+      row.dataset.search3OfferV2 = '1';
+
+      var date = row.querySelector('.tour-meta > strong');
+      if (date) date.textContent = formatTourDate(date.textContent);
+
+      row.querySelectorAll('.tour-fact').forEach(function (fact) {
+        var label = fact.querySelector('small');
+        var value = fact.querySelector('b');
+        if (!label || !value) return;
+        var name = textValue(label.textContent).toLowerCase();
+        if (name === 'питание') value.textContent = mealLabel(value.textContent);
+        if (name === 'номер') value.textContent = roomLabel(value.textContent);
+        if (name === 'размещение') value.textContent = placementLabel(value.textContent);
+      });
+
+      var action = row.querySelector('.tour-action');
+      var price = action && action.querySelector(':scope > b');
+      if (action && price) {
+        var scope = document.createElement('small');
+        scope.className = 'search3-tour-price-scope';
+        scope.textContent = 'За весь тур';
+        action.insertBefore(scope, price);
+        price.setAttribute('aria-label', (price.textContent || '').replace(/\s+/g, ' ').trim() + ', за весь тур');
+      }
+    });
+  }
+
   function collapseCard(card) {
     var tours = card.querySelector('.hotel-tours');
     var button = card.querySelector('.search3-show-tours');
@@ -780,6 +848,7 @@ syncGroups();window.addEventListener('resize',syncGroups);
     decorateHeading(bodyNode, hotel);
     decorateDecisionCopy(card, hotel);
     decoratePriceContext(bodyNode, hotel);
+    decorateTourRows(tours, hotel);
     var facts = cardFacts(hotel);
     if (facts.length) {
       var factsNode = document.createElement('div');
@@ -851,6 +920,15 @@ syncGroups();window.addEventListener('resize',syncGroups);
   window.addEventListener('v2:tour-selected', function () { collapseAll(); });
 
   document.addEventListener('click', function (event) {
+    var more = event.target && event.target.closest && event.target.closest('.tour-more-toggle');
+    if (more && results.contains(more)) {
+      window.setTimeout(function () {
+        var card = more.closest('.hotel-card');
+        var hotel = card && hotelsById.get(String(card.dataset.hotelId || ''));
+        decorateTourRows(card && card.querySelector('.hotel-tours'), hotel);
+      }, 0);
+      return;
+    }
     var button = event.target && event.target.closest && event.target.closest('.search3-show-tours');
     if (!button || !results.contains(button)) return;
     var card = button.closest('.hotel-card');

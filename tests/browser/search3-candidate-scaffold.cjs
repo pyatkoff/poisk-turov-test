@@ -912,8 +912,16 @@ async function runDesktopPresentationEvidence(browser, manifest) {
       const direct = card?.querySelector('.direct-tour');
       const action = direct?.closest('.tour-action');
       const price = action?.querySelector(':scope > b');
+      const priceScope = action?.querySelector('.search3-tour-price-scope');
+      const listHead = card?.querySelector('.search3-tour-list-head');
+      const tourDate = card?.querySelector('.tour-meta > strong');
+      const tourFacts = Object.fromEntries([...(card?.querySelectorAll('.tour-fact') || [])].map(fact => [
+        (fact.querySelector('small')?.textContent || '').trim(),
+        (fact.querySelector('b')?.textContent || '').trim(),
+      ]).filter(entry => entry[0]));
       const priceBox = price?.getBoundingClientRect();
       const directBox = direct?.getBoundingClientRect();
+      const priceScopeBox = priceScope?.getBoundingClientRect();
       return {
         openCards: document.querySelectorAll('#results .hotel-card.search3-tours-open').length,
         expanded: button?.getAttribute('aria-expanded') || '',
@@ -921,6 +929,13 @@ async function runDesktopPresentationEvidence(browser, manifest) {
         directTourText: direct?.textContent.replace(/\s+/g, ' ').trim() || '',
         directTourCount: card?.querySelectorAll('.direct-tour').length || 0,
         tourPriceText: price?.textContent.replace(/\s+/g, ' ').trim() || '',
+        tourPriceScopeText: priceScope?.textContent.replace(/\s+/g, ' ').trim() || '',
+        tourPriceScopeVisible: !!(priceScopeBox && priceScopeBox.width > 0 && priceScopeBox.height > 0),
+        listTitle: listHead?.querySelector('strong')?.textContent.replace(/\s+/g, ' ').trim() || '',
+        listHint: listHead?.querySelector('span')?.textContent.replace(/\s+/g, ' ').trim() || '',
+        listCount: listHead?.querySelector(':scope > b')?.textContent.replace(/\s+/g, ' ').trim() || '',
+        tourDate: tourDate?.textContent.replace(/\s+/g, ' ').trim() || '',
+        tourFacts,
         tourPriceWhiteSpace: price ? getComputedStyle(price).whiteSpace : '',
         tourActionOverflow: action ? action.scrollWidth > action.clientWidth + 1 : true,
         tourPriceButtonGap: priceBox && directBox ? Math.round((directBox.left - priceBox.right) * 100) / 100 : -1,
@@ -940,6 +955,15 @@ async function runDesktopPresentationEvidence(browser, manifest) {
       directTourCount: 1,
     });
     assert.match(disclosure.tourPriceText, /^\d[\d ]* ₽$/, 'expanded tour price must remain readable');
+    assert.equal(disclosure.tourPriceScopeText, 'За весь тур');
+    assert.equal(disclosure.tourPriceScopeVisible, true);
+    assert.equal(disclosure.listTitle, 'Лучшее предложение');
+    assert.equal(disclosure.listHint, 'Сравните дату, номер, питание и цену');
+    assert.equal(disclosure.listCount, '1 тур');
+    assert.equal(disclosure.tourDate, '12 сент. 2099');
+    assert.equal(disclosure.tourFacts['Питание'], 'Всё включено');
+    assert.equal(disclosure.tourFacts['Номер'], 'Стандартный номер');
+    assert.equal(disclosure.tourFacts['Размещение'], '2 взрослых');
     assert.equal(disclosure.tourPriceWhiteSpace, 'nowrap', 'expanded tour price must stay on one line');
     assert.equal(disclosure.tourActionOverflow, false, 'expanded tour action must not overflow');
     assert.ok(disclosure.tourPriceButtonGap >= 10, 'expanded tour price and CTA must not overlap');
@@ -962,6 +986,63 @@ async function runDesktopPresentationEvidence(browser, manifest) {
       urlPreserved: true,
     };
     await assertClean(harness, 'desktop-presentation');
+  } finally {
+    await harness.context.close();
+  }
+}
+
+async function runMobileExpandedOfferEvidence(browser, manifest) {
+  const viewport = fixture.viewports.find(item => item.width === 375);
+  const scenario = scenarioController('mobile-expanded-offer');
+  const harness = await createHarness(browser, viewport, scenario);
+  try {
+    await loadCompleteResults(harness, scenario);
+    const beforeDisclosureCalls = apiCallCount(scenario);
+    await harness.page.locator('#results .search3-show-tours').first().click();
+    await harness.page.waitForFunction(() => (
+      document.querySelectorAll('#results .hotel-card.search3-tours-open').length === 1
+      && !document.querySelector('#results .hotel-card.search3-tours-open .hotel-tours')?.hidden
+    ));
+    const expanded = await harness.page.evaluate(() => {
+      const card = document.querySelector('#results .hotel-card.search3-tours-open');
+      const row = card?.querySelector('.tour-row');
+      const button = card?.querySelector('.direct-tour');
+      const scope = card?.querySelector('.search3-tour-price-scope');
+      const date = card?.querySelector('.tour-meta > strong');
+      const meal = [...(card?.querySelectorAll('.tour-fact') || [])].find(fact => (
+        fact.querySelector('small')?.textContent.trim().toLowerCase() === 'питание'
+      ))?.querySelector('b');
+      const room = [...(card?.querySelectorAll('.tour-fact') || [])].find(fact => (
+        fact.querySelector('small')?.textContent.trim().toLowerCase() === 'номер'
+      ))?.querySelector('b');
+      const box = node => {
+        const rect = node?.getBoundingClientRect();
+        return rect ? { width: rect.width, height: rect.height } : null;
+      };
+      return {
+        horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+        listTitle: card?.querySelector('.search3-tour-list-head strong')?.textContent.trim() || '',
+        date: date?.textContent.trim() || '',
+        meal: meal?.textContent.trim() || '',
+        room: room?.textContent.trim() || '',
+        priceScope: scope?.textContent.trim() || '',
+        row: box(row),
+        button: box(button),
+        scope: box(scope),
+      };
+    });
+    assert.equal(expanded.horizontalOverflow, false, '375 expanded offer must not overflow horizontally');
+    assert.equal(expanded.listTitle, 'Лучшее предложение');
+    assert.equal(expanded.date, '12 сент. 2099');
+    assert.equal(expanded.meal, 'Всё включено');
+    assert.equal(expanded.room, 'Стандартный номер');
+    assert.equal(expanded.priceScope, 'За весь тур');
+    assert.ok(expanded.row?.width > 0 && expanded.row?.height > 0, '375 expanded offer row must be visible');
+    assert.ok(expanded.button?.height >= 44, '375 expanded offer CTA must keep a 44px touch target');
+    assert.ok(expanded.scope?.width > 0 && expanded.scope?.height > 0, '375 total-price scope must be visible');
+    assert.equal(apiCallCount(scenario), beforeDisclosureCalls, '375 disclosure must remain local');
+    await writePresentationScreenshot(harness.page, '375-first-hotel-expanded.png', manifest, { expanded });
+    await assertClean(harness, '375-expanded-offer-presentation');
   } finally {
     await harness.context.close();
   }
@@ -1039,6 +1120,7 @@ async function runMobileFilterEvidence(browser, manifest, width, filename, close
 
 async function runPresentationEvidence(browser, manifest) {
   await runDesktopPresentationEvidence(browser, manifest);
+  await runMobileExpandedOfferEvidence(browser, manifest);
   await runMobileFilterEvidence(browser, manifest, 430, '430-filters-open.png', 'escape');
   await runMobileFilterEvidence(browser, manifest, 375, '375-filters-open.png', 'backdrop');
 }
@@ -1453,9 +1535,9 @@ async function runFlightFailureFixtures(browser, manifest) {
 
   assert.equal(manifest.screenshots.length, expectedEvidenceScreenshotCount);
   assert.equal(new Set(manifest.screenshots.map(item => item.file)).size, expectedEvidenceScreenshotCount);
-  assert.equal(manifest.presentationScreenshots.length, 3);
+  assert.equal(manifest.presentationScreenshots.length, 4);
   assert.deepEqual(manifest.presentationScreenshots.map(item => item.file), expectedPresentationCaptures);
-  assert.equal(new Set(manifest.presentationScreenshots.map(item => item.file)).size, 3);
+  assert.equal(new Set(manifest.presentationScreenshots.map(item => item.file)).size, 4);
   assert.equal(manifest.presentation.status, 'REFERENCE_IMPLEMENTATION_IN_PROGRESS');
   assert.equal(manifest.presentation.approvedPixelsCompared, false);
   assert.deepEqual(

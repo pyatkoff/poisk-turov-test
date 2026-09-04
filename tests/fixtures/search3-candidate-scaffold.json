@@ -23,6 +23,7 @@
     ],
     "captures": [
       "1440-first-hotel-expanded.png",
+      "375-first-hotel-expanded.png",
       "430-filters-open.png",
       "375-filters-open.png"
     ]
@@ -40,6 +41,7 @@
       "finalOnlyWidths": [430, 768, 1024],
       "presentationCaptures": [
         "1440-first-hotel-expanded.png",
+        "375-first-hotel-expanded.png",
         "430-filters-open.png",
         "375-filters-open.png"
       ],
@@ -51,6 +53,7 @@
       "finalOnlyWidths": [],
       "presentationCaptures": [
         "1440-first-hotel-expanded.png",
+        "375-first-hotel-expanded.png",
         "430-filters-open.png",
         "375-filters-open.png"
       ],

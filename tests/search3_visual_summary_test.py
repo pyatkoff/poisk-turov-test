@@ -20,7 +20,7 @@ class Search3VisualSummaryTest(unittest.TestCase):
         )
         self.assertEqual(fixture["schemaVersion"], 2)
         canonical = [375, 430, 768, 1024, 1440]
-        expected_capture_counts = {"pr": 12, "candidate": 18}
+        expected_capture_counts = {"pr": 13, "candidate": 19}
         for name, tier in fixture["visualTiers"].items():
             assigned = tier["lifecycleWidths"] + tier["finalOnlyWidths"]
             self.assertEqual(sorted(assigned), canonical, name)
