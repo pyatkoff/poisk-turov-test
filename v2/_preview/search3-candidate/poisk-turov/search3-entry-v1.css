@@ -76,13 +76,13 @@ html body.search3-candidate #resultsSearchSummary .search3-entry-summary-detail{
   html body.search3-candidate.search3-results-active #resultsSearchSummary .search3-entry-summary-detail:not([hidden]){
     display:block!important;
     margin-top:2px!important;
-    overflow:hidden!important;
+    overflow:visible!important;
     color:#667085!important;
     font-size:12px!important;
     line-height:1.2!important;
     font-weight:750!important;
-    text-overflow:ellipsis!important;
-    white-space:nowrap!important;
+    text-overflow:clip!important;
+    white-space:normal!important;
   }
   html body.search3-candidate.search3-results-active #resultsSearchSummary .results-search-summary__edit{
     min-width:0!important;

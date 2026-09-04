@@ -626,6 +626,11 @@ async function geometry(page, width, state) {
       searchForm: rect(document.getElementById('tourSearch')),
       status: rect(status),
       resultsSummary: rect(document.querySelector('.results-search-summary')),
+      summaryDetail: [...document.querySelectorAll('.search3-entry-summary-detail')].map(node => ({
+        text: node.textContent.trim(),
+        visible: rendered(node),
+        fits: node.scrollWidth <= node.clientWidth + 1 && node.scrollHeight <= node.clientHeight + 1,
+      })),
       resultsTools: rect(document.getElementById('resultsTools')),
       mobileToolbar: rect(mobileToolbar),
       resultsLayout: rect(layout),
@@ -675,6 +680,11 @@ async function geometry(page, width, state) {
 async function capture(page, width, state, expectedResultCount, manifest) {
   assert.ok(expectedStates.includes(state));
   if (expectedResultCount > 0) {
+    if (width <= 760) {
+      assert.equal(measured.summaryDetail.length, 1, `${width}: compact search context missing`);
+      assert.ok(measured.summaryDetail[0].visible && measured.summaryDetail[0].fits, `${width}: compact search context is clipped`);
+      assert.match(measured.summaryDetail[0].text, /2 взрослых/, `${width}: traveler context missing`);
+    }
     await page.waitForFunction(count => (
       document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length === count
       && document.querySelectorAll('#results .search3-show-tours').length === count
@@ -1201,6 +1211,9 @@ async function selectedPresentationState(page) {
       pathname: location.pathname,
       horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
       stepperRailOverlap: overlaps(stepperRect, detailRect),
+      visibleStepNames: [...document.querySelectorAll('#selectedTour .search3-booking-step b')]
+        .filter(node => node.getBoundingClientRect().height > 0 && parseFloat(getComputedStyle(node).fontSize) >= 12)
+        .map(node => node.textContent.trim()),
     };
   });
 }
@@ -1267,6 +1280,7 @@ function assertSelectedPresentation(state, width) {
   }, `${width}: presentation must not mutate Tourvisor-derived tour data`);
   assert.equal(state.pathname, fixture.route);
   assert.equal(state.horizontalOverflow, false, `${width}: selected presentation must not overflow`);
+  if (width <= 640) assert.deepEqual(state.visibleStepNames, ['Рейс', 'Итог тура', 'Заявка'], 'mobile booking stages must have readable names');
   if (width >= 1000) assert.equal(state.stepperRailOverlap, false, `${width}: booking steps must clear the total rail`);
 }
 
