@@ -773,19 +773,7 @@ syncGroups();window.addEventListener('resize',syncGroups);
     if (label) label.textContent = 'За весь тур';
     if (price) price.setAttribute('aria-label', (price.textContent || '').replace(/\s+/g, ' ').trim() + ', за тур на ' + guestLabel());
     if (!tour || !context) return;
-    var primary = [];
-    if (tour.nights) primary.push(tour.nights + ' ' + plural(tour.nights, 'ночь', 'ночи', 'ночей'));
-    var guests = guestLabel();
-    var family = guests.split(' и ');
-    primary.push(family[0]);
-    var secondary = [];
-    secondary.push(tour.isCharter === true ? 'Чартерный перелёт' : 'Перелёт включён');
-    var meal = mealLabel(tour.meal);
-    if (meal) secondary.push(meal);
-    var lines = [primary.join(' · ')];
-    if (family.length > 1) lines.push('и ' + family.slice(1).join(' и '));
-    lines.push(secondary.join(' · '));
-    context.innerHTML = lines.map(function (line) { return '<span>' + safe(line) + '</span>'; }).join(' ');
+    context.innerHTML = '<span>' + safe(guestLabel()) + '</span>';
   }
 
   function ensureTourListHead(toursNode, hotel) {

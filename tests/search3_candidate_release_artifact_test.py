@@ -27,7 +27,7 @@ SPEC.loader.exec_module(builder)
 
 FROZEN_COMPATIBILITY_ASSET_SHA256 = {
     "search3-results-filters-v1.css": "056ca312c4f5356e1d3b8cc95e90355a0420420501e6467ae014e917df39fe7b",
-    "search3-results-filters-v1.js": "9c0f5cf1ac6d84c655ec3d50a3c8f4c6aa5eb0bb52695942b32e17315b2c7ac2",
+    "search3-results-filters-v1.js": "feac5b5e152dc499dd76e7d7733d376e1ace57f6c1e5d8568ef2f55af0efdf58",
 }
 
 

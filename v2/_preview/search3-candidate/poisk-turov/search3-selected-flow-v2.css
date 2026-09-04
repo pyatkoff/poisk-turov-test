@@ -173,3 +173,8 @@ html body.search3-candidate #selectedTour .search3-booking-summary dl>div{grid-t
  html body.search3-candidate #selectedTour .search3-final-services{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  html body.search3-candidate #selectedTour .flight-segment-title{flex-wrap:wrap!important}
 }
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-summary{font-size:14px!important;line-height:1.4!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-tradeoffs span{font-size:12px!important;line-height:1.4!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-summary-submit{font-size:15px!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-summary-actions p,
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__total span{font-size:12px!important}

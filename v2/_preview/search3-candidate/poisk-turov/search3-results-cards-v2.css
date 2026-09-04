@@ -137,3 +137,14 @@ html body.search3-candidate #results .tour-facts b{font-size:14px!important;line
 @media(min-width:761px) and (max-width:999px){
  html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card .search3-hotel-facts{height:auto!important;max-height:none!important;min-height:72px!important;overflow:visible!important}
 }
+
+/* Keep the photo useful; spend less space repeating package details. */
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card .hotel-price-context{font-size:13px!important;line-height:1.4!important;text-transform:none!important}
+@media(max-width:760px){
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card .hotel-photo{position:relative!important;aspect-ratio:16/9!important;height:auto!important;min-height:0!important;max-height:none!important}
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card .hotel-photo>img{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-height:0!important;max-height:none!important;object-fit:cover!important}
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card .hotel-best-offer{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:3px 12px!important;text-align:left!important;width:100%!important}
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card .hotel-best-offer>small:not(.hotel-price-context){grid-column:1!important;font-size:11px!important;text-align:left!important}
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card .hotel-price{grid-column:2!important;grid-row:1/3!important;margin:0!important;font-size:24px!important;white-space:nowrap!important}
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card .hotel-price-context{grid-column:1!important;grid-row:2!important;margin:0!important;text-align:left!important}
+}

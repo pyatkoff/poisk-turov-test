@@ -347,6 +347,7 @@ async function assertPreviewLeadGuard() {
 async function createHarness(browser, viewport, scenario) {
   const context = await browser.newContext({
     viewport,
+    hasTouch: viewport.width <= 430,
     ignoreHTTPSErrors: true,
     serviceWorkers: 'block',
     ...contextProfile,
@@ -721,10 +722,10 @@ async function capture(page, width, state, expectedResultCount, manifest) {
     assert.equal(measured.cardCopy.category, '5★', `${width}/${state}: hotel category must be visible beside the title`);
     assert.equal(measured.cardCopy.facts['Вылет'], '12 сент. 2099', `${width}/${state}: departure date must be human-readable`);
     assert.equal(measured.cardCopy.facts['Питание'], 'Всё включено', `${width}/${state}: meal code/name must be customer-readable`);
-    assert.equal(measured.cardCopy.priceContext, '8 ночей · 2 взрослых Чартерный перелёт · Всё включено', `${width}/${state}: price context must explain the package`);
+    assert.equal(measured.cardCopy.priceContext, '2 взрослых', `${width}/${state}: price context must explain the package`);
     assert.match(measured.cardCopy.priceAriaLabel, /за тур на 2 взрослых$/, `${width}/${state}: total price needs an accessible scope`);
     assert.equal(measured.cardCopy.priceContextVisible, true, `${width}/${state}: price context must be visibly rendered`);
-    assert.ok(measured.cardCopy.priceContextBox.height >= 20, `${width}/${state}: both price-context lines must remain visible`);
+    assert.ok(measured.cardCopy.priceContextBox.height >= 16, `${width}/${state}: traveler scope must remain visible`);
     assert.equal(measured.filterAffordanceCount, 1, `${width}/${state}: expected exactly one visible filter affordance`);
     if (width === 375 && state === 'progressive-25') {
       assert.ok(
@@ -753,7 +754,7 @@ async function capture(page, width, state, expectedResultCount, manifest) {
       }
     } else {
       assert.equal(Math.round(measured.firstResult.width), width - 48, `${width}/${state}: mobile card width`);
-      assert.ok(measured.firstPhoto.height >= 124 && measured.firstPhoto.height <= 128, `${width}/${state}: mobile photo height`);
+      assert.ok(Math.abs(measured.firstPhoto.height - measured.firstPhoto.width * 9 / 16) <= 2, `${width}/${state}: mobile photo height`);
       for (const [surface, box] of Object.entries({ summary: measured.resultsSummary, tools: measured.resultsTools, toolbar: measured.mobileToolbar, layout: measured.resultsLayout })) {
         assert.ok(Math.abs(box.x - measured.firstResult.x) <= 1, `${width}/${state}: mobile ${surface} left edge`);
         assert.ok(Math.abs(box.width - measured.firstResult.width) <= 1, `${width}/${state}: mobile ${surface} width`);
@@ -800,7 +801,8 @@ async function runFiveWidthEvidence(browser, manifest) {
       for (const [name, value] of Object.entries({dateFrom:'2099-09-13',dateTo:'2099-09-20',daysFrom:'8',daysTill:'12'})) {
         const control = harness.page.locator(`#tourSearch [name="${name}"]`);
         assert.ok(await control.isVisible(), `${viewport.width}: ${name} is hidden`);
-        await control.click();
+        if (viewport.width <= 430) await control.tap();
+        else await control.click();
         await control.fill(value);
         assert.equal(await control.inputValue(), value, `${viewport.width}: ${name} cannot be edited`);
         const usable = await control.evaluate(el => ({height:el.getBoundingClientRect().height,pointer:getComputedStyle(el).pointerEvents}));
