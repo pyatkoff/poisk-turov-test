@@ -71,4 +71,4 @@ jobs:
           php tests/seo-production-identity-collector-smoke.php
           php tests/seo-core-hotel-cohort-smoke.php
           php tests/seo-core-hotel-review-runtime-smoke.php
-          echo 'V2_SEO_CORE_OK static_public=104 dynamic_resorts=manifest_gated month_navigation=1 structured_data=1 country_resort_links=1 hotel_tours_indexed=0 top500_review_runtime=1'
+          echo 'V2_SEO_CORE_OK static_public=106 hubs=2 catalog_paths=104 dynamic_resorts=manifest_gated month_navigation=1 structured_data=1 country_resort_links=1 hotel_tours_indexed=0 top500_review_runtime=1'
