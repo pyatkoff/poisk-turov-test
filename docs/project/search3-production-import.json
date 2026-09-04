@@ -1,7 +1,7 @@
 {
-  "candidateSourceSha": "32a9dcfce177cc20bc98f3391fcce4dead719c05",
+  "candidateSourceSha": "c72fbd44205927640f0ce45d785af70f88351d21",
   "productionBaseSha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
-  "status": "draft; candidate CI and owner approval pending; not deployed",
+  "status": "candidate CI and visual review passed; preview deployment pending; owner production approval required",
   "transformations": [
     "Remove preview-only simulated lead-state listener",
     "Remove obsolete global matchMedia restoration; canonical mobile filter chooses Search3 breakpoint directly"
@@ -32,8 +32,8 @@
       "productionSha256": "abfbf7efb85d365fea9a87417176008678f2a6922eac2c9e44ab74e771598370"
     },
     "search3-selected-flow-v2.css": {
-      "candidateSha256": "da1c6fb4ec0ff7839c394aeccc7cdd898d645bb63bb245bc7ee1d30cb9c489f7",
-      "productionSha256": "da1c6fb4ec0ff7839c394aeccc7cdd898d645bb63bb245bc7ee1d30cb9c489f7"
+      "candidateSha256": "b2c28bf2c5a0b318f51630c8e92fe75fb0871f27ee58784e9129bbd18ab49bd9",
+      "productionSha256": "b2c28bf2c5a0b318f51630c8e92fe75fb0871f27ee58784e9129bbd18ab49bd9"
     },
     "search3-selected-flow-v2.js": {
       "candidateSha256": "a2beab58a8433ee5ffd518a95949de910e61dcb52e0e53661096329c5fdcfbce",
@@ -50,5 +50,15 @@
     "lead-search-context.js": "8d6eafbdf9fbb23aa5984edbe2c585b65c5647517492f7799c1dd732e710335f",
     "lead-form-guard-v1.js": "42427863281ca0bdcb7a84693f57687cd10747196dc85fc5daffdd477fc7c48a",
     "runtime-v3.js": "67f014910a5344fab7ed7e70d405f6e3256578eb84e8fbe634eed2a2c8baef92"
+  },
+  "candidateEvidence": {
+    "runId": 33918861700,
+    "attempt": 1,
+    "evidenceArtifactId": 9954267481,
+    "releaseArtifactId": 9954272229,
+    "fiveWidthsPassed": true,
+    "selectedPriceConsistencyPassed": true,
+    "legacyCheckoutSuppressionPassed": true,
+    "productionLeadDeliveryVerified": false
   }
 }
