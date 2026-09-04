@@ -1,0 +1,54 @@
+name: Validate Search3 whole-site preview boundary
+
+on:
+  pull_request:
+    paths:
+      - 'v2/site-path-v1.php'
+      - 'v2/assets.php'
+      - 'v2/site-header-v2.php'
+      - 'v2/site-footer-v1.php'
+      - 'v2/site-page-shell-v1.php'
+      - 'v2/seo-page-primitives-v1.php'
+      - 'v2/home-v1.php'
+      - 'v2/hot/index.php'
+      - 'v2/poisk-turov/index.php'
+      - 'v2/preview-lead-disabled.php'
+      - 'tests/site-preview-path-smoke.php'
+      - '.github/workflows/validate-search3-whole-site-preview-boundary.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  preview-boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            v2/site-path-v1.php \
+            v2/assets.php \
+            v2/site-header-v2.php \
+            v2/site-footer-v1.php \
+            v2/site-page-shell-v1.php \
+            v2/seo-page-primitives-v1.php \
+            v2/home-v1.php \
+            v2/hot/index.php \
+            v2/poisk-turov/index.php \
+            v2/preview-lead-disabled.php \
+            tests/site-preview-path-smoke.php; do
+            php -l "$file" >/dev/null
+          done
+          echo SEARCH3_WHOLE_SITE_PREVIEW_PHP_OK
+      - name: Preserve production paths and isolate preview paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          php tests/site-preview-path-smoke.php production
+          php tests/site-preview-path-smoke.php preview
+          git diff --check "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"
+          echo SEARCH3_WHOLE_SITE_PREVIEW_BOUNDARY_OK
