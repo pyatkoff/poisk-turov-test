@@ -418,6 +418,7 @@ async function createHarness(browser, viewport, scenario) {
     candidateScript: document.getElementById('search3-results-filters-v1-script')?.getAttribute('src') || '',
     presentationStatus: window.Search3CandidateResultsV1?.status || '',
     approvedPixelsCompared: window.Search3CandidateResultsV1?.approvedPixelsCompared,
+    selectedHandoffVersion: window.Search3CandidateSelectedHandoffV1?.version || 0,
     partyLabels: [0, 1, 2, 5].map(children => window.Search3CandidateResultsV1?.partyLabel(2, children) || ''),
   }));
   assert.equal(identity.h1Count, 1);
@@ -442,6 +443,7 @@ async function createHarness(browser, viewport, scenario) {
   assert.equal(new URL(identity.candidateScript, baseUrl).searchParams.get('v'), diskAssets.find(item => item.file.endsWith('.js')).sha256.slice(0, 16));
   assert.equal(identity.presentationStatus, fixture.presentation.status);
   assert.equal(identity.approvedPixelsCompared, false);
+  assert.equal(identity.selectedHandoffVersion, 1);
   assert.deepEqual(identity.partyLabels, [
     '2 взрослых',
     '2 взрослых и 1 ребёнок',
@@ -1061,6 +1063,183 @@ async function runMobileExpandedOfferEvidence(browser, manifest) {
   }
 }
 
+async function renderSelectedTourOffer(page) {
+  await page.evaluate(({ result, searchId }) => {
+    window.V2Runtime.setSearchId(searchId);
+    window.V2Results.render([result]);
+  }, {
+    result: selectedTourResult(),
+    searchId: fixture.failureFixtures.selectedTour.searchId,
+  });
+  await page.waitForFunction(() => (
+    document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length === 1
+  ));
+  await page.locator('#results .search3-show-tours').click();
+  await page.waitForFunction(() => !document.querySelector('#results .hotel-tours')?.hidden);
+}
+
+async function runMobileSelectedHandoffEvidence(browser, manifest) {
+  const viewport = fixture.viewports.find(item => item.width === 375);
+  const scenario = scenarioController('flight-empty');
+  const harness = await createHarness(browser, viewport, scenario);
+  try {
+    await renderSelectedTourOffer(harness.page);
+    await harness.page.evaluate(tour => {
+      const runtime = window.V2Runtime;
+      const originalApi = runtime.api.bind(runtime);
+      let resolveTour;
+      const pendingTour = new Promise(resolve => { resolveTour = resolve; });
+      runtime.api = (action, params, options) => (
+        action === 'tour' ? pendingTour : originalApi(action, params, options)
+      );
+      window.__search3ResolveSelectedTour = () => resolveTour(tour);
+    }, fixture.failureFixtures.selectedTour);
+
+    const source = harness.page.locator(`button[data-tid="${fixture.failureFixtures.selectedTour.id}"]`);
+    await source.click();
+    await harness.page.waitForFunction(() => (
+      document.getElementById('selectedTour')?.getAttribute('aria-busy') === 'true'
+      && document.querySelector('#results button[data-search3-production-label]')?.disabled === true
+    ));
+    const loading = await harness.page.evaluate(() => {
+      const selected = document.getElementById('selectedTour');
+      const sourceButton = document.querySelector('#results button[data-search3-production-label]');
+      return {
+        ariaBusy: selected?.getAttribute('aria-busy') || '',
+        sourceDisabled: !!sourceButton?.disabled,
+        sourceText: sourceButton?.textContent.replace(/\s+/g, ' ').trim() || '',
+        originalLabel: sourceButton?.dataset.search3ProductionLabel || '',
+      };
+    });
+    assert.equal(loading.ariaBusy, 'true');
+    assert.equal(loading.sourceDisabled, true);
+    assert.notEqual(loading.sourceText, loading.originalLabel, 'loading feedback must remain production-owned');
+    assert.equal(loading.originalLabel, fixture.presentation.productionOwnedDirectTourText);
+
+    await harness.page.evaluate(() => window.__search3ResolveSelectedTour());
+    await harness.page.waitForFunction(({ tourId, label }) => {
+      const selected = document.getElementById('selectedTour');
+      const heading = selected?.querySelector('.selected-head h2');
+      const sourceButton = document.querySelector('#results button[data-search3-production-label]');
+      return window.V2TourController?.currentTour?.id === tourId
+        && selected?.getAttribute('aria-busy') === 'false'
+        && document.activeElement === heading
+        && sourceButton?.disabled === false
+        && sourceButton?.textContent.replace(/\s+/g, ' ').trim() === label;
+    }, {
+      tourId: fixture.failureFixtures.selectedTour.id,
+      label: fixture.presentation.productionOwnedDirectTourText,
+    }, { timeout: 12000 });
+    await harness.page.waitForFunction(() => /менеджер уточнит перелёт по заявке/i.test(
+      document.querySelector('.tour-flights .selected-loading')?.textContent || ''
+    ), null, { timeout: 12000 });
+
+    const selectedState = await harness.page.evaluate(() => {
+      const selected = document.getElementById('selectedTour');
+      const heading = selected?.querySelector('.selected-head h2');
+      const headingBox = heading?.getBoundingClientRect();
+      const sourceButton = document.querySelector('#results button[data-search3-production-label]');
+      return {
+        ariaBusy: selected?.getAttribute('aria-busy') || '',
+        heading: heading?.textContent.replace(/\s+/g, ' ').trim() || '',
+        headingFocused: document.activeElement === heading,
+        headingTabindex: heading?.getAttribute('tabindex') || '',
+        headingVisible: !!(headingBox && headingBox.width > 0 && headingBox.height > 0),
+        sourceText: sourceButton?.textContent.replace(/\s+/g, ' ').trim() || '',
+        horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+      };
+    });
+    assert.deepEqual({
+      ariaBusy: selectedState.ariaBusy,
+      headingFocused: selectedState.headingFocused,
+      headingTabindex: selectedState.headingTabindex,
+      headingVisible: selectedState.headingVisible,
+      sourceText: selectedState.sourceText,
+      horizontalOverflow: selectedState.horizontalOverflow,
+    }, {
+      ariaBusy: 'false',
+      headingFocused: true,
+      headingTabindex: '-1',
+      headingVisible: true,
+      sourceText: fixture.presentation.productionOwnedDirectTourText,
+      horizontalOverflow: false,
+    });
+    assert.equal(selectedState.heading, fixture.failureFixtures.selectedTour.hotel.name);
+    await writePresentationScreenshot(harness.page, '375-selected-tour-handoff.png', manifest, {
+      geometry: { viewportWidth: 375, state: 'selected-tour-handoff' },
+      selected: selectedState,
+    });
+
+    await harness.page.locator('#selectedTour .back-results').click();
+    await harness.page.waitForFunction(label => {
+      const selected = document.getElementById('selectedTour');
+      const sourceButton = document.querySelector('#results button[data-search3-production-label]');
+      return selected?.hidden === true
+        && selected?.getAttribute('aria-busy') === 'false'
+        && sourceButton?.textContent.replace(/\s+/g, ' ').trim() === label;
+    }, fixture.presentation.productionOwnedDirectTourText);
+    await harness.page.waitForFunction(() => document.activeElement === document.getElementById('results'));
+    const returned = await harness.page.evaluate(() => ({
+      selectedHidden: document.getElementById('selectedTour')?.hidden === true,
+      sourceText: document.querySelector('#results button[data-search3-production-label]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+      resultsFocused: document.activeElement === document.getElementById('results'),
+    }));
+    assert.deepEqual(returned, {
+      selectedHidden: true,
+      sourceText: fixture.presentation.productionOwnedDirectTourText,
+      resultsFocused: true,
+    });
+    manifest.presentationChecks.selectedTourHandoff = {
+      loading,
+      selected: selectedState,
+      returned,
+      error: null,
+    };
+    assert.equal(harness.candidateLeadRequests.length, 0);
+    assert.equal(harness.productionLeadRequests.length, 0);
+    await assertClean(harness, '375-selected-tour-handoff');
+  } finally {
+    await harness.context.close();
+  }
+
+  const errorScenario = scenarioController('selected-tour-error');
+  const errorHarness = await createHarness(browser, viewport, errorScenario);
+  try {
+    await renderSelectedTourOffer(errorHarness.page);
+    await injectDeterministicApiFailure(errorHarness.page, 'tour', {
+      code: 'FIXTURE_SELECTED_TOUR_ERROR',
+      message: 'Fixture selected tour unavailable',
+    });
+    await errorHarness.page.locator(`button[data-tid="${fixture.failureFixtures.selectedTour.id}"]`).click();
+    await errorHarness.page.waitForFunction(label => {
+      const selected = document.getElementById('selectedTour');
+      const sourceButton = document.querySelector('#results button[data-search3-production-label]');
+      return !!selected?.querySelector('.retry-tour')
+        && selected?.getAttribute('aria-busy') === 'false'
+        && sourceButton?.disabled === false
+        && sourceButton?.textContent.replace(/\s+/g, ' ').trim() === label;
+    }, fixture.presentation.productionOwnedDirectTourText);
+    const errorState = await errorHarness.page.evaluate(() => ({
+      ariaBusy: document.getElementById('selectedTour')?.getAttribute('aria-busy') || '',
+      retryVisible: !!document.querySelector('#selectedTour .retry-tour'),
+      sourceText: document.querySelector('#results button[data-search3-production-label]')?.textContent.replace(/\s+/g, ' ').trim() || '',
+      injectedTourCalls: Number(window.__search3InjectedFailureCalls?.tour || 0),
+    }));
+    assert.deepEqual(errorState, {
+      ariaBusy: 'false',
+      retryVisible: true,
+      sourceText: fixture.presentation.productionOwnedDirectTourText,
+      injectedTourCalls: 1,
+    });
+    manifest.presentationChecks.selectedTourHandoff.error = errorState;
+    assert.equal(errorHarness.candidateLeadRequests.length, 0);
+    assert.equal(errorHarness.productionLeadRequests.length, 0);
+    await assertClean(errorHarness, 'selected-tour-error');
+  } finally {
+    await errorHarness.context.close();
+  }
+}
+
 async function runMobileFilterEvidence(browser, manifest, width, filename, closeMode) {
   const viewport = fixture.viewports.find(item => item.width === width);
   const scenario = scenarioController(`mobile-filter-${width}`);
@@ -1134,6 +1313,7 @@ async function runMobileFilterEvidence(browser, manifest, width, filename, close
 async function runPresentationEvidence(browser, manifest) {
   await runDesktopPresentationEvidence(browser, manifest);
   await runMobileExpandedOfferEvidence(browser, manifest);
+  await runMobileSelectedHandoffEvidence(browser, manifest);
   await runMobileFilterEvidence(browser, manifest, 430, '430-filters-open.png', 'escape');
   await runMobileFilterEvidence(browser, manifest, 375, '375-filters-open.png', 'backdrop');
 }
@@ -1548,9 +1728,9 @@ async function runFlightFailureFixtures(browser, manifest) {
 
   assert.equal(manifest.screenshots.length, expectedEvidenceScreenshotCount);
   assert.equal(new Set(manifest.screenshots.map(item => item.file)).size, expectedEvidenceScreenshotCount);
-  assert.equal(manifest.presentationScreenshots.length, 4);
+  assert.equal(manifest.presentationScreenshots.length, 5);
   assert.deepEqual(manifest.presentationScreenshots.map(item => item.file), expectedPresentationCaptures);
-  assert.equal(new Set(manifest.presentationScreenshots.map(item => item.file)).size, 4);
+  assert.equal(new Set(manifest.presentationScreenshots.map(item => item.file)).size, 5);
   assert.equal(manifest.presentation.status, 'REFERENCE_IMPLEMENTATION_IN_PROGRESS');
   assert.equal(manifest.presentation.approvedPixelsCompared, false);
   assert.deepEqual(

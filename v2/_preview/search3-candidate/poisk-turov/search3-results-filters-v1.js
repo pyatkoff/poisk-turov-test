@@ -810,6 +810,10 @@ syncGroups();window.addEventListener('resize',syncGroups);
 
       var action = row.querySelector('.tour-action');
       var price = action && action.querySelector(':scope > b');
+      var productionChoice = action && action.querySelector('button[data-tid]');
+      if (productionChoice && !productionChoice.dataset.search3ProductionLabel) {
+        productionChoice.dataset.search3ProductionLabel = (productionChoice.textContent || '').replace(/\s+/g, ' ').trim();
+      }
       if (action && price) {
         var scope = document.createElement('small');
         scope.className = 'search3-tour-price-scope';
@@ -983,5 +987,78 @@ syncGroups();window.addEventListener('resize',syncGroups);
     partyLabel: guestCountLabel,
     decorate: decorate,
     collapseAll: collapseAll
+  });
+})();
+
+
+/* Candidate-only selected-tour handoff. Production search, tour and lead contracts stay authoritative. */
+(function () {
+  'use strict';
+
+  if (window.Search3CandidateSelectedHandoffV1) return;
+  var selected = document.getElementById('selectedTour');
+  var results = document.getElementById('results');
+  if (!selected || !results || !document.body.classList.contains('search3-candidate')) return;
+
+  function restoreProductionLabels() {
+    results.querySelectorAll('button[data-search3-production-label]').forEach(function (button) {
+      var original = String(button.dataset.search3ProductionLabel || '').trim();
+      var current = String(button.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!button.disabled && original && current !== original) button.textContent = original;
+    });
+  }
+
+  function isTourLoading() {
+    if (selected.hidden || selected.children.length !== 1) return false;
+    var onlyChild = selected.firstElementChild;
+    return !!(onlyChild && onlyChild.classList.contains('selected-loading') && !onlyChild.querySelector('button,a,input,select,textarea'));
+  }
+
+  function syncBusy() {
+    selected.setAttribute('aria-busy', isTourLoading() ? 'true' : 'false');
+  }
+
+  function focusSelectedHeading() {
+    if (selected.hidden) return;
+    var heading = selected.querySelector('.selected-head h2,.search3-review-heading h2');
+    if (!heading) return;
+    heading.setAttribute('tabindex', '-1');
+    try { heading.focus({ preventScroll: true }); } catch (_error) { heading.focus(); }
+  }
+
+  new MutationObserver(function () {
+    syncBusy();
+    restoreProductionLabels();
+  }).observe(selected, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+
+  new MutationObserver(restoreProductionLabels).observe(results, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['disabled']
+  });
+
+  window.addEventListener('v2:tour-selected', function () {
+    selected.setAttribute('aria-busy', 'false');
+    window.setTimeout(function () {
+      restoreProductionLabels();
+      focusSelectedHeading();
+    }, 0);
+  });
+  window.addEventListener('v2:tour-returned', function () {
+    selected.setAttribute('aria-busy', 'false');
+    restoreProductionLabels();
+  });
+  window.addEventListener('v2:search-reset', function () {
+    selected.setAttribute('aria-busy', 'false');
+  });
+
+  syncBusy();
+  restoreProductionLabels();
+  window.Search3CandidateSelectedHandoffV1 = Object.freeze({
+    version: 1,
+    restoreProductionLabels: restoreProductionLabels,
+    syncBusy: syncBusy,
+    focusSelectedHeading: focusSelectedHeading
   });
 })();
