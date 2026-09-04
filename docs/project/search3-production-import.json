@@ -1,7 +1,7 @@
 {
   "candidateSourceSha": "c72fbd44205927640f0ce45d785af70f88351d21",
   "productionBaseSha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
-  "status": "candidate CI and visual review passed; preview deployment pending; owner production approval required",
+  "status": "candidate CI, visual inspection, preview deployment and live desktop form path passed; owner production approval required",
   "transformations": [
     "Remove preview-only simulated lead-state listener",
     "Remove obsolete global matchMedia restoration; canonical mobile filter chooses Search3 breakpoint directly"
@@ -59,6 +59,16 @@
     "fiveWidthsPassed": true,
     "selectedPriceConsistencyPassed": true,
     "legacyCheckoutSuppressionPassed": true,
-    "productionLeadDeliveryVerified": false
+    "productionLeadDeliveryVerified": false,
+    "previewDeploymentRunId": 33919209379,
+    "previewDeploymentPassed": true,
+    "liveDesktopReviewFormReturnPassed": true,
+    "liveExample": {
+      "hotel": "LUXOR APART",
+      "basePriceRub": 72873,
+      "selectedFlightVariant": 2,
+      "selectedPriceRub": 90095
+    },
+    "liveMobileInteractionVerified": false
   }
 }
