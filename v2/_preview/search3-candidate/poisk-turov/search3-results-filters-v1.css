@@ -313,7 +313,7 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
     display:block!important;
     width:auto!important;
     max-width:none!important;
-    margin:0 24px 48px!important;
+    margin:0 max(0px,calc((48px - (100vw - 100%))/2)) 48px!important;
   }
   body.search3-candidate.search3-results-active .results-filter-rail{display:none!important}
   body.search3-candidate.search3-results-active #results .hotel-main{
@@ -460,8 +460,7 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
 @media(max-width:390px){
   body.search3-candidate.search3-results-active .results-search-summary,
   body.search3-candidate.search3-results-active .results-tools--ds2,
-  body.search3-candidate.search3-results-active .search3-mobile-toolbar,
-  body.search3-candidate.search3-results-active .results-layout{margin-left:24px!important;margin-right:24px!important}
+  body.search3-candidate.search3-results-active .search3-mobile-toolbar{margin-left:24px!important;margin-right:24px!important}
   body.search3-candidate.search3-results-active #results .search3-hotel-facts small{font-size:6px!important}
   body.search3-candidate.search3-results-active #results .search3-hotel-facts b{font-size:7px!important}
 }
