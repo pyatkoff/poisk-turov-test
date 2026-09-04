@@ -1,23 +1,23 @@
 {
-  "candidateSourceSha": "c72fbd44205927640f0ce45d785af70f88351d21",
+  "candidateSourceSha": "a677744f7f5acda8640672968c2da68b91062e66",
   "productionBaseSha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
-  "status": "candidate CI, visual inspection, preview deployment and live desktop form path passed; owner production approval required",
+  "status": "mobile input and final design corrections imported; exact candidate verification recorded in PR; owner production approval required",
   "transformations": [
     "Remove preview-only simulated lead-state listener",
     "Remove obsolete global matchMedia restoration; canonical mobile filter chooses Search3 breakpoint directly"
   ],
   "assets": {
     "search3-entry-v1.css": {
-      "candidateSha256": "02562a19a178b013e61b4d1ac63161aa4a512a6e4e73276c61f33c8be633327d",
-      "productionSha256": "02562a19a178b013e61b4d1ac63161aa4a512a6e4e73276c61f33c8be633327d"
+      "candidateSha256": "7e304ddafbc20978e4f54c6d3374c5d19f324c7f24ab1a8d9de8ef0b2144199d",
+      "productionSha256": "7e304ddafbc20978e4f54c6d3374c5d19f324c7f24ab1a8d9de8ef0b2144199d"
     },
     "search3-entry-v1.js": {
       "candidateSha256": "bbd6cde58cf893b819848fed7f51b8a529747b5f9f0c13d9eb19281eee6b343e",
       "productionSha256": "bbd6cde58cf893b819848fed7f51b8a529747b5f9f0c13d9eb19281eee6b343e"
     },
     "search3-results-cards-v2.css": {
-      "candidateSha256": "e69597ef5c380cd4bf3dd57d61f80c183b50f50c39641bee58746d268419b2e3",
-      "productionSha256": "e69597ef5c380cd4bf3dd57d61f80c183b50f50c39641bee58746d268419b2e3"
+      "candidateSha256": "ee51d0cfc08af6f48af748b9c77a9747d33afbf91630428526ce3c68bed26f3b",
+      "productionSha256": "ee51d0cfc08af6f48af748b9c77a9747d33afbf91630428526ce3c68bed26f3b"
     },
     "search3-results-cards-v2.js": {
       "candidateSha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
@@ -28,16 +28,16 @@
       "productionSha256": "056ca312c4f5356e1d3b8cc95e90355a0420420501e6467ae014e917df39fe7b"
     },
     "search3-results-filters-v1.js": {
-      "candidateSha256": "036403457cefb2f48060582b152b71c86a63274e66119fb96db0ea7787550067",
-      "productionSha256": "abfbf7efb85d365fea9a87417176008678f2a6922eac2c9e44ab74e771598370"
+      "candidateSha256": "feac5b5e152dc499dd76e7d7733d376e1ace57f6c1e5d8568ef2f55af0efdf58",
+      "productionSha256": "837ed12391941360929b992bf27a1b5ce4720152af8e61916da6e09f7c23b705"
     },
     "search3-selected-flow-v2.css": {
-      "candidateSha256": "b2c28bf2c5a0b318f51630c8e92fe75fb0871f27ee58784e9129bbd18ab49bd9",
-      "productionSha256": "b2c28bf2c5a0b318f51630c8e92fe75fb0871f27ee58784e9129bbd18ab49bd9"
+      "candidateSha256": "26d7c6661ff29957309d8356ab47c430e37b718053d062d241e202d660bd6871",
+      "productionSha256": "26d7c6661ff29957309d8356ab47c430e37b718053d062d241e202d660bd6871"
     },
     "search3-selected-flow-v2.js": {
-      "candidateSha256": "a2beab58a8433ee5ffd518a95949de910e61dcb52e0e53661096329c5fdcfbce",
-      "productionSha256": "a2beab58a8433ee5ffd518a95949de910e61dcb52e0e53661096329c5fdcfbce"
+      "candidateSha256": "66e9dd7f936f2d6d65a40f5fd55c06146ff7a8abd66be3e7742bba567e8a415d",
+      "productionSha256": "66e9dd7f936f2d6d65a40f5fd55c06146ff7a8abd66be3e7742bba567e8a415d"
     }
   },
   "protectedSha256": {
@@ -52,23 +52,7 @@
     "runtime-v3.js": "67f014910a5344fab7ed7e70d405f6e3256578eb84e8fbe634eed2a2c8baef92"
   },
   "candidateEvidence": {
-    "runId": 33918861700,
-    "attempt": 1,
-    "evidenceArtifactId": 9954267481,
-    "releaseArtifactId": 9954272229,
-    "fiveWidthsPassed": true,
-    "selectedPriceConsistencyPassed": true,
-    "legacyCheckoutSuppressionPassed": true,
     "productionLeadDeliveryVerified": false,
-    "previewDeploymentRunId": 33919209379,
-    "previewDeploymentPassed": true,
-    "liveDesktopReviewFormReturnPassed": true,
-    "liveExample": {
-      "hotel": "LUXOR APART",
-      "basePriceRub": 72873,
-      "selectedFlightVariant": 2,
-      "selectedPriceRub": 90095
-    },
-    "liveMobileInteractionVerified": false
+    "liveMobileDeviceVerified": false
   }
 }

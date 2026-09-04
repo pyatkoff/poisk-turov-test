@@ -158,3 +158,23 @@ body.search3-candidate #selectedTour.search3-lead-entry.search3-flight-fallback 
     min-height: 48px;
   }
 }
+
+/* Readable conditions and summaries throughout flight/review/application states. */
+html body.search3-candidate #selectedTour :is(.section-heading span,.selected-head p,.flight-segment-title span,.flight-route span,.flight-baggage,.flight-fuel,.facts span,.search3-final-services span,.search3-final-tourists span,.search3-final-section__heading span,.search3-booking-summary dt,.search3-booking-summary__place,.search3-booking-summary__price-note,.search3-booking-summary__flight-costs span,.search3-tour-detail-rail dt,.search3-tour-detail-rail__price small,.search3-lead-protection,.lead-selection-summary small,.lead-phone-hint,.search3-booking-step,.search3-booking-step b,.back-results){font-size:12px!important;line-height:1.45!important}
+html body.search3-candidate #selectedTour :is(.flight-route b,.flight-choice>span,.flight-choice-summary,.flight-choice-tradeoffs span,.facts b,.search3-final-services strong,.search3-final-tourists strong,.search3-booking-summary dd,.search3-booking-summary__flight-costs b,.search3-tour-detail-rail dd,.lead-selection-summary b,.lead-form label,.lead-trust-note){font-size:14px!important;line-height:1.45!important;white-space:normal!important;overflow-wrap:anywhere}
+html body.search3-candidate #selectedTour :is(.search3-summary-submit,.search3-tour-detail-rail__continue,.search3-flight-continue button,.lead-form button[type=submit]){font-size:15px!important;min-height:48px!important}
+html body.search3-candidate #selectedTour .lead-form input[type=tel]{font-size:16px!important}
+html body.search3-candidate #selectedTour .lead-selection-summary{display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
+html body.search3-candidate #selectedTour .lead-selection-summary>span{display:grid!important;gap:5px!important;min-width:0!important}
+html body.search3-candidate #selectedTour .lead-selection-summary>span:first-child b{font-size:22px!important}
+html body.search3-candidate #selectedTour .search3-final-services{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+html body.search3-candidate #selectedTour .search3-booking-summary dl>div{grid-template-columns:84px minmax(0,1fr)!important}
+@media(max-width:640px){
+ html body.search3-candidate #selectedTour .search3-final-services{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ html body.search3-candidate #selectedTour .flight-segment-title{flex-wrap:wrap!important}
+}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-summary{font-size:14px!important;line-height:1.4!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-tradeoffs span{font-size:12px!important;line-height:1.4!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-summary-submit{font-size:15px!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-summary-actions p,
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__total span{font-size:12px!important}
