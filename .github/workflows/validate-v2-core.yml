@@ -7,6 +7,10 @@ on:
       - 'v2/**/*.js'
       - 'v2/current-price-calendar-v1.css'
       - 'v2/index.php'
+      - 'v2/poisk-turov/index.php'
+      - 'v2/search3-presentation-v1.php'
+      - 'tests/search3_production_presentation_test.py'
+      - 'docs/project/search3-production-import.json'
       - 'v2/api-v2.php'
       - 'v2/lead-adapter-v2.php'
       - 'v2/assets.php'
@@ -42,6 +46,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate Search3 production presentation boundary
+        run: |
+          php -l v2/search3-presentation-v1.php
+          python3 -B tests/search3_production_presentation_test.py
 
       - name: Validate search hotel placement
         run: python3 scripts/ci/validate_search_hotel_placement.py

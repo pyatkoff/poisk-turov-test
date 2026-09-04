@@ -1,0 +1,139 @@
+/* Search3 selected/final/lead presentation overlay. Preview only. */
+body.search3-candidate #selectedTour.search3-flight-fallback .tour-flights {
+  border-color: #d9e2f5 !important;
+  background: linear-gradient(180deg, #fff, #fbfcff) !important;
+}
+
+body.search3-candidate #selectedTour.search3-flight-fallback .tour-flights .selected-loading {
+  max-width: 720px;
+  margin: 10px 0 0 !important;
+  padding: 16px 18px !important;
+  border: 1px solid #dce5f7;
+  border-radius: 12px;
+  background: #f6f8ff;
+  color: #58657c !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  text-align: left !important;
+}
+
+body.search3-candidate #selectedTour .search3-flight-continue--fallback {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+body.search3-candidate #selectedTour .search3-flight-continue--fallback::after {
+  content: "Заявка не отправится — сначала вы проверите итог тура";
+  max-width: 340px;
+  color: #6b768a;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+body.search3-candidate #selectedTour .search3-flight-continue--fallback button,
+body.search3-candidate #selectedTour .search3-flight-fallback-rail-action {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 9px;
+  background: #ff510c;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+body.search3-candidate #selectedTour.search3-flight-fallback .search3-tour-detail-rail__continue {
+  display: none !important;
+}
+
+body.search3-candidate #selectedTour .search3-flight-fallback-rail-action {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 12px;
+}
+
+body.search3-candidate #selectedTour .search3-flight-continue--fallback button:focus-visible,
+body.search3-candidate #selectedTour .search3-flight-fallback-rail-action:focus-visible,
+body.search3-candidate #selectedTour .search3-flight-show-all:focus-visible {
+  outline: 2px solid #2743cb;
+  outline-offset: 3px;
+}
+
+body.search3-candidate #selectedTour .search3-booking-stepper {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body.search3-candidate #selectedTour .flight-variants[data-search3-flight-disclosure] > .flight-variant[hidden] {
+  display: none !important;
+}
+
+body.search3-candidate #selectedTour .search3-flight-show-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 0 16px;
+  border: 1px solid #cbd6ec;
+  border-radius: 9px;
+  background: #fff;
+  color: #2743cb;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+body.search3-candidate #selectedTour.search3-final-review .search3-flight-show-all[hidden] {
+  display: none !important;
+}
+
+body.search3-candidate #selectedTour.search3-flight-fallback .search3-booking-summary__flight {
+  color: #2743cb !important;
+  font-weight: 750 !important;
+}
+
+body.search3-candidate #selectedTour.search3-final-review.search3-flight-fallback .search3-booking-summary {
+  border-color: #cfdcf5 !important;
+  box-shadow: 0 14px 34px rgba(39, 67, 203, .08) !important;
+}
+
+body.search3-candidate #selectedTour.search3-final-review.search3-flight-fallback .search3-flight-continue--fallback::after {
+  content: "Рейс уточнит менеджер до подтверждения тура";
+}
+
+body.search3-candidate #selectedTour.search3-lead-entry.search3-flight-fallback .lead-form {
+  border-color: #cfdcf5 !important;
+  box-shadow: 0 14px 34px rgba(39, 67, 203, .07) !important;
+}
+
+@media (max-width: 640px) {
+  body.search3-candidate #selectedTour.search3-flight-fallback .tour-flights .selected-loading {
+    margin-top: 8px !important;
+    padding: 13px 14px !important;
+    font-size: 13px !important;
+  }
+
+  body.search3-candidate #selectedTour .search3-flight-continue--fallback {
+    display: grid;
+    gap: 8px;
+  }
+
+  body.search3-candidate #selectedTour .search3-flight-continue--fallback button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  body.search3-candidate #selectedTour .search3-flight-continue--fallback::after {
+    max-width: none;
+  }
+
+  body.search3-candidate #selectedTour .search3-flight-show-all {
+    width: 100%;
+    min-height: 48px;
+  }
+}

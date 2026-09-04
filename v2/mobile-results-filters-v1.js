@@ -1,6 +1,6 @@
 (function(){'use strict';
 if(window.V2MobileResultsFiltersV1)return;
-const mq=window.matchMedia?window.matchMedia('(max-width:760px)'):{matches:true};
+const mq=window.matchMedia?window.matchMedia(document.body.classList.contains('search3-candidate')?'(max-width:999px)':'(max-width:760px)'):{matches:true};
 const form=document.getElementById('tourSearch'),results=document.getElementById('results'),tools=document.getElementById('resultsTools'),status=document.getElementById('status');
 if(!form||!results||!tools)return;
 let items=[],state={stars:0,rating:0,meal:false,priceMax:0},draft={...state},ui=null,lastFocus=null,initialized=false,touched=new Set(),applying=false;
