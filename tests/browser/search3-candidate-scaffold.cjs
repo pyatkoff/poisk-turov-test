@@ -1167,8 +1167,11 @@ async function selectedPresentationState(page) {
       },
       ctas: {
         detail: document.querySelector('#selectedTour .search3-tour-detail-rail__continue')?.textContent.replace(/\s+/g, ' ').trim() || '',
+        inlineFallback: document.querySelector('#selectedTour .search3-flight-continue--fallback button')?.textContent.replace(/\s+/g, ' ').trim() || '',
+        railFallback: document.querySelector('#selectedTour .search3-flight-fallback-rail-action')?.textContent.replace(/\s+/g, ' ').trim() || '',
         mobile: document.querySelector('.search3-selected-mobile-bar [data-s3-selected-lead]')?.textContent.replace(/\s+/g, ' ').trim() || '',
       },
+      fallbackActive: document.getElementById('selectedTour')?.classList.contains('search3-flight-fallback') || false,
       rawTour: {
         date: String(current.date || ''),
         meal: rawText(current.meal),
@@ -1231,8 +1234,11 @@ function assertSelectedPresentation(state, width) {
   });
   assert.deepEqual(state.ctas, {
     detail: 'К выбору рейса',
-    mobile: 'К выбору рейса',
+    inlineFallback: 'Проверить детали тура',
+    railFallback: 'Перейти к итогу тура',
+    mobile: 'К итогу тура',
   });
+  assert.equal(state.fallbackActive, true, `${width}: no-flight adapter must be active`);
   assert.deepEqual(state.rawTour, {
     date: fixture.failureFixtures.selectedTour.date,
     meal: fixture.failureFixtures.selectedTour.meal.name,
@@ -1252,15 +1258,49 @@ async function waitForSelectedPresentation(page) {
       ));
       return row?.querySelector(valueSelector)?.textContent.replace(/\s+/g, ' ').trim() || '';
     };
-    return document.getElementById('selectedTour')?.dataset.search3SelectedPresentation === '1'
+    const selected = document.getElementById('selectedTour');
+    const text = selector => document.querySelector(selector)?.textContent.replace(/\s+/g, ' ').trim() || '';
+    return selected?.dataset.search3SelectedPresentation === '1'
+      && selected.classList.contains('search3-flight-fallback')
       && valueFor('#selectedTour .facts > div', 'span', 'b', 'Дата') === expected.date
       && valueFor('#selectedTour .search3-booking-summary dl > div', 'dt', 'dd', 'Питание') === expected.meal
-      && valueFor('#selectedTour .search3-tour-detail-rail dl > div', 'dt', 'dd', 'Номер') === expected.room;
+      && valueFor('#selectedTour .search3-tour-detail-rail dl > div', 'dt', 'dd', 'Номер') === expected.room
+      && text('#selectedTour .search3-flight-continue--fallback button') === 'Проверить детали тура'
+      && text('#selectedTour .search3-flight-fallback-rail-action') === 'Перейти к итогу тура'
+      && text('.search3-selected-mobile-bar [data-s3-selected-lead]') === 'К итогу тура';
   }, {
     date: '12 сент. 2099',
     meal: 'Всё включено',
     room: 'Стандартный номер',
   }, { timeout: 12000 });
+}
+
+async function exerciseNoFlightReviewAdapter(harness, triggerSelector) {
+  const requestsBefore = {
+    candidate: harness.candidateLeadRequests.length,
+    production: harness.productionLeadRequests.length,
+  };
+  await harness.page.locator(triggerSelector).click();
+  await harness.page.waitForFunction(() => {
+    const selected = document.getElementById('selectedTour');
+    return selected?.classList.contains('search3-final-review')
+      && !selected.classList.contains('search3-lead-entry');
+  });
+  const review = await harness.page.evaluate(() => {
+    const selected = document.getElementById('selectedTour');
+    return {
+      finalReview: selected?.classList.contains('search3-final-review') || false,
+      leadEntry: selected?.classList.contains('search3-lead-entry') || false,
+      leadSent: selected?.querySelector('.lead-form')?.dataset.sent || '',
+    };
+  });
+  assert.deepEqual(review, { finalReview: true, leadEntry: false, leadSent: '' });
+  assert.equal(harness.candidateLeadRequests.length, requestsBefore.candidate);
+  assert.equal(harness.productionLeadRequests.length, requestsBefore.production);
+
+  await harness.page.locator('#selectedTour .search3-flight-continue button').evaluate(button => button.click());
+  await harness.page.waitForFunction(() => !document.getElementById('selectedTour')?.classList.contains('search3-final-review'));
+  return review;
 }
 
 async function runMobileSelectedHandoffEvidence(browser, manifest) {
@@ -1378,6 +1418,10 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
       geometry: { viewportWidth: 375, state: 'selected-tour-handoff' },
       selected: selectedState,
     });
+    selectedState.reviewAdapter = await exerciseNoFlightReviewAdapter(
+      harness,
+      '.search3-selected-mobile-bar [data-s3-selected-lead]',
+    );
 
     await harness.page.locator('#selectedTour .back-results').click();
     await harness.page.waitForFunction(label => {
@@ -1495,6 +1539,10 @@ async function runDesktopSelectedPresentationEvidence(browser, manifest) {
       geometry: { viewportWidth: 1440, state: 'selected-tour-presentation' },
       selected: presentation,
     });
+    presentation.reviewAdapter = await exerciseNoFlightReviewAdapter(
+      harness,
+      '#selectedTour .search3-flight-fallback-rail-action',
+    );
     manifest.presentationChecks.desktopSelectedTour = presentation;
     assert.equal(harness.candidateLeadRequests.length, 0);
     assert.equal(harness.productionLeadRequests.length, 0);
