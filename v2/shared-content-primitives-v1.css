@@ -51,7 +51,7 @@
 .sp-country-intent__visual-label{position:absolute;left:20px;top:18px;color:#fff;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;text-shadow:0 1px 8px rgba(25,53,112,.22)}
 .sp-country-intent--hero .sp-country-intent__resorts{align-self:stretch;padding:16px;border:1px solid rgba(255,255,255,.48);border-radius:14px;background:rgba(255,255,255,.88);backdrop-filter:blur(12px)}
 .sp-country-intent--hero .sp-country-intent__resorts .sp-resort-list{margin-top:10px}
-.sp-country-intent--hero .sp-resort-chip{min-height:34px;background:#fff;font-size:12px}
+.sp-country-intent--hero .sp-resort-chip{min-height:34px;background:#fff;color:var(--at-text);font-size:12px;text-decoration:none}
 .sp-country-intent--hero .sp-country-intent__resorts>p{margin:10px 0 0;font-size:12px}
 
 /* Generic editorial routes use the same compact light DS2 intro instead of a separate oversized blue hero language. */
