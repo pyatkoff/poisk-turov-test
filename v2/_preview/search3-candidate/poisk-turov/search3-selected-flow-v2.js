@@ -136,14 +136,22 @@
     });
   }
 
-  var observer = new MutationObserver(schedule);
+  var mobileButton = document.querySelector('.search3-selected-mobile-bar [data-s3-selected-lead]');
+  var observer = new MutationObserver(function (mutations) {
+    var mobileChanged = mobileButton && mutations.some(function (mutation) {
+      return mutation.target === mobileButton || mobileButton.contains(mutation.target);
+    });
+    if (mobileChanged) syncMobileAction(noFlightState());
+    if (mutations.some(function (mutation) {
+      return mutation.target === selected || selected.contains(mutation.target);
+    })) schedule();
+  });
   observer.observe(selected, {
     childList: true,
     subtree: true,
     attributes: true,
     attributeFilter: ['hidden', 'class']
   });
-  var mobileButton = document.querySelector('.search3-selected-mobile-bar [data-s3-selected-lead]');
   if (mobileButton) {
     observer.observe(mobileButton, {
       childList: true,
