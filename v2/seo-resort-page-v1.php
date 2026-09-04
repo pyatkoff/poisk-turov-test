@@ -84,7 +84,7 @@ function v2_seo_render_resort(array $record): void
             $searchState = $page['search_state'];
             $departureId = (int)($offer['departureId'] ?? 0);
             if ($departureId > 0) $searchState['from'] = $departureId;
-            $href = v2_seo_search_handoff_url('/poisk-turov/', $searchState);
+            $href = v2_seo_search_handoff_url('/poisk-turov/', v2_seo_offer_search_state($searchState,$offer));
 
             echo '<article class="sp-offer-item">';
             echo '<h3>'.sp_e($hotel).'</h3>';

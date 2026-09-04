@@ -18,6 +18,19 @@ function v2_seo_render_seasonal(array $record): void
     $pageKey=trim((string)($identity['page_key']??''));
     if($pageKey==='')throw new InvalidArgumentException('SEO seasonal runtime requires exact seasonal page key');
     $page=v2_seo_page_contract($raw);
+    $month=(int)($identity['month']??0);$year=(int)($identity['year']??0);
+    if($month>=1&&$month<=12&&$year>=2020){
+        $start=new DateTimeImmutable(sprintf('%04d-%02d-01',$year,$month));
+        $tomorrow=new DateTimeImmutable('tomorrow');
+        $end=$start->modify('last day of this month');
+        if($start<$tomorrow)$start=$tomorrow;
+        if($start<=$end){
+            $last=$start->modify('+21 days');if($last>$end)$last=$end;
+            $page['search_state']['dateFrom']=$start->format('Y-m-d');
+            $page['search_state']['dateTo']=$last->format('Y-m-d');
+        }
+    }
+
     $context=sp_context($path,$page['title'],$page['description']);
     if($status!=='approved')$context['robots']=v2_seo_robots_content(false);
 
@@ -43,7 +56,7 @@ function v2_seo_render_seasonal(array $record): void
             $nights=(int)($offer['nights']??0);
             $priceMarkup=v2_seo_offer_price_markup($offer);
             $searchState=$page['search_state'];$departureId=(int)($offer['departureId']??0);if($departureId>0)$searchState['from']=$departureId;
-            $href=v2_seo_search_handoff_url('/poisk-turov/',$searchState);
+            $href=v2_seo_search_handoff_url('/poisk-turov/',v2_seo_offer_search_state($searchState,$offer));
             echo '<article class="sp-offer-item"><h3>'.sp_e($hotel).'</h3><div class="sp-offer-meta">';
             if($departure!=='')echo '<span class="sp-offer-fact">Вылет из '.sp_e($departure).'</span>';
             echo '<span class="sp-offer-fact">'.sp_e($date).'</span><span class="sp-offer-fact">'.sp_e((string)$nights).' ночей</span></div><div class="sp-offer-bottom">'.$priceMarkup.'<a class="sp-secondary sp-offer-action" href="'.sp_e($href).'">Посмотреть туры</a></div></article>';

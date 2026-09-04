@@ -1,15 +1,15 @@
 {
-  "candidateSourceSha": "cc4e0362db3d52131d95542e185b8c074d3bc6f6",
+  "candidateSourceSha": "9a3ab1209cea48202717a6a85948ccdfdcd9ba5a",
   "productionBaseSha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
-  "status": "mobile input and final design corrections imported; exact candidate verification recorded in PR; owner production approval required",
+  "status": "wide desktop fix and search handoff prepared; owner visual approval required",
   "transformations": [
     "Remove preview-only simulated lead-state listener",
     "Remove obsolete global matchMedia restoration; canonical mobile filter chooses Search3 breakpoint directly"
   ],
   "assets": {
     "search3-entry-v1.css": {
-      "candidateSha256": "1a831b758b47a15a5ce4cfdd3784c4bff1ec924a5ae4d729c50c80fbaa50a467",
-      "productionSha256": "1a831b758b47a15a5ce4cfdd3784c4bff1ec924a5ae4d729c50c80fbaa50a467"
+      "candidateSha256": "8c370f7040c83427aa57247649d3c55bffd509b6d80112c63c31a584dfc6a6ad",
+      "productionSha256": "8c370f7040c83427aa57247649d3c55bffd509b6d80112c63c31a584dfc6a6ad"
     },
     "search3-entry-v1.js": {
       "candidateSha256": "bbd6cde58cf893b819848fed7f51b8a529747b5f9f0c13d9eb19281eee6b343e",
@@ -53,12 +53,6 @@
   },
   "candidateEvidence": {
     "productionLeadDeliveryVerified": false,
-    "liveMobileDeviceVerified": false,
-    "runId": 33924709725,
-    "evidenceArtifactId": 9956390145,
-    "releaseArtifactId": 9956393938,
-    "previewDeploymentPr": 1338,
-    "fiveWidthBrowserChecksPassed": true,
-    "nativeNightSelectorSyncPassed": true
+    "liveMobileDeviceVerified": false
   }
 }

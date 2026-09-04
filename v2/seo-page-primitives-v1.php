@@ -104,3 +104,18 @@ function v2_seo_search_handoff_url(string $searchPath, array $state): string
     if (!$query) return $path;
     return $path.'?'.http_build_query($query, '', '&', PHP_QUERY_RFC3986);
 }
+
+/** Retain the advertised package dates and duration on a search handoff. */
+function v2_seo_offer_search_state(array $state, array $offer): array
+{
+    $departure = (int)($offer['departureId'] ?? 0);
+    if ($departure > 0) $state['from'] = $departure;
+    $date = (string)($offer['departureDate'] ?? '');
+    $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+    if ($parsed && $parsed->format('Y-m-d') === $date) $state['dateFrom'] = $state['dateTo'] = $date;
+    $nights = (int)($offer['nights'] ?? 0);
+    if ($nights >= 1 && $nights <= 28) $state['daysFrom'] = $state['daysTill'] = $nights;
+    // Public snapshot prices represent two adults without children.
+    $state['count_people'] = 2;
+    return $state;
+}

@@ -51,6 +51,7 @@ jobs:
         run: |
           php -l v2/search3-presentation-v1.php
           python3 -B tests/search3_production_presentation_test.py
+          php tests/search-handoff-smoke.php
 
       - name: Validate search hotel placement
         run: python3 scripts/ci/validate_search_hotel_placement.py

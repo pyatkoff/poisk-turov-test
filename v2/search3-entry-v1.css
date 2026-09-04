@@ -216,3 +216,15 @@ html body.search3-candidate #tourSearch .search3-nights .search3-direct-control{
 /* Align Safari's native date value and keep native night pickers. */
 html body.search3-candidate #tourSearch .search3-dates .search3-direct-control::-webkit-date-and-time-value{min-height:44px;display:flex;align-items:center;justify-content:center;margin:0}
 html body.search3-candidate #tourSearch .search3-nights select.search3-direct-control{appearance:auto!important;-webkit-appearance:menulist!important;text-align-last:center!important;padding-right:20px!important}
+
+/* Keep the button in the primary grid at desktop widths, including 1920+. */
+@media(min-width:1000px){
+ html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid,
+ html body.search3-candidate.search3-editing-search #tourSearch .search3-primary-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}
+}
+@media(min-width:1600px){
+ html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid,
+ html body.search3-candidate.search3-editing-search #tourSearch .search3-primary-grid{grid-template-columns:1fr 1fr 1fr 1.15fr 1.8fr 1fr 1fr!important}
+ html body.search3-candidate #tourSearch .search3-primary-grid>.search3-dates{grid-column:auto!important}
+}
+html body.search3-candidate #tourSearch .search3-dates .search3-direct-control::-webkit-date-and-time-value{line-height:44px!important}
