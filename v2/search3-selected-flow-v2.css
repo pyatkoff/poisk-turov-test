@@ -112,6 +112,21 @@ body.search3-candidate #selectedTour.search3-lead-entry.search3-flight-fallback 
 }
 
 @media (max-width: 640px) {
+  html body.search3-candidate #selectedTour .search3-booking-step {
+    flex-direction: column;
+    gap: 5px;
+    min-height: 44px;
+    font-size: 12px;
+  }
+
+  html body.search3-candidate #selectedTour .search3-booking-step b {
+    display: block;
+    padding: 0;
+    font-size: 12px;
+    white-space: normal;
+    overflow: visible;
+  }
+
   body.search3-candidate #selectedTour.search3-flight-fallback .tour-flights .selected-loading {
     margin-top: 8px !important;
     padding: 13px 14px !important;

@@ -1,5 +1,5 @@
 {
-  "candidateSourceSha": "aef0bc0d9910f098b19c07b24692934b9929357d",
+  "candidateSourceSha": "32a9dcfce177cc20bc98f3391fcce4dead719c05",
   "productionBaseSha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
   "status": "draft; candidate CI and owner approval pending; not deployed",
   "transformations": [
@@ -8,8 +8,8 @@
   ],
   "assets": {
     "search3-entry-v1.css": {
-      "candidateSha256": "638ca776fb47dd0623617c9a393b5555e519260709a87cc2b0b017e26ed7a3ab",
-      "productionSha256": "638ca776fb47dd0623617c9a393b5555e519260709a87cc2b0b017e26ed7a3ab"
+      "candidateSha256": "02562a19a178b013e61b4d1ac63161aa4a512a6e4e73276c61f33c8be633327d",
+      "productionSha256": "02562a19a178b013e61b4d1ac63161aa4a512a6e4e73276c61f33c8be633327d"
     },
     "search3-entry-v1.js": {
       "candidateSha256": "bbd6cde58cf893b819848fed7f51b8a529747b5f9f0c13d9eb19281eee6b343e",
@@ -32,8 +32,8 @@
       "productionSha256": "abfbf7efb85d365fea9a87417176008678f2a6922eac2c9e44ab74e771598370"
     },
     "search3-selected-flow-v2.css": {
-      "candidateSha256": "b48ba3a914523b313691ab5c887b68b3a73bf051b5b628937ceed6bed22b9f6a",
-      "productionSha256": "b48ba3a914523b313691ab5c887b68b3a73bf051b5b628937ceed6bed22b9f6a"
+      "candidateSha256": "da1c6fb4ec0ff7839c394aeccc7cdd898d645bb63bb245bc7ee1d30cb9c489f7",
+      "productionSha256": "da1c6fb4ec0ff7839c394aeccc7cdd898d645bb63bb245bc7ee1d30cb9c489f7"
     },
     "search3-selected-flow-v2.js": {
       "candidateSha256": "a2beab58a8433ee5ffd518a95949de910e61dcb52e0e53661096329c5fdcfbce",
