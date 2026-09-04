@@ -11,10 +11,13 @@ on:
       - 'tests/contracts/search3-boundaries.test.cjs'
       - 'diagnostics/search_results_recovery_test.cjs'
       - 'docs/project/search3-reference-dossier.json'
+      - 'docs/project/search3-approved-mockups.json'
       - 'docs/project/SEARCH3_REFERENCE_DOSSIER.md'
       - 'scripts/ci/validate_search3_reference_dossier.py'
+      - 'scripts/ci/validate_search3_approved_mockups.py'
       - 'scripts/ci/render_search3_visual_summary.py'
       - 'tests/search3_reference_dossier_test.py'
+      - 'tests/search3_approved_mockups_test.py'
       - 'tests/search3_visual_summary_test.py'
       - '.github/workflows/validate-search3-candidate-scaffold.yml'
   push:
@@ -27,10 +30,13 @@ on:
       - 'tests/contracts/search3-boundaries.test.cjs'
       - 'diagnostics/search_results_recovery_test.cjs'
       - 'docs/project/search3-reference-dossier.json'
+      - 'docs/project/search3-approved-mockups.json'
       - 'docs/project/SEARCH3_REFERENCE_DOSSIER.md'
       - 'scripts/ci/validate_search3_reference_dossier.py'
+      - 'scripts/ci/validate_search3_approved_mockups.py'
       - 'scripts/ci/render_search3_visual_summary.py'
       - 'tests/search3_reference_dossier_test.py'
+      - 'tests/search3_approved_mockups_test.py'
       - 'tests/search3_visual_summary_test.py'
       - '.github/workflows/validate-search3-candidate-scaffold.yml'
   workflow_dispatch:
@@ -82,7 +88,9 @@ jobs:
           node tests/contracts/search3-boundaries.test.cjs
           node diagnostics/search_results_recovery_test.cjs
           python3 -B scripts/ci/validate_search3_reference_dossier.py
+          python3 -B scripts/ci/validate_search3_approved_mockups.py
           python3 -B tests/search3_reference_dossier_test.py
+          python3 -B -m unittest tests.search3_approved_mockups_test
           python3 -B tests/search3_visual_summary_test.py
 
       - name: Validate production activation layout
