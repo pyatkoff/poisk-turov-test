@@ -134,8 +134,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 /* donor:search3-results-top.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
-function ensureMaket7Contract(){if(document.getElementById('search3-maket7-contract'))return;var link=document.createElement('link');link.id='search3-maket7-contract';link.rel='stylesheet';link.href='/_preview/search3/search3-form-maket7.css?v=3';document.head.appendChild(link);}
-ensureMaket7Contract();
+/* Donor CSS is bundled into the isolated candidate asset. */
 var form=document.getElementById('tourSearch'),tools=document.getElementById('resultsTools'),heading=tools&&tools.querySelector('strong'),summary=document.getElementById('resultSummary'),searchSummary=document.getElementById('resultsSearchSummary'),edit=document.getElementById('resultsSearchEdit'),results=document.getElementById('results'),intro=document.querySelector('.search3-page-intro'),introTitle=intro&&intro.querySelector('h1'),introText=intro&&intro.querySelector('p'),breadcrumb=intro&&intro.querySelector('.search3-breadcrumb');
 if(!form||!tools||!heading||!summary)return;
 var mapButton=tools.querySelector('.results-map-button');if(mapButton){mapButton.textContent='';mapButton.setAttribute('aria-label','Карта');}
@@ -552,8 +551,7 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
 
 /* donor:search3-footer-preview.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
-if(!document.querySelector('link[data-search3-final-boards]')){var finalBoards=document.createElement('link');finalBoards.rel='stylesheet';finalBoards.href='/_preview/search3/search3-final-boards-v1.css?v=1';finalBoards.dataset.search3FinalBoards='1';document.head.appendChild(finalBoards);}
-if(!document.querySelector('link[data-search3-footer-maket7-final]')){var footerFinal=document.createElement('link');footerFinal.rel='stylesheet';footerFinal.href='/_preview/search3/search3-footer-maket7-final.css?v=1';footerFinal.dataset.search3FooterMaket7Final='1';document.head.appendChild(footerFinal);}
+/* Donor CSS is bundled into the isolated candidate asset. */
 var footer=document.querySelector('.ds2-site-footer');if(!footer||footer.dataset.search3Footer==='1')return;footer.dataset.search3Footer='1';
 footer.style.setProperty('background','#0b1324','important');footer.style.setProperty('background-color','#0b1324','important');footer.style.setProperty('color','#fff','important');
 function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
