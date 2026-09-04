@@ -36,7 +36,29 @@
       }
       form.dataset.search3EntryLayout = 'desktop';
     }
+    syncResultSummary();
     return true;
+  }
+
+  function nodeText(id) {
+    var node = document.getElementById(id);
+    return node ? String(node.textContent || '').replace(/\s+/g, ' ').trim() : '';
+  }
+
+  function syncResultSummary() {
+    var route = document.querySelector('#resultsSearchSummary .results-search-summary__route');
+    if (!route) return;
+    var detail = route.querySelector('.search3-entry-summary-detail');
+    if (!detail) {
+      detail = document.createElement('span');
+      detail.className = 'search3-entry-summary-detail';
+      route.appendChild(detail);
+    }
+    var values = ['resultsSearchDates', 'resultsSearchNights', 'resultsSearchGuests']
+      .map(nodeText)
+      .filter(function (value) { return value && value !== '—'; });
+    detail.textContent = values.join(' · ');
+    detail.hidden = !values.length;
   }
 
   function settle() {
@@ -49,6 +71,8 @@
   if (typeof mobile.addEventListener === 'function') mobile.addEventListener('change', settle);
   else if (typeof mobile.addListener === 'function') mobile.addListener(settle);
   window.addEventListener('v2:search-reset', settle);
+  window.addEventListener('v2:results-rendered', settle);
+  form.addEventListener('change', settle);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', settle, { once: true });

@@ -207,13 +207,24 @@ function scenarioController(name) {
         return responseJson(route, limit >= 100 ? resultSets[100] : resultSets[25]);
       }
       if (action === 'tour') {
-        return responseJson(route, fixture.failureFixtures.selectedTour);
+        return responseJson(route, name === 'selected-price-family'
+          ? { ...fixture.failureFixtures.selectedTour, childs: 2, childAges: [6, 9] }
+          : fixture.failureFixtures.selectedTour);
       }
       if (action === 'flights') {
         if (name === 'flight-upstream-error') {
           return responseJson(route, { error: fixture.failureFixtures.flights.upstreamError }, fixture.failureFixtures.flights.upstreamStatus);
         }
         if (name === 'flight-empty') return responseJson(route, []);
+        if (name.startsWith('selected-price-')) {
+          return responseJson(route, Array.from({ length: 133 }, (_, index) => ({
+            isDefault: index === 0,
+            price: { value: index === 0 ? 101000 : index === 132 ? 1234567 : 113500 + index * 100 },
+            fuelCharge: { value: index === 0 ? 0 : 3500 },
+            forward: [],
+            backward: [],
+          })));
+        }
       }
       throw new Error(`${name}: unexpected API action ${action}`);
     },
@@ -336,6 +347,7 @@ async function assertPreviewLeadGuard() {
 async function createHarness(browser, viewport, scenario) {
   const context = await browser.newContext({
     viewport,
+    hasTouch: viewport.width <= 430,
     ignoreHTTPSErrors: true,
     serviceWorkers: 'block',
     ...contextProfile,
@@ -523,7 +535,7 @@ async function setSearchValues(page) {
     const form = document.getElementById('tourSearch');
     for (const [name, value] of Object.entries(values)) {
       const field = form.elements[name];
-      if (field) field.value = value;
+      if (field) { field.value = value; field.dispatchEvent(new Event('change', {bubbles:true})); }
     }
     form.elements.child_count.value = '0';
   }, fixture.search);
@@ -615,6 +627,11 @@ async function geometry(page, width, state) {
       searchForm: rect(document.getElementById('tourSearch')),
       status: rect(status),
       resultsSummary: rect(document.querySelector('.results-search-summary')),
+      summaryDetail: [...document.querySelectorAll('.search3-entry-summary-detail')].map(node => ({
+        text: node.textContent.trim(),
+        visible: rendered(node),
+        fits: node.scrollWidth <= node.clientWidth + 1 && node.scrollHeight <= node.clientHeight + 1,
+      })),
       resultsTools: rect(document.getElementById('resultsTools')),
       mobileToolbar: rect(mobileToolbar),
       resultsLayout: rect(layout),
@@ -644,6 +661,13 @@ async function geometry(page, width, state) {
         priceAriaLabel: price?.getAttribute('aria-label') || '',
         priceContextVisible: rendered(priceContext),
         priceContextBox: rect(priceContext),
+        factFits: [...(first?.querySelectorAll('.search3-hotel-facts > span') || [])].map(fact => ({
+          text: fact.textContent.replace(/\s+/g, ' ').trim(),
+          fits: [...fact.querySelectorAll('small,b')].every(node => (
+            node.scrollWidth <= node.clientWidth + 1 && node.scrollHeight <= node.clientHeight + 1
+          )),
+          valueSize: parseFloat(getComputedStyle(fact.querySelector('b')).fontSize),
+        })),
       },
       decoratedCount: document.querySelectorAll('#results .hotel-card[data-search3-results-v1="1"]').length,
       disclosureCount: document.querySelectorAll('#results .search3-show-tours').length,
@@ -673,6 +697,12 @@ async function capture(page, width, state, expectedResultCount, manifest) {
   assert.equal(measured.resultCount, expectedResultCount, `${width}/${state}: result count drifted before capture`);
   assert.equal(measured.horizontalOverflow, false, `${width}/${state}: horizontal overflow`);
   if (expectedResultCount > 0) {
+    if (width <= 999) {
+      assert.ok(await page.locator('.search3-mobile-sort select').isVisible(), `${width}: sorting is hidden`);
+      assert.equal(measured.summaryDetail.length, 1, `${width}: compact search context missing`);
+      assert.ok(measured.summaryDetail[0].visible && measured.summaryDetail[0].fits, `${width}: compact search context is clipped`);
+      assert.match(measured.summaryDetail[0].text, /2 взрослых/, `${width}: traveler context missing`);
+    }
     assert.equal(measured.resultsActive, true, `${width}/${state}: candidate result state missing`);
     assert.equal(measured.decoratedCount, expectedResultCount, `${width}/${state}: undecorated result card`);
     assert.equal(measured.disclosureCount, expectedResultCount, `${width}/${state}: disclosure count`);
@@ -685,15 +715,17 @@ async function capture(page, width, state, expectedResultCount, manifest) {
     assert.ok(measured.disclosure.height >= 44, `${width}/${state}: disclosure touch target`);
     assert.ok(measured.typography.title >= 16, `${width}/${state}: hotel title is too small`);
     assert.ok(measured.typography.place >= 12, `${width}/${state}: hotel location is too small`);
-    assert.ok(measured.typography.factLabel >= 10, `${width}/${state}: hotel fact label is too small`);
+    assert.ok(measured.typography.factLabel >= 12, `${width}/${state}: hotel fact label is too small`);
+    assert.ok(measured.cardCopy.factFits.every(fact => fact.fits), `${width}/${state}: clipped hotel fact ${JSON.stringify(measured.cardCopy.factFits)}`);
+    assert.ok(measured.cardCopy.factFits.every(fact => fact.valueSize >= 14), `${width}/${state}: hotel fact value is too small`);
     assert.ok(measured.typography.disclosure >= 14, `${width}/${state}: disclosure label is too small`);
     assert.equal(measured.cardCopy.category, '5★', `${width}/${state}: hotel category must be visible beside the title`);
     assert.equal(measured.cardCopy.facts['Вылет'], '12 сент. 2099', `${width}/${state}: departure date must be human-readable`);
     assert.equal(measured.cardCopy.facts['Питание'], 'Всё включено', `${width}/${state}: meal code/name must be customer-readable`);
-    assert.equal(measured.cardCopy.priceContext, '8 ночей · 2 взрослых Чартерный перелёт · Всё включено', `${width}/${state}: price context must explain the package`);
+    assert.equal(measured.cardCopy.priceContext, '2 взрослых', `${width}/${state}: price context must explain the package`);
     assert.match(measured.cardCopy.priceAriaLabel, /за тур на 2 взрослых$/, `${width}/${state}: total price needs an accessible scope`);
     assert.equal(measured.cardCopy.priceContextVisible, true, `${width}/${state}: price context must be visibly rendered`);
-    assert.ok(measured.cardCopy.priceContextBox.height >= 20, `${width}/${state}: both price-context lines must remain visible`);
+    assert.ok(measured.cardCopy.priceContextBox.height >= 16, `${width}/${state}: traveler scope must remain visible`);
     assert.equal(measured.filterAffordanceCount, 1, `${width}/${state}: expected exactly one visible filter affordance`);
     if (width === 375 && state === 'progressive-25') {
       assert.ok(
@@ -722,7 +754,7 @@ async function capture(page, width, state, expectedResultCount, manifest) {
       }
     } else {
       assert.equal(Math.round(measured.firstResult.width), width - 48, `${width}/${state}: mobile card width`);
-      assert.ok(measured.firstPhoto.height >= 124 && measured.firstPhoto.height <= 128, `${width}/${state}: mobile photo height`);
+      assert.ok(Math.abs(measured.firstPhoto.height - measured.firstPhoto.width * 9 / 16) <= 2, `${width}/${state}: mobile photo height`);
       for (const [surface, box] of Object.entries({ summary: measured.resultsSummary, tools: measured.resultsTools, toolbar: measured.mobileToolbar, layout: measured.resultsLayout })) {
         assert.ok(Math.abs(box.x - measured.firstResult.x) <= 1, `${width}/${state}: mobile ${surface} left edge`);
         assert.ok(Math.abs(box.width - measured.firstResult.width) <= 1, `${width}/${state}: mobile ${surface} width`);
@@ -766,6 +798,20 @@ async function runFiveWidthEvidence(browser, manifest) {
     const harness = await createHarness(browser, viewport, scenario);
     try {
       await setSearchValues(harness.page);
+      for (const [name, value] of Object.entries({dateFrom:'2099-09-13',dateTo:'2099-09-20',daysFrom:'8',daysTill:'12'})) {
+        const isNight = name.startsWith('days');
+        const control = harness.page.locator(isNight ? `#tourSearch select[data-search3-night="${name}"]` : `#tourSearch [name="${name}"]`);
+        assert.ok(await control.isVisible(), `${viewport.width}: ${name} is hidden`);
+        if (viewport.width <= 430) await control.tap();
+        else await control.click();
+        if (isNight) await control.selectOption(value);
+        else await control.fill(value);
+        assert.equal(await harness.page.locator(`#tourSearch [name="${name}"]`).inputValue(), value);
+        assert.equal(await control.inputValue(), value, `${viewport.width}: ${name} cannot be edited`);
+        const usable = await control.evaluate(el => ({height:el.getBoundingClientRect().height,pointer:getComputedStyle(el).pointerEvents}));
+        assert.ok(usable.height >= 44 && usable.pointer !== 'none', `${viewport.width}: ${name} is not tappable`);
+      }
+      await setSearchValues(harness.page);
       if (captureLifecycle) await capture(harness.page, viewport.width, 'initial', 0, manifest);
 
       await harness.page.evaluate(() => window.V2SearchLifecycle.submit());
@@ -783,6 +829,8 @@ async function runFiveWidthEvidence(browser, manifest) {
       await harness.page.locator('#status').scrollIntoViewIfNeeded();
       await capture(harness.page, viewport.width, 'final-100', fixture.progressive.finalLimit, manifest);
 
+      const range = harness.page.locator('[data-s3-price]');
+      assert.equal(await range.inputValue(), await range.getAttribute('max'), `${viewport.width}: untouched price filter falsely limits the result set`);
       const APIResults = scenario.calls.filter(call => call.action === 'search_results');
       assert.ok(APIResults.some(call => call.limit === 25), `${viewport.width}: missing progressive limit=25`);
       assert.ok(APIResults.some(call => call.limit === 100), `${viewport.width}: missing final limit=100`);
@@ -935,7 +983,7 @@ async function runDesktopPresentationEvidence(browser, manifest) {
       const card = document.querySelector('#results .hotel-card');
       const context = card?.querySelector('.hotel-price-context') || null;
       const lines = [...(context?.querySelectorAll('span') || [])];
-      const familyLine = lines[1] || null;
+      const familyLine = lines[0] || null;
       const familyBox = familyLine?.getBoundingClientRect() || null;
       return {
         context: (context?.textContent || '').replace(/\s+/g, ' ').trim(),
@@ -944,8 +992,8 @@ async function runDesktopPresentationEvidence(browser, manifest) {
         ariaLabel: card?.querySelector('.hotel-price')?.getAttribute('aria-label') || '',
       };
     });
-    assert.equal(familyPriceScope.context, '8 ночей · 2 взрослых и 1 ребёнок Чартерный перелёт · Всё включено');
-    assert.deepEqual(familyPriceScope.lines, ['8 ночей · 2 взрослых', 'и 1 ребёнок', 'Чартерный перелёт · Всё включено']);
+    assert.equal(familyPriceScope.context, '2 взрослых и 1 ребёнок');
+    assert.deepEqual(familyPriceScope.lines, ['2 взрослых и 1 ребёнок']);
     assert.equal(familyPriceScope.familyLineVisible, true, 'child count must be visibly rendered, not only present in the DOM');
     assert.match(familyPriceScope.ariaLabel, /за тур на 2 взрослых и 1 ребёнок$/);
     assert.equal(apiCallCount(scenario), beforeFamilyScopeCalls, 'party-scope presentation update must remain local');
@@ -1181,6 +1229,9 @@ async function selectedPresentationState(page) {
       pathname: location.pathname,
       horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
       stepperRailOverlap: overlaps(stepperRect, detailRect),
+      visibleStepNames: [...document.querySelectorAll('#selectedTour .search3-booking-step b')]
+        .filter(node => node.getBoundingClientRect().height > 0 && parseFloat(getComputedStyle(node).fontSize) >= 12)
+        .map(node => node.textContent.trim()),
     };
   });
 }
@@ -1233,10 +1284,10 @@ function assertSelectedPresentation(state, width) {
     mobile: 'За весь тур · 2 взрослых',
   });
   assert.deepEqual(state.ctas, {
-    detail: 'К выбору рейса',
-    inlineFallback: 'Проверить детали тура',
-    railFallback: 'Перейти к итогу тура',
-    mobile: 'К итогу тура',
+    detail: 'Далее: итог тура',
+    inlineFallback: 'Далее: итог тура',
+    railFallback: 'Далее: итог тура',
+    mobile: 'Далее: итог тура',
   });
   assert.equal(state.fallbackActive, true, `${width}: no-flight adapter must be active`);
   assert.deepEqual(state.rawTour, {
@@ -1247,6 +1298,7 @@ function assertSelectedPresentation(state, width) {
   }, `${width}: presentation must not mutate Tourvisor-derived tour data`);
   assert.equal(state.pathname, fixture.route);
   assert.equal(state.horizontalOverflow, false, `${width}: selected presentation must not overflow`);
+  if (width <= 640) assert.deepEqual(state.visibleStepNames, ['Рейс', 'Итог тура', 'Заявка'], 'mobile booking stages must have readable names');
   if (width >= 1000) assert.equal(state.stepperRailOverlap, false, `${width}: booking steps must clear the total rail`);
 }
 
@@ -1265,9 +1317,9 @@ async function waitForSelectedPresentation(page) {
       && valueFor('#selectedTour .facts > div', 'span', 'b', 'Дата') === expected.date
       && valueFor('#selectedTour .search3-booking-summary dl > div', 'dt', 'dd', 'Питание') === expected.meal
       && valueFor('#selectedTour .search3-tour-detail-rail dl > div', 'dt', 'dd', 'Номер') === expected.room
-      && text('#selectedTour .search3-flight-continue--fallback button') === 'Проверить детали тура'
-      && text('#selectedTour .search3-flight-fallback-rail-action') === 'Перейти к итогу тура'
-      && text('.search3-selected-mobile-bar [data-s3-selected-lead]') === 'К итогу тура';
+      && text('#selectedTour .search3-flight-continue--fallback button') === 'Далее: итог тура'
+      && text('#selectedTour .search3-flight-fallback-rail-action') === 'Далее: итог тура'
+      && text('.search3-selected-mobile-bar [data-s3-selected-lead]') === 'Далее: итог тура';
   }, {
     date: '12 сент. 2099',
     meal: 'Всё включено',
@@ -1289,7 +1341,7 @@ async function assertMobileSelectedPresentationRepair(page) {
   });
   assert.deepEqual(state, {
     priceScope: 'За весь тур · 2 взрослых',
-    action: 'К итогу тура',
+    action: 'Далее: итог тура',
   }, 'mobile selected presentation must repair base label rewrites before the next task');
 }
 
@@ -1892,6 +1944,90 @@ async function selectedFailureState(page) {
   });
 }
 
+async function assertSelectedAmounts(page, expected, label) {
+  await page.waitForFunction(amount => {
+    const selectors = [
+      '#selectedTour .selected-price',
+      '#selectedTour .search3-booking-summary__total > strong',
+      '#selectedTour .search3-tour-detail-rail__price > strong',
+      '.search3-selected-mobile-bar [data-s3-selected-price]',
+    ];
+    const nodes = selectors.map(selector => document.querySelector(selector)).filter(Boolean);
+    return nodes.length >= 2 && nodes.every(node => {
+      const match = node.textContent.match(/([\d][\d\s\u00a0]*)\s*₽/);
+      return match && Number(match[1].replace(/\s/g, '')) === amount;
+    });
+  }, expected, { timeout: 12000 });
+  const state = await page.evaluate(() => {
+    const selected = document.getElementById('selectedTour');
+    const mobile = document.querySelector('.search3-selected-mobile-bar [data-s3-selected-price]');
+    const summary = selected?.querySelector('.search3-booking-summary__total > strong');
+    const scope = document.querySelector('.search3-selected-mobile-bar__price small');
+    return {
+      mobile: mobile?.textContent.replace(/\s+/g, ' ').trim() || '',
+      summary: summary?.textContent.replace(/\s+/g, ' ').trim() || '',
+      scope: scope?.textContent.replace(/\s+/g, ' ').trim() || '',
+      basePrice: window.V2TourController?.currentTour?.price,
+      flightPrice: window.V2TourController?.selectedFlight?.price,
+      visibleLegacyCheckout: [...selected.querySelectorAll('.checkout-journey,.checkout-facts-heading')]
+        .filter(node => node.getBoundingClientRect().height > 0 && getComputedStyle(node).display !== 'none').length,
+    };
+  });
+  assert.match(state.mobile, /^\d[\d ]* ₽$/, `${label}: mobile amount includes a traveler/price label`);
+  assert.equal(Number(state.mobile.replace(/[^0-9]/g, '')), expected, `${label}: mobile total`);
+  assert.equal(Number(state.summary.replace(/[^0-9]/g, '')), expected, `${label}: summary total`);
+  assert.match(state.scope, /^За весь тур · 2 взрослых/, `${label}: traveler scope missing`);
+  assert.equal(state.basePrice, fixture.failureFixtures.selectedTour.price, `${label}: UI mutated base tour price`);
+  assert.equal(state.visibleLegacyCheckout, 0, `${label}: previous checkout headings/stages reappeared`);
+  return state;
+}
+
+async function runSelectedPriceConsistency(browser, manifest) {
+  manifest.presentationChecks.selectedPriceConsistency = [];
+  for (const width of [375, 1440]) {
+    const viewport = fixture.viewports.find(item => item.width === width);
+    const scenario = scenarioController(width === 375 ? 'selected-price-family' : 'selected-price-adults');
+    const harness = await createHarness(browser, viewport, scenario);
+    try {
+      await openSelectedFailureTour(harness.page);
+      await harness.page.waitForSelector('.flight-variants[data-search3-flight-disclosure]');
+      assert.equal(await harness.page.locator('#selectedTour .flight-variant').count(), 133);
+      const initial = await assertSelectedAmounts(harness.page, 101000, `${width}/initial`);
+      if (width === 375) assert.match(initial.scope, /2 (?:ребёнка|ребенка|детей)/);
+      const visibleCount = () => harness.page.locator('#selectedTour .flight-variant:visible').count();
+      assert.ok(await visibleCount() <= 7, `${width}: flight list must start compact`);
+      await harness.page.locator('.flight-variant[data-flight-index="1"] input').check();
+      await assertSelectedAmounts(harness.page, 113600, `${width}/second-flight`);
+      await harness.page.locator('.search3-flight-show-all').click();
+      assert.equal(await visibleCount(), 133, `${width}: every flight must remain available`);
+      await harness.page.locator('.flight-variant[data-flight-index="132"] input').check();
+      await assertSelectedAmounts(harness.page, 1234567, `${width}/long-total`);
+      await harness.page.locator('.search3-flight-show-all').click();
+      assert.ok(await harness.page.locator('.flight-variant[data-flight-index="132"]').isVisible(), `${width}: collapsing must retain selected flight`);
+      assert.ok(await visibleCount() <= 7, `${width}: collapsed list grew unexpectedly`);
+      await harness.page.locator('#selectedTour .search3-flight-continue button').click();
+      await harness.page.waitForSelector('#selectedTour.search3-final-review');
+      await assertSelectedAmounts(harness.page, 1234567, `${width}/review`);
+      await harness.page.locator('#selectedTour .search3-summary-submit').click();
+      await harness.page.waitForSelector('#selectedTour.search3-lead-entry .lead-form');
+      await assertSelectedAmounts(harness.page, 1234567, `${width}/lead`);
+      await harness.page.waitForFunction(() => /^1[\s\u00a0]234[\s\u00a0]567 ₽$/.test(document.querySelector('.lead-selection-summary > span:first-child b')?.textContent || ''));
+      const readable = await harness.page.locator('.lead-selection-summary > span:first-child b').evaluate(el => Number.parseFloat(getComputedStyle(el).fontSize));
+      assert.ok(readable >= 20, `${width}: lead amount is too small`);
+      await harness.page.locator('#selectedTour .search3-lead-back').click();
+      await harness.page.waitForFunction(() => !document.getElementById('selectedTour').classList.contains('search3-lead-entry'));
+      await assertSelectedAmounts(harness.page, 1234567, `${width}/return`);
+      await assertClean(harness, `${width}/selected-price-consistency`);
+      manifest.presentationChecks.selectedPriceConsistency.push({
+        width, passed: true, prices: [101000, 113600, 1234567], variants: 133,
+        family: width === 375, leadRequests: 0, basePricePreserved: true,
+      });
+    } finally {
+      await harness.context.close();
+    }
+  }
+}
+
 function assertConversionShellPreserved(state) {
   assert.equal(state.tourId, fixture.failureFixtures.selectedTour.id);
   assert.equal(state.selectedVisible, true);
@@ -2044,10 +2180,26 @@ async function runFlightFailureFixtures(browser, manifest) {
   manifest.environment.browserVersion = browser.version();
   try {
     await runFiveWidthEvidence(browser, manifest);
+    for (const width of [1920, 2048]) {
+      const wide = await createHarness(browser, {width, height:1100}, scenarioController('progressive'));
+      try {
+        await setSearchValues(wide.page);
+        const positions = await wide.page.evaluate(() => {
+          const grid=document.querySelector('#tourSearch .search3-primary-grid');
+          return [...grid.children].filter(el=>getComputedStyle(el).display!=='none').map(el=>({cls:el.className,x:el.getBoundingClientRect().x,y:el.getBoundingClientRect().bottom,right:el.getBoundingClientRect().right}));
+        });
+        assert.equal(positions.length,7);
+        assert.ok(Math.max(...positions.filter(p=>/search3-dates|search3-nights|search-submit/.test(p.cls)).map(p=>p.y))-Math.min(...positions.filter(p=>/search3-dates|search3-nights|search-submit/.test(p.cls)).map(p=>p.y))<=3, `${width}: primary button must share the field row`);
+        assert.ok(positions.every(p=>p.x>=0&&p.right<=width), `${width}: primary fields overflow`);
+        await wide.page.screenshot({path:path.join(outputDir,`${width}-entry-wide.jpg`),type:'jpeg'});
+      } finally { await wide.context.close(); }
+    }
+
     if (visualTier.runResponsiveBoundaries) {
       await runResponsiveFilterBoundaries(browser, manifest);
     }
     await runPresentationEvidence(browser, manifest);
+    await runSelectedPriceConsistency(browser, manifest);
     if (visualTier.runRaces) {
       await runPendingStatusRace(browser);
       await runPendingResultsRace(browser);

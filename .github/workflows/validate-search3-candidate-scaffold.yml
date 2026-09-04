@@ -19,6 +19,7 @@ on:
       - 'scripts/ci/render_search3_visual_summary.py'
       - 'scripts/release/build_search3_candidate_preview.py'
       - 'tests/search3_candidate_asset_seams_test.py'
+      - 'tests/search3_selected_flow_v2_test.cjs'
       - 'tests/search3_reference_dossier_test.py'
       - 'tests/search3_approved_mockups_test.py'
       - 'tests/search3_candidate_release_artifact_test.py'
@@ -83,6 +84,7 @@ jobs:
           node --check tests/browser/search3-candidate-scaffold.cjs
           node -e "const f=require('./tests/fixtures/search3-candidate-scaffold.json'); if(f.schemaVersion!==2||Object.keys(f.visualTiers).join(',')!=='smoke,candidate'||f.viewports.map(v=>v.width).join(',')!=='375,430,768,1024,1440') process.exit(1)"
           node tests/contracts/search3-boundaries.test.cjs
+          node --test tests/search3_selected_flow_v2_test.cjs
           node diagnostics/search_results_recovery_test.cjs
           python3 -B tests/search3_candidate_asset_seams_test.py
           python3 -B tests/search3_candidate_release_artifact_test.py
