@@ -22,7 +22,7 @@ This matters because the live Search3 entry screen is already visually behind th
 | Verified implementation commit | `e5baf32f455cdb0aa1a704964f28e5efbebf57ff` |
 | Implementation tree | `2c88a4e3786cdadc6a0eec2b88fafb1f388ba541` |
 | Run attestation | [PR #1293](https://github.com/pyatkoff/poisk-turov-test/pull/1293) |
-| Run | Search3 preview run 467, `SUCCESS` |
+| Run | [Search3 preview run 467](https://github.com/pyatkoff/poisk-turov-test/actions/runs/33813829683), attempt 1, `SUCCESS` |
 
 The branch head is a docs-only descendant of the implementation commit. Live Search3 asset URLs observed on 2026-09-04 carry `v=e5baf32f455c`, independently tying the preview to the frozen implementation.
 
@@ -49,7 +49,17 @@ No layout is marked approved. A green functional run is not visual owner approva
 
 The merged Search3 work map attests that run 467 passed `deploy-preview`, `visual-qa desktop`, `visual-qa tablet` and `visual-qa mobile` on implementation commit `e5baf32f…`.
 
-The exact QA source files are frozen in the manifest with both Git blob IDs and SHA-256 digests. They define these viewports:
+The exact QA source files are frozen in the manifest with both Git blob IDs and SHA-256 digests. On 2026-09-04 the three still-live GitHub artifacts were recovered, their server archive digests were reproduced locally, and the 35 PNG plus three JSON report digests were recorded. The original ZIP bytes are retained in owner-private storage and are deliberately not committed to this public repository.
+
+| Mode | Artifact ID | ZIP bytes | ZIP SHA-256 | GitHub expiry |
+| --- | ---: | ---: | --- | --- |
+| desktop | `9915925993` | 2,738,645 | `ae398a14323d99bb23ad5b2bd26be06b6923845da6e3218d1613770c064718fd` | 2026-10-03 22:41 UTC |
+| tablet | `9915896367` | 2,645,305 | `cd001dd85c81a051a5a02446e087656eeb45bd5f62cf14db6bf7cf3252be02d3` | 2026-10-03 22:40 UTC |
+| mobile | `9915896517` | 854,848 | `0b00d1827004b3c516c3dcc1c4305c68b3e250210ca5605f8e910c147062c8ff` | 2026-10-03 22:40 UTC |
+
+The manifest records every state filename and pixel SHA-256. The tablet archive's report is genuinely named `report-mobile.json`; that source quirk is preserved rather than rewritten.
+
+The recovered artifacts define these viewports:
 
 | Mode | Viewport | Captured state count |
 | --- | ---: | ---: |
@@ -65,7 +75,8 @@ What it does **not** prove:
 - standard product widths 375/430/768/1024 in the same run;
 - deterministic empty-flight, upstream error or timeout behavior;
 - real lead delivery or payload mapping (preview lead submission is disabled and UI states are simulated);
-- immutable retention of screenshot bytes: the workflow retains artifacts for 30 days and the dossier has no artifact IDs or vendored pixels.
+- direct parity with the eight approved design sources: their immutable source IDs and exported pixels remain unavailable;
+- public redistribution of the candidate captures: they contain commercial hotel/price imagery and remain owner-private even though their hashes are reviewable.
 
 ## Live read-only observation
 
@@ -103,7 +114,7 @@ The entry-screen mismatch and duplicate Search3 H1 are review blockers. They are
 | S3-REF-001 | Search3 entry is behind current production DS2 entry | explicit ownership decision for layout 1 |
 | S3-REF-002 | two H1 elements in live preview; one has zero area | one truthful visible H1 in the candidate |
 | S3-REF-003 | direct visual diff remains open for layouts 1, 2, 4, 5, 7, 8 | signed comparison matrix with zero P0/P1 |
-| S3-REF-004 | run 467 pixels/artifact IDs are not durable | checksum-addressed reference/candidate captures |
+| S3-REF-004 | run 467 IDs, archives and candidate hashes are recovered privately, but all eight approved design-source pixels remain unavailable | immutable design document/node/revision IDs plus checksum-addressed exports of the eight canonical layouts |
 | S3-REF-005 | run widths do not cover 375/430/768/1024/1440 | one candidate SHA green at all required widths |
 | S3-REF-006 | lead UI is simulated | contract snapshot tests plus read-only integration evidence |
 | S3-REF-007 | no deterministic no-flight/error/timeout references | committed fixtures and state assertions |

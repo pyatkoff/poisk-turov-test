@@ -64,6 +64,38 @@ class Search3ReferenceDossierTest(unittest.TestCase):
         )
         self.assertTrue(any("durability" in error for error in errors))
 
+    def test_rejects_changed_artifact_identity(self) -> None:
+        errors = self.validate_mutation(
+            lambda data: data["run_467"]["artifacts"][0].update(artifact_id=1)
+        )
+        self.assertTrue(any("artifact artifact_id drift" in error for error in errors))
+
+    def test_rejects_changed_run_timestamp(self) -> None:
+        errors = self.validate_mutation(
+            lambda data: data["run_467"].update(retrieved_at="2099-01-01T00:00:00Z")
+        )
+        self.assertTrue(any("retrieved_at drift" in error for error in errors))
+
+    def test_rejects_changed_pixel_digest(self) -> None:
+        errors = self.validate_mutation(
+            lambda data: data["run_467"]["artifacts"][0]["state_sha256"].update(
+                {"01-search": "0" * 64}
+            )
+        )
+        self.assertTrue(any("capture index content drift" in error for error in errors))
+
+    def test_rejects_non_object_pixel_index_without_crashing(self) -> None:
+        errors = self.validate_mutation(
+            lambda data: data["run_467"]["artifacts"][0].update(state_sha256="invalid")
+        )
+        self.assertTrue(any("state_sha256 must be an object" in error for error in errors))
+
+    def test_rejects_public_redistribution(self) -> None:
+        errors = self.validate_mutation(
+            lambda data: data["run_467"].update(public_redistribution_authorized=True)
+        )
+        self.assertTrue(any("publicly redistributable" in error for error in errors))
+
     def test_rejects_changed_frozen_source_digest(self) -> None:
         errors = self.validate_mutation(
             lambda data: data["source_identity"]["source_files"][0].update(sha256="0" * 64)
