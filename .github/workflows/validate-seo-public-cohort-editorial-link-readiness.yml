@@ -1,0 +1,52 @@
+name: Validate SEO public cohort editorial link readiness
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-seo-public-cohort-editorial-link-readiness.yml'
+      - 'docs/seo-public-cohort-editorial-link-readiness.json'
+      - 'docs/seo-public-cohort-editorial-link-readiness.md'
+      - 'scripts/ci/validate_seo_public_cohort_editorial_link_readiness.py'
+      - 'tests/seo-public-cohort-editorial-link-readiness-test.py'
+      - 'v2/sitemap.xml'
+      - 'v2/country/**/index.php'
+      - 'v2/**/*.php'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/validate-seo-public-cohort-editorial-link-readiness.yml'
+      - 'docs/seo-public-cohort-editorial-link-readiness.json'
+      - 'docs/seo-public-cohort-editorial-link-readiness.md'
+      - 'scripts/ci/validate_seo_public_cohort_editorial_link_readiness.py'
+      - 'tests/seo-public-cohort-editorial-link-readiness-test.py'
+      - 'v2/sitemap.xml'
+      - 'v2/country/**/index.php'
+      - 'v2/**/*.php'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seo-public-cohort-editorial-link-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review-only-editorial-link-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate review-only dossier
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            python3 -S scripts/ci/validate_seo_public_cohort_editorial_link_readiness.py --enforce-diff
+          else
+            python3 -S scripts/ci/validate_seo_public_cohort_editorial_link_readiness.py
+          fi
+          python3 -S tests/seo-public-cohort-editorial-link-readiness-test.py
+          git diff --check
