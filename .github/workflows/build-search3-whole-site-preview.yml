@@ -103,36 +103,42 @@ jobs:
           while IFS= read -r file; do node --check "$file" >/dev/null; done < <(find "$payload" -type f -name '*.js' -print | LC_ALL=C sort)
 
           source_tree="$(git rev-parse "$SOURCE_SHA^{tree}")"
+          export SOURCE_TREE="$source_tree"
           file_count="$(find "$payload" -type f | wc -l)"
           (cd "$payload" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) > "$control/payload.sha256"
           payload_manifest_sha="$(sha256sum "$control/payload.sha256" | awk '{print $1}')"
           python3 - <<'PY'
-          import json, os
-          from pathlib import Path
-          root=Path(os.environ['RUNNER_TEMP'])/'search3-site-release'
-          payload=root/'payload'
-          files=[]
           import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path(os.environ['RUNNER_TEMP']) / 'search3-site-release'
+          payload = root / 'payload'
+          files = []
           for path in sorted(p for p in payload.rglob('*') if p.is_file()):
-              rel=path.relative_to(payload).as_posix()
-              data=path.read_bytes()
-              files.append({'path':rel,'sha256':hashlib.sha256(data).hexdigest(),'size':len(data)})
-          manifest={
-              'schema_version':1,
-              'source_sha':os.environ['SOURCE_SHA'],
-              'source_tree_sha':os.environ['SOURCE_TREE'],
-              'target':'search3-whole-site-preview',
-              'route':'/_preview/search3-site-candidate/',
-              'file_count':len(files),
-              'invariants':{
-                  'production_api_path':'/api-v2.php',
-                  'production_lead_delivery':False,
-                  'preview_lead_path':'/_preview/search3-site-candidate/preview-lead-disabled.php',
-                  'production_metrika_changes':False,
+              rel = path.relative_to(payload).as_posix()
+              data = path.read_bytes()
+              files.append({'path': rel, 'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data)})
+          manifest = {
+              'schema_version': 1,
+              'source_sha': os.environ['SOURCE_SHA'],
+              'source_tree_sha': os.environ['SOURCE_TREE'],
+              'target': 'search3-whole-site-preview',
+              'route': '/_preview/search3-site-candidate/',
+              'file_count': len(files),
+              'invariants': {
+                  'production_api_path': '/api-v2.php',
+                  'production_lead_delivery': False,
+                  'preview_lead_path': '/_preview/search3-site-candidate/preview-lead-disabled.php',
+                  'production_metrika_changes': False,
               },
-              'files':files,
+              'files': files,
           }
-          (root/'control'/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          (root / 'control' / 'manifest.json').write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
           PY
           manifest_sha="$(sha256sum "$control/manifest.json" | awk '{print $1}')"
           archive="$RUNNER_TEMP/search3-whole-site-preview.tar.gz"
@@ -150,8 +156,6 @@ jobs:
           echo "archive_sha=$archive_sha" >> "$GITHUB_OUTPUT"
           echo "file_count=$file_count" >> "$GITHUB_OUTPUT"
           echo "SEARCH3_SITE_ARTIFACT_BUILT source=$SOURCE_SHA files=$file_count archive=$archive_sha"
-        env:
-          SOURCE_TREE: ${{ github.event.pull_request.head.sha }}
 
       - name: Smoke transformed site under exact preview prefix
         shell: bash
@@ -164,10 +168,10 @@ jobs:
           php -S 127.0.0.1:8098 -t "$docroot" >"$RUNNER_TEMP/search3-site-php.log" 2>&1 &
           php_pid=$!
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
-          for _ in {1..20}; do curl -fsS "http://127.0.0.1:8098$PREVIEW_BASE/" -o /dev/null && break; sleep 0.25; done
+          for _ in {1..20}; do curl -fsS -H 'Host: anytoour.ru' "http://127.0.0.1:8098$PREVIEW_BASE/" -o /dev/null && break; sleep 0.25; done
           for path in / /poisk-turov/ /country/ /hot/ /contacts/ /rb/ /how-to-buy/; do
             out="$RUNNER_TEMP/site-$(echo "$path" | tr '/-' '__').html"
-            code="$(curl -sS -o "$out" -w '%{http_code}' "http://127.0.0.1:8098$PREVIEW_BASE$path")"
+            code="$(curl -sS -H 'Host: anytoour.ru' -o "$out" -w '%{http_code}' "http://127.0.0.1:8098$PREVIEW_BASE$path")"
             test "$code" = 200
             grep -Fq '<meta name="robots" content="noindex,follow,max-image-preview:large' "$out"
             if grep -Eo 'href="/[^"]*"' "$out" | grep -Ev "^href=\"$PREVIEW_BASE/|^href=\"/images/|^href=\"/favicon"; then
@@ -178,7 +182,7 @@ jobs:
           grep -Fq "action=\"$PREVIEW_BASE/poisk-turov/\"" "$RUNNER_TEMP/site-_.html"
           grep -Fq 'api:"/api-v2.php"' "$RUNNER_TEMP/site-_poisk_turov_.html"
           grep -Fq "leadApi:\"$PREVIEW_BASE/preview-lead-disabled.php\"" "$RUNNER_TEMP/site-_poisk_turov_.html"
-          lead_code="$(curl -sS -o "$RUNNER_TEMP/lead.json" -w '%{http_code}' -H 'Content-Type: application/json' --data '{"synthetic":true}' "http://127.0.0.1:8098$PREVIEW_BASE/preview-lead-disabled.php")"
+          lead_code="$(curl -sS -H 'Host: anytoour.ru' -o "$RUNNER_TEMP/lead.json" -w '%{http_code}' -H 'Content-Type: application/json' --data '{"synthetic":true}' "http://127.0.0.1:8098$PREVIEW_BASE/preview-lead-disabled.php")"
           test "$lead_code" = 403
           grep -Fq PREVIEW_LEAD_DISABLED "$RUNNER_TEMP/lead.json"
           kill "$php_pid" >/dev/null 2>&1 || true
