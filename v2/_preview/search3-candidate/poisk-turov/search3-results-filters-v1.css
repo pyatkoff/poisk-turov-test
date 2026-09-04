@@ -3505,3 +3505,10 @@ html body.search3-candidate.search3-results-active #results .search3-hotel-facts
   html body.search3-candidate.search3-results-active #results .hotel-price-context{font-size:10px!important}
   html body.search3-candidate.search3-results-active #results .search3-hotel-facts{grid-template-columns:1.15fr .65fr 1.5fr 1fr!important}
 }
+
+/* Keep the desktop booking steps inside the main column, clear of the sticky total rail. */
+@media(min-width:1000px){
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour:not(.search3-final-review) > .search3-booking-stepper{
+    grid-column:1/3!important;
+  }
+}

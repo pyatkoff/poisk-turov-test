@@ -1099,6 +1099,10 @@ async function selectedPresentationState(page) {
       article.querySelector('span')?.textContent.trim().toLowerCase() === 'номер'
     ));
     const current = window.V2TourController?.currentTour || {};
+    const stepperRect = document.querySelector('#selectedTour > .search3-booking-stepper')?.getBoundingClientRect();
+    const detailRect = document.querySelector('#selectedTour > .search3-tour-detail-rail')?.getBoundingClientRect();
+    const overlaps = (a, b) => Boolean(a && b && a.width > 0 && b.width > 0
+      && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top);
     const rawText = value => value && typeof value === 'object'
       ? String(value.russianName || value.fullRussianName || value.name || value.title || '')
       : String(value || '');
@@ -1128,6 +1132,7 @@ async function selectedPresentationState(page) {
       },
       pathname: location.pathname,
       horizontalOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+      stepperRailOverlap: overlaps(stepperRect, detailRect),
     };
   });
 }
@@ -1191,6 +1196,7 @@ function assertSelectedPresentation(state, width) {
   }, `${width}: presentation must not mutate Tourvisor-derived tour data`);
   assert.equal(state.pathname, fixture.route);
   assert.equal(state.horizontalOverflow, false, `${width}: selected presentation must not overflow`);
+  if (width >= 1000) assert.equal(state.stepperRailOverlap, false, `${width}: booking steps must clear the total rail`);
 }
 
 async function waitForSelectedPresentation(page) {
