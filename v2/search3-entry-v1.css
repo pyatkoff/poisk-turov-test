@@ -212,3 +212,7 @@ html body.search3-candidate #tourSearch .search3-nights .search3-direct-control{
  html body.search3-candidate #tourSearch .search3-nights{order:6!important}
  html body.search3-candidate #tourSearch .search-submit{order:7!important;grid-column:auto!important;width:100%!important;min-width:0!important;height:46px!important}
 }
+
+/* Align Safari's native date value and keep native night pickers. */
+html body.search3-candidate #tourSearch .search3-dates .search3-direct-control::-webkit-date-and-time-value{min-height:44px;display:flex;align-items:center;justify-content:center;margin:0}
+html body.search3-candidate #tourSearch .search3-nights select.search3-direct-control{appearance:auto!important;-webkit-appearance:menulist!important;text-align-last:center!important;padding-right:20px!important}

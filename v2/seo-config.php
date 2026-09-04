@@ -26,6 +26,7 @@ function v2_seo_request_path(): string
 
 function v2_seo_indexable(array $siteParams = []): bool
 {
+    if (defined('V2_LEGACY_SEARCH') && V2_LEGACY_SEARCH === true) return false;
     if (!v2_seo_is_anytoour_host() || empty($siteParams['SEO_INDEXABLE'])) {
         return false;
     }

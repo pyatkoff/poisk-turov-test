@@ -49,6 +49,11 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         for marker in ('leadApi:"/lead-adapter-v2.php"', 'api:"/api-v2.php"', 'metrikaCounter:123456', 'href="https://anytoour.ru/poisk-turov/"'):
             self.assertIn(marker, canonical)
         self.assertNotIn('?lead=disabled', canonical)
+        legacy = render('anytoour.ru', 'poisk-turov-old/index.php')
+        self.assertNotIn('id="search3-entry-v1-style"', legacy)
+        self.assertIn('content="noindex,follow', legacy)
+        self.assertIn('href="https://anytoour.ru/poisk-turov/"', legacy)
+        self.assertIn('leadApi:"/lead-adapter-v2.php"', legacy)
         for html in [render('anytour.online', 'poisk-turov/index.php'), render('anytoour.ru', 'index.php'), render('anytoour.ru', 'poisk-turov/index.php', False)]:
             self.assertNotIn('<body class="search3-candidate">', html)
             self.assertNotIn('id="search3-entry-v1-style"', html)
