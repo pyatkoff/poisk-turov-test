@@ -43,3 +43,21 @@ function v2_site_href(string $href): string
     }
     return $base . ($href === '/' ? '/' : $href);
 }
+
+/**
+ * Preview-only safety net for shared content pages. It rewrites only first-party
+ * root-relative navigation/form targets; scripts, images, canonical URLs and
+ * external links are deliberately untouched.
+ */
+function v2_site_rewrite_preview_navigation(string $html): string
+{
+    if (!v2_site_preview_mode() || $html === '') return $html;
+    $rewritten = preg_replace_callback(
+        '/\b(href|action)=("|\')(\/(?!\/)[^"\']*)(\2)/i',
+        static function (array $match): string {
+            return $match[1] . '=' . $match[2] . v2_site_href($match[3]) . $match[4];
+        },
+        $html
+    );
+    return is_string($rewritten) ? $rewritten : $html;
+}
