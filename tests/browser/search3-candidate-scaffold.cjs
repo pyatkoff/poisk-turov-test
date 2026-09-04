@@ -1275,6 +1275,24 @@ async function waitForSelectedPresentation(page) {
   }, { timeout: 12000 });
 }
 
+async function assertMobileSelectedPresentationRepair(page) {
+  const state = await page.evaluate(async () => {
+    window.Search3SelectedTourMobile.sync();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const normalized = selector => (
+      document.querySelector(selector)?.textContent.replace(/\s+/g, ' ').trim() || ''
+    );
+    return {
+      priceScope: normalized('.search3-selected-mobile-bar__price small'),
+      action: normalized('.search3-selected-mobile-bar [data-s3-selected-lead]'),
+    };
+  });
+  assert.deepEqual(state, {
+    priceScope: 'За весь тур · 2 взрослых',
+    action: 'К итогу тура',
+  }, 'mobile selected presentation must repair base label rewrites before the next task');
+}
+
 async function exerciseNoFlightReviewAdapter(harness, triggerSelector) {
   const requestsBefore = {
     candidate: harness.candidateLeadRequests.length,
@@ -1533,6 +1551,7 @@ async function runDesktopSelectedPresentationEvidence(browser, manifest) {
       const top = document.getElementById('selectedTour')?.getBoundingClientRect().top;
       return Number.isFinite(top) && top >= -40 && top <= 180;
     });
+    await assertMobileSelectedPresentationRepair(harness.page);
     const presentation = await selectedPresentationState(harness.page);
     assertSelectedPresentation(presentation, 1440);
     await writePresentationScreenshot(harness.page, '1440-selected-tour-presentation.png', manifest, {

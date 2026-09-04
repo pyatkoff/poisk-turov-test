@@ -104,6 +104,15 @@
     delete button.dataset.search3SelectedFlowAria;
   }
 
+  function syncMobilePriceScope(active) {
+    if (!active) return;
+    var source = selected.querySelector('.selected-price > small');
+    var scope = text(source);
+    if (scope.indexOf('За весь тур') !== 0) return;
+    var target = document.querySelector('.search3-selected-mobile-bar__price small');
+    if (target && text(target) !== scope) target.textContent = scope;
+  }
+
   function clear() {
     selected.classList.remove('search3-flight-fallback');
     delete selected.dataset.search3FlightFallback;
@@ -124,6 +133,7 @@
     selected.dataset.search3FlightFallback = '1';
     ensureReviewAction();
     ensureRailAction();
+    syncMobilePriceScope(true);
     syncMobileAction(true);
   }
 
@@ -137,11 +147,16 @@
   }
 
   var mobileButton = document.querySelector('.search3-selected-mobile-bar [data-s3-selected-lead]');
+  var mobilePriceScope = document.querySelector('.search3-selected-mobile-bar__price small');
   var observer = new MutationObserver(function (mutations) {
     var mobileChanged = mobileButton && mutations.some(function (mutation) {
       return mutation.target === mobileButton || mobileButton.contains(mutation.target);
     });
     if (mobileChanged) syncMobileAction(noFlightState());
+    var mobilePriceChanged = mobilePriceScope && mutations.some(function (mutation) {
+      return mutation.target === mobilePriceScope || mobilePriceScope.contains(mutation.target);
+    });
+    if (mobilePriceChanged) syncMobilePriceScope(noFlightState());
     if (mutations.some(function (mutation) {
       return mutation.target === selected || selected.contains(mutation.target);
     })) schedule();
@@ -154,6 +169,13 @@
   });
   if (mobileButton) {
     observer.observe(mobileButton, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+  }
+  if (mobilePriceScope) {
+    observer.observe(mobilePriceScope, {
       childList: true,
       subtree: true,
       characterData: true
