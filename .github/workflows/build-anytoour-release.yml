@@ -1,0 +1,182 @@
+name: Build anytoour.ru release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2/**'
+      - 'scripts/release/build_anytoour_release.py'
+      - 'scripts/release/remote_activate_anytoour_legacy_lead.sh'
+      - 'scripts/release/remote_activate_anytoour_public.sh'
+      - 'tests/anytoour_release_artifact_test.py'
+      - '.github/workflows/build-anytoour-release.yml'
+      - '.github/workflows/deploy-anytoour.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-anytoour-release-${{ github.sha }}
+  queue: max
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: ${{ github.event_name == 'push' || github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Bind build to exact main SHA
+        id: release
+        env:
+          CONTROL_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          [[ "$CONTROL_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$CONTROL_SHA"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$CONTROL_SHA" origin/main
+          tree_sha="$(git rev-parse "$CONTROL_SHA^{tree}")"
+          v2_tree_sha="$(git rev-parse "$CONTROL_SHA:v2")"
+          [[ "$tree_sha" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$v2_tree_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$CONTROL_SHA" >> "$GITHUB_OUTPUT"
+          echo "tree_sha=$tree_sha" >> "$GITHUB_OUTPUT"
+          echo "v2_tree_sha=$v2_tree_sha" >> "$GITHUB_OUTPUT"
+          echo "ANYTOOUR_BUILD_SOURCE_BOUND sha=$CONTROL_SHA tree=$tree_sha v2_tree=$v2_tree_sha"
+
+      - name: Validate all packaged PHP and active JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          find v2 -type f -name '*.php' -print0 | sort -z | xargs -0 -n 1 php -l >/dev/null
+          mapfile -t active_js < <(php -r 'require "v2/bundle-manifest-v1.php"; foreach (v2_bundle_manifest()["js"] as $file) echo $file, "\n";')
+          test "${#active_js[@]}" -eq 44
+          for asset in "${active_js[@]}"; do
+            test -s "v2/$asset"
+            node --check "v2/$asset"
+          done
+          php -r '$_GET=["type"=>"js"]; include "v2/bundle-v1.php";' > "$RUNNER_TEMP/anytoour-active-bundle.js"
+          test -s "$RUNNER_TEMP/anytoour-active-bundle.js"
+          node --check "$RUNNER_TEMP/anytoour-active-bundle.js"
+          mkdir -p "$RUNNER_TEMP/empty-document-root"
+          EMPTY_ROOT="$RUNNER_TEMP/empty-document-root" php -d display_errors=1 -r '
+            $_SERVER["DOCUMENT_ROOT"]=getenv("EMPTY_ROOT");
+            $_SERVER["SCRIPT_NAME"]="/index.php";
+            $_SERVER["HTTP_HOST"]="anytoour.ru";
+            $_GET=[];
+            ob_start(); include "v2/home-entry-v1.php"; $html=ob_get_clean();
+            if (strpos($html, "action=\"/poisk-turov/\"") === false) exit(10);
+            if (strpos($html, "AnyTour — поиск и подбор туров онлайн") === false) exit(11);
+          '
+          EMPTY_ROOT="$RUNNER_TEMP/empty-document-root" php -d display_errors=1 -r '
+            $_SERVER["DOCUMENT_ROOT"]=getenv("EMPTY_ROOT");
+            $_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php";
+            $_SERVER["HTTP_HOST"]="anytoour.ru";
+            $_GET=[];
+            ob_start(); include "v2/poisk-turov/index.php"; $html=ob_get_clean();
+            if (strpos($html, "api:\"/api-v2.php\"") === false) exit(20);
+            if (strpos($html, "leadApi:\"/lead-adapter-v2.php\"") === false) exit(21);
+            if (strpos($html, "https://anytoour.ru/poisk-turov/") === false) exit(22);
+          '
+          echo "ANYTOOUR_PACKAGED_RUNTIME_VALID php=$(find v2 -type f -name '*.php' | wc -l) active_js=${#active_js[@]}"
+
+      - name: Test deterministic target mapping
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 tests/anytoour_release_artifact_test.py
+
+      - name: Build and verify immutable release candidate
+        env:
+          CONTROL_SHA: ${{ github.sha }}
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          RELEASE_TREE_SHA: ${{ steps.release.outputs.tree_sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          first="$RUNNER_TEMP/anytoour-release-first"
+          second="$RUNNER_TEMP/anytoour-release-second"
+          python3 scripts/release/build_anytoour_release.py build --repo . --release-sha "$RELEASE_SHA" --output-dir "$first"
+          python3 scripts/release/build_anytoour_release.py build --repo . --release-sha "$RELEASE_SHA" --output-dir "$second"
+          for file in SHA256SUMS anytoour-public.tar.gz anytoour-public.tar.gz.sha256 anytoour-legacy-lead.tar.gz anytoour-legacy-lead.tar.gz.sha256 release-build.json; do
+            cmp "$first/$file" "$second/$file"
+          done
+          (
+            cd "$first"
+            sha256sum -c SHA256SUMS
+          )
+          ARTIFACT_DIR="$first" python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          control = {
+              'control_sha': os.environ['CONTROL_SHA'],
+              'release_sha': os.environ['RELEASE_SHA'],
+              'run_attempt': int(os.environ['RUN_ATTEMPT']),
+              'run_id': int(os.environ['RUN_ID']),
+              'schema_version': 1,
+              'workflow': '.github/workflows/build-anytoour-release.yml',
+          }
+          destination = Path(os.environ['ARTIFACT_DIR']) / 'release-control.json'
+          destination.write_text(
+              json.dumps(control, ensure_ascii=False, indent=2, sort_keys=True) + '\n',
+              encoding='utf-8',
+          )
+          PY
+          python3 scripts/release/build_anytoour_release.py verify \
+            --repo . \
+            --artifact-dir "$first" \
+            --release-sha "$RELEASE_SHA" \
+            --repository-tree-sha "$RELEASE_TREE_SHA" \
+            --control-sha "$CONTROL_SHA" \
+            --run-id "$RUN_ID" \
+            --run-attempt "$RUN_ATTEMPT"
+          echo "ARTIFACT_DIR=$first" >> "$GITHUB_ENV"
+          echo "ANYTOOUR_RELEASE_CANDIDATE_READY sha=$RELEASE_SHA"
+
+      - name: Retain exact release candidate
+        id: artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: anytoour-release-${{ steps.release.outputs.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.ARTIFACT_DIR }}/SHA256SUMS
+            ${{ env.ARTIFACT_DIR }}/anytoour-public.tar.gz
+            ${{ env.ARTIFACT_DIR }}/anytoour-public.tar.gz.sha256
+            ${{ env.ARTIFACT_DIR }}/anytoour-legacy-lead.tar.gz
+            ${{ env.ARTIFACT_DIR }}/anytoour-legacy-lead.tar.gz.sha256
+            ${{ env.ARTIFACT_DIR }}/release-build.json
+            ${{ env.ARTIFACT_DIR }}/release-control.json
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+          retention-days: 30
+
+      - name: Record retained candidate identity
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          [[ "$ARTIFACT_DIGEST" =~ ^[0-9a-f]{64}$ ]]
+          {
+            echo '## AnyTour exact release candidate'
+            echo
+            echo "- Release SHA: \`$RELEASE_SHA\`"
+            echo "- Artifact ID: \`$ARTIFACT_ID\`"
+            echo "- Artifact digest: \`$ARTIFACT_DIGEST\`"
+            echo '- Retention: 30 days (candidate only; not an LKG pointer)'
+          } >> "$GITHUB_STEP_SUMMARY"
