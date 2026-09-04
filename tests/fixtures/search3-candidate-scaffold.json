@@ -12,7 +12,7 @@
     "ownerVisualApproval": false
   },
   "presentation": {
-    "status": "DONOR_RECONSTRUCTION",
+    "status": "REFERENCE_IMPLEMENTATION_IN_PROGRESS",
     "approvedPixelsCompared": false,
     "donorCommit": "e5baf32f455cdb0aa1a704964f28e5efbebf57ff",
     "donorRunId": "33813829683",
