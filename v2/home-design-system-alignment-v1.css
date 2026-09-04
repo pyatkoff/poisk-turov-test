@@ -4,7 +4,7 @@
 .at-home-search{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)));border-color:var(--at-line);background:var(--at-surface);border-radius:var(--at-radius-xl)}
 .at-home-field>span{color:var(--at-muted)}
 .at-home-field select,.at-home-field input{border-color:var(--at-line);border-radius:var(--at-control-radius);color:var(--at-text)}
-.at-home-search button{background:var(--at-accent);border-radius:var(--at-control-radius)}
+.at-home-search button{background:#0666ff;border-radius:var(--at-control-radius)}
 .at-home-search__more{color:var(--at-brand)}
 .at-home-section{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))}
 .at-home-section--discovery{margin-top:var(--at-section-space);margin-bottom:var(--at-section-space)}
@@ -36,7 +36,7 @@
 .at-home-field>span{font-size:10px;text-transform:none;letter-spacing:0}
 .at-home-field select,.at-home-field input{min-height:50px;background:#fff;border-radius:10px}
 .at-home-search button{min-height:50px;border-radius:10px;box-shadow:none}
-.at-home-search button:hover{box-shadow:0 8px 18px rgba(216,61,0,.18)}
+.at-home-search button:hover{background:#0754d1;box-shadow:0 8px 18px rgba(6,102,255,.18)}
 
 /* Reference trust strip: four compact proof points, matching the confirmed DS2 homepage rhythm. */
 .at-home-benefits{grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid var(--at-line);border-bottom:1px solid var(--at-line)}

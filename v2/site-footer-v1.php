@@ -10,14 +10,13 @@ function v2_render_site_footer(string $phone, string $phoneHref): void
 {
     $mobileActionStyle = 'min-height:44px;display:inline-flex;align-items:center;';
     ?>
-    <footer class="ds2-site-footer">
+    <footer class="ds2-site-footer" data-site-footer="shared" data-search3-footer="1">
       <div class="ds2-site-footer__inner">
         <div class="ds2-site-footer__brand">
           <a class="ds2-site-footer__logo" href="/" aria-label="AnyTour — главная">
             <img src="/images/logo.svg" alt="AnyTour">
           </a>
-          <span class="ds2-site-footer__eyebrow">AnyTour всегда рядом</span>
-          <strong>Подписывайтесь и берите поиск туров с собой</strong>
+          <strong>AnyTour всегда рядом</strong>
           <p>Каналы AnyTour — для идей и выгодных предложений. Приложение — чтобы искать туры с телефона.</p>
           <div class="ds2-site-footer__socials" aria-label="Социальные сети AnyTour">
             <a href="https://max.ru/anytour" target="_blank" rel="noopener noreferrer" style="<?=$mobileActionStyle?>">MAX</a>
@@ -26,6 +25,22 @@ function v2_render_site_footer(string $phone, string $phoneHref): void
           </div>
         </div>
 
+        <nav class="ds2-site-footer__navigation" aria-label="Навигация в подвале">
+          <div><strong>Туры</strong>
+            <a href="/poisk-turov/">Поиск туров</a>
+            <a href="/country/">Страны</a>
+            <a href="/hot/">Горящие туры</a>
+            <a href="/rb/">Раннее бронирование</a>
+          </div>
+          <div><strong>О компании</strong>
+            <a href="/how-to-buy/">Как купить</a>
+            <a href="/contacts/">Контакты</a>
+          </div>
+        </nav>
+        <div class="ds2-site-footer__support">
+          <strong>Свяжитесь с нами</strong>
+          <a href="tel:<?=htmlspecialchars($phoneHref, ENT_QUOTES, 'UTF-8')?>"><?=htmlspecialchars($phone, ENT_QUOTES, 'UTF-8')?></a>
+        </div>
         <div class="ds2-site-footer__apps" aria-label="Приложение AnyTour">
           <div><strong>Приложение AnyTour</strong><small>Поиск туров с телефона</small></div>
           <a href="https://apps.apple.com/ru/app/anytour-%D0%B3%D0%BE%D1%80%D1%8F%D1%89%D0%B8%D0%B5-%D1%82%D1%83%D1%80%D1%8B/id6753017465" target="_blank" rel="noopener noreferrer" style="<?=$mobileActionStyle?>">App Store</a>
