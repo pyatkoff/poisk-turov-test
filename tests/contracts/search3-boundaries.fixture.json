@@ -59,6 +59,7 @@
   },
   "lead": {
     "publicEndpoint": "lead-adapter-v2.php",
+    "productionArtifactMapping": {"source": "v2/lead-bridge-v1.php", "target": "lead-adapter-v2.php"},
     "bridgeReceiver": "https://anytour.online/poisk-turov-test/v2/lead-receiver-v1.php",
     "signatureHeader": "X-Anytoour-Signature",
     "browserPayloadKeys": ["name", "phone", "comment", "consent", "sessid", "tourId", "searchId", "hotel", "country", "region", "departure", "date", "nights", "adults", "childs", "meal", "roomType", "placement", "operator", "price", "currency", "page", "flight", "flightPrice", "flightFuel", "yclid", "yaclient", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"],
@@ -79,7 +80,9 @@
       "v2:flight-selected": "V2_FLIGHT_SELECTED",
       "v2:lead-started": "V2_LEAD_STARTED",
       "v2:lead-submitted": "V2_LEAD_SUBMITTED",
-      "v2:lead-error": "V2_LEAD_ERROR"
+      "v2:lead-error": "V2_LEAD_ERROR",
+      "dom:sort-changed": "V2_SORT_CHANGED",
+      "dom:hotel-open": "V2_HOTEL_OPEN"
     },
     "metrikaInit": {"clickmap": true, "trackLinks": true, "accurateTrackBounce": true, "webvisor": false}
   }

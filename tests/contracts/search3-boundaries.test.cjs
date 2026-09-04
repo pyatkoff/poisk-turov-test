@@ -184,6 +184,38 @@ function stringLiterals(source) {
   return Array.from(source.matchAll(/['"]([^'"]+)['"]/g), match => match[1]);
 }
 
+function productionLeadArtifactMapping() {
+  const expected = fixture.lead.productionArtifactMapping;
+  const candidates = [];
+  const deploy = read('.github/workflows/deploy-anytoour.yml');
+  const copyPattern = /^\s*cp\s+"\$root\/([^"/]+)"\s+"\$root\/([^"/]+)"\s*$/gm;
+  for (const match of deploy.matchAll(copyPattern)) {
+    if (match[1] === 'lead-bridge-v1.php' || match[2] === expected.target) {
+      candidates.push({ mode: 'deploy-copy', source: `v2/${match[1]}`, target: match[2] });
+    }
+  }
+
+  const builderPath = 'scripts/release/build_anytoour_release.py';
+  if (fs.existsSync(builderPath)) {
+    const builder = read(builderPath);
+    const marker = 'PUBLIC_OVERRIDES = {';
+    const markerIndex = builder.indexOf(marker);
+    assert.notEqual(markerIndex, -1, 'release builder lost PUBLIC_OVERRIDES');
+    const objectStart = builder.indexOf('{', markerIndex);
+    const body = builder.slice(objectStart + 1, matchingEnd(builder, objectStart, '{', '}'));
+    const mappings = Object.fromEntries(Array.from(
+      body.matchAll(/["']([^"']+)["']\s*:\s*["']([^"']+)["']/g),
+      match => [match[1], match[2]],
+    ));
+    assert.ok(Object.prototype.hasOwnProperty.call(mappings, expected.target), 'release manifest lost public lead target');
+    candidates.push({ mode: 'release-manifest', source: mappings[expected.target], target: expected.target });
+  }
+
+  assert.equal(candidates.length, 1, `expected exactly one production lead artifact mapping, got ${JSON.stringify(candidates)}`);
+  assert.deepEqual({ source: candidates[0].source, target: candidates[0].target }, expected);
+  return candidates[0].mode;
+}
+
 function normalized(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -571,14 +603,22 @@ function testLeadStructureAndDelivery() {
   const receiver = read('v2/lead-receiver-v1.php');
   assert.ok(receiver.includes(`$_SERVER['HTTP_X_ANYTOOUR_SIGNATURE']`));
   assert.ok(receiver.includes(`require __DIR__ . '/lead-adapter-v2.php';`));
-  const deploy = read('.github/workflows/deploy-anytoour.yml');
-  assert.ok(deploy.includes('cp "$root/lead-bridge-v1.php" "$root/lead-adapter-v2.php"'));
+  assert.ok(['deploy-copy', 'release-manifest'].includes(productionLeadArtifactMapping()));
 }
 
 function loadAnalytics() {
   const insertedScripts = [];
   const firstScript = { parentNode: { insertBefore(node) { insertedScripts.push(node); } } };
-  const document = new EventTarget();
+  const documentListeners = new Map();
+  const document = {
+    addEventListener(name, listener) {
+      if (!documentListeners.has(name)) documentListeners.set(name, []);
+      documentListeners.get(name).push(listener);
+    },
+    dispatch(name, event) {
+      for (const listener of documentListeners.get(name) || []) listener(event);
+    },
+  };
   document.createElement = () => ({ async: false, src: '' });
   document.getElementsByTagName = () => [firstScript];
   document.head = { appendChild(node) { insertedScripts.push(node); } };
@@ -631,9 +671,20 @@ function testAnalyticsRuntimeAndConfig() {
     'v2:lead-submitted': { searchId: 77, tourId: 'T1', leadId: 42, deduplicated: false },
     'v2:lead-error': { searchId: 77, tourId: 'T1', error: { name: 'Error' } },
   };
-  for (const [eventName] of Object.entries(fixture.analytics.eventGoals)) {
+  for (const [eventName] of Object.entries(fixture.analytics.eventGoals).filter(([name]) => name.startsWith('v2:'))) {
     harness.window.dispatchEvent(new TestCustomEvent(eventName, { detail: details[eventName] }));
   }
+  harness.document.dispatch('change', { target: { id: 'sortResults', value: 'rating' } });
+  const hotelCard = { dataset: { hotelId: 'hotel-501' } };
+  const hotelButton = {
+    textContent: 'Об отеле',
+    closest(selector) {
+      if (selector === '.hotel-info-toggle') return this;
+      if (selector === '.hotel-card') return hotelCard;
+      return null;
+    },
+  };
+  harness.document.dispatch('click', { target: hotelButton });
   const goals = ymCalls().filter(args => args[1] === 'reachGoal').map(args => args[2]);
   assert.deepEqual(normalized(goals), Object.values(fixture.analytics.eventGoals));
   assert.deepEqual(normalized(harness.window.dataLayer.map(event => event.event)), Object.values(fixture.analytics.eventGoals).map(goal => goal.toLowerCase()));
