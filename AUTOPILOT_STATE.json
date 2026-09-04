@@ -1,7 +1,7 @@
 {
-  "schema_version": 20,
+  "schema_version": 21,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-04T23:34:20+00:00",
+  "updated_at": "2026-09-04T23:58:30+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Shared footer, primary action styles and canonical header convergence prepared in draft #1334, with office map links. Applicable CI passed at c46d76a973a4cb89b1c50eb985a6c4a2f155c454; visual run 33929767087 includes actual Search3 and legacy search, with mobile/desktop evidence 9958121988 inspected. Hot-page technical wording and departure label cleaned in follow-up. Public preview and production unchanged.",
-    "next_action": "Build an exact reviewed whole-site preview artifact and isolated publication path; existing search-only deployment permits nine search files only. Do not widen its allowlist to deploy an arbitrary PR or invoke production deploy. Then verify real catalogues and page-to-search handoff. Hourly continuation is configured; verify the first background execution separately.",
+    "last_material_progress": "Whole-site preview containment and exact-artifact pipeline merged into the active release branch via #1340. Verified source 7fabd69be23d80d7df8028641d737e6e53d3f260 and release merge 35071b30d9d8aba91fb535a130544aaf5bd207e4 have identical tree 732c8a2a231059579d135ebc548d0f95bebf60a2. Boundary, exact artifact/local preview smoke, standalone navigation/content and security checks passed. Exact artifact 9958625990 is prepared; whole-site preview is not yet published. Main and production remain unchanged.",
+    "next_action": "Publish artifact 9958625990 through a separate exact-SHA one-shot whole-site preview workflow to /_preview/search3-site-candidate/ with production fingerprints, disabled lead delivery and atomic rollback. Do not use or widen the nine-file search-only deploy. After publish, inspect relevant mobile/desktop evidence and verify home -> search -> hotel -> tour -> flight/clarification -> summary -> lead form without sending a real preview lead.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -45,7 +45,7 @@
     "legal_payment_unresolved": "DEFER",
     "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
     "search2_preview_pr_810": "PREVIEW_DEPLOY_ALLOWED_ONLY_TO_/_preview/search2_; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_APPROVAL",
-    "search3_production_pr_1334": "PREVIEW_AND_DRAFT_PREPARATION_ALLOWED; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_VISUAL_APPROVAL_OF_CONCRETE_RELEASE",
+    "search3_production_pr_1334": "PREVIEW_AND_DRAFT_PREPARATION_ALLOWED; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION UNTIL_EXPLICIT_OWNER_VISUAL_APPROVAL_OF_CONCRETE_RELEASE",
     "price_arithmetic": "PRESERVE"
   },
   "deferred": {
@@ -65,14 +65,20 @@
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
     "id": "S3_WHOLE_SITE_PREVIEW",
-    "status": "READY",
+    "status": "PREPARED_DEPLOY_NEXT",
     "category": "VISUAL",
-    "title": "Prepare and publish a coherent whole-site preview of the verified draft",
+    "title": "Publish and verify a coherent whole-site preview of the verified draft",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
+    "prepared_pr": 1340,
+    "release_merge_sha": "35071b30d9d8aba91fb535a130544aaf5bd207e4",
+    "artifact_source_sha": "7fabd69be23d80d7df8028641d737e6e53d3f260",
+    "artifact_source_tree": "732c8a2a231059579d135ebc548d0f95bebf60a2",
+    "artifact_id": 9958625990,
+    "artifact_digest": "sha256:5ac741fb3b62fb503985b6fa60857cdbba703a5c8cd8f4431e1d05b8831bfb4c",
     "acceptance": [
-      "Use an exact reviewed site artifact; existing search-only deploy allowlist cannot publish the whole site.",
+      "Use the exact reviewed site artifact; existing search-only deploy allowlist cannot publish the whole site.",
       "Keep preview lead delivery disabled, preserve protected production fingerprints and retain rollback.",
       "Verify navigation, real catalogue loading and date/night/party/child-age handoff in the whole-site preview."
     ]
@@ -122,13 +128,18 @@
       "status": "PREPARED_NOT_PUBLISHED",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "55baa5183fedfd18a3ace6be793c30074a565b5f",
+      "implementation_verified_sha": "7fabd69be23d80d7df8028641d737e6e53d3f260",
+      "release_merge_sha": "35071b30d9d8aba91fb535a130544aaf5bd207e4",
+      "exact_artifact": 9958625990,
+      "artifact_digest": "sha256:5ac741fb3b62fb503985b6fa60857cdbba703a5c8cd8f4431e1d05b8831bfb4c",
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
         "customer-facing country/month copy",
         "Search3 production import",
-        "old-search compatibility route"
+        "old-search compatibility route",
+        "whole-site preview path containment",
+        "preview lead-disabled endpoint and exact artifact pipeline"
       ]
     },
     "production": {
@@ -149,24 +160,21 @@
       "conclusion": "success",
       "run_id": 33925976956,
       "sha": "470474414a3930f1f6c095a8dbbc187075b253c0",
-      "widths": [
-        375,
-        430,
-        768,
-        1024,
-        1440,
-        1920,
-        2048
-      ]
+      "widths": [375, 430, 768, 1024, 1440, 1920, 2048]
     },
     "preview_deploy": {
       "conclusion": "success",
       "run_id": 33926206799
     },
-    "site_draft": {
-      "conclusion": "applicable checks passed",
-      "sha": "55baa5183fedfd18a3ace6be793c30074a565b5f",
-      "scope": "core/handoff, navigation, family controls, content visual and applicable SEO checks; configured migration-only check skipped; no production acceptance"
+    "whole_site_preview_preparation": {
+      "conclusion": "success",
+      "sha": "7fabd69be23d80d7df8028641d737e6e53d3f260",
+      "release_merge_sha": "35071b30d9d8aba91fb535a130544aaf5bd207e4",
+      "source_tree": "732c8a2a231059579d135ebc548d0f95bebf60a2",
+      "boundary_run": 33931294588,
+      "artifact_run": 33931294649,
+      "artifact_id": 9958625990,
+      "scope": "Exact whole-site artifact, production/preview route boundary, disabled preview lead sink, local exact-prefix route smoke, standalone navigation/content and security checks. Prepared only; no public whole-site preview yet."
     },
     "site_shell": {
       "conclusion": "success",
@@ -175,21 +183,17 @@
       "scope": "All applicable PR gates passed; migration-only check skipped by configured condition. Actual Search3, legacy search and content templates on mobile/desktop. Runtime catalogue unavailable in CI; not a production defect."
     }
   },
-  "last_verified_commit": "470474414a3930f1f6c095a8dbbc187075b253c0",
-  "last_verified_commit_scope": "Published search preview; does not certify whole-site draft or real lead delivery.",
+  "last_verified_commit": "7fabd69be23d80d7df8028641d737e6e53d3f260",
+  "last_verified_commit_scope": "Prepared whole-site preview artifact and containment; not yet published and does not certify production or real lead delivery.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
-      "blocks": [
-        "S3_OWNER_APPROVAL_AND_MIGRATION"
-      ],
+      "blocks": ["S3_OWNER_APPROVAL_AND_MIGRATION"],
       "reason": "Owner approval of concrete finished preview is pending; preparation continues."
     },
     {
       "id": "APPROVED_LEGAL_PAYMENT_CONTENT",
-      "blocks": [
-        "legal/payment publication within S3_FACTS_LINKS_MAPS"
-      ],
+      "blocks": ["legal/payment publication within S3_FACTS_LINKS_MAPS"],
       "reason": "Locate existing approved materials first; defer unavailable/unapproved content. No invented legal terms."
     }
   ],
@@ -201,6 +205,16 @@
       "ci_run": 33929767087,
       "evidence_artifact": 9958121988,
       "scope": "Shared PHP footer and navigation, canonical shared header without donor CSS replacement, common primary action colour, office map links; mobile/desktop screenshots inspected including actual Search3 route."
+    },
+    {
+      "id": "S3_WHOLE_SITE_PREVIEW_CONTAINMENT",
+      "status": "PREPARED_NOT_PUBLISHED",
+      "sha": "7fabd69be23d80d7df8028641d737e6e53d3f260",
+      "release_merge_sha": "35071b30d9d8aba91fb535a130544aaf5bd207e4",
+      "source_tree": "732c8a2a231059579d135ebc548d0f95bebf60a2",
+      "ci_run": 33931294649,
+      "artifact": 9958625990,
+      "scope": "Whole-site preview prefix containment, exact transformed artifact, production API path preserved, preview lead physically disabled, local preview-route smoke passed."
     }
   ],
   "scheduled_execution": {
