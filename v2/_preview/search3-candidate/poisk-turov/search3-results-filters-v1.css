@@ -307,6 +307,11 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
   body.search3-candidate.search3-results-active{
     --search3-results-inline-gutter:max(0px,calc((48px - (100vw - 100%))/2));
   }
+  body.search3-candidate.search3-results-active .results-search-summary{
+    width:auto!important;
+    max-width:none!important;
+    margin:10px var(--search3-results-inline-gutter)!important;
+  }
   body.search3-candidate.search3-results-active .results-tools--ds2{
     width:auto!important;
     max-width:none!important;
