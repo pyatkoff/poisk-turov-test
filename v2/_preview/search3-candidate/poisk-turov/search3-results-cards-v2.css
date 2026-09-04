@@ -1,1 +1,77 @@
-/* Search3 results/cards presentation overlay slot. Initial seam is intentionally empty. */
+/* Search3 result-card readability overlay. Preview only. */
+
+/*
+ * The compatibility layer renders truthful, complete copy for these nodes, but its
+ * final four-column rule forces both labels and values through nowrap + ellipsis.
+ * Keep the approved compact card hierarchy while giving the facts two short rows.
+ */
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .search3-hotel-facts {
+  grid-template-columns:minmax(0,1.45fr) minmax(72px,.55fr)!important;
+}
+
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .search3-hotel-facts > span {
+  display:grid!important;
+  grid-template-columns:auto minmax(0,1fr)!important;
+  align-items:baseline!important;
+  column-gap:4px!important;
+  min-width:0!important;
+  padding:5px 6px!important;
+  border-right:0!important;
+}
+
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .search3-hotel-facts > span:nth-child(odd) {
+  border-right:1px solid #edf0f5!important;
+}
+
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .search3-hotel-facts > span:nth-child(-n+2) {
+  border-bottom:1px solid #edf0f5!important;
+}
+
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .search3-hotel-facts small,
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .search3-hotel-facts b,
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .hotel-price-context span,
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .search3-hotel-action__copy strong,
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .search3-hotel-action__copy span {
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:normal!important;
+}
+
+html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+  #results .hotel-card .search3-hotel-action__copy {
+  min-width:0!important;
+  flex-wrap:wrap!important;
+}
+
+@media(max-width:760px) {
+  html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
+    #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
+    #results .hotel-card .search3-hotel-action__copy {
+    display:flex!important;
+    align-items:baseline!important;
+    gap:4px!important;
+    margin:0 0 6px!important;
+    font-size:9px!important;
+    line-height:1.2!important;
+  }
+}
