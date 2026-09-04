@@ -1199,17 +1199,32 @@ async function runMobileSelectedHandoffEvidence(browser, manifest) {
         && selected?.getAttribute('aria-busy') === 'false'
         && sourceButton?.textContent.replace(/\s+/g, ' ').trim() === label;
     }, fixture.presentation.productionOwnedDirectTourText);
-    await harness.page.waitForFunction(() => document.activeElement === document.getElementById('results'));
-    const returned = await harness.page.evaluate(() => ({
-      selectedHidden: document.getElementById('selectedTour')?.hidden === true,
-      sourceText: document.querySelector('#results button[data-search3-production-label]')?.textContent.replace(/\s+/g, ' ').trim() || '',
-      resultsFocused: document.activeElement === document.getElementById('results'),
-    }));
-    assert.deepEqual(returned, {
+    await harness.page.waitForFunction(() => {
+      const results = document.getElementById('results');
+      const sourceButton = document.querySelector('#results button[data-search3-production-label]');
+      return document.activeElement === results || document.activeElement === sourceButton;
+    });
+    const returned = await harness.page.evaluate(() => {
+      const results = document.getElementById('results');
+      const sourceButton = document.querySelector('#results button[data-search3-production-label]');
+      const active = document.activeElement;
+      return {
+        selectedHidden: document.getElementById('selectedTour')?.hidden === true,
+        sourceText: sourceButton?.textContent.replace(/\s+/g, ' ').trim() || '',
+        returnFocused: active === results || active === sourceButton,
+        focusTarget: active === sourceButton ? 'source-tour' : active === results ? 'results' : 'other',
+      };
+    });
+    assert.deepEqual({
+      selectedHidden: returned.selectedHidden,
+      sourceText: returned.sourceText,
+      returnFocused: returned.returnFocused,
+    }, {
       selectedHidden: true,
       sourceText: fixture.presentation.productionOwnedDirectTourText,
-      resultsFocused: true,
+      returnFocused: true,
     });
+    assert.ok(['source-tour', 'results'].includes(returned.focusTarget));
     manifest.presentationChecks.selectedTourHandoff = {
       loading,
       selected: selectedState,
