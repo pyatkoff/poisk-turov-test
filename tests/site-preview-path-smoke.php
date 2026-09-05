@@ -76,9 +76,12 @@ if (substr_count($header, 'aria-current="page"') !== 2) $fail('header active sta
 ob_start();
 v2_render_site_footer('8 (800) 100-61-50', '+78001006150');
 $footer = (string)ob_get_clean();
-foreach (['/poisk-turov/', '/country/', '/hot/', '/rb/', '/how-to-buy/', '/contacts/', '/payment/', '/personal-data/', '/politika-konfidentsialnosti/'] as $path) {
+foreach (['/poisk-turov/', '/country/', '/hot/', '/rb/', '/how-to-buy/', '/contacts/'] as $path) {
     $expected = 'href="' . $prefix . $path . '"';
     if (!str_contains($footer, $expected)) $fail('footer path missing: ' . $expected);
+}
+foreach (['/payment/', '/personal-data/', '/politika-konfidentsialnosti/'] as $path) {
+    if (str_contains($footer, 'href="' . $prefix . $path . '"')) $fail('unpublished footer path exposed: ' . $path);
 }
 
 $handoff = v2_seo_search_handoff_url('/poisk-turov/', [
