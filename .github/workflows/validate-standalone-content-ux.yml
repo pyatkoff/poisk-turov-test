@@ -12,6 +12,8 @@ on:
       - 'v2/site-footer-v1.php'
       - 'v2/site-footer-v1.css'
       - 'v2/country-page-v1.php'
+      - 'v2/seo-resort-page-v1.php'
+      - 'tests/seo-resort-grammar-smoke.php'
       - 'v2/country/**'
       - 'v2/seo-content-pilot-maldives-v1.php'
       - 'v2/seo-content-pilot-maldives-*-v1.php'
@@ -33,6 +35,8 @@ on:
       - 'v2/site-footer-v1.php'
       - 'v2/site-footer-v1.css'
       - 'v2/country-page-v1.php'
+      - 'v2/seo-resort-page-v1.php'
+      - 'tests/seo-resort-grammar-smoke.php'
       - 'v2/country/**'
       - 'v2/seo-content-pilot-maldives-v1.php'
       - 'v2/seo-content-pilot-maldives-*-v1.php'
@@ -52,7 +56,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in v2/site-page-shell-v1.php v2/country-page-v1.php v2/country/index.php v2/country/turkey/index.php v2/country/egypt/index.php v2/hot/index.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php; do php -l "$f" >/dev/null; done
+          for f in v2/site-page-shell-v1.php v2/country-page-v1.php v2/seo-resort-page-v1.php v2/country/index.php v2/country/turkey/index.php v2/country/egypt/index.php v2/hot/index.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php tests/seo-resort-grammar-smoke.php; do php -l "$f" >/dev/null; done
+          php tests/seo-resort-grammar-smoke.php
           grep -Fq -- '--at-accent:#D83D00' v2/design-system-v2.css
           grep -Fq -- '--at-shell:1180px' v2/design-system-v2.css
           grep -Fq '.sp-card a.sp-primary{color:#fff}' v2/site-page-v1.css
