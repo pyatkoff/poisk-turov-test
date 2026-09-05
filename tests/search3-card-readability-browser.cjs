@@ -134,7 +134,6 @@ function px(value) {
       await page.screenshot({ path: `standalone-content-artifacts/editor-${width}.png`, fullPage: true, animations: 'disabled' });
       if (width >= 761 && editorGeometry.dates.width < editorGeometry.nights.width * 1.8) throw new Error(width + ': date range lost its wide column');
       if (editorGeometry.dateInput.width < 120 || editorGeometry.nightInput.width < 48) throw new Error(width + ': native date/night value clipped ' + JSON.stringify(editorGeometry));
-      await page.screenshot({ path: `standalone-content-artifacts/editor-${width}.png`, fullPage: true, animations: 'disabled' });
       console.log('SEARCH3_EDITOR_GEOMETRY_OK ' + width + ' ' + JSON.stringify(editorGeometry));
       // Restore the result fixture for the independent calendar checks below.
       await page.evaluate(() => document.body.classList.remove('search3-editing-search'));
