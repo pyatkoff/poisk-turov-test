@@ -411,7 +411,7 @@ function meal(t){return text(t&&t.meal)||'—';}
 function operator(t){return text(t&&t.operator)||'—';}
 function people(t){const p=[];if(t&&t.adults)p.push(t.adults+' взр.');if(t&&t.childs)p.push(t.childs+' дет.');return p.join(' + ')||'—';}
 function place(t){const h=t&&t.hotel||{};return [text(h.country),text(h.region),text(h.subRegion)].filter(Boolean).join(', ')||'—';}
-function flightLabel(v){return window.Search3FlightPresentation.flightLabel(v,'Выберите рейс');}
+function flightLabel(v){const root=document.getElementById('selectedTour'),pending=root&&root.classList.contains('search3-lead-entry')&&!v;return window.Search3FlightPresentation.flightLabel(v,pending?'Рейс уточнит менеджер':'Выберите рейс');}
 function normalizedTotal(detail){const d=detail||{},tour=d.tour||lastTour||{};if(d.pricePending)return number(d.basePrice)||number(tour.price);return number(d.price)||number(d.basePrice)||number(tour.price);}
 function summaryHtml(t){const h=t&&t.hotel||{};const pic=t&&t.picture||h.picturelink||'';return '<aside class="search3-booking-summary" aria-label="Ваш тур">'+
 '<div class="search3-booking-summary__title">Ваш тур</div>'+
@@ -427,6 +427,7 @@ function syncLayout(){
   const desktop=window.matchMedia('(min-width:1000px)').matches,finalReview=root.classList.contains('search3-final-review'),leadEntry=root.classList.contains('search3-lead-entry');
   if(finalReview&&!leadEntry)root.dataset.search3FinalLayout='maket7';else delete root.dataset.search3FinalLayout;
   const title=summary.querySelector('.search3-booking-summary__title');if(title)title.textContent=finalReview&&!leadEntry?'Итоговая стоимость':'Ваш тур';
+  const flight=summary.querySelector('.search3-booking-summary__flight'),label=flightLabel(lastFlight);if(flight&&flight.textContent!==label)flight.textContent=label;
   clearLayout(shell,form,summary);
   if(desktop&&finalReview&&leadEntry){
     shell.style.setProperty('display','grid','important');

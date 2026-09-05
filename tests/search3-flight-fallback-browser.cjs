@@ -188,6 +188,7 @@ async function verifyFallbackHandoff(browser) {
   if (!state.review || !state.leadEntry || !state.form || state.submitText !== 'Отправить заявку' || state.leadRequests !== 0) {
     throw new Error('fallback lead entry failed: ' + JSON.stringify(state));
   }
+  await page.waitForFunction(() => document.querySelector('#selectedTour .search3-booking-summary__flight')?.textContent === 'Рейс уточнит менеджер');
   console.log('SEARCH3_FLIGHT_FALLBACK_HANDOFF_OK ' + JSON.stringify(state));
   await page.close();
 }
