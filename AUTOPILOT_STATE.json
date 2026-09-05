@@ -1,7 +1,7 @@
 {
-  "schema_version": 21,
+  "schema_version": 22,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-04T23:58:30+00:00",
+  "updated_at": "2026-09-05T00:05:30+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Whole-site preview containment and exact-artifact pipeline merged into the active release branch via #1340. Verified source 7fabd69be23d80d7df8028641d737e6e53d3f260 and release merge 35071b30d9d8aba91fb535a130544aaf5bd207e4 have identical tree 732c8a2a231059579d135ebc548d0f95bebf60a2. Boundary, exact artifact/local preview smoke, standalone navigation/content and security checks passed. Exact artifact 9958625990 is prepared; whole-site preview is not yet published. Main and production remain unchanged.",
-    "next_action": "Publish artifact 9958625990 through a separate exact-SHA one-shot whole-site preview workflow to /_preview/search3-site-candidate/ with production fingerprints, disabled lead delivery and atomic rollback. Do not use or widen the nine-file search-only deploy. After publish, inspect relevant mobile/desktop evidence and verify home -> search -> hotel -> tour -> flight/clarification -> summary -> lead form without sending a real preview lead.",
+    "last_material_progress": "Pre-deploy review found that the whole-site preview could inherit production SEO indexability. PR #1341 forced preview noindex without changing production indexability and merged only into the active release branch. Verified source 85edee8ef4019ff485b5e01d80c4db862283b74e and release merge 9c520bac897aafd1eac7cfe28cfff1ad996949ca have identical tree 81080560d4c829ecda3e2b364e8661b1ad5ee23f. Boundary, exact artifact/local-prefix smoke and security checks passed. Exact artifact 9958766470 supersedes 9958625990 for publication. Whole-site preview is not yet published; main and production redesign remain unchanged.",
+    "next_action": "Publish artifact 9958766470 through a separate exact-provenance one-shot whole-site preview workflow to /_preview/search3-site-candidate/. Verify artifact id/digest/internal archive and manifest hashes, copy production config only as a closed runtime dependency for read-only showcase data, preserve production fingerprints, keep preview lead delivery disabled, retain atomic rollback, and do not use or widen the nine-file search-only deploy. Then inspect relevant mobile/desktop evidence and verify the full journey without sending a real preview lead.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -45,7 +45,7 @@
     "legal_payment_unresolved": "DEFER",
     "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
     "search2_preview_pr_810": "PREVIEW_DEPLOY_ALLOWED_ONLY_TO_/_preview/search2_; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_APPROVAL",
-    "search3_production_pr_1334": "PREVIEW_AND_DRAFT_PREPARATION_ALLOWED; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION UNTIL_EXPLICIT_OWNER_VISUAL_APPROVAL_OF_CONCRETE_RELEASE",
+    "search3_production_pr_1334": "PREVIEW_AND_DRAFT_PREPARATION_ALLOWED; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_VISUAL_APPROVAL_OF_CONCRETE_RELEASE",
     "price_arithmetic": "PRESERVE"
   },
   "deferred": {
@@ -71,14 +71,21 @@
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
-    "prepared_pr": 1340,
-    "release_merge_sha": "35071b30d9d8aba91fb535a130544aaf5bd207e4",
-    "artifact_source_sha": "7fabd69be23d80d7df8028641d737e6e53d3f260",
-    "artifact_source_tree": "732c8a2a231059579d135ebc548d0f95bebf60a2",
-    "artifact_id": 9958625990,
-    "artifact_digest": "sha256:5ac741fb3b62fb503985b6fa60857cdbba703a5c8cd8f4431e1d05b8831bfb4c",
+    "prepared_pr": 1341,
+    "release_merge_sha": "9c520bac897aafd1eac7cfe28cfff1ad996949ca",
+    "artifact_source_sha": "85edee8ef4019ff485b5e01d80c4db862283b74e",
+    "artifact_source_tree": "81080560d4c829ecda3e2b364e8661b1ad5ee23f",
+    "artifact_run": 33931705292,
+    "artifact_id": 9958766470,
+    "artifact_digest": "sha256:1845a4872d2701003ff66201c1ca8ddd96ffaf11c0848162f308934b6afa4fba",
+    "archive_sha256": "bf71ded48eb2b309faeccf78dc3fb6a8abe4bc4b2f25c972ea4b193ea35a565b",
+    "manifest_sha256": "bd83d1b7ed37b0da97056ece6a8d662a88fdd43a23a69b89e463d319b5b3c55c",
+    "payload_checksums_sha256": "364ce5bf07a02d91cb8c7f32b1108cc75e3d20dcdbc055f0db98b6185b470c1f",
+    "payload_file_count": 714,
+    "superseded_artifact": 9958625990,
     "acceptance": [
       "Use the exact reviewed site artifact; existing search-only deploy allowlist cannot publish the whole site.",
+      "Force preview noindex even when production SEO allowlists the canonical route.",
       "Keep preview lead delivery disabled, preserve protected production fingerprints and retain rollback.",
       "Verify navigation, real catalogue loading and date/night/party/child-age handoff in the whole-site preview."
     ]
@@ -97,20 +104,14 @@
     {
       "id": "S3_JOURNEY_ACCEPTANCE",
       "status": "QUEUED",
-      "depends_on": [
-        "S3_WHOLE_SITE_PREVIEW",
-        "S3_FACTS_LINKS_MAPS",
-        "S3_OFFER_FRESHNESS"
-      ],
+      "depends_on": ["S3_WHOLE_SITE_PREVIEW", "S3_FACTS_LINKS_MAPS", "S3_OFFER_FRESHNESS"],
       "title": "Verify phone/Safari and desktop journey to lead form with family, long-value and recovery states; preview delivery remains disabled"
     },
     {
       "id": "S3_OWNER_APPROVAL_AND_MIGRATION",
       "status": "GATED",
-      "depends_on": [
-        "S3_JOURNEY_ACCEPTANCE"
-      ],
-      "title": "Owner approves concrete release; retain previous artifact/config, verify rollback and old-search route, deploy and verify production",
+      "depends_on": ["S3_JOURNEY_ACCEPTANCE"],
+      "title": "Owner approves concrete release; retain previous artifact/config, verify rollback and old search, deploy and verify production",
       "gate": "Explicit owner visual production approval; real lead receipt needs a controlled agreed test"
     }
   ],
@@ -128,10 +129,12 @@
       "status": "PREPARED_NOT_PUBLISHED",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "7fabd69be23d80d7df8028641d737e6e53d3f260",
-      "release_merge_sha": "35071b30d9d8aba91fb535a130544aaf5bd207e4",
-      "exact_artifact": 9958625990,
-      "artifact_digest": "sha256:5ac741fb3b62fb503985b6fa60857cdbba703a5c8cd8f4431e1d05b8831bfb4c",
+      "implementation_verified_sha": "85edee8ef4019ff485b5e01d80c4db862283b74e",
+      "release_merge_sha": "9c520bac897aafd1eac7cfe28cfff1ad996949ca",
+      "source_tree": "81080560d4c829ecda3e2b364e8661b1ad5ee23f",
+      "exact_artifact": 9958766470,
+      "artifact_digest": "sha256:1845a4872d2701003ff66201c1ca8ddd96ffaf11c0848162f308934b6afa4fba",
+      "superseded_artifact": 9958625990,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -139,7 +142,8 @@
         "Search3 production import",
         "old-search compatibility route",
         "whole-site preview path containment",
-        "preview lead-disabled endpoint and exact artifact pipeline"
+        "preview lead-disabled endpoint and exact artifact pipeline",
+        "preview-only forced noindex independent of production SEO allowlist"
       ]
     },
     "production": {
@@ -168,13 +172,14 @@
     },
     "whole_site_preview_preparation": {
       "conclusion": "success",
-      "sha": "7fabd69be23d80d7df8028641d737e6e53d3f260",
-      "release_merge_sha": "35071b30d9d8aba91fb535a130544aaf5bd207e4",
-      "source_tree": "732c8a2a231059579d135ebc548d0f95bebf60a2",
-      "boundary_run": 33931294588,
-      "artifact_run": 33931294649,
-      "artifact_id": 9958625990,
-      "scope": "Exact whole-site artifact, production/preview route boundary, disabled preview lead sink, local exact-prefix route smoke, standalone navigation/content and security checks. Prepared only; no public whole-site preview yet."
+      "sha": "85edee8ef4019ff485b5e01d80c4db862283b74e",
+      "release_merge_sha": "9c520bac897aafd1eac7cfe28cfff1ad996949ca",
+      "source_tree": "81080560d4c829ecda3e2b364e8661b1ad5ee23f",
+      "boundary_run": 33931705247,
+      "artifact_run": 33931705292,
+      "security_run": 33931705313,
+      "artifact_id": 9958766470,
+      "scope": "Exact whole-site artifact, forced preview noindex, production/preview route boundary, disabled preview lead sink, local exact-prefix route smoke and security guard. Prepared only; no public whole-site preview yet."
     },
     "site_shell": {
       "conclusion": "success",
@@ -183,8 +188,8 @@
       "scope": "All applicable PR gates passed; migration-only check skipped by configured condition. Actual Search3, legacy search and content templates on mobile/desktop. Runtime catalogue unavailable in CI; not a production defect."
     }
   },
-  "last_verified_commit": "7fabd69be23d80d7df8028641d737e6e53d3f260",
-  "last_verified_commit_scope": "Prepared whole-site preview artifact and containment; not yet published and does not certify production or real lead delivery.",
+  "last_verified_commit": "85edee8ef4019ff485b5e01d80c4db862283b74e",
+  "last_verified_commit_scope": "Prepared exact whole-site preview artifact with preview noindex and containment; not yet published and does not certify production or real lead delivery.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -209,12 +214,13 @@
     {
       "id": "S3_WHOLE_SITE_PREVIEW_CONTAINMENT",
       "status": "PREPARED_NOT_PUBLISHED",
-      "sha": "7fabd69be23d80d7df8028641d737e6e53d3f260",
-      "release_merge_sha": "35071b30d9d8aba91fb535a130544aaf5bd207e4",
-      "source_tree": "732c8a2a231059579d135ebc548d0f95bebf60a2",
-      "ci_run": 33931294649,
-      "artifact": 9958625990,
-      "scope": "Whole-site preview prefix containment, exact transformed artifact, production API path preserved, preview lead physically disabled, local preview-route smoke passed."
+      "sha": "85edee8ef4019ff485b5e01d80c4db862283b74e",
+      "release_merge_sha": "9c520bac897aafd1eac7cfe28cfff1ad996949ca",
+      "source_tree": "81080560d4c829ecda3e2b364e8661b1ad5ee23f",
+      "ci_run": 33931705292,
+      "artifact": 9958766470,
+      "supersedes": 9958625990,
+      "scope": "Whole-site preview prefix containment, exact transformed artifact, preview forced noindex, production API path preserved, preview lead physically disabled, local preview-route smoke passed."
     }
   ],
   "scheduled_execution": {
