@@ -100,11 +100,11 @@ async function verifyLocalizedFlightTradeoff(browser) {
   await prepare(page, 'price-decimal');
   await page.waitForFunction(() => (
     Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span'))
-      .some(node => node.textContent === '+17 217,6 ₽ к минимальной')
+      .some(node => node.textContent.replace(/\s/g, ' ') === '+17 217,6 ₽ к минимальной')
   ));
   const state = await page.evaluate(() => ({
-    prices: Array.from(document.querySelectorAll('#selectedTour .flight-choice>b')).map(node => node.textContent.trim()),
-    tradeoffs: Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span')).map(node => node.textContent.trim()),
+    prices: Array.from(document.querySelectorAll('#selectedTour .flight-choice>b')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
+    tradeoffs: Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
     parsedDecimal: window.Search3CandidateFlightTradeoffV1.localizedMoneyNumber('Стоимость тура: 90 049,6 ₽'),
     wrongDigitCollapse: document.body.textContent.includes('+827 664 ₽ к минимальной'),
     leadRequests: window.__fallbackTest.leadRequests
