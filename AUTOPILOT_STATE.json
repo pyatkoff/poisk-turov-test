@@ -1,7 +1,7 @@
 {
-  "schema_version": 27,
+  "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T05:03:30+00:00",
+  "updated_at": "2026-09-05T05:48:00+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "The coherent whole-site preview now serves exact source 57d734eb07dd26f996275dcc1f8d9cf5a01b71ab after deploy 33946112648 / record draft #1352. Three footer destinations were confirmed HTTP 404 on production and preview; because approved legal/payment content is unavailable, the new-site footer now omits those non-working links instead of inventing terms. Production and preview path guards prevent accidental re-exposure. The prior resort grammar fix remains live. All 22 applicable branch checks passed; preview isolation, rollback retention and protected production fingerprints passed. Main and production remain unchanged.",
-    "next_action": "Prepare a non-secret production backup/configuration manifest and rollback drill without switching production. Complete physical iPhone/Safari acceptance on exact 57d734eb preview. Approved legal/payment pages remain content-blocked; keep their links hidden. Production migration remains gated by owner visual approval.",
+    "last_material_progress": "Production rollback preparation is now merged in release SHA 7de8381388ac50b3e022ec5b7933d5663458ab60 via PR #1354. The server-local snapshot utility accepts only an explicit reviewed inventory, rejects traversal/symlinks/served-root backup locations, stores hashes and modes without printing file contents, and restores only into an empty isolated directory. Fixture snapshot/verify/restore passed rollback-readiness run 33948068212; Security guard 33948068202 also passed. This is a dry-run capability only: no live production backup was captured and no switch was made. The coherent preview remains exact source 57d734eb07dd26f996275dcc1f8d9cf5a01b71ab. Main and production remain unchanged.",
+    "next_action": "Complete physical iPhone/Safari acceptance on exact 57d734eb preview. Immediately before an owner-approved migration, build and review the exact previous managed-file inventory, capture the server-local live backup/configuration and perform the isolated restore drill from that exact snapshot. Approved legal/payment pages remain content-blocked; keep their links hidden. Production migration remains gated by owner visual approval.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -94,7 +94,8 @@
       "Live decimal flight-price tradeoffs are internally consistent with displayed totals; raw Tourvisor price values and price selection remain authoritative and unchanged.",
       "Physical iPhone/Safari acceptance remains.",
       "Verified declined and indeclinable resort destination copy; live Antalya CTA says `Подобрать тур в Анталью`.",
-      "Confirmed all three unpublished legal/payment footer destinations return 404; new-site footer omits them until approved pages exist."
+      "Confirmed all three unpublished legal/payment footer destinations return 404; new-site footer omits them until approved pages exist.",
+      "Prepared a fail-closed server-local rollback snapshot and isolated restore drill; live production backup remains intentionally uncaptured until the approved migration window."
     ]
   },
   "queue": [
@@ -173,6 +174,15 @@
       "last_observed_main_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
       "migration_performed": false
     },
+    "production_rollback": {
+      "status": "UTILITY_AND_FIXTURE_DRILL_VERIFIED_LIVE_SNAPSHOT_NOT_CAPTURED",
+      "release_sha": "7de8381388ac50b3e022ec5b7933d5663458ab60",
+      "source_pr": 1354,
+      "ci_run": 33948068212,
+      "runbook": "docs/project/search3-production-migration-runbook.md",
+      "previous_source_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
+      "boundary": "Configuration and secret payload must remain server-local and must not be uploaded as an Actions artifact. Capture the exact live snapshot only immediately before an owner-approved migration."
+    },
     "legacy": {
       "source_archive_branch": "archive/search-before-search3-2026-09-04",
       "source_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
@@ -182,6 +192,13 @@
     }
   },
   "last_ci": {
+    "production_rollback_readiness": {
+      "conclusion": "success",
+      "sha": "7de8381388ac50b3e022ec5b7933d5663458ab60",
+      "source_pr": 1354,
+      "run_id": 33948068212,
+      "scope": "Fixture snapshot, manifest verification and empty-directory restore drill passed. Traversal, symlink and non-empty target protections passed; secret contents are absent from command output and manifest. No live production backup or deployment occurred."
+    },
     "search_preview": {
       "conclusion": "success",
       "run_id": 33925976956,
