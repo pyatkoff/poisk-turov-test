@@ -5,16 +5,24 @@
   "current_stage": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
   "priority_after_emergency_overrides": [
-    "search_user_journey",
-    "results_filters_full_search",
-    "hotel_tour_cards_and_selected_tour",
-    "desktop_mobile_visual_consistency",
-    "shared_header_navigation_footer_ds2",
-    "site_visual_convergence_ds2",
+    "confirmed_search_and_mobile_defects",
+    "shared_header_navigation_footer_and_buttons_ds2",
+    "whole_site_preview_and_search_handoff",
+    "truthful_content_working_links_and_offer_freshness",
+    "phone_desktop_journey_acceptance",
+    "owner_approved_migration_with_legacy_and_rollback",
     "technical_refactor_deferred",
-    "content_seo",
-    "cosmetic_cleanup"
+    "mass_seo_expansion_deferred"
   ],
-  "source": "explicit_owner_direction_2026_08_31_pause_technical_refactor_update_design_and_search_ds2",
-  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, prioritize the tour-search UX and user-facing visual layer using ANYTOUR DESIGN SYSTEM 2.0 as the only canonical design system. Improve search form, full-search filters, results, hotel/tour cards, selected-tour UX and desktop/mobile visual consistency; converge shared header/navigation/footer and broader site visuals on DS2 where required by user-facing work. Keep technical_refactor deferred until a new explicit owner direction. Do not introduce or restore Design System 1.0. Preserve Yandex Metrika/goals, external lead contract, Tourvisor contract and neighboring project boundaries."
+  "source": "explicit_owner_direction_2026_09_04_finish_new_design_across_site_then_migrate_preserve_old_search",
+  "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, finish the approved Search3 design across the site, publish a coherent preview, verify the user journey and prepare a reversible migration. Production draft #1334 must not merge or deploy until explicit owner visual approval of the concrete release. Preview publishing and draft preparation are authorized. Preserve AnyTour Design System 2.0, logo, Tourvisor/API contract, price arithmetic, lead transport/field mapping, Metrika/goals and repository isolation. Keep technical refactor and mass SEO expansion deferred. Do not invent benefits, operating hours or legal/payment terms.",
+  "updated_at": "2026-09-05T12:22:33.289253+00:00",
+  "active_substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION",
+  "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
+  "scoped_refactor_authorization": {
+    "source": "explicit_owner_request_2026_09_05",
+    "request": "сделай рефакторинг поиска",
+    "scope": "Search3 presentation source ownership and reproducible build; preserve served behavior, cascade order and protected contracts",
+    "production_approval": "still_required"
+  }
 }

@@ -1,0 +1,161 @@
+
+
+/* donor:search3-final-boards-v1.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+/* Search3 approved boards 3–5 final responsive convergence. Preview presentation only. */
+@media(max-width:640px){
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry){
+    display:grid!important;
+    grid-template-columns:108px minmax(0,1fr)!important;
+    column-gap:0!important;
+    row-gap:0!important;
+    align-items:start!important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.back-results,
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.search3-booking-stepper,
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.search3-review-heading{
+    grid-column:1/-1!important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.back-results{grid-row:1!important;margin-bottom:10px!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.search3-booking-stepper{grid-row:2!important;margin-bottom:10px!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.search3-review-heading{grid-row:3!important;margin:0 0 10px!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.selected-picture{
+    display:block!important;
+    grid-column:1!important;
+    grid-row:4!important;
+    width:108px!important;
+    height:112px!important;
+    min-height:112px!important;
+    margin:0!important;
+    border:1px solid var(--at-line)!important;
+    border-right:0!important;
+    border-radius:12px 0 0 0!important;
+    overflow:hidden!important;
+    box-sizing:border-box!important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.selected-picture img{width:100%!important;height:100%!important;object-fit:cover!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.selected-head{
+    display:grid!important;
+    grid-column:2!important;
+    grid-row:4!important;
+    align-content:center!important;
+    height:112px!important;
+    min-height:112px!important;
+    margin:0!important;
+    padding:11px 12px!important;
+    border:1px solid var(--at-line)!important;
+    border-left:0!important;
+    border-radius:0 12px 0 0!important;
+    background:#fff!important;
+    box-sizing:border-box!important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.selected-head h2{margin:0 0 4px!important;font-size:18px!important;line-height:1.08!important;overflow-wrap:anywhere!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.selected-head p{margin:0!important;font-size:8px!important;line-height:1.3!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .selected-price{display:none!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.facts{
+    display:grid!important;
+    grid-column:1/-1!important;
+    grid-row:5!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:0!important;
+    margin:0!important;
+    padding:0!important;
+    border:1px solid var(--at-line)!important;
+    border-top:0!important;
+    border-radius:0 0 12px 12px!important;
+    background:#fff!important;
+    overflow:hidden!important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.facts>div{display:none!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.facts>div:nth-child(5),
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.facts>div:nth-child(6){display:block!important;min-height:42px!important;padding:8px 10px!important;border:0!important;border-radius:0!important;background:#fff!important;box-sizing:border-box!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.facts>div:nth-child(5){border-right:1px solid var(--at-line-soft)!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.facts span{display:block!important;margin:0 0 3px!important;color:var(--at-muted)!important;font-size:7px!important;line-height:1.15!important;text-transform:uppercase!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.facts b{display:block!important;color:var(--at-ink)!important;font-size:9px!important;line-height:1.2!important;overflow-wrap:anywhere!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.facts-secondary-toggle,
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.selected-choice-summary,
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.hotel-desc,
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.hotel-desc-toggle,
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.room-details-host,
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.selected-confidence,
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.search3-tour-detail-rail{display:none!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.tour-flights{grid-column:1/-1!important;grid-row:6!important;width:100%!important;margin:10px 0 0!important;box-sizing:border-box!important;position:relative!important;z-index:1!important;overflow:hidden!important;contain:paint!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.tour-flights .flight-variant{position:relative!important;z-index:0!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.search3-final-sections{grid-column:1/-1!important;grid-row:7!important;width:100%!important;margin:10px 0 0!important;box-sizing:border-box!important;position:relative!important;z-index:1!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.search3-lead-shell{display:block!important;grid-column:1/-1!important;grid-row:8!important;width:100%!important;margin:10px 0 0!important;box-sizing:border-box!important;position:relative!important;z-index:3!important;isolation:isolate!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.search3-lead-shell>.lead-form{display:none!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.search3-lead-shell>.search3-booking-summary{display:block!important;width:100%!important;margin:0!important;position:relative!important;z-index:3!important;box-sizing:border-box!important;background:#fff!important}
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .search3-booking-summary__image,
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .search3-booking-summary__hotel,
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .search3-booking-summary__place,
+  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .search3-booking-summary dl{display:none!important}
+}
+
+@media(min-width:641px) and (max-width:999px){
+  /* Board 3 tablet: keep the critical tour price readable and give route/tradeoff copy its own flexible zone. */
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice{
+    display:grid!important;
+    grid-template-columns:16px minmax(0,1fr) 146px!important;
+    align-items:center!important;
+    column-gap:8px!important;
+    row-gap:0!important;
+    padding:9px 10px!important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice>input{
+    grid-column:1!important;
+    grid-row:1!important;
+    align-self:start!important;
+    margin-top:3px!important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice>span{
+    display:block!important;
+    grid-column:2!important;
+    grid-row:1!important;
+    min-width:0!important;
+    max-width:100%!important;
+    white-space:normal!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-summary{
+    display:block!important;
+    min-width:0!important;
+    max-width:100%!important;
+    margin-top:3px!important;
+    font-size:9px!important;
+    line-height:1.25!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-tradeoffs{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    gap:4px!important;
+    min-width:0!important;
+    max-width:100%!important;
+    margin-top:5px!important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-tradeoffs span{
+    min-height:20px!important;
+    padding:0 6px!important;
+    font-size:8.5px!important;
+    line-height:1.1!important;
+    white-space:normal!important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice>b{
+    display:block!important;
+    grid-column:3!important;
+    grid-row:1!important;
+    width:146px!important;
+    min-width:146px!important;
+    max-width:146px!important;
+    justify-self:end!important;
+    align-self:center!important;
+    margin:0!important;
+    font-size:10.5px!important;
+    line-height:1.1!important;
+    text-align:right!important;
+    white-space:nowrap!important;
+    word-break:normal!important;
+    overflow-wrap:normal!important;
+  }
+}

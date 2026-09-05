@@ -19,6 +19,12 @@ function v2_public_base_path(): string
 function v2_public_path(string $file): string
 {
     $name = ltrim($file, '/');
+    if ($name === 'api-v2.php' && defined('V2_API_PUBLIC_PATH')) {
+        return (string)V2_API_PUBLIC_PATH;
+    }
+    if ($name === 'lead-adapter-v2.php' && defined('V2_LEAD_PUBLIC_PATH')) {
+        return (string)V2_LEAD_PUBLIC_PATH;
+    }
     return v2_public_base_path() . '/' . $name;
 }
 

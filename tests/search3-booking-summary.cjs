@@ -1,0 +1,46 @@
+/* Event-burst regression: execute the actual summary module with a small DOM adapter. */
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const events = new Map(), timers = [];
+let renders = 0, html = '', lead = false;
+const style = { removeProperty() {}, setProperty() {} };
+let titleWrites = 0, titleValue = '';
+const title = { get textContent() { return titleValue; }, set textContent(value) { titleWrites++; titleValue = value; } }, flight = { textContent: '' };
+const summary = { style, remove() {}, querySelector(s) { return s.includes('__title') ? title : s.includes('__flight') ? flight : null; } };
+const shell = { style, querySelector() { return summary; }, insertAdjacentHTML(_, value) { renders++; html = value; } };
+const form = { style, closest() { return shell; } };
+const root = { dataset: {}, classList: { contains(name) { return name === 'search3-lead-entry' && lead; } }, querySelector() { return form; } };
+const window = { addEventListener(name, fn) { events.set(name, fn); }, matchMedia() { return { matches: false }; }, Search3FlightPresentation: { flightLabel(v, fallback) { return v ? v.name : fallback; } } };
+vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/search3/behavior/booking-summary.js'), 'utf8'), {
+  window, document: { getElementById() { return root; }, addEventListener() {} }, setTimeout(fn) { timers.push(fn); }
+});
+const emit = (name, detail) => events.get(name)({ detail });
+const flush = () => { while (timers.length) timers.shift()(); };
+emit('v2:tour-selected', { tour: { name: 'First', price: 100 } });
+emit('v2:flight-selected', { flight: { name: 'Actual flight' } });
+emit('v2:tour-price-updated', { price: 321 });
+emit('resize');
+assert.equal(timers.length, 1, 'one scheduled pass for a synchronous event burst');
+flush();
+assert.equal(renders, 1);
+assert.ok(html.includes('Actual flight') && html.includes('321 ₽'), 'latest flight and price survive coalescing');
+emit('resize');
+emit('v2:tour-selected', { tour: { name: 'Second', price: 654 } });
+lead = true;
+emit('search3:lead-entry');
+flush();
+assert.equal(renders, 2, 'a render supersedes an already pending layout');
+assert.ok(html.includes('Second') && html.includes('654 ₽'));
+assert.ok(!html.includes('Actual flight'), 'new tour clears previous flight');
+assert.equal(flight.textContent, 'Рейс уточнит менеджер');
+lead = false;
+emit('resize'); emit('v2:booking-review'); flush();
+assert.equal(renders, 2, 'layout-only events do not rebuild the summary');
+assert.equal(titleWrites, 1, 'unchanged heading does not generate new DOM mutations');
+assert.equal(flight.textContent, 'Выберите рейс');
+emit('v2:tour-price-updated', { price: 987 }); flush();
+assert.equal(renders, 3, 'later updates are not lost');
+assert.ok(html.includes('987 ₽'));
+console.log('PASS: coalesced summary events preserve latest tour/flight/price and stage');

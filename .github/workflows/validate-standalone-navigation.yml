@@ -91,13 +91,13 @@ jobs:
             ob_start(); include "v2/home-entry-v1.php"; $html=ob_get_clean();
             if (strpos($html, "action=\"/poisk-turov/\"") === false) exit(10);
             if (strpos($html, "name=\"daysFrom\"") === false || strpos($html, "name=\"daysTill\"") === false) exit(11);
-            if (strpos($html, "data-home-nights") === false || strpos($html, "data-home-nights-till") === false) exit(12);
+            if (strpos($html, "<select name=\"daysFrom\"") === false || strpos($html, "<select name=\"daysTill\"") === false) exit(12);
             foreach (["/country/","/hot/","/contacts/","/how-to-buy/","/rb/"] as $path) {
               if (strpos($html, "href=\"".$path."\"") === false) exit(13);
             }
             if (strpos($html, "https://anytour.online/country/") !== false) exit(14);
           '
-          grep -Fq "nightsTill.value=nights.value" v2/home-v1.php
+          php tests/search-handoff-smoke.php
           grep -Fq "'/country/'" v2/header-current-site.js
           grep -Fq "'/hot/'" v2/header-current-site.js
           grep -Fq "'/contacts/'" v2/header-current-site.js

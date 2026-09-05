@@ -4,13 +4,24 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'src/search3/**'
+      - 'scripts/build/search3_assets.py'
+      - 'tests/search3_source_build_test.py'
       - 'v2/**/*.js'
       - 'v2/current-price-calendar-v1.css'
       - 'v2/index.php'
+      - 'v2/poisk-turov/index.php'
+      - 'v2/search3-presentation-v1.php'
+      - 'tests/search3_production_presentation_test.py'
+      - 'docs/project/search3-production-import.json'
       - 'v2/api-v2.php'
       - 'v2/lead-adapter-v2.php'
       - 'v2/assets.php'
       - 'v2/form-defaults.php'
+      - 'v2/offer-freshness-v1.php'
+      - 'v2/seo-offer-snapshot-v1.php'
+      - 'v2/data/hot-tours-read-v1.php'
+      - 'tests/offer-freshness-smoke.php'
       - 'v2/analytics-config.php'
       - 'v2/privacy-config.php'
       - 'v2/asset-version-v1.php'
@@ -43,6 +54,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate Search3 production presentation boundary
+        run: |
+          php -l v2/search3-presentation-v1.php
+          python3 -B scripts/build/search3_assets.py --check
+          python3 -B tests/search3_source_build_test.py
+          python3 -B tests/search3_production_presentation_test.py
+          php tests/search-handoff-smoke.php
+          php tests/offer-freshness-smoke.php
+
       - name: Validate search hotel placement
         run: python3 scripts/ci/validate_search_hotel_placement.py
 
@@ -70,6 +90,9 @@ jobs:
           grep -Fq "window.addEventListener('v2:search-reset'" v2/current-price-calendar-v1.js
           grep -Fq "window.V2SearchLifecycle.submit" v2/current-price-calendar-v1.js
           echo CURRENT_PRICE_CALENDAR_CONTRACT_OK
+
+      - name: Validate Search3 flight presentation
+        run: node tests/search3-flight-presentation.cjs
 
       - name: Validate local catalog routing
         shell: bash

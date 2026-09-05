@@ -6,6 +6,10 @@ on:
     paths:
       - 'v2/flight-empty-recovery-v1.js'
       - 'v2/flight-price-sync-v1.js'
+      - 'v2/search3-results-filters-v1.js'
+      - 'v2/search3-selected-flow-v2.js'
+      - 'v2/tour-controller-v4.js'
+      - 'tests/search3-flight-fallback-browser.cjs'
       - '.github/workflows/validate-v2-flight-source.yml'
   workflow_dispatch:
 
@@ -15,7 +19,7 @@ permissions:
 jobs:
   flight-source:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -132,3 +136,12 @@ jobs:
           if(!states.specific.includes('5')||!states.fallback.includes('1')||states.fallbackEvent!==1500||states.explicitZero!=='—'||states.zeroEvent!==0||!states.hasSelectedFuelValue)throw new Error('fuel fallback failed: '+JSON.stringify(states));
           console.log('FLIGHT_FUEL_FALLBACK_OK '+JSON.stringify(states));
           JS
+
+      - name: Validate Search3 empty-flight retry and lead handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+          node tests/search3-flight-fallback-browser.cjs

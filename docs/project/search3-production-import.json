@@ -1,0 +1,70 @@
+{
+  "candidateSourceSha": "470474414a3930f1f6c095a8dbbc187075b253c0",
+  "productionBaseSha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
+  "status": "Mockup convergence and production price calendar published in isolated preview 4a644f48; follow-up removes repeated tour-price caption; production approval pending",
+  "transformations": [
+    "Remove preview-only simulated lead-state listener",
+    "Remove obsolete global matchMedia restoration; canonical mobile filter chooses Search3 breakpoint directly",
+    "Remove donor header and legacy DS2 footer CSS rules so canonical shared server-rendered shell owns all routes; shared footer marker prevents donor DOM replacement."
+  ],
+  "assets": {
+    "search3-entry-v1.css": {
+      "candidateSha256": "7032ac69f1bc6277860353592b8b545a6eb65174cbe1a077ee473be7dace2581",
+      "productionSha256": "65c29ccc4e7a5937e154aa229f70ffbe315aaf19e2089386682afb98ac067af5"
+    },
+    "search3-entry-v1.js": {
+      "candidateSha256": "bbd6cde58cf893b819848fed7f51b8a529747b5f9f0c13d9eb19281eee6b343e",
+      "productionSha256": "6e8631ea926a103661a824739fcdf218e83c07b6ca4f7d0786ed23fcacb41e0b"
+    },
+    "search3-results-cards-v2.css": {
+      "candidateSha256": "ee51d0cfc08af6f48af748b9c77a9747d33afbf91630428526ce3c68bed26f3b",
+      "productionSha256": "ee51d0cfc08af6f48af748b9c77a9747d33afbf91630428526ce3c68bed26f3b"
+    },
+    "search3-results-cards-v2.js": {
+      "candidateSha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
+      "productionSha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266"
+    },
+    "search3-results-filters-v1.css": {
+      "candidateSha256": "056ca312c4f5356e1d3b8cc95e90355a0420420501e6467ae014e917df39fe7b",
+      "productionSha256": "b94f15eaa963b5ccb7437553b1ac7ee9c10bd6dd9a20d038994287f2c702d202"
+    },
+    "search3-results-filters-v1.js": {
+      "candidateSha256": "59902609494edbecb014a1ebd3049b12071c799b88f939ff92fc7ca76883202f",
+      "productionSha256": "37813fa396116719d76668571796098b2ed59bac769923fb924157908b95590f"
+    },
+    "search3-selected-flow-v2.css": {
+      "candidateSha256": "26d7c6661ff29957309d8356ab47c430e37b718053d062d241e202d660bd6871",
+      "productionSha256": "b2cf963356f0857573ce7a9da499a9a7b72c9da22edd6526c31fd9d77cb9a1be"
+    },
+    "search3-selected-flow-v2.js": {
+      "candidateSha256": "66e9dd7f936f2d6d65a40f5fd55c06146ff7a8abd66be3e7742bba567e8a415d",
+      "productionSha256": "a4db64b0d1752ca15eea9f6cab1587d38139c4cc16681932f1e9a9dc2408544c"
+    }
+  },
+  "protectedSha256": {
+    "api-v2.php": "828354f69bfc2fafa7e2afb2a2955e0e67858920ba967be196301b7a01baca98",
+    "lead-adapter-v2.php": "8eb0c75a5ccad219190fddc31f9d254545f9c7566e459f169231481cebe4e069",
+    "analytics-config.php": "1cdb2d53eda3e52c5ba1480f3df5d184c3b51ecf707952cb49560c395e463a82",
+    "analytics-v4.js": "9f91622ad81d1812753083008d8225e1619dd7fd7fb7ba8f0fdea0e7c65e8602",
+    "tour-controller-v4.js": "ad2e5e1e3e7c4d021d291cbb8a60748d8d9a54a7c1c1e3d4aefb7296d427c0ae",
+    "flight-price-sync-v1.js": "263a5795c61da3a7cc4018f04c513f7e59b7f9e0fb9c8918fb46298564fc42e8",
+    "lead-search-context.js": "8d6eafbdf9fbb23aa5984edbe2c585b65c5647517492f7799c1dd732e710335f",
+    "lead-form-guard-v1.js": "42427863281ca0bdcb7a84693f57687cd10747196dc85fc5daffdd477fc7c48a",
+    "runtime-v3.js": "67f014910a5344fab7ed7e70d405f6e3256578eb84e8fbe634eed2a2c8baef92"
+  },
+  "candidateEvidence": {
+    "productionLeadDeliveryVerified": false,
+    "liveMobileDeviceVerified": false,
+    "runId": 33925976956,
+    "evidenceArtifactId": 9956839979,
+    "releaseArtifactId": 9956844875,
+    "previewDeploymentPr": 1339,
+    "wideDesktopWidths": [
+      1920,
+      2048
+    ],
+    "wideDesktopChecksPassed": true,
+    "siteHandoffValidationRunId": 33925923850,
+    "siteVisualRunId": 33925923945
+  }
+}

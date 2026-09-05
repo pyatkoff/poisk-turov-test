@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/data/db-v1.php';
 require_once __DIR__ . '/data/price-intelligence-v1.php';
+require_once __DIR__ . '/offer-freshness-v1.php';
 
 /**
  * Attach read-only price intelligence to the small set of offers that will
@@ -125,6 +126,7 @@ function v2_seo_country_snapshot_offers(int $countryId, int $limit = 6): array
 {
     if ($countryId <= 0) return [];
     $limit = max(1, min(12, $limit));
+    $businessDate = v2_offer_business_date();
 
     try {
         $pdo = v2_data_db();
@@ -157,7 +159,7 @@ function v2_seo_country_snapshot_offers(int $countryId, int $limit = 6): array
             $price = (float)($offer['price'] ?? 0);
             $departureDate = trim((string)($offer['departureDate'] ?? ''));
             $nights = (int)($offer['nights'] ?? 0);
-            if ($hotelId <= 0 || $price <= 0 || $departureDate === '' || $nights <= 0) continue;
+            if ($hotelId <= 0 || $price <= 0 || !v2_offer_departure_is_current($departureDate, $businessDate) || $nights <= 0) continue;
 
             $departureId = (int)($row['departure_id'] ?? 0);
             $key = $departureId . ':' . $hotelId . ':' . $departureDate . ':' . $nights;
@@ -183,6 +185,7 @@ function v2_seo_resort_snapshot_offers(int $countryId, int $regionId, int $limit
 {
     if ($countryId <= 0 || $regionId <= 0) return [];
     $limit = max(1, min(12, $limit));
+    $businessDate = v2_offer_business_date();
 
     try {
         $pdo = v2_data_db();
@@ -216,7 +219,7 @@ function v2_seo_resort_snapshot_offers(int $countryId, int $regionId, int $limit
             $price = (float)($offer['price'] ?? 0);
             $departureDate = trim((string)($offer['departureDate'] ?? ''));
             $nights = (int)($offer['nights'] ?? 0);
-            if ($hotelId <= 0 || $price <= 0 || $departureDate === '' || $nights <= 0) continue;
+            if ($hotelId <= 0 || $price <= 0 || !v2_offer_departure_is_current($departureDate, $businessDate) || $nights <= 0) continue;
 
             $key = (int)$row['departure_id'] . ':' . $hotelId . ':' . $departureDate . ':' . $nights;
             if (isset($seen[$key])) continue;
@@ -245,6 +248,7 @@ function v2_seo_hotel_snapshot_offers(int $countryId, int $hotelId, int $limit =
 {
     if ($countryId <= 0 || $hotelId <= 0) return [];
     $limit = max(1, min(12, $limit));
+    $businessDate = v2_offer_business_date();
 
     try {
         $pdo = v2_data_db();
@@ -277,7 +281,7 @@ function v2_seo_hotel_snapshot_offers(int $countryId, int $hotelId, int $limit =
             $price = (float)($offer['price'] ?? 0);
             $departureDate = trim((string)($offer['departureDate'] ?? ''));
             $nights = (int)($offer['nights'] ?? 0);
-            if ($price <= 0 || $departureDate === '' || $nights <= 0) continue;
+            if ($price <= 0 || !v2_offer_departure_is_current($departureDate, $businessDate) || $nights <= 0) continue;
 
             $departureId = (int)($row['departure_id'] ?? 0);
             $key = $departureId . ':' . $departureDate . ':' . $nights . ':' . $price;

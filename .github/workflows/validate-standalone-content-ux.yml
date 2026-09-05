@@ -12,6 +12,8 @@ on:
       - 'v2/site-footer-v1.php'
       - 'v2/site-footer-v1.css'
       - 'v2/country-page-v1.php'
+      - 'v2/seo-resort-page-v1.php'
+      - 'tests/seo-resort-grammar-smoke.php'
       - 'v2/country/**'
       - 'v2/seo-content-pilot-maldives-v1.php'
       - 'v2/seo-content-pilot-maldives-*-v1.php'
@@ -33,6 +35,8 @@ on:
       - 'v2/site-footer-v1.php'
       - 'v2/site-footer-v1.css'
       - 'v2/country-page-v1.php'
+      - 'v2/seo-resort-page-v1.php'
+      - 'tests/seo-resort-grammar-smoke.php'
       - 'v2/country/**'
       - 'v2/seo-content-pilot-maldives-v1.php'
       - 'v2/seo-content-pilot-maldives-*-v1.php'
@@ -52,7 +56,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for f in v2/site-page-shell-v1.php v2/country-page-v1.php v2/country/index.php v2/country/turkey/index.php v2/country/egypt/index.php v2/hot/index.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php; do php -l "$f" >/dev/null; done
+          for f in v2/site-page-shell-v1.php v2/country-page-v1.php v2/seo-resort-page-v1.php v2/country/index.php v2/country/turkey/index.php v2/country/egypt/index.php v2/hot/index.php v2/contacts/index.php v2/how-to-buy/index.php v2/rb/index.php tests/seo-resort-grammar-smoke.php; do php -l "$f" >/dev/null; done
+          php tests/seo-resort-grammar-smoke.php
           grep -Fq -- '--at-accent:#D83D00' v2/design-system-v2.css
           grep -Fq -- '--at-shell:1180px' v2/design-system-v2.css
           grep -Fq '.sp-card a.sp-primary{color:#fff}' v2/site-page-v1.css
@@ -80,7 +85,8 @@ jobs:
             foreach($pages as [$file,$script,$searchHref,$heading]){
               $_SERVER["SCRIPT_NAME"]=$script;
               ob_start(); include $file; $html=ob_get_clean();
-              if(substr_count($html,"<footer class=\"ds2-site-footer\">")!==1) exit(10);
+              if(substr_count($html,"<footer class=\"ds2-site-footer\"")!==1) exit(10);
+              if(substr_count($html,"<footer class=\"ds2-site-footer\" data-site-footer=\"shared\" data-search3-footer=\"1\">")!==1) exit(23);
               if(substr_count($html,"class=\"ds2-site-footer__socials\"")!==1) exit(11);
               if(strpos($html,"href=\"$searchHref")===false) exit(12);
               if(strpos($html,$heading)===false) exit(13);
@@ -90,6 +96,7 @@ jobs:
               if(strpos($html,"--at-accent:#D83D00")===false) exit(21);
               if(strpos($html,".sp-card a.sp-primary{color:#fff}")===false) exit(17);
               if(strpos($html,".ds2-site-footer{")===false) exit(18);
+              foreach(["/payment/","/personal-data/","/politika-konfidentsialnosti/"] as $unpublished){ if(strpos($html,"href=\"$unpublished\"")!==false) exit(24); }
               if($file==="v2/contacts/index.php" && (substr_count($html,"class=\"sp-office-phone\"")!==4 || substr_count($html,"class=\"sp-contact-phone\"")!==1)) exit(22);
               if($file==="v2/rb/index.php" && strpos($html,"Помощь менеджера")===false) exit(19);
               foreach(["переносим","старого сайта","следующий этап"] as $internal){ if(stripos($html,$internal)!==false) exit(14); }

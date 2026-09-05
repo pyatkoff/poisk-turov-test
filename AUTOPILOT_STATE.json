@@ -1,7 +1,7 @@
 {
-  "schema_version": 20,
+  "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-02T03:06:00+03:00",
+  "updated_at": "2026-09-05T16:07:24.244885+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -9,14 +9,15 @@
   "owner_priority_lock": {
     "active": true,
     "planned_phase": "search_ux_ds2",
-    "rule": "Prioritize tour-search UX and site-wide user-facing convergence on AnyTour Design System 2.0. New design concepts require owner approval. Search 2.0 PR #810 may deploy only to the isolated /_preview/search2/ route because the owner explicitly approved preview publishing; it must not merge or deploy to production /poisk-turov/ until explicit production approval."
+    "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, finish the approved Search3 design across the site, publish a coherent preview, verify the user journey and prepare a reversible migration. Production draft #1334 must not merge or deploy until explicit owner visual approval of the concrete release. Preview publishing and draft preparation are authorized. Preserve AnyTour Design System 2.0, logo, Tourvisor/API contract, price arithmetic, lead transport/field mapping, Metrika/goals and repository isolation. Keep technical refactor and mass SEO expansion deferred. Do not invent benefits, operating hours or legal/payment terms."
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "name": "Shared DS2 responsive convergence and Search 2.0 preview QA",
+    "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Search 2.0 preview run #51 (33573157764) passed the full 375/430/768/1024/1440 evidence set on head efdd19f4fe9799e3e36332d00729f675b1e94530. The prior mobile document-overflow defect is closed: document width equals viewport width at all five sizes, primaryCount=5, food stays out of the primary row, CTA precedes quick filters on mobile, and the truthful All Inclusive shortcut writes canonical food=7. Visual inspection of 375 confirmed a coherent stacked form and internal quick-filter scrolling without page overflow; the nights summary remains on one line. Independently, PR #870 normalized the selected-tour back-results and hotel-description text actions from 40/38px to the canonical DS2 44px touch rhythm in the existing ds2-selected-tour-convergence-v1.css layer. All eight PR validation/visual workflows passed; merge 4ddf997599d69fadf96fd0842cc4ff9e561e187b deployed successfully in V2 run 33573370464 including Verify V2 and Live search smoke, and selected-tour post-deploy run 33573588616 passed. The generic V2 post-deploy run then exposed a stale CI assertion only: every five-width page/search/result assertion was green, but it still required removed legacy .v2-site-community. PR #872 updated that gate to require exactly one canonical .ds2-site-footer and zero legacy community blocks; security passed, it merged as 2ae43e3dffce44a607fb14254056438ca8de554b, and direct five-width production verification run 33573805145 passed. Search 2.0 production release lock for #810 remains active.",
-    "next_action": "Continue Search 2.0 only as preview-approved visual convergence, using run #51 as the current green five-width baseline. Inspect/repair only concrete remaining visual mismatches against the approved design inside existing canonical preview layers; do not add another CSS layer. Keep the target composition and truthful filter/search contracts unchanged. Do not merge #810 or deploy Search 2.0 to production without explicit owner visual approval. In parallel, continue independent shared DS2 wrapping/touch/hierarchy fixes only when a concrete production defect is confirmed, with full relevant PR/deploy/live evidence."
+    "last_material_progress": "Published39d37643 results geometry queue;23 CI passed, live editor verified. Documented local update ownership and scheduler regressions.",
+    "next_action": "Continue only confirmed presentation defects/source ownership work. Physical iPhone/Safari acceptance, approved legal content and concrete owner visual approval remain before production; do not repeat completed grid/observer/copy changes or deploy.",
+    "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
     "mode": "instant_local",
@@ -27,7 +28,8 @@
   "site_wide_score": {
     "value": 7.3,
     "scale": 10,
-    "note": "Held at 7.3. Search 2.0 now has a fully green five-width preview baseline with the mobile overflow defect closed; selected-tour touch targets are live on the shared 44px DS2 rhythm; and the stale post-deploy footer assertion was corrected and reverified. Search 2.0 remains preview-only, so the whole-product score is intentionally unchanged."
+    "note": "Historical assessment from 2026-09-02. Not reevaluated for Search3 and not a current acceptance score.",
+    "status": "HISTORICAL_NOT_REEVALUATED"
   },
   "protected": {
     "repository_scope": "pyatkoff/poisk-turov-test only",
@@ -42,17 +44,615 @@
     "verified_destinations": "PRESERVE",
     "legal_payment_unresolved": "DEFER",
     "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
-    "search2_preview_pr_810": "PREVIEW_DEPLOY_ALLOWED_ONLY_TO_/_preview/search2_; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_APPROVAL"
+    "search2_preview_pr_810": "PREVIEW_DEPLOY_ALLOWED_ONLY_TO_/_preview/search2_; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_APPROVAL",
+    "search3_production_pr_1334": "PREVIEW_AND_DRAFT_PREPARATION_ALLOWED; DO_NOT_MERGE_OR_DEPLOY_TO_PRODUCTION_UNTIL_EXPLICIT_OWNER_VISUAL_APPROVAL_OF_CONCRETE_RELEASE",
+    "price_arithmetic": "PRESERVE"
   },
   "deferred": {
-    "technical_refactor": "DEFER_UNTIL_EXPLICIT_OWNER_DIRECTION",
+    "technical_refactor": "Broader refactor deferred; owner explicitly authorized Search3 presentation source refactor on2026-09-05.",
     "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
     "legal_payment": "DEFER_UNRESOLVED_CONTENT",
-    "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING"
+    "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
+    "mass_seo_expansion": "AFTER_NEW_DESIGN_ACCEPTANCE",
+    "site_wide_remembered_city": "Separate product extension if it requires data-source redesign; preserve existing departure-city handoff now."
   },
   "continuation_policy": {
-    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > search_user_journey > search2_initial_form_preview > results_filters_loaded_set > hotel_tour_cards_and_selected_tour > desktop_mobile_visual_consistency > shared_header_navigation_footer_ds2 > site_visual_convergence_ds2 > technical_refactor_deferred > content_seo > cosmetic_cleanup",
+    "priority": "production_broken > lead_loss > incorrect_data > broken_user_journey > confirmed_search_and_mobile_defects > shared_header_navigation_footer_and_buttons_ds2 > whole_site_preview_and_search_handoff > truthful_content_working_links_and_offer_freshness > phone_desktop_journey_acceptance > owner_approved_migration_with_legacy_and_rollback > technical_refactor_deferred > mass_seo_expansion_deferred",
     "on_ci_failure": "diagnose_failure_then_fix_or_defer_if_external_or_preview-contract-only",
-    "on_blocker": "record/defer blocker and continue an independent safe DS2/search-UX task"
+    "on_blocker": "Record/defer the affected blocker and continue an independent safe task from the Search3 site-completion queue.",
+    "runtime_signal": "Issue #2 is a machine-maintained CI signal; issue #996 and this state own the product queue. An enabled hourly scheduled task resumes actual development; a completed PR is not a stop condition."
+  },
+  "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
+  "current_task": {
+    "id": "S3_RESULTS_GEOMETRY_QUEUE",
+    "status": "PUBLISHED_LIVE_VERIFIED",
+    "implementation_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+    "artifact_id": 9972524166,
+    "artifact_run": 33976701761,
+    "deploy_pr": 1370,
+    "deploy_run": 33976775542,
+    "evidence_artifact": 9972545166,
+    "ci_success_count": 23,
+    "visual_run": 33976701799,
+    "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719.",
+    "title": "Unify results geometry scheduling",
+    "branch": "release/search3-production-ready-v1",
+    "pr": 1334,
+    "issue": 996
+  },
+  "queue": [
+    {
+      "id": "S3_OBSERVER_SCOPE_REFACTOR",
+      "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
+      "sha": "23993e90975a6001f9e0d6b0de2d1511fd7e248b"
+    },
+    {
+      "id": "S3_EDITOR_INTERMEDIATE_WIDTH",
+      "status": "CODE_CI_VISUAL_VERIFIED_PREVIEW_BLOCKED_SSH",
+      "title": "Date and night controls clip in expanded search editor at1348px; screenshot observed after live return, fix responsive grid without shrinking fonts.",
+      "sha": "16e326eb4dbb5ffe6e36da418c730a86772742cb"
+    },
+    {
+      "id": "S3_RETAINED_TOUR_HIDDEN_CONTRACT",
+      "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
+      "sha": "c93dad244348f43b423ad61e110588bcec627dd4"
+    },
+    {
+      "id": "S3_CSS_CASCADE_CONSOLIDATION",
+      "status": "PUBLISHED_IN_PREVIEW_NOT_PRODUCTION",
+      "sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d"
+    },
+    {
+      "id": "S3_PRESENTATION_SOURCE_REFACTOR",
+      "status": "SOURCE_REFACTOR_VERIFIED_RUNTIME_UNCHANGED",
+      "title": "Owner-authorized modular Search3 presentation sources and reproducible build",
+      "sha": "f61a9391444c95991045bd8315b08ca37d5ae433"
+    },
+    {
+      "id": "S3_CLEAN_JOURNEY_READABILITY",
+      "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
+      "title": "Isolate booking stages and make search context, filters and lead actions readable",
+      "sha": "3624278a59187bae7f76c9dbdb504b8f7b2858fd"
+    },
+    {
+      "id": "S3_MOCKUP_AND_PRICE_CALENDAR",
+      "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
+      "title": "Apply the best of eight mockups and restore the existing production price calendar in Search3",
+      "sha": "17a2c221290252232fe2eb758b2a9dd50d7785bc"
+    },
+    {
+      "id": "S3_LEAD_PRICE_COPY",
+      "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
+      "title": "Remove the repeated full-tour amount misleadingly labeled as flight price in the lead sidebar; preserve all price arithmetic",
+      "sha": "17a2c221290252232fe2eb758b2a9dd50d7785bc"
+    },
+    {
+      "id": "S3_FACTS_LINKS_MAPS",
+      "status": "QUEUED",
+      "title": "Correct confirmed copy/city-label issues and maps; resolve broken legal/payment links with approved source content only"
+    },
+    {
+      "id": "S3_OFFER_FRESHNESS",
+      "status": "PUBLISHED_IN_WHOLE_SITE_PREVIEW",
+      "title": "Exclude past departures using explicit timezone and verified same-day availability rules; preserve selected departure city",
+      "sha": "1fddaf5e4e1c1285cb768050352c3d0a1ab0cdc4",
+      "note": "Explicit Moscow business-day exclusion; preserve same-day allowance. Do not invent airport-specific sales cutoff."
+    },
+    {
+      "id": "S3_JOURNEY_ACCEPTANCE",
+      "status": "ACTIVE_DESKTOP_PATH_AND_RECOVERY_PASSED_PHYSICAL_DEVICE_REMAINS",
+      "depends_on": [
+        "S3_WHOLE_SITE_PREVIEW",
+        "S3_FACTS_LINKS_MAPS",
+        "S3_OFFER_FRESHNESS"
+      ],
+      "title": "Verify phone/Safari and desktop journey to lead form with family, long-value and recovery states; preview delivery remains disabled"
+    },
+    {
+      "id": "S3_OWNER_APPROVAL_AND_MIGRATION",
+      "status": "GATED",
+      "depends_on": [
+        "S3_JOURNEY_ACCEPTANCE"
+      ],
+      "title": "Owner approves concrete release; retain previous artifact/config, verify rollback and old search, deploy and verify production",
+      "gate": "Explicit owner visual production approval; real lead receipt needs a controlled agreed test"
+    }
+  ],
+  "release_status": {
+    "search_preview": {
+      "status": "PUBLISHED",
+      "url": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/",
+      "candidate_sha": "470474414a3930f1f6c095a8dbbc187075b253c0",
+      "ci_run": 33925976956,
+      "deploy_run": 33926206799,
+      "deploy_pr": 1339,
+      "evidence_artifact": 9956839979
+    },
+    "site_draft": {
+      "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
+      "branch": "release/search3-production-ready-v1",
+      "pr": 1334,
+      "implementation_verified_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+      "release_merge_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+      "source_tree": "39e986647c51b893e4051d7805aee74d46e5ae73",
+      "exact_artifact": 9972524166,
+      "artifact_digest": "sha256:8e00b4db62bd7dfd91dae7e33ef71553f91adb2aa009477e7a4ca3e22130b1ed",
+      "superseded_artifact": 9972437784,
+      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "preview_deploy_run": 33976775542,
+      "preview_deploy_pr": 1370,
+      "includes": [
+        "home native independent night range and child ages",
+        "offer/month date/night/party handoff",
+        "customer-facing country/month copy",
+        "Search3 production import",
+        "old-search compatibility route",
+        "whole-site preview path containment",
+        "preview lead-disabled endpoint and exact artifact pipeline",
+        "preview-only forced noindex independent of production SEO allowlist",
+        "readable result cards with taller mobile photos and non-duplicated facts",
+        "localized decimal flight-price tradeoff display correction",
+        "declined resort destination copy from reviewed H1",
+        "unpublished 404 legal/payment footer links hidden",
+        "existing production price calendar restored in Search3 with responsive disclosure",
+        "mockup-7 footer social/store treatment",
+        "mockup-6 readable contact form with fewer repeated panels",
+        "supplier placeholder-flight and unknown-baggage summaries",
+        "one authoritative tour price in lead sidebar without misleading flight-price repetition",
+        "booking stage hides preserved results and search controls",
+        "readable search context, filter rows and lead navigation",
+        "desktop reset fits the narrow filter rail",
+        "duplicate CSS rules removed with declaration-stream and pixel equivalence evidence",
+        "retained selected-tour DOM respects hidden after Back",
+        "selected-tour observer no longer rescans results; resize preserves open search editor",
+        "single CSS owner for initial/editor responsive grid",
+        "lead sidebar manager clarification when proceeding without flight"
+      ],
+      "preview_deploy_workflow_conclusion": "success",
+      "final_verification_run": 33976775542,
+      "final_verification_artifact": 9972545166
+    },
+    "production": {
+      "status": "OWNER_VISUAL_APPROVAL_PENDING",
+      "last_observed_main_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
+      "migration_performed": false
+    },
+    "production_rollback": {
+      "status": "UTILITY_AND_FIXTURE_DRILL_VERIFIED_LIVE_SNAPSHOT_NOT_CAPTURED",
+      "release_sha": "7de8381388ac50b3e022ec5b7933d5663458ab60",
+      "source_pr": 1354,
+      "ci_run": 33948068212,
+      "runbook": "docs/project/search3-production-migration-runbook.md",
+      "previous_source_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
+      "boundary": "Configuration and secret payload must remain server-local and must not be uploaded as an Actions artifact. Capture the exact live snapshot only immediately before an owner-approved migration."
+    },
+    "legacy": {
+      "source_archive_branch": "archive/search-before-search3-2026-09-04",
+      "source_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
+      "route": "/poisk-turov-old/",
+      "route_status": "PUBLISHED_IN_WHOLE_SITE_PREVIEW_NOT_PRODUCTION",
+      "limitation": "Maintained old presentation with shared runtime. Source archive is not a database/server-config backup; retain previous deploy artifact and configuration before migration."
+    }
+  },
+  "last_ci": {
+    "production_rollback_readiness": {
+      "conclusion": "success",
+      "sha": "7de8381388ac50b3e022ec5b7933d5663458ab60",
+      "source_pr": 1354,
+      "run_id": 33948068212,
+      "scope": "Fixture snapshot, manifest verification and empty-directory restore drill passed. Traversal, symlink and non-empty target protections passed; secret contents are absent from command output and manifest. No live production backup or deployment occurred."
+    },
+    "search_preview": {
+      "conclusion": "success",
+      "run_id": 33925976956,
+      "sha": "470474414a3930f1f6c095a8dbbc187075b253c0",
+      "widths": [
+        375,
+        430,
+        768,
+        1024,
+        1440,
+        1920,
+        2048
+      ]
+    },
+    "preview_deploy": {
+      "conclusion": "success",
+      "run_id": 33926206799
+    },
+    "whole_site_preview_preparation": {
+      "conclusion": "success",
+      "sha": "17a2c221290252232fe2eb758b2a9dd50d7785bc",
+      "source_tree": "5cf16fea5b83a6c2d3277be3b1010ef939ef10c0",
+      "artifact_run": 33953360074,
+      "artifact_id": 9965554184,
+      "artifact_digest": "sha256:948de7476820c349a30087aba4395bbf72e295afadfd368d77606c1075e73ae6",
+      "deploy_run": 33953451784,
+      "deploy_pr": 1357,
+      "scope": "All 23 applicable checks passed; one production-only gate skipped. Exact preview published; nine routes, noindex, lead/widget/counter isolation, rollback and final production fingerprints verified. Final live lead sidebar shows one 72 832 RUB overall total and clarification for placeholder flight, with no lead submitted."
+    },
+    "flight_fallback_integration": {
+      "conclusion": "success",
+      "sha": "928f25ec5f08ccf544a6dd88acf16cf77192f47f",
+      "run_id": 33940532420,
+      "scope": "At 375px, repeated empty flight responses retain one retry and continue through summary to the visible lead form without a lead request. At 1440px, retry recovery renders the real flight and clears fallback actions. Existing controller, Tourvisor, price and lead contracts are unchanged."
+    },
+    "card_readability": {
+      "conclusion": "success",
+      "sha": "17b674fc54fa6b49aaa73379bcbdc35bfccfda28",
+      "run_id": 33941679993,
+      "artifact_id": 9962036028,
+      "artifact_digest": "sha256:598c2bb9d306d03b7c1054c3b31b5da2116b0a35619c2f56589a24ba8fb1c868",
+      "widths": [
+        375,
+        430,
+        1024,
+        1440
+      ],
+      "scope": "Inspected deterministic result cards at all four widths. Mobile photos measure approximately 183px and 214px high; titles are 18px and facts are 12/14px. Desktop labels/values are 12/14px. There is no horizontal overflow or clipped card content, and price context contains only the party while departure, nights, meal and flight appear once in the facts grid. Published in exact whole-site preview source 47e54a02."
+    },
+    "localized_flight_tradeoff": {
+      "conclusion": "success",
+      "sha": "47e54a02e021659f9c8248c0e6603a1a744589de",
+      "run_id": 33942514556,
+      "artifact_run": 33942514581,
+      "artifact_id": 9962292167,
+      "deploy_run": 33942600148,
+      "deploy_pr": 1346,
+      "scope": "Search3 presentation parses localized decimal totals without collapsing the decimal separator into an extra digit. Deterministic browser coverage verifies 72 832 ₽ and 90 049,6 ₽ yield +17 217,6 ₽ rather than +827 664 ₽. Fresh live preview verification observed 72 832 ₽ and 90 050 ₽ with +17 218 ₽ and reached the lead form without submission. Tourvisor/API, raw price selection, lead transport and analytics are unchanged."
+    },
+    "site_shell": {
+      "conclusion": "success",
+      "sha": "c46d76a973a4cb89b1c50eb985a6c4a2f155c454",
+      "visual_run": 33929767087,
+      "scope": "All applicable PR gates passed; migration-only check skipped by configured condition. Actual Search3, legacy search and content templates on mobile/desktop. Runtime catalogue unavailable in CI; not a production defect."
+    },
+    "resort_destination_grammar": {
+      "conclusion": "success",
+      "sha": "4bac82adad1be95a6f07b5413b2b1adbcc17fe24",
+      "source_pr": 1348,
+      "content_ci": 33945457699,
+      "artifact_run": 33945457730,
+      "deploy_run": 33945548360,
+      "scope": "CTA, offer heading and price-calendar heading use the reviewed destination form from H1 or explicit name_accusative. Six deterministic cases cover declined, indeclinable, override and fallback values. Live Antalya and Kemer verified."
+    },
+    "unpublished_legal_links": {
+      "conclusion": "success",
+      "sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
+      "source_pr": 1351,
+      "content_ci": 33946001024,
+      "boundary_ci": 33946001065,
+      "visual_ci": 33946000995,
+      "artifact_run": 33946001085,
+      "deploy_run": 33946112648,
+      "scope": "Confirmed /payment/, /personal-data/ and /politika-konfidentsialnosti/ are 404. New-site footer omits them and regression guards reject re-exposure until real pages exist. Legal/payment content remains deferred; no terms invented."
+    },
+    "mockup_price_calendar": {
+      "conclusion": "success",
+      "sha": "17a2c221290252232fe2eb758b2a9dd50d7785bc",
+      "visual_run": 33953360125,
+      "visual_artifact": 9965558151,
+      "core_run": 33953360131,
+      "flight_run": 33953360079,
+      "widths": [
+        375,
+        430,
+        1024,
+        1440
+      ],
+      "deployment_evidence": 9965586513,
+      "scope": "Responsive real calendar integration, one-submit exact date selection preserving remaining parameters, reset/selected-state visibility; footer mobile and desktop screenshots; shared placeholder helper regression tests. Initial 15c38994 calendar visibility failure fixed by excluding supported calendar from high-specificity legacy-shell hide selector; failed artifact was not published."
+    },
+    "lead_price_copy": {
+      "conclusion": "success",
+      "sha": "17a2c221290252232fe2eb758b2a9dd50d7785bc",
+      "flight_run": 33953360079,
+      "visual_run": 33953360125,
+      "deployment_evidence": 9965586513,
+      "scope": "Existing mobile integration follows actual review/lead controls, asserts one total, no flight-price block, manager-confirmation note, correct alternative surcharge and zero lead transport. Calendar fixture derives selected state from actual visible/nonempty tour DOM, verifies reset clears data, and compares all named parameters while preserving repeated child-age order. Earlier failures were test-stage/DOM-state/order assumptions; production code and calendar/API behavior were not weakened."
+    },
+    "clean_journey_readability": {
+      "conclusion": "success",
+      "sha": "3624278a59187bae7f76c9dbdb504b8f7b2858fd",
+      "core_run": 33954714708,
+      "flight_run": 33954714646,
+      "visual_run": 33954714659,
+      "visual_artifact": 9965972719,
+      "deployment_run": 33954792052,
+      "deployment_evidence": 9965993909,
+      "applicable_passed": 23,
+      "scope": "375/430/1024/1440 isolation and return preservation; visual images inspected. Live00f137f7 complete path and return78cards, final3624278a desktop-only filter-fit recheck. Physical Safari not verified."
+    },
+    "source_refactor": {
+      "sha": "f61a9391444c95991045bd8315b08ca37d5ae433",
+      "conclusion": "success",
+      "applicable_passed": 23,
+      "core_run": 33965995740,
+      "visual_run": 33965995713,
+      "flight_run": 33965995673,
+      "boundary_run": 33965995739,
+      "artifact_run": 33965995680,
+      "artifact_id": 9969438539,
+      "scope": "Five isolated builder tests,24 module syntax checks, all8 runtime outputs and all715 artifact payload files byte-identical to published baseline. First-run whitespace issue corrected without changing output bytes."
+    },
+    "css_consolidation": {
+      "sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
+      "conclusion": "success",
+      "applicable_passed": 23,
+      "core_run": 33968976776,
+      "visual_run": 33968976830,
+      "flight_run": 33968976715,
+      "boundary_run": 33968976817,
+      "artifact_run": 33968976826,
+      "artifact_id": 9970334355,
+      "visual_artifact": 9970338707,
+      "deployment_run": 33969089661,
+      "deployment_evidence": 9970372339,
+      "scope": "Four card screenshots exactly equal at375/430/1024/1440. Three calendar screenshots equal;1024 differs only50pixels by1channel level, visually inspected. Deployment verifies9routes/noindex/lead403/counter0/internalPHPdeny/retainedrollback/unchanged before-after-final production fingerprints."
+    },
+    "return_visibility": {
+      "sha": "c93dad244348f43b423ad61e110588bcec627dd4",
+      "conclusion": "success",
+      "applicable_passed": 23,
+      "core_run": 33969305922,
+      "visual_run": 33969305835,
+      "flight_run": 33969305812,
+      "boundary_run": 33969305760,
+      "artifact_run": 33969305785,
+      "artifact_id": 9970432615,
+      "visual_artifact": 9970439935,
+      "deployment_run": 33969403753,
+      "deployment_evidence": 9970465480,
+      "scope": "375/430/1024/1440 retained nonempty tour with final-review markers becomes invisible and zero-height after Back; cards and named form parameters preserved. Mobile/desktop return images inspected. All715 payload hashes verified; only Search3 CSS changed.9routes/noindex/lead403/counter0/internalPHPdeny/retainedrollback/unchanged production fingerprints."
+    },
+    "observer_scope": {
+      "sha": "23993e90975a6001f9e0d6b0de2d1511fd7e248b",
+      "conclusion": "success",
+      "applicable_passed": 23,
+      "core_run": 33972154904,
+      "visual_run": 33972154966,
+      "flight_run": 33972154883,
+      "boundary_run": 33972154918,
+      "artifact_run": 33972154901,
+      "artifact_id": 9971243048,
+      "visual_artifact": 9971250184,
+      "deployment_run": 33972333244,
+      "deployment_workflow_conclusion": "failure_final_ssh_read_after_successful_activation",
+      "deployment_evidence": 9971297501,
+      "final_verification_run": 33972522395,
+      "final_verification_conclusion": "success",
+      "final_verification_artifact": 9971341330,
+      "scope": "375/430/1024/1440 real viewport resize preserves editor/form, label enabled/disabled recovery, busy loading/ready. Relevant mobile/desktop screenshots inspected. Live path and return passed."
+    },
+    "editor_grid": {
+      "sha": "16e326eb4dbb5ffe6e36da418c730a86772742cb",
+      "conclusion": "success",
+      "applicable_passed": 23,
+      "visual_run": 33975455697,
+      "visual_artifact": 9972181403,
+      "artifact_run": 33975455597,
+      "artifact_id": 9972176593,
+      "widths": [
+        375,
+        430,
+        1024,
+        1348,
+        1440
+      ],
+      "scope": "Real viewport resize preserves named form values and repeated-age order; date span and native field width checked; mobile and1348 screenshots inspected. Initial failed revisions not published."
+    },
+    "flight_clarification_copy": {
+      "source_sha": "3e86e319f4d54f1fb16ddb9643036fed59bd1bda",
+      "status": "PUBLISHED_LIVE_VERIFIED",
+      "ci_success_count": 23,
+      "visual_run": 33975939105,
+      "flight_run": 33975939063,
+      "artifact_run": 33975939133,
+      "artifact_id": 9972310233,
+      "deploy_run": 33976084827,
+      "deploy_pr": 1368,
+      "evidence_artifact": 9972356605,
+      "live": "SUN VERA HOTEL 10.09.2026/7 nights/2 adults: unavailable flights -> summary -> lead shows Рейс уточнит менеджер. No lead sent. JS e1d82b95bd96bec4."
+    },
+    "summary_event_coalescing": {
+      "id": "S3_SUMMARY_EVENT_COALESCING",
+      "status": "PUBLISHED_LIVE_VERIFIED",
+      "implementation_sha": "b1c8597da617eacfab6416da542cf6280537373d",
+      "artifact_id": 9972437784,
+      "artifact_run": 33976375851,
+      "deploy_pr": 1369,
+      "deploy_run": 33976463607,
+      "evidence_artifact": 9972462388,
+      "ci_success_count": 23,
+      "visual_run": 33976375814,
+      "flight_run": 33976375786,
+      "verification": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent."
+    },
+    "results_geometry_queue": {
+      "id": "S3_RESULTS_GEOMETRY_QUEUE",
+      "status": "PUBLISHED_LIVE_VERIFIED",
+      "implementation_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+      "artifact_id": 9972524166,
+      "artifact_run": 33976701761,
+      "deploy_pr": 1370,
+      "deploy_run": 33976775542,
+      "evidence_artifact": 9972545166,
+      "ci_success_count": 23,
+      "visual_run": 33976701799,
+      "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
+    }
+  },
+  "last_verified_commit": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+  "last_verified_commit_scope": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719.",
+  "blocked": [
+    {
+      "id": "PRODUCTION_VISUAL_APPROVAL",
+      "blocks": [
+        "S3_OWNER_APPROVAL_AND_MIGRATION"
+      ],
+      "reason": "Owner approval of concrete finished preview is pending; preparation continues."
+    },
+    {
+      "id": "APPROVED_LEGAL_PAYMENT_CONTENT",
+      "blocks": [
+        "legal/payment publication within S3_FACTS_LINKS_MAPS"
+      ],
+      "reason": "Locate existing approved materials first; defer unavailable/unapproved content. No invented legal terms."
+    }
+  ],
+  "completed_preparation": [
+    {
+      "id": "S3_SITE_SHELL",
+      "status": "PUBLISHED_IN_WHOLE_SITE_PREVIEW",
+      "sha": "c46d76a973a4cb89b1c50eb985a6c4a2f155c454",
+      "ci_run": 33929767087,
+      "evidence_artifact": 9958121988,
+      "scope": "Shared PHP footer and navigation, canonical shared header without donor CSS replacement, common primary action colour, office map links; mobile/desktop screenshots inspected including actual Search3 route."
+    },
+    {
+      "id": "S3_WHOLE_SITE_PREVIEW_CONTAINMENT",
+      "status": "PUBLISHED_SUPERSEDED_BY_FIXED_ARTIFACT",
+      "sha": "85edee8ef4019ff485b5e01d80c4db862283b74e",
+      "release_merge_sha": "9c520bac897aafd1eac7cfe28cfff1ad996949ca",
+      "source_tree": "81080560d4c829ecda3e2b364e8661b1ad5ee23f",
+      "ci_run": 33931705292,
+      "artifact": 9958766470,
+      "supersedes": 9958625990,
+      "scope": "Whole-site preview prefix containment, exact transformed artifact, preview forced noindex, production API path preserved, preview lead physically disabled, local preview-route smoke passed."
+    }
+  ],
+  "scheduled_execution": {
+    "status": "PAUSED",
+    "automation_id": "6a9b55c965ac81918c5327b6b43faed2",
+    "title": "Продолжать разработку AnyTour",
+    "rrule": "FREQ=HOURLY",
+    "timezone": "Europe/Amsterdam",
+    "mode": "development_not_monitoring_only",
+    "rule": "Do not stop after one PR when time remains for the next safe task. Preserve production approval and all protected boundaries; record/defer a blocker and continue independent work.",
+    "first_background_run_verified": true,
+    "last_observed_enabled": false,
+    "note": "Verified via scheduler lookup on 2026-09-05. Prior run paused the automation at owner acceptance; current mockup/calendar work proceeds under the explicit owner request, without changing the schedule."
+  },
+  "freshness_followup": {
+    "status": "PUBLISHED_IN_WHOLE_SITE_PREVIEW_NOT_PRODUCTION",
+    "sha": "1fddaf5e4e1c1285cb768050352c3d0a1ab0cdc4",
+    "core_ci": 33934082041,
+    "visual_ci": 33934082023,
+    "base_sha": "73a197a38c32902c411e0b82343619b14b77955a",
+    "scope": "Country/resort/hotel snapshot readers filter past and malformed departures before sorting/limit. Hot offers use the same explicit Europe/Moscow business date as the existing SEO calendar instead of DB-session CURDATE(). Existing same-day allowance, TTL, prices, city filters and supplier contracts are retained.",
+    "verification": "In-memory SQLite integration checks passed in core CI for all four actual readers, invalid/leap dates, midnight/year rollover, expired snapshots, limit ordering and city retention. Existing visual CI passed. Local owner/refactor/import guards passed (PHP rendering skipped locally).",
+    "preview": "Published in exact whole-site preview source 6a20f3dd via deploy 33937843736. Production is unchanged."
+  },
+  "preview_isolation_followup": {
+    "status": "PUBLISHED_AND_LIVE_VERIFIED_NOT_PRODUCTION",
+    "superseded_unsafe_artifact": 9958766470,
+    "findings": "Copied search runtime could execute production Bitrix/site_conf, inherit a configured counter, and load the external consultant widget. Legacy entry required transformed homepage and retained production lead URL. Old smoke used a clean PHP docroot/config and did not expose these issues.",
+    "fix": "Exact fail-closed transformations of copied artifact only: omit production bootstrap, force preview counter zero, remove consultant widget, bind legacy UI to copied search runtime and disabled lead sink. Production runtime, analytics configuration, goals and lead transport unchanged.",
+    "verification": "Exact transform/drift unit test and HTTP smoke passed in run 33934383695. Both forms rendered with counter=0 and disabled sink despite poisoned production bootstrap fixtures. Core/security/boundary/visual gates passed. ZIP digest, inner archive, manifest, checksum list and all 715 payload bytes matched locally.",
+    "sha": "3624278a59187bae7f76c9dbdb504b8f7b2858fd",
+    "artifact_id": 9965968756,
+    "deploy_run": 33954792052,
+    "verification_update": "Evidence9965993909:9routes/noindex/lead403/internalPHPdeny/counter0/retainedrollback/identical before-after-final production fingerprints."
+  },
+  "css_consolidation": {
+    "status": "PUBLISHED_IN_PREVIEW_NOT_PRODUCTION",
+    "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
+    "scope": "22 exact repeated rules and119 further repeated declarations removed under identical selector/media/value/importance. Ordered declaration-stream equivalence verified; audit docs/project/search3-css-deduplication.json. Seven other public assets and protected contracts unchanged.",
+    "preview": "Published exact e12e7ac7 via33969089661; evidence9970372339. Production unchanged.",
+    "implementation_sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
+    "live_verification": "Fresh CSS e0f32847c9c3e78e;96 hotels, unchanged desktop card geometry, LUXOR APART through clarified flight and summary to lead form with one65427RUB total. Screenshot inspected; no lead submitted."
+  },
+  "return_visibility_fix": {
+    "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
+    "finding": "Live Back sets selectedTour.hidden=true but CSS display:grid!important leaves3466px of retained tour visible below96 results. Present before refactor; missing hidden presentation contract.",
+    "fix": "Honor #selectedTour[hidden] in CSS; preserve retained DOM. Existing four-width test now retains children like real Back and asserts invisibility/zero layout height.",
+    "implementation_sha": "c93dad244348f43b423ad61e110588bcec627dd4",
+    "deploy_run": 33969403753,
+    "evidence": 9970465480,
+    "live_verification": {
+      "css_hash": "b94f15eaa963b5cc",
+      "cards_before": 98,
+      "cards_after": 98,
+      "input_select_values_identical": true,
+      "selected_hidden": true,
+      "selected_display": "none",
+      "selected_height": 0,
+      "retained_children": 20,
+      "horizontal_overflow": false,
+      "lead_submitted": false,
+      "path": "LUXOR APART -> clarified flight -> summary -> form -> back to tour -> back to results"
+    }
+  },
+  "observer_scope_refactor": {
+    "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
+    "baseline": "80e3fb74175ed13b2d585de35c4f0880c84ab92e",
+    "scope": "Selected-tour mutations only sync busy state; result labels keep their own observer and lifecycle hooks. Busy attribute changes only when value changes. Resize batches geometry work per frame and preserves the active search editor.",
+    "verification": "Existing four-width browser coverage adds real viewport resizing with open editor, exact form-value retention, disabled/enabled result-label recovery and busy loading/ready transitions.",
+    "preview": "23993e90 activated by33972333244; HTTP isolation passed. Original workflow failure is final SSH reset, closed by successful read-only33972522395; no third deployment.",
+    "implementation_sha": "23993e90975a6001f9e0d6b0de2d1511fd7e248b",
+    "live_verification": {
+      "hotel": "LUXOR APART",
+      "path": "search -> hotel -> clarified flight -> summary -> form -> back to tour -> results -> edit search",
+      "cards_after": 100,
+      "selected_hidden": true,
+      "selected_height": 0,
+      "ready_aria_busy": "false",
+      "horizontal_overflow": false,
+      "lead_submitted": false
+    }
+  },
+  "editor_grid_refactor": {
+    "status": "PUBLISHED_LIVE_VERIFIED",
+    "implementation_sha": "16e326eb4dbb5ffe6e36da418c730a86772742cb",
+    "source_tree": "c4597472ceb5d6e7f208648e32e3c217a4462689",
+    "artifact_id": 9972176593,
+    "artifact_digest": "sha256:9e6c03e3ac9eface8875e1c2518da91cedf4d215840032725190b45097ce098e",
+    "changes": [
+      "CSS grid initial/editor ownership consolidated",
+      "results-top.js no longer writes inline grid or child spans",
+      "two ds2-search-intro-v1.css sidebar selectors exclude Search3; legacy retains same declarations"
+    ],
+    "verification": "715 payload hashes verified; only3 presentation assets differ.23 applicable CI gates green. Mobile375/430 and desktop1024/1348/1440 geometry passes. No real-device Safari claim.",
+    "deploy": "Successful #1367/run33975780366, evidence9972265810. SSH multiplexing reuses one connection; earlier failed handshakes do not establish server root cause. All13 production before/after/final hashes equal. Live1363 editor dates565px/input267px/nights276.5px, values preserved."
+  },
+  "flight_clarification_copy": {
+    "source_sha": "3e86e319f4d54f1fb16ddb9643036fed59bd1bda",
+    "status": "PUBLISHED_LIVE_VERIFIED",
+    "ci_success_count": 23,
+    "visual_run": 33975939105,
+    "flight_run": 33975939063,
+    "artifact_run": 33975939133,
+    "artifact_id": 9972310233,
+    "deploy_run": 33976084827,
+    "deploy_pr": 1368,
+    "evidence_artifact": 9972356605,
+    "live": "SUN VERA HOTEL 10.09.2026/7 nights/2 adults: unavailable flights -> summary -> lead shows Рейс уточнит менеджер. No lead sent. JS e1d82b95bd96bec4."
+  },
+  "summary_event_coalescing": {
+    "id": "S3_SUMMARY_EVENT_COALESCING",
+    "status": "PUBLISHED_LIVE_VERIFIED",
+    "implementation_sha": "b1c8597da617eacfab6416da542cf6280537373d",
+    "artifact_id": 9972437784,
+    "artifact_run": 33976375851,
+    "deploy_pr": 1369,
+    "deploy_run": 33976463607,
+    "evidence_artifact": 9972462388,
+    "ci_success_count": 23,
+    "visual_run": 33976375814,
+    "flight_run": 33976375786,
+    "verification": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent."
+  },
+  "results_geometry_queue": {
+    "id": "S3_RESULTS_GEOMETRY_QUEUE",
+    "status": "PUBLISHED_LIVE_VERIFIED",
+    "implementation_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+    "artifact_id": 9972524166,
+    "artifact_run": 33976701761,
+    "deploy_pr": 1370,
+    "deploy_run": 33976775542,
+    "evidence_artifact": 9972545166,
+    "ci_success_count": 23,
+    "visual_run": 33976701799,
+    "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   }
 }
