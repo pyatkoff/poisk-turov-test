@@ -1,7 +1,7 @@
 {
-  "schema_version": 22,
+  "schema_version": 23,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T00:56:00+00:00",
+  "updated_at": "2026-09-05T02:08:00+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Freshness fix 1fddaf5e and preview-only isolation fixes f7fecd40/b56022b0 passed all applicable PR gates. Exact whole-site artifact 9959663775 built from b56022b019568fa7a0719a2e1984792f59b4c38b; ZIP/archive/manifest/715 payload hashes verified locally. Production bootstraps, counter and consultant widget excluded from copied payload; canonical and legacy forms target disabled preview sink. Mobile Turkey and desktop hot screenshots from freshness visual CI inspected. Main/production and public search-only preview unchanged.",
-    "next_action": "Prepare a separate exact-provenance one-shot whole-site preview deploy for artifact 9959663775 (source b56022b019568fa7a0719a2e1984792f59b4c38b). Verify real HTTP denial of internal PHP/config before introducing any private runtime dependency, production fingerprints, noindex, counter=0, disabled leads, canonical+legacy search and atomic rollback. The nine-file search-only deploy remains unchanged. Then real mobile/desktop catalogue/journey acceptance. Old 9958766470 is superseded and must not be deployed.",
+    "last_material_progress": "Whole-site preview is live from exact source 6a20f3dd4145cd9a3fd08bc8964d66725af43e5c after one-shot deploy 33937843736 / PR #1343. Live family handoff defect was reproduced and fixed: Search3 now retains the child-age container while rebuilding the form; ages 0/17 remain in the tourist popup and a real search completes with results. Visual CI 33937670550 checks this on 375 and 1440; all applicable gates passed. Live desktop path reached hotel, concrete tour, flight, summary and visible lead form without submitting. Preview leads, Metrika and external widget remain disabled; production fingerprints were unchanged and rollback backup retained.",
+    "next_action": "Continue journey acceptance on a physical iPhone/Safari or equivalent owner device, including reopening search controls after results, unavailable-flight/retry recovery and long-value layout. Investigate the observed supplier-normalized 3 adults + 1 child presentation for a request entered as 2 adults + ages 0/17 without changing Tourvisor, pricing or lead contracts; record as expected supplier normalization or fix only a confirmed presentation/handoff defect. Resolve legal/payment links only when approved source content is available. Production migration remains gated by owner visual approval.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -64,29 +64,31 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_WHOLE_SITE_PREVIEW",
-    "status": "PREPARED_DEPLOY_NEXT",
+    "id": "S3_JOURNEY_ACCEPTANCE",
+    "status": "LIVE_DESKTOP_PATH_PASSED_DEVICE_AND_RECOVERY_REMAIN",
     "category": "VISUAL",
-    "title": "Publish and verify a coherent whole-site preview of the verified draft",
+    "title": "Verify the coherent whole-site preview journey before migration",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
     "prepared_pr": 1334,
-    "artifact_source_sha": "b56022b019568fa7a0719a2e1984792f59b4c38b",
-    "artifact_source_tree": "90ed9589ca0a4bbdcf4c1e25f246a6dd3c74a839",
-    "artifact_run": 33934383695,
-    "artifact_id": 9959663775,
-    "artifact_digest": "sha256:dab2140e34c3b848368f6b635a5a6e51e66faa5f4c294efb47f92d2f7ec91f84",
-    "archive_sha256": "234bb16c684be29e1a8f70e2bb155feeae2162819ec5e4c0d0aa3bb8d8136153",
-    "manifest_sha256": "4aea6e3e1490a970c7701a4298ef84c5a8742bf805198d032386ff12846af770",
-    "payload_checksums_sha256": "d3c1fa59c50e2a40a8130ccbc766b34b14aa2500039f3f59253aa3cd3efb17d5",
+    "artifact_source_sha": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
+    "artifact_source_tree": "51ce6288dd83c31e4853de6454a3399ed1dcdf34",
+    "artifact_run": 33937670389,
+    "artifact_id": 9960716789,
+    "artifact_digest": "sha256:32f955e29bbe27b8ea11a85442117869648bc5679a6c53a46fa4085727b40186",
+    "archive_sha256": "978f62413f6a27108491a68420907529c8b722386efe349f0b565c3fad0574a9",
+    "manifest_sha256": "51a076f3273fb217c51ac620737f2246d8b5f12b848666ad6d57930f1bf4d18d",
+    "payload_checksums_sha256": "5ad4901249973a20f849b99ee010f2c15ae5902d7e0d21bd0343f35c2a9bd0af",
     "payload_file_count": 715,
     "superseded_artifact": 9958766470,
     "acceptance": [
       "Use the exact reviewed site artifact; existing search-only deploy allowlist cannot publish the whole site.",
       "Force preview noindex even when production SEO allowlists the canonical route.",
       "Keep preview lead delivery disabled, preserve protected production fingerprints and retain rollback.",
-      "Verify navigation, real catalogue loading and date/night/party/child-age handoff in the whole-site preview."
+      "Verified navigation, real catalogue loading and date/night/party/child-age handoff in the whole-site preview.",
+      "Verified desktop journey through hotel, tour, available flight, summary and visible lead form without sending a lead.",
+      "Physical iPhone/Safari and unavailable-flight/recovery acceptance remain."
     ]
   },
   "queue": [
@@ -97,14 +99,14 @@
     },
     {
       "id": "S3_OFFER_FRESHNESS",
-      "status": "PREPARED_CI_PASSED_AWAITING_PREVIEW",
+      "status": "PUBLISHED_IN_WHOLE_SITE_PREVIEW",
       "title": "Exclude past departures using explicit timezone and verified same-day availability rules; preserve selected departure city",
       "sha": "1fddaf5e4e1c1285cb768050352c3d0a1ab0cdc4",
       "note": "Explicit Moscow business-day exclusion; preserve same-day allowance. Do not invent airport-specific sales cutoff."
     },
     {
       "id": "S3_JOURNEY_ACCEPTANCE",
-      "status": "QUEUED",
+      "status": "ACTIVE_DESKTOP_PATH_PASSED_DEVICE_AND_RECOVERY_REMAIN",
       "depends_on": [
         "S3_WHOLE_SITE_PREVIEW",
         "S3_FACTS_LINKS_MAPS",
@@ -133,15 +135,18 @@
       "evidence_artifact": 9956839979
     },
     "site_draft": {
-      "status": "PREPARED_NOT_PUBLISHED",
+      "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "85edee8ef4019ff485b5e01d80c4db862283b74e",
-      "release_merge_sha": "9c520bac897aafd1eac7cfe28cfff1ad996949ca",
-      "source_tree": "81080560d4c829ecda3e2b364e8661b1ad5ee23f",
-      "exact_artifact": 9958766470,
-      "artifact_digest": "sha256:1845a4872d2701003ff66201c1ca8ddd96ffaf11c0848162f308934b6afa4fba",
-      "superseded_artifact": 9958625990,
+      "implementation_verified_sha": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
+      "release_merge_sha": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
+      "source_tree": "51ce6288dd83c31e4853de6454a3399ed1dcdf34",
+      "exact_artifact": 9960716789,
+      "artifact_digest": "sha256:32f955e29bbe27b8ea11a85442117869648bc5679a6c53a46fa4085727b40186",
+      "superseded_artifact": 9959663775,
+      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "preview_deploy_run": 33937843736,
+      "preview_deploy_pr": 1343,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -162,7 +167,7 @@
       "source_archive_branch": "archive/search-before-search3-2026-09-04",
       "source_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
       "route": "/poisk-turov-old/",
-      "route_status": "PREPARED_NOT_PUBLISHED",
+      "route_status": "PUBLISHED_IN_WHOLE_SITE_PREVIEW_NOT_PRODUCTION",
       "limitation": "Maintained old presentation with shared runtime. Source archive is not a database/server-config backup; retain previous deploy artifact and configuration before migration."
     }
   },
@@ -187,15 +192,17 @@
     },
     "whole_site_preview_preparation": {
       "conclusion": "success",
-      "sha": "b56022b019568fa7a0719a2e1984792f59b4c38b",
-      "source_tree": "90ed9589ca0a4bbdcf4c1e25f246a6dd3c74a839",
-      "boundary_run": 33934383674,
-      "artifact_run": 33934383695,
-      "security_run": 33934383673,
-      "core_run": 33934383665,
-      "visual_run": 33934383671,
-      "artifact_id": 9959663775,
-      "scope": "All 21 applicable PR gates passed; migration gate configured skip. HTTP smoke covers nine routes, hostile production bootstrap fixtures, counter zero, no widget, legacy search and disabled lead sink. Not public/server access-control acceptance."
+      "sha": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
+      "source_tree": "51ce6288dd83c31e4853de6454a3399ed1dcdf34",
+      "boundary_run": 33937670439,
+      "artifact_run": 33937670389,
+      "security_run": 33937670381,
+      "core_run": 33937670572,
+      "visual_run": 33937670550,
+      "artifact_id": 9960716789,
+      "deploy_run": 33937843736,
+      "deploy_pr": 1343,
+      "scope": "All applicable PR gates passed. Browser regression preserves child ages 0/17 at 375 and 1440. Exact artifact published atomically; live HTTP checks deny internal PHP, keep noindex/counter zero/disabled leads, retain rollback and confirm protected production fingerprints unchanged."
     },
     "site_shell": {
       "conclusion": "success",
@@ -204,8 +211,8 @@
       "scope": "All applicable PR gates passed; migration-only check skipped by configured condition. Actual Search3, legacy search and content templates on mobile/desktop. Runtime catalogue unavailable in CI; not a production defect."
     }
   },
-  "last_verified_commit": "b56022b019568fa7a0719a2e1984792f59b4c38b",
-  "last_verified_commit_scope": "All 21 applicable PR gates passed; migration gate configured skip. HTTP smoke covers nine routes, hostile production bootstrap fixtures, counter zero, no widget, legacy search and disabled lead sink. Not public/server access-control acceptance.",
+  "last_verified_commit": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
+  "last_verified_commit_scope": "All applicable gates passed, including family hydration at 375/1440. Exact whole-site preview is live; desktop real-catalogue journey reached the lead form without submission. Physical iPhone/Safari and recovery branches remain.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -225,7 +232,7 @@
   "completed_preparation": [
     {
       "id": "S3_SITE_SHELL",
-      "status": "PREPARED_AWAITING_WHOLE_SITE_PREVIEW",
+      "status": "PUBLISHED_IN_WHOLE_SITE_PREVIEW",
       "sha": "c46d76a973a4cb89b1c50eb985a6c4a2f155c454",
       "ci_run": 33929767087,
       "evidence_artifact": 9958121988,
@@ -233,7 +240,7 @@
     },
     {
       "id": "S3_WHOLE_SITE_PREVIEW_CONTAINMENT",
-      "status": "PREPARED_NOT_PUBLISHED",
+      "status": "PUBLISHED_SUPERSEDED_BY_FIXED_ARTIFACT",
       "sha": "85edee8ef4019ff485b5e01d80c4db862283b74e",
       "release_merge_sha": "9c520bac897aafd1eac7cfe28cfff1ad996949ca",
       "source_tree": "81080560d4c829ecda3e2b364e8661b1ad5ee23f",
@@ -254,22 +261,24 @@
     "first_background_run_verified": true
   },
   "freshness_followup": {
-    "status": "PREPARED_CI_PASSED_NOT_PUBLISHED",
+    "status": "PUBLISHED_IN_WHOLE_SITE_PREVIEW_NOT_PRODUCTION",
     "sha": "1fddaf5e4e1c1285cb768050352c3d0a1ab0cdc4",
     "core_ci": 33934082041,
     "visual_ci": 33934082023,
     "base_sha": "73a197a38c32902c411e0b82343619b14b77955a",
     "scope": "Country/resort/hotel snapshot readers filter past and malformed departures before sorting/limit. Hot offers use the same explicit Europe/Moscow business date as the existing SEO calendar instead of DB-session CURDATE(). Existing same-day allowance, TTL, prices, city filters and supplier contracts are retained.",
     "verification": "In-memory SQLite integration checks passed in core CI for all four actual readers, invalid/leap dates, midnight/year rollover, expired snapshots, limit ordering and city retention. Existing visual CI passed. Local owner/refactor/import guards passed (PHP rendering skipped locally).",
-    "preview": "Not published. Rebuild and pin a checked isolated artifact before including the correction in preview."
+    "preview": "Published in exact whole-site preview source 6a20f3dd via deploy 33937843736. Production is unchanged."
   },
   "preview_isolation_followup": {
-    "status": "PREPARED_CI_PASSED_NOT_PUBLISHED",
+    "status": "PUBLISHED_AND_LIVE_VERIFIED_NOT_PRODUCTION",
     "superseded_unsafe_artifact": 9958766470,
     "findings": "Copied search runtime could execute production Bitrix/site_conf, inherit a configured counter, and load the external consultant widget. Legacy entry required transformed homepage and retained production lead URL. Old smoke used a clean PHP docroot/config and did not expose these issues.",
     "fix": "Exact fail-closed transformations of copied artifact only: omit production bootstrap, force preview counter zero, remove consultant widget, bind legacy UI to copied search runtime and disabled lead sink. Production runtime, analytics configuration, goals and lead transport unchanged.",
     "verification": "Exact transform/drift unit test and HTTP smoke passed in run 33934383695. Both forms rendered with counter=0 and disabled sink despite poisoned production bootstrap fixtures. Core/security/boundary/visual gates passed. ZIP digest, inner archive, manifest, checksum list and all 715 payload bytes matched locally.",
-    "sha": "b56022b019568fa7a0719a2e1984792f59b4c38b",
-    "artifact_id": 9959663775
+    "sha": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
+    "artifact_id": 9960716789,
+    "deploy_run": 33937843736,
+    "verification_update": "Production bootstrap/config paths are denied over HTTP; preview counter/widget/lead delivery remain disabled. Atomic activation and final protected production fingerprint checks passed; previous preview target retained for rollback."
   }
 }

@@ -8,13 +8,13 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priorit
 
 AnyTour Design System 2.0 is the only canonical design system. Do not restore, introduce or reference Design System 1.0 as current. Treat the public site as one product across homepage → destination/country → hot/search → results → selected tour → lead.
 
-Active owner-directed continuation is [Search3 site completion, issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996). Finish the new design across the site before expanding SEO or refactoring. Shared button/header/footer convergence is prepared and checked in draft #1334. The next task is a whole-site preview, using a separately reviewed artifact because the existing preview deploy accepts only nine search files. The stable DS2 mode/phase/stage identifiers remain unchanged; Search3 is the active substage.
+Active owner-directed continuation is [Search3 site completion, issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996). Finish the new design across the site before expanding SEO or refactoring. The coherent whole-site preview is published from checked source `6a20f3dd4145cd9a3fd08bc8964d66725af43e5c`; desktop real-catalogue acceptance reaches the lead form, while physical iPhone/Safari and recovery branches remain. The existing search-only deploy still accepts only nine search files and is unchanged. The stable DS2 mode/phase/stage identifiers remain unchanged; Search3 is the active substage.
 
 Priority order after emergency overrides is: confirmed search/mobile defects → common site presentation → whole-site preview and handoff → truthful content/working links and offer freshness → end-to-end acceptance → owner-approved migration. Technical refactor and mass SEO expansion remain deferred.
 
 New design/layout concepts require explicit owner approval. Existing approved DS2 owners may be repaired and converged autonomously when a concrete defect is confirmed.
 
-**Search3 release lock:** isolated preview publication is authorized; production draft [#1334](https://github.com/pyatkoff/poisk-turov-test/pull/1334) must not merge to `main` or replace production `/poisk-turov/` until the owner explicitly approves the concrete visual release. Current search preview: `https://anytoour.ru/_preview/search3-candidate/poisk-turov/`. Preparing code, tasks, evidence and rollback is authorized; the remaining production approval does not block independent safe work.
+**Search3 release lock:** isolated preview publication is authorized; production draft [#1334](https://github.com/pyatkoff/poisk-turov-test/pull/1334) must not merge to `main` or replace production `/poisk-turov/` until the owner explicitly approves the concrete visual release. Current whole-site preview: `https://anytoour.ru/_preview/search3-site-candidate/`; the earlier search-only preview remains separate at `https://anytoour.ru/_preview/search3-candidate/poisk-turov/`. Preparing code, tasks, evidence and rollback is authorized; the remaining production approval does not block independent safe work.
 
 **Historical Search2 lock:** #810 remains subject to its previous preview-only restriction. It is not the active development target; do not resume Search2 merely because old evidence below refers to it.
 
@@ -63,10 +63,10 @@ Draft #1334 contains the production import, old-search route, client-facing copy
 
 Continue from `AUTOPILOT_STATE.json` current task/queue and [issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996):
 
-1. Converge shared buttons, header, footer and spacing across page families using the approved design and verified facts.
-2. Publish a whole-site preview including the prepared homepage/content handoff changes; check navigation and search values.
-3. Resolve truthful copy/map actions and confirmed broken legal/payment links using existing approved content; record missing content rather than invent terms. Fix offer freshness using an explicit timezone and verified availability rules.
-4. Verify phone/desktop home → search → hotel → tour → flights or clarification → summary → lead form, including long values, families and recovery states. Preview lead delivery remains disabled.
+1. Keep the published whole-site preview isolated and exact; source `6a20f3dd`, deploy `33937843736`, deployment record #1343.
+2. Complete physical iPhone/Safari and unavailable-flight/retry acceptance; desktop home → search → hotel → tour → flight → summary → lead form already passed without sending a lead.
+3. Classify the observed supplier normalization of ages `0/17` from requested `2+2` to offer `3+1`; do not change Tourvisor, price or lead contracts without a confirmed defect.
+4. Resolve confirmed broken legal/payment links only from existing approved content; record missing content rather than invent terms.
 5. Obtain owner visual approval on a specific release, retain previous deployment artifact/configuration, verify rollback and `/poisk-turov-old/`, then execute the approved migration and post-deploy verification.
 
 Detailed status and legacy-search limits: `docs/project/search3-site-finish-and-legacy.md`. Issue #2 is a machine-maintained CI signal, not the product task list. An hourly scheduled development task is enabled. It must continue beyond one PR whenever time remains for another safe step; it is not a nonstop process. PR #254, technical refactor and unresolved legal-content authoring remain deferred.
