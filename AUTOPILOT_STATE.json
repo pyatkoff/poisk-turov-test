@@ -1,7 +1,7 @@
 {
   "schema_version": 23,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T02:23:02+00:00",
+  "updated_at": "2026-09-05T03:00:53+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Whole-site preview is live from exact source 000f6a63052aba7c29efca6f0082cd6068ec188d after one-shot deploy 33938566550 / PR #1344. All applicable gates passed, including visual run 33938378845 and core run 33938378881. Fresh browser reload retained exact child ages 0/17, completed a real search with 80 hotels, opened a concrete operator offer, available flight, summary and visible lead form without submitting. A control search confirmed the supplier maps age 17 to adult placement: the UI now says 'Состав размещения у туроператора', uses correct child grammar and preserves original requested ages in lead context. Preview leads, Metrika and external widget remain disabled; production fingerprints were unchanged and rollback backup retained.",
-    "next_action": "Continue journey acceptance on a physical iPhone/Safari or equivalent owner device, including reopening search controls after results, unavailable-flight/retry recovery and long-value layout. Resolve legal/payment links only when approved source content is available. Production migration remains gated by owner visual approval; do not change Tourvisor, pricing, lead or analytics contracts.",
+    "last_material_progress": "Whole-site preview remains live from exact source 000f6a63052aba7c29efca6f0082cd6068ec188d after deploy 33938566550 / PR #1344. Branch SHA 928f25ec5f08ccf544a6dd88acf16cf77192f47f adds deterministic browser coverage for unavailable flights: retry remains single and uses the existing tour controller; a recovered flight clears fallback state; a repeatedly empty response continues through tour summary to the visible lead form without invoking lead transport. Flight run 33940532420 and all 22 applicable checks passed; one production-only gate skipped. Published preview, main and production were not changed by this test-only step.",
+    "next_action": "Complete journey acceptance on a physical iPhone/Safari or equivalent owner device, especially date/night controls and reopening controls after results. Resolve legal/payment links only when approved source content is available. Production migration remains gated by owner visual approval; do not change Tourvisor, pricing, lead or analytics contracts.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -65,7 +65,7 @@
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
     "id": "S3_JOURNEY_ACCEPTANCE",
-    "status": "LIVE_DESKTOP_PATH_PASSED_DEVICE_AND_RECOVERY_REMAIN",
+    "status": "LIVE_DESKTOP_AND_DETERMINISTIC_RECOVERY_PASSED_DEVICE_REMAINS",
     "category": "VISUAL",
     "title": "Verify the coherent whole-site preview journey before migration",
     "branch": "release/search3-production-ready-v1",
@@ -89,7 +89,8 @@
       "Verified navigation, real catalogue loading and date/night/party/child-age handoff in the whole-site preview.",
       "Verified desktop journey through hotel, tour, available flight, summary and visible lead form without sending a lead.",
       "Confirmed supplier age normalization with a control search; operator placement is labeled separately while requested ages remain in lead context.",
-      "Physical iPhone/Safari and unavailable-flight/recovery acceptance remain."
+      "Deterministic Chromium verifies empty-flight retry, recovered-flight cleanup and fallback continuation to the lead form without invoking lead transport.",
+      "Physical iPhone/Safari acceptance remains."
     ]
   },
   "queue": [
@@ -205,6 +206,12 @@
       "deploy_pr": 1344,
       "scope": "All applicable PR gates passed. Browser regression preserves child ages 0/17 at 375 and 1440. Exact artifact published atomically; fresh live reload used content-addressed Search3 JS d5646ea3, retained ages, completed real search and reached the lead form. Supplier-normalized placement is truthfully labeled. HTTP isolation and protected production fingerprint checks passed."
     },
+    "flight_fallback_integration": {
+      "conclusion": "success",
+      "sha": "928f25ec5f08ccf544a6dd88acf16cf77192f47f",
+      "run_id": 33940532420,
+      "scope": "At 375px, repeated empty flight responses retain one retry and continue through summary to the visible lead form without a lead request. At 1440px, retry recovery renders the real flight and clears fallback actions. Existing controller, Tourvisor, price and lead contracts are unchanged."
+    },
     "site_shell": {
       "conclusion": "success",
       "sha": "c46d76a973a4cb89b1c50eb985a6c4a2f155c454",
@@ -212,8 +219,8 @@
       "scope": "All applicable PR gates passed; migration-only check skipped by configured condition. Actual Search3, legacy search and content templates on mobile/desktop. Runtime catalogue unavailable in CI; not a production defect."
     }
   },
-  "last_verified_commit": "000f6a63052aba7c29efca6f0082cd6068ec188d",
-  "last_verified_commit_scope": "All applicable gates passed, including family hydration at 375/1440 and truthful operator-placement labels. Exact whole-site preview is live; desktop real-catalogue journey reached the lead form without submission. Physical iPhone/Safari and recovery branches remain.",
+  "last_verified_commit": "928f25ec5f08ccf544a6dd88acf16cf77192f47f",
+  "last_verified_commit_scope": "All 22 applicable checks passed. Exact whole-site preview remains live from source 000f6a63; desktop real-catalogue journey reached the lead form without submission. Deterministic Chromium covers unavailable-flight retry/recovery and fallback lead-form entry without invoking lead transport. Physical iPhone/Safari remains.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
