@@ -9,9 +9,10 @@ if (!in_array($mode, ['production', 'preview'], true)) {
 }
 
 $_SERVER['HTTP_HOST'] = 'anytoour.ru';
+$_SERVER['REQUEST_URI'] = '/country/turkey/';
 $_SERVER['SCRIPT_NAME'] = $mode === 'preview'
-    ? '/_preview/search3-site-candidate/poisk-turov/index.php'
-    : '/poisk-turov/index.php';
+    ? '/_preview/search3-site-candidate/country/turkey/index.php'
+    : '/country/turkey/index.php';
 
 define('V2_PUBLIC_BASE_PATH', $mode === 'preview' ? '/_preview/search3-site-candidate' : '');
 if ($mode === 'preview') {
@@ -24,6 +25,7 @@ require_once __DIR__ . '/../v2/site-path-v1.php';
 require_once __DIR__ . '/../v2/assets.php';
 require_once __DIR__ . '/../v2/site-header-v2.php';
 require_once __DIR__ . '/../v2/site-footer-v1.php';
+require_once __DIR__ . '/../v2/seo-config.php';
 require_once __DIR__ . '/../v2/seo-page-primitives-v1.php';
 
 $prefix = $mode === 'preview' ? '/_preview/search3-site-candidate' : '';
@@ -41,6 +43,14 @@ $sample = '<a href="/country/turkey/">Turkey</a><form action="/poisk-turov/"></f
 $rewritten = v2_site_rewrite_preview_navigation($sample);
 $expectedSample = '<a href="' . $prefix . '/country/turkey/">Turkey</a><form action="' . $prefix . '/poisk-turov/"></form><img src="/images/logo.svg">';
 if ($rewritten !== $expectedSample) $fail('content navigation rewrite mismatch');
+
+$seoLaunchParams = [
+    'SEO_INDEXABLE' => true,
+    'SEO_INDEXABLE_PATHS' => ['/country/turkey/'],
+];
+$indexable = v2_seo_indexable($seoLaunchParams);
+if ($mode === 'preview' && $indexable) $fail('preview inherited production indexability');
+if ($mode === 'production' && !$indexable) $fail('production indexability changed');
 
 $asset = v2_public_path('app.css');
 $expectedAsset = $prefix . '/app.css';
