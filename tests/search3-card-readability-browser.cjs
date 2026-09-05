@@ -106,13 +106,14 @@ function px(value) {
       // A real viewport resize must retain an explicitly opened search editor.
       await page.locator('#resultsSearchEdit').click();
       await page.waitForFunction(() => document.body.classList.contains('search3-editing-search'));
-      const editingFields = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
+      // Decorators may reparent fields; compare named values, keeping repeated-name order.
+      const editingFields = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
       await page.setViewportSize({ width: width + 1, height: 860 });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       if (!await page.evaluate(() => document.body.classList.contains('search3-editing-search'))) throw new Error(width + ': resize closed search editor');
       if (!await page.locator('#tourSearch').isVisible()) throw new Error(width + ': editor hidden after resize');
-      const afterResize = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
-      if (JSON.stringify(editingFields) !== JSON.stringify(afterResize)) throw new Error(width + ': resize changed search parameters');
+      const afterResize = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
+      if (JSON.stringify(editingFields) !== JSON.stringify(afterResize)) throw new Error(width + ': resize changed search parameters ' + JSON.stringify({ before: editingFields, after: afterResize }));
       await page.setViewportSize({ width, height: 900 });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       const editorGeometry = await page.evaluate(() => {
@@ -138,7 +139,7 @@ function px(value) {
       await page.evaluate(() => {
         window.__calendarSubmissions = [];
         window.V2SearchLifecycle.submit = () => {
-          window.__calendarSubmissions.push([...new FormData(document.getElementById('tourSearch')).entries()]);
+          window.__calendarSubmissions.push([...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
         };
         window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items: [
           { tours: [{ date: '10.09.2026', price: 1350000 }, { date: '2026-09-11', price: 1234567 }] },
@@ -177,7 +178,7 @@ function px(value) {
         }
         return [...fields.entries()].sort(([a], [b]) => a.localeCompare(b));
       };
-      const before = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
+      const before = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
       await calendar.locator('[data-calendar-date="2026-09-11"]').click();
       const submissions = await page.evaluate(() => window.__calendarSubmissions);
       if (submissions.length !== 1) throw new Error(width + ': calendar must submit exactly once');
@@ -186,7 +187,7 @@ function px(value) {
       const preservedBefore = unchangedFields(before), preservedAfter = unchangedFields(submissions[0]);
       if (JSON.stringify(preservedBefore) !== JSON.stringify(preservedAfter)) throw new Error(width + ': calendar changed other search parameters ' + JSON.stringify({ before: preservedBefore, after: preservedAfter }));
       const resultCountBeforeTour = await page.locator('#results .hotel-card').count();
-      const searchValuesBeforeTour = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
+      const searchValuesBeforeTour = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
       await page.evaluate(() => {
         const selected = document.getElementById('selectedTour');
         selected.innerHTML = '<div class="selected-loading">Загружаем тур…</div>';
@@ -222,7 +223,7 @@ function px(value) {
       if (!await page.locator('#selectedTour').evaluate(node => node.hidden && node.children.length > 0 && node.getBoundingClientRect().height === 0)) throw new Error(width + ': hidden retained tour occupies layout');
       await page.screenshot({ path: 'standalone-content-artifacts/return-' + width + '.png', fullPage: true, animations: 'disabled' });
       if (await page.locator('#results .hotel-card').count() !== resultCountBeforeTour) throw new Error(width + ': Back lost results');
-      const searchValuesAfterTour = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
+      const searchValuesAfterTour = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a, b) => a[0].localeCompare(b[0])));
       if (JSON.stringify(unchangedFields(searchValuesBeforeTour)) !== JSON.stringify(unchangedFields(searchValuesAfterTour))) throw new Error(width + ': Back changed search parameters');
       await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:search-reset')));
       if (await calendar.isVisible()) throw new Error(width + ': stale calendar remains after reset');
