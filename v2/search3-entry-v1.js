@@ -58,8 +58,10 @@
     var values = ['resultsSearchDates', 'resultsSearchNights', 'resultsSearchGuests']
       .map(nodeText)
       .filter(function (value) { return value && value !== '—'; });
-    detail.textContent = values.join(' · ');
-    detail.hidden = !values.length;
+    var next = values.join(' · ');
+    if (detail.textContent !== next) detail.textContent = next;
+    var hidden = !values.length;
+    if (detail.hidden !== hidden) detail.hidden = hidden;
   }
 
   // Keep the existing calendar's prices, date selection and search owner intact.
