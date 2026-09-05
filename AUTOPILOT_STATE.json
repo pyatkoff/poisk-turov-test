@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T14:41:56.787305+00:00",
+  "updated_at": "2026-09-05T15:43:44.038900+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Scoped selected-tour observer and resize refactor published and live verified; 23 applicable CI gates passed. Final production fingerprint completed separately after transient SSH reset, without republishing.",
-    "next_action": "Fix observed search-editor date/night clipping at desktop1348px using source CSS and focused responsive coverage. Then physical Safari, approved legal content and owner acceptance remain.",
+    "last_material_progress": "Editor grid refactor complete: CSS owns layout; removed inline JS override and excluded Search3 from two legacy sidebar grid selectors.23 applicable gates pass incl375/430/1024/1348/1440. Two preview attempts blocked by SSH closure/reset before activation; live remains23993e90.",
+    "next_action": "Publish already verified source16e326eb/artifact9972176593 only after transient SSH transport is stable; do not rerun code work or duplicate deployment. Two attempts33975559937/33975601891 failed before activation. Final production read also interrupted; record only known evidence. Then live editor smoke and existing owner/Safari/legal acceptance.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -64,16 +64,19 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_OBSERVER_SCOPE_REFACTOR",
-    "title": "Scope tour observer and preserve open search editor on resize",
-    "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
+    "id": "S3_EDITOR_INTERMEDIATE_WIDTH",
+    "title": "Single responsive grid owner for initial search and results editor",
+    "status": "CODE_CI_VISUAL_VERIFIED_PREVIEW_BLOCKED_SSH",
+    "implementation_sha": "16e326eb4dbb5ffe6e36da418c730a86772742cb",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
-    "implementation_sha": "23993e90975a6001f9e0d6b0de2d1511fd7e248b",
-    "deploy_run": 33972333244,
-    "deploy_pr": 1363,
-    "final_verification_run": 33972522395
+    "artifact_id": 9972176593,
+    "artifact_run": 33975455597,
+    "deploy_attempts": [
+      33975559937,
+      33975601891
+    ]
   },
   "queue": [
     {
@@ -83,8 +86,9 @@
     },
     {
       "id": "S3_EDITOR_INTERMEDIATE_WIDTH",
-      "status": "CONFIRMED_QUEUED",
-      "title": "Date and night controls clip in expanded search editor at1348px; screenshot observed after live return, fix responsive grid without shrinking fonts."
+      "status": "CODE_CI_VISUAL_VERIFIED_PREVIEW_BLOCKED_SSH",
+      "title": "Date and night controls clip in expanded search editor at1348px; screenshot observed after live return, fix responsive grid without shrinking fonts.",
+      "sha": "16e326eb4dbb5ffe6e36da418c730a86772742cb"
     },
     {
       "id": "S3_RETAINED_TOUR_HIDDEN_CONTRACT",
@@ -415,6 +419,23 @@
       "final_verification_conclusion": "success",
       "final_verification_artifact": 9971341330,
       "scope": "375/430/1024/1440 real viewport resize preserves editor/form, label enabled/disabled recovery, busy loading/ready. Relevant mobile/desktop screenshots inspected. Live path and return passed."
+    },
+    "editor_grid": {
+      "sha": "16e326eb4dbb5ffe6e36da418c730a86772742cb",
+      "conclusion": "success",
+      "applicable_passed": 23,
+      "visual_run": 33975455697,
+      "visual_artifact": 9972181403,
+      "artifact_run": 33975455597,
+      "artifact_id": 9972176593,
+      "widths": [
+        375,
+        430,
+        1024,
+        1348,
+        1440
+      ],
+      "scope": "Real viewport resize preserves named form values and repeated-age order; date span and native field width checked; mobile and1348 screenshots inspected. Initial failed revisions not published."
     }
   },
   "last_verified_commit": "23993e90975a6001f9e0d6b0de2d1511fd7e248b",
@@ -535,5 +556,19 @@
       "horizontal_overflow": false,
       "lead_submitted": false
     }
+  },
+  "editor_grid_refactor": {
+    "status": "CODE_CI_VISUAL_VERIFIED_PREVIEW_BLOCKED_SSH",
+    "implementation_sha": "16e326eb4dbb5ffe6e36da418c730a86772742cb",
+    "source_tree": "c4597472ceb5d6e7f208648e32e3c217a4462689",
+    "artifact_id": 9972176593,
+    "artifact_digest": "sha256:9e6c03e3ac9eface8875e1c2518da91cedf4d215840032725190b45097ce098e",
+    "changes": [
+      "CSS grid initial/editor ownership consolidated",
+      "results-top.js no longer writes inline grid or child spans",
+      "two ds2-search-intro-v1.css sidebar selectors exclude Search3; legacy retains same declarations"
+    ],
+    "verification": "715 payload hashes verified; only3 presentation assets differ.23 applicable CI gates green. Mobile375/430 and desktop1024/1348/1440 geometry passes. No real-device Safari claim.",
+    "deploy": "#1365/run33975559937 closed at SSH setup. #1366/run33975601891 scp connection reset before activation; rollback NOOP; final SSH read also closed. Evidence9972215242 is failure evidence, not publication proof. Browserreload stillJS6c6cb045c47bfa98 (23993e90). No third attempt in this turn."
   }
 }

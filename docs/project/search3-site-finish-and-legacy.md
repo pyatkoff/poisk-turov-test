@@ -338,3 +338,33 @@ content; physical Safari is not verified. Main remainsfa58a0cb, no production sw
 Next confirmed finding: expanded editor at desktop1348px clips date/night values.
 Observed in live screenshot after Back; queue S3_EDITOR_INTERMEDIATE_WIDTH.
 The existing resize test proves preservation, not adequate minimum control width.
+
+## Editor grid ownership refactor — 2026-09-05
+
+Source16e326eb4dbb5ffe6e36da418c730a86772742cb, tree
+c4597472ceb5d6e7f208648e32e3c217a4462689: CSS owns initial/editor grid.
+Removed results-top.js inline7-column grid and child auto span writes;
+consolidated entry CSS; two legacy sidebar selectors exclude Search3.
+Legacy declarations, APIs, prices, leads and analytics retained.
+
+23 applicable gates pass; visual33975455697/artifact9972181403 checks
+375/430/1024/1348/1440, including actual resize/form preservation, native
+control width and date double-span. Mobile375 and desktop1348 images inspected.
+First CSS-only attempt exposed remaining inline override; follow-up exposed
+legacy sidebar at>1024. Tests now compare named values independent of field
+reparenting, retaining repeated-name order and diagnostic before/after values.
+
+Artifact9972176593/build33975455597: all715 payload hashes verified; only
+ds2-search-intro-v1.css,search3-entry-v1.css,search3-results-filters-v1.js differ.
+ZIP9e6c03e3ac9eface8875e1c2518da91cedf4d215840032725190b45097ce098e;
+archivea223234685c2921be5907abe80ab4d75ce6bfa060cc111583659dcce06f968c3;
+manifestf46b9575d4231fc34ed485fe4340e7f15bc8c65226599e18944e9721bd4241f9;
+payload923ecd6fd84e86ee1c33774d0ab952317e4b5600f1e762576ec8411ff3fdc808.
+
+NOT PUBLISHED: #1365/run33975559937 SSH closed during setup;
+#1366/run33975601891 scp reset before activation. Rollback NOOP; final SSH
+fingerprint read interrupted too. Evidence9972215242 is not successful release
+evidence. Fresh browser reload still serves23993e90 JS6c6cb045c47bfa98.
+Main remainsfa58a0cba6dcfc8624d98c20d64fa06330eae309. No production switch.
+Next: publish this exact checked package when SSH transport is stable, verify
+final protected fingerprint and live editor. Do not redo completed refactoring.
