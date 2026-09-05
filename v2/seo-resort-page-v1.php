@@ -14,6 +14,16 @@ require_once __DIR__ . '/seo-core-resort-launch-state-v1.php';
  *
  * This keeps editorial approval separate from the site-wide indexing launch.
  */
+function v2_seo_resort_destination_name(array $page): string
+{
+    $resortName = trim((string)($page['name'] ?? '')) ?: 'этот курорт';
+    $destination = trim((string)($page['name_accusative'] ?? ''));
+    if ($destination === '' && preg_match('/^Туры\s+в\s+(.+)$/u', trim((string)($page['h1'] ?? '')), $match)) {
+        $destination = trim($match[1]);
+    }
+    return $destination !== '' ? $destination : $resortName;
+}
+
 function v2_seo_render_resort(array $record): void
 {
     if (($record['type'] ?? '') !== 'resort') {
@@ -32,6 +42,7 @@ function v2_seo_render_resort(array $record): void
 
     $rawPage = is_array($record['data'] ?? null) ? $record['data'] : [];
     $resortName = trim((string)($rawPage['name'] ?? '')) ?: 'этот курорт';
+    $resortDestination = v2_seo_resort_destination_name($rawPage);
     $page = v2_seo_page_contract($rawPage);
     $context = sp_context($path, $page['title'], $page['description']);
     if ($status !== 'approved') {
@@ -46,7 +57,7 @@ function v2_seo_render_resort(array $record): void
         $page['h1'],
         $page['intro'],
         v2_seo_search_handoff_url('/poisk-turov/', $page['search_state']),
-        'Подобрать тур в ' . $resortName
+        'Подобрать тур в ' . $resortDestination
     );
 
     echo '<main class="sp-main sp-seo-editorial-page sp-resort-page">';
@@ -72,7 +83,7 @@ function v2_seo_render_resort(array $record): void
         : [];
 
     if ($offers) {
-        echo '<section class="sp-card sp-offer-snapshot"><h2>Актуальные туры в '.sp_e($resortName).'</h2>';
+        echo '<section class="sp-card sp-offer-snapshot"><h2>Актуальные туры в '.sp_e($resortDestination).'</h2>';
         echo '<p>Предложения собраны из свежих ценовых наблюдений AnyTour. Стоимость и доступность перепроверяются в поиске перед заявкой.</p>';
         echo '<div class="sp-offer-list">';
         foreach ($offers as $offer) {
@@ -100,7 +111,7 @@ function v2_seo_render_resort(array $record): void
         echo '</div></section>';
     }
 
-    echo v2_seo_render_price_calendar($priceCalendar, $page['search_state'], 'Цены на туры в ' . $resortName . ' по датам вылета');
+    echo v2_seo_render_price_calendar($priceCalendar, $page['search_state'], 'Цены на туры в ' . $resortDestination . ' по датам вылета');
 
     $links = [];
     foreach ($page['related'] as $link) {
