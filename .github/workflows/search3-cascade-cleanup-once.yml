@@ -1,0 +1,86 @@
+name: Prepare isolated Search3 cascade cleanup once
+on:
+  push:
+    branches: ['refactor/search3-cascade-cleanup-03e7422e']
+permissions:
+  contents: write
+concurrency:
+  group: search3-cascade-cleanup-03e7422e
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.repository == 'pyatkoff/poisk-turov-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 2
+      - name: Check exact isolated parent and existing build
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/refactor/search3-cascade-cleanup-03e7422e
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD^)" = 03e7422eb3efa2cf4382e89bfdb610d9dadc7bd1
+          python3 -B scripts/build/search3_assets.py --check
+          python3 -B scripts/build/search3_cascade_sections.py --check
+      - name: Prepare and prove conservative CSS-only cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet --target "$RUNNER_TEMP/search3-audit-python" tinycss2==1.5.1
+          PYTHONPATH="$RUNNER_TEMP/search3-audit-python:${PYTHONPATH:-}" python3 -B scripts/oneoff/search3_cascade_cleanup_once.py
+      - name: Run existing build, regression and isolation checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B scripts/build/search3_assets.py --check
+          python3 -B scripts/build/search3_cascade_sections.py --check
+          python3 -B tests/search3_source_build_test.py
+          python3 -B tests/search3_production_presentation_test.py
+          node tests/search3-flight-presentation.cjs
+          php tests/site-preview-path-smoke.php production
+          php tests/site-preview-path-smoke.php preview
+          git diff --check 03e7422eb3efa2cf4382e89bfdb610d9dadc7bd1
+      - name: Verify exact write allowlist and unchanged protected contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, pathlib, subprocess
+          base = '03e7422eb3efa2cf4382e89bfdb610d9dadc7bd1'
+          root = pathlib.Path('.')
+          contract = json.loads((root/'docs/project/search3-cascade-sections.json').read_text())
+          allowed = {contract['source_root']+'/'+name for name in contract['sections']}
+          allowed.update({contract['source_root']+'/README.md', 'docs/project/search3-cascade-cleanup.json', 'docs/project/search3-cascade-sections.json', 'docs/project/search3-production-import.json', 'tests/search3_production_presentation_test.py', 'v2/search3-results-filters-v1.css'})
+          changed = set(subprocess.check_output(['git','diff','--name-only'],text=True).splitlines())
+          untracked = set(subprocess.check_output(['git','ls-files','--others','--exclude-standard'],text=True).splitlines())
+          assert changed | untracked <= allowed, sorted((changed | untracked)-allowed)
+          assert {p for p in changed if p.startswith('v2/')} == {'v2/search3-results-filters-v1.css'}
+          path = 'docs/project/search3-production-import.json'
+          before = json.loads(subprocess.check_output(['git','show',base+':'+path],text=True))
+          after = json.loads((root/path).read_text())
+          key = 'search3-results-filters-v1.css'
+          digest = hashlib.sha256((root/'v2'/key).read_bytes()).hexdigest()
+          assert digest == '5e335574d1a849bda92ad0c38bb2dbf05ce325023e210e701f69af042abf4465'
+          assert after['assets'][key]['productionSha256'] == digest
+          after['assets'][key]['productionSha256'] = before['assets'][key]['productionSha256']
+          assert after == before, 'Unrelated import metadata/protected fingerprints changed'
+          print('EXACT_ALLOWLIST_AND_PROTECTED_CONTRACTS_OK', len(changed | untracked))
+          PY
+      - name: Publish tested objects to isolated branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch=refactor/search3-cascade-cleanup-03e7422e
+          test "$(git ls-remote origin refs/heads/$branch | cut -f1)" = "$GITHUB_SHA"
+          git add -- src/search3/styles/cascade docs/project/search3-cascade-cleanup.json docs/project/search3-cascade-sections.json docs/project/search3-production-import.json tests/search3_production_presentation_test.py v2/search3-results-filters-v1.css
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'refactor(search3): remove shadowed numeric cascade declarations'
+          git push origin "HEAD:refs/heads/$branch"
+          echo "TESTED_COMMIT=$(git rev-parse HEAD)"
+          echo "TESTED_TREE=$(git rev-parse HEAD^{tree})"
