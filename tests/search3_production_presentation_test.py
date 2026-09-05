@@ -24,6 +24,12 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             for marker in ('search3:preview-lead-state', '__search3CandidateNativeMatchMedia', '?lead=disabled', 'PREVIEW_LEAD_DISABLED'):
                 self.assertNotIn(marker, source, name)
 
+    def test_supplier_party_is_not_mislabeled_as_search_input(self):
+        source = (ROOT / 'v2' / 'search3-results-filters-v1.js').read_text()
+        self.assertIn('Состав размещения у туроператора', source)
+        self.assertIn('Для выбранного варианта', source)
+        self.assertNotIn('Состав поездки из поиска', source)
+
     @unittest.skipUnless(shutil.which('php'), 'PHP rendering requires the existing CI runtime')
     def test_canonical_and_compatibility_rendering(self):
         def render(host, entry, enabled=None):
