@@ -67,7 +67,7 @@ async function prepare(page, mode) {
         return Promise.resolve([]);
       }
     };
-  }, { mode, tour: tour(mode) });
+  }, { mode, tour: tour('fallback-tour') });
 
   for (const file of [
     'v2/tour-controller-v4.js',
