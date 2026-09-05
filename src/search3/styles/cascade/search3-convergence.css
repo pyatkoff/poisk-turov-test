@@ -64,6 +64,7 @@
   body.search3-candidate.search3-hotel-tours-open #results .tour-action>b{font-size:15px!important}
   body.search3-candidate.search3-hotel-tours-open #results .direct-tour{width:100%!important;min-height:32px!important;background:#ff5a0a!important;color:#fff!important;border:0!important}
 }
+
 @media(max-width:760px){
   body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo{height:126px!important;min-height:126px!important}
   body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-body{padding:8px 9px 9px!important;grid-template-columns:minmax(0,1fr) 92px!important;column-gap:7px!important}
@@ -129,4 +130,5 @@
 
 
 }
+
 

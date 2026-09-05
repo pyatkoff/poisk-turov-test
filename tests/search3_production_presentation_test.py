@@ -1,10 +1,13 @@
 """Verify Search3 activation without changing runtime, lead or analytics contracts."""
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((ROOT / 'docs/project/search3-production-import.json').read_text())
@@ -22,6 +25,45 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             str(ROOT / 'scripts/build/search3_cascade_sections.py'),
             '--check',
         ], check=True)
+
+    def test_cascade_split_rejects_byte_drift(self):
+        spec = importlib.util.spec_from_file_location(
+            'search3_cascade_sections', ROOT / 'scripts/build/search3_cascade_sections.py')
+        inspector = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(inspector)
+        contract = json.loads(inspector.CONTRACT.read_text())
+        # Mutate copies only; regression checks must never rewrite checked-in CSS.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / contract['source_root']
+            shutil.copytree(ROOT / contract['source_root'], source)
+            contract_path = root / 'contract.json'
+            contract_path.write_bytes(inspector.CONTRACT.read_bytes())
+            with patch.object(inspector, 'ROOT', root), patch.object(inspector, 'CONTRACT', contract_path):
+                _, raw, rows = inspector.inspect_sections()
+                self.assertEqual(len(raw), contract['combined_bytes'])
+                self.assertEqual(inspector.git_blob_sha(raw), contract['combined_git_blob_sha'])
+                self.assertEqual([row['name'] for row in rows], contract['sections'])
+                self.assertEqual(rows[-1]['endByte'], len(raw))
+                path = source / contract['sections'][1]
+                original = path.read_bytes()
+                self.assertTrue(original.endswith(b'\n'))
+                mutations = (
+                    ('lost seam newline', original[:-1], 'byte count changed'),
+                    ('CRLF conversion', original.replace(b'\n', b'\r\n'), 'byte count changed'),
+                    ('same-length CSS corruption', original.replace(b'!important', b'!importanx', 1), 'blob changed'),
+                )
+                for name, changed, message in mutations:
+                    with self.subTest(name=name):
+                        self.assertNotEqual(changed, original)
+                        path.write_bytes(changed)
+                        try:
+                            with self.assertRaisesRegex(ValueError, message):
+                                inspector.inspect_sections()
+                        finally:
+                            path.write_bytes(original)
+                # Restoration is exact; inspection remains read-only.
+                self.assertEqual(inspector.inspect_sections()[1], raw)
 
     def test_reviewed_assets_and_protected_runtime(self):
         self.assertEqual(len(MANIFEST['assets']), 8)
