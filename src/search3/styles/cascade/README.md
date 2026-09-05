@@ -46,3 +46,15 @@ Actual declaration cleanup is a separate change: prove the removed rules are
 inert or preserve cascade behavior, review responsive evidence, then update the
 section contract and generated asset/import hash together. Do not mix cleanup
 with this byte-identical split repair. Main/production remain owner-gated.
+
+## Numeric-longhand cleanup after the byte-identical split
+
+The 78,306-byte blob above is the historical split baseline at `03e7422e`,
+not the current cleaned size. The current combined bytes/hash are owned by
+`docs/project/search3-cascade-sections.json`.
+`docs/project/search3-cascade-cleanup.json` records every removed declaration
+and its later same-selector/media/importance winner. Only basic numeric-px
+longhands were pruned; shorthands, variables, fallback keywords and different
+media contexts were not merged. Surviving declarations retain their exact order.
+The public bundle was rebuilt atomically with its import hash. This pass does
+not change the JS assets, protected contracts or deployment permissions.
