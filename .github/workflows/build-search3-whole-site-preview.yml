@@ -184,18 +184,23 @@ jobs:
           for path in / /poisk-turov/ /poisk-turov-old/ /country/ /country/turkey/ /hot/ /contacts/ /rb/ /how-to-buy/; do
             out="$RUNNER_TEMP/site-$(echo "$path" | tr '/-' '__').html"
             code="$(curl -sS -H 'Host: anytoour.ru' -o "$out" -w '%{http_code}' "http://127.0.0.1:8098$PREVIEW_BASE$path")"
-            test "$code" = 200
+            if test "$code" != 200; then
+              echo "SEARCH3_PREVIEW_HTTP_FAILURE path=$path status=$code" >&2
+              tail -n 40 "$RUNNER_TEMP/search3-site-php.log" >&2
+              exit 1
+            fi
             grep -Fq '<meta name="robots" content="noindex,follow,max-image-preview:large' "$out"
             if grep -Eo 'href="/[^"]*"' "$out" | grep -Ev "^href=\"$PREVIEW_BASE/|^href=\"/images/|^href=\"/favicon"; then
               echo "SEARCH3_PREVIEW_LINK_ESCAPE path=$path" >&2
               exit 1
             fi
+            echo "SEARCH3_PREVIEW_ROUTE_OK path=$path"
           done
           grep -Fq "action=\"$PREVIEW_BASE/poisk-turov/\"" "$RUNNER_TEMP/site-_.html"
           grep -Fq 'api:"/api-v2.php"' "$RUNNER_TEMP/site-_poisk_turov_.html"
           grep -Fq "leadApi:\"$PREVIEW_BASE/preview-lead-disabled.php\"" "$RUNNER_TEMP/site-_poisk_turov_.html"
           for page in "$RUNNER_TEMP/site-_poisk_turov_.html" "$RUNNER_TEMP/site-_poisk_turov_old_.html"; do
-            grep -Fq 'id="searchForm"' "$page"
+            grep -Fq 'id="tourSearch"' "$page"
             grep -Fq 'metrikaCounter:0' "$page"
             grep -Fq "leadApi:\"$PREVIEW_BASE/preview-lead-disabled.php\"" "$page"
             if grep -Fq 'web-consultant/widget.js' "$page"; then exit 1; fi
