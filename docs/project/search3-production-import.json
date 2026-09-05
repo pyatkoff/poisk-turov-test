@@ -10,7 +10,7 @@
   "assets": {
     "search3-entry-v1.css": {
       "candidateSha256": "7032ac69f1bc6277860353592b8b545a6eb65174cbe1a077ee473be7dace2581",
-      "productionSha256": "d8cf1220602643baae9cd58309c57ec5cf41e25ada17ba8ce96885456059440c"
+      "productionSha256": "df498193291380fa5a6f0da8f5f7a8686740e1e25f33fed90a1f273dc5ccca82"
     },
     "search3-entry-v1.js": {
       "candidateSha256": "bbd6cde58cf893b819848fed7f51b8a529747b5f9f0c13d9eb19281eee6b343e",
@@ -26,7 +26,7 @@
     },
     "search3-results-filters-v1.css": {
       "candidateSha256": "056ca312c4f5356e1d3b8cc95e90355a0420420501e6467ae014e917df39fe7b",
-      "productionSha256": "4e5ff424321ea037a9905c2d4babb7d141d4bd45f446e2d54d39408b3403761a"
+      "productionSha256": "b6ee95788569d345237dba2f5aa9da22c98b93a2f94b93ad03cb6670008354d0"
     },
     "search3-results-filters-v1.js": {
       "candidateSha256": "59902609494edbecb014a1ebd3049b12071c799b88f939ff92fc7ca76883202f",

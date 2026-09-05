@@ -4,6 +4,7 @@ html body.search3-candidate.search3-has-results:not(.search3-editing-search):not
   display:block!important;
 }
 html body.search3-candidate #currentPriceCalendar{
+  display:none!important;
   box-sizing:border-box;
   min-width:0;
   padding:0;

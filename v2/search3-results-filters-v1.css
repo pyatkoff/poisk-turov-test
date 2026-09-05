@@ -4,7 +4,7 @@
 body.search3-candidate{--at-shell:1480px!important;--at-page-gutter:48px!important;--at-page-edge:24px!important;background:#f7f9fc!important}
 body.search3-candidate .v2-product-hero[hidden]{display:none!important}
 body.search3-candidate .v2-shell{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))!important;max-width:none!important;padding-top:0!important}
-body.search3-candidate .v2-shell>:not(.search3-page-intro):not(.v2-product-hero):not(#tourSearch):not(#status):not(#resultsSearchSummary):not(#resultsTools):not(.search3-mobile-toolbar):not(.results-layout):not(#selectedTour){display:none!important}
+body.search3-candidate .v2-shell>:not(.search3-page-intro):not(.v2-product-hero):not(#tourSearch):not(#status):not(#resultsSearchSummary):not(#resultsTools):not(#currentPriceCalendar):not(.search3-mobile-toolbar):not(.results-layout):not(#selectedTour){display:none!important}
 body.search3-candidate .search3-page-intro{width:100%!important;max-width:none!important;margin:13px auto 8px!important}
 body.search3-candidate .search3-breadcrumb{color:#98a2b3!important;font-size:9px!important;font-weight:700!important}
 body.search3-candidate .search3-breadcrumb span{padding:0 7px!important}
