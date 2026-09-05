@@ -81,6 +81,14 @@
     if (node && node.hidden !== value) node.hidden = value;
   }
 
+  function setData(node, name, value) {
+    if (node && node.dataset[name] !== value) node.dataset[name] = value;
+  }
+
+  function removeData(node, name) {
+    if (node && node.dataset[name] !== undefined) delete node.dataset[name];
+  }
+
   function money(value) {
     var amount = number(value);
     return amount > 0 ? new Intl.NumberFormat('ru-RU').format(amount) + ' ₽' : '';
@@ -122,7 +130,7 @@
     if (!action) {
       action = document.createElement('div');
       action.className = 'search3-flight-continue search3-flight-continue--fallback';
-      action.dataset.search3SelectedFlowOwned = '1';
+      setData(action, 'search3SelectedFlowOwned', '1');
       action.innerHTML = '<button type="button" class="primary">' + flowLabel('flight') + '</button>';
       flights.appendChild(action);
     } else {
@@ -148,7 +156,7 @@
 
   function bindAction(button) {
     if (!button || button.dataset.search3SelectedFlowBound === '1') return;
-    button.dataset.search3SelectedFlowBound = '1';
+    setData(button, 'search3SelectedFlowBound', '1');
     button.addEventListener('click', function (event) {
       if (button.dataset.search3SelectedFlowAction !== '1') return;
       activateReview(event);
@@ -163,11 +171,11 @@
       action = document.createElement('button');
       action.type = 'button';
       action.className = 'search3-flight-fallback-rail-action';
-      action.dataset.search3SelectedFlowOwned = '1';
+      setData(action, 'search3SelectedFlowOwned', '1');
       rail.appendChild(action);
     }
     setText(action, flowLabel('flight'));
-    action.dataset.search3SelectedFlowAction = '1';
+    setData(action, 'search3SelectedFlowAction', '1');
     setAttribute(action, 'aria-label', 'Перейти к итогу тура без выбранного рейса');
     bindAction(action);
   }
@@ -178,10 +186,10 @@
     setText(button, flowLabel('flight'));
     bindAction(button);
     if (noFlight) {
-      button.dataset.search3SelectedFlowAction = '1';
+      setData(button, 'search3SelectedFlowAction', '1');
       setAttribute(button, 'aria-label', 'Перейти к итогу тура без выбранного рейса');
     } else {
-      delete button.dataset.search3SelectedFlowAction;
+      removeData(button, 'search3SelectedFlowAction');
       removeAttribute(button, 'aria-label');
     }
   }
@@ -205,14 +213,14 @@
     if (!variantsBox || variants.length <= INITIAL_FLIGHT_LIMIT) {
       var existing = flights && flights.querySelector('.search3-flight-show-all');
       if (variantsBox) {
-        variantsBox.removeAttribute('data-search3-flight-disclosure');
+        removeData(variantsBox, 'search3FlightDisclosure');
         variants.forEach(function (variant) { if (variant.hidden) variant.hidden = false; });
       }
       if (existing) existing.remove();
       return;
     }
 
-    variantsBox.dataset.search3FlightDisclosure = '1';
+    setData(variantsBox, 'search3FlightDisclosure', '1');
     var expanded = variantsBox.dataset.search3FlightsExpanded === '1';
     var selectedIndex = variants.findIndex(function (variant) {
       return variant.classList.contains('is-selected') || !!variant.querySelector('input[name="v2flight"]:checked');
@@ -243,7 +251,7 @@
 
   function clearFallback() {
     selected.classList.remove('search3-flight-fallback');
-    delete selected.dataset.search3FlightFallback;
+    removeData(selected, 'search3FlightFallback');
     selected.querySelectorAll('[data-search3-selected-flow-owned="1"]').forEach(function (node) {
       node.remove();
     });
@@ -271,7 +279,7 @@
     var noFlight = noFlightState(flights);
     if (noFlight) {
       selected.classList.add('search3-flight-fallback');
-      selected.dataset.search3FlightFallback = '1';
+      setData(selected, 'search3FlightFallback', '1');
       ensureReviewAction(flights);
       ensureRailAction();
     } else {

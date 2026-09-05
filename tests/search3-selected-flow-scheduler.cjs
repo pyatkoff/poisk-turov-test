@@ -34,6 +34,14 @@ const priceBox = {
   }
 };
 let flightDataPresent = true;
+let fallbackDataWrites = 0;
+let fallbackDataValue;
+const selectedDataset = {};
+Object.defineProperty(selectedDataset, 'search3FlightFallback', {
+  configurable: true,
+  get() { return fallbackDataValue; },
+  set(value) { fallbackDataValue = value; fallbackDataWrites += 1; }
+});
 const fallbackButton = { textContent: 'Далее: итог тура' };
 const fallbackAction = {
   classList: { add() {} },
@@ -49,7 +57,7 @@ const flights = {
   }
 };
 const selected = {
-  dataset: {},
+  dataset: selectedDataset,
   classList: {
     add() {},
     remove() {},
@@ -136,8 +144,16 @@ const variants = Array.from({ length: 7 }, () => ({
   classList: { contains() { return false; } },
   querySelector() { return null; }
 }));
+let disclosureDataWrites = 0;
+let disclosureDataValue;
+const variantsDataset = {};
+Object.defineProperty(variantsDataset, 'search3FlightDisclosure', {
+  configurable: true,
+  get() { return disclosureDataValue; },
+  set(value) { disclosureDataValue = value; disclosureDataWrites += 1; }
+});
 const variantsBox = {
-  dataset: {},
+  dataset: variantsDataset,
   id: 'flightVariants',
   querySelectorAll() { return variants; },
   removeAttribute() {}
@@ -177,10 +193,13 @@ window.Search3SelectedFlowV2.syncFlightDisclosure(disclosureFlights);
 assert.equal(disclosureLookups, 2, 'each disclosure sync performs one show-all lookup');
 assert.equal(disclosureHiddenWrites, 0, 'stable disclosure visibility is not rewritten');
 assert.equal(disclosureAttributeWrites, 2, 'stable disclosure aria attributes are written only once');
+assert.equal(disclosureDataWrites, 1, 'stable disclosure dataset marker is written only once');
 
 flightDataPresent = false;
 flightRootReads = 0;
 window.Search3SelectedFlowV2.sync();
-assert.equal(flightRootReads, 1, 'no-flight fallback reuses the sync flight root for review action');
+window.Search3SelectedFlowV2.sync();
+assert.equal(flightRootReads, 2, 'each no-flight sync reuses one flight root for all fallback work');
+assert.equal(fallbackDataWrites, 1, 'stable fallback dataset marker is written only once');
 
 console.log('PASS: selected-flow coalesces updates and reuses stable disclosure/fallback DOM state');
