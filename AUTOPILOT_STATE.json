@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T15:54:03.752332+00:00",
+  "updated_at": "2026-09-05T16:01:34.288459+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,7 +15,7 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Published editor grid16e326eb via SSH multiplexed transport (#1367/run33975780366). Live editor preserves parameters and wide date inputs. Then fixed lead sidebar no-flight copy in3e86e319;23 applicable CI gates pass; published #1368/run33976084827. Real SUN VERA no-flight path reaches lead with Рейс уточнит менеджер; no submission.",
+    "last_material_progress": "Published summary event coalescing b1c8597d;23 gates passed,715 payload hashes checked, live lead path verified. Updated stale release PR description.",
     "next_action": "Continue only confirmed presentation defects/source ownership work. Physical iPhone/Safari acceptance, approved legal content and concrete owner visual approval remain before production; do not repeat completed grid/observer/copy changes or deploy.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
@@ -64,17 +64,22 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_FLIGHT_CLARIFICATION_COPY",
-    "title": "Lead sidebar correctly describes manager flight clarification",
+    "id": "S3_SUMMARY_EVENT_COALESCING",
     "status": "PUBLISHED_LIVE_VERIFIED",
-    "implementation_sha": "3e86e319f4d54f1fb16ddb9643036fed59bd1bda",
+    "implementation_sha": "b1c8597da617eacfab6416da542cf6280537373d",
+    "artifact_id": 9972437784,
+    "artifact_run": 33976375851,
+    "deploy_pr": 1369,
+    "deploy_run": 33976463607,
+    "evidence_artifact": 9972462388,
+    "ci_success_count": 23,
+    "visual_run": 33976375814,
+    "flight_run": 33976375786,
+    "verification": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent.",
+    "title": "Coalesce booking summary updates and avoid unchanged title mutations",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
-    "issue": 996,
-    "artifact_id": 9972310233,
-    "artifact_run": 33975939133,
-    "deploy_run": 33976084827,
-    "deploy_pr": 1368
+    "issue": 996
   },
   "queue": [
     {
@@ -168,15 +173,15 @@
       "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "3e86e319f4d54f1fb16ddb9643036fed59bd1bda",
-      "release_merge_sha": "3e86e319f4d54f1fb16ddb9643036fed59bd1bda",
-      "source_tree": "342ad0b1f2a20bc6b33b4c1f3662daf87d249517",
-      "exact_artifact": 9972310233,
-      "artifact_digest": "sha256:9cc1e48758ad7d717a2832fead1566e2cc9600c60a2da377715210e5d7284311",
-      "superseded_artifact": 9972176593,
+      "implementation_verified_sha": "b1c8597da617eacfab6416da542cf6280537373d",
+      "release_merge_sha": "b1c8597da617eacfab6416da542cf6280537373d",
+      "source_tree": "94ea6d8c99aeecc8a26935d248c30299d62fe9c0",
+      "exact_artifact": 9972437784,
+      "artifact_digest": "sha256:5f1cf31036f29b825aaadf5634f91a487014c04097183b91d5df1ffad5ee5e5c",
+      "superseded_artifact": 9972310233,
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "preview_deploy_run": 33976084827,
-      "preview_deploy_pr": 1368,
+      "preview_deploy_run": 33976463607,
+      "preview_deploy_pr": 1369,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -205,8 +210,8 @@
         "lead sidebar manager clarification when proceeding without flight"
       ],
       "preview_deploy_workflow_conclusion": "success",
-      "final_verification_run": 33976084827,
-      "final_verification_artifact": 9972356605
+      "final_verification_run": 33976463607,
+      "final_verification_artifact": 9972462388
     },
     "production": {
       "status": "OWNER_VISUAL_APPROVAL_PENDING",
@@ -449,10 +454,24 @@
       "deploy_pr": 1368,
       "evidence_artifact": 9972356605,
       "live": "SUN VERA HOTEL 10.09.2026/7 nights/2 adults: unavailable flights -> summary -> lead shows Рейс уточнит менеджер. No lead sent. JS e1d82b95bd96bec4."
+    },
+    "summary_event_coalescing": {
+      "id": "S3_SUMMARY_EVENT_COALESCING",
+      "status": "PUBLISHED_LIVE_VERIFIED",
+      "implementation_sha": "b1c8597da617eacfab6416da542cf6280537373d",
+      "artifact_id": 9972437784,
+      "artifact_run": 33976375851,
+      "deploy_pr": 1369,
+      "deploy_run": 33976463607,
+      "evidence_artifact": 9972462388,
+      "ci_success_count": 23,
+      "visual_run": 33976375814,
+      "flight_run": 33976375786,
+      "verification": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent."
     }
   },
-  "last_verified_commit": "3e86e319f4d54f1fb16ddb9643036fed59bd1bda",
-  "last_verified_commit_scope": "23 applicable CI gates success,715 artifact files verified, isolated preview deployment success, live unavailable-flight path to lead and inspected desktop screenshot; no physical Safari or lead-delivery claim.",
+  "last_verified_commit": "b1c8597da617eacfab6416da542cf6280537373d",
+  "last_verified_commit_scope": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -596,5 +615,19 @@
     "deploy_pr": 1368,
     "evidence_artifact": 9972356605,
     "live": "SUN VERA HOTEL 10.09.2026/7 nights/2 adults: unavailable flights -> summary -> lead shows Рейс уточнит менеджер. No lead sent. JS e1d82b95bd96bec4."
+  },
+  "summary_event_coalescing": {
+    "id": "S3_SUMMARY_EVENT_COALESCING",
+    "status": "PUBLISHED_LIVE_VERIFIED",
+    "implementation_sha": "b1c8597da617eacfab6416da542cf6280537373d",
+    "artifact_id": 9972437784,
+    "artifact_run": 33976375851,
+    "deploy_pr": 1369,
+    "deploy_run": 33976463607,
+    "evidence_artifact": 9972462388,
+    "ci_success_count": 23,
+    "visual_run": 33976375814,
+    "flight_run": 33976375786,
+    "verification": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent."
   }
 }

@@ -393,3 +393,24 @@ equal before/after/final. Live JS e1d82b95bd96bec4; SUN VERA10.09.2026,7nights,
 2adults unavailable-flight -> summary -> lead verified and screenshot inspected.
 No lead sent. Main/production unchanged. Physical Safari, approved legal content
 and owner visual approval remain; no production migration authorized.
+
+
+## 2026-09-05 — booking-summary event coalescing published
+
+Source b1c8597da617eacfab6416da542cf6280537373d combines synchronous
+tour/flight/price/layout events into one pending update. Full render supersedes
+layout-only work and consumes latest values; subsequent events still schedule.
+Unchanged title text no longer produces observer notifications. Regression
+executes actual module and checks latest price, flight reset, lead stage and
+later updates. Existing presentation suite runs it in CI.
+
+All23 applicable gates passed; visual33976375814 and flight33976375786 include
+existing375/1440 scenarios. Mobile/desktop return images inspected; catalogue
+error placeholders are fixtures, not live findings. Artifact9972437784 from
+build33976375851 verified715 payload files; only presentation JS changes.
+Published #1369/run33976463607; evidence9972462388. All9 routes and isolation
+pass;13 protected before/after/final hashes identical, rollback retained.
+Live JS43458284018690c6: SUN VERA10.09.2026/7nights/2adults -> unavailable
+flights -> review -> lead shows one summary,96848 RUB and manager clarification.
+Desktop screenshot inspected; no lead submitted. Main/production unchanged.
+PR1334 description synchronized; physical Safari/legal/owner approval remain.
