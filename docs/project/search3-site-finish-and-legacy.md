@@ -217,3 +217,32 @@ stream; see `search3-css-deduplication.json`. The parser is not a new build depe
 Seven other public assets and protected runtime files are unchanged. Existing
 source-build tests and import/owner guards pass locally; PHP rendering and browser
 coverage remain CI checks. Publication and CI status will be recorded separately.
+
+Verified source `e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d` passed all 23 applicable
+checks; one production-only check skipped. Core `33968976776`, flight
+`33968976715`, visual `33968976830`, boundary `33968976817`. Visual artifact
+`9970338707`: all four result-card images match published 3624278a pixel for
+pixel at 375/430/1024/1440. Three calendar images also match; 1024 differs only
+in 50 pixels by one colour-channel level. Both versions were visually inspected;
+no geometry/text difference. Mobile and intermediate-width cards inspected.
+
+Exact artifact `9970334355` from build `33968976826`, tree
+`9448e1ffc8070da0712be62ee5286f969e8f1ec2`, independently verified all 715 payload
+files. Only `search3-results-filters-v1.css` differs from published 3624278a.
+ZIP digest `9ba6fb72f4ba0ed7a42bf1cea611e183047d24fb02463ecc65a4a171f2384f2c`;
+archive `9a06993c5fa912d9b2d101ba30c99091574b9f7de2f82bfc9dc94e5dfe61aca2`;
+manifest `3846e2dbced7d6652443f903e217021e2246ef4c819c69d55355cf8adab355f2`;
+payload checksum list `a651b765d88ef762bdc91f26a3a0ff8265c9172222c237192617733974b2f4b4`.
+
+Published through isolated deploy `33969089661`, record draft #1360, control
+`89cb186b10f80e63e7fa2ce39f7f5d9fdf3a71ad`. Evidence `9970372339` confirms
+nine routes, noindex, lead 403, counter zero, internal PHP denied and retained
+previous-preview rollback. Before/after/final production fingerprints are identical,
+aggregate `5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340`.
+
+Fresh live search loaded CSS `e0f32847c9c3e78e` and returned 96 hotels without
+horizontal overflow. Card dimensions remain 886x212px with a 210px photo at the
+same desktop viewport. LUXOR APART opened through clarified flight, tour summary
+and the lead form showing one 65 427 RUB total. Form screenshot inspected; no
+lead submitted. Remaining physical iPhone/Safari, approved legal content and
+owner visual production approval are unchanged. Main remains `fa58a0cb`.

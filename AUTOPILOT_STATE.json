@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T12:26:58.982541+00:00",
+  "updated_at": "2026-09-05T13:32:30.376304+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Search3 source refactor verified:48 ordered modules reproduce8 existing assets byte for byte. All23 applicable CI checks successful. Actual bytes of all715 preview payload files match published3624278a; no redundant deploy.",
-    "next_action": "Use src/search3 modules and reproducible build for subsequent search edits. Structural extraction is complete; keep compatibility cascade/observer behavior unchanged unless a separate measured refactor is undertaken. Physical Safari, legal content and owner production acceptance remain open.",
+    "last_material_progress": "CSS consolidation published: 22 repeated rules and119 further declarations removed (6498 bytes). All23 applicable checks pass. Four card screenshots pixel-identical; all715 payload hashes verified; only main Search3 CSS differs. Production fingerprints unchanged.",
+    "next_action": "Continue concrete Search3 UX defects using source modules. Duplicate CSS pass is complete; remaining differing overrides and observers are active and require their own evidence before changes. Physical iPhone/Safari, approved legal content and owner production acceptance remain open.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -64,24 +64,27 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_PRESENTATION_SOURCE_REFACTOR",
-    "title": "Owner-authorized modular Search3 presentation sources and reproducible build",
-    "status": "SOURCE_REFACTOR_VERIFIED_RUNTIME_UNCHANGED",
+    "id": "S3_CSS_CASCADE_CONSOLIDATION",
+    "title": "Remove proven duplicate Search3 declarations while preserving effective cascade",
+    "status": "PUBLISHED_IN_PREVIEW_NOT_PRODUCTION",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
-    "served_baseline_sha": "3624278a59187bae7f76c9dbdb504b8f7b2858fd",
-    "scope": "48 source modules,8 byte-identical public assets, explicit order, source/build drift checks; no contract/cascade/observer changes",
-    "implementation_sha": "f61a9391444c95991045bd8315b08ca37d5ae433",
-    "ci_core": 33965995740,
-    "ci_visual": 33965995713,
-    "ci_flight": 33965995673,
-    "artifact_run": 33965995680,
-    "artifact_id": 9969438539,
-    "payload_equivalence": "All715 actual file bytes and checksum list identical to published3624278a",
-    "deployment": "NOT_NEEDED_IDENTICAL_RUNTIME"
+    "implementation_sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
+    "ci_core": 33968976776,
+    "ci_visual": 33968976830,
+    "ci_flight": 33968976715,
+    "artifact_run": 33968976826,
+    "artifact_id": 9970334355,
+    "deploy_run": 33969089661,
+    "deploy_pr": 1360
   },
   "queue": [
+    {
+      "id": "S3_CSS_CASCADE_CONSOLIDATION",
+      "status": "PUBLISHED_IN_PREVIEW_NOT_PRODUCTION",
+      "sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d"
+    },
     {
       "id": "S3_PRESENTATION_SOURCE_REFACTOR",
       "status": "SOURCE_REFACTOR_VERIFIED_RUNTIME_UNCHANGED",
@@ -152,15 +155,15 @@
       "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "3624278a59187bae7f76c9dbdb504b8f7b2858fd",
-      "release_merge_sha": "3624278a59187bae7f76c9dbdb504b8f7b2858fd",
-      "source_tree": "26db887754b252099465988f62967e30a9f8840e",
-      "exact_artifact": 9965968756,
-      "artifact_digest": "sha256:c0bacf5863b02cae0e5b274e3bf52e01f99109ee676098368cb74347c07421bf",
-      "superseded_artifact": 9965908477,
+      "implementation_verified_sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
+      "release_merge_sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
+      "source_tree": "9448e1ffc8070da0712be62ee5286f969e8f1ec2",
+      "exact_artifact": 9970334355,
+      "artifact_digest": "sha256:9ba6fb72f4ba0ed7a42bf1cea611e183047d24fb02463ecc65a4a171f2384f2c",
+      "superseded_artifact": 9965968756,
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "preview_deploy_run": 33954792052,
-      "preview_deploy_pr": 1359,
+      "preview_deploy_run": 33969089661,
+      "preview_deploy_pr": 1360,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -181,7 +184,8 @@
         "one authoritative tour price in lead sidebar without misleading flight-price repetition",
         "booking stage hides preserved results and search controls",
         "readable search context, filter rows and lead navigation",
-        "desktop reset fits the narrow filter rail"
+        "desktop reset fits the narrow filter rail",
+        "duplicate CSS rules removed with declaration-stream and pixel equivalence evidence"
       ]
     },
     "production": {
@@ -346,10 +350,25 @@
       "artifact_run": 33965995680,
       "artifact_id": 9969438539,
       "scope": "Five isolated builder tests,24 module syntax checks, all8 runtime outputs and all715 artifact payload files byte-identical to published baseline. First-run whitespace issue corrected without changing output bytes."
+    },
+    "css_consolidation": {
+      "sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
+      "conclusion": "success",
+      "applicable_passed": 23,
+      "core_run": 33968976776,
+      "visual_run": 33968976830,
+      "flight_run": 33968976715,
+      "boundary_run": 33968976817,
+      "artifact_run": 33968976826,
+      "artifact_id": 9970334355,
+      "visual_artifact": 9970338707,
+      "deployment_run": 33969089661,
+      "deployment_evidence": 9970372339,
+      "scope": "Four card screenshots exactly equal at375/430/1024/1440. Three calendar screenshots equal;1024 differs only50pixels by1channel level, visually inspected. Deployment verifies9routes/noindex/lead403/counter0/internalPHPdeny/retainedrollback/unchanged before-after-final production fingerprints."
     }
   },
-  "last_verified_commit": "f61a9391444c95991045bd8315b08ca37d5ae433",
-  "last_verified_commit_scope": "Source-only structural refactor: all23 applicable checks passed and715 actual artifact files match published3624278a. Preview remains3624278a; main/production unchanged.",
+  "last_verified_commit": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
+  "last_verified_commit_scope": "CSS duplicate consolidation verified and published in isolated whole-site preview; production/main unchanged.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -421,9 +440,16 @@
     "verification_update": "Evidence9965993909:9routes/noindex/lead403/internalPHPdeny/counter0/retainedrollback/identical before-after-final production fingerprints."
   },
   "css_consolidation": {
-    "status": "PREPARED_AWAITING_CI",
+    "status": "PUBLISHED_IN_PREVIEW_NOT_PRODUCTION",
     "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
     "scope": "22 exact repeated rules and119 further repeated declarations removed under identical selector/media/value/importance. Ordered declaration-stream equivalence verified; audit docs/project/search3-css-deduplication.json. Seven other public assets and protected contracts unchanged.",
-    "preview": "Unchanged published3624278a; no deployment yet."
+    "preview": "Published exact e12e7ac7 via33969089661; evidence9970372339. Production unchanged.",
+    "implementation_sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
+    "live_verification": "Fresh CSS e0f32847c9c3e78e;96 hotels, unchanged desktop card geometry, LUXOR APART through clarified flight and summary to lead form with one65427RUB total. Screenshot inspected; no lead submitted."
+  },
+  "return_visibility_fix": {
+    "status": "PREPARED_AWAITING_CI",
+    "finding": "Live Back sets selectedTour.hidden=true but CSS display:grid!important leaves3466px of retained tour visible below96 results. Present before refactor; missing hidden presentation contract.",
+    "fix": "Honor #selectedTour[hidden] in CSS; preserve retained DOM. Existing four-width test now retains children like real Back and asserts invisibility/zero layout height."
   }
 }

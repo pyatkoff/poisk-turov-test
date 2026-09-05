@@ -3695,3 +3695,6 @@ html body.search3-candidate.search3-results-active #results .search3-hotel-actio
 @media(min-width:1000px){
   html body.search3-candidate.search3-results-active .results-filter-rail .filter-rail-head small{display:none!important}
 }
+
+/* Closing a tour retains its DOM. Author display rules must respect hidden. */
+html body.search3-candidate #selectedTour[hidden]{display:none!important}

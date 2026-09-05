@@ -50,3 +50,8 @@ payload. Deployment continues to consume the checked-in generated assets.
 This is a source-ownership refactor, not a CSS redesign or a performance claim.
 Consolidating compatibility declarations or observers requires a separately
 verified change; it must not be hidden inside a file move.
+
+A subsequent CSS-only consolidation removes proven earlier duplicate declarations
+while preserving the final cascade. Its audit is in
+`docs/project/search3-css-deduplication.json`; remaining compatibility rules are
+still active. Public build paths and module order are unchanged.

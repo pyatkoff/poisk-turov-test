@@ -157,11 +157,16 @@ function px(value) {
       await page.evaluate(() => {
         const selected = document.getElementById('selectedTour');
         selected.hidden = true;
-        selected.replaceChildren();
+        // Real Back retains both tour DOM and final-review presentation markers.
+        selected.classList.add("search3-final-review");
+        selected.setAttribute("data-search3-final-layout", "maket7");
         window.dispatchEvent(new CustomEvent('v2:selected-tour-closed'));
       });
       await page.waitForFunction(() => !document.body.classList.contains('search3-selected-open'));
       await page.waitForSelector('.results-layout');
+      if (await page.locator('#selectedTour').isVisible()) throw new Error(width + ': closed tour remains visible below results');
+      if (!await page.locator('#selectedTour').evaluate(node => node.hidden && node.children.length > 0 && node.getBoundingClientRect().height === 0)) throw new Error(width + ': hidden retained tour occupies layout');
+      await page.screenshot({ path: 'standalone-content-artifacts/return-' + width + '.png', fullPage: true, animations: 'disabled' });
       if (await page.locator('#results .hotel-card').count() !== resultCountBeforeTour) throw new Error(width + ': Back lost results');
       const searchValuesAfterTour = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
       if (JSON.stringify(unchangedFields(searchValuesBeforeTour)) !== JSON.stringify(unchangedFields(searchValuesAfterTour))) throw new Error(width + ': Back changed search parameters');
