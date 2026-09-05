@@ -7,6 +7,8 @@ on:
       - 'tests/site-preview-path-smoke.php'
       - 'tests/search-handoff-smoke.php'
       - 'tests/search3_production_presentation_test.py'
+      - 'tests/search3_site_preview_isolation_test.py'
+      - 'scripts/build/search3_site_preview_isolation.py'
       - '.github/workflows/build-search3-whole-site-preview.yml'
 
 permissions:
@@ -39,6 +41,7 @@ jobs:
           php tests/site-preview-path-smoke.php preview
           php tests/search-handoff-smoke.php
           python3 -B tests/search3_production_presentation_test.py
+          python3 -B tests/search3_site_preview_isolation_test.py
           echo SEARCH3_SITE_SOURCE_CONTRACTS_OK
 
       - name: Build exact isolated site payload
@@ -71,6 +74,7 @@ jobs:
           test -f "$payload/home-entry-v1.php"
           cp "$payload/index.php" "$payload/search-page-v2.php"
           cp "$payload/home-entry-v1.php" "$payload/index.php"
+          python3 -B scripts/build/search3_site_preview_isolation.py "$payload"
 
           cat > "$payload/.htaccess" <<'HTACCESS'
           Options -Indexes
@@ -132,6 +136,9 @@ jobs:
                   'production_lead_delivery': False,
                   'preview_lead_path': '/_preview/search3-site-candidate/preview-lead-disabled.php',
                   'production_metrika_changes': False,
+                  'preview_metrika_counter': 0,
+                  'production_document_root_bootstrap': False,
+                  'external_consultant_widget': False,
               },
               'files': files,
           }
@@ -165,11 +172,16 @@ jobs:
           target="$docroot$PREVIEW_BASE"
           mkdir -p "$(dirname "$target")"
           cp -a "$RUNNER_TEMP/search3-site-release/payload" "$target"
+          # Poison production-like bootstraps: HTTP smoke must never execute them.
+          mkdir -p "$docroot/bitrix/modules/main/include"
+          printf '%s\n' '<?php throw new RuntimeException("PRODUCTION_SITE_CONF_EXECUTED");' > "$docroot/site_conf.php"
+          printf '%s\n' '<?php throw new RuntimeException("PRODUCTION_PROLOG_EXECUTED");' > "$docroot/bitrix/modules/main/include/prolog_before.php"
+          printf '%s\n' '<?php define("METRIKA_COUNTER_ID",987654321);' > "$target/config.php"
           php -S 127.0.0.1:8098 -t "$docroot" >"$RUNNER_TEMP/search3-site-php.log" 2>&1 &
           php_pid=$!
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
           for _ in {1..20}; do curl -fsS -H 'Host: anytoour.ru' "http://127.0.0.1:8098$PREVIEW_BASE/" -o /dev/null && break; sleep 0.25; done
-          for path in / /poisk-turov/ /country/ /hot/ /contacts/ /rb/ /how-to-buy/; do
+          for path in / /poisk-turov/ /poisk-turov-old/ /country/ /country/turkey/ /hot/ /contacts/ /rb/ /how-to-buy/; do
             out="$RUNNER_TEMP/site-$(echo "$path" | tr '/-' '__').html"
             code="$(curl -sS -H 'Host: anytoour.ru' -o "$out" -w '%{http_code}' "http://127.0.0.1:8098$PREVIEW_BASE$path")"
             test "$code" = 200
@@ -182,6 +194,13 @@ jobs:
           grep -Fq "action=\"$PREVIEW_BASE/poisk-turov/\"" "$RUNNER_TEMP/site-_.html"
           grep -Fq 'api:"/api-v2.php"' "$RUNNER_TEMP/site-_poisk_turov_.html"
           grep -Fq "leadApi:\"$PREVIEW_BASE/preview-lead-disabled.php\"" "$RUNNER_TEMP/site-_poisk_turov_.html"
+          for page in "$RUNNER_TEMP/site-_poisk_turov_.html" "$RUNNER_TEMP/site-_poisk_turov_old_.html"; do
+            grep -Fq 'id="searchForm"' "$page"
+            grep -Fq 'metrikaCounter:0' "$page"
+            grep -Fq "leadApi:\"$PREVIEW_BASE/preview-lead-disabled.php\"" "$page"
+            if grep -Fq 'web-consultant/widget.js' "$page"; then exit 1; fi
+          done
+          if grep -Fq '<body class="search3-candidate">' "$RUNNER_TEMP/site-_poisk_turov_old_.html"; then exit 1; fi
           lead_code="$(curl -sS -H 'Host: anytoour.ru' -o "$RUNNER_TEMP/lead.json" -w '%{http_code}' -H 'Content-Type: application/json' --data '{"synthetic":true}' "http://127.0.0.1:8098$PREVIEW_BASE/preview-lead-disabled.php")"
           test "$lead_code" = 403
           grep -Fq PREVIEW_LEAD_DISABLED "$RUNNER_TEMP/lead.json"

@@ -16,7 +16,7 @@
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
     "last_material_progress": "Pre-deploy review found that the whole-site preview could inherit production SEO indexability. PR #1341 forced preview noindex without changing production indexability and merged only into the active release branch. Verified source 85edee8ef4019ff485b5e01d80c4db862283b74e and release merge 9c520bac897aafd1eac7cfe28cfff1ad996949ca have identical tree 81080560d4c829ecda3e2b364e8661b1ad5ee23f. Boundary, exact artifact/local-prefix smoke and security checks passed. Exact artifact 9958766470 supersedes 9958625990 for publication. Whole-site preview is not yet published; main and production redesign remain unchanged.",
-    "next_action": "Publish artifact 9958766470 through a separate exact-provenance one-shot whole-site preview workflow to /_preview/search3-site-candidate/. Verify artifact id/digest/internal archive and manifest hashes, copy production config only as a closed runtime dependency for read-only showcase data, preserve production fingerprints, keep preview lead delivery disabled, retain atomic rollback, and do not use or widen the nine-file search-only deploy. Then inspect relevant mobile/desktop evidence and verify the full journey without sending a real preview lead.",
+    "next_action": "Do not publish artifact 9958766470: pre-deploy review found production bootstrap/analytics/widget inheritance and unsafe legacy entry in that payload. Verify the new exact payload isolation CI, pin its source and hashes, then prepare a separate exact-provenance whole-site preview deployment with production fingerprints and rollback. Verify real HTTP access denial before any private runtime dependency is introduced. Do not widen the nine-file search-only deploy. Production approval remains pending.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -65,7 +65,7 @@
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
     "id": "S3_WHOLE_SITE_PREVIEW",
-    "status": "PREPARED_DEPLOY_NEXT",
+    "status": "REBUILDING_PREVIEW_ISOLATION",
     "category": "VISUAL",
     "title": "Publish and verify a coherent whole-site preview of the verified draft",
     "branch": "release/search3-production-ready-v1",
@@ -234,10 +234,20 @@
     "first_background_run_verified": true
   },
   "freshness_followup": {
-    "status": "IMPLEMENTED_AWAITING_CI",
+    "status": "PREPARED_CI_PASSED_NOT_PUBLISHED",
+    "sha": "1fddaf5e4e1c1285cb768050352c3d0a1ab0cdc4",
+    "core_ci": 33934082041,
+    "visual_ci": 33934082023,
     "base_sha": "73a197a38c32902c411e0b82343619b14b77955a",
     "scope": "Country/resort/hotel snapshot readers filter past and malformed departures before sorting/limit. Hot offers use the same explicit Europe/Moscow business date as the existing SEO calendar instead of DB-session CURDATE(). Existing same-day allowance, TTL, prices, city filters and supplier contracts are retained.",
-    "verification": "Added in-memory SQLite integration checks for all four readers, invalid/leap dates, midnight/year rollover, expired snapshots, limit ordering and city retention. PHP unavailable locally; execution delegated to existing Validate V2 core PR gate. Local owner/refactor/import guards passed (PHP rendering skipped).",
-    "preview": "Not published. Pinned whole-site artifact remains the prior source and does not include this follow-up. Rebuild and pin a checked artifact before including the correction in preview."
+    "verification": "In-memory SQLite integration checks passed in core CI for all four actual readers, invalid/leap dates, midnight/year rollover, expired snapshots, limit ordering and city retention. Existing visual CI passed. Local owner/refactor/import guards passed (PHP rendering skipped locally).",
+    "preview": "Not published. Rebuild and pin a checked isolated artifact before including the correction in preview."
+  },
+  "preview_isolation_followup": {
+    "status": "IMPLEMENTED_AWAITING_CI",
+    "superseded_unsafe_artifact": 9958766470,
+    "findings": "Copied search runtime could execute production Bitrix/site_conf, inherit a configured counter, and load the external consultant widget. Legacy entry required transformed homepage and retained production lead URL. Old smoke used a clean PHP docroot/config and did not expose these issues.",
+    "fix": "Exact fail-closed transformations of copied artifact only: omit production bootstrap, force preview counter zero, remove consultant widget, bind legacy UI to copied search runtime and disabled lead sink. Production runtime, analytics configuration, goals and lead transport unchanged.",
+    "verification": "Local exact-source transformation/drift unittest passed. Extended artifact HTTP smoke uses poison production bootstraps and a configured counter, includes legacy search and Turkey, and asserts both search UIs use the disabled sink and zero counter. Awaiting CI."
   }
 }
