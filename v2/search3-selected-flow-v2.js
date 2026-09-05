@@ -65,7 +65,12 @@
 
   function setText(node, value) {
     var next = String(value || '').trim();
-    if (node && next && text(node) !== next) node.textContent = next;
+    var comparable = next.replace(/\s+/g, ' ');
+    if (node && next && text(node) !== comparable) node.textContent = next;
+  }
+
+  function setAttribute(node, name, value) {
+    if (node && node.getAttribute(name) !== value) node.setAttribute(name, value);
   }
 
   function money(value) {
@@ -81,17 +86,18 @@
     var amount = money(currentTotal);
     if (!amount) return;
     var scope = priceScope();
+    var ariaLabel = amount + ', ' + scope.toLowerCase();
     selected.querySelectorAll('.search3-booking-summary__total,.search3-tour-detail-rail__price').forEach(function (box) {
       setText(box.querySelector(':scope > span'), scope);
       setText(box.querySelector(':scope > strong'), amount);
-      box.setAttribute('aria-label', amount + ', ' + scope.toLowerCase());
+      setAttribute(box, 'aria-label', ariaLabel);
     });
     var mobile = document.querySelector('.search3-selected-mobile-bar');
     if (mobile) {
       setText(mobile.querySelector('.search3-selected-mobile-bar__price small'), scope);
       var mobileAmount = mobile.querySelector('[data-s3-selected-price]');
       setText(mobileAmount, amount);
-      if (mobileAmount) mobileAmount.setAttribute('aria-label', amount + ', ' + scope.toLowerCase());
+      setAttribute(mobileAmount, 'aria-label', ariaLabel);
     }
   }
 

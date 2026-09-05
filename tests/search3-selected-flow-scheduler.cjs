@@ -7,6 +7,8 @@ const events = new Map();
 const frames = [];
 let flightRootReads = 0;
 let priceWrites = 0;
+let priceAttributeWrites = 0;
+let priceAriaLabel = '';
 let strongText = '';
 
 const label = { textContent: '' };
@@ -21,7 +23,15 @@ const priceBox = {
     if (selector === ':scope > strong') return strong;
     return null;
   },
-  setAttribute() {}
+  getAttribute(name) {
+    return name === 'aria-label' ? priceAriaLabel : null;
+  },
+  setAttribute(name, value) {
+    if (name === 'aria-label') {
+      priceAriaLabel = value;
+      priceAttributeWrites += 1;
+    }
+  }
 };
 const flights = {
   querySelector(selector) {
@@ -84,6 +94,8 @@ const flush = () => {
 flush();
 flightRootReads = 0;
 priceWrites = 0;
+priceAttributeWrites = 0;
+priceAriaLabel = '';
 
 events.get('v2:tour-price-updated')({ detail: { price: 100000 } });
 events.get('v2:tour-price-updated')({ detail: { price: 120000 } });
@@ -94,7 +106,12 @@ assert.equal(priceWrites, 0, 'price DOM write is deferred to the shared frame');
 flush();
 
 assert.equal(priceWrites, 1, 'latest price is written once');
+assert.equal(priceAttributeWrites, 1, 'latest price aria-label is written once');
 assert.match(strongText, /120[\s\u00a0]?000/, 'latest queued price wins');
+window.Search3SelectedFlowV2.syncDisplayedPrice();
+window.Search3SelectedFlowV2.syncDisplayedPrice();
+assert.equal(priceWrites, 1, 'unchanged price text is not rewritten');
+assert.equal(priceAttributeWrites, 1, 'unchanged price aria-label is not rewritten');
 assert.equal(
   flightRootReads,
   1,
@@ -136,4 +153,4 @@ window.Search3SelectedFlowV2.syncFlightDisclosure(disclosureFlights);
 
 assert.equal(disclosureLookups, 1, 'expanded disclosure reuses a single show-all lookup');
 
-console.log('PASS: selected-flow coalesces updates and avoids duplicate flight disclosure lookups');
+console.log('PASS: selected-flow coalesces updates and avoids duplicate price/disclosure DOM writes');
