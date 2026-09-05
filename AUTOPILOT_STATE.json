@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T07:20:33.919177+00:00",
+  "updated_at": "2026-09-05T07:34:21.193866+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Owner requested reuse of the best elements from all eight uploaded mockups and the production search price calendar. Confirmed the shared calendar module was already present but hidden by Search3 shell CSS. Prepared responsive calendar presentation, mockup-7 footer icon/store treatment and mockup-6 lead readability; fixed SU000/zero-baggage placeholder leakage in presentation only. CI and exact preview publication pending.",
-    "next_action": "Verify responsive calendar display and one-click date re-search preserving other parameters, footer mobile/desktop layout and placeholder-flight summaries; publish exact checked whole-site artifact, then inspect the live candidate. Do not switch production.",
+    "last_material_progress": "Published owner-directed price calendar and mockup convergence in exact whole-site preview 4a644f48. All 23 applicable checks passed; inspected calendar at 375/430/1024/1440 and footer on mobile/desktop. Live exact-date re-search and placeholder-flight-to-lead journey passed without sending a lead. Found a misleading duplicate full-tour price labeled as flight price in the lead sidebar; correcting presentation next.",
+    "next_action": "Remove the redundant/misleading flight-price row from the lead sidebar without changing raw prices or totals; verify and publish exact follow-up artifact. Physical iPhone/Safari, approved legal content and owner visual production approval remain.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -65,23 +65,23 @@
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
     "id": "S3_MOCKUP_AND_PRICE_CALENDAR",
-    "status": "IMPLEMENTED_AWAITING_CI_AND_PREVIEW",
+    "status": "PUBLISHED_LIVE_VERIFIED_FOLLOWUP_IN_PROGRESS",
     "category": "VISUAL",
     "title": "Apply the best of eight mockups and restore the existing production price calendar in Search3",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
     "prepared_pr": 1334,
-    "artifact_source_sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
-    "artifact_source_tree": "8340078e1c2e6d3b5d3e137278435f0bb609d0d2",
-    "artifact_run": 33946001085,
-    "artifact_id": 9963347925,
-    "artifact_digest": "sha256:84088bf3aea5866bc4dab658929f459110374bae96fb541419b2e3889ba1b80c",
-    "archive_sha256": "0d8addd29b397872d2f670825c3bd81d7d42afff825ff6d0f2f6fb62b37cd251",
-    "manifest_sha256": "56ccf20221babe7500ec5cf8e576a18ae57793c26c84f27589a67738899c336b",
-    "payload_checksums_sha256": "b54bc8faa966ea029be7a5bf21668a73227c66c2d71ac68565d0050249f469e0",
+    "artifact_source_sha": "4a644f486e55718c52e5994fb6de8f87d0a88abe",
+    "artifact_source_tree": "1707ead52b090725a86a6407dd889aaa11202fda",
+    "artifact_run": 33952301309,
+    "artifact_id": 9965218543,
+    "artifact_digest": "sha256:5e94108bddb9123a97a1d71eff188da63c75fd595028305503e5e2a6fefe8df9",
+    "archive_sha256": "da27bb4cb598c76297c7140cc59dc7b553b9098eb2ec540bbbdb56246631aff5",
+    "manifest_sha256": "0454d3c5488604c65287b3a0c3ef208b684597a91e9aabb27ecd78cfc9a60383",
+    "payload_checksums_sha256": "0edcf325dd1edf453227f3a0425a7ae6989f64110c0fa5dd3919288906424a4e",
     "payload_file_count": 715,
-    "superseded_artifact": 9962135867,
+    "superseded_artifact": 9963347925,
     "acceptance": [
       "Use the exact reviewed site artifact; existing search-only deploy allowlist cannot publish the whole site.",
       "Force preview noindex even when production SEO allowlists the canonical route.",
@@ -95,14 +95,22 @@
       "Physical iPhone/Safari acceptance remains.",
       "Verified declined and indeclinable resort destination copy; live Antalya CTA says `Подобрать тур в Анталью`.",
       "Confirmed all three unpublished legal/payment footer destinations return 404; new-site footer omits them until approved pages exist.",
-      "Prepared a fail-closed server-local rollback snapshot and isolated restore drill; live production backup remains intentionally uncaptured until the approved migration window."
+      "Prepared a fail-closed server-local rollback snapshot and isolated restore drill; live production backup remains intentionally uncaptured until the approved migration window.",
+      "Production price calendar is visible after multi-date results and compact by default on phones; date selection launches the existing lifecycle once and preserves other parameters in deterministic integration coverage.",
+      "Live 6-19 September search showed nine date minima; selecting 8 September completed an exact-date search with 7-10 nights and two adults retained.",
+      "Live placeholder flight shows clarification for number, time and baggage in selection, tour summary and lead sidebar; SU000 is not exposed as confirmed."
     ]
   },
   "queue": [
     {
       "id": "S3_MOCKUP_AND_PRICE_CALENDAR",
-      "status": "IMPLEMENTED_AWAITING_CI_AND_PREVIEW",
+      "status": "PUBLISHED_IN_WHOLE_SITE_PREVIEW",
       "title": "Apply the best of eight mockups and restore the existing production price calendar in Search3"
+    },
+    {
+      "id": "S3_LEAD_PRICE_COPY",
+      "status": "IMPLEMENTED_AWAITING_CI_AND_PREVIEW",
+      "title": "Remove the repeated full-tour amount misleadingly labeled as flight price in the lead sidebar; preserve all price arithmetic"
     },
     {
       "id": "S3_FACTS_LINKS_MAPS",
@@ -150,15 +158,15 @@
       "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
-      "release_merge_sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
-      "source_tree": "8340078e1c2e6d3b5d3e137278435f0bb609d0d2",
-      "exact_artifact": 9963347925,
-      "artifact_digest": "sha256:84088bf3aea5866bc4dab658929f459110374bae96fb541419b2e3889ba1b80c",
-      "superseded_artifact": 9963177822,
+      "implementation_verified_sha": "4a644f486e55718c52e5994fb6de8f87d0a88abe",
+      "release_merge_sha": "4a644f486e55718c52e5994fb6de8f87d0a88abe",
+      "source_tree": "1707ead52b090725a86a6407dd889aaa11202fda",
+      "exact_artifact": 9965218543,
+      "artifact_digest": "sha256:5e94108bddb9123a97a1d71eff188da63c75fd595028305503e5e2a6fefe8df9",
+      "superseded_artifact": 9963347925,
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "preview_deploy_run": 33946112648,
-      "preview_deploy_pr": 1352,
+      "preview_deploy_run": 33952637454,
+      "preview_deploy_pr": 1356,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -171,7 +179,11 @@
         "readable result cards with taller mobile photos and non-duplicated facts",
         "localized decimal flight-price tradeoff display correction",
         "declined resort destination copy from reviewed H1",
-        "unpublished 404 legal/payment footer links hidden"
+        "unpublished 404 legal/payment footer links hidden",
+        "existing production price calendar restored in Search3 with responsive disclosure",
+        "mockup-7 footer social/store treatment",
+        "mockup-6 readable contact form with fewer repeated panels",
+        "supplier placeholder-flight and unknown-baggage summaries"
       ]
     },
     "production": {
@@ -224,14 +236,14 @@
     },
     "whole_site_preview_preparation": {
       "conclusion": "success",
-      "sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
-      "source_tree": "8340078e1c2e6d3b5d3e137278435f0bb609d0d2",
-      "artifact_run": 33946001085,
-      "artifact_id": 9963347925,
-      "artifact_digest": "sha256:84088bf3aea5866bc4dab658929f459110374bae96fb541419b2e3889ba1b80c",
-      "deploy_run": 33946112648,
-      "deploy_pr": 1352,
-      "scope": "All 22 applicable branch checks passed; one production-only gate skipped. Exact preview published atomically with lead/analytics/widget isolation, retained rollback and unchanged protected production fingerprints. Live footer has zero links to the three confirmed 404 destinations; resort grammar remains correct."
+      "sha": "4a644f486e55718c52e5994fb6de8f87d0a88abe",
+      "source_tree": "1707ead52b090725a86a6407dd889aaa11202fda",
+      "artifact_run": 33952301309,
+      "artifact_id": 9965218543,
+      "artifact_digest": "sha256:5e94108bddb9123a97a1d71eff188da63c75fd595028305503e5e2a6fefe8df9",
+      "deploy_run": 33952637454,
+      "deploy_pr": 1356,
+      "scope": "All 23 applicable checks passed; one production-only gate skipped. Exact preview published with isolation and rollback; final production fingerprints match. Live price-calendar date re-search and placeholder-flight journey reached the lead form without sending."
     },
     "flight_fallback_integration": {
       "conclusion": "success",
@@ -288,10 +300,26 @@
       "artifact_run": 33946001085,
       "deploy_run": 33946112648,
       "scope": "Confirmed /payment/, /personal-data/ and /politika-konfidentsialnosti/ are 404. New-site footer omits them and regression guards reject re-exposure until real pages exist. Legal/payment content remains deferred; no terms invented."
+    },
+    "mockup_price_calendar": {
+      "conclusion": "success",
+      "sha": "4a644f486e55718c52e5994fb6de8f87d0a88abe",
+      "visual_run": 33952301299,
+      "visual_artifact": 9965222158,
+      "core_run": 33952301307,
+      "flight_run": 33952301248,
+      "widths": [
+        375,
+        430,
+        1024,
+        1440
+      ],
+      "deployment_evidence": 9965326844,
+      "scope": "Responsive real calendar integration, one-submit exact date selection preserving remaining parameters, reset/selected-state visibility; footer mobile and desktop screenshots; shared placeholder helper regression tests. Initial 15c38994 calendar visibility failure fixed by excluding supported calendar from high-specificity legacy-shell hide selector; failed artifact was not published."
     }
   },
-  "last_verified_commit": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
-  "last_verified_commit_scope": "All 22 applicable checks passed. Exact isolated preview omits three confirmed 404 footer links and retains correct resort grammar, card readability, localized flight tradeoffs, family handoff, preview isolation and unavailable-flight recovery. Physical iPhone/Safari remains.",
+  "last_verified_commit": "4a644f486e55718c52e5994fb6de8f87d0a88abe",
+  "last_verified_commit_scope": "All 23 applicable checks passed. Exact preview and live calendar-to-lead journey verified. A duplicated/misleading flight-price caption in the lead sidebar is being corrected next; this is not owner or physical-device acceptance.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -330,14 +358,16 @@
     }
   ],
   "scheduled_execution": {
-    "status": "ENABLED",
+    "status": "PAUSED",
     "automation_id": "6a9b55c965ac81918c5327b6b43faed2",
     "title": "Продолжать разработку AnyTour",
     "rrule": "FREQ=HOURLY",
     "timezone": "Europe/Amsterdam",
     "mode": "development_not_monitoring_only",
     "rule": "Do not stop after one PR when time remains for the next safe task. Preserve production approval and all protected boundaries; record/defer a blocker and continue independent work.",
-    "first_background_run_verified": true
+    "first_background_run_verified": true,
+    "last_observed_enabled": false,
+    "note": "Verified via scheduler lookup on 2026-09-05. Prior run paused the automation at owner acceptance; current mockup/calendar work proceeds under the explicit owner request, without changing the schedule."
   },
   "freshness_followup": {
     "status": "PUBLISHED_IN_WHOLE_SITE_PREVIEW_NOT_PRODUCTION",
@@ -355,9 +385,9 @@
     "findings": "Copied search runtime could execute production Bitrix/site_conf, inherit a configured counter, and load the external consultant widget. Legacy entry required transformed homepage and retained production lead URL. Old smoke used a clean PHP docroot/config and did not expose these issues.",
     "fix": "Exact fail-closed transformations of copied artifact only: omit production bootstrap, force preview counter zero, remove consultant widget, bind legacy UI to copied search runtime and disabled lead sink. Production runtime, analytics configuration, goals and lead transport unchanged.",
     "verification": "Exact transform/drift unit test and HTTP smoke passed in run 33934383695. Both forms rendered with counter=0 and disabled sink despite poisoned production bootstrap fixtures. Core/security/boundary/visual gates passed. ZIP digest, inner archive, manifest, checksum list and all 715 payload bytes matched locally.",
-    "sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
-    "artifact_id": 9963347925,
-    "deploy_run": 33946112648,
-    "verification_update": "Current exact source 57d734eb deployed by run 33946112648: internal production paths denied; preview counter/widget/lead delivery disabled; atomic activation, rollback retention and protected production fingerprint checks passed."
+    "sha": "4a644f486e55718c52e5994fb6de8f87d0a88abe",
+    "artifact_id": 9965218543,
+    "deploy_run": 33952637454,
+    "verification_update": "Exact source 4a644f48 deployed by run 33952637454: nine routes pass, internal PHP denied, counter/widget/lead delivery disabled, rollback retained and final protected production fingerprints unchanged."
   }
 }

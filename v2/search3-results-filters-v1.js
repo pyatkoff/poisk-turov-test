@@ -403,7 +403,6 @@ function operator(t){return text(t&&t.operator)||'—';}
 function people(t){const p=[];if(t&&t.adults)p.push(t.adults+' взр.');if(t&&t.childs)p.push(t.childs+' дет.');return p.join(' + ')||'—';}
 function place(t){const h=t&&t.hotel||{};return [text(h.country),text(h.region),text(h.subRegion)].filter(Boolean).join(', ')||'—';}
 function flightLabel(v){return window.Search3FlightPresentation.flightLabel(v,'Выберите рейс');}
-function flightMoneyHtml(v){if(!v)return'';const price=number(v.price),fuel=number(v.fuelCharge),rows=[];if(price>0)rows.push('<div><span>Цена варианта рейса</span><b>'+money(price)+'</b></div>');if(fuel>0)rows.push('<div><span>Топливный сбор рейса</span><b>'+money(fuel)+'</b></div>');return rows.length?'<div class="search3-booking-summary__flight-costs">'+rows.join('')+'</div>':'';}
 function normalizedTotal(detail){const d=detail||{},tour=d.tour||lastTour||{};if(d.pricePending)return number(d.basePrice)||number(tour.price);return number(d.price)||number(d.basePrice)||number(tour.price);}
 function summaryHtml(t){const h=t&&t.hotel||{};const pic=t&&t.picture||h.picturelink||'';return '<aside class="search3-booking-summary" aria-label="Ваш тур">'+
 '<div class="search3-booking-summary__title">Ваш тур</div>'+
@@ -411,7 +410,7 @@ function summaryHtml(t){const h=t&&t.hotel||{};const pic=t&&t.picture||h.picture
 '<strong class="search3-booking-summary__hotel">'+esc(text(h.name)||text(t&&t.name)||'Выбранный тур')+'</strong>'+
 '<div class="search3-booking-summary__place">'+esc(place(t))+'</div>'+
 '<dl><div><dt>Дата</dt><dd>'+esc(text(t&&t.date)||'—')+'</dd></div><div><dt>Ночей</dt><dd>'+esc(text(t&&t.nights)||'—')+'</dd></div><div><dt>Туристы</dt><dd>'+esc(people(t))+'</dd></div><div><dt>Номер</dt><dd>'+esc(text(t&&t.roomType)||'—')+'</dd></div><div><dt>Питание</dt><dd>'+esc(meal(t))+'</dd></div><div><dt>Оператор</dt><dd>'+esc(operator(t))+'</dd></div><div><dt>Перелёт</dt><dd class="search3-booking-summary__flight">'+esc(flightLabel(lastFlight))+'</dd></div></dl>'+
-flightMoneyHtml(lastFlight)+'<div class="search3-booking-summary__total"><span>Стоимость тура</span><strong>'+money(selectedTotal||t&&t.price)+'</strong></div><p class="search3-booking-summary__price-note">Стоимость тура показана отдельно от параметров выбранного варианта рейса.</p></aside>';}
+'<div class="search3-booking-summary__total"><span>Стоимость тура</span><strong>'+money(selectedTotal||t&&t.price)+'</strong></div><p class="search3-booking-summary__price-note">Перед оплатой менеджер подтвердит итоговую стоимость и детали перелёта.</p></aside>';}
 function clearLayout(shell,form,summary){['display','grid-column','grid-template-columns','gap','align-items'].forEach(p=>shell.style.removeProperty(p));['grid-column','grid-row'].forEach(p=>form.style.removeProperty(p));['display','grid-column','grid-row'].forEach(p=>summary.style.removeProperty(p));}
 function syncLayout(){
   const root=document.getElementById('selectedTour'),form=root&&root.querySelector('.lead-form'),shell=form&&form.closest('.search3-lead-shell'),summary=shell&&shell.querySelector('.search3-booking-summary');

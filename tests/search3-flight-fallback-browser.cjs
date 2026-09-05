@@ -102,7 +102,12 @@ async function verifyLocalizedFlightTradeoff(browser) {
     Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span'))
       .some(node => node.textContent.replace(/\s/g, ' ') === '+17 217,6 ₽ к минимальной')
   ));
+  await page.waitForSelector('#selectedTour .search3-booking-summary');
   const state = await page.evaluate(() => ({
+    summaryTotal: document.querySelector('#selectedTour .search3-booking-summary__total strong')?.textContent.trim().replace(/\s/g, ' '),
+    summaryTotalCount: document.querySelectorAll('#selectedTour .search3-booking-summary__total').length,
+    repeatedFlightCost: !!document.querySelector('#selectedTour .search3-booking-summary__flight-costs'),
+    priceNote: document.querySelector('#selectedTour .search3-booking-summary__price-note')?.textContent,
     prices: Array.from(document.querySelectorAll('#selectedTour .flight-choice>b')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
     tradeoffs: Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span')).map(node => node.textContent.trim().replace(/\s/g, ' ')),
     parsedDecimal: window.Search3CandidateFlightTradeoffV1.localizedMoneyNumber('Стоимость тура: 90 049,6 ₽'),
@@ -110,7 +115,11 @@ async function verifyLocalizedFlightTradeoff(browser) {
     leadRequests: window.__fallbackTest.leadRequests
   }));
   if (
-    state.prices[0] !== 'Стоимость тура: 72 832 ₽'
+    state.summaryTotal !== '72 832 ₽'
+    || state.summaryTotalCount !== 1
+    || state.repeatedFlightCost
+    || state.priceNote !== 'Перед оплатой менеджер подтвердит итоговую стоимость и детали перелёта.'
+    || state.prices[0] !== 'Стоимость тура: 72 832 ₽'
     || state.prices[1] !== 'Стоимость тура: 90 049,6 ₽'
     || state.tradeoffs[0] !== 'Самая низкая цена'
     || state.tradeoffs[1] !== '+17 217,6 ₽ к минимальной'

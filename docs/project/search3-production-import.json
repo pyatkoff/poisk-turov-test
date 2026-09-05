@@ -1,7 +1,7 @@
 {
   "candidateSourceSha": "470474414a3930f1f6c095a8dbbc187075b253c0",
   "productionBaseSha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
-  "status": "Owner-directed mockup convergence and existing production price-calendar presentation; candidate checks pending; not owner-approved for production",
+  "status": "Mockup convergence and production price calendar published in isolated preview 4a644f48; follow-up removes repeated tour-price caption; production approval pending",
   "transformations": [
     "Remove preview-only simulated lead-state listener",
     "Remove obsolete global matchMedia restoration; canonical mobile filter chooses Search3 breakpoint directly",
@@ -30,7 +30,7 @@
     },
     "search3-results-filters-v1.js": {
       "candidateSha256": "59902609494edbecb014a1ebd3049b12071c799b88f939ff92fc7ca76883202f",
-      "productionSha256": "75e29c7e7a95776fdfa721a6544d69875ebd0fca530a5f0dc8f1a659b61f0f9d"
+      "productionSha256": "593a61096242d38b120a6f2a379ec8bcba23dbc9c43fdb2dad7f9ef8292248af"
     },
     "search3-selected-flow-v2.css": {
       "candidateSha256": "26d7c6661ff29957309d8356ab47c430e37b718053d062d241e202d660bd6871",
