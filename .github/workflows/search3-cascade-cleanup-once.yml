@@ -16,14 +16,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }}
-          fetch-depth: 2
+          fetch-depth: 3
       - name: Check exact isolated parent and existing build
         shell: bash
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = refs/heads/refactor/search3-cascade-cleanup-03e7422e
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(git rev-parse HEAD^)" = 03e7422eb3efa2cf4382e89bfdb610d9dadc7bd1
+          test "$(git rev-parse HEAD^)" = 02e7b6073ecccba6210d086bddb3659975020961
+          test "$(git rev-parse HEAD^^)" = 03e7422eb3efa2cf4382e89bfdb610d9dadc7bd1
+          git diff --quiet 03e7422eb3efa2cf4382e89bfdb610d9dadc7bd1 -- src docs tests v2 scripts/build
           python3 -B scripts/build/search3_assets.py --check
           python3 -B scripts/build/search3_cascade_sections.py --check
       - name: Prepare and prove conservative CSS-only cleanup
@@ -31,7 +33,9 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m pip install --quiet --target "$RUNNER_TEMP/search3-audit-python" tinycss2==1.5.1
-          PYTHONPATH="$RUNNER_TEMP/search3-audit-python:${PYTHONPATH:-}" python3 -B scripts/oneoff/search3_cascade_cleanup_once.py
+          export PYTHONPATH="$RUNNER_TEMP/search3-audit-python:${PYTHONPATH:-}"
+          python3 -B scripts/oneoff/search3_cascade_cleanup_once.py
+          python3 -B scripts/oneoff/search3_cascade_whitespace_once.py
       - name: Run existing build, regression and isolation checks
         shell: bash
         run: |
@@ -64,7 +68,7 @@ jobs:
           after = json.loads((root/path).read_text())
           key = 'search3-results-filters-v1.css'
           digest = hashlib.sha256((root/'v2'/key).read_bytes()).hexdigest()
-          assert digest == '5e335574d1a849bda92ad0c38bb2dbf05ce325023e210e701f69af042abf4465'
+          assert digest == '0644c80ac4e088137cc0a3d2cb1d1891dc3267d9d2a5c8161a2940c67cb1bea8'
           assert after['assets'][key]['productionSha256'] == digest
           after['assets'][key]['productionSha256'] = before['assets'][key]['productionSha256']
           assert after == before, 'Unrelated import metadata/protected fingerprints changed'
