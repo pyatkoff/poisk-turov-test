@@ -122,10 +122,16 @@ function px(value) {
           dates: box('.search3-dates'), nights: box('.search3-nights'),
           dateInput: box('.search3-dates .search3-direct-control'),
           nightInput: box('.search3-nights .search3-direct-control'),
-          viewport: innerWidth, documentWidth: document.documentElement.scrollWidth
+          viewport: innerWidth, documentWidth: document.documentElement.scrollWidth,
+          bodyClass: document.body.className,
+          grid: getComputedStyle(document.querySelector('#tourSearch .search3-primary-grid')).gridTemplateColumns,
+          dateColumn: getComputedStyle(document.querySelector('#tourSearch .search3-dates')).gridColumn,
+          dateStyle: document.querySelector('#tourSearch .search3-dates').getAttribute('style')
         };
       });
       if (editorGeometry.documentWidth > editorGeometry.viewport + 2) throw new Error(width + ': editor overflows viewport');
+      console.log('SEARCH3_EDITOR_GEOMETRY_STATE ' + width + ' ' + JSON.stringify(editorGeometry));
+      await page.screenshot({ path: `standalone-content-artifacts/editor-${width}.png`, fullPage: true, animations: 'disabled' });
       if (width >= 761 && editorGeometry.dates.width < editorGeometry.nights.width * 1.8) throw new Error(width + ': date range lost its wide column');
       if (editorGeometry.dateInput.width < 120 || editorGeometry.nightInput.width < 48) throw new Error(width + ': native date/night value clipped ' + JSON.stringify(editorGeometry));
       await page.screenshot({ path: `standalone-content-artifacts/editor-${width}.png`, fullPage: true, animations: 'disabled' });
