@@ -1,0 +1,103 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const events = new Map();
+const frames = [];
+let flightRootReads = 0;
+let priceWrites = 0;
+let strongText = '';
+
+const label = { textContent: '' };
+const strong = {};
+Object.defineProperty(strong, 'textContent', {
+  get() { return strongText; },
+  set(value) { strongText = value; priceWrites += 1; }
+});
+const priceBox = {
+  querySelector(selector) {
+    if (selector === ':scope > span') return label;
+    if (selector === ':scope > strong') return strong;
+    return null;
+  },
+  setAttribute() {}
+};
+const flights = {
+  querySelector(selector) {
+    if (selector === '.flight-variant,.flight-error') return {};
+    return null;
+  }
+};
+const selected = {
+  dataset: {},
+  classList: {
+    add() {},
+    remove() {},
+    contains() { return false; }
+  },
+  querySelector(selector) {
+    if (selector === '.selected-price > small') return { textContent: 'Стоимость тура' };
+    if (selector === '.tour-flights') {
+      flightRootReads += 1;
+      return flights;
+    }
+    return null;
+  },
+  querySelectorAll(selector) {
+    if (selector === '.search3-booking-summary__total,.search3-tour-detail-rail__price') return [priceBox];
+    return [];
+  },
+  contains() { return true; }
+};
+const document = {
+  body: { classList: { contains(name) { return name === 'search3-candidate'; } } },
+  getElementById(id) { return id === 'selectedTour' ? selected : null; },
+  querySelector() { return null; },
+  addEventListener() {},
+  createElement() { throw new Error('unexpected createElement'); }
+};
+
+vm.runInNewContext(
+  fs.readFileSync(path.join(__dirname, '../src/search3/behavior/selected-flow-v2.js'), 'utf8'),
+  {
+    document,
+    window: {
+      addEventListener(name, handler) { events.set(name, handler); },
+      requestAnimationFrame(handler) { frames.push(handler); }
+    },
+    MutationObserver: function () { this.observe = function () {}; },
+    Intl,
+    Set,
+    Array,
+    Number,
+    String,
+    Object
+  }
+);
+
+const flush = () => {
+  while (frames.length) frames.shift()();
+};
+
+flush();
+flightRootReads = 0;
+priceWrites = 0;
+
+events.get('v2:tour-price-updated')({ detail: { price: 100000 } });
+events.get('v2:tour-price-updated')({ detail: { price: 120000 } });
+
+assert.equal(frames.length, 1, 'rapid price updates share one selected-flow frame');
+assert.equal(priceWrites, 0, 'price DOM write is deferred to the shared frame');
+
+flush();
+
+assert.equal(priceWrites, 1, 'latest price is written once');
+assert.match(strongText, /120[\s\u00a0]?000/, 'latest queued price wins');
+assert.equal(
+  flightRootReads,
+  2,
+  'one sync reads the flight root once for disclosure and once for the shared no-flight state'
+);
+
+console.log('PASS: selected-flow price updates coalesce and no-flight state is shared');

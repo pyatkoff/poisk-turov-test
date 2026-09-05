@@ -158,12 +158,12 @@
     bindAction(action);
   }
 
-  function syncMobileAction() {
+  function syncMobileAction(noFlight) {
     var button = document.querySelector('.search3-selected-mobile-bar [data-s3-selected-lead]');
     if (!button) return;
     setText(button, flowLabel('flight'));
     bindAction(button);
-    if (noFlightState()) {
+    if (noFlight) {
       button.dataset.search3SelectedFlowAction = '1';
       button.setAttribute('aria-label', 'Перейти к итогу тура без выбранного рейса');
     } else {
@@ -253,7 +253,8 @@
     syncDisplayedPrice();
     syncLeadCopy();
     syncFlightDisclosure();
-    if (noFlightState()) {
+    var noFlight = noFlightState();
+    if (noFlight) {
       selected.classList.add('search3-flight-fallback');
       selected.dataset.search3FlightFallback = '1';
       ensureReviewAction();
@@ -261,7 +262,7 @@
     } else {
       clearFallback();
     }
-    syncMobileAction();
+    syncMobileAction(noFlight);
   }
 
   function schedule() {
@@ -287,7 +288,6 @@
   });
   window.addEventListener('v2:tour-price-updated', function (event) {
     currentTotal = normalizedTotal(event && event.detail, currentTour);
-    syncDisplayedPrice();
     schedule();
   });
   ['v2:flight-selected', 'v2:booking-review', 'search3:lead-entry'].forEach(function (name) {
