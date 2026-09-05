@@ -119,14 +119,25 @@ function px(value) {
       if (geometry.documentWidth > geometry.width + 2 || geometry.right > geometry.width + 2 || !geometry.targets) {
         throw new Error(width + ': calendar geometry ' + JSON.stringify(geometry));
       }
-      const unchangedFields = entries => entries.filter(([name]) => !['dateFrom', 'dateTo'].includes(name));
+      // Responsive controls can move in the DOM while retaining the same form
+      // values. Compare named fields; retain the order of repeated child ages.
+      const unchangedFields = entries => {
+        const fields = new Map();
+        for (const [name, value] of entries) {
+          if (['dateFrom', 'dateTo'].includes(name)) continue;
+          if (!fields.has(name)) fields.set(name, []);
+          fields.get(name).push(value);
+        }
+        return [...fields.entries()].sort(([a], [b]) => a.localeCompare(b));
+      };
       const before = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
       await calendar.locator('[data-calendar-date="2026-09-11"]').click();
       const submissions = await page.evaluate(() => window.__calendarSubmissions);
       if (submissions.length !== 1) throw new Error(width + ': calendar must submit exactly once');
       const submitted = Object.fromEntries(submissions[0]);
       if (submitted.dateFrom !== '2026-09-11' || submitted.dateTo !== '2026-09-11') throw new Error(width + ': selected departure date lost');
-      if (JSON.stringify(unchangedFields(before)) !== JSON.stringify(unchangedFields(submissions[0]))) throw new Error(width + ': calendar changed other search parameters');
+      const preservedBefore = unchangedFields(before), preservedAfter = unchangedFields(submissions[0]);
+      if (JSON.stringify(preservedBefore) !== JSON.stringify(preservedAfter)) throw new Error(width + ': calendar changed other search parameters ' + JSON.stringify({ before: preservedBefore, after: preservedAfter }));
       // Let the canonical selected-tour observer derive the shell state. A body
       // class alone races its next sync because an empty/hidden tour is closed.
       await page.evaluate(() => {
