@@ -16,6 +16,13 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         for name in ('search3-booking-summary.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-entry-summary.cjs'):
             subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
 
+    def test_cascade_compatibility_section_contract(self):
+        subprocess.run([
+            'python3',
+            str(ROOT / 'scripts/build/search3_cascade_sections.py'),
+            '--check',
+        ], check=True)
+
     def test_reviewed_assets_and_protected_runtime(self):
         self.assertEqual(len(MANIFEST['assets']), 8)
         for name, values in MANIFEST['assets'].items():

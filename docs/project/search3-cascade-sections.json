@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "source": "src/search3/styles/cascade-compatibility.css",
+  "donor_source_sha": "e5baf32f455cdb0aa1a704964f28e5efbebf57ff",
+  "sections": [
+    "search3-batch-iteration1.css",
+    "search3-batch-iteration1b.css",
+    "search3-batch-iteration1c.css",
+    "search3-batch-iteration2.css",
+    "search3-batch-iteration2b.css",
+    "search3-batch-iteration2c.css",
+    "search3-convergence.css",
+    "search3-form-contract.css",
+    "search3-full-cycle-contract.css"
+  ]
+}
