@@ -95,8 +95,8 @@
     }
   }
 
-  function noFlightState() {
-    var flights = selected.querySelector('.tour-flights');
+  function noFlightState(flights) {
+    flights = flights || selected.querySelector('.tour-flights');
     if (!flights || flights.querySelector('.flight-variant,.flight-error')) return false;
     return noFlightMessage(text(flights.querySelector('.selected-loading')));
   }
@@ -184,8 +184,8 @@
     return action;
   }
 
-  function syncFlightDisclosure() {
-    var flights = selected.querySelector('.tour-flights');
+  function syncFlightDisclosure(flights) {
+    flights = flights || selected.querySelector('.tour-flights');
     var variantsBox = flights && flights.querySelector('.flight-variants');
     var variants = variantsBox ? Array.from(variantsBox.querySelectorAll(':scope > .flight-variant')) : [];
     var existing = flights && flights.querySelector('.search3-flight-show-all');
@@ -250,10 +250,11 @@
   }
 
   function sync() {
+    var flights = selected.querySelector('.tour-flights');
     syncDisplayedPrice();
     syncLeadCopy();
-    syncFlightDisclosure();
-    var noFlight = noFlightState();
+    syncFlightDisclosure(flights);
+    var noFlight = noFlightState(flights);
     if (noFlight) {
       selected.classList.add('search3-flight-fallback');
       selected.dataset.search3FlightFallback = '1';

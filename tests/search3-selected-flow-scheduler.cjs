@@ -96,8 +96,8 @@ assert.equal(priceWrites, 1, 'latest price is written once');
 assert.match(strongText, /120[\s\u00a0]?000/, 'latest queued price wins');
 assert.equal(
   flightRootReads,
-  2,
-  'one sync reads the flight root once for disclosure and once for the shared no-flight state'
+  1,
+  'one sync reuses one flight root lookup for disclosure and no-flight state'
 );
 
-console.log('PASS: selected-flow price updates coalesce and no-flight state is shared');
+console.log('PASS: selected-flow price updates coalesce and flight root lookup is shared');
