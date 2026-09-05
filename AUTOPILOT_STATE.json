@@ -1,7 +1,7 @@
 {
-  "schema_version": 23,
+  "schema_version": 24,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T03:00:53+00:00",
+  "updated_at": "2026-09-05T03:24:00+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Whole-site preview remains live from exact source 000f6a63052aba7c29efca6f0082cd6068ec188d after deploy 33938566550 / PR #1344. Branch SHA 928f25ec5f08ccf544a6dd88acf16cf77192f47f adds deterministic browser coverage for unavailable flights: retry remains single and uses the existing tour controller; a recovered flight clears fallback state; a repeatedly empty response continues through tour summary to the visible lead form without invoking lead transport. Flight run 33940532420 and all 22 applicable checks passed; one production-only gate skipped. Published preview, main and production were not changed by this test-only step.",
-    "next_action": "Complete journey acceptance on a physical iPhone/Safari or equivalent owner device, especially date/night controls and reopening controls after results. Resolve legal/payment links only when approved source content is available. Production migration remains gated by owner visual approval; do not change Tourvisor, pricing, lead or analytics contracts.",
+    "last_material_progress": "Branch SHA 17b674fc54fa6b49aaa73379bcbdc35bfccfda28 fixes the confirmed result-card readability defect without reintroducing duplicated facts: mobile photos are materially taller, card/fact/price-context/action text has readable minimum sizes, phone facts use a two-column grid and 1024/1440 layouts remain unclipped. Deterministic visual run 33941679993 passed at 375/430/1024/1440; artifact 9962036028 was inspected and all 22 applicable checks passed, with one production-only gate skipped. The whole-site preview still serves exact source 000f6a63052aba7c29efca6f0082cd6068ec188d; this card correction is prepared but not yet published there. Main and production remain unchanged.",
+    "next_action": "Build and publish a separately pinned exact whole-site preview artifact containing 17b674fc54fa6b49aaa73379bcbdc35bfccfda28 or its documentation-only successor, then repeat the live phone/desktop result-card and journey pass. Physical iPhone/Safari acceptance remains required, especially date/night controls and reopening controls after results. Resolve legal/payment links only when approved source content is available. Production migration remains gated by owner visual approval; do not change Tourvisor, pricing, lead or analytics contracts.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -90,6 +90,7 @@
       "Verified desktop journey through hotel, tour, available flight, summary and visible lead form without sending a lead.",
       "Confirmed supplier age normalization with a control search; operator placement is labeled separately while requested ages remain in lead context.",
       "Deterministic Chromium verifies empty-flight retry, recovered-flight cleanup and fallback continuation to the lead form without invoking lead transport.",
+      "Prepared readable result cards at 375/430/1024/1440: taller mobile photos, readable fact and action type, no clipping and no repeated date/night/meal/flight facts under price.",
       "Physical iPhone/Safari acceptance remains."
     ]
   },
@@ -212,6 +213,20 @@
       "run_id": 33940532420,
       "scope": "At 375px, repeated empty flight responses retain one retry and continue through summary to the visible lead form without a lead request. At 1440px, retry recovery renders the real flight and clears fallback actions. Existing controller, Tourvisor, price and lead contracts are unchanged."
     },
+    "card_readability": {
+      "conclusion": "success",
+      "sha": "17b674fc54fa6b49aaa73379bcbdc35bfccfda28",
+      "run_id": 33941679993,
+      "artifact_id": 9962036028,
+      "artifact_digest": "sha256:598c2bb9d306d03b7c1054c3b31b5da2116b0a35619c2f56589a24ba8fb1c868",
+      "widths": [
+        375,
+        430,
+        1024,
+        1440
+      ],
+      "scope": "Inspected deterministic result cards at all four widths. Mobile photos measure approximately 183px and 214px high; titles are 18px and facts are 12/14px. Desktop labels/values are 12/14px. There is no horizontal overflow or clipped card content, and price context contains only the party while departure, nights, meal and flight appear once in the facts grid. Prepared in the branch; not yet published in whole-site preview."
+    },
     "site_shell": {
       "conclusion": "success",
       "sha": "c46d76a973a4cb89b1c50eb985a6c4a2f155c454",
@@ -219,8 +234,8 @@
       "scope": "All applicable PR gates passed; migration-only check skipped by configured condition. Actual Search3, legacy search and content templates on mobile/desktop. Runtime catalogue unavailable in CI; not a production defect."
     }
   },
-  "last_verified_commit": "928f25ec5f08ccf544a6dd88acf16cf77192f47f",
-  "last_verified_commit_scope": "All 22 applicable checks passed. Exact whole-site preview remains live from source 000f6a63; desktop real-catalogue journey reached the lead form without submission. Deterministic Chromium covers unavailable-flight retry/recovery and fallback lead-form entry without invoking lead transport. Physical iPhone/Safari remains.",
+  "last_verified_commit": "17b674fc54fa6b49aaa73379bcbdc35bfccfda28",
+  "last_verified_commit_scope": "All 22 applicable checks passed. Result cards are readable and unclipped at 375/430/1024/1440 without repeated price facts. Exact whole-site preview remains live from source 000f6a63; the readability correction is prepared but not yet published. Desktop real-catalogue journey reached the lead form without submission, and deterministic Chromium covers unavailable-flight retry/recovery and fallback lead-form entry without invoking lead transport. Physical iPhone/Safari remains.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
