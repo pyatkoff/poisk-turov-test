@@ -1,3 +1,4 @@
+
 /* donor:search3-review-heading.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 function root(){return document.getElementById('selectedTour')}
@@ -7,5 +8,3 @@ window.addEventListener('v2:tour-selected',()=>setTimeout(sync,0));
 window.addEventListener('v2:booking-review',()=>setTimeout(sync,0));
 document.addEventListener('click',e=>{if(e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-flight-continue button'))setTimeout(sync,0)});
 })();
-
-

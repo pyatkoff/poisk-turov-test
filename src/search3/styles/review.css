@@ -1,3 +1,5 @@
+
+
 /* donor:search3-final-total.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Search3 final-total convergence. Presentation only: all values remain sourced from real selected tour/flight data. */
 .search3-review-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 12px;padding:4px 2px}
@@ -126,5 +128,3 @@ html body.search3-candidate.search3-selected-open #selectedTour.search3-final-re
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__flight-costs,
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__price-note{display:none!important}
 }
-
-

@@ -1,3 +1,4 @@
+
 /* donor:search3-booking-stepper.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 function root(){return document.getElementById('selectedTour')}
@@ -31,5 +32,3 @@ document.addEventListener('focusin',e=>{if(e.target&&e.target.closest&&e.target.
 document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-booking-step');if(!b)return;const t=target(b.dataset.step);if(t){set(b.dataset.step);t.scrollIntoView({behavior:'smooth',block:'start'})}});
 window.Search3BookingStepper={ensure,set,removeLegacy,version:5};
 })();
-
-

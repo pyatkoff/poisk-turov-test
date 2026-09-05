@@ -1,3 +1,5 @@
+
+
 /* donor:search3-results-top.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 /* Donor CSS is bundled into the isolated candidate asset. */
@@ -22,5 +24,3 @@ window.addEventListener('resize',function(){requestAnimationFrame(syncResultsSta
 if(edit)edit.addEventListener('click',function(){document.body.classList.add('search3-editing-search');form.scrollIntoView({behavior:'smooth',block:'start'});var focusTarget=form.querySelector('select,input:not([type="hidden"]),button');if(focusTarget)setTimeout(function(){try{focusTarget.focus({preventScroll:true});}catch(_e){focusTarget.focus();}},250);});
 form.addEventListener('change',syncRoute);syncRoute();
 })();
-
-

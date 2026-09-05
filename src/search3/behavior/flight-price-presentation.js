@@ -1,3 +1,5 @@
+
+
 /* Search3-only display guard for localized decimal flight prices.
    The authoritative tour/flight price values and selection events remain untouched. */
 (function () {
@@ -75,5 +77,3 @@
     correctTradeoffs: correctTradeoffs
   });
 })();
-
-

@@ -1,3 +1,5 @@
+
+
 /* donor:search3-lead-state-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Lead lifecycle convergence against approved DS2 lead UI kit. Visual only. */
 @media(min-width:1000px){
@@ -35,5 +37,3 @@ html body.search3-candidate.search3-selected-open #selectedTour.search3-final-re
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-msg-btn,html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-retry-lead,html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-edit-lead{width:100%!important;min-height:44px!important;border-radius:7px!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-stay-site{justify-self:center!important;min-height:34px!important;margin-top:2px!important}
 }
-
-

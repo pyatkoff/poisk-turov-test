@@ -1,3 +1,5 @@
+
+
 /* donor:search3-footer-preview.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 /* Donor CSS is bundled into the isolated candidate asset. */
@@ -26,5 +28,3 @@ footer.innerHTML='<div class="search3-footer-main"><div class="search3-footer-br
 function syncGroups(){var mobile=matchMedia('(max-width:640px)').matches;footer.querySelectorAll('.search3-footer-group').forEach(function(d){d.open=!mobile;});var mobileSupportEl=footer.querySelector('.search3-footer-support-mobile');var desktopSupportEl=footer.querySelector('.search3-footer-support-desktop');if(mobileSupportEl)mobileSupportEl.style.setProperty('display',mobile?'block':'none','important');if(desktopSupportEl)desktopSupportEl.style.setProperty('display',mobile?'none':'grid','important');}
 syncGroups();window.addEventListener('resize',syncGroups);
 })();
-
-

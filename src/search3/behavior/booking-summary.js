@@ -1,3 +1,5 @@
+
+
 /* donor:search3-booking-summary.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let lastTour=null,lastFlight=null,selectedTotal=0;
@@ -61,4 +63,3 @@ window.addEventListener('resize',layoutSoon);
 document.addEventListener('click',e=>{if(e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-flight-continue button'))layoutSoon();});
 window.Search3BookingSummary={render,syncLayout,normalizedTotal,version:5};
 })();
-

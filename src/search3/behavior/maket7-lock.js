@@ -1,3 +1,5 @@
+
+
 /* donor:search3-maket7-lock.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 function ensureSelectedConfidenceGridLock(){
@@ -57,5 +59,3 @@ window.addEventListener('resize',desktopLock);
 window.addEventListener('v2:search-reset',lock);
 window.addEventListener('v2:results-rendered',desktopLock);
 })();
-
-

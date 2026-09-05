@@ -1,3 +1,5 @@
+
+
 /* donor:search3-tour-detail-rail.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let tour=null,flight=null,selectedTotal=0;
@@ -18,5 +20,3 @@ window.addEventListener('v2:flight-selected',e=>{flight=e.detail&&e.detail.fligh
 window.addEventListener('v2:tour-price-updated',e=>{selectedTotal=normalizedTotal(e.detail);setTimeout(render,0)});
 document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-tour-detail-rail__continue');if(!b)return;const root=document.getElementById('selectedTour'),target=root&&root.querySelector('.search3-flight-continue button');if(target)target.click();});
 })();
-
-

@@ -1,3 +1,5 @@
+
+
 /* donor:search3-final-sections.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let tour=null,flight=null;
@@ -11,5 +13,3 @@ function render(){const root=document.getElementById('selectedTour');if(!root||!
 window.addEventListener('v2:tour-selected',e=>{tour=e.detail&&e.detail.tour||null;flight=null;setTimeout(render,0)});
 window.addEventListener('v2:flight-selected',e=>{flight=e.detail&&e.detail.flight||null;setTimeout(render,0)});
 })();
-
-

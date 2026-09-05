@@ -1,3 +1,5 @@
+
+
 /* donor:search3-selected-tour-mobile.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 var selected=document.getElementById('selectedTour');if(!selected)return;
@@ -82,5 +84,3 @@ new MutationObserver(scheduleSync).observe(selected,{childList:true,subtree:true
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scheduleSync,{once:true});else scheduleSync();
 window.Search3SelectedTourMobile={sync,scheduleSync,continueFlow,normalizeLeadFields,normalizedTotal,selectedAmount,version:14};
 })();
-
-

@@ -1,3 +1,5 @@
+
+
 /* donor:search3-lead-flow.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 const cfg=window.V2_CONFIG||{};
@@ -30,5 +32,3 @@ window.addEventListener('v2:lead-error',e=>setState('error',e.detail||{}));
 document.addEventListener('click',e=>{const form=qs('#selectedTour .lead-form');if(!form)return;if(e.target.closest('.search3-stay-site')){clearState();leaveLead();const summary=qs('#selectedTour .search3-booking-summary');if(summary)summary.scrollIntoView({behavior:'smooth',block:'start'})}if(e.target.closest('.search3-edit-lead')){clearState();enterLead();const first=form.querySelector('input,textarea,select');if(first)first.focus()}if(e.target.closest('.search3-retry-lead')){clearState();enterLead();const btn=form.querySelector('button[type="submit"]');if(btn)btn.click()}});
 window.Search3LeadFlow={setState,clearState,enterLead,leaveLead,version:3};
 })();
-
-

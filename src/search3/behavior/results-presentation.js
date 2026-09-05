@@ -1,3 +1,5 @@
+
+
 /* Candidate-owned result and responsive safety layer. */
 (function () {
   'use strict';
@@ -397,5 +399,3 @@
     collapseAll: collapseAll
   });
 })();
-
-

@@ -1,3 +1,5 @@
+
+
 /* Shared presentation of supplier flight details. Match tour-controller-v4's
    placeholder semantics without rewriting flight data or lead fields. */
 (function () {
@@ -38,5 +40,3 @@
   }
   window.Search3FlightPresentation = Object.freeze({ placeholder, flightLabel, baggage });
 })();
-
-

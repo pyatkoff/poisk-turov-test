@@ -1,3 +1,5 @@
+
+
 /* Candidate-only human-readable selected-tour presentation. */
 (function () {
   'use strict';
@@ -153,5 +155,3 @@
     normalizedTotal: normalizedTotal
   });
 })();
-
-

@@ -1,3 +1,4 @@
+
 /* donor:search3-form-maket7.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Search 3 desktop convergence to maket7. Preview-scoped and visual only. */
 @media(min-width:761px){
@@ -83,5 +84,3 @@ html body.search3-candidate:not(.search3-hotel-tours-open) .search3-hotel-action
 html body.search3-candidate:not(.search3-hotel-tours-open) .search3-show-tours{min-height:38px!important;border-radius:7px!important}
 }
 @media(min-width:1261px){body.search3-candidate #tourSearch{min-height:0!important}}
-
-

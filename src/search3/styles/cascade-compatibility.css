@@ -1,3 +1,5 @@
+
+
 /* donor:search3-batch-iteration1.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Search 3 batch visual iteration 1. Preview-only presentation overrides. */
 
@@ -870,5 +872,3 @@ body.search3-candidate .search3-lead-status p{font-size:11px}
 body.search3-candidate .search3-messenger-actions,body.search3-candidate .search3-error-actions{display:grid;grid-template-columns:1fr}
 body.search3-candidate .search3-msg-btn,body.search3-candidate .search3-retry-lead,body.search3-candidate .search3-edit-lead,body.search3-candidate .search3-stay-site{width:100%;min-height:44px}
 }
-
-

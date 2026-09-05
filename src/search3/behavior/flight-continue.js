@@ -1,3 +1,5 @@
+
+
 /* donor:search3-flight-continue.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 function root(){return document.getElementById('selectedTour')}
@@ -11,4 +13,3 @@ window.addEventListener('v2:flight-selected',()=>setTimeout(ensure,0));
 window.addEventListener('v2:booking-review',()=>setTimeout(()=>{syncHeading(root());markDirections(root())},0));
 document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-flight-continue button');if(!b)return;e.preventDefault();const r=root();if(r&&r.classList.contains('search3-final-review'))exitReview();else enterReview();});
 })();
-

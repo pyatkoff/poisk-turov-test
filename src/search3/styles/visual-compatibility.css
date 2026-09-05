@@ -1,3 +1,4 @@
+
 /* donor:search3-screenshot-qa.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Search3 screenshot QA pass — desktop, cross-flow. */
 @media(min-width:1000px){
@@ -169,5 +170,3 @@
   html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .search3-summary-actions{display:block!important;margin-top:12px!important}
   html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .search3-summary-submit{width:100%!important;min-height:46px!important}
 }
-
-

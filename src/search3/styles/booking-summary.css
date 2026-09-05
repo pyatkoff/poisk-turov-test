@@ -1,3 +1,5 @@
+
+
 /* donor:search3-booking-summary.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Search3 lead form + real selected-tour summary, aligned to approved DS2 lead board. */
 .search3-lead-shell{display:grid;gap:14px;margin-top:12px}
@@ -51,5 +53,3 @@ body.search3-candidate #selectedTour .search3-booking-summary{order:2;padding:10
 .search3-booking-step.is-done span{border-color:var(--at-brand);color:var(--at-brand)}
 @media(min-width:1000px){body.search3-candidate #selectedTour .search3-booking-stepper{grid-column:1/-1;grid-row:2;margin:0 0 10px}body.search3-candidate #selectedTour .selected-picture{grid-row:3!important}body.search3-candidate #selectedTour .selected-head{grid-row:3!important}body.search3-candidate #selectedTour .facts{grid-row:4!important}}
 @media(max-width:640px){.search3-booking-stepper{order:1;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:8px 6px;margin-bottom:8px}.search3-booking-step{justify-content:center;gap:0;font-size:0}.search3-booking-step span{flex-basis:22px;width:22px;height:22px;font-size:8px}.search3-booking-step b{display:none}.search3-booking-step:not(:last-child):after{left:calc(50% + 11px);right:calc(-50% + 11px);top:11px}.search3-booking-stepper+ .selected-picture{order:2!important}}
-
-

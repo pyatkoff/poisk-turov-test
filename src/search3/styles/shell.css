@@ -1,3 +1,5 @@
+
+
 /* donor:search3-shell-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 
 /* Search3 shell convergence: factual header/footer plus final vertical rhythm. */
@@ -54,4 +56,3 @@ html body.search3-candidate.search3-selected-open .results-layout{display:none!i
 html body.search3-candidate:has(#selectedTour:not([hidden])) .search3-mobile-toolbar{display:none!important}
 html body.search3-candidate.search3-selected-open #selectedTour{margin-top:8px!important;margin-bottom:18px!important}
 }
-

@@ -1,3 +1,5 @@
+
+
 /* donor:search3-filter-rail-preview.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Search3 approved result-filter hierarchy. Preview only. */
 body.search3-candidate .results-layout{display:grid!important;grid-template-columns:210px minmax(0,1fr)!important;gap:14px!important;align-items:start!important;width:calc(100% - var(--at-page-gutter))!important;max-width:var(--at-shell)!important;margin:0 auto 56px!important}
@@ -110,5 +112,3 @@ body.search3-candidate .search3-filter-overlay{display:none}
  body.search3-candidate .results-filter-rail{width:100%!important;border-radius:0!important}
  body.search3-candidate .search3-filter-mobile-footer{width:100%}
 }
-
-

@@ -1,3 +1,5 @@
+
+
 /* donor:search3-results-top.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Search 3 compact post-search summary and controls. Preview only. */
 body.search3-candidate.search3-has-results .v2-product-hero{display:none!important}
@@ -78,5 +80,3 @@ body.search3-candidate .results-tools__actions{width:100%!important;align-items:
 body.search3-candidate .results-tools__actions label{flex:1!important}
 body.search3-candidate .results-tools select{width:100%!important}
 }
-
-

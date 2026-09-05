@@ -1,3 +1,5 @@
+
+
 /* donor:search3-results-preview.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Search 3 approved hotel-result hierarchy. Preview only. */
 body.search3-candidate #anytour-consultant-host,body.search3-candidate .mobile-search-sticky{display:none!important}
@@ -121,5 +123,3 @@ body.search3-candidate .mrf-bar,body.search3-candidate .mrf-sheet{display:none!i
 @media(max-width:760px){body.search3-candidate.search3-hotel-tours-open .v2-shell{border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;padding-bottom:0!important}body.search3-candidate.search3-hotel-tours-open .v2-shell::before,body.search3-candidate.search3-hotel-tours-open .v2-shell::after,body.search3-candidate.search3-hotel-tours-open .results-layout::before,body.search3-candidate.search3-hotel-tours-open .results-layout::after,body.search3-candidate.search3-hotel-tours-open #results::before,body.search3-candidate.search3-hotel-tours-open #results::after{content:none!important;display:none!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}body.search3-candidate.search3-hotel-tours-open .results-layout{display:block!important;margin:0 0 20px!important;padding:0!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}body.search3-candidate.search3-hotel-tours-open #results{padding:0!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}
 
 }
-
-

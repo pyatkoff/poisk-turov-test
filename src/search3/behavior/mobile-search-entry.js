@@ -1,3 +1,5 @@
+
+
 /* donor:search3-mobile-search-entry.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 var form=document.getElementById('tourSearch');if(!form)return;
@@ -30,5 +32,3 @@ window.addEventListener('v2:results-rendered',function(){setTimeout(sync,0);});
 window.addEventListener('v2:search-reset',function(){setTimeout(sync,0);});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync,{once:true});else sync();
 })();
-
-

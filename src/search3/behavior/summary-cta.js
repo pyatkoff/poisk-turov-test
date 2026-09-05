@@ -1,3 +1,5 @@
+
+
 /* donor:search3-summary-cta.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let relayoutTimer=0;
@@ -46,5 +48,3 @@ window.addEventListener('v2:tour-selected',()=>{const r=root();if(r){r.classList
 document.addEventListener('click',e=>{const summaryButton=e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-summary-submit');if(summaryButton){e.preventDefault();enterLead('summary');return}const back=e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-lead-back');if(back){e.preventDefault();leaveLead();}});
 window.Search3SummaryCta={ensure,enterLead,leaveLead,isolateRootChildren,version:8};
 })();
-
-

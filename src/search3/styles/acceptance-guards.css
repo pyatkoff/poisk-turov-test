@@ -1,3 +1,4 @@
+
 /* Candidate alignment guard: the mobile shell already contributes 12px per side. */
 @media(max-width:760px){
   html body.search3-candidate.search3-results-active #resultsSearchSummary,

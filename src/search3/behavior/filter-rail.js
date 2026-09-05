@@ -1,3 +1,5 @@
+
+
 /* donor:search3-filter-rail-preview.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 var rail=document.querySelector('.results-filter-rail'),form=document.getElementById('tourSearch');if(!rail||!form)return;
@@ -54,5 +56,3 @@ window.addEventListener('v2:results-rendered',function(e){if(applying)return;var
 window.addEventListener('v2:search-reset',function(){source=[];lastApplied=[];rangeMin=0;rangeMax=0;formDirty=false;drawerSnapshot=null;state={priceMax:0,seaMax:0,charter:false};removeSubpanel();renderRail();});
 renderRail();
 })();
-
-
