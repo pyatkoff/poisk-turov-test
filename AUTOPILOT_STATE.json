@@ -488,5 +488,12 @@
       "lead_submitted": false,
       "path": "LUXOR APART -> clarified flight -> summary -> form -> back to tour -> back to results"
     }
+  },
+  "observer_scope_refactor": {
+    "status": "PREPARED_AWAITING_CI",
+    "baseline": "80e3fb74175ed13b2d585de35c4f0880c84ab92e",
+    "scope": "Selected-tour mutations only sync busy state; result labels keep their own observer and lifecycle hooks. Busy attribute changes only when value changes. Resize batches geometry work per frame and preserves the active search editor.",
+    "verification": "Existing four-width browser coverage adds real viewport resizing with open editor, exact form-value retention, disabled/enabled result-label recovery and busy loading/ready transitions.",
+    "preview": "Still c93dad24 pending successful verification/publication."
   }
 }

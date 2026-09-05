@@ -86,6 +86,38 @@ function px(value) {
       }
       console.log('SEARCH3_CARD_READABILITY_OK ' + width + ' ' + JSON.stringify(state));
 
+      // Label recovery belongs to result mutations, including enabling a button.
+      await page.evaluate(() => {
+        const button = document.createElement('button');
+        button.id = 'label-recovery-fixture';
+        button.hidden = true;
+        button.dataset.search3ProductionLabel = 'Проверить тур';
+        button.textContent = 'Проверяем…';
+        button.disabled = true;
+        document.getElementById('results').appendChild(button);
+      });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+      if (await page.locator('#label-recovery-fixture').textContent() !== 'Проверяем…') throw new Error(width + ': disabled loading label overwritten');
+      await page.locator('#label-recovery-fixture').evaluate(button => { button.disabled = false; });
+      await page.waitForFunction(() => document.getElementById('label-recovery-fixture').textContent === 'Проверить тур');
+      await page.locator('#label-recovery-fixture').evaluate(button => button.remove());
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
+      // A real viewport resize must retain an explicitly opened search editor.
+      await page.locator('#resultsSearchEdit').click();
+      await page.waitForFunction(() => document.body.classList.contains('search3-editing-search'));
+      const editingFields = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
+      await page.setViewportSize({ width: width + 1, height: 860 });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      if (!await page.evaluate(() => document.body.classList.contains('search3-editing-search'))) throw new Error(width + ': resize closed search editor');
+      if (!await page.locator('#tourSearch').isVisible()) throw new Error(width + ': editor hidden after resize');
+      const afterResize = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
+      if (JSON.stringify(editingFields) !== JSON.stringify(afterResize)) throw new Error(width + ': resize changed search parameters');
+      await page.setViewportSize({ width, height: 900 });
+      // Restore the result fixture for the independent calendar checks below.
+      await page.evaluate(() => document.body.classList.remove('search3-editing-search'));
+      await page.waitForFunction(() => !document.body.classList.contains('search3-editing-search'));
+
       // Exercise the production calendar module inside the actual Search3 shell.
       // Capture submissions locally: no Tourvisor search or lead is sent by this fixture.
       await page.evaluate(() => {
@@ -140,6 +172,12 @@ function px(value) {
       if (JSON.stringify(preservedBefore) !== JSON.stringify(preservedAfter)) throw new Error(width + ': calendar changed other search parameters ' + JSON.stringify({ before: preservedBefore, after: preservedAfter }));
       const resultCountBeforeTour = await page.locator('#results .hotel-card').count();
       const searchValuesBeforeTour = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
+      await page.evaluate(() => {
+        const selected = document.getElementById('selectedTour');
+        selected.innerHTML = '<div class="selected-loading">Загружаем тур…</div>';
+        selected.hidden = false;
+      });
+      await page.waitForFunction(() => document.getElementById('selectedTour').getAttribute('aria-busy') === 'true');
       // Let the canonical selected-tour observer derive the shell state. A body
       // class alone races its next sync because an empty/hidden tour is closed.
       await page.evaluate(() => {
@@ -149,6 +187,7 @@ function px(value) {
         window.dispatchEvent(new CustomEvent('v2:selected-tour-opened'));
       });
       await page.waitForSelector('#selectedTour');
+      await page.waitForFunction(() => document.getElementById('selectedTour').getAttribute('aria-busy') === 'false');
       await page.waitForFunction(() => document.body.classList.contains('search3-selected-open'));
       if (await calendar.isVisible()) throw new Error(width + ': results calendar leaks into selected tour');
       for (const selector of ['.results-layout', '#resultsSearchSummary', '#resultsTools']) {

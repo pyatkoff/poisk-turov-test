@@ -26,7 +26,8 @@
   }
 
   function syncBusy() {
-    selected.setAttribute('aria-busy', isTourLoading() ? 'true' : 'false');
+    var next = isTourLoading() ? 'true' : 'false';
+    if (selected.getAttribute('aria-busy') !== next) selected.setAttribute('aria-busy', next);
   }
 
   function prepareSelectedContext() {
@@ -96,10 +97,9 @@
     window.setTimeout(function () { window.requestAnimationFrame(settle); }, 0);
   }
 
-  new MutationObserver(function () {
-    syncBusy();
-    restoreProductionLabels();
-  }).observe(selected, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+  // Result button labels have their own observer below. Tour mutations only
+  // change busy state; do not rescan every hotel button for each flight update.
+  new MutationObserver(syncBusy).observe(selected, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
 
   new MutationObserver(restoreProductionLabels).observe(results, {
     childList: true,

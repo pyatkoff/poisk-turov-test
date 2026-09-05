@@ -20,7 +20,16 @@ function update(items){items=Array.isArray(items)?items:[];var hotels=items.leng
 window.addEventListener('v2:results-rendered',function(e){update(e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[]);});
 window.addEventListener('v2:search-reset',function(){document.body.classList.remove('search3-has-results','search3-editing-search');heading.textContent='Предложения';summary.textContent='Актуальные варианты';var meta=tools.querySelector('.search3-results-meta');if(meta)meta.remove();resetIntro();syncDesktopGeometry(false);});
 if(results){new MutationObserver(function(){requestAnimationFrame(syncResultsState);}).observe(results,{childList:true});syncResultsState();}
-window.addEventListener('resize',function(){requestAnimationFrame(syncResultsState);});
+// Resizing only changes geometry; it must not close an active search edit.
+var resizeQueued=false;
+window.addEventListener('resize',function(){
+  if(resizeQueued)return;
+  resizeQueued=true;
+  requestAnimationFrame(function(){
+    resizeQueued=false;
+    syncDesktopGeometry(!!(results&&results.querySelector('.hotel-card')));
+  });
+});
 if(edit)edit.addEventListener('click',function(){document.body.classList.add('search3-editing-search');form.scrollIntoView({behavior:'smooth',block:'start'});var focusTarget=form.querySelector('select,input:not([type="hidden"]),button');if(focusTarget)setTimeout(function(){try{focusTarget.focus({preventScroll:true});}catch(_e){focusTarget.focus();}},250);});
 form.addEventListener('change',syncRoute);syncRoute();
 })();
