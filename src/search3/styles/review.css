@@ -37,10 +37,10 @@ body.search3-candidate #selectedTour .search3-booking-summary__price-note{font-s
 body.search3-candidate #selectedTour .lead-form button[type=submit]{min-height:48px!important;background:#ff5a0a!important;border-color:#ff5a0a!important;border-radius:10px!important}
 body.search3-candidate #selectedTour.search3-final-review .lead-form.search3-has-summary-submit:not([data-search3-lead-state])>button[type=submit]{display:none!important}
 body.search3-candidate #selectedTour.search3-final-review .search3-review-heading{grid-column:1/-1!important;grid-row:3!important;margin-top:2px!important}
-body.search3-candidate #selectedTour.search3-final-review .selected-picture{grid-row:4!important;height:176px!important;border-radius:14px 0 0 14px!important}
-body.search3-candidate #selectedTour.search3-final-review .selected-head{grid-row:4!important;min-height:176px!important;border-radius:0 14px 14px 0!important;padding:18px 20px!important}
-body.search3-candidate #selectedTour.search3-final-review .selected-head h2{font-size:22px!important}
-body.search3-candidate #selectedTour.search3-final-review .selected-price{font-size:22px!important}
+body.search3-candidate #selectedTour.search3-final-review .selected-picture{grid-row:4!important;border-radius:14px 0 0 14px!important}
+body.search3-candidate #selectedTour.search3-final-review .selected-head{grid-row:4!important;border-radius:0 14px 14px 0!important;padding:18px 20px!important}
+
+
 body.search3-candidate #selectedTour.search3-final-review .facts{grid-row:5!important;border-radius:12px!important}
 body.search3-candidate #selectedTour.search3-final-review .search3-booking-summary{border-color:#dfe5ef!important;box-shadow:0 8px 24px rgba(31,52,109,.06)!important}
 }

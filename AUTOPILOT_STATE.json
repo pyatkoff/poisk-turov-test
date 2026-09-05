@@ -654,5 +654,15 @@
     "ci_success_count": 23,
     "visual_run": 33976701799,
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
+  },
+  "presentation_refactor_checkpoint": {
+    "baseline": "91a7ff5df1fb117af972f517bc188e7597a6ee33",
+    "evidence": "docs/project/search3-compatibility-cleanup.json",
+    "public_css_sha256": "1756a00700f2c2f7b6ee0aa83cf52babaa76f02ecf241cbebf9b278c6d009979",
+    "scope": "75 shadowed numeric-px declarations and 17 emptied rules removed from six non-cascade sources",
+    "source_validation": "LOCAL_BUILD_REGRESSION_CSSOM_AND_OFFLINE_EQUIVALENCE_VERIFIED",
+    "preview_updated": false,
+    "production_updated": false,
+    "next_action": "Read latest PR #1334 CI and #996 before the next independent refactor. Do not repeat these 75 removals or the earlier cascade cleanup. Production visual-approval lock remains."
   }
 }

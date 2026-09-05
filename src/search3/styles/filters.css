@@ -15,9 +15,9 @@ body.search3-candidate .search3-filter-section:first-of-type{padding-top:2px!imp
 body.search3-candidate .search3-filter-section h4{margin:0 0 9px!important;color:#344054!important;font-size:9px!important;line-height:1!important;font-weight:950!important;text-transform:none!important}
 body.search3-candidate .results-filter-rail .filter-range{display:block!important;margin:0 0 8px!important;padding:0!important;border:0!important}
 body.search3-candidate .results-filter-rail .filter-range>span{display:block!important;color:#475467!important;font-size:8px!important;font-weight:850!important}
-body.search3-candidate .results-filter-rail .filter-range>small{margin:4px 0 7px!important;font-size:8px!important;font-weight:850!important}
+body.search3-candidate .results-filter-rail .filter-range>small{margin:4px 0 7px!important;font-weight:850!important}
 body.search3-candidate .results-filter-rail input[type=range]{height:16px!important;margin:0!important;accent-color:#0066ff!important}
-body.search3-candidate .results-filter-rail .filter-option{min-height:24px!important;margin:3px 0!important;font-size:8px!important;}
+body.search3-candidate .results-filter-rail .filter-option{margin:3px 0!important;}
 body.search3-candidate .results-filter-rail input[type=radio]{appearance:none!important;display:grid!important;place-items:center!important;width:14px!important;height:14px!important;flex:0 0 14px!important;margin:0!important;border:1.5px solid #b9c5d6!important;border-radius:50%!important;background:#fff!important}
 body.search3-candidate .results-filter-rail input[type=radio]:checked{border:4px solid #1463ff!important}
 body.search3-candidate .results-filter-rail input[type=checkbox]{width:14px!important;height:14px!important;flex:0 0 14px!important;margin:0!important;accent-color:#1463ff!important}
@@ -47,7 +47,7 @@ body.search3-candidate .search3-filter-scenarios,body.search3-candidate .search3
  body.search3-candidate .search3-filter-edit-row i{font-size:17px!important}
  body.search3-candidate .filter-rail-result{padding-top:14px!important;font-size:10px!important}
  body.search3-candidate .filter-rail-result strong{font-size:13px!important}
- body.search3-candidate .search3-filter-mobile-apply{min-height:50px!important;background:#0066ff!important;color:#fff!important;font-size:12px!important;font-weight:900!important}
+ body.search3-candidate .search3-filter-mobile-apply{background:#0066ff!important;color:#fff!important;font-weight:900!important}
 }
 
 
