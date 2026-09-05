@@ -42,7 +42,7 @@ Object.defineProperty(selectedDataset, 'search3FlightFallback', {
   get() { return fallbackDataValue; },
   set(value) { fallbackDataValue = value; fallbackDataWrites += 1; }
 });
-const fallbackButton = { textContent: 'Далее: итог тура' };
+const fallbackButton = { textContent: 'Далее: итог тура', click() {} };
 const fallbackAction = {
   classList: { add() {} },
   querySelector(selector) { return selector === 'button' ? fallbackButton : null; }
@@ -195,7 +195,18 @@ assert.equal(disclosureHiddenWrites, 0, 'stable disclosure visibility is not rew
 assert.equal(disclosureAttributeWrites, 2, 'stable disclosure aria attributes are written only once');
 assert.equal(disclosureDataWrites, 1, 'stable disclosure dataset marker is written only once');
 
+flightRootReads = 0;
+window.Search3SelectedFlowV2.toggleFlightDisclosure({
+  closest() { return disclosureFlights; },
+  focus() {}
+});
+assert.equal(flightRootReads, 0, 'disclosure toggle reuses its closest flight root');
+
 flightDataPresent = false;
+flightRootReads = 0;
+assert.equal(window.Search3SelectedFlowV2.activateReview(), true, 'no-flight review activation succeeds');
+assert.equal(flightRootReads, 1, 'review activation reuses one flight root for state and action');
+
 flightRootReads = 0;
 window.Search3SelectedFlowV2.sync();
 window.Search3SelectedFlowV2.sync();

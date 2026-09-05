@@ -142,8 +142,9 @@
   }
 
   function activateReview(event) {
-    if (!noFlightState() || selected.classList.contains('search3-final-review')) return false;
-    var review = ensureReviewAction();
+    var flights = selected.querySelector('.tour-flights');
+    if (!noFlightState(flights) || selected.classList.contains('search3-final-review')) return false;
+    var review = ensureReviewAction(flights);
     if (!review) return false;
     if (event) {
       event.preventDefault();
@@ -245,7 +246,7 @@
     if (!variants) return;
     if (variants.dataset.search3FlightsExpanded === '1') delete variants.dataset.search3FlightsExpanded;
     else variants.dataset.search3FlightsExpanded = '1';
-    syncFlightDisclosure();
+    syncFlightDisclosure(flights);
     try { button.focus({ preventScroll: true }); } catch (_error) { button.focus(); }
   }
 
