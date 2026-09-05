@@ -368,3 +368,28 @@ evidence. Fresh browser reload still serves23993e90 JS6c6cb045c47bfa98.
 Main remainsfa58a0cba6dcfc8624d98c20d64fa06330eae309. No production switch.
 Next: publish this exact checked package when SSH transport is stable, verify
 final protected fingerprint and live editor. Do not redo completed refactoring.
+
+
+## 2026-09-05 — grid published; live no-flight lead copy corrected
+
+Supersedes the previous SSH-blocked checkpoint. Source16e326eb published via
+#1367/run33975780366; evidence9972265810. Reusing one SSH connection resolved
+this publication failure without server changes; server root cause unproven.
+Live editor at1363: date565px/input267px/nights276.5px, no overflow and parameters
+preserved. Existing visual coverage includes375/430/1024/1348/1440.
+
+A real SUN VERA unavailable-flight flow exposed misleading Выберите рейс in
+the lead sidebar. Source3e86e319f4d54f1fb16ddb9643036fed59bd1bda now displays
+Рейс уточнит менеджер on lead entry without a flight. Existing layout events
+sync the label; no new observer or price/API/lead mapping changes. Existing
+fallback browser test asserts the label. All23 applicable gates pass, including
+visual33975939105 and flight33975939063.
+
+Artifact9972310233/build33975939133 verified all715 files; only
+search3-results-filters-v1.js changes from16e326eb. Published via
+#1368/run33976084827; evidence9972356605. All9 routes pass, preview lead403,
+noindex, internal PHP denied, rollback retained. All13 protected fingerprints
+equal before/after/final. Live JS e1d82b95bd96bec4; SUN VERA10.09.2026,7nights,
+2adults unavailable-flight -> summary -> lead verified and screenshot inspected.
+No lead sent. Main/production unchanged. Physical Safari, approved legal content
+and owner visual approval remain; no production migration authorized.
