@@ -10,29 +10,37 @@ All declarations remain active unless a separate cleanup proves otherwise.
 The baseline is the original cascade blob from `c2212d3a` (also `f729158e`):
 78,306 bytes, Git blob `9b3583c4261dda23109b369595cb955aa473b7fb`.
 The largest physical module is now `search3-convergence.css`, 16,945 bytes.
-The first module retains the original two leading LF bytes. Other boundaries
-start at the next donor marker; all trailing bytes belong to the previous part.
+Every module ends with exactly one LF. The original two blank separator LF bytes
+belong to the beginning of the following module, before its donor marker. The
+first module retains the original two leading LF bytes. Concatenation is exact;
+per-module boundaries do not have to start at the donor marker itself.
 
 The first split in `6e87c0fc` lost nine LF bytes: one at the end of each module
 except iteration1, plus one between the desktop and mobile convergence blocks.
-Repair restores those bytes, not the expected hashes. No generated asset or
-protected-runtime fingerprint changes are needed for this repair.
+`f5f616a4` restored those bytes and passed core, but whole-site boundary CI also
+runs `git diff --check` against main. Its preserved blank lines at EOF failed
+that lint. Moving the two separator LF bytes to the next module's beginning
+satisfies both checks without changing CSS or disabling whitespace validation.
+No generated asset, import hash or protected-runtime fingerprint changes are
+needed for either repair.
 
-For any later source-only split, slice `read_bytes()` by marker byte offsets.
+For later source-only splits, slice `read_bytes()` using verified byte offsets.
 Do not trim, normalize newlines, or reconstruct text with `splitlines()`/join.
-Verify the concatenation before creating a commit. A hash failure is not a reason
-to bless new generated output during a source-only move.
+Preserve every byte, assigning separator whitespace to the next module as above.
+Verify concatenation and whitespace lint before creating a commit. A hash failure
+is not a reason to bless new generated output during a source-only move.
 
 ```sh
 python3 scripts/build/search3_cascade_sections.py --check
 python3 scripts/build/search3_cascade_sections.py --json
 python3 scripts/build/search3_assets.py --check
 python3 -B tests/search3_production_presentation_test.py
+git diff --check main HEAD
 ```
 
-The presentation suite tests lost seam LF, LF-to-CRLF conversion and same-length
-CSS corruption in temporary copies. The byte-count and content-hash guards must
-reject all three; checked-in files are never mutated by those tests.
+The presentation suite checks module EOFs, lost seam LF, LF-to-CRLF conversion
+and same-length CSS corruption. Corruption tests mutate temporary copies only;
+the byte-count and content-hash guards must reject all three kinds of drift.
 
 Actual declaration cleanup is a separate change: prove the removed rules are
 inert or preserve cascade behavior, review responsive evidence, then update the

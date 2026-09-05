@@ -128,5 +128,3 @@ body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!importa
  body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route span{font-size:9px!important}
  body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__edit{grid-column:2!important;grid-row:1!important;min-width:104px!important;border:0!important;border-left:1px solid #edf0f5!important;border-radius:0!important}
 }
-
-

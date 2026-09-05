@@ -26,6 +26,14 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             '--check',
         ], check=True)
 
+    def test_cascade_module_eof_contract(self):
+        contract = json.loads((ROOT / 'docs/project/search3-cascade-sections.json').read_text())
+        for name in contract['sections']:
+            with self.subTest(name=name):
+                raw = (ROOT / contract['source_root'] / name).read_bytes()
+                self.assertTrue(raw.endswith(b'\n'), name)
+                self.assertFalse(raw.endswith(b'\n\n'), name)
+
     def test_cascade_split_rejects_byte_drift(self):
         spec = importlib.util.spec_from_file_location(
             'search3_cascade_sections', ROOT / 'scripts/build/search3_cascade_sections.py')
