@@ -115,8 +115,8 @@
     return noFlightMessage(text(flights.querySelector('.selected-loading')));
   }
 
-  function ensureReviewAction() {
-    var flights = selected.querySelector('.tour-flights');
+  function ensureReviewAction(flights) {
+    flights = flights || selected.querySelector('.tour-flights');
     if (!flights) return null;
     var action = flights.querySelector('.search3-flight-continue');
     if (!action) {
@@ -272,7 +272,7 @@
     if (noFlight) {
       selected.classList.add('search3-flight-fallback');
       selected.dataset.search3FlightFallback = '1';
-      ensureReviewAction();
+      ensureReviewAction(flights);
       ensureRailAction();
     } else {
       clearFallback();

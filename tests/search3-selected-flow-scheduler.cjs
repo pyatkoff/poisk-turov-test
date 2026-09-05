@@ -33,9 +33,18 @@ const priceBox = {
     }
   }
 };
+let flightDataPresent = true;
+const fallbackButton = { textContent: 'Далее: итог тура' };
+const fallbackAction = {
+  classList: { add() {} },
+  querySelector(selector) { return selector === 'button' ? fallbackButton : null; }
+};
 const flights = {
   querySelector(selector) {
-    if (selector === '.flight-variant,.flight-error') return {};
+    if (selector === '.flight-variant,.flight-error') return flightDataPresent ? {} : null;
+    if (selector === '.selected-loading') return { textContent: 'Данные по рейсам пока не получены.' };
+    if (selector === '.search3-flight-continue') return fallbackAction;
+    if (selector === '.flight-variants' || selector === '.search3-flight-show-all') return null;
     return null;
   }
 };
@@ -169,4 +178,9 @@ assert.equal(disclosureLookups, 2, 'each disclosure sync performs one show-all l
 assert.equal(disclosureHiddenWrites, 0, 'stable disclosure visibility is not rewritten');
 assert.equal(disclosureAttributeWrites, 2, 'stable disclosure aria attributes are written only once');
 
-console.log('PASS: selected-flow coalesces updates and avoids duplicate price/disclosure DOM writes');
+flightDataPresent = false;
+flightRootReads = 0;
+window.Search3SelectedFlowV2.sync();
+assert.equal(flightRootReads, 1, 'no-flight fallback reuses the sync flight root for review action');
+
+console.log('PASS: selected-flow coalesces updates and reuses stable disclosure/fallback DOM state');
