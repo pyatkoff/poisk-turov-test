@@ -414,3 +414,18 @@ Live JS43458284018690c6: SUN VERA10.09.2026/7nights/2adults -> unavailable
 flights -> review -> lead shows one summary,96848 RUB and manager clarification.
 Desktop screenshot inspected; no lead submitted. Main/production unchanged.
 PR1334 description synchronized; physical Safari/legal/owner approval remain.
+
+
+## 2026-09-05 — results geometry scheduler published
+
+39d376436e3553d16755a7da1c77cb4c3f5156bf unifies results event, child-list
+mutation and resize geometry into one frame. Only result mutations synchronize
+state; resize preserves editing. Geometry reads current cards after reset.
+Focused regression checks one measurement, editor state, reset and subsequent
+results.23 applicable CI pass; visual33976701799/editor375+1348 inspected.
+Artifact9972524166/build33976701761 verified715 payload hashes; JS only differs.
+Published #1370/run33976775542; evidence9972545166:9 routes, isolation and
+rollback pass,13 production fingerprints before=after=final.
+Live100 hotels, editor opens, dates2026-09-06/19 retained, no horizontal overflow;
+JS37813fa396116719. No lead submitted or production migration. Source README
+now documents update ownership; physical Safari/legal/owner acceptance remain.

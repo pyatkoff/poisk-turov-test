@@ -55,3 +55,16 @@ A subsequent CSS-only consolidation removes proven earlier duplicate declaration
 while preserving the final cascade. Its audit is in
 `docs/project/search3-css-deduplication.json`; remaining compatibility rules are
 still active. Public build paths and module order are unchanged.
+
+## Update ownership
+
+`booking-summary.js` coalesces tour/flight/price/layout events into one deferred
+update; full render includes layout and consumes the latest values.
+`results-top.js` owns one animation-frame queue for result geometry. Result
+mutations may synchronize search state; resize must remain geometry-only so
+an open search editor is preserved. Queued geometry reads current cards, not
+an item count captured before reset. Keep these queues local to their owners;
+do not add a global scheduler or another observer for the same work.
+
+Regression adapters: `tests/search3-booking-summary.cjs` and
+`tests/search3-results-scheduler.cjs`, run by the presentation test suite.

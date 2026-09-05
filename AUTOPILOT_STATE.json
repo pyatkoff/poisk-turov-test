@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T16:01:34.288459+00:00",
+  "updated_at": "2026-09-05T16:07:24.244885+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,7 +15,7 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Published summary event coalescing b1c8597d;23 gates passed,715 payload hashes checked, live lead path verified. Updated stale release PR description.",
+    "last_material_progress": "Published39d37643 results geometry queue;23 CI passed, live editor verified. Documented local update ownership and scheduler regressions.",
     "next_action": "Continue only confirmed presentation defects/source ownership work. Physical iPhone/Safari acceptance, approved legal content and concrete owner visual approval remain before production; do not repeat completed grid/observer/copy changes or deploy.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
@@ -64,19 +64,18 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_SUMMARY_EVENT_COALESCING",
+    "id": "S3_RESULTS_GEOMETRY_QUEUE",
     "status": "PUBLISHED_LIVE_VERIFIED",
-    "implementation_sha": "b1c8597da617eacfab6416da542cf6280537373d",
-    "artifact_id": 9972437784,
-    "artifact_run": 33976375851,
-    "deploy_pr": 1369,
-    "deploy_run": 33976463607,
-    "evidence_artifact": 9972462388,
+    "implementation_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+    "artifact_id": 9972524166,
+    "artifact_run": 33976701761,
+    "deploy_pr": 1370,
+    "deploy_run": 33976775542,
+    "evidence_artifact": 9972545166,
     "ci_success_count": 23,
-    "visual_run": 33976375814,
-    "flight_run": 33976375786,
-    "verification": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent.",
-    "title": "Coalesce booking summary updates and avoid unchanged title mutations",
+    "visual_run": 33976701799,
+    "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719.",
+    "title": "Unify results geometry scheduling",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996
@@ -173,15 +172,15 @@
       "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "b1c8597da617eacfab6416da542cf6280537373d",
-      "release_merge_sha": "b1c8597da617eacfab6416da542cf6280537373d",
-      "source_tree": "94ea6d8c99aeecc8a26935d248c30299d62fe9c0",
-      "exact_artifact": 9972437784,
-      "artifact_digest": "sha256:5f1cf31036f29b825aaadf5634f91a487014c04097183b91d5df1ffad5ee5e5c",
-      "superseded_artifact": 9972310233,
+      "implementation_verified_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+      "release_merge_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+      "source_tree": "39e986647c51b893e4051d7805aee74d46e5ae73",
+      "exact_artifact": 9972524166,
+      "artifact_digest": "sha256:8e00b4db62bd7dfd91dae7e33ef71553f91adb2aa009477e7a4ca3e22130b1ed",
+      "superseded_artifact": 9972437784,
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "preview_deploy_run": 33976463607,
-      "preview_deploy_pr": 1369,
+      "preview_deploy_run": 33976775542,
+      "preview_deploy_pr": 1370,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -210,8 +209,8 @@
         "lead sidebar manager clarification when proceeding without flight"
       ],
       "preview_deploy_workflow_conclusion": "success",
-      "final_verification_run": 33976463607,
-      "final_verification_artifact": 9972462388
+      "final_verification_run": 33976775542,
+      "final_verification_artifact": 9972545166
     },
     "production": {
       "status": "OWNER_VISUAL_APPROVAL_PENDING",
@@ -468,10 +467,23 @@
       "visual_run": 33976375814,
       "flight_run": 33976375786,
       "verification": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent."
+    },
+    "results_geometry_queue": {
+      "id": "S3_RESULTS_GEOMETRY_QUEUE",
+      "status": "PUBLISHED_LIVE_VERIFIED",
+      "implementation_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+      "artifact_id": 9972524166,
+      "artifact_run": 33976701761,
+      "deploy_pr": 1370,
+      "deploy_run": 33976775542,
+      "evidence_artifact": 9972545166,
+      "ci_success_count": 23,
+      "visual_run": 33976701799,
+      "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
     }
   },
-  "last_verified_commit": "b1c8597da617eacfab6416da542cf6280537373d",
-  "last_verified_commit_scope": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent.",
+  "last_verified_commit": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+  "last_verified_commit_scope": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -629,5 +641,18 @@
     "visual_run": 33976375814,
     "flight_run": 33976375786,
     "verification": "Event bursts render once with latest tour/flight/price; layout-only updates do not rebuild. Existing mobile375 and desktop1440 flight tests pass. Live SUN VERA -> no flights -> review -> lead: one summary,96848 RUB, manager clarification; screenshot inspected, no lead sent."
+  },
+  "results_geometry_queue": {
+    "id": "S3_RESULTS_GEOMETRY_QUEUE",
+    "status": "PUBLISHED_LIVE_VERIFIED",
+    "implementation_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+    "artifact_id": 9972524166,
+    "artifact_run": 33976701761,
+    "deploy_pr": 1370,
+    "deploy_run": 33976775542,
+    "evidence_artifact": 9972545166,
+    "ci_success_count": 23,
+    "visual_run": 33976701799,
+    "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   }
 }
