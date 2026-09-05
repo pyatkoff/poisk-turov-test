@@ -73,6 +73,14 @@
     if (node && node.getAttribute(name) !== value) node.setAttribute(name, value);
   }
 
+  function removeAttribute(node, name) {
+    if (node && node.hasAttribute(name)) node.removeAttribute(name);
+  }
+
+  function setHidden(node, value) {
+    if (node && node.hidden !== value) node.hidden = value;
+  }
+
   function money(value) {
     var amount = number(value);
     return amount > 0 ? new Intl.NumberFormat('ru-RU').format(amount) + ' ₽' : '';
@@ -160,7 +168,7 @@
     }
     setText(action, flowLabel('flight'));
     action.dataset.search3SelectedFlowAction = '1';
-    action.setAttribute('aria-label', 'Перейти к итогу тура без выбранного рейса');
+    setAttribute(action, 'aria-label', 'Перейти к итогу тура без выбранного рейса');
     bindAction(action);
   }
 
@@ -171,10 +179,10 @@
     bindAction(button);
     if (noFlight) {
       button.dataset.search3SelectedFlowAction = '1';
-      button.setAttribute('aria-label', 'Перейти к итогу тура без выбранного рейса');
+      setAttribute(button, 'aria-label', 'Перейти к итогу тура без выбранного рейса');
     } else {
       delete button.dataset.search3SelectedFlowAction;
-      button.removeAttribute('aria-label');
+      removeAttribute(button, 'aria-label');
     }
   }
 
@@ -216,10 +224,10 @@
     });
 
     var action = disclosureButton(flights);
-    action.hidden = selected.classList.contains('search3-final-review');
-    action.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-    if (variantsBox.id) action.setAttribute('aria-controls', variantsBox.id);
-    else action.removeAttribute('aria-controls');
+    setHidden(action, selected.classList.contains('search3-final-review'));
+    setAttribute(action, 'aria-expanded', expanded ? 'true' : 'false');
+    if (variantsBox.id) setAttribute(action, 'aria-controls', variantsBox.id);
+    else removeAttribute(action, 'aria-controls');
     setText(action, expanded ? 'Скрыть дополнительные варианты' : 'Показать все ' + variants.length + ' вариантов');
   }
 

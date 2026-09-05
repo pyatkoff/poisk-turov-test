@@ -119,6 +119,9 @@ assert.equal(
 );
 
 let disclosureLookups = 0;
+let disclosureAttributeWrites = 0;
+let disclosureHiddenWrites = 0;
+const disclosureAttributes = new Map();
 const variants = Array.from({ length: 7 }, () => ({
   hidden: false,
   classList: { contains() { return false; } },
@@ -130,11 +133,21 @@ const variantsBox = {
   querySelectorAll() { return variants; },
   removeAttribute() {}
 };
+let disclosureHidden = false;
 const disclosure = {
-  hidden: false,
   textContent: '',
-  setAttribute() {},
-  removeAttribute() {}
+  get hidden() { return disclosureHidden; },
+  set hidden(value) { disclosureHidden = value; disclosureHiddenWrites += 1; },
+  getAttribute(name) { return disclosureAttributes.has(name) ? disclosureAttributes.get(name) : null; },
+  hasAttribute(name) { return disclosureAttributes.has(name); },
+  setAttribute(name, value) {
+    disclosureAttributes.set(name, value);
+    disclosureAttributeWrites += 1;
+  },
+  removeAttribute(name) {
+    disclosureAttributes.delete(name);
+    disclosureAttributeWrites += 1;
+  }
 };
 const disclosureFlights = {
   querySelector(selector) {
@@ -150,7 +163,10 @@ const disclosureFlights = {
 };
 
 window.Search3SelectedFlowV2.syncFlightDisclosure(disclosureFlights);
+window.Search3SelectedFlowV2.syncFlightDisclosure(disclosureFlights);
 
-assert.equal(disclosureLookups, 1, 'expanded disclosure reuses a single show-all lookup');
+assert.equal(disclosureLookups, 2, 'each disclosure sync performs one show-all lookup');
+assert.equal(disclosureHiddenWrites, 0, 'stable disclosure visibility is not rewritten');
+assert.equal(disclosureAttributeWrites, 2, 'stable disclosure aria attributes are written only once');
 
 console.log('PASS: selected-flow coalesces updates and avoids duplicate price/disclosure DOM writes');
