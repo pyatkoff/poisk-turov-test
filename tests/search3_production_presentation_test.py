@@ -13,7 +13,8 @@ MANIFEST = json.loads((ROOT / 'docs/project/search3-production-import.json').rea
 class Search3ProductionPresentationTest(unittest.TestCase):
     @unittest.skipUnless(shutil.which('node'), 'Node required for summary event regression')
     def test_booking_summary_event_bursts(self):
-        subprocess.run(['node', str(ROOT / 'tests/search3-booking-summary.cjs')], check=True)
+        for name in ('search3-booking-summary.cjs', 'search3-results-scheduler.cjs'):
+            subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
 
     def test_reviewed_assets_and_protected_runtime(self):
         self.assertEqual(len(MANIFEST['assets']), 8)

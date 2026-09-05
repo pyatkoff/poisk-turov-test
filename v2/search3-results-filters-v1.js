@@ -158,20 +158,25 @@ function ensureMeta(){var existing=tools.querySelector('.search3-results-meta');
 function syncToolsFlow(){tools.style.setProperty('position','static','important');tools.style.setProperty('top','auto','important');tools.style.setProperty('z-index','auto','important');tools.style.setProperty('transform','none','important');tools.style.setProperty('-webkit-backdrop-filter','none','important');tools.style.setProperty('backdrop-filter','none','important');}
 function syncDesktopGeometry(has){syncToolsFlow();if(window.innerWidth<1000){tools.style.removeProperty('width');tools.style.removeProperty('margin-left');tools.style.removeProperty('margin-right');tools.style.removeProperty('padding-left');tools.style.removeProperty('padding-right');return;}if(has&&results){var shell=tools.parentElement,rr=results.getBoundingClientRect(),sr=shell&&shell.getBoundingClientRect();if(sr&&rr.width>0){tools.style.setProperty('box-sizing','border-box','important');tools.style.setProperty('width',rr.width+'px','important');tools.style.setProperty('margin-left',Math.max(0,rr.left-sr.left)+'px','important');tools.style.setProperty('margin-right','0','important');tools.style.setProperty('padding-left','9px','important');tools.style.setProperty('padding-right','9px','important');}}else{tools.style.removeProperty('width');tools.style.removeProperty('margin-left');tools.style.removeProperty('margin-right');tools.style.removeProperty('padding-left');tools.style.removeProperty('padding-right');}}
 function syncResultsState(){var has=!!(results&&results.querySelector('.hotel-card'));document.body.classList.toggle('search3-has-results',has);if(has){document.body.classList.remove('search3-editing-search');syncRoute();}else resetIntro();syncDesktopGeometry(has);}
-function update(items){items=Array.isArray(items)?items:[];var hotels=items.length,tours=toursCount(items);heading.textContent='Найдено '+tours+' '+word(tours,'тур','тура','туров');summary.textContent=hotels?hotels+' '+word(hotels,'отель','отеля','отелей')+' · актуальные варианты':'Актуальные варианты';var meta=ensureMeta(),h=meta.querySelector('[data-s3-hotels]'),t=meta.querySelector('[data-s3-tours]');if(h)h.textContent=hotels+' '+word(hotels,'отель','отеля','отелей');if(t)t.textContent=tours+' '+word(tours,'тур','тура','туров');document.body.classList.toggle('search3-has-results',hotels>0);document.body.classList.remove('search3-editing-search');if(hotels>0)syncRoute();else resetIntro();requestAnimationFrame(function(){syncDesktopGeometry(hotels>0);});}
+function update(items){items=Array.isArray(items)?items:[];var hotels=items.length,tours=toursCount(items);heading.textContent='Найдено '+tours+' '+word(tours,'тур','тура','туров');summary.textContent=hotels?hotels+' '+word(hotels,'отель','отеля','отелей')+' · актуальные варианты':'Актуальные варианты';var meta=ensureMeta(),h=meta.querySelector('[data-s3-hotels]'),t=meta.querySelector('[data-s3-tours]');if(h)h.textContent=hotels+' '+word(hotels,'отель','отеля','отелей');if(t)t.textContent=tours+' '+word(tours,'тур','тура','туров');document.body.classList.toggle('search3-has-results',hotels>0);document.body.classList.remove('search3-editing-search');if(hotels>0)syncRoute();else resetIntro();scheduleResultsSync(false);}
 window.addEventListener('v2:results-rendered',function(e){update(e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[]);});
 window.addEventListener('v2:search-reset',function(){document.body.classList.remove('search3-has-results','search3-editing-search');heading.textContent='Предложения';summary.textContent='Актуальные варианты';var meta=tools.querySelector('.search3-results-meta');if(meta)meta.remove();resetIntro();syncDesktopGeometry(false);});
-if(results){new MutationObserver(function(){requestAnimationFrame(syncResultsState);}).observe(results,{childList:true});syncResultsState();}
-// Resizing only changes geometry; it must not close an active search edit.
-var resizeQueued=false;
-window.addEventListener('resize',function(){
-  if(resizeQueued)return;
-  resizeQueued=true;
+// All geometry reads share one frame and use the current DOM, including after
+// reset. Only result mutations may close the editor; resize is layout-only.
+var frameQueued=false,stateSyncPending=false;
+function scheduleResultsSync(syncState){
+  stateSyncPending=stateSyncPending||syncState;
+  if(frameQueued)return;
+  frameQueued=true;
   requestAnimationFrame(function(){
-    resizeQueued=false;
-    syncDesktopGeometry(!!(results&&results.querySelector('.hotel-card')));
+    var syncState=stateSyncPending;
+    frameQueued=false;stateSyncPending=false;
+    if(syncState)syncResultsState();
+    else syncDesktopGeometry(!!(results&&results.querySelector('.hotel-card')));
   });
-});
+}
+if(results){new MutationObserver(function(){scheduleResultsSync(true);}).observe(results,{childList:true});syncResultsState();}
+window.addEventListener('resize',function(){scheduleResultsSync(false);});
 if(edit)edit.addEventListener('click',function(){document.body.classList.add('search3-editing-search');form.scrollIntoView({behavior:'smooth',block:'start'});var focusTarget=form.querySelector('select,input:not([type="hidden"]),button');if(focusTarget)setTimeout(function(){try{focusTarget.focus({preventScroll:true});}catch(_e){focusTarget.focus();}},250);});
 form.addEventListener('change',syncRoute);syncRoute();
 })();
