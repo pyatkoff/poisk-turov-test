@@ -3,8 +3,7 @@
   "assets": {
     "search3-results-filters-v1.js": [
       "behavior/search-form.js",
-      "behavior/filter-rail-core.js",
-      "behavior/filter-rail-ui.js",
+      "behavior/filter-rail.js",
       "behavior/mobile-search-entry.js",
       "behavior/results-top.js",
       "behavior/selected-tour-mobile.js",
