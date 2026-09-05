@@ -419,5 +419,11 @@
     "artifact_id": 9965968756,
     "deploy_run": 33954792052,
     "verification_update": "Evidence9965993909:9routes/noindex/lead403/internalPHPdeny/counter0/retainedrollback/identical before-after-final production fingerprints."
+  },
+  "css_consolidation": {
+    "status": "PREPARED_AWAITING_CI",
+    "baseline": "75f8dbb504308883eb64139bcdc10fafce733d4d",
+    "scope": "22 exact repeated rules and119 further repeated declarations removed under identical selector/media/value/importance. Ordered declaration-stream equivalence verified; audit docs/project/search3-css-deduplication.json. Seven other public assets and protected contracts unchanged.",
+    "preview": "Unchanged published3624278a; no deployment yet."
   }
 }

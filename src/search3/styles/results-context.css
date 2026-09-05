@@ -33,17 +33,17 @@ body.search3-candidate.search3-has-results .search3-mobile-toolbar{display:flex!
 body.search3-candidate.search3-has-results .search3-active-chips{display:flex!important;gap:5px!important;flex-wrap:wrap!important;min-width:0!important}
 body.search3-candidate.search3-has-results .search3-chip{min-height:26px!important;padding:0 8px!important;border:1px solid #d9e2f1!important;border-radius:999px!important;background:#fff!important;color:#344054!important;font-size:8px!important;font-weight:800!important}
 @media(min-width:1000px){
-body.search3-candidate.search3-has-results #tourSearch{display:none!important}
-body.search3-candidate.search3-has-results.search3-editing-search #tourSearch{display:block!important}
+
+
 body.search3-candidate.search3-has-results .results-search-summary{display:grid!important}
 body.search3-candidate.search3-has-results.search3-editing-search .results-search-summary{display:none!important}
 body.search3-candidate .search3-mobile-filter-button{display:none!important}
-body.search3-candidate .results-tools--ds2{box-sizing:border-box!important;width:calc(100% - 210px)!important;margin-left:210px!important}
+body.search3-candidate .results-tools--ds2{box-sizing:border-box!important;}
 body.search3-candidate .results-tools--ds2 #resultSummary{display:none!important}
 body.search3-candidate .results-tools__actions label{gap:0!important;font-size:0!important}
 body.search3-candidate .results-tools__actions label select{font-size:8px!important}
 body.search3-candidate .results-layout{grid-template-columns:198px minmax(0,1fr)!important;gap:12px!important}
-body.search3-candidate .results-filter-rail{width:198px!important;margin-top:0!important}
+body.search3-candidate .results-filter-rail{width:198px!important;}
 body.search3-candidate .search3-filter-scenarios{display:none!important}
 body.search3-candidate .results-view-switch [data-results-view="grid"]{display:none!important}
 body.search3-candidate .results-view-switch [data-results-view="list"]{font-size:0!important;min-width:62px!important}

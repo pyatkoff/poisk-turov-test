@@ -204,3 +204,16 @@ is the editing map. Preview remains the verified `3624278a`, and no duplicate
 deploy, main merge or production switch was performed. Existing CSS overrides
 and observers remain active and explicitly documented; this does not claim
 their semantic consolidation or a browser performance improvement.
+
+## CSS cascade consolidation — 2026-09-05
+
+Following the owner's continuation request, remove 22 exact repeated rules and
+119 further repeated declarations from the existing Search3 stylesheet owners.
+Retain the last identical selector/media/value/importance occurrence; do not
+merge differing breakpoints, priorities or property values. Empty rules are removed.
+The generated stylesheet is 6,498 bytes smaller (146 declarations removed).
+A one-time parser audit proves equality of the ordered effective declaration
+stream; see `search3-css-deduplication.json`. The parser is not a new build dependency.
+Seven other public assets and protected runtime files are unchanged. Existing
+source-build tests and import/owner guards pass locally; PHP rendering and browser
+coverage remain CI checks. Publication and CI status will be recorded separately.
