@@ -496,37 +496,24 @@ body.search3-candidate #selectedTour .hotel-desc,body.search3-candidate #selecte
 /* Shared rhythm */
 body.search3-candidate .v2-shell{padding-bottom:8px!important}
 
-
-
-
-
-
-
-
-
 /* Desktop result composition: denser cards and a clearer price/action rail. */
 @media(min-width:1000px){
 
  body.search3-candidate #results .hotel-card{max-width:none!important}
- body.search3-candidate #results .hotel-main{grid-template-columns:244px minmax(0,1fr)!important;min-height:168px!important}
- body.search3-candidate #results .hotel-photo{height:168px!important;min-height:168px!important}
- body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 166px!important;column-gap:18px!important;padding:14px 16px 12px!important}
+ body.search3-candidate #results .hotel-main{grid-template-columns:244px minmax(0,1fr)!important;}
 
- body.search3-candidate #results .hotel-place{font-size:10px!important;}
- body.search3-candidate #results .hotel-decision-line{margin-top:9px!important;}
- body.search3-candidate #results .hotel-decision-line>span{min-height:22px!important;}
- body.search3-candidate #results .hotel-bottom{padding-left:16px!important;align-self:stretch!important;justify-content:flex-start!important}
- body.search3-candidate #results .hotel-price{font-size:21px!important;margin-top:6px!important}
- body.search3-candidate .search3-hotel-action{grid-template-columns:minmax(0,1fr) 166px!important;margin-top:9px!important;padding-top:9px!important}
+ body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 166px!important;padding:14px 16px 12px!important}
+
+ body.search3-candidate #results .hotel-bottom{align-self:stretch!important;justify-content:flex-start!important}
+ body.search3-candidate #results .hotel-price{margin-top:6px!important}
+ body.search3-candidate .search3-hotel-action{grid-template-columns:minmax(0,1fr) 166px!important;}
  body.search3-candidate .search3-show-tours{min-height:40px!important;}
  body.search3-candidate #results .hotel-tours{padding:14px 16px 16px!important}
- body.search3-candidate #results .hotel-tours .tour-row{min-height:82px!important;padding:13px 14px!important;border-radius:12px!important}
- body.search3-candidate #results .hotel-tours .tour-meta{column-gap:14px!important}
+ body.search3-candidate #results .hotel-tours .tour-row{padding:13px 14px!important;border-radius:12px!important}
+
  body.search3-candidate #results .hotel-tours .tour-meta>strong{font-size:11px!important}
- body.search3-candidate #results .hotel-tours .tour-fact b{font-size:10px!important;line-height:1.25!important}
- body.search3-candidate #results .hotel-tours .tour-action{padding-left:14px!important}
- body.search3-candidate #results .hotel-tours .tour-action>b{font-size:18px!important}
- body.search3-candidate #results .hotel-tours .direct-tour{min-height:38px!important;font-size:10px!important}
+ body.search3-candidate #results .hotel-tours .tour-fact b{line-height:1.25!important}
+
 }
 
 /* Selected tour: compact hotel header, one clear orange primary CTA, less dead space. */
@@ -537,10 +524,8 @@ body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selec
 body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!important}
 @media(min-width:1000px){
  body.search3-candidate #selectedTour{grid-template-columns:340px minmax(0,1fr)!important}
- body.search3-candidate #selectedTour .selected-picture{height:220px!important;border-radius:16px 0 0 16px!important}
- body.search3-candidate #selectedTour .selected-head{min-height:220px!important;padding:22px 24px!important;border-radius:0 16px 16px 0!important}
-
- body.search3-candidate #selectedTour .selected-price{font-size:27px!important}
+ body.search3-candidate #selectedTour .selected-picture{border-radius:16px 0 0 16px!important}
+ body.search3-candidate #selectedTour .selected-head{padding:22px 24px!important;border-radius:0 16px 16px 0!important}
 
  body.search3-candidate #selectedTour .facts>div{padding:12px 14px!important}
 }
@@ -553,33 +538,32 @@ body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!importa
  body.search3-candidate .search3-page-intro p{font-size:9px!important}
  body.search3-candidate #tourSearch{padding:10px!important;margin-top:7px!important}
  body.search3-candidate #tourSearch .search3-primary-grid{gap:7px!important}
- body.search3-candidate #tourSearch .field>span{margin-bottom:4px!important;font-size:8px!important}
+ body.search3-candidate #tourSearch .field>span{margin-bottom:4px!important;}
  body.search3-candidate #tourSearch select,body.search3-candidate #tourSearch input[type=date],body.search3-candidate #tourSearch input[type=number],body.search3-candidate #tourSearch input[type=text],body.search3-candidate .search3-tourists__summary,body.search3-candidate .search3-composite__control{min-height:38px!important}
- body.search3-candidate #tourSearch .search3-primary-grid>.search-submit{min-height:44px!important;margin-top:2px!important}
+ body.search3-candidate #tourSearch .search3-primary-grid>.search-submit{margin-top:2px!important}
  body.search3-candidate .search3-quality{display:none!important;margin-top:8px!important}
  body.search3-candidate #tourSearch.search3-advanced-open .search3-quality{display:block!important}
- body.search3-candidate .search3-advanced-toggle{display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;min-height:40px!important;margin:9px 0 0!important;padding:0 10px!important;border:1px solid #dce4ef!important;border-radius:9px!important;background:#f8fafc!important;color:#344054!important;font:850 9px/1 var(--at-font)!important}
+ body.search3-candidate .search3-advanced-toggle{display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;margin:9px 0 0!important;padding:0 10px!important;border:1px solid #dce4ef!important;border-radius:9px!important;background:#f8fafc!important;color:#344054!important;font:850 9px/1 var(--at-font)!important}
  body.search3-candidate .search3-advanced-toggle b{font-size:16px!important;color:#2463eb!important}
- body.search3-candidate .search3-quick{margin-top:8px!important;gap:8px!important}
+ body.search3-candidate .search3-quick{gap:8px!important}
  body.search3-candidate #tourSearch:not(.search3-advanced-open) .search3-quick .search3-quick__label:not(.search3-quick__label--static){display:none!important}
  body.search3-candidate #tourSearch.search3-advanced-open .search3-quick .search3-quick__label{display:inline-flex!important}
  body.search3-candidate #tourSearch:not(.search3-advanced-open) .search3-quick{display:flex!important}
  body.search3-candidate #tourSearch:not(.search3-advanced-open) .search3-quick__label--static{width:auto!important}
 
  /* Mobile cards: less image dominance, stronger content grouping. */
- body.search3-candidate #results .hotel-photo{height:124px!important;min-height:124px!important}
+
  body.search3-candidate #results .hotel-body{padding:10px!important;grid-template-columns:minmax(0,1fr) 104px!important}
- body.search3-candidate #results .hotel-title{font-size:14px!important;line-height:1.16!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;overflow:hidden!important}
+ body.search3-candidate #results .hotel-title{line-height:1.16!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;overflow:hidden!important}
  body.search3-candidate #results .hotel-place{margin-top:3px!important}
 
- body.search3-candidate #results .hotel-price{font-size:17px!important}
  body.search3-candidate .search3-hotel-action{margin-top:7px!important;padding-top:7px!important}
- body.search3-candidate .search3-show-tours{min-height:42px!important;font-size:10px!important}
+ body.search3-candidate .search3-show-tours{font-size:10px!important}
 
  /* Mobile tour chooser keeps hotel context and feels connected to the result card. */
- body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo{height:150px!important;min-height:150px!important}
+
  body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-body{padding:10px!important}
- body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-title{font-size:16px!important}
+
  body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-tours{padding-top:10px!important}
  body.search3-candidate.search3-hotel-tours-open #results .tour-row{padding:10px!important;border-radius:10px!important}
 
@@ -595,7 +579,6 @@ body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!importa
  body.search3-candidate #selectedTour .lead-form button[type=submit]{display:none!important}
  body.search3-candidate #selectedTour .lead-form{padding-bottom:11px!important}
 
-
 }
 
 /* P0 contract: after search, the full advanced form is not the desktop hero. */
@@ -606,7 +589,7 @@ body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!importa
  body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route{grid-column:1!important}
  body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__fact{display:block!important}
  body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__edit{grid-column:5!important;grid-row:1!important;border-left:1px solid #edf0f5!important;border-right:0!important;color:#2463eb!important}
- body.search3-candidate.search3-has-results .results-tools--ds2{width:calc(100% - 230px)!important;margin-left:230px!important;margin-top:0!important;padding-top:7px!important;padding-bottom:7px!important}
+ body.search3-candidate.search3-has-results .results-tools--ds2{width:calc(100% - 230px)!important;margin-top:0!important;padding-top:7px!important;padding-bottom:7px!important}
  body.search3-candidate.search3-has-results.search3-editing-search #resultsSearchSummary{display:none!important}
 }
 
@@ -624,7 +607,7 @@ body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!importa
 /* Search 3 batch visual iteration 1b. Preview-only convergence toward maket7. */
 
 /* Results hierarchy */
-body.search3-candidate.search3-has-results .search3-page-intro{margin-bottom:6px!important}
+
 body.search3-candidate.search3-has-results .results-search-summary{margin-bottom:8px!important}
 body.search3-candidate.search3-has-results .results-tools--ds2{margin-bottom:8px!important}
 body.search3-candidate.search3-has-results .results-layout{align-items:start!important}
@@ -638,24 +621,19 @@ body.search3-candidate.search3-has-results .results-layout{align-items:start!imp
  body.search3-candidate .results-filter-rail .filter-group:last-child{padding-bottom:0!important;border-bottom:0!important}
  body.search3-candidate .results-filter-rail label,body.search3-candidate .results-filter-rail button,body.search3-candidate .results-filter-rail select,body.search3-candidate .results-filter-rail input{font-size:9px!important}
  body.search3-candidate #results .hotel-card{border-radius:13px!important}
- body.search3-candidate #results .hotel-main{grid-template-columns:224px minmax(0,1fr)!important;min-height:156px!important}
- body.search3-candidate #results .hotel-photo{height:156px!important;min-height:156px!important}
+ body.search3-candidate #results .hotel-main{grid-template-columns:224px minmax(0,1fr)!important;}
 
- body.search3-candidate #results .hotel-title{font-size:16px!important;max-width:780px!important}
-
- body.search3-candidate #results .hotel-decision-line{margin-top:7px!important}
- body.search3-candidate #results .hotel-bottom{padding-left:13px!important}
+ body.search3-candidate #results .hotel-title{max-width:780px!important}
 
  body.search3-candidate .search3-hotel-action{grid-template-columns:minmax(0,1fr) 158px!important;gap:14px!important;margin-top:7px!important;padding-top:7px!important}
  body.search3-candidate .search3-hotel-action__copy{min-width:0!important}
  body.search3-candidate .search3-hotel-action__copy span{overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
 
  body.search3-candidate #results .hotel-tours{padding:12px 14px 14px!important;background:#f9fbfd!important}
- body.search3-candidate #results .hotel-tours .tour-row{min-height:70px!important;margin-top:7px!important;padding:10px 12px!important}
- body.search3-candidate #results .hotel-tours .tour-meta{grid-template-columns:minmax(112px,1.25fr) minmax(90px,.9fr) 76px 48px minmax(98px,.95fr) minmax(66px,.7fr)!important;column-gap:10px!important}
+ body.search3-candidate #results .hotel-tours .tour-row{padding:10px 12px!important}
+ body.search3-candidate #results .hotel-tours .tour-meta{grid-template-columns:minmax(112px,1.25fr) minmax(90px,.9fr) 76px 48px minmax(98px,.95fr) minmax(66px,.7fr)!important;}
  body.search3-candidate #results .hotel-tours .tour-action{gap:6px!important;padding-left:10px!important}
- body.search3-candidate #results .hotel-tours .tour-action>b{font-size:17px!important}
- body.search3-candidate #results .hotel-tours .direct-tour{min-height:36px!important}
+
 }
 
 /* Selected tour: make the hotel itself the hero, not the status ribbon. */
@@ -665,12 +643,12 @@ body.search3-candidate #selectedTour .tour-flights{margin-top:10px!important}
 body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
 @media(min-width:1000px){
  body.search3-candidate #selectedTour{grid-template-columns:380px minmax(0,1fr)!important;row-gap:0!important}
- body.search3-candidate #selectedTour .selected-picture{height:232px!important}
- body.search3-candidate #selectedTour .selected-head{min-height:232px!important;padding:22px!important}
- body.search3-candidate #selectedTour .selected-head h2{font-size:26px!important;line-height:1.06!important}
+
+ body.search3-candidate #selectedTour .selected-head{padding:22px!important}
+ body.search3-candidate #selectedTour .selected-head h2{line-height:1.06!important}
  body.search3-candidate #selectedTour .selected-head p{font-size:10px!important;line-height:1.35!important}
- body.search3-candidate #selectedTour .selected-price{min-width:160px!important;font-size:25px!important}
- body.search3-candidate #selectedTour .facts{margin-top:8px!important}
+ body.search3-candidate #selectedTour .selected-price{min-width:160px!important;}
+
  body.search3-candidate #selectedTour .facts>div{padding:11px 12px!important}
  body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{padding:15px 16px!important;border-radius:14px!important}
 }
@@ -681,26 +659,24 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
  body.search3-candidate.search3-has-results .results-tools--ds2{padding-top:2px!important;padding-bottom:5px!important}
  body.search3-candidate.search3-has-results .results-tools--ds2 strong{font-size:16px!important}
  body.search3-candidate.search3-has-results #resultSummary{font-size:8px!important}
- body.search3-candidate.search3-has-results #resultsSearchSummary{margin-bottom:7px!important}
+
  body.search3-candidate .search3-mobile-actions{gap:6px!important}
  body.search3-candidate .search3-mobile-filter-button,body.search3-candidate .search3-mobile-sort-button{min-height:36px!important;font-size:9px!important}
  body.search3-candidate #results{gap:7px!important}
  body.search3-candidate #results .hotel-card{border-radius:11px!important}
- body.search3-candidate #results .hotel-photo{height:112px!important;min-height:112px!important}
+
  body.search3-candidate #results .hotel-body{padding:9px!important;grid-template-columns:minmax(0,1fr) 100px!important}
- body.search3-candidate #results .hotel-title{font-size:13px!important;line-height:1.15!important}
- body.search3-candidate #results .hotel-price{font-size:16px!important}
- body.search3-candidate .search3-show-tours{min-height:38px!important}
+ body.search3-candidate #results .hotel-title{line-height:1.15!important}
+
  body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-main{border-radius:11px!important}
- body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo{height:132px!important;min-height:132px!important}
- body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-title{font-size:15px!important}
+
  body.search3-candidate.search3-hotel-tours-open .search3-hotel-tabs{margin-top:6px!important}
  body.search3-candidate.search3-hotel-tours-open .search3-hotel-tabs button{min-height:36px!important;font-size:8px!important}
  body.search3-candidate.search3-hotel-tours-open .search3-tour-filters{margin-bottom:7px!important}
  body.search3-candidate.search3-hotel-tours-open .search3-tour-filters button{min-height:30px!important;padding:0 9px!important;font-size:8px!important}
- body.search3-candidate.search3-hotel-tours-open #results .tour-row{gap:7px!important;margin-top:6px!important;padding:9px!important}
- body.search3-candidate.search3-hotel-tours-open #results .tour-action>b{text-align:left!important;font-size:17px!important}
- body.search3-candidate.search3-hotel-tours-open #results .direct-tour{min-height:40px!important}
+ body.search3-candidate.search3-hotel-tours-open #results .tour-row{gap:7px!important;padding:9px!important}
+ body.search3-candidate.search3-hotel-tours-open #results .tour-action>b{text-align:left!important;}
+
 }
 
 /* Mobile filter drawer: stronger modal separation and tighter scan. */
@@ -716,31 +692,13 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
 /* Mobile selected: one CTA, compact hotel summary, reduced footer dominance. */
 @media(max-width:640px){
  body.search3-candidate #selectedTour{margin-bottom:22px!important}
- body.search3-candidate #selectedTour .selected-picture{height:148px!important}
+
  body.search3-candidate #selectedTour .selected-head{padding:9px 10px!important}
  body.search3-candidate #selectedTour .selected-head .eyebrow{margin-bottom:3px!important;padding:3px 6px!important;font-size:7px!important}
 
- body.search3-candidate #selectedTour .facts>div,body.search3-candidate #selectedTour .facts>div:nth-child(n){min-height:42px!important;padding:6px 8px!important}
+ body.search3-candidate #selectedTour .facts>div,body.search3-candidate #selectedTour .facts>div:nth-child(n){padding:6px 8px!important}
  body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{margin-top:7px!important;padding:10px!important}
  body.search3-candidate .search3-selected-mobile-bar{padding-top:7px!important;padding-bottom:max(7px,env(safe-area-inset-bottom))!important}
- body.search3-candidate .search3-selected-mobile-bar button{min-height:42px!important}
-
-
-}
-/* Footer should finish the page, not become another hero. */
-
-
-
-
-
-@media(max-width:640px){
-
-
-
-
-
-
-
 
 }
 
@@ -753,33 +711,31 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
  body.search3-candidate .results-tools--ds2{width:calc(100% - 210px)!important;margin-left:210px!important;padding-left:0!important;padding-right:0!important;border:0!important;background:transparent!important;}
  body.search3-candidate .results-layout{margin-bottom:34px!important}
  body.search3-candidate .results-filter-rail{position:sticky!important;top:76px!important;max-height:calc(100vh - 92px)!important;overflow:auto!important}
- body.search3-candidate .filter-rail-head{margin-bottom:4px!important;padding-bottom:8px!important;border-bottom:1px solid #eef1f5!important}
- body.search3-candidate .filter-rail-title{font-size:12px!important}
- body.search3-candidate .filter-reset-link{font-size:8px!important}
+ body.search3-candidate .filter-rail-head{border-bottom:1px solid #eef1f5!important}
+
  body.search3-candidate .results-filter-rail fieldset,body.search3-candidate .results-filter-rail .filter-range{margin-bottom:0!important;padding:9px 0!important}
  body.search3-candidate .results-filter-rail .filter-range>span,body.search3-candidate .results-filter-rail legend{margin-bottom:6px!important;font-size:9px!important}
- body.search3-candidate .results-filter-rail .filter-option{margin:5px 0!important;font-size:8px!important}
- body.search3-candidate .search3-filter-select{min-height:32px!important;font-size:8px!important}
- body.search3-candidate #results .hotel-main{grid-template-columns:212px minmax(0,1fr)!important;min-height:150px!important}
- body.search3-candidate #results .hotel-photo{height:150px!important;min-height:150px!important}
+ body.search3-candidate .results-filter-rail .filter-option{margin:5px 0!important;}
+
+ body.search3-candidate #results .hotel-main{grid-template-columns:212px minmax(0,1fr)!important;}
+
  body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 164px!important;padding:11px 13px 10px!important}
- body.search3-candidate #results .hotel-title{font-size:15px!important}
- body.search3-candidate #results .hotel-price{font-size:19px!important}
+
  body.search3-candidate .search3-hotel-action{grid-template-columns:minmax(0,1fr) 164px!important}
  body.search3-candidate #results .hotel-tours .tour-row{border-color:#e6ebf2!important;}
 
  body.search3-candidate #selectedTour{margin-top:12px!important;margin-bottom:28px!important}
  body.search3-candidate #selectedTour .back-results{min-height:36px!important;margin-bottom:9px!important;border-radius:8px!important;font-size:9px!important}
- body.search3-candidate #selectedTour .selected-picture{height:224px!important}
- body.search3-candidate #selectedTour .selected-head{min-height:224px!important;padding:20px 22px!important}
- body.search3-candidate #selectedTour .selected-head h2{font-size:25px!important}
+
+ body.search3-candidate #selectedTour .selected-head{padding:20px 22px!important}
+
  body.search3-candidate #selectedTour .selected-head .eyebrow{padding:3px 6px!important;background:#f8fafc!important;color:#667085!important}
  body.search3-candidate #selectedTour .facts{grid-template-columns:repeat(5,minmax(0,1fr))!important}
  body.search3-candidate #selectedTour .facts>div{min-height:56px!important;padding:10px 11px!important}
  body.search3-candidate #selectedTour .facts span{font-size:8px!important}
  body.search3-candidate #selectedTour .facts b{font-size:11px!important}
  body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{margin-top:8px!important;padding:14px!important}
- body.search3-candidate #selectedTour .section-heading strong{font-size:16px!important}
+
  body.search3-candidate #selectedTour .lead-form button[type=submit]{color:#fff!important;border:0!important;border-radius:9px!important;font-size:12px!important}
 }
 
@@ -800,19 +756,14 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
  body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route strong{font-size:7px!important}
  body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route span{font-size:9px!important}
  body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__edit{min-width:104px!important;min-height:34px!important;font-size:8px!important;border:0!important;border-left:1px solid #edf0f5!important;border-radius:0!important}
- body.search3-candidate #results .hotel-photo{height:104px!important;min-height:104px!important}
- body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 96px!important;padding:8px 9px!important}
 
- body.search3-candidate #results .hotel-decision-line>span{min-height:17px!important;font-size:7px!important}
+ body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 96px!important;padding:8px 9px!important}
 
  body.search3-candidate .search3-show-tours{min-height:36px!important;border-radius:7px!important}
 
  /* Package chooser stays compact and keeps the hotel visible above it. */
- body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo{height:120px!important;min-height:120px!important}
+
  body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-body{padding:9px!important}
- body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head{margin-bottom:5px!important}
-
-
 
 }
 
@@ -824,9 +775,9 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
 }
 @media(max-width:640px){
  body.search3-candidate #selectedTour .back-results{min-height:34px!important;margin-bottom:6px!important;font-size:8px!important}
- body.search3-candidate #selectedTour .selected-picture{height:136px!important}
+
  body.search3-candidate #selectedTour .selected-head{padding:8px 9px!important}
- body.search3-candidate #selectedTour .selected-head h2{font-size:16px!important}
+
  body.search3-candidate #selectedTour .selected-head p{font-size:7px!important}
  body.search3-candidate #selectedTour .facts>div,body.search3-candidate #selectedTour .facts>div:nth-child(n){min-height:40px!important;padding:6px 7px!important}
  body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{padding:9px!important}
@@ -834,15 +785,6 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
  body.search3-candidate .search3-selected-mobile-bar__price small{font-size:7px!important}
  body.search3-candidate .search3-selected-mobile-bar__price strong{font-size:16px!important}
  body.search3-candidate .search3-selected-mobile-bar button{min-height:40px!important;border-radius:8px!important;font-size:10px!important}
-
-
-
-
-
-
-
-
-
 
 }
 
@@ -867,8 +809,6 @@ body.search3-candidate:not(.search3-has-results) .results-tools--ds2,body.search
 body.search3-candidate:not(.search3-has-results) .results-layout{min-height:0!important;margin:0!important}
 body.search3-candidate:not(.search3-has-results) #results:empty{display:none!important;min-height:0!important;margin:0!important;padding:0!important}
 
-
-
 /* Card facts come only from the real best-priced tour already loaded for the hotel. */
 body.search3-candidate .search3-hotel-facts{display:flex;align-items:stretch;gap:0;min-width:0;margin-top:8px;border:1px solid #edf0f5;border-radius:8px;background:#fbfcfe;overflow:hidden}
 body.search3-candidate .search3-hotel-facts>span{display:block;min-width:0;padding:6px 9px;border-right:1px solid #edf0f5}
@@ -884,32 +824,31 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
 
  body.search3-candidate #results .hotel-main{grid-template-columns:226px minmax(0,1fr)!important;}
 
- body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 170px!important;column-gap:16px!important;padding:12px 14px 10px!important}
- body.search3-candidate #results .search3-hotel-facts{grid-column:1!important;max-width:680px!important;margin-top:7px!important}
- body.search3-candidate #results .search3-hotel-action{grid-column:1/-1!important;grid-template-columns:minmax(0,1fr) 170px!important;margin-top:7px!important}
+ body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 170px!important;padding:12px 14px 10px!important}
+ body.search3-candidate #results .search3-hotel-facts{grid-column:1!important;max-width:680px!important;}
+ body.search3-candidate #results .search3-hotel-action{grid-column:1/-1!important;grid-template-columns:minmax(0,1fr) 170px!important;}
  body.search3-candidate #results .hotel-bottom{padding-left:14px!important;}
- body.search3-candidate #results .hotel-price{font-size:20px!important}
+
  body.search3-candidate #results .hotel-price-context{max-width:150px!important}
 
  /* Expanded packages should read as cards, not a spreadsheet. */
  body.search3-candidate #results .hotel-tours{padding:11px 13px 13px!important}
  body.search3-candidate #results .search3-tour-list-head{display:flex!important;align-items:end!important;justify-content:space-between!important;margin:0 0 8px!important}
- body.search3-candidate #results .search3-tour-list-head strong{font-size:15px!important;letter-spacing:-.02em!important}
+ body.search3-candidate #results .search3-tour-list-head strong{letter-spacing:-.02em!important}
  body.search3-candidate #results .search3-tour-list-head span{display:block;margin-top:3px;color:#667085;font-size:8px!important}
  body.search3-candidate #results .search3-tour-list-head>b{color:#667085;font-size:8px!important}
- body.search3-candidate #results .hotel-tours .tour-row{min-height:68px!important;padding:9px 11px!important;background:#fff!important;border-radius:10px!important}
+ body.search3-candidate #results .hotel-tours .tour-row{padding:9px 11px!important;background:#fff!important;border-radius:10px!important}
  body.search3-candidate #results .hotel-tours .tour-meta{column-gap:9px!important}
- body.search3-candidate #results .hotel-tours .tour-fact span{font-size:7px!important;color:#98a2b3!important}
- body.search3-candidate #results .hotel-tours .tour-fact b{font-size:9px!important}
- body.search3-candidate #results .hotel-tours .tour-action>b{font-size:16px!important}
- body.search3-candidate #results .hotel-tours .direct-tour{min-height:34px!important;border-radius:7px!important}
+ body.search3-candidate #results .hotel-tours .tour-fact span{color:#98a2b3!important}
+
+ body.search3-candidate #results .hotel-tours .direct-tour{border-radius:7px!important}
 
  /* Selected state: hotel + price first, then compact concrete-tour facts. */
  body.search3-candidate #selectedTour{max-width:1180px!important}
- body.search3-candidate #selectedTour .selected-picture{height:238px!important}
- body.search3-candidate #selectedTour .selected-head{min-height:238px!important;padding:21px 23px!important}
+
+ body.search3-candidate #selectedTour .selected-head{padding:21px 23px!important}
  body.search3-candidate #selectedTour .selected-head .eyebrow{margin-bottom:6px!important;background:#fff3ec!important;color:#e94f00!important}
- body.search3-candidate #selectedTour .selected-head h2{font-size:27px!important;max-width:680px!important}
+ body.search3-candidate #selectedTour .selected-head h2{max-width:680px!important}
  body.search3-candidate #selectedTour .selected-price{padding-left:22px!important;border-left:1px solid #edf0f5!important}
 
  body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{border-radius:12px!important}
@@ -919,42 +858,32 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
  /* Keep the destination heading visible on results; it is the page anchor in maket7. */
  body.search3-candidate.search3-has-results .search3-page-intro{display:block!important;order:1!important;margin:8px var(--at-page-edge) 5px!important}
  body.search3-candidate.search3-has-results .search3-page-intro .search3-breadcrumb,body.search3-candidate.search3-has-results .search3-page-intro p{display:none!important}
- body.search3-candidate.search3-has-results .search3-page-intro h1{display:block!important;font-size:19px!important;line-height:1.08!important}
+ body.search3-candidate.search3-has-results .search3-page-intro h1{display:block!important;line-height:1.08!important}
  body.search3-candidate.search3-has-results #resultsTools{order:2!important}
  body.search3-candidate.search3-has-results #resultsSearchSummary{order:3!important}
  body.search3-candidate.search3-has-results .search3-mobile-toolbar{order:4!important}
  body.search3-candidate.search3-has-results .results-layout{order:5!important}
  body.search3-candidate:not(.search3-has-results) #tourSearch .search3-advanced-toggle{width:100%!important;max-width:none!important}
 
-
-
  body.search3-candidate #results .hotel-main{display:grid!important;grid-template-columns:112px minmax(0,1fr)!important;align-items:stretch!important}
- body.search3-candidate #results .hotel-photo{height:auto!important;min-height:132px!important}
+ body.search3-candidate #results .hotel-photo{height:auto!important;}
  body.search3-candidate #results .hotel-body{padding:8px!important}
- body.search3-candidate #results .hotel-title{font-size:12px!important;line-height:1.12!important}
- body.search3-candidate #results .search3-hotel-facts{margin-top:6px!important;border-radius:6px!important}
+ body.search3-candidate #results .hotel-title{line-height:1.12!important}
+ body.search3-candidate #results .search3-hotel-facts{border-radius:6px!important}
  body.search3-candidate #results .search3-hotel-facts>span{flex:1 1 0;padding:5px 6px!important}
- body.search3-candidate #results .search3-hotel-facts small{font-size:6px!important}
- body.search3-candidate #results .search3-hotel-facts b{font-size:7.5px!important}
- body.search3-candidate #results .search3-hotel-action{margin-top:6px!important;padding-top:6px!important}
-
- body.search3-candidate #results .hotel-price{font-size:15px!important}
- body.search3-candidate #results .hotel-price-context{font-size:7px!important}
 
  body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-main{grid-template-columns:124px minmax(0,1fr)!important}
- body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo{min-height:142px!important;height:auto!important}
+ body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo{height:auto!important}
  body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head{padding-top:2px!important}
- body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head span{font-size:7px!important}
+
  body.search3-candidate.search3-hotel-tours-open #results .tour-row{border-radius:9px!important}
 }
 
 @media(max-width:640px){
- body.search3-candidate #selectedTour .selected-picture{height:154px!important}
- body.search3-candidate #selectedTour .selected-head h2{font-size:17px!important}
+
  body.search3-candidate #selectedTour .facts{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  body.search3-candidate #selectedTour .tour-flights{margin-top:8px!important}
  body.search3-candidate #selectedTour .lead-form{margin-top:8px!important}
-
 
 }
 
@@ -1003,8 +932,8 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
 
 @media(min-width:1000px){
   /* Results shell follows maket7 proportions: narrow filters + dense list. */
-  body.search3-candidate.search3-has-results .results-layout{grid-template-columns:206px minmax(0,1fr)!important;gap:14px!important;margin-bottom:30px!important}
-  body.search3-candidate.search3-has-results .results-tools--ds2{width:calc(100% - 220px)!important;margin-left:220px!important;min-height:44px!important;margin-bottom:7px!important;padding:4px 0!important}
+  body.search3-candidate.search3-has-results .results-layout{grid-template-columns:206px minmax(0,1fr)!important;gap:14px!important;}
+  body.search3-candidate.search3-has-results .results-tools--ds2{width:calc(100% - 220px)!important;padding:4px 0!important}
   body.search3-candidate.search3-has-results .results-tools--ds2>div:first-child strong{font-size:18px!important}
   body.search3-candidate.search3-has-results .results-tools--ds2>div:first-child span{font-size:8px!important}
   body.search3-candidate.search3-has-results .results-tools__actions label,
@@ -1063,19 +992,6 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
   body.search3-candidate #results .hotel-tours .tour-fact b{font-size:7.8px!important}
   body.search3-candidate #results .hotel-tours .tour-action>b{font-size:14px!important}
   body.search3-candidate #results .hotel-tours .direct-tour{min-height:31px!important;border-radius:6px!important;font-size:7.5px!important}
-/* Footer should not dominate short preview states. */
-
-
-
-
-
-
-
-
-
-
-
-
 
 }
 
@@ -1110,16 +1026,13 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
   body.search3-candidate #results .search3-show-tours{min-height:34px!important;border-radius:6px!important;font-size:8px!important}
 
   /* Packages stay inside the same hotel context. */
-  body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo{height:126px!important;min-height:126px!important}
+
   body.search3-candidate.search3-hotel-tours-open #results .hotel-tours{padding:7px!important;}
-  body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head strong{font-size:12px!important}
+
   body.search3-candidate.search3-hotel-tours-open #results .search3-tour-filters{display:flex!important;gap:4px!important;overflow-x:auto!important;padding-bottom:2px!important}
   body.search3-candidate.search3-hotel-tours-open #results .search3-tour-filters button{min-height:27px!important;white-space:nowrap!important;font-size:6.8px!important}
   body.search3-candidate.search3-hotel-tours-open #results .tour-row{margin-top:5px!important;padding:7px!important;}
-  body.search3-candidate.search3-hotel-tours-open #results .direct-tour{min-height:34px!important;border-radius:6px!important}
-
-
-
+  body.search3-candidate.search3-hotel-tours-open #results .direct-tour{border-radius:6px!important}
 
 }
 
@@ -1155,7 +1068,7 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
   body.search3-candidate.search3-has-results #results .search3-hotel-action__copy span{font-size:7px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
   body.search3-candidate.search3-has-results #results .search3-show-tours{min-height:32px!important;border-radius:6px!important;font-size:8px!important}
 
-  body.search3-candidate.search3-selected-open #selectedTour{max-width:1120px!important;margin:16px auto 34px!important;grid-template-columns:330px minmax(0,1fr)!important;gap:0!important}
+  body.search3-candidate.search3-selected-open #selectedTour{margin:16px auto 34px!important;grid-template-columns:330px minmax(0,1fr)!important;gap:0!important}
   body.search3-candidate.search3-selected-open #selectedTour .back-results{min-height:34px!important;margin-bottom:8px!important;border:0!important;background:transparent!important;padding:0!important;font-size:9px!important}
   body.search3-candidate.search3-selected-open #selectedTour .selected-picture{height:218px!important;border-radius:10px 0 0 10px!important}
   body.search3-candidate.search3-selected-open #selectedTour .selected-head{min-height:218px!important;padding:18px 20px!important;border-radius:0 10px 10px 0!important;grid-template-columns:minmax(0,1fr) 170px!important;gap:18px!important}
@@ -1220,7 +1133,6 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
   body.search3-candidate.search3-selected-open #selectedTour .section-heading strong{font-size:12px!important}
   body.search3-candidate.search3-selected-open #selectedTour .lead-form button[type=submit]{display:none!important}
 
-
   .search3-selected-mobile-bar:not([hidden]){padding:7px 10px calc(7px + env(safe-area-inset-bottom))!important;gap:8px!important}
   .search3-selected-mobile-bar__price small{font-size:7px!important}
   .search3-selected-mobile-bar__price strong{font-size:15px!important}
@@ -1253,7 +1165,6 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
   body.search3-candidate.search3-hotel-tours-open #results .tour-action{margin-top:7px!important;padding-top:7px!important;border-top:1px solid #edf0f5!important}
   body.search3-candidate.search3-hotel-tours-open #results .tour-action>b{font-size:15px!important}
   body.search3-candidate.search3-hotel-tours-open #results .direct-tour{width:100%!important;min-height:38px!important;background:#ff5a0a!important;color:#fff!important;border:0!important;border-radius:7px!important}
-
 
 }
 
@@ -1292,21 +1203,6 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
   html body.search3-candidate #tourSearch .search3-quick__label input{flex:0 0 15px!important;width:15px!important;height:15px!important;margin:0!important;opacity:1!important;accent-color:#1463ff!important}
   html body.search3-candidate #tourSearch .search3-quick__label[aria-disabled=true]{opacity:1!important;color:#475467!important}
   html body.search3-candidate #tourSearch .search3-quick__label--instant span{color:#344054!important}
-/* maket7 desktop ends with a slim utility footer, not the full marketing footer. */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }
 

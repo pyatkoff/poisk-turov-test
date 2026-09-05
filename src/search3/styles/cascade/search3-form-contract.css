@@ -34,20 +34,5 @@
   html body.search3-candidate #tourSearch .search3-quick__label input{flex:0 0 15px!important;width:15px!important;height:15px!important;margin:0!important;opacity:1!important;accent-color:#1463ff!important}
   html body.search3-candidate #tourSearch .search3-quick__label[aria-disabled=true]{opacity:1!important;color:#475467!important}
   html body.search3-candidate #tourSearch .search3-quick__label--instant span{color:#344054!important}
-/* maket7 desktop ends with a slim utility footer, not the full marketing footer. */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 }

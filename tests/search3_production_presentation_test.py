@@ -2,6 +2,7 @@
 import hashlib
 import importlib.util
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -25,6 +26,15 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             str(ROOT / 'scripts/build/search3_cascade_sections.py'),
             '--check',
         ], check=True)
+
+    def test_cascade_has_no_empty_media_rules(self):
+        contract = json.loads((ROOT / 'docs/project/search3-cascade-sections.json').read_text())
+        for name in contract['sections']:
+            with self.subTest(name=name):
+                source = (ROOT / contract['source_root'] / name).read_text()
+                # Strip complete CSS comments without crossing their closing delimiter.
+                source = re.sub(r'/\*[^*]*\*+(?:[^/*][^*]*\*+)*/', '', source)
+                self.assertNotRegex(source, r'(?m)^[ \t]*@media[^{};]+\{\s*\}')
 
     def test_cascade_module_eof_contract(self):
         contract = json.loads((ROOT / 'docs/project/search3-cascade-sections.json').read_text())
