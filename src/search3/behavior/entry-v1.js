@@ -66,9 +66,15 @@
 
   // Keep the existing calendar's prices, date selection and search owner intact.
   // Only adapt its presentation: expanded on desktop, compact on a phone.
+  var adaptedPriceCalendar = null;
+
   function syncPriceCalendar() {
     var calendar = document.getElementById('currentPriceCalendar');
-    if (!calendar || calendar.hidden || calendar.querySelector('.search3-price-calendar')) return;
+    if (!calendar || calendar.hidden || calendar === adaptedPriceCalendar) return;
+    if (calendar.querySelector('.search3-price-calendar')) {
+      adaptedPriceCalendar = calendar;
+      return;
+    }
     var days = calendar.querySelector('.current-price-calendar__days');
     var best = calendar.querySelector('.current-price-calendar__day.is-best strong');
     if (!days || !best) return;
@@ -92,6 +98,7 @@
     details.appendChild(content);
     calendar.appendChild(details);
     calendar.setAttribute('aria-labelledby', title.id);
+    adaptedPriceCalendar = calendar;
   }
 
   function settle() {

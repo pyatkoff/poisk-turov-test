@@ -7,6 +7,8 @@ let textWrites = 0;
 let hiddenWrites = 0;
 let detailText = '';
 let detailHidden = true;
+let calendarWrapperChecks = 0;
+let currentCalendar = null;
 
 const detail = {};
 Object.defineProperty(detail, 'textContent', {
@@ -58,12 +60,24 @@ const values = {
   resultsSearchNights: { textContent: '7 ночей' },
   resultsSearchGuests: { textContent: '2 взрослых' }
 };
+const wrappedCalendar = () => ({
+  hidden: false,
+  querySelector(selector) {
+    if (selector === '.search3-price-calendar') {
+      calendarWrapperChecks += 1;
+      return {};
+    }
+    return null;
+  }
+});
+currentCalendar = wrappedCalendar();
+
 const document = {
   readyState: 'complete',
   body: { classList: { contains(name) { return name === 'search3-candidate'; } } },
   getElementById(id) {
     if (id === 'tourSearch') return form;
-    if (id === 'currentPriceCalendar') return null;
+    if (id === 'currentPriceCalendar') return currentCalendar;
     return values[id] || null;
   },
   querySelector(selector) {
@@ -99,5 +113,13 @@ assert.equal(detailText, '10–17 сентября · 7 ночей · 2 взро
 assert.equal(detailHidden, false);
 assert.equal(textWrites, 1, 'unchanged summary text is not rewritten');
 assert.equal(hiddenWrites, 1, 'unchanged summary visibility is not rewritten');
+assert.equal(calendarWrapperChecks, 1, 'adapted calendar wrapper is checked once for repeated syncs');
 
-console.log('PASS: entry summary avoids duplicate DOM writes');
+currentCalendar = wrappedCalendar();
+api.sync();
+
+assert.equal(calendarWrapperChecks, 2, 'replacement calendar is detected and adapted independently');
+assert.equal(textWrites, 1, 'calendar replacement does not rewrite unchanged summary text');
+assert.equal(hiddenWrites, 1, 'calendar replacement does not rewrite unchanged summary visibility');
+
+console.log('PASS: entry summary and price calendar sync avoid duplicate DOM work');
