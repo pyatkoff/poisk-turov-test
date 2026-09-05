@@ -55,6 +55,12 @@ async function prepare(page, mode) {
         if (action === 'tour') return Promise.resolve(tour);
         if (action !== 'flights') throw new Error('unexpected API action ' + action);
         flightCalls += 1;
+        if (mode === 'price-decimal') {
+          return Promise.resolve([
+            { isDefault: true, price: { value: 72832 }, forward: [], backward: [] },
+            { price: { value: 90049.6 }, forward: [], backward: [] }
+          ]);
+        }
         if (mode === 'recover' && flightCalls >= 2) {
           return Promise.resolve([{
             isDefault: true,
@@ -71,6 +77,7 @@ async function prepare(page, mode) {
 
   for (const file of [
     'v2/tour-controller-v4.js',
+    'v2/flight-price-sync-v1.js',
     'v2/flight-empty-recovery-v1.js',
     'v2/search3-results-filters-v1.js',
     'v2/search3-selected-flow-v2.js'
@@ -78,10 +85,41 @@ async function prepare(page, mode) {
     await page.addScriptTag({ path: path.join(root, file) });
   }
   await page.evaluate(() => window.V2TourController.selectTour('fallback-tour'));
+  if (mode === 'price-decimal') {
+    await page.waitForFunction(() => document.querySelectorAll('#selectedTour .flight-variant').length === 2);
+    return;
+  }
   await page.waitForFunction(() => (
     window.__fallbackTest.flightCalls === 1
     && document.querySelector('#selectedTour.search3-flight-fallback .load-flights')
   ));
+}
+
+async function verifyLocalizedFlightTradeoff(browser) {
+  const page = await browser.newPage({ viewport: { width: 375, height: 900 } });
+  await prepare(page, 'price-decimal');
+  await page.waitForFunction(() => (
+    Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span'))
+      .some(node => node.textContent === '+17 217,6 ₽ к минимальной')
+  ));
+  const state = await page.evaluate(() => ({
+    prices: Array.from(document.querySelectorAll('#selectedTour .flight-choice>b')).map(node => node.textContent.trim()),
+    tradeoffs: Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span')).map(node => node.textContent.trim()),
+    parsedDecimal: window.Search3CandidateFlightTradeoffV1.localizedMoneyNumber('Стоимость тура: 90 049,6 ₽'),
+    wrongDigitCollapse: document.body.textContent.includes('+827 664 ₽ к минимальной'),
+    leadRequests: window.__fallbackTest.leadRequests
+  }));
+  if (
+    state.prices[0] !== 'Стоимость тура: 72 832 ₽'
+    || state.prices[1] !== 'Стоимость тура: 90 049,6 ₽'
+    || state.tradeoffs[0] !== 'Самая низкая цена'
+    || state.tradeoffs[1] !== '+17 217,6 ₽ к минимальной'
+    || state.parsedDecimal !== 90049.6
+    || state.wrongDigitCollapse
+    || state.leadRequests !== 0
+  ) throw new Error('localized flight tradeoff failed: ' + JSON.stringify(state));
+  console.log('SEARCH3_LOCALIZED_FLIGHT_TRADEOFF_OK ' + JSON.stringify(state));
+  await page.close();
 }
 
 async function verifyFallbackHandoff(browser) {
@@ -174,6 +212,7 @@ async function verifyRetryRecovery(browser) {
   try {
     await verifyFallbackHandoff(browser);
     await verifyRetryRecovery(browser);
+    await verifyLocalizedFlightTradeoff(browser);
   } finally {
     await browser.close();
   }
