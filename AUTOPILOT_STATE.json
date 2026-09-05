@@ -1,7 +1,7 @@
 {
   "schema_version": 23,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T02:08:00+00:00",
+  "updated_at": "2026-09-05T02:23:02+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Whole-site preview is live from exact source 6a20f3dd4145cd9a3fd08bc8964d66725af43e5c after one-shot deploy 33937843736 / PR #1343. Live family handoff defect was reproduced and fixed: Search3 now retains the child-age container while rebuilding the form; ages 0/17 remain in the tourist popup and a real search completes with results. Visual CI 33937670550 checks this on 375 and 1440; all applicable gates passed. Live desktop path reached hotel, concrete tour, flight, summary and visible lead form without submitting. Preview leads, Metrika and external widget remain disabled; production fingerprints were unchanged and rollback backup retained.",
-    "next_action": "Continue journey acceptance on a physical iPhone/Safari or equivalent owner device, including reopening search controls after results, unavailable-flight/retry recovery and long-value layout. Investigate the observed supplier-normalized 3 adults + 1 child presentation for a request entered as 2 adults + ages 0/17 without changing Tourvisor, pricing or lead contracts; record as expected supplier normalization or fix only a confirmed presentation/handoff defect. Resolve legal/payment links only when approved source content is available. Production migration remains gated by owner visual approval.",
+    "last_material_progress": "Whole-site preview is live from exact source 000f6a63052aba7c29efca6f0082cd6068ec188d after one-shot deploy 33938566550 / PR #1344. All applicable gates passed, including visual run 33938378845 and core run 33938378881. Fresh browser reload retained exact child ages 0/17, completed a real search with 80 hotels, opened a concrete operator offer, available flight, summary and visible lead form without submitting. A control search confirmed the supplier maps age 17 to adult placement: the UI now says 'Состав размещения у туроператора', uses correct child grammar and preserves original requested ages in lead context. Preview leads, Metrika and external widget remain disabled; production fingerprints were unchanged and rollback backup retained.",
+    "next_action": "Continue journey acceptance on a physical iPhone/Safari or equivalent owner device, including reopening search controls after results, unavailable-flight/retry recovery and long-value layout. Resolve legal/payment links only when approved source content is available. Production migration remains gated by owner visual approval; do not change Tourvisor, pricing, lead or analytics contracts.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -72,14 +72,14 @@
     "pr": 1334,
     "issue": 996,
     "prepared_pr": 1334,
-    "artifact_source_sha": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
-    "artifact_source_tree": "51ce6288dd83c31e4853de6454a3399ed1dcdf34",
-    "artifact_run": 33937670389,
-    "artifact_id": 9960716789,
-    "artifact_digest": "sha256:32f955e29bbe27b8ea11a85442117869648bc5679a6c53a46fa4085727b40186",
-    "archive_sha256": "978f62413f6a27108491a68420907529c8b722386efe349f0b565c3fad0574a9",
-    "manifest_sha256": "51a076f3273fb217c51ac620737f2246d8b5f12b848666ad6d57930f1bf4d18d",
-    "payload_checksums_sha256": "5ad4901249973a20f849b99ee010f2c15ae5902d7e0d21bd0343f35c2a9bd0af",
+    "artifact_source_sha": "000f6a63052aba7c29efca6f0082cd6068ec188d",
+    "artifact_source_tree": "f257898ce159c5b38ea43256310bf4da02ebc7b9",
+    "artifact_run": 33938378885,
+    "artifact_id": 9960939157,
+    "artifact_digest": "sha256:d7c275838d3b3e2dfb569a55b6c376b73eda5062c14c282e8fd7b17f253e9010",
+    "archive_sha256": "176f5f918083f515ca05134cf6c74cdc389f58eaf15e6866795d1a2816ef1e91",
+    "manifest_sha256": "f49b8d7ceea744cb083747547701e567a49d9e30434a77d0b1e296f319f18dc1",
+    "payload_checksums_sha256": "a86e541a2d5d78c301e302226ab7ead5f187d9b4f29972149d88186f48f93672",
     "payload_file_count": 715,
     "superseded_artifact": 9958766470,
     "acceptance": [
@@ -88,6 +88,7 @@
       "Keep preview lead delivery disabled, preserve protected production fingerprints and retain rollback.",
       "Verified navigation, real catalogue loading and date/night/party/child-age handoff in the whole-site preview.",
       "Verified desktop journey through hotel, tour, available flight, summary and visible lead form without sending a lead.",
+      "Confirmed supplier age normalization with a control search; operator placement is labeled separately while requested ages remain in lead context.",
       "Physical iPhone/Safari and unavailable-flight/recovery acceptance remain."
     ]
   },
@@ -138,15 +139,15 @@
       "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
-      "release_merge_sha": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
-      "source_tree": "51ce6288dd83c31e4853de6454a3399ed1dcdf34",
-      "exact_artifact": 9960716789,
-      "artifact_digest": "sha256:32f955e29bbe27b8ea11a85442117869648bc5679a6c53a46fa4085727b40186",
-      "superseded_artifact": 9959663775,
+      "implementation_verified_sha": "000f6a63052aba7c29efca6f0082cd6068ec188d",
+      "release_merge_sha": "000f6a63052aba7c29efca6f0082cd6068ec188d",
+      "source_tree": "f257898ce159c5b38ea43256310bf4da02ebc7b9",
+      "exact_artifact": 9960939157,
+      "artifact_digest": "sha256:d7c275838d3b3e2dfb569a55b6c376b73eda5062c14c282e8fd7b17f253e9010",
+      "superseded_artifact": 9960716789,
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "preview_deploy_run": 33937843736,
-      "preview_deploy_pr": 1343,
+      "preview_deploy_run": 33938566550,
+      "preview_deploy_pr": 1344,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -192,17 +193,17 @@
     },
     "whole_site_preview_preparation": {
       "conclusion": "success",
-      "sha": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
-      "source_tree": "51ce6288dd83c31e4853de6454a3399ed1dcdf34",
-      "boundary_run": 33937670439,
-      "artifact_run": 33937670389,
-      "security_run": 33937670381,
-      "core_run": 33937670572,
-      "visual_run": 33937670550,
-      "artifact_id": 9960716789,
-      "deploy_run": 33937843736,
-      "deploy_pr": 1343,
-      "scope": "All applicable PR gates passed. Browser regression preserves child ages 0/17 at 375 and 1440. Exact artifact published atomically; live HTTP checks deny internal PHP, keep noindex/counter zero/disabled leads, retain rollback and confirm protected production fingerprints unchanged."
+      "sha": "000f6a63052aba7c29efca6f0082cd6068ec188d",
+      "source_tree": "f257898ce159c5b38ea43256310bf4da02ebc7b9",
+      "boundary_run": 33938378874,
+      "artifact_run": 33938378885,
+      "security_run": 33938378856,
+      "core_run": 33938378881,
+      "visual_run": 33938378845,
+      "artifact_id": 9960939157,
+      "deploy_run": 33938566550,
+      "deploy_pr": 1344,
+      "scope": "All applicable PR gates passed. Browser regression preserves child ages 0/17 at 375 and 1440. Exact artifact published atomically; fresh live reload used content-addressed Search3 JS d5646ea3, retained ages, completed real search and reached the lead form. Supplier-normalized placement is truthfully labeled. HTTP isolation and protected production fingerprint checks passed."
     },
     "site_shell": {
       "conclusion": "success",
@@ -211,8 +212,8 @@
       "scope": "All applicable PR gates passed; migration-only check skipped by configured condition. Actual Search3, legacy search and content templates on mobile/desktop. Runtime catalogue unavailable in CI; not a production defect."
     }
   },
-  "last_verified_commit": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
-  "last_verified_commit_scope": "All applicable gates passed, including family hydration at 375/1440. Exact whole-site preview is live; desktop real-catalogue journey reached the lead form without submission. Physical iPhone/Safari and recovery branches remain.",
+  "last_verified_commit": "000f6a63052aba7c29efca6f0082cd6068ec188d",
+  "last_verified_commit_scope": "All applicable gates passed, including family hydration at 375/1440 and truthful operator-placement labels. Exact whole-site preview is live; desktop real-catalogue journey reached the lead form without submission. Physical iPhone/Safari and recovery branches remain.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -276,9 +277,9 @@
     "findings": "Copied search runtime could execute production Bitrix/site_conf, inherit a configured counter, and load the external consultant widget. Legacy entry required transformed homepage and retained production lead URL. Old smoke used a clean PHP docroot/config and did not expose these issues.",
     "fix": "Exact fail-closed transformations of copied artifact only: omit production bootstrap, force preview counter zero, remove consultant widget, bind legacy UI to copied search runtime and disabled lead sink. Production runtime, analytics configuration, goals and lead transport unchanged.",
     "verification": "Exact transform/drift unit test and HTTP smoke passed in run 33934383695. Both forms rendered with counter=0 and disabled sink despite poisoned production bootstrap fixtures. Core/security/boundary/visual gates passed. ZIP digest, inner archive, manifest, checksum list and all 715 payload bytes matched locally.",
-    "sha": "6a20f3dd4145cd9a3fd08bc8964d66725af43e5c",
-    "artifact_id": 9960716789,
-    "deploy_run": 33937843736,
+    "sha": "000f6a63052aba7c29efca6f0082cd6068ec188d",
+    "artifact_id": 9960939157,
+    "deploy_run": 33938566550,
     "verification_update": "Production bootstrap/config paths are denied over HTTP; preview counter/widget/lead delivery remain disabled. Atomic activation and final protected production fingerprint checks passed; previous preview target retained for rollback."
   }
 }

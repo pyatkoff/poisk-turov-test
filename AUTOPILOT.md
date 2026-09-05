@@ -8,7 +8,7 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priorit
 
 AnyTour Design System 2.0 is the only canonical design system. Do not restore, introduce or reference Design System 1.0 as current. Treat the public site as one product across homepage → destination/country → hot/search → results → selected tour → lead.
 
-Active owner-directed continuation is [Search3 site completion, issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996). Finish the new design across the site before expanding SEO or refactoring. The coherent whole-site preview is published from checked source `6a20f3dd4145cd9a3fd08bc8964d66725af43e5c`; desktop real-catalogue acceptance reaches the lead form, while physical iPhone/Safari and recovery branches remain. The existing search-only deploy still accepts only nine search files and is unchanged. The stable DS2 mode/phase/stage identifiers remain unchanged; Search3 is the active substage.
+Active owner-directed continuation is [Search3 site completion, issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996). Finish the new design across the site before expanding SEO or refactoring. The coherent whole-site preview is published from checked source `000f6a63052aba7c29efca6f0082cd6068ec188d`; desktop real-catalogue acceptance reaches the lead form, while physical iPhone/Safari and recovery branches remain. The existing search-only deploy still accepts only nine search files and is unchanged. The stable DS2 mode/phase/stage identifiers remain unchanged; Search3 is the active substage.
 
 Priority order after emergency overrides is: confirmed search/mobile defects → common site presentation → whole-site preview and handoff → truthful content/working links and offer freshness → end-to-end acceptance → owner-approved migration. Technical refactor and mass SEO expansion remain deferred.
 
@@ -63,9 +63,9 @@ Draft #1334 contains the production import, old-search route, client-facing copy
 
 Continue from `AUTOPILOT_STATE.json` current task/queue and [issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996):
 
-1. Keep the published whole-site preview isolated and exact; source `6a20f3dd`, deploy `33937843736`, deployment record #1343.
+1. Keep the published whole-site preview isolated and exact; source `000f6a63`, deploy `33938566550`, deployment record #1344.
 2. Complete physical iPhone/Safari and unavailable-flight/retry acceptance; desktop home → search → hotel → tour → flight → summary → lead form already passed without sending a lead.
-3. Classify the observed supplier normalization of ages `0/17` from requested `2+2` to offer `3+1`; do not change Tourvisor, price or lead contracts without a confirmed defect.
+3. Supplier normalization of ages `0/17` from requested `2+2` to offer placement `3+1` is confirmed by a control search. The UI now labels this truthfully as the tour operator's placement and keeps original ages in the lead context; do not change Tourvisor, price or lead contracts.
 4. Resolve confirmed broken legal/payment links only from existing approved content; record missing content rather than invent terms.
 5. Obtain owner visual approval on a specific release, retain previous deployment artifact/configuration, verify rollback and `/poisk-turov-old/`, then execute the approved migration and post-deploy verification.
 
