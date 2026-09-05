@@ -50,11 +50,6 @@ function v2_render_site_footer(string $phone, string $phoneHref): void
       </div>
 
       <div class="ds2-site-footer__meta">
-        <nav class="ds2-site-footer__legal" aria-label="Служебные ссылки">
-          <a href="<?=htmlspecialchars(v2_site_href('/payment/'), ENT_QUOTES, 'UTF-8')?>">Оплата туров</a>
-          <a href="<?=htmlspecialchars(v2_site_href('/personal-data/'), ENT_QUOTES, 'UTF-8')?>">Согласие на обработку персональных данных</a>
-          <a href="<?=htmlspecialchars(v2_site_href('/politika-konfidentsialnosti/'), ENT_QUOTES, 'UTF-8')?>">Политика конфиденциальности</a>
-        </nav>
         <div class="ds2-site-footer__payments" aria-label="Платёжные системы">
           <span>MasterCard</span><span>Visa</span><span>Мир</span>
         </div>
@@ -71,13 +66,6 @@ function v2_render_standalone_canonical_footer(): void
 {
     ?>
     <footer class="at-site-footer">
-      <nav class="at-site-footer-menu" aria-label="Служебные ссылки">
-        <ul>
-          <li><a href="<?=htmlspecialchars(v2_site_href('/payment/'), ENT_QUOTES, 'UTF-8')?>">Оплата туров</a></li>
-          <li><a href="<?=htmlspecialchars(v2_site_href('/personal-data/'), ENT_QUOTES, 'UTF-8')?>">Согласие на обработку персональных данных</a></li>
-          <li><a href="<?=htmlspecialchars(v2_site_href('/politika-konfidentsialnosti/'), ENT_QUOTES, 'UTF-8')?>">Политика конфиденциальности</a></li>
-        </ul>
-      </nav>
       <p class="at-site-footer-copy">© 2026 «ТУРАГЕНТСТВО ANYTour» Москва | Все права защищены.</p>
       <span class="at-site-pay-icons" aria-label="Платёжные системы"><i>MasterCard</i><i>Visa</i><i>Мир</i></span>
     </footer>
