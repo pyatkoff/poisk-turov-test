@@ -1,7 +1,7 @@
 {
-  "schema_version": 26,
+  "schema_version": 27,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T04:50:00+00:00",
+  "updated_at": "2026-09-05T05:03:30+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "The coherent whole-site preview now serves exact source 4bac82adad1be95a6f07b5413b2b1adbcc17fe24 after deploy 33945548360 / record draft #1349. The confirmed resort copy defect `Подобрать тур в Анталья` is fixed systemically: CTA, offer and price-calendar phrases use the reviewed destination form from H1 or explicit name_accusative, while indeclinable names retain a safe fallback. Six grammar cases, standalone content UX, exact artifact build and all 22 applicable branch checks passed. Live Antalya and Kemer routes show correct wording. Main and production remain unchanged.",
-    "next_action": "Complete physical iPhone/Safari acceptance on exact 4bac82ad preview, especially date/night controls, readable hotel cards, flight variants and reopening controls after results. In parallel, prepare a non-secret production backup/configuration manifest and rollback drill without switching production. Resolve legal/payment links only when approved source content is available. Production migration remains gated by owner visual approval.",
+    "last_material_progress": "The coherent whole-site preview now serves exact source 57d734eb07dd26f996275dcc1f8d9cf5a01b71ab after deploy 33946112648 / record draft #1352. Three footer destinations were confirmed HTTP 404 on production and preview; because approved legal/payment content is unavailable, the new-site footer now omits those non-working links instead of inventing terms. Production and preview path guards prevent accidental re-exposure. The prior resort grammar fix remains live. All 22 applicable branch checks passed; preview isolation, rollback retention and protected production fingerprints passed. Main and production remain unchanged.",
+    "next_action": "Prepare a non-secret production backup/configuration manifest and rollback drill without switching production. Complete physical iPhone/Safari acceptance on exact 57d734eb preview. Approved legal/payment pages remain content-blocked; keep their links hidden. Production migration remains gated by owner visual approval.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -72,14 +72,14 @@
     "pr": 1334,
     "issue": 996,
     "prepared_pr": 1334,
-    "artifact_source_sha": "4bac82adad1be95a6f07b5413b2b1adbcc17fe24",
-    "artifact_source_tree": "4640840c5ef48e5fcc570c19b31dd213ec418f20",
-    "artifact_run": 33945457730,
-    "artifact_id": 9963177822,
-    "artifact_digest": "sha256:83a8f7ef3aa0419320b9733e72b497a27e9235db29ccd9709dc1c9e6358429af",
-    "archive_sha256": "77559f5ce702e406e2a13ef8a19b8dbd80270670e7013ebeb2980c30ed34eb1e",
-    "manifest_sha256": "1142228fdc2011c24214026289d1480f4e8caed0f3e1690deabf3c363c6352bb",
-    "payload_checksums_sha256": "a0207e7808fa11dc457ff4d3f21098b21fd27d5379aa5c9a1be9dd9eba2173cb",
+    "artifact_source_sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
+    "artifact_source_tree": "8340078e1c2e6d3b5d3e137278435f0bb609d0d2",
+    "artifact_run": 33946001085,
+    "artifact_id": 9963347925,
+    "artifact_digest": "sha256:84088bf3aea5866bc4dab658929f459110374bae96fb541419b2e3889ba1b80c",
+    "archive_sha256": "0d8addd29b397872d2f670825c3bd81d7d42afff825ff6d0f2f6fb62b37cd251",
+    "manifest_sha256": "56ccf20221babe7500ec5cf8e576a18ae57793c26c84f27589a67738899c336b",
+    "payload_checksums_sha256": "b54bc8faa966ea029be7a5bf21668a73227c66c2d71ac68565d0050249f469e0",
     "payload_file_count": 715,
     "superseded_artifact": 9962135867,
     "acceptance": [
@@ -93,7 +93,8 @@
       "Prepared readable result cards at 375/430/1024/1440: taller mobile photos, readable fact and action type, no clipping and no repeated date/night/meal/flight facts under price.",
       "Live decimal flight-price tradeoffs are internally consistent with displayed totals; raw Tourvisor price values and price selection remain authoritative and unchanged.",
       "Physical iPhone/Safari acceptance remains.",
-      "Verified declined and indeclinable resort destination copy; live Antalya CTA says `Подобрать тур в Анталью`."
+      "Verified declined and indeclinable resort destination copy; live Antalya CTA says `Подобрать тур в Анталью`.",
+      "Confirmed all three unpublished legal/payment footer destinations return 404; new-site footer omits them until approved pages exist."
     ]
   },
   "queue": [
@@ -143,15 +144,15 @@
       "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "4bac82adad1be95a6f07b5413b2b1adbcc17fe24",
-      "release_merge_sha": "4bac82adad1be95a6f07b5413b2b1adbcc17fe24",
-      "source_tree": "4640840c5ef48e5fcc570c19b31dd213ec418f20",
-      "exact_artifact": 9963177822,
-      "artifact_digest": "sha256:83a8f7ef3aa0419320b9733e72b497a27e9235db29ccd9709dc1c9e6358429af",
-      "superseded_artifact": 9962292167,
+      "implementation_verified_sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
+      "release_merge_sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
+      "source_tree": "8340078e1c2e6d3b5d3e137278435f0bb609d0d2",
+      "exact_artifact": 9963347925,
+      "artifact_digest": "sha256:84088bf3aea5866bc4dab658929f459110374bae96fb541419b2e3889ba1b80c",
+      "superseded_artifact": 9963177822,
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "preview_deploy_run": 33945548360,
-      "preview_deploy_pr": 1349,
+      "preview_deploy_run": 33946112648,
+      "preview_deploy_pr": 1352,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -163,7 +164,8 @@
         "preview-only forced noindex independent of production SEO allowlist",
         "readable result cards with taller mobile photos and non-duplicated facts",
         "localized decimal flight-price tradeoff display correction",
-        "declined resort destination copy from reviewed H1"
+        "declined resort destination copy from reviewed H1",
+        "unpublished 404 legal/payment footer links hidden"
       ]
     },
     "production": {
@@ -200,14 +202,14 @@
     },
     "whole_site_preview_preparation": {
       "conclusion": "success",
-      "sha": "4bac82adad1be95a6f07b5413b2b1adbcc17fe24",
-      "source_tree": "4640840c5ef48e5fcc570c19b31dd213ec418f20",
-      "artifact_run": 33945457730,
-      "artifact_id": 9963177822,
-      "artifact_digest": "sha256:83a8f7ef3aa0419320b9733e72b497a27e9235db29ccd9709dc1c9e6358429af",
-      "deploy_run": 33945548360,
-      "deploy_pr": 1349,
-      "scope": "All 22 applicable branch checks passed; one production-only gate skipped. Exact artifact published atomically with preview isolation, retained rollback and unchanged protected production fingerprints. Live Antalya and Kemer routes show grammatically correct destination copy."
+      "sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
+      "source_tree": "8340078e1c2e6d3b5d3e137278435f0bb609d0d2",
+      "artifact_run": 33946001085,
+      "artifact_id": 9963347925,
+      "artifact_digest": "sha256:84088bf3aea5866bc4dab658929f459110374bae96fb541419b2e3889ba1b80c",
+      "deploy_run": 33946112648,
+      "deploy_pr": 1352,
+      "scope": "All 22 applicable branch checks passed; one production-only gate skipped. Exact preview published atomically with lead/analytics/widget isolation, retained rollback and unchanged protected production fingerprints. Live footer has zero links to the three confirmed 404 destinations; resort grammar remains correct."
     },
     "flight_fallback_integration": {
       "conclusion": "success",
@@ -253,10 +255,21 @@
       "artifact_run": 33945457730,
       "deploy_run": 33945548360,
       "scope": "CTA, offer heading and price-calendar heading use the reviewed destination form from H1 or explicit name_accusative. Six deterministic cases cover declined, indeclinable, override and fallback values. Live Antalya and Kemer verified."
+    },
+    "unpublished_legal_links": {
+      "conclusion": "success",
+      "sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
+      "source_pr": 1351,
+      "content_ci": 33946001024,
+      "boundary_ci": 33946001065,
+      "visual_ci": 33946000995,
+      "artifact_run": 33946001085,
+      "deploy_run": 33946112648,
+      "scope": "Confirmed /payment/, /personal-data/ and /politika-konfidentsialnosti/ are 404. New-site footer omits them and regression guards reject re-exposure until real pages exist. Legal/payment content remains deferred; no terms invented."
     }
   },
-  "last_verified_commit": "4bac82adad1be95a6f07b5413b2b1adbcc17fe24",
-  "last_verified_commit_scope": "All 22 applicable checks passed. Exact source is published in the isolated whole-site preview; resort destination grammar is fixed and live-verified on Antalya and Kemer. Prior card readability, localized flight tradeoff, family handoff, preview isolation and deterministic unavailable-flight recovery remain in the same tree. Physical iPhone/Safari remains.",
+  "last_verified_commit": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
+  "last_verified_commit_scope": "All 22 applicable checks passed. Exact isolated preview omits three confirmed 404 footer links and retains correct resort grammar, card readability, localized flight tradeoffs, family handoff, preview isolation and unavailable-flight recovery. Physical iPhone/Safari remains.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -320,9 +333,9 @@
     "findings": "Copied search runtime could execute production Bitrix/site_conf, inherit a configured counter, and load the external consultant widget. Legacy entry required transformed homepage and retained production lead URL. Old smoke used a clean PHP docroot/config and did not expose these issues.",
     "fix": "Exact fail-closed transformations of copied artifact only: omit production bootstrap, force preview counter zero, remove consultant widget, bind legacy UI to copied search runtime and disabled lead sink. Production runtime, analytics configuration, goals and lead transport unchanged.",
     "verification": "Exact transform/drift unit test and HTTP smoke passed in run 33934383695. Both forms rendered with counter=0 and disabled sink despite poisoned production bootstrap fixtures. Core/security/boundary/visual gates passed. ZIP digest, inner archive, manifest, checksum list and all 715 payload bytes matched locally.",
-    "sha": "4bac82adad1be95a6f07b5413b2b1adbcc17fe24",
-    "artifact_id": 9963177822,
-    "deploy_run": 33945548360,
-    "verification_update": "Current exact source 4bac82ad deployed by run 33945548360: production bootstrap/config paths are denied over HTTP; preview counter/widget/lead delivery remain disabled. Atomic activation and final protected production fingerprint checks passed; previous preview target retained for rollback."
+    "sha": "57d734eb07dd26f996275dcc1f8d9cf5a01b71ab",
+    "artifact_id": 9963347925,
+    "deploy_run": 33946112648,
+    "verification_update": "Current exact source 57d734eb deployed by run 33946112648: internal production paths denied; preview counter/widget/lead delivery disabled; atomic activation, rollback retention and protected production fingerprint checks passed."
   }
 }
