@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T08:17:34.106442+00:00",
+  "updated_at": "2026-09-05T12:22:56.761480+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Published clean selected-tour/review/lead isolation, preserved return to all 78 live results and search values, readable search/filter/lead actions, and unclipped desktop filter reset. Final source3624278a passed all23 applicable checks and exact isolated publication.",
-    "next_action": "Owner can review exact preview3624278a. Physically verify iPhone/Safari dates, nights, calendar and booking return; approved legal pages and separately controlled real lead receipt remain. Continue concrete remaining UX defects only; do not repeat completed calendar/isolation work or switch production without explicit approval.",
+    "last_material_progress": "Owner requested search refactoring. Prepared 48 ordered presentation source modules and reproducible eight-asset build; served bytes are identical to published3624278a. Five build regression cases and24module syntax checks pass locally; remote CI pending.",
+    "next_action": "Verify source-refactor CI and exact payload equivalence, then record checkpoint. Do not redeploy unchanged runtime just for file moves. Continue from src/search3 owners; physical Safari/legal content/production approval remain open.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -49,7 +49,7 @@
     "price_arithmetic": "PRESERVE"
   },
   "deferred": {
-    "technical_refactor": "DEFER_UNTIL_EXPLICIT_OWNER_DIRECTION",
+    "technical_refactor": "Broader refactor deferred; owner explicitly authorized Search3 presentation source refactor on2026-09-05.",
     "pr_254": "DEFER_UNTIL_FRESH_ARCHITECTURE_REVIEW",
     "legal_payment": "DEFER_UNRESOLVED_CONTENT",
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -64,47 +64,21 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_CLEAN_JOURNEY_READABILITY",
-    "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
-    "category": "VISUAL",
-    "title": "Isolate booking stages and make search context, filters and lead actions readable",
+    "id": "S3_PRESENTATION_SOURCE_REFACTOR",
+    "title": "Owner-authorized modular Search3 presentation sources and reproducible build",
+    "status": "PREPARED_CI_PENDING",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
-    "prepared_pr": 1334,
-    "artifact_source_sha": "3624278a59187bae7f76c9dbdb504b8f7b2858fd",
-    "artifact_source_tree": "26db887754b252099465988f62967e30a9f8840e",
-    "artifact_run": 33954714694,
-    "artifact_id": 9965968756,
-    "artifact_digest": "sha256:c0bacf5863b02cae0e5b274e3bf52e01f99109ee676098368cb74347c07421bf",
-    "archive_sha256": "186ff9ebc116cc60db1ca970e7b0de119d49f077b6539f114e68de53ee1ba357",
-    "manifest_sha256": "5b4a8984970f2903179b99c5ca2b0eaf554de226b9f7b16be56054bd6c0a5a19",
-    "payload_checksums_sha256": "a7c111d7cd0a5e5337aaf6981f1387472212199a7c6e5df5ccd02ce97c0b0142",
-    "payload_file_count": 715,
-    "superseded_artifact": 9965908477,
-    "acceptance": [
-      "Use the exact reviewed site artifact; existing search-only deploy allowlist cannot publish the whole site.",
-      "Force preview noindex even when production SEO allowlists the canonical route.",
-      "Keep preview lead delivery disabled, preserve protected production fingerprints and retain rollback.",
-      "Verified navigation, real catalogue loading and date/night/party/child-age handoff in the whole-site preview.",
-      "Verified desktop journey through hotel, tour, available flight, summary and visible lead form without sending a lead.",
-      "Confirmed supplier age normalization with a control search; operator placement is labeled separately while requested ages remain in lead context.",
-      "Deterministic Chromium verifies empty-flight retry, recovered-flight cleanup and fallback continuation to the lead form without invoking lead transport.",
-      "Prepared readable result cards at 375/430/1024/1440: taller mobile photos, readable fact and action type, no clipping and no repeated date/night/meal/flight facts under price.",
-      "Live decimal flight-price tradeoffs are internally consistent with displayed totals; raw Tourvisor price values and price selection remain authoritative and unchanged.",
-      "Physical iPhone/Safari acceptance remains.",
-      "Verified declined and indeclinable resort destination copy; live Antalya CTA says `Подобрать тур в Анталью`.",
-      "Confirmed all three unpublished legal/payment footer destinations return 404; new-site footer omits them until approved pages exist.",
-      "Prepared a fail-closed server-local rollback snapshot and isolated restore drill; live production backup remains intentionally uncaptured until the approved migration window.",
-      "Production price calendar is visible after multi-date results and compact by default on phones; date selection launches the existing lifecycle once and preserves other parameters in deterministic integration coverage.",
-      "Live 6-19 September search showed nine date minima; selecting 8 September completed an exact-date search with 7-10 nights and two adults retained.",
-      "Live placeholder flight shows clarification for number, time and baggage in selection, tour summary and lead sidebar; SU000 is not exposed as confirmed.",
-      "Live final lead sidebar has exactly one overall tour price, no repeated flight-price row and a manager-confirmation-before-payment note. Raw selected prices and lead fields are unchanged.",
-      "Live00f137f7 booking/form hides results and summary; return restores78cards and identical input/select values. No lead sent.",
-      "Final3624278a changes only redundant desktop filter subtitle; live CSS hashd3f972df7ade17f6 matches, reset fully fits inside220px rail."
-    ]
+    "served_baseline_sha": "3624278a59187bae7f76c9dbdb504b8f7b2858fd",
+    "scope": "48 source modules,8 byte-identical public assets, explicit order, source/build drift checks; no contract/cascade/observer changes"
   },
   "queue": [
+    {
+      "id": "S3_PRESENTATION_SOURCE_REFACTOR",
+      "status": "PREPARED_CI_PENDING",
+      "title": "Owner-authorized modular Search3 presentation sources and reproducible build"
+    },
     {
       "id": "S3_CLEAN_JOURNEY_READABILITY",
       "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",

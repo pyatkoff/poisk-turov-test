@@ -169,3 +169,21 @@ Follow-up00f137f7 makes desktop search context12–13px and filter choices13px w
 Final3624278a59187bae7f76c9dbdb504b8f7b2858fd removes only the redundant desktop filter subtitle to prevent clipping the reset button. All23 applicable checks passed; visual33954714659/artifact9965972719 inspected at1024, with unchanged mobile scope already inspected at375/430 and desktop1440. Exact artifact9965968756/build33954714694, tree26db887754b252099465988f62967e30a9f8840e, independently verifies all715 payload files and archive/manifest/ZIP hashes. Published by isolated deploy33954792052, record draft#1359. Evidence9965993909 confirms9routes/noindex/lead403/internalPHPdeny/counter0/retainedrollback and identical before/after/final production fingerprints. Live final CSS hashd3f972df7ade17f6 matches; reset right306px stays inside the220px rail ending334px. No additional full booking replay was needed for this desktop-only subtitle removal.
 
 Current preview: https://anytoour.ru/_preview/search3-site-candidate/ . Production/main remainfa58a0cba6dcfc8624d98c20d64fa06330eae309. Legacy route and source archive unchanged. Physical iPhone/Safari, approved legal/payment pages (including the existing consent privacy destination), owner visual production approval and separately controlled real lead receipt remain open. These fixes do not constitute9/10 acceptance or production approval. Do not restart the completed calendar or booking isolation; resume concrete remaining UX defects and those acceptance items. Scheduler remains paused and was not changed by this interactive request.
+
+
+## Owner-authorized search refactoring — 2026-09-05
+
+The owner requested “сделай рефакторинг поиска”. The scoped implementation separates
+the presentation monolith into 48 ordered source modules, with an explicit manifest
+and dependency-free builder reproducing the existing eight public assets. No served
+bytes change in this extraction. Existing API, pricing, lead mapping/delivery,
+analytics, PHP asset paths/order and CSS/runtime insertion order remain intact.
+Core CI and preview artifact construction reject stale generated files. Five isolated
+build tests cover exact reproduction, source drift/rebuild, protected hashes, missing
+modules before writes and unlisted/out-of-root source rejection.
+
+Development ownership: `src/search3/README.md`. Compatibility CSS is explicitly still
+active; observer/cascade rewrites are not disguised as file moves. The published
+preview remains `3624278a` because this source refactor produces identical runtime
+assets; a redundant deployment cannot add visual evidence. Remote CI and checkpoint
+status are recorded in #996 after the implementation commit.

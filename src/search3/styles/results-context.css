@@ -1,0 +1,82 @@
+/* donor:search3-results-top.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+/* Search 3 compact post-search summary and controls. Preview only. */
+body.search3-candidate.search3-has-results .v2-product-hero{display:none!important}
+body.search3-candidate.search3-has-results #tourSearch{display:none!important}
+body.search3-candidate.search3-has-results.search3-editing-search #tourSearch{display:block!important;margin-bottom:12px!important}
+body.search3-candidate.search3-has-results.search3-editing-search .results-search-summary{display:none!important}
+body.search3-candidate.search3-has-results #v2ResultsConfidence,body.search3-candidate.search3-has-results #v2AgencyTrust{display:none!important}
+/* A completed-search banner is useful while searching, but maket7's settled results state starts
+   directly with the compact search summary. Keep empty/error/in-progress status UI untouched. */
+body.search3-candidate.search3-has-results #status:has(.search-progress-done){display:none!important}
+body.search3-candidate .results-search-summary{display:grid!important;grid-template-columns:minmax(0,1.55fr) .68fr .68fr .72fr 122px!important;align-items:stretch!important;gap:0!important;max-width:1120px!important;width:calc(100% - 32px)!important;margin:0 auto 10px!important;padding:0!important;border:1px solid #e2e8f0!important;border-radius:10px!important;background:#fff!important;box-shadow:none!important;overflow:hidden!important}
+body.search3-candidate .results-search-summary__route{grid-column:1!important;grid-row:1!important;padding:8px 13px!important;border-right:1px solid #edf0f5!important}
+body.search3-candidate .results-search-summary__route strong{display:block!important;margin-bottom:3px!important;color:#98a2b3!important;font-size:7px!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.02em!important}
+body.search3-candidate .results-search-summary__route span{display:block!important;color:#14213d!important;font-size:9px!important;font-weight:850!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+body.search3-candidate .results-search-summary__fact{padding:8px 10px!important;border-right:1px solid #edf0f5!important}
+body.search3-candidate .results-search-summary__fact small{display:block!important;margin-bottom:3px!important;color:#98a2b3!important;font-size:7px!important;font-weight:800!important}
+body.search3-candidate .results-search-summary__fact b{display:block!important;color:#14213d!important;font-size:9px!important;font-weight:850!important;white-space:nowrap!important}
+body.search3-candidate .results-search-summary__edit{grid-column:5!important;grid-row:1!important;align-self:stretch!important;min-width:0!important;min-height:50px!important;margin:0!important;padding:0 10px!important;border:0!important;border-radius:0!important;background:#fff!important;color:#2463eb!important;font-size:8.5px!important;font-weight:900!important}
+body.search3-candidate .results-tools--ds2{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:14px!important;margin:0 0 7px!important;padding:7px 9px!important;border:1px solid #e2e8f0!important;border-radius:8px!important;background:#fff!important;box-shadow:none!important}
+body.search3-candidate .results-tools--ds2>div:first-child{display:flex!important;align-items:baseline!important;flex-direction:row!important;gap:8px!important;min-width:0!important}
+body.search3-candidate .results-tools--ds2 strong{color:#14213d!important;font-size:17px!important;line-height:1.1!important;font-weight:950!important;letter-spacing:-.025em!important}
+body.search3-candidate .results-tools--ds2 #resultSummary{color:#667085!important;font-size:8px!important;font-weight:750!important;white-space:nowrap!important}
+body.search3-candidate .search3-results-meta{display:none!important}
+body.search3-candidate .results-tools__actions{display:flex!important;align-items:center!important;gap:6px!important}
+body.search3-candidate .results-tools label{display:flex!important;align-items:center!important;gap:6px!important;color:#667085!important;font-size:8px!important;font-weight:800!important}
+body.search3-candidate .results-tools select{min-height:31px!important;padding:0 28px 0 9px!important;border:1px solid #dce4ef!important;border-radius:6px!important;background:#fff!important;color:#344054!important;font-size:8px!important;font-weight:800!important}
+body.search3-candidate .results-view-switch{display:flex!important;gap:5px!important}
+body.search3-candidate .results-view-switch button{min-height:31px!important;padding:0 10px!important;border:1px solid #dce4ef!important;border-radius:6px!important;background:#fff!important;color:#344054!important;font-size:8px!important;font-weight:850!important}
+body.search3-candidate .results-view-switch button.is-active{border-color:#2463eb!important;color:#2463eb!important;background:#f7faff!important}
+body.search3-candidate.search3-has-results .search3-mobile-toolbar{display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:wrap!important;margin:0 0 8px!important;width:100%!important;max-width:none!important}
+body.search3-candidate.search3-has-results .search3-active-chips{display:flex!important;gap:5px!important;flex-wrap:wrap!important;min-width:0!important}
+body.search3-candidate.search3-has-results .search3-chip{min-height:26px!important;padding:0 8px!important;border:1px solid #d9e2f1!important;border-radius:999px!important;background:#fff!important;color:#344054!important;font-size:8px!important;font-weight:800!important}
+@media(min-width:1000px){
+body.search3-candidate.search3-has-results #tourSearch{display:none!important}
+body.search3-candidate.search3-has-results.search3-editing-search #tourSearch{display:block!important}
+body.search3-candidate.search3-has-results .results-search-summary{display:grid!important}
+body.search3-candidate.search3-has-results.search3-editing-search .results-search-summary{display:none!important}
+body.search3-candidate .search3-mobile-filter-button{display:none!important}
+body.search3-candidate .results-tools--ds2{box-sizing:border-box!important;width:calc(100% - 210px)!important;margin-left:210px!important}
+body.search3-candidate .results-tools--ds2 #resultSummary{display:none!important}
+body.search3-candidate .results-tools__actions label{gap:0!important;font-size:0!important}
+body.search3-candidate .results-tools__actions label select{font-size:8px!important}
+body.search3-candidate .results-layout{grid-template-columns:198px minmax(0,1fr)!important;gap:12px!important}
+body.search3-candidate .results-filter-rail{width:198px!important;margin-top:0!important}
+body.search3-candidate .search3-filter-scenarios{display:none!important}
+body.search3-candidate .results-view-switch [data-results-view="grid"]{display:none!important}
+body.search3-candidate .results-view-switch [data-results-view="list"]{font-size:0!important;min-width:62px!important}
+body.search3-candidate .results-view-switch [data-results-view="list"]>*{display:none!important}
+body.search3-candidate .results-view-switch [data-results-view="list"]::after{content:'Список';font-size:8px!important}
+body.search3-candidate .results-map-button{font-size:0!important;min-width:54px!important}
+body.search3-candidate .results-map-button>*{display:none!important}
+body.search3-candidate .results-map-button::after{content:'Карта';font-size:8px!important}
+}
+@media(max-width:999px){
+body.search3-candidate .results-search-summary{grid-template-columns:minmax(0,1fr) 108px!important;width:calc(100% - 20px)!important;margin:0 auto 8px!important}
+body.search3-candidate .results-search-summary__route{grid-column:1!important;grid-row:1!important;border-right:0!important;padding:7px 9px!important}
+body.search3-candidate .results-search-summary__fact{display:none!important}
+body.search3-candidate .results-search-summary__edit{grid-column:2!important;grid-row:1!important;min-height:44px!important;border-left:1px solid #edf0f5!important}
+body.search3-candidate .search3-mobile-toolbar{display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;align-items:start!important;margin:0 0 8px!important}
+body.search3-candidate .search3-mobile-filter-button{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:36px!important;white-space:nowrap!important}
+body.search3-candidate .results-tools--ds2{align-items:flex-start!important;flex-direction:column!important;padding:7px 0!important;border:0!important;background:transparent!important}
+body.search3-candidate .results-tools--ds2>div:first-child{display:block!important}
+body.search3-candidate .results-tools--ds2 #resultSummary{display:block!important;margin-top:3px!important}
+}
+@media(max-width:640px){
+body.search3-candidate.search3-has-results .v2-shell{display:flex!important;flex-direction:column!important}
+body.search3-candidate.search3-has-results .search3-page-intro{order:1!important;margin:8px auto 4px!important}
+body.search3-candidate.search3-has-results .search3-page-intro p{display:none!important}
+body.search3-candidate.search3-has-results .search3-page-intro h1{display:block!important;font-size:17px!important}
+body.search3-candidate.search3-has-results #resultsSearchSummary{order:2!important}
+body.search3-candidate.search3-has-results #resultsTools{order:3!important;margin-bottom:3px!important}
+body.search3-candidate.search3-has-results .search3-mobile-toolbar{order:4!important}
+body.search3-candidate.search3-has-results .results-layout{order:5!important}
+body.search3-candidate.search3-has-results #selectedTour{order:6!important}
+body.search3-candidate .search3-mobile-toolbar{grid-template-columns:1fr!important}
+body.search3-candidate .search3-mobile-filter-button{width:100%!important}
+body.search3-candidate .results-tools__actions{width:100%!important;align-items:stretch!important}
+body.search3-candidate .results-tools__actions label{flex:1!important}
+body.search3-candidate .results-tools select{width:100%!important}
+}
+
+

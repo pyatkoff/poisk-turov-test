@@ -16,7 +16,13 @@
   ],
   "source": "explicit_owner_direction_2026_09_04_finish_new_design_across_site_then_migrate_preserve_old_search",
   "rule": "After production, lead-loss, incorrect-data and broken-user-journey emergencies, finish the approved Search3 design across the site, publish a coherent preview, verify the user journey and prepare a reversible migration. Production draft #1334 must not merge or deploy until explicit owner visual approval of the concrete release. Preview publishing and draft preparation are authorized. Preserve AnyTour Design System 2.0, logo, Tourvisor/API contract, price arithmetic, lead transport/field mapping, Metrika/goals and repository isolation. Keep technical refactor and mass SEO expansion deferred. Do not invent benefits, operating hours or legal/payment terms.",
-  "updated_at": "2026-09-04T23:11:02+00:00",
+  "updated_at": "2026-09-05T12:22:33.289253+00:00",
   "active_substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION",
-  "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996"
+  "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
+  "scoped_refactor_authorization": {
+    "source": "explicit_owner_request_2026_09_05",
+    "request": "сделай рефакторинг поиска",
+    "scope": "Search3 presentation source ownership and reproducible build; preserve served behavior, cascade order and protected contracts",
+    "production_approval": "still_required"
+  }
 }

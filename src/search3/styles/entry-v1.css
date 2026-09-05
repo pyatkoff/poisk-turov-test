@@ -1,0 +1,287 @@
+/* Search3 entry presentation overlay. Preview only. */
+/* The shared price calendar is a supported result surface, not legacy chrome. */
+html body.search3-candidate.search3-has-results:not(.search3-editing-search):not(.search3-selected-open):not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))) .v2-shell > #currentPriceCalendar:not([hidden]){
+  display:block!important;
+}
+html body.search3-candidate #currentPriceCalendar{
+  display:none!important;
+  box-sizing:border-box;
+  min-width:0;
+  padding:0;
+  margin:12px 0;
+  border:1px solid #dfe5ef;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:none;
+}
+html body.search3-candidate .search3-price-calendar__summary{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-height:52px;
+  padding:12px 16px;
+  box-sizing:border-box;
+  cursor:pointer;
+  list-style:none;
+  color:#17243f;
+}
+html body.search3-candidate .search3-price-calendar__summary::-webkit-details-marker{display:none}
+html body.search3-candidate .search3-price-calendar__summary strong{font-size:16px;line-height:1.3}
+html body.search3-candidate .search3-price-calendar__summary > span{margin-left:auto;color:#2743cb;font-size:14px;font-weight:700;white-space:nowrap}
+html body.search3-candidate .search3-price-calendar__summary::after{content:'';width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin:0 2px 4px 4px;flex-shrink:0}
+html body.search3-candidate .search3-price-calendar[open] > summary::after{transform:rotate(225deg);margin-top:6px}
+html body.search3-candidate .search3-price-calendar__summary:focus-visible{outline:2px solid #2743cb;outline-offset:3px;border-radius:10px}
+html body.search3-candidate .search3-price-calendar__content{padding:0 16px 14px}
+html body.search3-candidate #currentPriceCalendar .current-price-calendar__head{margin-bottom:10px}
+html body.search3-candidate #currentPriceCalendar .current-price-calendar__head > div{display:none}
+html body.search3-candidate #currentPriceCalendar .current-price-calendar__head small{font-size:12px;text-align:left;max-width:none;color:#667085}
+html body.search3-candidate #currentPriceCalendar .current-price-calendar__day{border-color:#dfe5ef;border-radius:10px;min-height:78px;gap:5px}
+html body.search3-candidate #currentPriceCalendar .current-price-calendar__day span{font-size:13px;color:#667085}
+html body.search3-candidate #currentPriceCalendar .current-price-calendar__day strong{font-size:17px;color:#17243f}
+html body.search3-candidate #currentPriceCalendar .current-price-calendar__day small{font-size:12px}
+html body.search3-candidate #currentPriceCalendar .current-price-calendar__day.is-best{border-color:#2743cb;background:#f0f4ff}
+html body.search3-candidate #currentPriceCalendar .current-price-calendar__day.is-best small{color:#2743cb}
+html body.search3-candidate #currentPriceCalendar .current-price-calendar__day:focus-visible{outline:2px solid #2743cb;outline-offset:2px}
+html body.search3-candidate #currentPriceCalendar .current-price-calendar__note{font-size:12px;line-height:1.45;color:#667085}
+@media(max-width:760px){
+  html body.search3-candidate #currentPriceCalendar{
+    order:4!important;
+    width:calc(100% - 24px);
+    max-width:calc(100% - 24px);
+    margin:0 12px 10px;
+  }
+  html body.search3-candidate .search3-price-calendar__summary{padding:12px;gap:8px}
+  html body.search3-candidate .search3-price-calendar__summary strong{font-size:14px}
+  html body.search3-candidate .search3-price-calendar__summary > span{font-size:13px}
+  html body.search3-candidate .search3-price-calendar__content{padding:0 12px 12px}
+  html body.search3-candidate #currentPriceCalendar .current-price-calendar__days{display:flex;overflow-x:auto;gap:8px;scroll-snap-type:x proximity;padding:3px 2px 7px}
+  html body.search3-candidate #currentPriceCalendar .current-price-calendar__day{flex:0 0 128px;scroll-snap-align:start}
+}
+
+html body.search3-candidate #tourSearch .search3-primary-grid > .search-submit{
+  background:#0066ff!important;
+  box-shadow:0 4px 10px rgba(0,102,255,.18)!important;
+}
+
+html body.search3-candidate #resultsSearchSummary .search3-entry-summary-detail{
+  display:none!important;
+}
+
+@media(min-width:761px) and (max-width:999px){
+  html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid,
+  html body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:10px 12px!important;
+  }
+  html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid > .search-submit,
+  html body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid > .search-submit{
+    grid-column:3/-1!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+  html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-quality__grid,
+  html body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-quality__grid{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:10px 12px!important;
+  }
+  html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-quick,
+  html body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-quick{
+    flex-wrap:wrap!important;
+    gap:10px 20px!important;
+  }
+}
+
+@media(max-width:999px){
+  html body.search3-candidate.search3-results-active #status.status:has(.search-progress-done){
+    width:calc(100% - 24px)!important;
+    min-height:30px!important;
+    margin:6px 12px!important;
+    padding:6px 10px 6px 14px!important;
+    border-radius:8px!important;
+    box-shadow:none!important;
+  }
+  html body.search3-candidate.search3-results-active #status.status:has(.search-progress-done) .search-progress-ux{
+    display:block!important;
+  }
+  html body.search3-candidate.search3-results-active #status.status:has(.search-progress-done) .search-progress-head strong{
+    font-size:12px!important;
+  }
+  html body.search3-candidate.search3-results-active #status.status:has(.search-progress-done) .search-progress-head span{
+    font-size:12px!important;
+  }
+  html body.search3-candidate.search3-results-active #status.status:has(.search-progress-done) .search-progress-note{
+    display:none!important;
+  }
+
+  html body.search3-candidate.search3-results-active #resultsSearchSummary{
+    grid-template-columns:minmax(0,1fr) 94px!important;
+    min-height:48px!important;
+    margin-top:6px!important;
+    margin-bottom:6px!important;
+  }
+  html body.search3-candidate.search3-results-active #resultsSearchSummary .results-search-summary__route{
+    padding:7px 9px!important;
+  }
+  html body.search3-candidate.search3-results-active #resultsSearchSummary .results-search-summary__route strong{
+    margin-bottom:2px!important;
+    font-size:10px!important;
+  }
+  html body.search3-candidate.search3-results-active #resultsSearchSummary .results-search-summary__route > span:not(.search3-entry-summary-detail){
+    font-size:12px!important;
+    line-height:1.2!important;
+  }
+  html body.search3-candidate.search3-results-active #resultsSearchSummary .search3-entry-summary-detail:not([hidden]){
+    display:block!important;
+    margin-top:2px!important;
+    overflow:visible!important;
+    color:#667085!important;
+    font-size:12px!important;
+    line-height:1.2!important;
+    font-weight:750!important;
+    text-overflow:clip!important;
+    white-space:normal!important;
+  }
+  html body.search3-candidate.search3-results-active #resultsSearchSummary .results-search-summary__edit{
+    min-width:0!important;
+    min-height:48px!important;
+    padding:0 8px!important;
+    font-size:12px!important;
+  }
+
+  html body.search3-candidate.search3-results-active #resultsTools{
+    min-height:34px!important;
+    margin-top:4px!important;
+    margin-bottom:4px!important;
+    padding:3px 0!important;
+  }
+  html body.search3-candidate.search3-results-active #resultsTools > div:first-child{
+    display:flex!important;
+    align-items:baseline!important;
+    gap:7px!important;
+  }
+  html body.search3-candidate.search3-results-active #resultsTools > div:first-child strong{
+    font-size:16px!important;
+  }
+  html body.search3-candidate.search3-results-active #resultsTools .search3-results-meta{
+    display:none!important;
+  }
+  html body.search3-candidate.search3-results-active #resultsTools #resultSummary{
+    display:none!important;
+  }
+
+  html body.search3-candidate.search3-results-active .search3-mobile-toolbar{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    align-items:stretch!important;
+    gap:8px!important;
+    margin-top:4px!important;
+    margin-bottom:10px!important;
+  }
+  html body.search3-candidate.search3-results-active .search3-mobile-filter-slot .mrf-bar{
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    height:44px!important;
+  }
+  html body.search3-candidate.search3-results-active .search3-mobile-filter-slot .mrf-open{
+    width:100%!important;
+    min-width:0!important;
+  }
+
+}
+
+@media(max-width:760px){
+  html body.search3-candidate #tourSearch,
+  html body.search3-candidate #tourSearch .search3-primary-grid,
+  html body.search3-candidate #tourSearch .search3-quality__grid{
+    min-width:0!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+  html body.search3-candidate #tourSearch .search3-primary-grid > *,
+  html body.search3-candidate #tourSearch .search3-quality__grid > *{
+    min-width:0!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Hide the sixth primary field before the entry decorator settles. */
+  html body.search3-candidate #tourSearch .search3-primary-grid > .search3-region{
+    display:none!important;
+  }
+  /* CSS fallback: region is still reachable if the decorator cannot reparent it. */
+  html body.search3-candidate #tourSearch.search3-mobile-advanced-open .search3-primary-grid > .search3-region{
+    display:block!important;
+  }
+  html body.search3-candidate #tourSearch .search3-quality__grid > .search3-region{
+    display:block!important;
+    order:-1!important;
+  }
+
+  html body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) .search3-quality,
+  html body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) .search3-quick{
+    display:none!important;
+  }
+  html body.search3-candidate:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quality{
+    display:block!important;
+    margin-top:12px!important;
+    padding-top:12px!important;
+    border-top:1px solid #edf0f5!important;
+  }
+  html body.search3-candidate:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quality__grid{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:9px!important;
+  }
+  html body.search3-candidate:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quick{
+    display:grid!important;
+  }
+
+  html body.search3-candidate #tourSearch .search3-primary-grid > .search-submit{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+}
+
+/* Common shell boundaries and verified search benefits. */
+html body.search3-candidate .search3-footer-benefits{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+html body.search3-candidate .search3-footer-apps{grid-column:1/-1!important}
+@media(max-width:999px){
+ html body.search3-candidate.search3-results-active .search3-mobile-toolbar{display:grid!important}
+ html body.search3-candidate .search3-mobile-sort{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;min-height:44px!important;border:1px solid #d7deeb!important;border-radius:8px!important;background:#fff!important;color:#14213d!important;font-size:13px!important}
+ html body.search3-candidate .search3-mobile-sort select{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;opacity:0!important;cursor:pointer!important}
+ html body.search3-candidate .search3-footer-benefits{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+/* Real form controls receive the tap directly, including on mobile Safari. */
+html body.search3-candidate #tourSearch :is(.search3-dates,.search3-nights) .search3-composite__control{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;align-items:center!important;gap:5px!important;height:auto!important;min-height:46px!important;padding:0 4px!important;overflow:visible!important}
+html body.search3-candidate #tourSearch .search3-direct-control{position:static!important;display:block!important;width:100%!important;min-width:0!important;max-width:100%!important;height:44px!important;min-height:44px!important;padding:0 4px!important;border:0!important;background:transparent!important;opacity:1!important;pointer-events:auto!important;font-size:16px!important;box-sizing:border-box!important}
+html body.search3-candidate #tourSearch .search3-direct-control:focus{outline:2px solid #2743cb!important;outline-offset:-2px!important}
+html body.search3-candidate #tourSearch .search3-direct-control::-webkit-date-and-time-value{text-align:center}
+html body.search3-candidate #tourSearch .search3-nights .search3-direct-control{text-align:center!important}
+
+@media(min-width:761px){
+ html body.search3-candidate #tourSearch .search3-primary-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;align-items:end!important;gap:12px!important}
+ html body.search3-candidate #tourSearch .search3-from{order:1!important}
+ html body.search3-candidate #tourSearch .search3-country{order:2!important}
+ html body.search3-candidate #tourSearch .search3-region{order:3!important}
+ html body.search3-candidate #tourSearch .search3-tourists{order:4!important}
+ html body.search3-candidate #tourSearch .search3-dates{order:5!important;grid-column:span 2!important}
+ html body.search3-candidate #tourSearch .search3-nights{order:6!important}
+ html body.search3-candidate #tourSearch .search-submit{order:7!important;grid-column:auto!important;width:100%!important;min-width:0!important;height:46px!important}
+}
+
+/* Align Safari's native date value and keep native night pickers. */
+html body.search3-candidate #tourSearch .search3-dates .search3-direct-control::-webkit-date-and-time-value{min-height:44px;display:flex;align-items:center;justify-content:center;margin:0}
+html body.search3-candidate #tourSearch .search3-nights select.search3-direct-control{appearance:auto!important;-webkit-appearance:menulist!important;text-align-last:center!important;padding-right:20px!important}
+
+/* Keep the button in the primary grid at desktop widths, including 1920+. */
+@media(min-width:1000px){
+ html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid,
+ html body.search3-candidate.search3-editing-search #tourSearch .search3-primary-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important}
+}
+
+html body.search3-candidate #tourSearch .search3-dates .search3-direct-control::-webkit-date-and-time-value{line-height:44px!important}
+
+html body.search3-candidate:not(.search3-has-results) .ds2-site-footer{margin-top:24px!important}

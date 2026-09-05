@@ -3,6 +3,9 @@ name: Build Search3 whole-site preview artifact
 on:
   pull_request:
     paths:
+      - 'src/search3/**'
+      - 'scripts/build/search3_assets.py'
+      - 'tests/search3_source_build_test.py'
       - 'v2/**'
       - 'tests/site-preview-path-smoke.php'
       - 'tests/search-handoff-smoke.php'
@@ -40,6 +43,8 @@ jobs:
           php tests/site-preview-path-smoke.php production
           php tests/site-preview-path-smoke.php preview
           php tests/search-handoff-smoke.php
+          python3 -B scripts/build/search3_assets.py --check
+          python3 -B tests/search3_source_build_test.py
           python3 -B tests/search3_production_presentation_test.py
           python3 -B tests/search3_site_preview_isolation_test.py
           echo SEARCH3_SITE_SOURCE_CONTRACTS_OK

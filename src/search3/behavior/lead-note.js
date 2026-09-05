@@ -1,0 +1,6 @@
+/* donor:search3-lead-note.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+(function(){'use strict';
+function ensure(){const root=document.getElementById('selectedTour'),form=root&&root.querySelector('.lead-form');if(!form)return;const heading=form.querySelector('.section-heading');if(heading){const title=heading.querySelector('strong'),sub=heading.querySelector('span');if(title)title.textContent='Оставьте заявку';if(sub)sub.textContent='Мы отправим выбранный тур менеджеру. Он свяжется с вами в ближайшее время.';}let note=form.querySelector('.search3-lead-protection');if(!note){note=document.createElement('p');note.className='search3-lead-protection';note.innerHTML='<span aria-hidden="true">♢</span> Проверьте контактные данные перед отправкой заявки.';form.appendChild(note);}const comment=form.querySelector('textarea[name="comment"]');if(comment&&comment.closest('label'))comment.closest('label').classList.add('search3-lead-comment');}
+window.addEventListener('v2:tour-selected',()=>setTimeout(ensure,0));window.addEventListener('v2:booking-review',()=>setTimeout(ensure,0));})();
+
+

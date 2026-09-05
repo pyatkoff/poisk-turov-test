@@ -1,0 +1,95 @@
+/* donor:search3-tour-detail-rail.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+/* Search3 desktop tour-details rail. Real selected-tour data only. */
+.search3-tour-detail-rail{display:none}
+@media(min-width:1000px){
+body.search3-candidate.search3-selected-open .results-search-summary{display:grid!important;max-width:1180px!important;width:calc(100% - 32px)!important;margin:10px auto 0!important}
+body.search3-candidate #selectedTour:not(.search3-final-review){grid-template-columns:260px minmax(0,1fr) 250px!important;column-gap:14px!important;align-items:start!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .back-results{grid-column:1/-1!important;grid-row:1!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .search3-booking-stepper{grid-column:1/-1!important;grid-row:2!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .selected-picture{grid-column:1!important;grid-row:3!important;height:176px!important;border-radius:12px 0 0 12px!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .selected-head{grid-column:2!important;grid-row:3!important;min-height:176px!important;border-radius:0 12px 12px 0!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .facts{grid-column:1/3!important;grid-row:4!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .hotel-desc{grid-column:1/3!important;grid-row:5!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .tour-flights{grid-column:1/3!important;grid-row:6!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .search3-final-sections{grid-column:1/3!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .search3-lead-shell{grid-column:1/3!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .search3-tour-detail-rail{display:block;grid-column:3!important;grid-row:3/8!important;position:sticky;top:18px;margin:0;padding:16px;border:1px solid var(--at-line);border-radius:12px;background:#fff;box-shadow:0 8px 28px rgba(31,52,109,.06)}
+body.search3-candidate .search3-tour-detail-rail h3{margin:0 0 12px;color:var(--at-ink);font:900 15px/1.15 var(--at-font)}
+body.search3-candidate .search3-tour-detail-rail dl{margin:0;padding:0}
+body.search3-candidate .search3-tour-detail-rail dl>div{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;padding:8px 0;border-bottom:1px solid var(--at-line-soft)}
+body.search3-candidate .search3-tour-detail-rail dt{color:var(--at-muted);font:800 8px/1.3 var(--at-font)}
+body.search3-candidate .search3-tour-detail-rail dd{margin:0;color:var(--at-ink);font:850 9px/1.35 var(--at-font);overflow-wrap:anywhere}
+body.search3-candidate .search3-tour-detail-rail__price{display:grid;gap:5px;margin-top:14px;padding-top:12px;border-top:1px solid var(--at-line)}
+body.search3-candidate .search3-tour-detail-rail__price span{color:var(--at-muted);font:800 9px/1.2 var(--at-font)}
+body.search3-candidate .search3-tour-detail-rail__price strong{color:var(--at-ink);font:950 22px/1 var(--at-font)}
+body.search3-candidate .search3-tour-detail-rail__price small{color:var(--at-muted);font:700 8px/1.25 var(--at-font)}
+body.search3-candidate .search3-tour-detail-rail__continue{width:100%;min-height:44px;margin-top:12px;border:0;border-radius:8px;background:#ff4f0a;color:#fff;font:900 11px/1 var(--at-font);cursor:pointer}
+body.search3-candidate .search3-tour-detail-rail__continue:focus-visible{outline:2px solid var(--at-brand);outline-offset:3px}
+}
+@media(max-width:999px){.search3-tour-detail-rail{display:none!important}}
+
+
+/* donor:search3-tour-details-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+/* Desktop Tour Details convergence against approved DS2 booking boards. Presentation only. */
+@media(min-width:1000px){
+/* Search3 owns the booking sequence on desktop. Hide legacy checkout navigation and
+   the direct-to-lead shortcut so Tour Details has one clear next action: flights. */
+body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .checkout-journey,
+body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .checkout-facts-heading,
+body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-lead-cta,
+body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-lead-cta-note{display:none!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .facts{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:0!important;padding:0!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important;overflow:hidden!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .facts>div{min-width:0!important;padding:11px 12px!important;border:0!important;border-right:1px solid var(--at-line-soft)!important;border-bottom:1px solid var(--at-line-soft)!important;background:#fff!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .facts>div:nth-child(5n){border-right:0!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .facts>div:nth-last-child(-n+5){border-bottom:0!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .facts span{display:block!important;margin-bottom:4px!important;color:var(--at-muted)!important;font:800 8px/1.2 var(--at-font)!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .facts b{display:block!important;color:var(--at-ink)!important;font:900 10px/1.3 var(--at-font)!important;overflow-wrap:anywhere!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .hotel-desc{padding:14px 16px!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important;color:var(--at-muted)!important;font:700 9px/1.5 var(--at-font)!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .tour-flights{padding:16px!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .tour-flights .section-heading{display:flex!important;align-items:end!important;justify-content:space-between!important;gap:16px!important;margin-bottom:12px!important;padding:0!important;border:0!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .tour-flights .section-heading strong{font-size:15px!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .tour-flights .section-heading span{font-size:8px!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variants{gap:8px!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .flight-choice{min-height:38px!important;padding:8px 11px!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .flight-segment{padding:10px 11px!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .flight-segment-title{margin-bottom:7px!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .flight-baggage{margin-top:7px!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .search3-flight-continue{margin-top:10px!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .search3-flight-continue button{min-width:188px!important;min-height:42px!important;border-radius:8px!important;font-size:10px!important}
+/* The legacy decision-summary repeats facts already visible above and collapsed into a
+   250px grid column, causing severe word breaks. Maket7 proceeds directly from tour facts
+   to optional details and flights, so remove only this redundant presentation block. */
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-choice-summary{display:none!important}
+/* Preserve access to secondary facts and room details, but make both full-width rows
+   instead of squeezing them beside the removed legacy summary. */
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .facts-secondary-toggle{grid-column:1/3!important;grid-row:5!important;width:100%!important;min-height:38px!important;margin:10px 0 0!important;padding:0 14px!important;border:1px solid var(--at-line)!important;border-radius:10px!important;background:#fff!important;color:var(--at-brand)!important;justify-content:flex-start!important;font-size:9px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc{grid-column:1/3!important;grid-row:6!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc-toggle{grid-column:1/3!important;grid-row:7!important;width:max-content!important;margin:8px 0 0!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .room-details-host{grid-column:1/3!important;grid-row:8!important;width:100%!important;margin:10px 0 0!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .room-detail-toggle{width:100%!important;min-height:48px!important;border-radius:10px!important;text-align:left!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights{grid-column:1/3!important;grid-row:9!important;margin-top:12px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-flight-continue{grid-column:1/3!important;grid-row:10!important}
+/* Keep the sticky real-tour rail alongside the full flight-selection area. The previous
+   grid span ended before row 9, so it disappeared exactly when QA scrolled to flights. */
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail{grid-column:3!important;grid-row:3/11!important;align-self:start!important;position:sticky!important;top:18px!important}
+/* Tourvisor returns paired outbound/return variants. Preserve that pairing and all data,
+   but present each pair compactly like the approved flight board instead of two tall cards. */
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-variant{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;align-items:stretch!important;border-radius:11px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-choice{grid-column:1/-1!important;min-height:42px!important;padding:8px 10px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-segment{min-width:0!important;padding:9px 10px!important;border-top:1px solid var(--at-line-soft)!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-segment:nth-of-type(2){border-right:1px solid var(--at-line-soft)!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-segment-title{margin-bottom:6px!important;gap:8px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-segment-title strong{font-size:9px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-segment-title span{font-size:7.5px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-route{grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)!important;gap:5px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-route b{font-size:9px!important;line-height:1.15!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-route span{font-size:7.5px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-arrow{font-size:11px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-baggage{margin-top:6px!important;font-size:7.5px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-fuel{grid-column:1/-1!important;padding:7px 10px!important;font-size:7.5px!important}
+}
+@media(max-width:999px){
+body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variant{display:block!important}
+}
+
+

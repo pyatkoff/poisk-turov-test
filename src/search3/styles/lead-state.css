@@ -1,0 +1,39 @@
+/* donor:search3-lead-state-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+/* Lead lifecycle convergence against approved DS2 lead UI kit. Visual only. */
+@media(min-width:1000px){
+body.search3-candidate #selectedTour.search3-final-review .lead-form[data-search3-lead-state]{min-height:248px!important;padding:18px 20px!important;background:#fff!important}
+body.search3-candidate #selectedTour.search3-final-review .lead-form[data-search3-lead-state] .search3-lead-status{padding:12px 8px!important;grid-template-columns:58px minmax(0,1fr)!important;gap:16px!important;align-items:start!important}
+body.search3-candidate #selectedTour.search3-final-review .lead-form[data-search3-lead-state] .search3-lead-status__icon{width:52px!important;height:52px!important;font-size:22px!important;box-shadow:none!important}
+body.search3-candidate #selectedTour.search3-final-review .lead-form[data-search3-lead-state] .search3-lead-status h3{font-size:20px!important;line-height:1.12!important;margin-bottom:5px!important}
+body.search3-candidate #selectedTour.search3-final-review .lead-form[data-search3-lead-state] .search3-lead-status p{max-width:500px!important;font-size:9px!important;line-height:1.45!important;margin-bottom:10px!important}
+body.search3-candidate #selectedTour.search3-final-review .lead-form[data-search3-lead-state] .search3-lead-status strong{margin:12px 0 8px!important;font-size:10px!important}
+body.search3-candidate #selectedTour.search3-final-review .lead-form[data-search3-lead-state] .search3-lead-status ol{gap:7px!important;margin-top:11px!important}
+body.search3-candidate #selectedTour.search3-final-review .lead-form[data-search3-lead-state] .search3-lead-status ol li{min-height:18px!important;font-size:9px!important}
+body.search3-candidate #selectedTour.search3-final-review .lead-form[data-search3-lead-state] .search3-lead-status ol li:before{flex-basis:15px!important;width:15px!important;height:15px!important;margin-right:7px!important;border-width:1.5px!important}
+body.search3-candidate #selectedTour.search3-final-review .search3-messenger-actions,body.search3-candidate #selectedTour.search3-final-review .search3-error-actions{gap:8px!important;margin-top:8px!important}
+body.search3-candidate #selectedTour.search3-final-review .search3-msg-btn,body.search3-candidate #selectedTour.search3-final-review .search3-retry-lead,body.search3-candidate #selectedTour.search3-final-review .search3-edit-lead,body.search3-candidate #selectedTour.search3-final-review .search3-stay-site{min-height:38px!important;padding:0 14px!important;border-radius:6px!important;font-size:9px!important}
+body.search3-candidate #selectedTour.search3-final-review .search3-msg-btn--max,body.search3-candidate #selectedTour.search3-final-review .search3-msg-btn--tg{min-width:156px!important}
+body.search3-candidate #selectedTour.search3-final-review .search3-stay-site{padding-left:6px!important;padding-right:6px!important}
+}
+
+@media(max-width:640px){
+/* Board 6.2: entry form first; selected-tour recap stays compact below it. */
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell>.search3-booking-summary{padding:10px!important;border-radius:11px!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell>.search3-booking-summary .search3-booking-summary__image{height:96px!important;border-radius:9px!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell>.search3-booking-summary .search3-booking-summary__title{font-size:14px!important;margin-bottom:8px!important}
+
+/* Boards 6.4 / 6.6 / 6.8: sending, success and error are standalone mobile states. */
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state]~.search3-booking-summary{display:none!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state]{padding:16px 14px!important;border-radius:12px!important;min-height:0!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state] .search3-lead-status{display:grid!important;grid-template-columns:1fr!important;gap:10px!important;padding:6px 2px!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state] .search3-lead-status__icon{width:52px!important;height:52px!important;font-size:22px!important;box-shadow:none!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state] .search3-lead-status h3{font-size:20px!important;line-height:1.12!important;margin:0 0 4px!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state] .search3-lead-status p{font-size:10px!important;line-height:1.45!important;margin:0 0 8px!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state] .search3-lead-status ol{gap:8px!important;margin-top:10px!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state] .search3-lead-status ol li{min-height:20px!important;font-size:9px!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-messenger-actions,html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-error-actions{display:grid!important;grid-template-columns:1fr!important;gap:8px!important;width:100%!important;margin-top:10px!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-msg-btn,html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-retry-lead,html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-edit-lead{width:100%!important;min-height:44px!important;border-radius:7px!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-stay-site{justify-self:center!important;min-height:34px!important;margin-top:2px!important}
+}
+
+

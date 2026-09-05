@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "assets": {
+    "search3-results-filters-v1.js": [
+      "behavior/search-form.js",
+      "behavior/filter-rail.js",
+      "behavior/mobile-search-entry.js",
+      "behavior/results-top.js",
+      "behavior/selected-tour-mobile.js",
+      "behavior/maket7-lock.js",
+      "behavior/lead-flow.js",
+      "behavior/flight-presentation.js",
+      "behavior/booking-summary.js",
+      "behavior/booking-stepper.js",
+      "behavior/final-sections.js",
+      "behavior/flight-continue.js",
+      "behavior/review-heading.js",
+      "behavior/summary-cta.js",
+      "behavior/lead-note.js",
+      "behavior/tour-detail-rail.js",
+      "behavior/footer.js",
+      "behavior/results-presentation.js",
+      "behavior/tour-presentation.js",
+      "behavior/flight-price-presentation.js",
+      "behavior/selected-tour-handoff.js"
+    ],
+    "search3-results-filters-v1.css": [
+      "styles/base.css",
+      "styles/hotel-results.css",
+      "styles/filters.css",
+      "styles/results-context.css",
+      "styles/selected-tour.css",
+      "styles/cascade-compatibility.css",
+      "styles/booking-summary.css",
+      "styles/flights.css",
+      "styles/review.css",
+      "styles/tour-detail.css",
+      "styles/review-layout.css",
+      "styles/lead-state.css",
+      "styles/shell.css",
+      "styles/visual-compatibility.css",
+      "styles/result-cards.css",
+      "styles/footer-compatibility.css",
+      "styles/form-compatibility.css",
+      "styles/review-responsive.css",
+      "styles/footer-final-compatibility.css",
+      "styles/results-layout.css",
+      "styles/acceptance-guards.css"
+    ],
+    "search3-entry-v1.css": [
+      "styles/entry-v1.css"
+    ],
+    "search3-entry-v1.js": [
+      "behavior/entry-v1.js"
+    ],
+    "search3-results-cards-v2.css": [
+      "styles/results-cards-v2.css"
+    ],
+    "search3-results-cards-v2.js": [
+      "behavior/results-cards-v2.js"
+    ],
+    "search3-selected-flow-v2.css": [
+      "styles/selected-flow-v2.css"
+    ],
+    "search3-selected-flow-v2.js": [
+      "behavior/selected-flow-v2.js"
+    ]
+  }
+}

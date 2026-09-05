@@ -1,0 +1,34 @@
+/* donor:search3-lead-flow.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+(function(){'use strict';
+const cfg=window.V2_CONFIG||{};
+function qs(sel,root){return (root||document).querySelector(sel)}
+function safeUrl(v){const s=String(v||'').trim();return /^https:\/\//i.test(s)?s:''}
+function footerMessenger(rx){const links=Array.from(document.querySelectorAll('.search3-footer-socials a,.ds2-site-footer__socials a'));const hit=links.find(a=>rx.test(String(a.href||'')));return hit?safeUrl(hit.href):''}
+function messengerLinks(){const configuredMax=safeUrl(cfg.maxUrl||cfg.maxBotUrl||cfg.maxLink),configuredTelegram=safeUrl(cfg.telegramUrl||cfg.telegramBotUrl||cfg.telegramLink);return{max:{url:configuredMax||footerMessenger(/https:\/\/max\.ru\//i),direct:!!configuredMax},telegram:{url:configuredTelegram||footerMessenger(/https:\/\/(?:t\.me|telegram\.me)\//i),direct:!!configuredTelegram}}}
+function ensureStatus(form){let box=form.querySelector('.search3-lead-status');if(!box){box=document.createElement('div');box.className='search3-lead-status';box.hidden=true;form.prepend(box)}return box}
+function enterLead(){const root=qs('#selectedTour');if(!root)return;root.classList.add('search3-lead-entry');window.dispatchEvent(new CustomEvent('search3:lead-entry',{detail:{active:true,source:'lifecycle'}}));}
+function leaveLead(){const root=qs('#selectedTour');if(!root)return;root.classList.remove('search3-lead-entry');window.dispatchEvent(new CustomEvent('search3:lead-entry',{detail:{active:false,source:'lifecycle'}}));}
+function setState(state,detail){const form=qs('#selectedTour .lead-form');if(!form)return false;enterLead();form.dataset.search3LeadState=state;const box=ensureStatus(form);box.hidden=false;const links=messengerLinks();if(state==='sending'){
+box.innerHTML='<div class="search3-lead-status__icon search3-lead-status__icon--sending">✈</div><div><h3>Отправляем заявку…</h3><p>Пожалуйста, подождите. Это займёт несколько секунд.</p><ol><li>Сохраняем ваши данные</li><li>Отправляем заявку менеджеру</li><li>Подтверждаем получение</li></ol></div>';
+}else if(state==='success'){
+const leadId=detail&&detail.leadId?'<p class="search3-lead-id">Заявка № '+String(detail.leadId)+'</p>':'';
+const max=links.max.url?'<a class="search3-msg-btn search3-msg-btn--max" href="'+links.max.url+'" target="_blank" rel="noopener noreferrer" aria-label="'+(links.max.direct?'Продолжить общение в MAX':'Открыть AnyTour в MAX')+'">'+(links.max.direct?'Продолжить в MAX':'Открыть MAX')+'</a>':'<span class="search3-msg-btn search3-msg-btn--disabled" aria-disabled="true">MAX недоступен</span>';
+const tg=links.telegram.url?'<a class="search3-msg-btn search3-msg-btn--tg" href="'+links.telegram.url+'" target="_blank" rel="noopener noreferrer" aria-label="'+(links.telegram.direct?'Продолжить общение в Telegram':'Открыть AnyTour в Telegram')+'">'+(links.telegram.direct?'Продолжить в Telegram':'Открыть Telegram')+'</a>':'<span class="search3-msg-btn search3-msg-btn--disabled" aria-disabled="true">Telegram недоступен</span>';
+box.innerHTML='<div class="search3-lead-status__icon search3-lead-status__icon--success">✓</div><div><h3>Заявка отправлена!</h3><p>Менеджер уже получил информацию о поездке и свяжется с вами в ближайшее время.</p>'+leadId+'<strong>Хотите открыть AnyTour в мессенджере?</strong><div class="search3-messenger-actions">'+max+tg+'<button type="button" class="search3-stay-site">Остаться на сайте</button></div></div>';
+}else if(state==='error'){
+box.innerHTML='<div class="search3-lead-status__icon search3-lead-status__icon--error">!</div><div><h3>Не удалось отправить заявку</h3><p>Проверьте данные и попробуйте ещё раз.</p><div class="search3-error-actions"><button type="button" class="search3-retry-lead">Повторить отправку</button><button type="button" class="search3-edit-lead">Изменить данные</button></div><p class="search3-error-preserve-note">Ваши данные сохранены. Можно изменить их и отправить заявку снова.</p></div>';
+}else{return false}
+return true;
+}
+function clearState(){const form=qs('#selectedTour .lead-form');if(!form)return;delete form.dataset.search3LeadState;const box=form.querySelector('.search3-lead-status');if(box)box.hidden=true}
+window.addEventListener('v2:lead-started',e=>setState('sending',e.detail||{}));
+window.addEventListener('v2:lead-success',e=>setState('success',e.detail||{}));
+window.addEventListener('v2:lead-error',e=>setState('error',e.detail||{}));
+/* Preview-only state injection for visual QA. It deliberately does not reuse
+   the real lead lifecycle events, so legacy handlers cannot create backend-like
+   side effects or mutate the form before the Search3 state is asserted. */
+document.addEventListener('click',e=>{const form=qs('#selectedTour .lead-form');if(!form)return;if(e.target.closest('.search3-stay-site')){clearState();leaveLead();const summary=qs('#selectedTour .search3-booking-summary');if(summary)summary.scrollIntoView({behavior:'smooth',block:'start'})}if(e.target.closest('.search3-edit-lead')){clearState();enterLead();const first=form.querySelector('input,textarea,select');if(first)first.focus()}if(e.target.closest('.search3-retry-lead')){clearState();enterLead();const btn=form.querySelector('button[type="submit"]');if(btn)btn.click()}});
+window.Search3LeadFlow={setState,clearState,enterLead,leaveLead,version:3};
+})();
+
+

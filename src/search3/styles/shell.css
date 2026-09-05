@@ -1,0 +1,57 @@
+/* donor:search3-shell-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+
+/* Search3 shell convergence: factual header/footer plus final vertical rhythm. */
+@media(min-width:1000px){
+html body.search3-candidate{--at-page-gutter:48px!important}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+html body.search3-candidate .search3-page-intro{margin-top:11px!important;margin-bottom:7px!important}
+html body.search3-candidate #tourSearch{margin-top:8px!important;margin-bottom:12px!important}
+html body.search3-candidate.search3-has-results .results-search-summary{margin-bottom:8px!important}
+html body.search3-candidate.search3-has-results .results-tools--ds2{margin-bottom:6px!important}
+html body.search3-candidate.search3-selected-open #selectedTour{margin-top:14px!important;margin-bottom:18px!important}
+
+
+
+
+
+
+
+
+}
+
+/* Do not depend on a platform-specific Apple glyph that is absent in the active webfont. */
+html body.search3-candidate .search3-footer-apps a:first-child{font-size:0!important}
+html body.search3-candidate .search3-footer-apps a:first-child b{font-size:10px!important}
+
+/* Approved full mobile flow: after choosing a concrete tour the booking journey is a separate view.
+   Header and selected-tour/back control stay visible; search/results return when selected-open is removed. */
+@media(max-width:640px){
+html body.search3-candidate.search3-selected-open .search3-page-intro,
+html body.search3-candidate.search3-selected-open #tourSearch,
+html body.search3-candidate.search3-selected-open #status,
+html body.search3-candidate.search3-selected-open #resultsSearchSummary,
+html body.search3-candidate.search3-selected-open #resultsTools,
+html body.search3-candidate.search3-selected-open .search3-mobile-toolbar,
+html body.search3-candidate.search3-selected-open .results-layout{display:none!important}
+/* DOM truth is stronger than event timing: any visible selected-tour screen is isolated from result controls. */
+html body.search3-candidate:has(#selectedTour:not([hidden])) .search3-mobile-toolbar{display:none!important}
+html body.search3-candidate.search3-selected-open #selectedTour{margin-top:8px!important;margin-bottom:18px!important}
+}
+
