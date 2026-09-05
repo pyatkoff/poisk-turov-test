@@ -283,3 +283,58 @@ has20 children, hidden=true, computed display:none and height0; no page overflow
 No lead submitted. This resolves the observed return defect; physical Safari and
 owner production approval remain outstanding. Current published version is c93dad24,
 not the later documentation checkpoint. Scheduler remains paused.
+
+## Observer scope and resize state — 2026-09-05
+
+The selected-tour handoff observer previously rescanned result buttons on every
+mutation inside the selected tour, although the result tree already has its own
+observer and explicit lifecycle hooks. It now updates only busy state. The
+aria-busy attribute is written only when its value changes. Result-label recovery
+on insertion/enabling and existing tour selection/return hooks remain intact.
+
+The results header used the same state-reset callback for result mutations and
+window resizing. With results loaded, resizing removed search3-editing-search.
+Resize now schedules geometry only, coalesced to one callback per frame, preserving
+the open editor. Result arrival/reset continue to own state transitions.
+
+Existing browser coverage at375/430/1024/1440 now checks a real viewport resize
+with the editor open and unchanged form values, disabled/enabled result-label
+recovery, and loading/ready aria-busy transitions. This is a presentation-only
+change; supplier, prices, lead mapping/delivery and analytics are unchanged.
+CI and publication status are recorded separately after verification.
+
+Verified source `23993e90975a6001f9e0d6b0de2d1511fd7e248b` passed all 23 applicable
+checks: core33972154904, visual33972154966, flight33972154883, boundary33972154918.
+Visual artifact9971250184 inspected at375/1440; result-card pixels match previous
+preview, return layout inspected. Exact artifact9971243048/build33972154901 verifies
+all715 files; only search3-results-filters-v1.js differs from c93dad24.
+Source tree c9a1c27a0b6911660c2fd4cbda3f045a33345b12.
+ZIP3529abfc0a77f5e4d1906c682fb60e1bd6c14ef64f3fc1d057547effebdde7c8;
+archive9bbcec0ac8cce2ff1c2be133ed146d79dd82f2312511d21e7304aa7e0f02dbc4;
+manifest9b45c23d31d4e484d0240b15d43907b66920eefb99deeab5c5de353ce60d8e08;
+payload597fda73d3f6ff9e8a7485895825f94ee167030bebf85889bca3704f5fb999af.
+
+First deployment33972268788, record#1362, failed with SSH connection closure during
+upload and connection reset during final production fingerprint retrieval.
+Rollback logged SEARCH3_SITE_ROLLBACK_NOOP; public preview retained previous
+JS593a61096242d38b. A single retry uses the identical artifact and unchanged
+publisher guards, new control branch deploy/search3-site-23993e90-v2, record#1363.
+Do not interpret first-attempt evidence9971274571 as successful publication.
+
+Retry33972333244 (#1363) activated23993e90, passed nine HTTP routes and isolation,
+retained rollback, and recorded identical before/after protected production hashes.
+Its final SSH read failed with connection reset; workflow conclusion remains failure.
+Evidence9971297501 has an empty final file and must not alone prove final equality.
+Read-only verification33972522395 (#1364) subsequently passed against the same
+13-file list digest5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340.
+Evidence9971341330 closes that verification gap; no third deploy or server write.
+
+Live browser loaded JS6c6cb045c47bfa98;100 hotels. LUXOR APART -> clarified
+flight -> summary -> lead form -> Back ->100 results -> search editor passed.
+Ready aria-busy=false, retained hidden tour height0, no horizontal overflow.
+No lead submitted. The existing consent privacy link still needs approved legal
+content; physical Safari is not verified. Main remainsfa58a0cb, no production switch.
+
+Next confirmed finding: expanded editor at desktop1348px clips date/night values.
+Observed in live screenshot after Back; queue S3_EDITOR_INTERMEDIATE_WIDTH.
+The existing resize test proves preservation, not adequate minimum control width.

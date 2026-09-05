@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T13:39:42.256366+00:00",
+  "updated_at": "2026-09-05T14:41:56.787305+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "CSS duplicate consolidation followed by a live-discovered Back fix: retained hidden selected tour no longer renders below results. Both changes passed23 applicable gates and published to isolated preview. Production fingerprints unchanged.",
-    "next_action": "Scoped CSS refactor and hidden-tour return fix completed. Use source modules for subsequent concrete Search3 defects. Remaining differing cascade overrides/observers are active; do not rewrite without evidence. Physical iPhone/Safari, approved legal content and owner production acceptance remain open.",
+    "last_material_progress": "Scoped selected-tour observer and resize refactor published and live verified; 23 applicable CI gates passed. Final production fingerprint completed separately after transient SSH reset, without republishing.",
+    "next_action": "Fix observed search-editor date/night clipping at desktop1348px using source CSS and focused responsive coverage. Then physical Safari, approved legal content and owner acceptance remain.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -64,22 +64,28 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_RETAINED_TOUR_HIDDEN_CONTRACT",
-    "title": "Respect hidden state when returning from retained tour to results",
+    "id": "S3_OBSERVER_SCOPE_REFACTOR",
+    "title": "Scope tour observer and preserve open search editor on resize",
     "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
-    "implementation_sha": "c93dad244348f43b423ad61e110588bcec627dd4",
-    "ci_core": 33969305922,
-    "ci_visual": 33969305835,
-    "ci_flight": 33969305812,
-    "artifact_run": 33969305785,
-    "artifact_id": 9970432615,
-    "deploy_run": 33969403753,
-    "deploy_pr": 1361
+    "implementation_sha": "23993e90975a6001f9e0d6b0de2d1511fd7e248b",
+    "deploy_run": 33972333244,
+    "deploy_pr": 1363,
+    "final_verification_run": 33972522395
   },
   "queue": [
+    {
+      "id": "S3_OBSERVER_SCOPE_REFACTOR",
+      "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
+      "sha": "23993e90975a6001f9e0d6b0de2d1511fd7e248b"
+    },
+    {
+      "id": "S3_EDITOR_INTERMEDIATE_WIDTH",
+      "status": "CONFIRMED_QUEUED",
+      "title": "Date and night controls clip in expanded search editor at1348px; screenshot observed after live return, fix responsive grid without shrinking fonts."
+    },
     {
       "id": "S3_RETAINED_TOUR_HIDDEN_CONTRACT",
       "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
@@ -160,15 +166,15 @@
       "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "c93dad244348f43b423ad61e110588bcec627dd4",
-      "release_merge_sha": "c93dad244348f43b423ad61e110588bcec627dd4",
-      "source_tree": "54baf0378fca4a71e5d8b4ebd9f5cf21f22cec17",
-      "exact_artifact": 9970432615,
-      "artifact_digest": "sha256:80ac2f457702019184bfcd3dfaff9d33c00ee9619551bd3b686f4b592d82dcec",
-      "superseded_artifact": 9970334355,
+      "implementation_verified_sha": "23993e90975a6001f9e0d6b0de2d1511fd7e248b",
+      "release_merge_sha": "23993e90975a6001f9e0d6b0de2d1511fd7e248b",
+      "source_tree": "c9a1c27a0b6911660c2fd4cbda3f045a33345b12",
+      "exact_artifact": 9971243048,
+      "artifact_digest": "sha256:3529abfc0a77f5e4d1906c682fb60e1bd6c14ef64f3fc1d057547effebdde7c8",
+      "superseded_artifact": 9970432615,
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "preview_deploy_run": 33969403753,
-      "preview_deploy_pr": 1361,
+      "preview_deploy_run": 33972333244,
+      "preview_deploy_pr": 1363,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -191,8 +197,12 @@
         "readable search context, filter rows and lead navigation",
         "desktop reset fits the narrow filter rail",
         "duplicate CSS rules removed with declaration-stream and pixel equivalence evidence",
-        "retained selected-tour DOM respects hidden after Back"
-      ]
+        "retained selected-tour DOM respects hidden after Back",
+        "selected-tour observer no longer rescans results; resize preserves open search editor"
+      ],
+      "preview_deploy_workflow_conclusion": "failure_final_ssh_read_after_successful_activation",
+      "final_verification_run": 33972522395,
+      "final_verification_artifact": 9971341330
     },
     "production": {
       "status": "OWNER_VISUAL_APPROVAL_PENDING",
@@ -386,10 +396,29 @@
       "deployment_run": 33969403753,
       "deployment_evidence": 9970465480,
       "scope": "375/430/1024/1440 retained nonempty tour with final-review markers becomes invisible and zero-height after Back; cards and named form parameters preserved. Mobile/desktop return images inspected. All715 payload hashes verified; only Search3 CSS changed.9routes/noindex/lead403/counter0/internalPHPdeny/retainedrollback/unchanged production fingerprints."
+    },
+    "observer_scope": {
+      "sha": "23993e90975a6001f9e0d6b0de2d1511fd7e248b",
+      "conclusion": "success",
+      "applicable_passed": 23,
+      "core_run": 33972154904,
+      "visual_run": 33972154966,
+      "flight_run": 33972154883,
+      "boundary_run": 33972154918,
+      "artifact_run": 33972154901,
+      "artifact_id": 9971243048,
+      "visual_artifact": 9971250184,
+      "deployment_run": 33972333244,
+      "deployment_workflow_conclusion": "failure_final_ssh_read_after_successful_activation",
+      "deployment_evidence": 9971297501,
+      "final_verification_run": 33972522395,
+      "final_verification_conclusion": "success",
+      "final_verification_artifact": 9971341330,
+      "scope": "375/430/1024/1440 real viewport resize preserves editor/form, label enabled/disabled recovery, busy loading/ready. Relevant mobile/desktop screenshots inspected. Live path and return passed."
     }
   },
-  "last_verified_commit": "c93dad244348f43b423ad61e110588bcec627dd4",
-  "last_verified_commit_scope": "CSS return fix verified and published in isolated whole-site preview; production/main unchanged.",
+  "last_verified_commit": "23993e90975a6001f9e0d6b0de2d1511fd7e248b",
+  "last_verified_commit_scope": "Observer/resize refactor verified in isolated preview; production unchanged, final fingerprint verified separately.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -490,10 +519,21 @@
     }
   },
   "observer_scope_refactor": {
-    "status": "PREPARED_AWAITING_CI",
+    "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
     "baseline": "80e3fb74175ed13b2d585de35c4f0880c84ab92e",
     "scope": "Selected-tour mutations only sync busy state; result labels keep their own observer and lifecycle hooks. Busy attribute changes only when value changes. Resize batches geometry work per frame and preserves the active search editor.",
     "verification": "Existing four-width browser coverage adds real viewport resizing with open editor, exact form-value retention, disabled/enabled result-label recovery and busy loading/ready transitions.",
-    "preview": "Still c93dad24 pending successful verification/publication."
+    "preview": "23993e90 activated by33972333244; HTTP isolation passed. Original workflow failure is final SSH reset, closed by successful read-only33972522395; no third deployment.",
+    "implementation_sha": "23993e90975a6001f9e0d6b0de2d1511fd7e248b",
+    "live_verification": {
+      "hotel": "LUXOR APART",
+      "path": "search -> hotel -> clarified flight -> summary -> form -> back to tour -> results -> edit search",
+      "cards_after": 100,
+      "selected_hidden": true,
+      "selected_height": 0,
+      "ready_aria_busy": "false",
+      "horizontal_overflow": false,
+      "lead_submitted": false
+    }
   }
 }
