@@ -29,7 +29,7 @@ function px(value) {
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
-    for (const width of [375, 430, 1024, 1440]) {
+    for (const width of [375, 430, 1024, 1348, 1440]) {
       const page = await browser.newPage({ viewport: { width, height: 900 } });
       const response = await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded', timeout: 30000 });
       if (!response || response.status() !== 200) throw new Error(width + ': Search3 fixture HTTP failure');
@@ -114,6 +114,21 @@ function px(value) {
       const afterResize = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
       if (JSON.stringify(editingFields) !== JSON.stringify(afterResize)) throw new Error(width + ': resize changed search parameters');
       await page.setViewportSize({ width, height: 900 });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const editorGeometry = await page.evaluate(() => {
+        const box = selector => document.querySelector('#tourSearch ' + selector).getBoundingClientRect().toJSON();
+        return {
+          dates: box('.search3-dates'), nights: box('.search3-nights'),
+          dateInput: box('.search3-dates .search3-direct-control'),
+          nightInput: box('.search3-nights .search3-direct-control'),
+          viewport: innerWidth, documentWidth: document.documentElement.scrollWidth
+        };
+      });
+      if (editorGeometry.documentWidth > editorGeometry.viewport + 2) throw new Error(width + ': editor overflows viewport');
+      if (width >= 761 && editorGeometry.dates.width < editorGeometry.nights.width * 1.8) throw new Error(width + ': date range lost its wide column');
+      if (editorGeometry.dateInput.width < 120 || editorGeometry.nightInput.width < 48) throw new Error(width + ': native date/night value clipped ' + JSON.stringify(editorGeometry));
+      await page.screenshot({ path: `standalone-content-artifacts/editor-${width}.png`, fullPage: true, animations: 'disabled' });
+      console.log('SEARCH3_EDITOR_GEOMETRY_OK ' + width + ' ' + JSON.stringify(editorGeometry));
       // Restore the result fixture for the independent calendar checks below.
       await page.evaluate(() => document.body.classList.remove('search3-editing-search'));
       await page.waitForFunction(() => !document.body.classList.contains('search3-editing-search'));
