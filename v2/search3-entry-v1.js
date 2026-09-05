@@ -20,6 +20,7 @@
   }
 
   function sync() {
+    syncPriceCalendar();
     var nodes = entryNodes();
     if (!nodes.main || !nodes.advanced || !nodes.region) return false;
 
@@ -61,6 +62,36 @@
     detail.hidden = !values.length;
   }
 
+  // Keep the existing calendar's prices, date selection and search owner intact.
+  // Only adapt its presentation: expanded on desktop, compact on a phone.
+  function syncPriceCalendar() {
+    var calendar = document.getElementById('currentPriceCalendar');
+    if (!calendar || calendar.hidden || calendar.querySelector('.search3-price-calendar')) return;
+    var days = calendar.querySelector('.current-price-calendar__days');
+    var best = calendar.querySelector('.current-price-calendar__day.is-best strong');
+    if (!days || !best) return;
+
+    var details = document.createElement('details');
+    details.className = 'search3-price-calendar';
+    details.open = !mobile.matches;
+    var summary = document.createElement('summary');
+    summary.className = 'search3-price-calendar__summary';
+    var title = document.createElement('strong');
+    title.id = 'search3PriceCalendarTitle';
+    title.textContent = 'Календарь цен';
+    var price = document.createElement('span');
+    price.textContent = 'от ' + best.textContent.trim();
+    summary.appendChild(title);
+    summary.appendChild(price);
+    details.appendChild(summary);
+    var content = document.createElement('div');
+    content.className = 'search3-price-calendar__content';
+    while (calendar.firstChild) content.appendChild(calendar.firstChild);
+    details.appendChild(content);
+    calendar.appendChild(details);
+    calendar.setAttribute('aria-labelledby', title.id);
+  }
+
   function settle() {
     settleTimers.forEach(function (timer) { window.clearTimeout(timer); });
     settleTimers = [0, 40, 160, 320].map(function (delay) {
@@ -72,6 +103,7 @@
   else if (typeof mobile.addListener === 'function') mobile.addListener(settle);
   window.addEventListener('v2:search-reset', settle);
   window.addEventListener('v2:results-rendered', settle);
+  window.addEventListener('v2:search-complete', settle);
   form.addEventListener('change', settle);
 
   if (document.readyState === 'loading') {

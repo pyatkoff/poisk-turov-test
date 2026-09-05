@@ -1,7 +1,7 @@
 {
   "candidateSourceSha": "470474414a3930f1f6c095a8dbbc187075b253c0",
   "productionBaseSha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
-  "status": "mobile input and final design corrections imported; exact candidate verification recorded in PR; owner production approval required",
+  "status": "Owner-directed mockup convergence and existing production price-calendar presentation; candidate checks pending; not owner-approved for production",
   "transformations": [
     "Remove preview-only simulated lead-state listener",
     "Remove obsolete global matchMedia restoration; canonical mobile filter chooses Search3 breakpoint directly",
@@ -10,11 +10,11 @@
   "assets": {
     "search3-entry-v1.css": {
       "candidateSha256": "7032ac69f1bc6277860353592b8b545a6eb65174cbe1a077ee473be7dace2581",
-      "productionSha256": "7032ac69f1bc6277860353592b8b545a6eb65174cbe1a077ee473be7dace2581"
+      "productionSha256": "d8cf1220602643baae9cd58309c57ec5cf41e25ada17ba8ce96885456059440c"
     },
     "search3-entry-v1.js": {
       "candidateSha256": "bbd6cde58cf893b819848fed7f51b8a529747b5f9f0c13d9eb19281eee6b343e",
-      "productionSha256": "bbd6cde58cf893b819848fed7f51b8a529747b5f9f0c13d9eb19281eee6b343e"
+      "productionSha256": "223e6c1f5e98d08d50872512e897e9f6affed0d22382991b66ba88bdd2ad61a0"
     },
     "search3-results-cards-v2.css": {
       "candidateSha256": "ee51d0cfc08af6f48af748b9c77a9747d33afbf91630428526ce3c68bed26f3b",
@@ -30,11 +30,11 @@
     },
     "search3-results-filters-v1.js": {
       "candidateSha256": "59902609494edbecb014a1ebd3049b12071c799b88f939ff92fc7ca76883202f",
-      "productionSha256": "6e47d3a99c1fd051c6723bbade6ba02773d5f5ef5ee85a77be46108d140af5c2"
+      "productionSha256": "75e29c7e7a95776fdfa721a6544d69875ebd0fca530a5f0dc8f1a659b61f0f9d"
     },
     "search3-selected-flow-v2.css": {
       "candidateSha256": "26d7c6661ff29957309d8356ab47c430e37b718053d062d241e202d660bd6871",
-      "productionSha256": "26d7c6661ff29957309d8356ab47c430e37b718053d062d241e202d660bd6871"
+      "productionSha256": "acfc4267eebfc13e6b83e8dce104be6f20bcd4382014e6f5233225557f98fa9e"
     },
     "search3-selected-flow-v2.js": {
       "candidateSha256": "66e9dd7f936f2d6d65a40f5fd55c06146ff7a8abd66be3e7742bba567e8a415d",

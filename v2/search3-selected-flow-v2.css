@@ -178,3 +178,51 @@ html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-fin
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-summary-submit{font-size:15px!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-summary-actions p,
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__total span{font-size:12px!important}
+
+/* Approved lead kit: one calm contact column beside the retained tour card. */
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form .section-heading span {
+  max-width: none !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-fields {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 18px !important;
+}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form :is(input:not([type=checkbox]), textarea) {
+  min-height: 48px !important;
+  padding: 12px 14px !important;
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry :is(.lead-phone-hint, .lead-consent, .lead-message) {
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-trust-note {
+  margin: 14px 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--at-muted) !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-summary-actions[hidden] {
+  display: none !important;
+}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-booking-summary__image {
+  height: auto !important;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+@media(min-width:1000px) {
+  html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-selection-summary {
+    display: none !important;
+  }
+  html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form {
+    min-height: 0 !important;
+    box-shadow: none !important;
+  }
+}

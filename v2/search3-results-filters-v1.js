@@ -349,6 +349,48 @@ window.Search3LeadFlow={setState,clearState,enterLead,leaveLead,version:3};
 })();
 
 
+/* Shared presentation of supplier flight details. Match tour-controller-v4's
+   placeholder semantics without rewriting flight data or lead fields. */
+(function () {
+  'use strict';
+  function text(value) {
+    if (value == null) return '';
+    if (typeof value !== 'object') return String(value).trim();
+    for (const key of ['russianName', 'fullRussianName', 'name', 'title', 'value', 'text']) {
+      const label = text(value[key]);
+      if (label) return label;
+    }
+    return '';
+  }
+  function placeholder(segment) {
+    if (!segment || typeof segment !== 'object') return false;
+    const number = String(segment.number || '').replace(/\s+/g, '').toUpperCase();
+    return /000$/.test(number)
+      && String((segment.departure || {}).time || '') === '00:00'
+      && String((segment.arrival || {}).time || '') === '00:00';
+  }
+  function segments(variant) {
+    return variant ? [].concat(Array.isArray(variant.forward) ? variant.forward : [], Array.isArray(variant.backward) ? variant.backward : []).filter(Boolean) : [];
+  }
+  function flightLabel(variant, emptyLabel) {
+    if (!variant) return emptyLabel || 'Рейс уточняется';
+    const labels = segments(variant).map(segment => [text(segment.company), placeholder(segment) ? 'рейс уточняется' : text(segment.number)].filter(Boolean).join(' '));
+    return Array.from(new Set(labels.filter(Boolean))).join(' · ') || 'Рейс уточняется';
+  }
+  function baggage(variant) {
+    return Array.from(new Set(segments(variant).map(segment => {
+      const raw = segment.baggage;
+      const missing = raw === null || raw === undefined || raw === '';
+      const zero = !missing && Number(raw) === 0;
+      const bag = missing || (placeholder(segment) && zero) ? 'багаж уточняется' : zero ? 'без багажа' : 'багаж ' + text(raw) + ' кг';
+      const carry = text(segment.carryOn);
+      return bag + ' · ручная кладь ' + (carry && carry !== '0' ? carry : 'уточняется');
+    }))).join('; ');
+  }
+  window.Search3FlightPresentation = Object.freeze({ placeholder, flightLabel, baggage });
+})();
+
+
 /* donor:search3-booking-summary.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let lastTour=null,lastFlight=null,selectedTotal=0;
@@ -360,7 +402,7 @@ function meal(t){return text(t&&t.meal)||'—';}
 function operator(t){return text(t&&t.operator)||'—';}
 function people(t){const p=[];if(t&&t.adults)p.push(t.adults+' взр.');if(t&&t.childs)p.push(t.childs+' дет.');return p.join(' + ')||'—';}
 function place(t){const h=t&&t.hotel||{};return [text(h.country),text(h.region),text(h.subRegion)].filter(Boolean).join(', ')||'—';}
-function flightLabel(v){if(!v)return'Выберите рейс';const fw=Array.isArray(v.forward)?v.forward:[],bw=Array.isArray(v.backward)?v.backward:[];const names=[];fw.concat(bw).forEach(f=>{const n=[text(f&&f.company),text(f&&f.number)].filter(Boolean).join(' ');if(n&&!names.includes(n))names.push(n);});return names.join(' · ')||'Рейс выбран';}
+function flightLabel(v){return window.Search3FlightPresentation.flightLabel(v,'Выберите рейс');}
 function flightMoneyHtml(v){if(!v)return'';const price=number(v.price),fuel=number(v.fuelCharge),rows=[];if(price>0)rows.push('<div><span>Цена варианта рейса</span><b>'+money(price)+'</b></div>');if(fuel>0)rows.push('<div><span>Топливный сбор рейса</span><b>'+money(fuel)+'</b></div>');return rows.length?'<div class="search3-booking-summary__flight-costs">'+rows.join('')+'</div>':'';}
 function normalizedTotal(detail){const d=detail||{},tour=d.tour||lastTour||{};if(d.pricePending)return number(d.basePrice)||number(tour.price);return number(d.price)||number(d.basePrice)||number(tour.price);}
 function summaryHtml(t){const h=t&&t.hotel||{};const pic=t&&t.picture||h.picturelink||'';return '<aside class="search3-booking-summary" aria-label="Ваш тур">'+
@@ -456,7 +498,7 @@ function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;',
 function text(v){if(v==null)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(text).filter(Boolean).join(', ');for(const k of ['russianName','fullRussianName','name','title','value','text']){const s=text(v[k]);if(s)return s;}return'';}
 function number(v){if(v&&typeof v==='object'&&v.value!==undefined)v=v.value;const n=Number(v||0);return Number.isFinite(n)?n:0;}
 function money(v){const n=number(v);return n>0?new Intl.NumberFormat('ru-RU').format(n)+' ₽':'—';}
-function baggage(v){if(!v)return'';const legs=[].concat(Array.isArray(v.forward)?v.forward:[],Array.isArray(v.backward)?v.backward:[]);const vals=[];legs.forEach(f=>{if(!f)return;const b=f.baggage, c=f.carryOn;const s=[];if(b!==null&&b!==undefined&&b!=='')s.push('багаж '+b+' кг');if(c!==null&&c!==undefined&&c!=='')s.push('ручная кладь '+c);const line=s.join(' · ');if(line&&!vals.includes(line))vals.push(line)});return vals.join('; ');}
+function baggage(v){return window.Search3FlightPresentation.baggage(v);}
 function people(t){const a=Number(t&&t.adults||0),c=Number(t&&t.childs||0),format=window.Search3CandidateResultsV1;if(format&&typeof format.partyLabel==='function')return format.partyLabel(a,c);const p=[];if(a)p.push(a+' взрослых');if(c)p.push(c+' '+(c===1?'ребёнок':c>=2&&c<=4?'ребёнка':'детей'));return p.join(' · ')||'—';}
 function render(){const root=document.getElementById('selectedTour');if(!root||!tour)return;let box=root.querySelector('.search3-final-sections');if(box)box.remove();box=document.createElement('div');box.className='search3-final-sections';const meal=text(tour.meal)||'—',room=text(tour.roomType)||'—',placement=text(tour.placement)||'—',operator=text(tour.operator)||'—',fuel=number(tour.fuelCharge),flightFuel=number(flight&&flight.fuelCharge),bag=baggage(flight);const service=[];service.push('<article><span>Питание</span><strong>'+esc(meal)+'</strong></article>');service.push('<article><span>Номер</span><strong>'+esc(room)+'</strong><small>'+esc(placement)+'</small></article>');if(fuel>0)service.push('<article><span>Топливный сбор тура</span><strong>'+money(fuel)+'</strong></article>');if(flightFuel>0)service.push('<article><span>Топливный сбор рейса</span><strong>'+money(flightFuel)+'</strong></article>');if(bag)service.push('<article><span>Багаж</span><strong>'+esc(bag)+'</strong></article>');service.push('<article><span>Туроператор</span><strong>'+esc(operator)+'</strong></article>');box.innerHTML='<section class="search3-final-section"><div class="search3-final-section__heading"><strong>Услуги и условия</strong><span>Только данные выбранного тура</span></div><div class="search3-final-services">'+service.join('')+'</div></section><section class="search3-final-section"><div class="search3-final-section__heading"><strong>Туристы</strong><span>Состав размещения у туроператора</span></div><div class="search3-final-tourists"><span>Для выбранного варианта</span><strong>'+esc(people(tour))+'</strong></div></section>';const lead=root.querySelector('.search3-lead-shell,.lead-form');if(lead&&lead.parentNode)lead.parentNode.insertBefore(box,lead);else root.appendChild(box);}
 window.addEventListener('v2:tour-selected',e=>{tour=e.detail&&e.detail.tour||null;flight=null;setTimeout(render,0)});
@@ -556,7 +598,7 @@ function people(t){const a=[];if(t&&t.adults)a.push(t.adults+' взр.');if(t&&t
 function hotel(t){return t&&t.hotel||{};}
 function place(t){const h=hotel(t);return [txt(h.country),txt(h.region),txt(h.subRegion)].filter(Boolean).join(', ')||'—';}
 function meal(t){return txt(t&&t.meal)||'—';}
-function flightName(v){if(!v)return'Выбирается';const rows=[].concat(Array.isArray(v.forward)?v.forward:[],Array.isArray(v.backward)?v.backward:[]),names=[];rows.forEach(x=>{const s=[txt(x&&x.company),txt(x&&x.number)].filter(Boolean).join(' ');if(s&&!names.includes(s))names.push(s)});return names.join(' · ')||'Выбран';}
+function flightName(v){return window.Search3FlightPresentation.flightLabel(v,'Выбирается');}
 function normalizedTotal(detail){const value=detail||{},source=value.tour||tour||{};if(value.pricePending)return num(value.basePrice)||num(source.price);return num(value.price)||num(value.basePrice)||num(source.price);}
 function html(t){const h=hotel(t),fuel=num(t&&t.fuelCharge);return '<aside class="search3-tour-detail-rail" aria-label="Состав тура"><h3>Состав тура</h3><dl><div><dt>Отель</dt><dd>'+esc(txt(h.name)||txt(t&&t.name)||'—')+'</dd></div><div><dt>Направление</dt><dd>'+esc(place(t))+'</dd></div><div><dt>Номер</dt><dd>'+esc(txt(t&&t.roomType)||'—')+'</dd></div><div><dt>Питание</dt><dd>'+esc(meal(t))+'</dd></div><div><dt>Туристы</dt><dd>'+esc(people(t))+'</dd></div><div><dt>Дата</dt><dd>'+esc(txt(t&&t.date)||'—')+(t&&t.nights?' · '+esc(t.nights)+' ноч.':'')+'</dd></div><div><dt>Перелёт</dt><dd>'+esc(flightName(flight))+'</dd></div></dl><div class="search3-tour-detail-rail__price"><span>Стоимость тура</span><strong>'+money(selectedTotal||t&&t.price)+'</strong>'+(fuel?'<small>Топливный сбор: '+money(fuel)+'</small>':'')+'</div><button type="button" class="search3-tour-detail-rail__continue">Далее: итог тура</button></aside>';}
 function render(){const root=document.getElementById('selectedTour');if(!root||root.hidden||!tour)return;const old=root.querySelector('.search3-tour-detail-rail');if(old)old.remove();root.insertAdjacentHTML('beforeend',html(tour));}

@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T05:48:00+00:00",
+  "updated_at": "2026-09-05T21:15:00+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Production rollback preparation is now merged in release SHA 7de8381388ac50b3e022ec5b7933d5663458ab60 via PR #1354. The server-local snapshot utility accepts only an explicit reviewed inventory, rejects traversal/symlinks/served-root backup locations, stores hashes and modes without printing file contents, and restores only into an empty isolated directory. Fixture snapshot/verify/restore passed rollback-readiness run 33948068212; Security guard 33948068202 also passed. This is a dry-run capability only: no live production backup was captured and no switch was made. The coherent preview remains exact source 57d734eb07dd26f996275dcc1f8d9cf5a01b71ab. Main and production remain unchanged.",
-    "next_action": "Complete physical iPhone/Safari acceptance on exact 57d734eb preview. Immediately before an owner-approved migration, build and review the exact previous managed-file inventory, capture the server-local live backup/configuration and perform the isolated restore drill from that exact snapshot. Approved legal/payment pages remain content-blocked; keep their links hidden. Production migration remains gated by owner visual approval.",
+    "last_material_progress": "Owner requested reuse of the best elements from all eight uploaded mockups and the production search price calendar. Confirmed the shared calendar module was already present but hidden by Search3 shell CSS. Prepared responsive calendar presentation, mockup-7 footer icon/store treatment and mockup-6 lead readability; fixed SU000/zero-baggage placeholder leakage in presentation only. CI and exact preview publication pending.",
+    "next_action": "Verify responsive calendar display and one-click date re-search preserving other parameters, footer mobile/desktop layout and placeholder-flight summaries; publish exact checked whole-site artifact, then inspect the live candidate. Do not switch production.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -64,10 +64,10 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_JOURNEY_ACCEPTANCE",
-    "status": "LIVE_DESKTOP_AND_DETERMINISTIC_RECOVERY_PASSED_DEVICE_REMAINS",
+    "id": "S3_MOCKUP_AND_PRICE_CALENDAR",
+    "status": "IMPLEMENTED_AWAITING_CI_AND_PREVIEW",
     "category": "VISUAL",
-    "title": "Verify the coherent whole-site preview journey before migration",
+    "title": "Apply the best of eight mockups and restore the existing production price calendar in Search3",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
@@ -99,6 +99,11 @@
     ]
   },
   "queue": [
+    {
+      "id": "S3_MOCKUP_AND_PRICE_CALENDAR",
+      "status": "IMPLEMENTED_AWAITING_CI_AND_PREVIEW",
+      "title": "Apply the best of eight mockups and restore the existing production price calendar in Search3"
+    },
     {
       "id": "S3_FACTS_LINKS_MAPS",
       "status": "QUEUED",

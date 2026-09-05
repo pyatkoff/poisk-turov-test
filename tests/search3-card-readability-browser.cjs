@@ -85,6 +85,56 @@ function px(value) {
         if (px(state[key]) + 0.01 < minimum) throw new Error(width + ': ' + key + ' below ' + minimum + 'px: ' + state[key]);
       }
       console.log('SEARCH3_CARD_READABILITY_OK ' + width + ' ' + JSON.stringify(state));
+
+      // Exercise the production calendar module inside the actual Search3 shell.
+      // Capture submissions locally: no Tourvisor search or lead is sent by this fixture.
+      await page.evaluate(() => {
+        window.__calendarSubmissions = [];
+        window.V2SearchLifecycle.submit = () => {
+          window.__calendarSubmissions.push([...new FormData(document.getElementById('tourSearch')).entries()]);
+        };
+        window.dispatchEvent(new CustomEvent('v2:search-complete', { detail: { items: [
+          { tours: [{ date: '10.09.2026', price: 1350000 }, { date: '2026-09-11', price: 1234567 }] },
+          { tours: [{ date: '10.09.2026', price: 1290000 }, { date: '2026-09-12', price: 0 }] }
+        ] } }));
+      });
+      await page.waitForSelector('#currentPriceCalendar .search3-price-calendar');
+      const calendar = page.locator('#currentPriceCalendar');
+      if (!await calendar.isVisible()) throw new Error(width + ': Search3 hides the production price calendar');
+      const expanded = await calendar.locator('details').getAttribute('open');
+      if ((expanded !== null) === mobile) throw new Error(width + ': wrong responsive calendar default');
+      if (mobile) await calendar.locator('summary').click();
+      const dates = await calendar.locator('[data-calendar-date]').evaluateAll(nodes => nodes.map(node => node.dataset.calendarDate));
+      if (JSON.stringify(dates) !== '["2026-09-10","2026-09-11"]') throw new Error(width + ': unpriced date is offered');
+      const minimum = await calendar.locator('.is-best strong').innerText();
+      if (minimum.replace(/\s/g, '') !== '1234567₽') throw new Error(width + ': daily minimum changed');
+      await calendar.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: `standalone-content-artifacts/calendar-${width}.png`, fullPage: false, animations: 'disabled' });
+      const geometry = await calendar.evaluate(node => ({
+        width: document.documentElement.clientWidth,
+        documentWidth: document.documentElement.scrollWidth,
+        right: node.getBoundingClientRect().right,
+        targets: [...node.querySelectorAll('[data-calendar-date]')].every(button => button.getBoundingClientRect().height >= 44)
+      }));
+      if (geometry.documentWidth > geometry.width + 2 || geometry.right > geometry.width + 2 || !geometry.targets) {
+        throw new Error(width + ': calendar geometry ' + JSON.stringify(geometry));
+      }
+      const unchangedFields = entries => entries.filter(([name]) => !['dateFrom', 'dateTo'].includes(name));
+      const before = await page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()]);
+      await calendar.locator('[data-calendar-date="2026-09-11"]').click();
+      const submissions = await page.evaluate(() => window.__calendarSubmissions);
+      if (submissions.length !== 1) throw new Error(width + ': calendar must submit exactly once');
+      const submitted = Object.fromEntries(submissions[0]);
+      if (submitted.dateFrom !== '2026-09-11' || submitted.dateTo !== '2026-09-11') throw new Error(width + ': selected departure date lost');
+      if (JSON.stringify(unchangedFields(before)) !== JSON.stringify(unchangedFields(submissions[0]))) throw new Error(width + ': calendar changed other search parameters');
+      await page.evaluate(() => document.body.classList.add('search3-selected-open'));
+      if (await calendar.isVisible()) throw new Error(width + ': results calendar leaks into selected tour');
+      await page.evaluate(() => {
+        document.body.classList.remove('search3-selected-open');
+        window.dispatchEvent(new CustomEvent('v2:search-reset'));
+      });
+      if (await calendar.isVisible()) throw new Error(width + ': stale calendar remains after reset');
+      console.log('SEARCH3_CALENDAR_OK ' + width + ' daily minima, date handoff, responsive display and reset');
       await page.close();
     }
   } finally {

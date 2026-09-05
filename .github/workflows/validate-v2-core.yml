@@ -86,6 +86,9 @@ jobs:
           grep -Fq "window.V2SearchLifecycle.submit" v2/current-price-calendar-v1.js
           echo CURRENT_PRICE_CALENDAR_CONTRACT_OK
 
+      - name: Validate Search3 flight presentation
+        run: node tests/search3-flight-presentation.cjs
+
       - name: Validate local catalog routing
         shell: bash
         run: |
