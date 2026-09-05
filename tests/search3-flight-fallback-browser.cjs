@@ -102,6 +102,11 @@ async function verifyLocalizedFlightTradeoff(browser) {
     Array.from(document.querySelectorAll('#selectedTour .flight-choice-tradeoffs span'))
       .some(node => node.textContent.replace(/\s/g, ' ') === '+17 217,6 ₽ к минимальной')
   ));
+  // The booking sidebar belongs to review/lead, not the flight-selection stage.
+  await page.locator('[data-s3-selected-lead]:visible').click();
+  await page.waitForSelector('#selectedTour .search3-summary-submit');
+  await page.click('#selectedTour .search3-summary-submit');
+  await page.waitForFunction(() => document.getElementById('selectedTour').classList.contains('search3-lead-entry'));
   await page.waitForSelector('#selectedTour .search3-booking-summary');
   const state = await page.evaluate(() => ({
     summaryTotal: document.querySelector('#selectedTour .search3-booking-summary__total strong')?.textContent.trim().replace(/\s/g, ' '),
