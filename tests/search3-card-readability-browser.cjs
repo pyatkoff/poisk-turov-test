@@ -127,13 +127,27 @@ function px(value) {
       const submitted = Object.fromEntries(submissions[0]);
       if (submitted.dateFrom !== '2026-09-11' || submitted.dateTo !== '2026-09-11') throw new Error(width + ': selected departure date lost');
       if (JSON.stringify(unchangedFields(before)) !== JSON.stringify(unchangedFields(submissions[0]))) throw new Error(width + ': calendar changed other search parameters');
-      await page.evaluate(() => document.body.classList.add('search3-selected-open'));
+      // Let the canonical selected-tour observer derive the shell state. A body
+      // class alone races its next sync because an empty/hidden tour is closed.
+      await page.evaluate(() => {
+        const selected = document.getElementById('selectedTour');
+        selected.innerHTML = '<div class="selected-head"><h2>Проверочный выбранный тур</h2></div>';
+        selected.hidden = false;
+        window.dispatchEvent(new CustomEvent('v2:selected-tour-opened'));
+      });
+      await page.waitForSelector('#selectedTour');
+      await page.waitForFunction(() => document.body.classList.contains('search3-selected-open'));
       if (await calendar.isVisible()) throw new Error(width + ': results calendar leaks into selected tour');
       await page.evaluate(() => {
-        document.body.classList.remove('search3-selected-open');
+        const selected = document.getElementById('selectedTour');
+        selected.hidden = true;
+        selected.replaceChildren();
+        window.dispatchEvent(new CustomEvent('v2:selected-tour-closed'));
         window.dispatchEvent(new CustomEvent('v2:search-reset'));
       });
+      await page.waitForFunction(() => !document.body.classList.contains('search3-selected-open'));
       if (await calendar.isVisible()) throw new Error(width + ': stale calendar remains after reset');
+      if (!await calendar.evaluate(node => node.hidden && node.children.length === 0)) throw new Error(width + ': reset did not clear calendar data');
       console.log('SEARCH3_CALENDAR_OK ' + width + ' daily minima, date handoff, responsive display and reset');
       await page.close();
     }
