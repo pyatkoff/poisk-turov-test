@@ -426,7 +426,7 @@ function syncLayout(){
   if(!root||!form||!shell||!summary)return;
   const desktop=window.matchMedia('(min-width:1000px)').matches,finalReview=root.classList.contains('search3-final-review'),leadEntry=root.classList.contains('search3-lead-entry');
   if(finalReview&&!leadEntry)root.dataset.search3FinalLayout='maket7';else delete root.dataset.search3FinalLayout;
-  const title=summary.querySelector('.search3-booking-summary__title');if(title)title.textContent=finalReview&&!leadEntry?'Итоговая стоимость':'Ваш тур';
+  const title=summary.querySelector('.search3-booking-summary__title'),titleText=finalReview&&!leadEntry?'Итоговая стоимость':'Ваш тур';if(title&&title.textContent!==titleText)title.textContent=titleText;
   const flight=summary.querySelector('.search3-booking-summary__flight'),label=flightLabel(lastFlight);if(flight&&flight.textContent!==label)flight.textContent=label;
   clearLayout(shell,form,summary);
   if(desktop&&finalReview&&leadEntry){
@@ -450,8 +450,21 @@ function syncLayout(){
   }
 }
 function render(){const root=document.getElementById('selectedTour'),form=root&&root.querySelector('.lead-form');if(!form||!lastTour)return;let shell=form.closest('.search3-lead-shell');if(!shell){shell=document.createElement('div');shell.className='search3-lead-shell';form.parentNode.insertBefore(shell,form);shell.appendChild(form);}const old=shell.querySelector('.search3-booking-summary');if(old)old.remove();shell.insertAdjacentHTML('beforeend',summaryHtml(lastTour));syncLayout();}
-function renderSoon(){setTimeout(render,0)}
-function layoutSoon(){setTimeout(syncLayout,0)}
+// Tour, flight and price events can arrive in the same turn. Render the latest
+// state once; a full render already includes layout synchronization.
+let updatePending=false,renderPending=false;
+function scheduleUpdate(fullRender){
+  renderPending=renderPending||fullRender;
+  if(updatePending)return;
+  updatePending=true;
+  setTimeout(()=>{
+    const shouldRender=renderPending;
+    updatePending=false;renderPending=false;
+    if(shouldRender)render();else syncLayout();
+  },0);
+}
+function renderSoon(){scheduleUpdate(true)}
+function layoutSoon(){scheduleUpdate(false)}
 window.addEventListener('v2:tour-selected',e=>{lastTour=e.detail&&e.detail.tour||null;lastFlight=null;selectedTotal=number(lastTour&&lastTour.price);renderSoon();});
 window.addEventListener('v2:flight-selected',e=>{lastFlight=e.detail&&e.detail.flight||null;renderSoon();});
 window.addEventListener('v2:tour-price-updated',e=>{selectedTotal=normalizedTotal(e.detail);renderSoon();});
