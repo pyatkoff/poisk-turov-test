@@ -1,7 +1,7 @@
 {
   "schema_version": 22,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T00:05:30+00:00",
+  "updated_at": "2026-09-05T00:56:00+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Pre-deploy review found that the whole-site preview could inherit production SEO indexability. PR #1341 forced preview noindex without changing production indexability and merged only into the active release branch. Verified source 85edee8ef4019ff485b5e01d80c4db862283b74e and release merge 9c520bac897aafd1eac7cfe28cfff1ad996949ca have identical tree 81080560d4c829ecda3e2b364e8661b1ad5ee23f. Boundary, exact artifact/local-prefix smoke and security checks passed. Exact artifact 9958766470 supersedes 9958625990 for publication. Whole-site preview is not yet published; main and production redesign remain unchanged.",
-    "next_action": "Do not publish artifact 9958766470: pre-deploy review found production bootstrap/analytics/widget inheritance and unsafe legacy entry in that payload. Verify the new exact payload isolation CI, pin its source and hashes, then prepare a separate exact-provenance whole-site preview deployment with production fingerprints and rollback. Verify real HTTP access denial before any private runtime dependency is introduced. Do not widen the nine-file search-only deploy. Production approval remains pending.",
+    "last_material_progress": "Freshness fix 1fddaf5e and preview-only isolation fixes f7fecd40/b56022b0 passed all applicable PR gates. Exact whole-site artifact 9959663775 built from b56022b019568fa7a0719a2e1984792f59b4c38b; ZIP/archive/manifest/715 payload hashes verified locally. Production bootstraps, counter and consultant widget excluded from copied payload; canonical and legacy forms target disabled preview sink. Mobile Turkey and desktop hot screenshots from freshness visual CI inspected. Main/production and public search-only preview unchanged.",
+    "next_action": "Prepare a separate exact-provenance one-shot whole-site preview deploy for artifact 9959663775 (source b56022b019568fa7a0719a2e1984792f59b4c38b). Verify real HTTP denial of internal PHP/config before introducing any private runtime dependency, production fingerprints, noindex, counter=0, disabled leads, canonical+legacy search and atomic rollback. The nine-file search-only deploy remains unchanged. Then real mobile/desktop catalogue/journey acceptance. Old 9958766470 is superseded and must not be deployed.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -65,24 +65,23 @@
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
     "id": "S3_WHOLE_SITE_PREVIEW",
-    "status": "REBUILDING_PREVIEW_ISOLATION",
+    "status": "PREPARED_DEPLOY_NEXT",
     "category": "VISUAL",
     "title": "Publish and verify a coherent whole-site preview of the verified draft",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
-    "prepared_pr": 1341,
-    "release_merge_sha": "9c520bac897aafd1eac7cfe28cfff1ad996949ca",
-    "artifact_source_sha": "85edee8ef4019ff485b5e01d80c4db862283b74e",
-    "artifact_source_tree": "81080560d4c829ecda3e2b364e8661b1ad5ee23f",
-    "artifact_run": 33931705292,
-    "artifact_id": 9958766470,
-    "artifact_digest": "sha256:1845a4872d2701003ff66201c1ca8ddd96ffaf11c0848162f308934b6afa4fba",
-    "archive_sha256": "bf71ded48eb2b309faeccf78dc3fb6a8abe4bc4b2f25c972ea4b193ea35a565b",
-    "manifest_sha256": "bd83d1b7ed37b0da97056ece6a8d662a88fdd43a23a69b89e463d319b5b3c55c",
-    "payload_checksums_sha256": "364ce5bf07a02d91cb8c7f32b1108cc75e3d20dcdbc055f0db98b6185b470c1f",
-    "payload_file_count": 714,
-    "superseded_artifact": 9958625990,
+    "prepared_pr": 1334,
+    "artifact_source_sha": "b56022b019568fa7a0719a2e1984792f59b4c38b",
+    "artifact_source_tree": "90ed9589ca0a4bbdcf4c1e25f246a6dd3c74a839",
+    "artifact_run": 33934383695,
+    "artifact_id": 9959663775,
+    "artifact_digest": "sha256:dab2140e34c3b848368f6b635a5a6e51e66faa5f4c294efb47f92d2f7ec91f84",
+    "archive_sha256": "234bb16c684be29e1a8f70e2bb155feeae2162819ec5e4c0d0aa3bb8d8136153",
+    "manifest_sha256": "4aea6e3e1490a970c7701a4298ef84c5a8742bf805198d032386ff12846af770",
+    "payload_checksums_sha256": "d3c1fa59c50e2a40a8130ccbc766b34b14aa2500039f3f59253aa3cd3efb17d5",
+    "payload_file_count": 715,
+    "superseded_artifact": 9958766470,
     "acceptance": [
       "Use the exact reviewed site artifact; existing search-only deploy allowlist cannot publish the whole site.",
       "Force preview noindex even when production SEO allowlists the canonical route.",
@@ -98,19 +97,27 @@
     },
     {
       "id": "S3_OFFER_FRESHNESS",
-      "status": "QUEUED",
-      "title": "Exclude past departures using explicit timezone and verified same-day availability rules; preserve selected departure city"
+      "status": "PREPARED_CI_PASSED_AWAITING_PREVIEW",
+      "title": "Exclude past departures using explicit timezone and verified same-day availability rules; preserve selected departure city",
+      "sha": "1fddaf5e4e1c1285cb768050352c3d0a1ab0cdc4",
+      "note": "Explicit Moscow business-day exclusion; preserve same-day allowance. Do not invent airport-specific sales cutoff."
     },
     {
       "id": "S3_JOURNEY_ACCEPTANCE",
       "status": "QUEUED",
-      "depends_on": ["S3_WHOLE_SITE_PREVIEW", "S3_FACTS_LINKS_MAPS", "S3_OFFER_FRESHNESS"],
+      "depends_on": [
+        "S3_WHOLE_SITE_PREVIEW",
+        "S3_FACTS_LINKS_MAPS",
+        "S3_OFFER_FRESHNESS"
+      ],
       "title": "Verify phone/Safari and desktop journey to lead form with family, long-value and recovery states; preview delivery remains disabled"
     },
     {
       "id": "S3_OWNER_APPROVAL_AND_MIGRATION",
       "status": "GATED",
-      "depends_on": ["S3_JOURNEY_ACCEPTANCE"],
+      "depends_on": [
+        "S3_JOURNEY_ACCEPTANCE"
+      ],
       "title": "Owner approves concrete release; retain previous artifact/config, verify rollback and old search, deploy and verify production",
       "gate": "Explicit owner visual production approval; real lead receipt needs a controlled agreed test"
     }
@@ -164,7 +171,15 @@
       "conclusion": "success",
       "run_id": 33925976956,
       "sha": "470474414a3930f1f6c095a8dbbc187075b253c0",
-      "widths": [375, 430, 768, 1024, 1440, 1920, 2048]
+      "widths": [
+        375,
+        430,
+        768,
+        1024,
+        1440,
+        1920,
+        2048
+      ]
     },
     "preview_deploy": {
       "conclusion": "success",
@@ -172,14 +187,15 @@
     },
     "whole_site_preview_preparation": {
       "conclusion": "success",
-      "sha": "85edee8ef4019ff485b5e01d80c4db862283b74e",
-      "release_merge_sha": "9c520bac897aafd1eac7cfe28cfff1ad996949ca",
-      "source_tree": "81080560d4c829ecda3e2b364e8661b1ad5ee23f",
-      "boundary_run": 33931705247,
-      "artifact_run": 33931705292,
-      "security_run": 33931705313,
-      "artifact_id": 9958766470,
-      "scope": "Exact whole-site artifact, forced preview noindex, production/preview route boundary, disabled preview lead sink, local exact-prefix route smoke and security guard. Prepared only; no public whole-site preview yet."
+      "sha": "b56022b019568fa7a0719a2e1984792f59b4c38b",
+      "source_tree": "90ed9589ca0a4bbdcf4c1e25f246a6dd3c74a839",
+      "boundary_run": 33934383674,
+      "artifact_run": 33934383695,
+      "security_run": 33934383673,
+      "core_run": 33934383665,
+      "visual_run": 33934383671,
+      "artifact_id": 9959663775,
+      "scope": "All 21 applicable PR gates passed; migration gate configured skip. HTTP smoke covers nine routes, hostile production bootstrap fixtures, counter zero, no widget, legacy search and disabled lead sink. Not public/server access-control acceptance."
     },
     "site_shell": {
       "conclusion": "success",
@@ -188,17 +204,21 @@
       "scope": "All applicable PR gates passed; migration-only check skipped by configured condition. Actual Search3, legacy search and content templates on mobile/desktop. Runtime catalogue unavailable in CI; not a production defect."
     }
   },
-  "last_verified_commit": "85edee8ef4019ff485b5e01d80c4db862283b74e",
-  "last_verified_commit_scope": "Prepared exact whole-site preview artifact with preview noindex and containment; not yet published and does not certify production or real lead delivery.",
+  "last_verified_commit": "b56022b019568fa7a0719a2e1984792f59b4c38b",
+  "last_verified_commit_scope": "All 21 applicable PR gates passed; migration gate configured skip. HTTP smoke covers nine routes, hostile production bootstrap fixtures, counter zero, no widget, legacy search and disabled lead sink. Not public/server access-control acceptance.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
-      "blocks": ["S3_OWNER_APPROVAL_AND_MIGRATION"],
+      "blocks": [
+        "S3_OWNER_APPROVAL_AND_MIGRATION"
+      ],
       "reason": "Owner approval of concrete finished preview is pending; preparation continues."
     },
     {
       "id": "APPROVED_LEGAL_PAYMENT_CONTENT",
-      "blocks": ["legal/payment publication within S3_FACTS_LINKS_MAPS"],
+      "blocks": [
+        "legal/payment publication within S3_FACTS_LINKS_MAPS"
+      ],
       "reason": "Locate existing approved materials first; defer unavailable/unapproved content. No invented legal terms."
     }
   ],
@@ -244,10 +264,12 @@
     "preview": "Not published. Rebuild and pin a checked isolated artifact before including the correction in preview."
   },
   "preview_isolation_followup": {
-    "status": "IMPLEMENTED_AWAITING_CI",
+    "status": "PREPARED_CI_PASSED_NOT_PUBLISHED",
     "superseded_unsafe_artifact": 9958766470,
     "findings": "Copied search runtime could execute production Bitrix/site_conf, inherit a configured counter, and load the external consultant widget. Legacy entry required transformed homepage and retained production lead URL. Old smoke used a clean PHP docroot/config and did not expose these issues.",
     "fix": "Exact fail-closed transformations of copied artifact only: omit production bootstrap, force preview counter zero, remove consultant widget, bind legacy UI to copied search runtime and disabled lead sink. Production runtime, analytics configuration, goals and lead transport unchanged.",
-    "verification": "Local exact-source transformation/drift unittest passed. Extended artifact HTTP smoke uses poison production bootstraps and a configured counter, includes legacy search and Turkey, and asserts both search UIs use the disabled sink and zero counter. Awaiting CI."
+    "verification": "Exact transform/drift unit test and HTTP smoke passed in run 33934383695. Both forms rendered with counter=0 and disabled sink despite poisoned production bootstrap fixtures. Core/security/boundary/visual gates passed. ZIP digest, inner archive, manifest, checksum list and all 715 payload bytes matched locally.",
+    "sha": "b56022b019568fa7a0719a2e1984792f59b4c38b",
+    "artifact_id": 9959663775
   }
 }
