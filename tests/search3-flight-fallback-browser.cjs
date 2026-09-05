@@ -111,7 +111,7 @@ async function verifyFallbackHandoff(browser) {
   await page.waitForFunction(() => window.__fallbackTest.flightCalls === 2);
   await page.waitForFunction(() => document.querySelectorAll('#selectedTour .load-flights').length === 1);
 
-  await page.click('[data-s3-selected-lead]');
+  await page.locator('[data-s3-selected-lead]:visible').click();
   await page.waitForFunction(() => document.getElementById('selectedTour').classList.contains('search3-final-review'));
   await page.waitForSelector('#selectedTour .search3-summary-submit');
   state = await page.evaluate(() => ({
