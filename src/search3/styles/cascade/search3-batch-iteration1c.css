@@ -1,0 +1,101 @@
+/* donor:search3-batch-iteration1c.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+/* Search 3 batch visual iteration 1c. Final pre-audit convergence for maket7. */
+
+/* Keep desktop controls aligned with the 196px rail + 14px gap. */
+@media(min-width:1000px){
+ body.search3-candidate .results-tools--ds2{width:calc(100% - 210px)!important;margin-left:210px!important;padding-left:0!important;padding-right:0!important;border:0!important;background:transparent!important;}
+ body.search3-candidate .results-layout{margin-bottom:34px!important}
+ body.search3-candidate .results-filter-rail{position:sticky!important;top:76px!important;max-height:calc(100vh - 92px)!important;overflow:auto!important}
+ body.search3-candidate .filter-rail-head{margin-bottom:4px!important;padding-bottom:8px!important;border-bottom:1px solid #eef1f5!important}
+ body.search3-candidate .filter-rail-title{font-size:12px!important}
+ body.search3-candidate .filter-reset-link{font-size:8px!important}
+ body.search3-candidate .results-filter-rail fieldset,body.search3-candidate .results-filter-rail .filter-range{margin-bottom:0!important;padding:9px 0!important}
+ body.search3-candidate .results-filter-rail .filter-range>span,body.search3-candidate .results-filter-rail legend{margin-bottom:6px!important;font-size:9px!important}
+ body.search3-candidate .results-filter-rail .filter-option{margin:5px 0!important;font-size:8px!important}
+ body.search3-candidate .search3-filter-select{min-height:32px!important;font-size:8px!important}
+ body.search3-candidate #results .hotel-main{grid-template-columns:212px minmax(0,1fr)!important;min-height:150px!important}
+ body.search3-candidate #results .hotel-photo{height:150px!important;min-height:150px!important}
+ body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 164px!important;padding:11px 13px 10px!important}
+ body.search3-candidate #results .hotel-title{font-size:15px!important}
+ body.search3-candidate #results .hotel-price{font-size:19px!important}
+ body.search3-candidate .search3-hotel-action{grid-template-columns:minmax(0,1fr) 164px!important}
+ body.search3-candidate #results .hotel-tours .tour-row{border-color:#e6ebf2!important;}
+
+ body.search3-candidate #selectedTour{margin-top:12px!important;margin-bottom:28px!important}
+ body.search3-candidate #selectedTour .back-results{min-height:36px!important;margin-bottom:9px!important;border-radius:8px!important;font-size:9px!important}
+ body.search3-candidate #selectedTour .selected-picture{height:224px!important}
+ body.search3-candidate #selectedTour .selected-head{min-height:224px!important;padding:20px 22px!important}
+ body.search3-candidate #selectedTour .selected-head h2{font-size:25px!important}
+ body.search3-candidate #selectedTour .selected-head .eyebrow{padding:3px 6px!important;background:#f8fafc!important;color:#667085!important}
+ body.search3-candidate #selectedTour .facts{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+ body.search3-candidate #selectedTour .facts>div{min-height:56px!important;padding:10px 11px!important}
+ body.search3-candidate #selectedTour .facts span{font-size:8px!important}
+ body.search3-candidate #selectedTour .facts b{font-size:11px!important}
+ body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{margin-top:8px!important;padding:14px!important}
+ body.search3-candidate #selectedTour .section-heading strong{font-size:16px!important}
+ body.search3-candidate #selectedTour .lead-form button[type=submit]{color:#fff!important;border:0!important;border-radius:9px!important;font-size:12px!important}
+}
+
+/* Initial mobile form should read as six primary choices, not a long questionnaire. */
+@media(max-width:760px){
+ body.search3-candidate #tourSearch{box-shadow:none!important}
+ body.search3-candidate #tourSearch .search3-primary-grid{gap:6px!important}
+ body.search3-candidate #tourSearch .field>span{font-size:7px!important}
+ body.search3-candidate #tourSearch select,body.search3-candidate #tourSearch input[type=text],body.search3-candidate .search3-tourists__summary,body.search3-candidate .search3-composite__control{min-height:36px!important;border-radius:7px!important}
+ body.search3-candidate #tourSearch .search3-primary-grid>.search-submit{min-height:42px!important;border-radius:8px!important}
+ body.search3-candidate .search3-advanced-toggle{min-height:36px!important;margin-top:7px!important;border-radius:8px!important;background:#fff!important;font-size:8px!important}
+ body.search3-candidate .search3-quick{margin-top:6px!important}
+ body.search3-candidate .search3-quick__label{font-size:8px!important}
+
+ /* Result list: title, facts, price and CTA stay in one visual unit. */
+ body.search3-candidate.search3-has-results #resultsSearchSummary{width:100%!important;min-width:0!important;border:1px solid #e2e8f0!important;border-radius:9px!important;background:#fff!important}
+ body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route{display:block!important;padding:8px 10px!important}
+ body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route strong{font-size:7px!important}
+ body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route span{font-size:9px!important}
+ body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__edit{min-width:104px!important;min-height:34px!important;font-size:8px!important;border:0!important;border-left:1px solid #edf0f5!important;border-radius:0!important}
+ body.search3-candidate #results .hotel-photo{height:104px!important;min-height:104px!important}
+ body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 96px!important;padding:8px 9px!important}
+
+ body.search3-candidate #results .hotel-decision-line>span{min-height:17px!important;font-size:7px!important}
+
+ body.search3-candidate .search3-show-tours{min-height:36px!important;border-radius:7px!important}
+
+ /* Package chooser stays compact and keeps the hotel visible above it. */
+ body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo{height:120px!important;min-height:120px!important}
+ body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-body{padding:9px!important}
+ body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head{margin-bottom:5px!important}
+
+
+
+}
+
+/* Drawer and selected tour: reduce visual competition with the main action. */
+@media(max-width:999px){
+ body.search3-candidate .filter-rail-head{position:sticky!important;top:-14px!important;z-index:2!important;margin:0 -14px 4px!important;padding:12px 14px 9px!important;background:#fff!important;border-bottom:1px solid #eef1f5!important}
+ body.search3-candidate .results-filter-rail fieldset,body.search3-candidate .results-filter-rail .filter-range{margin:0!important;padding:9px 0!important}
+ body.search3-candidate .results-filter-rail .filter-option{margin:5px 0!important}
+}
+@media(max-width:640px){
+ body.search3-candidate #selectedTour .back-results{min-height:34px!important;margin-bottom:6px!important;font-size:8px!important}
+ body.search3-candidate #selectedTour .selected-picture{height:136px!important}
+ body.search3-candidate #selectedTour .selected-head{padding:8px 9px!important}
+ body.search3-candidate #selectedTour .selected-head h2{font-size:16px!important}
+ body.search3-candidate #selectedTour .selected-head p{font-size:7px!important}
+ body.search3-candidate #selectedTour .facts>div,body.search3-candidate #selectedTour .facts>div:nth-child(n){min-height:40px!important;padding:6px 7px!important}
+ body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{padding:9px!important}
+ body.search3-candidate #selectedTour .section-heading strong{font-size:13px!important}
+ body.search3-candidate .search3-selected-mobile-bar__price small{font-size:7px!important}
+ body.search3-candidate .search3-selected-mobile-bar__price strong{font-size:16px!important}
+ body.search3-candidate .search3-selected-mobile-bar button{min-height:40px!important;border-radius:8px!important;font-size:10px!important}
+
+
+
+
+
+
+
+
+
+
+}
+
