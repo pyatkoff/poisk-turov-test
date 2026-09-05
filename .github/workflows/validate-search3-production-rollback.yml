@@ -1,0 +1,30 @@
+name: Validate Search3 production rollback readiness
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/deploy/search3_production_snapshot.py'
+      - 'tests/search3_production_snapshot_test.py'
+      - '.github/workflows/validate-search3-production-rollback.yml'
+      - 'docs/project/search3-production-migration-runbook.md'
+  push:
+    branches:
+      - release/search3-production-ready-v1
+    paths:
+      - 'scripts/deploy/search3_production_snapshot.py'
+      - 'tests/search3_production_snapshot_test.py'
+      - '.github/workflows/validate-search3-production-rollback.yml'
+      - 'docs/project/search3-production-migration-runbook.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixture-drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate snapshot utility and isolated restore drill
+        run: python3 tests/search3_production_snapshot_test.py
