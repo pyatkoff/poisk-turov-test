@@ -188,8 +188,8 @@
     flights = flights || selected.querySelector('.tour-flights');
     var variantsBox = flights && flights.querySelector('.flight-variants');
     var variants = variantsBox ? Array.from(variantsBox.querySelectorAll(':scope > .flight-variant')) : [];
-    var existing = flights && flights.querySelector('.search3-flight-show-all');
     if (!variantsBox || variants.length <= INITIAL_FLIGHT_LIMIT) {
+      var existing = flights && flights.querySelector('.search3-flight-show-all');
       if (variantsBox) {
         variantsBox.removeAttribute('data-search3-flight-disclosure');
         variants.forEach(function (variant) { if (variant.hidden) variant.hidden = false; });

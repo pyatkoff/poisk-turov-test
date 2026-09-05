@@ -57,15 +57,16 @@ const document = {
   addEventListener() {},
   createElement() { throw new Error('unexpected createElement'); }
 };
+const window = {
+  addEventListener(name, handler) { events.set(name, handler); },
+  requestAnimationFrame(handler) { frames.push(handler); }
+};
 
 vm.runInNewContext(
   fs.readFileSync(path.join(__dirname, '../src/search3/behavior/selected-flow-v2.js'), 'utf8'),
   {
     document,
-    window: {
-      addEventListener(name, handler) { events.set(name, handler); },
-      requestAnimationFrame(handler) { frames.push(handler); }
-    },
+    window,
     MutationObserver: function () { this.observe = function () {}; },
     Intl,
     Set,
@@ -100,4 +101,39 @@ assert.equal(
   'one sync reuses one flight root lookup for disclosure and no-flight state'
 );
 
-console.log('PASS: selected-flow price updates coalesce and flight root lookup is shared');
+let disclosureLookups = 0;
+const variants = Array.from({ length: 7 }, () => ({
+  hidden: false,
+  classList: { contains() { return false; } },
+  querySelector() { return null; }
+}));
+const variantsBox = {
+  dataset: {},
+  id: 'flightVariants',
+  querySelectorAll() { return variants; },
+  removeAttribute() {}
+};
+const disclosure = {
+  hidden: false,
+  textContent: '',
+  setAttribute() {},
+  removeAttribute() {}
+};
+const disclosureFlights = {
+  querySelector(selector) {
+    if (selector === '.flight-variants') return variantsBox;
+    if (selector === '.search3-flight-show-all') {
+      disclosureLookups += 1;
+      return disclosure;
+    }
+    return null;
+  },
+  insertBefore() {},
+  appendChild() {}
+};
+
+window.Search3SelectedFlowV2.syncFlightDisclosure(disclosureFlights);
+
+assert.equal(disclosureLookups, 1, 'expanded disclosure reuses a single show-all lookup');
+
+console.log('PASS: selected-flow coalesces updates and avoids duplicate flight disclosure lookups');
