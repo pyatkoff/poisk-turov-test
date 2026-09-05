@@ -29,13 +29,17 @@
       if (nodes.region.parentNode !== nodes.advanced) {
         nodes.advanced.insertBefore(nodes.region, nodes.advanced.firstElementChild);
       }
-      form.dataset.search3EntryLayout = 'mobile-compact';
+      if (form.dataset.search3EntryLayout !== 'mobile-compact') {
+        form.dataset.search3EntryLayout = 'mobile-compact';
+      }
     } else {
       var dates = nodes.main.querySelector('.search3-dates');
       if (nodes.region.parentNode !== nodes.main || nodes.region.nextElementSibling !== dates) {
         nodes.main.insertBefore(nodes.region, dates || nodes.main.querySelector('.search-submit'));
       }
-      form.dataset.search3EntryLayout = 'desktop';
+      if (form.dataset.search3EntryLayout !== 'desktop') {
+        form.dataset.search3EntryLayout = 'desktop';
+      }
     }
     syncResultSummary();
     return true;

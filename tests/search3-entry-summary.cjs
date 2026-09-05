@@ -9,6 +9,8 @@ let detailText = '';
 let detailHidden = true;
 let calendarWrapperChecks = 0;
 let currentCalendar = null;
+let layoutWrites = 0;
+let layoutValue = '';
 
 const detail = {};
 Object.defineProperty(detail, 'textContent', {
@@ -43,8 +45,13 @@ const region = {
   nextElementSibling: dates,
   classList: { add() {} }
 };
+const dataset = {};
+Object.defineProperty(dataset, 'search3EntryLayout', {
+  get() { return layoutValue; },
+  set(value) { layoutValue = value; layoutWrites += 1; }
+});
 const form = {
-  dataset: {},
+  dataset,
   elements: {
     region: { closest() { return region; } }
   },
@@ -114,6 +121,8 @@ assert.equal(detailHidden, false);
 assert.equal(textWrites, 1, 'unchanged summary text is not rewritten');
 assert.equal(hiddenWrites, 1, 'unchanged summary visibility is not rewritten');
 assert.equal(calendarWrapperChecks, 1, 'adapted calendar wrapper is checked once for repeated syncs');
+assert.equal(layoutValue, 'desktop');
+assert.equal(layoutWrites, 1, 'unchanged desktop layout is written once');
 
 currentCalendar = wrappedCalendar();
 api.sync();
@@ -121,5 +130,13 @@ api.sync();
 assert.equal(calendarWrapperChecks, 2, 'replacement calendar is detected and adapted independently');
 assert.equal(textWrites, 1, 'calendar replacement does not rewrite unchanged summary text');
 assert.equal(hiddenWrites, 1, 'calendar replacement does not rewrite unchanged summary visibility');
+assert.equal(layoutWrites, 1, 'calendar replacement does not rewrite unchanged layout state');
 
-console.log('PASS: entry summary and price calendar sync avoid duplicate DOM work');
+mobile.matches = true;
+api.sync();
+api.sync();
+
+assert.equal(layoutValue, 'mobile-compact');
+assert.equal(layoutWrites, 2, 'real desktop-to-mobile transition writes layout once');
+
+console.log('PASS: entry summary, layout and price calendar sync avoid duplicate DOM work');
