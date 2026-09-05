@@ -161,5 +161,7 @@
   ],
   "ordered_declaration_stream_equal_after_deduplication": true,
   "additional_duplicate_declarations_removed": 119,
-  "total_declarations_removed": 146
+  "total_declarations_removed": 146,
+  "implementation_sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
+  "scope_note": "Historical equivalence audit for e12e7ac7 only. The subsequent hidden-tour bug fix intentionally changes closed-state presentation and is separately verified."
 }

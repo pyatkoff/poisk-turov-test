@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T13:32:30.376304+00:00",
+  "updated_at": "2026-09-05T13:39:42.256366+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "CSS consolidation published: 22 repeated rules and119 further declarations removed (6498 bytes). All23 applicable checks pass. Four card screenshots pixel-identical; all715 payload hashes verified; only main Search3 CSS differs. Production fingerprints unchanged.",
-    "next_action": "Continue concrete Search3 UX defects using source modules. Duplicate CSS pass is complete; remaining differing overrides and observers are active and require their own evidence before changes. Physical iPhone/Safari, approved legal content and owner production acceptance remain open.",
+    "last_material_progress": "CSS duplicate consolidation followed by a live-discovered Back fix: retained hidden selected tour no longer renders below results. Both changes passed23 applicable gates and published to isolated preview. Production fingerprints unchanged.",
+    "next_action": "Scoped CSS refactor and hidden-tour return fix completed. Use source modules for subsequent concrete Search3 defects. Remaining differing cascade overrides/observers are active; do not rewrite without evidence. Physical iPhone/Safari, approved legal content and owner production acceptance remain open.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -64,22 +64,27 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_CSS_CASCADE_CONSOLIDATION",
-    "title": "Remove proven duplicate Search3 declarations while preserving effective cascade",
-    "status": "PUBLISHED_IN_PREVIEW_NOT_PRODUCTION",
+    "id": "S3_RETAINED_TOUR_HIDDEN_CONTRACT",
+    "title": "Respect hidden state when returning from retained tour to results",
+    "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
-    "implementation_sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
-    "ci_core": 33968976776,
-    "ci_visual": 33968976830,
-    "ci_flight": 33968976715,
-    "artifact_run": 33968976826,
-    "artifact_id": 9970334355,
-    "deploy_run": 33969089661,
-    "deploy_pr": 1360
+    "implementation_sha": "c93dad244348f43b423ad61e110588bcec627dd4",
+    "ci_core": 33969305922,
+    "ci_visual": 33969305835,
+    "ci_flight": 33969305812,
+    "artifact_run": 33969305785,
+    "artifact_id": 9970432615,
+    "deploy_run": 33969403753,
+    "deploy_pr": 1361
   },
   "queue": [
+    {
+      "id": "S3_RETAINED_TOUR_HIDDEN_CONTRACT",
+      "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
+      "sha": "c93dad244348f43b423ad61e110588bcec627dd4"
+    },
     {
       "id": "S3_CSS_CASCADE_CONSOLIDATION",
       "status": "PUBLISHED_IN_PREVIEW_NOT_PRODUCTION",
@@ -155,15 +160,15 @@
       "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
-      "release_merge_sha": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
-      "source_tree": "9448e1ffc8070da0712be62ee5286f969e8f1ec2",
-      "exact_artifact": 9970334355,
-      "artifact_digest": "sha256:9ba6fb72f4ba0ed7a42bf1cea611e183047d24fb02463ecc65a4a171f2384f2c",
-      "superseded_artifact": 9965968756,
+      "implementation_verified_sha": "c93dad244348f43b423ad61e110588bcec627dd4",
+      "release_merge_sha": "c93dad244348f43b423ad61e110588bcec627dd4",
+      "source_tree": "54baf0378fca4a71e5d8b4ebd9f5cf21f22cec17",
+      "exact_artifact": 9970432615,
+      "artifact_digest": "sha256:80ac2f457702019184bfcd3dfaff9d33c00ee9619551bd3b686f4b592d82dcec",
+      "superseded_artifact": 9970334355,
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "preview_deploy_run": 33969089661,
-      "preview_deploy_pr": 1360,
+      "preview_deploy_run": 33969403753,
+      "preview_deploy_pr": 1361,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -185,7 +190,8 @@
         "booking stage hides preserved results and search controls",
         "readable search context, filter rows and lead navigation",
         "desktop reset fits the narrow filter rail",
-        "duplicate CSS rules removed with declaration-stream and pixel equivalence evidence"
+        "duplicate CSS rules removed with declaration-stream and pixel equivalence evidence",
+        "retained selected-tour DOM respects hidden after Back"
       ]
     },
     "production": {
@@ -365,10 +371,25 @@
       "deployment_run": 33969089661,
       "deployment_evidence": 9970372339,
       "scope": "Four card screenshots exactly equal at375/430/1024/1440. Three calendar screenshots equal;1024 differs only50pixels by1channel level, visually inspected. Deployment verifies9routes/noindex/lead403/counter0/internalPHPdeny/retainedrollback/unchanged before-after-final production fingerprints."
+    },
+    "return_visibility": {
+      "sha": "c93dad244348f43b423ad61e110588bcec627dd4",
+      "conclusion": "success",
+      "applicable_passed": 23,
+      "core_run": 33969305922,
+      "visual_run": 33969305835,
+      "flight_run": 33969305812,
+      "boundary_run": 33969305760,
+      "artifact_run": 33969305785,
+      "artifact_id": 9970432615,
+      "visual_artifact": 9970439935,
+      "deployment_run": 33969403753,
+      "deployment_evidence": 9970465480,
+      "scope": "375/430/1024/1440 retained nonempty tour with final-review markers becomes invisible and zero-height after Back; cards and named form parameters preserved. Mobile/desktop return images inspected. All715 payload hashes verified; only Search3 CSS changed.9routes/noindex/lead403/counter0/internalPHPdeny/retainedrollback/unchanged production fingerprints."
     }
   },
-  "last_verified_commit": "e12e7ac7fa4700c6bb91907ee2e9f81bcd503b1d",
-  "last_verified_commit_scope": "CSS duplicate consolidation verified and published in isolated whole-site preview; production/main unchanged.",
+  "last_verified_commit": "c93dad244348f43b423ad61e110588bcec627dd4",
+  "last_verified_commit_scope": "CSS return fix verified and published in isolated whole-site preview; production/main unchanged.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -448,8 +469,24 @@
     "live_verification": "Fresh CSS e0f32847c9c3e78e;96 hotels, unchanged desktop card geometry, LUXOR APART through clarified flight and summary to lead form with one65427RUB total. Screenshot inspected; no lead submitted."
   },
   "return_visibility_fix": {
-    "status": "PREPARED_AWAITING_CI",
+    "status": "PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION",
     "finding": "Live Back sets selectedTour.hidden=true but CSS display:grid!important leaves3466px of retained tour visible below96 results. Present before refactor; missing hidden presentation contract.",
-    "fix": "Honor #selectedTour[hidden] in CSS; preserve retained DOM. Existing four-width test now retains children like real Back and asserts invisibility/zero layout height."
+    "fix": "Honor #selectedTour[hidden] in CSS; preserve retained DOM. Existing four-width test now retains children like real Back and asserts invisibility/zero layout height.",
+    "implementation_sha": "c93dad244348f43b423ad61e110588bcec627dd4",
+    "deploy_run": 33969403753,
+    "evidence": 9970465480,
+    "live_verification": {
+      "css_hash": "b94f15eaa963b5cc",
+      "cards_before": 98,
+      "cards_after": 98,
+      "input_select_values_identical": true,
+      "selected_hidden": true,
+      "selected_display": "none",
+      "selected_height": 0,
+      "retained_children": 20,
+      "horizontal_overflow": false,
+      "lead_submitted": false,
+      "path": "LUXOR APART -> clarified flight -> summary -> form -> back to tour -> back to results"
+    }
   }
 }

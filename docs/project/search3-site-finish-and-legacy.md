@@ -246,3 +246,40 @@ same desktop viewport. LUXOR APART opened through clarified flight, tour summary
 and the lead form showing one 65 427 RUB total. Form screenshot inspected; no
 lead submitted. Remaining physical iPhone/Safari, approved legal content and
 owner visual production approval are unchanged. Main remains `fa58a0cb`.
+
+## Retained tour hidden contract — 2026-09-05
+
+The post-refactor live Back check exposed a separate pre-existing defect:
+`#selectedTour` retained its DOM and `hidden=true`, but author `display:grid!important`
+rendered a 3466px tour below 96 hotel cards. The consolidation audit preserves this
+old cascade; it did not create the defect. A scoped hidden-state rule now suppresses
+that retained container. No controller, supplier, price, lead or analytics change.
+
+The existing four-width browser test formerly cleared selected-tour children before
+checking Back, masking this case. It now retains content and final-review markers
+like the real route, requires invisibility and zero layout height, and still verifies
+preserved cards/form fields. Return screenshots at 375/430/1024/1440 are available;
+mobile375 and desktop1440 inspected.
+
+Source `c93dad244348f43b423ad61e110588bcec627dd4` passed 23 applicable gates:
+core 33969305922, flight 33969305812, visual 33969305835, boundary 33969305760.
+Visual evidence 9970439935; exact artifact 9970432615/build 33969305785,
+tree 54baf0378fca4a71e5d8b4ebd9f5cf21f22cec17. All 715 payload hashes verified;
+only Search3 CSS differs from the preceding e12e7ac7 preview.
+ZIP 80ac2f457702019184bfcd3dfaff9d33c00ee9619551bd3b686f4b592d82dcec;
+archive 7d67da087e588f45e59aa885d0cc2726fa6e4873d37d038c15a2f5e97c72ead6;
+manifest a5c5796645d376cfc90c5fde475fd56c4455fc7f8d14b4772031603a7637b67d;
+payload a20275399d093adf0f1d37139721dd0897331d68a3055296e402f853df7ed7a6.
+
+Published deploy 33969403753, draft #1361, control 1b0367b6859d03364ab1d171712877aa98eac972.
+Evidence 9970465480 (ZIP 1911cf093534744319910839b9ea1f8dff69f62a57cfe3b228f37abe1992c22d)
+confirms 9routes/noindex/lead403/counter0/internalPHPdeny/retainedrollback and
+identical before-after-final production fingerprints. Main remains fa58a0cb.
+
+Final live verification loaded CSS `b94f15eaa963b5cc`: 98 hotels, LUXOR APART →
+clarified flight → summary → lead form → Back to tour → Back to results.
+All 98 cards and exact input/select values were preserved. Retained selected tour
+has20 children, hidden=true, computed display:none and height0; no page overflow.
+No lead submitted. This resolves the observed return defect; physical Safari and
+owner production approval remain outstanding. Current published version is c93dad24,
+not the later documentation checkpoint. Scheduler remains paused.
