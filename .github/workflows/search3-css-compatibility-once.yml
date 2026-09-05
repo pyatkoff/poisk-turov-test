@@ -1,0 +1,71 @@
+name: Prepare verified Search3 compatibility cleanup once
+on:
+  push:
+    branches: [refactor/search3-css-compatibility-91a7ff5d]
+    paths:
+      - .github/workflows/search3-css-compatibility-once.yml
+      - scripts/oneoff/search3_css_compatibility_once.py
+permissions:
+  contents: write
+concurrency:
+  group: search3-css-compatibility-91a7ff5d
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.repository == 'pyatkoff/poisk-turov-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 4
+      - name: Check pinned input and apply exact reviewed source edits
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/refactor/search3-css-compatibility-91a7ff5d
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git merge-base --is-ancestor 91a7ff5df1fb117af972f517bc188e7597a6ee33 HEAD
+          python3 -B scripts/build/search3_assets.py --check
+          python3 -B scripts/oneoff/search3_css_compatibility_once.py
+      - name: Existing source, presentation, handoff and boundary regressions
+        run: |
+          set -euo pipefail
+          python3 -B scripts/build/search3_assets.py --check
+          python3 -B scripts/build/search3_cascade_sections.py --check
+          python3 -B tests/search3_source_build_test.py
+          python3 -B tests/search3_production_presentation_test.py
+          node tests/search3-flight-presentation.cjs
+          php tests/site-preview-path-smoke.php production
+          php tests/site-preview-path-smoke.php preview
+          php tests/search-handoff-smoke.php
+          git diff --check
+      - name: Verify write boundary then publish only to isolated preparation branch
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import subprocess
+          expected = {
+              'src/search3/styles/filters.css',
+              'src/search3/styles/footer-compatibility.css',
+              'src/search3/styles/hotel-results.css',
+              'src/search3/styles/results-context.css',
+              'src/search3/styles/review.css',
+              'src/search3/styles/selected-tour.css',
+              'v2/search3-results-filters-v1.css',
+              'docs/project/search3-production-import.json',
+              'docs/project/search3-compatibility-cleanup.json',
+              'AUTOPILOT_STATE.json',
+          }
+          changed = set(subprocess.check_output(['git','diff','--name-only'], text=True).splitlines())
+          changed.update(subprocess.check_output(['git','ls-files','--others','--exclude-standard'], text=True).splitlines())
+          if changed != expected:
+              raise SystemExit('Unexpected writes: ' + repr(changed ^ expected))
+          subprocess.run(['git','add','--',*sorted(expected)],check=True)
+          PY
+          git diff --cached --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'refactor(search3): remove shadowed compatibility dimensions'
+          git push origin HEAD:refs/heads/refactor/search3-css-compatibility-91a7ff5d
+          git rev-parse HEAD HEAD^{tree}
