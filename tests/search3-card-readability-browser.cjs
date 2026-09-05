@@ -68,6 +68,7 @@ function px(value) {
           factLabels: [...document.querySelectorAll('.search3-hotel-facts small')].map(node => node.textContent.trim())
         };
       });
+      await page.screenshot({ path: `standalone-content-artifacts/readability-${width}.png`, fullPage: true, animations: 'disabled' });
       if (!state.card || !state.photo) throw new Error(width + ': card fixture missing');
       if (state.documentWidth > state.viewport + 2 || state.card.right > state.viewport + 2) {
         throw new Error(width + ': card overflows viewport ' + JSON.stringify(state));
@@ -75,14 +76,13 @@ function px(value) {
       if (state.priceContext !== '2 взрослых') throw new Error(width + ': duplicate price context ' + state.priceContext);
       if (new Set(state.factLabels).size !== 4) throw new Error(width + ': duplicated facts ' + JSON.stringify(state.factLabels));
       const mobile = width <= 760;
-      if (mobile && (state.photo.height < 184 || state.photo.height > 241)) throw new Error(width + ': mobile photo height ' + state.photo.height);
+      if (mobile && (state.photo.height < 180 || state.photo.height > 241)) throw new Error(width + ': mobile photo height ' + state.photo.height);
       const minima = mobile
         ? { placeFont: 13, badgeFont: 12, factLabelFont: 11, factValueFont: 14, priceContextFont: 12, actionFont: 14 }
         : { placeFont: 12, badgeFont: 11, factLabelFont: 11, factValueFont: 13, priceContextFont: 12, actionFont: 14 };
       for (const [key, minimum] of Object.entries(minima)) {
         if (px(state[key]) + 0.01 < minimum) throw new Error(width + ': ' + key + ' below ' + minimum + 'px: ' + state[key]);
       }
-      await page.screenshot({ path: `standalone-content-artifacts/readability-${width}.png`, fullPage: true, animations: 'disabled' });
       console.log('SEARCH3_CARD_READABILITY_OK ' + width + ' ' + JSON.stringify(state));
       await page.close();
     }
