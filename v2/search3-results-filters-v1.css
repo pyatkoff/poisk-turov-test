@@ -3619,3 +3619,55 @@ html body.search3-candidate.search3-results-active #results .search3-hotel-facts
 
 /* Keep the selected-tour view focused on its booking steps. */
 body.search3-candidate.search3-selected-open .ds2-site-footer{display:none!important}
+
+/* Candidate readability guard: hotel imagery and decision text must remain useful,
+   especially on phones. The price context contains only the party; date, nights,
+   meal and flight stay in the single facts block below the hotel heading. */
+html body.search3-candidate.search3-results-active #results .hotel-place{font-size:12px!important;line-height:1.35!important}
+html body.search3-candidate.search3-results-active #results .hotel-decision-line>span{font-size:11px!important;line-height:1.25!important}
+html body.search3-candidate.search3-results-active #results .search3-hotel-facts small{font-size:11px!important;line-height:1.2!important}
+html body.search3-candidate.search3-results-active #results .search3-hotel-facts b{font-size:13px!important;line-height:1.3!important}
+html body.search3-candidate.search3-results-active #results .hotel-best-offer>small:not(.hotel-price-context){font-size:11px!important}
+html body.search3-candidate.search3-results-active #results .hotel-price-context{font-size:12px!important;line-height:1.35!important}
+html body.search3-candidate.search3-results-active #results .search3-tour-list-head span{font-size:12px!important;line-height:1.35!important}
+html body.search3-candidate.search3-results-active #results .tour-fact small{font-size:11px!important;line-height:1.2!important}
+html body.search3-candidate.search3-results-active #results .tour-fact b{font-size:13px!important;line-height:1.3!important}
+html body.search3-candidate.search3-results-active #results .direct-tour{font-size:14px!important}
+
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-head p{font-size:13px!important;line-height:1.4!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .facts span{font-size:11px!important;line-height:1.25!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .facts b{font-size:13px!important;line-height:1.35!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc{font-size:13px!important;line-height:1.55!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .section-heading span{font-size:12px!important;line-height:1.35!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-flight-continue button{font-size:14px!important}
+@media(min-width:1000px){
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail dt{font-size:11px!important}
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail dd{font-size:13px!important}
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail__price span,
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail__price small{font-size:11px!important}
+}
+
+@media(max-width:760px){
+  html body.search3-candidate.search3-results-active #results .hotel-photo,
+  html body.search3-candidate.search3-results-active #results .hotel-photo>img{
+    height:clamp(184px,52vw,240px)!important;
+    min-height:184px!important;
+    max-height:240px!important;
+  }
+  html body.search3-candidate.search3-results-active #results .hotel-title{font-size:18px!important;line-height:1.15!important}
+  html body.search3-candidate.search3-results-active #results .hotel-place{font-size:13px!important}
+  html body.search3-candidate.search3-results-active #results .hotel-decision-line>span{min-height:26px!important;padding:3px 8px!important;font-size:12px!important}
+  html body.search3-candidate.search3-results-active #results .search3-hotel-facts{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  html body.search3-candidate.search3-results-active #results .search3-hotel-facts>span{min-height:48px!important;padding:7px 9px!important}
+  html body.search3-candidate.search3-results-active #results .search3-hotel-facts small{font-size:11px!important}
+  html body.search3-candidate.search3-results-active #results .search3-hotel-facts b{font-size:14px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important}
+  html body.search3-candidate.search3-results-active #results .hotel-best-offer>small:not(.hotel-price-context){font-size:11px!important}
+  html body.search3-candidate.search3-results-active #results .hotel-price-context{font-size:12px!important}
+  html body.search3-candidate.search3-results-active #results .search3-show-tours{font-size:14px!important}
+  html body.search3-candidate.search3-results-active #results .search3-tour-list-head span{font-size:12px!important}
+  html body.search3-candidate.search3-results-active #results .tour-meta>strong{font-size:14px!important}
+  html body.search3-candidate.search3-results-active #results .tour-fact small{font-size:11px!important}
+  html body.search3-candidate.search3-results-active #results .tour-fact b{font-size:14px!important}
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .facts span{font-size:12px!important}
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .facts b{font-size:14px!important}
+}
