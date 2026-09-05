@@ -187,3 +187,20 @@ active; observer/cascade rewrites are not disguised as file moves. The published
 preview remains `3624278a` because this source refactor produces identical runtime
 assets; a redundant deployment cannot add visual evidence. Remote CI and checkpoint
 status are recorded in #996 after the implementation commit.
+
+
+Source-refactor verification complete at `f61a9391444c95991045bd8315b08ca37d5ae433`.
+All 23 applicable checks passed: core `33965995740`, flight `33965995673`,
+visual `33965995713`, boundary `33965995739`. Artifact `9969438539` from
+build `33965995680` was compared against published `3624278a`: all 715 actual
+payload file bytes and the checksum list match, not just the eight Search3 assets.
+The initial boundary failure was blank lines at newly extracted module ends;
+separators were moved to the following modules, preserving assembled bytes.
+No acceptance gate was weakened. Five isolated builder tests and syntax checks
+for all 24 JS modules pass.
+
+The structural refactor is complete in the active draft; `src/search3/README.md`
+is the editing map. Preview remains the verified `3624278a`, and no duplicate
+deploy, main merge or production switch was performed. Existing CSS overrides
+and observers remain active and explicitly documented; this does not claim
+their semantic consolidation or a browser performance improvement.

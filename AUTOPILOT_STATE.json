@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T12:22:56.761480+00:00",
+  "updated_at": "2026-09-05T12:26:58.982541+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Owner requested search refactoring. Prepared 48 ordered presentation source modules and reproducible eight-asset build; served bytes are identical to published3624278a. Five build regression cases and24module syntax checks pass locally; remote CI pending.",
-    "next_action": "Verify source-refactor CI and exact payload equivalence, then record checkpoint. Do not redeploy unchanged runtime just for file moves. Continue from src/search3 owners; physical Safari/legal content/production approval remain open.",
+    "last_material_progress": "Search3 source refactor verified:48 ordered modules reproduce8 existing assets byte for byte. All23 applicable CI checks successful. Actual bytes of all715 preview payload files match published3624278a; no redundant deploy.",
+    "next_action": "Use src/search3 modules and reproducible build for subsequent search edits. Structural extraction is complete; keep compatibility cascade/observer behavior unchanged unless a separate measured refactor is undertaken. Physical Safari, legal content and owner production acceptance remain open.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -66,18 +66,27 @@
   "current_task": {
     "id": "S3_PRESENTATION_SOURCE_REFACTOR",
     "title": "Owner-authorized modular Search3 presentation sources and reproducible build",
-    "status": "PREPARED_CI_PENDING",
+    "status": "SOURCE_REFACTOR_VERIFIED_RUNTIME_UNCHANGED",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "issue": 996,
     "served_baseline_sha": "3624278a59187bae7f76c9dbdb504b8f7b2858fd",
-    "scope": "48 source modules,8 byte-identical public assets, explicit order, source/build drift checks; no contract/cascade/observer changes"
+    "scope": "48 source modules,8 byte-identical public assets, explicit order, source/build drift checks; no contract/cascade/observer changes",
+    "implementation_sha": "f61a9391444c95991045bd8315b08ca37d5ae433",
+    "ci_core": 33965995740,
+    "ci_visual": 33965995713,
+    "ci_flight": 33965995673,
+    "artifact_run": 33965995680,
+    "artifact_id": 9969438539,
+    "payload_equivalence": "All715 actual file bytes and checksum list identical to published3624278a",
+    "deployment": "NOT_NEEDED_IDENTICAL_RUNTIME"
   },
   "queue": [
     {
       "id": "S3_PRESENTATION_SOURCE_REFACTOR",
-      "status": "PREPARED_CI_PENDING",
-      "title": "Owner-authorized modular Search3 presentation sources and reproducible build"
+      "status": "SOURCE_REFACTOR_VERIFIED_RUNTIME_UNCHANGED",
+      "title": "Owner-authorized modular Search3 presentation sources and reproducible build",
+      "sha": "f61a9391444c95991045bd8315b08ca37d5ae433"
     },
     {
       "id": "S3_CLEAN_JOURNEY_READABILITY",
@@ -325,10 +334,22 @@
       "deployment_evidence": 9965993909,
       "applicable_passed": 23,
       "scope": "375/430/1024/1440 isolation and return preservation; visual images inspected. Live00f137f7 complete path and return78cards, final3624278a desktop-only filter-fit recheck. Physical Safari not verified."
+    },
+    "source_refactor": {
+      "sha": "f61a9391444c95991045bd8315b08ca37d5ae433",
+      "conclusion": "success",
+      "applicable_passed": 23,
+      "core_run": 33965995740,
+      "visual_run": 33965995713,
+      "flight_run": 33965995673,
+      "boundary_run": 33965995739,
+      "artifact_run": 33965995680,
+      "artifact_id": 9969438539,
+      "scope": "Five isolated builder tests,24 module syntax checks, all8 runtime outputs and all715 artifact payload files byte-identical to published baseline. First-run whitespace issue corrected without changing output bytes."
     }
   },
-  "last_verified_commit": "3624278a59187bae7f76c9dbdb504b8f7b2858fd",
-  "last_verified_commit_scope": "All23 applicable checks successful. Exact715-file preview published; before/after/final production fingerprints match. Live booking/form/return at00f137f7; final desktop-only subtitle removal independently verified live. No production switch or lead sent.",
+  "last_verified_commit": "f61a9391444c95991045bd8315b08ca37d5ae433",
+  "last_verified_commit_scope": "Source-only structural refactor: all23 applicable checks passed and715 actual artifact files match published3624278a. Preview remains3624278a; main/production unchanged.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
