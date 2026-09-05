@@ -231,6 +231,13 @@
     "timezone": "Europe/Amsterdam",
     "mode": "development_not_monitoring_only",
     "rule": "Do not stop after one PR when time remains for the next safe task. Preserve production approval and all protected boundaries; record/defer a blocker and continue independent work.",
-    "first_background_run_verified": false
+    "first_background_run_verified": true
+  },
+  "freshness_followup": {
+    "status": "IMPLEMENTED_AWAITING_CI",
+    "base_sha": "73a197a38c32902c411e0b82343619b14b77955a",
+    "scope": "Country/resort/hotel snapshot readers filter past and malformed departures before sorting/limit. Hot offers use the same explicit Europe/Moscow business date as the existing SEO calendar instead of DB-session CURDATE(). Existing same-day allowance, TTL, prices, city filters and supplier contracts are retained.",
+    "verification": "Added in-memory SQLite integration checks for all four readers, invalid/leap dates, midnight/year rollover, expired snapshots, limit ordering and city retention. PHP unavailable locally; execution delegated to existing Validate V2 core PR gate. Local owner/refactor/import guards passed (PHP rendering skipped).",
+    "preview": "Not published. Pinned whole-site artifact remains the prior source and does not include this follow-up. Rebuild and pin a checked artifact before including the correction in preview."
   }
 }

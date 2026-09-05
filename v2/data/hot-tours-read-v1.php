@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/db-v1.php';
+require_once dirname(__DIR__) . '/offer-freshness-v1.php';
 
 function v2_data_hot_tours(array $filters = []): array
 {
@@ -11,8 +12,8 @@ function v2_data_hot_tours(array $filters = []): array
     $departureId = filter_var($filters['departureId'] ?? null, FILTER_VALIDATE_INT);
     $countryId = filter_var($filters['countryId'] ?? null, FILTER_VALIDATE_INT);
 
-    $where = ['h.expires_at > NOW()', 'h.price > 0', 'h.departure_date >= CURDATE()'];
-    $params = [];
+    $where = ['h.expires_at > NOW()', 'h.price > 0', 'h.departure_date >= :business_date'];
+    $params = ['business_date' => v2_offer_business_date()];
     if ($departureId !== false && (int)$departureId > 0) {
         $where[] = 'h.departure_id = :departure_id';
         $params['departure_id'] = (int)$departureId;

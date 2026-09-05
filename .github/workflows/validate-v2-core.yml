@@ -15,6 +15,10 @@ on:
       - 'v2/lead-adapter-v2.php'
       - 'v2/assets.php'
       - 'v2/form-defaults.php'
+      - 'v2/offer-freshness-v1.php'
+      - 'v2/seo-offer-snapshot-v1.php'
+      - 'v2/data/hot-tours-read-v1.php'
+      - 'tests/offer-freshness-smoke.php'
       - 'v2/analytics-config.php'
       - 'v2/privacy-config.php'
       - 'v2/asset-version-v1.php'
@@ -52,6 +56,7 @@ jobs:
           php -l v2/search3-presentation-v1.php
           python3 -B tests/search3_production_presentation_test.py
           php tests/search-handoff-smoke.php
+          php tests/offer-freshness-smoke.php
 
       - name: Validate search hotel placement
         run: python3 scripts/ci/validate_search_hotel_placement.py

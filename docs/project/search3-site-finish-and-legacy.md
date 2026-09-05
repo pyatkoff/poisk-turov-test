@@ -6,7 +6,7 @@ Canonical project task: [Search3 — завершить новый дизайн 
 
 ## Ordered remaining work
 
-1. **Next:** unify button roles/labels, header, footer and spacing across homepage, search, country/resort/month, hot tours, early booking, contacts and how-to-buy.
+1. Shared button/header/footer convergence is prepared and checked in draft. **Next:** publish and inspect the coherent whole-site preview.
 2. Publish a whole-site preview of the prepared draft; verify links and preservation of city, dates, nights, party and child ages.
 3. Fix confirmed customer-copy/city-inflection issues, map actions from verified office addresses and broken legal/payment links using existing approved materials. Defer missing/unapproved legal terms, hours and unsupported advantages.
 4. Exclude past departures using an explicit timezone and verified availability rules for same-day departures. Preserve departure city across handoffs. A new remembered city shared by every data showcase is a separate product extension if it requires changing the data source.
@@ -63,3 +63,9 @@ At `c46d76a973a4cb89b1c50eb985a6c4a2f155c454`, all applicable gates passed; visu
 Next task is the whole-site preview artifact/publication. The existing preview deployment is limited to nine search files and cannot publish these shared PHP/home changes. Keep its allowlist intact; prepare a separately reviewed site preview instead of calling the production deploy workflow. This draft has not changed the public preview or main site. Hourly scheduled development is enabled (Europe/Amsterdam). Continue beyond one PR when time remains for another safe step. The first background execution has not yet been verified.
 
 Owner continuation rule: **do not stop after one PR if the current run has time for the next safe step**. Update the handoff after each checked change and continue. A final production visual-approval gate blocks production publication only, not other authorized safe preparation.
+
+## Snapshot freshness follow-up — 2026-09-05
+
+Confirmed in source: country/resort/hotel readers validated snapshot TTL but allowed past departure dates to occupy the cheapest-offer slots. They now filter past/malformed dates before sorting and limiting. Hot-offer display uses the same explicit Europe/Moscow business clock as the existing price calendar instead of the database session date. This is a business-day display rule, not an airport timezone or a new same-day sales cutoff. Existing same-day availability and recheck behavior remain unchanged.
+
+Integration fixtures exercise the real readers with an in-memory SQLite database: past cheap offers, stale snapshots, empty results, city filters, valid today/future offers and limiting. Date tests include Moscow midnight with a different host timezone and leap/year boundaries. No live search/API/lead calls. Implementation is prepared, awaiting the existing core CI; no public artifact or production change yet.
