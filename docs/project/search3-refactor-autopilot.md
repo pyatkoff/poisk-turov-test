@@ -12,43 +12,54 @@ protected contracts and the production lock; use focused checks and existing CI.
 
 ### Current code checkpoint — CI-verified, not republished — 2026-09-06
 
-Exact release code: `4a4d762c0b7be142aeaaf84a0cdc1c23b0412c70`.
-Preparation PRs: #1385 and #1386. The exact preview below remains on the older
+Exact release code: `f8e10a30b57fa965ee8f5e7294a1e08819b75fc2`.
+Preparation PRs: #1388 and #1390. The exact preview below remains on the older
 published code `26988e62`; this checkpoint was not deployed.
 
-- One canonical Russian inflection formatter now serves tour counts, guest labels
-  and selected-tour night counts. Its `1/2/5/11/21` boundaries are covered.
-- Removed the duplicate selected-tour inflection implementation and two unreachable
-  private helpers: its unused recursive text normalizer and the search-form date
-  formatter that had no caller inside its IIFE.
-- Ownership checks keep those private copies retired. Generated assets and the
-  production-import hashes were rebuilt together; all eight public paths and their
-  order remain unchanged.
+- One earlier-loaded immutable presentation-text owner now serves HTML escaping,
+  supplier scalar/array normalization, compact party labels and hotel place labels
+  used by booking summary, final sections and the selected-tour rail.
+- Snapshot and load-order regression covers escaping, supported supplier shapes,
+  compact party/place output, owner immutability and all three consumers. The
+  intentionally different human-readable final-party formatter remains local.
+- Three identical hotel/tour fact typography rules are consolidated with `:is()`.
+  Both arguments preserve the original one-class specificity and the trailing
+  element selector is unchanged.
+- Price-number/money helpers were deliberately excluded: price arithmetic and
+  presentation ownership remain untouched. Generated assets and import hashes were
+  rebuilt together; all eight public paths and their order remain unchanged.
 
-All **23 applicable workflows passed**, with one expected migration-only skip:
-core `34025585551`, responsive `34025585525`, flight `34025585575`, whole-site
-artifact `34025585506`. Visual artifact `9986947851`, digest
-`sha256:2de083f411acd1767e53b991f640ee6fea8755d4848a12d3d5f6b48234f6683d`.
-The 375px and 1440px result images were inspected without new clipping. This is
-not a physical Safari or live-preview acceptance claim.
+On the final code, **22 workflow runs completed successfully** and one migration-only
+workflow was expectedly skipped. The sole job `101473212868` in the remaining SEO
+primitives run `34028335788` and all its steps completed successfully, while GitHub
+still reported its run wrapper as `in_progress` at checkpoint time; do not count it
+as a 23rd completed workflow until rechecked. Core `34028335801`, responsive
+`34028335842`, flight `34028335806`, whole-site artifact `34028335783`. Visual
+artifact `9987783755`, digest
+`sha256:2b2266489194c444d40f94660b19a4f311460ac4aa7bd7242b8e09b9492fcc4b`;
+whole-site artifact `9987780814`, digest
+`sha256:c011dac1edc2eed227a1427c53f2925c1ec83634dafecc4b73fcfcbb6b0da158`.
+The 375px and 1440px search/readability images were inspected without new clipping,
+overflow or typography drift. This is not a physical Safari or live-preview
+acceptance claim.
 
 | Public assets | Bytes / lines |
 | --- | ---: |
-| Four CSS | 336,274 / 3,871 |
-| Four JS | 143,373 / 1,906 |
-| Total | 479,647 / 5,777 |
+| Four CSS | 335,963 / 3,868 |
+| Four JS | 142,639 / 1,901 |
+| Total | 478,602 / 5,769 |
 
-This continuation removes another **790 bytes / 20 lines** from `c4641c8d`;
-cumulative reduction from `684825be` is **44,078 bytes / 341 lines**. Counts are
+This continuation removes another **1,045 bytes / 8 lines** from `4a4d762c`;
+cumulative reduction from `684825be` is **45,123 bytes / 349 lines**. Counts are
 uncompressed and exclude shared runtime/legacy plus duplicate source files; they
 are not a page-load benchmark.
 
-Next: refresh the release head and assess the repeated pure presentation helpers
-in `booking-summary.js`, `final-sections.js` and `tour-detail-rail.js`. Extract an
-earlier-loaded common owner only if snapshot/ownership tests prove identical
-markup, event behavior, load order and a meaningful net byte reduction. Otherwise
-continue a proven equivalent consolidation in `styles/cascade`. Do not alter price
-arithmetic, lead/API contracts or publish preview as a refactor side effect.
+Next: first recheck SEO primitives run `34028335788`. Then audit only a new proven
+equivalent presentation/cascade duplicate. The remaining `number`/`money` helpers
+belong to protected price paths and are not a safe generic-dedup target; the flight,
+selected-flow and final-party text helpers have different contracts and must not be
+folded into the shared owner. Do not add abstraction without a net reduction or
+publish preview as a refactor side effect.
 
 ### Current published checkpoint — 2026-09-06
 
