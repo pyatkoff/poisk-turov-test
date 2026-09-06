@@ -66,8 +66,12 @@ shared state. There is no runtime loader, new global or additional request.
 Source comments and donor markers stay available for maintenance.
 
 `manifest.json` records the exact concatenation order. Each behavior module retains
-its original IIFE scope. CSS modules retain the existing cascade order; compatibility
-modules are still active, not dead code. Do not sort the manifest or load modules
+its original IIFE scope. CSS modules retain the existing cascade order. The nine
+historical `styles/cascade/` modules and `visual-compatibility.css` now retain only
+provenance markers after the owner-authorized whole-layer retirement. Their needed
+lead lifecycle, hidden-state and tour-grid rules live in the current `lead-state`,
+`tour-detail-convergence`, `results-context` and `hotel-packages` owners.
+Do not sort the manifest or load modules
 independently in the browser. Static style strings in behavior modules also retain
 their original insertion order. Private CSS sources can be compiled into those
 same insertion points; moving them into earlier linked stylesheets requires

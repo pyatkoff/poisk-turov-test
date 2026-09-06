@@ -22,12 +22,9 @@ html body.search3-candidate{
 & .search3-booking-summary {display:block!important;grid-column:3!important;grid-row:4/7!important;align-self:start!important;position:sticky!important;top:18px!important;margin:0!important;padding:18px!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important;box-sizing:border-box!important}
 & :is(.search3-booking-summary__image,.search3-booking-summary__hotel,.search3-booking-summary__place),& .search3-booking-summary dl {display:none!important}
 & .search3-booking-summary__title {margin:0 0 14px!important;font-size:17px!important;line-height:1.15!important}
-& .search3-booking-summary__flight-costs {margin:0 0 12px!important;padding:10px 12px!important;border-radius:9px!important}
-& .search3-booking-summary__flight-costs>div {min-height:24px!important}
 & .search3-booking-summary__total {margin:0!important;padding:14px 0 0!important;border-top:1px solid var(--at-line)!important}
 
 & .search3-booking-summary__total strong {font-size:26px!important}
-& .search3-booking-summary__price-note {margin:8px 0 0!important;font-size:8px!important;line-height:1.4!important}
 & .search3-summary-actions {display:block!important;margin-top:16px!important}
 & .search3-summary-submit {width:100%!important;min-height:48px!important;border-radius:8px!important;}
 & .search3-summary-actions p {margin:8px 0 0!important;line-height:1.4!important}

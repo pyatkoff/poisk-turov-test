@@ -16,7 +16,7 @@
 & .search3-lead-shell{display:block!important;grid-column:1/-1!important;grid-row:7!important;width:100%!important;margin:0!important}
 & .search3-lead-shell>.lead-form{display:none!important}
 & .search3-booking-summary{display:block!important;width:100%!important;max-width:none!important;position:static!important;margin:0!important;padding:14px!important;box-sizing:border-box!important}
-& .search3-booking-summary__image,& .search3-booking-summary__hotel,& .search3-booking-summary__place,& .search3-booking-summary dl,& .search3-booking-summary__flight-costs,& .search3-booking-summary__price-note{display:none!important}
+& .search3-booking-summary__image,& .search3-booking-summary__hotel,& .search3-booking-summary__place,& .search3-booking-summary dl,& .search3-booking-summary__price-note{display:none!important}
 & .search3-booking-summary__title{margin:0 0 8px!important;font-size:14px!important}
 & .search3-booking-summary__total{margin:0!important;padding:0 0 10px!important;border:0!important}
 & .search3-booking-summary__total strong{font-size:24px!important}

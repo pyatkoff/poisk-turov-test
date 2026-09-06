@@ -58,7 +58,6 @@
     display:block!important;grid-column:1/-1!important;grid-row:7!important;position:static!important;width:100%!important;max-width:none!important;margin:10px 0 0!important;padding:14px!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important;box-sizing:border-box!important
   }
   & :is(.search3-booking-summary__image,.search3-booking-summary__hotel,.search3-booking-summary__place),& .search3-booking-summary dl {display:none!important}
-  & .search3-booking-summary__flight-costs {margin:0 0 10px!important}
   & .search3-booking-summary__total {margin:0!important;padding:12px 0 0!important}
   & .search3-booking-summary__total strong {font-size:25px!important}
   & .search3-summary-actions {display:block!important;margin-top:12px!important}

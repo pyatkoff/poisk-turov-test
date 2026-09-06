@@ -79,3 +79,13 @@ html body.search3-candidate{
 @media(max-width:999px){
 body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variant{display:block!important}
 }
+
+/* Keep the booking stages isolated after retiring screenshot geometry. */
+@media(min-width:1000px){
+html body.search3-candidate{
+&.search3-selected-open {
+& #selectedTour:not(.search3-final-review) .search3-lead-shell,& #selectedTour:not(.search3-final-review)>:is(.lead-form,.lead-submit),& #selectedTour:not(.search3-final-review)>button[type="submit"],& #selectedTour :is(.tour-flights[hidden],.flight-variants[hidden]) {display:none!important}
+& #selectedTour:not(.search3-final-review) .search3-flight-continue {grid-column:1/3!important;width:100%!important;max-width:none!important}
+}
+}
+}

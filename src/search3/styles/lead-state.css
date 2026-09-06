@@ -1,3 +1,36 @@
+/* Lead lifecycle foundations retained from the retired full-cycle layer. */
+body.search3-candidate{
+& #selectedTour .lead-form[data-search3-lead-state]>*:not(.search3-lead-status){display:none!important}
+& .search3-lead-status{display:grid;grid-template-columns:54px minmax(0,1fr);gap:16px;align-items:start;padding:8px 0}
+& .search3-lead-status[hidden]{display:none!important}
+& .search3-lead-status h3{margin:0 0 6px;color:#0d1b4c;font-size:22px;line-height:1.15}
+& .search3-lead-status p{margin:0 0 12px;color:#68708a;font-size:12px;line-height:1.45}
+& .search3-lead-status strong{display:block;margin:14px 0 10px;color:#0d1b4c;font-size:13px}
+& .search3-lead-status__icon{display:flex;width:48px;height:48px;align-items:center;justify-content:center;border-radius:50%;font-size:24px;font-weight:900}
+& .search3-lead-status__icon--sending{background:#eef5ff;color:#075cff}
+& .search3-lead-status__icon--success{background:#20bd63;color:#fff}
+& .search3-lead-status__icon--error{background:#ef5350;color:#fff}
+& .search3-lead-status ol{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:8px;color:#33405f;font-size:11px}
+& .search3-lead-status ol li:before{content:'✓';display:inline-flex;width:18px;height:18px;margin-right:7px;align-items:center;justify-content:center;border:1px solid #075cff;border-radius:50%;color:#075cff;font-size:9px;font-weight:900}
+& .search3-lead-id{font-weight:800;color:#0d1b4c!important}
+& :is(.search3-messenger-actions,.search3-error-actions){display:flex;gap:8px;flex-wrap:wrap}
+& :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-lead,.search3-stay-site){display:inline-flex;min-height:42px;padding:0 16px;align-items:center;justify-content:center;border-radius:8px;text-decoration:none;font:800 11px/1 var(--at-font);cursor:pointer}
+& :is(.search3-msg-btn--max,.search3-retry-lead){border:1px solid #075cff;background:#075cff;color:#fff}
+& :is(.search3-msg-btn--tg,.search3-edit-lead){border:1px solid #075cff;background:#fff;color:#075cff}
+& .search3-msg-btn--disabled{border:1px solid #d8deea;background:#f5f7fb;color:#9aa3b7;cursor:not-allowed}
+& .search3-stay-site{border:0;background:transparent;color:#075cff}
+}
+@media(max-width:640px){
+body.search3-candidate{
+& .search3-lead-status{grid-template-columns:1fr;gap:10px;padding:4px 0}
+& .search3-lead-status__icon{width:44px;height:44px;font-size:21px}
+& .search3-lead-status h3{font-size:19px}
+& .search3-lead-status p{font-size:11px}
+& :is(.search3-messenger-actions,.search3-error-actions){display:grid;grid-template-columns:1fr}
+& :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-lead,.search3-stay-site){width:100%;min-height:44px}
+}
+}
+
 
 
 /* donor:search3-lead-state-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */

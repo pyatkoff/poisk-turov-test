@@ -3,7 +3,12 @@
 body.search3-candidate{
 & #results .hotel-tours {
 & .tour-row {grid-template-columns:minmax(0,1fr) 156px!important;gap:18px!important;}
-& .tour-meta {display:grid!important;align-items:start!important;min-width:0!important}
+& .tour-meta {
+  display:grid!important;
+  grid-template-columns:minmax(112px,1.25fr) minmax(90px,.9fr) 76px 48px minmax(98px,.95fr) minmax(66px,.7fr)!important;
+  align-items:start!important;
+  min-width:0!important;
+}
 & .tour-meta>strong {grid-column:3!important;grid-row:1!important;min-width:0!important;margin:0!important;color:#14213d!important;line-height:1.2!important;font-weight:900!important;white-space:nowrap!important}
 & .tour-meta>strong::before {content:'Вылет';display:block!important;margin-bottom:4px!important;color:#98a2b3!important;font-size:7px!important;line-height:1!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.02em!important}
 & .tour-facts {display:contents!important}
