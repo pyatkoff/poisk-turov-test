@@ -125,8 +125,9 @@ jobs:
           test -f "$payload/rb/index.php"
           test -f "$payload/how-to-buy/index.php"
 
-          while IFS= read -r file; do php -l "$file" >/dev/null; done < <(find "$payload" -type f -name '*.php' -print | LC_ALL=C sort)
-          while IFS= read -r file; do node --check "$file" >/dev/null; done < <(find "$payload" -type f -name '*.js' -print | LC_ALL=C sort)
+          # Independent files can be parsed concurrently; xargs propagates any failure.
+          find "$payload" -type f -name '*.php' -print0 | xargs -0 -r -n 1 -P 2 php -l >/dev/null
+          find "$payload" -type f -name '*.js' -print0 | xargs -0 -r -n 1 -P 2 node --check >/dev/null
 
           source_tree="$(git rev-parse "$SOURCE_SHA^{tree}")"
           export SOURCE_TREE="$source_tree"

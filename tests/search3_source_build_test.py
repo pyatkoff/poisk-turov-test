@@ -43,7 +43,10 @@ class Search3SourceBuildTest(unittest.TestCase):
         (self.root / 'docs/project').mkdir(parents=True)
         shutil.copy(ROOT / 'docs/project/search3-production-import.json', self.root / 'docs/project')
         (self.root / 'v2').mkdir()
-        self.outputs, _, self.reviewed = builder.assemble(self.root)
+        # The baseline/idempotence case verifies these committed outputs once.
+        # Other cases need an immutable baseline, not another identical build.
+        self.reviewed = json.loads((self.root / 'docs/project/search3-production-import.json').read_text())
+        self.outputs = {name: (ROOT / 'v2' / name).read_bytes() for name in self.reviewed['assets']}
         for name in self.outputs:
             shutil.copy(ROOT / 'v2' / name, self.root / 'v2')
 
