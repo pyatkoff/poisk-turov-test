@@ -11,6 +11,7 @@
       "behavior/maket7-lock.js",
       "behavior/lead-flow.js",
       "behavior/flight-presentation.js",
+      "behavior/presentation-text.js",
       "behavior/booking-summary.js",
       "behavior/booking-stepper.js",
       "behavior/final-sections.js",

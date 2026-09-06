@@ -13,7 +13,9 @@ const shell = { style, querySelector() { return summary; }, insertAdjacentHTML(_
 const form = { style, closest() { return shell; } };
 const root = { dataset: {}, classList: { contains(name) { return name === 'search3-lead-entry' && lead; } }, querySelector() { return form; } };
 const window = { addEventListener(name, fn) { events.set(name, fn); }, matchMedia() { return { matches: false }; }, Search3FlightPresentation: { flightLabel(v, fallback) { return v ? v.name : fallback; } } };
-vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/search3/behavior/booking-summary.js'), 'utf8'), {
+const presentationSource = fs.readFileSync(path.join(__dirname, '../src/search3/behavior/presentation-text.js'), 'utf8')
+  + fs.readFileSync(path.join(__dirname, '../src/search3/behavior/booking-summary.js'), 'utf8');
+vm.runInNewContext(presentationSource, {
   window, document: { getElementById() { return root; }, addEventListener() {} }, setTimeout(fn) { timers.push(fn); }
 });
 const emit = (name, detail) => events.get(name)({ detail });
