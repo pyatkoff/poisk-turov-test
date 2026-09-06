@@ -10,6 +10,46 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
+### Current code checkpoint — CI-verified, not republished — 2026-09-06
+
+Exact release code: `4a4d762c0b7be142aeaaf84a0cdc1c23b0412c70`.
+Preparation PRs: #1385 and #1386. The exact preview below remains on the older
+published code `26988e62`; this checkpoint was not deployed.
+
+- One canonical Russian inflection formatter now serves tour counts, guest labels
+  and selected-tour night counts. Its `1/2/5/11/21` boundaries are covered.
+- Removed the duplicate selected-tour inflection implementation and two unreachable
+  private helpers: its unused recursive text normalizer and the search-form date
+  formatter that had no caller inside its IIFE.
+- Ownership checks keep those private copies retired. Generated assets and the
+  production-import hashes were rebuilt together; all eight public paths and their
+  order remain unchanged.
+
+All **23 applicable workflows passed**, with one expected migration-only skip:
+core `34025585551`, responsive `34025585525`, flight `34025585575`, whole-site
+artifact `34025585506`. Visual artifact `9986947851`, digest
+`sha256:2de083f411acd1767e53b991f640ee6fea8755d4848a12d3d5f6b48234f6683d`.
+The 375px and 1440px result images were inspected without new clipping. This is
+not a physical Safari or live-preview acceptance claim.
+
+| Public assets | Bytes / lines |
+| --- | ---: |
+| Four CSS | 336,274 / 3,871 |
+| Four JS | 143,373 / 1,906 |
+| Total | 479,647 / 5,777 |
+
+This continuation removes another **790 bytes / 20 lines** from `c4641c8d`;
+cumulative reduction from `684825be` is **44,078 bytes / 341 lines**. Counts are
+uncompressed and exclude shared runtime/legacy plus duplicate source files; they
+are not a page-load benchmark.
+
+Next: refresh the release head and assess the repeated pure presentation helpers
+in `booking-summary.js`, `final-sections.js` and `tour-detail-rail.js`. Extract an
+earlier-loaded common owner only if snapshot/ownership tests prove identical
+markup, event behavior, load order and a meaningful net byte reduction. Otherwise
+continue a proven equivalent consolidation in `styles/cascade`. Do not alter price
+arithmetic, lead/API contracts or publish preview as a refactor side effect.
+
 ### Current published checkpoint — 2026-09-06
 
 Exact runtime code: `26988e62eb674f8165d380de71e3be3d8feb19c3`.
