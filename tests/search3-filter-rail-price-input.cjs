@@ -11,12 +11,17 @@ const announcements = [];
 const count = { textContent: '' };
 const word = { textContent: '' };
 const priceLabel = { textContent: '' };
+const priceInput = { min: '', max: '', step: '', value: '' };
+let railHtml = '';
+let railHtmlWrites = 0;
 const rail = {
-  dataset: {}, innerHTML: '',
+  dataset: {},
+  get innerHTML() { return railHtml; },
+  set innerHTML(value) { railHtml = value; railHtmlWrites += 1; },
   addEventListener(name, handler) { railEvents.set(name, handler); },
   querySelector(selector) {
     return {'[data-s3-count]': count, '[data-s3-word]': word,
-      '[data-s3-price-label]': priceLabel}[selector] || null;
+      '[data-s3-price-label]': priceLabel, '[data-s3-price]': priceInput}[selector] || null;
   }
 };
 const form = { elements: {} };
@@ -44,8 +49,13 @@ const hotels = [
   { tours: [{ price: 160000 }] }
 ];
 assert.equal(announcements.length, 1, 'initial empty rail announces once');
+assert.equal(railHtmlWrites, 1, 'initial rail is rendered once');
 windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
 assert.equal(announcements.length, 2, 'new source render announces once, not twice');
+assert.equal(railHtmlWrites, 1,
+  'a progressive source update preserves the mounted controls instead of replacing their DOM');
+assert.equal(priceInput.min, '90000');
+assert.equal(priceInput.max, '160000');
 const input = value => railEvents.get('input')({
   target: { value: String(value), matches(selector) { return selector === '[data-s3-price]'; } }
 });
@@ -92,9 +102,14 @@ while (frames.length) frames.shift()();
 assert.equal(renders.length, 4);
 const refreshedHotels = hotels.concat({ tours: [{ price: 200000 }] });
 const announcementCount = announcements.length;
+const railHtmlWritesBeforeRefresh = railHtmlWrites;
 windowEvents.get('v2:results-rendered')({ detail: { items: refreshedHotels } });
 assert.equal(renders.length, 5, 'an active price filter is reapplied to a fresh source');
 assert.equal(renders.at(-1).length, 1, 'fresh unfiltered hotels do not leak into filtered results');
+assert.equal(railHtmlWrites, railHtmlWritesBeforeRefresh,
+  'an active slider keeps the same controls while progressive results refresh');
+assert.equal(priceInput.max, '200000');
+assert.equal(priceInput.value, '95000', 'the selected price survives the refreshed bounds');
 assert.equal(announcements.length, announcementCount + 1,
   'fresh source reapplication announces only the final filtered count');
 assert.equal(announcements.at(-1).resultCount, 1);
