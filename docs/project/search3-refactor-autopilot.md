@@ -71,6 +71,22 @@ Previously checked batches#1422–#1424 are included in this publication.
 New local commands and focused tests succeeded in the subsequent #1422 continuation.
 The earlier rejected direct-HTTP poll was not retried or bypassed.
 
+### Latest checked follow-up — review/recap retirement — 2026-09-06
+
+Source PR#1428 is integrated into release at `211f792e5d64ee9016a1742c7fa802f6097a3ad1`.
+Four obsolete CSS geometry layers plus the live duplicate desktop recap are retired.
+Eight raw assets:265927→253113 (−12814:CSS−9250,JS−3564). Required source Security34067813555
+and artifact34067813526 both passed, first attempt. Exact artifact9999511038;
+sha256:92de0b79b0b83aa80b7524f635fdbef61a99ff01280208ceeaf69a9af727dc4d.
+No release/docs rebuild or deploy. Published preview still9b4303a5, main stillfa58a0cb.
+This is an intentional reversible geometry experiment, not visual equivalence.
+Selected/no-flight, review/mobile/tablet and lead-entry visual checks are DEFERRED:
+no current browser capability. Local scheduler/utility/ownership plus source PHP/path/
+presentation/isolation checks passed. Audit:search3-review-layer-retirement.json.
+The next substantial form-compatibility package is prepared in this branch; its exact
+CI/visual status is separate. Native four-column entry grid remains canonical; do not
+restore the superseded six-column form. Historical twelve layers below stay retired.
+
 ### Latest checked follow-up — two results layers — 2026-09-06
 
 Source PR#1427 retires results-width-compatibility.css and hotel-card-convergence.css.

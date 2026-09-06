@@ -811,20 +811,20 @@
   "owner_priority_source": "OWNER_PRIORITY.json",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "presentation_refactor_checkpoint": {
-    "stage": "S3_RESULTS_LAYER_RETIREMENT_CHECKED_NOT_PUBLISHED",
+    "stage": "S3_REVIEW_LAYER_RETIREMENT_CHECKED_NOT_PUBLISHED",
     "baseline": "a1a2a9a65f4a7a5d1854109510173bfa95c68fd8",
-    "implementation_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
-    "release_integration_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
-    "audit": "docs/project/search3-results-layer-retirement.json",
-    "scope": "Two further historical results layers retired with shell/hidden/MRF/mobile/title/facts/flex fallbacks preserved in current owners. All four JS unchanged.",
+    "implementation_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
+    "release_integration_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
+    "audit": "docs/project/search3-review-layer-retirement.json",
+    "scope": "Four obsolete review geometry CSS owners and the live duplicate desktop recap retired; compact current-owner fallback retained.",
     "ci": {
       "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
-      "source_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
-      "source_pr": 1427,
-      "security_run": 34066837695,
-      "artifact_run": 34066837736,
-      "artifact_id": 9999214211,
-      "artifact_digest": "sha256:4bdaf92274963271522ba4d02f41aab6d07e7be64e0554496b1406187c53033d",
+      "source_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
+      "source_pr": 1428,
+      "security_run": 34067813555,
+      "artifact_run": 34067813526,
+      "artifact_id": 9999511038,
+      "artifact_digest": "sha256:92de0b79b0b83aa80b7524f635fdbef61a99ff01280208ceeaf69a9af727dc4d",
       "required_passed": 2,
       "first_attempt_passed": true,
       "preview_published": false,
@@ -833,34 +833,34 @@
       "full_responsive_site_seo": "deferred, not passed"
     },
     "public_assets": {
-      "css_bytes": 159173,
-      "js_bytes": 106754,
-      "total_bytes": 265927,
+      "css_bytes": 149923,
+      "js_bytes": 103190,
+      "total_bytes": 253113,
       "css_lines": 4,
       "js_lines": 3,
       "total_lines": 7,
       "scope": "Eight public Search3 paths, raw uncompressed bytes; one empty JS retained. Excludes shared runtime/legacy and duplicate source; no page-speed claim."
     },
     "run_delta": {
-      "bytes": -1609,
-      "css_bytes": -1609,
-      "js_bytes": 0,
+      "bytes": -12814,
+      "css_bytes": -9250,
+      "js_bytes": -3564,
       "lines": 0
     },
     "continuation_total": {
       "baseline_bytes": 301524,
-      "after_bytes": 265927,
-      "saved_bytes": 35597,
-      "retired_layers": 12,
+      "after_bytes": 253113,
+      "saved_bytes": 48411,
+      "retired_layers": 17,
       "published_retired_layers": 10
     },
     "preview_updated": false,
     "production_updated": false,
     "source_validation": "FINAL_SOURCE_REQUIRED_CI_PASSED",
     "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
-    "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; hourly automation enabled by the latest owner request.",
-    "verified_at": "2026-09-06T23:27:36.471Z",
-    "visual_verification": "Not performed on this follow-up source; published9b4303a5 desktop evidence does not qualify this source. Full responsive/mobile and lead-state visuals remain deferred."
+    "next_action": "Form-compatibility retirement follows in this branch. Preserve the CURRENT native four-column initial/editing grid; do not restore historical six-column geometry. Focused review/lead visual evidence remains deferred.",
+    "verified_at": "2026-09-06T23:49:50.419673+00:00",
+    "visual_verification": "DEFERRED: no current browser capability; selected/no-flight desktop, review mobile/tablet/desktop and lead boundary uninspected."
   },
   "presentation_refactor_history": [
     {
@@ -2392,6 +2392,58 @@
         "verified_at": "2026-09-06T23:16:48.672Z",
         "viewport_width": 1363
       }
+    },
+    {
+      "stage": "S3_RESULTS_LAYER_RETIREMENT_CHECKED_NOT_PUBLISHED",
+      "baseline": "a1a2a9a65f4a7a5d1854109510173bfa95c68fd8",
+      "implementation_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+      "release_integration_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+      "audit": "docs/project/search3-results-layer-retirement.json",
+      "scope": "Two further historical results layers retired with shell/hidden/MRF/mobile/title/facts/flex fallbacks preserved in current owners. All four JS unchanged.",
+      "ci": {
+        "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
+        "source_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+        "source_pr": 1427,
+        "security_run": 34066837695,
+        "artifact_run": 34066837736,
+        "artifact_id": 9999214211,
+        "artifact_digest": "sha256:4bdaf92274963271522ba4d02f41aab6d07e7be64e0554496b1406187c53033d",
+        "required_passed": 2,
+        "first_attempt_passed": true,
+        "preview_published": false,
+        "artifact_rebuilt_on_release": false,
+        "artifact_rebuilt_for_docs": false,
+        "full_responsive_site_seo": "deferred, not passed"
+      },
+      "public_assets": {
+        "css_bytes": 159173,
+        "js_bytes": 106754,
+        "total_bytes": 265927,
+        "css_lines": 4,
+        "js_lines": 3,
+        "total_lines": 7,
+        "scope": "Eight public Search3 paths, raw uncompressed bytes; one empty JS retained. Excludes shared runtime/legacy and duplicate source; no page-speed claim."
+      },
+      "run_delta": {
+        "bytes": -1609,
+        "css_bytes": -1609,
+        "js_bytes": 0,
+        "lines": 0
+      },
+      "continuation_total": {
+        "baseline_bytes": 301524,
+        "after_bytes": 265927,
+        "saved_bytes": 35597,
+        "retired_layers": 12,
+        "published_retired_layers": 10
+      },
+      "preview_updated": false,
+      "production_updated": false,
+      "source_validation": "FINAL_SOURCE_REQUIRED_CI_PASSED",
+      "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+      "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; hourly automation enabled by the latest owner request.",
+      "verified_at": "2026-09-06T23:27:36.471Z",
+      "visual_verification": "Not performed on this follow-up source; published9b4303a5 desktop evidence does not qualify this source. Full responsive/mobile and lead-state visuals remain deferred."
     }
   ],
   "preview_isolation_followup": {
@@ -5537,5 +5589,5 @@
     "visual_run": 33976375814
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
-  "updated_at": "2026-09-06T23:34:01.651Z"
+  "updated_at": "2026-09-06T23:49:50.419673+00:00"
 }

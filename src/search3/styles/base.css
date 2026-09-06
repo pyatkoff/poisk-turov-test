@@ -88,3 +88,13 @@ body.search3-candidate{
 
 
 }
+
+/* Compact form fallback retained from retired form-compatibility.
+   Native entry owns the primary grid and initial/editing state. */
+@media(min-width:761px){
+body.search3-candidate{
+& .search3-quality__grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}
+& #tourSearch .search3-primary-grid>.search-submit{white-space:nowrap!important}
+}
+}
+@media(min-width:1261px){body.search3-candidate #tourSearch{min-height:0!important}}

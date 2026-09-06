@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "SOURCE_PREPARED_VISUAL_DEFERRED",
+  "stage": "SOURCE_CI_CHECKED_VISUAL_DEFERRED",
   "base_release_sha": "328452ae5b6210f065c53be6b77831f0900be7f0",
   "previous_checked_source_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
   "published_preview_source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
@@ -87,7 +87,14 @@
     "css_parse": "PASS six affected CSS files",
     "independent_review": "PASS lead boundary, two-column selected grid, hidden lifecycle and primary fallback; native flight/lead owners unchanged"
   },
-  "source_ci": "PENDING required Security with owner validators and exact artifact build; guards unchanged",
+  "source_ci": {
+    "required_passed": 2,
+    "security_run": 34067813555,
+    "artifact_run": 34067813526,
+    "artifact_id": 9999511038,
+    "artifact_digest": "sha256:92de0b79b0b83aa80b7524f635fdbef61a99ff01280208ceeaf69a9af727dc4d",
+    "first_attempt_passed": true
+  },
   "visual_verification": {
     "status": "DEFERRED",
     "performed": false,
@@ -100,5 +107,8 @@
   },
   "preview_updated": false,
   "production_updated": false,
-  "next_action": "After required source CI retain exact artifact; verify affected states in one justified isolated preview publication before visual acceptance. Next substantial candidate is form-compatibility.css (8263 source bytes), retaining desktop six-column form grid and submit width in current entry owner."
+  "next_action": "Form-compatibility retirement follows in this branch. Preserve the CURRENT native four-column initial/editing grid; do not restore historical six-column geometry. Focused review/lead visual evidence remains deferred.",
+  "source_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
+  "source_pr": 1428,
+  "release_integration_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1"
 }
