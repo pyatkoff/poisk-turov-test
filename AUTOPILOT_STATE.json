@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-06T17:55:01.927086+00:00",
+  "updated_at": "2026-09-06T18:09:56.744309+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Published 731eb3a8: 389651 bytes / 5608 lines. Source PRs #1402 and #1403 remove 1940 JS bytes, 8057 CSS bytes and 150 lines. Each exact source passed 23 applicable workflows with one expected skip. The combined preview and live journey through return/editor are verified.",
-    "next_action": "Refresh release/PRs and publication before another bounded reduction. Inspect remaining repeated inline-style setter groups in active results/selected presentation JS; require identical DOM operation order/values/priority and measured net savings before changing them. The private CSS string extraction and the 182 same-selector/context overridden declarations are complete; do not repeat these or prior nesting, compaction, formatter, filter/toolbar and source-split passes. Preserve eight paths, IIFEs and protected business contracts; publish only a separate exact preview artifact. Production locked.",
+    "last_material_progress": "Published 360cf4b7: 351522 bytes / 5833 lines. Source PRs #1405 and #1406 remove 37946 CSS bytes and 183 JS bytes. Each source passed 23 applicable workflows with one expected skip. Exact preview and full live journey through return/editor verified.",
+    "next_action": "Refresh release, PRs and publication before another bounded reduction. Inspect remaining repeated static markup and private source boundaries in active filter-rail/search-form JS; require measured net savings and compiled behavior evidence. Keep event/data/price/lead contracts and eight public paths. Do not deepen CSS nesting beyond three levels or repeat completed root/descendant grouping, overridden declarations, CSS injections, booking-layout and earlier source splits. Publish only a separate exact preview artifact. Production locked.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -64,25 +64,25 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_PRIVATE_CSS_AND_OVERRIDDEN_DECLARATIONS",
-    "title": "Reduce JS style assembly and superseded CSS declarations",
+    "id": "S3_DESCENDANT_CSS_AND_BOOKING_LAYOUT",
+    "title": "Reduce repeated descendant CSS selectors and isolate booking layout",
     "status": "PUBLISHED_LIVE_JOURNEY_AND_RETURN_VERIFIED",
-    "implementation_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
+    "implementation_sha": "360cf4b7f9b08ca0a85e6d4f96a83997dd07b477",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "source_prs": [
-      1402,
-      1403
+      1405,
+      1406
     ],
     "issue": 996,
-    "artifact_id": 9993533050,
-    "artifact_run": 34047451594,
-    "deploy_pr": 1404,
-    "deploy_run": 34047654589,
-    "evidence_artifact": 9993589644,
+    "artifact_id": 9994293361,
+    "artifact_run": 34050151346,
+    "deploy_pr": 1407,
+    "deploy_run": 34050404831,
+    "evidence_artifact": 9994364828,
     "ci_success_count": 23,
-    "visual_run": 34047451646,
-    "next_action": "Refresh release/PRs and publication before another bounded reduction. Inspect remaining repeated inline-style setter groups in active results/selected presentation JS; require identical DOM operation order/values/priority and measured net savings before changing them. The private CSS string extraction and the 182 same-selector/context overridden declarations are complete; do not repeat these or prior nesting, compaction, formatter, filter/toolbar and source-split passes. Preserve eight paths, IIFEs and protected business contracts; publish only a separate exact preview artifact. Production locked."
+    "visual_run": 34050151371,
+    "next_action": "Refresh release, PRs and publication before another bounded reduction. Inspect remaining repeated static markup and private source boundaries in active filter-rail/search-form JS; require measured net savings and compiled behavior evidence. Keep event/data/price/lead contracts and eight public paths. Do not deepen CSS nesting beyond three levels or repeat completed root/descendant grouping, overridden declarations, CSS injections, booking-layout and earlier source splits. Publish only a separate exact preview artifact. Production locked."
   },
   "queue": [
     {
@@ -176,15 +176,15 @@
       "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
-      "release_merge_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
-      "source_tree": "84f2c9961f98b9a624def5157da607849105469d",
-      "exact_artifact": 9993533050,
-      "artifact_digest": "sha256:209b7c4a42fcd353bb7db37a629efeba47628277ff3a36ea0e24658d6e6ea8db",
-      "superseded_artifact": 9993052180,
+      "implementation_verified_sha": "360cf4b7f9b08ca0a85e6d4f96a83997dd07b477",
+      "release_merge_sha": "360cf4b7f9b08ca0a85e6d4f96a83997dd07b477",
+      "source_tree": "74697b69c97294cd7179996cb02f6376851e1789",
+      "exact_artifact": 9994293361,
+      "artifact_digest": "sha256:8829e481d385895c4aeeba10c2d5934c5f2421cb1c5ce8b35ce0c40772b34b46",
+      "superseded_artifact": 9993533050,
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "preview_deploy_run": 34047654589,
-      "preview_deploy_pr": 1404,
+      "preview_deploy_run": 34050404831,
+      "preview_deploy_pr": 1407,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -226,16 +226,17 @@
         "results toolbar inline style helpers remove459 JS bytes with48 matching operation traces",
         "CSS output indentation omitted with newline/escape token separators preserved",
         "Native CSS nesting:131 identical single-parent groups across46 modules;33378 fewer CSS bytes; explicit-& browser boundary documented",
-        "Private injected CSS sources; 182 overridden declarations and 74 empty rules removed; 9997 fewer public CSS/JS bytes and 150 fewer lines."
+        "Private injected CSS sources; 182 overridden declarations and 74 empty rules removed; 9997 fewer public CSS/JS bytes and 150 fewer lines.",
+        "138 descendant CSS groups and private booking layout: 38129 fewer public bytes; 225 additional lines from explicit groups."
       ],
       "preview_deploy_workflow_conclusion": "success",
-      "final_verification_run": 34047654589,
-      "final_verification_artifact": 9993589644,
+      "final_verification_run": 34050404831,
+      "final_verification_artifact": 9994364828,
       "live_browser_verification": {
-        "method": "Live search, card, unique CSS injections, flights 6 → 78 → 6, review, empty lead form, return with 100 cards, and editor.",
-        "verified_at": "2026-09-06T17:15:55.022338+00:00",
+        "method": "Live search, hotel, flights 6 → 71 → 6, review, empty lead form, return with 100 cards, and editor.",
+        "verified_at": "2026-09-06T18:09:56.744309+00:00",
         "viewport_width": 1363,
-        "audit": "docs/project/search3-continued-reduction-publication.json"
+        "audit": "docs/project/search3-descendant-publication.json"
       }
     },
     "production": {
@@ -688,9 +689,32 @@
         "artifact_run": 34047082564
       },
       "scope": "Each source head passed 23 applicable workflows and one expected skip. Eleven build tests and 14 presentation tests; PHP covered in CI. All 182 later declaration values supported in browser CI. Responsive checks passed at 375/430/1024/1348/1440; inspected 375/1440 editor images are pixel-identical to prior preview. 19/24 compared images exact; no blanket pixel-parity or physical Safari claim."
+    },
+    "descendant_css_and_booking_layout": {
+      "sha": "360cf4b7f9b08ca0a85e6d4f96a83997dd07b477",
+      "pr": 1406,
+      "applicable_success": 23,
+      "expected_skipped": 1,
+      "core_run": 34050151325,
+      "visual_run": 34050151371,
+      "flight_run": 34050151339,
+      "artifact_run": 34050151346,
+      "visual_artifact": 9994299221,
+      "visual_digest": "sha256:45da9115fc99e361ebb4bcefcd6060a25558baf7fb27b2191503cf973ee81935",
+      "first_pass": {
+        "sha": "56bc654af46ee8814ad2b62eec5d83f9ae02aaa4",
+        "pr": 1405,
+        "applicable_success": 23,
+        "expected_skipped": 1,
+        "core_run": 34049874338,
+        "visual_run": 34049874332,
+        "flight_run": 34049874340,
+        "artifact_run": 34049874271
+      },
+      "scope": "Each exact source passed 23 applicable workflows and one expected skip. Eleven source-build tests and 14 presentation tests; PHP covered in CI. Eight booking-layout states pass against baseline and current compiled owner. Responsive 375/430/1024/1348/1440 and toolbar 999/1000 roundtrip pass. Editors at 375/1440 inspected and pixel-identical to prior publication. 18/24 final compared images exact; remaining fixture calendar/date/control variation retained, no blanket pixel-parity or physical Safari claim."
     }
   },
-  "last_verified_commit": "731eb3a8e1e490d2c07f4727135c373449d4958f",
+  "last_verified_commit": "360cf4b7f9b08ca0a85e6d4f96a83997dd07b477",
   "last_verified_commit_scope": "Exact isolated preview: eight served assets, 715 payload hashes, 13 unchanged production fingerprints and live search, flights, review, empty lead form, return and editor verified. No real lead submitted. Physical Safari and production acceptance remain unqualified.",
   "blocked": [
     {
@@ -865,31 +889,72 @@
   },
   "presentation_refactor_checkpoint": {
     "baseline": "2b2213db2865973ff4f26c3194a7cfdb6f0feaac",
-    "stage": "S3_DESCENDANT_RESULTS_CI_VERIFIED_SECOND_PASS_PREPARED",
-    "implementation_sha": "56bc654af46ee8814ad2b62eec5d83f9ae02aaa4",
-    "release_integration_sha": "56bc654af46ee8814ad2b62eec5d83f9ae02aaa4",
-    "source_validation": "23_APPLICABLE_WORKFLOWS_SUCCESS_1_EXPECTED_SKIP",
+    "stage": "S3_DESCENDANT_CSS_AND_PRIVATE_BOOKING_LAYOUT_PUBLISHED",
+    "implementation_sha": "360cf4b7f9b08ca0a85e6d4f96a83997dd07b477",
+    "release_integration_sha": "360cf4b7f9b08ca0a85e6d4f96a83997dd07b477",
+    "scope": "138 single-parent descendant CSS groups preserve recursively expanded ordered streams and remove 37946 public CSS bytes. Private booking layout and one local setter remove 183 public JS bytes; other compiled behavior owners byte-identical.",
+    "source_validation": "TWO_SOURCE_HEADS_EACH_23_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
     "public_assets": {
-      "css_bytes": 216752,
-      "css_lines": 4002,
-      "js_bytes": 140240,
-      "js_lines": 1825,
-      "total_bytes": 356992,
-      "total_lines": 5827
+      "css_bytes": 211465,
+      "css_lines": 4007,
+      "js_bytes": 140057,
+      "js_lines": 1826,
+      "total_bytes": 351522,
+      "total_lines": 5833,
+      "scope": "Four CSS and four JS assets, uncompressed; excludes shared runtime/legacy and duplicate src. Private injected CSS is counted inside its JS host. No speed or deferred-loading claim."
     },
-    "preview_updated": false,
+    "preview_updated": true,
     "production_updated": false,
     "ci": {
-      "pr": 1405,
-      "core_run": 34049874338,
-      "visual_run": 34049874332,
-      "flight_run": 34049874340,
-      "artifact_run": 34049874271,
-      "visual_artifact": 9994219794,
-      "visual_digest": "sha256:d12de112f14267d902402c3b62927b010c995e7953853b6d6aff7149782d766c"
+      "sha": "360cf4b7f9b08ca0a85e6d4f96a83997dd07b477",
+      "pr": 1406,
+      "applicable_success": 23,
+      "expected_skipped": 1,
+      "core_run": 34050151325,
+      "visual_run": 34050151371,
+      "flight_run": 34050151339,
+      "artifact_run": 34050151346,
+      "visual_artifact": 9994299221,
+      "visual_digest": "sha256:45da9115fc99e361ebb4bcefcd6060a25558baf7fb27b2191503cf973ee81935",
+      "first_pass": {
+        "sha": "56bc654af46ee8814ad2b62eec5d83f9ae02aaa4",
+        "pr": 1405,
+        "applicable_success": 23,
+        "expected_skipped": 1,
+        "core_run": 34049874338,
+        "visual_run": 34049874332,
+        "flight_run": 34049874340,
+        "artifact_run": 34049874271
+      },
+      "scope": "Each exact source passed 23 applicable workflows and one expected skip. Eleven source-build tests and 14 presentation tests; PHP covered in CI. Eight booking-layout states pass against baseline and current compiled owner. Responsive 375/430/1024/1348/1440 and toolbar 999/1000 roundtrip pass. Editors at 375/1440 inspected and pixel-identical to prior publication. 18/24 final compared images exact; remaining fixture calendar/date/control variation retained, no blanket pixel-parity or physical Safari claim."
     },
-    "next_action": "Verify the prepared remaining CSS groups and private booking-layout source, then publish one exact combined isolated preview. Do not repeat completed root/descendant grouping or setter extraction. Preserve eight paths and business contracts. Production locked.",
-    "audit": "docs/project/search3-css-descendant-results.json"
+    "preview_deploy_run": 34050404831,
+    "preview_deploy_pr": 1407,
+    "next_action": "Refresh release, PRs and publication before another bounded reduction. Inspect remaining repeated static markup and private source boundaries in active filter-rail/search-form JS; require measured net savings and compiled behavior evidence. Keep event/data/price/lead contracts and eight public paths. Do not deepen CSS nesting beyond three levels or repeat completed root/descendant grouping, overridden declarations, CSS injections, booking-layout and earlier source splits. Publish only a separate exact preview artifact. Production locked.",
+    "verified_at": "2026-09-06T18:09:56.744309+00:00",
+    "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+    "run_delta": {
+      "bytes": -38129,
+      "lines": 225,
+      "css_bytes": -37946,
+      "js_bytes": -183
+    },
+    "continuation_delta": {
+      "baseline": "2b2213db2865973ff4f26c3194a7cfdb6f0feaac",
+      "source_prs": [
+        1405,
+        1406
+      ],
+      "bytes": -38129,
+      "lines": 225,
+      "css_bytes": -37946,
+      "js_bytes": -183
+    },
+    "audit": "docs/project/search3-descendant-publication.json",
+    "source_audits": [
+      "docs/project/search3-css-descendant-results.json",
+      "docs/project/search3-css-descendant-secondary.json"
+    ]
   },
   "presentation_refactor_history": [
     {
@@ -1807,6 +1872,34 @@
         "docs/project/search3-injected-css-sources.json",
         "docs/project/search3-active-css-declarations.json"
       ]
+    },
+    {
+      "baseline": "2b2213db2865973ff4f26c3194a7cfdb6f0feaac",
+      "stage": "S3_DESCENDANT_RESULTS_CI_VERIFIED_SECOND_PASS_PREPARED",
+      "implementation_sha": "56bc654af46ee8814ad2b62eec5d83f9ae02aaa4",
+      "release_integration_sha": "56bc654af46ee8814ad2b62eec5d83f9ae02aaa4",
+      "source_validation": "23_APPLICABLE_WORKFLOWS_SUCCESS_1_EXPECTED_SKIP",
+      "public_assets": {
+        "css_bytes": 216752,
+        "css_lines": 4002,
+        "js_bytes": 140240,
+        "js_lines": 1825,
+        "total_bytes": 356992,
+        "total_lines": 5827
+      },
+      "preview_updated": false,
+      "production_updated": false,
+      "ci": {
+        "pr": 1405,
+        "core_run": 34049874338,
+        "visual_run": 34049874332,
+        "flight_run": 34049874340,
+        "artifact_run": 34049874271,
+        "visual_artifact": 9994219794,
+        "visual_digest": "sha256:d12de112f14267d902402c3b62927b010c995e7953853b6d6aff7149782d766c"
+      },
+      "next_action": "Verify the prepared remaining CSS groups and private booking-layout source, then publish one exact combined isolated preview. Do not repeat completed root/descendant grouping or setter extraction. Preserve eight paths and business contracts. Production locked.",
+      "audit": "docs/project/search3-css-descendant-results.json"
     }
   ],
   "site_preview_publication_history": [
@@ -3108,34 +3201,276 @@
         "visual_run": 34045800482,
         "next_action": "Refresh release, active PRs and this publication before the next bounded reduction. Inspect remaining active CSS declaration duplication and JS presentation owners for measured net savings, preserving media/order/specificity, IIFE ownership and protected business contracts. Do not repeat completed nesting, indentation/comment compaction, private JS extraction, geometry helpers, retired selectors or shared formatters. Keep eight public paths; preview only via a separate exact-artifact publication. Production locked."
       }
+    },
+    {
+      "recorded_at": "2026-09-06T18:09:56.744309+00:00",
+      "previous_site_draft": {
+        "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
+        "branch": "release/search3-production-ready-v1",
+        "pr": 1334,
+        "implementation_verified_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
+        "release_merge_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
+        "source_tree": "84f2c9961f98b9a624def5157da607849105469d",
+        "exact_artifact": 9993533050,
+        "artifact_digest": "sha256:209b7c4a42fcd353bb7db37a629efeba47628277ff3a36ea0e24658d6e6ea8db",
+        "superseded_artifact": 9993052180,
+        "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "preview_deploy_run": 34047654589,
+        "preview_deploy_pr": 1404,
+        "includes": [
+          "home native independent night range and child ages",
+          "offer/month date/night/party handoff",
+          "customer-facing country/month copy",
+          "Search3 production import",
+          "old-search compatibility route",
+          "whole-site preview path containment",
+          "preview lead-disabled endpoint and exact artifact pipeline",
+          "preview-only forced noindex independent of production SEO allowlist",
+          "readable result cards with taller mobile photos and non-duplicated facts",
+          "localized decimal flight-price tradeoff display correction",
+          "declined resort destination copy from reviewed H1",
+          "unpublished 404 legal/payment footer links hidden",
+          "existing production price calendar restored in Search3 with responsive disclosure",
+          "mockup-7 footer social/store treatment",
+          "mockup-6 readable contact form with fewer repeated panels",
+          "supplier placeholder-flight and unknown-baggage summaries",
+          "one authoritative tour price in lead sidebar without misleading flight-price repetition",
+          "booking stage hides preserved results and search controls",
+          "readable search context, filter rows and lead navigation",
+          "desktop reset fits the narrow filter rail",
+          "duplicate CSS rules removed with declaration-stream and pixel equivalence evidence",
+          "retained selected-tour DOM respects hidden after Back",
+          "selected-tour observer no longer rescans results; resize preserves open search editor",
+          "single CSS owner for initial/editor responsive grid",
+          "lead sidebar manager clarification when proceeding without flight",
+          "CSS source split and equal-specificity selector-prefix reduction",
+          "static injected styles separated from JS behavior without emitted-style changes",
+          "inactive Search3 footer replacement retired; canonical shared footer retained",
+          "concurrent price-facet completeness guard preserved",
+          "retired positive-class CSS rules removed; negative conditions retained",
+          "35 compound equal-specificity CSS groups",
+          "concurrent shared presentation text/plural and fact typography preserved",
+          "deterministic private CSS comment compaction preserving tokens and licenses",
+          "entry calendar/toolbar/native controls separated in original order",
+          "28 adjacent identical CSS declaration blocks consolidated",
+          "private results labels/cards/toolbar parts preserve compiled IIFE scope and bytes",
+          "private selected-flight fallback/disclosure parts preserve compiled adapter",
+          "results toolbar inline style helpers remove459 JS bytes with48 matching operation traces",
+          "CSS output indentation omitted with newline/escape token separators preserved",
+          "Native CSS nesting:131 identical single-parent groups across46 modules;33378 fewer CSS bytes; explicit-& browser boundary documented",
+          "Private injected CSS sources; 182 overridden declarations and 74 empty rules removed; 9997 fewer public CSS/JS bytes and 150 fewer lines."
+        ],
+        "preview_deploy_workflow_conclusion": "success",
+        "final_verification_run": 34047654589,
+        "final_verification_artifact": 9993589644,
+        "live_browser_verification": {
+          "method": "Live search, card, unique CSS injections, flights 6 → 78 → 6, review, empty lead form, return with 100 cards, and editor.",
+          "verified_at": "2026-09-06T17:15:55.022338+00:00",
+          "viewport_width": 1363,
+          "audit": "docs/project/search3-continued-reduction-publication.json"
+        }
+      },
+      "previous_preview_publication": {
+        "status": "PUBLISHED_LIVE_SEARCH_FLIGHT_REVIEW_LEAD_FORM_RETURN_VERIFIED",
+        "source_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
+        "source_tree": "84f2c9961f98b9a624def5157da607849105469d",
+        "release_pin_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
+        "artifact_id": 9993533050,
+        "artifact_run": 34047451594,
+        "artifact_digest": "sha256:209b7c4a42fcd353bb7db37a629efeba47628277ff3a36ea0e24658d6e6ea8db",
+        "deploy_pr": 1404,
+        "deploy_run": 34047654589,
+        "deployment_evidence_artifact": 9993589644,
+        "deployment_evidence_digest": "sha256:3f94fb1ac4529fe1b01cfef498eec0103047ff57dd2fe259ffc009fec304404d",
+        "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "verified_at": "2026-09-06T17:15:55.022338+00:00",
+        "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+        "production_unchanged": true,
+        "physical_safari_tested": false,
+        "real_lead_submitted": false,
+        "verification": {
+          "source_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
+          "verified_at": "2026-09-06T17:12:14.726261+00:00",
+          "viewport_width": 1363,
+          "client_width": 1348,
+          "scroll_width": 1348,
+          "search": {
+            "origin": "Москва",
+            "country": "Турция",
+            "dates": [
+              "2026-09-10",
+              "2026-09-11"
+            ],
+            "nights": [
+              7,
+              7
+            ],
+            "adults": 2,
+            "hotels": 100,
+            "tours": 423
+          },
+          "selected_hotel": "ANAHTAR APART",
+          "flight_disclosure_counts": [
+            6,
+            78,
+            6
+          ],
+          "review_total_rub": 72099,
+          "review_screenshot_inspected": true,
+          "injected_style_ids": [
+            "search3-mobile-convergence-style",
+            "search3-mobile-final-review-v2"
+          ],
+          "injections_unique": true,
+          "injections_use_nesting": true,
+          "real_lead_submitted": false,
+          "physical_safari_tested": false,
+          "lead_form_visible": true,
+          "phone_empty": true,
+          "lead_client_width": 1363,
+          "lead_scroll_width": 1363,
+          "return_visible_cards": 100,
+          "selected_hidden_on_return": true,
+          "editor_return_verified": true,
+          "editor_dates_retained": [
+            "2026-09-10",
+            "2026-09-11"
+          ],
+          "editor_nights_retained": [
+            7,
+            7
+          ],
+          "editor_client_width": 1348,
+          "editor_scroll_width": 1348
+        },
+        "live_viewport_widths": [
+          1363
+        ],
+        "responsive_ci_run": 34047451646,
+        "known_limitations": [
+          {
+            "width": 375,
+            "recovery": "native Escape",
+            "limitation": "retained hidden advanced-filter owner left an open backdrop"
+          }
+        ],
+        "known_limitations_scope": "Inherited pre-existing hidden legacy advanced-filter backdrop on desktop-to-mobile resize; not fixed or requalified by this desktop-only live journey. Prior controlled evidence retained in publication history. Native CSS nesting browser boundary applies. Earlier immediate editor click during asynchronous return remains unqualified; this pass confirmed editor after completed return. No-flight fallback and physical Safari not tested live.",
+        "public_assets": {
+          "css_bytes": 249411,
+          "css_lines": 3783,
+          "js_bytes": 140240,
+          "js_lines": 1825,
+          "total_bytes": 389651,
+          "total_lines": 5608,
+          "scope": "Four CSS and four JS assets, uncompressed; excludes shared runtime/legacy and duplicate src. Private injected CSS is counted in its JS host. No speed or deferred-loading claim."
+        },
+        "live_asset_sha256": [
+          {
+            "asset": "search3-results-filters-v1.js",
+            "bytes": 121897,
+            "sha256": "0737301f752e6404e5fe7f203bddf8cb6090dfdff1fbac0f8e2d7fb6662775e6",
+            "exact": true,
+            "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.js?v=0737301f752e6404"
+          },
+          {
+            "asset": "search3-results-filters-v1.css",
+            "bytes": 221138,
+            "sha256": "2a4f883306d118fffb50ae7a53d5fc1181dd74a08b647396a8b8591d8f3ee751",
+            "exact": true,
+            "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.css?v=2a4f883306d118ff"
+          },
+          {
+            "asset": "search3-entry-v1.css",
+            "bytes": 11640,
+            "sha256": "4bb5ab8f95950872e0f9d3a2ac6ce0f4ec9135345888e3d4898b24c0b61c55f8",
+            "exact": true,
+            "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.css?v=4bb5ab8f95950872"
+          },
+          {
+            "asset": "search3-entry-v1.js",
+            "bytes": 5050,
+            "sha256": "6e8631ea926a103661a824739fcdf218e83c07b6ca4f7d0786ed23fcacb41e0b",
+            "exact": true,
+            "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.js?v=6e8631ea926a1036"
+          },
+          {
+            "asset": "search3-results-cards-v2.css",
+            "bytes": 7532,
+            "sha256": "443245d844059d26e4b58dff54d9cdc2ebebb0a15403d19d1cb87c1b6336adc2",
+            "exact": true,
+            "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.css?v=443245d844059d26"
+          },
+          {
+            "asset": "search3-results-cards-v2.js",
+            "bytes": 88,
+            "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
+            "exact": true,
+            "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.js?v=169c61338df3ef19"
+          },
+          {
+            "asset": "search3-selected-flow-v2.css",
+            "bytes": 9101,
+            "sha256": "e2755b0d795748decadb4e9a333b9db843d47f2971384f91ce6b08d8fc662f6d",
+            "exact": true,
+            "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.css?v=e2755b0d795748de"
+          },
+          {
+            "asset": "search3-selected-flow-v2.js",
+            "bytes": 13205,
+            "sha256": "a4db64b0d1752ca15eea9f6cab1587d38139c4cc16681932f1e9a9dc2408544c",
+            "exact": true,
+            "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.js?v=a4db64b0d1752ca1"
+          }
+        ],
+        "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested."
+      },
+      "previous_current_task": {
+        "id": "S3_PRIVATE_CSS_AND_OVERRIDDEN_DECLARATIONS",
+        "title": "Reduce JS style assembly and superseded CSS declarations",
+        "status": "PUBLISHED_LIVE_JOURNEY_AND_RETURN_VERIFIED",
+        "implementation_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
+        "branch": "release/search3-production-ready-v1",
+        "pr": 1334,
+        "source_prs": [
+          1402,
+          1403
+        ],
+        "issue": 996,
+        "artifact_id": 9993533050,
+        "artifact_run": 34047451594,
+        "deploy_pr": 1404,
+        "deploy_run": 34047654589,
+        "evidence_artifact": 9993589644,
+        "ci_success_count": 23,
+        "visual_run": 34047451646,
+        "next_action": "Refresh release/PRs and publication before another bounded reduction. Inspect remaining repeated inline-style setter groups in active results/selected presentation JS; require identical DOM operation order/values/priority and measured net savings before changing them. The private CSS string extraction and the 182 same-selector/context overridden declarations are complete; do not repeat these or prior nesting, compaction, formatter, filter/toolbar and source-split passes. Preserve eight paths, IIFEs and protected business contracts; publish only a separate exact preview artifact. Production locked."
+      }
     }
   ],
   "preview_publication": {
     "status": "PUBLISHED_LIVE_SEARCH_FLIGHT_REVIEW_LEAD_FORM_RETURN_VERIFIED",
-    "source_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
-    "source_tree": "84f2c9961f98b9a624def5157da607849105469d",
-    "release_pin_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
-    "artifact_id": 9993533050,
-    "artifact_run": 34047451594,
-    "artifact_digest": "sha256:209b7c4a42fcd353bb7db37a629efeba47628277ff3a36ea0e24658d6e6ea8db",
-    "deploy_pr": 1404,
-    "deploy_run": 34047654589,
-    "deployment_evidence_artifact": 9993589644,
-    "deployment_evidence_digest": "sha256:3f94fb1ac4529fe1b01cfef498eec0103047ff57dd2fe259ffc009fec304404d",
+    "source_sha": "360cf4b7f9b08ca0a85e6d4f96a83997dd07b477",
+    "source_tree": "74697b69c97294cd7179996cb02f6376851e1789",
+    "release_pin_sha": "360cf4b7f9b08ca0a85e6d4f96a83997dd07b477",
+    "artifact_id": 9994293361,
+    "artifact_run": 34050151346,
+    "artifact_digest": "sha256:8829e481d385895c4aeeba10c2d5934c5f2421cb1c5ce8b35ce0c40772b34b46",
+    "deploy_pr": 1407,
+    "deploy_run": 34050404831,
+    "deployment_evidence_artifact": 9994364828,
+    "deployment_evidence_digest": "sha256:d72f71abae36f2164089e5179b546c9c498b4bb323204ce0fd25a5432d68332a",
     "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-    "verified_at": "2026-09-06T17:15:55.022338+00:00",
+    "verified_at": "2026-09-06T18:09:56.744309+00:00",
     "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
     "production_unchanged": true,
     "physical_safari_tested": false,
     "real_lead_submitted": false,
     "verification": {
-      "source_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
-      "verified_at": "2026-09-06T17:12:14.726261+00:00",
+      "source_sha": "360cf4b7f9b08ca0a85e6d4f96a83997dd07b477",
+      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
       "viewport_width": 1363,
-      "client_width": 1348,
-      "scroll_width": 1348,
       "search": {
-        "origin": "Москва",
+        "departure": "Москва",
         "country": "Турция",
         "dates": [
           "2026-09-10",
@@ -3145,48 +3480,60 @@
           7,
           7
         ],
-        "adults": 2,
-        "hotels": 100,
-        "tours": 423
+        "adults": 2
       },
-      "selected_hotel": "ANAHTAR APART",
-      "flight_disclosure_counts": [
+      "hotels": 100,
+      "tours": 322,
+      "hotel": "ANAHTAR APART",
+      "flight_disclosure": [
         6,
-        78,
+        71,
         6
       ],
       "review_total_rub": 72099,
-      "review_screenshot_inspected": true,
-      "injected_style_ids": [
-        "search3-mobile-convergence-style",
-        "search3-mobile-final-review-v2"
-      ],
-      "injections_unique": true,
-      "injections_use_nesting": true,
-      "real_lead_submitted": false,
-      "physical_safari_tested": false,
+      "review_summary_column": "3",
+      "review_summary_row": "4 / 12",
       "lead_form_visible": true,
       "phone_empty": true,
-      "lead_client_width": 1363,
-      "lead_scroll_width": 1363,
-      "return_visible_cards": 100,
-      "selected_hidden_on_return": true,
+      "lead_layout": {
+        "shell_display": "grid",
+        "shell_display_priority": "important",
+        "shell_column": "1 / -1",
+        "form_column": "1",
+        "form_row": "1",
+        "summary_column": "2",
+        "summary_row": "1",
+        "summary_width": 320
+      },
+      "return_to_review_summary_column": "3",
+      "return_to_review_summary_row": "4 / 12",
+      "returned_visible_cards": 100,
+      "selected_hidden_after_return": true,
       "editor_return_verified": true,
-      "editor_dates_retained": [
-        "2026-09-10",
-        "2026-09-11"
+      "dates_and_nights_preserved": true,
+      "horizontal_overflow": false,
+      "client_scroll_width_results_review_editor": [
+        1348,
+        1348
       ],
-      "editor_nights_retained": [
-        7,
-        7
+      "client_scroll_width_lead": [
+        1363,
+        1363
       ],
-      "editor_client_width": 1348,
-      "editor_scroll_width": 1348
+      "screenshots_inspected": [
+        "live review",
+        "live empty lead form",
+        "CI editors at 375 and 1440"
+      ],
+      "real_lead_submitted": false,
+      "physical_safari_tested": false,
+      "live_no_flight_fallback_tested": false,
+      "limitations": "Existing legacy-filter backdrop and immediate editor click during asynchronous return remain outside qualification. This editor check started after return completed."
     },
     "live_viewport_widths": [
       1363
     ],
-    "responsive_ci_run": 34047451646,
+    "responsive_ci_run": 34050151371,
     "known_limitations": [
       {
         "width": 375,
@@ -3196,70 +3543,70 @@
     ],
     "known_limitations_scope": "Inherited pre-existing hidden legacy advanced-filter backdrop on desktop-to-mobile resize; not fixed or requalified by this desktop-only live journey. Prior controlled evidence retained in publication history. Native CSS nesting browser boundary applies. Earlier immediate editor click during asynchronous return remains unqualified; this pass confirmed editor after completed return. No-flight fallback and physical Safari not tested live.",
     "public_assets": {
-      "css_bytes": 249411,
-      "css_lines": 3783,
-      "js_bytes": 140240,
-      "js_lines": 1825,
-      "total_bytes": 389651,
-      "total_lines": 5608,
-      "scope": "Four CSS and four JS assets, uncompressed; excludes shared runtime/legacy and duplicate src. Private injected CSS is counted in its JS host. No speed or deferred-loading claim."
+      "css_bytes": 211465,
+      "css_lines": 4007,
+      "js_bytes": 140057,
+      "js_lines": 1826,
+      "total_bytes": 351522,
+      "total_lines": 5833,
+      "scope": "Four CSS and four JS assets, uncompressed; excludes shared runtime/legacy and duplicate src. Private injected CSS is counted inside its JS host. No speed or deferred-loading claim."
     },
     "live_asset_sha256": [
       {
-        "asset": "search3-results-filters-v1.js",
-        "bytes": 121897,
-        "sha256": "0737301f752e6404e5fe7f203bddf8cb6090dfdff1fbac0f8e2d7fb6662775e6",
-        "exact": true,
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.js?v=0737301f752e6404"
+        "name": "search3-results-filters-v1.js",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.js?v=63814925afbbf0c5",
+        "bytes": 121714,
+        "sha256": "63814925afbbf0c52edceb0de9d59298d947579c96a3fb4315209a51afee3c3f",
+        "exact": true
       },
       {
-        "asset": "search3-results-filters-v1.css",
-        "bytes": 221138,
-        "sha256": "2a4f883306d118fffb50ae7a53d5fc1181dd74a08b647396a8b8591d8f3ee751",
-        "exact": true,
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.css?v=2a4f883306d118ff"
+        "name": "search3-results-filters-v1.css",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.css?v=9399dfbba8e9b43f",
+        "bytes": 188479,
+        "sha256": "9399dfbba8e9b43f2815d6d555c4a72a5a60850c73c14eb4e82c1144f7a8db2d",
+        "exact": true
       },
       {
-        "asset": "search3-entry-v1.css",
-        "bytes": 11640,
-        "sha256": "4bb5ab8f95950872e0f9d3a2ac6ce0f4ec9135345888e3d4898b24c0b61c55f8",
-        "exact": true,
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.css?v=4bb5ab8f95950872"
+        "name": "search3-entry-v1.css",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.css?v=95658f8b4fdea9ad",
+        "bytes": 10496,
+        "sha256": "95658f8b4fdea9ad257f20c22f0d842bff1bdb5980f1ea8c388a351779af9a97",
+        "exact": true
       },
       {
-        "asset": "search3-entry-v1.js",
+        "name": "search3-entry-v1.js",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.js?v=6e8631ea926a1036",
         "bytes": 5050,
         "sha256": "6e8631ea926a103661a824739fcdf218e83c07b6ca4f7d0786ed23fcacb41e0b",
-        "exact": true,
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.js?v=6e8631ea926a1036"
+        "exact": true
       },
       {
-        "asset": "search3-results-cards-v2.css",
-        "bytes": 7532,
-        "sha256": "443245d844059d26e4b58dff54d9cdc2ebebb0a15403d19d1cb87c1b6336adc2",
-        "exact": true,
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.css?v=443245d844059d26"
+        "name": "search3-results-cards-v2.css",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.css?v=8c14b64eeb135f0b",
+        "bytes": 4430,
+        "sha256": "8c14b64eeb135f0bb268326651104d1d188e9ab8a42dd9386db555d3d6c3571b",
+        "exact": true
       },
       {
-        "asset": "search3-results-cards-v2.js",
+        "name": "search3-results-cards-v2.js",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.js?v=169c61338df3ef19",
         "bytes": 88,
         "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
-        "exact": true,
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.js?v=169c61338df3ef19"
+        "exact": true
       },
       {
-        "asset": "search3-selected-flow-v2.css",
-        "bytes": 9101,
-        "sha256": "e2755b0d795748decadb4e9a333b9db843d47f2971384f91ce6b08d8fc662f6d",
-        "exact": true,
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.css?v=e2755b0d795748de"
+        "name": "search3-selected-flow-v2.css",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.css?v=5ec2148cb89c56b0",
+        "bytes": 8060,
+        "sha256": "5ec2148cb89c56b03dce5c2ebafc2ac79899dfff6333d403d695c9a432945aac",
+        "exact": true
       },
       {
-        "asset": "search3-selected-flow-v2.js",
+        "name": "search3-selected-flow-v2.js",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.js?v=a4db64b0d1752ca1",
         "bytes": 13205,
         "sha256": "a4db64b0d1752ca15eea9f6cab1587d38139c4cc16681932f1e9a9dc2408544c",
-        "exact": true,
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.js?v=a4db64b0d1752ca1"
+        "exact": true
       }
     ],
     "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested."

@@ -10,7 +10,71 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
-### Current published checkpoint — private CSS and overridden declarations — 2026-09-06
+### Current published checkpoint — descendant CSS and private booking layout — 2026-09-06
+
+Published source and release integration: `360cf4b7f9b08ca0a85e6d4f96a83997dd07b477`. Source PRs #1405/#1406;
+one exact-artifact isolated preview publication #1407. Preparation notes below are
+historical and their pending-publication statements are superseded here.
+
+138 adjacent groups now share repeated complete descendant prefixes inside the
+existing CSS nesting. Each new parent has one selector and only nested rules;
+each child retains one leading explicit `&`, including bare `&` for the parent.
+Maximum nesting depth is three. Recursive expansion preserves the complete
+ordered selector/declaration/media stream. All declarations and specificity stay;
+acceptance guards, cascade donor and section order are unchanged. Public CSS
+saves 37946 bytes. The native nesting boundary remains Safari 16.5+ and supporting
+modern engines; physical Safari is not qualified.
+
+`booking-summary.js` is reduced from 6859 to 4472 source bytes, with a 2246-byte
+private `booking/layout.js` part inside the original IIFE. Fifteen setters share
+one local function, saving 183 served JS bytes. Eight layout states pass against
+baseline and current compiled owners. Reversing only these setter replacements
+restores the original compiled owner exactly; all other compiled JS owners are
+byte-identical. Event scheduling, rendering, price and lead contracts remain.
+No new public path, request, runtime loader or global.
+
+| Eight public assets | Previous bytes / lines | Published bytes / lines |
+| --- | ---: | ---: |
+| Four CSS | 249411 / 3783 | 211465 / 4007 |
+| Four JS | 140240 / 1825 | 140057 / 1826 |
+| Total | 389651 / 5608 | 351522 / 5833 |
+
+Reduction: 38129 bytes (9.79% overall, 15.21% CSS). Physical lines increase 225
+because of explicit grouping braces. Uncompressed; excludes shared runtime/legacy
+and duplicate src. This is not a speed benchmark or deferred-loading claim.
+
+Both exact sources passed 23 applicable workflows and one expected migration skip.
+Final core 34050151325, responsive 34050151371, flight 34050151339, build 34050151346.
+Eleven source-build and 14 presentation tests, with PHP covered in CI; eight layout
+states checked. Responsive 375/430/1024/1348/1440 and toolbar 999/1000 roundtrip pass.
+Inspected 375/1440 editor images are pixel-identical to the prior publication.
+18/24 final compared images match exactly; fixture calendar/date/control variation
+remains. No blanket pixel-parity or physical-device acceptance claim.
+
+Artifact 9994293361 / ZIP `sha256:8829e481d385895c4aeeba10c2d5934c5f2421cb1c5ce8b35ce0c40772b34b46`.
+Deploy 34050404831 succeeded on attempt 1; evidence 9994364828 / ZIP `sha256:d72f71abae36f2164089e5179b546c9c498b4bb323204ce0fd25a5432d68332a`.
+All 715 payload hashes and eight served assets match. Nine routes are HTTP 200 /
+noindex; counter 0, disabled synthetic lead 403, internal PHP denied, rollback
+retained. All 13 production fingerprints before/after/final are unchanged.
+Main remains `fa58a0cba6dcfc8624d98c20d64fa06330eae309`; production is untouched.
+
+Live desktop 1363px: Moscow → Turkey, 10–11 September 2026, seven nights, two adults
+→ 100 hotels / 322 tours → ANAHTAR APART → flights 6 → 71 → 6 → review 72099 RUB
+→ visible empty lead form → review → return with 100 cards → editor preserving
+dates/nights. Review summary uses column 3 / row 4–12, lead summary column 2 / row 1,
+and returning restores review layout. Review and empty lead screenshots inspected.
+No horizontal overflow or real lead submission. Existing hidden legacy-filter
+backdrop and immediate editor click during asynchronous return remain outside
+qualification; this editor opened after return completed. No live no-flight
+fallback or physical Safari test is claimed.
+
+Audits: `docs/project/search3-css-descendant-results.json`,
+`docs/project/search3-css-descendant-secondary.json`,
+`docs/project/search3-descendant-publication.json`.
+
+Next: Refresh release, PRs and publication before another bounded reduction. Inspect remaining repeated static markup and private source boundaries in active filter-rail/search-form JS; require measured net savings and compiled behavior evidence. Keep event/data/price/lead contracts and eight public paths. Do not deepen CSS nesting beyond three levels or repeat completed root/descendant grouping, overridden declarations, CSS injections, booking-layout and earlier source splits. Publish only a separate exact preview artifact. Production locked.
+
+### Previous published checkpoint — private CSS and overridden declarations — 2026-09-06
 
 Published source and release integration: `731eb3a8e1e490d2c07f4727135c373449d4958f`. Source PRs #1402/#1403;
 one exact-artifact isolated preview publication #1404. Preparation notes below are
@@ -601,13 +665,13 @@ Private injected CSS #1402 / `10d78a4463732a1d730d94af90b04cb6af795d37` passed23
 
 The next source pass removes182 earlier declarations with a later identical full expanded selector list, media/supports context, property and important flag; retained values win later in the same stylesheet. Every removal records its later witness; existing browser CI now requires CSS.supports for those witnesses. No shorthand expansion, selector-list merging or protected acceptance-source change. Removed74 now-empty style/group/media rules; retained ordered declaration stream verified. Full public final per-selector/context/property/priority maps match baseline. Audit: `docs/project/search3-active-css-declarations.json`. Cascade donor/order unchanged; hashes updated. Publish only after responsive and applicable CI pass.
 
-### Prepared continuation — repeated descendant prefixes in main CSS
+### Completed source preparation — repeated descendant prefixes in main CSS
 
 Baseline release `2b2213db2865973ff4f26c3194a7cfdb6f0feaac`; published preview remains `731eb3a8e1e490d2c07f4727135c373449d4958f` until separate exact publication. Factored 119 adjacent groups under repeated complete descendant prefixes within existing main CSS nesting. Every new parent has one selector and only nested rules; every child has one leading explicit `&`, including bare `&` when selecting the parent itself. Maximum nesting depth is three. Recursive expanded ordered selector/declaration/media streams are exact. Acceptance guards and cascade donor/order remain; cascade hashes updated.
 
 Main CSS saves 32659 public bytes; seven other assets are byte-identical. Total eight files: 389651 → 356992 bytes. Audit: `docs/project/search3-css-descendant-results.json`. Browser compatibility remains native nesting, Safari 16.5+; physical Safari unqualified. Next: existing responsive CI, then remaining CSS owners and a bounded booking-layout JS reduction; one combined isolated preview after checks. No production or protected business changes.
 
-### Prepared continuation — remaining descendant groups and booking layout
+### Completed source preparation — remaining descendant groups and booking layout
 
 First source #1405 / `56bc654af46ee8814ad2b62eec5d83f9ae02aaa4` passed 23 applicable workflows and one expected skip; integrated into release only. Core 34049874338, responsive 34049874332, flight 34049874340, build 34049874271. Editor images at 375/1440 inspected. Published preview still `731eb3a8`.
 
