@@ -11,15 +11,25 @@ const announcements = [];
 const count = { textContent: '' };
 const word = { textContent: '' };
 const priceLabel = { textContent: '' };
+const priceInput = { min: '', max: '', step: '', value: '' };
+const seaSection = { hidden: false, ariaHidden: '', setAttribute(name, value) { if (name === 'aria-hidden') this.ariaHidden = value; } };
+const seaInputs = ['0', '200', '500', '1000'].map(value => ({ value, checked: value === '0' }));
+let railHtml = '';
+let railHtmlWrites = 0;
+let formSubmits = 0;
 const rail = {
-  dataset: {}, innerHTML: '',
+  dataset: {},
+  get innerHTML() { return railHtml; },
+  set innerHTML(value) { railHtml = value; railHtmlWrites += 1; },
   addEventListener(name, handler) { railEvents.set(name, handler); },
   querySelector(selector) {
     return {'[data-s3-count]': count, '[data-s3-word]': word,
-      '[data-s3-price-label]': priceLabel}[selector] || null;
-  }
+      '[data-s3-price-label]': priceLabel, '[data-s3-price]': priceInput,
+      '[data-s3-sea-section]': seaSection}[selector] || null;
+  },
+  querySelectorAll(selector) { return selector === 'input[name="s3-sea"]' ? seaInputs : []; }
 };
-const form = { elements: {} };
+const form = { elements: {}, requestSubmit() { formSubmits += 1; } };
 const renders = [];
 const window = {
   innerWidth: 1440,
@@ -40,12 +50,19 @@ vm.runInNewContext(
 );
 
 const hotels = [
-  { tours: [{ price: 90000 }, { price: 120000 }] },
-  { tours: [{ price: 160000 }] }
+  { seaDistance: 400, tours: [{ price: 90000 }, { price: 120000 }] },
+  { seaDistance: 800, tours: [{ price: 160000 }] }
 ];
 assert.equal(announcements.length, 1, 'initial empty rail announces once');
+assert.equal(railHtmlWrites, 1, 'initial rail is rendered once');
+assert.equal(seaSection.hidden, true, 'the sea facet starts hidden without complete result data');
 windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+assert.equal(seaSection.hidden, false, 'complete sea-distance data reveals the facet');
 assert.equal(announcements.length, 2, 'new source render announces once, not twice');
+assert.equal(railHtmlWrites, 1,
+  'a progressive source update preserves the mounted controls instead of replacing their DOM');
+assert.equal(priceInput.min, '90000');
+assert.equal(priceInput.max, '160000');
 const input = value => railEvents.get('input')({
   target: { value: String(value), matches(selector) { return selector === '[data-s3-price]'; } }
 });
@@ -69,8 +86,163 @@ assert.equal(renders[1].length, 2);
 
 input(95000);
 assert.equal(frames.length, 1);
+railEvents.get('change')({
+  target: {
+    name: 's3-sea', value: '500',
+    matches() { return false; }
+  }
+});
+assert.equal(renders.length, 3, 'a discrete filter immediately applies the latest price state');
+while (frames.length) frames.shift()();
+assert.equal(renders.length, 3, 'the superseded price frame does not render again');
+
+input(95000);
+assert.equal(frames.length, 1);
 windowEvents.get('v2:search-reset')();
 while (frames.length) frames.shift()();
-assert.equal(renders.length, 2, 'search reset cancels a pending price render');
+assert.equal(renders.length, 3, 'search reset cancels a pending price render');
 assert.equal(announcements.at(-1).resultCount, 0);
+
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+input(95000);
+while (frames.length) frames.shift()();
+assert.equal(renders.length, 4);
+const refreshedHotels = hotels.concat({ seaDistance: 1200, tours: [{ price: 200000 }] });
+const announcementCount = announcements.length;
+const railHtmlWritesBeforeRefresh = railHtmlWrites;
+windowEvents.get('v2:results-rendered')({ detail: { items: refreshedHotels } });
+assert.equal(renders.length, 5, 'an active price filter is reapplied to a fresh source');
+assert.equal(renders.at(-1).length, 1, 'fresh unfiltered hotels do not leak into filtered results');
+assert.equal(railHtmlWrites, railHtmlWritesBeforeRefresh,
+  'an active slider keeps the same controls while progressive results refresh');
+assert.equal(priceInput.max, '200000');
+assert.equal(priceInput.value, '95000', 'the selected price survives the refreshed bounds');
+assert.equal(announcements.length, announcementCount + 1,
+  'fresh source reapplication announces only the final filtered count');
+assert.equal(announcements.at(-1).resultCount, 1);
+
+windowEvents.get('v2:search-reset')();
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+input(95000);
+assert.equal(frames.length, 1);
+const rendersBeforeRefresh = renders.length;
+windowEvents.get('v2:results-rendered')({ detail: { items: refreshedHotels } });
+assert.equal(renders.length, rendersBeforeRefresh + 1,
+  'fresh source immediately consumes the pending latest price state');
+while (frames.length) frames.shift()();
+assert.equal(renders.length, rendersBeforeRefresh + 1,
+  'fresh source cancels the superseded pending price frame');
+
+const announcementsBeforeSort = announcements.length;
+windowEvents.get('v2:results-rendered')({ detail: { items: renders.at(-1) } });
+assert.equal(announcements.length, announcementsBeforeSort,
+  'rerendering the same filtered references does not announce a filter change');
+assert.equal(count.textContent, '1', 'same-reference rerender keeps the established count');
+
+windowEvents.get('v2:search-reset')();
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+input(150000);
+while (frames.length) frames.shift()();
+const temporarilyNarrowedHotels = [{ seaDistance: 400, tours: [{ price: 90000 }] }];
+windowEvents.get('v2:results-rendered')({ detail: { items: temporarilyNarrowedHotels } });
+assert.equal(priceInput.max, '95000');
+assert.equal(priceInput.value, '95000', 'the mounted slider stays inside temporary bounds');
+windowEvents.get('v2:results-rendered')({ detail: { items: refreshedHotels } });
+assert.equal(priceInput.value, '150000',
+  'a temporary source contraction does not destroy the user-selected price limit');
+
+Object.assign(form.elements, {
+  price_from: { value: '80000' }, price_till: { value: '180000' },
+  onlyDirect: { checked: true }, onlyCharter: { checked: true }
+});
+const announcementsBeforeReset = announcements.length;
+const rendersBeforeReset = renders.length;
+railEvents.get('click')({
+  target: { closest(selector) { return selector === '[data-s3-reset]' ? {} : null; } }
+});
+assert.equal(form.elements.price_from.value, '', 'reset clears the lower budget bound');
+assert.equal(form.elements.price_till.value, '', 'reset clears the upper budget bound');
+assert.equal(form.elements.onlyDirect.checked, false, 'reset clears the direct-flight form filter');
+assert.equal(form.elements.onlyCharter.checked, false, 'reset clears the charter form filter');
+assert.equal(formSubmits, 1, 'desktop reset submits the cleared form once');
+assert.equal(renders.length, rendersBeforeReset + 1, 'reset restores the unfiltered source once');
+assert.equal(renders.at(-1).length, refreshedHotels.length, 'reset restores every source hotel');
+assert.equal(announcements.length, announcementsBeforeReset + 1,
+  'reset announces the restored result count once');
+
+form.elements.onlyCharter.checked = true;
+windowEvents.get('v2:search-reset')();
+assert.match(railHtml, /data-s3-charter-check checked/,
+  'a new search restores the result-rail charter state from the form');
+assert.equal(rail.dataset.s3ActiveCount, '1');
+const announcementsBeforeEmptyCharterToggle = announcements.length;
+railEvents.get('change')({
+  target: {
+    checked: false, name: '',
+    matches(selector) { return selector === '[data-s3-charter-check]'; }
+  }
+});
+assert.equal(form.elements.onlyCharter.checked, false,
+  'changing the local charter filter keeps the form state in sync');
+assert.equal(rail.dataset.s3ActiveCount, '0',
+  'clearing a filter updates the active count even when the result source is empty');
+assert.equal(announcements.length, announcementsBeforeEmptyCharterToggle + 1,
+  'an empty-result filter change still announces its new state once');
+assert.equal(announcements.at(-1).resultCount, 0);
+
+input(100000);
+while (frames.length) frames.shift()();
+assert.equal(rail.dataset.s3ActiveCount, '1',
+  'a scheduled price change updates the active count with an empty source');
+assert.equal(announcements.at(-1).resultCount, 0);
+
+windowEvents.get('v2:search-reset')();
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+railEvents.get('change')({
+  target: {
+    checked: true, name: '',
+    matches(selector) { return selector === '[data-s3-charter-check]'; }
+  }
+});
+assert.equal(renders.at(-1).length, 0, 'the charter filter can legitimately produce no matches');
+const announcementsBeforeEmptyRerender = announcements.length;
+windowEvents.get('v2:results-rendered')({ detail: { items: renders.at(-1) } });
+assert.equal(announcements.length, announcementsBeforeEmptyRerender,
+  'rerendering the same empty filtered result is not a new source');
+railEvents.get('change')({
+  target: {
+    checked: false, name: '',
+    matches(selector) { return selector === '[data-s3-charter-check]'; }
+  }
+});
+assert.equal(renders.at(-1).length, hotels.length,
+  'clearing a zero-match filter restores the original result source');
+
+windowEvents.get('v2:search-reset')();
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+railEvents.get('change')({
+  target: {
+    name: 's3-sea', value: '500',
+    matches() { return false; }
+  }
+});
+assert.equal(renders.at(-1).length, 1, 'the available sea facet filters complete data');
+const incompleteSeaHotels = [
+  { seaDistance: 0, tours: [{ price: 90000 }] },
+  { seaDistance: 800, tours: [{ price: 160000 }] }
+];
+windowEvents.get('v2:results-rendered')({ detail: { items: incompleteSeaHotels } });
+assert.equal(seaSection.hidden, true, 'a partial progressive source hides the incomplete sea facet');
+assert.equal(seaInputs[0].checked, true, 'hiding the incomplete facet resets it to any distance');
+assert.equal(rail.dataset.s3ActiveCount, '0', 'the hidden incomplete facet is not counted as active');
+
+windowEvents.get('v2:search-reset')();
+const hotelWithoutTours = { seaDistance: 300, price: 135000 };
+windowEvents.get('v2:results-rendered')({ detail: { items: [hotelWithoutTours] } });
+input(100000);
+while (frames.length) frames.shift()();
+assert.equal(renders.at(-1).length, 0, 'price filtering still excludes a hotel without tour rows');
+input(140000);
+while (frames.length) frames.shift()();
+assert.equal(renders.at(-1).length, 1, 'price filtering still restores a matching hotel without tour rows');
 console.log('PASS: price input bursts render once per frame with latest state');
