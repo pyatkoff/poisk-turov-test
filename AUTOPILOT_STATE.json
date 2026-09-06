@@ -656,36 +656,36 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "21bf320c5524edde4995d2c3c349d978f7434dae",
+    "baseline": "41c27412b21d1a2e7184376c2c187d325a6485ac",
     "previous_css_checkpoint": "2d4cd972f1d65ae551de50a3699745fa6da13c65",
     "evidence": [
       "tests/search3-filter-rail-price-input.cjs",
       "tests/search3-filter-rail-ownership.cjs"
     ],
-    "scope": "One mobile filter owner; orphan drawer lifecycle and cascade removed. Price-slider labels remain immediate while rapid filtering renders at most once per animation frame with the latest state. Reset, an immediately applied sea/charter change, or a fresh result source cancels a superseded pending price render. Active local filters are reapplied to fresh progressive results before the final count is announced. Sort/same-reference rerenders neither announce a filter change nor rewrite the established count. Progressive source updates synchronize price bounds and result count in place, preserving mounted controls and the active price selection; a temporary source contraction clamps only the displayed slider value and restores the user's chosen limit when wider bounds return. Full rail rendering has one reset/initialization contract with no obsolete silent mode.",
+    "scope": "One mobile filter owner; orphan drawer lifecycle and cascade removed. Price-slider labels remain immediate while rapid filtering renders at most once per animation frame with the latest state. Reset, an immediately applied sea/charter change, or a fresh result source cancels a superseded pending price render. Active local filters are reapplied to fresh progressive results before the final count is announced. Sort/same-reference rerenders neither announce a filter change nor rewrite the established count. Progressive source updates synchronize price bounds and result count in place, preserving mounted controls and the active price selection; a temporary source contraction clamps only the displayed slider value and restores the user's chosen limit when wider bounds return. Result reset clears both budget bounds and both form flight constraints before one desktop submit. The local charter control mirrors the form and restores its hydrated state on search reset. Full rail rendering has one reset/initialization contract with no obsolete silent mode.",
     "source_validation": "LOCAL_BUILD_AND_FOCUSED_REGRESSIONS_PLUS_23_APPLICABLE_CI_VERIFIED",
     "ci": {
       "applicable_success": 23,
       "expected_skipped": 1,
-      "core_run": 34010029946,
-      "visual_run": 34010030005,
-      "visual_artifact_id": 9982175793,
-      "visual_artifact_digest": "sha256:8bb62df29320210dcbca92868d5c2c8b3dc7a6511c631abdcbe6b0b5c800a3de",
-      "whole_site_artifact_run": 34010029986,
-      "whole_site_artifact_id": 9982172594,
-      "whole_site_artifact_digest": "sha256:1102f6aeac334e966d6e490dcba2487cca43c860efda6f6896e9b959bdf3f54a"
+      "core_run": 34012118544,
+      "visual_run": 34012118653,
+      "visual_artifact_id": 9982790892,
+      "visual_artifact_digest": "sha256:50c1e604aa36c8f1f1e19e541b7654ad236278f8e3f0f4ab62d3d7a5a10bf74b",
+      "whole_site_artifact_run": 34012118533,
+      "whole_site_artifact_id": 9982787219,
+      "whole_site_artifact_digest": "sha256:81a996dd8109c853e233945bb02a9046adfba8578bbf281ddc213aeec570fe42"
     },
     "public_assets": {
       "css_bytes": 366267,
       "css_lines": 4196,
-      "js_bytes": 157993,
+      "js_bytes": 158180,
       "js_lines": 1917,
-      "total_bytes": 524260,
+      "total_bytes": 524447,
       "total_lines": 6113,
       "scope": "Four CSS and four JS public assets, uncompressed, excluding shared runtime and legacy; src and v2 are not double-counted."
     },
     "preview_updated": false,
     "production_updated": false,
-    "next_action": "Read the latest release head, #996 and #1334 before proving a new independent filter-state or CSS ownership issue. Do not repeat the completed lifecycle, price-frame, fresh-source reapplication/cancellation, mounted-control or temporary-bound selection preservation, sort/same-reference suppression, render-mode removal or orphan-cascade work. Production visual-approval lock remains."
+    "next_action": "Read the latest release head, #996 and #1334 before proving a new independent filter-state or CSS ownership issue. Do not repeat the completed lifecycle, price-frame, fresh-source reapplication/cancellation, mounted-control or temporary-bound selection preservation, paired reset, charter-form synchronization, sort/same-reference suppression, render-mode removal or orphan-cascade work. Production visual-approval lock remains."
   }
 }
