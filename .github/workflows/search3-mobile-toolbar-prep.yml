@@ -31,7 +31,7 @@ jobs:
           import subprocess
           import textwrap
           from pathlib import Path
-          # Reuse only the two reviewed, unfinished steps; never rerun the completed queue rewrite.
+          # Reuse only the two reviewed, unfinished steps; completed queue changes are already in release.
           old = subprocess.check_output(['git','cat-file','blob','c72594769c7e96ccfa043a70b4d15efc84615f04'], text=True)
           def step(name):
               block = old.split('      - name: ' + name + '\n', 1)[1].split('\n      - name: ', 1)[0]
@@ -41,6 +41,20 @@ jobs:
           after = "throw new Error('TOOLBAR_RESIZE_CHANGED_FORM ' + width + ' ' + JSON.stringify({ before: JSON.parse(before), after: await formValues() }));"
           assert preparation.count(before) == 1
           preparation = preparation.replace(before, after)
+          anchor = "    await page.evaluate(html => {"
+          assert preparation.count(anchor) == 1
+          preparation = preparation.replace(anchor, '''    // Aborted catalogue requests finish asynchronously and clear loading options.
+              // Wait for that fixture-only failure before capturing parameters for resize.
+              await page.waitForFunction(() => document.getElementById('tourSearch').dataset.catalogSource === 'partial');
+              await page.evaluate(() => {
+                const form = document.getElementById('tourSearch');
+                for (const [name, value, label] of [['from','1','Fixture departure'], ['country','4','Fixture country']]) {
+                  const select = form.elements[name];
+                  if (![...select.options].some(option => option.value === value)) select.add(new Option(label, value));
+                  select.value = value;
+                }
+              });
+          ''' + anchor)
           proof = step('Prove the desktop defect then verify the narrow CSS correction')
           proof = proof.replace(' | tee "$RUNNER_TEMP/toolbar-boundary-green.log"', ' 2>&1 | tee "$RUNNER_TEMP/toolbar-boundary-green.log"')
           temp = Path(os.environ['RUNNER_TEMP'])
