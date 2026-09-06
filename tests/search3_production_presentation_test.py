@@ -56,6 +56,18 @@ class Search3ProductionPresentationTest(unittest.TestCase):
                 self.assertTrue(raw.endswith(b'\n'), name)
                 self.assertFalse(raw.endswith(b'\n\n'), name)
 
+    def test_shared_fact_typography_keeps_equal_specificity(self):
+        source = (ROOT / 'src/search3/styles/acceptance-guards.css').read_text()
+        prefix = 'html body.search3-candidate.search3-results-active #results '
+        shared = ':is(.search3-hotel-facts,.tour-fact)'
+        self.assertEqual(source.count(prefix + shared + ' small{'), 2)
+        self.assertEqual(source.count(prefix + shared + ' b{'), 1)
+        for selector in ('.search3-hotel-facts', '.tour-fact'):
+            self.assertNotIn(prefix + selector + ' small{', source)
+        # :is() contributes its most-specific argument: one class, exactly as
+        # either replaced selector did. The trailing element is unchanged.
+        self.assertEqual(shared.count('.'), 2)
+
     def test_cascade_split_rejects_byte_drift(self):
         spec = importlib.util.spec_from_file_location(
             'search3_cascade_sections', ROOT / 'scripts/build/search3_cascade_sections.py')
