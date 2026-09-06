@@ -20,6 +20,10 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         for name in ('search3-booking-summary.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-entry-summary.cjs'):
             subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
 
+    @unittest.skipUnless(shutil.which('node'), 'Node required for filter ownership regression')
+    def test_filter_rail_ownership(self):
+        subprocess.run(['node', str(ROOT / 'tests' / 'search3-filter-rail-ownership.cjs')], check=True)
+
     def test_cascade_compatibility_section_contract(self):
         subprocess.run([
             'python3',
