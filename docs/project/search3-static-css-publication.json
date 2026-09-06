@@ -1,0 +1,172 @@
+{
+  "status": "PUBLISHED_FOCUSED_LIVE_SCENARIO_VERIFIED",
+  "source_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
+  "source_tree": "81642f55b24b0930d28177dc783f6df418bdebe4",
+  "release_pin_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
+  "artifact_id": 9997204595,
+  "artifact_run": 34060126171,
+  "artifact_digest": "sha256:d2c69cd121ccbd2ee4159b53fb77b27b698d1f4c3de8bd366b70658b605962cd",
+  "deploy_pr": 1421,
+  "deploy_run": 34060271120,
+  "deployment_evidence_artifact": 9997242581,
+  "deployment_evidence_digest": "sha256:ecb1cad2bf5682df01354e09e31d8d3a3a1c296e2aea949994d2e050ecba6580",
+  "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+  "verified_at": "2026-09-06T21:20:23.284Z",
+  "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+  "production_unchanged": true,
+  "physical_safari_tested": false,
+  "real_lead_submitted": false,
+  "verification": {
+    "changed_flight": "SU2156 / SU2157",
+    "editor_dates_preserved": true,
+    "full_responsive_matrix_run": false,
+    "horizontal_overflow": false,
+    "hotel": "ANAHTAR APART",
+    "hotels": 100,
+    "initial_price_rub": 72099,
+    "lead_price_rub": 89317,
+    "lead_screenshot_inspected": true,
+    "mobile_live_checked": false,
+    "phone_empty": true,
+    "physical_safari_tested": false,
+    "real_lead_submitted": false,
+    "return_cards": 100,
+    "review_price_rub": 89317,
+    "review_screenshot_inspected": true,
+    "scope": "One focused desktop search/flight/review/empty-lead/return/zero-filter/editor scenario. Mobile viewport is not exposed by the supported browser; physical Safari and full responsive/site/SEO matrix deferred.",
+    "search": {
+      "adults": 2,
+      "country": "Турция",
+      "date_from": "2026-09-10",
+      "date_to": "2026-09-11",
+      "departure": "Москва",
+      "nights": 7
+    },
+    "selected_price_rub": 89317,
+    "source_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
+    "tours": 480,
+    "viewport_width": 1363,
+    "zero_filter": {
+      "end_cards": 100,
+      "home_cards": 0,
+      "new_search": false,
+      "rail_visible": true
+    },
+    "editor_nights_preserved": true,
+    "verified_at": "2026-09-06T21:20:23.284Z"
+  },
+  "public_assets": {
+    "css_bytes": 201014,
+    "css_lines": 4,
+    "js_bytes": 110673,
+    "js_lines": 55,
+    "total_bytes": 311687,
+    "total_lines": 59,
+    "scope": "Eight public Search3 assets, uncompressed; excludes shared runtime/legacy and duplicate src. No page-speed or transfer-compression claim."
+  },
+  "live_asset_sha256": [],
+  "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+  "responsive_ci_scope": "Owner-authorized lean cycle; exact cascade proof at 42 numeric width boundary/adjacent points. Live desktop checked; supported browser exposes no viewport resizing. No physical/mobile visual acceptance claimed.",
+  "known_limitations": [
+    {
+      "width": 375,
+      "recovery": "native Escape",
+      "limitation": "retained hidden advanced-filter owner left an open backdrop"
+    }
+  ],
+  "known_limitations_scope": "Inherited pre-existing hidden legacy advanced-filter backdrop on desktop-to-mobile resize; not fixed or requalified by this desktop-only live journey. Prior controlled evidence retained in publication history. Native CSS nesting browser boundary applies. Earlier immediate editor click during asynchronous return remains unqualified; this pass confirmed editor after completed return. No-flight fallback and physical Safari not tested live.",
+  "baseline": "dce86fd4c35769d9e2f3f586eda90885de4a0496",
+  "source_prs": [
+    1419,
+    1420
+  ],
+  "ci": {
+    "policy": "OWNER_AUTHORIZED_SINGLE_BUILD_PREVIEW",
+    "source_prs": [
+      1419,
+      1420
+    ],
+    "source_build_runs": [
+      34059991637,
+      34060126171
+    ],
+    "source_security_runs": [
+      34059991634,
+      34060126142
+    ],
+    "each_source_required_passed": 2,
+    "artifact_rebuilt_on_release": false,
+    "artifact_rebuilt_for_docs": false,
+    "full_responsive_site_seo": "deferred, not passed"
+  },
+  "delta": {
+    "css_bytes": -1100,
+    "js_bytes": -1727,
+    "bytes": -2827,
+    "lines": 0
+  },
+  "artifact_metadata": {
+    "archive_sha256": "fe15c537bd97c40edfd8c633ccb0936d500e6596dcebf86ba587e2692428aada",
+    "file_count": "715",
+    "manifest_sha256": "5c54c76debbdde3935fce811d8967ecc364db3fa79ab85530d849f36b2224fb8",
+    "payload_checksums_sha256": "f4746e55629c8690c9ce168c437faf3d0e23b7d862b0e9b4653c18ddaee18eb4",
+    "source_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
+    "source_tree_sha": "81642f55b24b0930d28177dc783f6df418bdebe4"
+  },
+  "source_audits": [
+    "docs/project/search3-static-payload-reduction.json",
+    "docs/project/search3-css-media-overlap.json"
+  ],
+  "direct_http_poll": "Unconfirmed; tool auto-review rejected polling because environment usage limit was reached. No workaround attempted.",
+  "next_action": "Continue measured reduction from source bff20777. Private injected CSS optimization, four presentation markup/class-prefix helpers and 36 exact-value media/priority deletions are complete; do not repeat them. Remaining different-value CSS candidates require browser-compatibility and cascade evidence before removal. Prefer the largest measured source simplification; preserve eight paths, native nesting max depth three, public keys/globals and price/API/lead/analytics contracts. Reuse one final working-source artifact, focused live checks only. Local command polling hit an environment usage-limit auto-review rejection; do not retry or bypass that blocked operation. Resume new local development when execution capacity is available. Main/production locked; scheduler paused.",
+  "artifact_asset_sha256": [
+    {
+      "name": "search3-entry-v1.css",
+      "sha256": "a9807244e221ebd7ae6d79ac7780cae2dc8e2e215ace8226db8b14872e7f96f7",
+      "exact": true,
+      "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
+    },
+    {
+      "name": "search3-entry-v1.js",
+      "sha256": "84b07000124e0aa1fc73b5e38032b4a5db370519debee500b53a8a944cf71fc2",
+      "exact": true,
+      "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
+    },
+    {
+      "name": "search3-results-cards-v2.css",
+      "sha256": "6f1d44d16a8f351b774698bef4ce8995f4fb014c8d6b232bc896c3ab059a6bd1",
+      "exact": true,
+      "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
+    },
+    {
+      "name": "search3-results-cards-v2.js",
+      "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
+      "exact": true,
+      "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
+    },
+    {
+      "name": "search3-results-filters-v1.css",
+      "sha256": "5c1dca4c580be75486799eb549a1484cafa3f3f674422d88a8452b4852dc254c",
+      "exact": true,
+      "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
+    },
+    {
+      "name": "search3-results-filters-v1.js",
+      "sha256": "9bd92d0f758e5e2b99fca3dc12b7504700fbe0a4ed65e6bf07ac4c0adc70acf0",
+      "exact": true,
+      "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
+    },
+    {
+      "name": "search3-selected-flow-v2.css",
+      "sha256": "395f6d6a9c0b8a019f9402d7f45e35e12d5cd1c17f5cf81ffd31218695b467da",
+      "exact": true,
+      "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
+    },
+    {
+      "name": "search3-selected-flow-v2.js",
+      "sha256": "343da269455930d98f58fd3067c4ee5f235747a4135053ca035d80ff51195435",
+      "exact": true,
+      "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
+    }
+  ]
+}

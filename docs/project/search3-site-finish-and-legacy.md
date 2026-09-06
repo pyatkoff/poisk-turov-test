@@ -429,3 +429,57 @@ rollback pass,13 production fingerprints before=after=final.
 Live100 hotels, editor opens, dates2026-09-06/19 retained, no horizontal overflow;
 JS37813fa396116719. No lead submitted or production migration. Source README
 now documents update ownership; physical Safari/legal/owner acceptance remain.
+
+
+## Refactor publication — 2026-09-06
+
+Source `bff20777468c2a7d41df684dc1902c267adde3cf`, source PRs #1419/#1420; one isolated publication #1421,
+deploy 34060271120 succeeded on attempt 1. Each working draft passed Security and
+the exact artifact job. Release/docs reuse the final source artifact; full
+responsive/site/SEO workflows remain deferred under the owner lean policy.
+
+| Eight public assets | Previous bytes | Published bytes |
+| --- | ---: | ---: |
+| Four CSS | 202114 | 201014 |
+| Four JS | 112400 | 110673 |
+| Total | 314514 | 311687 |
+
+Net saving 2827 bytes (0.90%); 4 CSS + 55 JS = 59 generated lines. Uncompressed,
+excluding shared runtime/legacy and duplicate source; no page-speed claim.
+Two private style strings use the existing optimizer before escaping at their
+original JS insertion positions. Four behavior owners share private markup and
+class prefixes. Sixteen compiled old/new traces retain exact HTML, DOM/selector
+operations, listener registrations/arity and supplier getter reads. A conservative
+optimizer guard retains Raw CSS comment token boundaries.
+
+The CSS pass removes 36 identical-value declarations with exact-selector witnesses
+under broader media or important priority, then nine empty rules. Retained ordered
+streams are exact; final selector/property/priority maps match at all 42 numeric
+media boundary/adjacent points. Non-numeric/supports contexts and protected
+acceptance source stay unchanged. Donor/order and native nesting max three remain.
+Build/check/import tests pass; PHP rendering passed in artifact CI.
+
+Artifact 9997204595 from build 34060126171 /
+`sha256:d2c69cd121ccbd2ee4159b53fb77b27b698d1f4c3de8bd366b70658b605962cd`.
+All 715 payload hashes and eight generated assets verified before publication.
+Nine routes, noindex, counter zero, disabled leads, rollback and 13 unchanged
+production fingerprints are recorded in evidence 9997242581 /
+`sha256:ecb1cad2bf5682df01354e09e31d8d3a3a1c296e2aea949994d2e050ecba6580`.
+
+Focused live desktop 1363px: Moscow/Turkey, 10–11 Sep, seven nights, two adults;
+100 hotels / 480 tours -> ANAHTAR APART -> SU2156/SU2157, 72099 -> 89317 RUB ->
+review -> empty lead form -> review -> return 100 -> zero-filter 0 -> restore 100
+without another search -> editor dates/nights retained. Review and lead screenshots
+inspected; no horizontal overflow or real lead. Physical Safari/live mobile and
+the full responsive/site/SEO suite were deferred. Browser API had transient
+post-click timeouts; fresh DOM confirmed each resulting state.
+
+The local direct-HTTP asset-hash polling result is unconfirmed: automatic approval
+review rejected the poll because environment usage capacity was exhausted.
+No retry or indirect workaround was used; artifact/remote activation hash proofs,
+deployment evidence and the independent browser journey were completed.
+Main remains fa58a0cb; production/protected contracts untouched; scheduler paused.
+
+Audit: `docs/project/search3-static-css-publication.json`.
+Next: Continue measured reduction from source bff20777. Private injected CSS optimization, four presentation markup/class-prefix helpers and 36 exact-value media/priority deletions are complete; do not repeat them. Remaining different-value CSS candidates require browser-compatibility and cascade evidence before removal. Prefer the largest measured source simplification; preserve eight paths, native nesting max depth three, public keys/globals and price/API/lead/analytics contracts. Reuse one final working-source artifact, focused live checks only. Local command polling hit an environment usage-limit auto-review rejection; do not retry or bypass that blocked operation. Resume new local development when execution capacity is available. Main/production locked; scheduler paused.
+

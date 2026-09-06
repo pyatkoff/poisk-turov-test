@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-06T20:42:40.592991+00:00",
+  "updated_at": "2026-09-06T21:20:23.284Z",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -64,26 +64,23 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_SINGLE_BUILD_MINIFICATION",
-    "title": "Build preview once and optimize generated CSS/JS",
+    "id": "S3_STATIC_PAYLOAD_AND_MEDIA_OVERLAP",
+    "title": "Reduce private CSS, repeated presentation markup and witnessed CSS overlap",
     "status": "PUBLISHED_FOCUSED_LIVE_SCENARIO_VERIFIED",
-    "implementation_sha": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
+    "implementation_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
     "source_prs": [
-      1416,
-      1418
+      1419,
+      1420
     ],
     "issue": 996,
-    "artifact_id": 9996682414,
-    "artifact_run": 34058350586,
-    "deploy_pr": 1417,
-    "deploy_run": 34058520640,
-    "evidence_artifact": 9996718591,
-    "next_action": "Continue measured CSS/JS reduction in release-based draft batches. Single-build CI routing and standard CSS/JS minification are complete: do not repeat optimizer comparisons or build after release/docs. Next inspect repeated static presentation strings/private injected CSS for a measured net reduction before source changes; retain readable source, eight paths, native nesting, globals/public keys and all price/API/lead contracts. One working source artifact plus focused live checks; broaden only for a concrete failure. Main/production locked; scheduler paused.",
-    "ci_followup_sha": "27d48f081e457a879aa55bcddb3a94d7e18129d2",
-    "ci_followup_pr": 1418,
-    "ci_followup_status": "MERGED_RELEASE_CI_PASSED_NO_REDEPLOY_REQUIRED"
+    "artifact_id": 9997204595,
+    "artifact_run": 34060126171,
+    "deploy_pr": 1421,
+    "deploy_run": 34060271120,
+    "evidence_artifact": 9997242581,
+    "next_action": "Continue measured reduction from source bff20777. Private injected CSS optimization, four presentation markup/class-prefix helpers and 36 exact-value media/priority deletions are complete; do not repeat them. Remaining different-value CSS candidates require browser-compatibility and cascade evidence before removal. Prefer the largest measured source simplification; preserve eight paths, native nesting max depth three, public keys/globals and price/API/lead/analytics contracts. Reuse one final working-source artifact, focused live checks only. Local command polling hit an environment usage-limit auto-review rejection; do not retry or bypass that blocked operation. Resume new local development when execution capacity is available. Main/production locked; scheduler paused."
   },
   "queue": [
     {
@@ -792,10 +789,29 @@
         "runtime_assets_changed": false,
         "preview_redeployed": false
       }
+    },
+    "static_payload_and_media_overlap": {
+      "policy": "OWNER_AUTHORIZED_SINGLE_BUILD_PREVIEW",
+      "source_prs": [
+        1419,
+        1420
+      ],
+      "source_build_runs": [
+        34059991637,
+        34060126171
+      ],
+      "source_security_runs": [
+        34059991634,
+        34060126142
+      ],
+      "each_source_required_passed": 2,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "full_responsive_site_seo": "deferred, not passed"
     }
   },
-  "last_verified_commit": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
-  "last_verified_commit_scope": "One exact source artifact, seven changed live asset hashes, unchanged production fingerprints and one desktop search/filter/flight/review/empty lead/return scenario. Full responsive/site/SEO matrix deferred, not passed.",
+  "last_verified_commit": "bff20777468c2a7d41df684dc1902c267adde3cf",
+  "last_verified_commit_scope": "Two source drafts passed required CI; exact isolated preview publication and focused live scenario verified. Production unchanged.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -968,74 +984,54 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "2ff236022f4e013df5abfa3fa3657a0eb46a6f3a",
-    "stage": "S3_SINGLE_BUILD_MINIFICATION_PUBLISHED",
-    "implementation_sha": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
-    "release_integration_sha": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
+    "baseline": "dce86fd4c35769d9e2f3f586eda90885de4a0496",
+    "stage": "S3_STATIC_PAYLOAD_AND_MEDIA_OVERLAP_PUBLISHED",
+    "implementation_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
+    "release_integration_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
     "public_assets": {
-      "css_bytes": 202114,
+      "css_bytes": 201014,
       "css_lines": 4,
-      "js_bytes": 112400,
+      "js_bytes": 110673,
       "js_lines": 55,
-      "total_bytes": 314514,
+      "total_bytes": 311687,
       "total_lines": 59,
       "scope": "Eight public Search3 assets, uncompressed; excludes shared runtime/legacy and duplicate src. No page-speed or transfer-compression claim."
     },
-    "scope": "Build-only CSS/JS minification saves 6400 public bytes; source draft runs two jobs and cumulative release/docs one Security job. Reuse exact working-PR artifact. Readable runtime sources and business contracts unchanged.",
-    "source_validation": "FOCUSED_ARTIFACT_AND_PRESENTATION_CHECKS_PASSED_LIVE_SCENARIO_VERIFIED",
+    "scope": "Two source batches reduce eight public assets by 2827 bytes: private CSS optimization and repeated markup/classes save 1727 JS bytes; 36 witnessed equal-value declarations and nine empty rules save 1100 CSS bytes.",
+    "source_validation": "TWO_SOURCE_DRAFTS_CI_PASSED_EXACT_ARTIFACT_PUBLISHED_FOCUSED_LIVE_VERIFIED",
     "preview_updated": true,
     "production_updated": false,
     "ci": {
       "policy": "OWNER_AUTHORIZED_SINGLE_BUILD_PREVIEW",
-      "source_pr": 1416,
-      "source_success": 2,
-      "source_deferred": 2,
-      "release_draft_success": 1,
-      "release_draft_deferred": 23,
-      "artifact_run": 34058350586,
+      "source_prs": [
+        1419,
+        1420
+      ],
+      "source_build_runs": [
+        34059991637,
+        34060126171
+      ],
+      "source_security_runs": [
+        34059991634,
+        34060126142
+      ],
+      "each_source_required_passed": 2,
       "artifact_rebuilt_on_release": false,
       "artifact_rebuilt_for_docs": false,
-      "source_required": [
-        "Security guard (both existing owner validators included)",
-        "Exact artifact build (PHP/path/presentation/isolation included)"
-      ],
-      "release_required": [
-        "Security guard (both existing owner validators included)"
-      ],
-      "note": "Skipped jobs are deferred, not passed. All applicable jobs restore for non-draft production consideration. No non-PR trigger changes; production remains locked.",
-      "followup": {
-        "sha": "27d48f081e457a879aa55bcddb3a94d7e18129d2",
-        "tree": "4feffcfe7fb4792e76afb735e7bd519c298438a2",
-        "pr": 1418,
-        "branch": "ci/search3-faster-focused-build",
-        "before_step_seconds": {
-          "focused_contracts": 48,
-          "payload": 26
-        },
-        "build_run": 34058941809,
-        "security_run": 34058941701,
-        "conclusion": "success",
-        "release_integrated": true,
-        "after_step_seconds": {
-          "focused_contracts": 24,
-          "payload": 10
-        },
-        "runtime_assets_changed": false,
-        "preview_redeployed": false
-      }
+      "full_responsive_site_seo": "deferred, not passed"
     },
-    "preview_deploy_pr": 1417,
-    "preview_deploy_run": 34058520640,
-    "verified_at": "2026-09-06T20:42:40.592991+00:00",
+    "preview_deploy_pr": 1421,
+    "preview_deploy_run": 34060271120,
+    "verified_at": "2026-09-06T21:20:23.284Z",
     "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
     "run_delta": {
-      "bytes": -6400,
-      "js_bytes": -3077,
-      "css_bytes": -3323,
-      "lines": -33
+      "css_bytes": -1100,
+      "js_bytes": -1727,
+      "bytes": -2827,
+      "lines": 0
     },
-    "next_action": "Continue measured CSS/JS reduction in release-based draft batches. Single-build CI routing and standard CSS/JS minification are complete: do not repeat optimizer comparisons or build after release/docs. Next inspect repeated static presentation strings/private injected CSS for a measured net reduction before source changes; retain readable source, eight paths, native nesting, globals/public keys and all price/API/lead contracts. One working source artifact plus focused live checks; broaden only for a concrete failure. Main/production locked; scheduler paused.",
-    "audit": "docs/project/search3-single-build-minification.json"
+    "next_action": "Continue measured reduction from source bff20777. Private injected CSS optimization, four presentation markup/class-prefix helpers and 36 exact-value media/priority deletions are complete; do not repeat them. Remaining different-value CSS candidates require browser-compatibility and cascade evidence before removal. Prefer the largest measured source simplification; preserve eight paths, native nesting max depth three, public keys/globals and price/API/lead/analytics contracts. Reuse one final working-source artifact, focused live checks only. Local command polling hit an environment usage-limit auto-review rejection; do not retry or bypass that blocked operation. Resume new local development when execution capacity is available. Main/production locked; scheduler paused.",
+    "audit": "docs/project/search3-static-css-publication.json"
   },
   "presentation_refactor_history": [
     {
@@ -2195,6 +2191,76 @@
       },
       "next_action": "Continue measured CSS/JS reduction in release-based draft batches with the lean preview cycle. Local-name shortening and workflow routing are complete. Inspect remaining repeated static presentation markup or build compaction opportunities; preserve public keys/globals, price/API/lead contracts and eight paths. Do not rerun full site/SEO/responsive matrices without a concrete failure; restore full applicable gates for production review. Preview-only exact publication, production locked, scheduler paused.",
       "audit": "docs/project/search3-lean-preview-reduction.json"
+    },
+    {
+      "baseline": "2ff236022f4e013df5abfa3fa3657a0eb46a6f3a",
+      "stage": "S3_SINGLE_BUILD_MINIFICATION_PUBLISHED",
+      "implementation_sha": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
+      "release_integration_sha": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
+      "public_assets": {
+        "css_bytes": 202114,
+        "css_lines": 4,
+        "js_bytes": 112400,
+        "js_lines": 55,
+        "total_bytes": 314514,
+        "total_lines": 59,
+        "scope": "Eight public Search3 assets, uncompressed; excludes shared runtime/legacy and duplicate src. No page-speed or transfer-compression claim."
+      },
+      "scope": "Build-only CSS/JS minification saves 6400 public bytes; source draft runs two jobs and cumulative release/docs one Security job. Reuse exact working-PR artifact. Readable runtime sources and business contracts unchanged.",
+      "source_validation": "FOCUSED_ARTIFACT_AND_PRESENTATION_CHECKS_PASSED_LIVE_SCENARIO_VERIFIED",
+      "preview_updated": true,
+      "production_updated": false,
+      "ci": {
+        "policy": "OWNER_AUTHORIZED_SINGLE_BUILD_PREVIEW",
+        "source_pr": 1416,
+        "source_success": 2,
+        "source_deferred": 2,
+        "release_draft_success": 1,
+        "release_draft_deferred": 23,
+        "artifact_run": 34058350586,
+        "artifact_rebuilt_on_release": false,
+        "artifact_rebuilt_for_docs": false,
+        "source_required": [
+          "Security guard (both existing owner validators included)",
+          "Exact artifact build (PHP/path/presentation/isolation included)"
+        ],
+        "release_required": [
+          "Security guard (both existing owner validators included)"
+        ],
+        "note": "Skipped jobs are deferred, not passed. All applicable jobs restore for non-draft production consideration. No non-PR trigger changes; production remains locked.",
+        "followup": {
+          "sha": "27d48f081e457a879aa55bcddb3a94d7e18129d2",
+          "tree": "4feffcfe7fb4792e76afb735e7bd519c298438a2",
+          "pr": 1418,
+          "branch": "ci/search3-faster-focused-build",
+          "before_step_seconds": {
+            "focused_contracts": 48,
+            "payload": 26
+          },
+          "build_run": 34058941809,
+          "security_run": 34058941701,
+          "conclusion": "success",
+          "release_integrated": true,
+          "after_step_seconds": {
+            "focused_contracts": 24,
+            "payload": 10
+          },
+          "runtime_assets_changed": false,
+          "preview_redeployed": false
+        }
+      },
+      "preview_deploy_pr": 1417,
+      "preview_deploy_run": 34058520640,
+      "verified_at": "2026-09-06T20:42:40.592991+00:00",
+      "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+      "run_delta": {
+        "bytes": -6400,
+        "js_bytes": -3077,
+        "css_bytes": -3323,
+        "lines": -33
+      },
+      "next_action": "Continue measured CSS/JS reduction in release-based draft batches. Single-build CI routing and standard CSS/JS minification are complete: do not repeat optimizer comparisons or build after release/docs. Next inspect repeated static presentation strings/private injected CSS for a measured net reduction before source changes; retain readable source, eight paths, native nesting, globals/public keys and all price/API/lead contracts. One working source artifact plus focused live checks; broaden only for a concrete failure. Main/production locked; scheduler paused.",
+      "audit": "docs/project/search3-single-build-minification.json"
     }
   ],
   "site_preview_publication_history": [
@@ -4587,67 +4653,222 @@
         "evidence_artifact": 9996165721,
         "next_action": "Continue measured CSS/JS reduction in release-based draft batches with the lean preview cycle. Local-name shortening and workflow routing are complete. Inspect remaining repeated static presentation markup or build compaction opportunities; preserve public keys/globals, price/API/lead contracts and eight paths. Do not rerun full site/SEO/responsive matrices without a concrete failure; restore full applicable gates for production review. Preview-only exact publication, production locked, scheduler paused."
       }
+    },
+    {
+      "status": "PUBLISHED_FOCUSED_LIVE_SCENARIO_VERIFIED",
+      "source_sha": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
+      "source_tree": "b67cbcbfd6f483205ca872e32dc1265762b4a3ef",
+      "release_pin_sha": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
+      "artifact_id": 9996682414,
+      "artifact_run": 34058350586,
+      "artifact_digest": "sha256:92229fe8e5b17ce9744d4d8ff0922014eb0c25ec5f546f31fec2a0f4da111a7e",
+      "deploy_pr": 1417,
+      "deploy_run": 34058520640,
+      "deployment_evidence_artifact": 9996718591,
+      "deployment_evidence_digest": "sha256:4678457ba0263555cfc889084d5df026b8fdba34c96fd0e6d16d80b406c1b33e",
+      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "verified_at": "2026-09-06T20:42:40.592991+00:00",
+      "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+      "production_unchanged": true,
+      "physical_safari_tested": false,
+      "real_lead_submitted": false,
+      "verification": {
+        "source_sha": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
+        "viewport_width": 1363,
+        "hotels": 100,
+        "tours": 431,
+        "search": {
+          "departure": "Москва",
+          "country": "Турция",
+          "date_from": "2026-09-10",
+          "date_to": "2026-09-11",
+          "nights": 7,
+          "adults": 2
+        },
+        "zero_filter": {
+          "home_cards": 0,
+          "rail_width": 220,
+          "end_cards": 100,
+          "new_search": false
+        },
+        "hotel": "ANAHTAR APART",
+        "initial_price_rub": 72099,
+        "changed_flight": "SU2156 / SU2157",
+        "selected_price_rub": 89317,
+        "lead_price_rub": 89317,
+        "phone_empty": true,
+        "horizontal_overflow": false,
+        "results_screenshot_inspected": true,
+        "real_lead_submitted": false,
+        "physical_safari_tested": false,
+        "full_responsive_matrix_run": false,
+        "mobile_live_checked": false,
+        "mobile_scope": "Deferred: supported browser surface does not expose viewport resizing; one browser zoom attempt left CSS viewport unchanged. Compiled mobile toolbar/scheduler behavior checks passed in the source artifact.",
+        "verified_at": "2026-09-06T20:40:46.349117+00:00",
+        "scope": "One focused desktop search/filter/flight/review/empty lead scenario. No repeated full site/SEO/responsive suite.",
+        "return_cards": 100,
+        "return_selected_hidden": true
+      },
+      "live_viewport_widths": [
+        1363
+      ],
+      "responsive_ci_run": null,
+      "known_limitations": [
+        {
+          "width": 375,
+          "recovery": "native Escape",
+          "limitation": "retained hidden advanced-filter owner left an open backdrop"
+        }
+      ],
+      "known_limitations_scope": "Inherited pre-existing hidden legacy advanced-filter backdrop on desktop-to-mobile resize; not fixed or requalified by this desktop-only live journey. Prior controlled evidence retained in publication history. Native CSS nesting browser boundary applies. Earlier immediate editor click during asynchronous return remains unqualified; this pass confirmed editor after completed return. No-flight fallback and physical Safari not tested live.",
+      "public_assets": {
+        "css_bytes": 202114,
+        "css_lines": 4,
+        "js_bytes": 112400,
+        "js_lines": 55,
+        "total_bytes": 314514,
+        "total_lines": 59,
+        "scope": "Eight public Search3 assets, uncompressed; excludes shared runtime/legacy and duplicate src. No page-speed or transfer-compression claim."
+      },
+      "live_asset_sha256": [
+        {
+          "name": "search3-results-filters-v1.js",
+          "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.js?v=07b31be4dd2cdbce",
+          "bytes": 100325,
+          "sha256": "07b31be4dd2cdbce2a25242e7810cc9911c9c504dd22ed73592af39f70a0be35",
+          "exact": true,
+          "verification_method": "direct_http_and_artifact"
+        },
+        {
+          "name": "search3-results-filters-v1.css",
+          "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.css?v=8910170ceca443a6",
+          "bytes": 180508,
+          "sha256": "8910170ceca443a6a9d7a531c07c9dd832e2069770bafe941e43eb3f13d8fdbc",
+          "exact": true,
+          "verification_method": "direct_http_and_artifact"
+        },
+        {
+          "name": "search3-entry-v1.css",
+          "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.css?v=ae17b739834fe229",
+          "bytes": 9979,
+          "sha256": "ae17b739834fe22952c442238b46cbe80a4007fe015fc3579c67690d8bd2c562",
+          "exact": true,
+          "verification_method": "direct_http_and_artifact"
+        },
+        {
+          "name": "search3-entry-v1.js",
+          "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.js?v=84b07000124e0aa1",
+          "bytes": 3440,
+          "sha256": "84b07000124e0aa1fc73b5e38032b4a5db370519debee500b53a8a944cf71fc2",
+          "exact": true,
+          "verification_method": "direct_http_and_artifact"
+        },
+        {
+          "name": "search3-results-cards-v2.css",
+          "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.css?v=6f1d44d16a8f351b",
+          "bytes": 4157,
+          "sha256": "6f1d44d16a8f351b774698bef4ce8995f4fb014c8d6b232bc896c3ab059a6bd1",
+          "exact": true,
+          "verification_method": "direct_http_and_artifact"
+        },
+        {
+          "name": "search3-results-cards-v2.js",
+          "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.js?v=169c61338df3ef19",
+          "bytes": 88,
+          "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
+          "exact": true,
+          "verification_method": "artifact_and_deployment_payload_hashes"
+        },
+        {
+          "name": "search3-selected-flow-v2.css",
+          "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.css?v=395f6d6a9c0b8a01",
+          "bytes": 7470,
+          "sha256": "395f6d6a9c0b8a019f9402d7f45e35e12d5cd1c17f5cf81ffd31218695b467da",
+          "exact": true,
+          "verification_method": "direct_http_and_artifact"
+        },
+        {
+          "name": "search3-selected-flow-v2.js",
+          "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.js?v=343da269455930d9",
+          "bytes": 8547,
+          "sha256": "343da269455930d98f58fd3067c4ee5f235747a4135053ca035d80ff51195435",
+          "exact": true,
+          "verification_method": "direct_http_and_artifact"
+        }
+      ],
+      "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+      "responsive_ci_scope": "Full responsive matrix deferred by owner. Desktop live checked; mobile viewport unavailable in current browser surface, compiled mobile behavior checks passed."
     }
   ],
   "preview_publication": {
     "status": "PUBLISHED_FOCUSED_LIVE_SCENARIO_VERIFIED",
-    "source_sha": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
-    "source_tree": "b67cbcbfd6f483205ca872e32dc1265762b4a3ef",
-    "release_pin_sha": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
-    "artifact_id": 9996682414,
-    "artifact_run": 34058350586,
-    "artifact_digest": "sha256:92229fe8e5b17ce9744d4d8ff0922014eb0c25ec5f546f31fec2a0f4da111a7e",
-    "deploy_pr": 1417,
-    "deploy_run": 34058520640,
-    "deployment_evidence_artifact": 9996718591,
-    "deployment_evidence_digest": "sha256:4678457ba0263555cfc889084d5df026b8fdba34c96fd0e6d16d80b406c1b33e",
+    "source_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
+    "source_tree": "81642f55b24b0930d28177dc783f6df418bdebe4",
+    "release_pin_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
+    "artifact_id": 9997204595,
+    "artifact_run": 34060126171,
+    "artifact_digest": "sha256:d2c69cd121ccbd2ee4159b53fb77b27b698d1f4c3de8bd366b70658b605962cd",
+    "deploy_pr": 1421,
+    "deploy_run": 34060271120,
+    "deployment_evidence_artifact": 9997242581,
+    "deployment_evidence_digest": "sha256:ecb1cad2bf5682df01354e09e31d8d3a3a1c296e2aea949994d2e050ecba6580",
     "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-    "verified_at": "2026-09-06T20:42:40.592991+00:00",
+    "verified_at": "2026-09-06T21:20:23.284Z",
     "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
     "production_unchanged": true,
     "physical_safari_tested": false,
     "real_lead_submitted": false,
     "verification": {
-      "source_sha": "47bc232e5f5b48b2a78a026c4f77f01b33fdc23e",
-      "viewport_width": 1363,
+      "changed_flight": "SU2156 / SU2157",
+      "editor_dates_preserved": true,
+      "full_responsive_matrix_run": false,
+      "horizontal_overflow": false,
+      "hotel": "ANAHTAR APART",
       "hotels": 100,
-      "tours": 431,
+      "initial_price_rub": 72099,
+      "lead_price_rub": 89317,
+      "lead_screenshot_inspected": true,
+      "mobile_live_checked": false,
+      "phone_empty": true,
+      "physical_safari_tested": false,
+      "real_lead_submitted": false,
+      "return_cards": 100,
+      "review_price_rub": 89317,
+      "review_screenshot_inspected": true,
+      "scope": "One focused desktop search/flight/review/empty-lead/return/zero-filter/editor scenario. Mobile viewport is not exposed by the supported browser; physical Safari and full responsive/site/SEO matrix deferred.",
       "search": {
-        "departure": "Москва",
+        "adults": 2,
         "country": "Турция",
         "date_from": "2026-09-10",
         "date_to": "2026-09-11",
-        "nights": 7,
-        "adults": 2
+        "departure": "Москва",
+        "nights": 7
       },
-      "zero_filter": {
-        "home_cards": 0,
-        "rail_width": 220,
-        "end_cards": 100,
-        "new_search": false
-      },
-      "hotel": "ANAHTAR APART",
-      "initial_price_rub": 72099,
-      "changed_flight": "SU2156 / SU2157",
       "selected_price_rub": 89317,
-      "lead_price_rub": 89317,
-      "phone_empty": true,
-      "horizontal_overflow": false,
-      "results_screenshot_inspected": true,
-      "real_lead_submitted": false,
-      "physical_safari_tested": false,
-      "full_responsive_matrix_run": false,
-      "mobile_live_checked": false,
-      "mobile_scope": "Deferred: supported browser surface does not expose viewport resizing; one browser zoom attempt left CSS viewport unchanged. Compiled mobile toolbar/scheduler behavior checks passed in the source artifact.",
-      "verified_at": "2026-09-06T20:40:46.349117+00:00",
-      "scope": "One focused desktop search/filter/flight/review/empty lead scenario. No repeated full site/SEO/responsive suite.",
-      "return_cards": 100,
-      "return_selected_hidden": true
+      "source_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
+      "tours": 480,
+      "viewport_width": 1363,
+      "zero_filter": {
+        "end_cards": 100,
+        "home_cards": 0,
+        "new_search": false,
+        "rail_visible": true
+      },
+      "editor_nights_preserved": true,
+      "verified_at": "2026-09-06T21:20:23.284Z"
     },
-    "live_viewport_widths": [
-      1363
-    ],
-    "responsive_ci_run": null,
+    "public_assets": {
+      "css_bytes": 201014,
+      "css_lines": 4,
+      "js_bytes": 110673,
+      "js_lines": 55,
+      "total_bytes": 311687,
+      "total_lines": 59,
+      "scope": "Eight public Search3 assets, uncompressed; excludes shared runtime/legacy and duplicate src. No page-speed or transfer-compression claim."
+    },
+    "live_asset_sha256": [],
+    "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+    "responsive_ci_scope": "Owner-authorized lean cycle; exact cascade proof at 42 numeric width boundary/adjacent points. Live desktop checked; supported browser exposes no viewport resizing. No physical/mobile visual acceptance claimed.",
     "known_limitations": [
       {
         "width": 375,
@@ -4656,83 +4877,56 @@
       }
     ],
     "known_limitations_scope": "Inherited pre-existing hidden legacy advanced-filter backdrop on desktop-to-mobile resize; not fixed or requalified by this desktop-only live journey. Prior controlled evidence retained in publication history. Native CSS nesting browser boundary applies. Earlier immediate editor click during asynchronous return remains unqualified; this pass confirmed editor after completed return. No-flight fallback and physical Safari not tested live.",
-    "public_assets": {
-      "css_bytes": 202114,
-      "css_lines": 4,
-      "js_bytes": 112400,
-      "js_lines": 55,
-      "total_bytes": 314514,
-      "total_lines": 59,
-      "scope": "Eight public Search3 assets, uncompressed; excludes shared runtime/legacy and duplicate src. No page-speed or transfer-compression claim."
-    },
-    "live_asset_sha256": [
-      {
-        "name": "search3-results-filters-v1.js",
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.js?v=07b31be4dd2cdbce",
-        "bytes": 100325,
-        "sha256": "07b31be4dd2cdbce2a25242e7810cc9911c9c504dd22ed73592af39f70a0be35",
-        "exact": true,
-        "verification_method": "direct_http_and_artifact"
-      },
-      {
-        "name": "search3-results-filters-v1.css",
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.css?v=8910170ceca443a6",
-        "bytes": 180508,
-        "sha256": "8910170ceca443a6a9d7a531c07c9dd832e2069770bafe941e43eb3f13d8fdbc",
-        "exact": true,
-        "verification_method": "direct_http_and_artifact"
-      },
+    "artifact_asset_sha256": [
       {
         "name": "search3-entry-v1.css",
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.css?v=ae17b739834fe229",
-        "bytes": 9979,
-        "sha256": "ae17b739834fe22952c442238b46cbe80a4007fe015fc3579c67690d8bd2c562",
+        "sha256": "a9807244e221ebd7ae6d79ac7780cae2dc8e2e215ace8226db8b14872e7f96f7",
         "exact": true,
-        "verification_method": "direct_http_and_artifact"
+        "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
       },
       {
         "name": "search3-entry-v1.js",
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.js?v=84b07000124e0aa1",
-        "bytes": 3440,
         "sha256": "84b07000124e0aa1fc73b5e38032b4a5db370519debee500b53a8a944cf71fc2",
         "exact": true,
-        "verification_method": "direct_http_and_artifact"
+        "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
       },
       {
         "name": "search3-results-cards-v2.css",
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.css?v=6f1d44d16a8f351b",
-        "bytes": 4157,
         "sha256": "6f1d44d16a8f351b774698bef4ce8995f4fb014c8d6b232bc896c3ab059a6bd1",
         "exact": true,
-        "verification_method": "direct_http_and_artifact"
+        "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
       },
       {
         "name": "search3-results-cards-v2.js",
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.js?v=169c61338df3ef19",
-        "bytes": 88,
         "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
         "exact": true,
-        "verification_method": "artifact_and_deployment_payload_hashes"
+        "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
+      },
+      {
+        "name": "search3-results-filters-v1.css",
+        "sha256": "5c1dca4c580be75486799eb549a1484cafa3f3f674422d88a8452b4852dc254c",
+        "exact": true,
+        "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
+      },
+      {
+        "name": "search3-results-filters-v1.js",
+        "sha256": "9bd92d0f758e5e2b99fca3dc12b7504700fbe0a4ed65e6bf07ac4c0adc70acf0",
+        "exact": true,
+        "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
       },
       {
         "name": "search3-selected-flow-v2.css",
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.css?v=395f6d6a9c0b8a01",
-        "bytes": 7470,
         "sha256": "395f6d6a9c0b8a019f9402d7f45e35e12d5cd1c17f5cf81ffd31218695b467da",
         "exact": true,
-        "verification_method": "direct_http_and_artifact"
+        "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
       },
       {
         "name": "search3-selected-flow-v2.js",
-        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.js?v=343da269455930d9",
-        "bytes": 8547,
         "sha256": "343da269455930d98f58fd3067c4ee5f235747a4135053ca035d80ff51195435",
         "exact": true,
-        "verification_method": "direct_http_and_artifact"
+        "verification_method": "artifact_all_payload_hashes_and_remote_activation_hashes; direct_HTTP_poll_result_unconfirmed"
       }
-    ],
-    "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
-    "responsive_ci_scope": "Full responsive matrix deferred by owner. Desktop live checked; mobile viewport unavailable in current browser surface, compiled mobile behavior checks passed."
+    ]
   },
   "preview_verification_policy": {
     "source": "explicit_owner_request_2026_09_06_further_reduce_preview_checks",
