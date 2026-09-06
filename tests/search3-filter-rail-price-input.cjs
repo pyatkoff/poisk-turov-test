@@ -163,6 +163,7 @@ windowEvents.get('v2:search-reset')();
 assert.match(railHtml, /data-s3-charter-check checked/,
   'a new search restores the result-rail charter state from the form');
 assert.equal(rail.dataset.s3ActiveCount, '1');
+const announcementsBeforeEmptyCharterToggle = announcements.length;
 railEvents.get('change')({
   target: {
     checked: false, name: '',
@@ -171,4 +172,15 @@ railEvents.get('change')({
 });
 assert.equal(form.elements.onlyCharter.checked, false,
   'changing the local charter filter keeps the form state in sync');
+assert.equal(rail.dataset.s3ActiveCount, '0',
+  'clearing a filter updates the active count even when the result source is empty');
+assert.equal(announcements.length, announcementsBeforeEmptyCharterToggle + 1,
+  'an empty-result filter change still announces its new state once');
+assert.equal(announcements.at(-1).resultCount, 0);
+
+input(100000);
+while (frames.length) frames.shift()();
+assert.equal(rail.dataset.s3ActiveCount, '1',
+  'a scheduled price change updates the active count with an empty source');
+assert.equal(announcements.at(-1).resultCount, 0);
 console.log('PASS: price input bursts render once per frame with latest state');
