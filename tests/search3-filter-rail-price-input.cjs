@@ -235,4 +235,14 @@ windowEvents.get('v2:results-rendered')({ detail: { items: incompleteSeaHotels }
 assert.equal(seaSection.hidden, true, 'a partial progressive source hides the incomplete sea facet');
 assert.equal(seaInputs[0].checked, true, 'hiding the incomplete facet resets it to any distance');
 assert.equal(rail.dataset.s3ActiveCount, '0', 'the hidden incomplete facet is not counted as active');
+
+windowEvents.get('v2:search-reset')();
+const hotelWithoutTours = { seaDistance: 300, price: 135000 };
+windowEvents.get('v2:results-rendered')({ detail: { items: [hotelWithoutTours] } });
+input(100000);
+while (frames.length) frames.shift()();
+assert.equal(renders.at(-1).length, 0, 'price filtering still excludes a hotel without tour rows');
+input(140000);
+while (frames.length) frames.shift()();
+assert.equal(renders.at(-1).length, 1, 'price filtering still restores a matching hotel without tour rows');
 console.log('PASS: price input bursts render once per frame with latest state');
