@@ -10,20 +10,51 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
-### Current preparation — CSS output indentation — 2026-09-06
+### Current published checkpoint — CSS output indentation — 2026-09-06
 
-Baseline release02cd0fda; actual preview remainsc5fcbea2 until separate publication.
-Builder strips4667 bytes of CSS horizontal indentation after ordinary newlines,
-retaining newline token separators, string/comment contents and whitespace after
-escaped newline/hex-escape terminators. Readable source formatting is unchanged.
+Exact runtime/release code: `4517879c22929706aabc3365b7e3906ecf19bc24`. Source #1397; preview control #1398.
+This continuation also completed JS source split #1395 and publication #1396 below.
+
+The dependency-free builder removes4667 CSS bytes of horizontal indentation after
+ordinary newlines. Newline separators, strings/comments and whitespace after
+escaped newline/hex-escape terminators remain. Readable source formatting stays.
 Full recursive CSS token sequences match after normalizing whitespace-token
-contents; no tokens removed or reordered. All four JS assets stay byte-identical.
-Audit: search3-css-output-indentation.json. Nine source-build tests pass;14
-presentation tests13 pass/one local PHP skip. New total433026 bytes/5496 lines
-(CSS290846, JS142180). Existing JS split and all protected contracts preserved.
-Next: exact CI, isolated artifact publication and concise live verification.
+contents only; no token removed or reordered. Four JS assets stay byte-identical.
+Audit: search3-css-output-indentation.json. Nine source-build tests pass, including
+escape terminators;14 presentation tests with PHP covered in CI.
 
-### Current published checkpoint — private JS parts — 2026-09-06
+| Public assets | Previous bytes / lines | Published bytes / lines |
+| --- | ---: | ---: |
+| Four CSS | 295513 /3593 | 290846 /3593 |
+| Four JS | 142180 /1903 | 142180 /1903 |
+| Total | 437693 /5496 | 433026 /5496 |
+
+Together with #1395:5126 fewer bytes from438152 (-1.17%); five private JS source
+parts, with two additional physical lines. Uncompressed; excludes shared runtime,
+legacy and duplicate source files. No speed benchmark or deferred-loading claim.
+
+All23 applicable PR workflows succeeded, one expected migration skip. Core
+34042766478, responsive34042766475, flight34042766521, build34042766609.
+375/1440 editor screenshots inspected. Artifact9992182320, digest
+`sha256:d2e0fe380bb1e1f7ab14942f928e2faac7bc141cd3a060a29293475997609723`.
+Deployment34042946055 succeeded; evidence9992236531, digest
+`sha256:f16906a2d9a2ec922a2dc0c95078cd451cdb0a4b540fd8ea2108a97fa54e09c8`.715 payload hashes and8 served assets match;
+9 routes200/noindex, lead403, counter0, internal PHP denied, rollback retained.
+13 production fingerprints unchanged. Main remainsfa58a0cb; no production release.
+
+Latest live1363px entry/native-controls check passed. The same JS was verified
+earlier in this continuation with100 hotels/428 tours and ANAHTAR APART flight
+disclosure6→78→6; that scoped evidence remains below and in publication history.
+No repeated live lead journey, physical Safari, no-flight fallback or inherited
+backdrop acceptance claimed. Immediate editor click during asynchronous return
+was superseded in the earlier check; not fixed or requalified by indentation.
+
+Next: refresh release; inspect remaining active CSS/JS owners for measured net
+reduction. Do not repeat this indentation step, private extractions, geometry
+helpers or earlier CSS/shared formatter work. Preserve eight paths and protected
+contracts; preview publication remains separate, production remains locked.
+
+### Previous published checkpoint — private JS parts — 2026-09-06
 
 Exact runtime/release code: `c5fcbea26ddd4e54628c8b60966ca186deb09ecc`.
 Source PR #1395; separate one-shot preview control #1396.
