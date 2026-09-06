@@ -23,6 +23,25 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Refresh cascade structural contract
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          contract_path = Path('docs/project/search3-cascade-sections.json')
+          contract = json.loads(contract_path.read_text())
+          root = Path(contract['source_root'])
+          raw = b''.join((root / name).read_bytes() for name in contract['sections'])
+          header = f'blob {len(raw)}\0'.encode()
+          contract['combined_bytes'] = len(raw)
+          contract['combined_git_blob_sha'] = hashlib.sha1(header + raw).hexdigest()
+          contract_path.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + '\n')
+          print(f"CASCADE_CONTRACT bytes={len(raw)} blob={contract['combined_git_blob_sha']}")
+          PY
+          python3 -B scripts/build/search3_cascade_sections.py --check
+
       - name: Rebuild and verify Search3
         run: |
           set -euo pipefail
@@ -54,6 +73,7 @@ jobs:
           set -euo pipefail
           git diff --name-only | LC_ALL=C sort > "$RUNNER_TEMP/changed.txt"
           cat > "$RUNNER_TEMP/expected.txt" <<'EOF'
+          docs/project/search3-cascade-sections.json
           docs/project/search3-production-import.json
           v2/search3-results-filters-v1.css
           EOF
@@ -64,6 +84,6 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/project/search3-production-import.json v2/search3-results-filters-v1.css
-          git commit -m 'build(search3): refresh filter cascade asset'
+          git add docs/project/search3-cascade-sections.json docs/project/search3-production-import.json v2/search3-results-filters-v1.css
+          git commit -m 'build(search3): refresh filter cascade asset and contract'
           git push origin HEAD:refactor/search3-filter-drawer-cascade-53f482eb
