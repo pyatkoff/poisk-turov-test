@@ -7,6 +7,7 @@ const rail = fs.readFileSync(path.join(root, 'src/search3/behavior/filter-rail.j
 const stylesRoot = path.join(root, 'src/search3/styles');
 const styles = fs.readFileSync(path.join(stylesRoot, 'filters.css'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');
+const legacyDesktop = fs.readFileSync(path.join(root, 'v2/ds2-results-filters.js'), 'utf8');
 const presentation = fs.readFileSync(path.join(root, 'src/search3/behavior/results-presentation.js'), 'utf8');
 
 function cssFiles(dir) {
@@ -47,5 +48,9 @@ for (const file of cssFiles(stylesRoot)) {
 assert.ok(mobile.includes("sheet.className='mrf-sheet'"), 'base mobile result-filter sheet remains the mobile owner');
 assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('), 'mobile owner retains open/close lifecycle');
 assert.ok(presentation.includes("document.querySelector('.mrf-bar')"), 'Search3 presentation still mounts the canonical mobile filter bar');
+assert.ok(legacyDesktop.includes("t.matches('[data-ds2-price]')"),
+  'the base bundle retains its legacy desktop price listener');
+assert.ok(!rail.includes('data-ds2-price'),
+  'the Search3 price control does not opt into the legacy desktop listener');
 
 console.log('PASS: one mobile filter owner; orphan drawer CSS absent across Search3 styles');
