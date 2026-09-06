@@ -53,28 +53,26 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Removed10 historical CSS layers;301524→267536 rawCSS/JS bytes (−33988,11.27%). Published exact source9b4303a5; focused desktop states inspected without additional repairs.",
+    "last_material_progress": "Two source PRs complete this continuation:12 layers retired,301524→265927 bytes (−35597). First10 layers published9b4303a5/#1426 with desktop inspection; last2source1427 CI green,not published.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Continue owner-authorized large reversible presentation-owner retirement in one useful batch; repair demonstrated layout breakage in current owners. Do not repeat ten-layer, minifier, comments, media/dominance or tiny factoring passes. Preserve eight public paths, hidden/lifecycle recovery states, price/API/URL/payload/lead/analytics/logo/browser contracts. Next candidates results-width-compatibility/hotel-card-convergence need active-rule assessment before removal; no safe wholesale deletion established yet. Keep narrow checks and two source CI jobs, reuse artifact; publish only for a justified layout/accumulated checkpoint. Mobile/intermediate widths, lead status visuals and physical Safari remain deferred, not passed. Main/production locked; scheduler paused.",
+    "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; scheduler paused.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "artifact_id": 9998862575,
-    "artifact_run": 34065664535,
-    "branch": "release/search3-production-ready-v1",
-    "deploy_pr": 1426,
-    "deploy_run": 34066277509,
-    "id": "S3_WHOLE_LAYER_RETIREMENT",
-    "implementation_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+    "id": "S3_RESULTS_LAYER_RETIREMENT",
+    "title": "Retire two results layers with compact shell/lifecycle/mobile fallback owners",
+    "status": "CHECKED_RELEASE_BATCH_NOT_PUBLISHED",
     "issue": 996,
-    "next_action": "Continue owner-authorized large reversible presentation-owner retirement in one useful batch; repair demonstrated layout breakage in current owners. Do not repeat ten-layer, minifier, comments, media/dominance or tiny factoring passes. Preserve eight public paths, hidden/lifecycle recovery states, price/API/URL/payload/lead/analytics/logo/browser contracts. Next candidates results-width-compatibility/hotel-card-convergence need active-rule assessment before removal; no safe wholesale deletion established yet. Keep narrow checks and two source CI jobs, reuse artifact; publish only for a justified layout/accumulated checkpoint. Mobile/intermediate widths, lead status visuals and physical Safari remain deferred, not passed. Main/production locked; scheduler paused.",
     "pr": 1334,
     "source_prs": [
-      1425
+      1427
     ],
-    "status": "PUBLISHED_FOCUSED_DESKTOP_VERIFIED_MOBILE_DEFERRED",
-    "title": "Retire whole historical CSS layers and repair current-owner layout"
+    "branch": "release/search3-production-ready-v1",
+    "implementation_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+    "artifact_run": 34066837736,
+    "artifact_id": 9999214211,
+    "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; scheduler paused."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -749,10 +747,31 @@
       "scope": "All 23 applicable checks passed; one production-only gate skipped. Exact preview published; nine routes, noindex, lead/widget/counter isolation, rollback and final production fingerprints verified. Final live lead sidebar shows one 72 832 RUB overall total and clarification for placeholder flight, with no lead submitted.",
       "sha": "17a2c221290252232fe2eb758b2a9dd50d7785bc",
       "source_tree": "5cf16fea5b83a6c2d3277be3b1010ef939ef10c0"
+    },
+    "results_layer_retirement": {
+      "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
+      "source_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+      "source_pr": 1427,
+      "security_run": 34066837695,
+      "artifact_run": 34066837736,
+      "artifact_id": 9999214211,
+      "artifact_digest": "sha256:4bdaf92274963271522ba4d02f41aab6d07e7be64e0554496b1406187c53033d",
+      "required_passed": 2,
+      "first_attempt_passed": true,
+      "preview_published": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "full_responsive_site_seo": "deferred, not passed"
+    },
+    "whole_layer_publication_docs": {
+      "sha": "a1a2a9a65f4a7a5d1854109510173bfa95c68fd8",
+      "security_run": 34066585531,
+      "conclusion": "success",
+      "artifact_rebuilt": false
     }
   },
-  "last_verified_commit": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
-  "last_verified_commit_scope": "Exact checked source published by#1426; focused desktop form/results/selected/review inspected. Mobile/full responsive/lead status/physical Safari deferred.",
+  "last_verified_commit": "db39eadb15149fd39fce2305fb6de49251685b38",
+  "last_verified_commit_scope": "Required CI passed on exact two-layer follow-up source, not published. Published preview9b4303a5 has separate focused desktop evidence.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -786,93 +805,56 @@
   "owner_priority_source": "OWNER_PRIORITY.json",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "presentation_refactor_checkpoint": {
-    "audit": "docs/project/search3-whole-layer-retirement.json",
-    "baseline": "8bd89cd7fec4c0f122844b025972ed2faf39dfea",
-    "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+    "stage": "S3_RESULTS_LAYER_RETIREMENT_CHECKED_NOT_PUBLISHED",
+    "baseline": "a1a2a9a65f4a7a5d1854109510173bfa95c68fd8",
+    "implementation_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+    "release_integration_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+    "audit": "docs/project/search3-results-layer-retirement.json",
+    "scope": "Two further historical results layers retired with shell/hidden/MRF/mobile/title/facts/flex fallbacks preserved in current owners. All four JS unchanged.",
     "ci": {
-      "artifact_digest": "sha256:42ea3138621afda606f64e503a54b258532d2629659627cff52c294afb1ae840",
-      "artifact_id": 9998862575,
-      "artifact_rebuilt_for_docs": false,
-      "artifact_rebuilt_on_release": false,
-      "artifact_run": 34065664535,
-      "full_responsive_site_seo": "deferred, not passed",
-      "initial_failure": {
-        "reason": "Same-length drift fixture targeted !important absent from retired marker-only donor. Changed fixture to mutate final newline with same byte length; hash-drift guard unchanged. Exact named regression passed; final CI green.",
-        "source_sha": "e0235bdcd81e96ef46c86927e6d885babf9c29bc"
-      },
       "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
-      "preview_published": true,
+      "source_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+      "source_pr": 1427,
+      "security_run": 34066837695,
+      "artifact_run": 34066837736,
+      "artifact_id": 9999214211,
+      "artifact_digest": "sha256:4bdaf92274963271522ba4d02f41aab6d07e7be64e0554496b1406187c53033d",
       "required_passed": 2,
-      "security_run": 34065664531,
-      "source_pr": 1425,
-      "source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6"
+      "first_attempt_passed": true,
+      "preview_published": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "full_responsive_site_seo": "deferred, not passed"
     },
-    "implementation_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
-    "next_action": "Continue owner-authorized large reversible presentation-owner retirement in one useful batch; repair demonstrated layout breakage in current owners. Do not repeat ten-layer, minifier, comments, media/dominance or tiny factoring passes. Preserve eight public paths, hidden/lifecycle recovery states, price/API/URL/payload/lead/analytics/logo/browser contracts. Next candidates results-width-compatibility/hotel-card-convergence need active-rule assessment before removal; no safe wholesale deletion established yet. Keep narrow checks and two source CI jobs, reuse artifact; publish only for a justified layout/accumulated checkpoint. Mobile/intermediate widths, lead status visuals and physical Safari remain deferred, not passed. Main/production locked; scheduler paused.",
-    "preview_updated": true,
-    "production_updated": false,
     "public_assets": {
-      "css_bytes": 160782,
-      "css_lines": 4,
+      "css_bytes": 159173,
       "js_bytes": 106754,
+      "total_bytes": 265927,
+      "css_lines": 4,
       "js_lines": 3,
-      "scope": "Eight public Search3 paths, raw uncompressed bytes; one empty JS retained. Excludes shared runtime/legacy and duplicate source; no page-speed claim.",
-      "total_bytes": 267536,
-      "total_lines": 7
+      "total_lines": 7,
+      "scope": "Eight public Search3 paths, raw uncompressed bytes; one empty JS retained. Excludes shared runtime/legacy and duplicate source; no page-speed claim."
     },
-    "published_delta": {
-      "bytes": -44151,
-      "css_bytes": -40232,
-      "js_bytes": -3919
-    },
-    "release_integration_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
     "run_delta": {
-      "bytes": -33988,
-      "css_bytes": -33947,
-      "js_bytes": -41,
+      "bytes": -1609,
+      "css_bytes": -1609,
+      "js_bytes": 0,
       "lines": 0
     },
-    "scope": "Ten historical CSS layers retired completely; narrow lifecycle/status/expanded-grid/initial-state rules retained in four current owners. Unused summary-cost styles removed; business JS unchanged.",
+    "continuation_total": {
+      "baseline_bytes": 301524,
+      "after_bytes": 265927,
+      "saved_bytes": 35597,
+      "retired_layers": 12,
+      "published_retired_layers": 10
+    },
+    "preview_updated": false,
+    "production_updated": false,
     "source_validation": "FINAL_SOURCE_REQUIRED_CI_PASSED",
-    "stage": "S3_WHOLE_LAYER_RETIREMENT_PUBLISHED_FOCUSED_DESKTOP_VERIFIED",
-    "verified_at": "2026-09-06T23:18:28.983Z",
-    "visual_verification": {
-      "additional_repairs_required": false,
-      "expanded_card_screenshot_inspected": true,
-      "full_responsive_matrix_run": false,
-      "horizontal_overflow": false,
-      "hotel": "LUXOR APART",
-      "hotels": 100,
-      "initial_form_screenshot_inspected": true,
-      "lead_form_opened": false,
-      "mobile_live_checked": false,
-      "physical_safari_tested": false,
-      "price_rub": 75005,
-      "real_lead_submitted": false,
-      "review_next_cta_visible": true,
-      "review_screenshot_inspected": true,
-      "scope": "One focused desktop inspection: initial search form, 100-hotel/426-tour results, expanded LUXOR APART card, selected tour with actual supplier placeholder flights, and final review with visible 'Перейти к заявке'. Screenshots inspected. No additional CSS repair was required in these observed states; no blanket visual parity claim.",
-      "search": {
-        "adults": 2,
-        "country": "Турция",
-        "date_from": "2026-09-10",
-        "date_to": "2026-09-11",
-        "departure": "Москва",
-        "nights": 7
-      },
-      "selected_tour_screenshot_inspected": true,
-      "source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
-      "tours": 426,
-      "verification_deferred": [
-        "mobile and intermediate widths",
-        "lead sending/success/error visual states",
-        "full flight-price interaction regression",
-        "return/filter/editor matrix",
-        "physical Safari"
-      ],
-      "verified_at": "2026-09-06T23:16:48.672Z",
-      "viewport_width": 1363
-    }
+    "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+    "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; scheduler paused.",
+    "verified_at": "2026-09-06T23:27:36.471Z",
+    "visual_verification": "Not performed on this follow-up source; published9b4303a5 desktop evidence does not qualify this source. Full responsive/mobile and lead-state visuals remain deferred."
   },
   "presentation_refactor_history": [
     {
@@ -2315,6 +2297,95 @@
       "source_validation": "FINAL_SOURCE_DRAFT_REQUIRED_CI_PASSED",
       "stage": "S3_COMMON_CSS_AND_JS_SPELLING_CHECKED_NOT_PUBLISHED",
       "verified_at": "2026-09-06T22:32:45.215Z"
+    },
+    {
+      "audit": "docs/project/search3-whole-layer-retirement.json",
+      "baseline": "8bd89cd7fec4c0f122844b025972ed2faf39dfea",
+      "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+      "ci": {
+        "artifact_digest": "sha256:42ea3138621afda606f64e503a54b258532d2629659627cff52c294afb1ae840",
+        "artifact_id": 9998862575,
+        "artifact_rebuilt_for_docs": false,
+        "artifact_rebuilt_on_release": false,
+        "artifact_run": 34065664535,
+        "full_responsive_site_seo": "deferred, not passed",
+        "initial_failure": {
+          "reason": "Same-length drift fixture targeted !important absent from retired marker-only donor. Changed fixture to mutate final newline with same byte length; hash-drift guard unchanged. Exact named regression passed; final CI green.",
+          "source_sha": "e0235bdcd81e96ef46c86927e6d885babf9c29bc"
+        },
+        "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
+        "preview_published": true,
+        "required_passed": 2,
+        "security_run": 34065664531,
+        "source_pr": 1425,
+        "source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6"
+      },
+      "implementation_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+      "next_action": "Continue owner-authorized large reversible presentation-owner retirement in one useful batch; repair demonstrated layout breakage in current owners. Do not repeat ten-layer, minifier, comments, media/dominance or tiny factoring passes. Preserve eight public paths, hidden/lifecycle recovery states, price/API/URL/payload/lead/analytics/logo/browser contracts. Next candidates results-width-compatibility/hotel-card-convergence need active-rule assessment before removal; no safe wholesale deletion established yet. Keep narrow checks and two source CI jobs, reuse artifact; publish only for a justified layout/accumulated checkpoint. Mobile/intermediate widths, lead status visuals and physical Safari remain deferred, not passed. Main/production locked; scheduler paused.",
+      "preview_updated": true,
+      "production_updated": false,
+      "public_assets": {
+        "css_bytes": 160782,
+        "css_lines": 4,
+        "js_bytes": 106754,
+        "js_lines": 3,
+        "scope": "Eight public Search3 paths, raw uncompressed bytes; one empty JS retained. Excludes shared runtime/legacy and duplicate source; no page-speed claim.",
+        "total_bytes": 267536,
+        "total_lines": 7
+      },
+      "published_delta": {
+        "bytes": -44151,
+        "css_bytes": -40232,
+        "js_bytes": -3919
+      },
+      "release_integration_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+      "run_delta": {
+        "bytes": -33988,
+        "css_bytes": -33947,
+        "js_bytes": -41,
+        "lines": 0
+      },
+      "scope": "Ten historical CSS layers retired completely; narrow lifecycle/status/expanded-grid/initial-state rules retained in four current owners. Unused summary-cost styles removed; business JS unchanged.",
+      "source_validation": "FINAL_SOURCE_REQUIRED_CI_PASSED",
+      "stage": "S3_WHOLE_LAYER_RETIREMENT_PUBLISHED_FOCUSED_DESKTOP_VERIFIED",
+      "verified_at": "2026-09-06T23:18:28.983Z",
+      "visual_verification": {
+        "additional_repairs_required": false,
+        "expanded_card_screenshot_inspected": true,
+        "full_responsive_matrix_run": false,
+        "horizontal_overflow": false,
+        "hotel": "LUXOR APART",
+        "hotels": 100,
+        "initial_form_screenshot_inspected": true,
+        "lead_form_opened": false,
+        "mobile_live_checked": false,
+        "physical_safari_tested": false,
+        "price_rub": 75005,
+        "real_lead_submitted": false,
+        "review_next_cta_visible": true,
+        "review_screenshot_inspected": true,
+        "scope": "One focused desktop inspection: initial search form, 100-hotel/426-tour results, expanded LUXOR APART card, selected tour with actual supplier placeholder flights, and final review with visible 'Перейти к заявке'. Screenshots inspected. No additional CSS repair was required in these observed states; no blanket visual parity claim.",
+        "search": {
+          "adults": 2,
+          "country": "Турция",
+          "date_from": "2026-09-10",
+          "date_to": "2026-09-11",
+          "departure": "Москва",
+          "nights": 7
+        },
+        "selected_tour_screenshot_inspected": true,
+        "source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+        "tours": 426,
+        "verification_deferred": [
+          "mobile and intermediate widths",
+          "lead sending/success/error visual states",
+          "full flight-price interaction regression",
+          "return/filter/editor matrix",
+          "physical Safari"
+        ],
+        "verified_at": "2026-09-06T23:16:48.672Z",
+        "viewport_width": 1363
+      }
     }
   ],
   "preview_isolation_followup": {
@@ -2633,13 +2704,13 @@
       "url": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/"
     },
     "site_draft": {
-      "artifact_digest": "sha256:42ea3138621afda606f64e503a54b258532d2629659627cff52c294afb1ae840",
+      "artifact_digest": "sha256:4bdaf92274963271522ba4d02f41aab6d07e7be64e0554496b1406187c53033d",
       "branch": "release/search3-production-ready-v1",
-      "exact_artifact": 9998862575,
-      "exact_artifact_status": "PUBLISHED_AND_VERIFIED_BY_DEPLOYMENT",
+      "exact_artifact": 9999214211,
+      "exact_artifact_status": "CHECKED_NOT_DEPLOYED",
       "final_verification_artifact": 9999036179,
       "final_verification_run": 34066277509,
-      "implementation_verified_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+      "implementation_verified_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -2689,7 +2760,8 @@
         "Published with#1426, source batch#1422: 5453 fewer served bytes from numeric CSS dominance and ordinary JS source-note filtering.",
         "Published with#1426, source batch#1423: media-root grouping and 75 mandatory cross-asset CSS deletions save4026 bytes; JavaScript unchanged.",
         "Published with#1426, source batch#1424:17 common CSS declaration groups and shorter JS spelling save684 bytes; executable JS trees unchanged.",
-        "Published#1425/#1426: ten entire historical CSS layers retired with four current-owner salvages;33,988 fewer CSS/JS bytes; focused desktop only."
+        "Published#1425/#1426: ten entire historical CSS layers retired with four current-owner salvages;33,988 fewer CSS/JS bytes; focused desktop only.",
+        "Checked#1427,not published:2 further historical results layers retired with lifecycle/mobile fallback salvage;1609 fewerCSSbytes and all4JS unchanged."
       ],
       "live_browser_verification": {
         "audit": "docs/project/search3-whole-layer-retirement.json",
@@ -2710,9 +2782,9 @@
       "preview_deploy_workflow_conclusion": "success",
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
       "published_source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
-      "release_merge_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
-      "source_tree": "226b01eec92c0e7af1ac2789a1310cb52bdfe7f4",
-      "status": "PUBLISHED_WHOLE_LAYER_RETIREMENT_FOCUSED_DESKTOP_VERIFIED",
+      "release_merge_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+      "source_tree": "12b8ac0d6455b933c6d39e1ed50f8e2065696ce1",
+      "status": "CHECKED_RESULTS_LAYER_BATCH_AHEAD_OF_PUBLISHED_PREVIEW",
       "superseded_artifact": 9996124818
     }
   },
@@ -5449,5 +5521,5 @@
     "visual_run": 33976375814
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
-  "updated_at": "2026-09-06T23:18:28.983Z"
+  "updated_at": "2026-09-06T23:27:36.471Z"
 }

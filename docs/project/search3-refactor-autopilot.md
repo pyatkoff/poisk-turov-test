@@ -45,6 +45,32 @@ Previously checked batches#1422–#1424 are included in this publication.
 New local commands and focused tests succeeded in the subsequent #1422 continuation.
 The earlier rejected direct-HTTP poll was not retried or bypassed.
 
+### Latest checked follow-up — two results layers — 2026-09-06
+
+Source PR#1427 retires results-width-compatibility.css and hotel-card-convergence.css.
+After compact fallback salvage, public CSS/JS fall267536→265927 bytes:−1609CSS.
+All four JS files are byte-identical to the published ten-layer source.
+Across both batches in this continuation:301524→265927,−35597 bytes (11.8%).
+
+This follow-up is CHECKED, NOT PUBLISHED. Final source
+`db39eadb15149fd39fce2305fb6de49251685b38` passed Security34066837695 and artifact34066837736
+on the first attempt. Exact artifact9999214211 is retained.
+The current published preview remains9b4303a5/#1426 at267536 bytes; its focused
+desktop screenshots do not verify this follow-up source.
+
+Convergence facts, mobile title/place placement and flex price-row fallbacks now
+finish hotel-packages.css at the same position before subsequent owners. Shell,
+hidden/lifecycle/MRF and expanded-card guards begin results-context.css.
+Independent review identified and avoided moving old margin-left/right resets
+across the intervening filters.css shorthand. Uncertain toolbar padding,
+letter-spacing and gap were retained. These are compact owner transfers plus
+old geometry retirement, not a blanket pixel-equivalence claim.
+
+One source build and four exact JS hash comparisons passed. Source CI retains
+Security and the exact artifact job; no second preview/browser journey or
+release/docs artifact rebuild. Audit: `docs/project/search3-results-layer-retirement.json`.
+Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; scheduler paused.
+
 ### Current published batch — retire ten whole CSS layers — 2026-09-06
 
 The owner explicitly requested a larger approach: delete entire layers and repair

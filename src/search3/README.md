@@ -255,3 +255,10 @@ against the preceding bundle; no runtime loader or public asset was added.
 lifecycle. Its `search-form/primary-controls.js` and `secondary-controls.js` parts
 expand at the original positions inside `init()`. Dates, nights, guests, secondary
 fields and delayed cleanup keep their shared lexical scope and exact source bytes.
+
+The subsequent results-layer pass also retires `styles/results-width-compatibility.css`
+and `styles/hotel-card-convergence.css`. Their remaining shell/lifecycle/MRF and
+mobile facts/placement/flex guards live in `results-context.css` and
+`hotel-packages.css`; the retired files contain provenance comments only.
+See `docs/project/search3-results-layer-retirement.json` for measured bytes and
+checked-versus-published scope.
