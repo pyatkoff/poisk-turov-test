@@ -10,30 +10,57 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
-### Current preparation — private JS parts and toolbar reduction — 2026-09-06
+### Current published checkpoint — private JS parts — 2026-09-06
 
-Baseline release: `1504c86356d250e6797bb08dfaf988e14105066f`. Actual preview
-remains `9bedc2be` until exact CI and the separate isolated publication complete.
+Exact runtime/release code: `c5fcbea26ddd4e54628c8b60966ca186deb09ecc`.
+Source PR #1395; separate one-shot preview control #1396.
 
-Results presentation is split into labels, cards and toolbar private function
-parts; selected-flow fallback and flight disclosure have separate private parts.
-The dependency-free builder expands includes within the original IIFE scope and
-order, preserving shared state and public adapters. Both extracted compiled IIFEs
-remain byte-identical. Seven of eight public assets are unchanged.
+Results labels/cards/toolbar and selected-flight fallback/disclosure now have five
+private source parts, expanded within their original IIFEs by the dependency-free
+builder. Shared state, declaration order and public adapters are preserved; both
+extracted compiled IIFEs remain byte-identical. No new global, runtime loader or
+browser request. Main source owners shrink17427→4027 and13205→7490 bytes; the
+largest private part is7619 bytes. Audit: search3-private-js-parts.json.
 
-Results toolbar style helpers remove 459 JS bytes; 48 baseline/current geometry
-operation traces match values, order and important priority. Generated totals:
-CSS295513/3593 lines, JS142180/1903; total437693 bytes/5496 lines. Source owners
-shrink17427→4027 and13205→7490 bytes, with five private files no larger than7619.
-This is source separation plus a small payload reduction, not deferred loading or
-a measured speedup. Audit: search3-private-js-parts.json.
+Toolbar inline-style helpers remove459 served JS bytes.48 baseline/current
+geometry traces match operation order, values and important priority. Seven of
+eight public assets are byte-identical. Local build tests cover private-part
+drift, cycles, duplicates and outside-root paths; regression adapters exercise
+compiled results and selected-flow code.
 
-Local:8 source-build tests pass;14 presentation tests,13 pass and one PHP skip
-(PHP runs in CI). Existing scheduler/ownership/flight assertions retained against
-compiled adapters. Main/production/protected contracts remain locked.
+| Public assets | Previous bytes / lines | Published bytes / lines |
+| --- | ---: | ---: |
+| Four CSS | 295513 /3593 | 295513 /3593 |
+| Four JS | 142639 /1901 | 142180 /1903 |
+| Total | 438152 /5494 | 437693 /5496 |
 
-Next: exact CI, separate artifact publication, targeted live result/flight check.
-Do not repeat these completed extractions or the older CSS reductions below.
+This pass principally separates source ownership; payload savings are459 bytes
+(0.105%), with two additional physical lines. Counts are uncompressed, excluding
+shared runtime/legacy; no deferred loading or speed benchmark is claimed.
+
+All23 applicable PR workflows succeeded, one expected migration skip. Core
+34040858804, responsive34040858748, flight34040858761, build34040858770.375px
+readability and1348px toolbar screenshots inspected. Source artifact9991626458,
+digest `sha256:a49995acfc219f50eb3121a8cf5ac17db22e7c1c986148fd79ddd89ce0a6c5dc`.
+Deployment34041100182 succeeded; evidence9991692069,
+digest `sha256:5085190aed04e8f28a24e266813af8fc24ede52dd4173eb9c8e2ed01f3ecf89b`.
+All715 payload hashes and8 served assets match;9 routes200/noindex, counter0,
+disabled lead403, internal PHP denied, rollback retained.13 production
+fingerprints unchanged. Main remainsfa58a0cb; no production release.
+
+Live desktop1363px: Moscow–Turkey,10–11 September2026,7 nights,2 adults;
+100 hotels /428 tours. ANAHTAR APART opens2 tours and78 flight choices;
+disclosure6→78→6 verified with stable collapsed screenshot. Base total72099 RUB
+retained; after return settles, editor preserves dates and7–7 nights. An immediate
+editor click during asynchronous return was superseded; not fixed in this pass.
+Document width1348<=1363. No lead sent.
+Inherited legacy backdrop, physical Safari and live no-flight fallback were not
+requalified; earlier full lead journey remains in publication history.
+
+Next: refresh release; inspect remaining active source owners for measured net
+CSS/JS reduction. Do not repeat these private extractions/geometry helpers or the
+completed CSS and shared formatter work below. Preserve eight public paths,
+IIFE ownership and protected contracts; preview publication remains separate.
 
 ### Current published checkpoint — CSS build compaction and entry split — 2026-09-06
 
