@@ -4386,7 +4386,7 @@
     "responsive_ci_scope": "Deferred under owner-authorized lean preview policy; CSS unchanged."
   },
   "preview_verification_policy": {
-    "source": "explicit_owner_request_2026_09_06_reduce_preview_checks",
+    "source": "explicit_owner_request_2026_09_06_further_reduce_preview_checks",
     "scope": "Search3 draft preview only",
     "working_pr_base": "release/search3-production-ready-v1",
     "required": [
@@ -4402,6 +4402,17 @@
     ],
     "restore": "ready_for_review event on each affected workflow; production approval still required",
     "live": "One focused live scenario per published batch; mobile/desktop if layout changed",
-    "production_guards_unchanged": true
+    "production_guards_unchanged": true,
+    "ci_execution": {
+      "working_code_draft": [
+        "Security guard (including both owner validators)",
+        "one exact artifact build (including PHP/path/presentation/isolation checks)"
+      ],
+      "cumulative_release_draft": [
+        "Security guard (including both owner validators)"
+      ],
+      "artifact_reuse": "Keep the successful working-PR source artifact after release fast-forward and documentation checkpoints; do not rebuild or redeploy docs.",
+      "restoration": "Non-draft PRs restore all applicable workflows on ready_for_review."
+    }
   }
 }

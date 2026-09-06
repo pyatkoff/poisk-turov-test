@@ -22,11 +22,19 @@ do not temporarily target main just to trigger unrelated CI. Batch useful source
 reductions before one release integration/publication. Locally run source build,
 size/import checks and the relevant small behavior tests. The existing artifact
 workflow supplies PHP rendering, presentation checks and preview isolation once.
-Keep Security guard, owner direction, artifact build and preview boundary checks.
-Nineteen broader workflows defer their PR jobs only for draft Search3 release PRs
-or draft PRs targeting this release. Existing production-only jobs, main pushes,
-schedules and manual runs are unchanged. `ready_for_review` explicitly restores
-the full applicable PR gates before production consideration; main remains locked.
+The owner additionally asks to remove more duplicate checks. Run two jobs on a
+working code draft: Security guard includes both owner-policy validators; the
+exact artifact job includes source/presentation, PHP syntax, path boundaries and
+isolation. Reuse this successful source artifact after release fast-forward and
+documentation checkpoints. The cumulative draft release runs only Security guard;
+do not rebuild or redeploy documentation. The source artifact SHA must remain an
+ancestor of the exact release pin, as enforced by the unchanged deploy control.
+
+Nineteen broader workflows plus standalone owner/boundary jobs defer only for
+draft Search3 release PRs or draft PRs targeting this release. Existing
+production-only jobs, main pushes, schedules and manual runs are unchanged.
+`ready_for_review` explicitly restores all applicable PR gates, including a fresh
+release artifact build, before production consideration; main remains locked.
 
 For a preview batch, inspect the changed controls in the live browser, normally
 one desktop and one mobile state when layout changed. Do not run the full site/SEO
@@ -35,10 +43,12 @@ checks only for a concrete failure or at production acceptance. Do not call a
 deferred check passed. Keep exact-artifact publication, disabled preview leads,
 noindex, rollback and production fingerprints. Scheduler remains paused.
 
-The current local-name reduction is a new optimization after checked printing;
-it intentionally renames local bindings while retaining public keys, globals,
-function/class names and arithmetic. Earlier exact-name AST claims apply only to
-the first printing stage and the previously published checkpoint below.
+Build compaction uses exact AST/comment equality only for the first printing
+stage. The next optimization stage may simplify JavaScript control flow and CSS
+values/rules. Preserve public keys, globals, function/class names, argument arity,
+eval scopes and getter side effects. Disable unsafe arithmetic and cross-statement
+sequence merging; retain native CSS nesting and the existing browser boundary.
+Readable runtime sources and protected business contracts remain unchanged.
 
 ### Current published checkpoint — lean preview and local JS names — 2026-09-06
 

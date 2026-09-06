@@ -30,7 +30,9 @@ const { compact, print, parsed } = require('../scripts/build/search3-js/compact.
     `(function(){ var hotelName = 'hotel'; function readableFunction(argumentValue){return {hotelName, argumentValue};} output([readableFunction.name,readableFunction(2)]); })();`,
     `(function(){ var outerValue=3; function first(innerValue){ return function second(){return outerValue+innerValue;}; } output(first(4)()); })();`,
     `(function(){ var privateValue=42; output(eval('privateValue')); })();`,
-    `(function(){ class NamedHotel { value(){return 4;} } output([NamedHotel.name,new NamedHotel().value()]); })();`
+    `(function(){ class NamedHotel { value(){return 4;} } output([NamedHotel.name,new NamedHotel().value()]); })();`,
+    `(function(){ var reads=0; var supplier={get price(){reads++;return 17217.6;}}; supplier.price; output([72099 + supplier.price, reads]); })();`,
+    `(function(){ function selectedPrice(price, ignored){return price;} output([selectedPrice.name,selectedPrice.length,selectedPrice(89317)]); })();`
   ];
   for (const original of localNames) {
     const output = await compact(original);
@@ -49,5 +51,5 @@ const { compact, print, parsed } = require('../scripts/build/search3-js/compact.
     'dropping even an empty statement fails closed');
   await assert.rejects(compact('output(`line\n${2 + 3}`)'), /changed syntax/,
     'rewriting template raw text fails closed even for an untagged template');
-  console.log('PASS: checked printing and local-name reduction preserve execution, closures, eval, public keys and function/class names');
+  console.log('PASS: checked printing and optimization preserve execution, closures, eval, public keys, names, arity and getter side effects');
 })().catch(error => { console.error(error); process.exitCode = 1; });

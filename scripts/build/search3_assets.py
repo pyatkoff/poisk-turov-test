@@ -13,7 +13,7 @@ CSS_STRING = re.compile(rb'/\* @css-string ([a-zA-Z0-9_./-]+\.css) \*/ ""')
 
 
 def compact_assets(outputs):
-    """Print assets with pinned build-only tools and syntax equivalence guards."""
+    """Print with syntax guards, then optimize assets with pinned build-only tools."""
     scripts = {name: content.decode('utf-8') for name, content in outputs.items()}
     result = subprocess.run(
         ['node', str(ROOT / 'scripts/build/search3-js/compact.cjs')],

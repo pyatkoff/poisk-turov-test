@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-06",
+  "baseline_sha": "2ff236022f4e013df5abfa3fa3657a0eb46a6f3a",
+  "baseline_published_source": "4ad216b457562097c78a6a6b9c179e7365d87a0c",
+  "status": "prepared_for_focused_source_ci",
+  "metrics": [
+    {
+      "file": "search3-results-filters-v1.js",
+      "before": 102932,
+      "after": 100325,
+      "saved": 2607,
+      "lines": 47
+    },
+    {
+      "file": "search3-results-filters-v1.css",
+      "before": 183507,
+      "after": 180508,
+      "saved": 2999,
+      "lines": 1
+    },
+    {
+      "file": "search3-entry-v1.css",
+      "before": 10091,
+      "after": 9979,
+      "saved": 112,
+      "lines": 1
+    },
+    {
+      "file": "search3-entry-v1.js",
+      "before": 3569,
+      "after": 3440,
+      "saved": 129,
+      "lines": 5
+    },
+    {
+      "file": "search3-results-cards-v2.css",
+      "before": 4253,
+      "after": 4157,
+      "saved": 96,
+      "lines": 1
+    },
+    {
+      "file": "search3-results-cards-v2.js",
+      "before": 88,
+      "after": 88,
+      "saved": 0,
+      "lines": 1
+    },
+    {
+      "file": "search3-selected-flow-v2.css",
+      "before": 7586,
+      "after": 7470,
+      "saved": 116,
+      "lines": 1
+    },
+    {
+      "file": "search3-selected-flow-v2.js",
+      "before": 8888,
+      "after": 8547,
+      "saved": 341,
+      "lines": 2
+    }
+  ],
+  "saved_bytes": 6400,
+  "scope": "Eight public Search3 assets, uncompressed; excludes shared runtime, no page-speed or transfer-compression claim.",
+  "build": {
+    "javascript": "Pinned Terser 5.51.2, two compression passes; sequences/unsafe/unsafe_math/pure_getters false; keep_fargs, keep_fnames, keep_classnames true; no global or property mangling. First printing stage retains exact AST/comments.",
+    "css": "Pinned build-only Lightning CSS 1.33.0 after exact css-tree printing; minify, native nesting retained; Safari 16.5 / Chrome 120 / Firefox 117 targets. No CSSO, unusedSymbols or unused-class removal."
+  },
+  "ci": {
+    "source_draft_jobs": 2,
+    "cumulative_release_draft_jobs": 1,
+    "owner_checks": "Both existing owner validators moved into Security guard for Search3 draft PRs only.",
+    "boundary_checks": "Existing exact artifact retains PHP/path/isolation checks and now includes base/head diff check.",
+    "artifact": "Reuse successful working-PR artifact after release FF and docs checkpoint. All applicable gates restore on ready_for_review; non-PR triggers unchanged."
+  },
+  "local_verification": [
+    "JS execution/name/arity/getter checks",
+    "CSS first-stage exact printing and nested optimization checks",
+    "compiled presentation tests passed after adapting two formatting expectations; PHP deferred to source artifact CI",
+    "source build --check/import hashes",
+    "owner-policy validators",
+    "four YAMLs parsed; non-PR triggers identical; diff --check"
+  ],
+  "protected": {
+    "readable_src_unchanged": true,
+    "eight_public_paths_unchanged": true,
+    "production_locked": true,
+    "scheduler": "PAUSED",
+    "tourvisor_price_lead_metrika_logo_unchanged": true
+  },
+  "publication": null
+}

@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const css = require('../scripts/build/search3-js/node_modules/css-tree');
-const { compactCSS, parsed } = require('../scripts/build/search3-js/compact-css.cjs');
+const { compactCSS, printCSS, parsed } = require('../scripts/build/search3-js/compact-css.cjs');
 
 function fragments(code) {
   const result = [];
@@ -25,10 +25,10 @@ const cases = [
   '@supports selector(:is(.a, .b)) { .a:is(.x, .y) { display: grid; } }'
 ];
 for (const source of cases) {
-  const output = compactCSS(source);
+  const output = printCSS(source);
   assert.deepEqual(parsed(output), parsed(source));
   assert.deepEqual(fragments(output), fragments(source), 'selectors, conditions and values retain exact source bytes');
-  assert.equal(compactCSS(output), output);
+  assert.equal(printCSS(output), output);
 }
 for (const note of ['/* Copyright owner */', '/* @license MIT */', '/*# sourceMappingURL=source.css.map */']) {
   const source = `.a { color: red; }\n${note}\n`;
@@ -37,4 +37,9 @@ for (const note of ['/* Copyright owner */', '/* @license MIT */', '/*# sourceMa
 assert.notDeepEqual(parsed('.a .b{color:red}'), parsed('.a.b{color:red}'));
 assert.notDeepEqual(parsed('.a{color:red!important}'), parsed('.a{color:red}'));
 assert.throws(() => compactCSS('.a{ color }'), /Colon is expected/);
+const nested = compactCSS('@media (max-width: 999px) { .a { & .b { color: #AABBCC !important; margin: 0px 0px; } } }');
+assert.match(nested, /\.a\{& \.b\{/);
+assert.match(nested, /!important/);
+assert.match(nested, /#abc/);
+assert.equal(compactCSS(nested), nested);
 console.log('PASS: CSS printing preserves exact selectors/conditions/values, nesting, priority and protected notes');

@@ -2,11 +2,12 @@
 const assert = require('node:assert/strict');
 const { isDeepStrictEqual } = require('node:util');
 const css = require('css-tree');
+const { transform, Features } = require('lightningcss');
 
 const strict = { onParseError(error) { throw error; } };
 const parsed = code => css.toPlainObject(css.parse(code, strict));
 
-function compactCSS(code) {
+function printCSS(code) {
   let retain = false;
   const tree = css.parse(code, { ...strict, positions: true, onComment(value) {
     // The parser retains /*! notes itself. Keep the entire asset if it contains
@@ -29,4 +30,20 @@ function compactCSS(code) {
   return Buffer.byteLength(output) < Buffer.byteLength(code) ? output : code;
 }
 
-module.exports = { compactCSS, parsed };
+function compactCSS(code) {
+  // Keep protected notes in place. Ordinary private source notes were removed
+  // by the source assembler before this build-only optimization.
+  if (/\/\*[\s\S]*?(?:@license|copyright|sourcemappingurl)[\s\S]*?\*\//i.test(code)) return code;
+  const printed = printCSS(code);
+  const result = transform({
+    filename: 'search3.css', code: Buffer.from(printed), minify: true,
+    exclude: Features.Nesting,
+    targets: { safari: (16 << 16) | (5 << 8), chrome: 120 << 16, firefox: 117 << 16 }
+  });
+  assert.equal(result.warnings.length, 0, 'Search3 CSS optimizer emitted warnings');
+  const output = result.code.toString() + '\n';
+  parsed(output);
+  return Buffer.byteLength(output) < Buffer.byteLength(code) ? output : code;
+}
+
+module.exports = { compactCSS, printCSS, parsed };

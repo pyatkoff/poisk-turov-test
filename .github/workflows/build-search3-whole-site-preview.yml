@@ -2,6 +2,7 @@ name: Build Search3 whole-site preview artifact
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - 'src/search3/**'
       - 'scripts/build/search3_assets.py'
@@ -25,6 +26,8 @@ env:
 
 jobs:
   build-preview-artifact:
+    # Build once on the working PR; release/docs retain that exact source artifact.
+    if: ${{ !github.event.pull_request.draft || github.head_ref != 'release/search3-production-ready-v1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -46,10 +49,12 @@ jobs:
         shell: bash
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          git diff --check "$BASE_SHA" "$SOURCE_SHA"
           php tests/site-preview-path-smoke.php production
           php tests/site-preview-path-smoke.php preview
           php tests/search-handoff-smoke.php

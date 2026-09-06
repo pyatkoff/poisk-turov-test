@@ -48,11 +48,12 @@ async function print(code) {
 
 async function compact(code) {
   const output = await print(code);
-  // The preview owner accepts faster reversible reductions. Rename local bindings
-  // only: retain property keys, globals, function/class names, and all operations.
-  // Keep compression disabled so price expressions and control flow are not rewritten.
+  // Optimize the preview build after exact printing. Retain public properties,
+  // globals, function/class names and argument arity; no unsafe arithmetic or
+  // assumptions that property reads are side-effect free.
   const renamed = await terser.minify(output, {
-    compress: false,
+    compress: { passes: 2, sequences: false, unsafe: false, unsafe_math: false,
+      pure_getters: false, keep_fargs: true },
     mangle: { toplevel: false, eval: false, properties: false },
     keep_fnames: true,
     keep_classnames: true,
