@@ -1,0 +1,163 @@
+{
+  "baseline": "880c92c982ed1efe72ac5a98873966c28382a500",
+  "status": "LOCAL_VERIFIED_AWAITING_FOCUSED_CI",
+  "public_assets": {
+    "css_bytes": 205437,
+    "css_lines": 37,
+    "js_bytes": 115477,
+    "js_lines": 55,
+    "total_bytes": 320914,
+    "total_lines": 92
+  },
+  "previous_total_bytes": 336047,
+  "total_reduction_bytes": 15133,
+  "css_unchanged": true,
+  "source_runtime_modules_unchanged": true,
+  "optimization": "Build-only local variable/parameter/label renaming; compress=false, toplevel=false, eval=false, properties=false, keep_fnames=true, keep_classnames=true. First printing stage retains exact AST check; final stage parsed and compiled behavior tested.",
+  "routing": {
+    "keep": [
+      "Build Search3 whole-site preview artifact",
+      "Security guard",
+      "Validate Search3 whole-site preview boundary",
+      "Validate owner policy"
+    ],
+    "deferred": [
+      {
+        "path": ".github/workflows/build-anytour-hot.yml",
+        "name": "Build AnyTour hot inventory",
+        "jobs": [
+          "validate"
+        ]
+      },
+      {
+        "path": ".github/workflows/collect-anytour-tours.yml",
+        "name": "Collect AnyTour tour observations",
+        "jobs": [
+          "validate"
+        ]
+      },
+      {
+        "path": ".github/workflows/seo-controlled-growth-guard.yml",
+        "name": "SEO controlled growth guard",
+        "jobs": [
+          "guard"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-country-route-handoff.yml",
+        "name": "Validate standalone country route handoff",
+        "jobs": [
+          "country-handoff"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-search3-production-rollback.yml",
+        "name": "Validate Search3 production rollback readiness",
+        "jobs": [
+          "fixture-drill"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-seo-price-calendar-ui.yml",
+        "name": "Validate SEO price calendar UI",
+        "jobs": [
+          "contract"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-standalone-content-ux.yml",
+        "name": "Validate standalone content UX",
+        "jobs": [
+          "content-ux"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-standalone-navigation.yml",
+        "name": "Validate standalone navigation",
+        "jobs": [
+          "navigation-contract"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-bundles.yml",
+        "name": "Validate V2 startup bundles",
+        "jobs": [
+          "bundles"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-core.yml",
+        "name": "Validate V2 core",
+        "jobs": [
+          "core"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-flight-source.yml",
+        "name": "Validate V2 flight source contracts",
+        "jobs": [
+          "flight-source"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-seo-primitives.yml",
+        "name": "Validate V2 SEO page primitives",
+        "jobs": [
+          "seo-primitives"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-seo-publication-manifest.yml",
+        "name": "Validate V2 SEO publication manifest",
+        "jobs": [
+          "publication-manifest"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-seo-publishability.yml",
+        "name": "Validate V2 SEO publishability",
+        "jobs": [
+          "publishability"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-seo-readiness.yml",
+        "name": "Validate V2 SEO readiness",
+        "jobs": [
+          "seo-core"
+        ]
+      },
+      {
+        "path": ".github/workflows/validate-v2-seo-structure.yml",
+        "name": "Validate V2 SEO structure",
+        "jobs": [
+          "seo-structure"
+        ]
+      },
+      {
+        "path": ".github/workflows/verify-anytoour-seo-launch.yml",
+        "name": "Verify anytoour.ru SEO launch",
+        "jobs": [
+          "predeploy-contract"
+        ]
+      },
+      {
+        "path": ".github/workflows/verify-seo-price-calendar-production.yml",
+        "name": "Verify SEO price calendar production evidence",
+        "jobs": [
+          "predeploy-contract"
+        ]
+      },
+      {
+        "path": ".github/workflows/visual-standalone-content-live.yml",
+        "name": "Visual standalone content live",
+        "jobs": [
+          "content-live"
+        ]
+      }
+    ],
+    "condition": "github.event_name != 'pull_request' || !github.event.pull_request.draft || (github.head_ref != 'release/search3-production-ready-v1' && github.base_ref != 'release/search3-production-ready-v1')"
+  },
+  "protected_contracts_changed": false,
+  "production_updated": false
+}

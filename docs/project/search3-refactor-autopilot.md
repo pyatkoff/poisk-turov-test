@@ -10,6 +10,36 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
+### Current verification priority — lean preview cycle — 2026-09-06
+
+The owner explicitly requested fewer checks and faster file-size reduction:
+«миллион проверок не обязательно ... цель как можно быстрее уменьшить размер».
+This supersedes older requirements below to run all 23 workflows, full responsive
+matrices, repeated screenshot comparisons or exhaustive journeys for every PR.
+
+Use working draft PRs based directly on `release/search3-production-ready-v1`;
+do not temporarily target main just to trigger unrelated CI. Batch useful source
+reductions before one release integration/publication. Locally run source build,
+size/import checks and the relevant small behavior tests. The existing artifact
+workflow supplies PHP rendering, presentation checks and preview isolation once.
+Keep Security guard, owner direction, artifact build and preview boundary checks.
+Nineteen broader workflows defer their PR jobs only for draft Search3 release PRs
+or draft PRs targeting this release. Existing production-only jobs, main pushes,
+schedules and manual runs are unchanged. `ready_for_review` explicitly restores
+the full applicable PR gates before production consideration; main remains locked.
+
+For a preview batch, inspect the changed controls in the live browser, normally
+one desktop and one mobile state when layout changed. Do not run the full site/SEO
+visual suite or compare dozens of screenshots after every small change. Broaden
+checks only for a concrete failure or at production acceptance. Do not call a
+deferred check passed. Keep exact-artifact publication, disabled preview leads,
+noindex, rollback and production fingerprints. Scheduler remains paused.
+
+The current local-name reduction is a new optimization after checked printing;
+it intentionally renames local bindings while retaining public keys, globals,
+function/class names and arithmetic. Earlier exact-name AST claims apply only to
+the first printing stage and the previously published checkpoint below.
+
 ### Current published checkpoint — checked compact assets and zero-match recovery — 2026-09-06
 
 Published source/release integration: `53f87c79cb3d4ca139c2391d1bcf818fa874e737`. Source PRs #1408/#1409/#1410/#1412.
@@ -585,7 +615,7 @@ GitHub issue #2 and autopilot-runtime-state.yml persist CI signals only. A succe
 
 Выбирай следующий шаг по реальному уменьшению сложности и риска, а не по числу коммитов. Следующий кандидат для анализа — оставшиеся перекрытия CSS мобильного toolbar в results-context.css/results-layout.css. До удаления активных правил доказать эквивалентность computed styles в initial/results/editor/selected/reset на 375/430/768/999/1000/1348/1440. Завершённые selector cleanup, local queue и desktop boundary не повторять. Не повторять уже завершённые ownership, price-frame и fresh-announcement исправления, не разрезать IIFE вслепую и не добавлять глобальный scheduler или дублирующие observers. Альтернативный независимый шаг — доказуемые оставшиеся CSS-дубли в существующих owners. Разные media/specificity, shorthand, переменные и fallback не объявлять дублями без отдельного доказательства. Не добавлять код или тесты только ради активности.
 
-Редактируй src/search3, затем используй python3 scripts/build/search3_assets.py --write и --check. Source, generated assets, нужные section contracts и production-import hashes коммить вместе. Сохраняй восемь публичных asset paths, порядок подключения, действующий дизайн, поисковое поведение и cascade. Сначала узкие локальные тесты, затем существующие применимые CI; для CSS/UI — релевантные responsive checks и осмотр визуальных материалов. Не отключай проверки и не создавай дублирующую CI-инфраструктуру. Не запускай вручную полный visual suite ради одной документации.
+Редактируй src/search3, затем используй python3 scripts/build/search3_assets.py --write и --check. Source, generated assets, нужные section contracts и production-import hashes коммить вместе. Сохраняй восемь публичных asset paths, порядок подключения и защищённые контракты. Применяй текущий lean preview cycle выше: рабочие PR сразу в release, короткие проверки сборки/размера/затронутого поведения, одна проверка изменённого сценария после пакетной публикации. Полные CI/visual/SEO проверки отложены для Search3 draft по явному указанию владельца; перед production-review они возвращаются. Не создавай дублирующую CI-инфраструктуру и не запускай полный visual suite ради документации.
 
 Не останавливаться после одного PR или коммита, если в текущем запуске есть возможность следующего безопасного шага. Сначала доводи блокирующие ошибки своего изменения до исправления либо безопасного отката, затем продолжай. При внешнем блокере запиши его и продолжи независимую безопасную работу. Требуемая физическая проверка Safari, юридические материалы и production approval не блокируют независимый разрешённый presentation refactor, но не могут быть объявлены выполненными автоматически.
 

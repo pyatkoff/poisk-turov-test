@@ -33,7 +33,7 @@ function parsed(code) {
   return { tree: syntax(tree), comments: comments.map(({ type, value }) => ({ type, value })) };
 }
 
-async function compact(code) {
+async function print(code) {
   const before = parsed(code);
   const result = await terser.minify(code, {
     compress: false,
@@ -46,7 +46,25 @@ async function compact(code) {
   return Buffer.byteLength(output) < Buffer.byteLength(code) ? output : code;
 }
 
-module.exports = { compact, parsed };
+async function compact(code) {
+  const output = await print(code);
+  // The preview owner accepts faster reversible reductions. Rename local bindings
+  // only: retain property keys, globals, function/class names, and all operations.
+  // Keep compression disabled so price expressions and control flow are not rewritten.
+  const renamed = await terser.minify(output, {
+    compress: false,
+    mangle: { toplevel: false, eval: false, properties: false },
+    keep_fnames: true,
+    keep_classnames: true,
+    format: { comments: 'all', quote_style: 3, wrap_iife: true,
+      keep_quoted_props: true, keep_numbers: true }
+  });
+  const compacted = renamed.code ? renamed.code + '\n' : '';
+  parsed(compacted); // Reject invalid output before the builder writes any asset.
+  return Buffer.byteLength(compacted) < Buffer.byteLength(code) ? compacted : code;
+}
+
+module.exports = { compact, print, parsed };
 if (require.main === module) {
   (async () => {
     const input = JSON.parse(fs.readFileSync(0, 'utf8'));

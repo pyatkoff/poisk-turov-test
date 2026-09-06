@@ -15,7 +15,7 @@ Node 18+ prints assets using pinned build-only Terser, Acorn and CSS Tree depend
 Install them once with the command above. The build itself makes no network requests.
 These tools are outside the site payload and add no browser dependency or request.
 
-JavaScript printing disables compression and name mangling. It retains all source
+The first JavaScript printing stage disables compression and name mangling. It retains all source
 comments, quoted property keys and number spelling. An independent Acorn parse
 compares every statement, operator, name, value, directive, template raw string and
 ordered comment before any output is written. Only source positions, literal
@@ -23,6 +23,13 @@ spelling and the safe `{name}` / `{name:name}` notation are normalized; `__proto
 is excluded from that shorthand equivalence. Syntax/comment changes fail closed,
 including otherwise harmless empty-statement removal or template raw rewrites.
 Non-shrinking assets keep their original bytes. No transpilation is performed.
+
+A second build-only Terser stage shortens local variable/parameter and label names.
+Compression remains disabled: expressions, arithmetic and control flow are not
+optimized. Global/top-level names, property keys, function/class names and scopes
+using direct eval are preserved. This intentional renaming is outside the first
+stage's exact-name AST equality; execution/closure/eval/name cases and the existing
+compiled presentation checks cover it. The final output is parsed before writes.
 
 The CSS build replaces private source comments with empty comment separators;
 license/copyright/source-map notes, strings and escapes remain. The output also

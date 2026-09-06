@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-06T19:42:05.995712+00:00",
+  "updated_at": "2026-09-06T19:55:10.453682+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -963,7 +963,22 @@
       "docs/project/search3-js-build-compaction.json",
       "docs/project/search3-css-external-formatting.json",
       "docs/project/search3-empty-local-filter-shell.json"
-    ]
+    ],
+    "in_progress": {
+      "stage": "LEAN_PREVIEW_LOCAL_NAMES_LOCAL_VERIFIED",
+      "baseline": "880c92c982ed1efe72ac5a98873966c28382a500",
+      "public_assets": {
+        "css_bytes": 205437,
+        "css_lines": 37,
+        "js_bytes": 115477,
+        "js_lines": 55,
+        "total_bytes": 320914,
+        "total_lines": 92
+      },
+      "js_saving_bytes": 15133,
+      "ci_policy": "19 broad draft PR jobs deferred; working PRs target release; exact artifact and production locks retained",
+      "next_action": "Run focused artifact CI on release-based draft, integrate, publish exact preview and inspect affected live interactions. Do not repeat the full site matrix."
+    }
   },
   "presentation_refactor_history": [
     {
@@ -4064,5 +4079,24 @@
       }
     ],
     "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested."
+  },
+  "preview_verification_policy": {
+    "source": "explicit_owner_request_2026_09_06_reduce_preview_checks",
+    "scope": "Search3 draft preview only",
+    "working_pr_base": "release/search3-production-ready-v1",
+    "required": [
+      "security",
+      "owner direction",
+      "exact artifact build and focused presentation/source checks",
+      "preview isolation"
+    ],
+    "defer": [
+      "full core/flight CI",
+      "SEO/site-wide checks",
+      "full responsive screenshot matrix"
+    ],
+    "restore": "ready_for_review event on each affected workflow; production approval still required",
+    "live": "One focused live scenario per published batch; mobile/desktop if layout changed",
+    "production_guards_unchanged": true
   }
 }

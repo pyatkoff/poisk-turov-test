@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
-const { compact, parsed } = require('../scripts/build/search3-js/compact.cjs');
+const { compact, print, parsed } = require('../scripts/build/search3-js/compact.cjs');
 
 (async () => {
   const cases = [
@@ -22,9 +22,22 @@ const { compact, parsed } = require('../scripts/build/search3-js/compact.cjs');
   for (const original of cases) {
     const output = await compact(original);
     assert.equal(execute(output), execute(original));
-    assert.deepEqual(parsed(output), parsed(original));
+    assert.deepEqual(parsed(await print(original)), parsed(original));
     assert.equal(await compact(output), output, 'printing is deterministic and idempotent');
   }
+  const localNames = [
+    `(function(){ var veryLongLocalPrice = 72099; var feeValue = 17218; output({price:veryLongLocalPrice + feeValue}); })();`,
+    `(function(){ var hotelName = 'hotel'; function readableFunction(argumentValue){return {hotelName, argumentValue};} output([readableFunction.name,readableFunction(2)]); })();`,
+    `(function(){ var outerValue=3; function first(innerValue){ return function second(){return outerValue+innerValue;}; } output(first(4)()); })();`,
+    `(function(){ var privateValue=42; output(eval('privateValue')); })();`,
+    `(function(){ class NamedHotel { value(){return 4;} } output([NamedHotel.name,new NamedHotel().value()]); })();`
+  ];
+  for (const original of localNames) {
+    const output = await compact(original);
+    assert.equal(execute(output), execute(original));
+    assert.ok(Buffer.byteLength(output) <= Buffer.byteLength(original));
+  }
+  assert.ok(!(await compact(localNames[0])).includes('veryLongLocalPrice'), 'local bindings actually shrink');
   assert.notDeepEqual(parsed('({__proto__})'), parsed('({__proto__:__proto__})'),
     'prototype setter and shorthand property are not equivalent');
   assert.notDeepEqual(parsed('String.raw`\\u0061`'), parsed('String.raw`a`'),
@@ -36,5 +49,5 @@ const { compact, parsed } = require('../scripts/build/search3-js/compact.cjs');
     'dropping even an empty statement fails closed');
   await assert.rejects(compact('output(`line\n${2 + 3}`)'), /changed syntax/,
     'rewriting template raw text fails closed even for an untagged template');
-  console.log('PASS: format-only JS preserves syntax, comments, ASI, literals, templates and execution');
+  console.log('PASS: checked printing and local-name reduction preserve execution, closures, eval, public keys and function/class names');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -122,7 +122,7 @@ class Search3SourceBuildTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
             builder.build(self.root)
         outputs, _, _ = builder.assemble(self.root)
-        literals = re.findall(rb's.textContent=("(?:\\.|[^"\\])*");',
+        literals = re.findall(rb'[A-Za-z_$][\w$]*\.textContent=("(?:\\.|[^"\\])*");',
                               outputs['search3-results-filters-v1.js'])
         expected = builder.compact_css_comments(css, trim_indentation=True).decode()
         self.assertIn(expected, [json.loads(value) for value in literals])

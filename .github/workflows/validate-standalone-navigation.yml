@@ -2,6 +2,7 @@ name: Validate standalone navigation
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - 'v2/index.php'
       - 'v2/home-v1.php'
@@ -16,6 +17,7 @@ on:
 
 jobs:
   navigation-contract:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || (github.head_ref != 'release/search3-production-ready-v1' && github.base_ref != 'release/search3-production-ready-v1') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
