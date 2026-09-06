@@ -954,7 +954,22 @@
     "source_audits": [
       "docs/project/search3-css-descendant-results.json",
       "docs/project/search3-css-descendant-secondary.json"
-    ]
+    ],
+    "in_progress": {
+      "stage": "FILTER_RAIL_PRIVATE_PARTS_LOCAL_VERIFIED",
+      "baseline": "b3b508d00af2149e04882b777ca30c9002ca91c0",
+      "public_assets": {
+        "css_bytes": 211465,
+        "css_lines": 4007,
+        "js_bytes": 139855,
+        "js_lines": 1827,
+        "total_bytes": 351320,
+        "total_lines": 5834
+      },
+      "audit": "docs/project/search3-filter-rail-private-parts.json",
+      "preview_updated": false,
+      "next_action": "Run exact source CI; continue format-only JS compaction with pinned parser AST equivalence before separate preview publication."
+    }
   },
   "presentation_refactor_history": [
     {

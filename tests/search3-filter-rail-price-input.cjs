@@ -18,12 +18,13 @@ const seaInputs = ['0', '200', '500', '1000'].map(value => ({ value, checked: va
 const charterField = { hidden: false, ariaHidden: '', setAttribute(name, value) { if (name === 'aria-hidden') this.ariaHidden = value; } };
 const charterInput = { checked: false };
 let railHtml = '';
+const htmlTrace = [];
 let railHtmlWrites = 0;
 let formSubmits = 0;
 const rail = {
   dataset: {},
   get innerHTML() { return railHtml; },
-  set innerHTML(value) { railHtml = value; railHtmlWrites += 1; },
+  set innerHTML(value) { railHtml = value; htmlTrace.push(value); railHtmlWrites += 1; },
   addEventListener(name, handler) { railEvents.set(name, handler); },
   querySelector(selector) {
     return {'[data-s3-count]': count, '[data-s3-word]': word,
@@ -49,8 +50,12 @@ const document = {
 };
 function CustomEvent(name, options) { this.type = name; this.detail = options.detail; }
 
+const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname, '../v2/search3-results-filters-v1.js'), 'utf8');
+const start = bundle.indexOf('/* donor:search3-filter-rail-preview.js');
+const end = bundle.indexOf('/* donor:', start + 1);
+assert.ok(start >= 0 && end > start, 'exercise the compiled rail with both private parts');
 vm.runInNewContext(
-  fs.readFileSync(path.join(__dirname, '../src/search3/behavior/filter-rail.js'), 'utf8'),
+  bundle.slice(start, end),
   { window, document, CustomEvent, Intl, Number, Object, Array, Math, String }
 );
 
@@ -60,6 +65,11 @@ const hotels = [
 ];
 assert.equal(announcements.length, 1, 'initial empty rail announces once');
 assert.equal(railHtmlWrites, 1, 'initial rail is rendered once');
+assert.deepEqual([...railHtml.matchAll(/name="s3-sea" value="(\d+)" (checked)?><span>([^<]+)<\/span>/g)]
+  .map(match => [match[1], !!match[2], match[3]]), [
+    ['0', true, 'Любое расстояние'], ['200', false, 'До 200 м'],
+    ['500', false, 'До 500 м'], ['1000', false, 'До 1 км']
+  ], 'sea-distance order, labels and initial selection remain exact');
 assert.equal(priceField.hidden, true, 'the price facet starts hidden without complete result data');
 assert.equal(seaSection.hidden, true, 'the sea facet starts hidden without complete result data');
 assert.equal(charterField.hidden, true, 'the charter facet starts hidden without complete result data');
@@ -290,3 +300,9 @@ input(140000);
 while (frames.length) frames.shift()();
 assert.equal(renders.at(-1).length, 1, 'price filtering still restores a matching hotel without tour rows');
 console.log('PASS: price input bursts render once per frame with latest state');
+
+// Optional differential evidence from the same full regression sequence.
+if (process.argv[3]) fs.writeFileSync(process.argv[3], JSON.stringify({
+  htmlTrace, renders, announcements, formSubmits, priceInput,
+  priceField, seaSection, seaInputs, charterField, charterInput
+}));

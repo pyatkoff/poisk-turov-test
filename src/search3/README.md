@@ -188,3 +188,9 @@ event lifecycle. Private `behavior/booking/layout.js` owns complete layout
 functions inside that same IIFE. One local setter preserves the original target,
 property, value, important priority and operation order. The existing summary
 regression executes the compiled owner and covers all eight layout states.
+
+The desktop `filter-rail.js` keeps shared state, filtering and event handlers.
+Private `filter-rail/availability.js` and `filter-rail/render.js` retain complete
+function groups in their original IIFE positions. Sea options share one local
+markup function. The compiled regression checks exact HTML/data/event traces
+against the preceding bundle; no runtime loader or public asset was added.
