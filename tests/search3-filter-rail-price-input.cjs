@@ -157,4 +157,18 @@ assert.equal(form.elements.price_till.value, '', 'reset clears the upper budget 
 assert.equal(form.elements.onlyDirect.checked, false, 'reset clears the direct-flight form filter');
 assert.equal(form.elements.onlyCharter.checked, false, 'reset clears the charter form filter');
 assert.equal(formSubmits, 1, 'desktop reset submits the cleared form once');
+
+form.elements.onlyCharter.checked = true;
+windowEvents.get('v2:search-reset')();
+assert.match(railHtml, /data-s3-charter-check checked/,
+  'a new search restores the result-rail charter state from the form');
+assert.equal(rail.dataset.s3ActiveCount, '1');
+railEvents.get('change')({
+  target: {
+    checked: false, name: '',
+    matches(selector) { return selector === '[data-s3-charter-check]'; }
+  }
+});
+assert.equal(form.elements.onlyCharter.checked, false,
+  'changing the local charter filter keeps the form state in sync');
 console.log('PASS: price input bursts render once per frame with latest state');

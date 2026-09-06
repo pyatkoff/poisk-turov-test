@@ -89,10 +89,10 @@ function reset(){cancelPriceApply();state={priceMax:0,seaMax:0,charter:false};re
 function editSearch(){form.classList.add('search3-mobile-advanced-open');var edit=document.getElementById('resultsSearchEdit');if(edit)edit.click();else form.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(function(){var quality=form.querySelector('.search3-quality');if(quality)quality.scrollIntoView({behavior:'smooth',block:'nearest'});},220);}
 
 rail.addEventListener('input',function(e){var t=e.target;if(t.matches('[data-s3-price]')){state.priceMax=Number(t.value||0);var out=rail.querySelector('[data-s3-price-label]');if(out)out.textContent='от '+money(rangeMin)+' ₽ — до '+money(state.priceMax)+' ₽';schedulePriceApply();}});
-rail.addEventListener('change',function(e){var t=e.target;if(t.name==='s3-sea'){cancelPriceApply();state.seaMax=Number(t.value||0);apply();}else if(t.matches('[data-s3-charter-check]')){cancelPriceApply();state.charter=!!t.checked;apply();}});
+rail.addEventListener('change',function(e){var t=e.target;if(t.name==='s3-sea'){cancelPriceApply();state.seaMax=Number(t.value||0);apply();}else if(t.matches('[data-s3-charter-check]')){cancelPriceApply();state.charter=!!t.checked;if(form.elements.onlyCharter)form.elements.onlyCharter.checked=state.charter;apply();}});
 rail.addEventListener('click',function(e){var panel=e.target.closest('[data-s3-panel]');if(panel){editSearch();return;}if(e.target.closest('[data-s3-reset]')){reset();return;}if(e.target.closest('[data-s3-edit-search]')){editSearch();return;}});
 window.addEventListener('v2:results-rendered',function(e){if(applying)return;var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];if(lastApplied.length&&sameRefs(items,lastApplied))return;cancelPriceApply();source=items.slice();lastApplied=[];syncPriceRange();if(source.length&&activeCount())apply();else updateCount(source.length);});
-window.addEventListener('v2:search-reset',function(){cancelPriceApply();source=[];lastApplied=[];rangeMin=0;rangeMax=0;state={priceMax:0,seaMax:0,charter:false};renderRail();});
+window.addEventListener('v2:search-reset',function(){cancelPriceApply();source=[];lastApplied=[];rangeMin=0;rangeMax=0;state={priceMax:0,seaMax:0,charter:!!(form.elements.onlyCharter&&form.elements.onlyCharter.checked)};renderRail();});
 renderRail();
 })();
 
