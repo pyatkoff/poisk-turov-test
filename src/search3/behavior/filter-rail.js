@@ -17,7 +17,7 @@ function fieldLabel(name,fallback){var el=form.elements[name];if(!el)return fall
 function announce(resultCount){var count=activeCount();rail.dataset.s3ActiveCount=String(count);window.dispatchEvent(new CustomEvent('search3:result-filters-changed',{detail:{activeCount:count,resultCount:Number(resultCount)||0}}));}
 function section(title,html){return'<section class="search3-filter-section"><h4>'+title+'</h4>'+html+'</section>';}
 function editRow(label,value,panel){return'<button type="button" class="search3-filter-edit-row" '+(panel?'data-s3-panel="'+panel+'"':'data-s3-edit-search')+'><span>'+label+'</span><b>'+value+'</b><i aria-hidden="true">›</i></button>';}
-function resolvePriceBounds(){var prices=allPrices(source),min=prices.length?Math.floor(Math.min.apply(null,prices)/5000)*5000:40000,max=prices.length?Math.ceil(Math.max.apply(null,prices)/5000)*5000:250000;if(max<=min)max=min+5000;rangeMin=min;rangeMax=max;if(state.priceMax>max)state.priceMax=max;return state.priceMax||max;}
+function resolvePriceBounds(){var prices=allPrices(source),min=prices.length?Math.floor(Math.min.apply(null,prices)/5000)*5000:40000,max=prices.length?Math.ceil(Math.max.apply(null,prices)/5000)*5000:250000;if(max<=min)max=min+5000;rangeMin=min;rangeMax=max;return state.priceMax?Math.max(min,Math.min(state.priceMax,max)):max;}
 function syncPriceRange(){var displayedMax=resolvePriceBounds(),input=rail.querySelector('[data-s3-price]'),out=rail.querySelector('[data-s3-price-label]');if(input){input.min=String(rangeMin);input.max=String(rangeMax);input.step='5000';input.value=String(displayedMax);}if(out)out.textContent='от '+money(rangeMin)+' ₽ — до '+money(displayedMax)+' ₽';}
 function renderRail(){
  var displayedMax=resolvePriceBounds(),min=rangeMin,max=rangeMax;

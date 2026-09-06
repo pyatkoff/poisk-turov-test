@@ -131,4 +131,16 @@ windowEvents.get('v2:results-rendered')({ detail: { items: renders.at(-1) } });
 assert.equal(announcements.length, announcementsBeforeSort,
   'rerendering the same filtered references does not announce a filter change');
 assert.equal(count.textContent, '1', 'same-reference rerender keeps the established count');
+
+windowEvents.get('v2:search-reset')();
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+input(150000);
+while (frames.length) frames.shift()();
+const temporarilyNarrowedHotels = [{ tours: [{ price: 90000 }] }];
+windowEvents.get('v2:results-rendered')({ detail: { items: temporarilyNarrowedHotels } });
+assert.equal(priceInput.max, '95000');
+assert.equal(priceInput.value, '95000', 'the mounted slider stays inside temporary bounds');
+windowEvents.get('v2:results-rendered')({ detail: { items: refreshedHotels } });
+assert.equal(priceInput.value, '150000',
+  'a temporary source contraction does not destroy the user-selected price limit');
 console.log('PASS: price input bursts render once per frame with latest state');
