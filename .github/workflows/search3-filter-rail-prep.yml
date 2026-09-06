@@ -1,0 +1,56 @@
+name: Prepare Search3 filter rail refactor
+
+on:
+  push:
+    branches:
+      - refactor/search3-filter-rail-ownership-ea853ec8
+    paths:
+      - 'src/search3/behavior/filter-rail.js'
+      - 'src/search3/styles/filters.css'
+      - 'tests/search3-filter-rail-ownership.cjs'
+      - 'tests/search3_production_presentation_test.py'
+      - '.github/workflows/search3-filter-rail-prep.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild checked Search3 assets
+        run: |
+          set -euo pipefail
+          python3 -B scripts/build/search3_assets.py --write
+          python3 -B scripts/build/search3_assets.py --check
+          node tests/search3-filter-rail-ownership.cjs
+          python3 -B tests/search3_source_build_test.py
+          python3 -B tests/search3_production_presentation_test.py
+
+      - name: Guard generated scope
+        run: |
+          set -euo pipefail
+          git diff --name-only | LC_ALL=C sort > "$RUNNER_TEMP/changed.txt"
+          cat > "$RUNNER_TEMP/expected.txt" <<'EOF'
+          docs/project/search3-production-import.json
+          v2/search3-results-filters-v1.css
+          v2/search3-results-filters-v1.js
+          EOF
+          if ! diff -u "$RUNNER_TEMP/expected.txt" "$RUNNER_TEMP/changed.txt"; then
+            echo 'Unexpected generated file scope' >&2
+            exit 1
+          fi
+
+      - name: Commit generated assets to preparation branch
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/project/search3-production-import.json v2/search3-results-filters-v1.css v2/search3-results-filters-v1.js
+          git commit -m 'build(search3): refresh filter rail assets'
+          git push origin HEAD:refactor/search3-filter-rail-ownership-ea853ec8
