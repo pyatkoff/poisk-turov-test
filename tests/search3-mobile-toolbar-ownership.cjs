@@ -28,6 +28,7 @@ function hits(fileList) {
 
 const presentation = fs.readFileSync(path.join(root, 'src/search3/behavior/results-presentation.js'), 'utf8');
 const selectedPresentation = fs.readFileSync(path.join(root, 'src/search3/behavior/tour-presentation.js'), 'utf8');
+const searchForm = fs.readFileSync(path.join(root, 'src/search3/behavior/search-form.js'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');
 
 assert.ok(presentation.includes("toolbar.className = 'search3-mobile-toolbar'"), 'Search3 presentation owns the mobile toolbar shell');
@@ -39,6 +40,7 @@ assert.ok(mobile.includes('function openSheet(') && mobile.includes('function cl
 assert.ok(!selectedPresentation.includes('function plural('), 'selected-tour presentation reuses the canonical inflection owner');
 assert.ok(selectedPresentation.includes('format.plural('), 'selected-tour presentation consumes the canonical inflection owner');
 assert.ok(!selectedPresentation.includes('function text('), 'unused selected-tour text normalizer stays retired');
+assert.ok(!searchForm.includes('function formatDate('), 'unused private date formatter stays retired from the search form');
 
 const runtimeHits = hits([
   ...files(path.join(root, 'src/search3/behavior'), '.js'),
