@@ -40,7 +40,43 @@ it intentionally renames local bindings while retaining public keys, globals,
 function/class names and arithmetic. Earlier exact-name AST claims apply only to
 the first printing stage and the previously published checkpoint below.
 
-### Current published checkpoint — checked compact assets and zero-match recovery — 2026-09-06
+### Current published checkpoint — lean preview and local JS names — 2026-09-06
+
+Source `4ad216b457562097c78a6a6b9c179e7365d87a0c`, source PR #1414, isolated publication #1415,
+deploy 34056652968 (success, attempt 1). The lean verification policy above is active.
+Working PR: three required workflows passed, three deferred. Release draft: four
+required workflows passed, nineteen broad jobs deferred plus one old migration skip.
+Existing release-push rollback check also passed. Deferred checks are not acceptance.
+
+Local variable/parameter/label names now shorten in the build, with compression,
+global/top-level/property mangling disabled; function/class names and eval scopes
+stay. First-stage exact printing AST guard remains, followed by syntax parsing and
+focused compiled execution checks. Readable runtime sources and all CSS unchanged.
+
+| Public assets | Previous bytes | Published bytes |
+| --- | ---: | ---: |
+| Four CSS | 205437 | 205437 |
+| Four JS | 130610 | 115477 |
+| Total | 336047 | 320914 |
+
+Saving 15133 bytes (11.59% JS, 4.50% overall); 37 CSS + 55 JS = 92 generated lines.
+Uncompressed, excludes shared runtime/legacy and duplicate src; no speed benchmark.
+Artifact 9996124818 / `sha256:bec74724991723328cb8839c2e0cb54e4a7e7e5c97a5c279f2083f53004a2cf8`; evidence 9996165721 /
+`sha256:5333ce5d982a72f78d62eb392895eb1d830e746bcfad605d218ac8b129e4fc4a`. Exact 715-file deployment payload verified;
+all three changed JS files matched over HTTP. Nine routes pass, preview leads
+disabled, counter zero, rollback retained, thirteen production fingerprints unchanged.
+
+One focused live desktop 1363px scenario: Moscow/Turkey 10–11 Sep, seven nights,
+two adults -> 100 hotels / 425 tours -> zero price matches with visible rail ->
+restore 100 -> ANAHTAR APART -> choose SU2156/SU2157, 72099 -> 89317 RUB ->
+review -> empty lead form (inspected) -> review -> 100 results -> preserved editor.
+No real lead or horizontal overflow. Full responsive/site matrix intentionally
+deferred; physical Safari and prior production acceptance limitations remain.
+
+Audit: `docs/project/search3-lean-preview-reduction.json`.
+Next: Continue measured CSS/JS reduction in release-based draft batches with the lean preview cycle. Local-name shortening and workflow routing are complete. Inspect remaining repeated static presentation markup or build compaction opportunities; preserve public keys/globals, price/API/lead contracts and eight paths. Do not rerun full site/SEO/responsive matrices without a concrete failure; restore full applicable gates for production review. Preview-only exact publication, production locked, scheduler paused.
+
+### Previous published checkpoint — checked compact assets and zero-match recovery — 2026-09-06
 
 Published source/release integration: `53f87c79cb3d4ca139c2391d1bcf818fa874e737`. Source PRs #1408/#1409/#1410/#1412.
 Separate exact preview publications #1411 then #1413; #1413 supersedes #1411 with
