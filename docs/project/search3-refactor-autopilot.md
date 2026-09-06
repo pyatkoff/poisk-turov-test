@@ -10,7 +10,63 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
-### Current published checkpoint — CSS output indentation — 2026-09-06
+### Current published checkpoint — native CSS nesting — 2026-09-06
+
+Published source and release integration: `74b87bff36db79f40fb17e18fb9478d339b6bc8c`. Source PRs #1399 and #1400;
+isolated one-shot preview #1401. Both passes are complete; preparation notes below
+are historical. This checkpoint supersedes their pending-CI/publication statuses.
+
+Consecutive rules sharing one identical `body.search3-candidate` or
+`html body.search3-candidate` parent now use explicit `&`: 131 groups across46
+source modules. No declarations or at-rules occur in grouping parents. Expanding
+the nesting reproduces ordered selectors, declaration values/important flags and
+media contexts exactly; original declaration bytes and public asset order retained.
+Cascade donor identity/order and protected acceptance guards retained.
+
+| Eight public assets | Previous bytes / lines | Published bytes / lines |
+| --- | ---: | ---: |
+| Four CSS | 290846 /3593 | 257468 /3855 |
+| Four JS | 142180 /1903 | 142180 /1903 |
+| Total | 433026 /5496 | 399648 /5758 |
+
+Reduction:33378 CSS bytes (11.48%;7.71% of the eight-asset total). Main results CSS
+removes29802 bytes; remaining three stylesheets remove3576. JS is byte-identical.
+Physical lines increase262 for explicit grouping braces. Uncompressed, excluding
+shared runtime/legacy and duplicate src; no speed benchmark or deferred-load claim.
+
+Browser boundary: this preview requires native CSS nesting. Explicit `&` works in
+[Safari16.5+ per WebKit](https://webkit.org/blog/14154/webkit-features-in-safari-16-5/).
+Older engines without nesting are unsupported; physical Safari is not qualified.
+Single-parent specificity follows the [CSS nesting specification](https://www.w3.org/TR/css-nesting-1/#nest-selector).
+
+Each exact code head passed23 applicable workflows and one expected migration skip.
+Final core34045800403, responsive34045800482, flight34045800430, build34045800429.
+Nine source-build tests and14 presentation tests, PHP covered in CI. Responsive
+375/430/1024/1348/1440;375/1440 editor images inspected and pixel-identical to prior
+publication.19 of24 compared images are pixel-identical; calendar scroll/header
+and date-selection variation remain in fixture captures. No blanket pixel-parity
+or physical-device acceptance claim. Source audits: search3-css-nesting-results.json
+and search3-css-nesting-secondary.json; consolidated evidence:
+`docs/project/search3-css-nesting-publication.json`.
+
+Artifact9993052180, ZIP `sha256:0dc48f09371af3424e8de13d160eb2bd41832a1aa83cfe49ca25bec4c5a8c830`.
+Deploy34046027330 succeeded; evidence9993119103, ZIP `sha256:a4b1a28daea5cd93fa55cb300eeda67ebbed9ce598d0eb9c09a5457de85f19e8`.
+715 payload hashes and8 live assets match.9 routes200/noindex; counter0, disabled
+synthetic lead403, internal PHP denied and rollback retained. All13 production
+fingerprints unchanged; main remainsfa58a0cb. No production publication.
+
+Live1363px: Moscow→Turkey,10–11Sep2026,7nights,2adults →100hotels/449tours →
+ANAHTAR APART →flight disclosure6→109→6 →review72099 RUB →visible empty lead
+form →return/offers/editor with dates and nights retained. No horizontal overflow.
+Phone remains empty; no lead submitted. Return completed despite one automation
+snapshot protocol timeout; fresh DOM verified completion before editor click.
+Earlier immediate-click return race and inherited legacy advanced-filter backdrop
+on desktop→mobile remain outside this qualification. No-flight fallback and
+physical Safari were not tested live in this pass.
+
+Next: Refresh release, active PRs and this publication before the next bounded reduction. Inspect remaining active CSS declaration duplication and JS presentation owners for measured net savings, preserving media/order/specificity, IIFE ownership and protected business contracts. Do not repeat completed nesting, indentation/comment compaction, private JS extraction, geometry helpers, retired selectors or shared formatters. Keep eight public paths; preview only via a separate exact-artifact publication. Production locked.
+
+### Previous published checkpoint — CSS output indentation — 2026-09-06
 
 Exact runtime/release code: `4517879c22929706aabc3365b7e3906ecf19bc24`. Source #1397; preview control #1398.
 This continuation also completed JS source split #1395 and publication #1396 below.
@@ -106,7 +162,7 @@ CSS/JS reduction. Do not repeat these private extractions/geometry helpers or th
 completed CSS and shared formatter work below. Preserve eight public paths,
 IIFE ownership and protected contracts; preview publication remains separate.
 
-### Current published checkpoint — CSS build compaction and entry split — 2026-09-06
+### Previous published checkpoint — CSS build compaction and entry split — 2026-09-06
 
 Exact runtime/release code: `9bedc2be31c5765c2fde2f383647487616127cc5`.
 Source PR #1393; separate one-shot preview control #1394.
@@ -201,7 +257,7 @@ for equivalent consolidation from refreshed release. Preserve eight public paths
 protected contracts, source ownership and existing publication history. Keep main
 and production locked; publish preview through the exact-artifact process.
 
-### Current code checkpoint — CI-verified, not republished — 2026-09-06
+### Previous code checkpoint — CI-verified, not republished — 2026-09-06
 
 Exact release code: `f8e10a30b57fa965ee8f5e7294a1e08819b75fc2`.
 Preparation PRs: #1388 and #1390. The exact preview below remains on the older
@@ -456,7 +512,7 @@ Status boundary: integrated in the release draft; 22 workflows and the Security 
 Next: first recheck Security guard run `34023357535`. After its wrapper finalizes, update the exact CI count; then prove a new independent defect before editing. Do not repeat price/charter/sea completeness, reset, price-frame or the three completed toolbar passes.
 
 
-### Prepared continuation: native CSS nesting in results
+### Completed source preparation: native CSS nesting in results
 
 - Baseline release `86697aa10be922f041c66603f352c7479f227aa1`; published preview remains `4517879c22929706aabc3365b7e3906ecf19bc24` until an exact artifact passes CI and isolated publication.
 - Grouped consecutive rules under a single identical `body.search3-candidate` or `html body.search3-candidate` parent, with explicit `&` in every child. No declarations or at-rules in grouping parents; existing media contexts/order and declaration bytes preserved.
@@ -466,7 +522,7 @@ Next: first recheck Security guard run `34023357535`. After its wrapper finalize
 - Next: responsive/browser CI, then the same bounded rewrite in the remaining CSS owners and one combined exact-artifact preview publication.
 
 
-### Prepared continuation: remaining CSS owners
+### Completed source preparation: remaining CSS owners
 
 - Builds on results nesting code `9597192cb58c00814a84ba21ee3f32f96f38dc53` / #1399; public preview has not changed yet.
 - Applied the same single-parent, explicit-`&` rewrite to six modules in entry, result cards and selected flow: 23 groups, −3576 bytes. All four expanded CSS streams match this baseline; all four JS files and the main results CSS are byte-identical. Audit: `docs/project/search3-css-nesting-secondary.json`.
