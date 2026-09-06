@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-06T10:45:17.465717+00:00",
+  "updated_at": "2026-09-06T10:59:51.785875+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Release 4a4d762c shares one Russian inflection owner across result and selected-tour presentation, retires two unreachable private helpers, and reduces the eight public assets by another 790 bytes / 20 lines with 23 applicable CI successful.",
-    "next_action": "Refresh the release head, then assess the repeated pure presentation helpers in booking-summary.js, final-sections.js and tour-detail-rail.js. Extract only an earlier-loaded shared owner if snapshot/ownership tests prove identical markup, event behavior, load order and a meaningful net byte reduction; otherwise continue proven equivalent consolidation in styles/cascade. Do not alter price arithmetic, lead/API contracts or published preview as a side effect.",
+    "last_material_progress": "Published 3f32ebb3: eight CSS/JS assets 454248 bytes /5554 lines, down26189 bytes /243 lines from previous live code including concurrent changes; own CSS reduction24354 bytes. Exact preview and live desktop journey verified.",
+    "next_action": "Continue rapid CSS/JS reduction from refreshed release: inspect remaining large active cascade owners and repeated result templates for equivalent consolidation. Do not repeat the 136 retired-rule removals, 35 compound groups, previous seven CSS splits, static-style/footer work or canonical text/plural extraction. Preserve eight public paths and protected contracts; main and production remain locked. Use the exact-artifact preview process.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -64,23 +64,23 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_PRESENTATION_HELPER_DEDUP",
-    "title": "Deduplicate Search3 presentation helpers",
-    "status": "CODE_CI_VISUAL_VERIFIED_NOT_PREVIEWED",
-    "implementation_sha": "4a4d762c0b7be142aeaaf84a0cdc1c23b0412c70",
+    "id": "S3_RETIRED_PRESENTATION_CSS",
+    "title": "Reduce and split Search3 CSS/JS",
+    "status": "PUBLISHED_LIVE_DESKTOP_VERIFIED",
+    "implementation_sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
-    "source_pr": 1386,
+    "source_pr": 1389,
     "issue": 996,
-    "artifact_id": 9986942715,
-    "artifact_run": 34025585506,
-    "deploy_pr": null,
-    "deploy_run": null,
-    "evidence_artifact": 9986947851,
+    "artifact_id": 9987823291,
+    "artifact_run": 34028476925,
+    "deploy_pr": 1392,
+    "deploy_run": 34028783194,
+    "evidence_artifact": 9987916338,
     "ci_success_count": 23,
-    "visual_run": 34025585525,
-    "verification": "One canonical plural formatter covers 1/2/5/11/21 and is reused for tours, guests and nights; duplicate and unreachable helpers are absent by ownership regression. Source/build/presentation checks passed, all 23 applicable workflows succeeded with one expected skip, and 375/1440 result images were inspected without new clipping. No preview or production publication is claimed for this code.",
-    "next_action": "Assess repeated pure presentation helpers across booking-summary.js, final-sections.js and tour-detail-rail.js; extract only with identical-output tests and net reduction, otherwise continue proven cascade consolidation."
+    "visual_run": 34028476946,
+    "verification": "Own CSS reduction 24354 bytes: 136 retired positive-class rules and 35 equal-specificity groups; retained selector/declaration/media stream verified against f8e10a30. Concurrent canonical shared JS and fact CSS preserved; overlapping labels experiment withdrawn. All 23 CI passed with one expected skip; responsive 375/1440 images, exact deployed bytes and live desktop journey verified. Known inherited legacy backdrop remains.",
+    "next_action": "Continue rapid CSS/JS reduction from refreshed release: inspect remaining large active cascade owners and repeated result templates for equivalent consolidation. Do not repeat the 136 retired-rule removals, 35 compound groups, previous seven CSS splits, static-style/footer work or canonical text/plural extraction. Preserve eight public paths and protected contracts; main and production remain locked. Use the exact-artifact preview process."
   },
   "queue": [
     {
@@ -174,15 +174,15 @@
       "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "26988e62eb674f8165d380de71e3be3d8feb19c3",
-      "release_merge_sha": "0fabb1eca248b0f6b48ffe750cc73eaf93f52956",
-      "source_tree": "99f62f64af5377b1b6687c0b974968420c2bb481",
-      "exact_artifact": 9986530879,
-      "artifact_digest": "sha256:5a9343dd778c06fbc0e6547e3121816e203563df7d01755061926699a830e812",
-      "superseded_artifact": 9986118224,
+      "implementation_verified_sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
+      "release_merge_sha": "84ae82a58f18460994fe8d5d584d7e82bbc73d3b",
+      "source_tree": "da25ccdfa727073aa5e273664c82bbebf70ef306",
+      "exact_artifact": 9987823291,
+      "artifact_digest": "sha256:0cd1cc2a6b6f12a5bb3485aa6444bd282077fa96893715c9f7c508653c2e03fe",
+      "superseded_artifact": 9986530879,
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "preview_deploy_run": 34024574911,
-      "preview_deploy_pr": 1384,
+      "preview_deploy_run": 34028783194,
+      "preview_deploy_pr": 1392,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -212,14 +212,17 @@
         "CSS source split and equal-specificity selector-prefix reduction",
         "static injected styles separated from JS behavior without emitted-style changes",
         "inactive Search3 footer replacement retired; canonical shared footer retained",
-        "concurrent price-facet completeness guard preserved"
+        "concurrent price-facet completeness guard preserved",
+        "retired positive-class CSS rules removed; negative conditions retained",
+        "35 compound equal-specificity CSS groups",
+        "concurrent shared presentation text/plural and fact typography preserved"
       ],
       "preview_deploy_workflow_conclusion": "success",
-      "final_verification_run": 34024574911,
-      "final_verification_artifact": 9986634293,
+      "final_verification_run": 34028783194,
+      "final_verification_artifact": 9987916338,
       "live_browser_verification": {
         "method": "direct desktop browser interaction",
-        "verified_at": "2026-09-06T09:35:55.378736+00:00",
+        "verified_at": "2026-09-06T10:59:51.785875+00:00",
         "viewport_width": 1363
       }
     },
@@ -574,9 +577,23 @@
       "visual_artifact": 9986537178,
       "visual_digest": "sha256:6074e34be1da4588a7a487d5b7ada719099c2220ebd2d988f4e205317a378e46",
       "scope": "Source/import/owner guards and existing responsive/flight checks passed. 375px results and 1348px editor images inspected on final code; PHP rendering ran in CI. This is not physical Safari acceptance."
+    },
+    "retired_presentation_css": {
+      "sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
+      "pr": 1389,
+      "conclusion": "success",
+      "applicable_success": 23,
+      "expected_skipped": 1,
+      "core_run": 34028476949,
+      "visual_run": 34028476946,
+      "flight_run": 34028476933,
+      "artifact_run": 34028476925,
+      "visual_artifact": 9987827778,
+      "visual_digest": "sha256:5367761034898f6f2b5255b83f47753c860a844c631a444e04024c340324f39c",
+      "scope": "Source/import/owner guards and existing responsive/flight checks passed. 375px and 1440px editor images inspected on final code; PHP rendering ran in CI. This is not physical Safari acceptance."
     }
   },
-  "last_verified_commit": "26988e62eb674f8165d380de71e3be3d8feb19c3",
+  "last_verified_commit": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
   "last_verified_commit_scope": "Exact isolated preview published and live desktop journey verified; eight public asset bytes and 13 unchanged production fingerprints confirmed. Not production or physical Safari acceptance; inherited legacy backdrop limitation remains documented.",
   "blocked": [
     {
@@ -751,10 +768,10 @@
   },
   "presentation_refactor_checkpoint": {
     "baseline": "f8e10a30b57fa965ee8f5e7294a1e08819b75fc2",
-    "stage": "S3_RETIRED_PRESENTATION_CSS_PREPARED",
+    "stage": "S3_RETIRED_PRESENTATION_CSS_PUBLISHED",
     "scope": "Remove 136 retired positive-class CSS rules and two empty media containers; group 35 equal-specificity compound selector lists. Preserve concurrent shared inflection and date-helper cleanup. Discard overlapping local formatter extraction instead of shipping a second helper namespace.",
-    "source_validation": "23_WORKFLOWS_SUCCESS_1_EXPECTED_SKIP_ARTIFACT_AND_RESPONSIVE_VERIFIED",
-    "verification": "Retired class markers have no v2 JS/PHP owner. Retained selector/declaration/media stream is unchanged after group expansion. Source/import/cascade and presentation checks passed locally. Concurrent #1385/#1386 code and regressions preserved. Initial d6c0b9d1 CI flagged a trailing blank line in the superseded formatter file; that file is not shipped.",
+    "source_validation": "23_APPLICABLE_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
+    "verification": "Own CSS reduction 24354 bytes: 136 retired positive-class rules and 35 equal-specificity groups; retained selector/declaration/media stream verified against f8e10a30. Concurrent canonical shared JS and fact CSS preserved; overlapping labels experiment withdrawn. All 23 CI passed with one expected skip; responsive 375/1440 images, exact deployed bytes and live desktop journey verified. Known inherited legacy backdrop remains.",
     "public_assets": {
       "css_bytes": 311609,
       "css_lines": 3653,
@@ -771,12 +788,31 @@
       "js_bytes": 0,
       "scope": "Own CSS reduction after preserving concurrent #1385/#1386/#1388/#1390; overlapping local JS extraction withdrawn."
     },
-    "preview_updated": false,
+    "preview_updated": true,
     "production_updated": false,
-    "next_action": "Finish existing CI and responsive inspection, integrate release only and separately publish exact preview. Preserve the canonical shared text and inflection owners and concurrent fact typography; do not repeat this cleanup.",
+    "next_action": "Continue rapid CSS/JS reduction from refreshed release: inspect remaining large active cascade owners and repeated result templates for equivalent consolidation. Do not repeat the 136 retired-rule removals, 35 compound groups, previous seven CSS splits, static-style/footer work or canonical text/plural extraction. Preserve eight public paths and protected contracts; main and production remain locked. Use the exact-artifact preview process.",
     "concurrent_release_sha": "f8e10a30b57fa965ee8f5e7294a1e08819b75fc2",
     "code_sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
-    "concurrent_docs_sha": "473654a31e320b80bb0c3a468b81635386fee016"
+    "concurrent_docs_sha": "473654a31e320b80bb0c3a468b81635386fee016",
+    "implementation_sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
+    "release_integration_sha": "84ae82a58f18460994fe8d5d584d7e82bbc73d3b",
+    "ci": {
+      "sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
+      "pr": 1389,
+      "conclusion": "success",
+      "applicable_success": 23,
+      "expected_skipped": 1,
+      "core_run": 34028476949,
+      "visual_run": 34028476946,
+      "flight_run": 34028476933,
+      "artifact_run": 34028476925,
+      "visual_artifact": 9987827778,
+      "visual_digest": "sha256:5367761034898f6f2b5255b83f47753c860a844c631a444e04024c340324f39c",
+      "scope": "Source/import/owner guards and existing responsive/flight checks passed. 375px and 1440px editor images inspected on final code; PHP rendering ran in CI. This is not physical Safari acceptance."
+    },
+    "preview_deploy_run": 34028783194,
+    "preview_deploy_pr": 1392,
+    "verified_at": "2026-09-06T10:59:51.785875+00:00"
   },
   "presentation_refactor_history": [
     {
@@ -1292,6 +1328,35 @@
       "last_preview_deploy_pr": 1384,
       "last_preview_code_sha": "26988e62eb674f8165d380de71e3be3d8feb19c3",
       "verified_at": "2026-09-06T10:50:00+00:00"
+    },
+    {
+      "baseline": "f8e10a30b57fa965ee8f5e7294a1e08819b75fc2",
+      "stage": "S3_RETIRED_PRESENTATION_CSS_PREPARED",
+      "scope": "Remove 136 retired positive-class CSS rules and two empty media containers; group 35 equal-specificity compound selector lists. Preserve concurrent shared inflection and date-helper cleanup. Discard overlapping local formatter extraction instead of shipping a second helper namespace.",
+      "source_validation": "23_WORKFLOWS_SUCCESS_1_EXPECTED_SKIP_ARTIFACT_AND_RESPONSIVE_VERIFIED",
+      "verification": "Retired class markers have no v2 JS/PHP owner. Retained selector/declaration/media stream is unchanged after group expansion. Source/import/cascade and presentation checks passed locally. Concurrent #1385/#1386 code and regressions preserved. Initial d6c0b9d1 CI flagged a trailing blank line in the superseded formatter file; that file is not shipped.",
+      "public_assets": {
+        "css_bytes": 311609,
+        "css_lines": 3653,
+        "js_bytes": 142639,
+        "js_lines": 1901,
+        "total_bytes": 454248,
+        "total_lines": 5554,
+        "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
+      },
+      "run_delta": {
+        "bytes": -24354,
+        "lines": -215,
+        "css_bytes": -24354,
+        "js_bytes": 0,
+        "scope": "Own CSS reduction after preserving concurrent #1385/#1386/#1388/#1390; overlapping local JS extraction withdrawn."
+      },
+      "preview_updated": false,
+      "production_updated": false,
+      "next_action": "Finish existing CI and responsive inspection, integrate release only and separately publish exact preview. Preserve the canonical shared text and inflection owners and concurrent fact typography; do not repeat this cleanup.",
+      "concurrent_release_sha": "f8e10a30b57fa965ee8f5e7294a1e08819b75fc2",
+      "code_sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
+      "concurrent_docs_sha": "473654a31e320b80bb0c3a468b81635386fee016"
     }
   ],
   "site_preview_publication_history": [
@@ -1475,22 +1540,195 @@
         "pr": 1334,
         "issue": 996
       }
+    },
+    {
+      "recorded_at": "2026-09-06T10:59:51.785875+00:00",
+      "previous_site_draft": {
+        "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
+        "branch": "release/search3-production-ready-v1",
+        "pr": 1334,
+        "implementation_verified_sha": "26988e62eb674f8165d380de71e3be3d8feb19c3",
+        "release_merge_sha": "0fabb1eca248b0f6b48ffe750cc73eaf93f52956",
+        "source_tree": "99f62f64af5377b1b6687c0b974968420c2bb481",
+        "exact_artifact": 9986530879,
+        "artifact_digest": "sha256:5a9343dd778c06fbc0e6547e3121816e203563df7d01755061926699a830e812",
+        "superseded_artifact": 9986118224,
+        "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "preview_deploy_run": 34024574911,
+        "preview_deploy_pr": 1384,
+        "includes": [
+          "home native independent night range and child ages",
+          "offer/month date/night/party handoff",
+          "customer-facing country/month copy",
+          "Search3 production import",
+          "old-search compatibility route",
+          "whole-site preview path containment",
+          "preview lead-disabled endpoint and exact artifact pipeline",
+          "preview-only forced noindex independent of production SEO allowlist",
+          "readable result cards with taller mobile photos and non-duplicated facts",
+          "localized decimal flight-price tradeoff display correction",
+          "declined resort destination copy from reviewed H1",
+          "unpublished 404 legal/payment footer links hidden",
+          "existing production price calendar restored in Search3 with responsive disclosure",
+          "mockup-7 footer social/store treatment",
+          "mockup-6 readable contact form with fewer repeated panels",
+          "supplier placeholder-flight and unknown-baggage summaries",
+          "one authoritative tour price in lead sidebar without misleading flight-price repetition",
+          "booking stage hides preserved results and search controls",
+          "readable search context, filter rows and lead navigation",
+          "desktop reset fits the narrow filter rail",
+          "duplicate CSS rules removed with declaration-stream and pixel equivalence evidence",
+          "retained selected-tour DOM respects hidden after Back",
+          "selected-tour observer no longer rescans results; resize preserves open search editor",
+          "single CSS owner for initial/editor responsive grid",
+          "lead sidebar manager clarification when proceeding without flight",
+          "CSS source split and equal-specificity selector-prefix reduction",
+          "static injected styles separated from JS behavior without emitted-style changes",
+          "inactive Search3 footer replacement retired; canonical shared footer retained",
+          "concurrent price-facet completeness guard preserved"
+        ],
+        "preview_deploy_workflow_conclusion": "success",
+        "final_verification_run": 34024574911,
+        "final_verification_artifact": 9986634293,
+        "live_browser_verification": {
+          "method": "direct desktop browser interaction",
+          "verified_at": "2026-09-06T09:35:55.378736+00:00",
+          "viewport_width": 1363
+        }
+      },
+      "previous_preview_publication": {
+        "status": "PUBLISHED_LIVE_DESKTOP_VERIFIED_WITH_KNOWN_PRESENTATION_LIMITATION",
+        "source_sha": "26988e62eb674f8165d380de71e3be3d8feb19c3",
+        "source_tree": "99f62f64af5377b1b6687c0b974968420c2bb481",
+        "release_pin_sha": "0fabb1eca248b0f6b48ffe750cc73eaf93f52956",
+        "artifact_id": 9986530879,
+        "artifact_run": 34024249256,
+        "artifact_digest": "sha256:5a9343dd778c06fbc0e6547e3121816e203563df7d01755061926699a830e812",
+        "deploy_pr": 1384,
+        "deploy_run": 34024574911,
+        "deployment_evidence_artifact": 9986634293,
+        "deployment_evidence_digest": "sha256:085c2521f407c358ad6bad49c7774519ec12b944d0f3af4d18ac9cd8b44d88d3",
+        "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "verified_at": "2026-09-06T09:35:55.378736+00:00",
+        "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+        "production_unchanged": true,
+        "physical_safari_tested": false,
+        "real_lead_submitted": false,
+        "verification": [
+          "Deployment succeeded: all 715 payload hashes; nine HTTP 200/noindex routes; disabled synthetic lead probe 403; counter zero; internal PHP denied; retained rollback backup.",
+          "Evidence ZIP digest verified independently; all 13 production fingerprints equal before, after and final.",
+          "All eight live public assets downloaded and matched the exact local/code/artifact bytes.",
+          "Live desktop 1363px: Moscow to Turkey, 10 September 2026, seven nights, two adults; 100 hotels and 186 tours.",
+          "ANAHTAR APART: open offers, check concrete tour, inspect flight choices, proceed to review and visible lead form. One 72,099 RUB total on the lead sidebar; no submission or personal data entered.",
+          "Lead-form screenshot inspected; document width equals viewport 1363px, with no horizontal overflow."
+        ],
+        "live_viewport_widths": [
+          1363
+        ],
+        "responsive_ci_run": 34024249262,
+        "known_limitations": [
+          {
+            "width": 375,
+            "recovery": "native Escape",
+            "limitation": "retained hidden advanced-filter owner left an open backdrop"
+          }
+        ],
+        "known_limitations_scope": "Inherited pre-existing hidden legacy advanced-filter backdrop on desktop-to-mobile resize; not fixed or requalified by this desktop-only live journey. Prior controlled evidence retained in publication history.",
+        "public_assets": {
+          "css_bytes": 336274,
+          "css_lines": 3871,
+          "js_bytes": 144163,
+          "js_lines": 1926,
+          "total_bytes": 480437,
+          "total_lines": 5797,
+          "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
+        },
+        "live_asset_sha256": [
+          {
+            "asset": "search3-results-filters-v1.js",
+            "bytes": 125820,
+            "sha256": "5ee1995853e8456f34d5439a4e7e8a1c62a13ef16591413d666f74d3e410470d",
+            "exact": true
+          },
+          {
+            "asset": "search3-results-filters-v1.css",
+            "bytes": 301129,
+            "sha256": "c206851fe93668ccd15c4f435d4064ff885e92a1600acbcd17036272b3a7d5ca",
+            "exact": true
+          },
+          {
+            "asset": "search3-entry-v1.css",
+            "bytes": 15098,
+            "sha256": "854088b148a6ee8f2cbd167dd89403e450a0f682dfd509c29ca5863f6b4fb31b",
+            "exact": true
+          },
+          {
+            "asset": "search3-entry-v1.js",
+            "bytes": 5050,
+            "sha256": "6e8631ea926a103661a824739fcdf218e83c07b6ca4f7d0786ed23fcacb41e0b",
+            "exact": true
+          },
+          {
+            "asset": "search3-results-cards-v2.css",
+            "bytes": 9194,
+            "sha256": "ee51d0cfc08af6f48af748b9c77a9747d33afbf91630428526ce3c68bed26f3b",
+            "exact": true
+          },
+          {
+            "asset": "search3-results-cards-v2.js",
+            "bytes": 88,
+            "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
+            "exact": true
+          },
+          {
+            "asset": "search3-selected-flow-v2.css",
+            "bytes": 10853,
+            "sha256": "b2cf963356f0857573ce7a9da499a9a7b72c9da22edd6526c31fd9d77cb9a1be",
+            "exact": true
+          },
+          {
+            "asset": "search3-selected-flow-v2.js",
+            "bytes": 13205,
+            "sha256": "a4db64b0d1752ca15eea9f6cab1587d38139c4cc16681932f1e9a9dc2408544c",
+            "exact": true
+          }
+        ]
+      },
+      "previous_current_task": {
+        "id": "S3_PRESENTATION_HELPER_DEDUP",
+        "title": "Deduplicate Search3 presentation helpers",
+        "status": "CODE_CI_VISUAL_VERIFIED_NOT_PREVIEWED",
+        "implementation_sha": "4a4d762c0b7be142aeaaf84a0cdc1c23b0412c70",
+        "branch": "release/search3-production-ready-v1",
+        "pr": 1334,
+        "source_pr": 1386,
+        "issue": 996,
+        "artifact_id": 9986942715,
+        "artifact_run": 34025585506,
+        "deploy_pr": null,
+        "deploy_run": null,
+        "evidence_artifact": 9986947851,
+        "ci_success_count": 23,
+        "visual_run": 34025585525,
+        "verification": "One canonical plural formatter covers 1/2/5/11/21 and is reused for tours, guests and nights; duplicate and unreachable helpers are absent by ownership regression. Source/build/presentation checks passed, all 23 applicable workflows succeeded with one expected skip, and 375/1440 result images were inspected without new clipping. No preview or production publication is claimed for this code.",
+        "next_action": "Assess repeated pure presentation helpers across booking-summary.js, final-sections.js and tour-detail-rail.js; extract only with identical-output tests and net reduction, otherwise continue proven cascade consolidation."
+      }
     }
   ],
   "preview_publication": {
     "status": "PUBLISHED_LIVE_DESKTOP_VERIFIED_WITH_KNOWN_PRESENTATION_LIMITATION",
-    "source_sha": "26988e62eb674f8165d380de71e3be3d8feb19c3",
-    "source_tree": "99f62f64af5377b1b6687c0b974968420c2bb481",
-    "release_pin_sha": "0fabb1eca248b0f6b48ffe750cc73eaf93f52956",
-    "artifact_id": 9986530879,
-    "artifact_run": 34024249256,
-    "artifact_digest": "sha256:5a9343dd778c06fbc0e6547e3121816e203563df7d01755061926699a830e812",
-    "deploy_pr": 1384,
-    "deploy_run": 34024574911,
-    "deployment_evidence_artifact": 9986634293,
-    "deployment_evidence_digest": "sha256:085c2521f407c358ad6bad49c7774519ec12b944d0f3af4d18ac9cd8b44d88d3",
+    "source_sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
+    "source_tree": "da25ccdfa727073aa5e273664c82bbebf70ef306",
+    "release_pin_sha": "84ae82a58f18460994fe8d5d584d7e82bbc73d3b",
+    "artifact_id": 9987823291,
+    "artifact_run": 34028476925,
+    "artifact_digest": "sha256:0cd1cc2a6b6f12a5bb3485aa6444bd282077fa96893715c9f7c508653c2e03fe",
+    "deploy_pr": 1392,
+    "deploy_run": 34028783194,
+    "deployment_evidence_artifact": 9987916338,
+    "deployment_evidence_digest": "sha256:6887eb1d1abdb40dd29747f63241e358c2bd9d491daf5f0f3a0e63e28a2f7248",
     "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-    "verified_at": "2026-09-06T09:35:55.378736+00:00",
+    "verified_at": "2026-09-06T10:59:51.785875+00:00",
     "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
     "production_unchanged": true,
     "physical_safari_tested": false,
@@ -1499,14 +1737,14 @@
       "Deployment succeeded: all 715 payload hashes; nine HTTP 200/noindex routes; disabled synthetic lead probe 403; counter zero; internal PHP denied; retained rollback backup.",
       "Evidence ZIP digest verified independently; all 13 production fingerprints equal before, after and final.",
       "All eight live public assets downloaded and matched the exact local/code/artifact bytes.",
-      "Live desktop 1363px: Moscow to Turkey, 10 September 2026, seven nights, two adults; 100 hotels and 186 tours.",
+      "Live desktop 1363px: Moscow to Turkey, 10 September 2026, seven nights, two adults; 100 hotels and 370 tours.",
       "ANAHTAR APART: open offers, check concrete tour, inspect flight choices, proceed to review and visible lead form. One 72,099 RUB total on the lead sidebar; no submission or personal data entered.",
       "Lead-form screenshot inspected; document width equals viewport 1363px, with no horizontal overflow."
     ],
     "live_viewport_widths": [
       1363
     ],
-    "responsive_ci_run": 34024249262,
+    "responsive_ci_run": 34028476946,
     "known_limitations": [
       {
         "width": 375,
@@ -1516,31 +1754,31 @@
     ],
     "known_limitations_scope": "Inherited pre-existing hidden legacy advanced-filter backdrop on desktop-to-mobile resize; not fixed or requalified by this desktop-only live journey. Prior controlled evidence retained in publication history.",
     "public_assets": {
-      "css_bytes": 336274,
-      "css_lines": 3871,
-      "js_bytes": 144163,
-      "js_lines": 1926,
-      "total_bytes": 480437,
-      "total_lines": 5797,
+      "css_bytes": 311609,
+      "css_lines": 3653,
+      "js_bytes": 142639,
+      "js_lines": 1901,
+      "total_bytes": 454248,
+      "total_lines": 5554,
       "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
     },
     "live_asset_sha256": [
       {
         "asset": "search3-results-filters-v1.js",
-        "bytes": 125820,
-        "sha256": "5ee1995853e8456f34d5439a4e7e8a1c62a13ef16591413d666f74d3e410470d",
+        "bytes": 124296,
+        "sha256": "4a90f468694e2fa3b40fef8c982cbeaf3f229127ad8f56c63695447ec1bf46be",
         "exact": true
       },
       {
         "asset": "search3-results-filters-v1.css",
-        "bytes": 301129,
-        "sha256": "c206851fe93668ccd15c4f435d4064ff885e92a1600acbcd17036272b3a7d5ca",
+        "bytes": 277112,
+        "sha256": "f70613813a66b20434370a3f1e76593e2143e56b6587f42b8f159ef04d10747c",
         "exact": true
       },
       {
         "asset": "search3-entry-v1.css",
-        "bytes": 15098,
-        "sha256": "854088b148a6ee8f2cbd167dd89403e450a0f682dfd509c29ca5863f6b4fb31b",
+        "bytes": 14959,
+        "sha256": "ecd7a432d4e12926ef972ed71ebddfb820279a2c73ceefc0063ab9197be5caa5",
         "exact": true
       },
       {
@@ -1551,8 +1789,8 @@
       },
       {
         "asset": "search3-results-cards-v2.css",
-        "bytes": 9194,
-        "sha256": "ee51d0cfc08af6f48af748b9c77a9747d33afbf91630428526ce3c68bed26f3b",
+        "bytes": 8758,
+        "sha256": "6b05e4b81c776f8f37a55fcd9703b06d4281c8e5f9ff0084e3a351d4f648b7dd",
         "exact": true
       },
       {
@@ -1563,8 +1801,8 @@
       },
       {
         "asset": "search3-selected-flow-v2.css",
-        "bytes": 10853,
-        "sha256": "b2cf963356f0857573ce7a9da499a9a7b72c9da22edd6526c31fd9d77cb9a1be",
+        "bytes": 10780,
+        "sha256": "d5944debc4386b353083aa85d7c4b7e9a7943a72a2be48411c00ed0539f72266",
         "exact": true
       },
       {

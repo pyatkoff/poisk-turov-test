@@ -10,24 +10,54 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
-### Current continuation — retired presentation CSS
+### Current published checkpoint — retired CSS and shared JS — 2026-09-06
 
-Prepared on top of concurrent release `06a3ebf5`: 136 rules requiring retired
-positive classes and two empty media containers removed (21,788 bytes). Negative
-conditions remain. Another 35 equal-specificity compound selector groups remove
-2,566 bytes. The retained ordered selector/declaration/media stream is unchanged
-after expansion. Audit: `docs/project/search3-css-owner-retirement.json`.
+Exact preview runtime: `3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18`.
+Release integration: `84ae82a58f18460994fe8d5d584d7e82bbc73d3b`.
+Source PR #1389; separate one-shot preview control PR #1392. Older pending
+statements below are historical checkpoints, not the current publication state.
 
-Concurrent #1385/#1386 inflection/date-helper cleanup and regressions are preserved.
-The local labels extraction in draft `d6c0b9d1` overlapped that work and was
-withdrawn; no second formatter namespace is shipped. Its initial CI flagged a
-trailing blank line in the now-removed file, not a deployed runtime failure.
-The 537-case differential experiment remains historical evidence, not a claim
-that its superseded implementation was published.
+- Removed 136 rules /147 selectors requiring 21 retired positive classes and
+  two empty media containers: 21,788 CSS bytes. Negative conditions remain.
+- Consolidated 35 equal-specificity compound selector groups: 2,566 CSS bytes.
+  Expanding retained selectors reproduces the ordered declaration/media stream
+  against concurrent release f8e10a30. Audit: search3-css-owner-retirement.json.
+- Preserved concurrent #1385/#1386/#1388/#1390 shared text, inflection, helper
+  cleanup, fact typography and regression tests, plus #1391 checkpoint history.
+  The overlapping local formatter experiment was withdrawn; no second namespace
+  is shipped. Do not repeat these completed steps.
 
-Prepared eight assets after preserving concurrent #1385/#1386/#1388/#1390: CSS 311609 bytes / 3653 lines; JS 142639 / 1901; total 454248 / 5554. Own reduction against concurrent f8e10a30: 24354 bytes / 215 lines.
+| Eight public assets | Previous preview bytes / lines | Published bytes / lines |
+| --- | ---: | ---: |
+| Four CSS | 336274 / 3871 | 311609 / 3653 |
+| Four JS | 144163 / 1926 | 142639 / 1901 |
+| Total | 480437 / 5797 | 454248 / 5554 |
 
-Next: finish CI and responsive inspection, integrate release only, then separately publish the exact checked preview artifact. Do not repeat completed cleanup or shared text/inflection work.
+Net reduction since previous preview: 26,189 bytes (5.45%) /243 lines, including
+concurrent changes. Own CSS reduction against f8e10a30: 24,354 bytes /215 lines.
+Uncompressed assets excluding shared runtime/legacy; not a speed benchmark.
+
+All 23 applicable workflows passed, one expected skip. Core 34028476949,
+responsive 34028476946, flight 34028476933, artifact 34028476925.
+Responsive 375/1440 editor screenshots inspected; physical Safari not tested.
+Source artifact 9987823291 digest
+`sha256:0cd1cc2a6b6f12a5bb3485aa6444bd282077fa96893715c9f7c508653c2e03fe`.
+Deployment 34028783194 succeeded; evidence 9987916338 digest
+`sha256:6887eb1d1abdb40dd29747f63241e358c2bd9d491daf5f0f3a0e63e28a2f7248`.
+All 715 payload hashes and eight served assets match. Nine routes 200/noindex,
+lead-disabled probe 403, counter 0, internal PHP denied, rollback retained;
+13 production fingerprints identical before/after/final. Main remains fa58a0cb.
+
+Live desktop 1363px: Moscow–Turkey, 10 September 2026, 7 nights, 2 adults;
+100 hotels /370 tours. ANAHTAR APART → flight choices → review → visible
+unsubmitted lead form, one 72,099 RUB sidebar total; phone empty and document
+width 1363px. The inherited legacy advanced-filter backdrop on desktop-to-mobile
+resize remains documented; this desktop journey does not requalify that case.
+
+Next: inspect remaining large active cascade owners and repeated result templates
+for equivalent consolidation from refreshed release. Preserve eight public paths,
+protected contracts, source ownership and existing publication history. Keep main
+and production locked; publish preview through the exact-artifact process.
 
 ### Current code checkpoint — CI-verified, not republished — 2026-09-06
 
