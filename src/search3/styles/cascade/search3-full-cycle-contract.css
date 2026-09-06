@@ -11,7 +11,7 @@ body.search3-candidate #selectedTour .selected-head h2{font-size:23px!important}
 body.search3-candidate #selectedTour .selected-price{font-size:24px!important}
 body.search3-candidate #selectedTour .facts{margin-top:10px!important;border-radius:12px!important}
 body.search3-candidate #selectedTour .facts>div{padding:11px 14px!important}
-body.search3-candidate #selectedTour .hotel-desc,body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{margin-top:12px!important;padding:16px 18px!important;border-radius:12px!important}
+body.search3-candidate #selectedTour :is(.hotel-desc,.tour-flights,.lead-form){margin-top:12px!important;padding:16px 18px!important;border-radius:12px!important}
 body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!important}
 body.search3-candidate #selectedTour .section-heading strong{font-size:17px!important}
 body.search3-candidate #selectedTour .flight-variant{border-radius:10px!important;box-shadow:none!important}
@@ -30,10 +30,10 @@ body.search3-candidate .search3-lead-status__icon--error{background:#ef5350;colo
 body.search3-candidate .search3-lead-status ol{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:8px;color:#33405f;font-size:11px}
 body.search3-candidate .search3-lead-status ol li:before{content:'✓';display:inline-flex;width:18px;height:18px;margin-right:7px;align-items:center;justify-content:center;border:1px solid #075cff;border-radius:50%;color:#075cff;font-size:9px;font-weight:900}
 body.search3-candidate .search3-lead-id{font-weight:800;color:#0d1b4c!important}
-body.search3-candidate .search3-messenger-actions,body.search3-candidate .search3-error-actions{display:flex;gap:8px;flex-wrap:wrap}
-body.search3-candidate .search3-msg-btn,body.search3-candidate .search3-retry-lead,body.search3-candidate .search3-edit-lead,body.search3-candidate .search3-stay-site{display:inline-flex;min-height:42px;padding:0 16px;align-items:center;justify-content:center;border-radius:8px;text-decoration:none;font:800 11px/1 var(--at-font);cursor:pointer}
-body.search3-candidate .search3-msg-btn--max,body.search3-candidate .search3-retry-lead{border:1px solid #075cff;background:#075cff;color:#fff}
-body.search3-candidate .search3-msg-btn--tg,body.search3-candidate .search3-edit-lead{border:1px solid #075cff;background:#fff;color:#075cff}
+body.search3-candidate :is(.search3-messenger-actions,.search3-error-actions){display:flex;gap:8px;flex-wrap:wrap}
+body.search3-candidate :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-lead,.search3-stay-site){display:inline-flex;min-height:42px;padding:0 16px;align-items:center;justify-content:center;border-radius:8px;text-decoration:none;font:800 11px/1 var(--at-font);cursor:pointer}
+body.search3-candidate :is(.search3-msg-btn--max,.search3-retry-lead){border:1px solid #075cff;background:#075cff;color:#fff}
+body.search3-candidate :is(.search3-msg-btn--tg,.search3-edit-lead){border:1px solid #075cff;background:#fff;color:#075cff}
 body.search3-candidate .search3-msg-btn--disabled{border:1px solid #d8deea;background:#f5f7fb;color:#9aa3b7;cursor:not-allowed}
 body.search3-candidate .search3-stay-site{border:0;background:transparent;color:#075cff}
 @media(max-width:640px){
@@ -42,12 +42,12 @@ body.search3-candidate #selectedTour .selected-picture{height:178px!important;bo
 body.search3-candidate #selectedTour .selected-head{padding:10px 11px!important}
 body.search3-candidate #selectedTour .selected-head h2{font-size:18px!important}
 body.search3-candidate #selectedTour .facts{border-radius:0 0 10px 10px!important}
-body.search3-candidate #selectedTour .hotel-desc,body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{padding:10px!important;border-radius:10px!important}
+body.search3-candidate #selectedTour :is(.hotel-desc,.tour-flights,.lead-form){padding:10px!important;border-radius:10px!important}
 body.search3-candidate #selectedTour .lead-form button[type=submit]{min-height:46px!important;background:#ff4f0a!important}
 body.search3-candidate .search3-lead-status{grid-template-columns:1fr;gap:10px;padding:4px 0}
 body.search3-candidate .search3-lead-status__icon{width:44px;height:44px;font-size:21px}
 body.search3-candidate .search3-lead-status h3{font-size:19px}
 body.search3-candidate .search3-lead-status p{font-size:11px}
-body.search3-candidate .search3-messenger-actions,body.search3-candidate .search3-error-actions{display:grid;grid-template-columns:1fr}
-body.search3-candidate .search3-msg-btn,body.search3-candidate .search3-retry-lead,body.search3-candidate .search3-edit-lead,body.search3-candidate .search3-stay-site{width:100%;min-height:44px}
+body.search3-candidate :is(.search3-messenger-actions,.search3-error-actions){display:grid;grid-template-columns:1fr}
+body.search3-candidate :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-lead,.search3-stay-site){width:100%;min-height:44px}
 }

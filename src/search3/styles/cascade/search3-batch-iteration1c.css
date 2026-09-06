@@ -31,7 +31,7 @@
  body.search3-candidate #selectedTour .facts>div{min-height:56px!important;padding:10px 11px!important}
  body.search3-candidate #selectedTour .facts span{font-size:8px!important}
  body.search3-candidate #selectedTour .facts b{font-size:11px!important}
- body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{margin-top:8px!important;padding:14px!important}
+ body.search3-candidate #selectedTour :is(.tour-flights,.lead-form){margin-top:8px!important;padding:14px!important}
 
  body.search3-candidate #selectedTour .lead-form button[type=submit]{color:#fff!important;border:0!important;border-radius:9px!important;font-size:12px!important}
 }
@@ -41,7 +41,9 @@
  body.search3-candidate #tourSearch{box-shadow:none!important}
  body.search3-candidate #tourSearch .search3-primary-grid{gap:6px!important}
  body.search3-candidate #tourSearch .field>span{font-size:7px!important}
- body.search3-candidate #tourSearch select,body.search3-candidate #tourSearch input[type=text],body.search3-candidate .search3-tourists__summary,body.search3-candidate .search3-composite__control{min-height:36px!important;border-radius:7px!important}
+ body.search3-candidate #tourSearch select,
+body.search3-candidate #tourSearch input[type=text],
+body.search3-candidate :is(.search3-tourists__summary,.search3-composite__control){min-height:36px!important;border-radius:7px!important}
  body.search3-candidate #tourSearch .search3-primary-grid>.search-submit{min-height:42px!important;border-radius:8px!important}
  body.search3-candidate .search3-advanced-toggle{min-height:36px!important;margin-top:7px!important;border-radius:8px!important;background:#fff!important;font-size:8px!important}
  body.search3-candidate .search3-quick{margin-top:6px!important}
@@ -72,7 +74,7 @@
 
  body.search3-candidate #selectedTour .selected-head p{font-size:7px!important}
  body.search3-candidate #selectedTour .facts>div,body.search3-candidate #selectedTour .facts>div:nth-child(n){min-height:40px!important;padding:6px 7px!important}
- body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{padding:9px!important}
+ body.search3-candidate #selectedTour :is(.tour-flights,.lead-form){padding:9px!important}
  body.search3-candidate #selectedTour .section-heading strong{font-size:13px!important}
  body.search3-candidate .search3-selected-mobile-bar__price small{font-size:7px!important}
  body.search3-candidate .search3-selected-mobile-bar__price strong{font-size:16px!important}

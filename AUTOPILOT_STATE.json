@@ -656,53 +656,27 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "5832457c6d43270290967a49f815a12463b19c18",
-    "release_merge_sha": "5832457c6d43270290967a49f815a12463b19c18",
-    "previous_checkpoint": "0448750ba6c7ad77538794a0c45f97a5e11ea18d",
-    "stage": "S3_CHARTER_FACET_COMPLETENESS_VERIFIED",
-    "scope": "The local charter result facet is exposed only when every loaded normalized tour row has an explicit boolean isCharter value. Incomplete progressive data hides and clears the local facet without rewriting the primary form constraint; complete data restores local state from that form.",
-    "source_validation": "RED_GREEN_FOCUSED_REGRESSION_BUILD_AND_23_APPLICABLE_RELEASE_CI_VERIFIED",
-    "ci": {
-      "pr": 1377,
-      "exact_code_security_run": 34022828455,
-      "exact_code_artifact_run": 34022828441,
-      "release_core_run": 34022965922,
-      "release_visual_run": 34022965889,
-      "release_visual_artifact": 9986123628,
-      "release_visual_digest": "sha256:143d2e896580549a814c39534e37644fefdea77b43737eb4ac0d6fae77f1cb30",
-      "release_artifact_run": 34022965916,
-      "release_artifact": 9986118224,
-      "release_artifact_digest": "sha256:26493e2cafc0274a3556480c3e0dda0f32f42bb21197886e49576451368e4afb",
-      "applicable_success": 23,
-      "expected_skipped": 1
-    },
-    "evidence": [
-      "tests/search3-filter-rail-price-input.cjs",
-      "tests/search3-filter-rail-ownership.cjs",
-      "tests/search3_source_build_test.py",
-      "tests/search3_production_presentation_test.py"
-    ],
-    "verification": "Focused regression failed before the runtime change because the charter facet was visible without complete data, then passed after the completeness guard. Empty, complete, incomplete-progressive and form-state restoration paths are covered. Existing responsive release CI passed; 375/1440 search and readability artifacts were inspected with no new clipping or ownership regression. No live/Safari acceptance claim.",
+    "baseline": "254698589e3aad4694e96b7bf97b93a74b8e3876",
+    "stage": "S3_CSS_JS_SIZE_SPLIT_PREPARED",
+    "scope": "Owner-prioritized rapid size reduction: seven combined CSS owners split into 21 files, two static style injections separated from behavior, repeated inline-style prefixes factored, 74 equal-specificity plain-class selector groups.",
+    "source_validation": "LOCAL_SOURCE_BUILD_AND_PRESENTATION_PASS; CI_RESPONSIVE_PENDING",
+    "verification": "Exact injected CSS strings, original root guard, insertion positions, idempotency and no new globals verified. CSS rule/media/declaration stream preserved after expanding audited selector groups. Source tests 5 pass; presentation 11 pass, PHP rendering deferred to CI.",
     "public_assets": {
-      "css_bytes": 363166,
-      "css_lines": 4175,
-      "js_bytes": 160007,
-      "js_lines": 1940,
-      "total_bytes": 523173,
-      "total_lines": 6115,
-      "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and does not double-count src/v2. Not deployed size or a measured page-load gain."
+      "css_bytes": 351068,
+      "css_lines": 4056,
+      "js_bytes": 149788,
+      "js_lines": 1953,
+      "total_bytes": 500856,
+      "total_lines": 6009,
+      "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
     },
     "run_delta": {
-      "baseline": "0448750ba6c7ad77538794a0c45f97a5e11ea18d",
-      "bytes": 694,
-      "lines": 3,
-      "completed_technical_prs": [
-        1377
-      ]
+      "bytes": -22317,
+      "lines": -106
     },
     "preview_updated": false,
     "production_updated": false,
-    "next_action": "Refresh release/main and #996/#1334. Audit a new independently reproduced presentation ownership or incomplete-facet defect before changing code. Do not repeat the charter/sea completeness, reset, price-frame or three completed toolbar passes. Keep public paths, protected contracts and production lock unchanged."
+    "next_action": "Finish existing CI and responsive verification; continue rapid size reduction/splitting of the largest remaining CSS/JS owners. Do not repeat completed splits or toolbar/facet fixes. Keep production and protected contracts locked."
   },
   "presentation_refactor_history": [
     {
@@ -813,6 +787,55 @@
       "preview_updated": false,
       "production_updated": false,
       "next_action": "Review and integrate CSS then scheduler PR into release only after applicable CI. Inspect fresh responsive evidence, update #996/#1334, and audit the remaining toolbar visibility across desktop resize before changing another owner. No main merge/deploy."
+    },
+    {
+      "baseline": "5832457c6d43270290967a49f815a12463b19c18",
+      "release_merge_sha": "5832457c6d43270290967a49f815a12463b19c18",
+      "previous_checkpoint": "0448750ba6c7ad77538794a0c45f97a5e11ea18d",
+      "stage": "S3_CHARTER_FACET_COMPLETENESS_VERIFIED",
+      "scope": "The local charter result facet is exposed only when every loaded normalized tour row has an explicit boolean isCharter value. Incomplete progressive data hides and clears the local facet without rewriting the primary form constraint; complete data restores local state from that form.",
+      "source_validation": "RED_GREEN_FOCUSED_REGRESSION_BUILD_AND_23_APPLICABLE_RELEASE_CI_VERIFIED",
+      "ci": {
+        "pr": 1377,
+        "exact_code_security_run": 34022828455,
+        "exact_code_artifact_run": 34022828441,
+        "release_core_run": 34022965922,
+        "release_visual_run": 34022965889,
+        "release_visual_artifact": 9986123628,
+        "release_visual_digest": "sha256:143d2e896580549a814c39534e37644fefdea77b43737eb4ac0d6fae77f1cb30",
+        "release_artifact_run": 34022965916,
+        "release_artifact": 9986118224,
+        "release_artifact_digest": "sha256:26493e2cafc0274a3556480c3e0dda0f32f42bb21197886e49576451368e4afb",
+        "applicable_success": 23,
+        "expected_skipped": 1
+      },
+      "evidence": [
+        "tests/search3-filter-rail-price-input.cjs",
+        "tests/search3-filter-rail-ownership.cjs",
+        "tests/search3_source_build_test.py",
+        "tests/search3_production_presentation_test.py"
+      ],
+      "verification": "Focused regression failed before the runtime change because the charter facet was visible without complete data, then passed after the completeness guard. Empty, complete, incomplete-progressive and form-state restoration paths are covered. Existing responsive release CI passed; 375/1440 search and readability artifacts were inspected with no new clipping or ownership regression. No live/Safari acceptance claim.",
+      "public_assets": {
+        "css_bytes": 363166,
+        "css_lines": 4175,
+        "js_bytes": 160007,
+        "js_lines": 1940,
+        "total_bytes": 523173,
+        "total_lines": 6115,
+        "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and does not double-count src/v2. Not deployed size or a measured page-load gain."
+      },
+      "run_delta": {
+        "baseline": "0448750ba6c7ad77538794a0c45f97a5e11ea18d",
+        "bytes": 694,
+        "lines": 3,
+        "completed_technical_prs": [
+          1377
+        ]
+      },
+      "preview_updated": false,
+      "production_updated": false,
+      "next_action": "Refresh release/main and #996/#1334. Audit a new independently reproduced presentation ownership or incomplete-facet defect before changing code. Do not repeat the charter/sea completeness, reset, price-frame or three completed toolbar passes. Keep public paths, protected contracts and production lock unchanged."
     }
   ]
 }

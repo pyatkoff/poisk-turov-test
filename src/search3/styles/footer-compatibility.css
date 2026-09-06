@@ -1,7 +1,5 @@
 /* donor:search3-footer-preview.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff *//* Search3 footer convergence to approved DS2 footer. Preview only. */
 
-
-
 body.search3-candidate .search3-footer-main{width:min(1440px,calc(100% - 48px))!important;margin:0 auto!important;display:grid!important;grid-template-columns:270px minmax(0,1fr) 250px!important;gap:38px!important;align-items:start!important}
 body.search3-candidate .search3-footer-brand{display:grid!important;align-content:start!important;gap:9px!important}
 body.search3-candidate .search3-footer-logo{display:inline-flex!important;width:max-content!important}
@@ -38,10 +36,8 @@ body.search3-candidate .search3-footer-bottom{width:min(1440px,calc(100% - 48px)
 @media(max-width:640px){
  body.search3-candidate .search3-footer-main{width:100%!important;padding:28px 18px 18px!important;display:block!important}
 
-
  body.search3-candidate .search3-footer-brand>p{max-width:330px!important;margin-top:12px!important;}
  body.search3-candidate .search3-footer-socials{gap:24px!important;margin:16px 0 20px!important}
-
 
  body.search3-candidate .search3-footer-nav{display:block!important;border-top:1px solid rgba(255,255,255,.14)!important}
  body.search3-candidate .search3-footer-group{border-bottom:1px solid rgba(255,255,255,.14)!important}
@@ -57,16 +53,12 @@ body.search3-candidate .search3-footer-bottom{width:min(1440px,calc(100% - 48px)
 
  body.search3-candidate .search3-footer-apps>div{display:grid!important;grid-template-columns:1fr 1fr!important}
 
-
  body.search3-candidate .search3-footer-bottom{width:auto!important;padding:16px 0 22px!important;display:grid!important;gap:10px!important;line-height:1.4!important}
 }
 
-
 /* Approved footer spec: readable shared shell at desktop/tablet widths. */
 @media(min-width:641px){
- body.search3-candidate .search3-footer-main,
- body.search3-candidate .search3-footer-benefits,
- body.search3-candidate .search3-footer-bottom{width:min(1180px,calc(100% - 48px))!important}
+ body.search3-candidate :is(.search3-footer-main,.search3-footer-benefits,.search3-footer-bottom){width:min(1180px,calc(100% - 48px))!important}
  body.search3-candidate .search3-footer-main{grid-template-columns:250px minmax(0,1fr) 230px!important;gap:32px!important;padding:48px 0 38px!important}
  body.search3-candidate .search3-footer-logo img{width:176px!important}
  body.search3-candidate .search3-footer-brand>strong{font-size:18px!important;line-height:1.25!important}
@@ -96,12 +88,10 @@ body.search3-candidate .search3-footer-bottom{width:min(1440px,calc(100% - 48px)
 }
 @media(max-width:640px){
 
-
  body.search3-candidate .search3-footer-socials a{font-size:12px!important}
 
  body.search3-candidate .search3-footer-group a{font-size:12px!important}
  body.search3-candidate .search3-footer-apps>strong{font-size:14px!important}
  body.search3-candidate .search3-footer-apps>span{font-size:12px!important}
-
 
 }

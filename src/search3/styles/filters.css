@@ -25,12 +25,11 @@ body.search3-candidate .search3-filter-edit-row b{max-width:72px!important;overf
 body.search3-candidate .search3-filter-edit-row i{color:#98a2b3!important;font-size:13px!important;font-style:normal!important;text-align:right!important}
 body.search3-candidate .filter-rail-result{padding:11px 0 2px!important;color:#667085!important;font-size:8px!important}
 body.search3-candidate .filter-rail-result strong{display:block!important;margin-top:3px!important;color:#14213d!important;font-size:10px!important}
-body.search3-candidate .search3-filter-scenarios,body.search3-candidate .search3-filter-note{display:none!important}
+body.search3-candidate :is(.search3-filter-scenarios,.search3-filter-note){display:none!important}
 @media(max-width:999px){
  body.search3-candidate .results-layout{display:block!important;width:auto!important;max-width:none!important;margin:0 var(--at-page-edge) 48px!important}
  body.search3-candidate .results-filter-rail{display:none!important}
 }
-
 
 /* Search 3 mobile result toolbar. The active controls are mounted by
    results-presentation.js: .search3-mobile-filter-slot + .search3-mobile-sort. */

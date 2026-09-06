@@ -1,0 +1,38 @@
+
+/* donor:search3-results-width-fix.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+/* Search 3 emergency width guard for approved horizontal result cards. Preview only. */
+body.search3-candidate .v2-shell{display:block!important}
+body.search3-candidate .results-layout{grid-column:1/-1!important;justify-self:stretch!important;width:100%!important;max-width:none!important;min-width:0!important;margin-left:0!important;margin-right:0!important}
+body.search3-candidate .results-layout>.results,body.search3-candidate #results{min-width:0!important;width:100%!important;max-width:none!important;align-items:stretch!important}
+body.search3-candidate #results .hotel-card{display:block!important;width:100%!important;min-width:0!important;max-width:none!important;align-self:stretch!important}
+body.search3-candidate #results .hotel-main{width:100%!important;min-width:0!important;max-width:none!important}
+/* Keep the native hidden contract authoritative before results exist. Search3 presentation rules must not resurrect empty controls/rails. */
+body.search3-candidate .results-search-summary[hidden],body.search3-candidate .results-tools--ds2[hidden]{display:none!important}
+body.search3-candidate:not(.search3-has-results) .results-layout{display:none!important}
+/* Results remain one coherent page flow. Match the shared DS2 result-state selector specificity so its two-column search shell cannot leak into Search3. */
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) .v2-shell{display:block!important}
+body.search3-candidate.search3-has-results .results-search-summary{width:100%!important;max-width:none!important;margin-left:0!important;margin-right:0!important}
+/* The shared DS2 result-state also enlarges mature production cards. Search3 owns the compact maket7 card geometry in preview. */
+@media(min-width:1025px){
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) .results-tools--ds2{padding-left:12px!important;padding-right:0!important}
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-main{display:grid!important;grid-template-columns:276px minmax(0,1fr)!important;align-items:stretch!important;gap:0!important;min-height:156px!important}
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo{width:auto!important;height:156px!important;min-height:156px!important;max-height:156px!important;border-radius:0!important}
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-body{display:grid!important;grid-template-columns:minmax(0,1fr) 180px!important;grid-template-rows:auto auto auto 1fr auto!important;column-gap:16px!important;min-width:0!important;padding:12px 14px 11px!important}
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-title{margin:0!important;font-size:15px!important;line-height:1.13!important;letter-spacing:-.18px!important}
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-place{margin-top:4px!important;font-size:9px!important}
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-decision-line{margin-top:7px!important}
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-decision-line span{min-height:20px!important;padding-inline:7px!important;font-size:8px!important}
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-bottom{margin:0!important;padding:1px 0 0 14px!important;gap:0!important}
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-price{margin-top:4px!important;font-size:19px!important;line-height:1!important}
+}
+/* Opening tour packages must not add a focus/glow frame around the whole desktop hotel card. */
+@media(min-width:761px){
+body.search3-candidate #results .hotel-card:has(.search3-show-tours[aria-expanded="true"]){outline:0!important;border-color:#e2e8f0!important;box-shadow:0 2px 8px rgba(16,24,40,.03)!important;filter:none!important}
+body.search3-candidate #results .hotel-card:has(.search3-show-tours[aria-expanded="true"])::before,body.search3-candidate #results .hotel-card:has(.search3-show-tours[aria-expanded="true"])::after{content:none!important;display:none!important;outline:0!important;box-shadow:none!important;filter:none!important}
+}
+/* Search 3 owns the mobile filter toolbar/drawer; suppress the older DS2 mobile filter UI in preview only. */
+body.search3-candidate :is(.mrf-bar,.mrf-sheet){display:none!important}
+@media(max-width:999px){body.search3-candidate .results-layout{width:100%!important;margin:0 0 48px!important}}
+@media(max-width:760px){body.search3-candidate.search3-hotel-tours-open .v2-shell{border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;padding-bottom:0!important}body.search3-candidate.search3-hotel-tours-open .v2-shell::before,body.search3-candidate.search3-hotel-tours-open .v2-shell::after,body.search3-candidate.search3-hotel-tours-open .results-layout::before,body.search3-candidate.search3-hotel-tours-open .results-layout::after,body.search3-candidate.search3-hotel-tours-open #results::before,body.search3-candidate.search3-hotel-tours-open #results::after{content:none!important;display:none!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}body.search3-candidate.search3-hotel-tours-open .results-layout{display:block!important;margin:0 0 20px!important;padding:0!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}body.search3-candidate.search3-hotel-tours-open #results{padding:0!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}
+
+}

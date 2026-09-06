@@ -8,7 +8,11 @@ body.search3-candidate .search3-page-intro p{font-size:11px!important;line-heigh
 body.search3-candidate #tourSearch{margin-top:12px!important;margin-bottom:14px!important;padding:16px 17px 15px!important;border-radius:12px!important;box-shadow:0 4px 14px rgba(16,24,40,.035)!important}
 body.search3-candidate #tourSearch .search3-primary-grid{grid-template-columns:minmax(0,1.08fr) minmax(0,1.08fr) minmax(0,1.28fr) minmax(0,.72fr) minmax(0,.95fr) 150px!important;gap:12px!important;align-items:end!important}
 body.search3-candidate #tourSearch .field>span{margin-bottom:6px!important;color:#667085!important;font-size:9px!important;line-height:1!important;font-weight:650!important}
-body.search3-candidate #tourSearch select,body.search3-candidate #tourSearch input[type=date],body.search3-candidate #tourSearch input[type=number],body.search3-candidate #tourSearch input[type=text],body.search3-candidate .search3-tourists__summary,body.search3-candidate .search3-composite__control{min-height:40px!important;height:40px!important;border-color:#d8e0eb!important;border-radius:7px!important;background:#fff!important;font-size:11px!important;font-weight:650!important}
+body.search3-candidate #tourSearch select,
+body.search3-candidate #tourSearch input[type=date],
+body.search3-candidate #tourSearch input[type=number],
+body.search3-candidate #tourSearch input[type=text],
+body.search3-candidate :is(.search3-tourists__summary,.search3-composite__control){min-height:40px!important;height:40px!important;border-color:#d8e0eb!important;border-radius:7px!important;background:#fff!important;font-size:11px!important;font-weight:650!important}
 body.search3-candidate .search3-date-button{height:38px!important;font-size:10px!important;font-weight:700!important;white-space:nowrap!important}
 body.search3-candidate .search3-night-proxy{height:36px!important;min-height:36px!important;font-size:11px!important;font-weight:700!important}
 body.search3-candidate #tourSearch .search3-primary-grid>.search-submit{min-width:150px!important;width:150px!important;min-height:40px!important;height:40px!important;padding:0 14px!important;border-radius:7px!important;font-size:11px!important;font-weight:850!important;white-space:nowrap!important;line-height:1!important;align-self:end!important}
@@ -30,7 +34,11 @@ body.search3-candidate #tourSearch{margin-top:12px!important;margin-bottom:14px!
 body.search3-candidate #tourSearch .search3-primary-grid{grid-template-columns:minmax(0,1.08fr) minmax(0,1.08fr) minmax(0,1.28fr) minmax(0,.72fr) minmax(0,.95fr) 150px!important;gap:12px!important;min-width:0!important}
 body.search3-candidate #tourSearch .search3-primary-grid>*{min-width:0!important}
 body.search3-candidate #tourSearch .field>span{margin-bottom:6px!important;font-size:9px!important;font-weight:650!important}
-body.search3-candidate #tourSearch select,body.search3-candidate #tourSearch input[type=date],body.search3-candidate #tourSearch input[type=number],body.search3-candidate #tourSearch input[type=text],body.search3-candidate .search3-tourists__summary,body.search3-candidate .search3-composite__control{min-height:40px!important;height:40px!important;font-size:11px!important;font-weight:650!important}
+body.search3-candidate #tourSearch select,
+body.search3-candidate #tourSearch input[type=date],
+body.search3-candidate #tourSearch input[type=number],
+body.search3-candidate #tourSearch input[type=text],
+body.search3-candidate :is(.search3-tourists__summary,.search3-composite__control){min-height:40px!important;height:40px!important;font-size:11px!important;font-weight:650!important}
 body.search3-candidate .search3-date-button{height:38px!important;font-size:10px!important;font-weight:700!important}
 body.search3-candidate .search3-night-proxy{height:36px!important;min-height:36px!important;font-size:11px!important;font-weight:700!important}
 body.search3-candidate #tourSearch .search3-primary-grid>.search-submit{min-width:150px!important;width:150px!important;min-height:40px!important;height:40px!important;padding:0 14px!important;font-size:11px!important;font-weight:850!important}
@@ -43,7 +51,7 @@ body.search3-candidate .search3-quick__label{gap:7px!important;font-size:10px!im
 body.search3-candidate .search3-tourists__pop{top:45px!important}
 body.search3-candidate .results-search-summary{min-height:50px!important;margin:0 0 10px!important;border-radius:10px!important;box-shadow:none!important}
 body.search3-candidate .results-search-summary__edit{min-height:32px!important;padding:0 12px!important;border-radius:7px!important;font-size:9px!important}
-body.search3-candidate .results-search-summary__route,body.search3-candidate .results-search-summary__fact{padding-top:8px!important;padding-bottom:8px!important}
+body.search3-candidate :is(.results-search-summary__route,.results-search-summary__fact){padding-top:8px!important;padding-bottom:8px!important}
 body.search3-candidate .results-search-summary small,body.search3-candidate .results-search-summary strong{font-size:8px!important}
 body.search3-candidate .results-search-summary b,body.search3-candidate .results-search-summary span{font-size:9px!important}
 body.search3-candidate .results-tools--ds2{min-height:52px!important;margin-bottom:10px!important;padding:10px 14px!important;border-radius:10px!important;box-shadow:none!important}

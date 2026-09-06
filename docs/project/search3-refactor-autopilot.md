@@ -2,6 +2,35 @@
 
 Owner request recorded on 2026-09-06: «давай на автопилот поставь».
 
+## Current owner priority — rapid CSS/JS reduction
+
+The subsequent owner request on 2026-09-06 explicitly prioritizes quickly reducing
+and splitting Search3 CSS/JS for the isolated whole-site preview. Larger reversible
+presentation batches are authorized. This priority supersedes the older suggestion
+below to spend each continuation on another small toolbar/facet defect. Preserve
+protected contracts and the production lock; use focused checks and existing CI.
+
+Prepared from `254698589e3aad4694e96b7bf97b93a74b8e3876`: seven large CSS owners
+split into 21 component/breakpoint files; two static style-injection modules
+separated from mobile-bar/summary-CTA behavior. Local selector constants preserve
+the exact injected CSS while reducing JavaScript by 10,219 bytes. Seventy-four
+plain-class selector lists share their ancestor prefix with equal-specificity
+`:is()` groups, reducing CSS by 12,098 bytes. No declarations or media conditions
+were removed. The source builder remains dependency-free and the eight public
+asset paths remain fixed.
+
+Local proof: both injected style strings are byte-identical to the baseline,
+injection guards/idempotency/order are preserved, and the CSS declaration/media
+stream is identical after expanding the audited groups. Source tests and focused
+presentation regressions pass; standard CI and responsive inspection are pending.
+Public assets: CSS 351,068 bytes / 4,056 lines; JS 149,788 / 1,953;
+total 500,856 / 6,009 (uncompressed). This is preparation, not publication.
+
+Next: finish existing CI/browser verification of this batch, then continue with
+the largest remaining source owners or repeated selector prefixes. Do not repeat
+these splits or the already completed filter/toolbar fixes. Preview publication
+remains a separate exact-artifact operation; `main`/production remain locked.
+
 ## Execution and activation are separate
 
 This is the persistent task prompt for autonomous Search3 presentation refactoring. It does not create a scheduler, start a background coding process or authorize production publication.

@@ -16,7 +16,8 @@ body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanc
 body.search3-candidate:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quality{display:block!important}
 body.search3-candidate:not(.search3-has-results) #tourSearch.search3-advanced-open .search3-quick{display:flex!important}
 body.search3-candidate:not(.search3-has-results) #tourSearch{padding-bottom:13px!important}
-body.search3-candidate:not(.search3-has-results) .results-tools--ds2,body.search3-candidate:not(.search3-has-results) #resultsSearchSummary,body.search3-candidate:not(.search3-has-results) .search3-mobile-toolbar{display:none!important}
+body.search3-candidate:not(.search3-has-results) :is(.results-tools--ds2,.search3-mobile-toolbar),
+body.search3-candidate:not(.search3-has-results) #resultsSearchSummary{display:none!important}
 body.search3-candidate:not(.search3-has-results) .results-layout{min-height:0!important;margin:0!important}
 body.search3-candidate:not(.search3-has-results) #results:empty{display:none!important;min-height:0!important;margin:0!important;padding:0!important}
 
@@ -62,7 +63,7 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
  body.search3-candidate #selectedTour .selected-head h2{max-width:680px!important}
  body.search3-candidate #selectedTour .selected-price{padding-left:22px!important;border-left:1px solid #edf0f5!important}
 
- body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{border-radius:12px!important}
+ body.search3-candidate #selectedTour :is(.tour-flights,.lead-form){border-radius:12px!important}
 }
 
 @media(max-width:760px){

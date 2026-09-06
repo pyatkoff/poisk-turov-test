@@ -22,9 +22,7 @@ body.search3-candidate #tourSearch .search3-nights .search3-night-proxy{
   box-sizing:border-box!important;
 }
 body.search3-candidate #results .hotel-card{padding:0!important}
-body.search3-candidate #results .hotel-main,
-body.search3-candidate #results .hotel-photo,
-body.search3-candidate #results .hotel-body{margin:0!important}
+body.search3-candidate #results :is(.hotel-main,.hotel-photo,.hotel-body){margin:0!important}
 .search3-mobile-search-entry{display:none}
 @media(min-width:1000px){
   body.search3-candidate.search3-has-results .results-tools--ds2{
@@ -90,8 +88,7 @@ body.search3-candidate #results .hotel-body{margin:0!important}
     color:#14213d!important;
     font:850 10px/1 var(--at-font)!important;
   }
-  body.search3-candidate #tourSearch:not(.search3-mobile-advanced-open) .search3-quality,
-  body.search3-candidate #tourSearch:not(.search3-mobile-advanced-open) .search3-quick{display:none!important}
+  body.search3-candidate #tourSearch:not(.search3-mobile-advanced-open) :is(.search3-quality,.search3-quick){display:none!important}
   body.search3-candidate #tourSearch.search3-mobile-advanced-open .search3-quality{
     display:block!important;
     margin-top:12px!important;
@@ -183,7 +180,6 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
  html body.search3-candidate.search3-has-results #results .search3-hotel-action{grid-template-columns:minmax(0,1fr) 150px!important;gap:12px!important}
 }
 
-
 /* Approved mockup #1: compact hotel-level decision hierarchy. */
 @media(min-width:1000px){
   html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-main{
@@ -203,13 +199,10 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
     min-height:24px!important;
     margin-top:5px!important;
   }
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--room,
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--operator,
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--flight{
+  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results :is(.search3-hotel-highlight--room,.search3-hotel-highlight--operator,.search3-hotel-highlight--flight){
     display:none!important;
   }
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--rating,
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--sea{
+  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results :is(.search3-hotel-highlight--rating,.search3-hotel-highlight--sea){
     display:inline-flex!important;
     align-items:center!important;
     gap:4px!important;
@@ -244,7 +237,6 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
 
 /* Win the legacy :has() 188px media lock for the compact desktop candidate. */
 @media(min-width:1000px){
-
 
   html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-body{
     padding:10px 14px 9px!important;

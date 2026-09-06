@@ -37,6 +37,25 @@ evidence.
 | Selected price, fallback and disclosure adapter | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Accepted isolation/readability/geometry guards | `styles/acceptance-guards.css` |
 
+## Smaller source owners
+
+The large combined CSS sources are split at existing component and breakpoint
+boundaries. Hotel packages, card convergence and width compatibility have separate
+files; booking summary and stepper, final sections and lead review, desktop review
+board and specificity guards, and mobile/tablet result layouts are separate too.
+The manifest retains their original cascade positions. These are source modules,
+not additional browser requests.
+
+`behavior/selected-tour-mobile-styles.js` and `behavior/summary-cta-styles.js`
+own the two static style injections immediately before their behavior modules.
+Repeated selector prefixes use local constants. The injected CSS text, style IDs,
+insertion order and original selected-root guard are preserved. Do not move these
+injections into the earlier linked stylesheets without checking cascade order.
+
+Repeated ancestor prefixes in 74 CSS selector lists now use `:is()` for plain
+class alternatives with equal specificity. Declarations and media boundaries are
+unchanged; do not put alternatives of different specificity into the same group.
+
 The common PHP header/footer remain owned by their existing `v2/site-*` files.
 `behavior/footer.js` is the preserved compatibility fallback; it must not replace
 the canonical server-rendered footer.
