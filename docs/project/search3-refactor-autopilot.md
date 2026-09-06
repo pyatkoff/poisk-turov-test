@@ -118,3 +118,20 @@ Eight public assets: CSS 363,166 bytes / 4,175 lines; JS 160,007 bytes / 1,940 l
 Status boundary: integrated and CI-verified in the release draft only. Preview, `main` and production were not updated; Tourvisor/API, price arithmetic, lead transport/mapping, Metrika/goals, logo and neighboring projects were not changed.
 
 Next: refresh the release head and prove a new independent presentation ownership or incomplete-facet defect before editing. Do not repeat charter/sea completeness, reset, price-frame or the three completed toolbar passes.
+
+## S3_PRICE_FACET_COMPLETENESS — verified release checkpoint, 2026-09-06
+
+Exact release code: `312353cad6aedec005dab4d590c97a1e1c216d17`; preparation PR: #1379.
+
+- The local price facet is visible only when every loaded normalized tour row has a positive price, or a hotel without tour rows has its own positive normalized price.
+- An incomplete progressive source hides the price control and clears its local limit, so an unknown price is not presented under a misleading visible “up to” promise.
+- The existing no-tour hotel price path remains supported and is covered by the focused regression.
+- The focused regression failed against the unchanged runtime, then passed after the completeness guard. Empty, complete and incomplete-progressive paths are covered.
+
+Source build/check, focused filter-rail checks and the production-presentation suite passed locally. On the integrated release SHA, 22 applicable workflow runs completed successfully and one migration-only run was expectedly skipped. The only job (`101459884290`) in Security guard run `34023357535` and all of its steps completed successfully at `2026-09-06T08:59:20Z`, while GitHub still reported the enclosing run wrapper as `in_progress` at checkpoint time; do not convert that external status lag into a claim of 23 completed workflows until rechecked. Core run: `34023357536`; responsive visual run: `34023357572`, artifact `9986254745`, digest `sha256:fe7badee8d98acca7f1d9028d9beec4e4e0eb41ffcc6be0cb1328ee00aae414f`; whole-site artifact run: `34023357550`, artifact `9986248680`, digest `sha256:8dfe129b8f4de840927e7feda7707a29429e4be15c6412e89c0f56548f494fb5`. Readability images at 375 and 1440 px were inspected with no new clipping or owner regression. This is not a physical Safari or live-site acceptance claim.
+
+Eight public assets: CSS 363,166 bytes / 4,175 lines; JS 160,559 bytes / 1,943 lines; total 523,725 bytes / 6,118 lines, uncompressed and without double-counting `src` and generated `v2` files. The +552 bytes / +3 lines from the previous code checkpoint are the explicit completeness guard and regression, not a measured page-load result.
+
+Status boundary: integrated in the release draft; 22 workflows and the Security guard job are verified successful, with the enclosing Security workflow run status still lagging. Preview, `main` and production were not updated; Tourvisor/API, price arithmetic, lead transport/mapping, Metrika/goals, logo and neighboring projects were not changed.
+
+Next: first recheck Security guard run `34023357535`. After its wrapper finalizes, update the exact CI count; then prove a new independent defect before editing. Do not repeat price/charter/sea completeness, reset, price-frame or the three completed toolbar passes.

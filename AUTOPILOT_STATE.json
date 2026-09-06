@@ -656,25 +656,30 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "5832457c6d43270290967a49f815a12463b19c18",
-    "release_merge_sha": "5832457c6d43270290967a49f815a12463b19c18",
-    "previous_checkpoint": "0448750ba6c7ad77538794a0c45f97a5e11ea18d",
-    "stage": "S3_CHARTER_FACET_COMPLETENESS_VERIFIED",
-    "scope": "The local charter result facet is exposed only when every loaded normalized tour row has an explicit boolean isCharter value. Incomplete progressive data hides and clears the local facet without rewriting the primary form constraint; complete data restores local state from that form.",
-    "source_validation": "RED_GREEN_FOCUSED_REGRESSION_BUILD_AND_23_APPLICABLE_RELEASE_CI_VERIFIED",
+    "baseline": "312353cad6aedec005dab4d590c97a1e1c216d17",
+    "release_merge_sha": "312353cad6aedec005dab4d590c97a1e1c216d17",
+    "previous_checkpoint": "254698589e3aad4694e96b7bf97b93a74b8e3876",
+    "stage": "S3_PRICE_FACET_COMPLETENESS_VERIFIED",
+    "scope": "The local result price facet is exposed only when every loaded normalized tour row has a positive price, or a no-tour hotel has its own positive normalized price. Incomplete progressive data hides the facet and clears only its local limit until complete data returns.",
+    "source_validation": "RED_GREEN_FOCUSED_REGRESSION_BUILD_AND_RELEASE_CI_VERIFIED_WITH_GITHUB_RUN_WRAPPER_LAG",
     "ci": {
-      "pr": 1377,
-      "exact_code_security_run": 34022828455,
-      "exact_code_artifact_run": 34022828441,
-      "release_core_run": 34022965922,
-      "release_visual_run": 34022965889,
-      "release_visual_artifact": 9986123628,
-      "release_visual_digest": "sha256:143d2e896580549a814c39534e37644fefdea77b43737eb4ac0d6fae77f1cb30",
-      "release_artifact_run": 34022965916,
-      "release_artifact": 9986118224,
-      "release_artifact_digest": "sha256:26493e2cafc0274a3556480c3e0dda0f32f42bb21197886e49576451368e4afb",
-      "applicable_success": 23,
-      "expected_skipped": 1
+      "pr": 1379,
+      "exact_code_security_run": 34023305505,
+      "exact_code_artifact_run": 34023305507,
+      "release_core_run": 34023357536,
+      "release_visual_run": 34023357572,
+      "release_visual_artifact": 9986254745,
+      "release_visual_digest": "sha256:fe7badee8d98acca7f1d9028d9beec4e4e0eb41ffcc6be0cb1328ee00aae414f",
+      "release_artifact_run": 34023357550,
+      "release_artifact": 9986248680,
+      "release_artifact_digest": "sha256:8dfe129b8f4de840927e7feda7707a29429e4be15c6412e89c0f56548f494fb5",
+      "applicable_workflow_success": 22,
+      "security_run": 34023357535,
+      "security_job": 101459884290,
+      "security_job_conclusion": "success",
+      "security_run_status_at_checkpoint": "in_progress_with_all_job_steps_completed_successfully",
+      "expected_skipped": 1,
+      "pending_external_status": "GitHub run wrapper had not finalized although its only job completed successfully at 2026-09-06T08:59:20Z; recheck before claiming 23 completed workflows."
     },
     "evidence": [
       "tests/search3-filter-rail-price-input.cjs",
@@ -682,27 +687,27 @@
       "tests/search3_source_build_test.py",
       "tests/search3_production_presentation_test.py"
     ],
-    "verification": "Focused regression failed before the runtime change because the charter facet was visible without complete data, then passed after the completeness guard. Empty, complete, incomplete-progressive and form-state restoration paths are covered. Existing responsive release CI passed; 375/1440 search and readability artifacts were inspected with no new clipping or ownership regression. No live/Safari acceptance claim.",
+    "verification": "Focused regression failed before the runtime change because the price facet was visible without complete data, then passed after the completeness guard. Empty, complete, incomplete-progressive and no-tour-hotel price paths are covered. Existing responsive release CI passed; 375/1440 readability artifacts were inspected with no new clipping or ownership regression. The GitHub Security guard job and every step completed successfully, but its workflow run wrapper was still reported in_progress at checkpoint time. No live/Safari acceptance claim.",
     "public_assets": {
       "css_bytes": 363166,
       "css_lines": 4175,
-      "js_bytes": 160007,
-      "js_lines": 1940,
-      "total_bytes": 523173,
-      "total_lines": 6115,
+      "js_bytes": 160559,
+      "js_lines": 1943,
+      "total_bytes": 523725,
+      "total_lines": 6118,
       "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and does not double-count src/v2. Not deployed size or a measured page-load gain."
     },
     "run_delta": {
-      "baseline": "0448750ba6c7ad77538794a0c45f97a5e11ea18d",
-      "bytes": 694,
+      "baseline": "5832457c6d43270290967a49f815a12463b19c18",
+      "bytes": 552,
       "lines": 3,
       "completed_technical_prs": [
-        1377
+        1379
       ]
     },
     "preview_updated": false,
     "production_updated": false,
-    "next_action": "Refresh release/main and #996/#1334. Audit a new independently reproduced presentation ownership or incomplete-facet defect before changing code. Do not repeat the charter/sea completeness, reset, price-frame or three completed toolbar passes. Keep public paths, protected contracts and production lock unchanged."
+    "next_action": "First recheck the lagging Security guard run wrapper 34023357535 and update this checkpoint to 23 completed successes if GitHub finalizes it. Then refresh release/main and #996/#1334 and prove a new independent presentation ownership or incomplete-facet defect before changing code. Do not repeat price/charter/sea completeness, reset, price-frame or three completed toolbar passes."
   },
   "presentation_refactor_history": [
     {
