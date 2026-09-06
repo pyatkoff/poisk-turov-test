@@ -10,19 +10,29 @@ ROOT = Path(__file__).resolve().parents[2]
 JS_INCLUDE = re.compile(rb'(?m)^[ \t]*/\* @include ([a-zA-Z0-9_./-]+\.js) \*/\r?\n')
 
 
-def compact_css_comments(content):
+def compact_css_comments(content, trim_indentation=False):
     """Keep source notes private; retain CSS token separators and license notes.
 
     Empty comments preserve tokenization even in ``red/**/blue``. Strings and
-    escaped characters are copied verbatim; no whitespace or CSS rule is moved.
+    escaped characters are copied verbatim. Optional indentation trimming retains
+    the preceding newline separator and all whitespace inside strings/comments.
     """
     text = content.decode('utf-8')
     chunks, index, quote = [], 0, None
     while index < len(text):
         char = text[index]
         if char == '\\':
-            chunks.append(text[index:index + 2])
-            index += 2
+            end = index + 1
+            while end < min(index + 7, len(text)) and text[end] in '0123456789abcdefABCDEF':
+                end += 1
+            if end == index + 1:
+                end = min(index + 2, len(text))
+            elif end < len(text) and text[end] in ' \t\r\n\f':
+                end += 1
+            if text[end - 1:end + 1] == '\r\n':
+                end += 1
+            chunks.append(text[index:end])
+            index = end
             continue
         if quote:
             chunks.append(char)
@@ -44,6 +54,9 @@ def compact_css_comments(content):
             continue
         chunks.append(char)
         index += 1
+        if trim_indentation and not quote and char in '\r\n\f':
+            while index < len(text) and text[index] in ' \t':
+                index += 1
     return ''.join(chunks).encode('utf-8')
 
 
@@ -74,7 +87,7 @@ def assemble(root):
             raise ValueError('Invalid Search3 output: ' + name)
         chunks = [read_part(part, Path(name).suffix) for part in parts]
         content = b''.join(chunks)
-        outputs[name] = compact_css_comments(content) if name.endswith('.css') else content
+        outputs[name] = compact_css_comments(content, trim_indentation=True) if name.endswith('.css') else content
     actual = {str(p.relative_to(source)) for p in source.rglob('*')
               if p.is_file() and p.suffix in ('.css', '.js')}
     if used != actual:

@@ -24,6 +24,16 @@ class Search3SourceBuildTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unterminated'):
             builder.compact_css_comments(b'.x{} /* broken')
 
+    def test_css_indentation_keeps_separators_literals_and_escape_terminators(self):
+        css = b'.x {\n  color:red;\n\t--tokens: first\n  second;\n}\n'
+        expected = b'.x {\ncolor:red;\n--tokens: first\nsecond;\n}\n'
+        self.assertEqual(builder.compact_css_comments(css, trim_indentation=True), expected)
+        self.assertEqual(builder.compact_css_comments(expected, trim_indentation=True), expected)
+        # A hex escape consumes its newline terminator: following indentation is
+        # the only remaining separator and must not be removed.
+        retained = b'.\\31\n  x{} .\\000031\r\n\tx{} .\\\n  y{}\n.x{content:"a\\\n  b"}\n/*! license\n  retained */'
+        self.assertEqual(builder.compact_css_comments(retained, trim_indentation=True), retained)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

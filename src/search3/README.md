@@ -13,7 +13,10 @@ unlisted modules and missing source files. The build uses Python's standard libr
 it requires no npm installation, transpiler or additional browser requests.
 
 The CSS build replaces private source comments with empty comment separators;
-license/copyright/source-map notes, strings, escapes and all whitespace remain.
+license/copyright/source-map notes, strings and escapes remain. The output also
+omits horizontal indentation after ordinary newlines, retaining the newline as
+a token separator. Whitespace within strings/comments and after a newline
+consumed by an escape stays intact. Source formatting remains readable.
 This reduces served bytes without changing CSS tokens. JavaScript concatenation
 expands private full-line `/* @include behavior/path.js */` markers in place.
 Included functions retain their original enclosing IIFE, declaration order and

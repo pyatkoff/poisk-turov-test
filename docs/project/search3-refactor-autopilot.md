@@ -10,6 +10,19 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
+### Current preparation — CSS output indentation — 2026-09-06
+
+Baseline release02cd0fda; actual preview remainsc5fcbea2 until separate publication.
+Builder strips4667 bytes of CSS horizontal indentation after ordinary newlines,
+retaining newline token separators, string/comment contents and whitespace after
+escaped newline/hex-escape terminators. Readable source formatting is unchanged.
+Full recursive CSS token sequences match after normalizing whitespace-token
+contents; no tokens removed or reordered. All four JS assets stay byte-identical.
+Audit: search3-css-output-indentation.json. Nine source-build tests pass;14
+presentation tests13 pass/one local PHP skip. New total433026 bytes/5496 lines
+(CSS290846, JS142180). Existing JS split and all protected contracts preserved.
+Next: exact CI, isolated artifact publication and concise live verification.
+
 ### Current published checkpoint — private JS parts — 2026-09-06
 
 Exact runtime/release code: `c5fcbea26ddd4e54628c8b60966ca186deb09ecc`.
