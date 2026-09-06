@@ -14,6 +14,7 @@ const priceLabel = { textContent: '' };
 const priceInput = { min: '', max: '', step: '', value: '' };
 let railHtml = '';
 let railHtmlWrites = 0;
+let formSubmits = 0;
 const rail = {
   dataset: {},
   get innerHTML() { return railHtml; },
@@ -24,7 +25,7 @@ const rail = {
       '[data-s3-price-label]': priceLabel, '[data-s3-price]': priceInput}[selector] || null;
   }
 };
-const form = { elements: {} };
+const form = { elements: {}, requestSubmit() { formSubmits += 1; } };
 const renders = [];
 const window = {
   innerWidth: 1440,
@@ -143,4 +144,17 @@ assert.equal(priceInput.value, '95000', 'the mounted slider stays inside tempora
 windowEvents.get('v2:results-rendered')({ detail: { items: refreshedHotels } });
 assert.equal(priceInput.value, '150000',
   'a temporary source contraction does not destroy the user-selected price limit');
+
+Object.assign(form.elements, {
+  price_from: { value: '80000' }, price_till: { value: '180000' },
+  onlyDirect: { checked: true }, onlyCharter: { checked: true }
+});
+railEvents.get('click')({
+  target: { closest(selector) { return selector === '[data-s3-reset]' ? {} : null; } }
+});
+assert.equal(form.elements.price_from.value, '', 'reset clears the lower budget bound');
+assert.equal(form.elements.price_till.value, '', 'reset clears the upper budget bound');
+assert.equal(form.elements.onlyDirect.checked, false, 'reset clears the direct-flight form filter');
+assert.equal(form.elements.onlyCharter.checked, false, 'reset clears the charter form filter');
+assert.equal(formSubmits, 1, 'desktop reset submits the cleared form once');
 console.log('PASS: price input bursts render once per frame with latest state');
