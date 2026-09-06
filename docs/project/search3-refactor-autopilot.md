@@ -50,7 +50,55 @@ eval scopes and getter side effects. Disable unsafe arithmetic and cross-stateme
 sequence merging; retain native CSS nesting and the existing browser boundary.
 Readable runtime sources and protected business contracts remain unchanged.
 
-### Current published checkpoint — lean preview and local JS names — 2026-09-06
+### Current published checkpoint — single build and standard minification — 2026-09-06
+
+Source `47bc232e5f5b48b2a78a026c4f77f01b33fdc23e`, source PR #1416, isolated publication #1417,
+deploy 34058520640 (success, attempt 1). Working draft: two successful jobs, two
+standalone jobs deferred. Cumulative release draft: one Security job succeeded,
+23 jobs deferred; no duplicate release artifact build. Owner validators run in
+Security; PHP/path/presentation/isolation run in the one working-PR artifact.
+All applicable PR gates restore on ready_for_review; main/production stay locked.
+
+Follow-up #1418 removes twelve identical fixture builds from source-test setup
+and checks independent PHP/JS payload files in two processes. All baseline,
+drift/failure assertions and syntax checks remain. This changes CI only; the
+published source/artifact above remains exact and requires no second deployment.
+Follow-up `27d48f081e457a879aa55bcddb3a94d7e18129d2` is in release; Security and
+build 34058941809 passed. In these runs the focused stage fell from 48 to 24s
+and payload parsing/build from 26 to 10s (combined 74 to 34s). This is an observed
+CI run comparison, not a page-speed benchmark.
+
+| Public assets | Previous bytes | Published bytes |
+| --- | ---: | ---: |
+| Four CSS | 205437 | 202114 |
+| Four JS | 115477 | 112400 |
+| Total | 320914 | 314514 |
+
+Saving 6400 bytes (1.99% overall); 4 CSS + 55 JS = 59 generated lines.
+Build-only Lightning CSS 1.33.0 optimizes rules/values while retaining native
+nesting and the existing browser boundary. Terser compression preserves function
+and class names, argument arity, eval and getter behavior; unsafe arithmetic,
+property/global mangling and cross-statement sequence merging remain disabled.
+The first printing-stage exact AST guards remain. Readable runtime sources and
+all protected price/API/lead/analytics files remain unchanged. Metrics are
+uncompressed and exclude shared runtime/legacy; no page-speed benchmark claimed.
+
+Artifact 9996682414 from build 34058350586 / `sha256:92229fe8e5b17ce9744d4d8ff0922014eb0c25ec5f546f31fec2a0f4da111a7e`.
+Evidence 9996718591 / `sha256:4678457ba0263555cfc889084d5df026b8fdba34c96fd0e6d16d80b406c1b33e`. Exact 715-file payload verified;
+all seven changed CSS/JS matched by HTTP. Nine routes, noindex, counter zero,
+lead disabled, rollback retained, 13 production fingerprints unchanged.
+
+Focused live desktop 1363px: Moscow/Turkey 10–11 Sep, seven nights, two adults;
+100 hotels / 431 tours; zero-filter -> restore 100; ANAHTAR APART, SU2156/SU2157,
+72099 -> 89317 RUB; review -> empty lead form -> return to 100 results. No real
+lead or horizontal overflow. Results screenshot inspected. Full responsive matrix
+and physical Safari deferred; mobile live viewport unavailable in the supported
+browser surface, compiled mobile toolbar behavior passed in artifact CI.
+
+Audit: `docs/project/search3-single-build-minification.json`.
+Next: Continue measured CSS/JS reduction in release-based draft batches. Single-build CI routing and standard CSS/JS minification are complete: do not repeat optimizer comparisons or build after release/docs. Next inspect repeated static presentation strings/private injected CSS for a measured net reduction before source changes; retain readable source, eight paths, native nesting, globals/public keys and all price/API/lead contracts. One working source artifact plus focused live checks; broaden only for a concrete failure. Main/production locked; scheduler paused.
+
+### Previous published checkpoint — lean preview and local JS names — 2026-09-06
 
 Source `4ad216b457562097c78a6a6b9c179e7365d87a0c`, source PR #1414, isolated publication #1415,
 deploy 34056652968 (success, attempt 1). The lean verification policy above is active.
