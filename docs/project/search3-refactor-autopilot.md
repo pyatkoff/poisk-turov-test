@@ -75,11 +75,12 @@ responsive/site/SEO and physical Safari checks remain deferred.
 Card analysis found that visible results do not guarantee results-active or all
 final sibling/hidden predicates, so broad old-card removal was rejected. A separate
 JS formatter experiment yields only240 bytes; seven broader within-asset CSS
-deletions yield117 bytes. Neither micro-pass was applied.
+deletions yield117 bytes. Neither micro-pass was applied. A subsequent remaining cross-asset basic enum/color
+scan found one23-byte deletion only; it was also deferred without source edits.
 
 Audits: `docs/project/search3-media-cross-asset-reduction.json` and
 `docs/project/search3-css-cross-asset-dominance.json`.
-Next: Continue only measured source reductions under the owner batch policy. Completed: media-wrapper grouping, 75 mandatory cross-asset dominance deletions, earlier 61 numeric/36 equal-value deletions, ordinary JS note removal and private CSS/markup passes. Do not repeat those audits. Whole hotel-card retirement is not safe from current lifecycle: has-results can be set independently of results-active and final sibling/hidden conditions. Preserve the intermediate/fallback card CSS. Next inspect remaining cross-asset same-property witnesses with basic supported enum/color values, then a separate measured ownership consolidation that preserves those states. JS formatter maximum240 bytes, within-asset shorthand117 bytes and private custom-name micro-candidates are deferred. Reuse one checked artifact per source batch; no automatic deploy/browser. Preview remains bff20777; main/production locked; scheduler paused.
+Next: Completed follow-up: remaining cross-asset basic enum/color scan found one 23-byte deletion only; defer it and do not repeat that scan. Completed media-wrapper grouping and 75 cross-asset deletions stay in place; earlier completed passes must not repeat. Next substantive reduction needs structural ownership/declaration factoring with a measured net gain: preserve the fallback/intermediate hotel-card states because has-results does not imply results-active or final sibling/hidden predicates. Do not delete those old blocks on that false assumption. Preserve selector specificity, shorthand reset semantics, four-stylesheet order, native nesting depth and all public/protected contracts. Use one working draft per useful batch, narrow evidence and two mandatory CI jobs; no automatic preview/browser. Published preview remains bff20777; checked code9cf5fe; main/production locked, scheduler paused.
 
 ### Previous checked release batch — source notes and numeric CSS — 2026-09-06
 
