@@ -59,7 +59,7 @@ class Search3SourceBuildTest(unittest.TestCase):
 
     def test_changed_source_requires_rebuild_and_preserves_other_assets(self):
         source = self.root / 'src/search3/behavior/entry-v1.js'
-        source.write_bytes(source.read_bytes() + b'\n/* controlled test edit */\n')
+        source.write_bytes(source.read_bytes() + b'\nwindow.__search3SourceDriftFixture = "controlled test edit";\n')
         with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
             builder.build(self.root)
         builder.build(self.root, write=True)
@@ -92,7 +92,7 @@ class Search3SourceBuildTest(unittest.TestCase):
 
     def test_private_part_drift_rebuilds_only_its_enclosing_asset(self):
         part = self.root / 'src/search3/behavior/results/labels.js'
-        part.write_bytes(part.read_bytes() + b'/* controlled private-part edit */\n')
+        part.write_bytes(part.read_bytes() + b'\nwindow.__search3PrivateDriftFixture = "controlled private-part edit";\n')
         with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
             builder.build(self.root)
         builder.build(self.root, write=True)
