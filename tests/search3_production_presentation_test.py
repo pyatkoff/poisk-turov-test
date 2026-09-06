@@ -17,7 +17,7 @@ MANIFEST = json.loads((ROOT / 'docs/project/search3-production-import.json').rea
 class Search3ProductionPresentationTest(unittest.TestCase):
     @unittest.skipUnless(shutil.which('node'), 'Node required for summary event regression')
     def test_booking_summary_event_bursts(self):
-        for name in ('search3-booking-summary.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-entry-summary.cjs', 'search3-mobile-toolbar-scheduler.cjs'):
+        for name in ('search3-presentation-utils.cjs', 'search3-booking-summary.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-entry-summary.cjs', 'search3-mobile-toolbar-scheduler.cjs'):
             subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
 
     @unittest.skipUnless(shutil.which('node'), 'Node required for filter ownership regression')
@@ -55,6 +55,18 @@ class Search3ProductionPresentationTest(unittest.TestCase):
                 raw = (ROOT / contract['source_root'] / name).read_bytes()
                 self.assertTrue(raw.endswith(b'\n'), name)
                 self.assertFalse(raw.endswith(b'\n\n'), name)
+
+    def test_shared_fact_typography_keeps_equal_specificity(self):
+        source = (ROOT / 'src/search3/styles/acceptance-guards.css').read_text()
+        prefix = 'html body.search3-candidate.search3-results-active #results '
+        shared = ':is(.search3-hotel-facts,.tour-fact)'
+        self.assertEqual(source.count(prefix + shared + ' small{'), 2)
+        self.assertEqual(source.count(prefix + shared + ' b{'), 1)
+        for selector in ('.search3-hotel-facts', '.tour-fact'):
+            self.assertNotIn(prefix + selector + ' small{', source)
+        # :is() contributes its most-specific argument: one class, exactly as
+        # either replaced selector did. The trailing element is unchanged.
+        self.assertEqual(shared.count('.'), 2)
 
     def test_cascade_split_rejects_byte_drift(self):
         spec = importlib.util.spec_from_file_location(

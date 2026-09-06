@@ -1176,6 +1176,7 @@
     "differential_cases": 537,
     "public_results_api_unchanged": true,
     "same_handler_and_observer_counts": true,
-    "bundle_idempotency_unchanged": true
+    "bundle_idempotency_unchanged": true,
+    "scope": "Historical local experiment in d6c0b9d1; withdrawn in favor of concurrent canonical inflection/text ownership, not shipped."
   }
 }

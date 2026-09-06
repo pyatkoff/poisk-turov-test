@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-06T09:54:16.647952+00:00",
+  "updated_at": "2026-09-06T10:45:17.465717+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Published 26988e62: 43,288 bytes and 321 physical lines removed from eight public CSS/JS assets; two refactor passes, 23 CI and live desktop journey verified.",
-    "next_action": "Continue the owner-prioritized CSS/JS reduction from the refreshed release head: inspect repeated templates in behavior/results-presentation.js and remaining styles/cascade owners for equivalent consolidation, then batch verified removals. Do not repeat the seven completed CSS splits, static-style extraction, retired footer removal or filter/toolbar fixes. Preserve the eight public paths, cascade and protected contracts; keep main and production locked. Publish preview only through the separately authorized exact-artifact process.",
+    "last_material_progress": "Release 4a4d762c shares one Russian inflection owner across result and selected-tour presentation, retires two unreachable private helpers, and reduces the eight public assets by another 790 bytes / 20 lines with 23 applicable CI successful.",
+    "next_action": "Refresh the release head, then assess the repeated pure presentation helpers in booking-summary.js, final-sections.js and tour-detail-rail.js. Extract only an earlier-loaded shared owner if snapshot/ownership tests prove identical markup, event behavior, load order and a meaningful net byte reduction; otherwise continue proven equivalent consolidation in styles/cascade. Do not alter price arithmetic, lead/API contracts or published preview as a side effect.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -64,23 +64,23 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_CSS_JS_SIZE_SPLIT_AND_RETIRED_FOOTER",
-    "title": "Reduce and split Search3 CSS/JS",
-    "status": "PUBLISHED_LIVE_DESKTOP_VERIFIED",
-    "implementation_sha": "26988e62eb674f8165d380de71e3be3d8feb19c3",
+    "id": "S3_PRESENTATION_HELPER_DEDUP",
+    "title": "Deduplicate Search3 presentation helpers",
+    "status": "CODE_CI_VISUAL_VERIFIED_NOT_PREVIEWED",
+    "implementation_sha": "4a4d762c0b7be142aeaaf84a0cdc1c23b0412c70",
     "branch": "release/search3-production-ready-v1",
     "pr": 1334,
-    "source_pr": 1382,
+    "source_pr": 1386,
     "issue": 996,
-    "artifact_id": 9986530879,
-    "artifact_run": 34024249256,
-    "deploy_pr": 1384,
-    "deploy_run": 34024574911,
-    "evidence_artifact": 9986634293,
+    "artifact_id": 9986942715,
+    "artifact_run": 34025585506,
+    "deploy_pr": null,
+    "deploy_run": null,
+    "evidence_artifact": 9986947851,
     "ci_success_count": 23,
-    "visual_run": 34024249262,
-    "verification": "Both size-reduction passes passed existing CI; byte-identical injected styles, 74 equal-specificity selector groups, preserved rule/media/declaration order, and red/green footer ownership regression. Final responsive images inspected; exact preview publication, eight served assets and live desktop journey to the unsubmitted lead form verified. Production and physical Safari acceptance are not claimed; known pre-existing legacy backdrop remains documented.",
-    "next_action": "Continue the owner-prioritized CSS/JS reduction from the refreshed release head: inspect repeated templates in behavior/results-presentation.js and remaining styles/cascade owners for equivalent consolidation, then batch verified removals. Do not repeat the seven completed CSS splits, static-style extraction, retired footer removal or filter/toolbar fixes. Preserve the eight public paths, cascade and protected contracts; keep main and production locked. Publish preview only through the separately authorized exact-artifact process."
+    "visual_run": 34025585525,
+    "verification": "One canonical plural formatter covers 1/2/5/11/21 and is reused for tours, guests and nights; duplicate and unreachable helpers are absent by ownership regression. Source/build/presentation checks passed, all 23 applicable workflows succeeded with one expected skip, and 375/1440 result images were inspected without new clipping. No preview or production publication is claimed for this code.",
+    "next_action": "Assess repeated pure presentation helpers across booking-summary.js, final-sections.js and tour-detail-rail.js; extract only with identical-output tests and net reduction, otherwise continue proven cascade consolidation."
   },
   "queue": [
     {
@@ -750,29 +750,31 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "c4641c8dc8dd6f87cc6301a1f24e7ba1baba7a52",
-    "stage": "S3_RETIRED_PRESENTATION_CSS_AND_LABELS_PREPARED",
-    "scope": "Remove 136 rules requiring retired positive classes and two empty media containers; preserve negative conditions. Group 35 additional equal-specificity compound selector lists. Extract shared pure presentation labels from results; remove duplicate plural and unused selected-tour text helpers.",
+    "baseline": "f8e10a30b57fa965ee8f5e7294a1e08819b75fc2",
+    "stage": "S3_RETIRED_PRESENTATION_CSS_PREPARED",
+    "scope": "Remove 136 retired positive-class CSS rules and two empty media containers; group 35 equal-specificity compound selector lists. Preserve concurrent shared inflection and date-helper cleanup. Discard overlapping local formatter extraction instead of shipping a second helper namespace.",
     "source_validation": "LOCAL_SOURCE_PRESENTATION_AND_DIFFERENTIAL_PASS_CI_PENDING",
-    "verification": "Retired classes have no v2 JS/PHP owner. Ordered retained selector/declaration/media stream unchanged after expanding audited groups. Labels differential: 537 cases; original public results API, listener/observer counts and idempotency unchanged. No new scheduling or observer; labels helper is a frozen pure-function namespace.",
+    "verification": "Retired class markers have no v2 JS/PHP owner. Retained selector/declaration/media stream is unchanged after group expansion. Source/import/cascade and presentation checks passed locally. Concurrent #1385/#1386 code and regressions preserved. Initial d6c0b9d1 CI flagged a trailing blank line in the superseded formatter file; that file is not shipped.",
     "public_assets": {
-      "css_bytes": 311920,
-      "css_lines": 3656,
-      "js_bytes": 144058,
-      "js_lines": 1925,
-      "total_bytes": 455978,
-      "total_lines": 5581,
+      "css_bytes": 311609,
+      "css_lines": 3653,
+      "js_bytes": 142639,
+      "js_lines": 1901,
+      "total_bytes": 454248,
+      "total_lines": 5554,
       "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
     },
     "run_delta": {
-      "bytes": -24459,
-      "lines": -216,
+      "bytes": -24354,
+      "lines": -215,
       "css_bytes": -24354,
-      "js_bytes": -105
+      "js_bytes": 0,
+      "scope": "Own CSS reduction after preserving concurrent #1385/#1386/#1388/#1390; overlapping local JS extraction withdrawn."
     },
     "preview_updated": false,
     "production_updated": false,
-    "next_action": "Finish existing PR CI and inspect responsive images. Integrate release only, then publish and verify the exact artifact through the separately authorized isolated preview process. Do not repeat the completed retired-class cleanup or labels extraction."
+    "next_action": "Finish existing CI and responsive inspection, integrate release only and separately publish exact preview. Preserve the canonical shared text and inflection owners and concurrent fact typography; do not repeat this cleanup.",
+    "concurrent_release_sha": "f8e10a30b57fa965ee8f5e7294a1e08819b75fc2"
   },
   "presentation_refactor_history": [
     {
@@ -1161,6 +1163,80 @@
       "preview_deploy_run": 34024574911,
       "preview_deploy_pr": 1384,
       "verified_at": "2026-09-06T09:35:55.378736+00:00"
+    },
+    {
+      "baseline": "c4641c8dc8dd6f87cc6301a1f24e7ba1baba7a52",
+      "concurrent_release_sha": "4a4d762c0b7be142aeaaf84a0cdc1c23b0412c70",
+      "stage": "S3_PRESENTATION_HELPER_DEDUP_CI_VERIFIED",
+      "scope": "Reuse one Russian inflection owner across results and selected-tour presentation; remove the duplicate implementation plus unreachable selected-tour text and search-form date helpers.",
+      "source_validation": "23_APPLICABLE_CI_SUCCESS_1_EXPECTED_SKIP_NOT_PREVIEWED",
+      "verification": "Focused red/green ownership and 1/2/5/11/21 inflection checks, source build/check and presentation suite passed. All applicable CI succeeded; 375px and 1440px result images were inspected without new clipping. This code has not been published to preview or production.",
+      "public_assets": {
+        "css_bytes": 336274,
+        "css_lines": 3871,
+        "js_bytes": 143373,
+        "js_lines": 1906,
+        "total_bytes": 479647,
+        "total_lines": 5777,
+        "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
+      },
+      "run_delta": {
+        "baseline": "c4641c8dc8dd6f87cc6301a1f24e7ba1baba7a52",
+        "bytes": -790,
+        "lines": -20,
+        "cumulative_baseline": "684825be56d73700a7c432ff4ea88917e4b9eb9e",
+        "cumulative_bytes": -44078,
+        "cumulative_lines": -341
+      },
+      "preview_updated": false,
+      "production_updated": false,
+      "next_action": "Refresh the release head, then assess repeated pure presentation helpers in booking-summary.js, final-sections.js and tour-detail-rail.js. Extract only with identical-output/load-order tests and a meaningful net byte reduction; otherwise continue proven equivalent cascade consolidation.",
+      "concurrent_publication_record": "154700eadfb2c326c28e4ccaff4495b04746973b",
+      "implementation_sha": "4a4d762c0b7be142aeaaf84a0cdc1c23b0412c70",
+      "release_integration_sha": "4a4d762c0b7be142aeaaf84a0cdc1c23b0412c70",
+      "ci": {
+        "sha": "4a4d762c0b7be142aeaaf84a0cdc1c23b0412c70",
+        "pr": 1386,
+        "conclusion": "success",
+        "applicable_success": 23,
+        "expected_skipped": 1,
+        "core_run": 34025585551,
+        "visual_run": 34025585525,
+        "flight_run": 34025585575,
+        "artifact_run": 34025585506,
+        "visual_artifact": 9986947851,
+        "visual_digest": "sha256:2de083f411acd1767e53b991f640ee6fea8755d4848a12d3d5f6b48234f6683d",
+        "scope": "Source/import/ownership and existing responsive/flight checks passed. 375px and 1440px result images inspected on final code; PHP rendering ran in CI. This is not physical Safari or live-preview acceptance."
+      },
+      "last_preview_deploy_run": 34024574911,
+      "last_preview_deploy_pr": 1384,
+      "last_preview_code_sha": "26988e62eb674f8165d380de71e3be3d8feb19c3",
+      "verified_at": "2026-09-06T09:49:00+00:00"
+    },
+    {
+      "baseline": "c4641c8dc8dd6f87cc6301a1f24e7ba1baba7a52",
+      "stage": "S3_RETIRED_PRESENTATION_CSS_AND_LABELS_PREPARED",
+      "scope": "Remove 136 rules requiring retired positive classes and two empty media containers; preserve negative conditions. Group 35 additional equal-specificity compound selector lists. Extract shared pure presentation labels from results; remove duplicate plural and unused selected-tour text helpers.",
+      "source_validation": "LOCAL_SOURCE_PRESENTATION_AND_DIFFERENTIAL_PASS_CI_PENDING",
+      "verification": "Retired classes have no v2 JS/PHP owner. Ordered retained selector/declaration/media stream unchanged after expanding audited groups. Labels differential: 537 cases; original public results API, listener/observer counts and idempotency unchanged. No new scheduling or observer; labels helper is a frozen pure-function namespace.",
+      "public_assets": {
+        "css_bytes": 311920,
+        "css_lines": 3656,
+        "js_bytes": 144058,
+        "js_lines": 1925,
+        "total_bytes": 455978,
+        "total_lines": 5581,
+        "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
+      },
+      "run_delta": {
+        "bytes": -24459,
+        "lines": -216,
+        "css_bytes": -24354,
+        "js_bytes": -105
+      },
+      "preview_updated": false,
+      "production_updated": false,
+      "next_action": "Finish existing PR CI and inspect responsive images. Integrate release only, then publish and verify the exact artifact through the separately authorized isolated preview process. Do not repeat the completed retired-class cleanup or labels extraction."
     }
   ],
   "site_preview_publication_history": [

@@ -4,7 +4,6 @@
 function field(form,name){var el=form&&form.elements&&form.elements[name];return el&&el.closest?el.closest('.field'):null;}
 function cleanField(f){if(!f)return;f.classList.remove('field-wide','main-stars','main-meal','primary-step','primary-step-1','primary-step-2','primary-step-3','primary-step-4','primary-step-5','primary-step-6','primary-step-7','result-filter-priority','result-filter-stars','result-filter-meal');var select=f.querySelector('select');if(select){select.classList.remove('ux-native-hidden','meal-native-select');select.removeAttribute('aria-hidden');select.tabIndex=0;}var q=f.querySelector('.stars-quick,.meal-quick');if(q)q.hidden=true;}
 function makeComposite(label,cls){var box=document.createElement('label');box.className='field search3-composite '+cls;box.innerHTML='<span>'+label+'</span><div class="search3-composite__control"></div>';return box;}
-function formatDate(v){var p=String(v||'').split('-');return p.length===3?p[2]+'.'+p[1]+'.'+p[0]:String(v||'');}
 function clampNight(v){var n=parseInt(v,10);if(!Number.isFinite(n))n=7;return Math.max(1,Math.min(28,n));}
 function init(){
   var form=document.getElementById('tourSearch');if(!form||form.dataset.search3Ready==='1')return;
@@ -410,19 +409,18 @@ window.Search3LeadFlow={setState,clearState,enterLead,leaveLead,version:3};
   }
   window.Search3FlightPresentation = Object.freeze({ placeholder, flightLabel, baggage });
 })();
+/* Shared pure text formatting for Search3 presentation modules. */
+(function(){'use strict';if(window.Search3PresentationText)return;function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}function text(v){if(v==null)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(text).filter(Boolean).join(', ');for(const k of ['russianName','fullRussianName','name','title','value','text']){const s=text(v[k]);if(s)return s;}return'';}function people(t){const p=[];if(t&&t.adults)p.push(t.adults+' взр.');if(t&&t.childs)p.push(t.childs+' дет.');return p.join(' + ')||'—';}function place(t){const h=t&&t.hotel||{};return [text(h.country),text(h.region),text(h.subRegion)].filter(Boolean).join(', ')||'—';}window.Search3PresentationText=Object.freeze({esc,text,people,place});})();
 
 
 /* donor:search3-booking-summary.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let lastTour=null,lastFlight=null,selectedTotal=0;
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+const {esc,text,people,place}=window.Search3PresentationText;
 function number(v){if(v&&typeof v==='object'&&v.value!==undefined)v=v.value;const n=Number(v||0);return Number.isFinite(n)?n:0;}
 function money(v){const n=number(v);return n>0?new Intl.NumberFormat('ru-RU').format(n)+' ₽':'—';}
-function text(v){if(v==null)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(text).filter(Boolean).join(', ');for(const k of ['russianName','fullRussianName','name','title','value','text']){const s=text(v[k]);if(s)return s;}return'';}
 function meal(t){return text(t&&t.meal)||'—';}
 function operator(t){return text(t&&t.operator)||'—';}
-function people(t){const p=[];if(t&&t.adults)p.push(t.adults+' взр.');if(t&&t.childs)p.push(t.childs+' дет.');return p.join(' + ')||'—';}
-function place(t){const h=t&&t.hotel||{};return [text(h.country),text(h.region),text(h.subRegion)].filter(Boolean).join(', ')||'—';}
 function flightLabel(v){const root=document.getElementById('selectedTour'),pending=root&&root.classList.contains('search3-lead-entry')&&!v;return window.Search3FlightPresentation.flightLabel(v,pending?'Рейс уточнит менеджер':'Выберите рейс');}
 function normalizedTotal(detail){const d=detail||{},tour=d.tour||lastTour||{};if(d.pricePending)return number(d.basePrice)||number(tour.price);return number(d.price)||number(d.basePrice)||number(tour.price);}
 function summaryHtml(t){const h=t&&t.hotel||{};const pic=t&&t.picture||h.picturelink||'';return '<aside class="search3-booking-summary" aria-label="Ваш тур">'+
@@ -528,8 +526,7 @@ window.Search3BookingStepper={ensure,set,removeLegacy,version:5};
 /* donor:search3-final-sections.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let tour=null,flight=null;
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-function text(v){if(v==null)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(text).filter(Boolean).join(', ');for(const k of ['russianName','fullRussianName','name','title','value','text']){const s=text(v[k]);if(s)return s;}return'';}
+const {esc,text}=window.Search3PresentationText;
 function number(v){if(v&&typeof v==='object'&&v.value!==undefined)v=v.value;const n=Number(v||0);return Number.isFinite(n)?n:0;}
 function money(v){const n=number(v);return n>0?new Intl.NumberFormat('ru-RU').format(n)+' ₽':'—';}
 function baggage(v){return window.Search3FlightPresentation.baggage(v);}
@@ -629,13 +626,10 @@ window.addEventListener('v2:tour-selected',()=>setTimeout(ensure,0));window.addE
 /* donor:search3-tour-detail-rail.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let tour=null,flight=null,selectedTotal=0;
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-function txt(v){if(v==null)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(txt).filter(Boolean).join(', ');for(const k of ['russianName','fullRussianName','name','title','value','text']){const s=txt(v[k]);if(s)return s;}return'';}
+const {esc,text:txt,people,place}=window.Search3PresentationText;
 function num(v){if(v&&typeof v==='object'&&v.value!==undefined)v=v.value;const n=Number(v||0);return Number.isFinite(n)?n:0;}
 function money(v){const n=num(v);return n>0?new Intl.NumberFormat('ru-RU').format(n)+' ₽':'—';}
-function people(t){const a=[];if(t&&t.adults)a.push(t.adults+' взр.');if(t&&t.childs)a.push(t.childs+' дет.');return a.join(' + ')||'—';}
 function hotel(t){return t&&t.hotel||{};}
-function place(t){const h=hotel(t);return [txt(h.country),txt(h.region),txt(h.subRegion)].filter(Boolean).join(', ')||'—';}
 function meal(t){return txt(t&&t.meal)||'—';}
 function flightName(v){return window.Search3FlightPresentation.flightLabel(v,'Выбирается');}
 function normalizedTotal(detail){const value=detail||{},source=value.tour||tour||{};if(value.pricePending)return num(value.basePrice)||num(source.price);return num(value.price)||num(value.basePrice)||num(source.price);}
@@ -646,10 +640,30 @@ window.addEventListener('v2:flight-selected',e=>{flight=e.detail&&e.detail.fligh
 window.addEventListener('v2:tour-price-updated',e=>{selectedTotal=normalizedTotal(e.detail);setTimeout(render,0)});
 document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-tour-detail-rail__continue');if(!b)return;const root=document.getElementById('selectedTour'),target=root&&root.querySelector('.search3-flight-continue button');if(target)target.click();});
 })();
-/* Pure labels shared by result cards and the selected-tour presentation. */
+
+
+/* Candidate-owned result and responsive safety layer. */
 (function () {
   'use strict';
-  if (window.Search3CandidateLabelsV1) return;
+
+  if (window.Search3CandidateResultsV1) return;
+
+  var body = document.body;
+  var results = document.getElementById('results');
+  var tools = document.getElementById('resultsTools');
+  var sort = document.getElementById('sortResults');
+  if (!body || !body.classList.contains('search3-candidate') || !results || !tools) return;
+
+  var hotelsById = new Map();
+  var mobileToolbarTimer = null;
+
+  function safe(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 
   function textValue(value) {
     if (value == null) return '';
@@ -657,6 +671,24 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
       return textValue(value.russianName || value.fullRussianName || value.name || value.title || '');
     }
     return String(value).trim();
+  }
+
+  function hotelId(hotel) {
+    return String(hotel && hotel.id != null ? hotel.id : '');
+  }
+
+  function representativeTour(hotel) {
+    var tours = hotel && Array.isArray(hotel.tours) ? hotel.tours : [];
+    if (!tours.length) return null;
+    return tours.slice().sort(function (a, b) {
+      var left = Number(a && a.price || 0) || Number.MAX_SAFE_INTEGER;
+      var right = Number(b && b.price || 0) || Number.MAX_SAFE_INTEGER;
+      return left - right;
+    })[0] || null;
+  }
+
+  function tourWord(count) {
+    return plural(count, 'тур', 'тура', 'туров');
   }
 
   function plural(count, one, few, many) {
@@ -730,77 +762,20 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
     return labels[raw.toUpperCase()] || raw;
   }
 
-  window.Search3CandidateLabelsV1 = Object.freeze({
-    textValue: textValue,
-    plural: plural,
-    formatDate: formatTourDate,
-    mealLabel: mealLabel,
-    partyLabel: guestCountLabel,
-    roomLabel: roomLabel,
-    placementLabel: placementLabel
-  });
-})();
-
-
-
-/* Candidate-owned result and responsive safety layer. */
-(function () {
-  'use strict';
-
-  if (window.Search3CandidateResultsV1) return;
-
-  var body = document.body;
-  var results = document.getElementById('results');
-  var tools = document.getElementById('resultsTools');
-  var sort = document.getElementById('sortResults');
-  if (!body || !body.classList.contains('search3-candidate') || !results || !tools) return;
-
-  var labels = window.Search3CandidateLabelsV1;
-  if (!labels) return;
-
-  var hotelsById = new Map();
-  var mobileToolbarTimer = null;
-
-  function safe(value) {
-    return String(value == null ? '' : value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
-  function hotelId(hotel) {
-    return String(hotel && hotel.id != null ? hotel.id : '');
-  }
-
-  function representativeTour(hotel) {
-    var tours = hotel && Array.isArray(hotel.tours) ? hotel.tours : [];
-    if (!tours.length) return null;
-    return tours.slice().sort(function (a, b) {
-      var left = Number(a && a.price || 0) || Number.MAX_SAFE_INTEGER;
-      var right = Number(b && b.price || 0) || Number.MAX_SAFE_INTEGER;
-      return left - right;
-    })[0] || null;
-  }
-
-  function tourWord(count) {
-    return labels.plural(count, 'тур', 'тура', 'туров');
-  }
-
   function guestLabel() {
     var form = document.getElementById('tourSearch');
     var adults = Number(form && form.elements && form.elements.count_people && form.elements.count_people.value || 2) || 2;
     var children = Number(form && form.elements && form.elements.child_count && form.elements.child_count.value || 0) || 0;
-    return labels.partyLabel(adults, children);
+    return guestCountLabel(adults, children);
   }
 
   function cardFacts(hotel) {
     var tour = representativeTour(hotel);
     if (!tour) return [];
     var facts = [];
-    if (tour.date) facts.push(['Вылет', labels.formatDate(tour.date)]);
+    if (tour.date) facts.push(['Вылет', formatTourDate(tour.date)]);
     if (tour.nights) facts.push(['Ночей', String(tour.nights)]);
-    var meal = labels.mealLabel(tour.meal);
+    var meal = mealLabel(tour.meal);
     if (meal) facts.push(['Питание', meal]);
     if (tour.isCharter === true) facts.push(['Рейс', 'Чартер']);
     return facts.slice(0, 4);
@@ -865,16 +840,16 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
       row.dataset.search3OfferV2 = '1';
 
       var date = row.querySelector('.tour-meta > strong');
-      if (date) date.textContent = labels.formatDate(date.textContent);
+      if (date) date.textContent = formatTourDate(date.textContent);
 
       row.querySelectorAll('.tour-fact').forEach(function (fact) {
         var label = fact.querySelector('small');
         var value = fact.querySelector('b');
         if (!label || !value) return;
-        var name = labels.textValue(label.textContent).toLowerCase();
-        if (name === 'питание') value.textContent = labels.mealLabel(value.textContent);
-        if (name === 'номер') value.textContent = labels.roomLabel(value.textContent);
-        if (name === 'размещение') value.textContent = labels.placementLabel(value.textContent);
+        var name = textValue(label.textContent).toLowerCase();
+        if (name === 'питание') value.textContent = mealLabel(value.textContent);
+        if (name === 'номер') value.textContent = roomLabel(value.textContent);
+        if (name === 'размещение') value.textContent = placementLabel(value.textContent);
       });
 
       var action = row.querySelector('.tour-action');
@@ -1068,11 +1043,12 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
     version: 3,
     status: 'REFERENCE_IMPLEMENTATION_IN_PROGRESS',
     approvedPixelsCompared: false,
-    partyLabel: labels.partyLabel,
-    formatDate: labels.formatDate,
-    mealLabel: labels.mealLabel,
-    roomLabel: labels.roomLabel,
-    placementLabel: labels.placementLabel,
+    partyLabel: guestCountLabel,
+    plural: plural,
+    formatDate: formatTourDate,
+    mealLabel: mealLabel,
+    roomLabel: roomLabel,
+    placementLabel: placementLabel,
     decorate: decorate,
     collapseAll: collapseAll
   });
@@ -1120,7 +1096,7 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
   function dateWithNights(value) {
     var date = format.formatDate(value && value.date);
     var nights = Number(value && value.nights || 0);
-    var stay = nights ? nights + ' ' + window.Search3CandidateLabelsV1.plural(nights, 'ночь', 'ночи', 'ночей') : '';
+    var stay = nights ? nights + ' ' + format.plural(nights, 'ночь', 'ночи', 'ночей') : '';
     return [date, stay].filter(Boolean).join(' · ');
   }
 

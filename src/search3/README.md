@@ -77,15 +77,7 @@ while preserving the final cascade. Its audit is in
 `docs/project/search3-css-deduplication.json`; remaining compatibility rules are
 still active. Public build paths and module order are unchanged.
 
-## Shared labels and retired presentation states
-
-`behavior/presentation-labels.js` owns the pure date, meal, room, placement and
-Russian plural/party labels. It precedes `results-presentation.js` in the same
-public bundle and registers one frozen `Search3CandidateLabelsV1` namespace.
-The original `Search3CandidateResultsV1` formatting API delegates to those same
-functions. The selected-tour owner reuses the plural function; no new timer,
-listener or observer belongs to this helper. The results owner is now 14,504
-bytes (previously 17,602), with the 3,470-byte formatter kept separately.
+## Retired presentation states
 
 CSS for retired hotel focus/advanced controls/highlights and other absent owners
 has been removed. Only positive requirements were retired; negative conditions

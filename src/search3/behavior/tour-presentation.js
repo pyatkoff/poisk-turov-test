@@ -41,7 +41,7 @@
   function dateWithNights(value) {
     var date = format.formatDate(value && value.date);
     var nights = Number(value && value.nights || 0);
-    var stay = nights ? nights + ' ' + window.Search3CandidateLabelsV1.plural(nights, 'ночь', 'ночи', 'ночей') : '';
+    var stay = nights ? nights + ' ' + format.plural(nights, 'ночь', 'ночи', 'ночей') : '';
     return [date, stay].filter(Boolean).join(' · ');
   }
 

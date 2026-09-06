@@ -2,8 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const source = ['presentation-labels.js', 'results-presentation.js']
-  .map(name => fs.readFileSync(path.join(__dirname, '../src/search3/behavior', name), 'utf8')).join('');
+const source = fs.readFileSync(path.join(__dirname, '../src/search3/behavior/results-presentation.js'), 'utf8');
 
 function harness() {
   const events = new Map(), mediaEvents = new Map(), timers = new Map();
@@ -47,7 +46,7 @@ function harness() {
   class Event { constructor(type, options) { this.type = type; this.bubbles = !!(options && options.bubbles); } }
   vm.runInNewContext(source, { window, document, Event }, { filename: 'results-presentation.js' });
   return {
-    stats, timers, sort, proxy, filterBar, slot,
+    stats, timers, sort, proxy, filterBar, slot, format: window.Search3CandidateResultsV1,
     results(items = [{ id: 'hotel' }]) { events.get('v2:results-rendered')({ detail: { items } }); },
     reset() { events.get('v2:search-reset')(); },
     compact(matches = true) { mediaEvents.get('change')({ matches }); },
@@ -55,6 +54,15 @@ function harness() {
     flush() { const pending = [...timers.values()]; timers.clear(); pending.forEach(callback => callback()); },
     change(control, value) { control.value = value; control.dispatchEvent(new Event('change', { bubbles: true })); }
   };
+}
+
+{
+  const { format } = harness();
+  assert.equal(format.plural(1, 'ночь', 'ночи', 'ночей'), 'ночь');
+  assert.equal(format.plural(2, 'ночь', 'ночи', 'ночей'), 'ночи');
+  assert.equal(format.plural(5, 'ночь', 'ночи', 'ночей'), 'ночей');
+  assert.equal(format.plural(11, 'ночь', 'ночи', 'ночей'), 'ночей');
+  assert.equal(format.plural(21, 'ночь', 'ночи', 'ночей'), 'ночь');
 }
 
 {

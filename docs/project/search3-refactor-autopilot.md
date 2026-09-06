@@ -10,32 +10,64 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
-### Current continuation — retired states and shared labels
+### Current continuation — retired presentation CSS
 
-Prepared from `c4641c8dc8dd6f87cc6301a1f24e7ba1baba7a52`: 136 CSS rules
-requiring retired positive classes and two empty media containers removed
-(21,788 bytes). No current v2 JS/PHP produces those classes. Negative conditions
-remain. Another 35 equal-specificity compound selector groups remove 2,566 bytes;
-the retained ordered selector/declaration/media stream is unchanged after expansion.
-Audit: `docs/project/search3-css-owner-retirement.json`.
+Prepared on top of concurrent release `06a3ebf5`: 136 rules requiring retired
+positive classes and two empty media containers removed (21,788 bytes). Negative
+conditions remain. Another 35 equal-specificity compound selector groups remove
+2,566 bytes. The retained ordered selector/declaration/media stream is unchanged
+after expansion. Audit: `docs/project/search3-css-owner-retirement.json`.
 
-Pure presentation labels moved from `results-presentation.js` into
-`presentation-labels.js`; selected-tour plural logic reuses the helper and its
-unused text helper is removed. The main results owner shrank from 17,602 to
-14,504 bytes; the formatter is 3,470 bytes. Net JS reduction is 105 bytes, with
-no new scheduler, listener or observer. Differential comparison covers 537 cases
-and preserves the original public formatting API and bundle idempotency.
+Concurrent #1385/#1386 inflection/date-helper cleanup and regressions are preserved.
+The local labels extraction in draft `d6c0b9d1` overlapped that work and was
+withdrawn; no second formatter namespace is shipped. Its initial CI flagged a
+trailing blank line in the now-removed file, not a deployed runtime failure.
+The 537-case differential experiment remains historical evidence, not a claim
+that its superseded implementation was published.
 
-Prepared assets: CSS 311,920 bytes / 3,656 lines; JS 144,058 / 1,925;
-total **455,978 bytes / 5,581 lines**, a reduction of 24,459 bytes / 216 lines
-from the previous checkpoint. Source/import and existing presentation checks
-pass locally. Existing CI and responsive inspection are pending; this prepared
-code is not yet published. The verified publication below remains the live version.
+Prepared eight assets after preserving concurrent #1385/#1386/#1388/#1390: CSS 311609 bytes / 3653 lines; JS 142639 / 1901; total 454248 / 5554. Own reduction against concurrent f8e10a30: 24354 bytes / 215 lines.
 
-Next: finish PR CI and visual inspection, integrate into release only, then
-publish the exact checked artifact through the separately authorized preview
-process. Do not repeat these cleanup/extraction steps or prior completed work.
-Main, production and protected contracts remain locked.
+Next: finish CI and responsive inspection, integrate release only, then separately publish the exact checked preview artifact. Do not repeat completed cleanup or shared text/inflection work.
+
+### Current code checkpoint — CI-verified, not republished — 2026-09-06
+
+Exact release code: `4a4d762c0b7be142aeaaf84a0cdc1c23b0412c70`.
+Preparation PRs: #1385 and #1386. The exact preview below remains on the older
+published code `26988e62`; this checkpoint was not deployed.
+
+- One canonical Russian inflection formatter now serves tour counts, guest labels
+  and selected-tour night counts. Its `1/2/5/11/21` boundaries are covered.
+- Removed the duplicate selected-tour inflection implementation and two unreachable
+  private helpers: its unused recursive text normalizer and the search-form date
+  formatter that had no caller inside its IIFE.
+- Ownership checks keep those private copies retired. Generated assets and the
+  production-import hashes were rebuilt together; all eight public paths and their
+  order remain unchanged.
+
+All **23 applicable workflows passed**, with one expected migration-only skip:
+core `34025585551`, responsive `34025585525`, flight `34025585575`, whole-site
+artifact `34025585506`. Visual artifact `9986947851`, digest
+`sha256:2de083f411acd1767e53b991f640ee6fea8755d4848a12d3d5f6b48234f6683d`.
+The 375px and 1440px result images were inspected without new clipping. This is
+not a physical Safari or live-preview acceptance claim.
+
+| Public assets | Bytes / lines |
+| --- | ---: |
+| Four CSS | 336,274 / 3,871 |
+| Four JS | 143,373 / 1,906 |
+| Total | 479,647 / 5,777 |
+
+This continuation removes another **790 bytes / 20 lines** from `c4641c8d`;
+cumulative reduction from `684825be` is **44,078 bytes / 341 lines**. Counts are
+uncompressed and exclude shared runtime/legacy plus duplicate source files; they
+are not a page-load benchmark.
+
+Next: refresh the release head and assess the repeated pure presentation helpers
+in `booking-summary.js`, `final-sections.js` and `tour-detail-rail.js`. Extract an
+earlier-loaded common owner only if snapshot/ownership tests prove identical
+markup, event behavior, load order and a meaningful net byte reduction. Otherwise
+continue a proven equivalent consolidation in `styles/cascade`. Do not alter price
+arithmetic, lead/API contracts or publish preview as a refactor side effect.
 
 ### Previous published checkpoint — 2026-09-06
 
