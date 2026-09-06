@@ -76,7 +76,7 @@
 & span {display:block!important;margin:0 0 3px!important;color:var(--at-muted)!important;font-size:7px!important;line-height:1.15!important;text-transform:uppercase!important}
   & b {display:block!important;color:var(--at-ink)!important;font-size:9px!important;line-height:1.2!important;overflow-wrap:anywhere!important}
 }
-  & #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>:is(.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.room-details-host,.selected-confidence,.search3-tour-detail-rail) {display:none!important}
+  & #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>:is(.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.room-details-host,.selected-confidence) {display:none!important}
   & #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry)>.tour-flights {
 & {grid-column:1/-1!important;grid-row:6!important;width:100%!important;margin:10px 0 0!important;box-sizing:border-box!important;position:relative!important;z-index:1!important;overflow:hidden!important;contain:paint!important}
   & .flight-variant {position:relative!important;z-index:0!important}
@@ -159,5 +159,17 @@
     overflow-wrap:normal!important;
   }
 }
+}
+}
+
+/* Selected-tour sequencing retained from the retired mobile booking board.
+   Typography and card geometry belong to selected-tour/acceptance owners. */
+@media(max-width:640px){
+html body.search3-candidate.search3-selected-open #selectedTour.selected-tour:not(.search3-final-review){
+& .search3-booking-stepper{display:grid!important;order:4!important;width:100%!important}
+& .room-details-host{order:6!important}
+& .search3-final-sections{order:7!important}
+& .hotel-desc{display:none!important}
+& .hotel-desc-toggle{order:8!important}
 }
 }

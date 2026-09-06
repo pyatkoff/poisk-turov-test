@@ -38,7 +38,8 @@ assert.match(presentation, /document\.querySelector\((['"])\.mrf-bar\1\)/, 'Sear
 assert.match(mobile, /sheet\.className\s*=\s*(['"])mrf-sheet\1/, 'base mobile results filter sheet remains canonical');
 assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('), 'canonical mobile filter lifecycle remains intact');
 assert.ok(!selectedPresentation.includes('function plural('), 'selected-tour presentation reuses the canonical inflection owner');
-assert.ok(selectedPresentation.includes('format.plural('), 'selected-tour presentation consumes the canonical inflection owner');
+assert.ok(selectedPresentation.includes('format.partyLabel('), 'selected-tour party wording consumes the canonical inflection owner');
+assert.ok(!selectedPresentation.includes('dateWithNights'), 'retired desktop recap has no remaining private date-and-nights formatter');
 assert.ok(!selectedPresentation.includes('function text('), 'unused selected-tour text normalizer stays retired');
 assert.ok(!searchForm.includes('function formatDate('), 'unused private date formatter stays retired from the search form');
 

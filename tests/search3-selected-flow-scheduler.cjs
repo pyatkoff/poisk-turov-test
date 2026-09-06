@@ -42,7 +42,8 @@ Object.defineProperty(selectedDataset, 'search3FlightFallback', {
   get() { return fallbackDataValue; },
   set(value) { fallbackDataValue = value; fallbackDataWrites += 1; }
 });
-const fallbackButton = { textContent: 'Далее: итог тура', click() {} };
+let fallbackClicks = 0;
+const fallbackButton = { textContent: 'Далее: итог тура', click() { fallbackClicks += 1; } };
 const fallbackAction = {
   classList: { add() {} },
   querySelector(selector) { return selector === 'button' ? fallbackButton : null; }
@@ -64,6 +65,7 @@ const selected = {
     contains() { return false; }
   },
   querySelector(selector) {
+    assert.ok(!selector.includes('search3-tour-detail-rail'), 'retired rail is not queried during selected-flow updates');
     if (selector === '.selected-price > small') return { textContent: 'Стоимость тура' };
     if (selector === '.tour-flights') {
       flightRootReads += 1;
@@ -72,7 +74,7 @@ const selected = {
     return null;
   },
   querySelectorAll(selector) {
-    if (selector === '.search3-booking-summary__total,.search3-tour-detail-rail__price') return [priceBox];
+    if (selector === '.search3-booking-summary__total') return [priceBox];
     return [];
   },
   contains() { return true; }
@@ -206,6 +208,7 @@ flightDataPresent = false;
 flightRootReads = 0;
 assert.equal(window.Search3SelectedFlowV2.activateReview(), true, 'no-flight review activation succeeds');
 assert.equal(flightRootReads, 1, 'review activation reuses one flight root for state and action');
+assert.equal(fallbackClicks, 1, 'no-flight path activates the primary continue button without a desktop rail');
 
 flightRootReads = 0;
 window.Search3SelectedFlowV2.sync();

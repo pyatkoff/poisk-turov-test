@@ -103,7 +103,7 @@
     if (!amount) return;
     var scope = priceScope();
     var ariaLabel = amount + ', ' + scope.toLowerCase();
-    selected.querySelectorAll('.search3-booking-summary__total,.search3-tour-detail-rail__price').forEach(function (box) {
+    selected.querySelectorAll('.search3-booking-summary__total').forEach(function (box) {
       setText(box.querySelector(':scope > span'), scope);
       setText(box.querySelector(':scope > strong'), amount);
       setAttribute(box, 'aria-label', ariaLabel);
@@ -153,7 +153,6 @@
       selected.classList.add('search3-flight-fallback');
       setData(selected, 'search3FlightFallback', '1');
       ensureReviewAction(flights);
-      ensureRailAction();
     } else {
       clearFallback();
     }

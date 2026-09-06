@@ -10,7 +10,7 @@
 & .selected-head{display:block!important;grid-column:2!important;grid-row:4!important;min-width:0!important;min-height:104px!important;margin:0!important;padding:11px!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important}
 & .selected-head h2{margin:0!important;font-size:15px!important;line-height:1.12!important}
 & .selected-head .selected-price,& .selected-head .selected-lead-cta,& .selected-head .selected-lead-cta-note{display:none!important}
-& .facts,& .facts-secondary-toggle,& .selected-choice-summary,& .hotel-desc,& .hotel-desc-toggle,& .room-details-host,& .selected-confidence,& .search3-tour-detail-rail{display:none!important}
+& .facts,& .facts-secondary-toggle,& .selected-choice-summary,& .hotel-desc,& .hotel-desc-toggle,& .room-details-host,& .selected-confidence{display:none!important}
 & .tour-flights{display:block!important;grid-column:1/-1!important;grid-row:5!important;width:100%!important;margin:0!important}
 & .search3-final-sections{display:grid!important;grid-column:1/-1!important;grid-row:6!important;width:100%!important;margin:0!important;gap:10px!important}
 & .search3-lead-shell{display:block!important;grid-column:1/-1!important;grid-row:7!important;width:100%!important;margin:0!important}

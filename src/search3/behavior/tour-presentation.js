@@ -38,13 +38,6 @@
     return Number(value.price || 0) || Number(value.basePrice || sourceTour.price || 0);
   }
 
-  function dateWithNights(value) {
-    var date = format.formatDate(value && value.date);
-    var nights = Number(value && value.nights || 0);
-    var stay = nights ? nights + ' ' + format.plural(nights, 'ночь', 'ночи', 'ночей') : '';
-    return [date, stay].filter(Boolean).join(' · ');
-  }
-
   function displayValues(value) {
     return {
       'дата': format.formatDate(value && value.date),
@@ -64,7 +57,7 @@
     setText(selectedPriceLabel, scope);
     if (selectedPrice && money) selectedPrice.setAttribute('aria-label', money + ', ' + scope.toLowerCase());
 
-    selected.querySelectorAll('.search3-booking-summary__total,.search3-tour-detail-rail__price').forEach(function (price) {
+    selected.querySelectorAll('.search3-booking-summary__total').forEach(function (price) {
       setText(price.querySelector(':scope > span'), scope);
       setText(price.querySelector(':scope > strong'), money);
       if (money) price.setAttribute('aria-label', money + ', ' + scope.toLowerCase());
@@ -85,7 +78,6 @@
     var values = displayValues(tour);
     labelValueRows(selected, '.facts > div', 'span', 'b', values);
     labelValueRows(selected, '.search3-booking-summary dl > div', 'dt', 'dd', values);
-    labelValueRows(selected, '.search3-tour-detail-rail dl > div', 'dt', 'dd', values);
     labelValueRows(selected, '.search3-final-services > article', 'span', 'strong', values);
 
     selected.querySelectorAll('.search3-final-services > article').forEach(function (article) {
@@ -95,15 +87,7 @@
       }
     });
 
-    selected.querySelectorAll('.search3-tour-detail-rail dl > div').forEach(function (row) {
-      if (String(row.querySelector('dt') && row.querySelector('dt').textContent || '').trim().toLowerCase() === 'дата') {
-        setText(row.querySelector('dd'), dateWithNights(tour));
-      }
-    });
-
     decoratePriceContext(tour);
-    var detailContinue = selected.querySelector('.search3-tour-detail-rail__continue');
-    setText(detailContinue, 'Далее: итог тура');
     var flightContinue = selected.querySelector('.search3-flight-continue button');
     if (flightContinue && !selected.classList.contains('search3-final-review')) setText(flightContinue, 'Далее: итог тура');
     selected.dataset.search3SelectedPresentation = '1';
@@ -136,7 +120,6 @@
     version: 1,
     decorate: decorate,
     displayValues: displayValues,
-    dateWithNights: dateWithNights,
     normalizedTotal: normalizedTotal
   });
 })();

@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "stage": "SOURCE_PREPARED_VISUAL_DEFERRED",
+  "base_release_sha": "328452ae5b6210f065c53be6b77831f0900be7f0",
+  "previous_checked_source_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+  "published_preview_source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+  "public_assets": [
+    {
+      "path": "v2/search3-results-filters-v1.js",
+      "before": 95089,
+      "after": 92082,
+      "saved": 3007
+    },
+    {
+      "path": "v2/search3-results-filters-v1.css",
+      "before": 138267,
+      "after": 129440,
+      "saved": 8827
+    },
+    {
+      "path": "v2/search3-entry-v1.css",
+      "before": 9662,
+      "after": 9662,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-entry-v1.js",
+      "before": 3226,
+      "after": 3226,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-results-cards-v2.css",
+      "before": 4007,
+      "after": 4007,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-results-cards-v2.js",
+      "before": 0,
+      "after": 0,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.css",
+      "before": 7237,
+      "after": 6814,
+      "saved": 423
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.js",
+      "before": 8439,
+      "after": 7882,
+      "saved": 557
+    }
+  ],
+  "totals": {
+    "before": 265927,
+    "after": 253113,
+    "saved": 12814,
+    "css_after": 149923,
+    "js_after": 103190
+  },
+  "retired_layers": [
+    "review-specificity-guards.css",
+    "review-desktop-board.css",
+    "booking-board-mobile.css",
+    "booking-board-tablet.css",
+    "behavior/tour-detail-rail.js"
+  ],
+  "retained": [
+    "Lead-entry hide/form/summary boundary in review-layout.css",
+    "Compact review desktop/tablet grid in review-layout.css; mobile sequence in review-responsive.css",
+    "Native selected facts/price, booking summary, primary flight continue and no-flight fallback",
+    "Two-column non-review desktop grid; protected active normalizedTotal functions unchanged"
+  ],
+  "intentional_changes": [
+    "Retired live duplicate desktop recap, not dead-code or pixel-equivalence claim",
+    "Review geometry uses one compact responsive owner",
+    "Mobile selected photo now uses existing injected 148px rule instead of retired 136px rule"
+  ],
+  "local_checks": {
+    "asset_build": "PASS: one --write build for combined package",
+    "selected_flow_scheduler": "PASS including one no-flight primary activation and retired rail absence",
+    "presentation_utils": "PASS",
+    "mobile_toolbar_ownership": "PASS: active canonical partyLabel consumer; rail-only dateWithNights retired",
+    "css_parse": "PASS six affected CSS files",
+    "independent_review": "PASS lead boundary, two-column selected grid, hidden lifecycle and primary fallback; native flight/lead owners unchanged"
+  },
+  "source_ci": "PENDING required Security with owner validators and exact artifact build; guards unchanged",
+  "visual_verification": {
+    "status": "DEFERRED",
+    "performed": false,
+    "required": [
+      "selected tour desktop/no-flight primary action",
+      "review desktop/tablet/mobile",
+      "lead-entry visibility boundary"
+    ],
+    "reason": "No callable browser capability in current tool registry; local browser runtime unavailable. Earlier denied local browser URL/artifact access not retried."
+  },
+  "preview_updated": false,
+  "production_updated": false,
+  "next_action": "After required source CI retain exact artifact; verify affected states in one justified isolated preview publication before visual acceptance. Next substantial candidate is form-compatibility.css (8263 source bytes), retaining desktop six-column form grid and submit width in current entry owner."
+}

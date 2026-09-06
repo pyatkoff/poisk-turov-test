@@ -45,23 +45,6 @@
     }, true);
   }
 
-  function ensureRailAction() {
-    var rail = selected.querySelector('.search3-tour-detail-rail');
-    if (!rail) return;
-    var action = rail.querySelector('.search3-flight-fallback-rail-action');
-    if (!action) {
-      action = document.createElement('button');
-      action.type = 'button';
-      action.className = 'search3-flight-fallback-rail-action';
-      setData(action, 'search3SelectedFlowOwned', '1');
-      rail.appendChild(action);
-    }
-    setText(action, flowLabel('flight'));
-    setData(action, 'search3SelectedFlowAction', '1');
-    setAttribute(action, 'aria-label', 'Перейти к итогу тура без выбранного рейса');
-    bindAction(action);
-  }
-
   function syncMobileAction(noFlight) {
     var button = document.querySelector('.search3-selected-mobile-bar [data-s3-selected-lead]');
     if (!button) return;

@@ -54,9 +54,6 @@ html body.search3-candidate{
 & .room-detail-toggle {width:100%!important;min-height:48px!important;border-radius:10px!important;text-align:left!important}
 & .search3-flight-continue {grid-row:10!important}
 }
-/* Keep the sticky real-tour rail alongside the full flight-selection area. The previous
-   grid span ended before row 9, so it disappeared exactly when QA scrolled to flights. */
-&.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail{align-self:start!important;}
 /* Tourvisor returns paired outbound/return variants. Preserve that pairing and all data,
    but present each pair compactly like the approved flight board instead of two tall cards. */
 &.search3-selected-open #selectedTour:not(.search3-final-review) {

@@ -23,11 +23,11 @@ assert.equal(format.place(null), '—');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'src/search3/manifest.json'), 'utf8'));
 const modules = manifest.assets['search3-results-filters-v1.js'];
 const ownerIndex = modules.indexOf('behavior/presentation-text.js');
-for (const consumer of ['behavior/booking-summary.js', 'behavior/final-sections.js', 'behavior/tour-detail-rail.js']) {
+for (const consumer of ['behavior/booking-summary.js', 'behavior/final-sections.js']) {
   assert.ok(ownerIndex >= 0 && ownerIndex < modules.indexOf(consumer), `text owner loads before ${consumer}`);
 }
 
-const sources = Object.fromEntries(['booking-summary.js', 'final-sections.js', 'tour-detail-rail.js'].map((name) => [
+const sources = Object.fromEntries(['booking-summary.js', 'final-sections.js'].map((name) => [
   name,
   fs.readFileSync(path.join(root, 'src/search3/behavior', name), 'utf8')
 ]));
@@ -39,8 +39,5 @@ assert.ok(!sources['booking-summary.js'].includes('function text('));
 assert.ok(!sources['booking-summary.js'].includes('function people('));
 assert.ok(!sources['booking-summary.js'].includes('function place('));
 assert.ok(!sources['final-sections.js'].includes('function text('));
-assert.ok(!sources['tour-detail-rail.js'].includes('function txt('));
-assert.ok(!sources['tour-detail-rail.js'].includes('function people('));
-assert.ok(!sources['tour-detail-rail.js'].includes('function place('));
 
 console.log('PASS: one ordered presentation text owner preserves escaping, supplier text, compact party and place labels');
