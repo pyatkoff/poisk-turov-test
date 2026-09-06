@@ -21,17 +21,21 @@
 .search3-booking-summary__total strong{color:var(--at-ink);font:950 19px/1 var(--at-font);white-space:nowrap}
 .search3-booking-summary__price-note{margin:7px 0 0;color:var(--at-muted);font:700 7px/1.35 var(--at-font)}
 @media(min-width:1000px){
-body.search3-candidate #selectedTour .search3-lead-shell{grid-column:1/-1;grid-template-columns:minmax(0,1fr) 290px;align-items:start;margin-top:12px}
-body.search3-candidate #selectedTour .search3-lead-shell>.lead-form{grid-column:1;margin-top:0!important;min-height:100%}
-body.search3-candidate #selectedTour .search3-booking-summary{grid-column:2;grid-row:1;position:sticky;top:16px}
-body.search3-candidate #selectedTour .lead-form .section-heading strong{font-size:21px!important}
-body.search3-candidate #selectedTour .lead-fields{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important}
-body.search3-candidate #selectedTour .lead-form :is(input,textarea){border-radius:7px!important}
+body.search3-candidate{
+& #selectedTour .search3-lead-shell{grid-column:1/-1;grid-template-columns:minmax(0,1fr) 290px;align-items:start;margin-top:12px}
+& #selectedTour .search3-lead-shell>.lead-form{grid-column:1;margin-top:0!important;min-height:100%}
+& #selectedTour .search3-booking-summary{grid-column:2;grid-row:1;position:sticky;top:16px}
+& #selectedTour .lead-form .section-heading strong{font-size:21px!important}
+& #selectedTour .lead-fields{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important}
+& #selectedTour .lead-form :is(input,textarea){border-radius:7px!important}
+}
 }
 @media(max-width:640px){
 .search3-lead-shell{display:flex;flex-direction:column}
-body.search3-candidate #selectedTour .search3-lead-shell>.lead-form{order:1;margin-top:0!important}
-body.search3-candidate #selectedTour .search3-booking-summary{order:2;padding:10px;border-radius:10px}
+body.search3-candidate{
+& #selectedTour .search3-lead-shell>.lead-form{order:1;margin-top:0!important}
+& #selectedTour .search3-booking-summary{order:2;padding:10px;border-radius:10px}
+}
 .search3-booking-summary__image{height:112px}
 .search3-booking-summary__hotel{font-size:14px}
 .search3-booking-summary dl>div{grid-template-columns:72px minmax(0,1fr);padding:6px 0}

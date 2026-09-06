@@ -9,95 +9,107 @@ body.search3-candidate .v2-shell{padding-bottom:8px!important}
 /* Desktop result composition: denser cards and a clearer price/action rail. */
 @media(min-width:1000px){
 
- body.search3-candidate #results .hotel-card{max-width:none!important}
- body.search3-candidate #results .hotel-main{grid-template-columns:244px minmax(0,1fr)!important;}
+ body.search3-candidate{
+& #results .hotel-card{max-width:none!important}
+ & #results .hotel-main{grid-template-columns:244px minmax(0,1fr)!important;}
 
- body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 166px!important;padding:14px 16px 12px!important}
+ & #results .hotel-body{grid-template-columns:minmax(0,1fr) 166px!important;padding:14px 16px 12px!important}
 
- body.search3-candidate #results .hotel-bottom{align-self:stretch!important;justify-content:flex-start!important}
- body.search3-candidate #results .hotel-price{margin-top:6px!important}
- body.search3-candidate .search3-hotel-action{grid-template-columns:minmax(0,1fr) 166px!important;}
- body.search3-candidate .search3-show-tours{min-height:40px!important;}
- body.search3-candidate #results .hotel-tours{padding:14px 16px 16px!important}
- body.search3-candidate #results .hotel-tours .tour-row{padding:13px 14px!important;border-radius:12px!important}
+ & #results .hotel-bottom{align-self:stretch!important;justify-content:flex-start!important}
+ & #results .hotel-price{margin-top:6px!important}
+ & .search3-hotel-action{grid-template-columns:minmax(0,1fr) 166px!important;}
+ & .search3-show-tours{min-height:40px!important;}
+ & #results .hotel-tours{padding:14px 16px 16px!important}
+ & #results .hotel-tours .tour-row{padding:13px 14px!important;border-radius:12px!important}
 
- body.search3-candidate #results .hotel-tours .tour-meta>strong{font-size:11px!important}
- body.search3-candidate #results .hotel-tours .tour-fact b{line-height:1.25!important}
+ & #results .hotel-tours .tour-meta>strong{font-size:11px!important}
+ & #results .hotel-tours .tour-fact b{line-height:1.25!important}
+}
 
 }
 
 /* Selected tour: compact hotel header, one clear orange primary CTA, less dead space. */
-body.search3-candidate #selectedTour{margin-top:16px!important;margin-bottom:34px!important}
-body.search3-candidate #selectedTour .selected-head .eyebrow{display:inline-flex!important;width:auto!important;margin-bottom:7px!important;padding:4px 7px!important;border-radius:999px!important;background:#fff3ec!important;color:#e94f00!important;letter-spacing:.035em!important}
-body.search3-candidate #selectedTour .lead-form button[type=submit]{border:0!important;background:#ff5a0a!important;color:#fff!important;box-shadow:0 5px 14px rgba(255,90,10,.18)!important}
-body.search3-candidate #selectedTour :is(.tour-flights,.lead-form){margin-top:12px!important;padding:16px 18px!important}
-body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!important}
+body.search3-candidate{
+& #selectedTour{margin-top:16px!important;margin-bottom:34px!important}
+& #selectedTour .selected-head .eyebrow{display:inline-flex!important;width:auto!important;margin-bottom:7px!important;padding:4px 7px!important;border-radius:999px!important;background:#fff3ec!important;color:#e94f00!important;letter-spacing:.035em!important}
+& #selectedTour .lead-form button[type=submit]{border:0!important;background:#ff5a0a!important;color:#fff!important;box-shadow:0 5px 14px rgba(255,90,10,.18)!important}
+& #selectedTour :is(.tour-flights,.lead-form){margin-top:12px!important;padding:16px 18px!important}
+& #selectedTour .section-heading{margin-bottom:10px!important}
+}
 @media(min-width:1000px){
- body.search3-candidate #selectedTour{grid-template-columns:340px minmax(0,1fr)!important}
- body.search3-candidate #selectedTour .selected-picture{border-radius:16px 0 0 16px!important}
- body.search3-candidate #selectedTour .selected-head{padding:22px 24px!important;border-radius:0 16px 16px 0!important}
+ body.search3-candidate{
+& #selectedTour{grid-template-columns:340px minmax(0,1fr)!important}
+ & #selectedTour .selected-picture{border-radius:16px 0 0 16px!important}
+ & #selectedTour .selected-head{padding:22px 24px!important;border-radius:0 16px 16px 0!important}
 
- body.search3-candidate #selectedTour .facts>div{padding:12px 14px!important}
+ & #selectedTour .facts>div{padding:12px 14px!important}
+}
 }
 
 /* Mobile initial search: primary fields first, advanced controls on demand. */
 @media(max-width:760px){
- body.search3-candidate .search3-page-intro{margin:10px auto 6px!important}
- body.search3-candidate .search3-page-intro h1{font-size:22px!important;margin-top:4px!important}
- body.search3-candidate .search3-page-intro p{font-size:9px!important}
- body.search3-candidate #tourSearch{padding:10px!important;margin-top:7px!important}
- body.search3-candidate #tourSearch .search3-primary-grid{gap:7px!important}
- body.search3-candidate #tourSearch .field>span{margin-bottom:4px!important;}
- body.search3-candidate #tourSearch select,
-body.search3-candidate #tourSearch :is(input[type=date],input[type=number],input[type=text]),
-body.search3-candidate :is(.search3-tourists__summary,.search3-composite__control){min-height:38px!important}
- body.search3-candidate #tourSearch .search3-primary-grid>.search-submit{margin-top:2px!important}
- body.search3-candidate .search3-quality{display:none!important;margin-top:8px!important}
- body.search3-candidate .search3-quick{gap:8px!important}
- body.search3-candidate #tourSearch:not(.search3-advanced-open) .search3-quick .search3-quick__label:not(.search3-quick__label--static){display:none!important}
- body.search3-candidate #tourSearch:not(.search3-advanced-open) .search3-quick{display:flex!important}
- body.search3-candidate #tourSearch:not(.search3-advanced-open) .search3-quick__label--static{width:auto!important}
+ body.search3-candidate{
+& .search3-page-intro{margin:10px auto 6px!important}
+ & .search3-page-intro h1{font-size:22px!important;margin-top:4px!important}
+ & .search3-page-intro p{font-size:9px!important}
+ & #tourSearch{padding:10px!important;margin-top:7px!important}
+ & #tourSearch .search3-primary-grid{gap:7px!important}
+ & #tourSearch .field>span{margin-bottom:4px!important;}
+ & #tourSearch select,
+& #tourSearch :is(input[type=date],input[type=number],input[type=text]),
+& :is(.search3-tourists__summary,.search3-composite__control){min-height:38px!important}
+ & #tourSearch .search3-primary-grid>.search-submit{margin-top:2px!important}
+ & .search3-quality{display:none!important;margin-top:8px!important}
+ & .search3-quick{gap:8px!important}
+ & #tourSearch:not(.search3-advanced-open) .search3-quick .search3-quick__label:not(.search3-quick__label--static){display:none!important}
+ & #tourSearch:not(.search3-advanced-open) .search3-quick{display:flex!important}
+ & #tourSearch:not(.search3-advanced-open) .search3-quick__label--static{width:auto!important}
 
  /* Mobile cards: less image dominance, stronger content grouping. */
 
- body.search3-candidate #results .hotel-body{padding:10px!important;grid-template-columns:minmax(0,1fr) 104px!important}
- body.search3-candidate #results .hotel-title{line-height:1.16!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;overflow:hidden!important}
- body.search3-candidate #results .hotel-place{margin-top:3px!important}
+ & #results .hotel-body{padding:10px!important;grid-template-columns:minmax(0,1fr) 104px!important}
+ & #results .hotel-title{line-height:1.16!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;overflow:hidden!important}
+ & #results .hotel-place{margin-top:3px!important}
 
- body.search3-candidate .search3-hotel-action{margin-top:7px!important;padding-top:7px!important}
- body.search3-candidate .search3-show-tours{font-size:10px!important}
+ & .search3-hotel-action{margin-top:7px!important;padding-top:7px!important}
+ & .search3-show-tours{font-size:10px!important}
 
  /* Mobile tour chooser keeps hotel context and feels connected to the result card. */
 
 
 
  /* Selected mobile: sticky CTA is the primary action; avoid duplicate primary button. */
- body.search3-candidate #selectedTour .selected-picture{height:160px!important}
- body.search3-candidate #selectedTour .selected-head{padding:10px!important}
- body.search3-candidate #selectedTour .selected-head h2{font-size:18px!important}
- body.search3-candidate #selectedTour .facts>div,body.search3-candidate #selectedTour .facts>div:nth-child(n){min-height:44px!important;padding:7px 9px!important}
- body.search3-candidate #selectedTour .lead-form button[type=submit]{display:none!important}
- body.search3-candidate #selectedTour .lead-form{padding-bottom:11px!important}
+ & #selectedTour .selected-picture{height:160px!important}
+ & #selectedTour .selected-head{padding:10px!important}
+ & #selectedTour .selected-head h2{font-size:18px!important}
+ & #selectedTour .facts>div,& #selectedTour .facts>div:nth-child(n){min-height:44px!important;padding:7px 9px!important}
+ & #selectedTour .lead-form button[type=submit]{display:none!important}
+ & #selectedTour .lead-form{padding-bottom:11px!important}
+}
 
 }
 
 /* P0 contract: after search, the full advanced form is not the desktop hero. */
 @media(min-width:1000px){
- body.search3-candidate.search3-has-results #tourSearch{display:none!important}
- body.search3-candidate.search3-has-results.search3-editing-search #tourSearch{display:block!important}
- body.search3-candidate.search3-has-results #resultsSearchSummary{display:grid!important;grid-template-columns:minmax(0,1.7fr) .72fr .72fr .72fr 132px!important;margin:8px 0 12px!important}
- body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route{grid-column:1!important}
- body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__fact{display:block!important}
- body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__edit{grid-column:5!important;grid-row:1!important;border-left:1px solid #edf0f5!important;border-right:0!important;color:#2463eb!important}
- body.search3-candidate.search3-has-results .results-tools--ds2{width:calc(100% - 230px)!important;margin-top:0!important;padding-top:7px!important;padding-bottom:7px!important}
- body.search3-candidate.search3-has-results.search3-editing-search #resultsSearchSummary{display:none!important}
+ body.search3-candidate{
+&.search3-has-results #tourSearch{display:none!important}
+ &.search3-has-results.search3-editing-search #tourSearch{display:block!important}
+ &.search3-has-results #resultsSearchSummary{display:grid!important;grid-template-columns:minmax(0,1.7fr) .72fr .72fr .72fr 132px!important;margin:8px 0 12px!important}
+ &.search3-has-results #resultsSearchSummary .results-search-summary__route{grid-column:1!important}
+ &.search3-has-results #resultsSearchSummary .results-search-summary__fact{display:block!important}
+ &.search3-has-results #resultsSearchSummary .results-search-summary__edit{grid-column:5!important;grid-row:1!important;border-left:1px solid #edf0f5!important;border-right:0!important;color:#2463eb!important}
+ &.search3-has-results .results-tools--ds2{width:calc(100% - 230px)!important;margin-top:0!important;padding-top:7px!important;padding-bottom:7px!important}
+ &.search3-has-results.search3-editing-search #resultsSearchSummary{display:none!important}
+}
 }
 
 /* Mobile results should keep the route visible, not just an orphan edit button. */
 @media(max-width:640px){
- body.search3-candidate.search3-has-results #resultsSearchSummary{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;width:100%!important;min-width:0!important;border:1px solid #e2e8f0!important;border-radius:10px!important;background:#fff!important;overflow:hidden!important}
- body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route{display:block!important;grid-column:1!important;grid-row:1!important;padding:8px 10px!important}
- body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route strong{font-size:7px!important}
- body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route span{font-size:9px!important}
- body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__edit{grid-column:2!important;grid-row:1!important;min-width:104px!important;border:0!important;border-left:1px solid #edf0f5!important;border-radius:0!important}
+ body.search3-candidate{
+&.search3-has-results #resultsSearchSummary{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;width:100%!important;min-width:0!important;border:1px solid #e2e8f0!important;border-radius:10px!important;background:#fff!important;overflow:hidden!important}
+ &.search3-has-results #resultsSearchSummary .results-search-summary__route{display:block!important;grid-column:1!important;grid-row:1!important;padding:8px 10px!important}
+ &.search3-has-results #resultsSearchSummary .results-search-summary__route strong{font-size:7px!important}
+ &.search3-has-results #resultsSearchSummary .results-search-summary__route span{font-size:9px!important}
+ &.search3-has-results #resultsSearchSummary .results-search-summary__edit{grid-column:2!important;grid-row:1!important;min-width:104px!important;border:0!important;border-left:1px solid #edf0f5!important;border-radius:0!important}
+}
 }

@@ -50,6 +50,23 @@ evidence.
 
 ## Smaller source owners
 
+Consecutive rules in the main results stylesheet share one native nesting parent:
+`body.search3-candidate` or `html body.search3-candidate`. Every child starts with
+an explicit `&`; expanding it restores the original selector. The parents have
+one selector each, so specificity stays `(0,1,1)` or `(0,1,2)` plus the child.
+Group only adjacent rules in the same source/media context. Keep declarations
+and at-rules outside grouping parents; do not combine parents into selector lists.
+The selector/declaration/media equivalence audit is
+`docs/project/search3-css-nesting-results.json`.
+
+This preview uses native CSS nesting, supported by
+[Safari 16.5 and later](https://webkit.org/blog/14154/webkit-features-in-safari-16-5/)
+and current Chromium/Firefox. Engines without nesting do not support this variant.
+Explicit `&` avoids reliance on relaxed type-selector parsing. The
+[nesting specificity rule](https://www.w3.org/TR/css-nesting-1/#nest-selector)
+explains why each grouping parent must remain a single selector. This does not
+replace physical Safari acceptance or the production approval gate.
+
 `behavior/results-presentation.js` keeps its guard, shared state, subscriptions
 and public adapter. Its private `results/labels.js`, `results/cards.js` and
 `results/toolbar.js` parts own complete function groups. Distinct formatter

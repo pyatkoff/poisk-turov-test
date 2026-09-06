@@ -5,61 +5,71 @@
 
 /* Results hierarchy */
 
-body.search3-candidate.search3-has-results .results-search-summary,body.search3-candidate.search3-has-results .results-tools--ds2{margin-bottom:8px!important}
-body.search3-candidate.search3-has-results .results-layout{align-items:start!important}
+body.search3-candidate{
+&.search3-has-results .results-search-summary,&.search3-has-results .results-tools--ds2{margin-bottom:8px!important}
+&.search3-has-results .results-layout{align-items:start!important}
+}
 
 /* Desktop: compact filter rail and denser hotel cards. */
 @media(min-width:1000px){
- body.search3-candidate .results-layout{grid-template-columns:196px minmax(0,1fr)!important;gap:14px!important}
- body.search3-candidate .results-filter-rail{width:196px!important;margin-top:0!important;padding:12px!important;border:1px solid #e2e8f0!important;border-radius:12px!important;background:#fff!important;box-shadow:none!important}
- body.search3-candidate .results-filter-rail .filter-group{margin:0!important;padding:10px 0!important;border-bottom:1px solid #eef1f5!important}
- body.search3-candidate .results-filter-rail .filter-group:first-child{padding-top:0!important}
- body.search3-candidate .results-filter-rail .filter-group:last-child{padding-bottom:0!important;border-bottom:0!important}
- body.search3-candidate .results-filter-rail :is(label,button,select,input){font-size:9px!important}
- body.search3-candidate #results .hotel-card{border-radius:13px!important}
- body.search3-candidate #results .hotel-main{grid-template-columns:224px minmax(0,1fr)!important;}
+ body.search3-candidate{
+& .results-layout{grid-template-columns:196px minmax(0,1fr)!important;gap:14px!important}
+ & .results-filter-rail{width:196px!important;margin-top:0!important;padding:12px!important;border:1px solid #e2e8f0!important;border-radius:12px!important;background:#fff!important;box-shadow:none!important}
+ & .results-filter-rail .filter-group{margin:0!important;padding:10px 0!important;border-bottom:1px solid #eef1f5!important}
+ & .results-filter-rail .filter-group:first-child{padding-top:0!important}
+ & .results-filter-rail .filter-group:last-child{padding-bottom:0!important;border-bottom:0!important}
+ & .results-filter-rail :is(label,button,select,input){font-size:9px!important}
+ & #results .hotel-card{border-radius:13px!important}
+ & #results .hotel-main{grid-template-columns:224px minmax(0,1fr)!important;}
 
- body.search3-candidate #results .hotel-title{max-width:780px!important}
+ & #results .hotel-title{max-width:780px!important}
 
- body.search3-candidate .search3-hotel-action{grid-template-columns:minmax(0,1fr) 158px!important;gap:14px!important;margin-top:7px!important;padding-top:7px!important}
- body.search3-candidate .search3-hotel-action__copy{min-width:0!important}
- body.search3-candidate .search3-hotel-action__copy span{overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+ & .search3-hotel-action{grid-template-columns:minmax(0,1fr) 158px!important;gap:14px!important;margin-top:7px!important;padding-top:7px!important}
+ & .search3-hotel-action__copy{min-width:0!important}
+ & .search3-hotel-action__copy span{overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
 
- body.search3-candidate #results .hotel-tours{padding:12px 14px 14px!important;background:#f9fbfd!important}
- body.search3-candidate #results .hotel-tours .tour-row{padding:10px 12px!important}
- body.search3-candidate #results .hotel-tours .tour-meta{grid-template-columns:minmax(112px,1.25fr) minmax(90px,.9fr) 76px 48px minmax(98px,.95fr) minmax(66px,.7fr)!important;}
- body.search3-candidate #results .hotel-tours .tour-action{gap:6px!important;padding-left:10px!important}
+ & #results .hotel-tours{padding:12px 14px 14px!important;background:#f9fbfd!important}
+ & #results .hotel-tours .tour-row{padding:10px 12px!important}
+ & #results .hotel-tours .tour-meta{grid-template-columns:minmax(112px,1.25fr) minmax(90px,.9fr) 76px 48px minmax(98px,.95fr) minmax(66px,.7fr)!important;}
+ & #results .hotel-tours .tour-action{gap:6px!important;padding-left:10px!important}
+}
 
 }
 
 /* Selected tour: make the hotel itself the hero, not the status ribbon. */
-body.search3-candidate #selectedTour .selected-head .eyebrow{font-size:8px!important;font-weight:850!important;text-transform:none!important}
-body.search3-candidate #selectedTour .hotel-desc{display:none!important}
-body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
+body.search3-candidate{
+& #selectedTour .selected-head .eyebrow{font-size:8px!important;font-weight:850!important;text-transform:none!important}
+& #selectedTour .hotel-desc{display:none!important}
+& #selectedTour .tour-flights,& #selectedTour .lead-form{margin-top:10px!important}
+}
 @media(min-width:1000px){
- body.search3-candidate #selectedTour{grid-template-columns:380px minmax(0,1fr)!important;row-gap:0!important}
+ body.search3-candidate{
+& #selectedTour{grid-template-columns:380px minmax(0,1fr)!important;row-gap:0!important}
 
- body.search3-candidate #selectedTour .selected-head{padding:22px!important}
- body.search3-candidate #selectedTour .selected-head h2{line-height:1.06!important}
- body.search3-candidate #selectedTour .selected-head p{font-size:10px!important;line-height:1.35!important}
- body.search3-candidate #selectedTour .selected-price{min-width:160px!important;}
+ & #selectedTour .selected-head{padding:22px!important}
+ & #selectedTour .selected-head h2{line-height:1.06!important}
+ & #selectedTour .selected-head p{font-size:10px!important;line-height:1.35!important}
+ & #selectedTour .selected-price{min-width:160px!important;}
 
- body.search3-candidate #selectedTour .facts>div{padding:11px 12px!important}
- body.search3-candidate #selectedTour :is(.tour-flights,.lead-form){padding:15px 16px!important;border-radius:14px!important}
+ & #selectedTour .facts>div{padding:11px 12px!important}
+ & #selectedTour :is(.tour-flights,.lead-form){padding:15px 16px!important;border-radius:14px!important}
+}
 }
 
 /* Mobile results: compact cards and preserve context between results and packages. */
 @media(max-width:760px){
- body.search3-candidate.search3-has-results .search3-page-intro{display:none!important}
- body.search3-candidate.search3-has-results .results-tools--ds2{padding-top:2px!important;padding-bottom:5px!important}
- body.search3-candidate.search3-has-results .results-tools--ds2 strong{font-size:16px!important}
- body.search3-candidate.search3-has-results #resultSummary{font-size:8px!important}
+ body.search3-candidate{
+&.search3-has-results .search3-page-intro{display:none!important}
+ &.search3-has-results .results-tools--ds2{padding-top:2px!important;padding-bottom:5px!important}
+ &.search3-has-results .results-tools--ds2 strong{font-size:16px!important}
+ &.search3-has-results #resultSummary{font-size:8px!important}
 
- body.search3-candidate #results{gap:7px!important}
- body.search3-candidate #results .hotel-card{border-radius:11px!important}
+ & #results{gap:7px!important}
+ & #results .hotel-card{border-radius:11px!important}
 
- body.search3-candidate #results .hotel-body{padding:9px!important;grid-template-columns:minmax(0,1fr) 100px!important}
- body.search3-candidate #results .hotel-title{line-height:1.15!important}
+ & #results .hotel-body{padding:9px!important;grid-template-columns:minmax(0,1fr) 100px!important}
+ & #results .hotel-title{line-height:1.15!important}
+}
 
 
 
@@ -67,13 +77,15 @@ body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selec
 
 /* Mobile selected: one CTA, compact hotel summary, reduced footer dominance. */
 @media(max-width:640px){
- body.search3-candidate #selectedTour{margin-bottom:22px!important}
+ body.search3-candidate{
+& #selectedTour{margin-bottom:22px!important}
 
- body.search3-candidate #selectedTour .selected-head{padding:9px 10px!important}
- body.search3-candidate #selectedTour .selected-head .eyebrow{margin-bottom:3px!important;padding:3px 6px!important;font-size:7px!important}
+ & #selectedTour .selected-head{padding:9px 10px!important}
+ & #selectedTour .selected-head .eyebrow{margin-bottom:3px!important;padding:3px 6px!important;font-size:7px!important}
 
- body.search3-candidate #selectedTour .facts>div,body.search3-candidate #selectedTour .facts>div:nth-child(n){padding:6px 8px!important}
- body.search3-candidate #selectedTour :is(.tour-flights,.lead-form){margin-top:7px!important;padding:10px!important}
- body.search3-candidate .search3-selected-mobile-bar{padding-top:7px!important;padding-bottom:max(7px,env(safe-area-inset-bottom))!important}
+ & #selectedTour .facts>div,& #selectedTour .facts>div:nth-child(n){padding:6px 8px!important}
+ & #selectedTour :is(.tour-flights,.lead-form){margin-top:7px!important;padding:10px!important}
+ & .search3-selected-mobile-bar{padding-top:7px!important;padding-bottom:max(7px,env(safe-area-inset-bottom))!important}
+}
 
 }

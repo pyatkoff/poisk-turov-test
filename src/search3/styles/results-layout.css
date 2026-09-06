@@ -2,12 +2,13 @@
 
 /* Candidate-owned exact-head result and responsive safety layer. */
 /* Search3 candidate results/filter presentation reconstructed from frozen run 467. */
-body.search3-candidate.search3-results-active .results-search-summary{
+body.search3-candidate{
+&.search3-results-active .results-search-summary{
   width:min(1120px,100%)!important;
   max-width:1120px!important;
   margin:10px auto!important;
 }
-body.search3-candidate.search3-results-active .results-tools--ds2{
+&.search3-results-active .results-tools--ds2{
   position:static!important;
   top:auto!important;
   z-index:auto!important;
@@ -18,7 +19,7 @@ body.search3-candidate.search3-results-active .results-tools--ds2{
   border-radius:12px!important;
   backdrop-filter:none!important;
 }
-body.search3-candidate.search3-results-active .results-layout{
+&.search3-results-active .results-layout{
   display:grid!important;
   grid-template-columns:220px minmax(0,1fr)!important;
   gap:14px!important;
@@ -29,7 +30,7 @@ body.search3-candidate.search3-results-active .results-layout{
   margin:0 auto 56px!important;
 }
 /* The visible candidate-results chain intentionally outranks production :has(#...) layout guards. */
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results{
   display:flex!important;
   flex-direction:column!important;
   align-items:stretch!important;
@@ -40,7 +41,7 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   margin:0!important;
 }
 
-body.search3-candidate.search3-results-active .results-filter-rail{
+&.search3-results-active .results-filter-rail{
   position:sticky!important;
   top:18px!important;
   display:block!important;
@@ -53,7 +54,7 @@ body.search3-candidate.search3-results-active .results-filter-rail{
   background:#fff!important;
   box-shadow:0 3px 12px rgba(16,24,40,.04)!important;
 }
-body.search3-candidate .results-filter-rail .filter-rail-head{
+& .results-filter-rail .filter-rail-head{
   display:flex!important;
   align-items:flex-start!important;
   justify-content:space-between!important;
@@ -62,13 +63,13 @@ body.search3-candidate .results-filter-rail .filter-rail-head{
   padding:0 0 10px!important;
   border-bottom:1px solid #edf0f5!important;
 }
-body.search3-candidate .results-filter-rail .filter-rail-title{
+& .results-filter-rail .filter-rail-title{
   color:#14213d!important;
   font-size:16px!important;
   line-height:1!important;
   font-weight:900!important;
 }
-body.search3-candidate .results-filter-rail .filter-reset-link{
+& .results-filter-rail .filter-reset-link{
   min-height:44px!important;
   padding:0 4px!important;
   border:0!important;
@@ -77,34 +78,34 @@ body.search3-candidate .results-filter-rail .filter-reset-link{
   font-size:12px!important;
   font-weight:800!important;
 }
-body.search3-candidate .results-filter-rail .filter-range,
-body.search3-candidate .results-filter-rail fieldset{
+& .results-filter-rail .filter-range,
+& .results-filter-rail fieldset{
   display:block!important;
   margin:0!important;
   padding:12px 0!important;
   border:0!important;
   border-bottom:1px solid #edf0f5!important;
 }
-body.search3-candidate .results-filter-rail fieldset[hidden]{display:none!important}
-body.search3-candidate .results-filter-rail .filter-range>span,
-body.search3-candidate .results-filter-rail fieldset legend{
+& .results-filter-rail fieldset[hidden]{display:none!important}
+& .results-filter-rail .filter-range>span,
+& .results-filter-rail fieldset legend{
   margin:0 0 9px!important;
   color:#344054!important;
   font-size:12px!important;
   font-weight:900!important;
 }
-body.search3-candidate .results-filter-rail .filter-range>small{
+& .results-filter-rail .filter-range>small{
   display:block!important;
   margin:5px 0 7px!important;
   color:#14213d!important;
   font-size:12px!important;
   font-weight:800!important;
 }
-body.search3-candidate .results-filter-rail input[type=range]{
+& .results-filter-rail input[type=range]{
   width:100%!important;
   accent-color:#1463ff!important;
 }
-body.search3-candidate .results-filter-rail .filter-option{
+& .results-filter-rail .filter-option{
   display:flex!important;
   align-items:center!important;
   gap:7px!important;
@@ -113,25 +114,25 @@ body.search3-candidate .results-filter-rail .filter-option{
   font-size:12px!important;
   font-weight:750!important;
 }
-body.search3-candidate .results-filter-rail .filter-option input{
+& .results-filter-rail .filter-option input{
   width:18px!important;
   height:18px!important;
   flex:0 0 18px!important;
   accent-color:#1463ff!important;
 }
-body.search3-candidate .results-filter-rail .filter-rail-result{
+& .results-filter-rail .filter-rail-result{
   padding:12px 0 2px!important;
   color:#667085!important;
   font-size:12px!important;
 }
-body.search3-candidate .results-filter-rail .filter-rail-result strong{
+& .results-filter-rail .filter-rail-result strong{
   display:block!important;
   margin-top:3px!important;
   color:#14213d!important;
   font-size:14px!important;
 }
 
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card{
   display:block!important;
   width:100%!important;
   min-width:0!important;
@@ -144,7 +145,7 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   box-shadow:0 2px 8px rgba(16,24,40,.03)!important;
   transform:none!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-main{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-main{
   display:grid!important;
   grid-template-columns:280px minmax(0,1fr)!important;
   align-items:stretch!important;
@@ -154,7 +155,7 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   min-height:210px!important;
   gap:0!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-photo{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-photo{
   width:auto!important;
   height:210px!important;
   min-height:210px!important;
@@ -162,14 +163,14 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   margin:0!important;
   border-radius:0!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-photo>img{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-photo>img{
   width:100%!important;
   height:100%!important;
   min-height:210px!important;
   max-height:210px!important;
   object-fit:cover!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-body{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-body{
   display:grid!important;
   grid-template-columns:minmax(0,1fr) 184px!important;
   grid-template-rows:auto auto auto auto 1fr auto!important;
@@ -179,7 +180,7 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   margin:0!important;
   padding:10px 14px 9px!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-title{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-title{
   grid-column:1!important;
   margin:0!important;
   color:#14213d!important;
@@ -187,19 +188,19 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   line-height:1.15!important;
   font-weight:900!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-place{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-place{
   grid-column:1!important;
   margin-top:3px!important;
   color:#667085!important;
   font-size:12px!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-decision-line{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-decision-line{
   grid-column:1!important;
   display:flex!important;
   gap:6px!important;
   margin-top:5px!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-decision-line>span{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-decision-line>span{
   min-height:22px!important;
   padding:3px 7px!important;
   border-radius:6px!important;
@@ -208,7 +209,7 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   font-size:11px!important;
   font-weight:800!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-bottom{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-bottom{
   grid-column:2!important;
   grid-row:1/6!important;
   align-self:start!important;
@@ -218,7 +219,7 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   border-left:1px solid #eef1f5!important;
   text-align:right!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-price{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-price{
   margin-top:3px!important;
   color:#2743cb!important;
   font-size:21px!important;
@@ -226,13 +227,13 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   font-weight:900!important;
   white-space:nowrap!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-price-context{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-price-context{
   margin-top:5px!important;
   color:#667085!important;
   font-size:11px!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results :is(.hotel-compare-toggle,.hotel-actions,.hotel-inline-detail,.result-decision-badges){display:none!important}
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results :is(.hotel-compare-toggle,.hotel-actions,.hotel-inline-detail,.result-decision-badges){display:none!important}
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts{
   grid-column:1!important;
   display:grid!important;
   grid-template-columns:repeat(4,minmax(0,1fr))!important;
@@ -242,21 +243,21 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   border-radius:7px!important;
   background:#fafbfc!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts>span{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts>span{
   min-width:0!important;
   padding:5px 6px!important;
   border-right:1px solid #edf0f5!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts>span:last-child{border-right:0!important}
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts :is(small,b){
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts>span:last-child{border-right:0!important}
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts :is(small,b){
   display:block!important;
   overflow:hidden!important;
   text-overflow:ellipsis!important;
   white-space:nowrap!important;
 }
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts small{color:#667085!important;font-size:10px!important}
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts b{margin-top:2px!important;color:#344054!important;font-size:11px!important}
-body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-action{
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts small{color:#667085!important;font-size:10px!important}
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts b{margin-top:2px!important;color:#344054!important;font-size:11px!important}
+&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-action{
   grid-column:1/3!important;
   grid-row:6!important;
   display:grid!important;
@@ -267,8 +268,8 @@ body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTo
   padding-top:5px!important;
   border-top:1px solid #eef1f5!important;
 }
-body.search3-candidate .search3-hotel-action__copy{display:flex!important;gap:6px!important;color:#177245!important;font-size:11px!important}
-body.search3-candidate .search3-show-tours{
+& .search3-hotel-action__copy{display:flex!important;gap:6px!important;color:#177245!important;font-size:11px!important}
+& .search3-show-tours{
   display:inline-flex!important;
   align-items:center!important;
   justify-content:center!important;
@@ -282,15 +283,15 @@ body.search3-candidate .search3-show-tours{
   font-weight:900!important;
   cursor:pointer!important;
 }
-body.search3-candidate #results .hotel-tours[hidden]{display:none!important}
-body.search3-candidate #results .hotel-tours:not([hidden]){
+& #results .hotel-tours[hidden]{display:none!important}
+& #results .hotel-tours:not([hidden]){
   display:block!important;
   margin:0!important;
   padding:14px!important;
   border-top:1px solid #edf0f5!important;
   background:#f8fafc!important;
 }
-body.search3-candidate #results .hotel-tours:not([hidden]) .tour-row{
+& #results .hotel-tours:not([hidden]) .tour-row{
   display:grid!important;
   grid-template-columns:minmax(0,1fr) 252px!important;
   gap:14px!important;
@@ -300,7 +301,7 @@ body.search3-candidate #results .hotel-tours:not([hidden]) .tour-row{
   border-radius:10px!important;
   background:#fff!important;
 }
-body.search3-candidate #results .hotel-tours:not([hidden]) .tour-action{
+& #results .hotel-tours:not([hidden]) .tour-action{
   display:grid!important;
   grid-template-columns:minmax(0,1fr) 132px!important;
   align-items:center!important;
@@ -308,7 +309,7 @@ body.search3-candidate #results .hotel-tours:not([hidden]) .tour-action{
   width:100%!important;
   min-width:0!important;
 }
-body.search3-candidate #results .hotel-tours:not([hidden]) .tour-action>b{
+& #results .hotel-tours:not([hidden]) .tour-action>b{
   min-width:0!important;
   font-size:18px!important;
   line-height:1.2!important;
@@ -316,7 +317,8 @@ body.search3-candidate #results .hotel-tours:not([hidden]) .tour-action>b{
   overflow-wrap:normal!important;
   text-align:right!important;
 }
-body.search3-candidate #results .hotel-tours:not([hidden]) .tour-action>.direct-tour{
+& #results .hotel-tours:not([hidden]) .tour-action>.direct-tour{
   width:132px!important;
   min-width:132px!important;
+}
 }
