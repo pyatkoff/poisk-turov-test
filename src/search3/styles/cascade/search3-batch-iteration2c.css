@@ -6,14 +6,12 @@
 @media(min-width:1000px){
   /* Results shell follows maket7 proportions: narrow filters + dense list. */
   body.search3-candidate{
-&.search3-has-results .results-layout{grid-template-columns:206px minmax(0,1fr)!important;gap:14px!important;}
-  &.search3-has-results .results-tools--ds2{width:calc(100% - 220px)!important;padding:4px 0!important}
+  &.search3-has-results .results-tools--ds2{padding:4px 0!important}
   &.search3-has-results .results-tools--ds2>div:first-child strong{font-size:18px!important}
   &.search3-has-results .results-tools--ds2>div:first-child span{font-size:8px!important}
   &.search3-has-results .results-tools__actions label,
   &.search3-has-results .results-view-switch{min-height:31px!important;border-radius:6px!important;font-size:8px!important}
 
-  & .results-filter-rail{padding:10px 10px 11px!important;border-radius:9px!important;box-shadow:0 2px 6px rgba(16,24,40,.025)!important}
   & .filter-rail-head{padding-bottom:7px!important;margin-bottom:0!important}
   & .filter-rail-title{font-size:13px!important}
   & .filter-reset-link{font-size:7.5px!important}
@@ -27,23 +25,13 @@
   & .filter-rail-result strong{font-size:10px!important}
 
   /* Hotel cards: maket7 density and strong price/CTA rail. */
-  & #results{gap:9px!important}
-  & #results .hotel-card{border-radius:9px!important;box-shadow:0 2px 7px rgba(16,24,40,.025)!important;overflow:hidden!important}
-  & #results .hotel-main{grid-template-columns:214px minmax(0,1fr)!important;min-height:154px!important}
-  & #results .hotel-photo{height:154px!important;min-height:154px!important;border-radius:0!important}
-  & #results .hotel-body{grid-template-columns:minmax(0,1fr) 158px!important;grid-template-rows:auto auto auto auto 1fr auto!important;column-gap:14px!important;padding:10px 11px 8px!important}
-  & #results .hotel-title{font-size:14px!important;line-height:1.12!important;letter-spacing:-.18px!important}
-  & #results .hotel-place{margin-top:3px!important;font-size:7.5px!important}
-  & #results .hotel-decision-line{margin-top:6px!important;gap:5px!important}
-  & #results .hotel-decision-line>span{min-height:18px!important;padding:0 6px!important;border-radius:4px!important;font-size:7px!important}
+  & #results .hotel-card{overflow:hidden!important}
+  & #results .hotel-photo{border-radius:0!important}
   & #results .search3-hotel-facts{margin-top:6px!important;border-radius:6px!important;max-width:none!important}
   & #results .search3-hotel-facts>span{padding:5px 7px!important}
   & #results .search3-hotel-facts small{font-size:5.8px!important}
   & #results .search3-hotel-facts b{font-size:7.5px!important}
-  & #results .hotel-bottom{grid-column:2!important;grid-row:1/6!important;display:flex!important;flex-direction:column!important;justify-content:center!important;padding:0 0 0 13px!important;border-left:1px solid #edf0f5!important}
-  & #results .hotel-best-offer>small{font-size:6.5px!important}
-  & #results .hotel-price{font-size:18px!important}
-  & #results .hotel-price-context{margin-top:5px!important;font-size:6.5px!important;line-height:1.25!important}
+  & #results .hotel-bottom{grid-column:2!important;grid-row:1/6!important;display:flex!important;flex-direction:column!important;justify-content:center!important;border-left:1px solid #edf0f5!important}
   & #results .search3-hotel-action{grid-template-columns:minmax(0,1fr) 158px!important;gap:14px!important;margin-top:5px!important;padding-top:6px!important}
   & #results .search3-hotel-action__copy :is(strong,span){font-size:7px!important}
   & #results .search3-show-tours{min-height:34px!important;border-radius:6px!important;font-size:8.5px!important;font-weight:850!important}
@@ -76,7 +64,7 @@
   & #results{gap:8px!important}
   & #results .hotel-card{border-radius:9px!important;overflow:hidden!important}
   & #results .hotel-main{display:block!important}
-  & #results .hotel-photo{width:100%!important;height:116px!important;min-height:116px!important}
+  & #results .hotel-photo{width:100%!important;}
   & #results .hotel-body{display:grid!important;grid-template-columns:minmax(0,1fr) 86px!important;padding:8px 8px 7px!important}
   & #results .hotel-title{font-size:11.5px!important;line-height:1.08!important;-webkit-line-clamp:2!important}
   & #results .hotel-place{font-size:6.8px!important}

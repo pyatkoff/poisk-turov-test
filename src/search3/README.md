@@ -163,3 +163,13 @@ listeners. This queue does not own filtering or search submission.
 Regression adapters: `tests/search3-booking-summary.cjs`,
 `tests/search3-results-scheduler.cjs`, `tests/search3-mobile-toolbar-scheduler.cjs`
 and `tests/search3-mobile-toolbar-ownership.cjs`, run by the presentation test suite.
+
+
+A later cascade pass removes earlier declarations only when the same complete
+expanded selector list, media/supports context, property and important priority
+occur later in the same linked stylesheet. Each deletion records the later
+witness in `docs/project/search3-active-css-declarations.json`; existing browser
+CI verifies that those later values are supported, so unsupported-value fallbacks
+are not silently removed. No shorthand expansion or cross-context merging is used.
+Final declaration maps match the prior code; now-empty rules are removed without
+reordering retained declarations. Protected acceptance guards remain intact.

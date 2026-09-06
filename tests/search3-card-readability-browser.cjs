@@ -1,4 +1,5 @@
 const { chromium } = require('playwright');
+const declarationAudit = require('../docs/project/search3-active-css-declarations.json');
 
 const base = process.env.SEARCH3_VISUAL_BASE || 'http://127.0.0.1:8099';
 
@@ -98,6 +99,13 @@ function px(value) {
       const response = await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded', timeout: 30000 });
       if (!response || response.status() !== 200) throw new Error(width + ': Search3 fixture HTTP failure');
       await page.waitForSelector('body.search3-candidate');
+      if (width === 375) {
+        const witnesses = declarationAudit.assets.flatMap(asset => asset.rows);
+        const unsupported = await page.evaluate(rows => rows.filter(row =>
+          !CSS.supports(row.property, row.later_value)), witnesses);
+        if (unsupported.length) throw new Error('CSS_OVERRIDE_FALLBACK_REQUIRED ' + JSON.stringify(unsupported));
+        console.log('SEARCH3_CSS_OVERRIDE_WITNESSES_SUPPORTED ' + witnesses.length);
+      }
       await page.evaluate(html => {
         const body = document.body;
         body.classList.add('search3-results-active', 'search3-has-results');

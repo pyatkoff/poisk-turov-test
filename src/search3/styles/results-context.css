@@ -40,7 +40,6 @@ body.search3-candidate{
 & .results-tools--ds2 #resultSummary{display:none!important}
 & .results-tools__actions label{gap:0!important;font-size:0!important}
 & .results-tools__actions label select{font-size:8px!important}
-& .results-layout{grid-template-columns:198px minmax(0,1fr)!important;gap:12px!important}
 
 & .results-view-switch [data-results-view="grid"]{display:none!important}
 & .results-view-switch [data-results-view="list"]{font-size:0!important;min-width:62px!important}

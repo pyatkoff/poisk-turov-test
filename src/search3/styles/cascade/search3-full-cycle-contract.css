@@ -16,7 +16,6 @@ body.search3-candidate{
 & #selectedTour .section-heading{margin-bottom:10px!important}
 & #selectedTour .section-heading strong{font-size:17px!important}
 & #selectedTour .flight-variant{border-radius:10px!important;box-shadow:none!important}
-& #selectedTour .lead-form button[type=submit]{min-height:46px!important;border-radius:8px!important;background:#ff4f0a!important}
 }
 }
 body.search3-candidate{

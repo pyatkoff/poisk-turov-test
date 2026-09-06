@@ -840,73 +840,33 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "86697aa10be922f041c66603f352c7479f227aa1",
-    "stage": "S3_NATIVE_CSS_NESTING_PUBLISHED",
-    "implementation_sha": "74b87bff36db79f40fb17e18fb9478d339b6bc8c",
-    "release_integration_sha": "74b87bff36db79f40fb17e18fb9478d339b6bc8c",
-    "scope": "131 single-parent explicit-& groups across46 CSS source modules remove33378 bytes. Expanded ordered selector/declaration/media streams equal baseline; four JS assets unchanged.",
-    "source_validation": "TWO_SOURCE_HEADS_EACH_23_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
+    "baseline": "d7882e504a6e66d3f3d71910e4f6f4650aa8b494",
+    "stage": "S3_PRIVATE_INJECTED_CSS_CI_VERIFIED",
+    "implementation_sha": "10d78a4463732a1d730d94af90b04cb6af795d37",
+    "scope": "Two private CSS source literals retain original injection positions; six nesting groups remove1940 public JS bytes. Seven assets unchanged.",
+    "source_validation": "23_CI_SUCCESS_1_EXPECTED_SKIP",
     "public_assets": {
       "css_bytes": 257468,
       "css_lines": 3855,
-      "js_bytes": 142180,
-      "js_lines": 1903,
-      "total_bytes": 399648,
-      "total_lines": 5758,
-      "scope": "Four CSS and four JS assets; uncompressed, excluding shared runtime/legacy and source duplication. No speed benchmark or deferred-loading claim."
+      "js_bytes": 140240,
+      "js_lines": 1825,
+      "total_bytes": 397708,
+      "total_lines": 5680
     },
-    "preview_updated": true,
+    "preview_updated": false,
     "production_updated": false,
     "ci": {
-      "sha": "74b87bff36db79f40fb17e18fb9478d339b6bc8c",
-      "pr": 1400,
+      "pr": 1402,
       "applicable_success": 23,
       "expected_skipped": 1,
-      "core_run": 34045800403,
-      "visual_run": 34045800482,
-      "flight_run": 34045800430,
-      "artifact_run": 34045800429,
-      "visual_artifact": 9993058138,
-      "visual_digest": "sha256:2ea69a553bef14c628dfc9452684ce6da6d2e8624a07031ad1ef66ef840ee9cc",
-      "first_pass": {
-        "sha": "9597192cb58c00814a84ba21ee3f32f96f38dc53",
-        "pr": 1399,
-        "applicable_success": 23,
-        "expected_skipped": 1,
-        "core_run": 34045691988,
-        "visual_run": 34045691942,
-        "flight_run": 34045691908,
-        "artifact_run": 34045691934
-      },
-      "scope": "All applicable workflows succeeded at each source. Nine source-build tests and fourteen focused presentation tests; PHP covered in CI. Responsive widths 375/430/1024/1348/1440; 375/1440 editor images inspected and pixel-identical to prior publication. Across 24 compared images, 19 pixel-identical; no blanket pixel-parity claim."
+      "core_run": 34047082610,
+      "visual_run": 34047082664,
+      "flight_run": 34047082620,
+      "artifact_run": 34047082564
     },
-    "preview_deploy_run": 34046027330,
-    "preview_deploy_pr": 1401,
-    "next_action": "Refresh release, active PRs and this publication before the next bounded reduction. Inspect remaining active CSS declaration duplication and JS presentation owners for measured net savings, preserving media/order/specificity, IIFE ownership and protected business contracts. Do not repeat completed nesting, indentation/comment compaction, private JS extraction, geometry helpers, retired selectors or shared formatters. Keep eight public paths; preview only via a separate exact-artifact publication. Production locked.",
-    "verified_at": "2026-09-06T16:44:25.711876+00:00",
-    "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
-    "run_delta": {
-      "bytes": -33378,
-      "lines": 262,
-      "css_bytes": -33378,
-      "js_bytes": 0
-    },
-    "continuation_delta": {
-      "baseline": "86697aa10be922f041c66603f352c7479f227aa1",
-      "source_prs": [
-        1399,
-        1400
-      ],
-      "bytes": -33378,
-      "lines": 262,
-      "css_bytes": -33378,
-      "js_bytes": 0
-    },
-    "audit": "docs/project/search3-css-nesting-publication.json",
-    "source_audits": [
-      "docs/project/search3-css-nesting-results.json",
-      "docs/project/search3-css-nesting-secondary.json"
-    ]
+    "audit": "docs/project/search3-injected-css-sources.json",
+    "next_action": "Finish supported later-declaration cleanup, run CI and publish one combined exact preview artifact. Current published runtime remains74b87bff.",
+    "verified_at": "2026-09-06T17:02:59.218029+00:00"
   },
   "presentation_refactor_history": [
     {
@@ -1657,6 +1617,75 @@
         "js_bytes": -459
       },
       "audit": "docs/project/search3-css-output-indentation.json"
+    },
+    {
+      "baseline": "86697aa10be922f041c66603f352c7479f227aa1",
+      "stage": "S3_NATIVE_CSS_NESTING_PUBLISHED",
+      "implementation_sha": "74b87bff36db79f40fb17e18fb9478d339b6bc8c",
+      "release_integration_sha": "74b87bff36db79f40fb17e18fb9478d339b6bc8c",
+      "scope": "131 single-parent explicit-& groups across46 CSS source modules remove33378 bytes. Expanded ordered selector/declaration/media streams equal baseline; four JS assets unchanged.",
+      "source_validation": "TWO_SOURCE_HEADS_EACH_23_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
+      "public_assets": {
+        "css_bytes": 257468,
+        "css_lines": 3855,
+        "js_bytes": 142180,
+        "js_lines": 1903,
+        "total_bytes": 399648,
+        "total_lines": 5758,
+        "scope": "Four CSS and four JS assets; uncompressed, excluding shared runtime/legacy and source duplication. No speed benchmark or deferred-loading claim."
+      },
+      "preview_updated": true,
+      "production_updated": false,
+      "ci": {
+        "sha": "74b87bff36db79f40fb17e18fb9478d339b6bc8c",
+        "pr": 1400,
+        "applicable_success": 23,
+        "expected_skipped": 1,
+        "core_run": 34045800403,
+        "visual_run": 34045800482,
+        "flight_run": 34045800430,
+        "artifact_run": 34045800429,
+        "visual_artifact": 9993058138,
+        "visual_digest": "sha256:2ea69a553bef14c628dfc9452684ce6da6d2e8624a07031ad1ef66ef840ee9cc",
+        "first_pass": {
+          "sha": "9597192cb58c00814a84ba21ee3f32f96f38dc53",
+          "pr": 1399,
+          "applicable_success": 23,
+          "expected_skipped": 1,
+          "core_run": 34045691988,
+          "visual_run": 34045691942,
+          "flight_run": 34045691908,
+          "artifact_run": 34045691934
+        },
+        "scope": "All applicable workflows succeeded at each source. Nine source-build tests and fourteen focused presentation tests; PHP covered in CI. Responsive widths 375/430/1024/1348/1440; 375/1440 editor images inspected and pixel-identical to prior publication. Across 24 compared images, 19 pixel-identical; no blanket pixel-parity claim."
+      },
+      "preview_deploy_run": 34046027330,
+      "preview_deploy_pr": 1401,
+      "next_action": "Refresh release, active PRs and this publication before the next bounded reduction. Inspect remaining active CSS declaration duplication and JS presentation owners for measured net savings, preserving media/order/specificity, IIFE ownership and protected business contracts. Do not repeat completed nesting, indentation/comment compaction, private JS extraction, geometry helpers, retired selectors or shared formatters. Keep eight public paths; preview only via a separate exact-artifact publication. Production locked.",
+      "verified_at": "2026-09-06T16:44:25.711876+00:00",
+      "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+      "run_delta": {
+        "bytes": -33378,
+        "lines": 262,
+        "css_bytes": -33378,
+        "js_bytes": 0
+      },
+      "continuation_delta": {
+        "baseline": "86697aa10be922f041c66603f352c7479f227aa1",
+        "source_prs": [
+          1399,
+          1400
+        ],
+        "bytes": -33378,
+        "lines": 262,
+        "css_bytes": -33378,
+        "js_bytes": 0
+      },
+      "audit": "docs/project/search3-css-nesting-publication.json",
+      "source_audits": [
+        "docs/project/search3-css-nesting-results.json",
+        "docs/project/search3-css-nesting-secondary.json"
+      ]
     }
   ],
   "site_preview_publication_history": [

@@ -65,7 +65,7 @@ body.search3-candidate{
 & #tourSearch .search3-primary-grid{grid-template-columns:repeat(4,1fr)!important}& #tourSearch .search3-primary-grid>.search-submit{grid-column:auto!important}& .search3-quality__grid{grid-template-columns:repeat(3,1fr)!important}
 }}
 @media(max-width:760px){body.search3-candidate{
-&{--at-page-gutter:24px!important;--at-page-edge:12px!important}& .search3-page-intro{margin:14px auto 10px!important}& .search3-page-intro h1{font-size:24px!important}& #tourSearch{margin:10px auto 14px!important;padding:12px!important;border-radius:14px!important}& #tourSearch .search3-primary-grid,& .search3-quality__grid{grid-template-columns:1fr!important;gap:9px!important}& #tourSearch .search3-primary-grid>.search-submit{grid-column:1/-1!important;min-height:46px!important}
+&{--at-page-gutter:24px!important;--at-page-edge:12px!important}& #tourSearch{margin:10px auto 14px!important;border-radius:14px!important}& #tourSearch .search3-primary-grid,& .search3-quality__grid{grid-template-columns:1fr!important;gap:9px!important}& #tourSearch .search3-primary-grid>.search-submit{grid-column:1/-1!important;}
 }.search3-quick{gap:12px!important}.search3-quick__label{width:calc(50% - 6px)!important}.search3-tourists__pop{left:0!important;right:auto!important}
 
 

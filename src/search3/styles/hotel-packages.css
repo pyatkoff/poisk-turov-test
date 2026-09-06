@@ -1,14 +1,14 @@
 /* Desktop package rows follow maket7's scan order using only fields already present in the normalized Tourvisor result. */
 @media(min-width:1000px){
 body.search3-candidate{
-& #results .hotel-tours .tour-row{grid-template-columns:minmax(0,1fr) 156px!important;gap:18px!important;padding:11px 12px!important}
-& #results .hotel-tours .tour-meta{display:grid!important;grid-template-columns:minmax(126px,1.35fr) minmax(94px,.9fr) 82px 54px minmax(104px,.95fr) minmax(70px,.7fr)!important;align-items:start!important;min-width:0!important}
+& #results .hotel-tours .tour-row{grid-template-columns:minmax(0,1fr) 156px!important;gap:18px!important;}
+& #results .hotel-tours .tour-meta{display:grid!important;align-items:start!important;min-width:0!important}
 & #results .hotel-tours .tour-meta>strong{grid-column:3!important;grid-row:1!important;min-width:0!important;margin:0!important;color:#14213d!important;line-height:1.2!important;font-weight:900!important;white-space:nowrap!important}
 & #results .hotel-tours .tour-meta>strong::before{content:'Вылет';display:block!important;margin-bottom:4px!important;color:#98a2b3!important;font-size:7px!important;line-height:1!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.02em!important}
 & #results .hotel-tours .tour-facts{display:contents!important}
 & #results .hotel-tours .tour-fact{display:block!important;min-width:0!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;line-height:1.15!important}
 & #results .hotel-tours .tour-fact small{display:block!important;margin-bottom:4px!important;color:#98a2b3!important;font-size:7px!important;line-height:1!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.02em!important}
-& #results .hotel-tours .tour-fact b{display:block!important;min-width:0!important;color:#344054!important;line-height:1.2!important;font-weight:850!important;white-space:normal!important;overflow-wrap:anywhere!important}
+& #results .hotel-tours .tour-fact b{display:block!important;min-width:0!important;color:#344054!important;font-weight:850!important;white-space:normal!important;overflow-wrap:anywhere!important}
 & #results .hotel-tours .tour-fact:nth-child(1){grid-column:4!important;grid-row:1!important}
 & #results .hotel-tours .tour-fact:nth-child(2){grid-column:5!important;grid-row:1!important}
 & #results .hotel-tours .tour-fact:nth-child(3){grid-column:1!important;grid-row:1!important}
@@ -16,13 +16,13 @@ body.search3-candidate{
 & #results .hotel-tours .tour-fact:nth-child(5){grid-column:2!important;grid-row:1!important}
 & #results .hotel-tours .tour-fact-badge{grid-column:2!important;grid-row:2!important;margin-top:5px!important;color:#177245!important}
 & #results .hotel-tours .tour-fact-badge b{display:inline-flex!important;width:auto!important;padding:3px 5px!important;border-radius:5px!important;background:#eef8f1!important;color:#177245!important;font-size:7px!important}
-& #results .hotel-tours .tour-action{align-self:stretch!important;justify-content:center!important;gap:8px!important;border-left:1px solid #eef1f5!important}
+& #results .hotel-tours .tour-action{align-self:stretch!important;justify-content:center!important;border-left:1px solid #eef1f5!important}
 & #results .hotel-tours .tour-action>b{line-height:1!important;text-align:right!important}
 }
 
 }
 @media(max-width:760px){body.search3-candidate{
-& #results .hotel-card{border-radius:10px!important}& #results .hotel-main{min-height:0!important}& #results .hotel-body{grid-template-columns:minmax(0,1fr) 108px!important;grid-template-rows:auto auto auto auto!important;column-gap:8px!important;min-width:0!important;padding:9px 10px 10px!important}& #results .hotel-decision-line{grid-column:1!important;grid-row:3!important;}& #results .hotel-bottom{grid-column:2!important;grid-row:3!important;align-self:end!important;margin:6px 0 0!important;padding:0!important;border-left:0!important;border-top:0!important;text-align:right!important}& .search3-hotel-action{grid-row:4!important;display:block!important;grid-template-columns:none!important;gap:0!important;}
+& #results .hotel-main{min-height:0!important}& #results .hotel-body{column-gap:8px!important;min-width:0!important;}& #results .hotel-decision-line{grid-column:1!important;grid-row:3!important;}& #results .hotel-bottom{align-self:end!important;margin:6px 0 0!important;padding:0!important;text-align:right!important}& .search3-hotel-action{display:block!important;grid-template-columns:none!important;gap:0!important;}
 }.search3-show-tours{min-height:40px!important;font-size:9px!important}body.search3-candidate #results .hotel-tours{padding:11px 10px 12px!important;background:#fff!important}.search3-tour-list-head strong{font-size:15px!important}.search3-tour-list-head span{font-size:8px!important}body.search3-candidate{
 & #results .tour-row{grid-template-columns:1fr!important;gap:9px!important;padding:10px!important}& #results .tour-action>b{font-size:18px!important}
 }.direct-tour{min-height:44px!important;font-size:10px!important}

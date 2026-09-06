@@ -3,7 +3,7 @@
 /* Search 3 emergency width guard for approved horizontal result cards. Preview only. */
 body.search3-candidate{
 & .v2-shell{display:block!important}
-& .results-layout{grid-column:1/-1!important;justify-self:stretch!important;width:100%!important;max-width:none!important;min-width:0!important;margin-left:0!important;margin-right:0!important}
+& .results-layout{grid-column:1/-1!important;justify-self:stretch!important;min-width:0!important;margin-left:0!important;margin-right:0!important}
 & .results-layout>.results,& #results{min-width:0!important;width:100%!important;max-width:none!important;align-items:stretch!important}
 & #results .hotel-card{display:block!important;width:100%!important;min-width:0!important;max-width:none!important;align-self:stretch!important}
 & #results .hotel-main{width:100%!important;min-width:0!important;max-width:none!important}
@@ -37,4 +37,3 @@ body.search3-candidate{
 }
 /* Search 3 owns the mobile filter toolbar/drawer; suppress the older DS2 mobile filter UI in preview only. */
 body.search3-candidate :is(.mrf-bar,.mrf-sheet){display:none!important}
-@media(max-width:999px){body.search3-candidate .results-layout{width:100%!important;margin:0 0 48px!important}}

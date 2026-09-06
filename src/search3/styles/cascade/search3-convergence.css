@@ -32,7 +32,7 @@
   &.search3-has-results #results .search3-hotel-action__copy span{font-size:7px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
   &.search3-has-results #results .search3-show-tours{min-height:32px!important;border-radius:6px!important;font-size:8px!important}
 
-  &.search3-selected-open #selectedTour{margin:16px auto 34px!important;grid-template-columns:330px minmax(0,1fr)!important;gap:0!important}
+  &.search3-selected-open #selectedTour{margin:16px auto 34px!important;gap:0!important}
   &.search3-selected-open #selectedTour .back-results{min-height:34px!important;margin-bottom:8px!important;border:0!important;background:transparent!important;padding:0!important;font-size:9px!important}
   &.search3-selected-open #selectedTour .selected-picture{height:218px!important;border-radius:10px 0 0 10px!important}
   &.search3-selected-open #selectedTour .selected-head{min-height:218px!important;padding:18px 20px!important;border-radius:0 10px 10px 0!important;grid-template-columns:minmax(0,1fr) 170px!important;gap:18px!important}

@@ -11,16 +11,8 @@ body.search3-candidate .v2-shell{padding-bottom:8px!important}
 
  body.search3-candidate{
 & #results .hotel-card{max-width:none!important}
- & #results .hotel-main{grid-template-columns:244px minmax(0,1fr)!important;}
 
- & #results .hotel-body{grid-template-columns:minmax(0,1fr) 166px!important;padding:14px 16px 12px!important}
 
- & #results .hotel-bottom{align-self:stretch!important;justify-content:flex-start!important}
- & #results .hotel-price{margin-top:6px!important}
- & .search3-hotel-action{grid-template-columns:minmax(0,1fr) 166px!important;}
- & .search3-show-tours{min-height:40px!important;}
- & #results .hotel-tours{padding:14px 16px 16px!important}
- & #results .hotel-tours .tour-row{padding:13px 14px!important;border-radius:12px!important}
 
  & #results .hotel-tours .tour-meta>strong{font-size:11px!important}
  & #results .hotel-tours .tour-fact b{line-height:1.25!important}
@@ -36,15 +28,6 @@ body.search3-candidate{
 & #selectedTour :is(.tour-flights,.lead-form){margin-top:12px!important;padding:16px 18px!important}
 & #selectedTour .section-heading{margin-bottom:10px!important}
 }
-@media(min-width:1000px){
- body.search3-candidate{
-& #selectedTour{grid-template-columns:340px minmax(0,1fr)!important}
- & #selectedTour .selected-picture{border-radius:16px 0 0 16px!important}
- & #selectedTour .selected-head{padding:22px 24px!important;border-radius:0 16px 16px 0!important}
-
- & #selectedTour .facts>div{padding:12px 14px!important}
-}
-}
 
 /* Mobile initial search: primary fields first, advanced controls on demand. */
 @media(max-width:760px){
@@ -53,7 +36,6 @@ body.search3-candidate{
  & .search3-page-intro h1{font-size:22px!important;margin-top:4px!important}
  & .search3-page-intro p{font-size:9px!important}
  & #tourSearch{padding:10px!important;margin-top:7px!important}
- & #tourSearch .search3-primary-grid{gap:7px!important}
  & #tourSearch .field>span{margin-bottom:4px!important;}
  & #tourSearch select,
 & #tourSearch :is(input[type=date],input[type=number],input[type=text]),
@@ -67,8 +49,7 @@ body.search3-candidate{
 
  /* Mobile cards: less image dominance, stronger content grouping. */
 
- & #results .hotel-body{padding:10px!important;grid-template-columns:minmax(0,1fr) 104px!important}
- & #results .hotel-title{line-height:1.16!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;overflow:hidden!important}
+ & #results .hotel-title{display:-webkit-box!important;-webkit-box-orient:vertical!important;overflow:hidden!important}
  & #results .hotel-place{margin-top:3px!important}
 
  & .search3-hotel-action{margin-top:7px!important;padding-top:7px!important}
@@ -98,7 +79,7 @@ body.search3-candidate{
  &.search3-has-results #resultsSearchSummary .results-search-summary__route{grid-column:1!important}
  &.search3-has-results #resultsSearchSummary .results-search-summary__fact{display:block!important}
  &.search3-has-results #resultsSearchSummary .results-search-summary__edit{grid-column:5!important;grid-row:1!important;border-left:1px solid #edf0f5!important;border-right:0!important;color:#2463eb!important}
- &.search3-has-results .results-tools--ds2{width:calc(100% - 230px)!important;margin-top:0!important;padding-top:7px!important;padding-bottom:7px!important}
+ &.search3-has-results .results-tools--ds2{margin-top:0!important;padding-top:7px!important;padding-bottom:7px!important}
  &.search3-has-results.search3-editing-search #resultsSearchSummary{display:none!important}
 }
 }
