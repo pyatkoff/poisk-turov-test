@@ -89,7 +89,7 @@ def assemble(root):
         raise ValueError('Unsupported Search3 source manifest')
     if set(manifest['assets']) != set(reviewed['assets']):
         raise ValueError('Source outputs must match the eight reviewed public assets')
-    outputs, used = {}, set()
+    outputs, used, private_styles = {}, set(), {}
     def read_part(part, suffix):
         path = source / part
         if (not path.resolve().is_relative_to(source.resolve())
@@ -101,9 +101,10 @@ def assemble(root):
             # Private source composition: no new scope, global, request or runtime loader.
             content = JS_INCLUDE.sub(lambda match: read_part(match[1].decode(), suffix), content)
             def css_string(match):
-                css = read_part(match[1].decode(), '.css')
-                css = compact_css_comments(css, trim_indentation=True).decode('utf-8')
-                return json.dumps(css, ensure_ascii=True).encode('ascii')
+                part = match[1].decode()
+                private_styles[part] = compact_css_comments(
+                    read_part(part, '.css'), trim_indentation=True)
+                return match[0]
             content = CSS_STRING.sub(css_string, content)
         return content
 
@@ -117,6 +118,15 @@ def assemble(root):
               if p.is_file() and p.suffix in ('.css', '.js')}
     if used != actual:
         raise ValueError('Unlisted Search3 modules: ' + ', '.join(sorted(actual - used)))
+    if private_styles:
+        # Optimize all private styles together before escaping their literals.
+        # Keep the original JavaScript insertion positions, scopes and guards.
+        private_styles = compact_assets(private_styles)
+        for name, content in outputs.items():
+            if name.endswith('.js'):
+                outputs[name] = CSS_STRING.sub(lambda match: json.dumps(
+                    private_styles[match[1].decode()].decode('utf-8'),
+                    ensure_ascii=True).encode('ascii'), content)
     return compact_assets(outputs), reviewed_path, reviewed
 
 

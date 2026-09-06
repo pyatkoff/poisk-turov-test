@@ -25,9 +25,10 @@ including otherwise harmless empty-statement removal or template raw rewrites.
 Non-shrinking assets keep their original bytes. No transpilation is performed.
 
 A second build-only Terser stage shortens local variable/parameter and label names.
-Compression remains disabled: expressions, arithmetic and control flow are not
-optimized. Global/top-level names, property keys, function/class names and scopes
-using direct eval are preserved. This intentional renaming is outside the first
+The second stage also applies standard control-flow compression with unsafe
+arithmetic, pure-getter assumptions and cross-statement sequence merging disabled.
+Global/top-level names, property keys, function/class names, argument arity and
+scopes using direct eval are preserved. This intentional renaming is outside the first
 stage's exact-name AST equality; execution/closure/eval/name cases and the existing
 compiled presentation checks cover it. The final output is parsed before writes.
 
@@ -41,7 +42,11 @@ CSS Tree 3.2.1 preserves exact source slices for selectors, at-rule conditions a
 declaration values; it does not optimize values, combine rules or alter nesting.
 A full ordered AST roundtrip must match. License comments stay in place; assets
 with non-exclamation copyright/license/source-map notes retain their entire bytes.
-Private injected CSS retains its preceding compaction and insertion contract.
+After exact CSS printing, the pinned Lightning CSS optimizer reduces rules and
+values while retaining native nesting and the existing browser targets. Raw token
+values containing comments bypass optimization so separators cannot disappear.
+Private injected CSS now uses this same pipeline before JavaScript escaping; its
+insertion order, IDs, selected-root guard and idempotence remain unchanged.
 JavaScript concatenation
 expands private full-line `/* @include behavior/path.js */` markers in place.
 Included functions retain their original enclosing IIFE, declaration order and

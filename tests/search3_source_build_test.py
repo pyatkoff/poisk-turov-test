@@ -148,6 +148,18 @@ class Search3SourceBuildTest(unittest.TestCase):
                     self.assertEqual((self.root / 'v2' / name).read_bytes(), content)
         source.write_text(original)
 
+    def test_private_css_is_optimized_and_invalid_css_cannot_write_outputs(self):
+        part = self.root / 'src/search3/styles/injected/summary-cta.css'
+        part.write_text('.x { color: #AABBCC; margin: 0px 0px; }\n')
+        outputs, _, _ = builder.assemble(self.root)
+        self.assertIn(b'.textContent=".x{color:#abc;margin:0}\\n";',
+                      outputs['search3-results-filters-v1.js'])
+        part.write_text('.x { color }')
+        with self.assertRaisesRegex(ValueError, 'Colon is expected'):
+            builder.build(self.root, write=True)
+        for name, original in self.outputs.items():
+            self.assertEqual((self.root / 'v2' / name).read_bytes(), original)
+
     def test_source_outside_module_root_is_rejected(self):
         manifest = self.root / 'src/search3/manifest.json'
         data = json.loads(manifest.read_text())

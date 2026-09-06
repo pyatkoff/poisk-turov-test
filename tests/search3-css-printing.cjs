@@ -34,6 +34,10 @@ for (const note of ['/* Copyright owner */', '/* @license MIT */', '/*# sourceMa
   const source = `.a { color: red; }\n${note}\n`;
   assert.equal(compactCSS(source), source, 'preserve protected comments in place');
 }
+for (const value of ['red/**/blue', '1/**/px', 'var(--x)/**/var(--y)']) {
+  const source = `.a { --tokens: ${value}; color: #AABBCC; }\n`;
+  assert.equal(compactCSS(source), source, 'preserve raw CSS token boundaries');
+}
 assert.notDeepEqual(parsed('.a .b{color:red}'), parsed('.a.b{color:red}'));
 assert.notDeepEqual(parsed('.a{color:red!important}'), parsed('.a{color:red}'));
 assert.throws(() => compactCSS('.a{ color }'), /Colon is expected/);

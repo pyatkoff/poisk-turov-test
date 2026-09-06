@@ -34,6 +34,14 @@ function compactCSS(code) {
   // Keep protected notes in place. Ordinary private source notes were removed
   // by the source assembler before this build-only optimization.
   if (/\/\*[\s\S]*?(?:@license|copyright|sourcemappingurl)[\s\S]*?\*\//i.test(code)) return code;
+  // Raw custom-property values can use comments as token boundaries. The CSS
+  // optimizer removes these separators (red/**/blue becomes redblue), so keep
+  // such styles exact instead of changing their token stream.
+  let rawComments = false;
+  css.walk(css.parse(code, strict), node => {
+    if (node.type === 'Raw' && node.value.includes('/*')) rawComments = true;
+  });
+  if (rawComments) return code;
   const printed = printCSS(code);
   const result = transform({
     filename: 'search3.css', code: Buffer.from(printed), minify: true,
