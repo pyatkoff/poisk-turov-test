@@ -8,7 +8,7 @@ on:
       - '.github/workflows/search3-mobile-toolbar-prep.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: search3-mobile-toolbar-preparation
@@ -17,28 +17,171 @@ concurrency:
 jobs:
   build-and-verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env:
+      RELEASE_BASE: 49f2d2e5690421920df378ce0f4615fa8eb1a4ce
+      CSS_BRANCH: refactor/search3-toolbar-css-49f2d2e
+      JS_BRANCH: refactor/search3-toolbar-queue-49f2d2e
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
-          persist-credentials: false
-      - name: Verify exact code and existing focused checks
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD^)" = cb2122aeb5a0bb8e2031532be629a6851e19594a
-          test "$(git diff HEAD^ HEAD --name-only)" = .github/workflows/search3-mobile-toolbar-prep.yml
-          python3 -B scripts/build/search3_assets.py --check
-          python3 -B tests/search3_source_build_test.py
-          python3 -B tests/search3_production_presentation_test.py
-      - name: Install existing browser-test dependencies
-        run: |
-          npm install --no-save playwright@1.55.0 >/dev/null
-          npx playwright install --with-deps chromium >/dev/null
-      - name: Run existing five-width Search3 regression without deployment
+          fetch-depth: 0
+          show-progress: false
+      - name: Prepare clean CSS and scheduler branches with exact scope guards
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD^)" = 6a5c68c7d95f8a30821482cfc9b1f0642d07762c
+          test "$(git rev-parse origin/release/search3-production-ready-v1)" = "$RELEASE_BASE"
+          test "$(git rev-parse origin/main)" = fa58a0cba6dcfc8624d98c20d64fa06330eae309
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          cp tests/search3-mobile-toolbar-scheduler.cjs "$RUNNER_TEMP/search3-mobile-toolbar-scheduler.cjs"
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          temp = Path(os.environ['RUNNER_TEMP'])
+          base = os.environ['RELEASE_BASE']
+          css_branch = os.environ['CSS_BRANCH']
+          js_branch = os.environ['JS_BRANCH']
+          def git(*args, cwd=None):
+              return subprocess.check_output(['git', *args], cwd=cwd, text=True).strip()
+          def run(*args, cwd=None):
+              subprocess.run(args, cwd=cwd, check=True)
+          for name in (css_branch, js_branch):
+              assert not git('ls-remote', '--heads', 'origin', 'refs/heads/' + name), 'Target preparation branch already exists'
+          work = temp / 'search3-clean-toolbar'
+          run('git', 'worktree', 'add', '-b', css_branch, str(work), base)
+          css_paths = [
+              'src/search3/styles/filters.css',
+              'src/search3/styles/cascade/search3-batch-iteration1b.css',
+              'src/search3/styles/result-cards.css',
+              'src/search3/styles/results-context.css',
+              'tests/search3-mobile-toolbar-ownership.cjs',
+              'tests/search3_production_presentation_test.py',
+              'docs/project/search3-cascade-sections.json',
+              'docs/project/search3-production-import.json',
+              'v2/search3-results-filters-v1.css',
+          ]
+          run('git', 'restore', '--source=cb2122aeb5a0bb8e2031532be629a6851e19594a', '--staged', '--worktree', '--', *css_paths, cwd=work)
+          assert set(git('diff', '--cached', '--name-only', cwd=work).splitlines()) == set(css_paths)
+          def checks():
+              run('python3', '-B', 'scripts/build/search3_assets.py', '--check', cwd=work)
+              run('python3', '-B', 'tests/search3_source_build_test.py', cwd=work)
+              run('python3', '-B', 'tests/search3_production_presentation_test.py', cwd=work)
+              run('git', 'diff', '--check', cwd=work)
+              run('git', 'diff', '--cached', '--check', cwd=work)
+          checks()
+          run('git', 'commit', '-m', 'refactor(search3): remove retired mobile toolbar CSS owners', cwd=work)
+          css_code = git('rev-parse', 'HEAD', cwd=work)
+          def checkpoint(kind, code, scope, evidence, ci, next_action):
+              path = work / 'AUTOPILOT_STATE.json'
+              state = json.loads(path.read_text())
+              old = state['presentation_refactor_checkpoint']
+              history = state.setdefault('presentation_refactor_history', [])
+              if not any(item.get('baseline') == old['baseline'] for item in history):
+                  history.append(old)
+              totals = {'css_bytes': 0, 'css_lines': 0, 'js_bytes': 0, 'js_lines': 0}
+              for name in json.loads((work / 'src/search3/manifest.json').read_text())['assets']:
+                  raw = (work / 'v2' / name).read_bytes()
+                  extension = name.rsplit('.', 1)[1]
+                  totals[extension + '_bytes'] += len(raw)
+                  totals[extension + '_lines'] += len(raw.splitlines())
+              totals['total_bytes'] = totals['css_bytes'] + totals['js_bytes']
+              totals['total_lines'] = totals['css_lines'] + totals['js_lines']
+              totals['scope'] = 'Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and does not double-count src/v2.'
+              state['presentation_refactor_checkpoint'] = {
+                  'baseline': code, 'previous_checkpoint': old['baseline'],
+                  'stage': kind, 'scope': scope, 'evidence': evidence,
+                  'source_validation': 'FOCUSED_CHECKS_VERIFIED_STANDARD_PR_CI_PENDING',
+                  'ci': ci, 'public_assets': totals,
+                  'preview_updated': False, 'production_updated': False,
+                  'next_action': next_action,
+              }
+              path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + '\n')
+              doc = work / 'docs/project/search3-refactor-autopilot.md'
+              with doc.open('a') as out:
+                  out.write('\n## ' + kind + ' — verified preparation, 2026-09-06\n\n')
+                  out.write('Code: `' + code + '`. ' + scope + '\n\n')
+                  out.write('Public assets: ' + str(totals['total_bytes']) + ' bytes / ' + str(totals['total_lines']) + ' physical lines. Standard PR CI still pending at this checkpoint; no merge to main or deploy. Earlier completed steps above must not be repeated.\n\nNext: ' + next_action + '\n')
+              run('git', 'add', 'AUTOPILOT_STATE.json', 'docs/project/search3-refactor-autopilot.md', cwd=work)
+              run('git', 'diff', '--cached', '--check', cwd=work)
+              run('git', 'commit', '-m', 'docs(search3): checkpoint ' + kind, cwd=work)
+              return totals
+          css_scope = 'Removed only retired mobile action/filter/sort/chip selectors in four existing CSS sources. Actual toolbar shell, mrf bar/sheet and sort owner retained. All seven other public assets and protected runtime unchanged.'
+          css_metrics = checkpoint('S3_RETIRED_TOOLBAR_CSS', css_code, css_scope,
+              ['tests/search3-mobile-toolbar-ownership.cjs', 'tests/search3-card-readability-browser.cjs'],
+              {'preparation_run': 34020738803, 'responsive_run': 34020927641, 'responsive_artifact': 9985463914, 'responsive_digest': 'sha256:be717b7222608465fb676e192d7c1dbc72c42196b0e2b1a857a3b889003956f9'},
+              'Run standard PR CI and integrate into release only; continue the separately reproduced duplicate toolbar-task scheduler step. Never merge main or deploy as a side effect.')
+          css_head = git('rev-parse', 'HEAD', cwd=work)
+          run('git', 'push', 'origin', 'HEAD:refs/heads/' + css_branch, cwd=work)
+          run('git', 'switch', '-c', js_branch, cwd=work)
+          test = work / 'tests/search3-mobile-toolbar-scheduler.cjs'
+          test.write_bytes((temp / test.name).read_bytes())
+          red = subprocess.run(['node', str(test)], cwd=work, text=True, capture_output=True)
+          (temp / 'toolbar-queue-red.log').write_text(red.stdout + red.stderr)
+          assert red.returncode != 0 and '40 !== 1' in red.stderr, 'Baseline must fail on the reproduced duplicate tasks, not another exception'
+          path = work / 'src/search3/behavior/results-presentation.js'
+          source = path.read_text()
+          assert source.count('  var hotelsById = new Map();') == 1
+          source = source.replace('  var hotelsById = new Map();', '  var hotelsById = new Map();\n  var mobileToolbarTimer = null;')
+          assert source.count('    if (!hotelsById.size) return;') == 1
+          source = source.replace('    if (!hotelsById.size) return;', '    if (!hotelsById.size) { cancelMobileToolbar(); return; }')
+          assert source.count('window.setTimeout(mountMobileToolbar, 0)') == 2
+          source = source.replace('window.setTimeout(mountMobileToolbar, 0)', 'scheduleMobileToolbar()')
+          anchor = '  function mountMobileToolbar() {'
+          assert source.count(anchor) == 1
+          source = source.replace(anchor, '''  // Progressive results and breakpoint changes share the existing deferred mount.
+            function scheduleMobileToolbar() {
+              if (!body.classList.contains('search3-results-active') || mobileToolbarTimer !== null) return;
+              mobileToolbarTimer = window.setTimeout(function () {
+                mobileToolbarTimer = null;
+                mountMobileToolbar();
+              }, 0);
+            }
+
+            function cancelMobileToolbar() {
+              if (mobileToolbarTimer !== null) window.clearTimeout(mobileToolbarTimer);
+              mobileToolbarTimer = null;
+            }
+
+          '''.replace('\n  ', '\n') + anchor)
+          anchor = "  window.addEventListener('v2:search-reset', function () {\n"
+          assert source.count(anchor) == 1
+          source = source.replace(anchor, anchor + '    cancelMobileToolbar();\n')
+          path.write_text(source)
+          path = work / 'tests/search3_production_presentation_test.py'
+          source = path.read_text()
+          old = "'search3-entry-summary.cjs')"
+          assert source.count(old) == 1
+          path.write_text(source.replace(old, "'search3-entry-summary.cjs', 'search3-mobile-toolbar-scheduler.cjs')"))
+          run('python3', '-B', 'scripts/build/search3_assets.py', '--write', cwd=work)
+          checks()
+          js_paths = ['src/search3/behavior/results-presentation.js', 'v2/search3-results-filters-v1.js', 'docs/project/search3-production-import.json', 'tests/search3-mobile-toolbar-scheduler.cjs', 'tests/search3_production_presentation_test.py']
+          run('git', 'add', *js_paths, cwd=work)
+          assert set(git('diff', '--cached', '--name-only', cwd=work).splitlines()) == set(js_paths)
+          assert not git('diff', '--name-only', cwd=work)
+          run('git', 'commit', '-m', 'refactor(search3): coalesce pending mobile toolbar mounts', cwd=work)
+          js_code = git('rev-parse', 'HEAD', cwd=work)
+          result = {'css_branch': css_branch, 'css_code': css_code, 'css_head': css_head, 'css_metrics': css_metrics, 'js_branch': js_branch, 'js_code': js_code}
+          (temp / 'toolbar-prepared.json').write_text(json.dumps(result, indent=2) + '\n')
+          (temp / 'checkpoint-function.py').write_text('')
+          print('CSS_BRANCH_VERIFIED ' + json.dumps(result, sort_keys=True))
+          PY
+      - name: Install existing browser dependencies
+        run: |
+          npm install --no-save --prefix "$RUNNER_TEMP/search3-clean-toolbar" playwright@1.55.0 >/dev/null
+          cd "$RUNNER_TEMP/search3-clean-toolbar"
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Verify scheduler branch in existing responsive browser suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/search3-clean-toolbar"
           mkdir -p standalone-content-artifacts
           printf '%s\n' '<?php $_SERVER["HTTP_HOST"]="anytoour.ru"; $_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php"; $_SERVER["REQUEST_URI"]="/poisk-turov/"; require __DIR__."/poisk-turov/index.php";' > v2/ci-search3.php
           php -S 127.0.0.1:8099 -t v2 >"$RUNNER_TEMP/search3-php.log" 2>&1 &
@@ -46,11 +189,56 @@ jobs:
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
           for _ in {1..30}; do curl -fsS http://127.0.0.1:8099/ci-search3.php >/dev/null && break; sleep .2; done
           SEARCH3_VISUAL_BASE=http://127.0.0.1:8099 node tests/search3-card-readability-browser.cjs
-      - name: Retain existing responsive evidence
+      - name: Checkpoint verified scheduler without touching deployment history
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/search3-clean-toolbar"
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+          result_path = Path(os.environ['RUNNER_TEMP']) / 'toolbar-prepared.json'
+          result = json.loads(result_path.read_text())
+          code = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert code == result['js_code']
+          path = Path('AUTOPILOT_STATE.json')
+          state = json.loads(path.read_text())
+          previous = state['presentation_refactor_checkpoint']
+          state['presentation_refactor_history'].append(previous)
+          totals = dict(previous['public_assets'])
+          for extension in ('css', 'js'):
+              values = [(Path('v2') / name).read_bytes() for name in json.loads(Path('src/search3/manifest.json').read_text())['assets'] if name.endswith('.' + extension)]
+              totals[extension + '_bytes'] = sum(map(len, values))
+              totals[extension + '_lines'] = sum(len(raw.splitlines()) for raw in values)
+          totals['total_bytes'] = totals['css_bytes'] + totals['js_bytes']
+          totals['total_lines'] = totals['css_lines'] + totals['js_lines']
+          scope = 'One local zero-delay task for progressive-results and compact-breakpoint toolbar mounts, cancelled on reset or empty results. Timer ID zero, late mrf initialization, stable DOM and two-way native/proxy sort handoff covered. No new observer/global scheduler or filtering/search/price/lead contract change.'
+          next_action = 'Review and integrate CSS then scheduler PR into release only after applicable CI. Inspect fresh responsive evidence, update #996/#1334, and audit the remaining toolbar visibility across desktop resize before changing another owner. No main merge/deploy.'
+          state['presentation_refactor_checkpoint'] = {'baseline': code, 'previous_checkpoint': previous['baseline'], 'stage': 'S3_TOOLBAR_LOCAL_QUEUE', 'scope': scope, 'evidence': ['tests/search3-mobile-toolbar-scheduler.cjs', 'tests/search3-mobile-toolbar-ownership.cjs', 'tests/search3-card-readability-browser.cjs'], 'source_validation': 'FOCUSED_AND_RESPONSIVE_CHECKS_VERIFIED_STANDARD_PR_CI_PENDING', 'ci': {'preparation_and_responsive_run': int(os.environ['GITHUB_RUN_ID']), 'baseline_reproduction': '20 result/breakpoint pairs: 40 pending tasks before, 1 after'}, 'public_assets': totals, 'preview_updated': False, 'production_updated': False, 'next_action': next_action}
+          path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + '\n')
+          with Path('docs/project/search3-refactor-autopilot.md').open('a') as out:
+              out.write('\n## S3_TOOLBAR_LOCAL_QUEUE — verified preparation, 2026-09-06\n\nCode: `' + code + '`. ' + scope + '\n\nExisting responsive test passes 375/430/1024/1348/1440. Standard PR CI pending. Public assets: ' + str(totals['total_bytes']) + ' bytes / ' + str(totals['total_lines']) + ' lines; no main merge or deployment.\n\nNext: ' + next_action + '\n')
+          result['js_metrics'] = totals
+          result_path.write_text(json.dumps(result, indent=2) + '\n')
+          PY
+          git add AUTOPILOT_STATE.json docs/project/search3-refactor-autopilot.md
+          git diff --cached --check
+          git commit -m 'docs(search3): checkpoint verified local toolbar queue'
+          git push origin HEAD:refs/heads/refactor/search3-toolbar-queue-49f2d2e
+          git rev-parse HEAD > "$RUNNER_TEMP/toolbar-js-head.txt"
+          git archive --format=tar.gz -o "$RUNNER_TEMP/toolbar-js-review.tar.gz" HEAD
+      - name: Retain review evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: search3-toolbar-responsive-${{ github.run_id }}
-          path: standalone-content-artifacts/
-          if-no-files-found: warn
+          name: search3-toolbar-two-pass-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/toolbar-prepared.json
+            ${{ runner.temp }}/toolbar-queue-red.log
+            ${{ runner.temp }}/toolbar-js-head.txt
+            ${{ runner.temp }}/toolbar-js-review.tar.gz
+            ${{ runner.temp }}/search3-clean-toolbar/standalone-content-artifacts/
+          if-no-files-found: error
           retention-days: 7
