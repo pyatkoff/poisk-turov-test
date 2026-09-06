@@ -14,8 +14,11 @@ it requires no npm installation, transpiler or additional browser requests.
 
 The CSS build replaces private source comments with empty comment separators;
 license/copyright/source-map notes, strings, escapes and all whitespace remain.
-This reduces served bytes without changing CSS tokens. JavaScript remains exact
-concatenation. Source comments and donor markers stay available for maintenance.
+This reduces served bytes without changing CSS tokens. JavaScript concatenation
+expands private full-line `/* @include behavior/path.js */` markers in place.
+Included functions retain their original enclosing IIFE, declaration order and
+shared state. There is no runtime loader, new global or additional request.
+Source comments and donor markers stay available for maintenance.
 
 `manifest.json` records the exact concatenation order. Each behavior module retains
 its original IIFE scope. CSS modules retain the existing cascade order; compatibility
@@ -43,6 +46,19 @@ evidence.
 | Accepted isolation/readability/geometry guards | `styles/acceptance-guards.css` |
 
 ## Smaller source owners
+
+`behavior/results-presentation.js` keeps its guard, shared state, subscriptions
+and public adapter. Its private `results/labels.js`, `results/cards.js` and
+`results/toolbar.js` parts own complete function groups. Distinct formatter
+contracts remain local. `behavior/selected-flow-v2.js` likewise includes private
+`selected/flight-fallback.js` and `selected/flight-disclosure.js` parts; price
+helpers and lifecycle remain in the enclosing owner. Both extractions preserve
+their compiled IIFE bytes. Regression tests exercise the generated adapters.
+
+Include paths are relative to `src/search3/`, must have the enclosing asset's
+extension and must occur exactly once in the build. Cycles, duplicate parts,
+outside-root paths and unlisted files fail before output is written. Private
+parts belong to their enclosing IIFE and must not be loaded independently.
 
 The large combined CSS sources are split at existing component and breakpoint
 boundaries. Hotel packages, card convergence and width compatibility have separate

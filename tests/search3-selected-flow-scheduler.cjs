@@ -90,7 +90,7 @@ const window = {
 };
 
 vm.runInNewContext(
-  fs.readFileSync(path.join(__dirname, '../src/search3/behavior/selected-flow-v2.js'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, '../v2/search3-selected-flow-v2.js'), 'utf8'),
   {
     document,
     window,

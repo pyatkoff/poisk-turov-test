@@ -3,9 +3,11 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+JS_INCLUDE = re.compile(rb'(?m)^[ \t]*/\* @include ([a-zA-Z0-9_./-]+\.js) \*/\r?\n')
 
 
 def compact_css_comments(content):
@@ -55,17 +57,22 @@ def assemble(root):
     if set(manifest['assets']) != set(reviewed['assets']):
         raise ValueError('Source outputs must match the eight reviewed public assets')
     outputs, used = {}, set()
+    def read_part(part, suffix):
+        path = source / part
+        if (not path.resolve().is_relative_to(source.resolve())
+                or path.suffix != suffix or part in used):
+            raise ValueError('Invalid or repeated Search3 source: ' + part)
+        used.add(part)
+        content = path.read_bytes()
+        if suffix == '.js':
+            # Private source composition: no new scope, global, request or runtime loader.
+            content = JS_INCLUDE.sub(lambda match: read_part(match[1].decode(), suffix), content)
+        return content
+
     for name, parts in manifest['assets'].items():
         if Path(name).name != name or not name.startswith('search3-') or not parts:
             raise ValueError('Invalid Search3 output: ' + name)
-        chunks = []
-        for part in parts:
-            path = source / part
-            if (not path.resolve().is_relative_to(source.resolve())
-                    or path.suffix != Path(name).suffix or part in used):
-                raise ValueError('Invalid or repeated Search3 source: ' + part)
-            used.add(part)
-            chunks.append(path.read_bytes())
+        chunks = [read_part(part, Path(name).suffix) for part in parts]
         content = b''.join(chunks)
         outputs[name] = compact_css_comments(content) if name.endswith('.css') else content
     actual = {str(p.relative_to(source)) for p in source.rglob('*')

@@ -10,6 +10,31 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
+### Current preparation — private JS parts and toolbar reduction — 2026-09-06
+
+Baseline release: `1504c86356d250e6797bb08dfaf988e14105066f`. Actual preview
+remains `9bedc2be` until exact CI and the separate isolated publication complete.
+
+Results presentation is split into labels, cards and toolbar private function
+parts; selected-flow fallback and flight disclosure have separate private parts.
+The dependency-free builder expands includes within the original IIFE scope and
+order, preserving shared state and public adapters. Both extracted compiled IIFEs
+remain byte-identical. Seven of eight public assets are unchanged.
+
+Results toolbar style helpers remove 459 JS bytes; 48 baseline/current geometry
+operation traces match values, order and important priority. Generated totals:
+CSS295513/3593 lines, JS142180/1903; total437693 bytes/5496 lines. Source owners
+shrink17427→4027 and13205→7490 bytes, with five private files no larger than7619.
+This is source separation plus a small payload reduction, not deferred loading or
+a measured speedup. Audit: search3-private-js-parts.json.
+
+Local:8 source-build tests pass;14 presentation tests,13 pass and one PHP skip
+(PHP runs in CI). Existing scheduler/ownership/flight assertions retained against
+compiled adapters. Main/production/protected contracts remain locked.
+
+Next: exact CI, separate artifact publication, targeted live result/flight check.
+Do not repeat these completed extractions or the older CSS reductions below.
+
 ### Current published checkpoint — CSS build compaction and entry split — 2026-09-06
 
 Exact runtime/release code: `9bedc2be31c5765c2fde2f383647487616127cc5`.

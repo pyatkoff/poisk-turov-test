@@ -8,7 +8,7 @@ const stylesRoot = path.join(root, 'src/search3/styles');
 const styles = fs.readFileSync(path.join(stylesRoot, 'filters.css'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');
 const legacyDesktop = fs.readFileSync(path.join(root, 'v2/ds2-results-filters.js'), 'utf8');
-const presentation = fs.readFileSync(path.join(root, 'src/search3/behavior/results-presentation.js'), 'utf8');
+const presentation = require('./search3-bundled-results.cjs');
 
 function cssFiles(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

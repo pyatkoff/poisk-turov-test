@@ -1,8 +1,6 @@
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
 const vm = require('node:vm');
-const source = fs.readFileSync(path.join(__dirname, '../src/search3/behavior/results-presentation.js'), 'utf8');
+const source = require('./search3-bundled-results.cjs');
 
 function harness() {
   const events = new Map(), mediaEvents = new Map(), timers = new Map();

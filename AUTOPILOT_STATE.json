@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-06T11:46:09.185021+00:00",
+  "updated_at": "2026-09-06T14:58:02.791513+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -15,8 +15,8 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "name": "Search3 site completion and preview acceptance before migration",
     "status": "ACTIVE",
-    "last_material_progress": "Published9bedc2be:438152 bytes /5494 lines across eight assets; CSS down16096 bytes, JS identical. Three preparation steps,23 CI and targeted live verification completed.",
-    "next_action": "Refresh release; inspect remaining active results/selected presentation owners for a net source-level reduction. Preserve distinct formatter contracts and IIFE lifecycle. Do not repeat entry split, comment compaction, 28 adjacent CSS merges, retired-state cleanup or shared text/plural work. Keep eight public paths and protected contracts; preview only via exact-artifact publication.",
+    "last_material_progress": "Prepared five private JS function groups across two large owners, with byte-identical compiled IIFEs; results toolbar dedup removes459 bytes. Actual preview remains9bedc2be until separate publication.",
+    "next_action": "Complete exact CI and separate isolated preview publication. Then refresh release and inspect the next large active CSS/JS owner for measured net reduction; do not repeat private results/selected extraction or geometry deduplication. Keep production locked.",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "local_results_filtering": {
@@ -64,23 +64,13 @@
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
   "current_task": {
-    "id": "S3_CSS_COMMENT_COMPACTION_AND_ENTRY_SPLIT",
-    "title": "Reduce served CSS and split entry owners",
-    "status": "PUBLISHED_LIVE_SEARCH_EDITOR_VERIFIED",
-    "implementation_sha": "9bedc2be31c5765c2fde2f383647487616127cc5",
-    "branch": "release/search3-production-ready-v1",
+    "id": "S3_PRIVATE_JS_PARTS",
+    "title": "Split results and selected-flow JavaScript owners; consolidate toolbar styles",
+    "status": "PREPARED_LOCAL_VERIFIED_CI_PENDING",
+    "branch": "refactor/search3-private-js-parts",
     "pr": 1334,
-    "source_pr": 1393,
     "issue": 996,
-    "artifact_id": 9988542775,
-    "artifact_run": 34030842392,
-    "deploy_pr": 1394,
-    "deploy_run": 34030973693,
-    "evidence_artifact": 9988586892,
-    "ci_success_count": 23,
-    "visual_run": 34030842375,
-    "verification": "Entry CSS split preserves ordered source bytes;28 adjacent identical rule blocks consolidated. Public CSS notes compacted with lexical separators and license/string/escape preservation. Full retained selector/declaration/media token stream matches baseline; four JS unchanged. Exact preview hashes and targeted live search/editor checked; no new lead-path or physical Safari acceptance claimed.",
-    "next_action": "Refresh release; inspect remaining active results/selected presentation owners for a net source-level reduction. Preserve distinct formatter contracts and IIFE lifecycle. Do not repeat entry split, comment compaction, 28 adjacent CSS merges, retired-state cleanup or shared text/plural work. Keep eight public paths and protected contracts; preview only via exact-artifact publication."
+    "next_action": "Complete exact CI and separate isolated preview publication. Then refresh release and inspect the next large active CSS/JS owner for measured net reduction; do not repeat private results/selected extraction or geometry deduplication. Keep production locked."
   },
   "queue": [
     {
@@ -783,47 +773,28 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "50fd49cea3b167c05b7d97ef265fe00e7ae1a64b",
-    "stage": "S3_CSS_COMMENT_COMPACTION_AND_ENTRY_SPLIT_PUBLISHED",
-    "scope": "Compact private CSS comments in deterministic dependency-free build; preserve lexical separators/licenses/strings/escapes. Merge 28 adjacent identical declaration blocks and split entry CSS into four ordered component files.",
-    "source_validation": "23_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
+    "baseline": "1504c86356d250e6797bb08dfaf988e14105066f",
+    "stage": "S3_PRIVATE_JS_PARTS_PREPARED",
+    "scope": "Private build-time JavaScript composition preserves original scopes, shared state, order and public exports. No runtime loader or additional request. Results labels/cards/toolbar and selected fallback/disclosure split into five private parts; repeated results toolbar style operations consolidated.",
+    "source_validation": "8_SOURCE_TESTS_14_PRESENTATION_TESTS_13_PASS_1_LOCAL_PHP_SKIP; CI_PENDING",
     "public_assets": {
       "css_bytes": 295513,
       "css_lines": 3593,
-      "js_bytes": 142639,
-      "js_lines": 1901,
-      "total_bytes": 438152,
-      "total_lines": 5494,
-      "scope": "Four CSS and four JS assets; uncompressed, excluding shared runtime/legacy and source duplication."
+      "js_bytes": 142180,
+      "js_lines": 1903,
+      "total_bytes": 437693,
+      "total_lines": 5496
     },
-    "preview_updated": true,
+    "preview_updated": false,
     "production_updated": false,
-    "next_action": "Refresh release; inspect remaining active results/selected presentation owners for a net source-level reduction. Preserve distinct formatter contracts and IIFE lifecycle. Do not repeat entry split, comment compaction, 28 adjacent CSS merges, retired-state cleanup or shared text/plural work. Keep eight public paths and protected contracts; preview only via exact-artifact publication.",
-    "implementation_sha": "9bedc2be31c5765c2fde2f383647487616127cc5",
-    "release_integration_sha": "9bedc2be31c5765c2fde2f383647487616127cc5",
-    "verification": "Entry CSS split preserves ordered source bytes;28 adjacent identical rule blocks consolidated. Public CSS notes compacted with lexical separators and license/string/escape preservation. Full retained selector/declaration/media token stream matches baseline; four JS unchanged. Exact preview hashes and targeted live search/editor checked; no new lead-path or physical Safari acceptance claimed.",
-    "ci": {
-      "sha": "9bedc2be31c5765c2fde2f383647487616127cc5",
-      "pr": 1393,
-      "applicable_success": 23,
-      "expected_skipped": 1,
-      "core_run": 34030842353,
-      "visual_run": 34030842375,
-      "flight_run": 34030842370,
-      "artifact_run": 34030842392,
-      "visual_artifact": 9988548385,
-      "visual_digest": "sha256:5a18c437bcb989c18eafc2fa9c0fe12a642adc23f2357b965cdd207278771d23",
-      "scope": "All applicable workflows succeeded. 375px editor and1440px calendar screenshots inspected. CSS token equivalence and four byte-identical JS assets verified; PHP ran in CI."
-    },
-    "preview_deploy_run": 34030973693,
-    "preview_deploy_pr": 1394,
-    "verified_at": "2026-09-06T11:46:09.185021+00:00",
+    "next_action": "Complete exact CI and separate isolated preview publication. Then refresh release and inspect the next large active CSS/JS owner for measured net reduction; do not repeat private results/selected extraction or geometry deduplication. Keep production locked.",
     "run_delta": {
-      "bytes": -16096,
-      "lines": -60,
-      "css_bytes": -16096,
-      "js_bytes": 0
-    }
+      "bytes": -459,
+      "lines": 2,
+      "css_bytes": 0,
+      "js_bytes": -459
+    },
+    "audit": "docs/project/search3-private-js-parts.json"
   },
   "presentation_refactor_history": [
     {
@@ -1434,6 +1405,49 @@
       "preview_updated": false,
       "production_updated": false,
       "next_action": "Finish existing CI and responsive inspection, integrate release only and separately publish exact preview artifact. Do not repeat comment compaction, 28 adjacent merges, entry split or prior completed owners. Continue source-level reductions in remaining active owners; do not treat comments or line counts as a speed benchmark."
+    },
+    {
+      "baseline": "50fd49cea3b167c05b7d97ef265fe00e7ae1a64b",
+      "stage": "S3_CSS_COMMENT_COMPACTION_AND_ENTRY_SPLIT_PUBLISHED",
+      "scope": "Compact private CSS comments in deterministic dependency-free build; preserve lexical separators/licenses/strings/escapes. Merge 28 adjacent identical declaration blocks and split entry CSS into four ordered component files.",
+      "source_validation": "23_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
+      "public_assets": {
+        "css_bytes": 295513,
+        "css_lines": 3593,
+        "js_bytes": 142639,
+        "js_lines": 1901,
+        "total_bytes": 438152,
+        "total_lines": 5494,
+        "scope": "Four CSS and four JS assets; uncompressed, excluding shared runtime/legacy and source duplication."
+      },
+      "preview_updated": true,
+      "production_updated": false,
+      "next_action": "Refresh release; inspect remaining active results/selected presentation owners for a net source-level reduction. Preserve distinct formatter contracts and IIFE lifecycle. Do not repeat entry split, comment compaction, 28 adjacent CSS merges, retired-state cleanup or shared text/plural work. Keep eight public paths and protected contracts; preview only via exact-artifact publication.",
+      "implementation_sha": "9bedc2be31c5765c2fde2f383647487616127cc5",
+      "release_integration_sha": "9bedc2be31c5765c2fde2f383647487616127cc5",
+      "verification": "Entry CSS split preserves ordered source bytes;28 adjacent identical rule blocks consolidated. Public CSS notes compacted with lexical separators and license/string/escape preservation. Full retained selector/declaration/media token stream matches baseline; four JS unchanged. Exact preview hashes and targeted live search/editor checked; no new lead-path or physical Safari acceptance claimed.",
+      "ci": {
+        "sha": "9bedc2be31c5765c2fde2f383647487616127cc5",
+        "pr": 1393,
+        "applicable_success": 23,
+        "expected_skipped": 1,
+        "core_run": 34030842353,
+        "visual_run": 34030842375,
+        "flight_run": 34030842370,
+        "artifact_run": 34030842392,
+        "visual_artifact": 9988548385,
+        "visual_digest": "sha256:5a18c437bcb989c18eafc2fa9c0fe12a642adc23f2357b965cdd207278771d23",
+        "scope": "All applicable workflows succeeded. 375px editor and1440px calendar screenshots inspected. CSS token equivalence and four byte-identical JS assets verified; PHP ran in CI."
+      },
+      "preview_deploy_run": 34030973693,
+      "preview_deploy_pr": 1394,
+      "verified_at": "2026-09-06T11:46:09.185021+00:00",
+      "run_delta": {
+        "bytes": -16096,
+        "lines": -60,
+        "css_bytes": -16096,
+        "js_bytes": 0
+      }
     }
   ],
   "site_preview_publication_history": [

@@ -68,6 +68,34 @@ class Search3SourceBuildTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unlisted'):
             builder.build(self.root)
 
+    def test_private_part_drift_rebuilds_only_its_enclosing_asset(self):
+        part = self.root / 'src/search3/behavior/results/labels.js'
+        part.write_bytes(part.read_bytes() + b'/* controlled private-part edit */\n')
+        with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
+            builder.build(self.root)
+        builder.build(self.root, write=True)
+        self.assertEqual(builder.build(self.root), 8)
+        for name, original in self.outputs.items():
+            content = (self.root / 'v2' / name).read_bytes()
+            if name == 'search3-results-filters-v1.js':
+                self.assertIn(b'controlled private-part edit', content)
+                self.assertNotIn(b'/* @include ', content)
+            else:
+                self.assertEqual(content, original)
+
+    def test_invalid_private_include_fails_before_writing_any_output(self):
+        part = self.root / 'src/search3/behavior/results/labels.js'
+        original = part.read_bytes()
+        for target in ('behavior/results-presentation.js',
+                       'behavior/results/cards.js', '../../v2/search3-entry-v1.js'):
+            with self.subTest(target=target):
+                part.write_bytes(original + f'/* @include {target} */\n'.encode())
+                with self.assertRaisesRegex(ValueError, 'Invalid or repeated'):
+                    builder.build(self.root, write=True)
+                for name, content in self.outputs.items():
+                    self.assertEqual((self.root / 'v2' / name).read_bytes(), content)
+        part.write_bytes(original)
+
     def test_source_outside_module_root_is_rejected(self):
         manifest = self.root / 'src/search3/manifest.json'
         data = json.loads(manifest.read_text())

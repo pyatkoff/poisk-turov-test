@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const events = new Map(), frames = [], classes = new Set();
 let observeResults, cards = true, geometryReads = 0;
 const properties = new Map();
-const style = { setProperty(k,v) { properties.set(k,v); }, removeProperty(k) { properties.delete(k); } };
+const style = { setProperty(k,v,priority) { assert.equal(priority,'important'); properties.set(k,v); }, removeProperty(k) { properties.delete(k); } };
 const counters = { textContent: '' };
 const meta = { querySelector() { return counters; }, remove() {} };
 const heading = { textContent: '' }, summary = { textContent: '' };
@@ -13,8 +13,9 @@ const tools = { style, parentElement: { getBoundingClientRect() { return { left:
 const results = { querySelector() { return cards ? {} : null; }, getBoundingClientRect() { geometryReads++; return { width: 800, left: 200 }; } };
 const form = { elements: {}, addEventListener() {} };
 const document = { getElementById(id) { return { tourSearch: form, resultsTools: tools, resultSummary: summary, results }[id] || null; }, querySelector() { return null; }, body: { classList: { toggle(n,on) { on ? classes.add(n) : classes.delete(n); }, remove(...names) { names.forEach(n=>classes.delete(n)); } } } };
+const window = { innerWidth: 1440, addEventListener(n,fn) { events.set(n,fn); } };
 vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../src/search3/behavior/results-top.js'),'utf8'), {
- document, window: { innerWidth: 1440, addEventListener(n,fn) { events.set(n,fn); } },
+ document, window,
  MutationObserver: function(fn) { observeResults = fn; this.observe = ()=>{}; },
  requestAnimationFrame(fn) { frames.push(fn); }
 });
@@ -33,4 +34,11 @@ assert.ok(!properties.has('width'),'queued geometry uses reset DOM instead of st
 assert.ok(!classes.has('search3-has-results'));
 cards = true; observeResults(); flush();
 assert.equal(properties.get('width'),'800px','later result insertion still updates geometry');
+assert.equal(properties.get('margin-left'),'200px');
+assert.equal(properties.get('padding-left'),'9px');
+window.innerWidth = 375; emit('resize'); flush();
+for (const name of ['width','margin-left','margin-right','padding-left','padding-right']) {
+ assert.ok(!properties.has(name),'mobile clears desktop geometry: '+name);
+}
+assert.equal(properties.get('position'),'static','mobile retains normal flow');
 console.log('PASS: one results frame, editor preserved, no stale post-reset geometry');

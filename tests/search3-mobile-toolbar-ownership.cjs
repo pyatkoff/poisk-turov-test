@@ -26,7 +26,7 @@ function hits(fileList) {
   });
 }
 
-const presentation = fs.readFileSync(path.join(root, 'src/search3/behavior/results-presentation.js'), 'utf8');
+const presentation = require('./search3-bundled-results.cjs');
 const selectedPresentation = fs.readFileSync(path.join(root, 'src/search3/behavior/tour-presentation.js'), 'utf8');
 const searchForm = fs.readFileSync(path.join(root, 'src/search3/behavior/search-form.js'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');
