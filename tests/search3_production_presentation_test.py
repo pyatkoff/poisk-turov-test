@@ -28,6 +28,10 @@ class Search3ProductionPresentationTest(unittest.TestCase):
     def test_filter_rail_price_input(self):
         subprocess.run(['node', str(ROOT / 'tests' / 'search3-filter-rail-price-input.cjs')], check=True)
 
+    @unittest.skipUnless(shutil.which('node'), 'Node required for mobile toolbar ownership regression')
+    def test_mobile_toolbar_ownership(self):
+        subprocess.run(['node', str(ROOT / 'tests' / 'search3-mobile-toolbar-ownership.cjs')], check=True)
+
     def test_cascade_compatibility_section_contract(self):
         subprocess.run([
             'python3',
