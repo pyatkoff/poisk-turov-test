@@ -18,11 +18,40 @@
     display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-auto-rows:auto!important;grid-column:2!important;grid-row:4!important;align-content:center!important;min-width:0!important;min-height:150px!important;height:150px!important;margin:0!important;padding:14px 16px!important;border:1px solid var(--at-line)!important;border-left:0!important;border-radius:0 12px 12px 0!important;background:#fff!important;box-sizing:border-box!important
   }
   & .selected-head>* {grid-column:1!important;min-width:0!important;max-width:none!important}
-  & .selected-head h2 {width:100%!important;max-width:none!important;font-size:20px!important;line-height:1.08!important;word-break:normal!important;overflow-wrap:break-word!important;white-space:normal!important}
-  & .selected-head p {width:100%!important;max-width:none!important;word-break:normal!important;overflow-wrap:break-word!important;white-space:normal!important}
+  & .selected-head h2,
+& .selected-head p{
+  word-break:normal!important;
+  overflow-wrap:break-word!important;
+  white-space:normal!important;
+}
+& .selected-head h2{
+  width:100%!important;
+  max-width:none!important;
+  font-size:20px!important;
+  line-height:1.08!important;
+}
+& .selected-head p{
+  width:100%!important;
+  max-width:none!important;
+}
   & :is(.selected-price,.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.room-details-host,.selected-confidence,.search3-tour-detail-rail) {display:none!important}
-  & .tour-flights {display:block!important;grid-column:1/-1!important;grid-row:5!important;width:100%!important;margin:10px 0 0!important;padding:12px 14px!important;box-sizing:border-box!important}
-  & .search3-final-sections {display:block!important;grid-column:1/-1!important;grid-row:6!important;width:100%!important;margin:10px 0 0!important}
+  & .tour-flights,
+& .search3-final-sections{
+  width:100%!important;
+  margin:10px 0 0!important;
+}
+& .tour-flights{
+  display:block!important;
+  grid-column:1/-1!important;
+  grid-row:5!important;
+  padding:12px 14px!important;
+  box-sizing:border-box!important;
+}
+& .search3-final-sections{
+  display:block!important;
+  grid-column:1/-1!important;
+  grid-row:6!important;
+}
   & .search3-lead-shell {display:contents!important}
   & .search3-lead-shell>.lead-form {display:none!important}
   & .search3-booking-summary {

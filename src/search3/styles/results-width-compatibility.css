@@ -5,8 +5,16 @@ body.search3-candidate{
 & .v2-shell{display:block!important}
 & .results-layout{grid-column:1/-1!important;justify-self:stretch!important;min-width:0!important;margin-left:0!important;margin-right:0!important}
 & .results-layout>.results,& #results{min-width:0!important;width:100%!important;max-width:none!important;align-items:stretch!important}
-& #results .hotel-card{display:block!important;width:100%!important;min-width:0!important;max-width:none!important;align-self:stretch!important}
-& #results .hotel-main{width:100%!important;min-width:0!important;max-width:none!important}
+& #results .hotel-card,
+& #results .hotel-main{
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+}
+& #results .hotel-card{
+  display:block!important;
+  align-self:stretch!important;
+}
 /* Keep the native hidden contract authoritative before results exist. Search3 presentation rules must not resurrect empty controls/rails. */
 & :is(.results-search-summary[hidden],.results-tools--ds2[hidden]),&:not(.search3-has-results) .results-layout{display:none!important}
 /* Results remain one coherent page flow. Match the shared DS2 result-state selector specificity so its two-column search shell cannot leak into Search3. */

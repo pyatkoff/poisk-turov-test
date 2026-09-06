@@ -211,19 +211,18 @@ html body.search3-candidate{
   font-size: 16px !important;
   line-height: 1.4 !important;
 }
-& :is(.lead-phone-hint, .lead-consent, .lead-message) {
+& :is(.lead-phone-hint, .lead-consent, .lead-message),
+& .lead-trust-note{
   font-size: 12px !important;
   line-height: 1.5 !important;
 }
-& .lead-trust-note {
+& .lead-trust-note{
   margin: 14px 0 !important;
   padding: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
   color: var(--at-muted) !important;
-  font-size: 12px !important;
-  line-height: 1.5 !important;
 }
 & .search3-summary-actions[hidden] {
   display: none !important;

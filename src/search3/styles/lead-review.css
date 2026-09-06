@@ -10,8 +10,21 @@ body.search3-candidate{
 & .lead-form :is(input:focus,textarea:focus) {outline:0;border-color:var(--at-brand);box-shadow:0 0 0 3px rgba(7,92,255,.08)}
 & .lead-consent {display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important;margin-top:10px;color:var(--at-muted)!important;font-size:8px!important;line-height:1.4!important}
 & .lead-consent input {flex:0 0 15px;width:15px!important;height:15px!important;margin:1px 0 0;accent-color:var(--at-brand)}
-& .lead-message {min-height:16px;margin:8px 0 0;color:var(--at-muted);font:700 8px/1.35 var(--at-font)}
-& .search3-lead-protection {display:flex;align-items:center;gap:7px;margin:12px 0 0;color:var(--at-muted);font:700 8px/1.35 var(--at-font)}
+& .lead-message,
+& .search3-lead-protection{
+  color:var(--at-muted);
+  font:700 8px/1.35 var(--at-font);
+}
+& .lead-message{
+  min-height:16px;
+  margin:8px 0 0;
+}
+& .search3-lead-protection{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  margin:12px 0 0;
+}
 & .search3-lead-protection span {display:grid;place-items:center;flex:0 0 18px;width:18px;height:18px;border:1px solid #dfe5ef;border-radius:50%;color:var(--at-brand);font-size:9px}
 }
 & #selectedTour.search3-final-review {

@@ -15,8 +15,15 @@ body.search3-candidate{
 & #tourSearch:not(.search3-advanced-open) .search3-quality,& #tourSearch:not(.search3-advanced-open) .search3-quick {display:none!important}
 & #tourSearch {padding-bottom:13px!important}
 & :is(.results-tools--ds2,.search3-mobile-toolbar),& #resultsSearchSummary {display:none!important}
-& .results-layout {min-height:0!important;margin:0!important}
-& #results:empty {display:none!important;min-height:0!important;margin:0!important;padding:0!important}
+& .results-layout,
+& #results:empty{
+  min-height:0!important;
+  margin:0!important;
+}
+& #results:empty{
+  display:none!important;
+  padding:0!important;
+}
 }
 
 /* Card facts come only from the real best-priced tour already loaded for the hotel. */

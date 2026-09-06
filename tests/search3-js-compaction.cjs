@@ -12,7 +12,13 @@ const { compact, print, parsed } = require('../scripts/build/search3-js/compact.
     'output([String.raw`\\u0061`, `line${2 + 3}`, "/* CSS literal */"]);',
     `var x = 0; outer: for(var i=0;i<3;i++){ x++; if(i===1) break outer; } output(x);`,
     `output([Object.is(-0,0), 0x10, 'a\\\nb', 1n + 2n]);`,
-    `var x = null; output(x?.price ?? 'missing');`
+    `var x = null; output(x?.price ?? 'missing');`,
+    `var prototype = { inherited: 7 };
+     var sample = { "public-key": 'He said "yes"', "plain": 10000,
+       "__proto__": prototype, ["__proto__"]: 9 };
+     output([Object.keys(sample), sample["public-key"], sample.plain,
+       Object.getPrototypeOf(sample) === prototype, sample["__proto__"],
+       10000000, 0.000001, 9007199254740991, Object.is(-0, 0)]);`
   ];
   function execute(code) {
     const values = [];

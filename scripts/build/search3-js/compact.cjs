@@ -59,9 +59,10 @@ async function compact(code) {
     keep_classnames: true,
     // Source notes stay in the readable modules and exact first-stage print.
     // Keep legal notices and tool directives in the served output.
+    // Shorten literal spelling and optional parentheses without changing values or keys.
     format: { comments: /^!|@(?:license|preserve|cc_on)|copyright|source(?:mapping)?url/i,
-      quote_style: 3, wrap_iife: true,
-      keep_quoted_props: true, keep_numbers: true }
+      quote_style: 0, wrap_iife: false,
+      keep_quoted_props: false, keep_numbers: false }
   });
   const compacted = renamed.code ? renamed.code + '\n' : '';
   parsed(compacted); // Reject invalid output before the builder writes any asset.

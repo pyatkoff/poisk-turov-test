@@ -132,8 +132,14 @@ body.search3-candidate{
 @media(min-width:761px){
  body.search3-candidate{
 & #results .hotel-main{min-height:188px!important}
- & #results .hotel-photo{height:100%!important;min-height:188px!important;align-self:stretch!important}
- & #results .hotel-photo img{height:100%!important;min-height:188px!important}
+ & #results .hotel-photo,
+& #results .hotel-photo img{
+  height:100%!important;
+  min-height:188px!important;
+}
+& #results .hotel-photo{
+  align-self:stretch!important;
+}
 }
 }
 @media(max-width:760px){
@@ -155,8 +161,18 @@ body.search3-candidate{
 @media(min-width:761px){
  html body.search3-candidate{
 &:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card {
-& .hotel-photo {height:auto!important;min-height:188px!important;max-height:none!important;align-self:stretch!important}
- & .hotel-photo>img {height:100%!important;min-height:188px!important;max-height:none!important}
+& .hotel-photo,
+& .hotel-photo>img{
+  min-height:188px!important;
+  max-height:none!important;
+}
+& .hotel-photo{
+  height:auto!important;
+  align-self:stretch!important;
+}
+& .hotel-photo>img{
+  height:100%!important;
+}
 }
 }
 }
@@ -235,16 +251,15 @@ body.search3-candidate #results .hotel-best-offer>small,html body.search3-candid
 @media(min-width:1000px){
   html body.search3-candidate{
 &.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card {
-& .hotel-main {
-    height:166px!important;
-    min-height:166px!important;
-  }
-  & .hotel-photo,& .hotel-photo>img {
-    height:166px!important;
-    min-height:166px!important;
-    max-height:166px!important;
-    object-fit:cover!important;
-  }
+& .hotel-main,
+& .hotel-photo,& .hotel-photo>img{
+  height:166px!important;
+  min-height:166px!important;
+}
+& .hotel-photo,& .hotel-photo>img{
+  max-height:166px!important;
+  object-fit:cover!important;
+}
 }
 }
 }

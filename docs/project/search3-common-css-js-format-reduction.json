@@ -1,0 +1,102 @@
+{
+  "baseline_release": "7df2894f25d5b36c84fadc039ebe80dc17b44730",
+  "baseline_source": "9cf5fe886201e59c9f0be3acc096992dba308290",
+  "status": "LOCAL_VERIFIED_PENDING_REQUIRED_SOURCE_CI_NOT_PUBLISHED",
+  "scope": "One combined batch: 17 adjacent CSS common declaration sequences and shorter second-stage JavaScript output spelling. No runtime source JavaScript changes.",
+  "assets": [
+    {
+      "path": "v2/search3-entry-v1.css",
+      "before": 9662,
+      "after": 9662,
+      "saved": 0,
+      "sha256": "7b899275f03cdd818d34de921b0340d3840c49673d3864514ff58e15d8a402c3"
+    },
+    {
+      "path": "v2/search3-entry-v1.js",
+      "before": 3234,
+      "after": 3226,
+      "saved": 8,
+      "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"
+    },
+    {
+      "path": "v2/search3-results-cards-v2.css",
+      "before": 4022,
+      "after": 4007,
+      "saved": 15,
+      "sha256": "b82c4bbb1b9cbfdaa9ae0508245143da117288aa919876b4b6387e56200341aa"
+    },
+    {
+      "path": "v2/search3-results-cards-v2.js",
+      "before": 0,
+      "after": 0,
+      "saved": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "v2/search3-results-filters-v1.css",
+      "before": 174135,
+      "after": 173738,
+      "saved": 397,
+      "sha256": "3a067946ee51d91a0a4165c563578beb71793c5c0f96fb5386c1d7c3675d8e61"
+    },
+    {
+      "path": "v2/search3-results-filters-v1.js",
+      "before": 95346,
+      "after": 95130,
+      "saved": 216,
+      "sha256": "5c11d3460bd7bdd83aa0c32462be72ddfd29f899db759556c3e5584f04002479"
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.css",
+      "before": 7354,
+      "after": 7322,
+      "saved": 32,
+      "sha256": "f0f03f76090231778e2aed6d2373763447ccb4f8cbd79beb8fb39fb3fdc9958d"
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.js",
+      "before": 8455,
+      "after": 8439,
+      "saved": 16,
+      "sha256": "89c8b09a855c8a7b2846926cd6a0d6f315b8280591b24b3e6b0f2ea725c7d7fa"
+    }
+  ],
+  "totals": {
+    "before": 302208,
+    "after": 301524,
+    "saved": 684,
+    "css_saved": 444,
+    "js_saved": 240
+  },
+  "verification": {
+    "source_build": "One search3_assets.py --write passed; source reproducibility and import checks supplied by mandatory artifact CI.",
+    "css": "Exact signatures and per-selector conflict-family declaration order; no shorthand/reset crossing; original leaf selectors and parent/media context retained. Independent 17-site review passed.",
+    "css_audit": "docs/project/search3-css-common-block-factoring.json",
+    "javascript": "All four final generated executable Acorn trees and retained comment sequences match the baseline, ignoring Literal.raw and equivalent ordinary static quoted/identifier property keys only. __proto__ excluded from key normalization.",
+    "javascript_unit": "Existing compaction suite passed, including public key order, prototype setter/computed own property, numeric spelling, names/arity/eval/getters and exact first-stage printing.",
+    "protected_import_hashes": "unchanged",
+    "public_paths": 8,
+    "native_nesting_depth": "unchanged; no new levels",
+    "preview_published": false,
+    "browser_checked": false,
+    "production_changed": false,
+    "broader_responsive_site_seo": "deferred, not passed"
+  },
+  "followup_audit": {
+    "recursive_media_grouping_bytes": 0,
+    "css_value_pooling_bytes": 450,
+    "css_value_pooling_applied": false,
+    "reason": "Inherited variable machinery not justified for this small gain.",
+    "selector_token_factoring_bytes": 19,
+    "selector_token_factoring_applied": false,
+    "previous_117_and_23_byte_deletions": "remain deferred; no rescan",
+    "remaining_larger_work": "Requires demonstrated redundant presentation ownership while retaining fallback/intermediate states; do not re-run completed mechanical passes.",
+    "javascript_owner_audit": {
+      "owners": 26,
+      "functions": 427,
+      "large_identical_intra_iife_helpers": 0,
+      "largest_remaining_repeated_callback_source_bytes": 80,
+      "source_modified": false
+    }
+  }
+}

@@ -10,8 +10,23 @@
   &:not(.search3-has-results) #tourSearch{border-radius:12px!important;box-shadow:0 8px 28px rgba(16,24,40,.045)!important}
 
   &.search3-has-results {
-& .results-tools--ds2 {width:auto!important;margin-left:auto!important;margin-right:auto!important;padding-left:204px!important;box-sizing:border-box!important;background:transparent!important;box-shadow:none!important}
-  & .results-layout {grid-template-columns:190px minmax(0,1fr)!important;gap:14px!important;width:var(--search3-desktop-shell)!important;margin-left:auto!important;margin-right:auto!important}
+& .results-tools--ds2,
+& .results-layout{
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+& .results-tools--ds2{
+  width:auto!important;
+  padding-left:204px!important;
+  box-sizing:border-box!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+& .results-layout{
+  grid-template-columns:190px minmax(0,1fr)!important;
+  gap:14px!important;
+  width:var(--search3-desktop-shell)!important;
+}
   & #results {
 & {gap:12px!important}
   & .hotel-main {grid-template-columns:238px minmax(0,1fr)!important;min-height:174px!important}

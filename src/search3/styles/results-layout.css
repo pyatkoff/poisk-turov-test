@@ -156,19 +156,20 @@ body.search3-candidate{
   min-height:210px!important;
   gap:0!important;
 }
-& .hotel-photo {
-  width:auto!important;
-  height:210px!important;
+& .hotel-photo,
+& .hotel-photo>img{
   min-height:210px!important;
   max-height:210px!important;
+}
+& .hotel-photo{
+  width:auto!important;
+  height:210px!important;
   margin:0!important;
   border-radius:0!important;
 }
-& .hotel-photo>img {
+& .hotel-photo>img{
   width:100%!important;
   height:100%!important;
-  min-height:210px!important;
-  max-height:210px!important;
   object-fit:cover!important;
 }
 & .hotel-body {

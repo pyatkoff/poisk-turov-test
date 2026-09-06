@@ -14,8 +14,20 @@ body.search3-candidate{
 & .facts>div:nth-last-child(-n/**/+5) {border-bottom:0!important}
 & .facts span {display:block!important;margin-bottom:4px!important;color:var(--at-muted)!important;font:800 8px/1.2 var(--at-font)!important}
 & .facts b {display:block!important;color:var(--at-ink)!important;font:900 10px/1.3 var(--at-font)!important;overflow-wrap:anywhere!important}
-& .hotel-desc {padding:14px 16px!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important;color:var(--at-muted)!important;font:700 9px/1.5 var(--at-font)!important}
-& .tour-flights {padding:16px!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important}
+& .hotel-desc,
+& .tour-flights{
+  border:1px solid var(--at-line)!important;
+  border-radius:12px!important;
+  background:#fff!important;
+}
+& .hotel-desc{
+  padding:14px 16px!important;
+  color:var(--at-muted)!important;
+  font:700 9px/1.5 var(--at-font)!important;
+}
+& .tour-flights{
+  padding:16px!important;
+}
 & .tour-flights .section-heading {display:flex!important;align-items:end!important;justify-content:space-between!important;gap:16px!important;margin-bottom:12px!important;padding:0!important;border:0!important}
 & .tour-flights .section-heading strong {font-size:15px!important}
 & .tour-flights .section-heading span {font-size:8px!important}

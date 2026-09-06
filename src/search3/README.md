@@ -34,6 +34,9 @@ compiled presentation checks cover it. The final output is parsed before writes.
 The second stage omits ordinary source comments from served JavaScript. Readable
 modules and first-stage comment equality remain intact; license/copyright,
 exclamation, preservation and source URL/map notices stay in the output.
+The second stage also selects shorter quote and number spellings, omits optional
+property-key quotes and avoids optional IIFE wrapping. These are output formatting
+choices; the exact first-stage print and public property names remain unchanged.
 
 The CSS build replaces private source comments with empty comment separators;
 license/copyright/source-map notes, strings and escapes remain. The output also
