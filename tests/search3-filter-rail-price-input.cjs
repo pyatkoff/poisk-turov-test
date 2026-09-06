@@ -7,6 +7,7 @@ const vm = require('node:vm');
 const windowEvents = new Map();
 const railEvents = new Map();
 const frames = [];
+const announcements = [];
 const count = { textContent: '' };
 const word = { textContent: '' };
 const priceLabel = { textContent: '' };
@@ -24,7 +25,7 @@ const window = {
   innerWidth: 1440,
   V2Results: { render(items) { renders.push(items); } },
   addEventListener(name, handler) { windowEvents.set(name, handler); },
-  dispatchEvent() {},
+  dispatchEvent(event) { announcements.push(event.detail); },
   requestAnimationFrame(handler) { frames.push(handler); }
 };
 const document = {
@@ -42,7 +43,9 @@ const hotels = [
   { tours: [{ price: 90000 }, { price: 120000 }] },
   { tours: [{ price: 160000 }] }
 ];
+assert.equal(announcements.length, 1, 'initial empty rail announces once');
 windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+assert.equal(announcements.length, 2, 'new source render announces once, not twice');
 const input = value => railEvents.get('input')({
   target: { value: String(value), matches(selector) { return selector === '[data-s3-price]'; } }
 });
