@@ -5,88 +5,167 @@ on:
     branches:
       - refactor/search3-mobile-toolbar-owner-35e2ae36
     paths:
-      - 'src/search3/styles/**'
-      - 'tests/search3-mobile-toolbar-ownership.cjs'
-      - 'tests/search3_production_presentation_test.py'
       - '.github/workflows/search3-mobile-toolbar-prep.yml'
 
 permissions:
   contents: write
 
+concurrency:
+  group: search3-mobile-toolbar-preparation
+  cancel-in-progress: false
+
 jobs:
   build-and-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      RELEASE_BASE: 49f2d2e5690421920df378ce0f4615fa8eb1a4ce
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          show-progress: false
 
-      - name: Verify mobile toolbar ownership map
-        run: node tests/search3-mobile-toolbar-ownership.cjs
-
-      - name: Refresh cascade structural contract
+      - name: Preserve current release without rewriting either branch
+        shell: bash
         run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/refactor/search3-mobile-toolbar-owner-35e2ae36)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/release/search3-production-ready-v1)" = "$RELEASE_BASE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git merge --no-edit "$RELEASE_BASE"
+          git archive --format=tar.gz -o "$RUNNER_TEMP/search3-before.tar.gz" "$RELEASE_BASE"
+
+      - name: Remove only the precisely identified retired toolbar rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/search3/styles/result-cards.css')
+          source = path.read_text()
+          block = ''' html body.search3-candidate.search3-has-results .search3-mobile-toolbar .search3-mobile-actions{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:8px!important;width:100%!important}
+           html body.search3-candidate.search3-has-results .search3-mobile-filter-button,
+           html body.search3-candidate.search3-has-results .search3-mobile-sort-button{display:inline-flex!important;width:100%!important;min-width:0!important;min-height:40px!important}
+          '''
+          assert source.count(block) == 1, 'Result-card donor block drifted'
+          path.write_text(source.replace(block, '', 1))
+
+          path = Path('src/search3/styles/results-context.css')
+          source = path.read_text()
+          retired = ('search3-mobile-filter-button', 'search3-active-chips', 'search3-chip')
+          removed = []
+          kept = []
+          for line in source.splitlines(keepends=True):
+              if any('.' + marker in line for marker in retired):
+                  assert line.count('{') == 1 and line.count('}') == 1, 'Expected a complete one-line rule'
+                  selectors = line.split('{', 1)[0].split(',')
+                  assert all(any('.' + marker in selector for marker in retired) for selector in selectors), 'Mixed active selector'
+                  removed.append(line)
+              else:
+                  kept.append(line)
+          assert len(removed) == 5, f'Expected five retired context rules, found {len(removed)}'
+          path.write_text(''.join(kept))
+
+          test = Path('tests/search3-mobile-toolbar-ownership.cjs')
+          source = test.read_text()
+          old = "  ...files(path.join(root, 'v2'), '.js')"
+          assert source.count(old) == 1
+          test.write_text(source.replace(old, old + ",\n  ...files(path.join(root, 'v2'), '.php')"))
+          print('REMOVED_RETIRED_TOOLBAR_RULES result_cards=2 results_context=5; active selectors retained')
+          PY
+          node tests/search3-mobile-toolbar-ownership.cjs
+
+      - name: Refresh reviewed cascade contract and generated assets together
+        shell: bash
+        run: |
+          set -euo pipefail
           python3 - <<'PY'
           import hashlib
           import json
           from pathlib import Path
-
-          contract_path = Path('docs/project/search3-cascade-sections.json')
-          contract = json.loads(contract_path.read_text())
-          root = Path(contract['source_root'])
-          raw = b''.join((root / name).read_bytes() for name in contract['sections'])
-          header = f'blob {len(raw)}\0'.encode()
+          path = Path('docs/project/search3-cascade-sections.json')
+          contract = json.loads(path.read_text())
+          raw = b''.join((Path(contract['source_root']) / name).read_bytes() for name in contract['sections'])
           contract['combined_bytes'] = len(raw)
-          contract['combined_git_blob_sha'] = hashlib.sha1(header + raw).hexdigest()
-          contract_path.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + '\n')
-          print(f"CASCADE_CONTRACT bytes={len(raw)} blob={contract['combined_git_blob_sha']}")
+          contract['combined_git_blob_sha'] = hashlib.sha1(f'blob {len(raw)}\0'.encode() + raw).hexdigest()
+          path.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + '\n')
           PY
           python3 -B scripts/build/search3_cascade_sections.py --check
-
-      - name: Rebuild and verify Search3
-        run: |
-          set -euo pipefail
           python3 -B scripts/build/search3_assets.py --write
           python3 -B scripts/build/search3_assets.py --check
-          node tests/search3-filter-rail-ownership.cjs
-          node tests/search3-mobile-toolbar-ownership.cjs
           python3 -B tests/search3_source_build_test.py
           python3 -B tests/search3_production_presentation_test.py
+          python3 -B tests/search3_site_preview_isolation_test.py
+          php tests/site-preview-path-smoke.php production
+          php tests/site-preview-path-smoke.php preview
+          php tests/search-handoff-smoke.php
+          git diff --check
 
-      - name: Report public Search3 metrics
+      - name: Guard scope and record metrics
+        shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import subprocess
           from pathlib import Path
-          names = [
-              'search3-results-filters-v1.css','search3-entry-v1.css','search3-results-cards-v2.css','search3-selected-flow-v2.css',
-              'search3-results-filters-v1.js','search3-entry-v1.js','search3-results-cards-v2.js','search3-selected-flow-v2.js',
-          ]
-          total_bytes = total_lines = 0
-          for name in names:
-              data = (Path('v2') / name).read_bytes()
-              lines = len(data.splitlines())
-              total_bytes += len(data); total_lines += lines
-              print(f'METRIC {name} bytes={len(data)} lines={lines}')
-          print(f'METRIC TOTAL bytes={total_bytes} lines={total_lines}')
+          base = os.environ['RELEASE_BASE']
+          expected = {
+              '.github/workflows/search3-mobile-toolbar-prep.yml',
+              'src/search3/styles/filters.css',
+              'src/search3/styles/cascade/search3-batch-iteration1b.css',
+              'src/search3/styles/result-cards.css',
+              'src/search3/styles/results-context.css',
+              'tests/search3-mobile-toolbar-ownership.cjs',
+              'tests/search3_production_presentation_test.py',
+              'docs/project/search3-cascade-sections.json',
+              'docs/project/search3-production-import.json',
+              'v2/search3-results-filters-v1.css',
+          }
+          changed = set(subprocess.check_output(['git', 'diff', '--name-only', base], text=True).splitlines())
+          assert changed == expected, (changed - expected, expected - changed)
+          manifest = json.loads(Path('src/search3/manifest.json').read_text())
+          imports = json.loads(Path('docs/project/search3-production-import.json').read_text())
+          totals = {kind: {'bytes': 0, 'lines': 0} for kind in ('css', 'js')}
+          for name in imports['assets']:
+              raw = (Path('v2') / name).read_bytes()
+              previous = subprocess.check_output(['git', 'show', f'{base}:v2/{name}'])
+              if name != 'search3-results-filters-v1.css':
+                  assert raw == previous, f'Unrelated public asset changed: {name}'
+              kind = name.rsplit('.', 1)[1]
+              totals[kind]['bytes'] += len(raw)
+              totals[kind]['lines'] += len(raw.splitlines())
+              print(f'METRIC {name} bytes={len(raw)} lines={len(raw.splitlines())}')
+          print('TOTAL_METRICS ' + json.dumps(totals, sort_keys=True))
+          (Path(os.environ['RUNNER_TEMP']) / 'search3-toolbar-metrics.json').write_text(json.dumps(totals, indent=2) + '\n')
           PY
 
-      - name: Guard generated scope
+      - name: Commit verified source and generated asset to preparation branch only
+        shell: bash
         run: |
           set -euo pipefail
-          git diff --name-only | LC_ALL=C sort > "$RUNNER_TEMP/changed.txt"
-          cat > "$RUNNER_TEMP/expected.txt" <<'EOF'
-          docs/project/search3-cascade-sections.json
-          docs/project/search3-production-import.json
-          v2/search3-results-filters-v1.css
-          EOF
-          diff -u "$RUNNER_TEMP/expected.txt" "$RUNNER_TEMP/changed.txt"
-
-      - name: Commit generated assets to preparation branch
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/project/search3-cascade-sections.json docs/project/search3-production-import.json v2/search3-results-filters-v1.css
-          git commit -m 'build(search3): refresh mobile toolbar cleanup assets'
+          git add src/search3/styles/result-cards.css src/search3/styles/results-context.css tests/search3-mobile-toolbar-ownership.cjs docs/project/search3-cascade-sections.json docs/project/search3-production-import.json v2/search3-results-filters-v1.css
+          git commit -m 'refactor(search3): finish retired mobile toolbar CSS cleanup'
           git push origin HEAD:refactor/search3-mobile-toolbar-owner-35e2ae36
+          git archive --format=tar.gz -o "$RUNNER_TEMP/search3-after.tar.gz" HEAD
+          git rev-parse HEAD > "$RUNNER_TEMP/search3-toolbar-source-sha.txt"
+
+      - name: Retain source-only review snapshots without credentials
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f436a02
+        with:
+          name: search3-toolbar-source-review-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/search3-before.tar.gz
+            ${{ runner.temp }}/search3-after.tar.gz
+            ${{ runner.temp }}/search3-toolbar-metrics.json
+            ${{ runner.temp }}/search3-toolbar-source-sha.txt
+          if-no-files-found: error
+          retention-days: 3
