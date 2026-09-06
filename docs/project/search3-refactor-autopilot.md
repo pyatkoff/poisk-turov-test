@@ -10,7 +10,73 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
-### Current published checkpoint — descendant CSS and private booking layout — 2026-09-06
+### Current published checkpoint — checked compact assets and zero-match recovery — 2026-09-06
+
+Published source/release integration: `53f87c79cb3d4ca139c2391d1bcf818fa874e737`. Source PRs #1408/#1409/#1410/#1412.
+Separate exact preview publications #1411 then #1413; #1413 supersedes #1411 with
+the inherited zero-match filter recovery fix. Earlier preparation/pending notes
+are historical and superseded by this checkpoint.
+
+| Eight public assets | Previous bytes / lines | Published bytes / lines |
+| --- | ---: | ---: |
+| Four CSS | 211465 / 4007 | 205437 / 37 |
+| Four JS | 140057 / 1826 | 130610 / 55 |
+| Total | 351522 / 5833 | 336047 / 92 |
+
+Net reduction 15475 bytes (4.40% overall; JS 6.75%) and 5741 generated lines.
+Uncompressed, excluding shared runtime/legacy and duplicate src; no speed or
+deferred-loading claim. Readable source parts remain. Rail owner 11175 -> 5746
+bytes, form owner 9433 -> 3682, with two private parts each in original scope.
+Eight public paths remain; no new runtime loader/request/global.
+
+Build-only pinned Terser 5.51.2 prints JS with compression and mangling disabled.
+Independent Acorn 8.18.0 ordered AST/comment equality rejects unsafe changes before
+writes. Pinned css-tree 3.2.1 removes external CSS formatting while selectors,
+conditions and value source slices stay exact; ordered AST roundtrip is required.
+Protected comments retained; nonshrinking files stay original. Cascade/order,
+acceptance guards and native nesting depth three remain. Source build requires
+`npm ci --prefix scripts/build/search3-js --ignore-scripts`; existing CI installs it.
+
+The live zero-match trap was also reproduced by the new compiled regression on
+pre-run b3b508d0, proving it inherited. The rail now marks local zero matches
+before synchronous render; existing geometry/card owners retain their shell.
+Restore, external fresh results and actual reset clear it. No filter/price logic
+change. Fix costs 347 JS bytes; net savings above already include it.
+
+All four sources passed 23 applicable workflows and one expected skip. Final
+core 34054786441, responsive 34054786477, flight 34054786509, build 34054786524.
+Twelve source-build, eight JS printing, six CSS printing and 14 presentation tests;
+PHP covered in CI. Existing responsive CI verifies zero matches -> resize
+1000/1440 -> visible slider End restoration -> reset. New empty-rail screenshot
+inspected. Editors at 375/1440 inspected and pixel-identical; 33/42 final common
+images exact, nine fixture calendar/date/control variations retained. No blanket
+pixel parity. Physical Safari remains unqualified; native nesting contract stays.
+
+Final artifact 9995634191 / ZIP `sha256:7b7588e9e9ee754f2024016ce7242f096591bae99d0a1a9ffaf030468fb8c6ff`.
+Deploy 34055271173 succeeded attempt 1; evidence 9995763506 /
+ZIP `sha256:4055ea6d3d8b4c7192384f5f4ee37eb6cab471bbba628b1f72e1cfb2b4550731`. All 715 payload files and eight live assets match.
+Nine routes HTTP 200/noindex; counter 0, disabled synthetic lead 403, internal PHP
+denied, rollback retained; 13 production fingerprints unchanged before/after/final.
+Main stays `fa58a0cba6dcfc8624d98c20d64fa06330eae309`; production untouched.
+
+Fresh live desktop 1363px: Moscow/Turkey, 10–11 September 2026, seven nights,
+two adults -> 100 hotels / 430 tours. Slider Home 70000 -> zero cards and visible
+rail/empty message; End 265000 -> 100 cards without new search. ANAHTAR APART ->
+flights 6 -> 71 -> 6 -> review 72099 RUB -> empty lead -> review -> return with
+100 cards -> editor retaining dates/nights. Review/lead screenshots inspected;
+summary column 3 / row 4–12 -> column 2 / row 1 -> restored review layout.
+No horizontal overflow or real lead submission. Editor opened after asynchronous
+return completed. Live no-flight fallback, physical Safari and inherited hidden
+legacy backdrop on desktop-to-mobile transition remain outside qualification.
+
+Consolidated audit: `docs/project/search3-compact-assets-publication.json`.
+Source audits: `search3-filter-rail-private-parts.json`,
+`search3-js-build-compaction.json`, `search3-css-external-formatting.json`,
+`search3-empty-local-filter-shell.json` (all under `docs/project/`).
+
+Next: Refresh release, PRs and publication before another bounded reduction. Remaining results/cards.js (7698 source bytes) and tour-presentation.js (6114) were inspected: mixed DOM decoration and protected price presentation require a focused behavior trace before deduplicating their helpers. Measure a concrete saving before another source PR. Do not repeat completed rail/form splits, checked JS/CSS printing, or the zero-match shell fix. Keep eight public paths, event/data/price/lead contracts and maximum CSS nesting depth three. Separate exact preview publication only; production locked; scheduler paused.
+
+### Previous published checkpoint — descendant CSS and private booking layout — 2026-09-06
 
 Published source and release integration: `360cf4b7f9b08ca0a85e6d4f96a83997dd07b477`. Source PRs #1405/#1406;
 one exact-artifact isolated preview publication #1407. Preparation notes below are

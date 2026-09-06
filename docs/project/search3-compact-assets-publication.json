@@ -1,0 +1,1286 @@
+{
+  "schema_version": 1,
+  "status": "PUBLISHED_LIVE_ZERO_MATCH_RECOVERY_AND_JOURNEY_VERIFIED",
+  "baseline": "b3b508d00af2149e04882b777ca30c9002ca91c0",
+  "source_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737",
+  "source_prs": [
+    1408,
+    1409,
+    1410,
+    1412
+  ],
+  "deploy_pr": 1413,
+  "deploy_run": 34055271173,
+  "deploy_attempt": 1,
+  "control_sha": "d11ff310b66876217f3c1c5b0e894043af7e01b6",
+  "verified_at": "2026-09-06T19:42:05.995712+00:00",
+  "baseline_assets": {
+    "css_bytes": 211465,
+    "css_lines": 4007,
+    "js_bytes": 140057,
+    "js_lines": 1826,
+    "total_bytes": 351522,
+    "total_lines": 5833,
+    "scope": "Four CSS and four JS assets, uncompressed; excludes shared runtime/legacy and duplicate src. Private injected CSS is counted inside its JS host. No speed or deferred-loading claim."
+  },
+  "public_assets": {
+    "css_bytes": 205437,
+    "css_lines": 37,
+    "js_bytes": 130610,
+    "js_lines": 55,
+    "total_bytes": 336047,
+    "total_lines": 92,
+    "scope": "Four CSS and four JS assets, uncompressed; excludes shared runtime/legacy and duplicate src. Private injected CSS is counted inside its JS host. No speed or deferred-loading claim."
+  },
+  "css_reduction_bytes": 6028,
+  "js_reduction_bytes": 9447,
+  "total_reduction_bytes": 15475,
+  "generated_line_reduction": 5741,
+  "savings_breakdown": {
+    "rail_local_helper": 202,
+    "checked_js_printing": 9592,
+    "checked_css_printing": 6028,
+    "zero_match_fix_extra_js": 347
+  },
+  "source_parts": {
+    "rail_before": 11175,
+    "rail_after": 5746,
+    "rail_private": [
+      "filter-rail/availability.js",
+      "filter-rail/render.js"
+    ],
+    "form_before": 9433,
+    "form_after": 3682,
+    "form_private": [
+      "search-form/primary-controls.js",
+      "search-form/secondary-controls.js"
+    ]
+  },
+  "js_guard": "Pinned Terser 5.51.2, compress=false and mangle=false; independent Acorn 8.18.0 AST and ordered-comment equality before writes. Only locations, Literal.raw and equivalent safe identifier shorthand normalized. No evaluation-order/name/operator/literal-value changes.",
+  "css_guard": "Pinned css-tree 3.2.1 printing with exact source slices for selectors, conditions and values; complete ordered AST roundtrip check. Only external block/declaration formatting changes. Protected comments retained; nonshrinking output remains original. Native nesting depth three unchanged.",
+  "zero_match_fix": "Rail marks local zero matches before synchronous render; existing result geometry/card owners retain their shell classes. Restore/fresh external results/actual reset clear marker. No filtering or price algorithm change. New compiled regression fails on both c7ccf7f9 and pre-run b3b508d0.",
+  "source_audits": [
+    "docs/project/search3-filter-rail-private-parts.json",
+    "docs/project/search3-js-build-compaction.json",
+    "docs/project/search3-css-external-formatting.json",
+    "docs/project/search3-empty-local-filter-shell.json"
+  ],
+  "source_audits_scope": "Prepared statuses in source commits are historical; this final publication checkpoint supersedes pending CI/publication notes.",
+  "artifact": {
+    "source_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737",
+    "source_tree": "bd1bf5de4b02705e5c7db168ffa2efc337f66310",
+    "artifact_run": 34054786524,
+    "artifact_id": 9995634191,
+    "artifact_digest": "sha256:7b7588e9e9ee754f2024016ce7242f096591bae99d0a1a9ffaf030468fb8c6ff",
+    "archive_sha256": "f165c6ec5fa9f5cc2d333dd222d0a753ec49782ce0eb7669078053fe5f832ac6",
+    "manifest_sha256": "f4a1db353a943574a5299e2bb2451435e4f7fa68a5861b5937f42b523a38cd60",
+    "payload_sha256": "b700096b937219bcf7781d724dc1345dbda611ecfa94eb399248e3e55557a3cc",
+    "payload_count": 715
+  },
+  "evidence": {
+    "id": 9995763506,
+    "digest": "sha256:4055ea6d3d8b4c7192384f5f4ee37eb6cab471bbba628b1f72e1cfb2b4550731",
+    "source_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737",
+    "run": 34055271173,
+    "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+    "production_fingerprints_equal": 13,
+    "evidence": {
+      "artifact_id": 9995634191,
+      "artifact_run": 34054786524,
+      "http_status": 200,
+      "internal_php_denied": true,
+      "lead_probe_status": 403,
+      "metrika_counter": 0,
+      "payload_file_count": 715,
+      "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+      "production_fingerprint_unchanged": true,
+      "production_lead_delivery": false,
+      "robots": "noindex,follow",
+      "rollback_backup_retained": true,
+      "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "route_count": 9,
+      "schema_version": 1,
+      "source_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737",
+      "source_tree": "bd1bf5de4b02705e5c7db168ffa2efc337f66310"
+    }
+  },
+  "ci": [
+    {
+      "source_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9",
+      "pr": 1408,
+      "runs": [
+        {
+          "id": 34053053030,
+          "name": "SEO controlled growth guard",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053053006,
+          "name": "Validate Search3 whole-site preview boundary",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052978,
+          "name": "Security guard",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053053003,
+          "name": "Validate standalone content UX",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053053038,
+          "name": "Validate anytoour.ru migrated content",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052997,
+          "name": "Validate Search3 production rollback readiness",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053053047,
+          "name": "Validate V2 SEO publication manifest",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052962,
+          "name": "Validate V2 core",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052984,
+          "name": "Validate owner policy",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053053042,
+          "name": "Validate V2 SEO page primitives",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052993,
+          "name": "Validate V2 SEO publishability",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052990,
+          "name": "Verify SEO price calendar production evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052989,
+          "name": "Validate standalone navigation",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052981,
+          "name": "Validate V2 SEO readiness",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053053029,
+          "name": "Validate V2 SEO structure",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052972,
+          "name": "Verify anytoour.ru SEO launch",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053053083,
+          "name": "Validate standalone country route handoff",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052956,
+          "name": "Build AnyTour hot inventory",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053053004,
+          "name": "Collect AnyTour tour observations",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052973,
+          "name": "Validate V2 startup bundles",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053053013,
+          "name": "Validate SEO price calendar UI",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053053021,
+          "name": "Visual standalone content live",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053052979,
+          "name": "Build Search3 whole-site preview artifact",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        },
+        {
+          "id": 34053053055,
+          "name": "Validate V2 flight source contracts",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9"
+        }
+      ]
+    },
+    {
+      "source_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4",
+      "pr": 1409,
+      "runs": [
+        {
+          "id": 34053476462,
+          "name": "Collect AnyTour tour observations",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476406,
+          "name": "Validate standalone country route handoff",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476427,
+          "name": "Validate V2 SEO page primitives",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476404,
+          "name": "Validate V2 SEO publication manifest",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476415,
+          "name": "Build AnyTour hot inventory",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476464,
+          "name": "Verify SEO price calendar production evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476519,
+          "name": "Validate Search3 production rollback readiness",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476501,
+          "name": "Security guard",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476451,
+          "name": "Validate standalone content UX",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476453,
+          "name": "Validate standalone navigation",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476424,
+          "name": "Validate V2 SEO publishability",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476473,
+          "name": "Validate V2 SEO structure",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476500,
+          "name": "Verify anytoour.ru SEO launch",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476485,
+          "name": "Validate V2 SEO readiness",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476433,
+          "name": "SEO controlled growth guard",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476502,
+          "name": "Validate V2 startup bundles",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476455,
+          "name": "Validate Search3 whole-site preview boundary",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476474,
+          "name": "Validate anytoour.ru migrated content",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476490,
+          "name": "Validate SEO price calendar UI",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476493,
+          "name": "Validate owner policy",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476454,
+          "name": "Validate V2 flight source contracts",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476472,
+          "name": "Validate V2 core",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476417,
+          "name": "Build Search3 whole-site preview artifact",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        },
+        {
+          "id": 34053476456,
+          "name": "Visual standalone content live",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4"
+        }
+      ]
+    },
+    {
+      "source_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c",
+      "pr": 1410,
+      "runs": [
+        {
+          "id": 34053881320,
+          "name": "Validate V2 SEO page primitives",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881302,
+          "name": "Validate V2 SEO publication manifest",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881195,
+          "name": "Build AnyTour hot inventory",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881206,
+          "name": "Validate V2 SEO structure",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881218,
+          "name": "Verify SEO price calendar production evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881205,
+          "name": "Validate V2 SEO readiness",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881144,
+          "name": "Validate Search3 production rollback readiness",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881161,
+          "name": "Validate V2 startup bundles",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881309,
+          "name": "Validate standalone country route handoff",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881271,
+          "name": "Validate standalone navigation",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881288,
+          "name": "Collect AnyTour tour observations",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881175,
+          "name": "SEO controlled growth guard",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881311,
+          "name": "Validate standalone content UX",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881140,
+          "name": "Validate Search3 whole-site preview boundary",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881235,
+          "name": "Security guard",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881141,
+          "name": "Validate owner policy",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881244,
+          "name": "Validate SEO price calendar UI",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881370,
+          "name": "Validate V2 SEO publishability",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881190,
+          "name": "Validate anytoour.ru migrated content",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881209,
+          "name": "Verify anytoour.ru SEO launch",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881164,
+          "name": "Validate V2 flight source contracts",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881127,
+          "name": "Validate V2 core",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881227,
+          "name": "Visual standalone content live",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        },
+        {
+          "id": 34053881251,
+          "name": "Build Search3 whole-site preview artifact",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c"
+        }
+      ]
+    },
+    {
+      "source_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737",
+      "pr": 1412,
+      "runs": [
+        {
+          "id": 34054786656,
+          "name": "Validate V2 SEO structure",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786642,
+          "name": "Validate standalone content UX",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786505,
+          "name": "Validate anytoour.ru migrated content",
+          "status": "completed",
+          "conclusion": "skipped",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786468,
+          "name": "Validate V2 SEO publishability",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786628,
+          "name": "Verify anytoour.ru SEO launch",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786491,
+          "name": "SEO controlled growth guard",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786478,
+          "name": "Validate V2 SEO page primitives",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786497,
+          "name": "Verify SEO price calendar production evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786520,
+          "name": "Validate Search3 production rollback readiness",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786516,
+          "name": "Collect AnyTour tour observations",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786486,
+          "name": "Validate V2 SEO publication manifest",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786600,
+          "name": "Build AnyTour hot inventory",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786512,
+          "name": "Validate V2 startup bundles",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786440,
+          "name": "Validate SEO price calendar UI",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786452,
+          "name": "Validate V2 SEO readiness",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786487,
+          "name": "Validate owner policy",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786494,
+          "name": "Security guard",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786550,
+          "name": "Validate Search3 whole-site preview boundary",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786534,
+          "name": "Validate standalone navigation",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786554,
+          "name": "Validate standalone country route handoff",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786509,
+          "name": "Validate V2 flight source contracts",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786441,
+          "name": "Validate V2 core",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786477,
+          "name": "Visual standalone content live",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        },
+        {
+          "id": 34054786524,
+          "name": "Build Search3 whole-site preview artifact",
+          "status": "completed",
+          "conclusion": "success",
+          "head_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737"
+        }
+      ]
+    }
+  ],
+  "ci_scope": "Four exact source heads each passed 23 applicable workflows and one expected skip. Twelve source-build tests, eight JS printing cases, six CSS printing cases and 14 presentation tests; PHP covered in CI. Compiled zero-match regression fails on both pre-fix and pre-run bundles. Existing responsive workflow verifies zero matches, visible slider, 1000/1440 resize, restoration and actual reset. Responsive 375/430/1024/1348/1440 and toolbar 999/1000 pass. Inspected 375/1440 editors are pixel-identical; 33/42 final common images exact, remaining fixture calendar/date/control variation retained. No blanket pixel parity or physical Safari claim.",
+  "live_assets": [
+    {
+      "name": "search3-results-filters-v1.css",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.css?v=5dc479479d56bb31",
+      "bytes": 183507,
+      "sha256": "5dc479479d56bb3151a99b68a8f7b80d655d06e2803f2094352e43127d2d2ca3",
+      "exact": true
+    },
+    {
+      "name": "search3-entry-v1.css",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.css?v=6112f3d1090550f0",
+      "bytes": 10091,
+      "sha256": "6112f3d1090550f0fdd5b24e264401c8924bd2703a9bb2ebed613c42a2d47dbe",
+      "exact": true
+    },
+    {
+      "name": "search3-results-cards-v2.css",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.css?v=913064b624b590ad",
+      "bytes": 4253,
+      "sha256": "913064b624b590ad17647eadd8bc081b2871114a29547e41e4dd8f246286070d",
+      "exact": true
+    },
+    {
+      "name": "search3-selected-flow-v2.css",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.css?v=159232e271e36b13",
+      "bytes": 7586,
+      "sha256": "159232e271e36b13ef015e1333bd1c2943e7a0021bfd4c92fb9f1974d95c7002",
+      "exact": true
+    },
+    {
+      "name": "search3-results-filters-v1.js",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.js?v=883414fc2a26a770",
+      "bytes": 115227,
+      "sha256": "883414fc2a26a770d4d4c99d3f6040367cb433fb3109612f8b7414c2d14d4430",
+      "exact": true
+    },
+    {
+      "name": "search3-entry-v1.js",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.js?v=91a3b130e0f2aaf2",
+      "bytes": 4229,
+      "sha256": "91a3b130e0f2aaf23730ac095a02d68d9b6b1156ac48266dcbc47936f9f23998",
+      "exact": true
+    },
+    {
+      "name": "search3-results-cards-v2.js",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.js?v=169c61338df3ef19",
+      "bytes": 88,
+      "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
+      "exact": true
+    },
+    {
+      "name": "search3-selected-flow-v2.js",
+      "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.js?v=cbddf718b671b0f7",
+      "bytes": 11066,
+      "sha256": "cbddf718b671b0f7051aced2a33c393a1c6add69797175f147095622e75d73db",
+      "exact": true
+    }
+  ],
+  "browser": {
+    "source_sha": "53f87c79cb3d4ca139c2391d1bcf818fa874e737",
+    "viewport_width": 1363,
+    "search": {
+      "departure": "Москва",
+      "country": "Турция",
+      "date_from": "2026-09-10",
+      "date_to": "2026-09-11",
+      "nights_from": 7,
+      "nights_to": 7,
+      "adults": 2,
+      "hotels": 100,
+      "tours": 430
+    },
+    "zero_local_filter": {
+      "price_min": 70000,
+      "price_max": 265000,
+      "home_cards": 0,
+      "rail_visible": true,
+      "results_layout_display": "grid",
+      "empty_marker": "1",
+      "end_cards": 100,
+      "marker_cleared": true,
+      "new_search_required": false,
+      "horizontal_overflow": false
+    },
+    "real_lead_submitted": false,
+    "physical_safari_tested": false,
+    "hotel": "ANAHTAR APART",
+    "flight_options": [
+      6,
+      71,
+      6
+    ],
+    "review_price_rub": 72099,
+    "review_summary": {
+      "column": "3",
+      "row": "4 / 12"
+    },
+    "lead_summary": {
+      "column": "2",
+      "row": "1"
+    },
+    "phone_empty": true,
+    "review_screenshot_inspected": true,
+    "lead_screenshot_inspected": true,
+    "horizontal_overflow": false,
+    "editor_return_verified": true,
+    "editor_preserved_dates": true,
+    "editor_preserved_nights": true,
+    "return_cards": 100,
+    "return_selected_hidden": true,
+    "return_results_visible": true,
+    "review_layout_restored": true,
+    "verified_at": "2026-09-06T19:39:39.455349+00:00",
+    "scope": "Live desktop 1363px, no real lead. Editor opened after asynchronous return completed. No physical Safari, live no-flight fallback, or desktop-to-mobile hidden legacy backdrop qualification."
+  },
+  "visual_comparison": [
+    {
+      "image": "calendar-1024.png",
+      "pixel_identical": false,
+      "diff_box": [
+        3,
+        0,
+        1021,
+        900
+      ]
+    },
+    {
+      "image": "calendar-1348.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "calendar-1440.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "calendar-375.png",
+      "pixel_identical": false,
+      "diff_box": [
+        348,
+        128,
+        351,
+        134
+      ]
+    },
+    {
+      "image": "calendar-430.png",
+      "pixel_identical": false,
+      "diff_box": [
+        0,
+        0,
+        430,
+        900
+      ]
+    },
+    {
+      "image": "desktop-1440-country-catalog.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "desktop-1440-contacts.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "desktop-1440-country-maldives.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "desktop-1440-country-tunis.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "desktop-1440-country-turkey.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "desktop-1440-early-booking.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "desktop-1440-home.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "desktop-1440-hot.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "desktop-1440-how-to-buy.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "desktop-1440-search.png",
+      "pixel_identical": false,
+      "diff_box": [
+        1000,
+        188,
+        1086,
+        366
+      ]
+    },
+    {
+      "image": "editor-1024.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "editor-1348.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "editor-1440.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "editor-430.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "editor-375.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "mobile-375-contacts.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "mobile-375-country-catalog.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "mobile-375-country-tunis.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "mobile-375-country-maldives.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "mobile-375-country-turkey.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "mobile-375-early-booking.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "mobile-375-home.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "mobile-375-how-to-buy.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "mobile-375-search.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "mobile-375-hot.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "readability-1024.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "readability-1348.png",
+      "pixel_identical": false,
+      "diff_box": [
+        966,
+        235,
+        1096,
+        273
+      ]
+    },
+    {
+      "image": "readability-1440.png",
+      "pixel_identical": false,
+      "diff_box": [
+        1012,
+        235,
+        1142,
+        273
+      ]
+    },
+    {
+      "image": "readability-375.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "readability-430.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "return-1024.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "return-1348.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "return-1440.png",
+      "pixel_identical": true,
+      "diff_box": null
+    },
+    {
+      "image": "return-375.png",
+      "pixel_identical": false,
+      "diff_box": [
+        34,
+        143,
+        232,
+        153
+      ]
+    },
+    {
+      "image": "return-430.png",
+      "pixel_identical": false,
+      "diff_box": [
+        34,
+        143,
+        319,
+        341
+      ]
+    },
+    {
+      "image": "toolbar-boundary-1348.png",
+      "pixel_identical": false,
+      "diff_box": [
+        966,
+        235,
+        1096,
+        273
+      ]
+    },
+    {
+      "image": "toolbar-boundary-430.png",
+      "pixel_identical": true,
+      "diff_box": null
+    }
+  ],
+  "intermediate_publication": {
+    "source_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c",
+    "deploy_pr": 1411,
+    "deploy_run": 34054101700,
+    "artifact": {
+      "source_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c",
+      "source_tree": "71e02eda890947fdc9119238ed4a67f8295a7932",
+      "artifact_run": 34053881251,
+      "artifact_id": 9995378956,
+      "artifact_digest": "sha256:ab6989f07def083a2cb273905b13256e3487dbdd22ac3bb5b119a25e80b82eeb",
+      "archive_sha256": "c6d0c53049839a75b8fbf5188746c1d0b54fd83b9b816c8710376f3e1ac5cfb5",
+      "manifest_sha256": "ccb9280cf8dc4d2384c75a58c71f3c84f3726e988bc55ffe9568c2d966428ac5",
+      "payload_sha256": "4fb3d2cb9ad5e84f749d4a2703a325dc9bc7df9f63a94207646440b2ecbfb767",
+      "payload_count": 715
+    },
+    "evidence": {
+      "id": 9995434859,
+      "digest": "sha256:41f51f8e050fec4ab8c1d32bde379c571b1629b20c31af9161fdb217ab87f42b",
+      "source_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c",
+      "run": 34054101700,
+      "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+      "production_fingerprints_equal": 13,
+      "evidence": {
+        "artifact_id": 9995378956,
+        "artifact_run": 34053881251,
+        "http_status": 200,
+        "internal_php_denied": true,
+        "lead_probe_status": 403,
+        "metrika_counter": 0,
+        "payload_file_count": 715,
+        "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+        "production_fingerprint_unchanged": true,
+        "production_lead_delivery": false,
+        "robots": "noindex,follow",
+        "rollback_backup_retained": true,
+        "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "route_count": 9,
+        "schema_version": 1,
+        "source_sha": "c7ccf7f90eaf34406edba6653ac262056b55280c",
+        "source_tree": "71e02eda890947fdc9119238ed4a67f8295a7932"
+      }
+    },
+    "live_assets": [
+      {
+        "name": "search3-results-filters-v1.css",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.css?v=5dc479479d56bb31",
+        "bytes": 183507,
+        "sha256": "5dc479479d56bb3151a99b68a8f7b80d655d06e2803f2094352e43127d2d2ca3",
+        "exact": true
+      },
+      {
+        "name": "search3-entry-v1.css",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.css?v=6112f3d1090550f0",
+        "bytes": 10091,
+        "sha256": "6112f3d1090550f0fdd5b24e264401c8924bd2703a9bb2ebed613c42a2d47dbe",
+        "exact": true
+      },
+      {
+        "name": "search3-results-cards-v2.css",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.css?v=913064b624b590ad",
+        "bytes": 4253,
+        "sha256": "913064b624b590ad17647eadd8bc081b2871114a29547e41e4dd8f246286070d",
+        "exact": true
+      },
+      {
+        "name": "search3-selected-flow-v2.css",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.css?v=159232e271e36b13",
+        "bytes": 7586,
+        "sha256": "159232e271e36b13ef015e1333bd1c2943e7a0021bfd4c92fb9f1974d95c7002",
+        "exact": true
+      },
+      {
+        "name": "search3-results-filters-v1.js",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-filters-v1.js?v=b8e7a6f6d8c6c48e",
+        "bytes": 114880,
+        "sha256": "b8e7a6f6d8c6c48e8f55246cbfa01dc20870db2365ee6ea891ac6019900615cc",
+        "exact": true
+      },
+      {
+        "name": "search3-entry-v1.js",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-entry-v1.js?v=91a3b130e0f2aaf2",
+        "bytes": 4229,
+        "sha256": "91a3b130e0f2aaf23730ac095a02d68d9b6b1156ac48266dcbc47936f9f23998",
+        "exact": true
+      },
+      {
+        "name": "search3-results-cards-v2.js",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-results-cards-v2.js?v=169c61338df3ef19",
+        "bytes": 88,
+        "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
+        "exact": true
+      },
+      {
+        "name": "search3-selected-flow-v2.js",
+        "url": "https://anytoour.ru/_preview/search3-site-candidate/search3-selected-flow-v2.js?v=cbddf718b671b0f7",
+        "bytes": 11066,
+        "sha256": "cbddf718b671b0f7051aced2a33c393a1c6add69797175f147095622e75d73db",
+        "exact": true
+      }
+    ],
+    "total_bytes": 335700,
+    "status": "SUPERSEDED_BY_ZERO_MATCH_SHELL_FIX",
+    "live_result": "100 hotels / 429 tours and hotel expansion worked; inherited zero-match filter trap found before full journey qualification."
+  },
+  "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+  "production_updated": false,
+  "protected_contracts_changed": false,
+  "next_action": "Refresh release, PRs and publication before another bounded reduction. Remaining results/cards.js (7698 source bytes) and tour-presentation.js (6114) were inspected: mixed DOM decoration and protected price presentation require a focused behavior trace before deduplicating their helpers. Measure a concrete saving before another source PR. Do not repeat completed rail/form splits, checked JS/CSS printing, or the zero-match shell fix. Keep eight public paths, event/data/price/lead contracts and maximum CSS nesting depth three. Separate exact preview publication only; production locked; scheduler paused."
+}
