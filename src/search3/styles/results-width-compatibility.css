@@ -16,16 +16,20 @@ body.search3-candidate{
 /* The shared DS2 result-state also enlarges mature production cards. Search3 owns the compact maket7 card geometry in preview. */
 @media(min-width:1025px){
 body.search3-candidate{
-&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) .results-tools--ds2{padding-left:12px!important;padding-right:0!important}
-&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-main{display:grid!important;grid-template-columns:276px minmax(0,1fr)!important;align-items:stretch!important;gap:0!important;min-height:156px!important}
-&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo{width:auto!important;height:156px!important;min-height:156px!important;max-height:156px!important;border-radius:0!important}
-&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-body{display:grid!important;grid-template-columns:minmax(0,1fr) 180px!important;grid-template-rows:auto auto auto 1fr auto!important;column-gap:16px!important;min-width:0!important;padding:12px 14px 11px!important}
-&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-title{margin:0!important;font-size:15px!important;line-height:1.13!important;letter-spacing:-.18px!important}
-&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-place{margin-top:4px!important;font-size:9px!important}
-&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-decision-line{margin-top:7px!important}
-&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-decision-line span{min-height:20px!important;padding-inline:7px!important;font-size:8px!important}
-&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-bottom{margin:0!important;padding:1px 0 0 14px!important;gap:0!important}
-&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-price{margin-top:4px!important;font-size:19px!important;line-height:1!important}
+&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) {
+& .results-tools--ds2 {padding-left:12px!important;padding-right:0!important}
+& #results .hotel-card {
+& .hotel-main {display:grid!important;grid-template-columns:276px minmax(0,1fr)!important;align-items:stretch!important;gap:0!important;min-height:156px!important}
+& .hotel-photo {width:auto!important;height:156px!important;min-height:156px!important;max-height:156px!important;border-radius:0!important}
+& .hotel-body {display:grid!important;grid-template-columns:minmax(0,1fr) 180px!important;grid-template-rows:auto auto auto 1fr auto!important;column-gap:16px!important;min-width:0!important;padding:12px 14px 11px!important}
+& .hotel-title {margin:0!important;font-size:15px!important;line-height:1.13!important;letter-spacing:-.18px!important}
+& .hotel-place {margin-top:4px!important;font-size:9px!important}
+& .hotel-decision-line {margin-top:7px!important}
+& .hotel-decision-line span {min-height:20px!important;padding-inline:7px!important;font-size:8px!important}
+& .hotel-bottom {margin:0!important;padding:1px 0 0 14px!important;gap:0!important}
+& .hotel-price {margin-top:4px!important;font-size:19px!important;line-height:1!important}
+}
+}
 }
 }
 /* Opening tour packages must not add a focus/glow frame around the whole desktop hotel card. */

@@ -51,6 +51,14 @@ separate cascade evidence.
 
 ## Smaller source owners
 
+Repeated complete descendant prefixes inside the main results stylesheet now use
+one additional single-selector parent, with at most three nesting levels. Each
+child retains one explicit leading `&`; a bare `&` targets the unchanged parent.
+Parents contain only rules, never declarations or at-rules. Recursive expansion
+reproduces the complete ordered selector/declaration/media stream. The audit is
+`docs/project/search3-css-descendant-results.json`. Public paths and the existing
+native nesting browser boundary remain unchanged.
+
 Consecutive rules across the four stylesheets share one native nesting parent:
 `body.search3-candidate` or `html body.search3-candidate`. Every child starts with
 an explicit `&`; expanding it restores the original selector. The parents have

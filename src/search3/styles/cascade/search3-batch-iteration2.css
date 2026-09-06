@@ -11,12 +11,13 @@ body.search3-candidate{
 &.search3-has-results .search3-breadcrumb{margin-bottom:5px!important;font-size:8px!important}
 
 /* Initial state: maket7 starts with one compact primary search row. Advanced parameters are opt-in on desktop too. */
-&:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quality,&:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quick{display:none!important}
-&:not(.search3-has-results) #tourSearch{padding-bottom:13px!important}
-&:not(.search3-has-results) :is(.results-tools--ds2,.search3-mobile-toolbar),
-&:not(.search3-has-results) #resultsSearchSummary{display:none!important}
-&:not(.search3-has-results) .results-layout{min-height:0!important;margin:0!important}
-&:not(.search3-has-results) #results:empty{display:none!important;min-height:0!important;margin:0!important;padding:0!important}
+&:not(.search3-has-results) {
+& #tourSearch:not(.search3-advanced-open) .search3-quality,& #tourSearch:not(.search3-advanced-open) .search3-quick {display:none!important}
+& #tourSearch {padding-bottom:13px!important}
+& :is(.results-tools--ds2,.search3-mobile-toolbar),& #resultsSearchSummary {display:none!important}
+& .results-layout {min-height:0!important;margin:0!important}
+& #results:empty {display:none!important;min-height:0!important;margin:0!important;padding:0!important}
+}
 
 /* Card facts come only from the real best-priced tour already loaded for the hotel. */
 & .search3-hotel-facts{display:flex;align-items:stretch;gap:0;min-width:0;margin-top:8px;border:1px solid #edf0f5;border-radius:8px;background:#fbfcfe;overflow:hidden}
@@ -61,13 +62,15 @@ body.search3-candidate{
 @media(max-width:760px){
  /* Keep the destination heading visible on results; it is the page anchor in maket7. */
  body.search3-candidate{
-&.search3-has-results .search3-page-intro{display:block!important;order:1!important;margin:8px var(--at-page-edge) 5px!important}
- &.search3-has-results .search3-page-intro .search3-breadcrumb,&.search3-has-results .search3-page-intro p{display:none!important}
- &.search3-has-results .search3-page-intro h1{display:block!important;line-height:1.08!important}
- &.search3-has-results #resultsTools{order:2!important}
- &.search3-has-results #resultsSearchSummary{order:3!important}
- &.search3-has-results .search3-mobile-toolbar{order:4!important}
- &.search3-has-results .results-layout{order:5!important}
+&.search3-has-results {
+& .search3-page-intro {display:block!important;order:1!important;margin:8px var(--at-page-edge) 5px!important}
+ & .search3-page-intro .search3-breadcrumb,& .search3-page-intro p {display:none!important}
+ & .search3-page-intro h1 {display:block!important;line-height:1.08!important}
+ & #resultsTools {order:2!important}
+ & #resultsSearchSummary {order:3!important}
+ & .search3-mobile-toolbar {order:4!important}
+ & .results-layout {order:5!important}
+}
 
  & #results .hotel-main{grid-template-columns:112px minmax(0,1fr)!important;align-items:stretch!important}
  & #results .search3-hotel-facts{border-radius:6px!important}

@@ -5,17 +5,19 @@
 @media(min-width:1000px){
 body.search3-candidate{
 &.search3-selected-open #selectedTour{max-width:1180px!important;grid-template-columns:300px minmax(0,1fr)!important;margin-top:18px!important}
-& #selectedTour .back-results{border:0!important;background:transparent!important;padding:0!important;color:#075cff!important}
-& #selectedTour .selected-picture{height:176px!important;border-radius:12px 0 0 12px!important}
-& #selectedTour .selected-head{min-height:176px!important;padding:18px 22px!important;border-radius:0 12px 12px 0!important}
-& #selectedTour .selected-head h2{font-size:23px!important}
-& #selectedTour .selected-price{font-size:24px!important}
-& #selectedTour .facts{margin-top:10px!important;border-radius:12px!important}
-& #selectedTour .facts>div{padding:11px 14px!important}
-& #selectedTour :is(.hotel-desc,.tour-flights,.lead-form){margin-top:12px!important;padding:16px 18px!important;border-radius:12px!important}
-& #selectedTour .section-heading{margin-bottom:10px!important}
-& #selectedTour .section-heading strong{font-size:17px!important}
-& #selectedTour .flight-variant{border-radius:10px!important;box-shadow:none!important}
+& #selectedTour {
+& .back-results {border:0!important;background:transparent!important;padding:0!important;color:#075cff!important}
+& .selected-picture {height:176px!important;border-radius:12px 0 0 12px!important}
+& .selected-head {min-height:176px!important;padding:18px 22px!important;border-radius:0 12px 12px 0!important}
+& .selected-head h2 {font-size:23px!important}
+& .selected-price {font-size:24px!important}
+& .facts {margin-top:10px!important;border-radius:12px!important}
+& .facts>div {padding:11px 14px!important}
+& :is(.hotel-desc,.tour-flights,.lead-form) {margin-top:12px!important;padding:16px 18px!important;border-radius:12px!important}
+& .section-heading {margin-bottom:10px!important}
+& .section-heading strong {font-size:17px!important}
+& .flight-variant {border-radius:10px!important;box-shadow:none!important}
+}
 }
 }
 body.search3-candidate{
@@ -42,12 +44,14 @@ body.search3-candidate{
 @media(max-width:640px){
 body.search3-candidate{
 & #selectedTour{margin-top:8px!important}
-& #selectedTour .selected-picture{height:178px!important;border-radius:10px 10px 0 0!important}
-& #selectedTour .selected-head{padding:10px 11px!important}
-& #selectedTour .selected-head h2{font-size:18px!important}
-& #selectedTour .facts{border-radius:0 0 10px 10px!important}
-& #selectedTour :is(.hotel-desc,.tour-flights,.lead-form){padding:10px!important;border-radius:10px!important}
-& #selectedTour .lead-form button[type=submit]{min-height:46px!important;background:#ff4f0a!important}
+& #selectedTour {
+& .selected-picture {height:178px!important;border-radius:10px 10px 0 0!important}
+& .selected-head {padding:10px 11px!important}
+& .selected-head h2 {font-size:18px!important}
+& .facts {border-radius:0 0 10px 10px!important}
+& :is(.hotel-desc,.tour-flights,.lead-form) {padding:10px!important;border-radius:10px!important}
+& .lead-form button[type=submit] {min-height:46px!important;background:#ff4f0a!important}
+}
 & .search3-lead-status{grid-template-columns:1fr;gap:10px;padding:4px 0}
 & .search3-lead-status__icon{width:44px;height:44px;font-size:21px}
 & .search3-lead-status h3{font-size:19px}
