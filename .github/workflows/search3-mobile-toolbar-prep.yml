@@ -1,0 +1,92 @@
+name: Prepare Search3 mobile toolbar owner cleanup
+
+on:
+  push:
+    branches:
+      - refactor/search3-mobile-toolbar-owner-35e2ae36
+    paths:
+      - 'src/search3/styles/**'
+      - 'tests/search3-mobile-toolbar-ownership.cjs'
+      - 'tests/search3_production_presentation_test.py'
+      - '.github/workflows/search3-mobile-toolbar-prep.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify mobile toolbar ownership map
+        run: node tests/search3-mobile-toolbar-ownership.cjs
+
+      - name: Refresh cascade structural contract
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          contract_path = Path('docs/project/search3-cascade-sections.json')
+          contract = json.loads(contract_path.read_text())
+          root = Path(contract['source_root'])
+          raw = b''.join((root / name).read_bytes() for name in contract['sections'])
+          header = f'blob {len(raw)}\0'.encode()
+          contract['combined_bytes'] = len(raw)
+          contract['combined_git_blob_sha'] = hashlib.sha1(header + raw).hexdigest()
+          contract_path.write_text(json.dumps(contract, ensure_ascii=False, indent=2) + '\n')
+          print(f"CASCADE_CONTRACT bytes={len(raw)} blob={contract['combined_git_blob_sha']}")
+          PY
+          python3 -B scripts/build/search3_cascade_sections.py --check
+
+      - name: Rebuild and verify Search3
+        run: |
+          set -euo pipefail
+          python3 -B scripts/build/search3_assets.py --write
+          python3 -B scripts/build/search3_assets.py --check
+          node tests/search3-filter-rail-ownership.cjs
+          node tests/search3-mobile-toolbar-ownership.cjs
+          python3 -B tests/search3_source_build_test.py
+          python3 -B tests/search3_production_presentation_test.py
+
+      - name: Report public Search3 metrics
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          names = [
+              'search3-results-filters-v1.css','search3-entry-v1.css','search3-results-cards-v2.css','search3-selected-flow-v2.css',
+              'search3-results-filters-v1.js','search3-entry-v1.js','search3-results-cards-v2.js','search3-selected-flow-v2.js',
+          ]
+          total_bytes = total_lines = 0
+          for name in names:
+              data = (Path('v2') / name).read_bytes()
+              lines = len(data.splitlines())
+              total_bytes += len(data); total_lines += lines
+              print(f'METRIC {name} bytes={len(data)} lines={lines}')
+          print(f'METRIC TOTAL bytes={total_bytes} lines={total_lines}')
+          PY
+
+      - name: Guard generated scope
+        run: |
+          set -euo pipefail
+          git diff --name-only | LC_ALL=C sort > "$RUNNER_TEMP/changed.txt"
+          cat > "$RUNNER_TEMP/expected.txt" <<'EOF'
+          docs/project/search3-cascade-sections.json
+          docs/project/search3-production-import.json
+          v2/search3-results-filters-v1.css
+          EOF
+          diff -u "$RUNNER_TEMP/expected.txt" "$RUNNER_TEMP/changed.txt"
+
+      - name: Commit generated assets to preparation branch
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/project/search3-cascade-sections.json docs/project/search3-production-import.json v2/search3-results-filters-v1.css
+          git commit -m 'build(search3): refresh mobile toolbar cleanup assets'
+          git push origin HEAD:refactor/search3-mobile-toolbar-owner-35e2ae36
