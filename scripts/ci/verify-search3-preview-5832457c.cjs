@@ -60,7 +60,11 @@ const paint = page => page.evaluate(() => new Promise(resolve => requestAnimatio
     report.completed.push('live homepage to search to real hotel results');
     await page.screenshot({ path: path.join(out, 'live-results-1440.png'), fullPage: true, animations: 'disabled' });
     const native = page.locator('#sortResults');
-    const before = await page.locator('#tourSearch').evaluate(form => JSON.stringify([...new FormData(form)]));
+    // Responsive placement moves the uniquely named region field. Compare every
+    // name/value pair, preserving order within repeated names such as child_age[].
+    // Stable sorting by name must not sort or discard the associated values.
+    const before = await page.locator('#tourSearch').evaluate(form => JSON.stringify([...new FormData(form)].sort((a, b) => a[0].localeCompare(b[0]))));
+    report.form_parameter_comparison = 'All named values; stable name sort preserves repeated-value order while ignoring distinct-field DOM placement';
     for (const width of [375, 999, 1000, 1348, 430]) {
       await page.setViewportSize({ width, height: 1000 });
       await paint(page);
@@ -79,7 +83,7 @@ const paint = page => page.evaluate(() => new Promise(resolve => requestAnimatio
         await page.keyboard.press('Escape');
         assert.equal(await page.locator('.mrf-open').evaluate(node => node === document.activeElement), true);
       }
-      assert.equal(await page.locator('#tourSearch').evaluate(form => JSON.stringify([...new FormData(form)])), before, 'resize changed form');
+      assert.equal(await page.locator('#tourSearch').evaluate(form => JSON.stringify([...new FormData(form)].sort((a, b) => a[0].localeCompare(b[0])))), before, 'resize changed named form values');
       report.widths.push({ width, ...geometry });
     }
     const proxy = page.locator('.search3-mobile-sort select');
