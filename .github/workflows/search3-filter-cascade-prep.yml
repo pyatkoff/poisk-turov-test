@@ -1,0 +1,68 @@
+name: Prepare Search3 filter cascade cleanup
+
+on:
+  push:
+    branches:
+      - refactor/search3-filter-drawer-cascade-53f482eb
+    paths:
+      - 'src/search3/styles/cascade/search3-batch-iteration1.css'
+      - 'src/search3/styles/cascade/search3-batch-iteration1c.css'
+      - 'tests/search3-filter-rail-ownership.cjs'
+      - '.github/workflows/search3-filter-cascade-prep.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild and verify Search3
+        run: |
+          set -euo pipefail
+          python3 -B scripts/build/search3_assets.py --write
+          python3 -B scripts/build/search3_assets.py --check
+          node tests/search3-filter-rail-ownership.cjs
+          python3 -B tests/search3_source_build_test.py
+          python3 -B tests/search3_production_presentation_test.py
+
+      - name: Report public Search3 metrics
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          names = [
+              'search3-results-filters-v1.css','search3-entry-v1.css','search3-results-cards-v2.css','search3-selected-flow-v2.css',
+              'search3-results-filters-v1.js','search3-entry-v1.js','search3-results-cards-v2.js','search3-selected-flow-v2.js',
+          ]
+          total_bytes = total_lines = 0
+          for name in names:
+              data = (Path('v2') / name).read_bytes()
+              lines = len(data.splitlines())
+              total_bytes += len(data); total_lines += lines
+              print(f'METRIC {name} bytes={len(data)} lines={lines}')
+          print(f'METRIC TOTAL bytes={total_bytes} lines={total_lines}')
+          PY
+
+      - name: Guard generated scope
+        run: |
+          set -euo pipefail
+          git diff --name-only | LC_ALL=C sort > "$RUNNER_TEMP/changed.txt"
+          cat > "$RUNNER_TEMP/expected.txt" <<'EOF'
+          docs/project/search3-production-import.json
+          v2/search3-results-filters-v1.css
+          EOF
+          diff -u "$RUNNER_TEMP/expected.txt" "$RUNNER_TEMP/changed.txt"
+
+      - name: Commit generated assets to preparation branch
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/project/search3-production-import.json v2/search3-results-filters-v1.css
+          git commit -m 'build(search3): refresh filter cascade asset'
+          git push origin HEAD:refactor/search3-filter-drawer-cascade-53f482eb
