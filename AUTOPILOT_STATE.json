@@ -53,9 +53,9 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Two source PRs complete this continuation:12 layers retired,301524→265927 bytes (−35597). First10 layers published9b4303a5/#1426 with desktop inspection; last2source1427 CI green,not published.",
+    "last_material_progress": "Source#1428/#1429 checked and integrated: five CSS layers plus duplicate desktop recap removed;265927→245491 raw bytes (−20436). No deploy; visual states deferred.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; hourly automation enabled by the latest owner request.",
+    "next_action": "Next justified isolated publication must reuse exact artifact9999577320 and inspect initial/editing768/1440 plus selected/no-flight, review mobile/tablet/desktop and lead-entry boundaries. Visual evidence is deferred: no browser capability exposed in this runtime. Do not repeat 17 retired CSS layers and one JS recap owner. Next substantial candidate is active injected selected-tour-mobile.css; establish a compact replacement for its hidden/lead/mobile/tablet state ownership before retiring it. Continue independent permitted development; production acceptance does not pause automation.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
@@ -774,10 +774,25 @@
       "security_run": 34066951813,
       "conclusion": "success",
       "artifact_rebuilt": false
+    },
+    "review_form_layer_retirement": {
+      "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
+      "source_sha": "373821646774a1adc277b8818fc548e87ea17701",
+      "source_pr": 1429,
+      "security_run": 34068042044,
+      "artifact_run": 34068042025,
+      "artifact_id": 9999577320,
+      "artifact_digest": "sha256:a5fce9e0cefe6672d15e485e564a6ba13aeaf4e57312a844e69caf995417617c",
+      "required_passed": 2,
+      "first_attempt_passed": true,
+      "preview_published": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "full_responsive_site_seo": "deferred, not passed"
     }
   },
-  "last_verified_commit": "db39eadb15149fd39fce2305fb6de49251685b38",
-  "last_verified_commit_scope": "Required CI passed on exact two-layer follow-up source, not published. Published preview9b4303a5 has separate focused desktop evidence.",
+  "last_verified_commit": "373821646774a1adc277b8818fc548e87ea17701",
+  "last_verified_commit_scope": "Both required source CI passed on exact review/form retirement candidate. Manual visual checks deferred; not published. Preview remains9b4303a5 with separate older desktop evidence.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -811,20 +826,20 @@
   "owner_priority_source": "OWNER_PRIORITY.json",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "presentation_refactor_checkpoint": {
-    "stage": "S3_REVIEW_LAYER_RETIREMENT_CHECKED_NOT_PUBLISHED",
+    "stage": "S3_REVIEW_AND_FORM_LAYER_RETIREMENT_CHECKED_NOT_PUBLISHED",
     "baseline": "a1a2a9a65f4a7a5d1854109510173bfa95c68fd8",
-    "implementation_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
-    "release_integration_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
-    "audit": "docs/project/search3-review-layer-retirement.json",
-    "scope": "Four obsolete review geometry CSS owners and the live duplicate desktop recap retired; compact current-owner fallback retained.",
+    "implementation_sha": "373821646774a1adc277b8818fc548e87ea17701",
+    "release_integration_sha": "373821646774a1adc277b8818fc548e87ea17701",
+    "audit": "docs/project/search3-form-layer-retirement.json",
+    "scope": "Two substantial source batches: five CSS geometry layers plus one live duplicate desktop recap owner retired; compact lead/review/advanced-grid fallbacks retained.",
     "ci": {
       "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
-      "source_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
-      "source_pr": 1428,
-      "security_run": 34067813555,
-      "artifact_run": 34067813526,
-      "artifact_id": 9999511038,
-      "artifact_digest": "sha256:92de0b79b0b83aa80b7524f635fdbef61a99ff01280208ceeaf69a9af727dc4d",
+      "source_sha": "373821646774a1adc277b8818fc548e87ea17701",
+      "source_pr": 1429,
+      "security_run": 34068042044,
+      "artifact_run": 34068042025,
+      "artifact_id": 9999577320,
+      "artifact_digest": "sha256:a5fce9e0cefe6672d15e485e564a6ba13aeaf4e57312a844e69caf995417617c",
       "required_passed": 2,
       "first_attempt_passed": true,
       "preview_published": false,
@@ -833,34 +848,49 @@
       "full_responsive_site_seo": "deferred, not passed"
     },
     "public_assets": {
-      "css_bytes": 149923,
+      "css_bytes": 142301,
       "js_bytes": 103190,
-      "total_bytes": 253113,
+      "total_bytes": 245491,
       "css_lines": 4,
       "js_lines": 3,
       "total_lines": 7,
       "scope": "Eight public Search3 paths, raw uncompressed bytes; one empty JS retained. Excludes shared runtime/legacy and duplicate source; no page-speed claim."
     },
     "run_delta": {
-      "bytes": -12814,
-      "css_bytes": -9250,
-      "js_bytes": -3564,
+      "bytes": -7622,
+      "css_bytes": -7622,
+      "js_bytes": 0,
       "lines": 0
     },
     "continuation_total": {
       "baseline_bytes": 301524,
-      "after_bytes": 253113,
-      "saved_bytes": 48411,
-      "retired_layers": 17,
-      "published_retired_layers": 10
+      "after_bytes": 245491,
+      "saved_bytes": 56033,
+      "retired_layers": 18,
+      "published_retired_layers": 10,
+      "retired_css_layers": 17,
+      "retired_js_owners": 1
     },
     "preview_updated": false,
     "production_updated": false,
     "source_validation": "FINAL_SOURCE_REQUIRED_CI_PASSED",
-    "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
-    "next_action": "Form-compatibility retirement follows in this branch. Preserve the CURRENT native four-column initial/editing grid; do not restore historical six-column geometry. Focused review/lead visual evidence remains deferred.",
-    "verified_at": "2026-09-06T23:49:50.419673+00:00",
-    "visual_verification": "DEFERRED: no current browser capability; selected/no-flight desktop, review mobile/tablet/desktop and lead boundary uninspected."
+    "browser_contract": "Native browser controls and explicit-& CSS nesting preserved. Current manual Chromium geometry and physical Safari evidence are deferred.",
+    "next_action": "Next justified isolated publication must reuse exact artifact9999577320 and inspect initial/editing768/1440 plus selected/no-flight, review mobile/tablet/desktop and lead-entry boundaries. Visual evidence is deferred: no browser capability exposed in this runtime. Do not repeat 17 retired CSS layers and one JS recap owner. Next substantial candidate is active injected selected-tour-mobile.css; establish a compact replacement for its hidden/lead/mobile/tablet state ownership before retiring it. Continue independent permitted development; production acceptance does not pause automation.",
+    "verified_at": "2026-09-06T23:54:21.913430+00:00",
+    "visual_verification": "DEFERRED: current source has no manual browser evidence. Initial/editing768/1440, selected/no-flight, review mobile/tablet/desktop and lead-entry require inspection. Published9b4303a5 screenshots do not verify current source.",
+    "this_execution_total": {
+      "before_bytes": 265927,
+      "after_bytes": 245491,
+      "saved_bytes": 20436,
+      "css_saved_bytes": 16872,
+      "js_saved_bytes": 3564,
+      "source_prs": [
+        1428,
+        1429
+      ],
+      "css_layers_retired": 5,
+      "js_owners_retired": 1
+    }
   },
   "presentation_refactor_history": [
     {
@@ -2444,6 +2474,58 @@
       "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; hourly automation enabled by the latest owner request.",
       "verified_at": "2026-09-06T23:27:36.471Z",
       "visual_verification": "Not performed on this follow-up source; published9b4303a5 desktop evidence does not qualify this source. Full responsive/mobile and lead-state visuals remain deferred."
+    },
+    {
+      "stage": "S3_REVIEW_LAYER_RETIREMENT_CHECKED_NOT_PUBLISHED",
+      "baseline": "a1a2a9a65f4a7a5d1854109510173bfa95c68fd8",
+      "implementation_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
+      "release_integration_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
+      "audit": "docs/project/search3-review-layer-retirement.json",
+      "scope": "Four obsolete review geometry CSS owners and the live duplicate desktop recap retired; compact current-owner fallback retained.",
+      "ci": {
+        "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
+        "source_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
+        "source_pr": 1428,
+        "security_run": 34067813555,
+        "artifact_run": 34067813526,
+        "artifact_id": 9999511038,
+        "artifact_digest": "sha256:92de0b79b0b83aa80b7524f635fdbef61a99ff01280208ceeaf69a9af727dc4d",
+        "required_passed": 2,
+        "first_attempt_passed": true,
+        "preview_published": false,
+        "artifact_rebuilt_on_release": false,
+        "artifact_rebuilt_for_docs": false,
+        "full_responsive_site_seo": "deferred, not passed"
+      },
+      "public_assets": {
+        "css_bytes": 149923,
+        "js_bytes": 103190,
+        "total_bytes": 253113,
+        "css_lines": 4,
+        "js_lines": 3,
+        "total_lines": 7,
+        "scope": "Eight public Search3 paths, raw uncompressed bytes; one empty JS retained. Excludes shared runtime/legacy and duplicate source; no page-speed claim."
+      },
+      "run_delta": {
+        "bytes": -12814,
+        "css_bytes": -9250,
+        "js_bytes": -3564,
+        "lines": 0
+      },
+      "continuation_total": {
+        "baseline_bytes": 301524,
+        "after_bytes": 253113,
+        "saved_bytes": 48411,
+        "retired_layers": 17,
+        "published_retired_layers": 10
+      },
+      "preview_updated": false,
+      "production_updated": false,
+      "source_validation": "FINAL_SOURCE_REQUIRED_CI_PASSED",
+      "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+      "next_action": "Form-compatibility retirement follows in this branch. Preserve the CURRENT native four-column initial/editing grid; do not restore historical six-column geometry. Focused review/lead visual evidence remains deferred.",
+      "verified_at": "2026-09-06T23:49:50.419673+00:00",
+      "visual_verification": "DEFERRED: no current browser capability; selected/no-flight desktop, review mobile/tablet/desktop and lead boundary uninspected."
     }
   ],
   "preview_isolation_followup": {
@@ -2765,13 +2847,13 @@
       "url": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/"
     },
     "site_draft": {
-      "artifact_digest": "sha256:4bdaf92274963271522ba4d02f41aab6d07e7be64e0554496b1406187c53033d",
+      "artifact_digest": "sha256:a5fce9e0cefe6672d15e485e564a6ba13aeaf4e57312a844e69caf995417617c",
       "branch": "release/search3-production-ready-v1",
-      "exact_artifact": 9999214211,
+      "exact_artifact": 9999577320,
       "exact_artifact_status": "CHECKED_NOT_DEPLOYED",
       "final_verification_artifact": 9999036179,
       "final_verification_run": 34066277509,
-      "implementation_verified_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
+      "implementation_verified_sha": "373821646774a1adc277b8818fc548e87ea17701",
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -2843,10 +2925,20 @@
       "preview_deploy_workflow_conclusion": "success",
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
       "published_source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
-      "release_merge_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
-      "source_tree": "12b8ac0d6455b933c6d39e1ed50f8e2065696ce1",
-      "status": "CHECKED_RESULTS_LAYER_BATCH_AHEAD_OF_PUBLISHED_PREVIEW",
-      "superseded_artifact": 9996124818
+      "release_merge_sha": "373821646774a1adc277b8818fc548e87ea17701",
+      "source_tree": "2f6011a5fdb54c4fc5581016a55b1f846df95384",
+      "status": "CHECKED_REVIEW_FORM_LAYER_BATCH_AHEAD_OF_PUBLISHED_PREVIEW",
+      "superseded_artifact": 9999511038,
+      "pending_visual_verification": {
+        "source_sha": "373821646774a1adc277b8818fc548e87ea17701",
+        "status": "DEFERRED",
+        "states": [
+          "initial/editing form768/1440",
+          "advanced parameters",
+          "inherited review/selected/lead checks from#1428"
+        ],
+        "reason": "No browser capability exposed in current runtime; no pixel-equivalence claim."
+      }
     }
   },
   "results_geometry_queue": {
@@ -5589,5 +5681,5 @@
     "visual_run": 33976375814
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
-  "updated_at": "2026-09-06T23:49:50.419673+00:00"
+  "updated_at": "2026-09-06T23:54:21.913430+00:00"
 }

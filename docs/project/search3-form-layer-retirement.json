@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "SOURCE_PREPARED_VISUAL_DEFERRED",
+  "stage": "SOURCE_CI_CHECKED_VISUAL_DEFERRED",
   "base_release_sha": "211f792e5d64ee9016a1742c7fa802f6097a3ad1",
   "published_preview_source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
   "retired_layers": [
@@ -75,7 +75,17 @@
     "protected_owners": "PASS eight native entry/results owners byte-identical; all four public JS assets unchanged",
     "diff_check": "PASS"
   },
-  "source_ci": "PENDING required Security with owner validators and exact artifact build; unchanged guards",
+  "source_ci": {
+    "required_passed": 2,
+    "first_attempt_passed": true,
+    "security_run": 34068042044,
+    "artifact_run": 34068042025,
+    "artifact_id": 9999577320,
+    "artifact_digest": "sha256:a5fce9e0cefe6672d15e485e564a6ba13aeaf4e57312a844e69caf995417617c",
+    "artifact_rebuilt_on_release": false,
+    "artifact_rebuilt_for_docs": false,
+    "additional_validate_owner_policy_workflow": "skipped by draft policy; owner validators ran inside required Security job"
+  },
   "visual_verification": {
     "status": "DEFERRED",
     "performed": false,
@@ -88,5 +98,9 @@
   },
   "preview_updated": false,
   "production_updated": false,
-  "next_action": "Retain exact successful artifact; perform focused initial/editing and review/selected/lead inspection at next justified isolated publication. Do not retire injected selected-tour-mobile.css until its active hidden/lead/mobile/tablet ownership has a compact replacement and focused state evidence."
+  "next_action": "Next justified isolated publication must reuse exact artifact9999577320 and inspect initial/editing768/1440 plus selected/no-flight, review mobile/tablet/desktop and lead-entry boundaries. Visual evidence is deferred: no browser capability exposed in this runtime. Do not repeat 17 retired CSS layers and one JS recap owner. Next substantial candidate is active injected selected-tour-mobile.css; establish a compact replacement for its hidden/lead/mobile/tablet state ownership before retiring it. Continue independent permitted development; production acceptance does not pause automation.",
+  "source_sha": "373821646774a1adc277b8818fc548e87ea17701",
+  "source_pr": 1429,
+  "release_integration_sha": "373821646774a1adc277b8818fc548e87ea17701",
+  "verified_at": "2026-09-06T23:54:21.913430+00:00"
 }

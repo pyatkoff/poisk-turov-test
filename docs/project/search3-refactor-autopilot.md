@@ -71,6 +71,50 @@ Previously checked batches#1422–#1424 are included in this publication.
 New local commands and focused tests succeeded in the subsequent #1422 continuation.
 The earlier rejected direct-HTTP poll was not retried or bypassed.
 
+### Latest checked candidate — review + form layers — 2026-09-06
+
+Two substantial source PRs#1428/#1429 are integrated into release. Latest code:
+`373821646774a1adc277b8818fc548e87ea17701` (#1429); preceding package:
+`211f792e5d64ee9016a1742c7fa802f6097a3ad1` (#1428).
+Five CSS layers and the live duplicate desktop recap owner were retired in this run.
+Do not repeat these or the twelve historical layers. Compact rules remain in current
+review/base owners; native four-column form, dates/nights, hidden/lifecycle, native
+facts/summary and primary flight/no-flight continue are retained. No protected
+price arithmetic, API, URL/payload, lead transport/mapping, analytics or logo changes.
+
+| Eight raw public assets | Before this run | Checked now | Saved |
+| --- | ---: | ---: | ---: |
+| CSS | 159173 | 142301 | 16872 |
+| JS | 106754 | 103190 | 3564 |
+| Total | 265927 | 245491 | 20436 |
+
+Form follow-up alone:253113→245491 (−7622CSS), all four JS byte-identical.
+Across whole-layer continuation:301524→245491 (−56033). No compression/speed claim.
+Both source packages passed required Security+exact artifact CI on their first attempt.
+Latest:Security34068042044, artifact34068042025, exact artifact9999577320,
+sha256:a5fce9e0cefe6672d15e485e564a6ba13aeaf4e57312a844e69caf995417617c.
+Draft standalone owner-policy workflow skipped; required Security contains owner validators.
+One source build per substantial package, no release/docs rebuild or deploy.
+Focused entry scheduler, selected no-flight single activation, presentation utilities,
+active ownership checks and CSS parse passed. PHP/path/presentation/isolation guards
+passed in source CI unchanged. Audits:search3-review-layer-retirement.json and
+search3-form-layer-retirement.json.
+
+**CHECKED RELEASE, NOT PUBLISHED, VISUAL DEFERRED.** Preview remains9b4303a5/#1426;
+main remainsfa58a0cb. No current manual browser capability is exposed. Initial/editing
+768/1440, selected/no-flight, review desktop/tablet/mobile and lead-entry boundaries
+must be inspected at a justified exact-artifact publication. This intentional geometry
+experiment is not a pixel-equivalence or visual-acceptance claim. Earlier browser/artifact
+access denials were not retried/bypassed. Reuse the artifact, keep preview isolation,
+rollback and production fingerprints; do not replay unrelated full-site checks.
+
+Next: obtain that focused visual evidence and repair concrete geometry regressions
+in current owners, or roll back the affected experiment. Further layer candidate is
+active injected selected-tour-mobile.css: establish a compact hidden/lead/mobile/tablet
+replacement before whole-layer retirement. No safe whole-owner deletion there is yet
+established. Continue independent authorized work; production acceptance does not
+pause the enabled automation. The older checkpoints below are history.
+
 ### Latest checked follow-up — review/recap retirement — 2026-09-06
 
 Source PR#1428 is integrated into release at `211f792e5d64ee9016a1742c7fa802f6097a3ad1`.
@@ -83,8 +127,7 @@ This is an intentional reversible geometry experiment, not visual equivalence.
 Selected/no-flight, review/mobile/tablet and lead-entry visual checks are DEFERRED:
 no current browser capability. Local scheduler/utility/ownership plus source PHP/path/
 presentation/isolation checks passed. Audit:search3-review-layer-retirement.json.
-The next substantial form-compatibility package is prepared in this branch; its exact
-CI/visual status is separate. Native four-column entry grid remains canonical; do not
+The subsequent form-compatibility package is checked in#1429; see latest status above. Native four-column entry grid remains canonical; do not
 restore the superseded six-column form. Historical twelve layers below stay retired.
 
 ### Latest checked follow-up — two results layers — 2026-09-06
