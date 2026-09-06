@@ -1,9 +1,9 @@
 """Exercise source drift, rebuilding and fail-closed behavior on an isolated tree."""
 import importlib.util
 import json
-import re
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 import unittest
 
@@ -11,6 +11,35 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('search3_assets', ROOT / 'scripts/build/search3_assets.py')
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
+
+
+def text_content_literals(source):
+    # Decode actual emitted JS syntax, independent of the printer's quote choice.
+    script = r'''
+const fs = require('node:fs');
+const acorn = require(process.argv[1]);
+const values = [];
+function visit(node) {
+  if (!node || typeof node !== 'object') return;
+  if (node.type === 'AssignmentExpression' && node.operator === '='
+      && node.left.type === 'MemberExpression'
+      && (node.left.computed ? node.left.property.value === 'textContent'
+        : node.left.property.name === 'textContent')
+      && node.right.type === 'Literal' && typeof node.right.value === 'string') {
+    values.push(node.right.value);
+  }
+  for (const child of Object.values(node)) {
+    if (Array.isArray(child)) child.forEach(visit);
+    else if (child && typeof child === 'object') visit(child);
+  }
+}
+visit(acorn.parse(fs.readFileSync(0, 'utf8'), { ecmaVersion: 2022, sourceType: 'script' }));
+process.stdout.write(JSON.stringify(values));
+'''
+    result = subprocess.run(
+        ['node', '-e', script, str(ROOT / 'scripts/build/search3-js/node_modules/acorn')],
+        input=source, capture_output=True, check=True, timeout=10)
+    return json.loads(result.stdout)
 
 
 class Search3SourceBuildTest(unittest.TestCase):
@@ -125,10 +154,8 @@ class Search3SourceBuildTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
             builder.build(self.root)
         outputs, _, _ = builder.assemble(self.root)
-        literals = re.findall(rb'[A-Za-z_$][\w$]*\.textContent=("(?:\\.|[^"\\])*");',
-                              outputs['search3-results-filters-v1.js'])
         expected = builder.compact_css_comments(css, trim_indentation=True).decode()
-        self.assertIn(expected, [json.loads(value) for value in literals])
+        self.assertIn(expected, text_content_literals(outputs['search3-results-filters-v1.js']))
         builder.build(self.root, write=True)
         self.assertEqual(builder.build(self.root), 8)
         for name, original in self.outputs.items():
@@ -152,8 +179,8 @@ class Search3SourceBuildTest(unittest.TestCase):
         part = self.root / 'src/search3/styles/injected/summary-cta.css'
         part.write_text('.x { color: #AABBCC; margin: 0px 0px; }\n')
         outputs, _, _ = builder.assemble(self.root)
-        self.assertIn(b'.textContent=".x{color:#abc;margin:0}\\n";',
-                      outputs['search3-results-filters-v1.js'])
+        self.assertIn('.x{color:#abc;margin:0}\n',
+                      text_content_literals(outputs['search3-results-filters-v1.js']))
         part.write_text('.x { color }')
         with self.assertRaisesRegex(ValueError, 'Colon is expected'):
             builder.build(self.root, write=True)
