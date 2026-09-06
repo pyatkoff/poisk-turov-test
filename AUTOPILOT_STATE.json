@@ -55,7 +55,7 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "last_material_progress": "Two source PRs complete this continuation:12 layers retired,301524→265927 bytes (−35597). First10 layers published9b4303a5/#1426 with desktop inspection; last2source1427 CI green,not published.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; scheduler paused.",
+    "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; hourly automation enabled by the latest owner request.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
@@ -72,7 +72,7 @@
     "implementation_sha": "db39eadb15149fd39fce2305fb6de49251685b38",
     "artifact_run": 34066837736,
     "artifact_id": 9999214211,
-    "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; scheduler paused."
+    "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; hourly automation enabled by the latest owner request."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -768,6 +768,12 @@
       "security_run": 34066585531,
       "conclusion": "success",
       "artifact_rebuilt": false
+    },
+    "hourly_resume_base": {
+      "sha": "4aba6f0aedaec98179710c83e6d855e5376773dd",
+      "security_run": 34066951813,
+      "conclusion": "success",
+      "artifact_rebuilt": false
     }
   },
   "last_verified_commit": "db39eadb15149fd39fce2305fb6de49251685b38",
@@ -852,7 +858,7 @@
     "production_updated": false,
     "source_validation": "FINAL_SOURCE_REQUIRED_CI_PASSED",
     "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
-    "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; scheduler paused.",
+    "next_action": "Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; hourly automation enabled by the latest owner request.",
     "verified_at": "2026-09-06T23:27:36.471Z",
     "visual_verification": "Not performed on this follow-up source; published9b4303a5 desktop evidence does not qualify this source. Full responsive/mobile and lead-state visuals remain deferred."
   },
@@ -2535,7 +2541,7 @@
       "ci": "Retain the two existing mandatory working-source jobs, successful on the final source SHA. Do not disable security, owner validators, protected paths or preview isolation. Reuse the successful artifact.",
       "local_checks": "Build generated assets once after the source batch and measure the eight served files. Run the narrow existing equivalence or affected-behavior check. Do not repeat the artifact workflow's full check set locally.",
       "manual_check_budget_minutes": 5,
-      "production": "Production approval, protected contracts, ready_for_review restoration and all actual-deployment guards remain unchanged. Scheduler stays paused.",
+      "production": "Production approval, protected contracts, ready_for_review restoration and actual deployment guards remain unchanged. Owner explicitly resumed hourly Search3 development.",
       "publication": "A checked technical batch may remain unpublished in release; no deploy-control PR, artifact download or browser session is required merely because another source PR completed. Reuse the final checked source artifact at the next justified publication.",
       "reduction_priority": "Prefer measured elimination of large duplicate CSS/JS source blocks. Include small reductions opportunistically; do not spend a separate PR/deploy/browser cycle on a micro-saving.",
       "reporting": "Report net generated CSS/JS bytes and whether the checked batch is published. Do not count moved code or line-count reduction as payload savings.",
@@ -2572,7 +2578,10 @@
       "authorized": true,
       "rule": "May retire whole presentation layers with compact current-owner salvage and targeted repair. Record untested states honestly; desktop inspection is not mobile or production acceptance. Existing business/production/deployment guards unchanged.",
       "scope": "Reversible release and isolated preview only",
-      "source": "Explicit latest owner request: larger changes, delete entire layers then repair breakage"
+      "source": "Explicit latest owner request: larger changes, delete entire layers then repair breakage",
+      "hourly_automation_resumed": true,
+      "owner_request": "давай что-то глобальнее; может слои целиком удалять, а потом допишешь то что сломал; поставишь на автомат каждый час?",
+      "requested_at": "2026-09-06T23:34:01.651Z"
     },
     "working_pr_base": "release/search3-production-ready-v1"
   },
@@ -2825,14 +2834,21 @@
   "scheduled_execution": {
     "automation_id": "6a9b55c965ac81918c5327b6b43faed2",
     "first_background_run_verified": true,
-    "last_observed_enabled": false,
+    "last_observed_enabled": true,
     "mode": "development_not_monitoring_only",
-    "note": "Verified via scheduler lookup on 2026-09-05. Prior run paused the automation at owner acceptance; current mockup/calendar work proceeds under the explicit owner request, without changing the schedule.",
+    "note": "Owner explicitly resumed hourly autonomous CSS/JS whole-layer retirement and concrete preview repair. Updated existing automation, not a duplicate. Earlier PAUSED notes are historical. Configuration enabled verified; first post-resume background execution not yet observed.",
     "rrule": "FREQ=HOURLY",
-    "rule": "Do not stop after one PR when time remains for the next safe task. Preserve production approval and all protected boundaries; record/defer a blocker and continue independent work.",
-    "status": "PAUSED",
-    "timezone": "Europe/Amsterdam",
-    "title": "Продолжать разработку AnyTour"
+    "rule": "Each run performs actual development, prioritizes large reversible presentation-layer removal and targeted repair, avoids completed work and continues beyond one PR while a safe next step remains. Preserve production approval and protected contracts. Do not duplicate active work/deploys.",
+    "status": "ENABLED",
+    "timezone": "Europe/Kaliningrad",
+    "title": "Уменьшать CSS/JS Search3",
+    "schedule": "BEGIN:VEVENT\nDTSTART:20260906T233240Z\nRRULE:FREQ=HOURLY\nEND:VEVENT",
+    "verified_at": "2026-09-06T23:34:01.651Z",
+    "last_resume": {
+      "requested_at": "2026-09-06T23:34:01.651Z",
+      "first_background_run_verified": false,
+      "automation_updated_at": "2026-09-06T23:32:40.307000+00:00"
+    }
   },
   "schema_version": 28,
   "site_preview_publication_history": [
@@ -5521,5 +5537,5 @@
     "visual_run": 33976375814
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
-  "updated_at": "2026-09-06T23:27:36.471Z"
+  "updated_at": "2026-09-06T23:34:01.651Z"
 }
