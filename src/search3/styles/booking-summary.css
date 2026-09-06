@@ -23,7 +23,7 @@
 @media(min-width:1000px){
 body.search3-candidate{
 & #selectedTour {
-& .search3-lead-shell {grid-column:1/-1;grid-template-columns:minmax(0,1fr) 290px;align-items:start;margin-top:12px}
+& .search3-lead-shell {grid-column:1/-1;grid-template-columns:minmax(0,1fr) 290px;margin-top:12px}
 & .search3-lead-shell>.lead-form {grid-column:1;margin-top:0!important;min-height:100%}
 & .search3-booking-summary {grid-column:2;grid-row:1;position:sticky;top:16px}
 & .lead-form .section-heading strong {font-size:21px!important}

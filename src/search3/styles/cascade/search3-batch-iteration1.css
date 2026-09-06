@@ -77,8 +77,8 @@ body.search3-candidate{
 /* P0 contract: after search, the full advanced form is not the desktop hero. */
 @media(min-width:1000px){
  body.search3-candidate{
-&.search3-has-results #tourSearch{display:none!important}
- &.search3-has-results.search3-editing-search #tourSearch{display:block!important}
+
+
  &.search3-has-results {
 & #resultsSearchSummary {display:grid!important;grid-template-columns:minmax(0,1.7fr) .72fr .72fr .72fr 132px!important;margin:8px 0 12px!important}
  & #resultsSearchSummary .results-search-summary__route {grid-column:1!important}
@@ -95,11 +95,11 @@ body.search3-candidate{
  body.search3-candidate{
 &.search3-has-results {
 & #resultsSearchSummary {
-& {display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;width:100%!important;min-width:0!important;border:1px solid #e2e8f0!important;border-radius:10px!important;background:#fff!important;overflow:hidden!important}
- & .results-search-summary__route {display:block!important;grid-column:1!important;grid-row:1!important;padding:8px 10px!important}
- & .results-search-summary__route strong {font-size:7px!important}
- & .results-search-summary__route span {font-size:9px!important}
- & .results-search-summary__edit {grid-column:2!important;grid-row:1!important;min-width:104px!important;border:0!important;border-left:1px solid #edf0f5!important;border-radius:0!important}
+& {display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;border-radius:10px!important;overflow:hidden!important}
+ & .results-search-summary__route {grid-column:1!important;grid-row:1!important;}
+
+
+ & .results-search-summary__edit {grid-column:2!important;grid-row:1!important;}
 }
 }
 }

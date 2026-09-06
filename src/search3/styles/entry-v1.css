@@ -14,7 +14,7 @@ html body.search3-candidate{
   html body.search3-candidate{
 &:not(.search3-has-results) #tourSearch .search3-primary-grid,
   &.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid{
-    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+
     gap:10px 12px!important;
   }
   &:not(.search3-has-results) #tourSearch .search3-primary-grid > .search-submit,

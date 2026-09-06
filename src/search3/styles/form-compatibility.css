@@ -78,7 +78,7 @@ body.search3-candidate{
 & .search3-hotel-action{grid-template-columns:minmax(0,1fr) 196px!important;gap:20px!important;margin-top:8px!important;padding-top:8px!important}
 & .search3-hotel-action__copy{align-items:center!important;gap:10px!important}
 & .search3-hotel-action__copy :is(strong,span){font-size:8px!important;line-height:1.2!important}
-& .search3-show-tours{min-height:38px!important;border-radius:7px!important;font-size:10px!important}
+& .search3-show-tours{min-height:38px!important;font-size:10px!important}
 }
 }
 @media(max-width:760px){
