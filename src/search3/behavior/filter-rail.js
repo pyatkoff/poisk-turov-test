@@ -27,7 +27,7 @@ function renderRail(announceSource){
  rail.innerHTML='<div class="filter-rail-head"><div><div class="filter-rail-title">Фильтры</div><small>Дополнительные параметры</small></div><button type="button" class="filter-reset-link" data-s3-reset>Сбросить все</button></div>'+section('Популярные',popular)+section('Отель',hotel)+section('Расположение',sea)+section('Перелёт',flight)+'<div class="filter-rail-result"><span>Подходит</span><strong><b data-s3-count>'+source.length+'</b> <span data-s3-word>'+word(source.length)+'</span></strong></div>';
  if(announceSource!==false)announce(source.length);
 }
-function updateCount(n,announceChange){var c=rail.querySelector('[data-s3-count]'),w=rail.querySelector('[data-s3-word]');if(c)c.textContent=String(n);if(w)w.textContent=word(n);if(announceChange!==false)announce(n);}
+function updateCount(n){var c=rail.querySelector('[data-s3-count]'),w=rail.querySelector('[data-s3-word]');if(c)c.textContent=String(n);if(w)w.textContent=word(n);announce(n);}
 function apply(){if(!source.length||!window.V2Results||typeof window.V2Results.render!=='function')return;var filtered=source.map(filteredHotel).filter(Boolean);lastApplied=filtered.slice();applying=true;try{window.V2Results.render(filtered,{keepResultsShell:true});}finally{applying=false;}updateCount(filtered.length);}
 function schedulePriceApply(){if(priceApplyQueued)return;var run=++priceApplyRun;priceApplyQueued=run;window.requestAnimationFrame(function(){if(priceApplyQueued!==run)return;priceApplyQueued=0;apply();});}
 function cancelPriceApply(){priceApplyRun+=1;priceApplyQueued=0;}
@@ -39,7 +39,7 @@ function editSearch(){form.classList.add('search3-mobile-advanced-open');var edi
 rail.addEventListener('input',function(e){var t=e.target;if(t.matches('[data-s3-price]')){state.priceMax=Number(t.value||0);var out=rail.querySelector('[data-s3-price-label]');if(out)out.textContent='от '+money(rangeMin)+' ₽ — до '+money(state.priceMax)+' ₽';schedulePriceApply();}});
 rail.addEventListener('change',function(e){var t=e.target;if(t.name==='s3-sea'){cancelPriceApply();state.seaMax=Number(t.value||0);apply();}else if(t.matches('[data-s3-charter-check]')){cancelPriceApply();state.charter=!!t.checked;apply();}});
 rail.addEventListener('click',function(e){var panel=e.target.closest('[data-s3-panel]');if(panel){editSearch();return;}if(e.target.closest('[data-s3-reset]')){reset();return;}if(e.target.closest('[data-s3-edit-search]')){editSearch();return;}});
-window.addEventListener('v2:results-rendered',function(e){if(applying)return;var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];if(lastApplied.length&&sameRefs(items,lastApplied)){updateCount(items.length,false);return;}cancelPriceApply();source=items.slice();lastApplied=[];renderRail(false);if(source.length&&activeCount())apply();else announce(source.length);});
+window.addEventListener('v2:results-rendered',function(e){if(applying)return;var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];if(lastApplied.length&&sameRefs(items,lastApplied))return;cancelPriceApply();source=items.slice();lastApplied=[];renderRail(false);if(source.length&&activeCount())apply();else announce(source.length);});
 window.addEventListener('v2:search-reset',function(){cancelPriceApply();source=[];lastApplied=[];rangeMin=0;rangeMax=0;state={priceMax:0,seaMax:0,charter:false};renderRail();});
 renderRail();
 })();

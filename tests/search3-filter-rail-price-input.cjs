@@ -115,4 +115,5 @@ const announcementsBeforeSort = announcements.length;
 windowEvents.get('v2:results-rendered')({ detail: { items: renders.at(-1) } });
 assert.equal(announcements.length, announcementsBeforeSort,
   'rerendering the same filtered references does not announce a filter change');
+assert.equal(count.textContent, '1', 'same-reference rerender keeps the established count');
 console.log('PASS: price input bursts render once per frame with latest state');
