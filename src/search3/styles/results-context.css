@@ -1,4 +1,30 @@
-
+/* Search3 keeps the shared DS2 shell and inactive controls out of its results flow. */
+body.search3-candidate{
+& .v2-shell{display:block!important}
+& .results-layout{grid-column:1/-1!important;justify-self:stretch!important;min-width:0!important}
+& .results-layout>.results,& #results{min-width:0!important;width:100%!important;max-width:none!important;align-items:stretch!important}
+& #results .hotel-card,& #results .hotel-main{width:100%!important;min-width:0!important;max-width:none!important}
+& #results .hotel-card{display:block!important;align-self:stretch!important}
+& :is(.results-search-summary[hidden],.results-tools--ds2[hidden]),&:not(.search3-has-results) .results-layout{display:none!important}
+&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) .v2-shell{display:block!important}
+&.search3-has-results .results-search-summary{width:100%!important;max-width:none!important;margin-left:0!important;margin-right:0!important}
+}
+@media(min-width:1025px){
+body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])){
+& .results-tools--ds2{padding-left:12px!important;padding-right:0!important}
+& #results .hotel-card .hotel-title{letter-spacing:-.18px!important}
+& #results .hotel-card .hotel-bottom{gap:0!important}
+}
+}
+/* Expanded packages retain the card border without a second focus/glow frame. */
+@media(min-width:761px){
+body.search3-candidate{
+& #results .hotel-card:has(.search3-show-tours[aria-expanded="true"]){outline:0!important;border-color:#e2e8f0!important;box-shadow:0 2px 8px rgba(16,24,40,.03)!important;filter:none!important}
+& #results .hotel-card:has(.search3-show-tours[aria-expanded="true"])::before,& #results .hotel-card:has(.search3-show-tours[aria-expanded="true"])::after{content:none!important;display:none!important;outline:0!important;box-shadow:none!important;filter:none!important}
+}
+}
+/* Responsive toolbar owners re-enable the mounted controls at their own breakpoints. */
+body.search3-candidate :is(.mrf-bar,.mrf-sheet){display:none!important}
 
 /* donor:search3-results-top.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Search 3 compact post-search summary and controls. Preview only. */

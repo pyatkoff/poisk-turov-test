@@ -36,3 +36,30 @@ body.search3-candidate{
 
 
 body.search3-candidate.search3-hotel-tours-open .search3-tour-filters::-webkit-scrollbar{display:none!important}}
+
+/* Card facts and mobile placement remain available while package disclosure changes state.
+   Active result owners supply the current card dimensions and readable type scale. */
+body.search3-candidate{
+& #results .hotel-title{letter-spacing:-.16px!important}
+& #results .hotel-place{line-height:1.35!important}
+& #results .hotel-decision-line{display:none!important}
+& .search3-hotel-facts{grid-column:1!important;display:flex!important;align-items:center!important;gap:12px!important;min-width:0!important;margin-top:9px!important}
+& .search3-hotel-facts>span{display:flex!important;gap:4px!important;align-items:baseline!important;min-width:0!important;padding:0!important;background:transparent!important}
+& .search3-hotel-facts small{color:#98a2b3!important;font-size:8px!important;font-weight:750!important}
+& .search3-hotel-facts b{max-width:130px!important;overflow:hidden!important;color:#475467!important;font-size:8px!important;font-weight:850!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+& .search3-hotel-action__copy :is(strong,span){font-size:9px!important}
+}
+@media(max-width:760px){
+body.search3-candidate{
+& #results .hotel-title{grid-column:1/3!important;grid-row:1!important}
+& #results .hotel-place{grid-column:1/3!important;grid-row:2!important}
+& .search3-hotel-highlights::-webkit-scrollbar{display:none!important}
+& .search3-hotel-facts{grid-column:1/3!important;grid-row:4!important;gap:8px!important;margin-top:7px!important;overflow:hidden!important}
+& .search3-hotel-facts>span:nth-child(n+4){display:none!important}
+& .search3-hotel-facts :is(small,b){font-size:7px!important}
+& #results .hotel-bottom{grid-column:1/3!important;grid-row:5!important;display:flex!important;align-items:baseline!important;justify-content:flex-end!important;gap:6px!important;margin-top:9px!important;padding-top:8px!important;border-top:1px solid #eef1f5!important}
+& #results .hotel-best-offer{display:flex!important;align-items:baseline!important;gap:4px!important}
+& #results .hotel-price,& #results .hotel-price-context{margin-top:0!important}
+& .search3-hotel-action{grid-column:1/3!important;grid-row:6!important;border-top:0!important}
+}
+}
