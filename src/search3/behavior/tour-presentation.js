@@ -12,21 +12,6 @@
   var selectedTotal = 0;
   var queued = false;
 
-  function text(value) {
-    if (value == null) return '';
-    if (typeof value === 'object') return text(value.russianName || value.fullRussianName || value.name || value.title || '');
-    return String(value).trim();
-  }
-
-  function plural(count, one, few, many) {
-    var n = Math.abs(Number(count) || 0);
-    var mod10 = n % 10;
-    var mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return one;
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
-    return many;
-  }
-
   function setText(node, value) {
     value = String(value || '').trim();
     if (node && value && String(node.textContent || '').trim() !== value) node.textContent = value;
@@ -56,7 +41,7 @@
   function dateWithNights(value) {
     var date = format.formatDate(value && value.date);
     var nights = Number(value && value.nights || 0);
-    var stay = nights ? nights + ' ' + plural(nights, 'ночь', 'ночи', 'ночей') : '';
+    var stay = nights ? nights + ' ' + format.plural(nights, 'ночь', 'ночи', 'ночей') : '';
     return [date, stay].filter(Boolean).join(' · ');
   }
 
