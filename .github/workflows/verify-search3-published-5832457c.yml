@@ -1,0 +1,140 @@
+name: Verify published Search3 5832457c
+on:
+  push:
+    branches: [verify/search3-preview-5832457c]
+    paths:
+      - scripts/ci/verify-search3-preview-5832457c.cjs
+      - .github/workflows/verify-search3-published-5832457c.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: deploy-anytoour-production
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Install existing pinned browser tooling
+        run: |
+          node --check scripts/ci/verify-search3-preview-5832457c.cjs
+          mkdir -p "$RUNNER_TEMP/browser"
+          cd "$RUNNER_TEMP/browser"
+          npm init -y >/dev/null
+          npm install --no-save playwright@1.55.0 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Verify live exact assets and one user journey without sending a lead
+        env:
+          NODE_PATH: ${{ runner.temp }}/browser/node_modules
+          EVIDENCE_DIR: ${{ runner.temp }}/live-evidence
+        run: node scripts/ci/verify-search3-preview-5832457c.cjs
+      - name: Retain live evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: search3-preview-live-5832457c-${{ github.run_id }}
+          path: ${{ runner.temp }}/live-evidence/
+          if-no-files-found: warn
+          retention-days: 30
+  prepare-handoff:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: release/search3-production-ready-v1
+          fetch-depth: 1
+      - name: Download successful deployment evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: '9986258907'
+          path: ${{ runner.temp }}/deploy-evidence
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: '34023385735'
+      - name: Download this run's successful live evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: search3-preview-live-5832457c-${{ github.run_id }}
+          path: ${{ runner.temp }}/live-evidence
+      - name: Prepare additive handoff on an isolated documentation branch
+        env:
+          VERIFY_RUN: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          test -z "$(git ls-remote --heads origin docs/search3-preview-5832457c-published)"
+          git switch -c docs/search3-preview-5832457c-published
+          python3 - <<'PY'
+          import copy, datetime, hashlib, json, os
+          from pathlib import Path
+          temp=Path(os.environ['RUNNER_TEMP'])
+          deploy=json.loads((temp/'deploy-evidence/search3-site-deployment-evidence.json').read_text())
+          live=json.loads((temp/'live-evidence/report.json').read_text())
+          source='5832457c6d43270290967a49f815a12463b19c18'
+          assert deploy['source_sha']==source and live['source_sha']==source and live['status']=='passed'
+          fingerprints=[(temp/('deploy-evidence/site-production-'+s+'.sha256')).read_bytes() for s in ('before','after','final')]
+          assert fingerprints[0]==fingerprints[1]==fingerprints[2] and len(fingerprints[0].splitlines())==13
+          assert hashlib.sha256(fingerprints[0]).hexdigest()==deploy['production_fingerprint_sha256']
+          assert len(live['assets'])==8 and live['real_lead_submitted'] is False
+          now=datetime.datetime.now(datetime.timezone.utc).isoformat()
+          state_path=Path('AUTOPILOT_STATE.json'); state=json.loads(state_path.read_text())
+          site=state['release_status']['site_draft']
+          previous=site.get('implementation_verified_sha')
+          assert previous in ('39d376436e3553d16755a7da1c77cb4c3f5156bf',source), 'Newer preview record detected; do not overwrite it'
+          state.setdefault('site_preview_publication_history',[]).append({'recorded_at':now,'previous_site_draft':copy.deepcopy(site)})
+          record={
+            'status':'PUBLISHED_LIVE_VERIFIED_NOT_PRODUCTION','source_sha':source,
+            'source_tree':'79f5f4ba2f0bda6ebb23dfa1125db6ff5124e8f6',
+            'artifact_id':9986118224,'artifact_run':34022965916,
+            'artifact_digest':'sha256:26493e2cafc0274a3556480c3e0dda0f32f42bb21197886e49576451368e4afb',
+            'deploy_pr':1380,'deploy_run':34023385735,'deployment_evidence_artifact':9986258907,
+            'deployment_evidence_digest':'sha256:49020b49101e73afb1434e1e3792fa97b3042830d89a87cf135caaf96c242ab8',
+            'browser_verification_run':int(os.environ['VERIFY_RUN']),
+            'preview_url':deploy['route'],'verified_at':now,
+            'production_fingerprint_sha256':deploy['production_fingerprint_sha256'],
+            'production_unchanged':True,'physical_safari_tested':False,'real_lead_submitted':False,
+            'verification':live['completed'],'responsive_widths':[x['width'] for x in live['widths']],
+            'public_assets':{'css_bytes':363166,'css_lines':4175,'js_bytes':160007,'js_lines':1940,'total_bytes':523173,'total_lines':6115}
+          }
+          state['preview_publication']=record
+          state.setdefault('presentation_refactor_checkpoint',{})['preview_publication']=copy.deepcopy(record)
+          site.update({'status':'WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION',
+            'implementation_verified_sha':source,'release_merge_sha':source,'source_tree':record['source_tree'],
+            'exact_artifact':9986118224,'artifact_digest':record['artifact_digest'],
+            'superseded_artifact':site.get('exact_artifact'),
+            'preview_deploy_run':34023385735,'preview_deploy_pr':1380,'preview_deploy_workflow_conclusion':'success',
+            'final_verification_run':34023385735,'final_verification_artifact':9986258907,
+            'browser_verification_run':record['browser_verification_run']})
+          state.setdefault('last_ci',{})['preview_publication']=copy.deepcopy(record)
+          state['last_verified_commit']=source
+          state['last_verified_commit_scope']='Published exact preview; nine HTTP routes and disabled lead403/counter0/internal PHP deny; all13 production fingerprints unchanged; eight live asset hashes and one real browser journey verified. Not production or physical Safari acceptance.'
+          state['updated_at']=now
+          state_path.write_text(json.dumps(state,ensure_ascii=False,indent=2)+'\n')
+          doc=Path('docs/project/search3-preview-publication-5832457c.md')
+          doc.write_text('# Search3 verified preview publication — 2026-09-06\n\n'
+            'Published source: `'+source+'`. Preview only; main and production were not deployed.\n\n'
+            'Owner request: «Выложи». Exact artifact9986118224/build34022965916; deploy PR#1380/run34023385735 succeeded. Deployment evidence9986258907 was independently downloaded and its ZIP digest and13 before/after/final fingerprints verified. All715 payload file hashes matched the pinned artifact. Previous preview retained for rollback.\n\n'
+            'Nine routes returned200; noindex/counter0/disabled lead403/internal PHP deny passed. Eight public live CSS/JS hashes match the selected source. Browser run'+os.environ['VERIFY_RUN']+' verified: '+ '; '.join(live['completed'])+'.\n\n'
+            'Public assets:523173bytes/6115physical lines (CSS363166/4175; JS160007/1940), uncompressed, excluding shared runtime and without src/v2 double-counting.\n\n'
+            'Physical Safari, approved legal material, owner visual approval and production migration remain separate. No real lead was submitted. Preserve concurrent newer release development: the published SHA is5832457c, not automatically the moving branch head. Do not repeat this deployment unless a separately reviewed release is selected.\n',encoding='utf-8')
+          print('PREVIEW_HANDOFF_PREPARED',source,record['browser_verification_run'])
+          PY
+          git diff --check
+          python3 -m json.tool AUTOPILOT_STATE.json >/dev/null
+          git add AUTOPILOT_STATE.json docs/project/search3-preview-publication-5832457c.md
+          test "$(git diff --cached --name-only | wc -l)" -eq 2
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs(search3): record verified 5832457c preview publication'
+          git push origin HEAD:refs/heads/docs/search3-preview-5832457c-published
+          echo "HANDOFF_COMMIT=$(git rev-parse HEAD)"
