@@ -69,8 +69,20 @@ assert.equal(renders[1].length, 2);
 
 input(95000);
 assert.equal(frames.length, 1);
+railEvents.get('change')({
+  target: {
+    name: 's3-sea', value: '500',
+    matches() { return false; }
+  }
+});
+assert.equal(renders.length, 3, 'a discrete filter immediately applies the latest price state');
+while (frames.length) frames.shift()();
+assert.equal(renders.length, 3, 'the superseded price frame does not render again');
+
+input(95000);
+assert.equal(frames.length, 1);
 windowEvents.get('v2:search-reset')();
 while (frames.length) frames.shift()();
-assert.equal(renders.length, 2, 'search reset cancels a pending price render');
+assert.equal(renders.length, 3, 'search reset cancels a pending price render');
 assert.equal(announcements.at(-1).resultCount, 0);
 console.log('PASS: price input bursts render once per frame with latest state');
