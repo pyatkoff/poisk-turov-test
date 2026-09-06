@@ -6,6 +6,7 @@ on:
       - refactor/search3-filter-drawer-cascade-53f482eb
     paths:
       - 'src/search3/styles/cascade/search3-batch-iteration1.css'
+      - 'src/search3/styles/cascade/search3-batch-iteration1b.css'
       - 'src/search3/styles/cascade/search3-batch-iteration1c.css'
       - 'tests/search3-filter-rail-ownership.cjs'
       - '.github/workflows/search3-filter-cascade-prep.yml'
