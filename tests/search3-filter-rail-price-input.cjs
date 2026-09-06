@@ -98,4 +98,16 @@ assert.equal(renders.at(-1).length, 1, 'fresh unfiltered hotels do not leak into
 assert.equal(announcements.length, announcementCount + 1,
   'fresh source reapplication announces only the final filtered count');
 assert.equal(announcements.at(-1).resultCount, 1);
+
+windowEvents.get('v2:search-reset')();
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+input(95000);
+assert.equal(frames.length, 1);
+const rendersBeforeRefresh = renders.length;
+windowEvents.get('v2:results-rendered')({ detail: { items: refreshedHotels } });
+assert.equal(renders.length, rendersBeforeRefresh + 1,
+  'fresh source immediately consumes the pending latest price state');
+while (frames.length) frames.shift()();
+assert.equal(renders.length, rendersBeforeRefresh + 1,
+  'fresh source cancels the superseded pending price frame');
 console.log('PASS: price input bursts render once per frame with latest state');
