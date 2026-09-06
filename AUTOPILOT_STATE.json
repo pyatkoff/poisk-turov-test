@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-05T16:07:24.244885+00:00",
+  "updated_at": "2026-09-06T09:19:35.725787+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -172,15 +172,15 @@
       "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
       "branch": "release/search3-production-ready-v1",
       "pr": 1334,
-      "implementation_verified_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
-      "release_merge_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
-      "source_tree": "39e986647c51b893e4051d7805aee74d46e5ae73",
-      "exact_artifact": 9972524166,
-      "artifact_digest": "sha256:8e00b4db62bd7dfd91dae7e33ef71553f91adb2aa009477e7a4ca3e22130b1ed",
-      "superseded_artifact": 9972437784,
+      "implementation_verified_sha": "5832457c6d43270290967a49f815a12463b19c18",
+      "release_merge_sha": "5832457c6d43270290967a49f815a12463b19c18",
+      "source_tree": "79f5f4ba2f0bda6ebb23dfa1125db6ff5124e8f6",
+      "exact_artifact": 9986118224,
+      "artifact_digest": "sha256:26493e2cafc0274a3556480c3e0dda0f32f42bb21197886e49576451368e4afb",
+      "superseded_artifact": 9972524166,
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "preview_deploy_run": 33976775542,
-      "preview_deploy_pr": 1370,
+      "preview_deploy_run": 34023385735,
+      "preview_deploy_pr": 1380,
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -209,8 +209,9 @@
         "lead sidebar manager clarification when proceeding without flight"
       ],
       "preview_deploy_workflow_conclusion": "success",
-      "final_verification_run": 33976775542,
-      "final_verification_artifact": 9972545166
+      "final_verification_run": 34023385735,
+      "final_verification_artifact": 9986258907,
+      "browser_verification_run": 34024278401
     },
     "production": {
       "status": "OWNER_VISUAL_APPROVAL_PENDING",
@@ -480,10 +481,79 @@
       "ci_success_count": 23,
       "visual_run": 33976701799,
       "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
+    },
+    "preview_publication": {
+      "status": "PUBLISHED_WITH_KNOWN_PRESENTATION_LIMITATION",
+      "source_sha": "5832457c6d43270290967a49f815a12463b19c18",
+      "source_tree": "79f5f4ba2f0bda6ebb23dfa1125db6ff5124e8f6",
+      "artifact_id": 9986118224,
+      "artifact_run": 34022965916,
+      "artifact_digest": "sha256:26493e2cafc0274a3556480c3e0dda0f32f42bb21197886e49576451368e4afb",
+      "deploy_pr": 1380,
+      "deploy_run": 34023385735,
+      "deployment_evidence_artifact": 9986258907,
+      "deployment_evidence_digest": "sha256:49020b49101e73afb1434e1e3792fa97b3042830d89a87cf135caaf96c242ab8",
+      "browser_verification_run": 34024278401,
+      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "verified_at": "2026-09-06T09:19:35.725787+00:00",
+      "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+      "production_unchanged": true,
+      "physical_safari_tested": false,
+      "real_lead_submitted": false,
+      "verification": [
+        "all eight published assets match exact source",
+        "live homepage to search to real hotel results",
+        "live responsive toolbar, filter open/Escape/focus, unchanged parameters and two-way sort",
+        "real hotel to tour to review to visible lead form without submission"
+      ],
+      "responsive_widths": [
+        375,
+        999,
+        1000,
+        1348,
+        430
+      ],
+      "known_limitations": [
+        {
+          "width": 375,
+          "recovery": "native Escape",
+          "limitation": "retained hidden advanced-filter owner left an open backdrop"
+        }
+      ],
+      "legacy_backdrop_baseline": {
+        "scope": "Controlled hidden-legacy-details/open-state reproduction with supplier network blocked, not a second live search",
+        "sameBeforeAndAfter": true,
+        "rows": [
+          {
+            "version": "previous-39d37643",
+            "hiddenOwner": true,
+            "openOwner": true,
+            "backdropVisible": true,
+            "zIndex": "89",
+            "nativeEscapeRecovers": true
+          },
+          {
+            "version": "published-5832457c",
+            "hiddenOwner": true,
+            "openOwner": true,
+            "backdropVisible": true,
+            "zIndex": "89",
+            "nativeEscapeRecovers": true
+          }
+        ]
+      },
+      "public_assets": {
+        "css_bytes": 363166,
+        "css_lines": 4175,
+        "js_bytes": 160007,
+        "js_lines": 1940,
+        "total_bytes": 523173,
+        "total_lines": 6115
+      }
     }
   },
-  "last_verified_commit": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
-  "last_verified_commit_scope": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719.",
+  "last_verified_commit": "5832457c6d43270290967a49f815a12463b19c18",
+  "last_verified_commit_scope": "Published exact preview; nine HTTP routes and disabled lead403/counter0/internal PHP deny; all13 production fingerprints unchanged; eight live asset hashes and a real browser journey verified with explicit Escape recovery for a known legacy backdrop. Not clean full acceptance, production or physical Safari acceptance.",
   "blocked": [
     {
       "id": "PRODUCTION_VISUAL_APPROVAL",
@@ -707,7 +777,76 @@
     },
     "preview_updated": false,
     "production_updated": false,
-    "next_action": "First recheck the lagging Security guard run wrapper 34023357535 and update this checkpoint to 23 completed successes if GitHub finalizes it. Then refresh release/main and #996/#1334 and prove a new independent presentation ownership or incomplete-facet defect before changing code. Do not repeat price/charter/sea completeness, reset, price-frame or three completed toolbar passes."
+    "next_action": "First recheck the lagging Security guard run wrapper 34023357535 and update this checkpoint to 23 completed successes if GitHub finalizes it. Then refresh release/main and #996/#1334 and prove a new independent presentation ownership or incomplete-facet defect before changing code. Do not repeat price/charter/sea completeness, reset, price-frame or three completed toolbar passes.",
+    "preview_publication": {
+      "status": "PUBLISHED_WITH_KNOWN_PRESENTATION_LIMITATION",
+      "source_sha": "5832457c6d43270290967a49f815a12463b19c18",
+      "source_tree": "79f5f4ba2f0bda6ebb23dfa1125db6ff5124e8f6",
+      "artifact_id": 9986118224,
+      "artifact_run": 34022965916,
+      "artifact_digest": "sha256:26493e2cafc0274a3556480c3e0dda0f32f42bb21197886e49576451368e4afb",
+      "deploy_pr": 1380,
+      "deploy_run": 34023385735,
+      "deployment_evidence_artifact": 9986258907,
+      "deployment_evidence_digest": "sha256:49020b49101e73afb1434e1e3792fa97b3042830d89a87cf135caaf96c242ab8",
+      "browser_verification_run": 34024278401,
+      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "verified_at": "2026-09-06T09:19:35.725787+00:00",
+      "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+      "production_unchanged": true,
+      "physical_safari_tested": false,
+      "real_lead_submitted": false,
+      "verification": [
+        "all eight published assets match exact source",
+        "live homepage to search to real hotel results",
+        "live responsive toolbar, filter open/Escape/focus, unchanged parameters and two-way sort",
+        "real hotel to tour to review to visible lead form without submission"
+      ],
+      "responsive_widths": [
+        375,
+        999,
+        1000,
+        1348,
+        430
+      ],
+      "known_limitations": [
+        {
+          "width": 375,
+          "recovery": "native Escape",
+          "limitation": "retained hidden advanced-filter owner left an open backdrop"
+        }
+      ],
+      "legacy_backdrop_baseline": {
+        "scope": "Controlled hidden-legacy-details/open-state reproduction with supplier network blocked, not a second live search",
+        "sameBeforeAndAfter": true,
+        "rows": [
+          {
+            "version": "previous-39d37643",
+            "hiddenOwner": true,
+            "openOwner": true,
+            "backdropVisible": true,
+            "zIndex": "89",
+            "nativeEscapeRecovers": true
+          },
+          {
+            "version": "published-5832457c",
+            "hiddenOwner": true,
+            "openOwner": true,
+            "backdropVisible": true,
+            "zIndex": "89",
+            "nativeEscapeRecovers": true
+          }
+        ]
+      },
+      "public_assets": {
+        "css_bytes": 363166,
+        "css_lines": 4175,
+        "js_bytes": 160007,
+        "js_lines": 1940,
+        "total_bytes": 523173,
+        "total_lines": 6115
+      }
+    }
   },
   "presentation_refactor_history": [
     {
@@ -819,5 +958,123 @@
       "production_updated": false,
       "next_action": "Review and integrate CSS then scheduler PR into release only after applicable CI. Inspect fresh responsive evidence, update #996/#1334, and audit the remaining toolbar visibility across desktop resize before changing another owner. No main merge/deploy."
     }
-  ]
+  ],
+  "site_preview_publication_history": [
+    {
+      "recorded_at": "2026-09-06T09:19:35.725787+00:00",
+      "previous_site_draft": {
+        "status": "WHOLE_SITE_PREVIEW_PUBLISHED_NOT_PRODUCTION",
+        "branch": "release/search3-production-ready-v1",
+        "pr": 1334,
+        "implementation_verified_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+        "release_merge_sha": "39d376436e3553d16755a7da1c77cb4c3f5156bf",
+        "source_tree": "39e986647c51b893e4051d7805aee74d46e5ae73",
+        "exact_artifact": 9972524166,
+        "artifact_digest": "sha256:8e00b4db62bd7dfd91dae7e33ef71553f91adb2aa009477e7a4ca3e22130b1ed",
+        "superseded_artifact": 9972437784,
+        "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "preview_deploy_run": 33976775542,
+        "preview_deploy_pr": 1370,
+        "includes": [
+          "home native independent night range and child ages",
+          "offer/month date/night/party handoff",
+          "customer-facing country/month copy",
+          "Search3 production import",
+          "old-search compatibility route",
+          "whole-site preview path containment",
+          "preview lead-disabled endpoint and exact artifact pipeline",
+          "preview-only forced noindex independent of production SEO allowlist",
+          "readable result cards with taller mobile photos and non-duplicated facts",
+          "localized decimal flight-price tradeoff display correction",
+          "declined resort destination copy from reviewed H1",
+          "unpublished 404 legal/payment footer links hidden",
+          "existing production price calendar restored in Search3 with responsive disclosure",
+          "mockup-7 footer social/store treatment",
+          "mockup-6 readable contact form with fewer repeated panels",
+          "supplier placeholder-flight and unknown-baggage summaries",
+          "one authoritative tour price in lead sidebar without misleading flight-price repetition",
+          "booking stage hides preserved results and search controls",
+          "readable search context, filter rows and lead navigation",
+          "desktop reset fits the narrow filter rail",
+          "duplicate CSS rules removed with declaration-stream and pixel equivalence evidence",
+          "retained selected-tour DOM respects hidden after Back",
+          "selected-tour observer no longer rescans results; resize preserves open search editor",
+          "single CSS owner for initial/editor responsive grid",
+          "lead sidebar manager clarification when proceeding without flight"
+        ],
+        "preview_deploy_workflow_conclusion": "success",
+        "final_verification_run": 33976775542,
+        "final_verification_artifact": 9972545166
+      }
+    }
+  ],
+  "preview_publication": {
+    "status": "PUBLISHED_WITH_KNOWN_PRESENTATION_LIMITATION",
+    "source_sha": "5832457c6d43270290967a49f815a12463b19c18",
+    "source_tree": "79f5f4ba2f0bda6ebb23dfa1125db6ff5124e8f6",
+    "artifact_id": 9986118224,
+    "artifact_run": 34022965916,
+    "artifact_digest": "sha256:26493e2cafc0274a3556480c3e0dda0f32f42bb21197886e49576451368e4afb",
+    "deploy_pr": 1380,
+    "deploy_run": 34023385735,
+    "deployment_evidence_artifact": 9986258907,
+    "deployment_evidence_digest": "sha256:49020b49101e73afb1434e1e3792fa97b3042830d89a87cf135caaf96c242ab8",
+    "browser_verification_run": 34024278401,
+    "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "verified_at": "2026-09-06T09:19:35.725787+00:00",
+    "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+    "production_unchanged": true,
+    "physical_safari_tested": false,
+    "real_lead_submitted": false,
+    "verification": [
+      "all eight published assets match exact source",
+      "live homepage to search to real hotel results",
+      "live responsive toolbar, filter open/Escape/focus, unchanged parameters and two-way sort",
+      "real hotel to tour to review to visible lead form without submission"
+    ],
+    "responsive_widths": [
+      375,
+      999,
+      1000,
+      1348,
+      430
+    ],
+    "known_limitations": [
+      {
+        "width": 375,
+        "recovery": "native Escape",
+        "limitation": "retained hidden advanced-filter owner left an open backdrop"
+      }
+    ],
+    "legacy_backdrop_baseline": {
+      "scope": "Controlled hidden-legacy-details/open-state reproduction with supplier network blocked, not a second live search",
+      "sameBeforeAndAfter": true,
+      "rows": [
+        {
+          "version": "previous-39d37643",
+          "hiddenOwner": true,
+          "openOwner": true,
+          "backdropVisible": true,
+          "zIndex": "89",
+          "nativeEscapeRecovers": true
+        },
+        {
+          "version": "published-5832457c",
+          "hiddenOwner": true,
+          "openOwner": true,
+          "backdropVisible": true,
+          "zIndex": "89",
+          "nativeEscapeRecovers": true
+        }
+      ]
+    },
+    "public_assets": {
+      "css_bytes": 363166,
+      "css_lines": 4175,
+      "js_bytes": 160007,
+      "js_lines": 1940,
+      "total_bytes": 523173,
+      "total_lines": 6115
+    }
+  }
 }
