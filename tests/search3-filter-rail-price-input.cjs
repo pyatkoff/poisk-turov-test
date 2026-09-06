@@ -12,6 +12,8 @@ const count = { textContent: '' };
 const word = { textContent: '' };
 const priceLabel = { textContent: '' };
 const priceInput = { min: '', max: '', step: '', value: '' };
+const seaSection = { hidden: false, ariaHidden: '', setAttribute(name, value) { if (name === 'aria-hidden') this.ariaHidden = value; } };
+const seaInputs = ['0', '200', '500', '1000'].map(value => ({ value, checked: value === '0' }));
 let railHtml = '';
 let railHtmlWrites = 0;
 let formSubmits = 0;
@@ -22,8 +24,10 @@ const rail = {
   addEventListener(name, handler) { railEvents.set(name, handler); },
   querySelector(selector) {
     return {'[data-s3-count]': count, '[data-s3-word]': word,
-      '[data-s3-price-label]': priceLabel, '[data-s3-price]': priceInput}[selector] || null;
-  }
+      '[data-s3-price-label]': priceLabel, '[data-s3-price]': priceInput,
+      '[data-s3-sea-section]': seaSection}[selector] || null;
+  },
+  querySelectorAll(selector) { return selector === 'input[name="s3-sea"]' ? seaInputs : []; }
 };
 const form = { elements: {}, requestSubmit() { formSubmits += 1; } };
 const renders = [];
@@ -46,12 +50,14 @@ vm.runInNewContext(
 );
 
 const hotels = [
-  { tours: [{ price: 90000 }, { price: 120000 }] },
-  { tours: [{ price: 160000 }] }
+  { seaDistance: 400, tours: [{ price: 90000 }, { price: 120000 }] },
+  { seaDistance: 800, tours: [{ price: 160000 }] }
 ];
 assert.equal(announcements.length, 1, 'initial empty rail announces once');
 assert.equal(railHtmlWrites, 1, 'initial rail is rendered once');
+assert.equal(seaSection.hidden, true, 'the sea facet starts hidden without complete result data');
 windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+assert.equal(seaSection.hidden, false, 'complete sea-distance data reveals the facet');
 assert.equal(announcements.length, 2, 'new source render announces once, not twice');
 assert.equal(railHtmlWrites, 1,
   'a progressive source update preserves the mounted controls instead of replacing their DOM');
@@ -101,7 +107,7 @@ windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
 input(95000);
 while (frames.length) frames.shift()();
 assert.equal(renders.length, 4);
-const refreshedHotels = hotels.concat({ tours: [{ price: 200000 }] });
+const refreshedHotels = hotels.concat({ seaDistance: 1200, tours: [{ price: 200000 }] });
 const announcementCount = announcements.length;
 const railHtmlWritesBeforeRefresh = railHtmlWrites;
 windowEvents.get('v2:results-rendered')({ detail: { items: refreshedHotels } });
@@ -137,7 +143,7 @@ windowEvents.get('v2:search-reset')();
 windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
 input(150000);
 while (frames.length) frames.shift()();
-const temporarilyNarrowedHotels = [{ tours: [{ price: 90000 }] }];
+const temporarilyNarrowedHotels = [{ seaDistance: 400, tours: [{ price: 90000 }] }];
 windowEvents.get('v2:results-rendered')({ detail: { items: temporarilyNarrowedHotels } });
 assert.equal(priceInput.max, '95000');
 assert.equal(priceInput.value, '95000', 'the mounted slider stays inside temporary bounds');
@@ -205,4 +211,22 @@ railEvents.get('change')({
 });
 assert.equal(renders.at(-1).length, hotels.length,
   'clearing a zero-match filter restores the original result source');
+
+windowEvents.get('v2:search-reset')();
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+railEvents.get('change')({
+  target: {
+    name: 's3-sea', value: '500',
+    matches() { return false; }
+  }
+});
+assert.equal(renders.at(-1).length, 1, 'the available sea facet filters complete data');
+const incompleteSeaHotels = [
+  { seaDistance: 0, tours: [{ price: 90000 }] },
+  { seaDistance: 800, tours: [{ price: 160000 }] }
+];
+windowEvents.get('v2:results-rendered')({ detail: { items: incompleteSeaHotels } });
+assert.equal(seaSection.hidden, true, 'a partial progressive source hides the incomplete sea facet');
+assert.equal(seaInputs[0].checked, true, 'hiding the incomplete facet resets it to any distance');
+assert.equal(rail.dataset.s3ActiveCount, '0', 'the hidden incomplete facet is not counted as active');
 console.log('PASS: price input bursts render once per frame with latest state');
