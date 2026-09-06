@@ -953,18 +953,18 @@ syncGroups();window.addEventListener('resize',syncGroups);
   }
 
   // Progressive results and breakpoint changes share the existing deferred mount.
-function scheduleMobileToolbar() {
-  if (!body.classList.contains('search3-results-active') || mobileToolbarTimer !== null) return;
-  mobileToolbarTimer = window.setTimeout(function () {
-    mobileToolbarTimer = null;
-    mountMobileToolbar();
-  }, 0);
-}
+  function scheduleMobileToolbar() {
+    if (!body.classList.contains('search3-results-active') || mobileToolbarTimer !== null) return;
+    mobileToolbarTimer = window.setTimeout(function () {
+      mobileToolbarTimer = null;
+      mountMobileToolbar();
+    }, 0);
+  }
 
-function cancelMobileToolbar() {
-  if (mobileToolbarTimer !== null) window.clearTimeout(mobileToolbarTimer);
-  mobileToolbarTimer = null;
-}
+  function cancelMobileToolbar() {
+    if (mobileToolbarTimer !== null) window.clearTimeout(mobileToolbarTimer);
+    mobileToolbarTimer = null;
+  }
 
   function mountMobileToolbar() {
     if (!body.classList.contains('search3-results-active')) return;
