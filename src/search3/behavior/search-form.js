@@ -19,31 +19,9 @@ function init(){
   function appendOriginal(name,label,cls){var f=originalFields[name];if(!f)return null;cleanField(f);var s=f.querySelector(':scope > span');if(s)s.textContent=label;if(cls)f.classList.add(cls);main.appendChild(f);return f;}
   appendOriginal('from','Откуда','search3-from');appendOriginal('country','Куда','search3-country');
   var region=field(form,'region');if(region){cleanField(region);var rs=region.querySelector(':scope > span');if(rs)rs.textContent='Курорт / регион';region.classList.add('search3-region');main.appendChild(region);}
-  var d1=refs.dateFrom,d2=refs.dateTo;if(d1&&d2){var dateBox=makeComposite('Дата вылета','search3-dates'),dateCtl=dateBox.querySelector('.search3-composite__control');d1.classList.add('search3-direct-control');d2.classList.add('search3-direct-control');d1.setAttribute('aria-label','Вылет не раньше');d2.setAttribute('aria-label','Вылет не позже');dateCtl.appendChild(d1);var dash=document.createElement('span');dash.className='search3-composite__dash';dash.textContent='—';dateCtl.appendChild(dash);dateCtl.appendChild(d2);main.appendChild(dateBox);}
-  var n1=refs.daysFrom,n2=refs.daysTill;if(n1&&n2){
-    var nightBox=makeComposite('Ночей','search3-nights'),nightCtl=nightBox.querySelector('.search3-composite__control');
-    function nightSelect(input,label){
-      var select=document.createElement('select');select.className='search3-direct-control';select.setAttribute('aria-label',label);select.dataset.search3Night=input.name;
-      for(var i=1;i<=28;i++){var option=document.createElement('option');option.value=String(i);option.textContent=String(i);select.appendChild(option);}
-      function sync(){select.value=String(clampNight(input.value));}
-      input.hidden=true;input.tabIndex=-1;input.setAttribute('aria-hidden','true');
-      input.addEventListener('input',sync);input.addEventListener('change',sync);select.addEventListener('focus',sync);
-      select.addEventListener('change',function(){input.value=select.value;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));});
-      form.addEventListener('reset',function(){setTimeout(sync,0);});sync();nightCtl.appendChild(input);nightCtl.appendChild(select);
-    }
-    nightSelect(n1,'Минимум ночей');var nd=document.createElement('span');nd.className='search3-composite__dash';nd.textContent='—';nightCtl.appendChild(nd);nightSelect(n2,'Максимум ночей');main.appendChild(nightBox);
-  }
-  var adults=refs.count_people,children=refs.child_count,touristBox=null;if(adults&&children){touristBox=makeComposite('Туристы','search3-tourists');var touristCtl=touristBox.querySelector('.search3-composite__control');var summary=document.createElement('button');summary.type='button';summary.className='search3-tourists__summary';var pop=document.createElement('div');pop.className='search3-tourists__pop';pop.hidden=true;pop.innerHTML='<span>Взрослых</span>';pop.appendChild(adults);var ch=document.createElement('span');ch.textContent='Детей';pop.appendChild(ch);pop.appendChild(children);if(childAges){childAges.classList.add('search3-tourists__ages');pop.appendChild(childAges);}function syncGuests(){var a=Number(adults.value||2),c=Number(children.value||0);summary.textContent=a+' '+(a===1?'взрослый':'взрослых')+(c?' · '+c+' '+(c===1?'ребёнок':'детей'):'');}summary.addEventListener('click',function(e){e.preventDefault();pop.hidden=!pop.hidden;});adults.addEventListener('change',syncGuests);children.addEventListener('change',syncGuests);syncGuests();touristCtl.appendChild(summary);touristCtl.appendChild(pop);main.appendChild(touristBox);}
+/* @include behavior/search-form/primary-controls.js */
   if(submit){submit.innerHTML='<span>Найти туры</span><b aria-hidden="true">→</b>';main.appendChild(submit);}
-  var quality=document.createElement('section');quality.className='search3-quality';quality.innerHTML='<div class="search3-quality__grid"></div>';main.parentNode.insertBefore(quality,main.nextSibling);var grid=quality.querySelector('.search3-quality__grid');
-  [['stars','Категория отеля','search3-stars'],['rating','Оценка отеля','search3-rating'],['food','Питание','search3-meal'],['price_till','Бюджет на тур','search3-budget'],['hotel','Конкретный отель','search3-hotel']].forEach(function(x){var f=field(form,x[0]);if(!f)return;cleanField(f);var s=f.querySelector(':scope > span');if(s)s.textContent=x[1];f.classList.add(x[2]);grid.appendChild(f);});
-  var budget=form.elements.price_till;if(budget)budget.placeholder='до 250 000 ₽';var hotel=form.elements.hotel;if(hotel)hotel.setAttribute('aria-label','Конкретный отель');
-  var quick=document.createElement('div');quick.className='search3-quick';
-  var flight=document.createElement('label');flight.className='search3-quick__label search3-quick__label--static';flight.innerHTML='<input type="checkbox" checked disabled><span>Только с перелётом</span>';quick.appendChild(flight);
-  var direct=form.elements.onlyDirect;if(direct){var directLabel=document.createElement('label');directLabel.className='search3-quick__label search3-quick__label--direct';directLabel.appendChild(direct);var directText=document.createElement('span');directText.textContent='Прямой рейс';directLabel.appendChild(directText);quick.appendChild(directLabel);}
-  quality.parentNode.insertBefore(quick,extras);extras.classList.remove('result-filter-rail');extras.hidden=true;
-  if(touristBox)document.addEventListener('click',function(e){if(!touristBox.contains(e.target)){var p=touristBox.querySelector('.search3-tourists__pop');if(p)p.hidden=true;}},true);
-  setTimeout(function(){['region','stars','rating','food'].forEach(function(name){var f=field(form,name);if(!f)return;cleanField(f);if(name==='region'){var s=f.querySelector(':scope > span');if(s)s.textContent='Курорт / регион';f.classList.add('search3-region');if(f.parentNode!==main){var dateBoxNow=main.querySelector('.search3-dates');main.insertBefore(f,dateBoxNow||main.children[2]||null);}}else{if(name==='stars'){var st=f.querySelector(':scope > span');if(st)st.textContent='Категория отеля';}if(name==='rating'){var rt=f.querySelector(':scope > span');if(rt)rt.textContent='Оценка отеля';}if(name==='food'){var ft=f.querySelector(':scope > span');if(ft)ft.textContent='Питание';}if(f.parentNode!==grid)grid.appendChild(f);}});},100);
+/* @include behavior/search-form/secondary-controls.js */
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(init,20);},{once:true});else setTimeout(init,20);
 })();

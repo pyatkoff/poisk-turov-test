@@ -1,0 +1,11 @@
+{
+  "name": "search3-js-build",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build-only, syntax-checked Search3 JavaScript printing",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "acorn": "8.18.0",
+    "terser": "5.51.2"
+  }
+}

@@ -1,0 +1,15 @@
+  var d1=refs.dateFrom,d2=refs.dateTo;if(d1&&d2){var dateBox=makeComposite('Дата вылета','search3-dates'),dateCtl=dateBox.querySelector('.search3-composite__control');d1.classList.add('search3-direct-control');d2.classList.add('search3-direct-control');d1.setAttribute('aria-label','Вылет не раньше');d2.setAttribute('aria-label','Вылет не позже');dateCtl.appendChild(d1);var dash=document.createElement('span');dash.className='search3-composite__dash';dash.textContent='—';dateCtl.appendChild(dash);dateCtl.appendChild(d2);main.appendChild(dateBox);}
+  var n1=refs.daysFrom,n2=refs.daysTill;if(n1&&n2){
+    var nightBox=makeComposite('Ночей','search3-nights'),nightCtl=nightBox.querySelector('.search3-composite__control');
+    function nightSelect(input,label){
+      var select=document.createElement('select');select.className='search3-direct-control';select.setAttribute('aria-label',label);select.dataset.search3Night=input.name;
+      for(var i=1;i<=28;i++){var option=document.createElement('option');option.value=String(i);option.textContent=String(i);select.appendChild(option);}
+      function sync(){select.value=String(clampNight(input.value));}
+      input.hidden=true;input.tabIndex=-1;input.setAttribute('aria-hidden','true');
+      input.addEventListener('input',sync);input.addEventListener('change',sync);select.addEventListener('focus',sync);
+      select.addEventListener('change',function(){input.value=select.value;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));});
+      form.addEventListener('reset',function(){setTimeout(sync,0);});sync();nightCtl.appendChild(input);nightCtl.appendChild(select);
+    }
+    nightSelect(n1,'Минимум ночей');var nd=document.createElement('span');nd.className='search3-composite__dash';nd.textContent='—';nightCtl.appendChild(nd);nightSelect(n2,'Максимум ночей');main.appendChild(nightBox);
+  }
+  var adults=refs.count_people,children=refs.child_count,touristBox=null;if(adults&&children){touristBox=makeComposite('Туристы','search3-tourists');var touristCtl=touristBox.querySelector('.search3-composite__control');var summary=document.createElement('button');summary.type='button';summary.className='search3-tourists__summary';var pop=document.createElement('div');pop.className='search3-tourists__pop';pop.hidden=true;pop.innerHTML='<span>Взрослых</span>';pop.appendChild(adults);var ch=document.createElement('span');ch.textContent='Детей';pop.appendChild(ch);pop.appendChild(children);if(childAges){childAges.classList.add('search3-tourists__ages');pop.appendChild(childAges);}function syncGuests(){var a=Number(adults.value||2),c=Number(children.value||0);summary.textContent=a+' '+(a===1?'взрослый':'взрослых')+(c?' · '+c+' '+(c===1?'ребёнок':'детей'):'');}summary.addEventListener('click',function(e){e.preventDefault();pop.hidden=!pop.hidden;});adults.addEventListener('change',syncGuests);children.addEventListener('change',syncGuests);syncGuests();touristCtl.appendChild(summary);touristCtl.appendChild(pop);main.appendChild(touristBox);}

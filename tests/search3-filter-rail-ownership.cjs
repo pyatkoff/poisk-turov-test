@@ -37,7 +37,7 @@ for (const marker of [
 
 assert.match(
   rail,
-  /var panel=e\.target\.closest\('\[data-s3-panel\]'\);if\(panel\)\{editSearch\(\);return;\}/,
+  /var panel=e\.target\.closest\('\[data-s3-panel\]'\);if\(panel\)\{editSearch\(\);return;?\}/,
   'desktop result-filter edit rows keep their existing edit-search handoff'
 );
 assert.match(styles, /@media\(max-width:999px\)\{[\s\S]*?\.results-filter-rail\{display:none!important\}/, 'desktop rail is explicitly absent under the mobile ownership boundary');

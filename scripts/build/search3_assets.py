@@ -4,11 +4,31 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 JS_INCLUDE = re.compile(rb'(?m)^[ \t]*/\* @include ([a-zA-Z0-9_./-]+\.js) \*/\r?\n')
 CSS_STRING = re.compile(rb'/\* @css-string ([a-zA-Z0-9_./-]+\.css) \*/ ""')
+
+
+def compact_javascript(outputs):
+    """Print all JS with pinned build-only tools and an independent syntax guard."""
+    scripts = {name: content.decode('utf-8') for name, content in outputs.items()
+               if name.endswith('.js')}
+    result = subprocess.run(
+        ['node', str(ROOT / 'scripts/build/search3-js/compact.cjs')],
+        input=json.dumps(scripts), text=True, capture_output=True, timeout=60)
+    if result.returncode:
+        hint = ('Install pinned JS build tools with npm ci --prefix '
+                'scripts/build/search3-js --ignore-scripts.\n'
+                if 'Cannot find module' in result.stderr else '')
+        raise ValueError(hint + result.stderr)
+    compacted = json.loads(result.stdout)
+    if set(compacted) != set(scripts) or any(not isinstance(value, str) for value in compacted.values()):
+        raise ValueError('Invalid Search3 JS compaction output')
+    return {name: compacted[name].encode('utf-8') if name in compacted else content
+            for name, content in outputs.items()}
 
 
 def compact_css_comments(content, trim_indentation=False):
@@ -98,7 +118,7 @@ def assemble(root):
               if p.is_file() and p.suffix in ('.css', '.js')}
     if used != actual:
         raise ValueError('Unlisted Search3 modules: ' + ', '.join(sorted(actual - used)))
-    return outputs, reviewed_path, reviewed
+    return compact_javascript(outputs), reviewed_path, reviewed
 
 
 def build(root=ROOT, write=False):

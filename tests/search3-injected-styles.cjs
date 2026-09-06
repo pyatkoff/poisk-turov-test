@@ -4,7 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../v2/search3-results-filters-v1.js'), 'utf8');
-const owners = source.match(/\/\* Static mobile[^]*?\n\}\)\(\);/g);
+const owners = [...source.matchAll(/\/\* Static mobile/g)].map(match => {
+  const end = source.indexOf('/* donor:', match.index);
+  assert.ok(end > match.index, 'style owner ends before the next behavior owner');
+  return source.slice(match.index, end);
+});
 assert.equal(owners.length, 2);
 const ids = ['search3-mobile-convergence-style', 'search3-mobile-final-review-v2'];
 

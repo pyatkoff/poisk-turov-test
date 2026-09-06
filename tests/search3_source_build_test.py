@@ -74,6 +74,14 @@ class Search3SourceBuildTest(unittest.TestCase):
         for name, original in self.outputs.items():
             self.assertEqual((self.root / 'v2' / name).read_bytes(), original)
 
+    def test_invalid_javascript_does_not_partially_write_outputs(self):
+        source = self.root / 'src/search3/behavior/entry-v1.js'
+        source.write_bytes(source.read_bytes() + b'\nconst =;\n')
+        with self.assertRaises(ValueError):
+            builder.build(self.root, write=True)
+        for name, original in self.outputs.items():
+            self.assertEqual((self.root / 'v2' / name).read_bytes(), original)
+
     def test_unlisted_source_is_rejected(self):
         (self.root / 'src/search3/behavior/forgotten.js').write_text('void 0;')
         with self.assertRaisesRegex(ValueError, 'Unlisted'):

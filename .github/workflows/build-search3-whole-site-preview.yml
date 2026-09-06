@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/search3/**'
       - 'scripts/build/search3_assets.py'
+      - 'scripts/build/search3-js/**'
+      - 'tests/search3-js-compaction.cjs'
       - 'tests/search3_source_build_test.py'
       - 'v2/**'
       - 'tests/site-preview-path-smoke.php'
@@ -32,6 +34,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pinned Search3 build tools
+        run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+
       - name: Verify source identity and focused contracts
         shell: bash
         env:
@@ -44,6 +53,7 @@ jobs:
           php tests/site-preview-path-smoke.php preview
           php tests/search-handoff-smoke.php
           python3 -B scripts/build/search3_assets.py --check
+          node tests/search3-js-compaction.cjs
           python3 -B tests/search3_source_build_test.py
           python3 -B tests/search3_production_presentation_test.py
           python3 -B tests/search3_site_preview_isolation_test.py

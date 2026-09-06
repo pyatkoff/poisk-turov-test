@@ -956,19 +956,21 @@
       "docs/project/search3-css-descendant-secondary.json"
     ],
     "in_progress": {
-      "stage": "FILTER_RAIL_PRIVATE_PARTS_LOCAL_VERIFIED",
-      "baseline": "b3b508d00af2149e04882b777ca30c9002ca91c0",
+      "stage": "FILTER_RAIL_INTEGRATED_JS_COMPACTION_LOCAL_VERIFIED",
+      "first_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9",
+      "first_pr": 1408,
+      "first_ci": "23 success, 1 expected skip; 375/1440 editor images inspected and pixel-identical to published baseline",
       "public_assets": {
         "css_bytes": 211465,
         "css_lines": 4007,
-        "js_bytes": 139855,
-        "js_lines": 1827,
-        "total_bytes": 351320,
-        "total_lines": 5834
+        "js_bytes": 130263,
+        "js_lines": 55,
+        "total_bytes": 341728,
+        "total_lines": 4062
       },
-      "audit": "docs/project/search3-filter-rail-private-parts.json",
+      "audit": "docs/project/search3-js-build-compaction.json",
       "preview_updated": false,
-      "next_action": "Run exact source CI; continue format-only JS compaction with pinned parser AST equivalence before separate preview publication."
+      "next_action": "Run exact JS compaction source CI and inspect responsive evidence, then separately publish one combined exact preview artifact."
     }
   },
   "presentation_refactor_history": [

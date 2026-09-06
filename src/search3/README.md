@@ -3,14 +3,26 @@
 Edit this directory, then run from the repository root:
 
 ```sh
+npm ci --prefix scripts/build/search3-js --ignore-scripts
 python3 scripts/build/search3_assets.py --write
 python3 scripts/build/search3_assets.py --check
 ```
 
 Commit source changes, generated `v2/search3-*` assets and the updated
 `docs/project/search3-production-import.json` together. CI rejects stale bundles,
-unlisted modules and missing source files. The build uses Python's standard library;
-it requires no npm installation, transpiler or additional browser requests.
+unlisted modules and missing source files. Python assembles the private modules;
+Node 18+ prints JavaScript using pinned build-only Terser and Acorn dependencies.
+Install them once with the command above. The build itself makes no network requests.
+These tools are outside the site payload and add no browser dependency or request.
+
+JavaScript printing disables compression and name mangling. It retains all source
+comments, quoted property keys and number spelling. An independent Acorn parse
+compares every statement, operator, name, value, directive, template raw string and
+ordered comment before any output is written. Only source positions, literal
+spelling and the safe `{name}` / `{name:name}` notation are normalized; `__proto__`
+is excluded from that shorthand equivalence. Syntax/comment changes fail closed,
+including otherwise harmless empty-statement removal or template raw rewrites.
+Non-shrinking assets keep their original bytes. No transpilation is performed.
 
 The CSS build replaces private source comments with empty comment separators;
 license/copyright/source-map notes, strings and escapes remain. The output also
@@ -194,3 +206,8 @@ Private `filter-rail/availability.js` and `filter-rail/render.js` retain complet
 function groups in their original IIFE positions. Sea options share one local
 markup function. The compiled regression checks exact HTML/data/event traces
 against the preceding bundle; no runtime loader or public asset was added.
+
+`search-form.js` retains initialization, field references and the existing form
+lifecycle. Its `search-form/primary-controls.js` and `secondary-controls.js` parts
+expand at the original positions inside `init()`. Dates, nights, guests, secondary
+fields and delayed cleanup keep their shared lexical scope and exact source bytes.
