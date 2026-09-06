@@ -27,8 +27,9 @@ Source comments and donor markers stay available for maintenance.
 its original IIFE scope. CSS modules retain the existing cascade order; compatibility
 modules are still active, not dead code. Do not sort the manifest or load modules
 independently in the browser. Static style strings in behavior modules also retain
-their original insertion order; moving them into styles requires separate cascade
-evidence.
+their original insertion order. Private CSS sources can be compiled into those
+same insertion points; moving them into earlier linked stylesheets requires
+separate cascade evidence.
 
 ## Where to make changes
 
@@ -97,9 +98,17 @@ the selector/declaration/media token proof is recorded in
 
 `behavior/selected-tour-mobile-styles.js` and `behavior/summary-cta-styles.js`
 own the two static style injections immediately before their behavior modules.
-Repeated selector prefixes use local constants. The injected CSS text, style IDs,
-insertion order and original selected-root guard are preserved. Do not move these
-injections into the earlier linked stylesheets without checking cascade order.
+Their CSS lives in `styles/injected/selected-tour-mobile.css` and
+`styles/injected/summary-cta.css`. A `/* @css-string styles/path.css */ ""`
+placeholder compiles to one escaped JavaScript string literal. CSS sources use
+single-parent explicit-`&` groups; expanded selectors, declaration values and
+media contexts match the original injections. Style IDs, insertion order and
+the original selected-root guard stay unchanged; the CSS is not loaded earlier.
+These private files add no public path, runtime loader or browser request.
+CSS references must stay inside the source root, occur once and use `.css`;
+invalid/missing/repeated references fail before any output is written.
+`tests/search3-injected-styles.cjs` executes the compiled owners and checks order,
+guard and repeated execution. Audit: `search3-injected-css-sources.json`.
 
 Repeated ancestor prefixes in 74 CSS selector lists now use `:is()` for plain
 class alternatives with equal specificity. Declarations and media boundaries are

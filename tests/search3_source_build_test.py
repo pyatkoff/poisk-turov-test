@@ -1,6 +1,7 @@
 """Exercise source drift, rebuilding and fail-closed behavior on an isolated tree."""
 import importlib.util
 import json
+import re
 from pathlib import Path
 import shutil
 import tempfile
@@ -105,6 +106,36 @@ class Search3SourceBuildTest(unittest.TestCase):
                 for name, content in self.outputs.items():
                     self.assertEqual((self.root / 'v2' / name).read_bytes(), content)
         part.write_bytes(original)
+
+    def test_private_css_literal_preserves_strings_escapes_and_host_asset(self):
+        part = self.root / 'src/search3/styles/injected/summary-cta.css'
+        css = b'.x{content:"quote \\\" and slash \\\\";--tokens:red/* note */blue}\n'
+        part.write_bytes(css)
+        with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
+            builder.build(self.root)
+        outputs, _, _ = builder.assemble(self.root)
+        literals = re.findall(rb's.textContent=("(?:\\.|[^"\\])*");',
+                              outputs['search3-results-filters-v1.js'])
+        expected = builder.compact_css_comments(css, trim_indentation=True).decode()
+        self.assertIn(expected, [json.loads(value) for value in literals])
+        builder.build(self.root, write=True)
+        self.assertEqual(builder.build(self.root), 8)
+        for name, original in self.outputs.items():
+            if name != 'search3-results-filters-v1.js':
+                self.assertEqual(outputs[name], original)
+
+    def test_invalid_private_css_reference_fails_before_writing_outputs(self):
+        source = self.root / 'src/search3/behavior/summary-cta-styles.js'
+        original = source.read_text()
+        for target in ('styles/injected/selected-tour-mobile.css',
+                       '../../v2/search3-entry-v1.css', 'styles/injected/missing.css'):
+            with self.subTest(target=target):
+                source.write_text(original.replace('styles/injected/summary-cta.css', target))
+                with self.assertRaises((ValueError, OSError)):
+                    builder.build(self.root, write=True)
+                for name, content in self.outputs.items():
+                    self.assertEqual((self.root / 'v2' / name).read_bytes(), content)
+        source.write_text(original)
 
     def test_source_outside_module_root_is_rejected(self):
         manifest = self.root / 'src/search3/manifest.json'

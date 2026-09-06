@@ -8,6 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 JS_INCLUDE = re.compile(rb'(?m)^[ \t]*/\* @include ([a-zA-Z0-9_./-]+\.js) \*/\r?\n')
+CSS_STRING = re.compile(rb'/\* @css-string ([a-zA-Z0-9_./-]+\.css) \*/ ""')
 
 
 def compact_css_comments(content, trim_indentation=False):
@@ -80,6 +81,11 @@ def assemble(root):
         if suffix == '.js':
             # Private source composition: no new scope, global, request or runtime loader.
             content = JS_INCLUDE.sub(lambda match: read_part(match[1].decode(), suffix), content)
+            def css_string(match):
+                css = read_part(match[1].decode(), '.css')
+                css = compact_css_comments(css, trim_indentation=True).decode('utf-8')
+                return json.dumps(css, ensure_ascii=True).encode('ascii')
+            content = CSS_STRING.sub(css_string, content)
         return content
 
     for name, parts in manifest['assets'].items():
