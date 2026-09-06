@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-06T17:15:55.022338+00:00",
+  "updated_at": "2026-09-06T17:55:01.927086+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -864,73 +864,32 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "d7882e504a6e66d3f3d71910e4f6f4650aa8b494",
-    "stage": "S3_PRIVATE_INJECTED_CSS_AND_OVERRIDDEN_DECLARATIONS_PUBLISHED",
-    "implementation_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
-    "release_integration_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
-    "scope": "Two private injected CSS sources retain original insertion positions and guards; 1940 fewer JS bytes. Removed 182 CSS declarations overridden later and 74 empty rules; 8057 fewer CSS bytes. Other compiled JS behavior owners are byte-identical.",
-    "source_validation": "TWO_SOURCE_HEADS_EACH_23_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
+    "baseline": "2b2213db2865973ff4f26c3194a7cfdb6f0feaac",
+    "stage": "S3_DESCENDANT_RESULTS_CI_VERIFIED_SECOND_PASS_PREPARED",
+    "implementation_sha": "56bc654af46ee8814ad2b62eec5d83f9ae02aaa4",
+    "release_integration_sha": "56bc654af46ee8814ad2b62eec5d83f9ae02aaa4",
+    "source_validation": "23_APPLICABLE_WORKFLOWS_SUCCESS_1_EXPECTED_SKIP",
     "public_assets": {
-      "css_bytes": 249411,
-      "css_lines": 3783,
+      "css_bytes": 216752,
+      "css_lines": 4002,
       "js_bytes": 140240,
       "js_lines": 1825,
-      "total_bytes": 389651,
-      "total_lines": 5608,
-      "scope": "Four CSS and four JS assets, uncompressed; excludes shared runtime/legacy and duplicate src. Private injected CSS is counted in its JS host. No speed or deferred-loading claim."
+      "total_bytes": 356992,
+      "total_lines": 5827
     },
-    "preview_updated": true,
+    "preview_updated": false,
     "production_updated": false,
     "ci": {
-      "sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
-      "pr": 1403,
-      "applicable_success": 23,
-      "expected_skipped": 1,
-      "core_run": 34047451648,
-      "visual_run": 34047451646,
-      "flight_run": 34047451706,
-      "artifact_run": 34047451594,
-      "visual_artifact": 9993537940,
-      "visual_digest": "sha256:7e12e7529a1c846fc5d86d2635e56aef4787b5c80c56cd64f285a8ce92fd3b36",
-      "first_pass": {
-        "sha": "10d78a4463732a1d730d94af90b04cb6af795d37",
-        "pr": 1402,
-        "applicable_success": 23,
-        "expected_skipped": 1,
-        "core_run": 34047082610,
-        "visual_run": 34047082664,
-        "flight_run": 34047082620,
-        "artifact_run": 34047082564
-      },
-      "scope": "Each source head passed 23 applicable workflows and one expected skip. Eleven build tests and 14 presentation tests; PHP covered in CI. All 182 later declaration values supported in browser CI. Responsive checks passed at 375/430/1024/1348/1440; inspected 375/1440 editor images are pixel-identical to prior preview. 19/24 compared images exact; no blanket pixel-parity or physical Safari claim."
+      "pr": 1405,
+      "core_run": 34049874338,
+      "visual_run": 34049874332,
+      "flight_run": 34049874340,
+      "artifact_run": 34049874271,
+      "visual_artifact": 9994219794,
+      "visual_digest": "sha256:d12de112f14267d902402c3b62927b010c995e7953853b6d6aff7149782d766c"
     },
-    "preview_deploy_run": 34047654589,
-    "preview_deploy_pr": 1404,
-    "next_action": "Refresh release/PRs and publication before another bounded reduction. Inspect remaining repeated inline-style setter groups in active results/selected presentation JS; require identical DOM operation order/values/priority and measured net savings before changing them. The private CSS string extraction and the 182 same-selector/context overridden declarations are complete; do not repeat these or prior nesting, compaction, formatter, filter/toolbar and source-split passes. Preserve eight paths, IIFEs and protected business contracts; publish only a separate exact preview artifact. Production locked.",
-    "verified_at": "2026-09-06T17:15:55.022338+00:00",
-    "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
-    "run_delta": {
-      "bytes": -9997,
-      "lines": -150,
-      "css_bytes": -8057,
-      "js_bytes": -1940
-    },
-    "continuation_delta": {
-      "baseline": "d7882e504a6e66d3f3d71910e4f6f4650aa8b494",
-      "source_prs": [
-        1402,
-        1403
-      ],
-      "bytes": -9997,
-      "lines": -150,
-      "css_bytes": -8057,
-      "js_bytes": -1940
-    },
-    "audit": "docs/project/search3-continued-reduction-publication.json",
-    "source_audits": [
-      "docs/project/search3-injected-css-sources.json",
-      "docs/project/search3-active-css-declarations.json"
-    ]
+    "next_action": "Verify the prepared remaining CSS groups and private booking-layout source, then publish one exact combined isolated preview. Do not repeat completed root/descendant grouping or setter extraction. Preserve eight paths and business contracts. Production locked.",
+    "audit": "docs/project/search3-css-descendant-results.json"
   },
   "presentation_refactor_history": [
     {
@@ -1779,6 +1738,75 @@
       "audit": "docs/project/search3-injected-css-sources.json",
       "next_action": "Finish supported later-declaration cleanup, run CI and publish one combined exact preview artifact. Current published runtime remains74b87bff.",
       "verified_at": "2026-09-06T17:02:59.218029+00:00"
+    },
+    {
+      "baseline": "d7882e504a6e66d3f3d71910e4f6f4650aa8b494",
+      "stage": "S3_PRIVATE_INJECTED_CSS_AND_OVERRIDDEN_DECLARATIONS_PUBLISHED",
+      "implementation_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
+      "release_integration_sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
+      "scope": "Two private injected CSS sources retain original insertion positions and guards; 1940 fewer JS bytes. Removed 182 CSS declarations overridden later and 74 empty rules; 8057 fewer CSS bytes. Other compiled JS behavior owners are byte-identical.",
+      "source_validation": "TWO_SOURCE_HEADS_EACH_23_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
+      "public_assets": {
+        "css_bytes": 249411,
+        "css_lines": 3783,
+        "js_bytes": 140240,
+        "js_lines": 1825,
+        "total_bytes": 389651,
+        "total_lines": 5608,
+        "scope": "Four CSS and four JS assets, uncompressed; excludes shared runtime/legacy and duplicate src. Private injected CSS is counted in its JS host. No speed or deferred-loading claim."
+      },
+      "preview_updated": true,
+      "production_updated": false,
+      "ci": {
+        "sha": "731eb3a8e1e490d2c07f4727135c373449d4958f",
+        "pr": 1403,
+        "applicable_success": 23,
+        "expected_skipped": 1,
+        "core_run": 34047451648,
+        "visual_run": 34047451646,
+        "flight_run": 34047451706,
+        "artifact_run": 34047451594,
+        "visual_artifact": 9993537940,
+        "visual_digest": "sha256:7e12e7529a1c846fc5d86d2635e56aef4787b5c80c56cd64f285a8ce92fd3b36",
+        "first_pass": {
+          "sha": "10d78a4463732a1d730d94af90b04cb6af795d37",
+          "pr": 1402,
+          "applicable_success": 23,
+          "expected_skipped": 1,
+          "core_run": 34047082610,
+          "visual_run": 34047082664,
+          "flight_run": 34047082620,
+          "artifact_run": 34047082564
+        },
+        "scope": "Each source head passed 23 applicable workflows and one expected skip. Eleven build tests and 14 presentation tests; PHP covered in CI. All 182 later declaration values supported in browser CI. Responsive checks passed at 375/430/1024/1348/1440; inspected 375/1440 editor images are pixel-identical to prior preview. 19/24 compared images exact; no blanket pixel-parity or physical Safari claim."
+      },
+      "preview_deploy_run": 34047654589,
+      "preview_deploy_pr": 1404,
+      "next_action": "Refresh release/PRs and publication before another bounded reduction. Inspect remaining repeated inline-style setter groups in active results/selected presentation JS; require identical DOM operation order/values/priority and measured net savings before changing them. The private CSS string extraction and the 182 same-selector/context overridden declarations are complete; do not repeat these or prior nesting, compaction, formatter, filter/toolbar and source-split passes. Preserve eight paths, IIFEs and protected business contracts; publish only a separate exact preview artifact. Production locked.",
+      "verified_at": "2026-09-06T17:15:55.022338+00:00",
+      "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+      "run_delta": {
+        "bytes": -9997,
+        "lines": -150,
+        "css_bytes": -8057,
+        "js_bytes": -1940
+      },
+      "continuation_delta": {
+        "baseline": "d7882e504a6e66d3f3d71910e4f6f4650aa8b494",
+        "source_prs": [
+          1402,
+          1403
+        ],
+        "bytes": -9997,
+        "lines": -150,
+        "css_bytes": -8057,
+        "js_bytes": -1940
+      },
+      "audit": "docs/project/search3-continued-reduction-publication.json",
+      "source_audits": [
+        "docs/project/search3-injected-css-sources.json",
+        "docs/project/search3-active-css-declarations.json"
+      ]
     }
   ],
   "site_preview_publication_history": [

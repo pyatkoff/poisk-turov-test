@@ -14,13 +14,15 @@ html body.search3-candidate{
 & #tourSearch .search3-primary-grid,
  &:not(.search3-has-results) #tourSearch .search3-primary-grid,
  &.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;align-items:end!important;gap:12px!important}
- & #tourSearch .search3-from{order:1!important}
- & #tourSearch .search3-country{order:2!important}
- & #tourSearch .search3-region{order:3!important}
- & #tourSearch .search3-tourists{order:4!important}
- & #tourSearch .search3-dates{order:5!important;grid-column:span 2!important}
- & #tourSearch .search3-nights{order:6!important}
- & #tourSearch .search-submit{order:7!important;grid-column:auto!important;width:100%!important;min-width:0!important;height:46px!important}
+ & #tourSearch {
+& .search3-from {order:1!important}
+ & .search3-country {order:2!important}
+ & .search3-region {order:3!important}
+ & .search3-tourists {order:4!important}
+ & .search3-dates {order:5!important;grid-column:span 2!important}
+ & .search3-nights {order:6!important}
+ & .search-submit {order:7!important;grid-column:auto!important;width:100%!important;min-width:0!important;height:46px!important}
+}
 }
 }
 

@@ -4,17 +4,25 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const events = new Map(), timers = [];
-let renders = 0, html = '', lead = false;
-const style = { removeProperty() {}, setProperty() {} };
+let renders = 0, html = '', lead = false, review = false, desktop = false;
+const layoutWrites = [];
+const style = owner => ({
+  removeProperty(name) { layoutWrites.push([owner, 'remove', name]); },
+  setProperty(name, value, priority) { layoutWrites.push([owner, 'set', name, value, priority]); }
+});
 let titleWrites = 0, titleValue = '';
 const title = { get textContent() { return titleValue; }, set textContent(value) { titleWrites++; titleValue = value; } }, flight = { textContent: '' };
-const summary = { style, remove() {}, querySelector(s) { return s.includes('__title') ? title : s.includes('__flight') ? flight : null; } };
-const shell = { style, querySelector() { return summary; }, insertAdjacentHTML(_, value) { renders++; html = value; } };
-const form = { style, closest() { return shell; } };
-const root = { dataset: {}, classList: { contains(name) { return name === 'search3-lead-entry' && lead; } }, querySelector() { return form; } };
-const window = { addEventListener(name, fn) { events.set(name, fn); }, matchMedia() { return { matches: false }; }, Search3FlightPresentation: { flightLabel(v, fallback) { return v ? v.name : fallback; } } };
+const summary = { style: style('summary'), remove() {}, querySelector(s) { return s.includes('__title') ? title : s.includes('__flight') ? flight : null; } };
+const shell = { style: style('shell'), querySelector() { return summary; }, insertAdjacentHTML(_, value) { renders++; html = value; } };
+const form = { style: style('form'), closest() { return shell; } };
+const root = { dataset: {}, classList: { contains(name) { return name === 'search3-lead-entry' ? lead : name === 'search3-final-review' && review; } }, querySelector() { return form; } };
+const window = { addEventListener(name, fn) { events.set(name, fn); }, matchMedia() { return { matches: desktop }; }, Search3FlightPresentation: { flightLabel(v, fallback) { return v ? v.name : fallback; } } };
+const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname, '../v2/search3-results-filters-v1.js'), 'utf8');
+const start = bundle.indexOf('/* donor:search3-booking-summary.js');
+const end = bundle.indexOf('/* donor:search3-booking-stepper.js', start);
+assert.ok(start >= 0 && end > start, 'exercise the compiled summary with its private layout part');
 const presentationSource = fs.readFileSync(path.join(__dirname, '../src/search3/behavior/presentation-text.js'), 'utf8')
-  + fs.readFileSync(path.join(__dirname, '../src/search3/behavior/booking-summary.js'), 'utf8');
+  + bundle.slice(start, end);
 vm.runInNewContext(presentationSource, {
   window, document: { getElementById() { return root; }, addEventListener() {} }, setTimeout(fn) { timers.push(fn); }
 });
@@ -46,3 +54,28 @@ emit('v2:tour-price-updated', { price: 987 }); flush();
 assert.equal(renders, 3, 'later updates are not lost');
 assert.ok(html.includes('987 ₽'));
 console.log('PASS: coalesced summary events preserve latest tour/flight/price and stage');
+
+// Preserve each target, write order, value and priority across all layout branches.
+const clear = [
+  ...['display', 'grid-column', 'grid-template-columns', 'gap', 'align-items'].map(p => ['shell', 'remove', p]),
+  ...['grid-column', 'grid-row'].map(p => ['form', 'remove', p]),
+  ...['display', 'grid-column', 'grid-row'].map(p => ['summary', 'remove', p])
+];
+const entryLayout = [
+  ['shell', 'display', 'grid'], ['shell', 'grid-column', '1 / -1'],
+  ['shell', 'grid-template-columns', 'minmax(0,1fr) 320px'], ['shell', 'gap', '18px'],
+  ['shell', 'align-items', 'start'], ['form', 'grid-column', '1'], ['form', 'grid-row', '1'],
+  ['summary', 'display', 'block'], ['summary', 'grid-column', '2'], ['summary', 'grid-row', '1']
+];
+const reviewLayout = [
+  ['shell', 'display', 'contents'], ['form', 'grid-column', '1 / 3'],
+  ['summary', 'display', 'block'], ['summary', 'grid-column', '3'], ['summary', 'grid-row', '4 / 12']
+];
+for (desktop of [false, true]) for (review of [false, true]) for (lead of [false, true]) {
+  layoutWrites.length = 0;
+  window.Search3BookingSummary.syncLayout();
+  const setters = desktop && review ? (lead ? entryLayout : reviewLayout) : [];
+  assert.deepEqual(layoutWrites, clear.concat(setters.map(([owner, name, value]) => [owner, 'set', name, value, 'important'])));
+  assert.equal(root.dataset.search3FinalLayout, review && !lead ? 'maket7' : undefined);
+}
+console.log('PASS: all eight summary layout states preserve ordered DOM style operations');

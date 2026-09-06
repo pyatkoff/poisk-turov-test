@@ -33,17 +33,21 @@ html body.search3-candidate{
 & .search3-price-calendar[open] > summary::after{transform:rotate(225deg);margin-top:6px}
 & .search3-price-calendar__summary:focus-visible{outline:2px solid #2743cb;outline-offset:3px;border-radius:10px}
 & .search3-price-calendar__content{padding:0 16px 14px}
-& #currentPriceCalendar .current-price-calendar__head{margin-bottom:10px}
-& #currentPriceCalendar .current-price-calendar__head > div{display:none}
-& #currentPriceCalendar .current-price-calendar__head small{font-size:12px;text-align:left;max-width:none;color:#667085}
-& #currentPriceCalendar .current-price-calendar__day{border-color:#dfe5ef;border-radius:10px;min-height:78px;gap:5px}
-& #currentPriceCalendar .current-price-calendar__day span{font-size:13px;color:#667085}
-& #currentPriceCalendar .current-price-calendar__day strong{font-size:17px;color:#17243f}
-& #currentPriceCalendar .current-price-calendar__day small{font-size:12px}
-& #currentPriceCalendar .current-price-calendar__day.is-best{border-color:#2743cb;background:#f0f4ff}
-& #currentPriceCalendar .current-price-calendar__day.is-best small{color:#2743cb}
-& #currentPriceCalendar .current-price-calendar__day:focus-visible{outline:2px solid #2743cb;outline-offset:2px}
-& #currentPriceCalendar .current-price-calendar__note{font-size:12px;line-height:1.45;color:#667085}
+& #currentPriceCalendar {
+& .current-price-calendar__head {margin-bottom:10px}
+& .current-price-calendar__head > div {display:none}
+& .current-price-calendar__head small {font-size:12px;text-align:left;max-width:none;color:#667085}
+& .current-price-calendar__day {
+& {border-color:#dfe5ef;border-radius:10px;min-height:78px;gap:5px}
+& span {font-size:13px;color:#667085}
+& strong {font-size:17px;color:#17243f}
+& small {font-size:12px}
+}
+& .current-price-calendar__day.is-best {border-color:#2743cb;background:#f0f4ff}
+& .current-price-calendar__day.is-best small {color:#2743cb}
+& .current-price-calendar__day:focus-visible {outline:2px solid #2743cb;outline-offset:2px}
+& .current-price-calendar__note {font-size:12px;line-height:1.45;color:#667085}
+}
 }
 @media(max-width:760px){
   html body.search3-candidate{

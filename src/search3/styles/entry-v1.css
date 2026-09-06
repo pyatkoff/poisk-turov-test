@@ -40,7 +40,9 @@ html body.search3-candidate{
 
 @media(max-width:999px){
   html body.search3-candidate{
-&.search3-results-active #status.status:has(.search-progress-done){
+&.search3-results-active {
+& #status.status:has(.search-progress-done) {
+& {
     width:calc(100% - 24px)!important;
     min-height:30px!important;
     margin:6px 12px!important;
@@ -48,34 +50,36 @@ html body.search3-candidate{
     border-radius:8px!important;
     box-shadow:none!important;
   }
-  &.search3-results-active #status.status:has(.search-progress-done) .search-progress-ux{
+  & .search-progress-ux {
     display:block!important;
   }
-  &.search3-results-active #status.status:has(.search-progress-done) .search-progress-head strong,&.search3-results-active #status.status:has(.search-progress-done) .search-progress-head span{
+  & .search-progress-head strong,& .search-progress-head span {
     font-size:12px!important;
   }
-  &.search3-results-active #status.status:has(.search-progress-done) .search-progress-note{
+  & .search-progress-note {
     display:none!important;
   }
+}
 
-  &.search3-results-active #resultsSearchSummary{
+  & #resultsSearchSummary {
+& {
     grid-template-columns:minmax(0,1fr) 94px!important;
     min-height:48px!important;
     margin-top:6px!important;
     margin-bottom:6px!important;
   }
-  &.search3-results-active #resultsSearchSummary .results-search-summary__route{
+  & .results-search-summary__route {
     padding:7px 9px!important;
   }
-  &.search3-results-active #resultsSearchSummary .results-search-summary__route strong{
+  & .results-search-summary__route strong {
     margin-bottom:2px!important;
     font-size:10px!important;
   }
-  &.search3-results-active #resultsSearchSummary .results-search-summary__route > span:not(.search3-entry-summary-detail){
+  & .results-search-summary__route > span:not(.search3-entry-summary-detail) {
     font-size:12px!important;
     line-height:1.2!important;
   }
-  &.search3-results-active #resultsSearchSummary .search3-entry-summary-detail:not([hidden]){
+  & .search3-entry-summary-detail:not([hidden]) {
     display:block!important;
     margin-top:2px!important;
     overflow:visible!important;
@@ -86,47 +90,49 @@ html body.search3-candidate{
     text-overflow:clip!important;
     white-space:normal!important;
   }
-  &.search3-results-active #resultsSearchSummary .results-search-summary__edit{
+  & .results-search-summary__edit {
     min-width:0!important;
     min-height:48px!important;
     padding:0 8px!important;
     font-size:12px!important;
   }
+}
 
-  &.search3-results-active #resultsTools{
+  & #resultsTools {
     min-height:34px!important;
     margin-top:4px!important;
     margin-bottom:4px!important;
     padding:3px 0!important;
   }
-  &.search3-results-active #resultsTools > div:first-child{
+  & #resultsTools > div:first-child {
     display:flex!important;
     align-items:baseline!important;
     gap:7px!important;
   }
-  &.search3-results-active #resultsTools > div:first-child strong{
+  & #resultsTools > div:first-child strong {
     font-size:16px!important;
   }
-  &.search3-results-active #resultsTools .search3-results-meta,&.search3-results-active #resultsTools #resultSummary{
+  & #resultsTools .search3-results-meta,& #resultsTools #resultSummary {
     display:none!important;
   }
 
-  &.search3-results-active .search3-mobile-toolbar{
+  & .search3-mobile-toolbar {
     grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
     align-items:stretch!important;
     gap:8px!important;
     margin-top:4px!important;
     margin-bottom:10px!important;
   }
-  &.search3-results-active .search3-mobile-filter-slot .mrf-bar{
+  & .search3-mobile-filter-slot .mrf-bar {
     display:flex!important;
     flex-wrap:nowrap!important;
     height:44px!important;
   }
-  &.search3-results-active .search3-mobile-filter-slot .mrf-open{
+  & .search3-mobile-filter-slot .mrf-open {
     width:100%!important;
     min-width:0!important;
   }
+}
 }
 
 }
@@ -154,23 +160,27 @@ html body.search3-candidate{
     order:-1!important;
   }
 
-  &:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) :is(.search3-quality,.search3-quick){
+  &:not(.search3-has-results) {
+& #tourSearch:not(.search3-mobile-advanced-open) :is(.search3-quality,.search3-quick) {
     display:none!important;
   }
-  &:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quality{
+  & #tourSearch.search3-mobile-advanced-open {
+& .search3-quality {
     display:block!important;
     margin-top:12px!important;
     padding-top:12px!important;
     border-top:1px solid #edf0f5!important;
   }
-  &:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quality__grid{
+  & .search3-quality__grid {
     display:grid!important;
     grid-template-columns:minmax(0,1fr)!important;
     gap:9px!important;
   }
-  &:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quick{
+  & .search3-quick {
     display:grid!important;
   }
+}
+}
 
   & #tourSearch .search3-primary-grid > .search-submit{
     width:100%!important;

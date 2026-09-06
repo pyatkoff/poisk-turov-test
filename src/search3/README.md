@@ -51,12 +51,13 @@ separate cascade evidence.
 
 ## Smaller source owners
 
-Repeated complete descendant prefixes inside the main results stylesheet now use
+Repeated complete descendant prefixes inside all four stylesheets now use
 one additional single-selector parent, with at most three nesting levels. Each
 child retains one explicit leading `&`; a bare `&` targets the unchanged parent.
 Parents contain only rules, never declarations or at-rules. Recursive expansion
 reproduces the complete ordered selector/declaration/media stream. The audit is
-`docs/project/search3-css-descendant-results.json`. Public paths and the existing
+`docs/project/search3-css-descendant-results.json` and
+`docs/project/search3-css-descendant-secondary.json`. Public paths and the existing
 native nesting browser boundary remain unchanged.
 
 Consecutive rules across the four stylesheets share one native nesting parent:
@@ -181,3 +182,9 @@ CI verifies that those later values are supported, so unsupported-value fallback
 are not silently removed. No shorthand expansion or cross-context merging is used.
 Final declaration maps match the prior code; now-empty rules are removed without
 reordering retained declarations. Protected acceptance guards remain intact.
+
+`behavior/booking-summary.js` retains its state, formatting, price adapter and
+event lifecycle. Private `behavior/booking/layout.js` owns complete layout
+functions inside that same IIFE. One local setter preserves the original target,
+property, value, important priority and operation order. The existing summary
+regression executes the compiled owner and covers all eight layout states.

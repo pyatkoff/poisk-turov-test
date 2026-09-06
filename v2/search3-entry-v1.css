@@ -33,17 +33,21 @@ color:#17243f;
 & .search3-price-calendar[open] > summary::after{transform:rotate(225deg);margin-top:6px}
 & .search3-price-calendar__summary:focus-visible{outline:2px solid #2743cb;outline-offset:3px;border-radius:10px}
 & .search3-price-calendar__content{padding:0 16px 14px}
-& #currentPriceCalendar .current-price-calendar__head{margin-bottom:10px}
-& #currentPriceCalendar .current-price-calendar__head > div{display:none}
-& #currentPriceCalendar .current-price-calendar__head small{font-size:12px;text-align:left;max-width:none;color:#667085}
-& #currentPriceCalendar .current-price-calendar__day{border-color:#dfe5ef;border-radius:10px;min-height:78px;gap:5px}
-& #currentPriceCalendar .current-price-calendar__day span{font-size:13px;color:#667085}
-& #currentPriceCalendar .current-price-calendar__day strong{font-size:17px;color:#17243f}
-& #currentPriceCalendar .current-price-calendar__day small{font-size:12px}
-& #currentPriceCalendar .current-price-calendar__day.is-best{border-color:#2743cb;background:#f0f4ff}
-& #currentPriceCalendar .current-price-calendar__day.is-best small{color:#2743cb}
-& #currentPriceCalendar .current-price-calendar__day:focus-visible{outline:2px solid #2743cb;outline-offset:2px}
-& #currentPriceCalendar .current-price-calendar__note{font-size:12px;line-height:1.45;color:#667085}
+& #currentPriceCalendar {
+& .current-price-calendar__head {margin-bottom:10px}
+& .current-price-calendar__head > div {display:none}
+& .current-price-calendar__head small {font-size:12px;text-align:left;max-width:none;color:#667085}
+& .current-price-calendar__day {
+& {border-color:#dfe5ef;border-radius:10px;min-height:78px;gap:5px}
+& span {font-size:13px;color:#667085}
+& strong {font-size:17px;color:#17243f}
+& small {font-size:12px}
+}
+& .current-price-calendar__day.is-best {border-color:#2743cb;background:#f0f4ff}
+& .current-price-calendar__day.is-best small {color:#2743cb}
+& .current-price-calendar__day:focus-visible {outline:2px solid #2743cb;outline-offset:2px}
+& .current-price-calendar__note {font-size:12px;line-height:1.45;color:#667085}
+}
 }
 @media(max-width:760px){
 html body.search3-candidate{
@@ -103,7 +107,9 @@ gap:10px 20px!important;
 
 @media(max-width:999px){
 html body.search3-candidate{
-&.search3-results-active #status.status:has(.search-progress-done){
+&.search3-results-active {
+& #status.status:has(.search-progress-done) {
+& {
 width:calc(100% - 24px)!important;
 min-height:30px!important;
 margin:6px 12px!important;
@@ -111,34 +117,36 @@ padding:6px 10px 6px 14px!important;
 border-radius:8px!important;
 box-shadow:none!important;
 }
-&.search3-results-active #status.status:has(.search-progress-done) .search-progress-ux{
+& .search-progress-ux {
 display:block!important;
 }
-&.search3-results-active #status.status:has(.search-progress-done) .search-progress-head strong,&.search3-results-active #status.status:has(.search-progress-done) .search-progress-head span{
+& .search-progress-head strong,& .search-progress-head span {
 font-size:12px!important;
 }
-&.search3-results-active #status.status:has(.search-progress-done) .search-progress-note{
+& .search-progress-note {
 display:none!important;
 }
+}
 
-&.search3-results-active #resultsSearchSummary{
+& #resultsSearchSummary {
+& {
 grid-template-columns:minmax(0,1fr) 94px!important;
 min-height:48px!important;
 margin-top:6px!important;
 margin-bottom:6px!important;
 }
-&.search3-results-active #resultsSearchSummary .results-search-summary__route{
+& .results-search-summary__route {
 padding:7px 9px!important;
 }
-&.search3-results-active #resultsSearchSummary .results-search-summary__route strong{
+& .results-search-summary__route strong {
 margin-bottom:2px!important;
 font-size:10px!important;
 }
-&.search3-results-active #resultsSearchSummary .results-search-summary__route > span:not(.search3-entry-summary-detail){
+& .results-search-summary__route > span:not(.search3-entry-summary-detail) {
 font-size:12px!important;
 line-height:1.2!important;
 }
-&.search3-results-active #resultsSearchSummary .search3-entry-summary-detail:not([hidden]){
+& .search3-entry-summary-detail:not([hidden]) {
 display:block!important;
 margin-top:2px!important;
 overflow:visible!important;
@@ -149,46 +157,48 @@ font-weight:750!important;
 text-overflow:clip!important;
 white-space:normal!important;
 }
-&.search3-results-active #resultsSearchSummary .results-search-summary__edit{
+& .results-search-summary__edit {
 min-width:0!important;
 min-height:48px!important;
 padding:0 8px!important;
 font-size:12px!important;
 }
+}
 
-&.search3-results-active #resultsTools{
+& #resultsTools {
 min-height:34px!important;
 margin-top:4px!important;
 margin-bottom:4px!important;
 padding:3px 0!important;
 }
-&.search3-results-active #resultsTools > div:first-child{
+& #resultsTools > div:first-child {
 display:flex!important;
 align-items:baseline!important;
 gap:7px!important;
 }
-&.search3-results-active #resultsTools > div:first-child strong{
+& #resultsTools > div:first-child strong {
 font-size:16px!important;
 }
-&.search3-results-active #resultsTools .search3-results-meta,&.search3-results-active #resultsTools #resultSummary{
+& #resultsTools .search3-results-meta,& #resultsTools #resultSummary {
 display:none!important;
 }
 
-&.search3-results-active .search3-mobile-toolbar{
+& .search3-mobile-toolbar {
 grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
 align-items:stretch!important;
 gap:8px!important;
 margin-top:4px!important;
 margin-bottom:10px!important;
 }
-&.search3-results-active .search3-mobile-filter-slot .mrf-bar{
+& .search3-mobile-filter-slot .mrf-bar {
 display:flex!important;
 flex-wrap:nowrap!important;
 height:44px!important;
 }
-&.search3-results-active .search3-mobile-filter-slot .mrf-open{
+& .search3-mobile-filter-slot .mrf-open {
 width:100%!important;
 min-width:0!important;
+}
 }
 }
 
@@ -217,22 +227,26 @@ display:block!important;
 order:-1!important;
 }
 
-&:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) :is(.search3-quality,.search3-quick){
+&:not(.search3-has-results) {
+& #tourSearch:not(.search3-mobile-advanced-open) :is(.search3-quality,.search3-quick) {
 display:none!important;
 }
-&:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quality{
+& #tourSearch.search3-mobile-advanced-open {
+& .search3-quality {
 display:block!important;
 margin-top:12px!important;
 padding-top:12px!important;
 border-top:1px solid #edf0f5!important;
 }
-&:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quality__grid{
+& .search3-quality__grid {
 display:grid!important;
 grid-template-columns:minmax(0,1fr)!important;
 gap:9px!important;
 }
-&:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quick{
+& .search3-quick {
 display:grid!important;
+}
+}
 }
 
 & #tourSearch .search3-primary-grid > .search-submit{
@@ -267,13 +281,15 @@ html body.search3-candidate{
 & #tourSearch .search3-primary-grid,
 &:not(.search3-has-results) #tourSearch .search3-primary-grid,
 &.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;align-items:end!important;gap:12px!important}
-& #tourSearch .search3-from{order:1!important}
-& #tourSearch .search3-country{order:2!important}
-& #tourSearch .search3-region{order:3!important}
-& #tourSearch .search3-tourists{order:4!important}
-& #tourSearch .search3-dates{order:5!important;grid-column:span 2!important}
-& #tourSearch .search3-nights{order:6!important}
-& #tourSearch .search-submit{order:7!important;grid-column:auto!important;width:100%!important;min-width:0!important;height:46px!important}
+& #tourSearch {
+& .search3-from {order:1!important}
+& .search3-country {order:2!important}
+& .search3-region {order:3!important}
+& .search3-tourists {order:4!important}
+& .search3-dates {order:5!important;grid-column:span 2!important}
+& .search3-nights {order:6!important}
+& .search-submit {order:7!important;grid-column:auto!important;width:100%!important;min-width:0!important;height:46px!important}
+}
 }
 }
 

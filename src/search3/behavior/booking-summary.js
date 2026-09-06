@@ -17,35 +17,7 @@ function summaryHtml(t){const h=t&&t.hotel||{};const pic=t&&t.picture||h.picture
 '<div class="search3-booking-summary__place">'+esc(place(t))+'</div>'+
 '<dl><div><dt>Дата</dt><dd>'+esc(text(t&&t.date)||'—')+'</dd></div><div><dt>Ночей</dt><dd>'+esc(text(t&&t.nights)||'—')+'</dd></div><div><dt>Туристы</dt><dd>'+esc(people(t))+'</dd></div><div><dt>Номер</dt><dd>'+esc(text(t&&t.roomType)||'—')+'</dd></div><div><dt>Питание</dt><dd>'+esc(meal(t))+'</dd></div><div><dt>Оператор</dt><dd>'+esc(operator(t))+'</dd></div><div><dt>Перелёт</dt><dd class="search3-booking-summary__flight">'+esc(flightLabel(lastFlight))+'</dd></div></dl>'+
 '<div class="search3-booking-summary__total"><span>Стоимость тура</span><strong>'+money(selectedTotal||t&&t.price)+'</strong></div><p class="search3-booking-summary__price-note">Перед оплатой менеджер подтвердит итоговую стоимость и детали перелёта.</p></aside>';}
-function clearLayout(shell,form,summary){['display','grid-column','grid-template-columns','gap','align-items'].forEach(p=>shell.style.removeProperty(p));['grid-column','grid-row'].forEach(p=>form.style.removeProperty(p));['display','grid-column','grid-row'].forEach(p=>summary.style.removeProperty(p));}
-function syncLayout(){
-  const root=document.getElementById('selectedTour'),form=root&&root.querySelector('.lead-form'),shell=form&&form.closest('.search3-lead-shell'),summary=shell&&shell.querySelector('.search3-booking-summary');
-  if(!root||!form||!shell||!summary)return;
-  const desktop=window.matchMedia('(min-width:1000px)').matches,finalReview=root.classList.contains('search3-final-review'),leadEntry=root.classList.contains('search3-lead-entry');
-  if(finalReview&&!leadEntry)root.dataset.search3FinalLayout='maket7';else delete root.dataset.search3FinalLayout;
-  const title=summary.querySelector('.search3-booking-summary__title'),titleText=finalReview&&!leadEntry?'Итоговая стоимость':'Ваш тур';if(title&&title.textContent!==titleText)title.textContent=titleText;
-  const flight=summary.querySelector('.search3-booking-summary__flight'),label=flightLabel(lastFlight);if(flight&&flight.textContent!==label)flight.textContent=label;
-  clearLayout(shell,form,summary);
-  if(desktop&&finalReview&&leadEntry){
-    shell.style.setProperty('display','grid','important');
-    shell.style.setProperty('grid-column','1 / -1','important');
-    shell.style.setProperty('grid-template-columns','minmax(0,1fr) 320px','important');
-    shell.style.setProperty('gap','18px','important');
-    shell.style.setProperty('align-items','start','important');
-    form.style.setProperty('grid-column','1','important');
-    form.style.setProperty('grid-row','1','important');
-    summary.style.setProperty('display','block','important');
-    summary.style.setProperty('grid-column','2','important');
-    summary.style.setProperty('grid-row','1','important');
-  }else if(desktop&&finalReview){
-    /* Maket7 final review uses a compact hotel card on the left and cost-only rail on the right. */
-    shell.style.setProperty('display','contents','important');
-    form.style.setProperty('grid-column','1 / 3','important');
-    summary.style.setProperty('display','block','important');
-    summary.style.setProperty('grid-column','3','important');
-    summary.style.setProperty('grid-row','4 / 12','important');
-  }
-}
+/* @include behavior/booking/layout.js */
 function render(){const root=document.getElementById('selectedTour'),form=root&&root.querySelector('.lead-form');if(!form||!lastTour)return;let shell=form.closest('.search3-lead-shell');if(!shell){shell=document.createElement('div');shell.className='search3-lead-shell';form.parentNode.insertBefore(shell,form);shell.appendChild(form);}const old=shell.querySelector('.search3-booking-summary');if(old)old.remove();shell.insertAdjacentHTML('beforeend',summaryHtml(lastTour));syncLayout();}
 // Tour, flight and price events can arrive in the same turn. Render the latest
 // state once; a full render already includes layout synchronization.
