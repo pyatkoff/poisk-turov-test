@@ -10,7 +10,53 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
-### Current published checkpoint — retired CSS and shared JS — 2026-09-06
+### Current published checkpoint — CSS build compaction and entry split — 2026-09-06
+
+Exact runtime/release code: `9bedc2be31c5765c2fde2f383647487616127cc5`.
+Source PR #1393; separate one-shot preview control #1394.
+
+- The dependency-free builder compacts private CSS comments into empty token
+  separators. Source notes and donor markers stay in source; licenses, strings,
+  escapes and whitespace are retained. This is payload reduction, not a claim
+  that source complexity or browser execution time decreased by that amount.
+- Twenty-eight adjacent rules with identical declaration blocks share selector
+  lists. Expanded selector/declaration/media token streams match the baseline.
+- Entry CSS is split into calendar, responsive entry, toolbar and native controls;
+  the four ordered chunks reproduce the original source bytes. Four public JS
+  files remain byte-identical. Source audit: search3-css-build-compaction.json.
+
+| Public assets | Previous bytes / lines | Published bytes / lines |
+| --- | ---: | ---: |
+| Four CSS | 311609 / 3653 | 295513 / 3593 |
+| Four JS | 142639 / 1901 | 142639 / 1901 |
+| Total | 454248 / 5554 | 438152 / 5494 |
+
+Reduction: 16,096 bytes /60 lines (3.54%). Uncompressed; excludes shared runtime,
+legacy and source duplication. No page-load speed benchmark is claimed.
+
+All 23 applicable workflows succeeded, one expected migration-only skip.
+Core 34030842353, responsive 34030842375, flight 34030842370, build 34030842392.
+Responsive 375px editor and 1440px calendar screenshots inspected.
+Artifact 9988542775 digest
+`sha256:b20f486345c0fa934afdd6e6aecfea5370622613e67ec21d49cb735e9929df02`.
+Deployment 34030973693 succeeded; evidence 9988586892 digest
+`sha256:9fcd903bc2de8f357c4f6f4a73ef336c696a3f429cbe9a8df96b5cec47d894a2`.
+All 715 payload hashes and eight served assets match. Nine routes 200/noindex,
+counter 0, disabled lead 403, internal PHP denied, rollback retained; 13 protected
+production fingerprints unchanged. Main remains fa58a0cb; no production release.
+
+Targeted live search/editor verification is recorded in AUTOPILOT_STATE.json.
+The previous full live journey to the unsubmitted lead form remains historical
+evidence below. No new lead delivery, physical Safari or production acceptance
+is claimed. The inherited legacy advanced-filter backdrop remains documented.
+
+Next: refresh release and inspect remaining active results/selected presentation
+owners for a net source-level reduction. Preserve distinct formatter contracts
+and IIFE lifecycle; do not repeat entry split, comment compaction, adjacent merges,
+retired-state cleanup or shared text/plural work. Keep eight public asset paths
+and protected contracts; preview publication remains a separate exact operation.
+
+### Previous published checkpoint — retired CSS and shared JS — 2026-09-06
 
 Exact preview runtime: `3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18`.
 Release integration: `84ae82a58f18460994fe8d5d584d7e82bbc73d3b`.
