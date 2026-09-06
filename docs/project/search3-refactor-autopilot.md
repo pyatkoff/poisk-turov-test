@@ -10,51 +10,74 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
-Prepared from `254698589e3aad4694e96b7bf97b93a74b8e3876`: seven large CSS owners
-split into 21 component/breakpoint files; two static style-injection modules
-separated from mobile-bar/summary-CTA behavior. Local selector constants preserve
-the exact injected CSS while reducing JavaScript by 10,219 bytes. Seventy-four
-plain-class selector lists share their ancestor prefix with equal-specificity
-`:is()` groups, reducing CSS by 12,098 bytes. No declarations or media conditions
-were removed. The source builder remains dependency-free and the eight public
-asset paths remain fixed.
+### Current published checkpoint — 2026-09-06
 
-Local proof: both injected style strings are byte-identical to the baseline,
-injection guards/idempotency/order are preserved, and the CSS declaration/media
-stream is identical after expanding the audited groups. Source tests and focused
-presentation regressions pass; standard CI and responsive inspection are pending.
-Public assets: CSS 351,068 bytes / 4,056 lines; JS 149,788 / 1,953;
-total 500,856 / 6,009 (uncompressed). This is preparation, not publication.
+Exact runtime code: `26988e62eb674f8165d380de71e3be3d8feb19c3`.
+Release integration: `0fabb1eca248b0f6b48ffe750cc73eaf93f52956`.
+Source PR: #1382; separate exact-artifact preview publication: #1384.
+The preparation/pending notes in older sections below are historical snapshots.
 
-Next: finish existing CI/browser verification of this batch, then continue with
-the largest remaining source owners or repeated selector prefixes. Do not repeat
-these splits or the already completed filter/toolbar fixes. Preview publication
-remains a separate exact-artifact operation; `main`/production remain locked.
+Two completed refactor passes:
 
-### Continuation: retire the inactive Search3 footer
+- Seven large CSS owners split into 21 component/breakpoint files. Two static
+  style-injection modules separated from mobile-bar/summary-CTA behavior. Local
+  selector constants preserve exact emitted CSS while removing 10,219 JS bytes.
+- Seventy-four plain-class selector lists share their ancestor prefix with
+  equal-specificity `:is()` groups, removing 12,098 CSS bytes. Expanding the groups
+  reproduces the same rule/media/declaration stream; cascade order is preserved.
+- Retired the inactive Search3 footer replacement, its two private stylesheets,
+  five orphan footer rules and obsolete presentation-only messenger selector.
+  The server already emits the canonical shared footer with the marker that made
+  the old replacement return immediately. This step removes 20,971 bytes / 215
+  lines. Canonical PHP/footer styles, logo, destinations and lead transport remain.
 
-The first batch passed all 23 applicable workflows in draft #1382 (one expected
-migration skip), including responsive run `34023837213`; 375/1440 images were
-inspected. The concurrent price-facet work through `684825be` is preserved.
+The concurrent price-facet fix and publication history through `684825be` and
+`154700ea` were preserved. The source builder remains dependency-free and all
+eight public paths remain fixed. Source modules now total 69.
 
-The server entry always calls `v2_render_site_footer()`, which emits the shared
-footer with `data-search3-footer="1"`. The old Search3 replacement immediately
-returned on that marker, yet its script and private CSS were still shipped.
-Removed that inactive module, its two CSS owners, five leftover footer-only rules
-and the obsolete alternative in the presentation messenger-link query. The
-canonical PHP/footer styles, logo, destinations and lead transport are unchanged.
+| Public assets | Before (`684825be`) bytes / lines | Published bytes / lines |
+| --- | ---: | ---: |
+| Four CSS | 363,166 / 4,175 | 336,274 / 3,871 |
+| Four JS | 160,559 / 1,943 | 144,163 / 1,926 |
+| Total | 523,725 / 6,118 | 480,437 / 5,797 |
 
-This second step removes 20,971 bytes / 215 lines. Total reduction against the
-concurrent release `684825be`: 43,288 bytes / 321 lines. Final prepared assets:
-CSS 336,274 bytes / 3,871 lines; JS 144,163 / 1,926; total 480,437 / 5,797.
-Five source tests and twelve applicable local presentation tests pass; PHP render
-and responsive verification remain in the existing CI. The footer ownership
-regression failed before removal and passes afterward.
+Reduction: **43,288 bytes (8.3%) / 321 physical lines**. Uncompressed asset
+accounting, excluding shared runtime/legacy and duplicate `src` files; not a
+measured page-load improvement. Both injected styles are byte-identical to the
+baseline, with guards, insertion order and idempotency preserved. Footer ownership
+regression failed before removal and passed afterward.
 
-Next: finish CI, integrate only into release, and publish the exact checked
-artifact through the existing isolated preview process when its lock is free.
-Continue source size reduction from this checkpoint; do not restore the retired
-footer or repeat the seven CSS splits. Main and production remain locked.
+All **23 applicable workflows passed**, with one expected migration-only skip:
+core `34024249265`, responsive `34024249262`, flight `34024249322`, artifact build
+`34024249256`. Final responsive 375px results and 1348px editor images inspected;
+PHP rendering passed in existing CI. Visual artifact `9986537178`, digest
+`sha256:6074e34be1da4588a7a487d5b7ada719099c2220ebd2d988f4e205317a378e46`.
+
+Preview publication run **`34024574911` succeeded**, using source artifact
+`9986530879` (digest `sha256:5a9343dd778c06fbc0e6547e3121816e203563df7d01755061926699a830e812`).
+Evidence `9986634293` (digest `sha256:085c2521f407c358ad6bad49c7774519ec12b944d0f3af4d18ac9cd8b44d88d3`)
+confirms all 715 payload files, nine HTTP-200/noindex routes, counter zero, disabled
+synthetic lead probe 403, internal-PHP denial and retained rollback. The 13
+production fingerprints match before/after/final; `main` remains `fa58a0cb`.
+
+All eight live Search3 assets matched source/artifact bytes. A real desktop
+1363px journey found 100 hotels / 186 tours (Moscow–Turkey, 10 September, seven
+nights, two adults), opened ANAHTAR APART, inspected flight choices, and reached
+review and the visible lead form with one 72,099 RUB sidebar total. Screenshot
+inspected; no horizontal overflow; phone empty and no lead submitted.
+
+Boundary: published and live-desktop-verified **preview only**. Physical Safari
+and production acceptance are not claimed. The previously recorded hidden legacy
+advanced-filter backdrop on desktop-to-mobile resize remains a known limitation;
+its earlier controlled reproduction is preserved in publication history. This
+pass did not change that owner or claim a new full live responsive acceptance.
+
+Next: refresh the release head; inspect repeated templates in
+`behavior/results-presentation.js` and remaining `styles/cascade` owners for
+equivalent consolidation, then batch verified removals. Do not repeat these
+splits, restore the retired footer or redo completed filter/toolbar work. Preserve
+protected contracts and the eight public paths. Main/production remain locked;
+preview publication remains a separate exact-artifact operation.
 
 ## Execution and activation are separate
 
