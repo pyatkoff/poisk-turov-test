@@ -656,27 +656,30 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "254698589e3aad4694e96b7bf97b93a74b8e3876",
-    "stage": "S3_CSS_JS_SIZE_SPLIT_PREPARED",
-    "scope": "Owner-prioritized rapid size reduction: seven combined CSS owners split into 21 files, two static style injections separated from behavior, repeated inline-style prefixes factored, 74 equal-specificity plain-class selector groups.",
-    "source_validation": "LOCAL_SOURCE_BUILD_AND_PRESENTATION_PASS; CI_RESPONSIVE_PENDING",
-    "verification": "Exact injected CSS strings, original root guard, insertion positions, idempotency and no new globals verified. CSS rule/media/declaration stream preserved after expanding audited selector groups. Source tests 5 pass; presentation 11 pass, PHP rendering deferred to CI.",
+    "baseline": "1a54266064cd05aefe625e234b29186285d95173",
+    "concurrent_release_sha": "684825be56d73700a7c432ff4ea88917e4b9eb9e",
+    "stage": "S3_CSS_JS_SIZE_SPLIT_AND_RETIRED_FOOTER_PREPARED",
+    "scope": "Rapid source split and selector reduction plus removal of the inactive Search3 footer replacement, its two private stylesheets and orphan selectors. Canonical shared server footer retained; concurrent price-facet fix preserved.",
+    "source_validation": "LOCAL_BUILD_SOURCE_AND_PRESENTATION_PASS; FINAL_CI_PENDING",
+    "verification": "First size-split code passed 23 applicable CI with one expected skip; responsive 375/1440 evidence inspected. Footer regression failed before removal and passed afterward. Final local source tests 5 pass; presentation 12 pass, PHP render deferred to existing CI.",
     "public_assets": {
-      "css_bytes": 351068,
-      "css_lines": 4056,
-      "js_bytes": 149788,
-      "js_lines": 1953,
-      "total_bytes": 500856,
-      "total_lines": 6009,
+      "css_bytes": 336274,
+      "css_lines": 3871,
+      "js_bytes": 144163,
+      "js_lines": 1926,
+      "total_bytes": 480437,
+      "total_lines": 5797,
       "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
     },
     "run_delta": {
-      "bytes": -22317,
-      "lines": -106
+      "baseline": "684825be56d73700a7c432ff4ea88917e4b9eb9e",
+      "bytes": -43288,
+      "lines": -321,
+      "footer_step_bytes": -20971
     },
     "preview_updated": false,
     "production_updated": false,
-    "next_action": "Finish existing CI and responsive verification; continue rapid size reduction/splitting of the largest remaining CSS/JS owners. Do not repeat completed splits or toolbar/facet fixes. Keep production and protected contracts locked."
+    "next_action": "Finish existing CI and responsive inspection, integrate into release only, then publish the exact checked whole-site artifact through the authorized one-shot preview process when its lock is free. Continue from the smaller source owners; do not restore retired footer or repeat these splits."
   },
   "presentation_refactor_history": [
     {
@@ -836,6 +839,93 @@
       "preview_updated": false,
       "production_updated": false,
       "next_action": "Refresh release/main and #996/#1334. Audit a new independently reproduced presentation ownership or incomplete-facet defect before changing code. Do not repeat the charter/sea completeness, reset, price-frame or three completed toolbar passes. Keep public paths, protected contracts and production lock unchanged."
+    },
+    {
+      "baseline": "312353cad6aedec005dab4d590c97a1e1c216d17",
+      "release_merge_sha": "312353cad6aedec005dab4d590c97a1e1c216d17",
+      "previous_checkpoint": "254698589e3aad4694e96b7bf97b93a74b8e3876",
+      "stage": "S3_PRICE_FACET_COMPLETENESS_VERIFIED",
+      "scope": "The local result price facet is exposed only when every loaded normalized tour row has a positive price, or a no-tour hotel has its own positive normalized price. Incomplete progressive data hides the facet and clears only its local limit until complete data returns.",
+      "source_validation": "RED_GREEN_FOCUSED_REGRESSION_BUILD_AND_RELEASE_CI_VERIFIED_WITH_GITHUB_RUN_WRAPPER_LAG",
+      "ci": {
+        "pr": 1379,
+        "exact_code_security_run": 34023305505,
+        "exact_code_artifact_run": 34023305507,
+        "release_core_run": 34023357536,
+        "release_visual_run": 34023357572,
+        "release_visual_artifact": 9986254745,
+        "release_visual_digest": "sha256:fe7badee8d98acca7f1d9028d9beec4e4e0eb41ffcc6be0cb1328ee00aae414f",
+        "release_artifact_run": 34023357550,
+        "release_artifact": 9986248680,
+        "release_artifact_digest": "sha256:8dfe129b8f4de840927e7feda7707a29429e4be15c6412e89c0f56548f494fb5",
+        "applicable_workflow_success": 22,
+        "security_run": 34023357535,
+        "security_job": 101459884290,
+        "security_job_conclusion": "success",
+        "security_run_status_at_checkpoint": "in_progress_with_all_job_steps_completed_successfully",
+        "expected_skipped": 1,
+        "pending_external_status": "GitHub run wrapper had not finalized although its only job completed successfully at 2026-09-06T08:59:20Z; recheck before claiming 23 completed workflows."
+      },
+      "evidence": [
+        "tests/search3-filter-rail-price-input.cjs",
+        "tests/search3-filter-rail-ownership.cjs",
+        "tests/search3_source_build_test.py",
+        "tests/search3_production_presentation_test.py"
+      ],
+      "verification": "Focused regression failed before the runtime change because the price facet was visible without complete data, then passed after the completeness guard. Empty, complete, incomplete-progressive and no-tour-hotel price paths are covered. Existing responsive release CI passed; 375/1440 readability artifacts were inspected with no new clipping or ownership regression. The GitHub Security guard job and every step completed successfully, but its workflow run wrapper was still reported in_progress at checkpoint time. No live/Safari acceptance claim.",
+      "public_assets": {
+        "css_bytes": 363166,
+        "css_lines": 4175,
+        "js_bytes": 160559,
+        "js_lines": 1943,
+        "total_bytes": 523725,
+        "total_lines": 6118,
+        "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and does not double-count src/v2. Not deployed size or a measured page-load gain."
+      },
+      "run_delta": {
+        "baseline": "5832457c6d43270290967a49f815a12463b19c18",
+        "bytes": 552,
+        "lines": 3,
+        "completed_technical_prs": [
+          1379
+        ]
+      },
+      "preview_updated": false,
+      "production_updated": false,
+      "next_action": "First recheck the lagging Security guard run wrapper 34023357535 and update this checkpoint to 23 completed successes if GitHub finalizes it. Then refresh release/main and #996/#1334 and prove a new independent presentation ownership or incomplete-facet defect before changing code. Do not repeat price/charter/sea completeness, reset, price-frame or three completed toolbar passes."
+    },
+    {
+      "baseline": "1a54266064cd05aefe625e234b29186285d95173",
+      "stage": "S3_CSS_JS_SIZE_SPLIT_CI_VERIFIED",
+      "scope": "Owner-prioritized rapid size reduction: seven combined CSS owners split into 21 files, two static style injections separated from behavior, repeated inline-style prefixes factored, 74 equal-specificity plain-class selector groups.",
+      "source_validation": "23_APPLICABLE_PR_CI_SUCCESS_1_EXPECTED_SKIP",
+      "verification": "Exact injected CSS strings, original root guard, insertion positions, idempotency and no new globals verified. CSS rule/media/declaration stream preserved after expanding audited selector groups. Source tests 5 pass; presentation 11 pass, PHP rendering deferred to CI.",
+      "public_assets": {
+        "css_bytes": 351068,
+        "css_lines": 4056,
+        "js_bytes": 150340,
+        "js_lines": 1956,
+        "total_bytes": 501408,
+        "total_lines": 6012,
+        "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
+      },
+      "run_delta": {
+        "bytes": -22317,
+        "lines": -106
+      },
+      "preview_updated": false,
+      "production_updated": false,
+      "next_action": "Finish existing CI and responsive verification; continue rapid size reduction/splitting of the largest remaining CSS/JS owners. Do not repeat completed splits or toolbar/facet fixes. Keep production and protected contracts locked.",
+      "concurrent_release_sha": "684825be56d73700a7c432ff4ea88917e4b9eb9e",
+      "ci": {
+        "pr": 1382,
+        "core_run": 34023837216,
+        "visual_run": 34023837213,
+        "visual_artifact": 9986405052,
+        "visual_digest": "sha256:ba85ad8df45113fec04ee05449f1a078aa1fce03792448cffa88356e62790a19",
+        "applicable_success": 23,
+        "expected_skipped": 1
+      }
     }
   ]
 }

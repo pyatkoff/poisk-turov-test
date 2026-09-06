@@ -14,10 +14,6 @@ html body.search3-candidate.search3-selected-open #selectedTour{margin-top:14px!
 
 }
 
-/* Do not depend on a platform-specific Apple glyph that is absent in the active webfont. */
-html body.search3-candidate .search3-footer-apps a:first-child{font-size:0!important}
-html body.search3-candidate .search3-footer-apps a:first-child b{font-size:10px!important}
-
 /* Approved full mobile flow: after choosing a concrete tour the booking journey is a separate view.
    Header and selected-tour/back control stay visible; search/results return when selected-open is removed. */
 @media(max-width:640px){

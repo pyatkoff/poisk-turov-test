@@ -114,6 +114,12 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('Для выбранного варианта', source)
         self.assertNotIn('Состав поездки из поиска', source)
 
+    def test_shared_footer_has_no_search3_replacement(self):
+        # Search3 renders the same server footer as the rest of the site.
+        # Its retired client replacement and private CSS must not be shipped.
+        for name in MANIFEST['assets']:
+            self.assertFalse('search3-footer-' in (ROOT / 'v2' / name).read_text(), name)
+
     @unittest.skipUnless(shutil.which('php'), 'PHP rendering requires the existing CI runtime')
     def test_canonical_and_compatibility_rendering(self):
         def render(host, entry, enabled=None):
@@ -128,6 +134,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
 
         canonical = render('anytoour.ru', 'poisk-turov/index.php')
         self.assertIn('<body class="search3-candidate">', canonical)
+        self.assertEqual(canonical.count('data-site-footer="shared"'), 1)
+        self.assertIn('class="ds2-site-footer__logo"', canonical)
         for kind, suffix in [('css', 'style'), ('js', 'script')]:
             positions = []
             for name in ['search3-results-filters-v1', 'search3-entry-v1', 'search3-results-cards-v2', 'search3-selected-flow-v2']:

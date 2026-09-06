@@ -57,8 +57,8 @@ class alternatives with equal specificity. Declarations and media boundaries are
 unchanged; do not put alternatives of different specificity into the same group.
 
 The common PHP header/footer remain owned by their existing `v2/site-*` files.
-`behavior/footer.js` is the preserved compatibility fallback; it must not replace
-the canonical server-rendered footer.
+Search3 uses the canonical server-rendered footer. Its inactive client replacement
+and the corresponding private footer CSS have been removed.
 
 ## Boundaries
 

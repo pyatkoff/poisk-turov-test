@@ -5,7 +5,7 @@
 const cfg=window.V2_CONFIG||{};
 function qs(sel,root){return (root||document).querySelector(sel)}
 function safeUrl(v){const s=String(v||'').trim();return /^https:\/\//i.test(s)?s:''}
-function footerMessenger(rx){const links=Array.from(document.querySelectorAll('.search3-footer-socials a,.ds2-site-footer__socials a'));const hit=links.find(a=>rx.test(String(a.href||'')));return hit?safeUrl(hit.href):''}
+function footerMessenger(rx){const links=Array.from(document.querySelectorAll('.ds2-site-footer__socials a'));const hit=links.find(a=>rx.test(String(a.href||'')));return hit?safeUrl(hit.href):''}
 function messengerLinks(){const configuredMax=safeUrl(cfg.maxUrl||cfg.maxBotUrl||cfg.maxLink),configuredTelegram=safeUrl(cfg.telegramUrl||cfg.telegramBotUrl||cfg.telegramLink);return{max:{url:configuredMax||footerMessenger(/https:\/\/max\.ru\//i),direct:!!configuredMax},telegram:{url:configuredTelegram||footerMessenger(/https:\/\/(?:t\.me|telegram\.me)\//i),direct:!!configuredTelegram}}}
 function ensureStatus(form){let box=form.querySelector('.search3-lead-status');if(!box){box=document.createElement('div');box.className='search3-lead-status';box.hidden=true;form.prepend(box)}return box}
 function enterLead(){const root=qs('#selectedTour');if(!root)return;root.classList.add('search3-lead-entry');window.dispatchEvent(new CustomEvent('search3:lead-entry',{detail:{active:true,source:'lifecycle'}}));}

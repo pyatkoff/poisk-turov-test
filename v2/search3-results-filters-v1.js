@@ -62,6 +62,8 @@ function tourMatches(t){var p=Number(t&&t.price||0);if(state.priceMax&&p&&p>stat
 function filteredHotel(h){var sea=Number(h&&h.seaDistance||0);if(state.seaMax&&(!sea||sea>state.seaMax))return null;var tours=Array.isArray(h&&h.tours)?h.tours:[];if(!tours.length){var hp=Number(h&&h.price||0);if(state.priceMax&&hp&&hp>state.priceMax)return null;if(state.charter)return null;return h;}var kept=tours.filter(tourMatches);if(!kept.length)return null;var prices=kept.map(function(t){return Number(t&&t.price||0);}).filter(function(p){return p>0;});return Object.assign({},h,{tours:kept,price:prices.length?Math.min.apply(null,prices):h.price});}
 function sameRefs(a,b){if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length)return false;for(var i=0;i<a.length;i+=1)if(a[i]!==b[i])return false;return true;}
 function activeCount(){var n=0;if(rangeMax&&state.priceMax&&state.priceMax<rangeMax)n++;if(state.seaMax)n++;if(state.charter)n++;return n;}
+function hasPriceData(list){return !!list.length&&list.every(function(h){var tours=Array.isArray(h&&h.tours)?h.tours:[];if(tours.length)return tours.every(function(t){return Number(t&&t.price||0)>0;});return Number(h&&h.price||0)>0;});}
+function syncPriceAvailability(){var available=hasPriceData(source),field=rail.querySelector('[data-s3-price-field]');if(field){field.hidden=!available;field.setAttribute('aria-hidden',available?'false':'true');}if(!available)state.priceMax=0;}
 function hasSeaDistanceData(list){return !!list.length&&list.every(function(h){return Number(h&&h.seaDistance||0)>0;});}
 function syncSeaAvailability(){var available=hasSeaDistanceData(source),field=rail.querySelector('[data-s3-sea-section]');if(field){field.hidden=!available;field.setAttribute('aria-hidden',available?'false':'true');}if(available)return;state.seaMax=0;rail.querySelectorAll('input[name="s3-sea"]').forEach(function(input){input.checked=input.value==='0';});}
 function hasCharterData(list){return !!list.length&&list.every(function(h){var tours=Array.isArray(h&&h.tours)?h.tours:[];return !!tours.length&&tours.every(function(t){return typeof(t&&t.isCharter)==='boolean';});});}
@@ -74,12 +76,13 @@ function resolvePriceBounds(){var prices=allPrices(source),min=prices.length?Mat
 function syncPriceRange(){var displayedMax=resolvePriceBounds(),input=rail.querySelector('[data-s3-price]'),out=rail.querySelector('[data-s3-price-label]');if(input){input.min=String(rangeMin);input.max=String(rangeMax);input.step='5000';input.value=String(displayedMax);}if(out)out.textContent='от '+money(rangeMin)+' ₽ — до '+money(displayedMax)+' ₽';}
 function renderRail(){
  var displayedMax=resolvePriceBounds(),min=rangeMin,max=rangeMax;
- var popular='<label class="filter-range"><span>Цена за тур</span><small data-s3-price-label>от '+money(rangeMin)+' ₽ — до '+money(displayedMax)+' ₽</small><input type="range" data-s3-price min="'+min+'" max="'+max+'" step="5000" value="'+displayedMax+'"></label>'+
+ var popular='<label class="filter-range" data-s3-price-field><span>Цена за тур</span><small data-s3-price-label>от '+money(rangeMin)+' ₽ — до '+money(displayedMax)+' ₽</small><input type="range" data-s3-price min="'+min+'" max="'+max+'" step="5000" value="'+displayedMax+'"></label>'+
   editRow('Категория отеля',fieldLabel('stars','Любая'),'stars')+editRow('Рейтинг отеля',fieldLabel('rating','Любой'),'rating');
  var hotel=editRow('Питание',fieldLabel('food','Любое'),'food')+editRow('Конкретный отель',fieldLabel('hotel','Любой'));
  var sea='<label class="filter-option"><input type="radio" name="s3-sea" value="0" '+(!state.seaMax?'checked':'')+'><span>Любое расстояние</span></label><label class="filter-option"><input type="radio" name="s3-sea" value="200" '+(state.seaMax===200?'checked':'')+'><span>До 200 м</span></label><label class="filter-option"><input type="radio" name="s3-sea" value="500" '+(state.seaMax===500?'checked':'')+'><span>До 500 м</span></label><label class="filter-option"><input type="radio" name="s3-sea" value="1000" '+(state.seaMax===1000?'checked':'')+'><span>До 1 км</span></label>';
  var flight='<label class="filter-option" data-s3-charter-field><input type="checkbox" data-s3-charter-check '+(state.charter?'checked':'')+'><span>Только чартер</span></label>'+editRow('Прямой рейс',form.elements.onlyDirect&&form.elements.onlyDirect.checked?'Только прямой':'Любой','onlyDirect');
  rail.innerHTML='<div class="filter-rail-head"><div><div class="filter-rail-title">Фильтры</div><small>Дополнительные параметры</small></div><button type="button" class="filter-reset-link" data-s3-reset>Сбросить все</button></div>'+section('Популярные',popular)+section('Отель',hotel)+section('Расположение',sea,'data-s3-sea-section')+section('Перелёт',flight)+'<div class="filter-rail-result"><span>Подходит</span><strong><b data-s3-count>'+source.length+'</b> <span data-s3-word>'+word(source.length)+'</span></strong></div>';
+ syncPriceAvailability();
  syncSeaAvailability();
  syncCharterAvailability();
  announce(source.length);
@@ -98,7 +101,7 @@ function editSearch(){form.classList.add('search3-mobile-advanced-open');var edi
 rail.addEventListener('input',function(e){var t=e.target;if(t.matches('[data-s3-price]')){state.priceMax=Number(t.value||0);var out=rail.querySelector('[data-s3-price-label]');if(out)out.textContent='от '+money(rangeMin)+' ₽ — до '+money(state.priceMax)+' ₽';schedulePriceApply();}});
 rail.addEventListener('change',function(e){var t=e.target;if(t.name==='s3-sea'){cancelPriceApply();state.seaMax=Number(t.value||0);applyOrUpdateEmpty();}else if(t.matches('[data-s3-charter-check]')){cancelPriceApply();state.charter=!!t.checked;if(form.elements.onlyCharter)form.elements.onlyCharter.checked=state.charter;applyOrUpdateEmpty();}});
 rail.addEventListener('click',function(e){var panel=e.target.closest('[data-s3-panel]');if(panel){editSearch();return;}if(e.target.closest('[data-s3-reset]')){reset();return;}if(e.target.closest('[data-s3-edit-search]')){editSearch();return;}});
-window.addEventListener('v2:results-rendered',function(e){if(applying)return;var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];if(lastApplied&&sameRefs(items,lastApplied))return;cancelPriceApply();source=items.slice();lastApplied=null;syncPriceRange();syncSeaAvailability();syncCharterAvailability();if(source.length&&activeCount())apply();else updateCount(source.length);});
+window.addEventListener('v2:results-rendered',function(e){if(applying)return;var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];if(lastApplied&&sameRefs(items,lastApplied))return;cancelPriceApply();source=items.slice();lastApplied=null;syncPriceRange();syncPriceAvailability();syncSeaAvailability();syncCharterAvailability();if(source.length&&activeCount())apply();else updateCount(source.length);});
 window.addEventListener('v2:search-reset',function(){cancelPriceApply();source=[];lastApplied=null;rangeMin=0;rangeMax=0;state={priceMax:0,seaMax:0,charter:!!(form.elements.onlyCharter&&form.elements.onlyCharter.checked)};renderRail();});
 renderRail();
 })();
@@ -338,7 +341,7 @@ window.addEventListener('v2:results-rendered',desktopLock);
 const cfg=window.V2_CONFIG||{};
 function qs(sel,root){return (root||document).querySelector(sel)}
 function safeUrl(v){const s=String(v||'').trim();return /^https:\/\//i.test(s)?s:''}
-function footerMessenger(rx){const links=Array.from(document.querySelectorAll('.search3-footer-socials a,.ds2-site-footer__socials a'));const hit=links.find(a=>rx.test(String(a.href||'')));return hit?safeUrl(hit.href):''}
+function footerMessenger(rx){const links=Array.from(document.querySelectorAll('.ds2-site-footer__socials a'));const hit=links.find(a=>rx.test(String(a.href||'')));return hit?safeUrl(hit.href):''}
 function messengerLinks(){const configuredMax=safeUrl(cfg.maxUrl||cfg.maxBotUrl||cfg.maxLink),configuredTelegram=safeUrl(cfg.telegramUrl||cfg.telegramBotUrl||cfg.telegramLink);return{max:{url:configuredMax||footerMessenger(/https:\/\/max\.ru\//i),direct:!!configuredMax},telegram:{url:configuredTelegram||footerMessenger(/https:\/\/(?:t\.me|telegram\.me)\//i),direct:!!configuredTelegram}}}
 function ensureStatus(form){let box=form.querySelector('.search3-lead-status');if(!box){box=document.createElement('div');box.className='search3-lead-status';box.hidden=true;form.prepend(box)}return box}
 function enterLead(){const root=qs('#selectedTour');if(!root)return;root.classList.add('search3-lead-entry');window.dispatchEvent(new CustomEvent('search3:lead-entry',{detail:{active:true,source:'lifecycle'}}));}
@@ -642,36 +645,6 @@ window.addEventListener('v2:tour-selected',e=>{tour=e.detail&&e.detail.tour||nul
 window.addEventListener('v2:flight-selected',e=>{flight=e.detail&&e.detail.flight||null;setTimeout(render,0)});
 window.addEventListener('v2:tour-price-updated',e=>{selectedTotal=normalizedTotal(e.detail);setTimeout(render,0)});
 document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-tour-detail-rail__continue');if(!b)return;const root=document.getElementById('selectedTour'),target=root&&root.querySelector('.search3-flight-continue button');if(target)target.click();});
-})();
-
-
-/* donor:search3-footer-preview.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-(function(){'use strict';
-/* Donor CSS is bundled into the isolated candidate asset. */
-var footer=document.querySelector('.ds2-site-footer');if(!footer||footer.dataset.search3Footer==='1')return;footer.dataset.search3Footer='1';
-footer.style.setProperty('background','#0b1324','important');footer.style.setProperty('background-color','#0b1324','important');footer.style.setProperty('color','#fff','important');
-function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function href(selector){var a=document.querySelector(selector);return a&&a.href?a.href:'';}
-function headerLink(pattern){var list=Array.from(document.querySelectorAll('.at-global-header__nav a'));var a=list.find(function(x){return pattern.test(String(x.textContent||''));});return a&&a.href?a.href:'';}
-var logo=footer.querySelector('.ds2-site-footer__logo'),logoImage=logo&&logo.querySelector('img'),logoHref=logo&&logo.href?logo.href:'/',logoSrc=logoImage&&logoImage.getAttribute('src')?logoImage.getAttribute('src'):'/images/logo.svg',logoAlt=logoImage&&logoImage.alt?logoImage.alt:'AnyTour';
-var phone=document.querySelector('.at-global-header__phone'),phoneText=phone?String(phone.textContent||'').trim():'',phoneHref=phone&&phone.href?phone.href:'';
-var socials={max:href('.ds2-site-footer__socials a:nth-child(1)'),tg:href('.ds2-site-footer__socials a:nth-child(2)'),vk:href('.ds2-site-footer__socials a:nth-child(3)')};
-var apps={ios:href('.ds2-site-footer__apps>a:nth-of-type(1)'),android:href('.ds2-site-footer__apps>a:nth-of-type(2)')};
-var legal=Array.from(document.querySelectorAll('.ds2-site-footer__legal a')).map(function(a){return{href:a.href,text:String(a.textContent||'').trim()};});
-function legalHref(rx){var x=legal.find(function(a){return rx.test(a.text);});return x?x.href:'';}
-function link(hrefValue,label){return hrefValue?'<a href="'+esc(hrefValue)+'">'+esc(label)+'</a>':'';}
-function externalLink(hrefValue,label,icon){return hrefValue?'<a href="'+esc(hrefValue)+'" target="_blank" rel="noopener noreferrer"><b>'+esc(icon)+'</b><span>'+esc(label)+'</span></a>':'';}
-function appLink(hrefValue,label,icon){return hrefValue?'<a href="'+esc(hrefValue)+'" target="_blank" rel="noopener noreferrer">'+esc(icon)+' <b>'+esc(label)+'</b></a>':'';}
-function group(title,links,extraClass){var items=links.filter(Boolean);return items.length?'<details class="search3-footer-group'+(extraClass?' '+extraClass:'')+'" open><summary>'+esc(title)+'</summary><div>'+items.join('')+'</div></details>':'';}
-var tours=[link(headerLink(/^Поиск туров/i),'Поиск туров'),link(headerLink(/Горящие туры/i),'Горящие туры'),link(headerLink(/^Страны/i),'Страны')];
-var useful=[link(headerLink(/Как купить/i),'Как это работает'),link(legalHref(/Политика конфиденциальности/i),'Политика конфиденциальности')];
-var company=[link(headerLink(/Контакты/i),'Контакты')];
-var phoneLink=link(phoneHref,phoneText),mobileSupport=[phoneLink,''];
-var socialLinks=[externalLink(socials.max,'MAX','◎'),externalLink(socials.tg,'Telegram','➤'),externalLink(socials.vk,'VK','VK')].filter(Boolean).join('');
-var appLinks=[appLink(apps.ios,'App Store',''),appLink(apps.android,'Google Play','▶')].filter(Boolean).join('');
-footer.innerHTML='<div class="search3-footer-main"><div class="search3-footer-brand"><a class="search3-footer-logo" href="'+esc(logoHref)+'"><img src="'+esc(logoSrc)+'" alt="'+esc(logoAlt)+'"></a><strong>AnyTour всегда рядом</strong><p>Каналы AnyTour — для идей и выгодных предложений. Приложение — чтобы искать туры с телефона.</p><div class="search3-footer-socials">'+socialLinks+'</div></div><div class="search3-footer-nav">'+group('Туры',tours)+group('Полезная информация',useful)+group('О компании',company)+group('Поддержка',mobileSupport,'search3-footer-support-mobile')+'</div><div class="search3-footer-support search3-footer-support-desktop"><strong>Поддержка</strong><span>Свяжитесь с нами</span>'+phoneLink+'</div></div><div class="search3-footer-benefits"><div class="search3-footer-apps"><strong>Мобильные приложения</strong><span>Установите и ищите туры ещё удобнее</span><div>'+appLinks+'</div></div><div class="search3-footer-benefit"><div><strong>Актуальные предложения</strong><span>Сравнивайте доступные варианты и условия тура.</span></div></div><div class="search3-footer-benefit"><div><strong>Проверка конкретного тура</strong><span>Проверьте детали рейса, багажа и размещения.</span></div></div><div class="search3-footer-benefit"><div><strong>Цена до заявки</strong><span>Стоимость выбранного варианта видна до передачи контактов.</span></div></div><div class="search3-footer-benefit"><div><strong>Менеджер рядом</strong><span>Помощь с учётом параметров поиска и выбранного предложения.</span></div></div></div><div class="search3-footer-bottom"><span>© 2026 AnyTour — Все права защищены</span></div>';
-function syncGroups(){var mobile=matchMedia('(max-width:640px)').matches;footer.querySelectorAll('.search3-footer-group').forEach(function(d){d.open=!mobile;});var mobileSupportEl=footer.querySelector('.search3-footer-support-mobile');var desktopSupportEl=footer.querySelector('.search3-footer-support-desktop');if(mobileSupportEl)mobileSupportEl.style.setProperty('display',mobile?'block':'none','important');if(desktopSupportEl)desktopSupportEl.style.setProperty('display',mobile?'none':'grid','important');}
-syncGroups();window.addEventListener('resize',syncGroups);
 })();
 
 
