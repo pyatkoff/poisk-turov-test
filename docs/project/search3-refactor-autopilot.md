@@ -43,8 +43,41 @@ technical work. Production approval and protected contracts stay unchanged.
 
 The published baseline remains source bff20777, source PRs #1419/#1420 and isolated
 deploy #1421. This policy change does not require another build or publication.
-New local development remains subject to the recorded execution-capacity blocker;
-do not bypass the automatic-review rejection.
+New local commands and focused tests succeeded in the subsequent #1422 continuation.
+The earlier rejected direct-HTTP poll was not retried or bypassed.
+
+### Current checked release batch — source notes and numeric CSS — 2026-09-06
+
+Working PR #1422; final source `b926eeb4509da236597268af868457eb5f11ef43`. This batch is checked in release
+and intentionally NOT PUBLISHED under the owner batch policy. Published preview
+remains source bff20777 / deploy #1421. No new deploy-control PR or browser session.
+
+| Eight public assets | Previous bytes | Checked bytes | Saved |
+| --- | ---: | ---: | ---: |
+| CSS | 201014 | 199199 | 1815 |
+| JS | 110673 | 107035 | 3638 |
+| Total | 311687 | 306234 | 5453 |
+
+Net reduction 1.75%, uncompressed. Eight paths retained: four CSS files, three
+nonempty JS files and the existing empty overlay slot. Readable sources stay.
+All four executable JS ASTs match bff20777 exactly; license/tool comments and
+first-stage AST/comment equality remain. Test adapters extract actual compiled
+IIFEs by stable runtime markers. Source-drift fixtures now mutate executable code
+because ordinary comment-only edits intentionally leave generated files unchanged.
+
+CSS removes 61 dominated declarations plus 14 empty rules. Different-value
+witnesses are limited to simple supported numeric longhands; no supports or
+variable fallback removal. Retained declaration order and final selector/property
+cascade maps match across 42 width samples. Acceptance guards and nesting unchanged.
+
+One final local source build, compaction tests, eight affected compiled adapters
+and the two corrected drift fixtures passed. First CI attempt exposed those two
+comment-only fixtures; the corrected final source passed both mandatory jobs: artifact 34061763852 and
+Security 34061763860. Artifact 9997701449 is retained for a later publication.
+Broader suites and new live verification remain deferred, not passed.
+Audit: `docs/project/search3-batched-css-js-reduction.json`.
+
+Next: Next substantive step: consolidate the hotel-card CSS owner under #results across base/card/cascade/layout sources, first proving the affected final cascade including shorthand/longhand interactions and breakpoint states. Do not rerun completed private CSS optimization, markup helpers, source-comment filtering, 36 equal-value or 61 numeric-dominance deletions. Remaining JS micro-candidates measured below 500 bytes are deferred, not separate PRs. Use one working draft per useful batch, narrow evidence and the two required CI jobs. Do not automatically deploy or replay the live journey; current published preview remains bff20777. New local commands and focused tests worked in this continuation; the historical rejected HTTP poll was not retried. Main/production locked; scheduler paused.
 
 ### Previous verification priority — lean preview cycle — 2026-09-06
 
