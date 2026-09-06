@@ -14,6 +14,8 @@ const priceLabel = { textContent: '' };
 const priceInput = { min: '', max: '', step: '', value: '' };
 const seaSection = { hidden: false, ariaHidden: '', setAttribute(name, value) { if (name === 'aria-hidden') this.ariaHidden = value; } };
 const seaInputs = ['0', '200', '500', '1000'].map(value => ({ value, checked: value === '0' }));
+const charterField = { hidden: false, ariaHidden: '', setAttribute(name, value) { if (name === 'aria-hidden') this.ariaHidden = value; } };
+const charterInput = { checked: false };
 let railHtml = '';
 let railHtmlWrites = 0;
 let formSubmits = 0;
@@ -25,7 +27,8 @@ const rail = {
   querySelector(selector) {
     return {'[data-s3-count]': count, '[data-s3-word]': word,
       '[data-s3-price-label]': priceLabel, '[data-s3-price]': priceInput,
-      '[data-s3-sea-section]': seaSection}[selector] || null;
+      '[data-s3-sea-section]': seaSection, '[data-s3-charter-field]': charterField,
+      '[data-s3-charter-check]': charterInput}[selector] || null;
   },
   querySelectorAll(selector) { return selector === 'input[name="s3-sea"]' ? seaInputs : []; }
 };
@@ -50,14 +53,16 @@ vm.runInNewContext(
 );
 
 const hotels = [
-  { seaDistance: 400, tours: [{ price: 90000 }, { price: 120000 }] },
-  { seaDistance: 800, tours: [{ price: 160000 }] }
+  { seaDistance: 400, tours: [{ price: 90000, isCharter: false }, { price: 120000, isCharter: false }] },
+  { seaDistance: 800, tours: [{ price: 160000, isCharter: false }] }
 ];
 assert.equal(announcements.length, 1, 'initial empty rail announces once');
 assert.equal(railHtmlWrites, 1, 'initial rail is rendered once');
 assert.equal(seaSection.hidden, true, 'the sea facet starts hidden without complete result data');
+assert.equal(charterField.hidden, true, 'the charter facet starts hidden without complete result data');
 windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
 assert.equal(seaSection.hidden, false, 'complete sea-distance data reveals the facet');
+assert.equal(charterField.hidden, false, 'complete charter data reveals the facet');
 assert.equal(announcements.length, 2, 'new source render announces once, not twice');
 assert.equal(railHtmlWrites, 1,
   'a progressive source update preserves the mounted controls instead of replacing their DOM');
@@ -107,7 +112,7 @@ windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
 input(95000);
 while (frames.length) frames.shift()();
 assert.equal(renders.length, 4);
-const refreshedHotels = hotels.concat({ seaDistance: 1200, tours: [{ price: 200000 }] });
+const refreshedHotels = hotels.concat({ seaDistance: 1200, tours: [{ price: 200000, isCharter: false }] });
 const announcementCount = announcements.length;
 const railHtmlWritesBeforeRefresh = railHtmlWrites;
 windowEvents.get('v2:results-rendered')({ detail: { items: refreshedHotels } });
@@ -172,8 +177,11 @@ assert.equal(announcements.length, announcementsBeforeReset + 1,
 
 form.elements.onlyCharter.checked = true;
 windowEvents.get('v2:search-reset')();
-assert.match(railHtml, /data-s3-charter-check checked/,
-  'a new search restores the result-rail charter state from the form');
+assert.equal(charterField.hidden, true, 'search reset hides the charter facet until complete data arrives');
+assert.equal(rail.dataset.s3ActiveCount, '0', 'a hidden charter facet is not counted as active');
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+assert.equal(charterField.hidden, false, 'complete results restore the charter facet');
+assert.equal(charterInput.checked, true, 'complete results restore charter state from the form');
 assert.equal(rail.dataset.s3ActiveCount, '1');
 const announcementsBeforeEmptyCharterToggle = announcements.length;
 railEvents.get('change')({
@@ -185,11 +193,12 @@ railEvents.get('change')({
 assert.equal(form.elements.onlyCharter.checked, false,
   'changing the local charter filter keeps the form state in sync');
 assert.equal(rail.dataset.s3ActiveCount, '0',
-  'clearing a filter updates the active count even when the result source is empty');
+  'clearing a filter updates the active count with complete result data');
 assert.equal(announcements.length, announcementsBeforeEmptyCharterToggle + 1,
-  'an empty-result filter change still announces its new state once');
-assert.equal(announcements.at(-1).resultCount, 0);
+  'clearing the charter filter announces its restored result count once');
+assert.equal(announcements.at(-1).resultCount, hotels.length);
 
+windowEvents.get('v2:search-reset')();
 input(100000);
 while (frames.length) frames.shift()();
 assert.equal(rail.dataset.s3ActiveCount, '1',
@@ -228,13 +237,31 @@ railEvents.get('change')({
 });
 assert.equal(renders.at(-1).length, 1, 'the available sea facet filters complete data');
 const incompleteSeaHotels = [
-  { seaDistance: 0, tours: [{ price: 90000 }] },
-  { seaDistance: 800, tours: [{ price: 160000 }] }
+  { seaDistance: 0, tours: [{ price: 90000, isCharter: false }] },
+  { seaDistance: 800, tours: [{ price: 160000, isCharter: false }] }
 ];
 windowEvents.get('v2:results-rendered')({ detail: { items: incompleteSeaHotels } });
 assert.equal(seaSection.hidden, true, 'a partial progressive source hides the incomplete sea facet');
 assert.equal(seaInputs[0].checked, true, 'hiding the incomplete facet resets it to any distance');
 assert.equal(rail.dataset.s3ActiveCount, '0', 'the hidden incomplete facet is not counted as active');
+
+windowEvents.get('v2:search-reset')();
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+railEvents.get('change')({
+  target: {
+    checked: true, name: '',
+    matches(selector) { return selector === '[data-s3-charter-check]'; }
+  }
+});
+const incompleteCharterHotels = [
+  { seaDistance: 400, tours: [{ price: 90000, isCharter: true }, { price: 120000 }] }
+];
+windowEvents.get('v2:results-rendered')({ detail: { items: incompleteCharterHotels } });
+assert.equal(charterField.hidden, true, 'a partial progressive source hides the incomplete charter facet');
+assert.equal(charterInput.checked, false, 'hiding the incomplete charter facet clears its local control');
+assert.equal(rail.dataset.s3ActiveCount, '0', 'the hidden incomplete charter facet is not counted as active');
+assert.equal(form.elements.onlyCharter.checked, true,
+  'hiding a local facet does not silently rewrite the primary search constraint');
 
 windowEvents.get('v2:search-reset')();
 const hotelWithoutTours = { seaDistance: 300, price: 135000 };
