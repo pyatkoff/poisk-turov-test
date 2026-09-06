@@ -183,4 +183,26 @@ while (frames.length) frames.shift()();
 assert.equal(rail.dataset.s3ActiveCount, '1',
   'a scheduled price change updates the active count with an empty source');
 assert.equal(announcements.at(-1).resultCount, 0);
+
+windowEvents.get('v2:search-reset')();
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+railEvents.get('change')({
+  target: {
+    checked: true, name: '',
+    matches(selector) { return selector === '[data-s3-charter-check]'; }
+  }
+});
+assert.equal(renders.at(-1).length, 0, 'the charter filter can legitimately produce no matches');
+const announcementsBeforeEmptyRerender = announcements.length;
+windowEvents.get('v2:results-rendered')({ detail: { items: renders.at(-1) } });
+assert.equal(announcements.length, announcementsBeforeEmptyRerender,
+  'rerendering the same empty filtered result is not a new source');
+railEvents.get('change')({
+  target: {
+    checked: false, name: '',
+    matches(selector) { return selector === '[data-s3-charter-check]'; }
+  }
+});
+assert.equal(renders.at(-1).length, hotels.length,
+  'clearing a zero-match filter restores the original result source');
 console.log('PASS: price input bursts render once per frame with latest state');

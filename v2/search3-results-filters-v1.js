@@ -53,7 +53,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 /* donor:search3-filter-rail-preview.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 var rail=document.querySelector('.results-filter-rail'),form=document.getElementById('tourSearch');if(!rail||!form)return;
-var source=[],applying=false,lastApplied=[],rangeMin=0,rangeMax=0,state={priceMax:0,seaMax:0,charter:false};
+var source=[],applying=false,lastApplied=null,rangeMin=0,rangeMax=0,state={priceMax:0,seaMax:0,charter:false};
 var priceApplyRun=0,priceApplyQueued=0;
 function money(n){return new Intl.NumberFormat('ru-RU').format(Number(n||0));}
 function word(n){var x=Math.abs(Number(n)||0)%100,y=x%10;if(x>10&&x<20)return'отелей';if(y===1)return'отель';if(y>=2&&y<=4)return'отеля';return'отелей';}
@@ -92,8 +92,8 @@ function editSearch(){form.classList.add('search3-mobile-advanced-open');var edi
 rail.addEventListener('input',function(e){var t=e.target;if(t.matches('[data-s3-price]')){state.priceMax=Number(t.value||0);var out=rail.querySelector('[data-s3-price-label]');if(out)out.textContent='от '+money(rangeMin)+' ₽ — до '+money(state.priceMax)+' ₽';schedulePriceApply();}});
 rail.addEventListener('change',function(e){var t=e.target;if(t.name==='s3-sea'){cancelPriceApply();state.seaMax=Number(t.value||0);applyOrUpdateEmpty();}else if(t.matches('[data-s3-charter-check]')){cancelPriceApply();state.charter=!!t.checked;if(form.elements.onlyCharter)form.elements.onlyCharter.checked=state.charter;applyOrUpdateEmpty();}});
 rail.addEventListener('click',function(e){var panel=e.target.closest('[data-s3-panel]');if(panel){editSearch();return;}if(e.target.closest('[data-s3-reset]')){reset();return;}if(e.target.closest('[data-s3-edit-search]')){editSearch();return;}});
-window.addEventListener('v2:results-rendered',function(e){if(applying)return;var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];if(lastApplied.length&&sameRefs(items,lastApplied))return;cancelPriceApply();source=items.slice();lastApplied=[];syncPriceRange();if(source.length&&activeCount())apply();else updateCount(source.length);});
-window.addEventListener('v2:search-reset',function(){cancelPriceApply();source=[];lastApplied=[];rangeMin=0;rangeMax=0;state={priceMax:0,seaMax:0,charter:!!(form.elements.onlyCharter&&form.elements.onlyCharter.checked)};renderRail();});
+window.addEventListener('v2:results-rendered',function(e){if(applying)return;var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];if(lastApplied&&sameRefs(items,lastApplied))return;cancelPriceApply();source=items.slice();lastApplied=null;syncPriceRange();if(source.length&&activeCount())apply();else updateCount(source.length);});
+window.addEventListener('v2:search-reset',function(){cancelPriceApply();source=[];lastApplied=null;rangeMin=0;rangeMax=0;state={priceMax:0,seaMax:0,charter:!!(form.elements.onlyCharter&&form.elements.onlyCharter.checked)};renderRail();});
 renderRail();
 })();
 
