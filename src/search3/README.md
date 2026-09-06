@@ -25,7 +25,9 @@ evidence.
 | --- | --- |
 | Primary form and field placement | `behavior/search-form.js`, `behavior/maket7-lock.js` |
 | Responsive entry and existing price-calendar adapter | `behavior/entry-v1.js`, `styles/entry-v1.css` |
-| Local result filters and their drawer | `behavior/filter-rail.js`, `styles/filters.css` |
+| Desktop local result-filter rail | `behavior/filter-rail.js`, `styles/filters.css` |
+| Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
+| Canonical mobile filter bar and sheet | Existing `v2/mobile-results-filters-v1.js`; Search3 reuses `.mrf-bar` and `.mrf-sheet`, not a second drawer |
 | Results header and summary | `behavior/results-top.js`, `styles/results-context.css` |
 | Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/result-cards.css` |
 | Selected tour and mobile action | `behavior/tour-presentation.js`, `behavior/selected-tour-mobile.js` |
@@ -66,5 +68,12 @@ an open search editor is preserved. Queued geometry reads current cards, not
 an item count captured before reset. Keep these queues local to their owners;
 do not add a global scheduler or another observer for the same work.
 
-Regression adapters: `tests/search3-booking-summary.cjs` and
-`tests/search3-results-scheduler.cjs`, run by the presentation test suite.
+`results-presentation.js` owns a separate existing zero-delay mobile-toolbar mount.
+Progressive-result and compact-breakpoint bursts share one pending task. Reset or
+empty results cancel it; a later eligible event can retry a missing canonical
+filter bar. Mounting retains the existing toolbar, native sort handoff and control
+listeners. This queue does not own filtering or search submission.
+
+Regression adapters: `tests/search3-booking-summary.cjs`,
+`tests/search3-results-scheduler.cjs`, `tests/search3-mobile-toolbar-scheduler.cjs`
+and `tests/search3-mobile-toolbar-ownership.cjs`, run by the presentation test suite.
