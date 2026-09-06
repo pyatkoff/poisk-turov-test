@@ -11,70 +11,108 @@ concurrency:
 jobs:
   build-and-verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           show-progress: false
-      - name: Continue only the unfinished boundary step on exact release
+      - name: Prepare a documentation-only handoff on exact verified release
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse origin/release/search3-production-ready-v1)" = 204b71046e113552aafea408368c17191982b53e
-          test -z "$(git ls-remote --heads origin refs/heads/fix/search3-toolbar-desktop-boundary)"
+          release=0448750ba6c7ad77538794a0c45f97a5e11ea18d
+          test "$(git rev-parse origin/release/search3-production-ready-v1)" = "$release"
+          test "$(git rev-parse origin/main)" = fa58a0cba6dcfc8624d98c20d64fa06330eae309
+          test -z "$(git ls-remote --heads origin refs/heads/docs/search3-toolbar-complete-0448750b)"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git worktree add --detach "$RUNNER_TEMP/toolbar-clean" 204b71046e113552aafea408368c17191982b53e
+          git worktree add -b docs/search3-toolbar-complete-0448750b "$RUNNER_TEMP/toolbar-handoff" "$release"
+          cd "$RUNNER_TEMP/toolbar-handoff"
+          python3 -B scripts/build/search3_assets.py --check
           python3 - <<'PY'
-          import os
+          import copy
+          import json
           import subprocess
-          import textwrap
           from pathlib import Path
-          # Reuse only the two reviewed, unfinished steps; completed queue changes are already in release.
-          old = subprocess.check_output(['git','cat-file','blob','c72594769c7e96ccfa043a70b4d15efc84615f04'], text=True)
-          def step(name):
-              block = old.split('      - name: ' + name + '\n', 1)[1].split('\n      - name: ', 1)[0]
-              return textwrap.dedent(block.split('        run: |\n', 1)[1])
-          preparation = step('Prepare separate desktop visibility regression')
-          before = "throw new Error('TOOLBAR_RESIZE_CHANGED_FORM ' + width);"
-          after = "throw new Error('TOOLBAR_RESIZE_CHANGED_FORM ' + width + ' ' + JSON.stringify({ before: JSON.parse(before), after: await formValues() }));"
-          assert preparation.count(before) == 1
-          preparation = preparation.replace(before, after)
-          anchor = "    await page.evaluate(html => {"
-          assert preparation.count(anchor) == 1
-          preparation = preparation.replace(anchor, '''    // Aborted catalogue requests finish asynchronously and clear loading options.
-              // Wait for that fixture-only failure before capturing parameters for resize.
-              await page.waitForFunction(() => document.getElementById('tourSearch').dataset.catalogSource === 'partial');
-              await page.evaluate(() => {
-                const form = document.getElementById('tourSearch');
-                for (const [name, value, label] of [['from','1','Fixture departure'], ['country','4','Fixture country']]) {
-                  const select = form.elements[name];
-                  if (![...select.options].some(option => option.value === value)) select.add(new Option(label, value));
-                  select.value = value;
-                }
-              });
-          ''' + anchor)
-          proof = step('Prove the desktop defect then verify the narrow CSS correction')
-          proof = proof.replace(' | tee "$RUNNER_TEMP/toolbar-boundary-green.log"', ' 2>&1 | tee "$RUNNER_TEMP/toolbar-boundary-green.log"')
-          temp = Path(os.environ['RUNNER_TEMP'])
-          (temp/'boundary-prepare.sh').write_text(preparation)
-          (temp/'boundary-proof.sh').write_text(proof)
+          code = '57a675f0a43a1a6ddf2cb7e24dafebc94a11a9f8'
+          release = '0448750ba6c7ad77538794a0c45f97a5e11ea18d'
+          # All public code and protection hashes are already verified. Only handoff fields may change.
+          state_path = Path('AUTOPILOT_STATE.json')
+          state = json.loads(state_path.read_text())
+          original = copy.deepcopy(state)
+          previous = state['presentation_refactor_checkpoint']
+          assert previous['stage'] == 'S3_TOOLBAR_LOCAL_QUEUE'
+          previous['source_validation'] = 'FOCUSED_RESPONSIVE_AND_23_APPLICABLE_RELEASE_CI_VERIFIED'
+          previous['ci'].update({
+              'pr': 1374, 'release_merge_sha': '204b71046e113552aafea408368c17191982b53e',
+              'applicable_success': 23, 'expected_skipped': 1,
+              'core_run': 34022148202, 'visual_run': 34022148140, 'whole_site_artifact_run': 34022148234,
+              'normalization_run_scope': 'Queue normalization and focused steps passed in 34021779182; that run later failed on the separate boundary fixture. Boundary fixture settled and passed in 34022311073.'
+          })
+          state['presentation_refactor_history'].append(copy.deepcopy(previous))
+          totals = {key: 0 for key in ('css_bytes','css_lines','js_bytes','js_lines')}
+          manifest = json.loads(Path('src/search3/manifest.json').read_text())
+          assert len(manifest['assets']) == 8
+          for name in manifest['assets']:
+              raw = (Path('v2') / name).read_bytes()
+              extension = name.rsplit('.',1)[1]
+              totals[extension+'_bytes'] += len(raw)
+              totals[extension+'_lines'] += len(raw.splitlines())
+          totals['total_bytes'] = totals['css_bytes'] + totals['js_bytes']
+          totals['total_lines'] = totals['css_lines'] + totals['js_lines']
+          assert totals == {'css_bytes':363166,'css_lines':4175,'js_bytes':159313,'js_lines':1937,'total_bytes':522479,'total_lines':6112}
+          totals['scope'] = 'Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and does not double-count src/v2. Not deployed size or a measured page-load gain.'
+          next_action = ('Refresh release/main and #996/#1334. Audit remaining mobile-toolbar cascade overlap in existing results-context.css/results-layout.css owners; prove equivalent computed styles for initial/results/editor/selected/reset states and 375/430/768/999/1000/1348/1440 before removing any active rule. Do not repeat retired selector cleanup, local toolbar queue, desktop breakpoint or completed filter-rail steps. Keep mrf owner, public paths, protected contracts and production lock unchanged.')
+          state['presentation_refactor_checkpoint'] = {
+              'baseline': code, 'release_merge_sha': release, 'previous_checkpoint': previous['baseline'],
+              'stage': 'S3_TOOLBAR_BOUNDARY_VERIFIED',
+              'scope': 'Retained mobile toolbar hidden at min-width:1000px by its existing layout owner. Same toolbar/bar and listeners return below the compact boundary; native desktop sort remains visible. Only CSS owner/generated CSS/import hash and existing browser regression changed.',
+              'source_validation': 'FOCUSED_RESPONSIVE_AND_23_APPLICABLE_RELEASE_CI_VERIFIED',
+              'ci': {'pr':1375,'preparation_and_responsive_run':34022311073,'responsive_artifact':9985910235,'responsive_digest':'sha256:380826e39991d04d3427274eec2c49dd7a742d7119d42eeed7f2d1404f72dbe1','exact_code_security_run':34022428065,'exact_code_artifact_run':34022428057,'release_core_run':34022534281,'release_visual_run':34022534319,'release_artifact_run':34022534215,'applicable_success':23,'expected_skipped':1},
+              'evidence': ['tests/search3-card-readability-browser.cjs','tests/search3-mobile-toolbar-scheduler.cjs','tests/search3-mobile-toolbar-ownership.cjs','tests/search3_source_build_test.py','tests/search3_production_presentation_test.py'],
+              'verification': 'Red-before/green-after desktop leak at1000; actual viewport roundtrip375→999→1000→1348→1440→999→430 preserves all captured FormData entries, DOM owner, filter open/Escape/focus and two-way sort. Existing five-width card/editor/calendar/return suite passes. 1348/430 images inspected. Catalogue failure initialization was settled in the fixture, not changed in runtime. No live/Safari acceptance claim.',
+              'public_assets': totals,
+              'run_delta': {'baseline':'49f2d2e5690421920df378ce0f4615fa8eb1a4ce','bytes':-2546,'lines':-5,'completed_technical_prs':[1373,1374,1375]},
+              'preview_updated':False,'production_updated':False,'next_action':next_action
+          }
+          for key in set(state) | set(original):
+              if key not in {'presentation_refactor_checkpoint','presentation_refactor_history'}:
+                  assert state.get(key) == original.get(key), 'Published or unrelated state changed: '+key
+          state_path.write_text(json.dumps(state,ensure_ascii=False,indent=2)+'\n')
+          doc = Path('docs/project/search3-refactor-autopilot.md')
+          text = doc.read_text()
+          old = 'Последняя проверенная точка кода на момент записи: 623b5c17b9fef927c8e95fb6a42333a905e9b584.'
+          assert text.count(old) == 1
+          text = text.replace(old,'Последняя проверенная точка кода на момент записи: '+code+'. Три toolbar-прохода #1373/#1374/#1375 уже завершены и интегрированы только в release; подробности последней точки ниже.')
+          old = 'Следующий кандидат для анализа — оставшаяся синхронизация состояния filter-rail.js после смены/сброса источника; сначала подтвердить конкретную проблему и воспроизвести её focused regression, затем изменить один участок.'
+          assert text.count(old) == 1
+          text = text.replace(old,'Следующий кандидат для анализа — оставшиеся перекрытия CSS мобильного toolbar в results-context.css/results-layout.css. До удаления активных правил доказать эквивалентность computed styles в initial/results/editor/selected/reset на 375/430/768/999/1000/1348/1440. Завершённые selector cleanup, local queue и desktop boundary не повторять.')
+          text += '''
+          ## Current verified toolbar checkpoint — 2026-09-06
+
+          Exact code: `57a675f0a43a1a6ddf2cb7e24dafebc94a11a9f8`; release integration: `0448750ba6c7ad77538794a0c45f97a5e11ea18d`. Historical pending/preparation notes above describe their earlier snapshots, not the current queue.
+
+          - #1373 → `27649614`: removed retired mobile action/filter/sort/chip CSS; canonical mrf owner and actual toolbar retained. CSS cleanup removed 3323 bytes / 26 lines.
+          - #1374 → `204b7104`: one deferred toolbar mount for result/breakpoint bursts, with reset/empty cancellation. Regression: 40 pending tasks before, 1 after; stable DOM and two-way sort retained.
+          - #1375 → `0448750b`: mobile-to-desktop resize no longer exposes an extra mobile sort row. Existing browser regression covers both sides of999/1000, preserved form values, roundtrip to430, Escape and focus return.
+
+          Code build/source (5 tests), presentation (12 tests) and existing responsive checks passed. Final code integration passed 23 applicable PR workflows plus one expected migration-only skip: core34022534281, visual34022534319, whole-site artifact34022534215. Focused responsive evidence: run34022311073, artifact9985910235, sha256:380826e39991d04d3427274eec2c49dd7a742d7119d42eeed7f2d1404f72dbe1. Desktop1348/mobile430 screenshots inspected; physical Safari and live-site acceptance are not claimed. The earlier test initialization race was diagnosed and corrected in the fixture; no assertion was removed.
+
+          Eight public assets: CSS363166 bytes/4175 lines; JS159313/1937; total522479/6112, uncompressed. Net for this continuation from49f2d2e: -2546 bytes/-5 lines. This is source accounting, not a page-load benchmark. Prior preview/production publication records are preserved; no main merge, deployment or real leads in this continuation.
+
+          Next: audit only proven remaining toolbar cascade overlap using the existing browser suite and source owners. Do not create another drawer, observer, global scheduler or test workflow, repeat these three completed steps, or alter protected contracts.
+          '''
+          # Keep this handoff readable without altering its content.
+          text = text.replace('\n          ', '\n')
+          doc.write_text(text)
+          changed = set(subprocess.check_output(['git','diff','--name-only'],text=True).splitlines())
+          assert changed == {'AUTOPILOT_STATE.json','docs/project/search3-refactor-autopilot.md'}, changed
+          print('HANDOFF_SCOPE_OK published_history_preserved=true runtime_changes=0 '+json.dumps(totals,sort_keys=True))
           PY
-          bash "$RUNNER_TEMP/boundary-prepare.sh"
-          bash "$RUNNER_TEMP/boundary-proof.sh"
-      - name: Retain exact review and failure diagnostics
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: search3-toolbar-boundary-${{ github.run_id }}
-          path: |
-            ${{ runner.temp }}/toolbar-boundary-code.txt
-            ${{ runner.temp }}/toolbar-boundary-red.log
-            ${{ runner.temp }}/toolbar-boundary-green.log
-            ${{ runner.temp }}/toolbar-boundary-review.tar.gz
-            ${{ runner.temp }}/toolbar-clean/tests/search3-card-readability-browser.cjs
-            ${{ runner.temp }}/toolbar-clean/src/search3/styles/results-layout.css
-            ${{ runner.temp }}/toolbar-clean/standalone-content-artifacts/
-          if-no-files-found: error
-          retention-days: 7
+          python3 -m json.tool AUTOPILOT_STATE.json >/dev/null
+          git diff --check
+          git add AUTOPILOT_STATE.json docs/project/search3-refactor-autopilot.md
+          git commit -m 'docs(search3): record three verified toolbar passes and next owner audit'
+          git push origin HEAD:refs/heads/docs/search3-toolbar-complete-0448750b
+          git log -1 --format='%H %s'
