@@ -32,7 +32,7 @@ assert.ok(!styles.includes('search3-filter-subpanel'), 'orphan subpanel CSS remo
 assert.ok(!styles.includes('search3-filter-open'), 'orphan drawer-open CSS removed');
 assert.ok(!styles.includes('search3-filter-overlay'), 'orphan overlay CSS removed');
 
-assert.ok(mobile.includes('class="mrf-sheet"'), 'base mobile result-filter sheet remains the mobile owner');
+assert.ok(mobile.includes("sheet.className='mrf-sheet'"), 'base mobile result-filter sheet remains the mobile owner');
 assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('), 'mobile owner retains open/close lifecycle');
 assert.ok(presentation.includes("document.querySelector('.mrf-bar')"), 'Search3 presentation still mounts the canonical mobile filter bar');
 
