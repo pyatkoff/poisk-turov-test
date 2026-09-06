@@ -79,5 +79,22 @@
     "JS formatting: all16 option combinations measured; best240 bytes below500 threshold, no source edit.",
     "No preview publication, browser journey, full responsive/site/SEO suite or physical Safari acceptance for this technical batch."
   ],
-  "size_scope": "Uncompressed eight public assets only; source/docs/shared runtime/legacy excluded."
+  "size_scope": "Uncompressed eight public assets only; source/docs/shared runtime/legacy excluded.",
+  "checked_source_sha": "9cf5fe886201e59c9f0be3acc096992dba308290",
+  "source_pr": 1423,
+  "ci": {
+    "policy": "OWNER_AUTHORIZED_BATCHED_REDUCTION",
+    "source_pr": 1423,
+    "source_sha": "9cf5fe886201e59c9f0be3acc096992dba308290",
+    "security_run": 34062645262,
+    "artifact_run": 34062645263,
+    "artifact_id": 9997962349,
+    "artifact_digest": "sha256:df04787881393e66980a2608bc78085831ace2814e019fd4d97847907a0eed8a",
+    "required_passed": 2,
+    "first_attempt_passed": true,
+    "artifact_rebuilt_on_release": false,
+    "artifact_rebuilt_for_docs": false,
+    "preview_published": false,
+    "full_responsive_site_seo": "deferred, not passed"
+  }
 }

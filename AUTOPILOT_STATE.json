@@ -53,26 +53,26 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Checked release batch #1422: 311687→306234 CSS/JS bytes (−5453). Four JS executable ASTs identical, 61 CSS declarations/14 empty rules removed with 42-width cascade evidence. No preview redeploy or browser journey. Published preview remains bff20777.",
+    "last_material_progress": "Checked #1423: 306234→302208 CSS/JS bytes (−4026). No JS byte changes. Equivalent media wrappers and mandatory cross-asset cascade proof; no browser/deploy.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Next substantive step: consolidate the hotel-card CSS owner under #results across base/card/cascade/layout sources, first proving the affected final cascade including shorthand/longhand interactions and breakpoint states. Do not rerun completed private CSS optimization, markup helpers, source-comment filtering, 36 equal-value or 61 numeric-dominance deletions. Remaining JS micro-candidates measured below 500 bytes are deferred, not separate PRs. Use one working draft per useful batch, narrow evidence and the two required CI jobs. Do not automatically deploy or replay the live journey; current published preview remains bff20777. New local commands and focused tests worked in this continuation; the historical rejected HTTP poll was not retried. Main/production locked; scheduler paused.",
+    "next_action": "Continue only measured source reductions under the owner batch policy. Completed: media-wrapper grouping, 75 mandatory cross-asset dominance deletions, earlier 61 numeric/36 equal-value deletions, ordinary JS note removal and private CSS/markup passes. Do not repeat those audits. Whole hotel-card retirement is not safe from current lifecycle: has-results can be set independently of results-active and final sibling/hidden conditions. Preserve the intermediate/fallback card CSS. Next inspect remaining cross-asset same-property witnesses with basic supported enum/color values, then a separate measured ownership consolidation that preserves those states. JS formatter maximum240 bytes, within-asset shorthand117 bytes and private custom-name micro-candidates are deferred. Reuse one checked artifact per source batch; no automatic deploy/browser. Preview remains bff20777; main/production locked; scheduler paused.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
+    "id": "S3_MEDIA_AND_CROSS_ASSET_CSS",
+    "title": "Group equivalent media roots and retire mandatory cross-asset CSS duplicates",
+    "status": "CHECKED_RELEASE_BATCH_NOT_PUBLISHED",
+    "implementation_sha": "9cf5fe886201e59c9f0be3acc096992dba308290",
     "branch": "release/search3-production-ready-v1",
-    "id": "S3_BATCHED_CSS_JS_REDUCTION",
-    "implementation_sha": "b926eeb4509da236597268af868457eb5f11ef43",
-    "issue": 996,
-    "next_action": "Next substantive step: consolidate the hotel-card CSS owner under #results across base/card/cascade/layout sources, first proving the affected final cascade including shorthand/longhand interactions and breakpoint states. Do not rerun completed private CSS optimization, markup helpers, source-comment filtering, 36 equal-value or 61 numeric-dominance deletions. Remaining JS micro-candidates measured below 500 bytes are deferred, not separate PRs. Use one working draft per useful batch, narrow evidence and the two required CI jobs. Do not automatically deploy or replay the live journey; current published preview remains bff20777. New local commands and focused tests worked in this continuation; the historical rejected HTTP poll was not retried. Main/production locked; scheduler paused.",
     "pr": 1334,
     "source_prs": [
-      1422
+      1423
     ],
-    "status": "CHECKED_RELEASE_BATCH_NOT_PUBLISHED",
-    "title": "Remove dominated numeric CSS and ordinary served JS source notes",
-    "artifact_id": 9997701449,
-    "artifact_run": 34061763852
+    "issue": 996,
+    "artifact_id": 9997962349,
+    "artifact_run": 34062645263,
+    "next_action": "Continue only measured source reductions under the owner batch policy. Completed: media-wrapper grouping, 75 mandatory cross-asset dominance deletions, earlier 61 numeric/36 equal-value deletions, ordinary JS note removal and private CSS/markup passes. Do not repeat those audits. Whole hotel-card retirement is not safe from current lifecycle: has-results can be set independently of results-active and final sibling/hidden conditions. Preserve the intermediate/fallback card CSS. Next inspect remaining cross-asset same-property witnesses with basic supported enum/color values, then a separate measured ownership consolidation that preserves those states. JS formatter maximum240 bytes, within-asset shorthand117 bytes and private custom-name micro-candidates are deferred. Reuse one checked artifact per source batch; no automatic deploy/browser. Preview remains bff20777; main/production locked; scheduler paused."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -688,10 +688,25 @@
       "artifact_rebuilt_for_docs": false,
       "preview_published": false,
       "full_responsive_site_seo": "deferred, not passed"
+    },
+    "media_and_cross_asset_css": {
+      "policy": "OWNER_AUTHORIZED_BATCHED_REDUCTION",
+      "source_pr": 1423,
+      "source_sha": "9cf5fe886201e59c9f0be3acc096992dba308290",
+      "security_run": 34062645262,
+      "artifact_run": 34062645263,
+      "artifact_id": 9997962349,
+      "artifact_digest": "sha256:df04787881393e66980a2608bc78085831ace2814e019fd4d97847907a0eed8a",
+      "required_passed": 2,
+      "first_attempt_passed": true,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "preview_published": false,
+      "full_responsive_site_seo": "deferred, not passed"
     }
   },
-  "last_verified_commit": "b926eeb4509da236597268af868457eb5f11ef43",
-  "last_verified_commit_scope": "Checked technical refactor in release; final source CI and focused equivalence checks passed. Not published; previous preview remains bff20777.",
+  "last_verified_commit": "9cf5fe886201e59c9f0be3acc096992dba308290",
+  "last_verified_commit_scope": "CSS-only technical release batch; source CI and narrow equivalence checks passed. Not published; preview remains bff20777.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -725,52 +740,48 @@
   "owner_priority_source": "OWNER_PRIORITY.json",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "presentation_refactor_checkpoint": {
-    "audit": "docs/project/search3-batched-css-js-reduction.json",
-    "baseline": "86723a7203f115f30c381543e98bdd1d6836b372",
-    "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
-    "implementation_sha": "b926eeb4509da236597268af868457eb5f11ef43",
-    "next_action": "Next substantive step: consolidate the hotel-card CSS owner under #results across base/card/cascade/layout sources, first proving the affected final cascade including shorthand/longhand interactions and breakpoint states. Do not rerun completed private CSS optimization, markup helpers, source-comment filtering, 36 equal-value or 61 numeric-dominance deletions. Remaining JS micro-candidates measured below 500 bytes are deferred, not separate PRs. Use one working draft per useful batch, narrow evidence and the two required CI jobs. Do not automatically deploy or replay the live journey; current published preview remains bff20777. New local commands and focused tests worked in this continuation; the historical rejected HTTP poll was not retried. Main/production locked; scheduler paused.",
-    "preview_updated": false,
-    "production_updated": false,
+    "baseline": "71be7b79f77fdc29b669648c2a3479ea72c1402e",
+    "stage": "S3_MEDIA_AND_CROSS_ASSET_CSS_CHECKED_NOT_PUBLISHED",
+    "implementation_sha": "9cf5fe886201e59c9f0be3acc096992dba308290",
+    "release_integration_sha": "9cf5fe886201e59c9f0be3acc096992dba308290",
     "public_assets": {
-      "css_bytes": 199199,
+      "css_bytes": 195173,
       "css_lines": 4,
       "js_bytes": 107035,
       "js_lines": 3,
-      "scope": "Eight public paths, uncompressed. Four CSS and three nonempty JS files; one existing empty JS slot retained. Excludes shared runtime/legacy and duplicate src.",
-      "total_bytes": 306234,
-      "total_lines": 7
+      "total_bytes": 302208,
+      "total_lines": 7,
+      "scope": "Eight public paths, uncompressed; one empty JS slot retained. Excludes shared runtime/legacy and duplicate source."
     },
-    "release_integration_sha": "b926eeb4509da236597268af868457eb5f11ef43",
-    "run_delta": {
-      "bytes": -5453,
-      "css_bytes": -1815,
-      "js_bytes": -3638,
-      "lines": -52
-    },
-    "scope": "One source batch removes 61 dominated numeric/equal-value CSS declarations and 14 empty rules, and omits ordinary comments only from second-stage served JS. Readable sources and first-stage AST/comment guard retained.",
+    "scope": "Equivalent media-root grouping plus 75 cross-asset dominated declarations/13 empty rules; all four JS assets byte-identical.",
     "source_validation": "FINAL_SOURCE_DRAFT_REQUIRED_CI_PASSED",
-    "stage": "S3_BATCHED_CSS_JS_REDUCTION_CHECKED_NOT_PUBLISHED",
+    "preview_updated": false,
+    "production_updated": false,
     "ci": {
       "policy": "OWNER_AUTHORIZED_BATCHED_REDUCTION",
-      "source_pr": 1422,
-      "source_sha": "b926eeb4509da236597268af868457eb5f11ef43",
-      "security_run": 34061763860,
-      "artifact_run": 34061763852,
-      "artifact_id": 9997701449,
-      "artifact_digest": "sha256:c6cbd40248a146f75ad1069bf7d36bcb7360dd602fc5e4266a4bb8ba92743476",
+      "source_pr": 1423,
+      "source_sha": "9cf5fe886201e59c9f0be3acc096992dba308290",
+      "security_run": 34062645262,
+      "artifact_run": 34062645263,
+      "artifact_id": 9997962349,
+      "artifact_digest": "sha256:df04787881393e66980a2608bc78085831ace2814e019fd4d97847907a0eed8a",
       "required_passed": 2,
-      "initial_failure": {
-        "sha": "234f9b3d6a1d167ba51dd8a7a2b0f779afe95155",
-        "artifact_run": 34061674368,
-        "reason": "Two source-drift fixtures used ordinary comments, which are now intentionally omitted. Corrected fixtures mutate executable statements; guards unchanged."
-      },
+      "first_attempt_passed": true,
       "artifact_rebuilt_on_release": false,
       "artifact_rebuilt_for_docs": false,
       "preview_published": false,
       "full_responsive_site_seo": "deferred, not passed"
     },
-    "verified_at": "2026-09-06T21:42:27.946Z"
+    "run_delta": {
+      "css_bytes": -4026,
+      "js_bytes": 0,
+      "bytes": -4026,
+      "lines": 0
+    },
+    "verified_at": "2026-09-06T22:02:55.891Z",
+    "next_action": "Continue only measured source reductions under the owner batch policy. Completed: media-wrapper grouping, 75 mandatory cross-asset dominance deletions, earlier 61 numeric/36 equal-value deletions, ordinary JS note removal and private CSS/markup passes. Do not repeat those audits. Whole hotel-card retirement is not safe from current lifecycle: has-results can be set independently of results-active and final sibling/hidden conditions. Preserve the intermediate/fallback card CSS. Next inspect remaining cross-asset same-property witnesses with basic supported enum/color values, then a separate measured ownership consolidation that preserves those states. JS formatter maximum240 bytes, within-asset shorthand117 bytes and private custom-name micro-candidates are deferred. Reuse one checked artifact per source batch; no automatic deploy/browser. Preview remains bff20777; main/production locked; scheduler paused.",
+    "audit": "docs/project/search3-media-cross-asset-reduction.json",
+    "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested."
   },
   "presentation_refactor_history": [
     {
@@ -2050,6 +2061,54 @@
       "source_validation": "TWO_SOURCE_DRAFTS_CI_PASSED_EXACT_ARTIFACT_PUBLISHED_FOCUSED_LIVE_VERIFIED",
       "stage": "S3_STATIC_PAYLOAD_AND_MEDIA_OVERLAP_PUBLISHED",
       "verified_at": "2026-09-06T21:20:23.284Z"
+    },
+    {
+      "audit": "docs/project/search3-batched-css-js-reduction.json",
+      "baseline": "86723a7203f115f30c381543e98bdd1d6836b372",
+      "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+      "implementation_sha": "b926eeb4509da236597268af868457eb5f11ef43",
+      "next_action": "Next substantive step: consolidate the hotel-card CSS owner under #results across base/card/cascade/layout sources, first proving the affected final cascade including shorthand/longhand interactions and breakpoint states. Do not rerun completed private CSS optimization, markup helpers, source-comment filtering, 36 equal-value or 61 numeric-dominance deletions. Remaining JS micro-candidates measured below 500 bytes are deferred, not separate PRs. Use one working draft per useful batch, narrow evidence and the two required CI jobs. Do not automatically deploy or replay the live journey; current published preview remains bff20777. New local commands and focused tests worked in this continuation; the historical rejected HTTP poll was not retried. Main/production locked; scheduler paused.",
+      "preview_updated": false,
+      "production_updated": false,
+      "public_assets": {
+        "css_bytes": 199199,
+        "css_lines": 4,
+        "js_bytes": 107035,
+        "js_lines": 3,
+        "scope": "Eight public paths, uncompressed. Four CSS and three nonempty JS files; one existing empty JS slot retained. Excludes shared runtime/legacy and duplicate src.",
+        "total_bytes": 306234,
+        "total_lines": 7
+      },
+      "release_integration_sha": "b926eeb4509da236597268af868457eb5f11ef43",
+      "run_delta": {
+        "bytes": -5453,
+        "css_bytes": -1815,
+        "js_bytes": -3638,
+        "lines": -52
+      },
+      "scope": "One source batch removes 61 dominated numeric/equal-value CSS declarations and 14 empty rules, and omits ordinary comments only from second-stage served JS. Readable sources and first-stage AST/comment guard retained.",
+      "source_validation": "FINAL_SOURCE_DRAFT_REQUIRED_CI_PASSED",
+      "stage": "S3_BATCHED_CSS_JS_REDUCTION_CHECKED_NOT_PUBLISHED",
+      "ci": {
+        "policy": "OWNER_AUTHORIZED_BATCHED_REDUCTION",
+        "source_pr": 1422,
+        "source_sha": "b926eeb4509da236597268af868457eb5f11ef43",
+        "security_run": 34061763860,
+        "artifact_run": 34061763852,
+        "artifact_id": 9997701449,
+        "artifact_digest": "sha256:c6cbd40248a146f75ad1069bf7d36bcb7360dd602fc5e4266a4bb8ba92743476",
+        "required_passed": 2,
+        "initial_failure": {
+          "sha": "234f9b3d6a1d167ba51dd8a7a2b0f779afe95155",
+          "artifact_run": 34061674368,
+          "reason": "Two source-drift fixtures used ordinary comments, which are now intentionally omitted. Corrected fixtures mutate executable statements; guards unchanged."
+        },
+        "artifact_rebuilt_on_release": false,
+        "artifact_rebuilt_for_docs": false,
+        "preview_published": false,
+        "full_responsive_site_seo": "deferred, not passed"
+      },
+      "verified_at": "2026-09-06T21:42:27.946Z"
     }
   ],
   "preview_isolation_followup": {
@@ -2360,12 +2419,12 @@
       "url": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/"
     },
     "site_draft": {
-      "artifact_digest": "sha256:c6cbd40248a146f75ad1069bf7d36bcb7360dd602fc5e4266a4bb8ba92743476",
+      "artifact_digest": "sha256:df04787881393e66980a2608bc78085831ace2814e019fd4d97847907a0eed8a",
       "branch": "release/search3-production-ready-v1",
-      "exact_artifact": 9997701449,
+      "exact_artifact": 9997962349,
       "final_verification_artifact": 9997242581,
       "final_verification_run": 34060271120,
-      "implementation_verified_sha": "b926eeb4509da236597268af868457eb5f11ef43",
+      "implementation_verified_sha": "9cf5fe886201e59c9f0be3acc096992dba308290",
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -2412,7 +2471,8 @@
         "Checked JS/CSS printing, private rail/form parts and inherited zero-match shell recovery: net 15475 fewer public bytes and 5741 fewer generated lines.",
         "Local-name build reduction: 15133 fewer public JS bytes; owner-authorized focused draft checks replace repeated full suites.",
         "Standard build minification: 6400 fewer CSS/JS bytes. Build once per source draft; reuse after release integration and docs, Security includes owner checks.",
-        "Checked #1422 batch, not yet published: 5453 fewer served bytes from numeric CSS dominance and ordinary JS source-note filtering."
+        "Checked #1422 batch, not yet published: 5453 fewer served bytes from numeric CSS dominance and ordinary JS source-note filtering.",
+        "Checked #1423, not published: media-root grouping and 75 mandatory cross-asset CSS deletions save4026 bytes; JavaScript unchanged."
       ],
       "live_browser_verification": {
         "source_sha": "bff20777468c2a7d41df684dc1902c267adde3cf",
@@ -2425,8 +2485,8 @@
       "preview_deploy_run": 34060271120,
       "preview_deploy_workflow_conclusion": "success",
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "release_merge_sha": "b926eeb4509da236597268af868457eb5f11ef43",
-      "source_tree": "9d9d3179dd932951f57c46935aabea0456a9787f",
+      "release_merge_sha": "9cf5fe886201e59c9f0be3acc096992dba308290",
+      "source_tree": "8f083be41b14bbd00ffc83ab68468f5d527d77dd",
       "status": "CHECKED_REFACTOR_BATCH_AHEAD_OF_PUBLISHED_PREVIEW",
       "superseded_artifact": 9996124818,
       "exact_artifact_status": "CHECKED_NOT_DEPLOYED",
@@ -5038,5 +5098,5 @@
     "visual_run": 33976375814
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
-  "updated_at": "2026-09-06T21:42:27.946Z"
+  "updated_at": "2026-09-06T22:02:55.891Z"
 }
