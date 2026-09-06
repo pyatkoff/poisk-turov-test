@@ -17,185 +17,50 @@ jobs:
         with:
           fetch-depth: 0
           show-progress: false
-      - name: Normalize reviewed scheduler indentation and checkpoint verified CSS integration
+      - name: Continue only the unfinished boundary step on exact release
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse origin/release/search3-production-ready-v1)" = 27649614c3b9e2c8eab330e09ee8167b77fb9c0b
-          test "$(git rev-parse origin/refactor/search3-toolbar-queue-49f2d2e)" = a7f128ebf66a91e39ecaa0453370baab30e08250
+          test "$(git rev-parse origin/release/search3-production-ready-v1)" = 204b71046e113552aafea408368c17191982b53e
+          test -z "$(git ls-remote --heads origin refs/heads/fix/search3-toolbar-desktop-boundary)"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git worktree add -b refactor/search3-toolbar-queue-49f2d2e "$RUNNER_TEMP/toolbar-clean" origin/refactor/search3-toolbar-queue-49f2d2e
-          cd "$RUNNER_TEMP/toolbar-clean"
+          git worktree add --detach "$RUNNER_TEMP/toolbar-clean" 204b71046e113552aafea408368c17191982b53e
           python3 - <<'PY'
+          import os
+          import subprocess
+          import textwrap
           from pathlib import Path
-          import hashlib
-          path = Path('src/search3/behavior/results-presentation.js')
-          text = path.read_text()
-          start = text.index('function scheduleMobileToolbar() {')
-          end = text.index('  function mountMobileToolbar() {', start)
-          block = text[start:end]
-          assert block.startswith('function ') and '\nfunction cancelMobileToolbar()' in block
-          text = text[:start] + ''.join(('  ' + line if line.strip() else line) for line in block.splitlines(keepends=True)) + text[end:]
-          assert hashlib.sha256(text.encode()).hexdigest() == '2cc96087d6f85362d135dda0feee23f6e79fc6790f4700f2f88f3b72630fc066'
-          path.write_text(text)
+          # Reuse only the two reviewed, unfinished steps; never rerun the completed queue rewrite.
+          old = subprocess.check_output(['git','cat-file','blob','c72594769c7e96ccfa043a70b4d15efc84615f04'], text=True)
+          def step(name):
+              block = old.split('      - name: ' + name + '\n', 1)[1].split('\n      - name: ', 1)[0]
+              return textwrap.dedent(block.split('        run: |\n', 1)[1])
+          preparation = step('Prepare separate desktop visibility regression')
+          before = "throw new Error('TOOLBAR_RESIZE_CHANGED_FORM ' + width);"
+          after = "throw new Error('TOOLBAR_RESIZE_CHANGED_FORM ' + width + ' ' + JSON.stringify({ before: JSON.parse(before), after: await formValues() }));"
+          assert preparation.count(before) == 1
+          preparation = preparation.replace(before, after)
+          proof = step('Prove the desktop defect then verify the narrow CSS correction')
+          proof = proof.replace(' | tee "$RUNNER_TEMP/toolbar-boundary-green.log"', ' 2>&1 | tee "$RUNNER_TEMP/toolbar-boundary-green.log"')
+          temp = Path(os.environ['RUNNER_TEMP'])
+          (temp/'boundary-prepare.sh').write_text(preparation)
+          (temp/'boundary-proof.sh').write_text(proof)
           PY
-          python3 -B scripts/build/search3_assets.py --write
-          python3 -B scripts/build/search3_assets.py --check
-          python3 -B tests/search3_source_build_test.py
-          python3 -B tests/search3_production_presentation_test.py
-          git add src/search3/behavior/results-presentation.js v2/search3-results-filters-v1.js docs/project/search3-production-import.json
-          git diff --cached --check
-          git commit -m 'style(search3): retain IIFE indentation in toolbar queue'
-          python3 - <<'PY'
-          from pathlib import Path
-          import json, os, subprocess
-          code = subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
-          p=Path('AUTOPILOT_STATE.json'); state=json.loads(p.read_text()); cp=state['presentation_refactor_checkpoint']
-          cp['baseline']=code
-          cp['ci']['responsive_artifact']=9985612307
-          cp['ci']['responsive_digest']='sha256:8aa946bfaaefa7455ab538f0aa503b2c83a4c9b24ede97b604d3b86be2d82d98'
-          cp['ci']['normalization_and_focused_run']=int(os.environ['GITHUB_RUN_ID'])
-          cp['ci']['normalization']='Whitespace only; source SHA256 matches the locally tested scheduler exactly.'
-          assets=cp['public_assets']; raw=[(Path('v2')/name).read_bytes() for name in json.loads(Path('src/search3/manifest.json').read_text())['assets'] if name.endswith('.js')]
-          assets['js_bytes']=sum(map(len,raw)); assets['js_lines']=sum(len(x.splitlines()) for x in raw)
-          assets['total_bytes']=assets['css_bytes']+assets['js_bytes'];assets['total_lines']=assets['css_lines']+assets['js_lines']
-          for h in state['presentation_refactor_history']:
-              if h.get('stage')=='S3_RETIRED_TOOLBAR_CSS':
-                  h['source_validation']='FOCUSED_RESPONSIVE_AND_23_APPLICABLE_RELEASE_CI_VERIFIED'
-                  h['ci'].update({'release_merge_sha':'27649614c3b9e2c8eab330e09ee8167b77fb9c0b','pr':1373,'applicable_success':23,'expected_skipped':1,'core_run':34021625980,'visual_run':34021625934,'whole_site_artifact_run':34021625902})
-          p.write_text(json.dumps(state,ensure_ascii=False,indent=2)+'\n')
-          with Path('docs/project/search3-refactor-autopilot.md').open('a') as out:
-              out.write('\nScheduler source formatting normalized as `'+code+'`; behavior unchanged and exact local source hash verified. CSS #1373 integrated as27649614 with23applicable CI success +1expected skipped. Scheduler PR #1374 remains release-only, no deployment.\n')
-          Path(os.environ['RUNNER_TEMP'],'toolbar-queue-code.txt').write_text(code+'\n')
-          PY
-          git add AUTOPILOT_STATE.json docs/project/search3-refactor-autopilot.md
-          git commit -m 'docs(search3): record CSS release checks and scheduler identity'
-          git push origin HEAD:refs/heads/refactor/search3-toolbar-queue-49f2d2e
-          git rev-parse HEAD > "$RUNNER_TEMP/toolbar-queue-head.txt"
-      - name: Prepare separate desktop visibility regression
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$RUNNER_TEMP/toolbar-clean"
-          test -z "$(git ls-remote --heads origin refs/heads/fix/search3-toolbar-desktop-boundary)"
-          git switch -c fix/search3-toolbar-desktop-boundary
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('tests/search3-card-readability-browser.cjs');text=p.read_text()
-          marker="function px(value) {"
-          addition='''async function verifyToolbarBoundary(browser) {
-            const page = await browser.newPage({ viewport: { width: 375, height: 900 } });
-            // This fixture never talks to production search, lead delivery or analytics.
-            await page.route('**/*', route => {
-              const url = route.request().url();
-              if (!url.startsWith(base + '/') || /\\/(?:api[^/]*|lead[^/]*)\\.php/.test(url)) return route.abort();
-              return route.continue();
-            });
-            try {
-              await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded' });
-              await page.waitForFunction(() => window.Search3CandidateResultsV1 && window.V2MobileResultsFiltersV1);
-              await page.evaluate(html => {
-                document.getElementById('results').innerHTML = html;
-                document.getElementById('results').hidden = false;
-                document.getElementById('resultsTools').hidden = false;
-                document.body.classList.add('search3-has-results');
-                window.dispatchEvent(new CustomEvent('v2:results-rendered', { detail: { items: [
-                  { id: 'readability-fixture', name: 'Toolbar fixture', price: 148500, tours: [] }
-                ] } }));
-              }, cardHtml);
-              await page.waitForSelector('.search3-mobile-toolbar');
-              await page.evaluate(() => { window.__toolbarBoundaryNode = document.querySelector('.search3-mobile-toolbar'); });
-              const formValues = () => page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a,b) => a[0].localeCompare(b[0])));
-              const before = JSON.stringify(await formValues());
-              for (const width of [999,1000,1348,1440,999,430]) {
-                await page.setViewportSize({ width, height: 900 });
-                await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-                const toolbar = page.locator('.search3-mobile-toolbar');
-                const geometry = await toolbar.evaluate(node => ({ display: getComputedStyle(node).display, height: node.getBoundingClientRect().height, sameNode: node === window.__toolbarBoundaryNode }));
-                if (!geometry.sameNode || await toolbar.count() !== 1) throw new Error('TOOLBAR_OWNER_REPLACED ' + width);
-                if (width >= 1000) {
-                  if (geometry.display !== 'none' || geometry.height !== 0 || await page.locator('.search3-mobile-sort select').isVisible()) throw new Error('TOOLBAR_DESKTOP_LEAK ' + width + ' ' + JSON.stringify(geometry));
-                  if (!await page.locator('#sortResults').isVisible()) throw new Error('TOOLBAR_NATIVE_SORT_HIDDEN ' + width);
-                } else {
-                  if (!await toolbar.isVisible() || !await page.locator('.search3-mobile-filter-slot > .mrf-bar').isVisible()) throw new Error('TOOLBAR_COMPACT_MISSING ' + width);
-                  await page.locator('.mrf-open').click();
-                  await page.waitForFunction(() => document.querySelector('.mrf-sheet').classList.contains('is-open'));
-                  await page.keyboard.press('Escape');
-                  if (!await page.locator('.mrf-open').evaluate(node => node === document.activeElement)) throw new Error('TOOLBAR_FOCUS_RETURN ' + width);
-                }
-                if (JSON.stringify(await formValues()) !== before) throw new Error('TOOLBAR_RESIZE_CHANGED_FORM ' + width);
-                if (width === 1348 || width === 430) await page.screenshot({ path: 'standalone-content-artifacts/toolbar-boundary-' + width + '.png', fullPage: true, animations: 'disabled' });
-                console.log('SEARCH3_TOOLBAR_BOUNDARY_OK ' + width + ' ' + JSON.stringify(geometry));
-              }
-              const native = page.locator('#sortResults'), proxy = page.locator('.search3-mobile-sort select');
-              const values = await native.locator('option').evaluateAll(nodes => nodes.map(node => node.value));
-              await proxy.selectOption(values[1], { force: true });
-              if (await native.inputValue() !== values[1]) throw new Error('TOOLBAR_PROXY_SORT_HANDOFF');
-              await native.selectOption(values[0], { force: true });
-              if (await proxy.inputValue() !== values[0]) throw new Error('TOOLBAR_NATIVE_SORT_HANDOFF');
-            } finally { await page.close(); }
-          }
-
-          '''
-          assert text.count(marker)==1
-          text=text.replace(marker,addition+marker)
-          marker='  } finally {\n    await browser.close();'
-          assert text.count(marker)==1
-          text=text.replace(marker,'    await verifyToolbarBoundary(browser);\n'+marker)
-          p.write_text(text)
-          PY
-          node --check tests/search3-card-readability-browser.cjs
-          npm install --no-save playwright@1.55.0 >/dev/null
-          npx playwright install --with-deps chromium >/dev/null
-      - name: Prove the desktop defect then verify the narrow CSS correction
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd "$RUNNER_TEMP/toolbar-clean"
-          mkdir -p standalone-content-artifacts
-          printf '%s\n' '<?php $_SERVER["HTTP_HOST"]="anytoour.ru"; $_SERVER["SCRIPT_NAME"]="/poisk-turov/index.php"; $_SERVER["REQUEST_URI"]="/poisk-turov/"; require __DIR__."/poisk-turov/index.php";' > v2/ci-search3.php
-          php -S 127.0.0.1:8099 -t v2 >"$RUNNER_TEMP/search3-php.log" 2>&1 &
-          php_pid=$!
-          trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
-          for _ in {1..30}; do curl -fsS http://127.0.0.1:8099/ci-search3.php >/dev/null && break; sleep .2; done
-          set +e
-          SEARCH3_VISUAL_BASE=http://127.0.0.1:8099 node tests/search3-card-readability-browser.cjs > "$RUNNER_TEMP/toolbar-boundary-red.log" 2>&1
-          red=$?
-          set -e
-          test "$red" -ne 0
-          grep -q 'TOOLBAR_DESKTOP_LEAK 1000' "$RUNNER_TEMP/toolbar-boundary-red.log"
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('src/search3/styles/results-layout.css');text=p.read_text()
-          marker='body.search3-candidate .search3-mobile-toolbar{display:none}\n'
-          assert text.count(marker)==1
-          text=text.replace(marker,marker+'\n/* Retain the mobile owner across resize, but keep only the native desktop sort visible. */\n@media(min-width:1000px){\n  html body.search3-candidate.search3-results-active .search3-mobile-toolbar{display:none!important}\n}\n')
-          p.write_text(text)
-          PY
-          python3 -B scripts/build/search3_assets.py --write
-          python3 -B scripts/build/search3_assets.py --check
-          python3 -B tests/search3_source_build_test.py
-          python3 -B tests/search3_production_presentation_test.py
-          SEARCH3_VISUAL_BASE=http://127.0.0.1:8099 node tests/search3-card-readability-browser.cjs | tee "$RUNNER_TEMP/toolbar-boundary-green.log"
-          git add src/search3/styles/results-layout.css v2/search3-results-filters-v1.css docs/project/search3-production-import.json tests/search3-card-readability-browser.cjs
-          git diff --cached --check
-          git commit -m 'fix(search3): hide retained mobile toolbar above compact breakpoint'
-          git rev-parse HEAD > "$RUNNER_TEMP/toolbar-boundary-code.txt"
-          git push origin HEAD:refs/heads/fix/search3-toolbar-desktop-boundary
-          git archive --format=tar.gz -o "$RUNNER_TEMP/toolbar-boundary-review.tar.gz" HEAD
-      - name: Retain exact review evidence
+          bash "$RUNNER_TEMP/boundary-prepare.sh"
+          bash "$RUNNER_TEMP/boundary-proof.sh"
+      - name: Retain exact review and failure diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: search3-toolbar-boundary-${{ github.run_id }}
           path: |
-            ${{ runner.temp }}/toolbar-queue-code.txt
-            ${{ runner.temp }}/toolbar-queue-head.txt
             ${{ runner.temp }}/toolbar-boundary-code.txt
             ${{ runner.temp }}/toolbar-boundary-red.log
             ${{ runner.temp }}/toolbar-boundary-green.log
             ${{ runner.temp }}/toolbar-boundary-review.tar.gz
+            ${{ runner.temp }}/toolbar-clean/tests/search3-card-readability-browser.cjs
+            ${{ runner.temp }}/toolbar-clean/src/search3/styles/results-layout.css
             ${{ runner.temp }}/toolbar-clean/standalone-content-artifacts/
           if-no-files-found: error
           retention-days: 7
