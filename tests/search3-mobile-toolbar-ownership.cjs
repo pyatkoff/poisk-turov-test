@@ -38,7 +38,8 @@ assert.ok(mobile.includes('function openSheet(') && mobile.includes('function cl
 
 const runtimeHits = hits([
   ...files(path.join(root, 'src/search3/behavior'), '.js'),
-  ...files(path.join(root, 'v2'), '.js')
+  ...files(path.join(root, 'v2'), '.js'),
+  ...files(path.join(root, 'v2'), '.php')
 ]);
 assert.deepEqual(runtimeHits, [], `retired mobile-toolbar classes have no runtime producer: ${runtimeHits.join(', ')}`);
 

@@ -30,14 +30,11 @@ body.search3-candidate .results-view-switch{display:flex!important;gap:5px!impor
 body.search3-candidate .results-view-switch button{min-height:31px!important;padding:0 10px!important;border:1px solid #dce4ef!important;border-radius:6px!important;background:#fff!important;color:#344054!important;font-size:8px!important;font-weight:850!important}
 body.search3-candidate .results-view-switch button.is-active{border-color:#2463eb!important;color:#2463eb!important;background:#f7faff!important}
 body.search3-candidate.search3-has-results .search3-mobile-toolbar{display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:wrap!important;margin:0 0 8px!important;width:100%!important;max-width:none!important}
-body.search3-candidate.search3-has-results .search3-active-chips{display:flex!important;gap:5px!important;flex-wrap:wrap!important;min-width:0!important}
-body.search3-candidate.search3-has-results .search3-chip{min-height:26px!important;padding:0 8px!important;border:1px solid #d9e2f1!important;border-radius:999px!important;background:#fff!important;color:#344054!important;font-size:8px!important;font-weight:800!important}
 @media(min-width:1000px){
 
 
 body.search3-candidate.search3-has-results .results-search-summary{display:grid!important}
 body.search3-candidate.search3-has-results.search3-editing-search .results-search-summary{display:none!important}
-body.search3-candidate .search3-mobile-filter-button{display:none!important}
 body.search3-candidate .results-tools--ds2{box-sizing:border-box!important;}
 body.search3-candidate .results-tools--ds2 #resultSummary{display:none!important}
 body.search3-candidate .results-tools__actions label{gap:0!important;font-size:0!important}
@@ -59,7 +56,6 @@ body.search3-candidate .results-search-summary__route{grid-column:1!important;gr
 body.search3-candidate .results-search-summary__fact{display:none!important}
 body.search3-candidate .results-search-summary__edit{grid-column:2!important;grid-row:1!important;min-height:44px!important;border-left:1px solid #edf0f5!important}
 body.search3-candidate .search3-mobile-toolbar{display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;align-items:start!important;margin:0 0 8px!important}
-body.search3-candidate .search3-mobile-filter-button{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:36px!important;white-space:nowrap!important}
 body.search3-candidate .results-tools--ds2{align-items:flex-start!important;flex-direction:column!important;padding:7px 0!important;border:0!important;background:transparent!important}
 body.search3-candidate .results-tools--ds2>div:first-child{display:block!important}
 body.search3-candidate .results-tools--ds2 #resultSummary{display:block!important;margin-top:3px!important}
@@ -75,7 +71,6 @@ body.search3-candidate.search3-has-results .search3-mobile-toolbar{order:4!impor
 body.search3-candidate.search3-has-results .results-layout{order:5!important}
 body.search3-candidate.search3-has-results #selectedTour{order:6!important}
 body.search3-candidate .search3-mobile-toolbar{grid-template-columns:1fr!important}
-body.search3-candidate .search3-mobile-filter-button{width:100%!important}
 body.search3-candidate .results-tools__actions{width:100%!important;align-items:stretch!important}
 body.search3-candidate .results-tools__actions label{flex:1!important}
 body.search3-candidate .results-tools select{width:100%!important}

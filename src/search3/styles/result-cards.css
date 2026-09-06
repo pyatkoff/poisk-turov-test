@@ -159,9 +159,6 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
 @media(max-width:999px){
  html body.search3-candidate.search3-has-results #resultsTools .results-tools__actions{display:none!important}
  html body.search3-candidate.search3-has-results .search3-mobile-toolbar{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important}
- html body.search3-candidate.search3-has-results .search3-mobile-toolbar .search3-mobile-actions{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:8px!important;width:100%!important}
- html body.search3-candidate.search3-has-results .search3-mobile-filter-button,
- html body.search3-candidate.search3-has-results .search3-mobile-sort-button{display:inline-flex!important;width:100%!important;min-width:0!important;min-height:40px!important}
 }
 @media(max-width:640px){
  html body.search3-candidate.search3-has-results .v2-shell{display:flex!important;flex-direction:column!important}
