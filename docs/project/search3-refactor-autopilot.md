@@ -45,7 +45,50 @@ deploy #1421. This policy change does not require another build or publication.
 New local commands and focused tests succeeded in the subsequent #1422 continuation.
 The earlier rejected direct-HTTP poll was not retried or bypassed.
 
-### Current checked release batch — media roots and cross-asset CSS — 2026-09-06
+### Current checked release batch — common CSS blocks and JS spelling — 2026-09-06
+
+PR #1424, source `04cc08317bc0c4d64e31b60bf9694e30164fa972`. Two mandatory jobs passed on the final source:
+Security 34064217365 and artifact 34064217372; exact artifact 9998431100 retained.
+This is CHECKED, NOT PUBLISHED. Preview remains bff20777/#1421; main/production
+remain owner-approval locked and the scheduler stays paused.
+
+| Eight public assets | Previous bytes | Checked bytes | Saved |
+| --- | ---: | ---: | ---: |
+| CSS | 195173 | 194729 | 444 |
+| JS | 107035 | 106795 | 240 |
+| Total | 302208 | 301524 | 684 |
+
+Eight paths and seven nonempty generated lines remain. This is uncompressed size;
+no transfer/page-speed claim. Accumulated #1422/#1423/#1424 saving versus published
+preview: 10163 bytes. No artifact download, preview deployment or browser cycle.
+
+Seventeen adjacent leaf-rule groups share exact declaration sequences, crossing
+only disjoint reset families. Original selector strings and parent/media contexts
+remain; no nesting increase or selector-list specificity amplification. Independent
+review found no cascade/reset conflict. JS changes only second-stage quote/number/
+property-key/IIFE spelling; all four final executable Acorn trees and retained
+comment sequences match the previous source. First-stage exact printing and
+protected import fingerprints remain. Existing unit coverage includes public key
+order, prototype setter vs computed own property and numeric spelling.
+
+One final asset build passed. Initial CI found quote-dependent test adapters in CSS literal extraction and
+filter/mobile ownership. Literal checks now read actual Acorn values; ownership
+checks accept either valid quote spelling while keeping the same operation,
+selector and handoff assertions. Final source CI passes; broader responsive/site/SEO
+and physical Safari remain deferred.
+
+Further bounded scans found no recursive media gain, only19 bytes from a new
+selector-list factor,450 bytes from value pooling with new inherited-variable
+complexity, and no large identical helper inside26 JS owners/427 functions. These
+experiments were not applied. Previously deferred117/23-byte CSS cases stay deferred.
+The CSS444/JS240 tails were combined here; do not repeat completed scans. Further
+material reductions require a demonstrated redundant presentation owner while
+retaining fallback/intermediate card states and all protected contracts.
+
+Audits: `docs/project/search3-common-css-js-format-reduction.json` and
+`docs/project/search3-css-common-block-factoring.json`.
+
+### Previous checked release batch — media roots and cross-asset CSS — 2026-09-06
 
 PR #1423, source `9cf5fe886201e59c9f0be3acc096992dba308290`. Both required jobs passed on the first attempt:
 Security34062645262 and artifact34062645263; artifact9997962349 is retained.
