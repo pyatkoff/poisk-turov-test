@@ -131,7 +131,6 @@ jobs:
           }
           changed = set(subprocess.check_output(['git', 'diff', '--name-only', base], text=True).splitlines())
           assert changed == expected, (changed - expected, expected - changed)
-          manifest = json.loads(Path('src/search3/manifest.json').read_text())
           imports = json.loads(Path('docs/project/search3-production-import.json').read_text())
           totals = {kind: {'bytes': 0, 'lines': 0} for kind in ('css', 'js')}
           for name in imports['assets']:
@@ -159,7 +158,7 @@ jobs:
 
       - name: Retain source-only review snapshots without credentials
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f436a02
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: search3-toolbar-source-review-${{ github.run_id }}
           path: |
