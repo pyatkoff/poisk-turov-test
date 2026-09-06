@@ -767,52 +767,22 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "f8e10a30b57fa965ee8f5e7294a1e08819b75fc2",
-    "stage": "S3_RETIRED_PRESENTATION_CSS_PUBLISHED",
-    "scope": "Remove 136 retired positive-class CSS rules and two empty media containers; group 35 equal-specificity compound selector lists. Preserve concurrent shared inflection and date-helper cleanup. Discard overlapping local formatter extraction instead of shipping a second helper namespace.",
-    "source_validation": "23_APPLICABLE_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
-    "verification": "Own CSS reduction 24354 bytes: 136 retired positive-class rules and 35 equal-specificity groups; retained selector/declaration/media stream verified against f8e10a30. Concurrent canonical shared JS and fact CSS preserved; overlapping labels experiment withdrawn. All 23 CI passed with one expected skip; responsive 375/1440 images, exact deployed bytes and live desktop journey verified. Known inherited legacy backdrop remains.",
+    "baseline": "50fd49cea3b167c05b7d97ef265fe00e7ae1a64b",
+    "stage": "S3_CSS_COMMENT_COMPACTION_AND_ENTRY_SPLIT_PREPARED",
+    "scope": "Compact private CSS comments in deterministic dependency-free build; preserve lexical separators/licenses/strings/escapes. Merge 28 adjacent identical declaration blocks and split entry CSS into four ordered component files.",
+    "source_validation": "LOCAL_SOURCE_PRESENTATION_AND_CSS_TOKEN_EQUIVALENCE_PASS_CI_PENDING",
     "public_assets": {
-      "css_bytes": 311609,
-      "css_lines": 3653,
+      "css_bytes": 295513,
+      "css_lines": 3593,
       "js_bytes": 142639,
       "js_lines": 1901,
-      "total_bytes": 454248,
-      "total_lines": 5554,
-      "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
+      "total_bytes": 438152,
+      "total_lines": 5494,
+      "scope": "Four CSS and four JS assets; uncompressed, excluding shared runtime/legacy and source duplication."
     },
-    "run_delta": {
-      "bytes": -24354,
-      "lines": -215,
-      "css_bytes": -24354,
-      "js_bytes": 0,
-      "scope": "Own CSS reduction after preserving concurrent #1385/#1386/#1388/#1390; overlapping local JS extraction withdrawn."
-    },
-    "preview_updated": true,
+    "preview_updated": false,
     "production_updated": false,
-    "next_action": "Continue rapid CSS/JS reduction from refreshed release: inspect remaining large active cascade owners and repeated result templates for equivalent consolidation. Do not repeat the 136 retired-rule removals, 35 compound groups, previous seven CSS splits, static-style/footer work or canonical text/plural extraction. Preserve eight public paths and protected contracts; main and production remain locked. Use the exact-artifact preview process.",
-    "concurrent_release_sha": "f8e10a30b57fa965ee8f5e7294a1e08819b75fc2",
-    "code_sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
-    "concurrent_docs_sha": "473654a31e320b80bb0c3a468b81635386fee016",
-    "implementation_sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
-    "release_integration_sha": "84ae82a58f18460994fe8d5d584d7e82bbc73d3b",
-    "ci": {
-      "sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
-      "pr": 1389,
-      "conclusion": "success",
-      "applicable_success": 23,
-      "expected_skipped": 1,
-      "core_run": 34028476949,
-      "visual_run": 34028476946,
-      "flight_run": 34028476933,
-      "artifact_run": 34028476925,
-      "visual_artifact": 9987827778,
-      "visual_digest": "sha256:5367761034898f6f2b5255b83f47753c860a844c631a444e04024c340324f39c",
-      "scope": "Source/import/owner guards and existing responsive/flight checks passed. 375px and 1440px editor images inspected on final code; PHP rendering ran in CI. This is not physical Safari acceptance."
-    },
-    "preview_deploy_run": 34028783194,
-    "preview_deploy_pr": 1392,
-    "verified_at": "2026-09-06T10:59:51.785875+00:00"
+    "next_action": "Finish existing CI and responsive inspection, integrate release only and separately publish exact preview artifact. Do not repeat comment compaction, 28 adjacent merges, entry split or prior completed owners. Continue source-level reductions in remaining active owners; do not treat comments or line counts as a speed benchmark."
   },
   "presentation_refactor_history": [
     {
@@ -1357,6 +1327,54 @@
       "concurrent_release_sha": "f8e10a30b57fa965ee8f5e7294a1e08819b75fc2",
       "code_sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
       "concurrent_docs_sha": "473654a31e320b80bb0c3a468b81635386fee016"
+    },
+    {
+      "baseline": "f8e10a30b57fa965ee8f5e7294a1e08819b75fc2",
+      "stage": "S3_RETIRED_PRESENTATION_CSS_PUBLISHED",
+      "scope": "Remove 136 retired positive-class CSS rules and two empty media containers; group 35 equal-specificity compound selector lists. Preserve concurrent shared inflection and date-helper cleanup. Discard overlapping local formatter extraction instead of shipping a second helper namespace.",
+      "source_validation": "23_APPLICABLE_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
+      "verification": "Own CSS reduction 24354 bytes: 136 retired positive-class rules and 35 equal-specificity groups; retained selector/declaration/media stream verified against f8e10a30. Concurrent canonical shared JS and fact CSS preserved; overlapping labels experiment withdrawn. All 23 CI passed with one expected skip; responsive 375/1440 images, exact deployed bytes and live desktop journey verified. Known inherited legacy backdrop remains.",
+      "public_assets": {
+        "css_bytes": 311609,
+        "css_lines": 3653,
+        "js_bytes": 142639,
+        "js_lines": 1901,
+        "total_bytes": 454248,
+        "total_lines": 5554,
+        "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
+      },
+      "run_delta": {
+        "bytes": -24354,
+        "lines": -215,
+        "css_bytes": -24354,
+        "js_bytes": 0,
+        "scope": "Own CSS reduction after preserving concurrent #1385/#1386/#1388/#1390; overlapping local JS extraction withdrawn."
+      },
+      "preview_updated": true,
+      "production_updated": false,
+      "next_action": "Continue rapid CSS/JS reduction from refreshed release: inspect remaining large active cascade owners and repeated result templates for equivalent consolidation. Do not repeat the 136 retired-rule removals, 35 compound groups, previous seven CSS splits, static-style/footer work or canonical text/plural extraction. Preserve eight public paths and protected contracts; main and production remain locked. Use the exact-artifact preview process.",
+      "concurrent_release_sha": "f8e10a30b57fa965ee8f5e7294a1e08819b75fc2",
+      "code_sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
+      "concurrent_docs_sha": "473654a31e320b80bb0c3a468b81635386fee016",
+      "implementation_sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
+      "release_integration_sha": "84ae82a58f18460994fe8d5d584d7e82bbc73d3b",
+      "ci": {
+        "sha": "3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18",
+        "pr": 1389,
+        "conclusion": "success",
+        "applicable_success": 23,
+        "expected_skipped": 1,
+        "core_run": 34028476949,
+        "visual_run": 34028476946,
+        "flight_run": 34028476933,
+        "artifact_run": 34028476925,
+        "visual_artifact": 9987827778,
+        "visual_digest": "sha256:5367761034898f6f2b5255b83f47753c860a844c631a444e04024c340324f39c",
+        "scope": "Source/import/owner guards and existing responsive/flight checks passed. 375px and 1440px editor images inspected on final code; PHP rendering ran in CI. This is not physical Safari acceptance."
+      },
+      "preview_deploy_run": 34028783194,
+      "preview_deploy_pr": 1392,
+      "verified_at": "2026-09-06T10:59:51.785875+00:00"
     }
   ],
   "site_preview_publication_history": [

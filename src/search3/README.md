@@ -12,6 +12,11 @@ Commit source changes, generated `v2/search3-*` assets and the updated
 unlisted modules and missing source files. The build uses Python's standard library;
 it requires no npm installation, transpiler or additional browser requests.
 
+The CSS build replaces private source comments with empty comment separators;
+license/copyright/source-map notes, strings, escapes and all whitespace remain.
+This reduces served bytes without changing CSS tokens. JavaScript remains exact
+concatenation. Source comments and donor markers stay available for maintenance.
+
 `manifest.json` records the exact concatenation order. Each behavior module retains
 its original IIFE scope. CSS modules retain the existing cascade order; compatibility
 modules are still active, not dead code. Do not sort the manifest or load modules
@@ -45,6 +50,13 @@ files; booking summary and stepper, final sections and lead review, desktop revi
 board and specificity guards, and mobile/tablet result layouts are separate too.
 The manifest retains their original cascade positions. These are source modules,
 not additional browser requests.
+
+The entry stylesheet is split into calendar, responsive entry, toolbar and native
+control owners in the same order: `entry-calendar.css`, `entry-v1.css`,
+`entry-toolbar.css`, `entry-native-controls.css`. Their concatenation preserves
+source bytes. Adjacent rules with identical declarations share selector lists;
+the selector/declaration/media token proof is recorded in
+`docs/project/search3-css-build-compaction.json`.
 
 `behavior/selected-tour-mobile-styles.js` and `behavior/summary-cta-styles.js`
 own the two static style injections immediately before their behavior modules.

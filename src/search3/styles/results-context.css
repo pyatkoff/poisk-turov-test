@@ -2,11 +2,9 @@
 
 /* donor:search3-results-top.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Search 3 compact post-search summary and controls. Preview only. */
-body.search3-candidate.search3-has-results .v2-product-hero{display:none!important}
-body.search3-candidate.search3-has-results #tourSearch{display:none!important}
+body.search3-candidate.search3-has-results .v2-product-hero,body.search3-candidate.search3-has-results #tourSearch{display:none!important}
 body.search3-candidate.search3-has-results.search3-editing-search #tourSearch{display:block!important;margin-bottom:12px!important}
-body.search3-candidate.search3-has-results.search3-editing-search .results-search-summary{display:none!important}
-body.search3-candidate.search3-has-results :is(#v2ResultsConfidence,#v2AgencyTrust){display:none!important}
+body.search3-candidate.search3-has-results.search3-editing-search .results-search-summary,body.search3-candidate.search3-has-results :is(#v2ResultsConfidence,#v2AgencyTrust){display:none!important}
 /* A completed-search banner is useful while searching, but maket7's settled results state starts
    directly with the compact search summary. Keep empty/error/in-progress status UI untouched. */
 body.search3-candidate.search3-has-results #status:has(.search-progress-done){display:none!important}

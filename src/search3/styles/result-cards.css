@@ -140,9 +140,7 @@ body.search3-candidate #results :is(.hotel-main,.hotel-photo,.hotel-body){margin
 }
 
 /* The normalized price already contains the “от” prefix. */
-body.search3-candidate #results .hotel-best-offer>small{display:none!important}
-
-html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best-offer>small{display:none!important}
+body.search3-candidate #results .hotel-best-offer>small,html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best-offer>small{display:none!important}
 
 /* Mobile results scan order from the approved maket7 flow. */
 @media(max-width:999px){
@@ -172,10 +170,7 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
 
 /* Approved mockup #1: compact hotel-level decision hierarchy. */
 @media(min-width:1000px){
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-main{
-    min-height:166px!important;
-  }
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo,
+  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-main,html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo,
   html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo>img{
     min-height:166px!important;
   }

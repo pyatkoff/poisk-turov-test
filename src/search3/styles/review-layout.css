@@ -3,9 +3,7 @@
 /* donor:search3-final-review-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Final review + lead-entry convergence against approved AnyTour boards. No fabricated product facts. */
 .search3-lead-back{display:none}
-body.search3-candidate #selectedTour.search3-final-review :is(.selected-lead-cta,.selected-lead-cta-note){display:none!important}
-body.search3-candidate #selectedTour.search3-final-review:not(.search3-lead-entry) .lead-form{display:none!important}
-body.search3-candidate #selectedTour.search3-lead-entry :is(.back-results,.search3-booking-stepper,.search3-review-heading,.selected-picture,.selected-head,.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.tour-flights,.search3-final-sections,.selected-confidence,.search3-selected-mobile-bar){display:none!important}
+body.search3-candidate #selectedTour.search3-final-review :is(.selected-lead-cta,.selected-lead-cta-note),body.search3-candidate #selectedTour.search3-final-review:not(.search3-lead-entry) .lead-form,body.search3-candidate #selectedTour.search3-lead-entry :is(.back-results,.search3-booking-stepper,.search3-review-heading,.selected-picture,.selected-head,.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.tour-flights,.search3-final-sections,.selected-confidence,.search3-selected-mobile-bar){display:none!important}
 body.search3-candidate #selectedTour.search3-lead-entry .search3-lead-back:not([hidden]){display:inline-flex!important;align-items:center;justify-content:center;min-height:38px;margin:0 0 12px;padding:0 12px;border:0;background:transparent;color:var(--at-brand);font:850 10px/1 var(--at-font);cursor:pointer}
 body.search3-candidate #selectedTour.search3-lead-entry .search3-lead-shell{margin-top:0!important}
 body.search3-candidate #selectedTour.search3-lead-entry .lead-form{display:block!important;margin-top:0!important;background:#fff!important}

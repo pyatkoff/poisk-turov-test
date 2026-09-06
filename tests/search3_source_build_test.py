@@ -13,6 +13,17 @@ spec.loader.exec_module(builder)
 
 
 class Search3SourceBuildTest(unittest.TestCase):
+    def test_css_notes_preserve_strings_escapes_token_boundaries_and_licenses(self):
+        css = br'''/* private note */
+.x{content:"/* literal */";--tokens:red/* note */blue;--escape:\"/* note */x}
+/*! license */ /* Copyright owner */ /* @license MIT */
+/*# sourceMappingURL=source.css.map */'''
+        expected = css.replace(b'/* private note */', b'/**/').replace(b'/* note */', b'/**/')
+        self.assertEqual(builder.compact_css_comments(css), expected)
+        self.assertEqual(builder.compact_css_comments(expected), expected)
+        with self.assertRaisesRegex(ValueError, 'Unterminated'):
+            builder.compact_css_comments(b'.x{} /* broken')
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

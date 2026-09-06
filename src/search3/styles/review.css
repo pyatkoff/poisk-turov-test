@@ -8,8 +8,7 @@
 .search3-review-heading h2{margin:0;color:var(--at-ink);font:950 26px/1.05 var(--at-font);letter-spacing:-.025em}
 .search3-review-heading p{margin:6px 0 0;color:var(--at-muted);font:700 10px/1.35 var(--at-font)}
 .search3-review-heading>b{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:#19a957;color:#fff;font:900 13px/1 var(--at-font)}
-body.search3-candidate #selectedTour.search3-final-review .hotel-desc{display:none!important}
-body.search3-candidate #selectedTour.search3-final-review .selected-head .eyebrow{display:none!important}
+body.search3-candidate #selectedTour.search3-final-review .hotel-desc,body.search3-candidate #selectedTour.search3-final-review .selected-head .eyebrow{display:none!important}
 body.search3-candidate #selectedTour.search3-final-review .selected-head{align-items:center!important}
 body.search3-candidate #selectedTour.search3-final-review .facts{margin-top:10px!important}
 body.search3-candidate #selectedTour.search3-final-review :is(.tour-flights,.search3-final-sections,.search3-lead-shell){margin-top:12px!important}

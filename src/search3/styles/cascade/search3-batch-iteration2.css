@@ -10,8 +10,7 @@ body.search3-candidate.search3-has-results .search3-page-intro p{margin-top:5px!
 body.search3-candidate.search3-has-results .search3-breadcrumb{margin-bottom:5px!important;font-size:8px!important}
 
 /* Initial state: maket7 starts with one compact primary search row. Advanced parameters are opt-in on desktop too. */
-body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quality{display:none!important}
-body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quick{display:none!important}
+body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quality,body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quick{display:none!important}
 body.search3-candidate:not(.search3-has-results) #tourSearch{padding-bottom:13px!important}
 body.search3-candidate:not(.search3-has-results) :is(.results-tools--ds2,.search3-mobile-toolbar),
 body.search3-candidate:not(.search3-has-results) #resultsSearchSummary{display:none!important}
@@ -83,7 +82,6 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
 @media(max-width:640px){
 
  body.search3-candidate #selectedTour .facts{grid-template-columns:repeat(2,minmax(0,1fr))!important}
- body.search3-candidate #selectedTour .tour-flights{margin-top:8px!important}
- body.search3-candidate #selectedTour .lead-form{margin-top:8px!important}
+ body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{margin-top:8px!important}
 
 }

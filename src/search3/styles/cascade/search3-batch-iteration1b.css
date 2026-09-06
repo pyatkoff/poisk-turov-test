@@ -5,8 +5,7 @@
 
 /* Results hierarchy */
 
-body.search3-candidate.search3-has-results .results-search-summary{margin-bottom:8px!important}
-body.search3-candidate.search3-has-results .results-tools--ds2{margin-bottom:8px!important}
+body.search3-candidate.search3-has-results .results-search-summary,body.search3-candidate.search3-has-results .results-tools--ds2{margin-bottom:8px!important}
 body.search3-candidate.search3-has-results .results-layout{align-items:start!important}
 
 /* Desktop: compact filter rail and denser hotel cards. */
@@ -36,8 +35,7 @@ body.search3-candidate.search3-has-results .results-layout{align-items:start!imp
 /* Selected tour: make the hotel itself the hero, not the status ribbon. */
 body.search3-candidate #selectedTour .selected-head .eyebrow{font-size:8px!important;font-weight:850!important;text-transform:none!important}
 body.search3-candidate #selectedTour .hotel-desc{display:none!important}
-body.search3-candidate #selectedTour .tour-flights{margin-top:10px!important}
-body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
+body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
 @media(min-width:1000px){
  body.search3-candidate #selectedTour{grid-template-columns:380px minmax(0,1fr)!important;row-gap:0!important}
 

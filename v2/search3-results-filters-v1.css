@@ -1,6 +1,6 @@
-/* Search3 safe candidate: approved donor composition. Source e5baf32f455cdb0aa1a704964f28e5efbebf57ff. */
-/* donor:search3-preview.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 approved mockup layer. Preview only. */
+/**/
+/**/
+/**/
 body.search3-candidate{--at-shell:1480px!important;--at-page-gutter:48px!important;--at-page-edge:24px!important;background:#f7f9fc!important}
 body.search3-candidate .v2-product-hero[hidden]{display:none!important}
 body.search3-candidate .v2-shell{width:min(var(--at-shell),calc(100% - var(--at-page-gutter)))!important;max-width:none!important;padding-top:0!important}
@@ -82,8 +82,8 @@ body.search3-candidate #tourSearch>details.extras[hidden]{display:none!important
 }
 
 
-/* donor:search3-results-preview.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 approved hotel-result hierarchy. Preview only. */
+/**/
+/**/
 body.search3-candidate #anytour-consultant-host,body.search3-candidate .mobile-search-sticky{display:none!important}
 body.search3-candidate #results{display:flex!important;flex-direction:column!important;gap:10px!important}
 body.search3-candidate #results .hotel-card{overflow:hidden!important;border:1px solid #e2e8f0!important;border-radius:12px!important;background:#fff!important;box-shadow:0 2px 8px rgba(16,24,40,.03)!important}
@@ -97,7 +97,7 @@ body.search3-candidate #results .hotel-bottom{grid-column:2!important;grid-row:1
 body.search3-candidate .search3-hotel-action{grid-column:1/3!important;display:grid!important;grid-template-columns:minmax(0,1fr) 180px!important;align-items:center!important;gap:16px!important;border-top:1px solid #eef1f5!important}body.search3-candidate .search3-hotel-action__copy{gap:8px!important;}body.search3-candidate .search3-hotel-action__copy :is(strong,span){color:#177245!important}.search3-show-tours{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:38px!important;border:0!important;border-radius:7px!important;background:#ff5a0a!important;color:#fff!important;font:900 10px/1 var(--at-font)!important}
 body.search3-candidate #results .hotel-tours{padding:12px 14px 14px!important;border-top:1px solid #edf0f5!important;background:#f8fafc!important}body.search3-candidate #results .hotel-tours::before{display:none!important;content:none!important}.search3-tour-list-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;margin-bottom:10px!important}.search3-tour-list-head>div{display:grid!important;gap:2px!important}.search3-tour-list-head strong{color:#14213d!important;font-size:13px!important;font-weight:900!important}.search3-tour-list-head span{color:#667085!important;font-size:9px!important}.search3-tour-list-head>b{padding:5px 8px!important;border-radius:999px!important;background:#fff!important;color:#2463eb!important;font-size:9px!important}
 body.search3-candidate #results .tour-row{display:grid!important;grid-template-columns:minmax(0,1fr) 150px!important;gap:14px!important;align-items:center!important;margin-top:8px!important;padding:12px!important;border:1px solid #e1e7f0!important;border-radius:10px!important;background:#fff!important}body.search3-candidate #results .tour-row[hidden]{display:none!important}body.search3-candidate #results .tour-meta>strong{display:block!important;margin-bottom:7px!important;color:#14213d!important;font-size:11px!important;font-weight:900!important}body.search3-candidate #results .tour-facts{display:flex!important;flex-wrap:wrap!important;gap:5px!important}body.search3-candidate #results .tour-fact{display:inline-flex!important;gap:4px!important;align-items:baseline!important;min-height:24px!important;padding:5px 7px!important;border-radius:6px!important;background:#f4f6f9!important}body.search3-candidate #results .tour-fact small{color:#667085!important;font-size:8px!important}body.search3-candidate #results .tour-fact b{color:#344054!important;font-size:9px!important}body.search3-candidate #results .tour-action{display:flex!important;flex-direction:column!important;gap:7px!important}body.search3-candidate #results .tour-action>b{color:#14213d!important;font-size:16px!important;font-weight:950!important;text-align:right!important}.direct-tour{width:100%!important;min-height:36px!important;border:0!important;border-radius:7px!important;background:#ff5a0a!important;color:#fff!important;font:900 10px/1 var(--at-font)!important}
-/* Desktop package rows follow maket7's scan order using only fields already present in the normalized Tourvisor result. */
+/**/
 @media(min-width:1000px){
 body.search3-candidate #results .hotel-tours .tour-row{grid-template-columns:minmax(0,1fr) 156px!important;gap:18px!important;padding:11px 12px!important}
 body.search3-candidate #results .hotel-tours .tour-meta{display:grid!important;grid-template-columns:minmax(126px,1.35fr) minmax(94px,.9fr) 82px 54px minmax(104px,.95fr) minmax(70px,.7fr)!important;align-items:start!important;min-width:0!important}
@@ -123,7 +123,7 @@ body.search3-candidate #results .hotel-tours .tour-action>b{line-height:1!import
 
 body.search3-candidate.search3-hotel-tours-open .search3-tour-filters::-webkit-scrollbar{display:none!important}}
 
-/* Search3 maket7 truthful hotel-card convergence */
+/**/
 body.search3-candidate #results .hotel-main{min-height:188px!important}
 body.search3-candidate #results .hotel-photo{height:188px!important;min-height:188px!important}
 body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 188px!important;grid-template-rows:auto auto auto auto 1fr auto!important;column-gap:18px!important;padding:14px 16px 12px!important}
@@ -149,26 +149,24 @@ body.search3-candidate .search3-hotel-action__copy :is(strong,span){font-size:9p
  body.search3-candidate .search3-hotel-facts :is(small,b){font-size:7px!important}
  body.search3-candidate #results .hotel-bottom{grid-column:1/3!important;grid-row:5!important;display:flex!important;align-items:baseline!important;justify-content:flex-end!important;gap:6px!important;margin-top:9px!important;padding-top:8px!important;border-top:1px solid #eef1f5!important}
  body.search3-candidate #results .hotel-best-offer{display:flex!important;align-items:baseline!important;gap:4px!important}
- body.search3-candidate #results .hotel-price{margin-top:0!important;}
- body.search3-candidate #results .hotel-price-context{margin-top:0!important;}
+ body.search3-candidate #results .hotel-price,body.search3-candidate #results .hotel-price-context{margin-top:0!important;}
  body.search3-candidate .search3-hotel-action{grid-column:1/3!important;grid-row:6!important;padding-top:0!important;border-top:0!important}
 
 }
 
-/* donor:search3-results-width-fix.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 emergency width guard for approved horizontal result cards. Preview only. */
+/**/
+/**/
 body.search3-candidate .v2-shell{display:block!important}
 body.search3-candidate .results-layout{grid-column:1/-1!important;justify-self:stretch!important;width:100%!important;max-width:none!important;min-width:0!important;margin-left:0!important;margin-right:0!important}
 body.search3-candidate .results-layout>.results,body.search3-candidate #results{min-width:0!important;width:100%!important;max-width:none!important;align-items:stretch!important}
 body.search3-candidate #results .hotel-card{display:block!important;width:100%!important;min-width:0!important;max-width:none!important;align-self:stretch!important}
 body.search3-candidate #results .hotel-main{width:100%!important;min-width:0!important;max-width:none!important}
-/* Keep the native hidden contract authoritative before results exist. Search3 presentation rules must not resurrect empty controls/rails. */
-body.search3-candidate :is(.results-search-summary[hidden],.results-tools--ds2[hidden]){display:none!important}
-body.search3-candidate:not(.search3-has-results) .results-layout{display:none!important}
-/* Results remain one coherent page flow. Match the shared DS2 result-state selector specificity so its two-column search shell cannot leak into Search3. */
+/**/
+body.search3-candidate :is(.results-search-summary[hidden],.results-tools--ds2[hidden]),body.search3-candidate:not(.search3-has-results) .results-layout{display:none!important}
+/**/
 body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) .v2-shell{display:block!important}
 body.search3-candidate.search3-has-results .results-search-summary{width:100%!important;max-width:none!important;margin-left:0!important;margin-right:0!important}
-/* The shared DS2 result-state also enlarges mature production cards. Search3 owns the compact maket7 card geometry in preview. */
+/**/
 @media(min-width:1025px){
 body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) .results-tools--ds2{padding-left:12px!important;padding-right:0!important}
 body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-main{display:grid!important;grid-template-columns:276px minmax(0,1fr)!important;align-items:stretch!important;gap:0!important;min-height:156px!important}
@@ -181,18 +179,18 @@ body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:
 body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-bottom{margin:0!important;padding:1px 0 0 14px!important;gap:0!important}
 body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-price{margin-top:4px!important;font-size:19px!important;line-height:1!important}
 }
-/* Opening tour packages must not add a focus/glow frame around the whole desktop hotel card. */
+/**/
 @media(min-width:761px){
 body.search3-candidate #results .hotel-card:has(.search3-show-tours[aria-expanded="true"]){outline:0!important;border-color:#e2e8f0!important;box-shadow:0 2px 8px rgba(16,24,40,.03)!important;filter:none!important}
 body.search3-candidate #results .hotel-card:has(.search3-show-tours[aria-expanded="true"])::before,body.search3-candidate #results .hotel-card:has(.search3-show-tours[aria-expanded="true"])::after{content:none!important;display:none!important;outline:0!important;box-shadow:none!important;filter:none!important}
 }
-/* Search 3 owns the mobile filter toolbar/drawer; suppress the older DS2 mobile filter UI in preview only. */
+/**/
 body.search3-candidate :is(.mrf-bar,.mrf-sheet){display:none!important}
 @media(max-width:999px){body.search3-candidate .results-layout{width:100%!important;margin:0 0 48px!important}}
 
 
-/* donor:search3-filter-rail-preview.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 approved result-filter hierarchy. Preview only. */
+/**/
+/**/
 body.search3-candidate .results-layout{display:grid!important;grid-template-columns:210px minmax(0,1fr)!important;gap:14px!important;align-items:start!important;width:calc(100% - var(--at-page-gutter))!important;max-width:var(--at-shell)!important;margin:0 auto 56px!important}
 body.search3-candidate .results-layout>.results{min-width:0!important;width:100%!important;max-width:none!important;margin:0!important}
 body.search3-candidate .results-filter-rail{width:210px!important;padding:14px 12px!important;border:1px solid #e2e8f0!important;border-radius:12px!important;background:#fff!important;box-shadow:0 3px 12px rgba(16,24,40,.04)!important;color:#14213d!important}
@@ -221,8 +219,7 @@ body.search3-candidate .filter-rail-result strong{display:block!important;margin
  body.search3-candidate .results-filter-rail{display:none!important}
 }
 
-/* Search 3 mobile result toolbar. The active controls are mounted by
-   results-presentation.js: .search3-mobile-filter-slot + .search3-mobile-sort. */
+/**/
 @media(max-width:999px){
  body.search3-candidate .search3-mobile-toolbar{display:grid;position:static;z-index:auto;grid-template-columns:1fr;gap:8px;margin:0 0 10px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none}
  body.search3-candidate .results-tools--ds2 .results-tools__actions>label{display:none!important}
@@ -233,15 +230,12 @@ body.search3-candidate .filter-rail-result strong{display:block!important;margin
 }
 
 
-/* donor:search3-results-top.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 compact post-search summary and controls. Preview only. */
-body.search3-candidate.search3-has-results .v2-product-hero{display:none!important}
-body.search3-candidate.search3-has-results #tourSearch{display:none!important}
+/**/
+/**/
+body.search3-candidate.search3-has-results .v2-product-hero,body.search3-candidate.search3-has-results #tourSearch{display:none!important}
 body.search3-candidate.search3-has-results.search3-editing-search #tourSearch{display:block!important;margin-bottom:12px!important}
-body.search3-candidate.search3-has-results.search3-editing-search .results-search-summary{display:none!important}
-body.search3-candidate.search3-has-results :is(#v2ResultsConfidence,#v2AgencyTrust){display:none!important}
-/* A completed-search banner is useful while searching, but maket7's settled results state starts
-   directly with the compact search summary. Keep empty/error/in-progress status UI untouched. */
+body.search3-candidate.search3-has-results.search3-editing-search .results-search-summary,body.search3-candidate.search3-has-results :is(#v2ResultsConfidence,#v2AgencyTrust){display:none!important}
+/**/
 body.search3-candidate.search3-has-results #status:has(.search-progress-done){display:none!important}
 body.search3-candidate .results-search-summary{display:grid!important;grid-template-columns:minmax(0,1.55fr) .68fr .68fr .72fr 122px!important;align-items:stretch!important;gap:0!important;max-width:1120px!important;width:calc(100% - 32px)!important;margin:0 auto 10px!important;padding:0!important;border:1px solid #e2e8f0!important;border-radius:10px!important;background:#fff!important;box-shadow:none!important;overflow:hidden!important}
 body.search3-candidate .results-search-summary__route{grid-column:1!important;grid-row:1!important;padding:8px 13px!important;border-right:1px solid #edf0f5!important}
@@ -309,8 +303,8 @@ body.search3-candidate .results-tools select{width:100%!important}
 }
 
 
-/* donor:search3-selected-tour.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 concrete-tour visual convergence. Preview only; no purchase/lead semantics are changed. */
+/**/
+/**/
 body.search3-candidate.search3-selected-open :is(.search3-page-intro,.results-search-summary,.results-tools--ds2,.search3-mobile-toolbar){display:none!important}
 body.search3-candidate.search3-selected-open .results-layout{display:block!important}
 body.search3-candidate.search3-selected-open .results-filter-rail{display:none!important}
@@ -338,7 +332,7 @@ body.search3-candidate #selectedTour .flight-variant{border-radius:14px!importan
 body.search3-candidate #selectedTour .flight-variant.is-selected{background:var(--at-soft-blue)!important}
 body.search3-candidate #selectedTour .lead-form button[type=submit]{min-height:52px!important;border-radius:12px!important;font-size:14px!important;font-weight:900!important}
 .search3-selected-mobile-bar{display:none}
-/* maket7 desktop uses a compact hotel summary: media at left, hotel/price at right, then tour facts. */
+/**/
 @media(min-width:1000px){
 body.search3-candidate #selectedTour{display:grid!important;grid-template-columns:300px minmax(0,1fr)!important;align-items:stretch!important}
 body.search3-candidate #selectedTour .back-results{grid-column:1/-1!important;grid-row:1!important;justify-self:start!important}
@@ -353,13 +347,13 @@ body.search3-candidate #selectedTour :is(.hotel-desc,.tour-flights,.lead-form){g
 @media(max-width:640px){body.search3-candidate{padding-bottom:78px!important}body.search3-candidate #selectedTour{display:flex!important;flex-direction:column!important;margin:10px var(--at-page-edge) 36px!important}body.search3-candidate #selectedTour .back-results{order:0!important;position:static!important;align-self:flex-start!important;margin:0 0 8px!important;padding:0 10px!important;border-color:#e3e8f0!important;border-radius:8px!important;}body.search3-candidate #selectedTour .selected-picture{order:1!important;border:1px solid var(--at-line)!important;border-radius:13px 13px 0 0!important}body.search3-candidate #selectedTour .selected-head{order:2!important;grid-template-columns:1fr!important;gap:0!important;align-items:start!important;padding:11px 12px!important;border-top:0!important;border-radius:0!important}body.search3-candidate #selectedTour .selected-head .eyebrow{letter-spacing:.06em!important}body.search3-candidate #selectedTour .selected-head h2{line-height:1.1!important}body.search3-candidate #selectedTour .selected-head p{margin-top:4px!important;line-height:1.25!important}body.search3-candidate #selectedTour .selected-price{display:none!important}body.search3-candidate #selectedTour .facts{order:3!important;border-top:0!important;border-radius:0 0 13px 13px!important}body.search3-candidate #selectedTour .facts>div,body.search3-candidate #selectedTour .facts>div:nth-child(n){padding:8px 10px!important;border-top:1px solid var(--at-line-soft)!important;border-right:1px solid var(--at-line-soft)!important}body.search3-candidate #selectedTour .facts>div:nth-child(-n+2){border-top:0!important}body.search3-candidate #selectedTour .facts>div:nth-child(2n){border-right:0!important}body.search3-candidate #selectedTour .facts span{margin-bottom:3px!important;font-size:7px!important}body.search3-candidate #selectedTour .facts b{font-size:9px!important;line-height:1.2!important;white-space:normal!important}body.search3-candidate #selectedTour .hotel-desc{order:4!important}body.search3-candidate #selectedTour .tour-flights{order:5!important}body.search3-candidate #selectedTour .lead-form{order:6!important}body.search3-candidate #selectedTour :is(.hotel-desc,.tour-flights,.lead-form){margin-top:9px!important;padding:11px!important;border-radius:12px!important}body.search3-candidate #selectedTour .section-heading{align-items:flex-start!important;flex-direction:column!important;gap:2px!important;margin-bottom:9px!important}body.search3-candidate #selectedTour .section-heading span{font-size:8px!important}body.search3-candidate #selectedTour .flight-variant{border-radius:10px!important}.search3-selected-mobile-bar:not([hidden]){position:fixed;z-index:80;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px calc(9px + env(safe-area-inset-bottom));border-top:1px solid var(--at-line);background:rgba(255,255,255,.97);box-shadow:0 -8px 26px rgba(31,52,109,.12);backdrop-filter:blur(12px)}.search3-selected-mobile-bar__price{min-width:0;display:flex;flex-direction:column;gap:2px}.search3-selected-mobile-bar__price small{color:var(--at-muted);font-size:8px;font-weight:800}.search3-selected-mobile-bar__price strong{color:var(--at-ink);font-size:17px;font-weight:950;white-space:nowrap}.search3-selected-mobile-bar button{min-height:44px;padding:0 15px;border:0;border-radius:10px;background:#ff5a0a;color:#fff;font:900 11px/1 var(--at-font)}}
 
 
-/* donor:search3-batch-iteration1.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 batch visual iteration 1. Preview-only presentation overrides. */
+/**/
+/**/
 
-/* Shared rhythm */
+/**/
 body.search3-candidate .v2-shell{padding-bottom:8px!important}
 
-/* Desktop result composition: denser cards and a clearer price/action rail. */
+/**/
 @media(min-width:1000px){
 
  body.search3-candidate #results .hotel-card{max-width:none!important}
@@ -379,7 +373,7 @@ body.search3-candidate .v2-shell{padding-bottom:8px!important}
 
 }
 
-/* Selected tour: compact hotel header, one clear orange primary CTA, less dead space. */
+/**/
 body.search3-candidate #selectedTour{margin-top:16px!important;margin-bottom:34px!important}
 body.search3-candidate #selectedTour .selected-head .eyebrow{display:inline-flex!important;width:auto!important;margin-bottom:7px!important;padding:4px 7px!important;border-radius:999px!important;background:#fff3ec!important;color:#e94f00!important;letter-spacing:.035em!important}
 body.search3-candidate #selectedTour .lead-form button[type=submit]{border:0!important;background:#ff5a0a!important;color:#fff!important;box-shadow:0 5px 14px rgba(255,90,10,.18)!important}
@@ -393,7 +387,7 @@ body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!importa
  body.search3-candidate #selectedTour .facts>div{padding:12px 14px!important}
 }
 
-/* Mobile initial search: primary fields first, advanced controls on demand. */
+/**/
 @media(max-width:760px){
  body.search3-candidate .search3-page-intro{margin:10px auto 6px!important}
  body.search3-candidate .search3-page-intro h1{font-size:22px!important;margin-top:4px!important}
@@ -411,7 +405,7 @@ body.search3-candidate :is(.search3-tourists__summary,.search3-composite__contro
  body.search3-candidate #tourSearch:not(.search3-advanced-open) .search3-quick{display:flex!important}
  body.search3-candidate #tourSearch:not(.search3-advanced-open) .search3-quick__label--static{width:auto!important}
 
- /* Mobile cards: less image dominance, stronger content grouping. */
+ /**/
 
  body.search3-candidate #results .hotel-body{padding:10px!important;grid-template-columns:minmax(0,1fr) 104px!important}
  body.search3-candidate #results .hotel-title{line-height:1.16!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;overflow:hidden!important}
@@ -420,11 +414,11 @@ body.search3-candidate :is(.search3-tourists__summary,.search3-composite__contro
  body.search3-candidate .search3-hotel-action{margin-top:7px!important;padding-top:7px!important}
  body.search3-candidate .search3-show-tours{font-size:10px!important}
 
- /* Mobile tour chooser keeps hotel context and feels connected to the result card. */
+ /**/
 
 
 
- /* Selected mobile: sticky CTA is the primary action; avoid duplicate primary button. */
+ /**/
  body.search3-candidate #selectedTour .selected-picture{height:160px!important}
  body.search3-candidate #selectedTour .selected-head{padding:10px!important}
  body.search3-candidate #selectedTour .selected-head h2{font-size:18px!important}
@@ -434,7 +428,7 @@ body.search3-candidate :is(.search3-tourists__summary,.search3-composite__contro
 
 }
 
-/* P0 contract: after search, the full advanced form is not the desktop hero. */
+/**/
 @media(min-width:1000px){
  body.search3-candidate.search3-has-results #tourSearch{display:none!important}
  body.search3-candidate.search3-has-results.search3-editing-search #tourSearch{display:block!important}
@@ -446,7 +440,7 @@ body.search3-candidate :is(.search3-tourists__summary,.search3-composite__contro
  body.search3-candidate.search3-has-results.search3-editing-search #resultsSearchSummary{display:none!important}
 }
 
-/* Mobile results should keep the route visible, not just an orphan edit button. */
+/**/
 @media(max-width:640px){
  body.search3-candidate.search3-has-results #resultsSearchSummary{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;width:100%!important;min-width:0!important;border:1px solid #e2e8f0!important;border-radius:10px!important;background:#fff!important;overflow:hidden!important}
  body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route{display:block!important;grid-column:1!important;grid-row:1!important;padding:8px 10px!important}
@@ -456,16 +450,15 @@ body.search3-candidate :is(.search3-tourists__summary,.search3-composite__contro
 }
 
 
-/* donor:search3-batch-iteration1b.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 batch visual iteration 1b. Preview-only convergence toward maket7. */
+/**/
+/**/
 
-/* Results hierarchy */
+/**/
 
-body.search3-candidate.search3-has-results .results-search-summary{margin-bottom:8px!important}
-body.search3-candidate.search3-has-results .results-tools--ds2{margin-bottom:8px!important}
+body.search3-candidate.search3-has-results .results-search-summary,body.search3-candidate.search3-has-results .results-tools--ds2{margin-bottom:8px!important}
 body.search3-candidate.search3-has-results .results-layout{align-items:start!important}
 
-/* Desktop: compact filter rail and denser hotel cards. */
+/**/
 @media(min-width:1000px){
  body.search3-candidate .results-layout{grid-template-columns:196px minmax(0,1fr)!important;gap:14px!important}
  body.search3-candidate .results-filter-rail{width:196px!important;margin-top:0!important;padding:12px!important;border:1px solid #e2e8f0!important;border-radius:12px!important;background:#fff!important;box-shadow:none!important}
@@ -489,11 +482,10 @@ body.search3-candidate.search3-has-results .results-layout{align-items:start!imp
 
 }
 
-/* Selected tour: make the hotel itself the hero, not the status ribbon. */
+/**/
 body.search3-candidate #selectedTour .selected-head .eyebrow{font-size:8px!important;font-weight:850!important;text-transform:none!important}
 body.search3-candidate #selectedTour .hotel-desc{display:none!important}
-body.search3-candidate #selectedTour .tour-flights{margin-top:10px!important}
-body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
+body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
 @media(min-width:1000px){
  body.search3-candidate #selectedTour{grid-template-columns:380px minmax(0,1fr)!important;row-gap:0!important}
 
@@ -506,7 +498,7 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
  body.search3-candidate #selectedTour :is(.tour-flights,.lead-form){padding:15px 16px!important;border-radius:14px!important}
 }
 
-/* Mobile results: compact cards and preserve context between results and packages. */
+/**/
 @media(max-width:760px){
  body.search3-candidate.search3-has-results .search3-page-intro{display:none!important}
  body.search3-candidate.search3-has-results .results-tools--ds2{padding-top:2px!important;padding-bottom:5px!important}
@@ -523,7 +515,7 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
 
 }
 
-/* Mobile selected: one CTA, compact hotel summary, reduced footer dominance. */
+/**/
 @media(max-width:640px){
  body.search3-candidate #selectedTour{margin-bottom:22px!important}
 
@@ -537,10 +529,10 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
 }
 
 
-/* donor:search3-batch-iteration1c.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 batch visual iteration 1c. Final pre-audit convergence for maket7. */
+/**/
+/**/
 
-/* Keep desktop controls aligned with the 196px rail + 14px gap. */
+/**/
 @media(min-width:1000px){
  body.search3-candidate .results-tools--ds2{width:calc(100% - 210px)!important;margin-left:210px!important;padding-left:0!important;padding-right:0!important;border:0!important;background:transparent!important;}
  body.search3-candidate .results-layout{margin-bottom:34px!important}
@@ -573,7 +565,7 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
  body.search3-candidate #selectedTour .lead-form button[type=submit]{color:#fff!important;border:0!important;border-radius:9px!important;font-size:12px!important}
 }
 
-/* Initial mobile form should read as six primary choices, not a long questionnaire. */
+/**/
 @media(max-width:760px){
  body.search3-candidate #tourSearch{box-shadow:none!important}
  body.search3-candidate #tourSearch .search3-primary-grid{gap:6px!important}
@@ -585,7 +577,7 @@ body.search3-candidate :is(.search3-tourists__summary,.search3-composite__contro
  body.search3-candidate .search3-quick{margin-top:6px!important}
  body.search3-candidate .search3-quick__label{font-size:8px!important}
 
- /* Result list: title, facts, price and CTA stay in one visual unit. */
+ /**/
  body.search3-candidate.search3-has-results #resultsSearchSummary{width:100%!important;min-width:0!important;border:1px solid #e2e8f0!important;border-radius:9px!important;background:#fff!important}
  body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route{display:block!important;padding:8px 10px!important}
  body.search3-candidate.search3-has-results #resultsSearchSummary .results-search-summary__route strong{font-size:7px!important}
@@ -596,12 +588,12 @@ body.search3-candidate :is(.search3-tourists__summary,.search3-composite__contro
 
  body.search3-candidate .search3-show-tours{min-height:36px!important;border-radius:7px!important}
 
- /* Package chooser stays compact and keeps the hotel visible above it. */
+ /**/
 
 
 }
 
-/* Selected tour: reduce visual competition with the main action. */
+/**/
 @media(max-width:640px){
  body.search3-candidate #selectedTour .back-results{min-height:34px!important;margin-bottom:6px!important;font-size:8px!important}
 
@@ -618,25 +610,24 @@ body.search3-candidate :is(.search3-tourists__summary,.search3-composite__contro
 }
 
 
-/* donor:search3-batch-iteration2.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 visual iteration 2. Preview-only convergence toward maket7. */
+/**/
+/**/
 
-/* Results title should read like a destination page, not a generic search utility. */
+/**/
 body.search3-candidate.search3-has-results .search3-page-intro{margin-top:14px!important;margin-bottom:8px!important}
 body.search3-candidate.search3-has-results .search3-page-intro h1{margin:0!important;font-size:26px!important;line-height:1.08!important;letter-spacing:-.035em!important}
 body.search3-candidate.search3-has-results .search3-page-intro p{margin-top:5px!important;color:#667085!important;font-size:9px!important}
 body.search3-candidate.search3-has-results .search3-breadcrumb{margin-bottom:5px!important;font-size:8px!important}
 
-/* Initial state: maket7 starts with one compact primary search row. Advanced parameters are opt-in on desktop too. */
-body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quality{display:none!important}
-body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quick{display:none!important}
+/**/
+body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quality,body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quick{display:none!important}
 body.search3-candidate:not(.search3-has-results) #tourSearch{padding-bottom:13px!important}
 body.search3-candidate:not(.search3-has-results) :is(.results-tools--ds2,.search3-mobile-toolbar),
 body.search3-candidate:not(.search3-has-results) #resultsSearchSummary{display:none!important}
 body.search3-candidate:not(.search3-has-results) .results-layout{min-height:0!important;margin:0!important}
 body.search3-candidate:not(.search3-has-results) #results:empty{display:none!important;min-height:0!important;margin:0!important;padding:0!important}
 
-/* Card facts come only from the real best-priced tour already loaded for the hotel. */
+/**/
 body.search3-candidate .search3-hotel-facts{display:flex;align-items:stretch;gap:0;min-width:0;margin-top:8px;border:1px solid #edf0f5;border-radius:8px;background:#fbfcfe;overflow:hidden}
 body.search3-candidate .search3-hotel-facts>span{display:block;min-width:0;padding:6px 9px;border-right:1px solid #edf0f5}
 body.search3-candidate .search3-hotel-facts>span:last-child{border-right:0}
@@ -655,7 +646,7 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
 
  body.search3-candidate #results .hotel-price-context{max-width:150px!important}
 
- /* Expanded packages should read as cards, not a spreadsheet. */
+ /**/
  body.search3-candidate #results .hotel-tours{padding:11px 13px 13px!important}
  body.search3-candidate #results .search3-tour-list-head{display:flex!important;align-items:end!important;justify-content:space-between!important;margin:0 0 8px!important}
  body.search3-candidate #results .search3-tour-list-head strong{letter-spacing:-.02em!important}
@@ -667,7 +658,7 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
 
  body.search3-candidate #results .hotel-tours .direct-tour{border-radius:7px!important}
 
- /* Selected state: hotel + price first, then compact concrete-tour facts. */
+ /**/
  body.search3-candidate #selectedTour{max-width:1180px!important}
 
  body.search3-candidate #selectedTour .selected-head{padding:21px 23px!important}
@@ -679,7 +670,7 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
 }
 
 @media(max-width:760px){
- /* Keep the destination heading visible on results; it is the page anchor in maket7. */
+ /**/
  body.search3-candidate.search3-has-results .search3-page-intro{display:block!important;order:1!important;margin:8px var(--at-page-edge) 5px!important}
  body.search3-candidate.search3-has-results .search3-page-intro .search3-breadcrumb,body.search3-candidate.search3-has-results .search3-page-intro p{display:none!important}
  body.search3-candidate.search3-has-results .search3-page-intro h1{display:block!important;line-height:1.08!important}
@@ -701,17 +692,16 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
 @media(max-width:640px){
 
  body.search3-candidate #selectedTour .facts{grid-template-columns:repeat(2,minmax(0,1fr))!important}
- body.search3-candidate #selectedTour .tour-flights{margin-top:8px!important}
- body.search3-candidate #selectedTour .lead-form{margin-top:8px!important}
+ body.search3-candidate #selectedTour .tour-flights,body.search3-candidate #selectedTour .lead-form{margin-top:8px!important}
 
 }
 
 
-/* donor:search3-batch-iteration2b.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 iteration 2b — hard lock to approved maket7 geometry. */
+/**/
+/**/
 
 @media(min-width:761px){
-  /* Desktop initial is intentionally a two-row search block, as in maket7. */
+  /**/
   body.search3-candidate:not(.search3-has-results) #tourSearch .search3-quality{display:block!important;margin-top:12px!important;padding-top:0!important;border-top:0!important}
   body.search3-candidate:not(.search3-has-results) #tourSearch .search3-quick{display:flex!important;margin-top:12px!important}
   body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr) minmax(0,1.45fr) minmax(0,.72fr) minmax(0,.92fr) 150px!important;gap:12px!important;align-items:end!important}
@@ -720,19 +710,17 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
   body.search3-candidate:not(.search3-has-results) #tourSearch{padding:16px 17px 14px!important}
   body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid>.search-submit{width:150px!important;min-width:150px!important}
 
-  /* Results keep maket7 hierarchy: compact query summary above rail + cards. */
+  /**/
   body.search3-candidate.search3-has-results #tourSearch{display:none!important}
-  body.search3-candidate.search3-has-results.search3-editing-search #tourSearch{display:block!important}
-  body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-quality{display:block!important}
+  body.search3-candidate.search3-has-results.search3-editing-search #tourSearch,body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-quality{display:block!important}
   body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-quick{display:flex!important}
   body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr) minmax(0,1.45fr) minmax(0,.72fr) minmax(0,.92fr) 150px!important;gap:12px!important}
   body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-quality__grid{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:12px!important}
 }
 
 @media(max-width:760px){
-  /* Mobile keeps advanced controls secondary. */
-  body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quality{display:none!important}
-  body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quick{display:none!important}
+  /**/
+  body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quality,body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quick{display:none!important}
   body.search3-candidate #tourSearch .search3-region{order:3!important}
   body.search3-candidate #tourSearch .search3-dates{order:4!important}
   body.search3-candidate #tourSearch .search3-nights{order:5!important}
@@ -741,11 +729,11 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
 }
 
 
-/* donor:search3-batch-iteration2c.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 iteration 2c — results/list/detail convergence against approved maket7. */
+/**/
+/**/
 
 @media(min-width:1000px){
-  /* Results shell follows maket7 proportions: narrow filters + dense list. */
+  /**/
   body.search3-candidate.search3-has-results .results-layout{grid-template-columns:206px minmax(0,1fr)!important;gap:14px!important;}
   body.search3-candidate.search3-has-results .results-tools--ds2{width:calc(100% - 220px)!important;padding:4px 0!important}
   body.search3-candidate.search3-has-results .results-tools--ds2>div:first-child strong{font-size:18px!important}
@@ -766,7 +754,7 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
   body.search3-candidate .filter-rail-result{padding-top:8px!important;font-size:7.5px!important}
   body.search3-candidate .filter-rail-result strong{font-size:10px!important}
 
-  /* Hotel cards: maket7 density and strong price/CTA rail. */
+  /**/
   body.search3-candidate #results{gap:9px!important}
   body.search3-candidate #results .hotel-card{border-radius:9px!important;box-shadow:0 2px 7px rgba(16,24,40,.025)!important;overflow:hidden!important}
   body.search3-candidate #results .hotel-main{grid-template-columns:214px minmax(0,1fr)!important;min-height:154px!important}
@@ -788,7 +776,7 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
   body.search3-candidate #results .search3-hotel-action__copy :is(strong,span){font-size:7px!important}
   body.search3-candidate #results .search3-show-tours{min-height:34px!important;border-radius:6px!important;font-size:8.5px!important;font-weight:850!important}
 
-  /* Package rows look like compact decision cards. */
+  /**/
   body.search3-candidate #results .hotel-tours{padding:9px 10px 10px!important;background:#f8fafc!important}
   body.search3-candidate #results .search3-tour-list-head{margin-bottom:6px!important}
   body.search3-candidate #results .search3-tour-list-head strong{font-size:13px!important}
@@ -803,7 +791,7 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
 }
 
 @media(max-width:760px){
-  /* Mobile results mirror the compact cards from maket7: image first, title/facts/price tightly grouped. */
+  /**/
   body.search3-candidate.search3-has-results .search3-page-intro{margin-top:7px!important;margin-bottom:4px!important}
   body.search3-candidate.search3-has-results .search3-page-intro h1{font-size:17px!important}
   body.search3-candidate.search3-has-results .results-tools--ds2{min-height:34px!important;margin-bottom:5px!important;padding:0!important}
@@ -831,18 +819,18 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
   body.search3-candidate #results .search3-hotel-action__copy :is(strong,span){font-size:6.5px!important}
   body.search3-candidate #results .search3-show-tours{min-height:34px!important;border-radius:6px!important;font-size:8px!important}
 
-  /* Packages stay inside the same hotel context. */
+  /**/
 
 
 
 }
 
 
-/* donor:search3-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 convergence layer — final visual pass before consolidation. */
+/**/
+/**/
 
 @media(min-width:1000px){
-  /* Desktop results: final maket7 geometry before consolidation. */
+  /**/
   body.search3-candidate.search3-has-results .results-layout{grid-template-columns:198px minmax(0,1fr)!important;gap:12px!important;max-width:1120px!important;width:calc(100% - 32px)!important;margin-bottom:28px!important}
   body.search3-candidate.search3-has-results .results-tools--ds2{width:calc(100% - 210px)!important;margin-left:210px!important;min-height:40px!important;margin-bottom:6px!important}
   body.search3-candidate.search3-has-results #results{gap:8px!important}
@@ -926,8 +914,8 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
 }
 
 
-/* donor:search3-form-contract.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 maket7 desktop form contract. High-specificity preview lock. */
+/**/
+/**/
 @media(min-width:1000px){
   html body.search3-candidate #tourSearch .search3-primary-grid{
     display:grid!important;
@@ -963,8 +951,8 @@ body.search3-candidate .search3-hotel-facts b{display:block;overflow:hidden;colo
 }
 
 
-/* donor:search3-full-cycle-contract.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 full-cycle DS2 visual contract. Preview-only visual layer. */
+/**/
+/**/
 @media(min-width:1000px){
 body.search3-candidate.search3-selected-open #selectedTour{max-width:1180px!important;grid-template-columns:300px minmax(0,1fr)!important;margin-top:18px!important}
 body.search3-candidate #selectedTour .back-results{border:0!important;background:transparent!important;padding:0!important;color:#075cff!important}
@@ -1016,8 +1004,8 @@ body.search3-candidate :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-le
 }
 
 
-/* donor:search3-booking-summary.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 lead form + real selected-tour summary, aligned to approved DS2 lead board. */
+/**/
+/**/
 .search3-lead-shell{display:grid;gap:14px;margin-top:12px}
 .search3-booking-summary{min-width:0;border:1px solid var(--at-line);border-radius:12px;background:#fff;padding:14px;box-shadow:none}
 .search3-booking-summary__title{margin-bottom:10px;color:var(--at-ink);font:900 14px/1.2 var(--at-font)}
@@ -1055,8 +1043,8 @@ body.search3-candidate #selectedTour .search3-booking-summary{order:2;padding:10
 }
 
 
-/* donor:search3-booking-stepper.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 booking progress matching the approved five-stage DS2 boards. */
+/**/
+/**/
 .search3-booking-stepper{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 12px;padding:10px 12px;border:1px solid var(--at-line);border-radius:12px;background:#fff}
 .search3-booking-step{position:relative;display:flex;align-items:center;gap:8px;min-width:0;margin:0;padding:0;border:0;background:transparent;text-align:left;color:var(--at-muted);font:800 9px/1.2 var(--at-font);cursor:pointer}
 .search3-booking-step:focus-visible{outline:2px solid var(--at-brand);outline-offset:4px;border-radius:6px}
@@ -1067,12 +1055,12 @@ body.search3-candidate #selectedTour .search3-booking-summary{order:2;padding:10
 .search3-booking-step.is-active span{border-color:var(--at-brand);background:var(--at-brand);color:#fff}
 .search3-booking-step.is-done{color:var(--at-ink)}
 .search3-booking-step.is-done span{border-color:var(--at-brand);color:var(--at-brand)}
-@media(min-width:1000px){body.search3-candidate #selectedTour .search3-booking-stepper{grid-column:1/-1;grid-row:2;margin:0 0 10px}body.search3-candidate #selectedTour .selected-picture{grid-row:3!important}body.search3-candidate #selectedTour .selected-head{grid-row:3!important}body.search3-candidate #selectedTour .facts{grid-row:4!important}}
+@media(min-width:1000px){body.search3-candidate #selectedTour .search3-booking-stepper{grid-column:1/-1;grid-row:2;margin:0 0 10px}body.search3-candidate #selectedTour .selected-picture,body.search3-candidate #selectedTour .selected-head{grid-row:3!important}body.search3-candidate #selectedTour .facts{grid-row:4!important}}
 @media(max-width:640px){.search3-booking-stepper{order:1;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;padding:8px 6px;margin-bottom:8px}.search3-booking-step{justify-content:center;gap:0;font-size:0}.search3-booking-step span{flex-basis:22px;width:22px;height:22px;font-size:8px}.search3-booking-step b{display:none}.search3-booking-step:not(:last-child):after{left:calc(50% + 11px);right:calc(-50% + 11px);top:11px}.search3-booking-stepper+ .selected-picture{order:2!important}}
 
 
-/* donor:search3-flight-contract.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 flight selection visual contract. Uses only existing real flight data/controls. */
+/**/
+/**/
 body.search3-candidate #selectedTour .tour-flights{scroll-margin-top:18px}
 body.search3-candidate #selectedTour .flight-variants{display:grid;gap:10px}
 body.search3-candidate #selectedTour .flight-variant{padding:0!important;border:1px solid var(--at-line)!important;background:#fff!important;overflow:hidden!important}
@@ -1097,7 +1085,7 @@ body.search3-candidate #selectedTour .lead-form{scroll-margin-top:18px}
 body.search3-candidate #selectedTour .search3-flight-continue{display:flex;justify-content:flex-end;margin-top:12px}
 body.search3-candidate #selectedTour .search3-flight-continue button{min-width:210px;min-height:46px;border:0;border-radius:10px;background:#ff5a0a;color:#fff;font:900 12px/1 var(--at-font);cursor:pointer}
 
-/* Board 3: one real Tourvisor option remains one atomic choice, but its real legs read as two directions. */
+/**/
 body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) :is(.flight-segment,.flight-fuel){display:none!important}
 body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) .flight-choice{border-bottom:0!important;background:#fff!important}
 body.search3-candidate #selectedTour .flight-variant.has-roundtrip-pair.is-selected{padding:10px!important;background:#f8fbff!important}
@@ -1110,7 +1098,7 @@ body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variant:
 body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) .flight-choice-tradeoffs span.is-best-price{color:var(--at-brand-dark)!important}
 
 body.search3-candidate #selectedTour.search3-final-review .flight-variant:not(.is-selected){display:none!important}
-/* Confirmation is read-only: show the selected real segments, not the variant picker row. */
+/**/
 body.search3-candidate #selectedTour.search3-final-review .flight-choice{display:none!important}
 body.search3-candidate #selectedTour.search3-final-review .flight-choice input{visibility:hidden;width:0!important;margin:0!important}
 body.search3-candidate #selectedTour.search3-final-review .search3-flight-continue button{background:#fff!important;color:var(--at-brand)!important;border:1px solid var(--at-brand)!important}
@@ -1120,16 +1108,15 @@ body.search3-candidate #selectedTour.search3-final-review .search3-flight-contin
 body.search3-candidate #selectedTour :is(.flight-baggage,.flight-fuel){font-size:8px!important}body.search3-candidate #selectedTour .search3-flight-continue{display:block}body.search3-candidate #selectedTour .search3-flight-continue button{width:100%;min-width:0}body.search3-candidate #selectedTour .flight-variant.has-roundtrip-pair.is-selected{display:block!important;padding:8px!important}body.search3-candidate #selectedTour .flight-variant.has-roundtrip-pair.is-selected .flight-choice{margin:-8px -8px 8px!important}body.search3-candidate #selectedTour .flight-variant.has-roundtrip-pair.is-selected .flight-segment+.flight-segment{margin-top:8px!important}body.search3-candidate #selectedTour .flight-variant.has-roundtrip-pair.is-selected .flight-segment-title{flex-direction:row!important;align-items:center!important}body.search3-candidate #selectedTour .flight-variant.has-roundtrip-pair.is-selected .flight-segment-title span{margin-left:auto!important;text-align:right!important}body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) .flight-choice{min-height:54px!important}body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) .flight-choice>span{font-size:8.5px!important}body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) .flight-choice-summary{font-size:9.5px!important}body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) .flight-choice-tradeoffs{margin-top:3px!important}}
 
 
-/* donor:search3-final-total.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 final-total convergence. Presentation only: all values remain sourced from real selected tour/flight data. */
+/**/
+/**/
 .search3-review-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 12px;padding:4px 2px}
 .search3-review-heading[hidden]{display:none!important}
 .search3-review-heading span{display:block;margin-bottom:4px;color:var(--at-brand);font:900 9px/1.2 var(--at-font);letter-spacing:.08em}
 .search3-review-heading h2{margin:0;color:var(--at-ink);font:950 26px/1.05 var(--at-font);letter-spacing:-.025em}
 .search3-review-heading p{margin:6px 0 0;color:var(--at-muted);font:700 10px/1.35 var(--at-font)}
 .search3-review-heading>b{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:#19a957;color:#fff;font:900 13px/1 var(--at-font)}
-body.search3-candidate #selectedTour.search3-final-review .hotel-desc{display:none!important}
-body.search3-candidate #selectedTour.search3-final-review .selected-head .eyebrow{display:none!important}
+body.search3-candidate #selectedTour.search3-final-review .hotel-desc,body.search3-candidate #selectedTour.search3-final-review .selected-head .eyebrow{display:none!important}
 body.search3-candidate #selectedTour.search3-final-review .selected-head{align-items:center!important}
 body.search3-candidate #selectedTour.search3-final-review .facts{margin-top:10px!important}
 body.search3-candidate #selectedTour.search3-final-review :is(.tour-flights,.search3-final-sections,.search3-lead-shell){margin-top:12px!important}
@@ -1165,14 +1152,13 @@ body.search3-candidate #selectedTour.search3-final-review .search3-booking-summa
 }
 @media(max-width:640px){.search3-review-heading{order:2;margin:2px 0 7px;padding:2px 0}.search3-review-heading h2{font-size:19px}.search3-review-heading p{font-size:8px}.search3-review-heading>b{width:24px;height:24px;flex-basis:24px;font-size:11px}body.search3-candidate #selectedTour.search3-final-review .selected-picture{order:3!important}body.search3-candidate #selectedTour.search3-final-review .selected-head{order:4!important}body.search3-candidate #selectedTour.search3-final-review .facts{order:5!important}.search3-summary-submit{min-height:46px}.search3-summary-actions p{font-size:8px}}
 
-/* In Maket7 final review the selected hotel card owns hotel identity only.
-   Legacy price/confidence inserts are moved out of this card; the real price lives in the summary rail. */
+/**/
 @media(min-width:1000px){
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-head>:not(:first-child){display:none!important}
 }
 
-/* donor:search3-final-sections.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 final screen sections from real selected-tour data. */
+/**/
+/**/
 .search3-final-sections{display:grid;gap:12px;margin-top:12px}
 .search3-final-section{padding:16px;border:1px solid var(--at-line);border-radius:14px;background:#fff}
 .search3-final-section__heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
@@ -1192,8 +1178,8 @@ html body.search3-candidate.search3-selected-open #selectedTour.search3-final-re
 @media(max-width:640px){.search3-final-section{padding:11px;border-radius:12px}.search3-final-section__heading{align-items:flex-start;flex-direction:column;gap:2px;margin-bottom:8px}.search3-final-section__heading strong{font-size:14px}.search3-final-section__heading span{font-size:8px}.search3-final-services{grid-template-columns:1fr 1fr}.search3-final-services article,.search3-final-services article:nth-child(n){min-height:68px;padding:9px;border-right:1px solid var(--at-line-soft);border-bottom:1px solid var(--at-line-soft)}.search3-final-services article:nth-child(2n){border-right:0}.search3-final-tourists{align-items:flex-start;flex-direction:column;gap:4px;padding:10px}.search3-final-tourists strong{text-align:left;font-size:10px}}
 
 
-/* donor:search3-lead-review.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 final contact block / lifecycle polish. Visual only. */
+/**/
+/**/
 body.search3-candidate #selectedTour .lead-form{position:relative;overflow:hidden}
 body.search3-candidate #selectedTour .lead-form .lead-fields label,body.search3-candidate #selectedTour .lead-form>label{display:grid;gap:6px;color:var(--at-ink);font:850 9px/1.2 var(--at-font)}
 body.search3-candidate #selectedTour .lead-form :is(input,textarea){width:100%;border:1px solid var(--at-line);background:#fff;color:var(--at-ink);font:750 11px/1.35 var(--at-font);transition:border-color .15s ease,box-shadow .15s ease}
@@ -1207,7 +1193,7 @@ body.search3-candidate #selectedTour.search3-final-review .lead-form{border-colo
 body.search3-candidate #selectedTour.search3-final-review .lead-form .section-heading strong{font-size:20px!important}
 body.search3-candidate #selectedTour.search3-final-review .lead-form .section-heading span{max-width:52%;text-align:right}
 body.search3-candidate #selectedTour.search3-final-review .search3-lead-comment{display:none!important}
-/* Lifecycle states: match approved lead kit without implying backend sub-steps already completed. */
+/**/
 body.search3-candidate #selectedTour .lead-form[data-search3-lead-state]{min-height:280px!important;display:flex!important;align-items:center!important}
 body.search3-candidate #selectedTour .lead-form[data-search3-lead-state] .search3-lead-status{width:100%;padding:24px 18px!important;grid-template-columns:76px minmax(0,1fr)!important;gap:20px!important;align-items:start!important}
 body.search3-candidate #selectedTour .lead-form[data-search3-lead-state] .search3-lead-status__icon{width:68px!important;height:68px!important;font-size:29px!important;box-shadow:0 12px 28px rgba(17,48,115,.10)}
@@ -1224,7 +1210,7 @@ body.search3-candidate #selectedTour .lead-form[data-search3-lead-state="error"]
 @keyframes search3LeadSpin{to{transform:rotate(360deg)}}
 @media(min-width:1000px){body.search3-candidate #selectedTour.search3-final-review .lead-form{padding:22px 24px!important}body.search3-candidate #selectedTour.search3-final-review .lead-fields{gap:14px!important;grid-template-columns:1fr 1fr!important}body.search3-candidate #selectedTour.search3-final-review .lead-form input{min-height:46px;padding:0 13px!important}body.search3-candidate #selectedTour.search3-final-review .lead-form>button[type=submit]{margin-top:12px;width:100%;font-size:13px!important}}
 @media(max-width:640px){body.search3-candidate #selectedTour .lead-form .lead-fields{grid-template-columns:1fr!important}body.search3-candidate #selectedTour .lead-form .section-heading span{max-width:none;text-align:left}body.search3-candidate #selectedTour .lead-form input{min-height:44px;padding:0 11px!important}body.search3-candidate #selectedTour .lead-form[data-search3-lead-state]{min-height:240px!important}body.search3-candidate #selectedTour .lead-form[data-search3-lead-state] .search3-lead-status{grid-template-columns:1fr!important;gap:12px!important;padding:12px 4px!important}body.search3-candidate #selectedTour .lead-form[data-search3-lead-state] .search3-lead-status__icon{width:54px!important;height:54px!important;font-size:24px!important}body.search3-candidate #selectedTour .lead-form[data-search3-lead-state] .search3-lead-status h3{font-size:19px!important}}
-/* Mobile lead entry follows the approved kit: contact fields first, tour summary after the form. */
+/**/
 @media(max-width:640px){
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-selection-summary{display:none!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form .section-heading{margin-bottom:12px!important}
@@ -1234,21 +1220,19 @@ html body.search3-candidate.search3-selected-open #selectedTour.search3-final-re
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-trust-note{margin:10px 0 0!important;padding:10px 11px!important;font-size:8px!important;line-height:1.35!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form:not([data-search3-lead-state])>button[type=submit]{display:flex!important;visibility:visible!important;opacity:1!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:48px!important;margin-top:12px!important;border:0!important;border-radius:10px!important;background:#ff5a0a!important;color:#fff!important;font-weight:900!important}
 }
-/* Final confirmation P1: price follows flights on mobile; remove duplicated/technical details. */
+/**/
 @media(max-width:640px){
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .search3-lead-shell.search3-lead-shell{grid-row:6!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .search3-final-sections.search3-final-sections{grid-row:7!important}
-html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .selected-head>:not(:first-child){display:none!important}
-html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .tour-flights .flight-baggage{display:none!important}
-html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .tour-flights .section-heading span{display:none!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .selected-head>:not(:first-child),html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .tour-flights .flight-baggage,html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .tour-flights .section-heading span{display:none!important}
 }
 @media(min-width:1000px){
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] :is(.search3-booking-summary__flight-costs,.search3-booking-summary__price-note){display:none!important}
 }
 
 
-/* donor:search3-tour-detail-rail.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 desktop tour-details rail. Real selected-tour data only. */
+/**/
+/**/
 .search3-tour-detail-rail{display:none}
 @media(min-width:1000px){
 body.search3-candidate.search3-selected-open .results-search-summary{display:grid!important;max-width:1180px!important;width:calc(100% - 32px)!important;margin:10px auto 0!important}
@@ -1260,8 +1244,7 @@ body.search3-candidate #selectedTour:not(.search3-final-review) .selected-head{g
 body.search3-candidate #selectedTour:not(.search3-final-review) .facts{grid-column:1/3!important;grid-row:4!important}
 body.search3-candidate #selectedTour:not(.search3-final-review) .hotel-desc{grid-column:1/3!important;grid-row:5!important}
 body.search3-candidate #selectedTour:not(.search3-final-review) .tour-flights{grid-column:1/3!important;grid-row:6!important}
-body.search3-candidate #selectedTour:not(.search3-final-review) .search3-final-sections{grid-column:1/3!important}
-body.search3-candidate #selectedTour:not(.search3-final-review) .search3-lead-shell{grid-column:1/3!important}
+body.search3-candidate #selectedTour:not(.search3-final-review) .search3-final-sections,body.search3-candidate #selectedTour:not(.search3-final-review) .search3-lead-shell{grid-column:1/3!important}
 body.search3-candidate #selectedTour:not(.search3-final-review) .search3-tour-detail-rail{display:block;grid-column:3!important;grid-row:3/8!important;position:sticky;top:18px;margin:0;padding:16px;border:1px solid var(--at-line);border-radius:12px;background:#fff;box-shadow:0 8px 28px rgba(31,52,109,.06)}
 body.search3-candidate .search3-tour-detail-rail h3{margin:0 0 12px;color:var(--at-ink);font:900 15px/1.15 var(--at-font)}
 body.search3-candidate .search3-tour-detail-rail dl{margin:0;padding:0}
@@ -1278,11 +1261,10 @@ body.search3-candidate .search3-tour-detail-rail__continue:focus-visible{outline
 @media(max-width:999px){.search3-tour-detail-rail{display:none!important}}
 
 
-/* donor:search3-tour-details-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Desktop Tour Details convergence against approved DS2 booking boards. Presentation only. */
+/**/
+/**/
 @media(min-width:1000px){
-/* Search3 owns the booking sequence on desktop. Hide legacy checkout navigation and
-   the direct-to-lead shortcut so Tour Details has one clear next action: flights. */
+/**/
 body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) :is(.checkout-journey,.checkout-facts-heading,.selected-lead-cta,.selected-lead-cta-note){display:none!important}
 body.search3-candidate #selectedTour:not(.search3-final-review) .facts{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:0!important;padding:0!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important;overflow:hidden!important}
 body.search3-candidate #selectedTour:not(.search3-final-review) .facts>div{min-width:0!important;padding:11px 12px!important;border:0!important;border-right:1px solid var(--at-line-soft)!important;border-bottom:1px solid var(--at-line-soft)!important;background:#fff!important}
@@ -1302,12 +1284,9 @@ body.search3-candidate #selectedTour:not(.search3-final-review) .flight-segment-
 body.search3-candidate #selectedTour:not(.search3-final-review) .flight-baggage{margin-top:7px!important}
 body.search3-candidate #selectedTour:not(.search3-final-review) .search3-flight-continue{margin-top:10px!important}
 body.search3-candidate #selectedTour:not(.search3-final-review) .search3-flight-continue button{min-width:188px!important;min-height:42px!important;border-radius:8px!important;font-size:10px!important}
-/* The legacy decision-summary repeats facts already visible above and collapsed into a
-   250px grid column, causing severe word breaks. Maket7 proceeds directly from tour facts
-   to optional details and flights, so remove only this redundant presentation block. */
+/**/
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-choice-summary{display:none!important}
-/* Preserve access to secondary facts and room details, but make both full-width rows
-   instead of squeezing them beside the removed legacy summary. */
+/**/
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .facts-secondary-toggle{grid-column:1/3!important;grid-row:5!important;width:100%!important;min-height:38px!important;margin:10px 0 0!important;padding:0 14px!important;border:1px solid var(--at-line)!important;border-radius:10px!important;background:#fff!important;color:var(--at-brand)!important;justify-content:flex-start!important;font-size:9px!important}
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc{grid-row:6!important}
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc-toggle{grid-column:1/3!important;grid-row:7!important;width:max-content!important;margin:8px 0 0!important}
@@ -1315,11 +1294,9 @@ html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-fin
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .room-detail-toggle{width:100%!important;min-height:48px!important;border-radius:10px!important;text-align:left!important}
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights{grid-row:9!important;}
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-flight-continue{grid-row:10!important}
-/* Keep the sticky real-tour rail alongside the full flight-selection area. The previous
-   grid span ended before row 9, so it disappeared exactly when QA scrolled to flights. */
+/**/
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail{grid-row:3/11!important;align-self:start!important;}
-/* Tourvisor returns paired outbound/return variants. Preserve that pairing and all data,
-   but present each pair compactly like the approved flight board instead of two tall cards. */
+/**/
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-variant{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;align-items:stretch!important;border-radius:11px!important}
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-choice{grid-column:1/-1!important;min-height:42px!important;padding:8px 10px!important}
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .flight-segment{min-width:0!important;padding:9px 10px!important;border-top:1px solid var(--at-line-soft)!important}
@@ -1339,12 +1316,10 @@ body.search3-candidate #selectedTour:not(.search3-final-review) .flight-variant{
 }
 
 
-/* donor:search3-final-review-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Final review + lead-entry convergence against approved AnyTour boards. No fabricated product facts. */
+/**/
+/**/
 .search3-lead-back{display:none}
-body.search3-candidate #selectedTour.search3-final-review :is(.selected-lead-cta,.selected-lead-cta-note){display:none!important}
-body.search3-candidate #selectedTour.search3-final-review:not(.search3-lead-entry) .lead-form{display:none!important}
-body.search3-candidate #selectedTour.search3-lead-entry :is(.back-results,.search3-booking-stepper,.search3-review-heading,.selected-picture,.selected-head,.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.tour-flights,.search3-final-sections,.selected-confidence,.search3-selected-mobile-bar){display:none!important}
+body.search3-candidate #selectedTour.search3-final-review :is(.selected-lead-cta,.selected-lead-cta-note),body.search3-candidate #selectedTour.search3-final-review:not(.search3-lead-entry) .lead-form,body.search3-candidate #selectedTour.search3-lead-entry :is(.back-results,.search3-booking-stepper,.search3-review-heading,.selected-picture,.selected-head,.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.tour-flights,.search3-final-sections,.selected-confidence,.search3-selected-mobile-bar){display:none!important}
 body.search3-candidate #selectedTour.search3-lead-entry .search3-lead-back:not([hidden]){display:inline-flex!important;align-items:center;justify-content:center;min-height:38px;margin:0 0 12px;padding:0 12px;border:0;background:transparent;color:var(--at-brand);font:850 10px/1 var(--at-font);cursor:pointer}
 body.search3-candidate #selectedTour.search3-lead-entry .search3-lead-shell{margin-top:0!important}
 body.search3-candidate #selectedTour.search3-lead-entry .lead-form{display:block!important;margin-top:0!important;background:#fff!important}
@@ -1394,16 +1369,13 @@ body.search3-candidate #selectedTour.search3-lead-entry .lead-form .section-head
 body.search3-candidate #selectedTour.search3-lead-entry .lead-form .section-heading strong{font-size:20px!important}
 body.search3-candidate #selectedTour.search3-lead-entry .lead-form .section-heading span{max-width:none!important;margin-top:5px!important;text-align:left!important}
 }
-/* This file is loaded before search3-screenshot-qa.css. These selectors intentionally
-   outrank its generic final-review rules so lead-entry remains a separate approved screen. */
+/**/
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry :is(.back-results,.search3-booking-stepper,.search3-review-heading,.selected-picture,.selected-head,.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.room-details-host,.tour-flights,.search3-final-sections,.selected-confidence,.search3-tour-detail-rail,.search3-selected-mobile-bar){display:none!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell{display:grid!important;grid-column:1/-1!important;margin:0!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell>.lead-form{display:block!important;grid-column:1!important;grid-row:1!important;margin:0!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell>.search3-booking-summary{display:block!important;grid-column:2!important;grid-row:1!important;margin:0!important}
 
-/* Maket7 desktop final-review: compact hotel card + content rail, cost-only sticky aside.
-   The data attribute is set only for the real final-review state by search3-booking-summary.js,
-   giving these rules enough specificity to outrank the older screenshot QA layer. */
+/**/
 @media(min-width:1000px){
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"]{display:grid!important;grid-template-columns:260px minmax(0,1fr) 300px!important;column-gap:14px!important;row-gap:0!important;align-items:start!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .back-results{grid-column:1/-1!important;grid-row:1!important;margin-bottom:10px!important}
@@ -1414,8 +1386,7 @@ html body.search3-candidate.search3-selected-open #selectedTour.search3-final-re
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-head{display:grid!important;grid-column:2!important;grid-row:4!important;grid-template-columns:minmax(0,1fr)!important;align-content:center!important;min-height:164px!important;height:164px!important;margin:0!important;padding:18px 20px!important;border:1px solid var(--at-line)!important;border-left:0!important;border-radius:0 12px 12px 0!important;background:#fff!important;box-sizing:border-box!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-head h2{font-size:22px!important;line-height:1.08!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-head p{font-size:10px!important;line-height:1.35!important}
-html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-price{display:none!important}
-html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] :is(.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.room-details-host,.selected-confidence,.search3-tour-detail-rail){display:none!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .selected-price,html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] :is(.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.room-details-host,.selected-confidence,.search3-tour-detail-rail){display:none!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .tour-flights{display:block!important;grid-column:1/3!important;grid-row:5!important;width:100%!important;max-width:none!important;margin:12px 0 0!important;padding:14px 16px!important;box-sizing:border-box!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-final-sections{display:block!important;grid-column:1/3!important;grid-row:6!important;width:100%!important;margin:12px 0 0!important;box-sizing:border-box!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout="maket7"] .search3-lead-shell{display:contents!important}
@@ -1435,8 +1406,8 @@ html body.search3-candidate.search3-selected-open #selectedTour.search3-final-re
 }
 
 
-/* donor:search3-lead-state-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Lead lifecycle convergence against approved DS2 lead UI kit. Visual only. */
+/**/
+/**/
 @media(min-width:1000px){
 body.search3-candidate #selectedTour.search3-final-review .lead-form[data-search3-lead-state]{min-height:248px!important;padding:18px 20px!important;background:#fff!important}
 body.search3-candidate #selectedTour.search3-final-review .lead-form[data-search3-lead-state] .search3-lead-status{padding:12px 8px!important;grid-template-columns:58px minmax(0,1fr)!important;gap:16px!important;align-items:start!important}
@@ -1454,12 +1425,12 @@ body.search3-candidate #selectedTour.search3-final-review .search3-stay-site{pad
 }
 
 @media(max-width:640px){
-/* Board 6.2: entry form first; selected-tour recap stays compact below it. */
+/**/
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell>.search3-booking-summary{padding:10px!important;border-radius:11px!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell>.search3-booking-summary .search3-booking-summary__image{height:96px!important;border-radius:9px!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .search3-lead-shell>.search3-booking-summary .search3-booking-summary__title{font-size:14px!important;margin-bottom:8px!important}
 
-/* Boards 6.4 / 6.6 / 6.8: sending, success and error are standalone mobile states. */
+/**/
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state]~.search3-booking-summary{display:none!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state]{padding:16px 14px!important;border-radius:12px!important;min-height:0!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form[data-search3-lead-state] .search3-lead-status{display:grid!important;grid-template-columns:1fr!important;gap:10px!important;padding:6px 2px!important}
@@ -1474,9 +1445,9 @@ html body.search3-candidate.search3-selected-open #selectedTour.search3-final-re
 }
 
 
-/* donor:search3-shell-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+/**/
 
-/* Search3 shell convergence: factual header/footer plus final vertical rhythm. */
+/**/
 @media(min-width:1000px){
 html body.search3-candidate{--at-page-gutter:48px!important}
 
@@ -1488,18 +1459,17 @@ html body.search3-candidate.search3-selected-open #selectedTour{margin-top:14px!
 
 }
 
-/* Approved full mobile flow: after choosing a concrete tour the booking journey is a separate view.
-   Header and selected-tour/back control stay visible; search/results return when selected-open is removed. */
+/**/
 @media(max-width:640px){
 html body.search3-candidate.search3-selected-open :is(.search3-page-intro,.search3-mobile-toolbar,.results-layout),
 html body.search3-candidate.search3-selected-open :is(#tourSearch,#status,#resultsSearchSummary,#resultsTools){display:none!important}
-/* DOM truth is stronger than event timing: any visible selected-tour screen is isolated from result controls. */
+/**/
 html body.search3-candidate:has(#selectedTour:not([hidden])) .search3-mobile-toolbar{display:none!important}
 html body.search3-candidate.search3-selected-open #selectedTour{margin-top:8px!important;margin-bottom:18px!important}
 }
 
-/* donor:search3-screenshot-qa.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 screenshot QA pass — desktop, cross-flow. */
+/**/
+/**/
 @media(min-width:1000px){
   html body.search3-candidate{--search3-desktop-shell:min(1180px,calc(100vw - 48px))!important}
   html body.search3-candidate :is(.search3-page-intro,.results-search-summary,.results-tools--ds2,.results-layout),
@@ -1541,8 +1511,7 @@ html body.search3-candidate.search3-selected-open #selectedTour{max-width:var(--
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-booking-stepper{grid-column:1/-1!important;grid-row:4!important;margin:0 0 12px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-picture{grid-column:1!important;grid-row:2!important;height:176px!important;min-height:176px!important;border-radius:12px 0 0 12px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-head{grid-column:2!important;grid-row:2!important;min-height:176px!important;padding:16px 18px!important;border-radius:0 12px 12px 0!important}
-  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-head h2{font-size:22px!important}
-  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-price{font-size:22px!important}
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-head h2,html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-price{font-size:22px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .facts{grid-column:1/3!important;grid-row:3!important;margin-top:10px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc{grid-column:1/3!important;grid-row:5!important;margin-top:10px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights{grid-column:1/3!important;grid-row:6!important;margin-top:12px!important;width:100%!important;max-width:none!important}
@@ -1550,13 +1519,12 @@ html body.search3-candidate.search3-selected-open #selectedTour{max-width:var(--
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail{display:block!important;grid-column:3!important;grid-row:2/8!important;width:auto!important;position:sticky!important;top:18px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-lead-shell,
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review)>:is(.lead-form,.lead-submit),
-html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review)>button[type="submit"]{display:none!important}
-  html body.search3-candidate.search3-selected-open #selectedTour :is(.tour-flights[hidden],.flight-variants[hidden]){display:none!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review)>button[type="submit"],html body.search3-candidate.search3-selected-open #selectedTour :is(.tour-flights[hidden],.flight-variants[hidden]){display:none!important}
   html body.search3-candidate.search3-selected-open #selectedTour .search3-booking-stepper button{white-space:nowrap!important;word-break:normal!important;overflow-wrap:normal!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) :is(.flight-variants,.flight-variant){width:100%!important;max-width:none!important;box-sizing:border-box!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-flight-continue{grid-column:1/3!important;width:100%!important;max-width:none!important;margin:12px 0 0!important}
 
-  /* Final review: compact summary first, contact form second, sticky cost rail alongside. */
+  /**/
   html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review{display:grid!important;grid-template-columns:minmax(0,1fr) 300px!important;column-gap:14px!important;align-items:start!important}
   html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review :is(.back-results,.search3-booking-stepper,.search3-review-heading){grid-column:1/-1!important}
   html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review :is(.selected-picture,.selected-head,.facts,.tour-flights,.search3-final-sections){grid-column:1!important}
@@ -1575,12 +1543,11 @@ html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-fin
   html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review .search3-lead-protection{margin-top:10px!important}
 }
 
-/* donor:search3-booking-board-convergence-v2.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 approved boards 3–5 convergence.
-   Visual-only late layer: preserves Tourvisor data, pricing semantics and lead flow. */
+/**/
+/**/
 
 @media(max-width:640px){
-  /* Board 3: selected hotel -> progress -> flights, without excess vertical weight. */
+  /**/
   html body.search3-candidate.search3-selected-open #selectedTour.selected-tour:not(.search3-final-review) .selected-picture{
     order:1!important;height:136px!important;min-height:136px!important;margin:0!important;border-radius:12px 12px 0 0!important;overflow:hidden!important
   }
@@ -1613,7 +1580,7 @@ html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-fin
   html body.search3-candidate.search3-selected-open #selectedTour.selected-tour:not(.search3-final-review) .hotel-desc{display:none!important}
   html body.search3-candidate.search3-selected-open #selectedTour.selected-tour:not(.search3-final-review) .hotel-desc-toggle{order:8!important;margin-top:7px!important}
 
-  /* Board 5: compact mobile review card, selected flight, total and CTA. */
+  /**/
   html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry) .search3-booking-summary{
     padding:10px!important;border-radius:11px!important
   }
@@ -1627,7 +1594,7 @@ html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-fin
 }
 
 @media(min-width:641px) and (max-width:999px){
-  /* Board 5 on tablet: compact hotel summary instead of a full-width hero image. */
+  /**/
   html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry){
     display:grid!important;grid-template-columns:210px minmax(0,1fr)!important;column-gap:0!important;row-gap:0!important;align-items:start!important;margin:12px var(--at-page-edge) 38px!important
   }
@@ -1662,8 +1629,8 @@ html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.se
 }
 
 
-/* donor:search3-results-convergence-v2.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 results/search P0 convergence. Preview only; presentation, no data fabrication. */
+/**/
+/**/
 body.search3-candidate #tourSearch .search3-nights .search3-composite__control{
   display:grid!important;
   grid-template-columns:minmax(0,1fr) 12px minmax(0,1fr)!important;
@@ -1778,7 +1745,7 @@ body.search3-candidate #results :is(.hotel-main,.hotel-photo,.hotel-body){margin
   body.search3-candidate:not(.search3-hotel-tours-open) #results .search3-hotel-action{grid-column:1/3!important;grid-row:6!important;margin-top:7px!important;padding-top:0!important;border-top:0!important}
 }
 
-/* Search3 live-card height sync */
+/**/
 @media(min-width:761px){
  body.search3-candidate #results .hotel-main{min-height:188px!important}
  body.search3-candidate #results .hotel-photo{height:100%!important;min-height:188px!important;align-self:stretch!important}
@@ -1789,24 +1756,22 @@ body.search3-candidate #results :is(.hotel-main,.hotel-photo,.hotel-body){margin
  body.search3-candidate #results .hotel-photo img{height:158px!important}
 }
 
-/* Keep the media column flush with the taller information column. */
+/**/
 @media(min-width:761px){
  body.search3-candidate:not(.search3-hotel-tours-open) #results .hotel-card .hotel-main>.hotel-photo{height:auto!important;min-height:188px!important;align-self:stretch!important}
  body.search3-candidate:not(.search3-hotel-tours-open) #results .hotel-card .hotel-main>.hotel-photo>img{height:100%!important;min-height:188px!important}
 }
 
-/* Match the results-width contract specificity, then replace its legacy 156px media lock. */
+/**/
 @media(min-width:761px){
  html body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo{height:auto!important;min-height:188px!important;max-height:none!important;align-self:stretch!important}
  html body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo>img{height:100%!important;min-height:188px!important;max-height:none!important}
 }
 
-/* The normalized price already contains the “от” prefix. */
-body.search3-candidate #results .hotel-best-offer>small{display:none!important}
+/**/
+body.search3-candidate #results .hotel-best-offer>small,html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best-offer>small{display:none!important}
 
-html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best-offer>small{display:none!important}
-
-/* Mobile results scan order from the approved maket7 flow. */
+/**/
 @media(max-width:999px){
  html body.search3-candidate.search3-has-results #resultsTools .results-tools__actions{display:none!important}
  html body.search3-candidate.search3-has-results .search3-mobile-toolbar{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important}
@@ -1822,7 +1787,7 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
  html body.search3-candidate.search3-has-results #resultsTools strong{font-size:18px!important}
 }
 
-/* Tablet card density: preserve the desktop hierarchy without crushing the content column. */
+/**/
 @media(min-width:761px) and (max-width:999px){
  html body.search3-candidate.search3-has-results #results .hotel-main{grid-template-columns:232px minmax(0,1fr)!important}
  html body.search3-candidate.search3-has-results #results .hotel-body{grid-template-columns:minmax(0,1fr) 150px!important;column-gap:12px!important;padding:12px!important}
@@ -1832,12 +1797,9 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
  html body.search3-candidate.search3-has-results #results .search3-hotel-action{grid-template-columns:minmax(0,1fr) 150px!important;gap:12px!important}
 }
 
-/* Approved mockup #1: compact hotel-level decision hierarchy. */
+/**/
 @media(min-width:1000px){
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-main{
-    min-height:166px!important;
-  }
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo,
+  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-main,html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo,
   html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo>img{
     min-height:166px!important;
   }
@@ -1855,7 +1817,7 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
   }
 }
 
-/* Win the legacy :has() 188px media lock for the compact desktop candidate. */
+/**/
 @media(min-width:1000px){
 
   html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-body{
@@ -1863,7 +1825,7 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
   }
 }
 
-/* Use the approved landscape crop instead of the source image intrinsic ratio. */
+/**/
 @media(min-width:1000px){
   html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-main{
     height:166px!important;
@@ -1878,8 +1840,8 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
   }
 }
 
-/* donor:search3-form-maket7.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search 3 desktop convergence to maket7. Preview-scoped and visual only. */
+/**/
+/**/
 @media(min-width:761px){
 body.search3-candidate .search3-page-intro{margin-top:15px!important;margin-bottom:9px!important}
 body.search3-candidate .search3-page-intro h1{font-size:28px!important;line-height:1.08!important;margin-bottom:5px!important;letter-spacing:-.45px!important}
@@ -1966,8 +1928,8 @@ html body.search3-candidate:not(.search3-hotel-tours-open) .search3-show-tours{m
 @media(min-width:1261px){body.search3-candidate #tourSearch{min-height:0!important}}
 
 
-/* donor:search3-final-boards-v1.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
-/* Search3 approved boards 3–5 final responsive convergence. Preview presentation only. */
+/**/
+/**/
 @media(max-width:640px){
   html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry){
     display:grid!important;
@@ -2046,7 +2008,7 @@ html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.se
 }
 
 @media(min-width:641px) and (max-width:999px){
-  /* Board 3 tablet: keep the critical tour price readable and give route/tradeoff copy its own flexible zone. */
+  /**/
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice{
     display:grid!important;
     grid-template-columns:16px minmax(0,1fr) 146px!important;
@@ -2116,8 +2078,8 @@ html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.se
 }
 
 
-/* Candidate-owned exact-head result and responsive safety layer. */
-/* Search3 candidate results/filter presentation reconstructed from frozen run 467. */
+/**/
+/**/
 body.search3-candidate.search3-results-active .results-search-summary{
   width:min(1120px,100%)!important;
   max-width:1120px!important;
@@ -2144,7 +2106,7 @@ body.search3-candidate.search3-results-active .results-layout{
   min-width:0!important;
   margin:0 auto 56px!important;
 }
-/* The visible candidate-results chain intentionally outranks production :has(#...) layout guards. */
+/**/
 body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results{
   display:flex!important;
   flex-direction:column!important;
@@ -2439,7 +2401,7 @@ body.search3-candidate #results .hotel-tours:not([hidden]) .tour-action>.direct-
 
 body.search3-candidate .search3-mobile-toolbar{display:none}
 
-/* Retain the mobile owner across resize, but keep only the native desktop sort visible. */
+/**/
 @media(min-width:1000px){
   html body.search3-candidate.search3-results-active .search3-mobile-toolbar{display:none!important}
 }
@@ -2724,8 +2686,7 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
   }
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results :is(.hotel-title,.hotel-place){grid-column:1/3!important}
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-title{font-size:16px!important}
-  body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-decision-line{grid-column:1/3!important}
-  body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts{grid-column:1/3!important}
+  body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-decision-line,body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts{grid-column:1/3!important}
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-bottom{
     grid-column:1/3!important;
     grid-row:auto!important;
@@ -2794,7 +2755,7 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
   body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts b{font-size:11px!important}
 }
 
-/* Candidate alignment guard: the mobile shell already contributes 12px per side. */
+/**/
 @media(max-width:760px){
   html body.search3-candidate.search3-results-active :is(#resultsSearchSummary,#resultsTools),
 html body.search3-candidate.search3-results-active :is(.search3-mobile-toolbar,.results-layout){
@@ -2806,13 +2767,13 @@ html body.search3-candidate.search3-results-active :is(.search3-mobile-toolbar,.
   }
 }
 
-/* Candidate compact filter guard: retain the production drawer below the 1000px breakpoint. */
+/**/
 @media(max-width:999px){
   html body.search3-candidate .mrf-sheet{display:block!important}
   html body.search3-candidate .mrf-sheet.is-open{visibility:visible!important;pointer-events:auto!important}
 }
 
-/* Candidate desktop grid guard: the 220px rail and 14px gap must occupy distinct columns. */
+/**/
 @media(min-width:1000px){
   html body.search3-candidate.search3-results-active.search3-has-results .results-layout{
     grid-template-columns:220px minmax(0,1fr)!important;
@@ -2820,7 +2781,7 @@ html body.search3-candidate.search3-results-active :is(.search3-mobile-toolbar,.
   }
 }
 
-/* Candidate desktop geometry guard: prevent donor 166px locks from clipping the 210px result card. */
+/**/
 @media(min-width:1000px){
   html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card :is(.hotel-main,.hotel-photo,.hotel-body),
 html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo>img{
@@ -2830,13 +2791,13 @@ html body.search3-candidate.search3-results-active.search3-has-results:not(.sear
   }
 }
 
-/* Candidate lifecycle guard: the tested completion status remains visible and scrollable. */
+/**/
 html body.search3-candidate.search3-results-active.search3-has-results #status:has(.search-progress-done){display:block!important}
 
-/* Candidate accessibility guard: keep every hotel disclosure a 44px touch target. */
+/**/
 html body.search3-candidate.search3-results-active:not(.search3-hotel-tours-open) #results .search3-show-tours{min-height:44px!important;font-size:14px!important}
 
-/* Candidate conversion slice v2: truthful, decision-ready result cards. */
+/**/
 html body.search3-candidate.search3-results-active #results .search3-hotel-heading{
   grid-column:1!important;
   display:flex!important;
@@ -2903,30 +2864,26 @@ html body.search3-candidate.search3-results-active #results .search3-hotel-facts
   html body.search3-candidate.search3-results-active #results .search3-hotel-facts{grid-template-columns:1.15fr .65fr 1.5fr 1fr!important}
 }
 
-/* Keep the desktop booking steps inside the main column, clear of the sticky total rail. */
+/**/
 @media(min-width:1000px){
   html body.search3-candidate.search3-selected-open #selectedTour.selected-tour:not(.search3-final-review) > .search3-booking-stepper{
     grid-column:1/3!important;
   }
 }
 
-/* Keep the selected-tour view focused on its booking steps. */
+/**/
 body.search3-candidate.search3-selected-open .ds2-site-footer{display:none!important}
-/* Keep results mounted for Back, but remove them from layout and focus order
-   throughout flight, review and lead stages. selectedTour is a sibling. */
+/**/
 html body.search3-candidate.search3-results-active.search3-selected-open .v2-shell > .results-layout,
 html body.search3-candidate.search3-results-active.search3-selected-open .v2-shell > :is(#resultsSearchSummary,#resultsTools){display:none!important}
 
-/* Candidate readability guard: hotel imagery and decision text must remain useful,
-   especially on phones. The price context contains only the party; date, nights,
-   meal and flight stay in the single facts block below the hotel heading. */
+/**/
 html body.search3-candidate.search3-results-active #results .hotel-place{font-size:12px!important;line-height:1.35!important}
 html body.search3-candidate.search3-results-active #results .hotel-decision-line>span{font-size:11px!important;line-height:1.25!important}
 html body.search3-candidate.search3-results-active #results :is(.search3-hotel-facts,.tour-fact) small{font-size:11px!important;line-height:1.2!important}
 html body.search3-candidate.search3-results-active #results :is(.search3-hotel-facts,.tour-fact) b{font-size:13px!important;line-height:1.3!important}
 html body.search3-candidate.search3-results-active #results .hotel-best-offer>small:not(.hotel-price-context){font-size:11px!important}
-html body.search3-candidate.search3-results-active #results .hotel-price-context{font-size:12px!important;line-height:1.35!important}
-html body.search3-candidate.search3-results-active #results .search3-tour-list-head span{font-size:12px!important;line-height:1.35!important}
+html body.search3-candidate.search3-results-active #results .hotel-price-context,html body.search3-candidate.search3-results-active #results .search3-tour-list-head span{font-size:12px!important;line-height:1.35!important}
 html body.search3-candidate.search3-results-active #results .direct-tour{font-size:14px!important}
 
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-head p{font-size:13px!important;line-height:1.4!important}
@@ -2959,8 +2916,7 @@ html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-fin
   html body.search3-candidate.search3-results-active #results .hotel-price-context{font-size:12px!important}
   html body.search3-candidate.search3-results-active #results .search3-show-tours{font-size:14px!important}
   html body.search3-candidate.search3-results-active #results .search3-tour-list-head span{font-size:12px!important}
-  html body.search3-candidate.search3-results-active #results .tour-meta>strong{font-size:14px!important}
-  html body.search3-candidate.search3-results-active #results .tour-fact b{font-size:14px!important}
+  html body.search3-candidate.search3-results-active #results .tour-meta>strong,html body.search3-candidate.search3-results-active #results .tour-fact b{font-size:14px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .facts span{font-size:12px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .facts b{font-size:14px!important}
 }
@@ -2974,7 +2930,7 @@ html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-fin
   }
 }
 
-/* Search context and filter choices need the same readable scale as the cards. */
+/**/
 html body.search3-candidate.search3-results-active #resultsSearchSummary :is(strong,small){font-size:12px!important;line-height:1.35!important}
 html body.search3-candidate.search3-results-active #resultsSearchSummary :is(b,span){font-size:13px!important;line-height:1.4!important}
 html body.search3-candidate.search3-results-active #resultsSearchSummary .results-search-summary__edit{font-size:12px!important;line-height:1.35!important;min-height:44px!important}
@@ -2984,11 +2940,10 @@ html body.search3-candidate.search3-results-active .results-filter-rail .search3
 html body.search3-candidate.search3-results-active .results-filter-rail .search3-filter-edit-row i{grid-column:2!important;grid-row:1/3!important}
 html body.search3-candidate.search3-results-active #results .search3-hotel-action__copy :is(strong,span){font-size:12px!important;line-height:1.4!important}
 
-/* The desktop rail already identifies these as filters; omit the redundant
-   subtitle so the reset action fits beside the heading without clipping. */
+/**/
 @media(min-width:1000px){
   html body.search3-candidate.search3-results-active .results-filter-rail .filter-rail-head small{display:none!important}
 }
 
-/* Closing a tour retains its DOM. Author display rules must respect hidden. */
+/**/
 html body.search3-candidate #selectedTour[hidden]{display:none!important}

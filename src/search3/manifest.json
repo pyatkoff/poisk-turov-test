@@ -70,7 +70,10 @@
       "styles/acceptance-guards.css"
     ],
     "search3-entry-v1.css": [
-      "styles/entry-v1.css"
+      "styles/entry-calendar.css",
+      "styles/entry-v1.css",
+      "styles/entry-toolbar.css",
+      "styles/entry-native-controls.css"
     ],
     "search3-entry-v1.js": [
       "behavior/entry-v1.js"

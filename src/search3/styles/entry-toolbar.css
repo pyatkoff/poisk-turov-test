@@ -1,0 +1,7 @@
+
+/* Common shell boundaries and verified search benefits. */
+@media(max-width:999px){
+ html body.search3-candidate.search3-results-active .search3-mobile-toolbar{display:grid!important}
+ html body.search3-candidate .search3-mobile-sort{position:relative!important;display:flex!important;align-items:center!important;justify-content:center!important;min-height:44px!important;border:1px solid #d7deeb!important;border-radius:8px!important;background:#fff!important;color:#14213d!important;font-size:13px!important}
+ html body.search3-candidate .search3-mobile-sort select{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;opacity:0!important;cursor:pointer!important}
+}

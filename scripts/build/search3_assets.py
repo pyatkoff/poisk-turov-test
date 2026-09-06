@@ -8,6 +8,43 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def compact_css_comments(content):
+    """Keep source notes private; retain CSS token separators and license notes.
+
+    Empty comments preserve tokenization even in ``red/**/blue``. Strings and
+    escaped characters are copied verbatim; no whitespace or CSS rule is moved.
+    """
+    text = content.decode('utf-8')
+    chunks, index, quote = [], 0, None
+    while index < len(text):
+        char = text[index]
+        if char == '\\':
+            chunks.append(text[index:index + 2])
+            index += 2
+            continue
+        if quote:
+            chunks.append(char)
+            if char == quote:
+                quote = None
+            index += 1
+            continue
+        if char in ('"', "'"):
+            quote = char
+        elif text.startswith('/*', index):
+            end = text.find('*/', index + 2)
+            if end < 0:
+                raise ValueError('Unterminated Search3 CSS comment')
+            comment = text[index:end + 2]
+            retain = (comment.startswith('/*!') or any(
+                marker in comment.lower() for marker in ('@license', 'copyright', 'sourcemappingurl')))
+            chunks.append(comment if retain else '/**/')
+            index = end + 2
+            continue
+        chunks.append(char)
+        index += 1
+    return ''.join(chunks).encode('utf-8')
+
+
 def assemble(root):
     source = root / 'src/search3'
     manifest = json.loads((source / 'manifest.json').read_text())
@@ -29,7 +66,8 @@ def assemble(root):
                 raise ValueError('Invalid or repeated Search3 source: ' + part)
             used.add(part)
             chunks.append(path.read_bytes())
-        outputs[name] = b''.join(chunks)
+        content = b''.join(chunks)
+        outputs[name] = compact_css_comments(content) if name.endswith('.css') else content
     actual = {str(p.relative_to(source)) for p in source.rglob('*')
               if p.is_file() and p.suffix in ('.css', '.js')}
     if used != actual:

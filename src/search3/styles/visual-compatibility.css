@@ -42,8 +42,7 @@ html body.search3-candidate.search3-selected-open #selectedTour{max-width:var(--
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-booking-stepper{grid-column:1/-1!important;grid-row:4!important;margin:0 0 12px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-picture{grid-column:1!important;grid-row:2!important;height:176px!important;min-height:176px!important;border-radius:12px 0 0 12px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-head{grid-column:2!important;grid-row:2!important;min-height:176px!important;padding:16px 18px!important;border-radius:0 12px 12px 0!important}
-  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-head h2{font-size:22px!important}
-  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-price{font-size:22px!important}
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-head h2,html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-price{font-size:22px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .facts{grid-column:1/3!important;grid-row:3!important;margin-top:10px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc{grid-column:1/3!important;grid-row:5!important;margin-top:10px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights{grid-column:1/3!important;grid-row:6!important;margin-top:12px!important;width:100%!important;max-width:none!important}
@@ -51,8 +50,7 @@ html body.search3-candidate.search3-selected-open #selectedTour{max-width:var(--
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail{display:block!important;grid-column:3!important;grid-row:2/8!important;width:auto!important;position:sticky!important;top:18px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-lead-shell,
 html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review)>:is(.lead-form,.lead-submit),
-html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review)>button[type="submit"]{display:none!important}
-  html body.search3-candidate.search3-selected-open #selectedTour :is(.tour-flights[hidden],.flight-variants[hidden]){display:none!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review)>button[type="submit"],html body.search3-candidate.search3-selected-open #selectedTour :is(.tour-flights[hidden],.flight-variants[hidden]){display:none!important}
   html body.search3-candidate.search3-selected-open #selectedTour .search3-booking-stepper button{white-space:nowrap!important;word-break:normal!important;overflow-wrap:normal!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) :is(.flight-variants,.flight-variant){width:100%!important;max-width:none!important;box-sizing:border-box!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-flight-continue{grid-column:1/3!important;width:100%!important;max-width:none!important;margin:12px 0 0!important}
