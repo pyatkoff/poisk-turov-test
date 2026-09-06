@@ -6,10 +6,10 @@
   html body.search3-candidate{
 & #tourSearch {
 & .search3-primary-grid {
-    display:grid!important;
+
     grid-template-columns:minmax(0,1.08fr) minmax(0,1.08fr) minmax(0,1fr) minmax(0,1.28fr) minmax(0,.68fr) minmax(0,.88fr) 150px!important;
-    gap:12px!important;
-    align-items:end!important;
+
+
     min-width:0!important;
   }
   & .search3-primary-grid>* {min-width:0!important}

@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "baseline_source_sha": "b926eeb4509da236597268af868457eb5f11ef43",
+  "base_release_sha": "71be7b79f77fdc29b669648c2a3479ea72c1402e",
+  "publication_status": "NOT_PUBLISHED",
+  "assets": [
+    {
+      "path": "v2/search3-results-filters-v1.js",
+      "before_bytes": 95346,
+      "after_bytes": 95346,
+      "saved_bytes": 0
+    },
+    {
+      "path": "v2/search3-results-filters-v1.css",
+      "before_bytes": 177697,
+      "after_bytes": 174135,
+      "saved_bytes": 3562
+    },
+    {
+      "path": "v2/search3-entry-v1.css",
+      "before_bytes": 9923,
+      "after_bytes": 9662,
+      "saved_bytes": 261
+    },
+    {
+      "path": "v2/search3-entry-v1.js",
+      "before_bytes": 3234,
+      "after_bytes": 3234,
+      "saved_bytes": 0
+    },
+    {
+      "path": "v2/search3-results-cards-v2.css",
+      "before_bytes": 4109,
+      "after_bytes": 4022,
+      "saved_bytes": 87
+    },
+    {
+      "path": "v2/search3-results-cards-v2.js",
+      "before_bytes": 0,
+      "after_bytes": 0,
+      "saved_bytes": 0
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.css",
+      "before_bytes": 7470,
+      "after_bytes": 7354,
+      "saved_bytes": 116
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.js",
+      "before_bytes": 8455,
+      "after_bytes": 8455,
+      "saved_bytes": 0
+    }
+  ],
+  "total_before_bytes": 306234,
+  "total_after_bytes": 302208,
+  "saved_bytes": 4026,
+  "changes": [
+    "After exact CSS printing, combine only contiguous identical single-selector roots across single-root media blocks. Roots contain only explicit-& child rules; preserve selector nesting paths, conditions and order. Comments in removed wrappers prevent grouping.",
+    "Remove 75 main CSS declarations and 13 empty rules using dominating later entry/selected stylesheet witnesses under the mandatory four-stylesheet import contract. No new shorthand/state implications."
+  ],
+  "validation": [
+    "One final eight-asset source build passed.",
+    "All four JS files remain byte-identical to b926eeb; protected import fingerprints unchanged.",
+    "Existing CSS printing test plus media-grouping eligibility and comment-boundary fixtures passed.",
+    "Grouping preserves ordered selector nesting paths, media contexts and declaration streams on four CSS assets; style nesting depth unchanged.",
+    "Cross-asset removal preserves the retained stream and final cascade maps at all 42 width samples.",
+    "No in-repository styleSheets/cssRules/insertRule/deleteRule consumer found in Search3/shared JS."
+  ],
+  "css_witness_audit": "docs/project/search3-css-cross-asset-dominance.json",
+  "browser_boundary_sources": [
+    "https://webkit.org/blog/14154/webkit-features-in-safari-16-5/",
+    "https://webkit.org/blog/13813/try-css-nesting-today-in-safari-technology-preview/"
+  ],
+  "deferred": [
+    "Hotel-card legacy-block removal: visible results do not imply search3-results-active or all sibling/hidden predicates; async lifecycle proof failed. No card ownership deletion based on that assumption.",
+    "Within-asset broader shorthand/specificity candidates: only 117 measured bytes, no separate micro-pass.",
+    "JS formatting: all16 option combinations measured; best240 bytes below500 threshold, no source edit.",
+    "No preview publication, browser journey, full responsive/site/SEO suite or physical Safari acceptance for this technical batch."
+  ],
+  "size_scope": "Uncompressed eight public assets only; source/docs/shared runtime/legacy excluded."
+}

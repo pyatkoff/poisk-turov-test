@@ -13,9 +13,9 @@
   }
   & .results-tools__actions {display:none!important}
   & .search3-mobile-toolbar {
-    display:grid!important;
-    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
-    gap:8px!important;
+
+
+
     margin:0 var(--search3-results-inline-gutter) 16px!important;
   }
 }
@@ -29,23 +29,23 @@
     color:#14213d!important;
   }
   & .search3-mobile-sort{
-    position:relative!important;
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    min-height:44px!important;
-    border:1px solid #d7deeb!important;
-    border-radius:8px!important;
-    background:#fff!important;
-    color:#14213d!important;
-    font-size:11px!important;
+
+
+
+
+
+
+
+
+
+
     font-weight:800!important;
   }
   & .search3-mobile-sort:focus-within{
     outline:3px solid #155eef!important;
     outline-offset:2px!important;
   }
-  & .search3-mobile-sort select{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;opacity:0!important;cursor:pointer!important}
+
   & .search3-mobile-sort select:focus{outline:0!important}
   &.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results {
 & .hotel-main {display:block!important;height:auto!important;min-height:0!important}

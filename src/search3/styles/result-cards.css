@@ -4,9 +4,9 @@
 /* Search3 results/search P0 convergence. Preview only; presentation, no data fabrication. */
 body.search3-candidate{
 & #tourSearch .search3-nights .search3-composite__control{
-  display:grid!important;
+
   grid-template-columns:minmax(0,1fr) 12px minmax(0,1fr)!important;
-  align-items:center!important;
+
   gap:4px!important;
   padding:0 6px!important;
 }

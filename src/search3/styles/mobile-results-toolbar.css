@@ -30,9 +30,9 @@ body.search3-candidate .search3-mobile-toolbar{display:none}
   }
   & .results-filter-rail {display:none!important}
   & .search3-mobile-toolbar {
-    display:grid!important;
+
     grid-template-columns:minmax(0,1fr)!important;
-    gap:8px!important;
+
     margin:0 var(--search3-results-inline-gutter) 16px!important;
   }
 }

@@ -48,6 +48,12 @@ with non-exclamation copyright/license/source-map notes retain their entire byte
 After exact CSS printing, the pinned Lightning CSS optimizer reduces rules and
 values while retaining native nesting and the existing browser targets. Raw token
 values containing comments bypass optimization so separators cannot disappear.
+Before that optimizer, adjacent identical single-selector parents can share one
+wrapper across media blocks. Only declaration-free parents with explicit `&`
+children qualify. Selector paths, media conditions, declaration order and style
+nesting depth stay intact; comments in discarded wrappers prevent grouping.
+Nested media uses the same [WebKit nesting support](https://webkit.org/blog/13813/try-css-nesting-today-in-safari-technology-preview/)
+as the existing preview. Readable source structure remains unchanged.
 Private injected CSS now uses this same pipeline before JavaScript escaping; its
 insertion order, IDs, selected-root guard and idempotence remain unchanged.
 JavaScript concatenation
@@ -215,6 +221,14 @@ CI verifies that those later values are supported, so unsupported-value fallback
 are not silently removed. No shorthand expansion or cross-context merging is used.
 Final declaration maps match the prior code; now-empty rules are removed without
 reordering retained declarations. Protected acceptance guards remain intact.
+
+Cross-asset duplicate removal also uses the mandatory main/entry/cards/selected
+order in `v2/search3-presentation-v1.php`. All four stylesheets share one enabled
+gate; the existing presentation test checks their order and single inclusion.
+Witnesses in a later linked stylesheet may cover an earlier declaration only
+under the same strict selector/media/value rules. This relies on loading the
+complete four-file presentation, not the main stylesheet in isolation. Audit:
+`docs/project/search3-css-cross-asset-dominance.json`.
 
 `behavior/booking-summary.js` retains its state, formatting, price adapter and
 event lifecycle. Private `behavior/booking/layout.js` owns complete layout

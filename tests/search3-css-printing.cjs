@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const css = require('../scripts/build/search3-js/node_modules/css-tree');
-const { compactCSS, printCSS, parsed } = require('../scripts/build/search3-js/compact-css.cjs');
+const { compactCSS, printCSS, parsed, groupAdjacentMedia } = require('../scripts/build/search3-js/compact-css.cjs');
 
 function fragments(code) {
   const result = [];
@@ -46,4 +46,36 @@ assert.match(nested, /\.a\{& \.b\{/);
 assert.match(nested, /!important/);
 assert.match(nested, /#abc/);
 assert.equal(compactCSS(nested), nested);
+// Selector nesting paths preserve specificity; recording conditions separately
+// proves that moving a declaration-free root across @media changes neither.
+function cascadeStream(code) {
+  const result = [];
+  function visit(node, selectors = [], conditions = []) {
+    if (node.type === 'Rule') selectors = selectors.concat(css.generate(node.prelude));
+    if (node.type === 'Atrule') conditions = conditions.concat(node.name + ':' + (node.prelude ? css.generate(node.prelude) : ''));
+    if (node.type === 'Declaration') result.push([selectors, conditions, css.generate(node)]);
+    if (node.children) node.children.forEach(child => visit(child, selectors, conditions));
+    if (node.block) visit(node.block, selectors, conditions);
+  }
+  visit(css.parse(code));
+  return result;
+}
+const grouped = '.a{& .x{color:red}}@media(width>900px){.a{& .y,& .z{color:blue}}}.a{& .x{color:green}}';
+assert.equal(groupAdjacentMedia(grouped), '.a{& .x{color:red}@media(width>900px){& .y,& .z{color:blue}}& .x{color:green}}');
+assert.deepEqual(cascadeStream(groupAdjacentMedia(grouped)), cascadeStream(grouped));
+assert.equal(groupAdjacentMedia(groupAdjacentMedia(grouped)), groupAdjacentMedia(grouped));
+for (const source of [
+  '.a{color:red}@media(width>900px){.a{& .x{color:blue}}}',
+  '.a,.b{& .x{color:red}}@media(width>900px){.a,.b{& .y{color:blue}}}',
+  '.a{& .x{color:red}}@media(width>900px){.a{& .y{color:blue}}.b{color:red}}',
+  '.a{& .x{color:red}}@supports(display:grid){.a{& .y{color:blue}}}',
+  '.a{& .x{color:red}}.b{& .y{color:blue}}',
+  '.a{& .x{color:red}}/*! keep position */.a{& .y{color:blue}}',
+  '.a{& .x{color:red}}@media(width>900px){/*! keep media position */.a{& .y{color:blue}}}',
+  '.a{& .x{color:red}}@media(width>900px){.a{& .y{color:blue}}/*! keep trailing position */}',
+  '.a{& .x{color:red}}@media(width>900px){.a/*! keep root header */{& .y{color:blue}}}'
+]) assert.equal(groupAdjacentMedia(source), source, 'unsafe or nonadjacent root structures stay exact');
+assert.throws(() => groupAdjacentMedia('.a{.x{color:red}}'), /Identifier is expected/,
+  'unsupported implicit nesting fails closed');
+module.exports = { cascadeStream };
 console.log('PASS: CSS printing preserves exact selectors/conditions/values, nesting, priority and protected notes');

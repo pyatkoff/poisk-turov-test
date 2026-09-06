@@ -40,7 +40,7 @@ body.search3-candidate{
 & #selectedTour{grid-template-columns:380px minmax(0,1fr)!important;row-gap:0!important}
 
  & #selectedTour .selected-head h2{line-height:1.06!important}
- & #selectedTour .selected-head p{font-size:10px!important;line-height:1.35!important}
+
  & #selectedTour .selected-price{min-width:160px!important;}
 
 }

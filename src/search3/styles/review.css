@@ -33,13 +33,13 @@ body.search3-candidate{
 & .search3-booking-summary__image {height:148px!important;border-radius:10px!important}
 & .search3-booking-summary__hotel {font-size:17px!important;line-height:1.15!important}
 & .search3-booking-summary dl>div {grid-template-columns:92px minmax(0,1fr)!important;padding:8px 0!important}
-& .search3-booking-summary dt {font-size:9px!important}
-& .search3-booking-summary dd {font-size:10px!important}
+
+
 & .search3-booking-summary__total {margin-top:14px!important;padding-top:14px!important}
 & .search3-booking-summary__total span {font-size:10px!important}
 & .search3-booking-summary__total strong {font-size:23px!important}
-& .search3-booking-summary__price-note {font-size:8px!important;line-height:1.4!important}
-& .lead-form button[type=submit] {min-height:48px!important;background:#ff5a0a!important;border-color:#ff5a0a!important;border-radius:10px!important}
+
+& .lead-form button[type=submit] {background:#ff5a0a!important;border-color:#ff5a0a!important;border-radius:10px!important}
 }
 & #selectedTour.search3-final-review {
 & .lead-form.search3-has-summary-submit:not([data-search3-lead-state])>button[type=submit] {display:none!important}

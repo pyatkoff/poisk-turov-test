@@ -50,7 +50,7 @@ body.search3-candidate{
 & .selected-head h2 {font-size:18px!important}
 & .facts {border-radius:0 0 10px 10px!important}
 & :is(.hotel-desc,.tour-flights,.lead-form) {padding:10px!important;border-radius:10px!important}
-& .lead-form button[type=submit] {min-height:46px!important;background:#ff4f0a!important}
+& .lead-form button[type=submit] {background:#ff4f0a!important}
 }
 & .search3-lead-status{grid-template-columns:1fr;gap:10px;padding:4px 0}
 & .search3-lead-status__icon{width:44px;height:44px;font-size:21px}

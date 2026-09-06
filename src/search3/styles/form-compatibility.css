@@ -7,7 +7,7 @@ body.search3-candidate{
 & .search3-page-intro h1{font-size:28px!important;line-height:1.08!important;margin-bottom:5px!important;letter-spacing:-.45px!important}
 & .search3-page-intro p{font-size:11px!important;line-height:1.35!important;color:#344054!important;font-weight:500!important}
 & #tourSearch{margin-top:12px!important;margin-bottom:14px!important;padding:16px 17px 15px!important;border-radius:12px!important;box-shadow:0 4px 14px rgba(16,24,40,.035)!important}
-& #tourSearch .search3-primary-grid{grid-template-columns:minmax(0,1.08fr) minmax(0,1.08fr) minmax(0,1.28fr) minmax(0,.72fr) minmax(0,.95fr) 150px!important;gap:12px!important;align-items:end!important}
+& #tourSearch .search3-primary-grid{grid-template-columns:minmax(0,1.08fr) minmax(0,1.08fr) minmax(0,1.28fr) minmax(0,.72fr) minmax(0,.95fr) 150px!important;}
 & #tourSearch .field>span{margin-bottom:6px!important;color:#667085!important;font-size:9px!important;line-height:1!important;font-weight:650!important}
 & #tourSearch select,
 & #tourSearch :is(input[type=date],input[type=number],input[type=text]),
