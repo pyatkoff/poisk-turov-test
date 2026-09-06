@@ -7,7 +7,7 @@ body.search3-candidate .results-layout>.results,body.search3-candidate #results{
 body.search3-candidate #results .hotel-card{display:block!important;width:100%!important;min-width:0!important;max-width:none!important;align-self:stretch!important}
 body.search3-candidate #results .hotel-main{width:100%!important;min-width:0!important;max-width:none!important}
 /* Keep the native hidden contract authoritative before results exist. Search3 presentation rules must not resurrect empty controls/rails. */
-body.search3-candidate .results-search-summary[hidden],body.search3-candidate .results-tools--ds2[hidden]{display:none!important}
+body.search3-candidate :is(.results-search-summary[hidden],.results-tools--ds2[hidden]){display:none!important}
 body.search3-candidate:not(.search3-has-results) .results-layout{display:none!important}
 /* Results remain one coherent page flow. Match the shared DS2 result-state selector specificity so its two-column search shell cannot leak into Search3. */
 body.search3-candidate:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) .v2-shell{display:block!important}
@@ -33,6 +33,3 @@ body.search3-candidate #results .hotel-card:has(.search3-show-tours[aria-expande
 /* Search 3 owns the mobile filter toolbar/drawer; suppress the older DS2 mobile filter UI in preview only. */
 body.search3-candidate :is(.mrf-bar,.mrf-sheet){display:none!important}
 @media(max-width:999px){body.search3-candidate .results-layout{width:100%!important;margin:0 0 48px!important}}
-@media(max-width:760px){body.search3-candidate.search3-hotel-tours-open .v2-shell{border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important;padding-bottom:0!important}body.search3-candidate.search3-hotel-tours-open .v2-shell::before,body.search3-candidate.search3-hotel-tours-open .v2-shell::after,body.search3-candidate.search3-hotel-tours-open .results-layout::before,body.search3-candidate.search3-hotel-tours-open .results-layout::after,body.search3-candidate.search3-hotel-tours-open #results::before,body.search3-candidate.search3-hotel-tours-open #results::after{content:none!important;display:none!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}body.search3-candidate.search3-hotel-tours-open .results-layout{display:block!important;margin:0 0 20px!important;padding:0!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}body.search3-candidate.search3-hotel-tours-open #results{padding:0!important;border:0!important;outline:0!important;box-shadow:none!important;background:transparent!important}
-
-}

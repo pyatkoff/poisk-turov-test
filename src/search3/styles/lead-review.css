@@ -4,8 +4,8 @@
 /* Search3 final contact block / lifecycle polish. Visual only. */
 body.search3-candidate #selectedTour .lead-form{position:relative;overflow:hidden}
 body.search3-candidate #selectedTour .lead-form .lead-fields label,body.search3-candidate #selectedTour .lead-form>label{display:grid;gap:6px;color:var(--at-ink);font:850 9px/1.2 var(--at-font)}
-body.search3-candidate #selectedTour .lead-form input,body.search3-candidate #selectedTour .lead-form textarea{width:100%;border:1px solid var(--at-line);background:#fff;color:var(--at-ink);font:750 11px/1.35 var(--at-font);transition:border-color .15s ease,box-shadow .15s ease}
-body.search3-candidate #selectedTour .lead-form input:focus,body.search3-candidate #selectedTour .lead-form textarea:focus{outline:0;border-color:var(--at-brand);box-shadow:0 0 0 3px rgba(7,92,255,.08)}
+body.search3-candidate #selectedTour .lead-form :is(input,textarea){width:100%;border:1px solid var(--at-line);background:#fff;color:var(--at-ink);font:750 11px/1.35 var(--at-font);transition:border-color .15s ease,box-shadow .15s ease}
+body.search3-candidate #selectedTour .lead-form :is(input:focus,textarea:focus){outline:0;border-color:var(--at-brand);box-shadow:0 0 0 3px rgba(7,92,255,.08)}
 body.search3-candidate #selectedTour .lead-consent{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important;margin-top:10px;color:var(--at-muted)!important;font-size:8px!important;line-height:1.4!important}
 body.search3-candidate #selectedTour .lead-consent input{flex:0 0 15px;width:15px!important;height:15px!important;margin:1px 0 0;accent-color:var(--at-brand)}
 body.search3-candidate #selectedTour .lead-message{min-height:16px;margin:8px 0 0;color:var(--at-muted);font:700 8px/1.35 var(--at-font)}

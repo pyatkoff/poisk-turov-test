@@ -41,7 +41,6 @@ body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!importa
 }
 
 /* Mobile initial search: primary fields first, advanced controls on demand. */
-.search3-advanced-toggle{display:none}
 @media(max-width:760px){
  body.search3-candidate .search3-page-intro{margin:10px auto 6px!important}
  body.search3-candidate .search3-page-intro h1{font-size:22px!important;margin-top:4px!important}
@@ -50,18 +49,12 @@ body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!importa
  body.search3-candidate #tourSearch .search3-primary-grid{gap:7px!important}
  body.search3-candidate #tourSearch .field>span{margin-bottom:4px!important;}
  body.search3-candidate #tourSearch select,
-body.search3-candidate #tourSearch input[type=date],
-body.search3-candidate #tourSearch input[type=number],
-body.search3-candidate #tourSearch input[type=text],
+body.search3-candidate #tourSearch :is(input[type=date],input[type=number],input[type=text]),
 body.search3-candidate :is(.search3-tourists__summary,.search3-composite__control){min-height:38px!important}
  body.search3-candidate #tourSearch .search3-primary-grid>.search-submit{margin-top:2px!important}
  body.search3-candidate .search3-quality{display:none!important;margin-top:8px!important}
- body.search3-candidate #tourSearch.search3-advanced-open .search3-quality{display:block!important}
- body.search3-candidate .search3-advanced-toggle{display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;margin:9px 0 0!important;padding:0 10px!important;border:1px solid #dce4ef!important;border-radius:9px!important;background:#f8fafc!important;color:#344054!important;font:850 9px/1 var(--at-font)!important}
- body.search3-candidate .search3-advanced-toggle b{font-size:16px!important;color:#2463eb!important}
  body.search3-candidate .search3-quick{gap:8px!important}
  body.search3-candidate #tourSearch:not(.search3-advanced-open) .search3-quick .search3-quick__label:not(.search3-quick__label--static){display:none!important}
- body.search3-candidate #tourSearch.search3-advanced-open .search3-quick .search3-quick__label{display:inline-flex!important}
  body.search3-candidate #tourSearch:not(.search3-advanced-open) .search3-quick{display:flex!important}
  body.search3-candidate #tourSearch:not(.search3-advanced-open) .search3-quick__label--static{width:auto!important}
 
@@ -76,10 +69,7 @@ body.search3-candidate :is(.search3-tourists__summary,.search3-composite__contro
 
  /* Mobile tour chooser keeps hotel context and feels connected to the result card. */
 
- body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-body{padding:10px!important}
 
- body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-tours{padding-top:10px!important}
- body.search3-candidate.search3-hotel-tours-open #results .tour-row{padding:10px!important;border-radius:10px!important}
 
  /* Selected mobile: sticky CTA is the primary action; avoid duplicate primary button. */
  body.search3-candidate #selectedTour .selected-picture{height:160px!important}

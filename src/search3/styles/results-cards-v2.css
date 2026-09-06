@@ -37,19 +37,13 @@ html body.search3-candidate.search3-results-active.search3-has-results:not(.sear
 
 html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
   #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
-  #results .hotel-card .search3-hotel-facts small,
-html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
-  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
-  #results .hotel-card .search3-hotel-facts b,
+  #results .hotel-card .search3-hotel-facts :is(small,b),
 html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
   #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
   #results .hotel-card .hotel-price-context span,
 html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
   #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
-  #results .hotel-card .search3-hotel-action__copy strong,
-html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open)
-  #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout
-  #results .hotel-card .search3-hotel-action__copy span {
+  #results .hotel-card .search3-hotel-action__copy :is(strong,span){
   min-width:0!important;
   overflow:visible!important;
   text-overflow:clip!important;

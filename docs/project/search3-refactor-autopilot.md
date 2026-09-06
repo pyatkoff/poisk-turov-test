@@ -10,7 +10,34 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
-### Current published checkpoint — 2026-09-06
+### Current continuation — retired states and shared labels
+
+Prepared from `c4641c8dc8dd6f87cc6301a1f24e7ba1baba7a52`: 136 CSS rules
+requiring retired positive classes and two empty media containers removed
+(21,788 bytes). No current v2 JS/PHP produces those classes. Negative conditions
+remain. Another 35 equal-specificity compound selector groups remove 2,566 bytes;
+the retained ordered selector/declaration/media stream is unchanged after expansion.
+Audit: `docs/project/search3-css-owner-retirement.json`.
+
+Pure presentation labels moved from `results-presentation.js` into
+`presentation-labels.js`; selected-tour plural logic reuses the helper and its
+unused text helper is removed. The main results owner shrank from 17,602 to
+14,504 bytes; the formatter is 3,470 bytes. Net JS reduction is 105 bytes, with
+no new scheduler, listener or observer. Differential comparison covers 537 cases
+and preserves the original public formatting API and bundle idempotency.
+
+Prepared assets: CSS 311,920 bytes / 3,656 lines; JS 144,058 / 1,925;
+total **455,978 bytes / 5,581 lines**, a reduction of 24,459 bytes / 216 lines
+from the previous checkpoint. Source/import and existing presentation checks
+pass locally. Existing CI and responsive inspection are pending; this prepared
+code is not yet published. The verified publication below remains the live version.
+
+Next: finish PR CI and visual inspection, integrate into release only, then
+publish the exact checked artifact through the separately authorized preview
+process. Do not repeat these cleanup/extraction steps or prior completed work.
+Main, production and protected contracts remain locked.
+
+### Previous published checkpoint — 2026-09-06
 
 Exact runtime code: `26988e62eb674f8165d380de71e3be3d8feb19c3`.
 Release integration: `0fabb1eca248b0f6b48ffe750cc73eaf93f52956`.

@@ -13,14 +13,6 @@ body.search3-candidate #tourSearch .search3-nights .search3-composite__dash{
   width:12px!important;
   text-align:center!important;
 }
-body.search3-candidate #tourSearch .search3-nights .search3-night-proxy{
-  width:100%!important;
-  max-width:none!important;
-  min-width:0!important;
-  padding:0 2px!important;
-  text-align:center!important;
-  box-sizing:border-box!important;
-}
 body.search3-candidate #results .hotel-card{padding:0!important}
 body.search3-candidate #results :is(.hotel-main,.hotel-photo,.hotel-body){margin:0!important}
 .search3-mobile-search-entry{display:none}
@@ -175,8 +167,6 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
  html body.search3-candidate.search3-has-results #results .hotel-title{font-size:14px!important}
  html body.search3-candidate.search3-has-results #results .hotel-bottom{padding-left:12px!important}
  html body.search3-candidate.search3-has-results #results .hotel-price{font-size:18px!important}
- html body.search3-candidate.search3-has-results #results .search3-hotel-highlight--room{display:none!important}
- html body.search3-candidate.search3-has-results #results .search3-hotel-highlight b{max-width:92px!important}
  html body.search3-candidate.search3-has-results #results .search3-hotel-action{grid-template-columns:minmax(0,1fr) 150px!important;gap:12px!important}
 }
 
@@ -192,38 +182,6 @@ html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best
   html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-body{
     padding:10px 14px 9px!important;
     row-gap:0!important;
-  }
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlights{
-    align-items:center!important;
-    gap:6px!important;
-    min-height:24px!important;
-    margin-top:5px!important;
-  }
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results :is(.search3-hotel-highlight--room,.search3-hotel-highlight--operator,.search3-hotel-highlight--flight){
-    display:none!important;
-  }
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results :is(.search3-hotel-highlight--rating,.search3-hotel-highlight--sea){
-    display:inline-flex!important;
-    align-items:center!important;
-    gap:4px!important;
-    width:auto!important;
-    min-height:22px!important;
-    padding:3px 7px!important;
-    border:0!important;
-    border-radius:6px!important;
-    background:#eaf8ef!important;
-  }
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--rating small,
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--rating b,
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--sea small,
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-highlight--sea b{
-    display:inline!important;
-    max-width:none!important;
-    margin:0!important;
-    color:#18794e!important;
-    font-size:9px!important;
-    line-height:1.15!important;
-    white-space:nowrap!important;
   }
   html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .search3-hotel-facts{
     margin-top:5px!important;

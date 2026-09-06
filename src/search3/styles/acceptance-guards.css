@@ -1,8 +1,7 @@
 
 /* Candidate alignment guard: the mobile shell already contributes 12px per side. */
 @media(max-width:760px){
-  html body.search3-candidate.search3-results-active #resultsSearchSummary,
-html body.search3-candidate.search3-results-active #resultsTools,
+  html body.search3-candidate.search3-results-active :is(#resultsSearchSummary,#resultsTools),
 html body.search3-candidate.search3-results-active :is(.search3-mobile-toolbar,.results-layout){
     box-sizing:border-box!important;
     width:calc(100% - 24px)!important;
@@ -121,8 +120,7 @@ body.search3-candidate.search3-selected-open .ds2-site-footer{display:none!impor
 /* Keep results mounted for Back, but remove them from layout and focus order
    throughout flight, review and lead stages. selectedTour is a sibling. */
 html body.search3-candidate.search3-results-active.search3-selected-open .v2-shell > .results-layout,
-html body.search3-candidate.search3-results-active.search3-selected-open .v2-shell > #resultsSearchSummary,
-html body.search3-candidate.search3-results-active.search3-selected-open .v2-shell > #resultsTools{display:none!important}
+html body.search3-candidate.search3-results-active.search3-selected-open .v2-shell > :is(#resultsSearchSummary,#resultsTools){display:none!important}
 
 /* Candidate readability guard: hotel imagery and decision text must remain useful,
    especially on phones. The price context contains only the party; date, nights,
@@ -147,8 +145,7 @@ html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-fin
 @media(min-width:1000px){
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail dt{font-size:11px!important}
   html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail dd{font-size:13px!important}
-  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail__price span,
-  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail__price small{font-size:11px!important}
+  html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail__price :is(span,small){font-size:11px!important}
 }
 
 @media(max-width:760px){

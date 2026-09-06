@@ -12,6 +12,9 @@
   var sort = document.getElementById('sortResults');
   if (!body || !body.classList.contains('search3-candidate') || !results || !tools) return;
 
+  var labels = window.Search3CandidateLabelsV1;
+  if (!labels) return;
+
   var hotelsById = new Map();
   var mobileToolbarTimer = null;
 
@@ -21,14 +24,6 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
-  }
-
-  function textValue(value) {
-    if (value == null) return '';
-    if (typeof value === 'object') {
-      return textValue(value.russianName || value.fullRussianName || value.name || value.title || '');
-    }
-    return String(value).trim();
   }
 
   function hotelId(hotel) {
@@ -46,99 +41,23 @@
   }
 
   function tourWord(count) {
-    var n = Math.abs(Number(count) || 0);
-    var mod10 = n % 10;
-    var mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return 'тур';
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'тура';
-    return 'туров';
-  }
-
-  function plural(count, one, few, many) {
-    var n = Math.abs(Number(count) || 0);
-    var mod10 = n % 10;
-    var mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return one;
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
-    return many;
-  }
-
-  function formatTourDate(value) {
-    var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').trim());
-    if (!match) return String(value || '').trim();
-    var months = ['янв.', 'февр.', 'марта', 'апр.', 'мая', 'июня', 'июля', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
-    return String(Number(match[3])) + ' ' + months[Number(match[2]) - 1] + ' ' + match[1];
-  }
-
-  function mealLabel(value) {
-    var raw = textValue(value);
-    if (!raw) return '';
-    var key = raw.toUpperCase().replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim();
-    var labels = {
-      'RO': 'Без питания',
-      'ROOM ONLY': 'Без питания',
-      'BB': 'Завтраки',
-      'BREAKFAST': 'Завтраки',
-      'HB': 'Завтрак и ужин',
-      'HALF BOARD': 'Завтрак и ужин',
-      'FB': 'Трёхразовое питание',
-      'FULL BOARD': 'Трёхразовое питание',
-      'AI': 'Всё включено',
-      'ALL INCLUSIVE': 'Всё включено',
-      'UAI': 'Ультра всё включено',
-      'ULTRA ALL INCLUSIVE': 'Ультра всё включено'
-    };
-    return labels[key] || raw;
-  }
-
-  function guestCountLabel(adults, children) {
-    adults = Math.max(1, Number(adults) || 2);
-    children = Math.max(0, Number(children) || 0);
-    var label = adults + ' ' + plural(adults, 'взрослый', 'взрослых', 'взрослых');
-    if (children > 0) label += ' и ' + children + ' ' + plural(children, 'ребёнок', 'ребёнка', 'детей');
-    return label;
-  }
-
-  function roomLabel(value) {
-    var raw = textValue(value);
-    if (!raw) return '';
-    var key = raw.toLowerCase().replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim();
-    var labels = {
-      'standard': 'Стандартный номер',
-      'standard room': 'Стандартный номер',
-      'std': 'Стандартный номер',
-      'std room': 'Стандартный номер',
-      'std room without air conditioner': 'Стандартный номер без кондиционера'
-    };
-    return labels[key] || raw;
-  }
-
-  function placementLabel(value) {
-    var raw = textValue(value);
-    if (!raw) return '';
-    var labels = {
-      'SGL': 'Одноместное',
-      'DBL': 'Двухместное',
-      'TRPL': 'Трёхместное',
-      'QUAD': 'Четырёхместное'
-    };
-    return labels[raw.toUpperCase()] || raw;
+    return labels.plural(count, 'тур', 'тура', 'туров');
   }
 
   function guestLabel() {
     var form = document.getElementById('tourSearch');
     var adults = Number(form && form.elements && form.elements.count_people && form.elements.count_people.value || 2) || 2;
     var children = Number(form && form.elements && form.elements.child_count && form.elements.child_count.value || 0) || 0;
-    return guestCountLabel(adults, children);
+    return labels.partyLabel(adults, children);
   }
 
   function cardFacts(hotel) {
     var tour = representativeTour(hotel);
     if (!tour) return [];
     var facts = [];
-    if (tour.date) facts.push(['Вылет', formatTourDate(tour.date)]);
+    if (tour.date) facts.push(['Вылет', labels.formatDate(tour.date)]);
     if (tour.nights) facts.push(['Ночей', String(tour.nights)]);
-    var meal = mealLabel(tour.meal);
+    var meal = labels.mealLabel(tour.meal);
     if (meal) facts.push(['Питание', meal]);
     if (tour.isCharter === true) facts.push(['Рейс', 'Чартер']);
     return facts.slice(0, 4);
@@ -203,16 +122,16 @@
       row.dataset.search3OfferV2 = '1';
 
       var date = row.querySelector('.tour-meta > strong');
-      if (date) date.textContent = formatTourDate(date.textContent);
+      if (date) date.textContent = labels.formatDate(date.textContent);
 
       row.querySelectorAll('.tour-fact').forEach(function (fact) {
         var label = fact.querySelector('small');
         var value = fact.querySelector('b');
         if (!label || !value) return;
-        var name = textValue(label.textContent).toLowerCase();
-        if (name === 'питание') value.textContent = mealLabel(value.textContent);
-        if (name === 'номер') value.textContent = roomLabel(value.textContent);
-        if (name === 'размещение') value.textContent = placementLabel(value.textContent);
+        var name = labels.textValue(label.textContent).toLowerCase();
+        if (name === 'питание') value.textContent = labels.mealLabel(value.textContent);
+        if (name === 'номер') value.textContent = labels.roomLabel(value.textContent);
+        if (name === 'размещение') value.textContent = labels.placementLabel(value.textContent);
       });
 
       var action = row.querySelector('.tour-action');
@@ -406,11 +325,11 @@
     version: 3,
     status: 'REFERENCE_IMPLEMENTATION_IN_PROGRESS',
     approvedPixelsCompared: false,
-    partyLabel: guestCountLabel,
-    formatDate: formatTourDate,
-    mealLabel: mealLabel,
-    roomLabel: roomLabel,
-    placementLabel: placementLabel,
+    partyLabel: labels.partyLabel,
+    formatDate: labels.formatDate,
+    mealLabel: labels.mealLabel,
+    roomLabel: labels.roomLabel,
+    placementLabel: labels.placementLabel,
     decorate: decorate,
     collapseAll: collapseAll
   });

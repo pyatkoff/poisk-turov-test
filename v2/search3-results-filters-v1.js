@@ -646,30 +646,10 @@ window.addEventListener('v2:flight-selected',e=>{flight=e.detail&&e.detail.fligh
 window.addEventListener('v2:tour-price-updated',e=>{selectedTotal=normalizedTotal(e.detail);setTimeout(render,0)});
 document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-tour-detail-rail__continue');if(!b)return;const root=document.getElementById('selectedTour'),target=root&&root.querySelector('.search3-flight-continue button');if(target)target.click();});
 })();
-
-
-/* Candidate-owned result and responsive safety layer. */
+/* Pure labels shared by result cards and the selected-tour presentation. */
 (function () {
   'use strict';
-
-  if (window.Search3CandidateResultsV1) return;
-
-  var body = document.body;
-  var results = document.getElementById('results');
-  var tools = document.getElementById('resultsTools');
-  var sort = document.getElementById('sortResults');
-  if (!body || !body.classList.contains('search3-candidate') || !results || !tools) return;
-
-  var hotelsById = new Map();
-  var mobileToolbarTimer = null;
-
-  function safe(value) {
-    return String(value == null ? '' : value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
+  if (window.Search3CandidateLabelsV1) return;
 
   function textValue(value) {
     if (value == null) return '';
@@ -677,29 +657,6 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
       return textValue(value.russianName || value.fullRussianName || value.name || value.title || '');
     }
     return String(value).trim();
-  }
-
-  function hotelId(hotel) {
-    return String(hotel && hotel.id != null ? hotel.id : '');
-  }
-
-  function representativeTour(hotel) {
-    var tours = hotel && Array.isArray(hotel.tours) ? hotel.tours : [];
-    if (!tours.length) return null;
-    return tours.slice().sort(function (a, b) {
-      var left = Number(a && a.price || 0) || Number.MAX_SAFE_INTEGER;
-      var right = Number(b && b.price || 0) || Number.MAX_SAFE_INTEGER;
-      return left - right;
-    })[0] || null;
-  }
-
-  function tourWord(count) {
-    var n = Math.abs(Number(count) || 0);
-    var mod10 = n % 10;
-    var mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return 'тур';
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'тура';
-    return 'туров';
   }
 
   function plural(count, one, few, many) {
@@ -773,20 +730,77 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
     return labels[raw.toUpperCase()] || raw;
   }
 
+  window.Search3CandidateLabelsV1 = Object.freeze({
+    textValue: textValue,
+    plural: plural,
+    formatDate: formatTourDate,
+    mealLabel: mealLabel,
+    partyLabel: guestCountLabel,
+    roomLabel: roomLabel,
+    placementLabel: placementLabel
+  });
+})();
+
+
+
+/* Candidate-owned result and responsive safety layer. */
+(function () {
+  'use strict';
+
+  if (window.Search3CandidateResultsV1) return;
+
+  var body = document.body;
+  var results = document.getElementById('results');
+  var tools = document.getElementById('resultsTools');
+  var sort = document.getElementById('sortResults');
+  if (!body || !body.classList.contains('search3-candidate') || !results || !tools) return;
+
+  var labels = window.Search3CandidateLabelsV1;
+  if (!labels) return;
+
+  var hotelsById = new Map();
+  var mobileToolbarTimer = null;
+
+  function safe(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function hotelId(hotel) {
+    return String(hotel && hotel.id != null ? hotel.id : '');
+  }
+
+  function representativeTour(hotel) {
+    var tours = hotel && Array.isArray(hotel.tours) ? hotel.tours : [];
+    if (!tours.length) return null;
+    return tours.slice().sort(function (a, b) {
+      var left = Number(a && a.price || 0) || Number.MAX_SAFE_INTEGER;
+      var right = Number(b && b.price || 0) || Number.MAX_SAFE_INTEGER;
+      return left - right;
+    })[0] || null;
+  }
+
+  function tourWord(count) {
+    return labels.plural(count, 'тур', 'тура', 'туров');
+  }
+
   function guestLabel() {
     var form = document.getElementById('tourSearch');
     var adults = Number(form && form.elements && form.elements.count_people && form.elements.count_people.value || 2) || 2;
     var children = Number(form && form.elements && form.elements.child_count && form.elements.child_count.value || 0) || 0;
-    return guestCountLabel(adults, children);
+    return labels.partyLabel(adults, children);
   }
 
   function cardFacts(hotel) {
     var tour = representativeTour(hotel);
     if (!tour) return [];
     var facts = [];
-    if (tour.date) facts.push(['Вылет', formatTourDate(tour.date)]);
+    if (tour.date) facts.push(['Вылет', labels.formatDate(tour.date)]);
     if (tour.nights) facts.push(['Ночей', String(tour.nights)]);
-    var meal = mealLabel(tour.meal);
+    var meal = labels.mealLabel(tour.meal);
     if (meal) facts.push(['Питание', meal]);
     if (tour.isCharter === true) facts.push(['Рейс', 'Чартер']);
     return facts.slice(0, 4);
@@ -851,16 +865,16 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
       row.dataset.search3OfferV2 = '1';
 
       var date = row.querySelector('.tour-meta > strong');
-      if (date) date.textContent = formatTourDate(date.textContent);
+      if (date) date.textContent = labels.formatDate(date.textContent);
 
       row.querySelectorAll('.tour-fact').forEach(function (fact) {
         var label = fact.querySelector('small');
         var value = fact.querySelector('b');
         if (!label || !value) return;
-        var name = textValue(label.textContent).toLowerCase();
-        if (name === 'питание') value.textContent = mealLabel(value.textContent);
-        if (name === 'номер') value.textContent = roomLabel(value.textContent);
-        if (name === 'размещение') value.textContent = placementLabel(value.textContent);
+        var name = labels.textValue(label.textContent).toLowerCase();
+        if (name === 'питание') value.textContent = labels.mealLabel(value.textContent);
+        if (name === 'номер') value.textContent = labels.roomLabel(value.textContent);
+        if (name === 'размещение') value.textContent = labels.placementLabel(value.textContent);
       });
 
       var action = row.querySelector('.tour-action');
@@ -1054,11 +1068,11 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
     version: 3,
     status: 'REFERENCE_IMPLEMENTATION_IN_PROGRESS',
     approvedPixelsCompared: false,
-    partyLabel: guestCountLabel,
-    formatDate: formatTourDate,
-    mealLabel: mealLabel,
-    roomLabel: roomLabel,
-    placementLabel: placementLabel,
+    partyLabel: labels.partyLabel,
+    formatDate: labels.formatDate,
+    mealLabel: labels.mealLabel,
+    roomLabel: labels.roomLabel,
+    placementLabel: labels.placementLabel,
     decorate: decorate,
     collapseAll: collapseAll
   });
@@ -1076,21 +1090,6 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
   var tour = null;
   var selectedTotal = 0;
   var queued = false;
-
-  function text(value) {
-    if (value == null) return '';
-    if (typeof value === 'object') return text(value.russianName || value.fullRussianName || value.name || value.title || '');
-    return String(value).trim();
-  }
-
-  function plural(count, one, few, many) {
-    var n = Math.abs(Number(count) || 0);
-    var mod10 = n % 10;
-    var mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return one;
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
-    return many;
-  }
 
   function setText(node, value) {
     value = String(value || '').trim();
@@ -1121,7 +1120,7 @@ document.addEventListener('click',e=>{const b=e.target&&e.target.closest&&e.targ
   function dateWithNights(value) {
     var date = format.formatDate(value && value.date);
     var nights = Number(value && value.nights || 0);
-    var stay = nights ? nights + ' ' + plural(nights, 'ночь', 'ночи', 'ночей') : '';
+    var stay = nights ? nights + ' ' + window.Search3CandidateLabelsV1.plural(nights, 'ночь', 'ночи', 'ночей') : '';
     return [date, stay].filter(Boolean).join(' · ');
   }
 

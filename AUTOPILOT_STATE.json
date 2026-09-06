@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-06T09:35:55.378736+00:00",
+  "updated_at": "2026-09-06T09:54:16.647952+00:00",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -750,50 +750,29 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "684825be56d73700a7c432ff4ea88917e4b9eb9e",
-    "concurrent_release_sha": "684825be56d73700a7c432ff4ea88917e4b9eb9e",
-    "stage": "S3_CSS_JS_SIZE_SPLIT_AND_RETIRED_FOOTER_PUBLISHED",
-    "scope": "Rapid source split and selector reduction plus removal of the inactive Search3 footer replacement, its two private stylesheets and orphan selectors. Canonical shared server footer retained; concurrent price-facet fix preserved.",
-    "source_validation": "23_APPLICABLE_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
-    "verification": "Both size-reduction passes passed existing CI; byte-identical injected styles, 74 equal-specificity selector groups, preserved rule/media/declaration order, and red/green footer ownership regression. Final responsive images inspected; exact preview publication, eight served assets and live desktop journey to the unsubmitted lead form verified. Production and physical Safari acceptance are not claimed; known pre-existing legacy backdrop remains documented.",
+    "baseline": "c4641c8dc8dd6f87cc6301a1f24e7ba1baba7a52",
+    "stage": "S3_RETIRED_PRESENTATION_CSS_AND_LABELS_PREPARED",
+    "scope": "Remove 136 rules requiring retired positive classes and two empty media containers; preserve negative conditions. Group 35 additional equal-specificity compound selector lists. Extract shared pure presentation labels from results; remove duplicate plural and unused selected-tour text helpers.",
+    "source_validation": "LOCAL_SOURCE_PRESENTATION_AND_DIFFERENTIAL_PASS_CI_PENDING",
+    "verification": "Retired classes have no v2 JS/PHP owner. Ordered retained selector/declaration/media stream unchanged after expanding audited groups. Labels differential: 537 cases; original public results API, listener/observer counts and idempotency unchanged. No new scheduling or observer; labels helper is a frozen pure-function namespace.",
     "public_assets": {
-      "css_bytes": 336274,
-      "css_lines": 3871,
-      "js_bytes": 144163,
-      "js_lines": 1926,
-      "total_bytes": 480437,
-      "total_lines": 5797,
+      "css_bytes": 311920,
+      "css_lines": 3656,
+      "js_bytes": 144058,
+      "js_lines": 1925,
+      "total_bytes": 455978,
+      "total_lines": 5581,
       "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
     },
     "run_delta": {
-      "baseline": "684825be56d73700a7c432ff4ea88917e4b9eb9e",
-      "bytes": -43288,
-      "lines": -321,
-      "footer_step_bytes": -20971
+      "bytes": -24459,
+      "lines": -216,
+      "css_bytes": -24354,
+      "js_bytes": -105
     },
-    "preview_updated": true,
+    "preview_updated": false,
     "production_updated": false,
-    "next_action": "Continue the owner-prioritized CSS/JS reduction from the refreshed release head: inspect repeated templates in behavior/results-presentation.js and remaining styles/cascade owners for equivalent consolidation, then batch verified removals. Do not repeat the seven completed CSS splits, static-style extraction, retired footer removal or filter/toolbar fixes. Preserve the eight public paths, cascade and protected contracts; keep main and production locked. Publish preview only through the separately authorized exact-artifact process.",
-    "concurrent_publication_record": "154700eadfb2c326c28e4ccaff4495b04746973b",
-    "implementation_sha": "26988e62eb674f8165d380de71e3be3d8feb19c3",
-    "release_integration_sha": "0fabb1eca248b0f6b48ffe750cc73eaf93f52956",
-    "ci": {
-      "sha": "26988e62eb674f8165d380de71e3be3d8feb19c3",
-      "pr": 1382,
-      "conclusion": "success",
-      "applicable_success": 23,
-      "expected_skipped": 1,
-      "core_run": 34024249265,
-      "visual_run": 34024249262,
-      "flight_run": 34024249322,
-      "artifact_run": 34024249256,
-      "visual_artifact": 9986537178,
-      "visual_digest": "sha256:6074e34be1da4588a7a487d5b7ada719099c2220ebd2d988f4e205317a378e46",
-      "scope": "Source/import/owner guards and existing responsive/flight checks passed. 375px results and 1348px editor images inspected on final code; PHP rendering ran in CI. This is not physical Safari acceptance."
-    },
-    "preview_deploy_run": 34024574911,
-    "preview_deploy_pr": 1384,
-    "verified_at": "2026-09-06T09:35:55.378736+00:00"
+    "next_action": "Finish existing PR CI and inspect responsive images. Integrate release only, then publish and verify the exact artifact through the separately authorized isolated preview process. Do not repeat the completed retired-class cleanup or labels extraction."
   },
   "presentation_refactor_history": [
     {
@@ -1136,6 +1115,52 @@
       "production_updated": false,
       "next_action": "Finish existing CI and responsive inspection, integrate into release only, then publish the exact checked whole-site artifact through the authorized one-shot preview process when its lock is free. Continue from the smaller source owners; do not restore retired footer or repeat these splits.",
       "concurrent_publication_record": "154700eadfb2c326c28e4ccaff4495b04746973b"
+    },
+    {
+      "baseline": "684825be56d73700a7c432ff4ea88917e4b9eb9e",
+      "concurrent_release_sha": "684825be56d73700a7c432ff4ea88917e4b9eb9e",
+      "stage": "S3_CSS_JS_SIZE_SPLIT_AND_RETIRED_FOOTER_PUBLISHED",
+      "scope": "Rapid source split and selector reduction plus removal of the inactive Search3 footer replacement, its two private stylesheets and orphan selectors. Canonical shared server footer retained; concurrent price-facet fix preserved.",
+      "source_validation": "23_APPLICABLE_CI_SUCCESS_1_EXPECTED_SKIP_EXACT_PREVIEW_PUBLISHED",
+      "verification": "Both size-reduction passes passed existing CI; byte-identical injected styles, 74 equal-specificity selector groups, preserved rule/media/declaration order, and red/green footer ownership regression. Final responsive images inspected; exact preview publication, eight served assets and live desktop journey to the unsubmitted lead form verified. Production and physical Safari acceptance are not claimed; known pre-existing legacy backdrop remains documented.",
+      "public_assets": {
+        "css_bytes": 336274,
+        "css_lines": 3871,
+        "js_bytes": 144163,
+        "js_lines": 1926,
+        "total_bytes": 480437,
+        "total_lines": 5797,
+        "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and src duplication."
+      },
+      "run_delta": {
+        "baseline": "684825be56d73700a7c432ff4ea88917e4b9eb9e",
+        "bytes": -43288,
+        "lines": -321,
+        "footer_step_bytes": -20971
+      },
+      "preview_updated": true,
+      "production_updated": false,
+      "next_action": "Continue the owner-prioritized CSS/JS reduction from the refreshed release head: inspect repeated templates in behavior/results-presentation.js and remaining styles/cascade owners for equivalent consolidation, then batch verified removals. Do not repeat the seven completed CSS splits, static-style extraction, retired footer removal or filter/toolbar fixes. Preserve the eight public paths, cascade and protected contracts; keep main and production locked. Publish preview only through the separately authorized exact-artifact process.",
+      "concurrent_publication_record": "154700eadfb2c326c28e4ccaff4495b04746973b",
+      "implementation_sha": "26988e62eb674f8165d380de71e3be3d8feb19c3",
+      "release_integration_sha": "0fabb1eca248b0f6b48ffe750cc73eaf93f52956",
+      "ci": {
+        "sha": "26988e62eb674f8165d380de71e3be3d8feb19c3",
+        "pr": 1382,
+        "conclusion": "success",
+        "applicable_success": 23,
+        "expected_skipped": 1,
+        "core_run": 34024249265,
+        "visual_run": 34024249262,
+        "flight_run": 34024249322,
+        "artifact_run": 34024249256,
+        "visual_artifact": 9986537178,
+        "visual_digest": "sha256:6074e34be1da4588a7a487d5b7ada719099c2220ebd2d988f4e205317a378e46",
+        "scope": "Source/import/owner guards and existing responsive/flight checks passed. 375px results and 1348px editor images inspected on final code; PHP rendering ran in CI. This is not physical Safari acceptance."
+      },
+      "preview_deploy_run": 34024574911,
+      "preview_deploy_pr": 1384,
+      "verified_at": "2026-09-06T09:35:55.378736+00:00"
     }
   ],
   "site_preview_publication_history": [

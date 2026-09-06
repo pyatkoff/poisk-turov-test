@@ -16,7 +16,7 @@ body.search3-candidate.search3-has-results .results-layout{align-items:start!imp
  body.search3-candidate .results-filter-rail .filter-group{margin:0!important;padding:10px 0!important;border-bottom:1px solid #eef1f5!important}
  body.search3-candidate .results-filter-rail .filter-group:first-child{padding-top:0!important}
  body.search3-candidate .results-filter-rail .filter-group:last-child{padding-bottom:0!important;border-bottom:0!important}
- body.search3-candidate .results-filter-rail label,body.search3-candidate .results-filter-rail button,body.search3-candidate .results-filter-rail select,body.search3-candidate .results-filter-rail input{font-size:9px!important}
+ body.search3-candidate .results-filter-rail :is(label,button,select,input){font-size:9px!important}
  body.search3-candidate #results .hotel-card{border-radius:13px!important}
  body.search3-candidate #results .hotel-main{grid-template-columns:224px minmax(0,1fr)!important;}
 
@@ -63,14 +63,7 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
  body.search3-candidate #results .hotel-body{padding:9px!important;grid-template-columns:minmax(0,1fr) 100px!important}
  body.search3-candidate #results .hotel-title{line-height:1.15!important}
 
- body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-main{border-radius:11px!important}
 
- body.search3-candidate.search3-hotel-tours-open .search3-hotel-tabs{margin-top:6px!important}
- body.search3-candidate.search3-hotel-tours-open .search3-hotel-tabs button{min-height:36px!important;font-size:8px!important}
- body.search3-candidate.search3-hotel-tours-open .search3-tour-filters{margin-bottom:7px!important}
- body.search3-candidate.search3-hotel-tours-open .search3-tour-filters button{min-height:30px!important;padding:0 9px!important;font-size:8px!important}
- body.search3-candidate.search3-hotel-tours-open #results .tour-row{gap:7px!important;padding:9px!important}
- body.search3-candidate.search3-hotel-tours-open #results .tour-action>b{text-align:left!important;}
 
 }
 
