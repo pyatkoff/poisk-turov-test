@@ -12,6 +12,7 @@ const count = { textContent: '' };
 const word = { textContent: '' };
 const priceLabel = { textContent: '' };
 const priceInput = { min: '', max: '', step: '', value: '' };
+const priceField = { hidden: false, ariaHidden: '', setAttribute(name, value) { if (name === 'aria-hidden') this.ariaHidden = value; } };
 const seaSection = { hidden: false, ariaHidden: '', setAttribute(name, value) { if (name === 'aria-hidden') this.ariaHidden = value; } };
 const seaInputs = ['0', '200', '500', '1000'].map(value => ({ value, checked: value === '0' }));
 const charterField = { hidden: false, ariaHidden: '', setAttribute(name, value) { if (name === 'aria-hidden') this.ariaHidden = value; } };
@@ -27,6 +28,7 @@ const rail = {
   querySelector(selector) {
     return {'[data-s3-count]': count, '[data-s3-word]': word,
       '[data-s3-price-label]': priceLabel, '[data-s3-price]': priceInput,
+      '[data-s3-price-field]': priceField,
       '[data-s3-sea-section]': seaSection, '[data-s3-charter-field]': charterField,
       '[data-s3-charter-check]': charterInput}[selector] || null;
   },
@@ -58,9 +60,11 @@ const hotels = [
 ];
 assert.equal(announcements.length, 1, 'initial empty rail announces once');
 assert.equal(railHtmlWrites, 1, 'initial rail is rendered once');
+assert.equal(priceField.hidden, true, 'the price facet starts hidden without complete result data');
 assert.equal(seaSection.hidden, true, 'the sea facet starts hidden without complete result data');
 assert.equal(charterField.hidden, true, 'the charter facet starts hidden without complete result data');
 windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+assert.equal(priceField.hidden, false, 'complete price data reveals the facet');
 assert.equal(seaSection.hidden, false, 'complete sea-distance data reveals the facet');
 assert.equal(charterField.hidden, false, 'complete charter data reveals the facet');
 assert.equal(announcements.length, 2, 'new source render announces once, not twice');
@@ -262,6 +266,19 @@ assert.equal(charterInput.checked, false, 'hiding the incomplete charter facet c
 assert.equal(rail.dataset.s3ActiveCount, '0', 'the hidden incomplete charter facet is not counted as active');
 assert.equal(form.elements.onlyCharter.checked, true,
   'hiding a local facet does not silently rewrite the primary search constraint');
+
+form.elements.onlyCharter.checked = false;
+windowEvents.get('v2:search-reset')();
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+input(100000);
+while (frames.length) frames.shift()();
+assert.equal(rail.dataset.s3ActiveCount, '1', 'the complete price facet can be active');
+const incompletePriceHotels = [
+  { seaDistance: 400, tours: [{ price: 90000, isCharter: false }, { isCharter: false }] }
+];
+windowEvents.get('v2:results-rendered')({ detail: { items: incompletePriceHotels } });
+assert.equal(priceField.hidden, true, 'a partial progressive source hides the incomplete price facet');
+assert.equal(rail.dataset.s3ActiveCount, '0', 'the hidden incomplete price facet is not counted as active');
 
 windowEvents.get('v2:search-reset')();
 const hotelWithoutTours = { seaDistance: 300, price: 135000 };
