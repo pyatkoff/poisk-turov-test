@@ -24,6 +24,10 @@ class Search3ProductionPresentationTest(unittest.TestCase):
     def test_filter_rail_ownership(self):
         subprocess.run(['node', str(ROOT / 'tests' / 'search3-filter-rail-ownership.cjs')], check=True)
 
+    @unittest.skipUnless(shutil.which('node'), 'Node required for price input regression')
+    def test_filter_rail_price_input(self):
+        subprocess.run(['node', str(ROOT / 'tests' / 'search3-filter-rail-price-input.cjs')], check=True)
+
     def test_cascade_compatibility_section_contract(self):
         subprocess.run([
             'python3',
