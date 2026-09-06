@@ -656,33 +656,32 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "5cd00f0d3795822803b19c0464d1d3134b996440",
-    "previous_checkpoint": "623b5c17b9fef927c8e95fb6a42333a905e9b584",
-    "stage": "S3_RETIRED_TOOLBAR_CSS",
-    "scope": "Removed only retired mobile action/filter/sort/chip selectors in four existing CSS sources. Actual toolbar shell, mrf bar/sheet and sort owner retained. All seven other public assets and protected runtime unchanged.",
+    "baseline": "f3804f9e64b49751994fa99f0b6a11e1a13ae4c6",
+    "previous_checkpoint": "5cd00f0d3795822803b19c0464d1d3134b996440",
+    "stage": "S3_TOOLBAR_LOCAL_QUEUE",
+    "scope": "One local zero-delay task for progressive-results and compact-breakpoint toolbar mounts, cancelled on reset or empty results. Timer ID zero, late mrf initialization, stable DOM and two-way native/proxy sort handoff covered. No new observer/global scheduler or filtering/search/price/lead contract change.",
     "evidence": [
+      "tests/search3-mobile-toolbar-scheduler.cjs",
       "tests/search3-mobile-toolbar-ownership.cjs",
       "tests/search3-card-readability-browser.cjs"
     ],
-    "source_validation": "FOCUSED_CHECKS_VERIFIED_STANDARD_PR_CI_PENDING",
+    "source_validation": "FOCUSED_AND_RESPONSIVE_CHECKS_VERIFIED_STANDARD_PR_CI_PENDING",
     "ci": {
-      "preparation_run": 34020738803,
-      "responsive_run": 34020927641,
-      "responsive_artifact": 9985463914,
-      "responsive_digest": "sha256:be717b7222608465fb676e192d7c1dbc72c42196b0e2b1a857a3b889003956f9"
+      "preparation_and_responsive_run": 34021394081,
+      "baseline_reproduction": "20 result/breakpoint pairs: 40 pending tasks before, 1 after"
     },
     "public_assets": {
       "css_bytes": 362944,
       "css_lines": 4170,
-      "js_bytes": 158758,
-      "js_lines": 1921,
-      "total_bytes": 521702,
-      "total_lines": 6091,
+      "js_bytes": 159291,
+      "js_lines": 1937,
+      "total_bytes": 522235,
+      "total_lines": 6107,
       "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and does not double-count src/v2."
     },
     "preview_updated": false,
     "production_updated": false,
-    "next_action": "Run standard PR CI and integrate into release only; continue the separately reproduced duplicate toolbar-task scheduler step. Never merge main or deploy as a side effect."
+    "next_action": "Review and integrate CSS then scheduler PR into release only after applicable CI. Inspect fresh responsive evidence, update #996/#1334, and audit the remaining toolbar visibility across desktop resize before changing another owner. No main merge/deploy."
   },
   "presentation_refactor_history": [
     {
@@ -717,6 +716,35 @@
       "preview_updated": false,
       "production_updated": false,
       "next_action": "Read the latest release head, #996 and #1334 before proving a new independent filter-state or CSS ownership issue. Do not repeat the completed lifecycle, Search3-vs-legacy price ownership, incomplete sea-facet guard, price-frame, fresh-source reapplication/cancellation, mounted-control or temporary-bound selection preservation, single-announcement paired reset, no-tour price simplification, charter-form synchronization, empty-source announcement, zero-match source preservation, sort/same-reference suppression, render-mode removal or orphan-cascade work. Production visual-approval lock remains."
+    },
+    {
+      "baseline": "5cd00f0d3795822803b19c0464d1d3134b996440",
+      "previous_checkpoint": "623b5c17b9fef927c8e95fb6a42333a905e9b584",
+      "stage": "S3_RETIRED_TOOLBAR_CSS",
+      "scope": "Removed only retired mobile action/filter/sort/chip selectors in four existing CSS sources. Actual toolbar shell, mrf bar/sheet and sort owner retained. All seven other public assets and protected runtime unchanged.",
+      "evidence": [
+        "tests/search3-mobile-toolbar-ownership.cjs",
+        "tests/search3-card-readability-browser.cjs"
+      ],
+      "source_validation": "FOCUSED_CHECKS_VERIFIED_STANDARD_PR_CI_PENDING",
+      "ci": {
+        "preparation_run": 34020738803,
+        "responsive_run": 34020927641,
+        "responsive_artifact": 9985463914,
+        "responsive_digest": "sha256:be717b7222608465fb676e192d7c1dbc72c42196b0e2b1a857a3b889003956f9"
+      },
+      "public_assets": {
+        "css_bytes": 362944,
+        "css_lines": 4170,
+        "js_bytes": 158758,
+        "js_lines": 1921,
+        "total_bytes": 521702,
+        "total_lines": 6091,
+        "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and does not double-count src/v2."
+      },
+      "preview_updated": false,
+      "production_updated": false,
+      "next_action": "Run standard PR CI and integrate into release only; continue the separately reproduced duplicate toolbar-task scheduler step. Never merge main or deploy as a side effect."
     }
   ]
 }
