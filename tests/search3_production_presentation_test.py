@@ -93,7 +93,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
                 mutations = (
                     ('lost seam newline', original[:-1], 'byte count changed'),
                     ('CRLF conversion', original.replace(b'\n', b'\r\n'), 'byte count changed'),
-                    ('same-length CSS corruption', original.replace(b'!important', b'!importanx', 1), 'blob changed'),
+                    # Retired sections may contain provenance comments only.
+                    # Replacing the final newline changes bytes without changing length.
+                    ('same-length source corruption', original[:-1] + b' ', 'blob changed'),
                 )
                 for name, changed, message in mutations:
                     with self.subTest(name=name):
