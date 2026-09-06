@@ -1,0 +1,48 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const root = path.join(__dirname, '..');
+const retired = [
+  'search3-mobile-actions',
+  'search3-mobile-filter-button',
+  'search3-mobile-sort-button',
+  'search3-active-chips',
+  'search3-chip'
+];
+
+function files(dir, extension) {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    return entry.isDirectory() ? files(full, extension) : (entry.isFile() && entry.name.endsWith(extension) ? [full] : []);
+  });
+}
+
+function hits(fileList) {
+  return fileList.flatMap((file) => {
+    const source = fs.readFileSync(file, 'utf8');
+    return retired.filter((marker) => source.includes(marker)).map((marker) => `${path.relative(root, file)}:${marker}`);
+  });
+}
+
+const presentation = fs.readFileSync(path.join(root, 'src/search3/behavior/results-presentation.js'), 'utf8');
+const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');
+
+assert.ok(presentation.includes("toolbar.className = 'search3-mobile-toolbar'"), 'Search3 presentation owns the mobile toolbar shell');
+assert.ok(presentation.includes('search3-mobile-filter-slot'), 'Search3 presentation owns the mobile filter slot');
+assert.ok(presentation.includes('search3-mobile-sort'), 'Search3 presentation owns the mobile sort control');
+assert.ok(presentation.includes("document.querySelector('.mrf-bar')"), 'Search3 presentation mounts the canonical mrf filter bar');
+assert.ok(mobile.includes("sheet.className='mrf-sheet'"), 'base mobile results filter sheet remains canonical');
+assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('), 'canonical mobile filter lifecycle remains intact');
+
+const runtimeHits = hits([
+  ...files(path.join(root, 'src/search3/behavior'), '.js'),
+  ...files(path.join(root, 'v2'), '.js')
+]);
+assert.deepEqual(runtimeHits, [], `retired mobile-toolbar classes have no runtime producer: ${runtimeHits.join(', ')}`);
+
+const cssHits = hits(files(path.join(root, 'src/search3/styles'), '.css'));
+assert.deepEqual(cssHits, [], `retired mobile-toolbar CSS must be absent: ${cssHits.join(', ')}`);
+
+console.log('PASS: canonical Search3 mobile toolbar owner only; retired action/chip selectors absent');
