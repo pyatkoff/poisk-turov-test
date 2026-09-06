@@ -77,10 +77,6 @@ body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!importa
  body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-tours{padding-top:10px!important}
  body.search3-candidate.search3-hotel-tours-open #results .tour-row{padding:10px!important;border-radius:10px!important}
 
- /* Filter drawer density. */
- body.search3-candidate.search3-filter-open .results-filter-rail{padding-top:12px!important;padding-bottom:12px!important}
- body.search3-candidate .results-filter-rail .filter-group{margin-bottom:12px!important}
-
  /* Selected mobile: sticky CTA is the primary action; avoid duplicate primary button. */
  body.search3-candidate #selectedTour .selected-picture{height:160px!important}
  body.search3-candidate #selectedTour .selected-head{padding:10px!important}

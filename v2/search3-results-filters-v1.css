@@ -514,10 +514,6 @@ body.search3-candidate #selectedTour .section-heading{margin-bottom:10px!importa
  body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-tours{padding-top:10px!important}
  body.search3-candidate.search3-hotel-tours-open #results .tour-row{padding:10px!important;border-radius:10px!important}
 
- /* Filter drawer density. */
- body.search3-candidate.search3-filter-open .results-filter-rail{padding-top:12px!important;padding-bottom:12px!important}
- body.search3-candidate .results-filter-rail .filter-group{margin-bottom:12px!important}
-
  /* Selected mobile: sticky CTA is the primary action; avoid duplicate primary button. */
  body.search3-candidate #selectedTour .selected-picture{height:160px!important}
  body.search3-candidate #selectedTour .selected-head{padding:10px!important}
@@ -626,16 +622,6 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
 
 }
 
-/* Mobile filter drawer: stronger modal separation and tighter scan. */
-@media(max-width:999px){
- body.search3-candidate .results-filter-rail{padding:14px 14px 82px!important;background:#fff!important;box-shadow:-18px 0 44px rgba(15,27,61,.22)!important}
- body.search3-candidate .results-filter-rail .filter-group{margin:0!important;padding:10px 0!important;border-bottom:1px solid #eef1f5!important}
- body.search3-candidate .results-filter-rail .filter-group:last-child{border-bottom:0!important}
- body.search3-candidate .search3-filter-overlay__backdrop{background:rgba(15,27,61,.58)!important;backdrop-filter:blur(2px)!important}
- body.search3-candidate .search3-filter-mobile-footer{padding:9px 12px max(9px,env(safe-area-inset-bottom))!important}
- body.search3-candidate .search3-filter-mobile-apply{min-height:44px!important;border-radius:10px!important;font-size:11px!important}
-}
-
 /* Mobile selected: one CTA, compact hotel summary, reduced footer dominance. */
 @media(max-width:640px){
  body.search3-candidate #selectedTour{margin-bottom:22px!important}
@@ -714,12 +700,7 @@ body.search3-candidate #selectedTour .lead-form{margin-top:10px!important}
 
 }
 
-/* Drawer and selected tour: reduce visual competition with the main action. */
-@media(max-width:999px){
- body.search3-candidate .filter-rail-head{position:sticky!important;top:-14px!important;z-index:2!important;margin:0 -14px 4px!important;padding:12px 14px 9px!important;background:#fff!important;border-bottom:1px solid #eef1f5!important}
- body.search3-candidate .results-filter-rail fieldset,body.search3-candidate .results-filter-rail .filter-range{margin:0!important;padding:9px 0!important}
- body.search3-candidate .results-filter-rail .filter-option{margin:5px 0!important}
-}
+/* Selected tour: reduce visual competition with the main action. */
 @media(max-width:640px){
  body.search3-candidate #selectedTour .back-results{min-height:34px!important;margin-bottom:6px!important;font-size:8px!important}
 
