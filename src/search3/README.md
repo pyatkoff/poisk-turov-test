@@ -50,14 +50,15 @@ evidence.
 
 ## Smaller source owners
 
-Consecutive rules in the main results stylesheet share one native nesting parent:
+Consecutive rules across the four stylesheets share one native nesting parent:
 `body.search3-candidate` or `html body.search3-candidate`. Every child starts with
 an explicit `&`; expanding it restores the original selector. The parents have
 one selector each, so specificity stays `(0,1,1)` or `(0,1,2)` plus the child.
 Group only adjacent rules in the same source/media context. Keep declarations
 and at-rules outside grouping parents; do not combine parents into selector lists.
 The selector/declaration/media equivalence audit is
-`docs/project/search3-css-nesting-results.json`.
+`docs/project/search3-css-nesting-results.json` and
+`docs/project/search3-css-nesting-secondary.json`.
 
 This preview uses native CSS nesting, supported by
 [Safari 16.5 and later](https://webkit.org/blog/14154/webkit-features-in-safari-16-5/)
