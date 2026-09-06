@@ -13,6 +13,7 @@
   if (!body || !body.classList.contains('search3-candidate') || !results || !tools) return;
 
   var hotelsById = new Map();
+  var mobileToolbarTimer = null;
 
   function safe(value) {
     return String(value == null ? '' : value)
@@ -287,10 +288,24 @@
       return [hotelId(hotel), hotel];
     }));
     body.classList.toggle('search3-results-active', hotelsById.size > 0);
-    if (!hotelsById.size) return;
+    if (!hotelsById.size) { cancelMobileToolbar(); return; }
     results.querySelectorAll('.hotel-card').forEach(decorateCard);
-    window.setTimeout(mountMobileToolbar, 0);
+    scheduleMobileToolbar();
   }
+
+  // Progressive results and breakpoint changes share the existing deferred mount.
+function scheduleMobileToolbar() {
+  if (!body.classList.contains('search3-results-active') || mobileToolbarTimer !== null) return;
+  mobileToolbarTimer = window.setTimeout(function () {
+    mobileToolbarTimer = null;
+    mountMobileToolbar();
+  }, 0);
+}
+
+function cancelMobileToolbar() {
+  if (mobileToolbarTimer !== null) window.clearTimeout(mobileToolbarTimer);
+  mobileToolbarTimer = null;
+}
 
   function mountMobileToolbar() {
     if (!body.classList.contains('search3-results-active')) return;
@@ -322,6 +337,7 @@
   });
 
   window.addEventListener('v2:search-reset', function () {
+    cancelMobileToolbar();
     hotelsById.clear();
     collapseAll();
     body.classList.remove('search3-results-active');
@@ -381,7 +397,7 @@
     var compactResults = window.matchMedia('(max-width:999px)');
     if (compactResults.addEventListener) {
       compactResults.addEventListener('change', function (event) {
-        if (event.matches) window.setTimeout(mountMobileToolbar, 0);
+        if (event.matches) scheduleMobileToolbar();
       });
     }
   }
