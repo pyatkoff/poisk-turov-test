@@ -656,55 +656,53 @@
     "verification": "One frame for results/DOM/resize; resize preserves editing; queued geometry uses current DOM after reset. Existing responsive CI passed;375/1348 editor images inspected. Live100 hotels/editor open/date values retained/no horizontal overflow; JS37813fa396116719."
   },
   "presentation_refactor_checkpoint": {
-    "baseline": "57a675f0a43a1a6ddf2cb7e24dafebc94a11a9f8",
-    "release_merge_sha": "0448750ba6c7ad77538794a0c45f97a5e11ea18d",
-    "previous_checkpoint": "7b869e12d80d7c6c047559545a3118a64e39249e",
-    "stage": "S3_TOOLBAR_BOUNDARY_VERIFIED",
-    "scope": "Retained mobile toolbar hidden at min-width:1000px by its existing layout owner. Same toolbar/bar and listeners return below the compact boundary; native desktop sort remains visible. Only CSS owner/generated CSS/import hash and existing browser regression changed.",
-    "source_validation": "FOCUSED_RESPONSIVE_AND_23_APPLICABLE_RELEASE_CI_VERIFIED",
+    "baseline": "5832457c6d43270290967a49f815a12463b19c18",
+    "release_merge_sha": "5832457c6d43270290967a49f815a12463b19c18",
+    "previous_checkpoint": "0448750ba6c7ad77538794a0c45f97a5e11ea18d",
+    "stage": "S3_CHARTER_FACET_COMPLETENESS_VERIFIED",
+    "scope": "The local charter result facet is exposed only when every loaded normalized tour row has an explicit boolean isCharter value. Incomplete progressive data hides and clears the local facet without rewriting the primary form constraint; complete data restores local state from that form.",
+    "source_validation": "RED_GREEN_FOCUSED_REGRESSION_BUILD_AND_23_APPLICABLE_RELEASE_CI_VERIFIED",
     "ci": {
-      "pr": 1375,
-      "preparation_and_responsive_run": 34022311073,
-      "responsive_artifact": 9985910235,
-      "responsive_digest": "sha256:380826e39991d04d3427274eec2c49dd7a742d7119d42eeed7f2d1404f72dbe1",
-      "exact_code_security_run": 34022428065,
-      "exact_code_artifact_run": 34022428057,
-      "release_core_run": 34022534281,
-      "release_visual_run": 34022534319,
-      "release_artifact_run": 34022534215,
+      "pr": 1377,
+      "exact_code_security_run": 34022828455,
+      "exact_code_artifact_run": 34022828441,
+      "release_core_run": 34022965922,
+      "release_visual_run": 34022965889,
+      "release_visual_artifact": 9986123628,
+      "release_visual_digest": "sha256:143d2e896580549a814c39534e37644fefdea77b43737eb4ac0d6fae77f1cb30",
+      "release_artifact_run": 34022965916,
+      "release_artifact": 9986118224,
+      "release_artifact_digest": "sha256:26493e2cafc0274a3556480c3e0dda0f32f42bb21197886e49576451368e4afb",
       "applicable_success": 23,
       "expected_skipped": 1
     },
     "evidence": [
-      "tests/search3-card-readability-browser.cjs",
-      "tests/search3-mobile-toolbar-scheduler.cjs",
-      "tests/search3-mobile-toolbar-ownership.cjs",
+      "tests/search3-filter-rail-price-input.cjs",
+      "tests/search3-filter-rail-ownership.cjs",
       "tests/search3_source_build_test.py",
       "tests/search3_production_presentation_test.py"
     ],
-    "verification": "Red-before/green-after desktop leak at1000; actual viewport roundtrip375→999→1000→1348→1440→999→430 preserves all captured FormData entries, DOM owner, filter open/Escape/focus and two-way sort. Existing five-width card/editor/calendar/return suite passes. 1348/430 images inspected. Catalogue failure initialization was settled in the fixture, not changed in runtime. No live/Safari acceptance claim.",
+    "verification": "Focused regression failed before the runtime change because the charter facet was visible without complete data, then passed after the completeness guard. Empty, complete, incomplete-progressive and form-state restoration paths are covered. Existing responsive release CI passed; 375/1440 search and readability artifacts were inspected with no new clipping or ownership regression. No live/Safari acceptance claim.",
     "public_assets": {
       "css_bytes": 363166,
       "css_lines": 4175,
-      "js_bytes": 159313,
-      "js_lines": 1937,
-      "total_bytes": 522479,
-      "total_lines": 6112,
+      "js_bytes": 160007,
+      "js_lines": 1940,
+      "total_bytes": 523173,
+      "total_lines": 6115,
       "scope": "Four CSS and four JS public assets, uncompressed; excludes shared runtime/legacy and does not double-count src/v2. Not deployed size or a measured page-load gain."
     },
     "run_delta": {
-      "baseline": "49f2d2e5690421920df378ce0f4615fa8eb1a4ce",
-      "bytes": -2546,
-      "lines": -5,
+      "baseline": "0448750ba6c7ad77538794a0c45f97a5e11ea18d",
+      "bytes": 694,
+      "lines": 3,
       "completed_technical_prs": [
-        1373,
-        1374,
-        1375
+        1377
       ]
     },
     "preview_updated": false,
     "production_updated": false,
-    "next_action": "Refresh release/main and #996/#1334. Audit remaining mobile-toolbar cascade overlap in existing results-context.css/results-layout.css owners; prove equivalent computed styles for initial/results/editor/selected/reset states and 375/430/768/999/1000/1348/1440 before removing any active rule. Do not repeat retired selector cleanup, local toolbar queue, desktop breakpoint or completed filter-rail steps. Keep mrf owner, public paths, protected contracts and production lock unchanged."
+    "next_action": "Refresh release/main and #996/#1334. Audit a new independently reproduced presentation ownership or incomplete-facet defect before changing code. Do not repeat the charter/sea completeness, reset, price-frame or three completed toolbar passes. Keep public paths, protected contracts and production lock unchanged."
   },
   "presentation_refactor_history": [
     {
