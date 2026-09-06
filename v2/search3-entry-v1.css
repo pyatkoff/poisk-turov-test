@@ -192,8 +192,7 @@ html body.search3-candidate #resultsSearchSummary .search3-entry-summary-detail{
 
 @media(max-width:760px){
   html body.search3-candidate #tourSearch,
-  html body.search3-candidate #tourSearch .search3-primary-grid,
-  html body.search3-candidate #tourSearch .search3-quality__grid{
+html body.search3-candidate #tourSearch :is(.search3-primary-grid,.search3-quality__grid){
     min-width:0!important;
     max-width:100%!important;
     box-sizing:border-box!important;
@@ -218,8 +217,7 @@ html body.search3-candidate #resultsSearchSummary .search3-entry-summary-detail{
     order:-1!important;
   }
 
-  html body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) .search3-quality,
-  html body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) .search3-quick{
+  html body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-mobile-advanced-open) :is(.search3-quality,.search3-quick){
     display:none!important;
   }
   html body.search3-candidate:not(.search3-has-results) #tourSearch.search3-mobile-advanced-open .search3-quality{

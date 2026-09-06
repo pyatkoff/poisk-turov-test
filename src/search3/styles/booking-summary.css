@@ -26,7 +26,7 @@ body.search3-candidate #selectedTour .search3-lead-shell>.lead-form{grid-column:
 body.search3-candidate #selectedTour .search3-booking-summary{grid-column:2;grid-row:1;position:sticky;top:16px}
 body.search3-candidate #selectedTour .lead-form .section-heading strong{font-size:21px!important}
 body.search3-candidate #selectedTour .lead-fields{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important}
-body.search3-candidate #selectedTour .lead-form input,body.search3-candidate #selectedTour .lead-form textarea{border-radius:7px!important}
+body.search3-candidate #selectedTour .lead-form :is(input,textarea){border-radius:7px!important}
 }
 @media(max-width:640px){
 .search3-lead-shell{display:flex;flex-direction:column}

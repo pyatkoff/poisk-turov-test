@@ -10,6 +10,25 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
+### Current continuation — retired presentation CSS
+
+Prepared on top of concurrent release `06a3ebf5`: 136 rules requiring retired
+positive classes and two empty media containers removed (21,788 bytes). Negative
+conditions remain. Another 35 equal-specificity compound selector groups remove
+2,566 bytes. The retained ordered selector/declaration/media stream is unchanged
+after expansion. Audit: `docs/project/search3-css-owner-retirement.json`.
+
+Concurrent #1385/#1386 inflection/date-helper cleanup and regressions are preserved.
+The local labels extraction in draft `d6c0b9d1` overlapped that work and was
+withdrawn; no second formatter namespace is shipped. Its initial CI flagged a
+trailing blank line in the now-removed file, not a deployed runtime failure.
+The 537-case differential experiment remains historical evidence, not a claim
+that its superseded implementation was published.
+
+Prepared eight assets after preserving concurrent #1385/#1386/#1388/#1390: CSS 311609 bytes / 3653 lines; JS 142639 / 1901; total 454248 / 5554. Own reduction against concurrent f8e10a30: 24354 bytes / 215 lines.
+
+Next: finish CI and responsive inspection, integrate release only, then separately publish the exact checked preview artifact. Do not repeat completed cleanup or shared text/inflection work.
+
 ### Current code checkpoint — CI-verified, not republished — 2026-09-06
 
 Exact release code: `f8e10a30b57fa965ee8f5e7294a1e08819b75fc2`.
@@ -61,7 +80,7 @@ selected-flow and final-party text helpers have different contracts and must not
 folded into the shared owner. Do not add abstraction without a net reduction or
 publish preview as a refactor side effect.
 
-### Current published checkpoint — 2026-09-06
+### Previous published checkpoint — 2026-09-06
 
 Exact runtime code: `26988e62eb674f8165d380de71e3be3d8feb19c3`.
 Release integration: `0fabb1eca248b0f6b48ffe750cc73eaf93f52956`.

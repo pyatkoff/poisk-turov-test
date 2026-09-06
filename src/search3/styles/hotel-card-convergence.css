@@ -6,13 +6,6 @@ body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) 
 body.search3-candidate #results .hotel-title{font-size:16px!important;line-height:1.18!important;letter-spacing:-.16px!important}
 body.search3-candidate #results .hotel-place{font-size:10px!important;line-height:1.35!important}
 body.search3-candidate #results .hotel-decision-line{display:none!important}
-body.search3-candidate .search3-hotel-highlights{grid-column:1!important;display:flex!important;align-items:stretch!important;gap:6px!important;min-width:0!important;margin-top:9px!important;overflow:hidden!important}
-body.search3-candidate .search3-hotel-highlight{display:grid!important;gap:2px!important;min-width:0!important;min-height:34px!important;padding:5px 7px!important;border:1px solid #e7edf5!important;border-radius:7px!important;background:#f8fafc!important}
-body.search3-candidate .search3-hotel-highlight small{color:#7b879d!important;font-size:7px!important;line-height:1!important;font-weight:800!important;white-space:nowrap!important}
-body.search3-candidate .search3-hotel-highlight b{max-width:116px!important;overflow:hidden!important;color:#344054!important;font-size:9px!important;line-height:1.15!important;font-weight:850!important;text-overflow:ellipsis!important;white-space:nowrap!important}
-body.search3-candidate .search3-hotel-highlight--rating{border-color:#ccebd9!important;background:#eef9f2!important}
-body.search3-candidate .search3-hotel-highlight--rating small,body.search3-candidate .search3-hotel-highlight--rating b{color:#147a49!important}
-body.search3-candidate .search3-hotel-highlight--rating small{font-size:11px!important}
 body.search3-candidate .search3-hotel-facts{grid-column:1!important;display:flex!important;align-items:center!important;gap:12px!important;min-width:0!important;margin-top:9px!important}
 body.search3-candidate .search3-hotel-facts>span{display:flex!important;gap:4px!important;align-items:baseline!important;min-width:0!important;padding:0!important;background:transparent!important}
 body.search3-candidate .search3-hotel-facts small{color:#98a2b3!important;font-size:8px!important;font-weight:750!important}
@@ -20,20 +13,16 @@ body.search3-candidate .search3-hotel-facts b{max-width:130px!important;overflow
 body.search3-candidate #results .hotel-bottom{grid-row:1/6!important;padding-left:16px!important}
 body.search3-candidate #results .hotel-price{font-size:20px!important}
 body.search3-candidate .search3-hotel-action{grid-row:6!important;margin-top:10px!important;padding-top:9px!important}
-body.search3-candidate .search3-hotel-action__copy strong,body.search3-candidate .search3-hotel-action__copy span{font-size:9px!important}
+body.search3-candidate .search3-hotel-action__copy :is(strong,span){font-size:9px!important}
 @media(max-width:760px){
 
  body.search3-candidate #results .hotel-body{grid-template-columns:minmax(0,1fr) auto!important;grid-template-rows:auto auto auto auto auto auto!important;padding:10px 11px 11px!important}
  body.search3-candidate #results .hotel-title{grid-column:1/3!important;grid-row:1!important;}
  body.search3-candidate #results .hotel-place{grid-column:1/3!important;grid-row:2!important;}
- body.search3-candidate .search3-hotel-highlights{grid-column:1/3!important;grid-row:3!important;gap:5px!important;margin-top:8px!important;overflow-x:auto!important;scrollbar-width:none!important}
  body.search3-candidate .search3-hotel-highlights::-webkit-scrollbar{display:none!important}
- body.search3-candidate .search3-hotel-highlight{flex:0 0 auto!important;min-height:32px!important;padding:5px 7px!important}
- body.search3-candidate .search3-hotel-highlight b{max-width:112px!important;font-size:8px!important}
- body.search3-candidate :is(.search3-hotel-highlight--room,.search3-hotel-highlight--operator){display:none!important}
  body.search3-candidate .search3-hotel-facts{grid-column:1/3!important;grid-row:4!important;gap:8px!important;margin-top:7px!important;overflow:hidden!important}
  body.search3-candidate .search3-hotel-facts>span:nth-child(n+4){display:none!important}
- body.search3-candidate .search3-hotel-facts small,body.search3-candidate .search3-hotel-facts b{font-size:7px!important}
+ body.search3-candidate .search3-hotel-facts :is(small,b){font-size:7px!important}
  body.search3-candidate #results .hotel-bottom{grid-column:1/3!important;grid-row:5!important;display:flex!important;align-items:baseline!important;justify-content:flex-end!important;gap:6px!important;margin-top:9px!important;padding-top:8px!important;border-top:1px solid #eef1f5!important}
  body.search3-candidate #results .hotel-best-offer{display:flex!important;align-items:baseline!important;gap:4px!important}
  body.search3-candidate #results .hotel-price{margin-top:0!important;}

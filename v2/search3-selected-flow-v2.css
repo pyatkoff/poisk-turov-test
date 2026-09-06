@@ -1,7 +1,6 @@
 /* Search3 selected/final/lead presentation overlay. Preview only. */
 /* The existing checkout decorator can reinsert these after a phase change. */
-html body.search3-candidate #selectedTour .checkout-journey,
-html body.search3-candidate #selectedTour .checkout-facts-heading {
+html body.search3-candidate #selectedTour :is(.checkout-journey,.checkout-facts-heading){
   display: none !important;
 }
 
@@ -63,8 +62,7 @@ body.search3-candidate #selectedTour .search3-flight-fallback-rail-action {
 }
 
 body.search3-candidate #selectedTour .search3-flight-continue--fallback button:focus-visible,
-body.search3-candidate #selectedTour .search3-flight-fallback-rail-action:focus-visible,
-body.search3-candidate #selectedTour .search3-flight-show-all:focus-visible {
+body.search3-candidate #selectedTour :is(.search3-flight-fallback-rail-action:focus-visible,.search3-flight-show-all:focus-visible){
   outline: 2px solid #2743cb;
   outline-offset: 3px;
 }

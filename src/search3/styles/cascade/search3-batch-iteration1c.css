@@ -45,7 +45,6 @@
 body.search3-candidate #tourSearch input[type=text],
 body.search3-candidate :is(.search3-tourists__summary,.search3-composite__control){min-height:36px!important;border-radius:7px!important}
  body.search3-candidate #tourSearch .search3-primary-grid>.search-submit{min-height:42px!important;border-radius:8px!important}
- body.search3-candidate .search3-advanced-toggle{min-height:36px!important;margin-top:7px!important;border-radius:8px!important;background:#fff!important;font-size:8px!important}
  body.search3-candidate .search3-quick{margin-top:6px!important}
  body.search3-candidate .search3-quick__label{font-size:8px!important}
 
@@ -62,7 +61,6 @@ body.search3-candidate :is(.search3-tourists__summary,.search3-composite__contro
 
  /* Package chooser stays compact and keeps the hotel visible above it. */
 
- body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-body{padding:9px!important}
 
 }
 
