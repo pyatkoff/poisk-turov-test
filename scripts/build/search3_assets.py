@@ -12,10 +12,9 @@ JS_INCLUDE = re.compile(rb'(?m)^[ \t]*/\* @include ([a-zA-Z0-9_./-]+\.js) \*/\r?
 CSS_STRING = re.compile(rb'/\* @css-string ([a-zA-Z0-9_./-]+\.css) \*/ ""')
 
 
-def compact_javascript(outputs):
-    """Print all JS with pinned build-only tools and an independent syntax guard."""
-    scripts = {name: content.decode('utf-8') for name, content in outputs.items()
-               if name.endswith('.js')}
+def compact_assets(outputs):
+    """Print assets with pinned build-only tools and syntax equivalence guards."""
+    scripts = {name: content.decode('utf-8') for name, content in outputs.items()}
     result = subprocess.run(
         ['node', str(ROOT / 'scripts/build/search3-js/compact.cjs')],
         input=json.dumps(scripts), text=True, capture_output=True, timeout=60)
@@ -118,7 +117,7 @@ def assemble(root):
               if p.is_file() and p.suffix in ('.css', '.js')}
     if used != actual:
         raise ValueError('Unlisted Search3 modules: ' + ', '.join(sorted(actual - used)))
-    return compact_javascript(outputs), reviewed_path, reviewed
+    return compact_assets(outputs), reviewed_path, reviewed
 
 
 def build(root=ROOT, write=False):

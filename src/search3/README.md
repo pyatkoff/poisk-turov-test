@@ -11,7 +11,7 @@ python3 scripts/build/search3_assets.py --check
 Commit source changes, generated `v2/search3-*` assets and the updated
 `docs/project/search3-production-import.json` together. CI rejects stale bundles,
 unlisted modules and missing source files. Python assembles the private modules;
-Node 18+ prints JavaScript using pinned build-only Terser and Acorn dependencies.
+Node 18+ prints assets using pinned build-only Terser, Acorn and CSS Tree dependencies.
 Install them once with the command above. The build itself makes no network requests.
 These tools are outside the site payload and add no browser dependency or request.
 
@@ -29,7 +29,13 @@ license/copyright/source-map notes, strings and escapes remain. The output also
 omits horizontal indentation after ordinary newlines, retaining the newline as
 a token separator. Whitespace within strings/comments and after a newline
 consumed by an escape stays intact. Source formatting remains readable.
-This reduces served bytes without changing CSS tokens. JavaScript concatenation
+The linked CSS files then omit formatting around blocks and declarations.
+CSS Tree 3.2.1 preserves exact source slices for selectors, at-rule conditions and
+declaration values; it does not optimize values, combine rules or alter nesting.
+A full ordered AST roundtrip must match. License comments stay in place; assets
+with non-exclamation copyright/license/source-map notes retain their entire bytes.
+Private injected CSS retains its preceding compaction and insertion contract.
+JavaScript concatenation
 expands private full-line `/* @include behavior/path.js */` markers in place.
 Included functions retain their original enclosing IIFE, declaration order and
 shared state. There is no runtime loader, new global or additional request.

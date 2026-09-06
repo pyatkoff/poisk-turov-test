@@ -956,21 +956,24 @@
       "docs/project/search3-css-descendant-secondary.json"
     ],
     "in_progress": {
-      "stage": "FILTER_RAIL_INTEGRATED_JS_COMPACTION_LOCAL_VERIFIED",
-      "first_sha": "952ac7f7eb4dac11b0879a7513973897a133f1b9",
-      "first_pr": 1408,
-      "first_ci": "23 success, 1 expected skip; 375/1440 editor images inspected and pixel-identical to published baseline",
+      "stage": "JS_COMPACTION_INTEGRATED_CSS_PRINTING_LOCAL_VERIFIED",
+      "integrated_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4",
+      "source_prs": [
+        1408,
+        1409
+      ],
+      "ci": "Both exact source heads: 23 applicable success, one expected skip; 375/1440 editor pixel parity",
       "public_assets": {
-        "css_bytes": 211465,
-        "css_lines": 4007,
+        "css_bytes": 205437,
+        "css_lines": 37,
         "js_bytes": 130263,
         "js_lines": 55,
-        "total_bytes": 341728,
-        "total_lines": 4062
+        "total_bytes": 335700,
+        "total_lines": 92
       },
-      "audit": "docs/project/search3-js-build-compaction.json",
+      "audit": "docs/project/search3-css-external-formatting.json",
       "preview_updated": false,
-      "next_action": "Run exact JS compaction source CI and inspect responsive evidence, then separately publish one combined exact preview artifact."
+      "next_action": "Run exact CSS source CI and inspect responsive evidence; publish all three checked source steps with one separate exact preview artifact."
     }
   },
   "presentation_refactor_history": [

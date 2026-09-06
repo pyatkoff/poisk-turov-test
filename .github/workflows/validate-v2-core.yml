@@ -8,6 +8,7 @@ on:
       - 'scripts/build/search3_assets.py'
       - 'scripts/build/search3-js/**'
       - 'tests/search3-js-compaction.cjs'
+      - 'tests/search3-css-printing.cjs'
       - 'tests/search3_source_build_test.py'
       - 'v2/**/*.js'
       - 'v2/current-price-calendar-v1.css'
@@ -68,6 +69,7 @@ jobs:
           php -l v2/search3-presentation-v1.php
           python3 -B scripts/build/search3_assets.py --check
           node tests/search3-js-compaction.cjs
+          node tests/search3-css-printing.cjs
           python3 -B tests/search3_source_build_test.py
           python3 -B tests/search3_production_presentation_test.py
           php tests/search-handoff-smoke.php

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const { isDeepStrictEqual } = require('node:util');
 const acorn = require('acorn');
 const terser = require('terser');
+const { compactCSS } = require('./compact-css.cjs');
 
 // Compare syntax, not source formatting. Keep operators, names, literal values,
 // directive text, template raw text, property order and every statement.
@@ -50,10 +51,12 @@ if (require.main === module) {
   (async () => {
     const input = JSON.parse(fs.readFileSync(0, 'utf8'));
     const output = {};
-    for (const [name, code] of Object.entries(input)) output[name] = await compact(code);
+    for (const [name, code] of Object.entries(input)) {
+      output[name] = name.endsWith('.css') ? compactCSS(code) : await compact(code);
+    }
     process.stdout.write(JSON.stringify(output));
   })().catch(error => {
-    process.stderr.write(`Search3 JS compaction failed: ${error.message}\n`);
+    process.stderr.write(`Search3 asset compaction failed: ${error.message}\n`);
     process.exitCode = 1;
   });
 }
