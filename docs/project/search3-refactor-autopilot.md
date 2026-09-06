@@ -10,7 +10,65 @@ presentation batches are authorized. This priority supersedes the older suggesti
 below to spend each continuation on another small toolbar/facet defect. Preserve
 protected contracts and the production lock; use focused checks and existing CI.
 
-### Current published checkpoint — native CSS nesting — 2026-09-06
+### Current published checkpoint — private CSS and overridden declarations — 2026-09-06
+
+Published source and release integration: `731eb3a8e1e490d2c07f4727135c373449d4958f`. Source PRs #1402/#1403;
+one exact-artifact isolated preview publication #1404. Preparation notes below are
+historical and their pending-publication statements are superseded here.
+
+Two static style injections now use private CSS sources compiled into escaped
+JS literals at the original insertion positions. IDs/order/root guard/idempotence
+remain. Six single-parent explicit-& groups preserve expanded ordered CSS streams.
+Injection source owners 11230 → 490 and 4218 → 434 bytes; public JS saves 1940 bytes.
+All other compiled JS behavior owners are byte-identical. No new public path,
+browser request, runtime loader/global or move into earlier linked stylesheets.
+
+Removed 182 earlier CSS declarations shadowed by later identical full expanded
+selector lists/media-supports contexts/properties/important priority. Each deletion
+records its later witness; browser CI confirms CSS.supports for all 182 witnesses.
+No shorthand expansion or selector-list merging. Removed 74 now-empty rules/groups;
+retained declaration order and final per-selector/context/property/priority maps
+match baseline. CSS saves 8057 bytes. Cascade donor/order and acceptance guards stay.
+
+| Eight public assets | Previous bytes / lines | Published bytes / lines |
+| --- | ---: | ---: |
+| Four CSS | 257468 /3855 | 249411 /3783 |
+| Four JS | 142180 /1903 | 140240 /1825 |
+| Total | 399648 /5758 | 389651 /5608 |
+
+Combined reduction 9997 bytes (2.50%) and 150 lines. Uncompressed; excludes shared
+runtime/legacy and duplicate src. Private CSS is counted in its JS host. No speed
+benchmark or deferred-loading claim. Native nesting browser boundary is unchanged:
+Safari  16.5+ and supported modern engines; physical Safari remains unqualified.
+
+Both exact code heads passed 23 applicable workflows and one expected migration
+skip. Final core 34047451648, responsive 34047451646, flight 34047451706,
+build 34047451594. Eleven build tests and 14 presentation tests, PHP covered by CI.
+Responsive 375/430/1024/1348/1440 passed; inspected editor 375/1440 images match prior
+preview pixel-for-pixel. 19/24 compared images exact; fixture scroll/date/control
+state variation remains. No blanket pixel-parity or physical-device acceptance.
+
+Artifact 9993533050 / ZIP `sha256:209b7c4a42fcd353bb7db37a629efeba47628277ff3a36ea0e24658d6e6ea8db`.
+Deploy 34047654589 succeeded; evidence 9993589644 / ZIP `sha256:3f94fb1ac4529fe1b01cfef498eec0103047ff57dd2fe259ffc009fec304404d`.
+All 715 payload hashes and 8 served assets exact; 9 routes 200/noindex, counter 0,
+disabled synthetic lead 403, internal PHP denied, rollback retained. All 13 production
+fingerprints before/after/final unchanged. Main `fa58a0cba6dcfc8624d98c20d64fa06330eae309`; no production publication.
+
+Live 1363 px: Moscow → Turkey 10–11 Sep 2026,7 nights,2 adults  → 100 hotels/423 tours  →
+ANAHTAR APART  → flights 6 → 78 → 6  → review 72099 RUB  → visible empty lead form  → return
+with 100 cards and hidden selected tour  → editor with dates/nights retained.
+Both injected styles occur once and contain the compiled nesting. No horizontal
+overflow; phone empty, no lead sent. Existing hidden legacy-filter backdrop and
+immediate-editor-click during asynchronous return remain outside qualification;
+the checked editor opened after return completed. No live no-flight fallback or
+physical Safari test is claimed.
+
+Audits: `search3-injected-css-sources.json`, `search3-active-css-declarations.json`,
+and consolidated `docs/project/search3-continued-reduction-publication.json`.
+
+Next: Refresh release/PRs and publication before another bounded reduction. Inspect remaining repeated inline-style setter groups in active results/selected presentation JS; require identical DOM operation order/values/priority and measured net savings before changing them. The private CSS string extraction and the 182 same-selector/context overridden declarations are complete; do not repeat these or prior nesting, compaction, formatter, filter/toolbar and source-split passes. Preserve eight paths, IIFEs and protected business contracts; publish only a separate exact preview artifact. Production locked.
+
+### Previous published checkpoint — native CSS nesting — 2026-09-06
 
 Published source and release integration: `74b87bff36db79f40fb17e18fb9478d339b6bc8c`. Source PRs #1399 and #1400;
 isolated one-shot preview #1401. Both passes are complete; preparation notes below
@@ -530,14 +588,14 @@ Next: first recheck Security guard run `34023357535`. After its wrapper finalize
 - Native CSS nesting browser boundary from the results pass applies. Existing source ownership, protected acceptance guards and production/business locks remain unchanged. Publish only the final combined artifact after required CI and release integration.
 
 
-### Prepared continuation — private injected CSS sources
+### Completed source preparation — private injected CSS sources
 
 Baseline release `d7882e504a6e66d3f3d71910e4f6f4650aa8b494`; preview remains `74b87bff` until separate publication. Two static injected-style owners now use private CSS sources and build-time escaped string literals at the original insertion positions. Six explicit single-parent nesting groups preserve expanded ordered selector/declaration/media streams. Original IDs, selected-root guard and idempotence verified against compiled owners. No earlier linked stylesheet, new request/global or behavior/price/lead/API change.
 
 JS123837→121897 for the main asset (−1940 bytes); seven other assets byte-identical. Eight-asset total399648→397708 bytes /5680lines; CSS257468/3855, JS140240/1825. Source owners11230→490 and4218→434bytes. Eleven build tests and14 presentation checks pass locally with one PHP-dependent local skip; PHP awaits existing CI. Audit: `docs/project/search3-injected-css-sources.json`. Next: CI, then remaining proven same-selector/context declaration repetition; one combined exact-artifact preview after checks.
 
 
-### Prepared continuation — later CSS declarations
+### Completed source preparation — later CSS declarations
 
 Private injected CSS #1402 / `10d78a4463732a1d730d94af90b04cb6af795d37` passed23 applicable workflows and one expected skip: core34047082610, visual34047082664, flight34047082620, build34047082564. Preview still74b87bff.
 
