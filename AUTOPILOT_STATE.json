@@ -1,7 +1,7 @@
 {
   "schema_version": 28,
   "project": "pyatkoff/poisk-turov-test",
-  "updated_at": "2026-09-06T21:20:23.284Z",
+  "updated_at": "2026-09-06T21:26:46.428Z",
   "mode": "search_ux_ds2",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
   "canonical_design_system": "ANYTOUR DESIGN SYSTEM 2.0",
@@ -80,7 +80,7 @@
     "deploy_pr": 1421,
     "deploy_run": 34060271120,
     "evidence_artifact": 9997242581,
-    "next_action": "Continue measured reduction from source bff20777. Private injected CSS optimization, four presentation markup/class-prefix helpers and 36 exact-value media/priority deletions are complete; do not repeat them. Remaining different-value CSS candidates require browser-compatibility and cascade evidence before removal. Prefer the largest measured source simplification; preserve eight paths, native nesting max depth three, public keys/globals and price/API/lead/analytics contracts. Reuse one final working-source artifact, focused live checks only. Local command polling hit an environment usage-limit auto-review rejection; do not retry or bypass that blocked operation. Resume new local development when execution capacity is available. Main/production locked; scheduler paused."
+    "next_action": "Continue measured CSS/JS source reduction from bff20777 under the owner batch policy: one working draft for several useful reductions, one final source build/size check plus the narrow relevant equivalence check, and the two existing CI jobs. Prefer large duplicate blocks in the 179464-byte main CSS; do not repeat completed private CSS optimization, four markup helpers or 36 witnessed deletions. Do not automatically deploy or replay the live journey for each technical batch. Publish only at an accumulated checkpoint, on relevant behavior/layout changes, or on owner request; keep manual changed-area inspection within five minutes without claiming deferred checks passed. Preserve eight public paths, nesting depth three and protected contracts. Local command polling was rejected by automatic approval review due to environment usage limit; do not retry or bypass it. Resume new local development when execution capacity is available. Main/production locked; scheduler paused."
   },
   "queue": [
     {
@@ -1030,7 +1030,7 @@
       "bytes": -2827,
       "lines": 0
     },
-    "next_action": "Continue measured reduction from source bff20777. Private injected CSS optimization, four presentation markup/class-prefix helpers and 36 exact-value media/priority deletions are complete; do not repeat them. Remaining different-value CSS candidates require browser-compatibility and cascade evidence before removal. Prefer the largest measured source simplification; preserve eight paths, native nesting max depth three, public keys/globals and price/API/lead/analytics contracts. Reuse one final working-source artifact, focused live checks only. Local command polling hit an environment usage-limit auto-review rejection; do not retry or bypass that blocked operation. Resume new local development when execution capacity is available. Main/production locked; scheduler paused.",
+    "next_action": "Continue measured CSS/JS source reduction from bff20777 under the owner batch policy: one working draft for several useful reductions, one final source build/size check plus the narrow relevant equivalence check, and the two existing CI jobs. Prefer large duplicate blocks in the 179464-byte main CSS; do not repeat completed private CSS optimization, four markup helpers or 36 witnessed deletions. Do not automatically deploy or replay the live journey for each technical batch. Publish only at an accumulated checkpoint, on relevant behavior/layout changes, or on owner request; keep manual changed-area inspection within five minutes without claiming deferred checks passed. Preserve eight public paths, nesting depth three and protected contracts. Local command polling was rejected by automatic approval review due to environment usage limit; do not retry or bypass it. Resume new local development when execution capacity is available. Main/production locked; scheduler paused.",
     "audit": "docs/project/search3-static-css-publication.json"
   },
   "presentation_refactor_history": [
@@ -4929,7 +4929,7 @@
     ]
   },
   "preview_verification_policy": {
-    "source": "explicit_owner_request_2026_09_06_further_reduce_preview_checks",
+    "source": "explicit_owner_request_2026_09_06_batch_reductions_and_stop_repeated_preview_journeys",
     "scope": "Search3 draft preview only",
     "working_pr_base": "release/search3-production-ready-v1",
     "required": [
@@ -4944,7 +4944,7 @@
       "full responsive screenshot matrix"
     ],
     "restore": "ready_for_review event on each affected workflow; production approval still required",
-    "live": "One focused live scenario per published batch; mobile/desktop if layout changed",
+    "live": "Do not publish or repeat the live journey for each behavior-preserving technical pass. Publish at an accumulated checkpoint, for a relevant behavior/layout change, or on owner request. When publishing, inspect only the changed area; a complete search/flight/lead journey is required only if the affected behavior needs it.",
     "production_guards_unchanged": true,
     "ci_execution": {
       "working_code_draft": [
@@ -4956,6 +4956,17 @@
       ],
       "artifact_reuse": "Keep the successful working-PR source artifact after release fast-forward and documentation checkpoints; do not rebuild or redeploy docs.",
       "restoration": "Non-draft PRs restore all applicable workflows on ready_for_review."
+    },
+    "batch_execution": {
+      "working_draft": "Keep multiple useful reductions in one release-based draft; use separate logical commits where practical, then one final push/CI cycle per completed batch.",
+      "local_checks": "Build generated assets once after the source batch and measure the eight served files. Run the narrow existing equivalence or affected-behavior check. Do not repeat the artifact workflow's full check set locally.",
+      "ci": "Retain the two existing mandatory working-source jobs, successful on the final source SHA. Do not disable security, owner validators, protected paths or preview isolation. Reuse the successful artifact.",
+      "publication": "A checked technical batch may remain unpublished in release; no deploy-control PR, artifact download or browser session is required merely because another source PR completed. Reuse the final checked source artifact at the next justified publication.",
+      "manual_check_budget_minutes": 5,
+      "budget_rule": "The manual-check timebox is not acceptance. If relevant evidence cannot be completed, record it as deferred and keep the uncertain change out of the verified batch; continue independent safe reductions.",
+      "reduction_priority": "Prefer measured elimination of large duplicate CSS/JS source blocks. Include small reductions opportunistically; do not spend a separate PR/deploy/browser cycle on a micro-saving.",
+      "reporting": "Report net generated CSS/JS bytes and whether the checked batch is published. Do not count moved code or line-count reduction as payload savings.",
+      "production": "Production approval, protected contracts, ready_for_review restoration and all actual-deployment guards remain unchanged. Scheduler stays paused."
     }
   }
 }
