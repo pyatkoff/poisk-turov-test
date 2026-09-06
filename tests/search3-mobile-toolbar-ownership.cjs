@@ -31,11 +31,11 @@ const selectedPresentation = fs.readFileSync(path.join(root, 'src/search3/behavi
 const searchForm = fs.readFileSync(path.join(root, 'src/search3/behavior/search-form.js'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');
 
-assert.match(presentation, /(?:[A-Za-z_$][\w$]*|\([A-Za-z_$][\w$]*=document\.createElement\('div'\)\))\.className\s*=\s*'search3-mobile-toolbar'/, 'Search3 presentation owns the mobile toolbar shell');
+assert.match(presentation, /(?:[A-Za-z_$][\w$]*|\([A-Za-z_$][\w$]*=document\.createElement\((['"])div\1\)\))\.className\s*=\s*(['"])search3-mobile-toolbar\2/, 'Search3 presentation owns the mobile toolbar shell');
 assert.ok(presentation.includes('search3-mobile-filter-slot'), 'Search3 presentation owns the mobile filter slot');
 assert.ok(presentation.includes('search3-mobile-sort'), 'Search3 presentation owns the mobile sort control');
-assert.ok(presentation.includes("document.querySelector('.mrf-bar')"), 'Search3 presentation mounts the canonical mrf filter bar');
-assert.ok(mobile.includes("sheet.className='mrf-sheet'"), 'base mobile results filter sheet remains canonical');
+assert.match(presentation, /document\.querySelector\((['"])\.mrf-bar\1\)/, 'Search3 presentation mounts the canonical mrf filter bar');
+assert.match(mobile, /sheet\.className\s*=\s*(['"])mrf-sheet\1/, 'base mobile results filter sheet remains canonical');
 assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('), 'canonical mobile filter lifecycle remains intact');
 assert.ok(!selectedPresentation.includes('function plural('), 'selected-tour presentation reuses the canonical inflection owner');
 assert.ok(selectedPresentation.includes('format.plural('), 'selected-tour presentation consumes the canonical inflection owner');

@@ -35,7 +35,7 @@ for (const marker of [
 
 assert.match(
   rail,
-  /[A-Za-z_$][\w$]*\.target\.closest\('\[data-s3-panel\]'\)\?editSearch\(\):/,
+  /[A-Za-z_$][\w$]*\.target\.closest\((['"])\[data-s3-panel\]\1\)\?editSearch\(\):/,
   'desktop result-filter edit rows keep their existing edit-search handoff'
 );
 assert.match(styles, /@media\(max-width:999px\)\{[\s\S]*?\.results-filter-rail\{display:none!important\}/, 'desktop rail is explicitly absent under the mobile ownership boundary');
@@ -47,10 +47,10 @@ for (const file of cssFiles(stylesRoot)) {
   }
 }
 
-assert.ok(mobile.includes("sheet.className='mrf-sheet'"), 'base mobile result-filter sheet remains the mobile owner');
+assert.match(mobile, /sheet\.className=(['"])mrf-sheet\1/, 'base mobile result-filter sheet remains the mobile owner');
 assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('), 'mobile owner retains open/close lifecycle');
-assert.ok(presentation.includes("document.querySelector('.mrf-bar')"), 'Search3 presentation still mounts the canonical mobile filter bar');
-assert.ok(legacyDesktop.includes("t.matches('[data-ds2-price]')"),
+assert.match(presentation, /document\.querySelector\((['"])\.mrf-bar\1\)/, 'Search3 presentation still mounts the canonical mobile filter bar');
+assert.match(legacyDesktop, /t\.matches\((['"])\[data-ds2-price\]\1\)/,
   'the base bundle retains its legacy desktop price listener');
 assert.ok(!rail.includes('data-ds2-price'),
   'the Search3 price control does not opt into the legacy desktop listener');
