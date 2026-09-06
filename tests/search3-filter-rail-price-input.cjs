@@ -66,4 +66,11 @@ assert.equal(frames.length, 1, 'a later interaction still schedules work');
 while (frames.length) frames.shift()();
 assert.equal(renders.length, 2);
 assert.equal(renders[1].length, 2);
+
+input(95000);
+assert.equal(frames.length, 1);
+windowEvents.get('v2:search-reset')();
+while (frames.length) frames.shift()();
+assert.equal(renders.length, 2, 'search reset cancels a pending price render');
+assert.equal(announcements.at(-1).resultCount, 0);
 console.log('PASS: price input bursts render once per frame with latest state');

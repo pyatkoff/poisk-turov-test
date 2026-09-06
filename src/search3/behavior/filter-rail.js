@@ -4,7 +4,7 @@
 (function(){'use strict';
 var rail=document.querySelector('.results-filter-rail'),form=document.getElementById('tourSearch');if(!rail||!form)return;
 var source=[],applying=false,lastApplied=[],rangeMin=0,rangeMax=0,state={priceMax:0,seaMax:0,charter:false};
-var priceApplyQueued=false;
+var priceApplyRun=0,priceApplyQueued=0;
 function money(n){return new Intl.NumberFormat('ru-RU').format(Number(n||0));}
 function word(n){var x=Math.abs(Number(n)||0)%100,y=x%10;if(x>10&&x<20)return'отелей';if(y===1)return'отель';if(y>=2&&y<=4)return'отеля';return'отелей';}
 function price(h){var values=[];(Array.isArray(h&&h.tours)?h.tours:[]).forEach(function(t){var p=Number(t&&t.price||0);if(p>0)values.push(p);});var hp=Number(h&&h.price||0);if(hp>0)values.push(hp);return values.length?Math.min.apply(null,values):0;}
@@ -29,16 +29,17 @@ function renderRail(){
 }
 function updateCount(n){var c=rail.querySelector('[data-s3-count]'),w=rail.querySelector('[data-s3-word]');if(c)c.textContent=String(n);if(w)w.textContent=word(n);announce(n);}
 function apply(){if(!source.length||!window.V2Results||typeof window.V2Results.render!=='function')return;var filtered=source.map(filteredHotel).filter(Boolean);lastApplied=filtered.slice();applying=true;try{window.V2Results.render(filtered,{keepResultsShell:true});}finally{applying=false;}updateCount(filtered.length);}
-function schedulePriceApply(){if(priceApplyQueued)return;priceApplyQueued=true;window.requestAnimationFrame(function(){priceApplyQueued=false;apply();});}
+function schedulePriceApply(){if(priceApplyQueued)return;var run=++priceApplyRun;priceApplyQueued=run;window.requestAnimationFrame(function(){if(priceApplyQueued!==run)return;priceApplyQueued=0;apply();});}
+function cancelPriceApply(){priceApplyRun+=1;priceApplyQueued=0;}
 function resetFormFilters(){['stars','rating','food','price_till','hotel'].forEach(function(name){var el=form.elements[name];if(!el)return;if(el.tagName==='SELECT')el.selectedIndex=0;else el.value='';});if(form.elements.onlyDirect)form.elements.onlyDirect.checked=false;}
 function submitFormFilters(){if(typeof form.requestSubmit==='function')form.requestSubmit();else form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));}
-function reset(){state={priceMax:0,seaMax:0,charter:false};resetFormFilters();renderRail();apply();if(window.innerWidth>999)submitFormFilters();}
+function reset(){cancelPriceApply();state={priceMax:0,seaMax:0,charter:false};resetFormFilters();renderRail();apply();if(window.innerWidth>999)submitFormFilters();}
 function editSearch(){form.classList.add('search3-mobile-advanced-open');var edit=document.getElementById('resultsSearchEdit');if(edit)edit.click();else form.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(function(){var quality=form.querySelector('.search3-quality');if(quality)quality.scrollIntoView({behavior:'smooth',block:'nearest'});},220);}
 
 rail.addEventListener('input',function(e){var t=e.target;if(t.matches('[data-s3-price]')){state.priceMax=Number(t.value||0);var out=rail.querySelector('[data-s3-price-label]');if(out)out.textContent='от '+money(rangeMin)+' ₽ — до '+money(state.priceMax)+' ₽';schedulePriceApply();}});
 rail.addEventListener('change',function(e){var t=e.target;if(t.name==='s3-sea'){state.seaMax=Number(t.value||0);apply();}else if(t.matches('[data-s3-charter-check]')){state.charter=!!t.checked;apply();}});
 rail.addEventListener('click',function(e){var panel=e.target.closest('[data-s3-panel]');if(panel){editSearch();return;}if(e.target.closest('[data-s3-reset]')){reset();return;}if(e.target.closest('[data-s3-edit-search]')){editSearch();return;}});
 window.addEventListener('v2:results-rendered',function(e){if(applying)return;var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];if(lastApplied.length&&sameRefs(items,lastApplied)){updateCount(items.length);return;}source=items.slice();lastApplied=[];renderRail();});
-window.addEventListener('v2:search-reset',function(){source=[];lastApplied=[];rangeMin=0;rangeMax=0;state={priceMax:0,seaMax:0,charter:false};renderRail();});
+window.addEventListener('v2:search-reset',function(){cancelPriceApply();source=[];lastApplied=[];rangeMin=0;rangeMax=0;state={priceMax:0,seaMax:0,charter:false};renderRail();});
 renderRail();
 })();
