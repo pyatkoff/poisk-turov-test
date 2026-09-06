@@ -409,19 +409,18 @@ window.Search3LeadFlow={setState,clearState,enterLead,leaveLead,version:3};
   }
   window.Search3FlightPresentation = Object.freeze({ placeholder, flightLabel, baggage });
 })();
+/* Shared pure text formatting for Search3 presentation modules. */
+(function(){'use strict';if(window.Search3PresentationText)return;function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}function text(v){if(v==null)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(text).filter(Boolean).join(', ');for(const k of ['russianName','fullRussianName','name','title','value','text']){const s=text(v[k]);if(s)return s;}return'';}function people(t){const p=[];if(t&&t.adults)p.push(t.adults+' взр.');if(t&&t.childs)p.push(t.childs+' дет.');return p.join(' + ')||'—';}function place(t){const h=t&&t.hotel||{};return [text(h.country),text(h.region),text(h.subRegion)].filter(Boolean).join(', ')||'—';}window.Search3PresentationText=Object.freeze({esc,text,people,place});})();
 
 
 /* donor:search3-booking-summary.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let lastTour=null,lastFlight=null,selectedTotal=0;
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+const {esc,text,people,place}=window.Search3PresentationText;
 function number(v){if(v&&typeof v==='object'&&v.value!==undefined)v=v.value;const n=Number(v||0);return Number.isFinite(n)?n:0;}
 function money(v){const n=number(v);return n>0?new Intl.NumberFormat('ru-RU').format(n)+' ₽':'—';}
-function text(v){if(v==null)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(text).filter(Boolean).join(', ');for(const k of ['russianName','fullRussianName','name','title','value','text']){const s=text(v[k]);if(s)return s;}return'';}
 function meal(t){return text(t&&t.meal)||'—';}
 function operator(t){return text(t&&t.operator)||'—';}
-function people(t){const p=[];if(t&&t.adults)p.push(t.adults+' взр.');if(t&&t.childs)p.push(t.childs+' дет.');return p.join(' + ')||'—';}
-function place(t){const h=t&&t.hotel||{};return [text(h.country),text(h.region),text(h.subRegion)].filter(Boolean).join(', ')||'—';}
 function flightLabel(v){const root=document.getElementById('selectedTour'),pending=root&&root.classList.contains('search3-lead-entry')&&!v;return window.Search3FlightPresentation.flightLabel(v,pending?'Рейс уточнит менеджер':'Выберите рейс');}
 function normalizedTotal(detail){const d=detail||{},tour=d.tour||lastTour||{};if(d.pricePending)return number(d.basePrice)||number(tour.price);return number(d.price)||number(d.basePrice)||number(tour.price);}
 function summaryHtml(t){const h=t&&t.hotel||{};const pic=t&&t.picture||h.picturelink||'';return '<aside class="search3-booking-summary" aria-label="Ваш тур">'+
@@ -527,8 +526,7 @@ window.Search3BookingStepper={ensure,set,removeLegacy,version:5};
 /* donor:search3-final-sections.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let tour=null,flight=null;
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-function text(v){if(v==null)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(text).filter(Boolean).join(', ');for(const k of ['russianName','fullRussianName','name','title','value','text']){const s=text(v[k]);if(s)return s;}return'';}
+const {esc,text}=window.Search3PresentationText;
 function number(v){if(v&&typeof v==='object'&&v.value!==undefined)v=v.value;const n=Number(v||0);return Number.isFinite(n)?n:0;}
 function money(v){const n=number(v);return n>0?new Intl.NumberFormat('ru-RU').format(n)+' ₽':'—';}
 function baggage(v){return window.Search3FlightPresentation.baggage(v);}
@@ -628,13 +626,10 @@ window.addEventListener('v2:tour-selected',()=>setTimeout(ensure,0));window.addE
 /* donor:search3-tour-detail-rail.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let tour=null,flight=null,selectedTotal=0;
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-function txt(v){if(v==null)return'';if(typeof v==='string'||typeof v==='number')return String(v);if(Array.isArray(v))return v.map(txt).filter(Boolean).join(', ');for(const k of ['russianName','fullRussianName','name','title','value','text']){const s=txt(v[k]);if(s)return s;}return'';}
+const {esc,text:txt,people,place}=window.Search3PresentationText;
 function num(v){if(v&&typeof v==='object'&&v.value!==undefined)v=v.value;const n=Number(v||0);return Number.isFinite(n)?n:0;}
 function money(v){const n=num(v);return n>0?new Intl.NumberFormat('ru-RU').format(n)+' ₽':'—';}
-function people(t){const a=[];if(t&&t.adults)a.push(t.adults+' взр.');if(t&&t.childs)a.push(t.childs+' дет.');return a.join(' + ')||'—';}
 function hotel(t){return t&&t.hotel||{};}
-function place(t){const h=hotel(t);return [txt(h.country),txt(h.region),txt(h.subRegion)].filter(Boolean).join(', ')||'—';}
 function meal(t){return txt(t&&t.meal)||'—';}
 function flightName(v){return window.Search3FlightPresentation.flightLabel(v,'Выбирается');}
 function normalizedTotal(detail){const value=detail||{},source=value.tour||tour||{};if(value.pricePending)return num(value.basePrice)||num(source.price);return num(value.price)||num(value.basePrice)||num(source.price);}
