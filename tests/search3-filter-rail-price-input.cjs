@@ -110,4 +110,9 @@ assert.equal(renders.length, rendersBeforeRefresh + 1,
 while (frames.length) frames.shift()();
 assert.equal(renders.length, rendersBeforeRefresh + 1,
   'fresh source cancels the superseded pending price frame');
+
+const announcementsBeforeSort = announcements.length;
+windowEvents.get('v2:results-rendered')({ detail: { items: renders.at(-1) } });
+assert.equal(announcements.length, announcementsBeforeSort,
+  'rerendering the same filtered references does not announce a filter change');
 console.log('PASS: price input bursts render once per frame with latest state');
