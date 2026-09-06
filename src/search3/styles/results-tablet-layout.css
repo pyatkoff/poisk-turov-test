@@ -3,17 +3,14 @@
   body.search3-candidate{
 & .search3-mobile-sort{display:none!important}
   & .mrf-sheet{
-    display:block!important;
+
     position:fixed!important;
     inset:0!important;
     z-index:1200!important;
     visibility:hidden!important;
     pointer-events:none!important;
   }
-  & .mrf-sheet.is-open{
-    visibility:visible!important;
-    pointer-events:auto!important;
-  }
+
   & .mrf-backdrop{
     position:absolute!important;
     inset:0!important;

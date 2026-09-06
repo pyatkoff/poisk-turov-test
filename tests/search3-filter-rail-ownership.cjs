@@ -1,13 +1,11 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const bundledIife = require('./search3-bundle-iife.cjs');
 
 const root = path.join(__dirname, '..');
 const bundle = fs.readFileSync(path.join(root, 'v2/search3-results-filters-v1.js'), 'utf8');
-const start = bundle.indexOf('/* donor:search3-filter-rail-preview.js');
-const end = bundle.indexOf('/* donor:', start + 1);
-assert.ok(start >= 0 && end > start, 'check the compiled rail including private parts');
-const rail = bundle.slice(start, end);
+const rail = bundledIife(bundle, { literal: '.results-filter-rail' });
 const stylesRoot = path.join(root, 'src/search3/styles');
 const styles = fs.readFileSync(path.join(stylesRoot, 'filters.css'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');

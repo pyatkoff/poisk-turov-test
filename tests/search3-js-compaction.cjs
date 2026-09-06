@@ -40,6 +40,20 @@ const { compact, print, parsed } = require('../scripts/build/search3-js/compact.
     assert.ok(Buffer.byteLength(output) <= Buffer.byteLength(original));
   }
   assert.ok(!(await compact(localNames[0])).includes('veryLongLocalPrice'), 'local bindings actually shrink');
+  const notedSource = `/*! retained notice */
+// ordinary source explanation
+/* @license retained license */
+/* Copyright retained owner */
+/* @preserve retained directive */
+output("/* literal source explanation */");
+//# sourceURL=search3-fixture.js
+`;
+  const notedOutput = await compact(notedSource);
+  assert.equal(execute(notedOutput), execute(notedSource));
+  assert.deepEqual(parsed(notedOutput).comments, parsed(notedSource).comments.filter(
+    comment => !comment.value.includes('ordinary source explanation')));
+  assert.deepEqual(parsed(await print(notedSource)), parsed(notedSource),
+    'exact first-stage printing still retains every source comment');
   assert.notDeepEqual(parsed('({__proto__})'), parsed('({__proto__:__proto__})'),
     'prototype setter and shorthand property are not equivalent');
   assert.notDeepEqual(parsed('String.raw`\\u0061`'), parsed('String.raw`a`'),

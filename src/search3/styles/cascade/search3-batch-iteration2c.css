@@ -19,7 +19,7 @@
   & .results-filter-rail {
 & fieldset,& .filter-range {padding:9px 0!important;border-bottom:1px solid #eef2f6!important}
   & .filter-range>span,& legend {margin-bottom:6px!important;font-size:8.5px!important}
-  & .filter-option {margin:4px 0!important;gap:6px!important;font-size:7.5px!important;line-height:1.2!important}
+  & .filter-option {margin:4px 0!important;gap:6px!important;line-height:1.2!important}
   & :is(input[type=radio],input[type=checkbox]) {width:13px!important;height:13px!important;flex-basis:13px!important}
 }
   & .filter-rail-result{padding-top:8px!important;font-size:7.5px!important}

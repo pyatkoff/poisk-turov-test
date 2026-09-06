@@ -20,7 +20,7 @@ body.search3-candidate{
 }
 
 /* Card facts come only from the real best-priced tour already loaded for the hotel. */
-& .search3-hotel-facts{align-items:stretch;gap:0;margin-top:8px;border:1px solid #edf0f5;border-radius:8px;background:#fbfcfe;overflow:hidden}
+& .search3-hotel-facts{align-items:stretch;gap:0;border:1px solid #edf0f5;border-radius:8px;background:#fbfcfe;overflow:hidden}
 & .search3-hotel-facts>span{display:block;padding:6px 9px;border-right:1px solid #edf0f5}
 & .search3-hotel-facts>span:last-child{border-right:0}
 & .search3-hotel-facts small{display:block;margin-bottom:3px;font:750 7px/1 var(--at-font);text-transform:uppercase;letter-spacing:.02em}
@@ -41,8 +41,8 @@ body.search3-candidate{
  /* Expanded packages should read as cards, not a spreadsheet. */
  & #results .search3-tour-list-head{display:flex!important;align-items:end!important;justify-content:space-between!important;margin:0 0 8px!important}
  & #results .search3-tour-list-head strong{letter-spacing:-.02em!important}
- & #results .search3-tour-list-head span{display:block;margin-top:3px;color:#667085;font-size:8px!important}
- & #results .search3-tour-list-head>b{color:#667085;font-size:8px!important}
+ & #results .search3-tour-list-head span{display:block;margin-top:3px;color:#667085;}
+ & #results .search3-tour-list-head>b{color:#667085;}
  & #results .hotel-tours .tour-row{background:#fff!important;}
  & #results .hotel-tours .tour-meta{column-gap:9px!important}
  & #results .hotel-tours .tour-fact span{color:#98a2b3!important}

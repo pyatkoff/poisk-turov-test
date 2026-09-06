@@ -4,7 +4,7 @@
 /* Search3 full-cycle DS2 visual contract. Preview-only visual layer. */
 @media(min-width:1000px){
 body.search3-candidate{
-&.search3-selected-open #selectedTour{max-width:1180px!important;grid-template-columns:300px minmax(0,1fr)!important;margin-top:18px!important}
+&.search3-selected-open #selectedTour{max-width:1180px!important;grid-template-columns:300px minmax(0,1fr)!important;}
 & #selectedTour {
 & .back-results {border:0!important;background:transparent!important;padding:0!important;color:#075cff!important}
 & .selected-picture {height:176px!important;border-radius:12px 0 0 12px!important}

@@ -48,9 +48,7 @@ html body.search3-candidate{
   line-height:1.25!important;
 }
 
-& .hotel-price-context {
-  font-size:12px!important;
-}
+
 
 & .search3-hotel-action__copy {
   min-width:0!important;

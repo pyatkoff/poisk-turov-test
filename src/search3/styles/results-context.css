@@ -65,15 +65,15 @@ body.search3-candidate{
 @media(max-width:640px){
 body.search3-candidate{
 &.search3-has-results {
-& .v2-shell {display:flex!important;flex-direction:column!important}
+
 & .search3-page-intro {margin:8px auto 4px!important}
 
 
-& #resultsSearchSummary {order:2!important}
-& #resultsTools {order:3!important;margin-bottom:3px!important}
 
 
-& #selectedTour {order:6!important}
+
+
+
 }
 & .search3-mobile-toolbar{grid-template-columns:1fr!important}
 & .results-tools__actions{width:100%!important;align-items:stretch!important}

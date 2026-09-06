@@ -31,6 +31,9 @@ Global/top-level names, property keys, function/class names, argument arity and
 scopes using direct eval are preserved. This intentional renaming is outside the first
 stage's exact-name AST equality; execution/closure/eval/name cases and the existing
 compiled presentation checks cover it. The final output is parsed before writes.
+The second stage omits ordinary source comments from served JavaScript. Readable
+modules and first-stage comment equality remain intact; license/copyright,
+exclamation, preservation and source URL/map notices stay in the output.
 
 The CSS build replaces private source comments with empty comment separators;
 license/copyright/source-map notes, strings and escapes remain. The output also

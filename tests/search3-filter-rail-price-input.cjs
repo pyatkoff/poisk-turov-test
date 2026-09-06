@@ -55,11 +55,9 @@ const document = {
 function CustomEvent(name, options) { this.type = name; this.detail = options.detail; }
 
 const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname, '../v2/search3-results-filters-v1.js'), 'utf8');
-const start = bundle.indexOf('/* donor:search3-filter-rail-preview.js');
-const end = bundle.indexOf('/* donor:', start + 1);
-assert.ok(start >= 0 && end > start, 'exercise the compiled rail with both private parts');
+const bundledIife = require('./search3-bundle-iife.cjs');
 vm.runInNewContext(
-  bundle.slice(start, end),
+  bundledIife(bundle, { literal: '.results-filter-rail' }),
   { window, document, CustomEvent, Intl, Number, Object, Array, Math, String }
 );
 

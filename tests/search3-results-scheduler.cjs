@@ -15,10 +15,8 @@ const form = { elements: {}, addEventListener() {} };
 const document = { getElementById(id) { return { tourSearch: form, resultsTools: tools, resultSummary: summary, results }[id] || null; }, querySelector(selector) { return selector === '.results-filter-rail[data-s3-empty-results="1"]' && emptyLocal ? {} : null; }, body: { classList: { toggle(n,on) { on ? classes.add(n) : classes.delete(n); }, remove(...names) { names.forEach(n=>classes.delete(n)); } } } };
 const window = { innerWidth: 1440, addEventListener(n,fn) { events.set(n,fn); } };
 const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname,'../v2/search3-results-filters-v1.js'),'utf8');
-const start = bundle.indexOf('/* donor:search3-results-top.js');
-const end = bundle.indexOf('/* Static mobile convergence', start);
-assert.ok(start >= 0 && end > start);
-vm.runInNewContext(bundle.slice(start, end), {
+const bundledIife = require('./search3-bundle-iife.cjs');
+vm.runInNewContext(bundledIife(bundle, { literal: '#resultsSearchRoute' }), {
  document, window,
  MutationObserver: function(fn) { observeResults = fn; this.observe = ()=>{}; },
  requestAnimationFrame(fn) { frames.push(fn); }

@@ -57,7 +57,10 @@ async function compact(code) {
     mangle: { toplevel: false, eval: false, properties: false },
     keep_fnames: true,
     keep_classnames: true,
-    format: { comments: 'all', quote_style: 3, wrap_iife: true,
+    // Source notes stay in the readable modules and exact first-stage print.
+    // Keep legal notices and tool directives in the served output.
+    format: { comments: /^!|@(?:license|preserve|cc_on)|copyright|source(?:mapping)?url/i,
+      quote_style: 3, wrap_iife: true,
       keep_quoted_props: true, keep_numbers: true }
   });
   const compacted = renamed.code ? renamed.code + '\n' : '';

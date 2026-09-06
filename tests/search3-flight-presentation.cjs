@@ -4,11 +4,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../v2/search3-results-filters-v1.js'), 'utf8');
-const start = source.indexOf('/* Shared presentation of supplier flight details.');
-const end = source.indexOf('/* donor:search3-booking-summary.js', start);
-assert.ok(start >= 0 && end > start, 'shared presentation helper exists');
+const bundledIife = require('./search3-bundle-iife.cjs');
 const context = { window: {} };
-vm.runInNewContext(source.slice(start, end), context);
+vm.runInNewContext(bundledIife(source, { global: 'Search3FlightPresentation' })
+  + bundledIife(source, { global: 'Search3PresentationText' }), context);
 const helper = context.window.Search3FlightPresentation;
 const segment = (changes = {}) => ({
   company: { name: 'Аэрофлот' }, number: 'SU000',

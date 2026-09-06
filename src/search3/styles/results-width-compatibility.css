@@ -20,7 +20,7 @@ body.search3-candidate{
 & .results-tools--ds2 {padding-left:12px!important;padding-right:0!important}
 & #results .hotel-card {
 & .hotel-main {display:grid!important;grid-template-columns:276px minmax(0,1fr)!important;align-items:stretch!important;gap:0!important;min-height:156px!important}
-& .hotel-photo {width:auto!important;height:156px!important;min-height:156px!important;max-height:156px!important;border-radius:0!important}
+& .hotel-photo {width:auto!important;height:156px!important;max-height:156px!important;border-radius:0!important}
 & .hotel-body {display:grid!important;grid-template-columns:minmax(0,1fr) 180px!important;grid-template-rows:auto auto auto 1fr auto!important;column-gap:16px!important;min-width:0!important;padding:12px 14px 11px!important}
 & .hotel-title {margin:0!important;font-size:15px!important;line-height:1.13!important;letter-spacing:-.18px!important}
 & .hotel-place {margin-top:4px!important;font-size:9px!important}

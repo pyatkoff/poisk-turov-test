@@ -26,17 +26,17 @@ body.search3-candidate{
 }
 @media(min-width:1000px){
 body.search3-candidate{
-& .search3-page-intro{margin-top:16px!important;margin-bottom:9px!important}
+
 & .search3-page-intro h1{font-size:28px!important;line-height:1.06!important;margin-bottom:5px!important;letter-spacing:-.45px!important}
 & .search3-page-intro p{font-size:11px!important;line-height:1.35!important;font-weight:500!important}
-& #tourSearch{margin-top:12px!important;margin-bottom:14px!important;padding:16px 17px 15px!important;border-radius:12px!important}
-& #tourSearch .search3-primary-grid{grid-template-columns:minmax(0,1.08fr) minmax(0,1.08fr) minmax(0,1.28fr) minmax(0,.72fr) minmax(0,.95fr) 150px!important;gap:12px!important;min-width:0!important}
-& #tourSearch .search3-primary-grid>*{min-width:0!important}
+& #tourSearch{padding:16px 17px 15px!important;border-radius:12px!important}
+& #tourSearch .search3-primary-grid{grid-template-columns:minmax(0,1.08fr) minmax(0,1.08fr) minmax(0,1.28fr) minmax(0,.72fr) minmax(0,.95fr) 150px!important;}
+
 & #tourSearch .field>span{margin-bottom:6px!important;font-size:9px!important;font-weight:650!important}
 & #tourSearch select,
 & #tourSearch :is(input[type=date],input[type=number],input[type=text]),
 & :is(.search3-tourists__summary,.search3-composite__control){min-height:40px!important;height:40px!important;font-size:11px!important;font-weight:650!important}
-& #tourSearch .search3-primary-grid>.search-submit{min-width:150px!important;width:150px!important;min-height:40px!important;height:40px!important;padding:0 14px!important;font-size:11px!important;font-weight:850!important}
+& #tourSearch .search3-primary-grid>.search-submit{min-height:40px!important;height:40px!important;padding:0 14px!important;font-size:11px!important;font-weight:850!important}
 & #tourSearch .search3-primary-grid>.search-submit b{font-size:13px!important}
 & .search3-quality{margin-top:12px!important}
 & .search3-quality__grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}
@@ -78,7 +78,7 @@ body.search3-candidate{
 & .search3-hotel-action{grid-template-columns:minmax(0,1fr) 196px!important;gap:20px!important;margin-top:8px!important;padding-top:8px!important}
 & .search3-hotel-action__copy{align-items:center!important;gap:10px!important}
 & .search3-hotel-action__copy :is(strong,span){font-size:8px!important;line-height:1.2!important}
-& .search3-show-tours{min-height:38px!important;font-size:10px!important}
+
 }
 }
 @media(max-width:760px){

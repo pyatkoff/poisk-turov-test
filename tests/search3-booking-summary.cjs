@@ -18,11 +18,9 @@ const form = { style: style('form'), closest() { return shell; } };
 const root = { dataset: {}, classList: { contains(name) { return name === 'search3-lead-entry' ? lead : name === 'search3-final-review' && review; } }, querySelector() { return form; } };
 const window = { addEventListener(name, fn) { events.set(name, fn); }, matchMedia() { return { matches: desktop }; }, Search3FlightPresentation: { flightLabel(v, fallback) { return v ? v.name : fallback; } } };
 const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname, '../v2/search3-results-filters-v1.js'), 'utf8');
-const start = bundle.indexOf('/* donor:search3-booking-summary.js');
-const end = bundle.indexOf('/* donor:search3-booking-stepper.js', start);
-assert.ok(start >= 0 && end > start, 'exercise the compiled summary with its private layout part');
-const presentationSource = fs.readFileSync(path.join(__dirname, '../src/search3/behavior/presentation-text.js'), 'utf8')
-  + bundle.slice(start, end);
+const bundledIife = require('./search3-bundle-iife.cjs');
+const presentationSource = bundledIife(bundle, { global: 'Search3PresentationText' })
+  + bundledIife(bundle, { global: 'Search3BookingSummary' });
 vm.runInNewContext(presentationSource, {
   window, document: { getElementById() { return root; }, addEventListener() {} }, setTimeout(fn) { timers.push(fn); }
 });

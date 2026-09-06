@@ -2,8 +2,8 @@
   "schema_version": 2,
   "source_root": "src/search3/styles/cascade",
   "donor_source_sha": "e5baf32f455cdb0aa1a704964f28e5efbebf57ff",
-  "combined_bytes": 37802,
-  "combined_git_blob_sha": "17d3e0b15421ad0a498452449a8564689580b06d",
+  "combined_bytes": 36975,
+  "combined_git_blob_sha": "bb329f43f521dac2ef00ad79327ef0238f210291",
   "sections": [
     "search3-batch-iteration1.css",
     "search3-batch-iteration1b.css",
