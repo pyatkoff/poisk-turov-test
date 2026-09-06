@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const events = new Map(), frames = [], classes = new Set();
-let observeResults, cards = true, geometryReads = 0;
+let observeResults, cards = true, geometryReads = 0, emptyLocal = false;
 const properties = new Map();
 const style = { setProperty(k,v,priority) { assert.equal(priority,'important'); properties.set(k,v); }, removeProperty(k) { properties.delete(k); } };
 const counters = { textContent: '' };
@@ -12,9 +12,13 @@ const heading = { textContent: '' }, summary = { textContent: '' };
 const tools = { style, parentElement: { getBoundingClientRect() { return { left: 0 }; } }, querySelector(s) { return s === 'strong' ? heading : s === '.search3-results-meta' ? meta : null; } };
 const results = { querySelector() { return cards ? {} : null; }, getBoundingClientRect() { geometryReads++; return { width: 800, left: 200 }; } };
 const form = { elements: {}, addEventListener() {} };
-const document = { getElementById(id) { return { tourSearch: form, resultsTools: tools, resultSummary: summary, results }[id] || null; }, querySelector() { return null; }, body: { classList: { toggle(n,on) { on ? classes.add(n) : classes.delete(n); }, remove(...names) { names.forEach(n=>classes.delete(n)); } } } };
+const document = { getElementById(id) { return { tourSearch: form, resultsTools: tools, resultSummary: summary, results }[id] || null; }, querySelector(selector) { return selector === '.results-filter-rail[data-s3-empty-results="1"]' && emptyLocal ? {} : null; }, body: { classList: { toggle(n,on) { on ? classes.add(n) : classes.delete(n); }, remove(...names) { names.forEach(n=>classes.delete(n)); } } } };
 const window = { innerWidth: 1440, addEventListener(n,fn) { events.set(n,fn); } };
-vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../src/search3/behavior/results-top.js'),'utf8'), {
+const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname,'../v2/search3-results-filters-v1.js'),'utf8');
+const start = bundle.indexOf('/* donor:search3-results-top.js');
+const end = bundle.indexOf('/* Static mobile convergence', start);
+assert.ok(start >= 0 && end > start);
+vm.runInNewContext(bundle.slice(start, end), {
  document, window,
  MutationObserver: function(fn) { observeResults = fn; this.observe = ()=>{}; },
  requestAnimationFrame(fn) { frames.push(fn); }
@@ -41,4 +45,13 @@ for (const name of ['width','margin-left','margin-right','padding-left','padding
  assert.ok(!properties.has(name),'mobile clears desktop geometry: '+name);
 }
 assert.equal(properties.get('position'),'static','mobile retains normal flow');
+window.innerWidth = 1440; cards = false; emptyLocal = true;
+emit('v2:results-rendered', []); observeResults(); flush();
+assert.ok(classes.has('search3-has-results'), 'local zero matches retain the results shell');
+assert.equal(heading.textContent, 'Найдено 0 туров');
+assert.equal(properties.get('width'), '800px');
+classes.add('search3-editing-search'); emit('resize'); flush();
+assert.ok(classes.has('search3-editing-search'), 'zero-match resize preserves the editor');
+emptyLocal = false; emit('v2:search-reset'); observeResults(); flush();
+assert.ok(!classes.has('search3-has-results'), 'a true search reset clears the empty-filter shell');
 console.log('PASS: one results frame, editor preserved, no stale post-reset geometry');

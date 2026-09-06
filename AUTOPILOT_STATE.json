@@ -956,24 +956,29 @@
       "docs/project/search3-css-descendant-secondary.json"
     ],
     "in_progress": {
-      "stage": "JS_COMPACTION_INTEGRATED_CSS_PRINTING_LOCAL_VERIFIED",
-      "integrated_sha": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4",
-      "source_prs": [
+      "stage": "COMPACT_ASSETS_PUBLISHED_EMPTY_FILTER_SHELL_FIX_LOCAL_VERIFIED",
+      "published_source": "c7ccf7f90eaf34406edba6653ac262056b55280c",
+      "published_prs": [
         1408,
-        1409
+        1409,
+        1410
       ],
-      "ci": "Both exact source heads: 23 applicable success, one expected skip; 375/1440 editor pixel parity",
-      "public_assets": {
+      "published_deploy_pr": 1411,
+      "published_deploy_run": 34054101700,
+      "published_artifact": 9995378956,
+      "published_bytes": 335700,
+      "production_unchanged": true,
+      "live_findings": "100 hotels/429 tours loaded; an inherited zero-match filter shell hiding defect was reproduced and is being fixed separately. Full journey qualification pending.",
+      "local_assets": {
         "css_bytes": 205437,
         "css_lines": 37,
-        "js_bytes": 130263,
+        "js_bytes": 130610,
         "js_lines": 55,
-        "total_bytes": 335700,
+        "total_bytes": 336047,
         "total_lines": 92
       },
-      "audit": "docs/project/search3-css-external-formatting.json",
-      "preview_updated": false,
-      "next_action": "Run exact CSS source CI and inspect responsive evidence; publish all three checked source steps with one separate exact preview artifact."
+      "audit": "docs/project/search3-empty-local-filter-shell.json",
+      "next_action": "Run exact fix CI and inspect new zero-result screenshot, publish a separate superseding exact artifact, then verify live slider recovery and full journey before final handoff."
     }
   },
   "presentation_refactor_history": [

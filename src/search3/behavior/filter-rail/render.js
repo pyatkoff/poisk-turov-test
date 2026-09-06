@@ -6,6 +6,7 @@ function resolvePriceBounds(){var prices=allPrices(source),min=prices.length?Mat
 function syncPriceRange(){var displayedMax=resolvePriceBounds(),input=rail.querySelector('[data-s3-price]'),out=rail.querySelector('[data-s3-price-label]');if(input){input.min=String(rangeMin);input.max=String(rangeMax);input.step='5000';input.value=String(displayedMax);}if(out)out.textContent='от '+money(rangeMin)+' ₽ — до '+money(displayedMax)+' ₽';}
 function seaOption(value,label,checked){return'<label class="filter-option"><input type="radio" name="s3-sea" value="'+value+'" '+(checked?'checked':'')+'><span>'+label+'</span></label>';}
 function renderRail(){
+ rail.dataset.s3EmptyResults='';
  var displayedMax=resolvePriceBounds(),min=rangeMin,max=rangeMax;
  var popular='<label class="filter-range" data-s3-price-field><span>Цена за тур</span><small data-s3-price-label>от '+money(rangeMin)+' ₽ — до '+money(displayedMax)+' ₽</small><input type="range" data-s3-price min="'+min+'" max="'+max+'" step="5000" value="'+displayedMax+'"></label>'+
   editRow('Категория отеля',fieldLabel('stars','Любая'),'stars')+editRow('Рейтинг отеля',fieldLabel('rating','Любой'),'rating');

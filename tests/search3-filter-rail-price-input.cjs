@@ -39,7 +39,11 @@ const form = { elements: {}, requestSubmit() { formSubmits += 1; } };
 const renders = [];
 const window = {
   innerWidth: 1440,
-  V2Results: { render(items) { renders.push(items); } },
+  V2Results: { render(items) {
+    assert.equal(rail.dataset.s3EmptyResults, items.length ? '' : '1',
+      'local zero-match marker is established before synchronous render subscribers');
+    renders.push(items);
+  } },
   addEventListener(name, handler) { windowEvents.set(name, handler); },
   dispatchEvent(event) { announcements.push(event.detail); },
   requestAnimationFrame(handler) { frames.push(handler); }
@@ -296,9 +300,13 @@ windowEvents.get('v2:results-rendered')({ detail: { items: [hotelWithoutTours] }
 input(100000);
 while (frames.length) frames.shift()();
 assert.equal(renders.at(-1).length, 0, 'price filtering still excludes a hotel without tour rows');
+assert.equal(rail.dataset.s3EmptyResults, '1');
 input(140000);
 while (frames.length) frames.shift()();
 assert.equal(renders.at(-1).length, 1, 'price filtering still restores a matching hotel without tour rows');
+assert.equal(rail.dataset.s3EmptyResults, '');
+windowEvents.get('v2:search-reset')();
+assert.equal(rail.dataset.s3EmptyResults, '', 'a true reset clears local-empty state');
 console.log('PASS: price input bursts render once per frame with latest state');
 
 // Optional differential evidence from the same full regression sequence.

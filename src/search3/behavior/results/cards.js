@@ -153,7 +153,7 @@
     hotelsById = new Map((Array.isArray(items) ? items : []).map(function (hotel) {
       return [hotelId(hotel), hotel];
     }));
-    body.classList.toggle('search3-results-active', hotelsById.size > 0);
+    body.classList.toggle('search3-results-active', hotelsById.size > 0 || !!document.querySelector('.results-filter-rail[data-s3-empty-results="1"]'));
     if (!hotelsById.size) { cancelMobileToolbar(); return; }
     results.querySelectorAll('.hotel-card').forEach(decorateCard);
     scheduleMobileToolbar();

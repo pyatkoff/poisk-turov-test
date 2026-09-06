@@ -91,6 +91,51 @@ function px(value) {
   return Number.parseFloat(String(value || '0')) || 0;
 }
 
+async function verifyEmptyLocalRail(browser) {
+  const page = await browser.newPage({ viewport: { width: 1348, height: 900 } });
+  await page.route('**/*', route => {
+    const url = route.request().url();
+    return !url.startsWith(base + '/') || /\/(?:api[^/]*|lead[^/]*)\.php/.test(url)
+      ? route.abort() : route.continue();
+  });
+  try {
+    await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.Search3CandidateResultsV1 && window.V2Results &&
+      document.getElementById('tourSearch').dataset.catalogSource === 'partial');
+    // Reuse the existing deterministic card fixture and execute all real Search3
+    // presentation subscribers. The adapter never invokes external search/lead.
+    await page.evaluate(html => {
+      window.V2Results.render = items => {
+        const results = document.getElementById('results');
+        results.hidden = false;
+        results.innerHTML = items.length ? html : '';
+        document.getElementById('resultsTools').hidden = !items.length;
+        document.getElementById('resultsSearchSummary').hidden = !items.length;
+        window.dispatchEvent(new CustomEvent('v2:results-rendered', { detail: { items } }));
+      };
+      window.V2Results.render([{ id: 'readability-fixture', name: 'Empty-filter fixture', price: 148500, tours: [] }]);
+    }, cardHtml);
+    const slider = page.locator('[data-s3-price]');
+    await slider.waitFor({ state: 'visible' });
+    await slider.press('Home');
+    await page.waitForFunction(() => !document.querySelector('#results .hotel-card'));
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    if (!await slider.isVisible() || !await page.locator('.results-filter-rail').isVisible()) throw new Error('EMPTY_LOCAL_RAIL_HIDDEN');
+    if (await page.locator('[data-s3-count]').textContent() !== '0') throw new Error('EMPTY_LOCAL_COUNT');
+    for (const width of [1000,1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      if (!await slider.isVisible()) throw new Error('EMPTY_LOCAL_RESIZE_HIDDEN ' + width);
+    }
+    await page.screenshot({ path: 'standalone-content-artifacts/empty-local-filter-1440.png', fullPage: true });
+    await slider.press('End');
+    await page.waitForSelector('#results .hotel-card');
+    if (await page.locator('[data-s3-count]').textContent() !== '1') throw new Error('EMPTY_LOCAL_RESTORE_COUNT');
+    await page.evaluate(() => { document.getElementById('results').innerHTML = ''; window.dispatchEvent(new CustomEvent('v2:search-reset')); });
+    if (await page.locator('.results-filter-rail').getAttribute('data-s3-empty-results') !== '') throw new Error('EMPTY_LOCAL_RESET_MARKER');
+    console.log('SEARCH3_EMPTY_LOCAL_RAIL_OK 1348/1000/1440 zero matches, resize, restore, reset');
+  } finally { await page.close(); }
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -309,6 +354,7 @@ function px(value) {
       await page.close();
     }
     await verifyToolbarBoundary(browser);
+    await verifyEmptyLocalRail(browser);
   } finally {
     await browser.close();
   }

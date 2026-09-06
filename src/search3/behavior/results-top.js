@@ -17,8 +17,10 @@ function clearGeometry(){['width','margin-left','margin-right','padding-left','p
 function toolStyle(name,value){tools.style.setProperty(name,value,'important');}
 function syncToolsFlow(){toolStyle('position','static');toolStyle('top','auto');toolStyle('z-index','auto');toolStyle('transform','none');toolStyle('-webkit-backdrop-filter','none');toolStyle('backdrop-filter','none');}
 function syncDesktopGeometry(has){syncToolsFlow();if(window.innerWidth<1000){clearGeometry();return;}if(has&&results){var shell=tools.parentElement,rr=results.getBoundingClientRect(),sr=shell&&shell.getBoundingClientRect();if(sr&&rr.width>0){toolStyle('box-sizing','border-box');toolStyle('width',rr.width+'px');toolStyle('margin-left',Math.max(0,rr.left-sr.left)+'px');toolStyle('margin-right','0');toolStyle('padding-left','9px');toolStyle('padding-right','9px');}}else{clearGeometry();}}
-function syncResultsState(){var has=!!(results&&results.querySelector('.hotel-card'));document.body.classList.toggle('search3-has-results',has);if(has){document.body.classList.remove('search3-editing-search');syncRoute();}else resetIntro();syncDesktopGeometry(has);}
-function update(items){items=Array.isArray(items)?items:[];var hotels=items.length,tours=toursCount(items);heading.textContent='Найдено '+tours+' '+word(tours,'тур','тура','туров');summary.textContent=hotels?hotels+' '+word(hotels,'отель','отеля','отелей')+' · актуальные варианты':'Актуальные варианты';var meta=ensureMeta(),h=meta.querySelector('[data-s3-hotels]'),t=meta.querySelector('[data-s3-tours]');if(h)h.textContent=hotels+' '+word(hotels,'отель','отеля','отелей');if(t)t.textContent=tours+' '+word(tours,'тур','тура','туров');document.body.classList.toggle('search3-has-results',hotels>0);document.body.classList.remove('search3-editing-search');if(hotels>0)syncRoute();else resetIntro();scheduleResultsSync(false);}
+function emptyLocalResults(){return !!document.querySelector('.results-filter-rail[data-s3-empty-results="1"]');}
+function hasResults(){return !!(results&&results.querySelector('.hotel-card'))||emptyLocalResults();}
+function syncResultsState(){var has=hasResults();document.body.classList.toggle('search3-has-results',has);if(has){document.body.classList.remove('search3-editing-search');syncRoute();}else resetIntro();syncDesktopGeometry(has);}
+function update(items){items=Array.isArray(items)?items:[];var hotels=items.length,tours=toursCount(items),has=hotels>0||emptyLocalResults();heading.textContent='Найдено '+tours+' '+word(tours,'тур','тура','туров');summary.textContent=hotels?hotels+' '+word(hotels,'отель','отеля','отелей')+' · актуальные варианты':'Актуальные варианты';var meta=ensureMeta(),h=meta.querySelector('[data-s3-hotels]'),t=meta.querySelector('[data-s3-tours]');if(h)h.textContent=hotels+' '+word(hotels,'отель','отеля','отелей');if(t)t.textContent=tours+' '+word(tours,'тур','тура','туров');document.body.classList.toggle('search3-has-results',has);document.body.classList.remove('search3-editing-search');if(has)syncRoute();else resetIntro();scheduleResultsSync(false);}
 window.addEventListener('v2:results-rendered',function(e){update(e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[]);});
 window.addEventListener('v2:search-reset',function(){document.body.classList.remove('search3-has-results','search3-editing-search');heading.textContent='Предложения';summary.textContent='Актуальные варианты';var meta=tools.querySelector('.search3-results-meta');if(meta)meta.remove();resetIntro();syncDesktopGeometry(false);});
 // All geometry reads share one frame and use the current DOM, including after
@@ -32,7 +34,7 @@ function scheduleResultsSync(syncState){
     var syncState=stateSyncPending;
     frameQueued=false;stateSyncPending=false;
     if(syncState)syncResultsState();
-    else syncDesktopGeometry(!!(results&&results.querySelector('.hotel-card')));
+    else syncDesktopGeometry(hasResults());
   });
 }
 if(results){new MutationObserver(function(){scheduleResultsSync(true);}).observe(results,{childList:true});syncResultsState();}
