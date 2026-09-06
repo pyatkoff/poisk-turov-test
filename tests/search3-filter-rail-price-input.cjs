@@ -155,6 +155,8 @@ Object.assign(form.elements, {
   price_from: { value: '80000' }, price_till: { value: '180000' },
   onlyDirect: { checked: true }, onlyCharter: { checked: true }
 });
+const announcementsBeforeReset = announcements.length;
+const rendersBeforeReset = renders.length;
 railEvents.get('click')({
   target: { closest(selector) { return selector === '[data-s3-reset]' ? {} : null; } }
 });
@@ -163,6 +165,10 @@ assert.equal(form.elements.price_till.value, '', 'reset clears the upper budget 
 assert.equal(form.elements.onlyDirect.checked, false, 'reset clears the direct-flight form filter');
 assert.equal(form.elements.onlyCharter.checked, false, 'reset clears the charter form filter');
 assert.equal(formSubmits, 1, 'desktop reset submits the cleared form once');
+assert.equal(renders.length, rendersBeforeReset + 1, 'reset restores the unfiltered source once');
+assert.equal(renders.at(-1).length, refreshedHotels.length, 'reset restores every source hotel');
+assert.equal(announcements.length, announcementsBeforeReset + 1,
+  'reset announces the restored result count once');
 
 form.elements.onlyCharter.checked = true;
 windowEvents.get('v2:search-reset')();
