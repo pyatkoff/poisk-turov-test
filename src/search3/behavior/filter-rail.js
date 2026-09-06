@@ -17,7 +17,7 @@ function fieldLabel(name,fallback){var el=form.elements[name];if(!el)return fall
 function announce(resultCount){var count=activeCount();rail.dataset.s3ActiveCount=String(count);window.dispatchEvent(new CustomEvent('search3:result-filters-changed',{detail:{activeCount:count,resultCount:Number(resultCount)||0}}));}
 function section(title,html){return'<section class="search3-filter-section"><h4>'+title+'</h4>'+html+'</section>';}
 function editRow(label,value,panel){return'<button type="button" class="search3-filter-edit-row" '+(panel?'data-s3-panel="'+panel+'"':'data-s3-edit-search')+'><span>'+label+'</span><b>'+value+'</b><i aria-hidden="true">›</i></button>';}
-function renderRail(){
+function renderRail(announceSource){
  var prices=allPrices(source),min=prices.length?Math.floor(Math.min.apply(null,prices)/5000)*5000:40000,max=prices.length?Math.ceil(Math.max.apply(null,prices)/5000)*5000:250000;if(max<=min)max=min+5000;rangeMin=min;rangeMax=max;if(state.priceMax>max)state.priceMax=max;var displayedMax=state.priceMax||max;
  var popular='<label class="filter-range"><span>Цена за тур</span><small data-s3-price-label>от '+money(rangeMin)+' ₽ — до '+money(displayedMax)+' ₽</small><input type="range" data-ds2-price data-s3-price min="'+min+'" max="'+max+'" step="5000" value="'+displayedMax+'"></label>'+
   editRow('Категория отеля',fieldLabel('stars','Любая'),'stars')+editRow('Рейтинг отеля',fieldLabel('rating','Любой'),'rating');
@@ -25,7 +25,7 @@ function renderRail(){
  var sea='<label class="filter-option"><input type="radio" name="s3-sea" value="0" '+(!state.seaMax?'checked':'')+'><span>Любое расстояние</span></label><label class="filter-option"><input type="radio" name="s3-sea" value="200" '+(state.seaMax===200?'checked':'')+'><span>До 200 м</span></label><label class="filter-option"><input type="radio" name="s3-sea" value="500" '+(state.seaMax===500?'checked':'')+'><span>До 500 м</span></label><label class="filter-option"><input type="radio" name="s3-sea" value="1000" '+(state.seaMax===1000?'checked':'')+'><span>До 1 км</span></label>';
  var flight='<label class="filter-option"><input type="checkbox" data-s3-charter-check '+(state.charter?'checked':'')+'><span>Только чартер</span></label>'+editRow('Прямой рейс',form.elements.onlyDirect&&form.elements.onlyDirect.checked?'Только прямой':'Любой','onlyDirect');
  rail.innerHTML='<div class="filter-rail-head"><div><div class="filter-rail-title">Фильтры</div><small>Дополнительные параметры</small></div><button type="button" class="filter-reset-link" data-s3-reset>Сбросить все</button></div>'+section('Популярные',popular)+section('Отель',hotel)+section('Расположение',sea)+section('Перелёт',flight)+'<div class="filter-rail-result"><span>Подходит</span><strong><b data-s3-count>'+source.length+'</b> <span data-s3-word>'+word(source.length)+'</span></strong></div>';
- announce(source.length);
+ if(announceSource!==false)announce(source.length);
 }
 function updateCount(n){var c=rail.querySelector('[data-s3-count]'),w=rail.querySelector('[data-s3-word]');if(c)c.textContent=String(n);if(w)w.textContent=word(n);announce(n);}
 function apply(){if(!source.length||!window.V2Results||typeof window.V2Results.render!=='function')return;var filtered=source.map(filteredHotel).filter(Boolean);lastApplied=filtered.slice();applying=true;try{window.V2Results.render(filtered,{keepResultsShell:true});}finally{applying=false;}updateCount(filtered.length);}
@@ -39,7 +39,7 @@ function editSearch(){form.classList.add('search3-mobile-advanced-open');var edi
 rail.addEventListener('input',function(e){var t=e.target;if(t.matches('[data-s3-price]')){state.priceMax=Number(t.value||0);var out=rail.querySelector('[data-s3-price-label]');if(out)out.textContent='от '+money(rangeMin)+' ₽ — до '+money(state.priceMax)+' ₽';schedulePriceApply();}});
 rail.addEventListener('change',function(e){var t=e.target;if(t.name==='s3-sea'){cancelPriceApply();state.seaMax=Number(t.value||0);apply();}else if(t.matches('[data-s3-charter-check]')){cancelPriceApply();state.charter=!!t.checked;apply();}});
 rail.addEventListener('click',function(e){var panel=e.target.closest('[data-s3-panel]');if(panel){editSearch();return;}if(e.target.closest('[data-s3-reset]')){reset();return;}if(e.target.closest('[data-s3-edit-search]')){editSearch();return;}});
-window.addEventListener('v2:results-rendered',function(e){if(applying)return;var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];if(lastApplied.length&&sameRefs(items,lastApplied)){updateCount(items.length);return;}source=items.slice();lastApplied=[];renderRail();});
+window.addEventListener('v2:results-rendered',function(e){if(applying)return;var items=e&&e.detail&&Array.isArray(e.detail.items)?e.detail.items:[];if(lastApplied.length&&sameRefs(items,lastApplied)){updateCount(items.length);return;}source=items.slice();lastApplied=[];renderRail(false);if(source.length&&activeCount())apply();else announce(source.length);});
 window.addEventListener('v2:search-reset',function(){cancelPriceApply();source=[];lastApplied=[];rangeMin=0;rangeMax=0;state={priceMax:0,seaMax:0,charter:false};renderRail();});
 renderRail();
 })();

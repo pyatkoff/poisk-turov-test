@@ -85,4 +85,17 @@ windowEvents.get('v2:search-reset')();
 while (frames.length) frames.shift()();
 assert.equal(renders.length, 3, 'search reset cancels a pending price render');
 assert.equal(announcements.at(-1).resultCount, 0);
+
+windowEvents.get('v2:results-rendered')({ detail: { items: hotels } });
+input(95000);
+while (frames.length) frames.shift()();
+assert.equal(renders.length, 4);
+const refreshedHotels = hotels.concat({ tours: [{ price: 200000 }] });
+const announcementCount = announcements.length;
+windowEvents.get('v2:results-rendered')({ detail: { items: refreshedHotels } });
+assert.equal(renders.length, 5, 'an active price filter is reapplied to a fresh source');
+assert.equal(renders.at(-1).length, 1, 'fresh unfiltered hotels do not leak into filtered results');
+assert.equal(announcements.length, announcementCount + 1,
+  'fresh source reapplication announces only the final filtered count');
+assert.equal(announcements.at(-1).resultCount, 1);
 console.log('PASS: price input bursts render once per frame with latest state');
