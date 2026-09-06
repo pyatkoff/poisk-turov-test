@@ -22,6 +22,70 @@ const cardHtml = `
     </div>
   </article>`;
 
+async function verifyToolbarBoundary(browser) {
+  const page = await browser.newPage({ viewport: { width: 375, height: 900 } });
+  // This fixture never talks to production search, lead delivery or analytics.
+  await page.route('**/*', route => {
+    const url = route.request().url();
+    if (!url.startsWith(base + '/') || /\/(?:api[^/]*|lead[^/]*)\.php/.test(url)) return route.abort();
+    return route.continue();
+  });
+  try {
+    await page.goto(base + '/ci-search3.php', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => window.Search3CandidateResultsV1 && window.V2MobileResultsFiltersV1);
+    // Aborted catalogue requests finish asynchronously and clear loading options.
+    // Wait for that fixture-only failure before capturing parameters for resize.
+    await page.waitForFunction(() => document.getElementById('tourSearch').dataset.catalogSource === 'partial');
+    await page.evaluate(() => {
+      const form = document.getElementById('tourSearch');
+      for (const [name, value, label] of [['from','1','Fixture departure'], ['country','4','Fixture country']]) {
+        const select = form.elements[name];
+        if (![...select.options].some(option => option.value === value)) select.add(new Option(label, value));
+        select.value = value;
+      }
+    });
+    await page.evaluate(html => {
+      document.getElementById('results').innerHTML = html;
+      document.getElementById('results').hidden = false;
+      document.getElementById('resultsTools').hidden = false;
+      document.body.classList.add('search3-has-results');
+      window.dispatchEvent(new CustomEvent('v2:results-rendered', { detail: { items: [
+        { id: 'readability-fixture', name: 'Toolbar fixture', price: 148500, tours: [] }
+      ] } }));
+    }, cardHtml);
+    await page.waitForSelector('.search3-mobile-toolbar');
+    await page.evaluate(() => { window.__toolbarBoundaryNode = document.querySelector('.search3-mobile-toolbar'); });
+    const formValues = () => page.evaluate(() => [...new FormData(document.getElementById('tourSearch')).entries()].sort((a,b) => a[0].localeCompare(b[0])));
+    const before = JSON.stringify(await formValues());
+    for (const width of [999,1000,1348,1440,999,430]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const toolbar = page.locator('.search3-mobile-toolbar');
+      const geometry = await toolbar.evaluate(node => ({ display: getComputedStyle(node).display, height: node.getBoundingClientRect().height, sameNode: node === window.__toolbarBoundaryNode }));
+      if (!geometry.sameNode || await toolbar.count() !== 1) throw new Error('TOOLBAR_OWNER_REPLACED ' + width);
+      if (width >= 1000) {
+        if (geometry.display !== 'none' || geometry.height !== 0 || await page.locator('.search3-mobile-sort select').isVisible()) throw new Error('TOOLBAR_DESKTOP_LEAK ' + width + ' ' + JSON.stringify(geometry));
+        if (!await page.locator('#sortResults').isVisible()) throw new Error('TOOLBAR_NATIVE_SORT_HIDDEN ' + width);
+      } else {
+        if (!await toolbar.isVisible() || !await page.locator('.search3-mobile-filter-slot > .mrf-bar').isVisible()) throw new Error('TOOLBAR_COMPACT_MISSING ' + width);
+        await page.locator('.mrf-open').click();
+        await page.waitForFunction(() => document.querySelector('.mrf-sheet').classList.contains('is-open'));
+        await page.keyboard.press('Escape');
+        if (!await page.locator('.mrf-open').evaluate(node => node === document.activeElement)) throw new Error('TOOLBAR_FOCUS_RETURN ' + width);
+      }
+      if (JSON.stringify(await formValues()) !== before) throw new Error('TOOLBAR_RESIZE_CHANGED_FORM ' + width + ' ' + JSON.stringify({ before: JSON.parse(before), after: await formValues() }));
+      if (width === 1348 || width === 430) await page.screenshot({ path: 'standalone-content-artifacts/toolbar-boundary-' + width + '.png', fullPage: true, animations: 'disabled' });
+      console.log('SEARCH3_TOOLBAR_BOUNDARY_OK ' + width + ' ' + JSON.stringify(geometry));
+    }
+    const native = page.locator('#sortResults'), proxy = page.locator('.search3-mobile-sort select');
+    const values = await native.locator('option').evaluateAll(nodes => nodes.map(node => node.value));
+    await proxy.selectOption(values[1], { force: true });
+    if (await native.inputValue() !== values[1]) throw new Error('TOOLBAR_PROXY_SORT_HANDOFF');
+    await native.selectOption(values[0], { force: true });
+    if (await proxy.inputValue() !== values[0]) throw new Error('TOOLBAR_NATIVE_SORT_HANDOFF');
+  } finally { await page.close(); }
+}
+
 function px(value) {
   return Number.parseFloat(String(value || '0')) || 0;
 }
@@ -236,6 +300,7 @@ function px(value) {
       console.log('SEARCH3_CALENDAR_OK ' + width + ' daily minima, date handoff, responsive display and reset');
       await page.close();
     }
+    await verifyToolbarBoundary(browser);
   } finally {
     await browser.close();
   }

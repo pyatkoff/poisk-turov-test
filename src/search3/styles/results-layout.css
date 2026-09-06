@@ -327,6 +327,11 @@ body.search3-candidate #results .hotel-tours:not([hidden]) .tour-action>.direct-
 
 body.search3-candidate .search3-mobile-toolbar{display:none}
 
+/* Retain the mobile owner across resize, but keep only the native desktop sort visible. */
+@media(min-width:1000px){
+  html body.search3-candidate.search3-results-active .search3-mobile-toolbar{display:none!important}
+}
+
 @media(max-width:999px){
   body.search3-candidate.search3-results-active{
     --search3-results-inline-gutter:max(0px,calc((48px - (100vw - 100%))/2));
