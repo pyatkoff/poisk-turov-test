@@ -1,18 +1,24 @@
 # Cascade compatibility modules
 
-These nine physical modules replace `styles/cascade-compatibility.css` in the
-same position and order in `src/search3/manifest.json`. They are not additional
-browser requests; the public asset is still `v2/search3-results-filters-v1.css`.
-All declarations remain active unless a separate cleanup proves otherwise.
+These nine physical modules now contain provenance markers only. The
+owner-authorized retirement removed their declarations together with the tenth
+layer, `styles/visual-compatibility.css`. Necessary rules remain in `lead-state`,
+`tour-detail-convergence`, `results-context` and `hotel-packages`.
+See `docs/project/search3-whole-layer-retirement.json` for scope and verification.
 
-## Byte-preserving split
+The modules retain the position and order of the former
+`styles/cascade-compatibility.css` in `src/search3/manifest.json`. They are not
+additional browser requests; the public asset remains
+`v2/search3-results-filters-v1.css`. The split and cleanup notes below are historical.
+
+## Historical byte-preserving split
 
 The baseline is the original cascade blob from `c2212d3a` (also `f729158e`):
 78,306 bytes, Git blob `9b3583c4261dda23109b369595cb955aa473b7fb`.
-The largest physical module is now `search3-convergence.css`, 16,945 bytes.
-Every module ends with exactly one LF. The original two blank separator LF bytes
-belong to the beginning of the following module, before its donor marker. The
-first module retains the original two leading LF bytes. Concatenation is exact;
+The largest physical module at that split was `search3-convergence.css`, 16,945 bytes.
+Every module ended with exactly one LF. The original two blank separator LF bytes
+belonged to the beginning of the following module, before its donor marker. The
+first module retained the original two leading LF bytes. Concatenation was exact;
 per-module boundaries do not have to start at the donor marker itself.
 
 The first split in `6e87c0fc` lost nine LF bytes: one at the end of each module
@@ -47,7 +53,7 @@ inert or preserve cascade behavior, review responsive evidence, then update the
 section contract and generated asset/import hash together. Do not mix cleanup
 with this byte-identical split repair. Main/production remain owner-gated.
 
-## Numeric-longhand cleanup after the byte-identical split
+## Historical numeric-longhand cleanup after the split
 
 The 78,306-byte blob above is the historical split baseline at `03e7422e`,
 not the current cleaned size. The current combined bytes/hash are owned by

@@ -1,140 +1,329 @@
 {
+  "additional_retirement": "Unused summary flight-costs rules and exact-state hidden price-note decoration; see search3-retired-summary-cost-styles.json.",
+  "assets": [
+    {
+      "after": 9662,
+      "asset": "search3-entry-v1.css",
+      "before": 9662,
+      "saved": 0
+    },
+    {
+      "after": 3226,
+      "asset": "search3-entry-v1.js",
+      "before": 3226,
+      "saved": 0
+    },
+    {
+      "after": 4007,
+      "asset": "search3-results-cards-v2.css",
+      "before": 4007,
+      "saved": 0
+    },
+    {
+      "after": 0,
+      "asset": "search3-results-cards-v2.js",
+      "before": 0,
+      "saved": 0
+    },
+    {
+      "after": 139876,
+      "asset": "search3-results-filters-v1.css",
+      "before": 173738,
+      "saved": 33862
+    },
+    {
+      "after": 95089,
+      "asset": "search3-results-filters-v1.js",
+      "before": 95130,
+      "saved": 41
+    },
+    {
+      "after": 7237,
+      "asset": "search3-selected-flow-v2.css",
+      "before": 7322,
+      "saved": 85
+    },
+    {
+      "after": 8439,
+      "asset": "search3-selected-flow-v2.js",
+      "before": 8439,
+      "saved": 0
+    }
+  ],
   "baseline_release": "8bd89cd7fec4c0f122844b025972ed2faf39dfea",
   "baseline_source": "04cc08317bc0c4d64e31b60bf9694e30164fa972",
-  "status": "SOURCE_VALIDATED_VISUAL_REPAIR_EXPERIMENT_PENDING_CI",
+  "followup_audit": {
+    "different_root_prefix_factoring_served_gain": 0,
+    "mobile_summary_image_removal": "Deferred; no injection-timing assumption.",
+    "result_layer_visibility_only_retirement": "Blocked by actual later visible states; not applied."
+  },
   "owner_direction": "User explicitly requests a larger pass: retire entire layers and repair resulting breakage. Reversible release/isolated-preview work authorized; production and business contracts remain locked.",
+  "publication": {
+    "archive_sha256": "116b2042bfd9aab060b5050fd487e7c5b9b835781d0a68da63d04658322f2db0",
+    "artifact_asset_sha256": [
+      {
+        "exact": true,
+        "name": "search3-entry-v1.css",
+        "sha256": "7b899275f03cdd818d34de921b0340d3840c49673d3864514ff58e15d8a402c3",
+        "verification_method": "local source blob hash equals GitHub exact source; browser observed matching 16-character version; deployment verified actual 715-file artifact and remote activation hashes"
+      },
+      {
+        "exact": true,
+        "name": "search3-entry-v1.js",
+        "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b",
+        "verification_method": "local source blob hash equals GitHub exact source; browser observed matching 16-character version; deployment verified actual 715-file artifact and remote activation hashes"
+      },
+      {
+        "exact": true,
+        "name": "search3-results-cards-v2.css",
+        "sha256": "b82c4bbb1b9cbfdaa9ae0508245143da117288aa919876b4b6387e56200341aa",
+        "verification_method": "local source blob hash equals GitHub exact source; browser observed matching 16-character version; deployment verified actual 715-file artifact and remote activation hashes"
+      },
+      {
+        "exact": true,
+        "name": "search3-results-cards-v2.js",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "verification_method": "local source blob hash equals GitHub exact source; browser observed matching 16-character version; deployment verified actual 715-file artifact and remote activation hashes"
+      },
+      {
+        "exact": true,
+        "name": "search3-results-filters-v1.css",
+        "sha256": "953c7cf2a6709f29a1a779a7a7ab005e63ec12b75c3be896672f499ecb63d72e",
+        "verification_method": "local source blob hash equals GitHub exact source; browser observed matching 16-character version; deployment verified actual 715-file artifact and remote activation hashes"
+      },
+      {
+        "exact": true,
+        "name": "search3-results-filters-v1.js",
+        "sha256": "d49673b20b7d201bdaf15c3fd9349d1dd96b30b832554af199a153795e0b76aa",
+        "verification_method": "local source blob hash equals GitHub exact source; browser observed matching 16-character version; deployment verified actual 715-file artifact and remote activation hashes"
+      },
+      {
+        "exact": true,
+        "name": "search3-selected-flow-v2.css",
+        "sha256": "effbd3db6902528238c586e22e7b08770b1b01f976dd398f737e84f0a83b9564",
+        "verification_method": "local source blob hash equals GitHub exact source; browser observed matching 16-character version; deployment verified actual 715-file artifact and remote activation hashes"
+      },
+      {
+        "exact": true,
+        "name": "search3-selected-flow-v2.js",
+        "sha256": "89c8b09a855c8a7b2846926cd6a0d6f315b8280591b24b3e6b0f2ea725c7d7fa",
+        "verification_method": "local source blob hash equals GitHub exact source; browser observed matching 16-character version; deployment verified actual 715-file artifact and remote activation hashes"
+      }
+    ],
+    "artifact_digest": "sha256:42ea3138621afda606f64e503a54b258532d2629659627cff52c294afb1ae840",
+    "artifact_id": 9998862575,
+    "artifact_run": 34065664535,
+    "artifact_verification": "Initial connector-provided archive URL returned403; no retry/bypass. Independently reconstructed expected controls from verified bff20777 manifest plus exact GitHub eight-payload-file diff and source-blob-verified assets; fresh archive hash from green CI. Unchanged deployment guards verified actual archive, both controls and all715 payload hashes before activation and on remote target.",
+    "browser_contract": "Native CSS nesting with explicit & requires a nesting-capable engine; Safari 16.5+ per WebKit. Older engines without nesting are unsupported by this preview variant. Current Chromium CI passed; physical Safari not tested.",
+    "deploy_pr": 1426,
+    "deploy_run": 34066277509,
+    "deployment_evidence_artifact": 9999036179,
+    "deployment_evidence_digest": "sha256:d3043d6a394bbf75da306c1615dfeee40ef87aafb70ce8972e7c9c7dc26f74fc",
+    "deployment_guards": "Nine routes/noindex/lead403/counter0/internal-PHP deny/retained rollback;13 protected production hashes unchanged before/after/final.",
+    "known_limitations": [
+      {
+        "limitation": "retained hidden advanced-filter owner left an open backdrop",
+        "recovery": "native Escape",
+        "width": 375
+      }
+    ],
+    "known_limitations_scope": "Historical mobile advanced-filter backdrop limitation retained; not requalified this desktop pass. Current broad deletion has no blanket pixel-parity acceptance. See verification_deferred.",
+    "live_asset_sha256": [],
+    "manifest_sha256": "49634f93a6d550866fe59365e67dcc92bc704b74829f93d6041e00d387ad5a5c",
+    "payload_sha256": "fae9275983fe3a10c2489d1b4636c56199a6b97d34268fb5bf70a9c2c441ca8f",
+    "physical_safari_tested": false,
+    "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "production_unchanged": true,
+    "public_assets": {
+      "css_bytes": 160782,
+      "css_lines": 4,
+      "js_bytes": 106754,
+      "js_lines": 3,
+      "scope": "Eight public Search3 paths, raw uncompressed bytes; one empty JS retained. Excludes shared runtime/legacy and duplicate source; no page-speed claim.",
+      "total_bytes": 267536,
+      "total_lines": 7
+    },
+    "real_lead_submitted": false,
+    "release_pin_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+    "responsive_ci_scope": "Focused source/presentation checks and one live1363 desktop inspection only; full responsive/mobile and physical Safari deferred.",
+    "source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+    "source_tree": "226b01eec92c0e7af1ac2789a1310cb52bdfe7f4",
+    "status": "PUBLISHED_FOCUSED_DESKTOP_VERIFIED_MOBILE_DEFERRED",
+    "verification": {
+      "additional_repairs_required": false,
+      "expanded_card_screenshot_inspected": true,
+      "full_responsive_matrix_run": false,
+      "horizontal_overflow": false,
+      "hotel": "LUXOR APART",
+      "hotels": 100,
+      "initial_form_screenshot_inspected": true,
+      "lead_form_opened": false,
+      "mobile_live_checked": false,
+      "physical_safari_tested": false,
+      "price_rub": 75005,
+      "real_lead_submitted": false,
+      "review_next_cta_visible": true,
+      "review_screenshot_inspected": true,
+      "scope": "One focused desktop inspection: initial search form, 100-hotel/426-tour results, expanded LUXOR APART card, selected tour with actual supplier placeholder flights, and final review with visible 'Перейти к заявке'. Screenshots inspected. No additional CSS repair was required in these observed states; no blanket visual parity claim.",
+      "search": {
+        "adults": 2,
+        "country": "Турция",
+        "date_from": "2026-09-10",
+        "date_to": "2026-09-11",
+        "departure": "Москва",
+        "nights": 7
+      },
+      "selected_tour_screenshot_inspected": true,
+      "source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+      "tours": 426,
+      "verification_deferred": [
+        "mobile and intermediate widths",
+        "lead sending/success/error visual states",
+        "full flight-price interaction regression",
+        "return/filter/editor matrix",
+        "physical Safari"
+      ],
+      "verified_at": "2026-09-06T23:16:48.672Z",
+      "viewport_width": 1363
+    },
+    "verified_at": "2026-09-06T23:18:28.983Z"
+  },
+  "retained_owners": {
+    "styles/hotel-packages.css": "Existing desktop six-column expanded-tour metadata grid.",
+    "styles/lead-state.css": "Sending/success/error status and responsive actions, including hidden guards, before modern overrides.",
+    "styles/results-context.css": "Initial/reset controls and empty results stay hidden; local zero-result filters retain their recovery rail.",
+    "styles/tour-detail-convergence.css": "Desktop pre-review form isolation, hidden-flight guard and continue-action width/grid span."
+  },
   "retired_layers": [
     {
-      "path": "src/search3/styles/cascade/search3-batch-iteration1.css",
       "before_source_bytes": 4622,
+      "path": "src/search3/styles/cascade/search3-batch-iteration1.css",
       "retired_marker_bytes": 244
     },
     {
-      "path": "src/search3/styles/cascade/search3-batch-iteration1b.css",
       "before_source_bytes": 2953,
+      "path": "src/search3/styles/cascade/search3-batch-iteration1b.css",
       "retired_marker_bytes": 245
     },
     {
-      "path": "src/search3/styles/cascade/search3-batch-iteration1c.css",
       "before_source_bytes": 3541,
+      "path": "src/search3/styles/cascade/search3-batch-iteration1c.css",
       "retired_marker_bytes": 245
     },
     {
-      "path": "src/search3/styles/cascade/search3-batch-iteration2.css",
       "before_source_bytes": 4580,
+      "path": "src/search3/styles/cascade/search3-batch-iteration2.css",
       "retired_marker_bytes": 244
     },
     {
-      "path": "src/search3/styles/cascade/search3-batch-iteration2b.css",
       "before_source_bytes": 2199,
+      "path": "src/search3/styles/cascade/search3-batch-iteration2b.css",
       "retired_marker_bytes": 245
     },
     {
-      "path": "src/search3/styles/cascade/search3-batch-iteration2c.css",
       "before_source_bytes": 5442,
+      "path": "src/search3/styles/cascade/search3-batch-iteration2c.css",
       "retired_marker_bytes": 245
     },
     {
-      "path": "src/search3/styles/cascade/search3-convergence.css",
       "before_source_bytes": 7225,
+      "path": "src/search3/styles/cascade/search3-convergence.css",
       "retired_marker_bytes": 239
     },
     {
-      "path": "src/search3/styles/cascade/search3-form-contract.css",
       "before_source_bytes": 1732,
+      "path": "src/search3/styles/cascade/search3-form-contract.css",
       "retired_marker_bytes": 241
     },
     {
-      "path": "src/search3/styles/cascade/search3-full-cycle-contract.css",
       "before_source_bytes": 4201,
+      "path": "src/search3/styles/cascade/search3-full-cycle-contract.css",
       "retired_marker_bytes": 247
     },
     {
-      "path": "src/search3/styles/visual-compatibility.css",
       "before_source_bytes": 6785,
+      "path": "src/search3/styles/visual-compatibility.css",
       "retired_marker_bytes": 241
     }
   ],
   "retirement": "Ten entire historical layers removed. Files retain provenance comments only, maintaining source manifest ordering and donor drift checks.",
-  "retained_owners": {
-    "styles/lead-state.css": "Sending/success/error status and responsive actions, including hidden guards, before modern overrides.",
-    "styles/tour-detail-convergence.css": "Desktop pre-review form isolation, hidden-flight guard and continue-action width/grid span.",
-    "styles/hotel-packages.css": "Existing desktop six-column expanded-tour metadata grid.",
-    "styles/results-context.css": "Initial/reset controls and empty results stay hidden; local zero-result filters retain their recovery rail."
-  },
-  "additional_retirement": "Unused summary flight-costs rules and exact-state hidden price-note decoration; see search3-retired-summary-cost-styles.json.",
-  "assets": [
-    {
-      "asset": "search3-entry-v1.css",
-      "before": 9662,
-      "after": 9662,
-      "saved": 0
-    },
-    {
-      "asset": "search3-entry-v1.js",
-      "before": 3226,
-      "after": 3226,
-      "saved": 0
-    },
-    {
-      "asset": "search3-results-cards-v2.css",
-      "before": 4007,
-      "after": 4007,
-      "saved": 0
-    },
-    {
-      "asset": "search3-results-cards-v2.js",
-      "before": 0,
-      "after": 0,
-      "saved": 0
-    },
-    {
-      "asset": "search3-results-filters-v1.css",
-      "before": 173738,
-      "after": 139876,
-      "saved": 33862
-    },
-    {
-      "asset": "search3-results-filters-v1.js",
-      "before": 95130,
-      "after": 95089,
-      "saved": 41
-    },
-    {
-      "asset": "search3-selected-flow-v2.css",
-      "before": 7322,
-      "after": 7237,
-      "saved": 85
-    },
-    {
-      "asset": "search3-selected-flow-v2.js",
-      "before": 8439,
-      "after": 8439,
-      "saved": 0
-    }
-  ],
+  "source_pr": 1425,
+  "source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+  "source_tree": "226b01eec92c0e7af1ac2789a1310cb52bdfe7f4",
+  "status": "PUBLISHED_FOCUSED_DESKTOP_VERIFIED_MOBILE_DEFERRED",
   "totals": {
-    "before": 301524,
     "after": 267536,
-    "saved": 33988,
+    "before": 301524,
     "css_after": 160782,
     "css_saved": 33947,
     "js_after": 106754,
-    "js_saved": 41
+    "js_saved": 41,
+    "saved": 33988
   },
+  "updated_at": "2026-09-06T23:18:28.983Z",
   "verification": {
     "build": "One final runtime build passed.",
-    "javascript": "All four executable ASTs/comments retained except exactly one removed positive selector in the original summary CSS literal. Three other JS files byte-identical.",
-    "summary": "Existing compiled summary regression and all eight ordered layout-state traces passed.",
     "cascade_contract": "Nine donor sections retain markers only; hash/drift contract updated and inspection passed.",
+    "ci": {
+      "artifact_digest": "sha256:42ea3138621afda606f64e503a54b258532d2629659627cff52c294afb1ae840",
+      "artifact_id": 9998862575,
+      "artifact_rebuilt_for_docs": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_run": 34065664535,
+      "full_responsive_site_seo": "deferred, not passed",
+      "initial_failure": {
+        "reason": "Same-length drift fixture targeted !important absent from retired marker-only donor. Changed fixture to mutate final newline with same byte length; hash-drift guard unchanged. Exact named regression passed; final CI green.",
+        "source_sha": "e0235bdcd81e96ef46c86927e6d885babf9c29bc"
+      },
+      "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
+      "preview_published": true,
+      "required_passed": 2,
+      "security_run": 34065664531,
+      "source_pr": 1425,
+      "source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6"
+    },
+    "full_site_seo_responsive": "deferred, not passed",
+    "javascript": "All four executable ASTs/comments retained except exactly one removed positive selector in the original summary CSS literal. Three other JS files byte-identical.",
+    "local_browser_fixture": "Local file URL rejected by browser security policy; no bypass. Static scratch fixture is not evidence. Existing authorized public preview used.",
+    "preview_published": true,
     "protected_fingerprints": "unchanged",
-    "preview_published": false,
-    "visual": "Not yet verified. Cloud browser rejected local file URL by security policy; no workaround attempted. Static scratch fixture is not acceptance evidence. Planned verification uses the existing authorized isolated HTTP preview after source CI.",
-    "full_site_seo_responsive": "deferred, not passed"
-  },
-  "followup_audit": {
-    "different_root_prefix_factoring_served_gain": 0,
-    "result_layer_visibility_only_retirement": "Blocked by actual later visible states; not applied.",
-    "mobile_summary_image_removal": "Deferred; no injection-timing assumption."
+    "summary": "Existing compiled summary regression and all eight ordered layout-state traces passed.",
+    "visual": {
+      "additional_repairs_required": false,
+      "expanded_card_screenshot_inspected": true,
+      "full_responsive_matrix_run": false,
+      "horizontal_overflow": false,
+      "hotel": "LUXOR APART",
+      "hotels": 100,
+      "initial_form_screenshot_inspected": true,
+      "lead_form_opened": false,
+      "mobile_live_checked": false,
+      "physical_safari_tested": false,
+      "price_rub": 75005,
+      "real_lead_submitted": false,
+      "review_next_cta_visible": true,
+      "review_screenshot_inspected": true,
+      "scope": "One focused desktop inspection: initial search form, 100-hotel/426-tour results, expanded LUXOR APART card, selected tour with actual supplier placeholder flights, and final review with visible 'Перейти к заявке'. Screenshots inspected. No additional CSS repair was required in these observed states; no blanket visual parity claim.",
+      "search": {
+        "adults": 2,
+        "country": "Турция",
+        "date_from": "2026-09-10",
+        "date_to": "2026-09-11",
+        "departure": "Москва",
+        "nights": 7
+      },
+      "selected_tour_screenshot_inspected": true,
+      "source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+      "tours": 426,
+      "verification_deferred": [
+        "mobile and intermediate widths",
+        "lead sending/success/error visual states",
+        "full flight-price interaction regression",
+        "return/filter/editor matrix",
+        "physical Safari"
+      ],
+      "verified_at": "2026-09-06T23:16:48.672Z",
+      "viewport_width": 1363
+    }
   }
 }

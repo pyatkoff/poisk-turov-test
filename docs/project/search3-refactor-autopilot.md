@@ -40,12 +40,77 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; scheduler stays paused.
 
-The published baseline remains source bff20777, source PRs #1419/#1420 and isolated
-deploy #1421. This policy change does not require another build or publication.
+The latest publication is source9b4303a5, source PR#1425 and isolated deploy#1426.
+Previously checked batches#1422–#1424 are included in this publication.
 New local commands and focused tests succeeded in the subsequent #1422 continuation.
 The earlier rejected direct-HTTP poll was not retried or bypassed.
 
-### Current checked release batch — common CSS blocks and JS spelling — 2026-09-06
+### Current published batch — retire ten whole CSS layers — 2026-09-06
+
+The owner explicitly requested a larger approach: delete entire layers and repair
+resulting breakage. This authorizes reversible presentation-layer experiments in
+release and the isolated preview. Protected business contracts and production
+approval remain unchanged; incomplete mobile evidence is never called passed.
+
+Source PR#1425 merged into release: `9b4303a50efe79ad6d3477d068bdf599092e74f6`.
+Security34065664531 and artifact34065664535 passed; exact artifact9998862575.
+One-shot control#1426 published that artifact in run34066277509 and closed without
+merge. Evidence9999036179; the deployment workflow is absent from release/main.
+
+| Eight public assets | Previous checked bytes | Published bytes | Saved |
+| --- | ---: | ---: | ---: |
+| CSS | 194729 | 160782 | 33947 |
+| JS | 106795 | 106754 | 41 |
+| Total | 301524 | 267536 | 33988 |
+
+Raw reduction11.27%; eight public paths and seven nonempty generated lines retained.
+Accumulated reduction versus the previous published preview bff20777:44151 bytes.
+No transfer-compression or page-speed claim.
+
+All nine historical cascade modules and visual-compatibility.css now contain
+provenance comments only. Small necessary rules belong to lead-state.css,
+tour-detail-convergence.css, hotel-packages.css and results-context.css.
+This preserves lead status/hidden lifecycle guards, desktop flight/continue
+isolation, expanded-tour grid and initial/reset results visibility. Existing
+public paths, source ordering and donor hash checks remain. Also removed unused
+summary-cost selectors; the only executable JS-tree difference is that exact
+CSS literal selector deletion. Three other JS assets are byte-identical.
+
+One asset build and narrow compiled summary/eight layout traces passed.
+The initial CI failure was a same-length drift fixture targeting !important,
+which no longer exists in marker-only donors. The fixture now corrupts a final
+newline with equal byte length; the hash guard remains and final CI passed.
+
+Publication verified the actual archive, both control hashes and all715 payload
+files before activation and again remotely. Nine routes, noindex, disabled
+preview lead403, counter0, internal PHP denial and retained rollback passed.
+All13 protected production fingerprints match before/after/final. Main remains
+fa58a0cba6dcfc8624d98c20d64fa06330eae309; no production migration.
+
+Fresh local artifact download returned403 and was not retried. Expected control
+hashes were independently reconstructed from the previously verified published
+manifest plus the exact eight-asset GitHub payload diff, verifying local assets
+against source blob IDs. Fresh archive hash came from green CI; unchanged
+deployment guards then verified the actual artifact. No fresh local archive
+validation is claimed. A local fixture file URL was also rejected by browser
+policy; no workaround or fixture acceptance claim.
+
+Focused live1363px inspection: initial form →100 hotels/426 tours →expanded
+LUXOR APART →selected tour with supplier placeholder flight →review. Screenshots
+inspected,75,005 RUB retained, next-to-application CTA visible, no horizontal
+overflow. No additional CSS repair was necessary in these observed states.
+No lead form opened or lead submitted. Mobile/intermediate widths, lead status
+visuals, full flight/return/filter matrix, full site/SEO and physical Safari remain
+deferred; this is not blanket visual parity or production acceptance.
+
+Audit: `docs/project/search3-whole-layer-retirement.json`.
+Next: Continue owner-authorized large reversible presentation-owner retirement in one useful batch; repair demonstrated layout breakage in current owners. Do not repeat ten-layer, minifier, comments, media/dominance or tiny factoring passes. Preserve eight public paths, hidden/lifecycle recovery states, price/API/URL/payload/lead/analytics/logo/browser contracts. Next candidates results-width-compatibility/hotel-card-convergence need active-rule assessment before removal; no safe wholesale deletion established yet. Keep narrow checks and two source CI jobs, reuse artifact; publish only for a justified layout/accumulated checkpoint. Mobile/intermediate widths, lead status visuals and physical Safari remain deferred, not passed. Main/production locked; scheduler paused.
+
+The sections below record status at their original completion; older statements
+that a batch was unpublished are historical. Batches#1422–#1424 are now included
+in the current publication.
+
+### Historical checkpoint at completion — common CSS blocks and JS spelling — 2026-09-06
 
 PR #1424, source `04cc08317bc0c4d64e31b60bf9694e30164fa972`. Two mandatory jobs passed on the final source:
 Security 34064217365 and artifact 34064217372; exact artifact 9998431100 retained.

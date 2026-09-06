@@ -71,6 +71,8 @@ historical `styles/cascade/` modules and `visual-compatibility.css` now retain o
 provenance markers after the owner-authorized whole-layer retirement. Their needed
 lead lifecycle, hidden-state and tour-grid rules live in the current `lead-state`,
 `tour-detail-convergence`, `results-context` and `hotel-packages` owners.
+The ten-layer retirement and its verification scope are recorded in
+`docs/project/search3-whole-layer-retirement.json`.
 Do not sort the manifest or load modules
 independently in the browser. Static style strings in behavior modules also retain
 their original insertion order. Private CSS sources can be compiled into those
@@ -177,18 +179,18 @@ and the corresponding private footer CSS have been removed.
 
 The eight public asset paths, PHP inclusion order, API/runtime, price calculation,
 lead transport/mapping, analytics and legacy search are unchanged. The initial
-extraction reproduces all eight assets byte for byte from release `3624278a`.
+extraction reproduced all eight assets byte for byte from release `3624278a`.
 These source files live outside `v2/` and are not included in the 715-file preview
 payload. Deployment continues to consume the checked-in generated assets.
 
-This is a source-ownership refactor, not a CSS redesign or a performance claim.
-Consolidating compatibility declarations or observers requires a separately
-verified change; it must not be hidden inside a file move.
+That initial extraction changed source ownership only. Later reductions and the
+owner-authorized whole-layer retirement are separate changes with their own
+audits; their verification must not be inferred from the byte-preserving split.
 
-A subsequent CSS-only consolidation removes proven earlier duplicate declarations
-while preserving the final cascade. Its audit is in
-`docs/project/search3-css-deduplication.json`; remaining compatibility rules are
-still active. Public build paths and module order are unchanged.
+An earlier CSS-only consolidation removed proven duplicate declarations while
+preserving the final cascade; see `docs/project/search3-css-deduplication.json`.
+The later ten-layer retirement supersedes that audit's description of active
+compatibility layers. Public build paths and module order remain unchanged.
 
 ## Retired presentation states
 
