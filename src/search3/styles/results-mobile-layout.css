@@ -74,6 +74,12 @@
   & #results .hotel-tours:not([hidden]){padding:10px!important;background:#fff!important}
   & #results .hotel-tours:not([hidden]) .tour-row{grid-template-columns:1fr!important;gap:9px!important;padding:10px!important}
   & #results .hotel-tours:not([hidden]) .direct-tour{min-height:44px!important}
+  & #results .hotel-decision-line{grid-row:3!important}
+  & #results .hotel-title{grid-row:1!important}
+  & #results .hotel-place{grid-row:2!important}
+  & #results .search3-hotel-facts{grid-row:4!important}
+  & #results .search3-hotel-facts>span:nth-child(n+4){display:none!important}
+  & #results .hotel-bottom{align-self:end!important;display:flex!important;align-items:baseline!important;justify-content:flex-end!important;gap:6px!important}
 
   & .mrf-panel{
     width:100%!important;
