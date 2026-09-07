@@ -18,7 +18,13 @@ const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://w
 const tour = { id: 'geometry-tour', price: 148500, hotel: { name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' } }, departure: { name: 'Москва' }, date: '2026-09-12', nights: 9, adults: 2, childs: 1, meal: { name: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL + CHD', operator: { name: 'TEST OPERATOR' }, isCharter: true, picture, hotelDescription: 'Описание проверочного отеля. '.repeat(16) };
 const segment = { company: { name: 'Test airline' }, number: 'AB123', departure: { name: 'Москва', airport: { name: 'Шереметьево', code: 'SVO' }, time: '09:30' }, arrival: { name: 'Анталья', airport: { name: 'Анталья', code: 'AYT' }, time: '14:00' }, baggage: 20, carryOn: '5 кг' };
 const flights = [{ isDefault: true, price: { value: 148500 }, forward: [segment], backward: [{ ...segment, number: 'AB124' }] }];
-const settle = page => page.evaluate(async () => { await document.fonts.ready; window.scrollTo({top:0,left:0,behavior:'instant'}); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); });
+const settle = page => page.evaluate(async () => {
+  await document.fonts.ready;
+  // Drain the presentation frame/zero-timer handoff before canonicalizing scroll.
+  for(let i=0;i<4;i++) await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
+  window.scrollTo({top:0,left:0,behavior:'instant'});
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+});
 async function capture(page, label) {
   await settle(page);
   const snapshot = await page.evaluate(() => {
@@ -27,7 +33,7 @@ async function capture(page, label) {
     const properties = ['display','position','grid-template-columns','grid-template-rows','flex-direction','align-items','justify-content','gap','padding','margin','border-width','border-radius','font-family','font-size','font-weight','line-height','white-space','overflow-x','overflow-y','color','background-color','object-fit'];
     const all = [root, ...root.querySelectorAll('*'), ...document.querySelectorAll('.search3-selected-mobile-bar,.search3-selected-mobile-bar *')];
     const visible = all.filter(n => { const r=n.getBoundingClientRect(); return r.width>0 && r.height>0 && getComputedStyle(n).visibility!=='hidden'; });
-    const nodes=visible.map(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n);return {tag:n.tagName,classes:[...n.classList].sort().join(' '),rect:[r.x-rr.x,r.y-rr.y,r.width,r.height].map(round),styles:Object.fromEntries(properties.map(p=>[p,s.getPropertyValue(p)]))};});
+    const nodes=visible.map(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n),fixed=n.closest('.search3-selected-mobile-bar');return {tag:n.tagName,classes:[...n.classList].sort().join(' '),rect:[r.x-(fixed?0:rr.x),r.y-(fixed?0:rr.y),r.width,r.height].map(round),styles:Object.fromEntries(properties.map(p=>[p,s.getPropertyValue(p)]))};});
     return {overflow:document.documentElement.scrollWidth>innerWidth+2,rootWidth:round(rr.width),nodes};
   });
   await page.locator('#selectedTour').screenshot({ path: path.join(output, label+'.png'), animations:'disabled' });
