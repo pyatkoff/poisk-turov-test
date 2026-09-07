@@ -74,10 +74,11 @@ and lead-path verification.
 2. Made the mobile search form readable and touch-safe: 12–16 px text, 48 px
    primary controls and 44 px quick filters, protected by Chromium geometry at
    375/760/761 px.
+3. Added immediate accessible desktop-filter feedback and a clear recoverable
+   zero-results state in the single DS2 owner, without network requests.
 
 ## Next product batch
 
-Add immediate, accessible local-filter feedback and a recoverable zero-results
-state in the single DS2 owner. Do not add a second filter runtime or trigger a
-Tourvisor request per local change. Accumulate this with the next meaningful
-sales-ready improvement before publishing the isolated preview.
+Audit the “Ближе к морю” sort and the common map action. Keep only controls
+backed by complete supplier data and working behavior. Accumulate this with the
+next meaningful sales-ready improvement before publishing the isolated preview.
