@@ -53,31 +53,36 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PRs #1506/#1509 retire five complete legacy CSS/JS owners from Search3 only. Current invocation loaded raw 662065 to 620431 (-41634), gzip estimate -9168. Required CI and focused browser geometry/lifecycle passed; no publication.",
+    "last_material_progress": "PRs #1512/#1514 retire four complete legacy CSS/JS owners from Search3 only. Current invocation loaded raw 620431 to 605488 (-14943), gzip estimate -3750. Required CI and focused browser lifecycle/geometry passed; no publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit primary-meal-ux-v1.js/CSS (7301+2040 raw) as a whole presentation candidate, but retain catalogue meals loading, URL food restoration and reset preservation before any exclusion. Its meals API and form reset logic are live. No blanket deletion.",
+    "next_action": "Audit results-layout-guard-v1.css as a whole Search3 exclusion candidate against current card/drawer owners. Do not retry whole ds2-search-intro-v1.css removal: exact CI proved a live selected-tour geometry dependency. Preserve the full legacy route and require exact result/selected geometry.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_MOBILE_SUMMARY",
-    "title": "Retire legacy mobile summary and retain form lifecycle in current entry owner",
+    "id": "S3_LEAN_PRIMARY_MEAL_AND_PARAMS",
+    "title": "Retire legacy meal presentation and parameter/filter split owners",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1509
+      1512,
+      1514
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "019420f4181630c3de35849004ede9e1119a414a",
-    "release_sha": "cdc2d82d7785dcc82843cf74b489e3e3259b712f",
-    "artifact_run": 34164198720,
-    "artifact_id": 10033635222,
-    "artifact_digest": "sha256:2a1f82cedf72543136a2124624bfb4c46c24a3820d74d89a6caba0f6b6b6b8ee",
+    "implementation_shas": [
+      "46388519c2832eb55f7804e256df501ba2873e3d",
+      "ee11ef2cb06771dc2e25688acf39349c213dbd56"
+    ],
+    "release_sha": "ba8ff686c4bc9995762a3c09a4ad7e7b6a8b6241",
+    "artifact_run": 34166449552,
+    "artifact_id": 10034328909,
+    "artifact_digest": "sha256:d7bdf4003890865a4b990527eec476df66b604eb32e932e6dcdef157bc5191a0",
+    "checked_release_asset_bytes": 151125,
+    "checked_release_loaded_bytes": 605488,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "checked_release_asset_bytes": 150129,
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit primary-meal-ux-v1.js/CSS (7301+2040 raw) as a whole presentation candidate, but retain catalogue meals loading, URL food restoration and reset preservation before any exclusion. Its meals API and form reset logic are live. No blanket deletion."
+    "next_action": "Audit results-layout-guard-v1.css as a whole Search3 exclusion candidate against current card/drawer owners. Do not retry whole ds2-search-intro-v1.css removal: exact CI proved a live selected-tour geometry dependency. Preserve the full legacy route and require exact result/selected geometry."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -976,10 +981,39 @@
       "source_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
       "source_pr": 1470,
       "preview_published": false
+    },
+    "lean_primary_meal_and_params": {
+      "conclusion": "success",
+      "required_passed": 2,
+      "source_prs": [
+        1512,
+        1514
+      ],
+      "source_shas": [
+        "46388519c2832eb55f7804e256df501ba2873e3d",
+        "ee11ef2cb06771dc2e25688acf39349c213dbd56"
+      ],
+      "security_runs": [
+        34165119169,
+        34166319834
+      ],
+      "exact_artifact_runs": [
+        34165119105,
+        34165273963,
+        34166319872,
+        34166449552
+      ],
+      "artifact_id": 10034328909,
+      "artifact_digest": "sha256:d7bdf4003890865a4b990527eec476df66b604eb32e932e6dcdef157bc5191a0",
+      "selected_geometry_artifact": 10034327927,
+      "results_entry_geometry_artifact": 10034328420,
+      "preview_published": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
     }
   },
-  "last_verified_commit": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
-  "last_verified_commit_scope": "Security and exact source artifact passed;12 Chromium detail/review/lead states at375/760/1000/1440 match pre-retirement geometry/styles after phone repair. Corrected screenshots inspected. Physical Safari and live current source deferred. Not published.",
+  "last_verified_commit": "ba8ff686c4bc9995762a3c09a4ad7e7b6a8b6241",
+  "last_verified_commit_scope": "Checked release after #1512/#1514; four Search3-only legacy owners retired with exact artifact and browser lifecycle/geometry evidence. Published preview remains c9ba7952.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -7323,7 +7357,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-07T21:49:41.532990+00:00",
+  "updated_at": "2026-09-07T22:25:00Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -7921,5 +7955,32 @@
       "Physical iPhone and Safari safe-area acceptance"
     ],
     "next_action": "Classify the shared base-bundle manifest and prepare a measured Search3-only bundle scope while retaining the full legacy bundle."
+  },
+  "latest_lean_primary_meal_and_params": {
+    "source_prs": [
+      1512,
+      1514
+    ],
+    "source_shas": [
+      "46388519c2832eb55f7804e256df501ba2873e3d",
+      "ee11ef2cb06771dc2e25688acf39349c213dbd56"
+    ],
+    "checked_code_release_sha": "ba8ff686c4bc9995762a3c09a4ad7e7b6a8b6241",
+    "raw_before": 620431,
+    "raw_after": 605488,
+    "raw_saved": 14943,
+    "gzip_before": 136884,
+    "gzip_after": 133134,
+    "gzip_saved": 3750,
+    "eight_assets_before": 150129,
+    "eight_assets_after": 151125,
+    "full_legacy_manifest_unchanged": true,
+    "preview_published": false,
+    "rejected_unmerged_experiment": {
+      "pr": 1513,
+      "owner": "ds2-search-intro-v1.css",
+      "reason": "12 selected-tour geometry states failed"
+    },
+    "audit": "docs/project/search3-lean-primary-meal-and-params.json"
   }
 }
