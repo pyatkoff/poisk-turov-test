@@ -78,6 +78,28 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertEqual(source.count(':is(.search3-messenger-actions,.search3-error-actions) {display:grid!important'), 1)
         self.assertEqual(source.count('.search3-stay-site {width:100%!important'), 1)
 
+    def test_mobile_search_entry_uses_linked_presentation_owner(self):
+        retired = (ROOT / 'src/search3/behavior/mobile-search-entry.js').read_text()
+        behavior = (ROOT / 'src/search3/behavior/search-form/secondary-controls.js').read_text()
+        compiled = (ROOT / 'v2/search3-results-filters-v1.js').read_text()
+        styles = (ROOT / 'src/search3/styles/result-cards.css').read_text()
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', retired, flags=re.S).strip(), '')
+        self.assertIn("className='search3-mobile-search-entry'", behavior)
+        self.assertIn("window.addEventListener('v2:results-rendered'", behavior)
+        self.assertIn("mobileFilter.setAttribute('aria-expanded'", behavior)
+        self.assertNotIn('search3-mobile-search-entry-style', behavior)
+        self.assertNotIn('search3-mobile-search-entry-style', compiled)
+        self.assertIn('.search3-mobile-search-entry{display:none}', styles)
+        self.assertIn('.search3-mobile-search-filter-button{', styles)
+        self.assertIn('#tourSearch.search3-mobile-advanced-open', styles)
+
+    def test_booking_summary_has_no_geometry_only_resize_owner(self):
+        source = (ROOT / 'src/search3/behavior/booking-summary.js').read_text()
+        layout = (ROOT / 'src/search3/behavior/booking/layout.js').read_text()
+        self.assertNotIn("addEventListener('resize',layoutSoon)", source)
+        self.assertNotIn('getBoundingClientRect', layout)
+        self.assertNotIn('offsetWidth', layout)
+
     def test_retired_hotel_donor_and_tour_header_have_current_owners(self):
         retired = (ROOT / 'src/search3/styles/hotel-results.css').read_text()
         self.assertEqual(re.sub(r'/\*.*?\*/', '', retired, flags=re.S).strip(), '')

@@ -47,7 +47,6 @@ window.addEventListener('v2:flight-selected',e=>{lastFlight=e.detail&&e.detail.f
 window.addEventListener('v2:tour-price-updated',e=>{selectedTotal=normalizedTotal(e.detail);renderSoon();});
 ['v2:booking-review','search3:lead-entry','v2:lead-started','v2:lead-error'].forEach(name=>window.addEventListener(name,layoutSoon));
 window.addEventListener('v2:lead-success',renderSoon);
-window.addEventListener('resize',layoutSoon);
 document.addEventListener('click',e=>{if(e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-flight-continue button'))layoutSoon();});
 window.Search3BookingSummary={render,syncLayout,normalizedTotal,version:5};
 })();
