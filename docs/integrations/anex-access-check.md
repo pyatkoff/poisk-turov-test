@@ -121,6 +121,33 @@ flight flags were Y, while hotel availability was RRRR (on request). This is a
 search result at the recorded time, not a confirmed booking or final quote.
 The follow-up expands a returned group to verify a concrete ungrouped offer.
 
+### Concrete tour-price result: 2026-09-07, 16:01 UTC
+
+[Run 34141186988](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34141186988)
+on `c6988f3431a3edad89ac04af3f2b33973f86e065` passed all 22 offline tests and
+seven live API reads from the AnyTour host. All returned HTTP 200. The same
+Moscow → Turkey request returned 300 grouped rows, then four concrete offers
+after expanding one hotel group. All four had `grouped=0` and `bron=1`.
+
+Three bounded samples for Asitane Life Hotel, 3 stars, BB, two adults and no
+children, 2026-09-14 to 2026-09-21, seven nights:
+
+| Room | Native price | Supplier RUB equivalent | Hotel status | Economy outward / return |
+| --- | --- | --- | --- | --- |
+| Standard | 790 EUR | 84,617 RUB | YYYY | Y / Y |
+| Standard | 793 EUR | 84,938 RUB | YYYY | Y / Y |
+| Family | 1,014 EUR | 108,610 RUB | RRRR | Y / Y |
+
+The two Standard rows are distinct supplier offers; this bounded report does
+not include every field that differentiates them. Y means available; R means
+on request. `bron=1` is the supplier's search-time booking flag, not evidence of
+a completed booking or final quote actualization. No booking was attempted.
+
+Confirmed: API search, currency conversion fields, hotel/meal/room/date data,
+group expansion, and returned hotel/flight availability flags. Not yet tested:
+final price actualization, detailed flight selection/surcharges, full import,
+Andromeda, or integration into the public AnyTour search. The site was unchanged.
+
 ### Price method documentation
 
 - [Available countries](https://dokuwiki.samo.ru/doku.php?id=onlinest:api:searchtour:states)
