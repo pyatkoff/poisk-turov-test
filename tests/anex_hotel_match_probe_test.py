@@ -85,6 +85,15 @@ class HotelMatchProbeTest(unittest.TestCase):
                 self.assertEqual(probe.xml_relation(self.xml, dict(self.api, **changes)), expected)
         self.assertEqual(probe.xml_relation(self.xml, {}), "unverified")
 
+    def test_empty_details_are_reported_as_missing_not_success(self):
+        for value in (None, False, "", [], {}):
+            with self.subTest(value=value), patch.object(probe, "request", return_value=(
+                    {"status": "ok", "http_status": 200}, json.dumps({"Hotels_DETAILS": value}).encode())):
+                checks = []
+                with self.assertRaises(probe.StopProbe):
+                    probe.api_data("test", "Hotels_DETAILS", {"HOTELINC": 1}, checks)
+                self.assertEqual(checks[0]["status"], "no_details")
+
     def test_confirmed_requires_name_and_nearby_coordinates(self):
         ranked = probe.candidate_rank(self.api, self.xml, self.candidate)
         self.assertLess(ranked["distance_m"], 200)

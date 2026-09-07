@@ -133,6 +133,7 @@ try {
         $params = array();
         $conditions = array();
         $exactOrder = array();
+        $tokenOrder = array();
         $normalizedNames = array();
         foreach ($query['names'] as $name) {
             $normalized = anex_catalog_text(v2_data_normalize_text($name));
@@ -146,13 +147,17 @@ try {
             $exactOrder[] = 'h.normalized_name = ' . anex_catalog_param($params, $name);
             $tokens = anex_catalog_tokens($name);
             $tokenConditions = array();
+            $tokenOrderConditions = array();
             foreach ($tokens as $token) {
                 $pattern = anex_catalog_like($token);
                 $tokenConditions[] = '(h.normalized_name LIKE ' . anex_catalog_param($params, $pattern)
                     . " ESCAPE '!' OR h.search_key LIKE " . anex_catalog_param($params, $pattern) . " ESCAPE '!')";
+                $tokenOrderConditions[] = '(h.normalized_name LIKE ' . anex_catalog_param($params, $pattern)
+                    . " ESCAPE '!' OR h.search_key LIKE " . anex_catalog_param($params, $pattern) . " ESCAPE '!')";
             }
             if ($tokenConditions) {
                 $conditions[] = '(' . implode(' AND ', $tokenConditions) . ')';
+                $tokenOrder[] = '(' . implode(' AND ', $tokenOrderConditions) . ')';
             }
         }
         if ($query['latitude'] !== null && $query['longitude'] !== null) {
@@ -170,7 +175,8 @@ try {
                 . $longitude . ' AS longitude, ' . $address . ' AS address FROM catalog_hotels h '
                 . ($hasDetails ? 'LEFT JOIN catalog_hotel_details d ON d.hotel_id = h.id ' : '')
                 . 'WHERE h.is_active = 1 AND (' . implode(' OR ', $conditions) . ') ORDER BY '
-                . ($exactOrder ? 'CASE WHEN (' . implode(' OR ', $exactOrder) . ') THEN 0 ELSE 1 END, ' : '')
+                . ($exactOrder ? 'CASE WHEN (' . implode(' OR ', $exactOrder) . ') THEN 0 '
+                    . ($tokenOrder ? 'WHEN (' . implode(' OR ', $tokenOrder) . ') THEN 1 ' : '') . 'ELSE 2 END, ' : '')
                 . 'h.is_active DESC, h.id ASC LIMIT 8';
             $statement = $pdo->prepare($sql);
             $statement->execute($params);

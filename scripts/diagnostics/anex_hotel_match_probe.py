@@ -10,7 +10,7 @@ import math
 import unicodedata
 
 CHECKS.update({"api_hotel_details", "reference_hotels", "catalog"})
-STATUSES.update({"catalog_unavailable", "empty_sample"})
+STATUSES.update({"catalog_unavailable", "empty_sample", "no_details"})
 MATCH_STATUSES = {"confirmed", "probable", "ambiguous", "unmatched", "geo_conflict"}
 RELATIONS = {"same_record", "id_conflict", "name_conflict", "town_conflict", "unverified"}
 
@@ -151,7 +151,7 @@ def remote_hotel_probe(tokens):
     SENSITIVE_VALUES = tuple(value for raw in tokens.values() if isinstance(raw, str)
                              for value in (raw, raw.strip()) if value)
     checks, rows = [], []
-    report = {"mode": "hotels", "checks": checks, "hotels": rows}
+    report = {"mode": "hotels", "checks": checks, "hotels": rows, "skipped_details": 0, "skipped_placeholders": 0}
     stamp_result, stamp = reference_check(tokens["ANEX_REFERENCE_TOKEN"].strip(), "currentstamp")
     checks.append(stamp_result)
     if not stamp:
@@ -176,6 +176,11 @@ def remote_hotel_probe(tokens):
             name, alternate = hotel_text(node.get("name")), hotel_text(node.get("lname"))
             if not identifier or not (name or alternate):
                 continue
+            if re.search(r"проживание по программе|по программе|infotour|инфотур|выходные в|vihodnie", name + " " + alternate, re.I):
+                report["skipped_placeholders"] += 1
+                continue
+            if len(checks) >= 32:
+                break
             xml = {"id": identifier, "name": name, "alternate_name": alternate,
                    "town_id": positive_id({"id": node.get("town")})}
             api = {}
@@ -184,7 +189,11 @@ def remote_hotel_probe(tokens):
                 if isinstance(data, dict):
                     api = supplier_record(data)
             except StopProbe:
-                pass
+                report["skipped_details"] += 1
+                continue
+            if not api.get("id") or not api.get("name"):
+                report["skipped_details"] += 1
+                continue
             rows.append({"xml": xml, "api": api, "api_xml_relation": xml_relation(xml, api)})
             if len(rows) == 10:
                 break
@@ -210,7 +219,7 @@ def remote_hotel_probe(tokens):
 
 def clean_hotel_report(report):
     checks = []
-    for item in report.get("checks", [])[:14]:
+    for item in report.get("checks", [])[:40]:
         if item.get("check") not in CHECKS or item.get("status") not in STATUSES:
             raise ValueError("invalid check")
         clean = {"check": item["check"], "status": item["status"]}
@@ -249,5 +258,9 @@ def clean_hotel_report(report):
             item["country_match"] = candidate.get("country_match") if type(candidate.get("country_match")) is bool else None
             clean["candidates"].append(item)
         hotels.append(clean)
-    return {"mode": "hotels", "ok": len(hotels) == 10 and bool(checks) and all(item["status"] == "ok" for item in checks),
-            "checks": checks, "hotels": hotels}
+    result = {"mode": "hotels", "ok": len(hotels) == 10 and bool(checks) and all(item["status"] in ("ok", "no_details") for item in checks),
+              "checks": checks, "hotels": hotels}
+    for key in ("skipped_details", "skipped_placeholders"):
+        if type(report.get(key)) is int and 0 <= report[key] <= 500:
+            result[key] = report[key]
+    return result

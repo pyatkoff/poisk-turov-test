@@ -208,7 +208,7 @@ def api_data(token, action, params, checks, expanded=False):
                "SearchTour_CURRENCIES": "api_currencies", "SearchTour_NIGHTS": "api_nights",
                "Hotels_DETAILS": "api_hotel_details",
                "SearchTour_PRICES": "api_prices_expanded" if expanded else "api_prices"}
-    if action not in allowed or len(checks) >= 12:
+    if action not in allowed or len(checks) >= (38 if action == "Hotels_DETAILS" else 12):
         raise ValueError("invalid read method or request budget")
     result, body = request(dict(params, samo_action="api", version="1.0",
                                 type="json", action=action), token)
@@ -219,6 +219,10 @@ def api_data(token, action, params, checks, expanded=False):
     try:
         envelope = json.loads(body)
         data = envelope.get(action) if isinstance(envelope, dict) else None
+        if (action == "Hotels_DETAILS" and isinstance(envelope, dict) and action in envelope
+                and (data is None or data is False or data == "" or data == [] or data == {})):
+            result["status"] = "no_details"
+            raise StopProbe()
         error = data if isinstance(data, dict) and "error" in data else envelope
         if isinstance(error, dict) and "error" in error:
             result["status"] = "supplier_error"
