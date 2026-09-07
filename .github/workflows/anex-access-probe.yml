@@ -42,11 +42,14 @@ jobs:
           python3 -B tests/anex_hotel_match_probe_test.py
           python3 -B tests/anex_adapter_probe_test.py
           python3 -B tests/anex_full_catalog_probe_test.py
+          python3 -B tests/anex_exact_registry_builder_test.py
           php -l scripts/diagnostics/anex_catalog_reader.php
           php -l scripts/diagnostics/anex_adapter_runner.php
           php -l scripts/diagnostics/anex_catalog_bulk_reader.php
+          php -l app/integrations/anex-xml-exact-registry.php
           for file in app/integrations/*.php; do php -l "$file"; done
           php tests/anex-hotel-identities-smoke.php
+          php tests/anex-xml-exact-registry-smoke.php
           php tests/anex-client-smoke.php
           php tests/anex-normalizer-smoke.php
           php tests/anex-search-smoke.php

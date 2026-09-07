@@ -79,3 +79,31 @@ source metadata, candidate ID, decision and reason. The five unresolved cases
 still need the identity checks documented there; their status has not been
 promoted by this implementation. Activating production mappings and catalog
 refresh rules is a separate reviewed step.
+
+## Full XML exact candidate registry
+
+The full catalogue pass is retained separately from the ten-entry evidence-rich
+pilot. `anex-xml-exact-registry.json` authenticates the compact
+`anex-xml-exact-identities.csv` with its SHA-256 digest and records the exact
+workflow run, artifact digest, source SHA and ANEX reference stamp.
+
+The 10,611 machine-exact rows were audited again before registry generation.
+Every accepted row must still have one selected AnyTour candidate, equal
+normalized supplier/candidate names, equal normalized countries and matching
+town or region. A further 1,877 rows with a normalized one-word name shorter
+than eight characters are deliberately deferred for human review. The compact
+preview registry therefore contains 8,734 ANEX XML identities.
+
+```php
+require_once __DIR__ . '/anex-xml-exact-registry.php';
+$registry = AnyTourAnexXmlExactRegistry::fromFile();
+$hotelId = $registry->resolve('anex_xml', '39527', 'preview'); // 116676
+$online = $registry->resolve('anex_online', '39527', 'preview'); // null
+$production = $registry->resolve('anex_xml', '39527'); // null
+```
+
+This registry is not connected to the public search or production. It resolves
+only the explicit `anex_xml` namespace and exact `preview` scope. It never
+assumes that an XML hotel ID is also an `anex_online` hotel ID. The CSV is
+bounded, digest-checked, duplicate-rejecting and sorted by numeric external ID,
+so regenerating it from the same evidence is idempotent.
