@@ -193,6 +193,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         mobile = (ROOT / 'src/search3/styles/results-mobile-layout.css').read_text()
         cards = (ROOT / 'src/search3/styles/results-cards-v2.css').read_text()
         guards = (ROOT / 'src/search3/styles/acceptance-guards.css').read_text()
+        results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
+        detail = (ROOT / 'src/search3/styles/tour-detail.css').read_text()
+        selected = (ROOT / 'src/search3/styles/selected-flow-v2.css').read_text()
 
         self.assertEqual(re.sub(r'/\*.*?\*/', '', tablet, flags=re.S).strip(), '')
         for marker in (
@@ -211,7 +214,15 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             self.assertNotIn(marker, mobile)
         self.assertIn('.hotel-title{font-size:18px!important', cards)
         self.assertIn('.hotel-tours:not([hidden]) .direct-tour{width:118px!important;min-width:118px!important;min-height:44px!important', cards)
-        self.assertIn('width:calc(100% - 24px)!important', guards)
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', guards, flags=re.S).strip(), '')
+        self.assertIn('.mrf-sheet{display:block!important}', toolbar)
+        self.assertIn('grid-template-columns:minmax(0,1fr) 10px!important', results)
+        self.assertIn('font:750 13px/1.35 var(--at-font)!important', results)
+        self.assertIn('font-size:14px!important', cards)
+        self.assertIn('.search3-hotel-action__copy :is(strong,span){font-size:12px!important', cards)
+        self.assertIn('.search3-results-active.search3-selected-open .v2-shell>', detail)
+        self.assertIn('.search3-selected-open .ds2-site-footer{display:none!important}', detail)
+        self.assertIn('#selectedTour[hidden]{display:none!important}', selected)
 
     def test_lead_review_layer_is_retired_without_losing_lifecycle_truth(self):
         retired = (ROOT / 'src/search3/styles/lead-review.css').read_text()

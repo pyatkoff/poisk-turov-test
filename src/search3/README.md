@@ -100,7 +100,7 @@ separate cascade evidence.
 | Lead heading and contact note | `behavior/lead/note.js`, inside the summary CTA owner |
 | Lead entry and lifecycle presentation | `behavior/summary-cta.js`, `behavior/lead-flow.js`, `styles/lead-state.css` |
 | Selected price, fallback and disclosure adapter | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
-| Accepted isolation/readability/geometry guards | `styles/acceptance-guards.css` |
+| Accepted isolation/readability/hidden contracts | Current `results-layout.css`, `results-cards-v2.css`, `mobile-results-toolbar.css`, `tour-detail.css` and `selected-flow-v2.css` owners; `acceptance-guards.css` is retired |
 
 ## Smaller source owners
 

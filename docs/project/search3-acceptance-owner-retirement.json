@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "base_release_sha": "872b88a0bdec2f701fcd2596ffeb023ff944642a",
+  "scope": "Retire the complete acceptance-guards.css overlay and keep only its live contracts in current presentation owners.",
+  "retired_owner": "src/search3/styles/acceptance-guards.css",
+  "current_owners": [
+    "src/search3/styles/mobile-results-toolbar.css",
+    "src/search3/styles/results-layout.css",
+    "src/search3/styles/results-cards-v2.css",
+    "src/search3/styles/tour-detail.css",
+    "src/search3/styles/selected-flow-v2.css"
+  ],
+  "served_assets": {
+    "before_bytes": 159805,
+    "after_bytes": 157523,
+    "removed_bytes": 2282,
+    "changed": {
+      "v2/search3-results-filters-v1.css": {
+        "before_bytes": 54262,
+        "after_bytes": 51784,
+        "removed_bytes": 2478
+      },
+      "v2/search3-results-cards-v2.css": {
+        "before_bytes": 10771,
+        "after_bytes": 10894,
+        "added_bytes": 123
+      },
+      "v2/search3-selected-flow-v2.css": {
+        "before_bytes": 10802,
+        "after_bytes": 10875,
+        "added_bytes": 73
+      }
+    },
+    "unchanged_asset_count": 5
+  },
+  "retained_contracts": [
+    "mobile and tablet filter drawer visibility and open interaction",
+    "results summary and desktop filter readability",
+    "44px hotel disclosure and action-copy readability",
+    "selected-flow results/footer isolation",
+    "selectedTour hidden-state truth"
+  ],
+  "removed_redundancy": [
+    "canonical phone alignment override whose computed geometry matched current shell",
+    "desktop grid override already owned by results-layout",
+    "desktop 230px min/max lock whose visible geometry remains current-owner controlled",
+    "completion-status overlay already resolved by current lifecycle"
+  ],
+  "checks": [
+    "python3 scripts/build/search3_assets.py --write",
+    "python3 scripts/build/search3_assets.py --check",
+    "python3 -m unittest tests.search3_source_build_test tests.search3_production_presentation_test",
+    "node tests/search3-results-geometry-browser.cjs",
+    "python3 scripts/ci/validate_owner_priority.py"
+  ],
+  "publication": "NOT_PUBLISHED",
+  "deferred": "Physical Safari/safe-area and live current-source preview acceptance",
+  "protected_contracts": "Eight public paths, price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping and analytics unchanged"
+}

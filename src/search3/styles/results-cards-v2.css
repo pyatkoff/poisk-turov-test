@@ -8,7 +8,7 @@ html body.search3-candidate.search3-results-active #resultsSearchSummary~#result
 & :is(.hotel-compare-toggle,.hotel-actions,.hotel-inline-detail,.result-decision-badges,.hotel-choice-hint,.hotel-decision-line){display:none!important}
 & .search3-hotel-facts{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;margin-top:5px!important}
 & .search3-hotel-action{display:grid!important;align-items:center!important}
-& .search3-show-tours{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:44px!important;border:0!important;border-radius:7px!important;background:#ff510c!important;color:#fff!important;font-weight:900!important}
+& .search3-show-tours{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:44px!important;border:0!important;border-radius:7px!important;background:#ff510c!important;color:#fff!important;font-size:14px!important;font-weight:900!important}
 & :is(.hotel-tours[hidden],.tour-row[hidden]){display:none!important}
 & .hotel-tours:not([hidden]){display:block!important;margin:0!important}
 & .hotel-tours:not([hidden]) .tour-row{display:grid!important}
@@ -128,6 +128,7 @@ html body.search3-candidate{
   text-overflow:clip!important;
   white-space:normal!important;
 }
+& .search3-hotel-action__copy :is(strong,span){font-size:12px!important;line-height:1.4!important}
 
 & .search3-hotel-facts small {
   font-size:12px!important;
