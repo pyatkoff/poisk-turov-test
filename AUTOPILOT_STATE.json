@@ -53,27 +53,30 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1467 retires the full selected-tour.css donor. 164762→163740 raw bytes (−1022 CSS); required Security/artifact CI pass. Release only; preview remains b9445bc3.",
+    "last_material_progress": "#1475 retires the complete legacy result-card/package geometry family. 163280→161470 raw bytes (−1810 CSS); required Security/artifact CI and ten responsive card states pass. Release only; preview remains b9445bc3.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not repeat #1466 or #1467. selected-tour.css is retired and its required shell/mobile primitives live in current owners. Browser geometry at 375/760/1000 and physical Safari remain deferred; do not report them as passed. Next audit a whole results presentation owner: either consolidate results-top.js into results-presentation.js with exact initial/results/edit scheduling coverage, or retire a bounded results-layout.css family only after collapsed/expanded 375/760/999/1000/1440 geometry is available. Keep final-sections, booking-summary, price, lead, API and analytics contracts.",
+    "next_action": "Do not repeat #1474 or #1475. The selected handoff and result-card geometry donors are retired. Continue with a fresh whole presentation owner only after proving its current owner and focused states; preserve the compact results-card owner and its 375/760/999/1000/1440 collapsed/expanded guard. Physical Safari and current-source live preview acceptance remain deferred. Keep final-sections, booking-summary, price, lead, API and analytics contracts.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_SELECTED_GEOMETRY_REPAIR",
-    "title": "Repair and verify selected-tour phone geometry",
+    "id": "S3_RESULTS_CARD_OWNER_RETIREMENT",
+    "title": "Retire and verify legacy result-card geometry owner",
     "status": "CHECKED_RELEASE_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1470
+      1475
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
-    "artifact_run": 34122423688,
-    "artifact_id": 10018756721,
+    "implementation_sha": "7c2f5a07146e5b1c03c2484e0d1ee174ae072655",
+    "release_sha": "85e387ce3325f186128c86e53e36d9745fdbdb5b",
+    "artifact_run": 34129515852,
+    "artifact_id": 10021526537,
+    "artifact_digest": "sha256:a37c645ecff250626d0ca4aed903cb8a5c72d7caef306d70344efe08635ba350",
+    "geometry_artifact_id": 10021525549,
     "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Concurrent#1471 already consolidated results-top.js in releasea5a494c1. Do not repeat it. The working-source484d32de artifact excludes the1470 phone repair; obtain a combined-source artifact before publishing current release. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required."
+    "next_action": "Do not repeat selected-handoff consolidation #1474 or result-card retirement #1475. Reuse artifact10021526537 only for source7c2f5a07; checked release is85e387ce and published preview remains b9445bc3. Audit the next whole presentation owner against current release and bundle a material reduction; do not spend a PR on micro fragments. Physical Safari/safe-area and live current-source acceptance remain deferred; production approval remains required."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -125,6 +128,19 @@
     "visual_ci": 33934082023
   },
   "last_ci": {
+    "results_card_owner_retirement": {
+      "artifact_digest": "sha256:a37c645ecff250626d0ca4aed903cb8a5c72d7caef306d70344efe08635ba350",
+      "artifact_id": 10021526537,
+      "artifact_run": 34129515852,
+      "geometry_artifact": 10021525549,
+      "geometry_digest": "sha256:405ffc4000cc166ca0bb2f1caa8a6fd0980776a3453c59404d03dec208627cd6",
+      "geometry_states": "collapsed/expanded at375/760/999/1000/1440; no horizontal overflow or clipped card/package actions",
+      "preview_published": false,
+      "required_passed": 2,
+      "security_run": 34129515788,
+      "source_pr": 1475,
+      "source_sha": "7c2f5a07146e5b1c03c2484e0d1ee174ae072655"
+    },
     "batched_css_js_reduction": {
       "artifact_digest": "sha256:c6cbd40248a146f75ad1069bf7d36bcb7360dd602fc5e4266a4bb8ba92743476",
       "artifact_id": 9997701449,
