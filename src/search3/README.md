@@ -147,7 +147,10 @@ parts belong to their enclosing IIFE and must not be loaded independently.
 The large combined CSS sources are split at existing component and breakpoint
 boundaries. Hotel packages, card convergence and width compatibility have separate
 files; booking summary and stepper, final sections and lead review, desktop review
-board and specificity guards, and mobile/tablet result layouts are separate too.
+board and specificity guards, and the phone result layout are separate too.
+`results-tablet-layout.css` is now a provenance-only slot; the live compact drawer
+belongs to `mobile-results-toolbar.css`, while `results-mobile-layout.css` retains
+only phone rules that still win in the accepted collapsed or expanded geometry.
 The manifest retains their original cascade positions. These are source modules,
 not additional browser requests.
 

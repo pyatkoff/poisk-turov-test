@@ -46,6 +46,8 @@ assert.ok(presentation.includes('search3-mobile-sort'), 'Search3 presentation ow
 assert.match(presentation, /document\.querySelector\((['"])\.mrf-bar\1\)/, 'Search3 presentation mounts the canonical mrf filter bar');
 assert.match(mobile, /sheet\.className\s*=\s*(['"])mrf-sheet\1/, 'base mobile results filter sheet remains canonical');
 assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('), 'canonical mobile filter lifecycle remains intact');
+assert.match(mobile, /e\.key===(['"])Escape\1&&sheet\.classList\.contains\((['"])is-open\2\)\)closeSheet\(\)/,
+  'canonical mobile filter lifecycle retains Escape close');
 assert.ok(!selectedPresentation.includes('function plural('), 'selected-tour presentation reuses the canonical inflection owner');
 assert.ok(selectedPresentation.includes('format.partyLabel('), 'selected-flow consumes the canonical party inflection owner');
 assert.ok(!selectedPresentation.includes('dateWithNights'), 'retired desktop recap has no remaining private date-and-nights formatter');
