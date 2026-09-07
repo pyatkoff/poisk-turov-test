@@ -50,6 +50,59 @@ supplier bodies, SQL/configuration errors and descriptions are excluded. All
 matching logic is tested offline before live execution; the PHP reader is also
 syntax-checked by the workflow.
 
+## Result: 2026-09-07T16:23:20.4804513Z
+
+[Run 34142991785](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34142991785)
+on source `bfe698926433a2d610bc81b2b19dffc005e70217` completed successfully.
+All 31 offline tests, PHP syntax checking and Security guard passed. The live
+check read one XML page of 500 hotel records, skipped three programme placeholders,
+and requested 25 API cards: ten were available and fifteen returned no details.
+The existing AnyTour catalogue was queried in a READ ONLY transaction.
+
+For all ten selected records, XML `inc` and API `id` agree; names and town IDs
+also agree. This is sample evidence, not a guarantee for every catalogue record.
+All ten local candidate IDs differ from ANEX IDs. Five candidates meet the
+conservative confirmation criteria; five remain review candidates. No mapping
+was applied, including the confident five.
+
+| Отель в ANEX | ANEX API = XML | Кандидат AnyTour / Tourvisor | Результат | Расстояние, м |
+| --- | ---: | ---: | --- | ---: |
+| Radisson Blu Hotel Kas | 43689 | 83221 | Требует проверки | нет координат ANEX |
+| Грейс Кристалл | 30160 | 40430 | Уверенное соответствие | 12.5 |
+| Hotel Historia | 30536 | 17469 | Уверенное соответствие | 21.3 |
+| Domina Coral Bay Harem | 464 | 185 | Требует проверки | 158.3 |
+| Dreams Beach Resort & Aqua Park Sharm El Sheikh | 465 | 195 | Требует проверки | 96.4 |
+| Four Seasons Resort Sharm El Sheikh | 466 | 218 | Требует проверки | 52.4 |
+| Retac Qunay Dahab Resort & Spa | 468 | 295 | Требует проверки | 45.5 |
+| Jaz Sharm Dreams | 469 | 245 | Уверенное соответствие | 143 |
+| Taba Hotel & Nelson Village Taba (Ex. Hilton Taba) | 470 | 252 | Уверенное соответствие | 48.6 |
+| Park Regency Resort (Ex. Hyatt Regency Sharm El Sheikh) | 472 | 260 | Уверенное соответствие | 0 |
+
+### Cases requiring review
+
+- **Radisson Blu Hotel Kas, 43689 → 83221:** name, country and Kas agree, but ANEX
+  returned no coordinates or address. A second independent identity check remains.
+- **Domina Coral Bay Harem, 464 → 185:** local name includes Junior Suite; verify
+  whether it represents the same Harem property or a narrower product/category.
+- **Dreams Beach, 465 → 195:** a strong candidate exists, 96.4 m apart on El Fanar
+  in Hadaba. The long versus short name fell below the current algorithm's
+  threshold. Its `unmatched` label does not mean the hotel is absent from AnyTour.
+- **Four Seasons, 466 → 218:** SSH is an abbreviation in the local title; both
+  addresses contain Four Seasons Boulevard and coordinates are 52.4 m apart.
+- **Retac Qunay, 468 → 295:** names include different amounts of historical and
+  location text. Addresses share Al Tahrir and coordinates are 45.5 m apart.
+  Sharm versus Dahab region labels may reflect hierarchy, not a different hotel.
+
+The ranking score is a sorting value, not a probability (it can exceed 1).
+Coordinates alone do not establish identity: another hotel was only 12.6 m from
+the ANEX Greys Kristall coordinates. The name and candidate separation matter.
+The pilot is selected from one reference page and available API cards; its 5/10
+confirmation fraction must not be extrapolated to the complete catalogue.
+
+[CSV table](anex-hotel-matching-20260907.csv) includes candidate IDs and review
+reasons. [Sanitized source evidence](anex-hotel-matching-sample-20260907.json)
+contains the compared fields and up to three candidates per hotel.
+
 ## Sources
 
 The initial [run 34142635134](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34142635134)
