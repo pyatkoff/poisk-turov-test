@@ -55,7 +55,7 @@
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
     "last_material_progress": "Source#1441: two duplicate acceptance card/readability families plus the earlier mobile lead lifecycle foundation retired;219880→215784 raw bytes (−4096). Both mandatory source jobs passed; release checked at0dd4fd4e, preview intentionally remains4b061396.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not repeat the retired acceptance card/readability or mobile lifecycle families. Remaining acceptance and lead-state blocks are live; audit one new large active presentation owner with concrete state evidence before deletion. Card375/430/1024/1348/1440, expanded tours375/430, selected flight375/1024, lifecycle375/430/641/768/999 and physical Safari remain deferred.",
+    "next_action": "Accumulate the proven 1064-public-byte superseded block set in results-context.css with another substantial safe owner removal before one build/PR; do not spend a standalone cycle on it. Do not retire results-context.css, results-layout.css or tour-detail-convergence.css wholesale: their lifecycle/structural states remain unique. Card375/430/1024/1348/1440, expanded tours375/430, selected flight375/1024, lifecycle375/430/641/768/999 and physical Safari remain deferred.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
@@ -72,7 +72,7 @@
     "implementation_sha": "0dd4fd4e656f222bb8f75fce8e53772ea2133146",
     "artifact_run": 34077463934,
     "artifact_id": 10002568100,
-    "next_action": "Do not repeat completed acceptance/readability/lifecycle families. Select one new large active presentation owner only after state evidence; keep one measured source batch, two mandatory jobs and exact artifact reuse. Main/production remain locked; hourly development stays enabled."
+    "next_action": "Carry the proven results-context.css superseded blocks (1064 public bytes) into the next substantial safe owner-removal batch; no standalone micro PR/build/deploy. Whole-file results-context/results-layout/tour-detail removal is unsafe. Main/production remain locked; hourly development stays enabled."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -882,7 +882,7 @@
       "deferred": ["cards375/430/1024/1348/1440", "expanded tours375/430", "selected flight375/1024", "lead lifecycle375/430/641/768/999", "physical Safari"]
     },
     "production_updated": false,
-    "next_action": "Remaining acceptance and lead-state blocks are live. Audit a different large owner with state evidence; do not repeat these families."
+    "next_action": "Accumulate the proven 1064-public-byte results-context.css block set with another substantial safe removal. Whole-file results-context, results-layout and tour-detail retirement is unsafe without broad state salvage/evidence."
   },
   "latest_lead_review_retirement": {
     "stage": "CHECKED_RELEASE_AND_PUBLISHED_DESKTOP_LEAD_SMOKE_MOBILE_DEFERRED",

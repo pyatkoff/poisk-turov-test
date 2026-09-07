@@ -100,10 +100,14 @@ visual pass is claimed for the unpublished source. Card widths 375/430/1024/1348
 1440, expanded tours 375/430, selected flight 375/1024, lifecycle states at mobile/
 tablet boundaries and physical Safari remain deferred.
 
-Next: do not repeat the retired acceptance/readability/lifecycle families. Audit a
-different large active presentation owner only with concrete state evidence; the
-remaining acceptance and lead-state blocks are live. Use one measured package,
-two mandatory jobs and an exact artifact; publish only at a justified checkpoint.
+Next: do not repeat the retired acceptance/readability/lifecycle families. A fresh
+read-only audit found a proven superseded block set in `results-context.css` worth
+1064 public bytes, but it is too small for a standalone PR/build/deploy; accumulate
+it with another substantial safe owner removal. Do not retire `results-context.css`,
+`results-layout.css` or `tour-detail-convergence.css` wholesale: their lifecycle,
+structural/open-card and selected-tour geometry remains unique. Use one measured
+package, two mandatory jobs and an exact artifact; publish only at a justified
+checkpoint.
 
 ### Latest checked and published candidate — lead review owners — 2026-09-07
 
