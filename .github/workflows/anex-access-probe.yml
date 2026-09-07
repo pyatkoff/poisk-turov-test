@@ -1,4 +1,4 @@
-name: ANEX server adapter for AnyTour
+name: ANEX hotel catalog for AnyTour
 
 on:
   push:
@@ -50,14 +50,6 @@ jobs:
           php tests/anex-client-smoke.php
           php tests/anex-normalizer-smoke.php
           php tests/anex-search-smoke.php
-      - name: Search, expand and read flight options through the new server adapter
-        env:
-          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
-          ANEX_REFERENCE_TOKEN: ${{ secrets.ANEX_REFERENCE_TOKEN }}
-          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
-          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
-          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
-        run: python3 -B scripts/diagnostics/anex_access_probe.py --adapter
       - name: Download full ANEX hotel reference and match the AnyTour catalogue
         env:
           ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
