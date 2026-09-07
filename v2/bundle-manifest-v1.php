@@ -11,3 +11,20 @@ function v2_bundle_manifest(): array
         ],
     ];
 }
+
+/** Route-scoped startup files. The full manifest remains the legacy contract. */
+function v2_bundle_files(string $type, string $scope = 'full'): array
+{
+    $manifest = v2_bundle_manifest();
+    if (!isset($manifest[$type]) || !in_array($scope, ['full', 'search3'], true)) {
+        throw new InvalidArgumentException('Invalid V2 bundle scope');
+    }
+    if ($scope !== 'search3') return $manifest[$type];
+
+    $excluded = [
+        'css' => [],
+        // Search3 owns the result summary and intentionally has no list/grid switch.
+        'js' => ['search-redesign-v2.js'],
+    ];
+    return array_values(array_diff($manifest[$type], $excluded[$type]));
+}
