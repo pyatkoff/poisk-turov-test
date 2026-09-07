@@ -159,17 +159,18 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         selected = (ROOT / 'src/search3/styles/selected-flow-v2.css').read_text()
         results_top = (ROOT / 'src/search3/behavior/results-top.js').read_text()
         results_presentation = (ROOT / 'src/search3/behavior/results-presentation.js').read_text()
+        desktop_filters = (ROOT / 'v2/ds2-results-filters.js').read_text()
         all_source = ''.join(
             path.read_text() for path in (ROOT / 'src/search3').rglob('*')
             if path.is_file()
         )
 
-        for marker in (
-            '& .search3-filter-section{margin:0!important;padding:11px 0!important',
-            '& input[type=radio]:checked{border:4px solid #1463ff!important}',
-            '& .search3-filter-edit-row{display:grid!important;align-items:center!important',
-        ):
-            self.assertIn(marker, results)
+        for marker in ('search3-filter-section', 'input[type=radio]', 'search3-filter-edit-row'):
+            self.assertNotIn(marker, results)
+        for marker in ('data-ds2-price', 'data-ds2-meal-fieldset',
+                       'data-ds2-stars-fieldset', 'data-ds2-rating-fieldset',
+                       'data-ds2-sea-fieldset'):
+            self.assertIn(marker, desktop_filters)
         for marker in (
             'position:static!important',
             'background:transparent!important',
@@ -217,8 +218,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('.hotel-tours:not([hidden]) .direct-tour{width:118px!important;min-width:118px!important;min-height:44px!important', cards)
         self.assertEqual(re.sub(r'/\*.*?\*/', '', guards, flags=re.S).strip(), '')
         self.assertIn('.mrf-sheet{display:block!important}', toolbar)
-        self.assertIn('grid-template-columns:minmax(0,1fr) 10px!important', results)
-        self.assertIn('font:750 13px/1.35 var(--at-font)!important', results)
+        self.assertNotIn('search3-filter-edit-row', results)
+        self.assertNotIn('input[type=radio]', results)
         self.assertIn('font-size:14px!important', cards)
         self.assertIn('.search3-hotel-action__copy :is(strong,span){font-size:12px!important', cards)
         self.assertIn('.search3-results-active.search3-selected-open .v2-shell>', detail)
