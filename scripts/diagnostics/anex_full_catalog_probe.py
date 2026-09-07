@@ -179,8 +179,7 @@ def match_catalog(hotels, towns, states, townstates, local_hotels):
             if name:
                 exact.setdefault(name, {})[local["id"]] = local
                 for token in {word for word in name.split() if len(word) >= 4}:
-                    if len(tokens.setdefault(token, {})) < 2000:
-                        tokens[token][local["id"]] = local
+                    tokens.setdefault(token, {})[local["id"]] = local
     output = []
     for hotel in hotels:
         external_id = positive_id({"id": hotel.get("inc")})
@@ -203,9 +202,18 @@ def match_catalog(hotels, towns, states, townstates, local_hotels):
             ranked.append((1.0 + (0.2 if same_country else -0.3) + (0.2 if same_town else 0), local, same_country, same_town, similarity))
         if not ranked and status == "active":
             pool = {}
-            words = sorted({word for normalized in names for word in normalized.split() if len(word) >= 4}, key=len, reverse=True)[:3]
+            # A rare name token is a useful candidate generator. Broad tokens
+            # such as "grand" or "beach" are deliberately not compared with
+            # thousands of hotels: those rows remain in the manual queue.
+            words = sorted(
+                {word for normalized in names for word in normalized.split()
+                 if len(word) >= 4 and 0 < len(tokens.get(word, {})) <= 1000},
+                key=lambda word: (len(tokens[word]), -len(word), word),
+            )[:2]
             for word in words:
                 pool.update(tokens.get(word, {}))
+                if len(pool) >= 1200:
+                    break
             for local in pool.values():
                 same_country = bool(supplier_country) and catalog_country(supplier_country) == catalog_country(local.get("country_name"))
                 if supplier_country and not same_country:
