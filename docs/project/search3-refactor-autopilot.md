@@ -2025,3 +2025,15 @@ Security `34156356460`, exact artifact `34156356467` and standalone navigation `
 Status boundary: checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3` at 147378 Search3 bytes; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred.
 
 Next: begin the lean Search3 base-bundle audit. Classify full-manifest modules by Search3 dependency, then use the existing bundle endpoint for a route-scoped Search3 manifest while keeping `/poisk-turov-old/` on the complete legacy bundle. Require measured loaded raw/gzip savings and source/closure/browser evidence before changing the route. Audit: `docs/project/search3-honest-view-control.json`.
+
+## S3_LEAN_BASE_BUNDLE_V1 — checked release, 2026-09-07
+
+Source PR #1504 / `826c424ee2f8f5c9b3e5bbc0fd19a337fbe6b126`; checked release `fc3550dd320cbc1791f7fb7f04d186a5a88dd8c0`. The existing `bundle-v1.php` endpoint now selects a Search3 manifest scope on the canonical route while the legacy `/poisk-turov-old/` route retains the complete original manifest and URL contract. Search3 excludes the complete `search-redesign-v2.js` owner: its list/grid behavior is legacy-only, and the required route/date/night/guest summary now belongs to the current Search3 results owner.
+
+Loaded Search3 CSS/JS is **665247 → 662065 raw bytes (−3182)**. The shared JavaScript scope is 279690 → 275439 (−4251), while the eight Search3 assets are 145974 → 147043 (+1069) for the retained summary behavior. The endpoint plus independent-asset gzip estimate is 102901 → 102309 (−592). Shared CSS is unchanged at 239583 bytes. This is a route-loaded total; the eight-path subtotal is recorded separately and is not mislabeled as a reduction.
+
+Security `34160747906`, exact artifact `34160834731` and preview-boundary `34160834648` succeeded. Reusable artifact `10032545333`, digest `sha256:7e4e4e025bb75ba1486a56ef5bf5bd16353b5aad6f4b6efdae916c90e493b8b2`. Closure checks prove 44 full versus 43 Search3 JavaScript owners, unchanged CSS scope, legacy retention and Search3 exclusion. Focused VM tests cover route, dates, nights, tourists, results/reset and edit focus. No CSS geometry changed; browser geometry correctly skipped and no visual acceptance or lead submission is claimed.
+
+Status boundary: checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction and physical iPhone/Safari safe-area remain deferred.
+
+Next: audit `conversion-confidence-v1` as the next whole-owner Search3 exclusion candidate. Its compare/decision/agency surfaces are currently hidden or unreachable under the Search3 presentation, but preserve any genuinely live selected CTA/trust behavior in a current owner before excluding it. Keep the full legacy bundle unchanged. Audit: `docs/project/search3-lean-base-bundle-v1.json`.
