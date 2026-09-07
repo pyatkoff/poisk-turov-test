@@ -1049,7 +1049,7 @@
     }
   },
   "last_verified_commit": "26fc0efbe8b306fbaca87b2d5330bc3311d97c6b",
-  "last_verified_commit_scope": "Checked release after #1516/#1517/#1520; three Search3-only legacy CSS owners retired with exact selected/results/entry geometry. Published preview remains c9ba7952.",
+  "last_verified_commit_scope": "Checked Search3 release after #1516/#1517/#1520; three Search3-only legacy CSS owners retired with exact geometry. Main independently advanced via #1519 after this code checkpoint. Published preview remains c9ba7952.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -7393,7 +7393,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-07T23:00:00Z",
+  "updated_at": "2026-09-07T23:05:00Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -8046,6 +8046,8 @@
     "eight_assets_after": 151125,
     "full_legacy_manifest_unchanged": true,
     "preview_published": false,
-    "audit": "docs/project/search3-lean-legacy-guards.json"
+    "audit": "docs/project/search3-lean-legacy-guards.json",
+    "main_sha_observed_after_checkpoint": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+    "main_change_scope": "Independent PR #1519 changed only .github/workflows/deploy-anytoour.yml; Search3 source PRs did not target main."
   }
 }
