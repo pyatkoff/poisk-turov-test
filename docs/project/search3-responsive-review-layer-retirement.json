@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "stage": "SOURCE_CANDIDATE_LOCAL_CHECKS_PASSED",
+  "base_release_sha": "89515c0e48bec8916ec9efe37b158a18908895c5",
+  "scope": "Retire the complete legacy review-responsive CSS layer and the earlier injected mobile final-review owner superseded by summary-cta.",
+  "removed": [
+    "styles/review-responsive.css: mobile final-review board, fixed tablet flight microgrid, and duplicate mobile selected-tour sequence",
+    "styles/injected/selected-tour-mobile.css: earlier final-review:not(.search3-lead-entry) presentation block"
+  ],
+  "retained": [
+    "Injected summary-cta owns the mobile final-review picture, heading, selected flight, final sections, booking summary and primary CTA",
+    "Injected selected-tour-mobile owns non-review responsive sequencing and lead-entry lifecycle",
+    "review-layout owns final/lead visibility and lead-shell boundaries",
+    "flights and selected-flow-v2 own intrinsic tablet flight-choice geometry and readable text",
+    "All eight public paths and protected price, API, payload, lead and analytics contracts"
+  ],
+  "public_assets": [
+    {"path": "v2/search3-results-filters-v1.css", "before": 115765, "after": 108011, "saved": 7754},
+    {"path": "v2/search3-results-filters-v1.js", "before": 87783, "after": 86370, "saved": 1413}
+  ],
+  "totals": {
+    "before": 235139,
+    "after": 225972,
+    "saved": 9167,
+    "css_before": 136248,
+    "css_after": 128494,
+    "js_before": 98891,
+    "js_after": 97478
+  },
+  "accounting_note": "Raw bytes across the same eight checked-in public assets. JS saving is removed private CSS embedded in the existing results JS path; no new request or path.",
+  "local_checks": {
+    "source_build": "PASS one successful combined --write build after manifest cleanup",
+    "source_build_tests": "PASS 13",
+    "injected_styles": "PASS owner order, root guard, idempotence and final/lead boundary assertions",
+    "selected_flow_scheduler": "PASS review/back/primary CTA transitions",
+    "booking_summary": "PASS event coalescing and eight layout-state operation traces",
+    "diff_check": "PASS"
+  },
+  "source_ci": {
+    "security_run": null,
+    "artifact_run": null,
+    "artifact_id": null,
+    "conclusion": "PENDING",
+    "guards": "unchanged"
+  },
+  "visual_verification": {
+    "status": "PENDING_SOURCE_CI_AND_ISOLATED_PREVIEW",
+    "performed": false,
+    "required": ["mobile final review and lead-entry boundary at 375/430", "tablet selected flight choices at 641/768/999"],
+    "deferred": ["physical Safari", "full site/responsive/SEO matrix", "real lead submission"]
+  },
+  "preview_updated": false,
+  "production_updated": false,
+  "next_action": "Run the two required source workflows. If green, integrate exact artifact into release, publish the justified responsive change to the existing isolated preview, inspect the affected mobile/tablet states, then audit lead-review versus lead-state as the next large candidate."
+}

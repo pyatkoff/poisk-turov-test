@@ -27,6 +27,15 @@ function capture(hasSelectedRoot, existing = false) {
 const styles = capture(true);
 assert.deepEqual(styles.map(style => style.id), ids);
 assert(styles.every(style => style.tag === 'style' && style.textContent.includes('@media')));
+const [selectedMobile, finalReview] = styles.map(style => style.textContent);
+assert.match(selectedMobile, /#selectedTour:not\(\.search3-final-review\).*\.search3-booking-stepper/s);
+assert.doesNotMatch(selectedMobile, /#selectedTour\.search3-final-review:not\(\.search3-lead-entry\)/);
+assert.match(selectedMobile, /#selectedTour\.search3-final-review\.search3-lead-entry/);
+assert.match(selectedMobile, /\.search3-lead-shell>\.lead-form\{[^}]*display:block!important/);
+assert.match(finalReview, /#selectedTour\.search3-final-review:not\(\.search3-lead-entry\)/);
+assert.match(finalReview, /\.search3-lead-shell>\.lead-form\{[^}]*display:none!important/);
+assert.match(finalReview, /\.search3-booking-summary\{[^}]*display:block!important/);
+assert.match(finalReview, /\.search3-summary-submit\{(?=[^}]*width:100%!important)(?=[^}]*min-height:48px!important)/);
 assert.deepEqual(capture(false).map(style => style.id), [ids[1]]);
 assert.equal(capture(true, true).length, 0);
 console.log('PASS: compiled private CSS preserves injection order, root guard and idempotence');
