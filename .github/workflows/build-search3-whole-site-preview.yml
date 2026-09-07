@@ -260,7 +260,16 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/search3-geometry-tools" --no-audit --no-fund --no-save playwright@1.55.0
           export NODE_PATH="$RUNNER_TEMP/search3-geometry-tools/node_modules"
           "$RUNNER_TEMP/search3-geometry-tools/node_modules/.bin/playwright" install --with-deps chromium
-          php -S 127.0.0.1:8098 -t "$RUNNER_TEMP/search3-site-docroot" >"$RUNNER_TEMP/search3-geometry-php.log" 2>&1 &
+          # Match the canonical host gate without contacting the live origin.
+          cat > "$RUNNER_TEMP/search3-geometry-router.php" <<'PHP'
+          <?php
+          $entry = '/_preview/search3-site-candidate/poisk-turov/';
+          if (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) !== $entry) return false;
+          $_SERVER['HTTP_HOST'] = 'anytoour.ru';
+          $_SERVER['SCRIPT_NAME'] = $entry . 'index.php';
+          require $_SERVER['DOCUMENT_ROOT'] . $_SERVER['SCRIPT_NAME'];
+          PHP
+          php -S 127.0.0.1:8098 -t "$RUNNER_TEMP/search3-site-docroot" "$RUNNER_TEMP/search3-geometry-router.php" >"$RUNNER_TEMP/search3-geometry-php.log" 2>&1 &
           php_pid=$!
           trap 'kill "$php_pid" >/dev/null 2>&1 || true' EXIT
           for _ in {1..20}; do curl -fsS "$SEARCH3_VISUAL_BASE/poisk-turov/" -o /dev/null && break; sleep 0.25; done

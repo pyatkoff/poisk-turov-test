@@ -18,7 +18,7 @@ const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://w
 const tour = { id: 'geometry-tour', price: 148500, hotel: { name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' } }, departure: { name: 'Москва' }, date: '2026-09-12', nights: 9, adults: 2, childs: 1, meal: { name: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL + CHD', operator: { name: 'TEST OPERATOR' }, isCharter: true, picture, hotelDescription: 'Описание проверочного отеля. '.repeat(16) };
 const segment = { company: { name: 'Test airline' }, number: 'AB123', departure: { name: 'Москва', airport: { name: 'Шереметьево', code: 'SVO' }, time: '09:30' }, arrival: { name: 'Анталья', airport: { name: 'Анталья', code: 'AYT' }, time: '14:00' }, baggage: 20, carryOn: '5 кг' };
 const flights = [{ isDefault: true, price: { value: 148500 }, forward: [segment], backward: [{ ...segment, number: 'AB124' }] }];
-const settle = page => page.evaluate(async () => { await document.fonts.ready; await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); });
+const settle = page => page.evaluate(async () => { await document.fonts.ready; window.scrollTo({top:0,left:0,behavior:'instant'}); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); });
 async function capture(page, label) {
   await settle(page);
   const snapshot = await page.evaluate(() => {
@@ -45,7 +45,9 @@ async function run(browser, width, previous) {
     return route.continue();
   });
   try {
-    await page.goto(base+'/poisk-turov/', {waitUntil:'domcontentloaded'});
+    const response=await page.goto(base+'/poisk-turov/', {waitUntil:'domcontentloaded'});
+    assert.equal(response.status(),200,'isolated Search3 entry must load');
+    assert.equal(await page.locator('body').evaluate(n=>n.classList.contains('search3-candidate')),true,'canonical host gate must enable Search3');
     await page.waitForFunction(()=>window.V2TourController && window.Search3SelectedFlowV2 && window.Search3SummaryCta);
     await page.evaluate(({tour,flights})=>{
       window.__geometryCalls={tour:0,flights:0,other:0};
@@ -72,6 +74,11 @@ async function run(browser, width, previous) {
     assert.deepEqual(calls,{tour:1,flights:1,other:0});
     assert.deepEqual(errors,[],'fixture must not cause browser errors');
     return states;
+  } catch(error) {
+    const prefix=(previous?'baseline':'current')+'-'+width+'-failure';
+    fs.writeFileSync(path.join(output,prefix+'.json'),JSON.stringify({message:String(error),errors,url:page.url(),body:await page.locator('body').getAttribute('class'),scripts:await page.locator('script[src]').evaluateAll(nodes=>nodes.map(n=>n.src))},null,2));
+    await page.screenshot({path:path.join(output,prefix+'.png'),fullPage:true});
+    throw error;
   } finally { await page.close(); }
 }
 (async()=>{
