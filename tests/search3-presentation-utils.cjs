@@ -6,11 +6,18 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const utilPath = path.join(root, 'src/search3/behavior/presentation-text.js');
 assert.ok(fs.existsSync(utilPath), 'shared presentation text owner must exist');
+assert.equal(
+  fs.readFileSync(path.join(root, 'src/search3/behavior/flight-presentation.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').trim(),
+  '',
+  'standalone flight presentation owner is retired'
+);
 
 const context = { window: {} };
 vm.runInNewContext(fs.readFileSync(utilPath, 'utf8'), context, { filename: 'presentation-text.js' });
 const format = context.window.Search3PresentationText;
+const flight = context.window.Search3FlightPresentation;
 assert.ok(Object.isFrozen(format), 'shared presentation text API is immutable');
+assert.ok(Object.isFrozen(flight), 'shared flight presentation API is immutable');
 assert.equal(format.esc(`<a title="x">Tom & Jerry's</a>`), '&lt;a title=&quot;x&quot;&gt;Tom &amp; Jerry&#39;s&lt;/a&gt;');
 assert.equal(format.text({ russianName: '', fullRussianName: 'Полное название', name: 'Fallback' }), 'Полное название');
 assert.equal(format.text([{ name: 'DBL' }, { title: 'SEA VIEW' }, null]), 'DBL, SEA VIEW');

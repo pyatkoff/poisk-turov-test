@@ -93,7 +93,7 @@ separate cascade evidence.
 | Results header and summary | `behavior/results-presentation.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
 | Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/results-cards-v2.css` |
 | Selected tour and mobile action | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
-| Flight labels and display-only price parsing | `behavior/flight-presentation.js`, `behavior/flight-price-presentation.js` |
+| Flight labels and display-only price parsing | `behavior/presentation-text.js`, `behavior/flight-price-presentation.js` |
 | Summary and handoff | `behavior/booking-summary.js`, `behavior/selected-tour-handoff.js` |
 | Selected services and tourists | `behavior/booking/services.js`, inside the booking summary owner |
 | Final review actions and responsive layout | `behavior/summary-cta.js`, `styles/review-layout.css`; `styles/review.css` is retired |
