@@ -29,11 +29,19 @@ def catalog_stamp(value):
     return int(value[2:], 16)
 
 
+def catalog_request(params, token):
+    for attempt in range(4):
+        result, body = request(params, token)
+        if result.get("status") == "ok" and body is not None:
+            return body
+        if attempt < 3:
+            time.sleep(2 ** attempt)
+    raise StopProbe()
+
+
 def catalog_page(token, kind, laststamp, delstamp):
-    result, body = request({"samo_action": "reference", "type": kind,
+    body = catalog_request({"samo_action": "reference", "type": kind,
                             "laststamp": laststamp, "delstamp": delstamp}, token)
-    if result.get("status") != "ok" or body is None:
-        raise StopProbe()
     if b"<!DOCTYPE" in body.upper() or b"<!ENTITY" in body.upper():
         raise ValueError("unsupported XML")
     root = ET.fromstring(body)
@@ -79,13 +87,12 @@ def catalog_all(token, kind, delstamp):
             raise ValueError("catalog pagination unavailable")
         cursor_int = next_cursor
         cursor = "0x%016X" % cursor_int
+        time.sleep(0.1)
     raise ValueError("catalog page limit")
 
 
 def catalog_static(token, kind):
-    result, body = request({"samo_action": "reference", "type": kind}, token)
-    if result.get("status") != "ok" or body is None:
-        raise StopProbe()
+    body = catalog_request({"samo_action": "reference", "type": kind}, token)
     root = ET.fromstring(body)
     data = root.find("Data")
     if root.tag != "Response" or data is None:
@@ -244,8 +251,14 @@ def remote_full_catalog_probe(tokens):
     stage = "currentstamp"
     progress = {}
     try:
-        stamp_result, stamp = reference_check(token, "currentstamp")
-        if stamp_result.get("status") != "ok" or not stamp:
+        stamp = None
+        for attempt in range(4):
+            stamp_result, stamp = reference_check(token, "currentstamp")
+            if stamp_result.get("status") == "ok" and stamp:
+                break
+            if attempt < 3:
+                time.sleep(2 ** attempt)
+        if not stamp:
             raise StopProbe()
         stage = "states"
         states, state_pages = catalog_all(token, "state", stamp)

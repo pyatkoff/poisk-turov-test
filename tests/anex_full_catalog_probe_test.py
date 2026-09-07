@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("catalog_access", ROOT / "scripts/diagnostics/anex_access_probe.py")
@@ -77,6 +78,18 @@ class FullCatalog(unittest.TestCase):
                                    self.towns, self.states, self.links, locals_)
         self.assertEqual(rows[0]["status"], "unmatched")
         self.assertEqual(rows[0]["candidates"], [])
+
+    def test_catalog_page_retries_a_transient_empty_response(self):
+        body = (b'<Response><Data><hotel inc="1" name="Fixture" town="10" '
+                b'stamp="0x0000000000000001"/></Data></Response>')
+        with mock.patch.object(probe, "request", side_effect=[
+                ({"status": "network_error"}, None), ({"status": "ok"}, body)]), \
+                mock.patch.object(probe.time, "sleep") as sleep:
+            rows, cursor = probe.catalog_page("token", "hotel", "0x0000000000000000",
+                                              "0x0000000000000002")
+        self.assertEqual(rows[0]["inc"], "1")
+        self.assertEqual(cursor, 1)
+        sleep.assert_called_once_with(1)
 
 
 if __name__ == "__main__":
