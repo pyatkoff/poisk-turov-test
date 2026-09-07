@@ -193,6 +193,17 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('new MutationObserver(scheduleResultsSync)', results_presentation)
         self.assertIn('function scheduleResultsSync()', results_presentation)
 
+    def test_results_layout_guard_is_legacy_only(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        self.assertIn("'results-layout-guard-v1.css'", manifest)
+        scoped = manifest.split('$excluded =', 1)[1]
+        self.assertIn("'results-layout-guard-v1.css'", scoped)
+        current = ''.join((ROOT / 'src/search3/styles' / name).read_text() for name in [
+            'results-layout.css', 'results-cards-v2.css', 'hotel-card-convergence.css'
+        ])
+        for contract in ['.results-layout', '.hotel-card', '.hotel-photo', '.hotel-tours', '.tour-row']:
+            self.assertIn(contract, current)
+
     def test_retired_tablet_drawer_and_redundant_phone_rules_have_current_owners(self):
         tablet = (ROOT / 'src/search3/styles/results-tablet-layout.css').read_text()
         toolbar = (ROOT / 'src/search3/styles/mobile-results-toolbar.css').read_text()
