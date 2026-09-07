@@ -16,7 +16,7 @@ html body.search3-candidate{
 /* Preserve access to secondary facts and room details, but make both full-width rows
    instead of squeezing them beside the removed legacy summary. */
 &.search3-selected-open #selectedTour:not(.search3-final-review) {
-& .facts-secondary-toggle {grid-column:1/3!important;grid-row:5!important;width:100%!important;min-height:38px!important;margin:10px 0 0!important;padding:0 14px!important;border:1px solid var(--at-line)!important;border-radius:10px!important;background:#fff!important;color:#2743ca!important;justify-content:flex-start!important;font-size:9px!important}
+& .facts-secondary-toggle {grid-column:1/3!important;grid-row:5!important;width:100%!important;min-height:38px!important;margin:10px 0 0!important;padding:0 14px!important;border:1px solid var(--at-line)!important;border-radius:10px!important;background:#fff!important;color:var(--at-brand)!important;justify-content:flex-start!important;font-size:9px!important}
 & .hotel-desc-toggle {grid-column:1/3!important;grid-row:7!important;width:max-content!important;margin:8px 0 0!important}
 & .room-details-host {grid-column:1/3!important;grid-row:8!important;width:100%!important;margin:10px 0 0!important}
 & .room-detail-toggle {width:100%!important;min-height:48px!important;border-radius:10px!important;text-align:left!important}
