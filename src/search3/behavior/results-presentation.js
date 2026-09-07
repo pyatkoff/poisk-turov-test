@@ -95,6 +95,32 @@
     if (text) route.textContent = text;
   }
 
+  function shortDate(value) {
+    var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').trim());
+    if (!match) return String(value || '').trim();
+    var months = ['янв', 'февр', 'мар', 'апр', 'мая', 'июня', 'июля', 'авг', 'сент', 'окт', 'нояб', 'дек'];
+    return String(Number(match[3])) + ' ' + months[Number(match[2]) - 1];
+  }
+
+  function syncTripSummary() {
+    syncRoute();
+    var dateFrom = selectedText('dateFrom');
+    var dateTo = selectedText('dateTo');
+    var nightsFrom = selectedText('daysFrom');
+    var nightsTo = selectedText('daysTill');
+    var adults = Math.max(1, Number(form.elements.count_people && form.elements.count_people.value || 1));
+    var children = Math.max(0, Number(form.elements.child_count && form.elements.child_count.value || 0));
+    var values = {
+      resultsSearchDates: [shortDate(dateFrom), shortDate(dateTo)].filter(Boolean).join(' — ') || '—',
+      resultsSearchNights: nightsFrom && nightsTo && nightsFrom !== nightsTo ? nightsFrom + '–' + nightsTo + ' ночей' : nightsFrom ? nightsFrom + ' ночей' : '—',
+      resultsSearchGuests: adults + ' ' + word(adults, 'взрослый', 'взрослых', 'взрослых') + (children ? ' · ' + children + ' ' + word(children, 'ребёнок', 'ребёнка', 'детей') : '')
+    };
+    Object.keys(values).forEach(function (id) {
+      var node = document.getElementById(id);
+      if (node) node.textContent = values[id];
+    });
+  }
+
   function emptyLocalResults() {
     return !!document.querySelector('.results-filter-rail[data-s3-empty-results="1"]');
   }
@@ -108,7 +134,7 @@
     body.classList.toggle('search3-has-results', has);
     if (has) {
       body.classList.remove('search3-editing-search');
-      if (topReady) syncRoute();
+      if (topReady) syncTripSummary();
     }
   }
 
@@ -122,7 +148,7 @@
       : 'Актуальные варианты';
     body.classList.toggle('search3-has-results', has);
     body.classList.remove('search3-editing-search');
-    if (has) syncRoute();
+    if (has) syncTripSummary();
   }
 
   function scheduleResultsSync() {
@@ -255,8 +281,9 @@
         try { focusTarget.focus({ preventScroll: true }); } catch (_error) { focusTarget.focus(); }
       }, 250);
     });
-    form.addEventListener('change', syncRoute);
-    syncRoute();
+    form.addEventListener('input', syncTripSummary);
+    form.addEventListener('change', syncTripSummary);
+    syncTripSummary();
   }
 
   window.Search3CandidateResultsV1 = Object.freeze({
