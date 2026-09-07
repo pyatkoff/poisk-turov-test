@@ -85,14 +85,15 @@ separate cascade evidence.
 | --- | --- |
 | Primary form and field placement | `behavior/search-form.js`, `behavior/entry-v1.js` |
 | Responsive entry and existing price-calendar adapter | `behavior/entry-v1.js`, `styles/entry-v1.css` |
-| Desktop local result-filter rail | `behavior/filter-rail.js`, `styles/filters.css` |
-| Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
+| Desktop local result-filter rail | `behavior/filter-rail.js`, `styles/results-layout.css` |
+| Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/mobile-results-toolbar.css` |
 | Canonical mobile filter bar and sheet | Existing `v2/mobile-results-filters-v1.js`; Search3 reuses `.mrf-bar` and `.mrf-sheet`, not a second drawer |
 | Results header and summary | `behavior/results-top.js`, `styles/results-context.css` |
 | Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/result-cards.css` |
 | Selected tour and mobile action | `behavior/tour-presentation.js`, `behavior/selected-tour-mobile.js` |
 | Flight labels and display-only price parsing | `behavior/flight-presentation.js`, `behavior/flight-price-presentation.js` |
 | Steps, summary and handoff | `behavior/booking-stepper.js`, `behavior/booking-summary.js`, `behavior/selected-tour-handoff.js` |
+| Final review heading, actions and responsive layout | `styles/review-layout.css`; `styles/review.css` is retired |
 | Lead entry and lifecycle presentation | `behavior/summary-cta.js`, `behavior/lead-flow.js`, `styles/lead-state.css` |
 | Selected price, fallback and disclosure adapter | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Accepted isolation/readability/geometry guards | `styles/acceptance-guards.css` |

@@ -17,7 +17,7 @@ MANIFEST = json.loads((ROOT / 'docs/project/search3-production-import.json').rea
 class Search3ProductionPresentationTest(unittest.TestCase):
     @unittest.skipUnless(shutil.which('node'), 'Node required for summary event regression')
     def test_booking_summary_event_bursts(self):
-        for name in ('search3-presentation-utils.cjs', 'search3-booking-summary.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-entry-summary.cjs', 'search3-mobile-toolbar-scheduler.cjs', 'search3-injected-styles.cjs'):
+        for name in ('search3-presentation-utils.cjs', 'search3-booking-summary.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-selected-handoff-ownership.cjs', 'search3-entry-summary.cjs', 'search3-mobile-toolbar-scheduler.cjs', 'search3-injected-styles.cjs'):
             subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
 
     @unittest.skipUnless(shutil.which('node'), 'Node required for filter ownership regression')
@@ -167,6 +167,36 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         injected = (ROOT / 'src/search3/styles/injected/selected-tour-mobile.css').read_text()
         self.assertNotIn('#selectedTour.search3-final-review.search3-lead-entry', injected)
         self.assertIn('#selectedTour:not(.search3-final-review)', injected)
+
+    def test_retired_review_donor_and_selected_desktop_family_have_current_owners(self):
+        retired = (ROOT / 'src/search3/styles/review.css').read_text()
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', retired, flags=re.S).strip(), '')
+
+        review = (ROOT / 'src/search3/styles/review-layout.css').read_text()
+        for marker in (
+            '.search3-review-heading{display:flex;align-items:center',
+            '.search3-summary-actions[hidden]{display:none!important}',
+            '.search3-summary-submit:disabled{cursor:default;opacity:.58;filter:none}',
+            '#selectedTour .lead-form button[type=submit]{background:#ff5a0a!important',
+            '#selectedTour.search3-final-review .search3-booking-summary{border-color:#dfe5ef!important}',
+        ):
+            self.assertIn(marker, review)
+        deferred_marker = '/* One responsive review board replaces the retired desktop/tablet geometry layers.'
+        deferred = review[review.index(deferred_marker):].encode()
+        self.assertEqual(
+            hashlib.sha256(deferred).hexdigest(),
+            '1def46804f7b3bba296d494607fce7b9f8a78445a53ade6f0321e5a783772ef9',
+            'deferred review-layout geometry must remain byte-for-byte unchanged',
+        )
+
+        selected = (ROOT / 'src/search3/styles/selected-tour.css').read_text()
+        detail = (ROOT / 'src/search3/styles/tour-detail.css').read_text()
+        self.assertNotIn('maket7 desktop uses a compact hotel summary', selected)
+        self.assertNotIn('@media(min-width:1000px)', selected)
+        self.assertIn('#selectedTour:not(.search3-final-review){display:grid!important', detail)
+        self.assertIn('grid-row:1!important;justify-self:start!important', detail)
+        self.assertIn('height:176px!important;border:1px solid var(--at-line)!important;border-right:0!important', detail)
+        self.assertIn('min-height:176px!important;border-left:0!important', detail)
 
     def test_cascade_split_rejects_byte_drift(self):
         spec = importlib.util.spec_from_file_location(

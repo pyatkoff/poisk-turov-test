@@ -2,6 +2,29 @@
 
 /* donor:search3-final-review-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 /* Final review + lead-entry convergence against approved AnyTour boards. No fabricated product facts. */
+.search3-review-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 12px;padding:4px 2px}
+.search3-review-heading[hidden]{display:none!important}
+.search3-review-heading span{display:block;margin-bottom:4px;color:var(--at-brand);font:900 9px/1.2 var(--at-font);letter-spacing:.08em}
+.search3-review-heading h2{margin:0;color:var(--at-ink);font:950 26px/1.05 var(--at-font);letter-spacing:-.025em}
+.search3-review-heading p{margin:6px 0 0;color:var(--at-muted);font:700 10px/1.35 var(--at-font)}
+.search3-review-heading>b{display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;border-radius:50%;background:#19a957;color:#fff;font:900 13px/1 var(--at-font)}
+.search3-summary-actions{display:grid;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--at-line)}
+.search3-summary-actions[hidden]{display:none!important}
+.search3-summary-submit{width:100%;min-height:48px;border:0;border-radius:10px;background:#ff5a0a;color:#fff;font:900 12px/1 var(--at-font);cursor:pointer}
+.search3-summary-submit:hover{filter:brightness(.98)}
+.search3-summary-submit:focus-visible{outline:2px solid var(--at-brand);outline-offset:3px}
+.search3-summary-submit:disabled{cursor:default;opacity:.58;filter:none}
+.search3-summary-actions p{margin:0;color:var(--at-muted);font:700 8px/1.4 var(--at-font)}
+body.search3-candidate #selectedTour.search3-final-review{
+& .hotel-desc,& .selected-head .eyebrow{display:none!important}
+& .selected-head{align-items:center!important}
+}
+@media(min-width:1000px){body.search3-candidate{
+& #selectedTour .lead-form button[type=submit]{background:#ff5a0a!important;border-color:#ff5a0a!important;border-radius:10px!important}
+& #selectedTour.search3-final-review .lead-form.search3-has-summary-submit:not([data-search3-lead-state])>button[type=submit]{display:none!important}
+& #selectedTour.search3-final-review .search3-booking-summary{border-color:#dfe5ef!important}
+}}
+@media(max-width:640px){.search3-review-heading p{font-size:8px}.search3-review-heading>b{width:24px;height:24px;flex-basis:24px;font-size:11px}}
 .search3-lead-back{display:none}
 body.search3-candidate{
 & #selectedTour.search3-final-review :is(.selected-lead-cta,.selected-lead-cta-note),& #selectedTour.search3-final-review:not(.search3-lead-entry) .lead-form,& #selectedTour.search3-lead-entry :is(.back-results,.search3-booking-stepper,.search3-review-heading,.selected-picture,.selected-head,.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.tour-flights,.search3-final-sections,.selected-confidence,.search3-selected-mobile-bar){display:none!important}

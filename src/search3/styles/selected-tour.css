@@ -31,21 +31,6 @@ body.search3-candidate{
 }
 }
 .search3-selected-mobile-bar{display:none}
-/* maket7 desktop uses a compact hotel summary: media at left, hotel/price at right, then tour facts. */
-@media(min-width:1000px){
-body.search3-candidate{
-& #selectedTour{display:grid!important;align-items:stretch!important}
-& #selectedTour {
-& .back-results {grid-column:1/-1!important;grid-row:1!important;justify-self:start!important}
-& .selected-picture {grid-column:1!important;grid-row:2!important;border:1px solid var(--at-line)!important;border-right:0!important;}
-& .selected-head {grid-column:2!important;grid-row:2!important;min-width:0!important;align-items:center!important;border-left:0!important;}
-
-& .facts {grid-column:1/-1!important;border-top:1px solid var(--at-line)!important;}
-& .facts>div:nth-child(-n/**/+5) {border-top:0!important}
-& :is(.hotel-desc,.tour-flights,.lead-form) {grid-column:1/-1!important}
-}
-}
-}
 @media(max-width:999px){body.search3-candidate{
 & #selectedTour{margin:16px var(--at-page-edge) 44px!important}& #selectedTour .facts{grid-template-columns:repeat(2,minmax(0,1fr))!important}& #selectedTour .facts>div,& #selectedTour .facts>div:nth-child(n){border-top:1px solid var(--at-line-soft)!important;border-right:1px solid var(--at-line-soft)!important}& #selectedTour .facts>div:nth-child(-n+2){border-top:0!important}& #selectedTour .facts>div:nth-child(2n){border-right:0!important}
 }}
