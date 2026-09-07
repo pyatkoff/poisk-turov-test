@@ -126,16 +126,59 @@ run already proved search and expansion; source review then corrected the
 documented flight-status strings and numeric baggage handling before the final
 run. No supplier raw bodies or tokens are stored in these evidence files.
 
+## Full hotel catalogue and first exact pass: 2026-09-07
+
+[Catalogue run 34150890531](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34150890531)
+completed on source `f148feaa8d83ea1af542e67d5ddfbb3450194cad`.
+It downloaded all paginated ANEX XML hotel and geography references, then read
+active `catalog_hotels` rows from AnyTour in bounded 5,000-row, read-only pages.
+No mapping or catalogue row was written.
+
+| Result | Count |
+| --- | ---: |
+| ANEX hotel IDs | 39,638 |
+| Active AnyTour catalogue hotels | 133,417 |
+| Strict automatic mappings | 10,611 |
+| Unique AnyTour hotels in strict mappings | 8,922 |
+| Exact-name candidates for manual review | 8,358 |
+| No exact-name candidate | 20,669 |
+
+The first pass is intentionally exact-only. A supplier hotel is marked
+`verified_auto` only when its normalized ANEX name has exactly one AnyTour
+candidate with the same normalized country and matching town or region. An exact
+name with ambiguous or insufficient geography is `review`; all other active
+hotels are `unmatched`. Multiple ANEX IDs can legitimately point at one AnyTour
+hotel and remain separate source-qualified identities.
+
+The workflow artifact
+[anex-hotel-catalog-match](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34150890531/artifacts/10029330453)
+is retained for 30 days and contains:
+
+- `anex-hotel-verified.csv`: strict mappings ready for a review sample;
+- `anex-hotel-review.csv`: exact-name candidates requiring a decision;
+- `anex-hotel-unmatched.csv`: hotels with no exact-name candidate;
+- `anex-hotel-catalog-match.json`: the complete source-qualified report.
+
+The XML snapshot also contained 278 states, 10,657 towns and 112 star values.
+Country is derived from the state on each town reference, with the 850-entry
+`townstate` reference as a fallback. Transient reference-page failures are
+retried up to four times with bounded backoff; an incomplete catalogue is never
+published as a successful artifact.
+
 ## Remaining product steps
 
-1. Resolve remaining mapping candidates and grow a measured mapping cohort.
-2. Confirm with ANEX the enabled method for final package-price recalculation.
+1. Review a sample of the 10,611 strict mappings, then import accepted identities
+   through a separately reviewed, idempotent registry update.
+2. Work through the 8,358 exact-name candidates. Keep explicit accept/reject
+   decisions so later catalogue refreshes do not recreate resolved work.
+3. Run a second, separately measured fuzzy pass over the 20,669 unmatched hotels.
+4. Confirm with ANEX the enabled method for final package-price recalculation.
    `bron` and flight inventory do not establish the final amount, supplements
    or the price of an arbitrary chosen flight option.
-3. Add the reviewed adapter to the existing search boundary in an isolated
+5. Add the reviewed adapter to the existing search boundary in an isolated
    preview, with private runtime credentials, bounded caching and request limits.
    Do not pass ANEX IDs into the existing Tourvisor or lead contracts.
-4. Review full user journeys before any public activation.
+6. Review full user journeys before any public activation.
 
 ## Sources
 
