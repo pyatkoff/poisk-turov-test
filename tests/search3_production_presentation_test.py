@@ -17,7 +17,7 @@ MANIFEST = json.loads((ROOT / 'docs/project/search3-production-import.json').rea
 class Search3ProductionPresentationTest(unittest.TestCase):
     @unittest.skipUnless(shutil.which('node'), 'Node required for summary event regression')
     def test_booking_summary_event_bursts(self):
-        for name in ('search3-presentation-utils.cjs', 'search3-booking-summary.cjs', 'search3-booking-services.cjs', 'search3-lead-note-owner.cjs', 'search3-booking-navigation.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-selected-handoff-ownership.cjs', 'search3-entry-summary.cjs', 'search3-mobile-toolbar-scheduler.cjs', 'search3-injected-styles.cjs'):
+        for name in ('search3-presentation-utils.cjs', 'search3-booking-summary.cjs', 'search3-booking-services.cjs', 'search3-lead-note-owner.cjs', 'search3-booking-navigation.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-selected-handoff-ownership.cjs', 'search3-entry-summary.cjs', 'search3-meal-owner.cjs', 'search3-mobile-toolbar-scheduler.cjs', 'search3-injected-styles.cjs'):
             subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
 
     @unittest.skipUnless(shutil.which('node'), 'Node required for filter ownership regression')
