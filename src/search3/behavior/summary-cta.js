@@ -3,6 +3,8 @@
 /* donor:search3-summary-cta.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
 let relayoutTimer=0;
+/* @include behavior/lead/note.js */
+function ensureWithNote(){ensure();ensureLeadNote()}
 function root(){return document.getElementById('selectedTour')}
 function relayout(){if(window.Search3BookingSummary&&typeof window.Search3BookingSummary.syncLayout==='function')window.Search3BookingSummary.syncLayout()}
 function relayoutSoon(){if(relayoutTimer)clearTimeout(relayoutTimer);relayoutTimer=setTimeout(function(){relayoutTimer=0;relayout()},0)}
@@ -14,12 +16,9 @@ function syncLeadVisibility(r,form){const review=r&&r.classList.contains('search
 function ensure(){const r=root(),summary=r&&r.querySelector('.search3-booking-summary'),form=r&&r.querySelector('.lead-form');if(!summary||!form)return;let actions=summary.querySelector('.search3-summary-actions');if(!actions){actions=document.createElement('div');actions.className='search3-summary-actions';actions.innerHTML='<button type="button" class="search3-summary-submit">Перейти к заявке</button><p>Перед отправкой проверьте выбранный тур и рейс.</p>';summary.appendChild(actions)}const active=r.classList.contains('search3-final-review'),entry=r.classList.contains('search3-lead-entry');form.classList.toggle('search3-has-summary-submit',active&&!entry);syncLeadVisibility(r,form);const sent=form.dataset.sent==='1';const sending=form.dataset.search3LeadState==='sending';const button=actions.querySelector('.search3-summary-submit');if(button){button.disabled=sent||sending;button.textContent=sent?'Заявка отправлена':sending?'Отправляем…':'Перейти к заявке'}actions.hidden=!active||entry;}
 function enterLead(source){const r=root(),form=r&&r.querySelector('.lead-form');if(!r||!form)return false;r.classList.add('search3-lead-entry');ensure();emitLeadEntry(true,source||'summary');afterPaint(function(){relayoutSoon();try{form.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){try{form.scrollIntoView()}catch(_){}}const phone=form.querySelector('input[name="phone"]');if(phone){try{phone.focus({preventScroll:true})}catch(e){try{phone.focus()}catch(_){}}}});return true}
 function leaveLead(){const r=root();if(!r)return;r.classList.remove('search3-lead-entry');isolateRootChildren(r,false);ensure();emitLeadEntry(false,'back');afterPaint(function(){relayoutSoon();const summary=r.querySelector('.search3-booking-summary');if(summary){try{summary.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){try{summary.scrollIntoView()}catch(_){}}}const button=summary&&summary.querySelector('.search3-summary-submit');if(button){try{button.focus({preventScroll:true})}catch(e){try{button.focus()}catch(_){}}}})}
-window.addEventListener('v2:booking-review',()=>setTimeout(ensure,0));
-window.addEventListener('v2:lead-started',()=>setTimeout(ensure,0));
-window.addEventListener('v2:lead-success',()=>setTimeout(ensure,0));
-window.addEventListener('v2:lead-error',()=>setTimeout(ensure,0));
-window.addEventListener('search3:lead-entry',()=>setTimeout(ensure,0));
-window.addEventListener('v2:tour-selected',()=>{const r=root();if(r){r.classList.remove('search3-lead-entry');isolateRootChildren(r,false)}setTimeout(ensure,0)});
+window.addEventListener('v2:booking-review',()=>setTimeout(ensureWithNote,0));
+['v2:lead-started','v2:lead-success','v2:lead-error','search3:lead-entry'].forEach(name=>window.addEventListener(name,()=>setTimeout(ensure,0)));
+window.addEventListener('v2:tour-selected',()=>{const r=root();if(r){r.classList.remove('search3-lead-entry');isolateRootChildren(r,false)}setTimeout(ensureWithNote,0)});
 document.addEventListener('click',e=>{const summaryButton=e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-summary-submit');if(summaryButton){e.preventDefault();enterLead('summary');return}const back=e.target&&e.target.closest&&e.target.closest('#selectedTour .search3-lead-back');if(back){e.preventDefault();leaveLead();}});
 window.Search3SummaryCta={ensure,enterLead,leaveLead,isolateRootChildren,version:8};
 })();

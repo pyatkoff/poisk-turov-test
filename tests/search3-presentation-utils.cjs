@@ -23,11 +23,11 @@ assert.equal(format.place(null), '—');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'src/search3/manifest.json'), 'utf8'));
 const modules = manifest.assets['search3-results-filters-v1.js'];
 const ownerIndex = modules.indexOf('behavior/presentation-text.js');
-for (const consumer of ['behavior/booking-summary.js', 'behavior/final-sections.js']) {
+for (const consumer of ['behavior/booking-summary.js']) {
   assert.ok(ownerIndex >= 0 && ownerIndex < modules.indexOf(consumer), `text owner loads before ${consumer}`);
 }
 
-const sources = Object.fromEntries(['booking-summary.js', 'final-sections.js'].map((name) => [
+const sources = Object.fromEntries(['booking-summary.js'].map((name) => [
   name,
   fs.readFileSync(path.join(root, 'src/search3/behavior', name), 'utf8')
 ]));
@@ -38,6 +38,7 @@ for (const name of Object.keys(sources)) {
 assert.ok(!sources['booking-summary.js'].includes('function text('));
 assert.ok(!sources['booking-summary.js'].includes('function people('));
 assert.ok(!sources['booking-summary.js'].includes('function place('));
-assert.ok(!sources['final-sections.js'].includes('function text('));
+assert.match(fs.readFileSync(path.join(root, 'src/search3/behavior/booking/services.js'), 'utf8'), /function renderServices/);
+assert.equal(fs.readFileSync(path.join(root, 'src/search3/behavior/final-sections.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').trim(), '', 'standalone services owner is retired');
 
 console.log('PASS: one ordered presentation text owner preserves escaping, supplier text, compact party and place labels');

@@ -26,24 +26,27 @@ detailRow('Оператор',esc(operator(t)))+
 ('<div><dt>Перелёт</dt><dd class="'+summaryClass+'__flight">')+esc(flightLabel(lastFlight))+'</dd></div></dl>'+
 ('<div class="'+summaryClass+'__total"><span>Стоимость тура</span><strong>')+money(selectedTotal||t&&t.price)+('</strong></div><p class="'+summaryClass+'__price-note">Перед оплатой менеджер подтвердит итоговую стоимость и детали перелёта.</p></aside>');}
 /* @include behavior/booking/layout.js */
+/* @include behavior/booking/services.js */
 function render(){const root=document.getElementById('selectedTour'),form=root&&root.querySelector('.lead-form');if(!form||!lastTour)return;let shell=form.closest('.search3-lead-shell');if(!shell){shell=document.createElement('div');shell.className='search3-lead-shell';form.parentNode.insertBefore(shell,form);shell.appendChild(form);}const old=shell.querySelector('.'+summaryClass);if(old)old.remove();shell.insertAdjacentHTML('beforeend',summaryHtml(lastTour));syncLayout();}
 // Tour, flight and price events can arrive in the same turn. Render the latest
 // state once; a full render already includes layout synchronization.
-let updatePending=false,renderPending=false;
-function scheduleUpdate(fullRender){
-  renderPending=renderPending||fullRender;
+// Pending bits: 1 = price summary, 2 = services. Price-only events keep services.
+let updatePending=false,renderPending=0;
+function scheduleUpdate(parts){
+  renderPending|=parts;
   if(updatePending)return;
   updatePending=true;
   setTimeout(()=>{
     const shouldRender=renderPending;
-    updatePending=false;renderPending=false;
-    if(shouldRender)render();else syncLayout();
+    updatePending=false;renderPending=0;
+    if(shouldRender&1)render();else syncLayout();
+    if(shouldRender&2)renderServices();
   },0);
 }
-function renderSoon(){scheduleUpdate(true)}
-function layoutSoon(){scheduleUpdate(false)}
-window.addEventListener('v2:tour-selected',e=>{lastTour=e.detail&&e.detail.tour||null;lastFlight=null;selectedTotal=number(lastTour&&lastTour.price);renderSoon();});
-window.addEventListener('v2:flight-selected',e=>{lastFlight=e.detail&&e.detail.flight||null;renderSoon();});
+function renderSoon(){scheduleUpdate(1)}
+function layoutSoon(){scheduleUpdate(0)}
+window.addEventListener('v2:tour-selected',e=>{lastTour=e.detail&&e.detail.tour||null;lastFlight=null;selectedTotal=number(lastTour&&lastTour.price);scheduleUpdate(3);});
+window.addEventListener('v2:flight-selected',e=>{lastFlight=e.detail&&e.detail.flight||null;scheduleUpdate(3);});
 window.addEventListener('v2:tour-price-updated',e=>{selectedTotal=normalizedTotal(e.detail);renderSoon();});
 ['v2:booking-review','search3:lead-entry','v2:lead-started','v2:lead-error'].forEach(name=>window.addEventListener(name,layoutSoon));
 window.addEventListener('v2:lead-success',renderSoon);

@@ -95,7 +95,9 @@ separate cascade evidence.
 | Selected tour and mobile action | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Flight labels and display-only price parsing | `behavior/flight-presentation.js`, `behavior/flight-price-presentation.js` |
 | Summary and handoff | `behavior/booking-summary.js`, `behavior/selected-tour-handoff.js` |
+| Selected services and tourists | `behavior/booking/services.js`, inside the booking summary owner |
 | Final review actions and responsive layout | `behavior/summary-cta.js`, `styles/review-layout.css`; `styles/review.css` is retired |
+| Lead heading and contact note | `behavior/lead/note.js`, inside the summary CTA owner |
 | Lead entry and lifecycle presentation | `behavior/summary-cta.js`, `behavior/lead-flow.js`, `styles/lead-state.css` |
 | Selected price, fallback and disclosure adapter | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Accepted isolation/readability/geometry guards | `styles/acceptance-guards.css` |
@@ -207,6 +209,15 @@ elements and unequal-specificity alternatives were excluded. The audit is in
 
 `booking-summary.js` coalesces tour/flight/price/layout events into one deferred
 update; full render includes layout and consumes the latest values.
+Its private `booking/services.js` uses the same selected tour, flight, numeric
+formatters and queue. Tour/flight events request both sections; price-only and
+lead-success events rebuild only the summary, and stage events keep layout-only
+behavior. Services still render if the lead form is absent. The standalone
+`final-sections.js` state/listeners are retired. Compiled regressions preserve
+eleven settled markup/copy/layout snapshots from the preceding published source.
+`summary-cta.js` runs the private lead note in its existing tour/review task;
+the former `lead-note.js` listeners are retired. Public CTA methods and other
+lead lifecycle events retain their scope.
 `results-top.js` owns one animation-frame queue for result state. Result
 mutations may synchronize search state; resize must remain geometry-only so
 an open search editor is preserved. Queued geometry reads current cards, not
