@@ -61,7 +61,7 @@
         "manual_check_budget_minutes": 5,
         "budget_rule": "The manual-check timebox is not acceptance. If relevant evidence cannot be completed, record it as deferred and keep the uncertain change out of the verified batch; continue independent safe reductions.",
         "reduction_priority": "Prefer measured elimination of large duplicate CSS/JS source blocks. Include small reductions opportunistically; do not spend a separate PR/deploy/browser cycle on a micro-saving.",
-        "reporting": "Report net generated CSS/JS bytes and whether the checked batch is published. Do not count moved code or line-count reduction as payload savings.",
+        "reporting": "Owner direction 2026-09-07: routine user reports show only newly removed CSS/JS bytes in the current invocation. Do not repeat the original baseline, cumulative savings or cumulative percentage. Distinguish finishing or integrating a previously reported local packet from new reduction; report zero new bytes when only completing that packet. Historical source-baseline measurements remain in audits, not routine user summaries.",
         "production": "Production approval, protected contracts, ready_for_review restoration and actual deployment guards remain unchanged. Owner explicitly resumed hourly Search3 development."
       }
     },
