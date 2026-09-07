@@ -52,7 +52,6 @@ body.search3-candidate{
 & .results-tools--ds2>div:first-child{display:flex!important;align-items:baseline!important;flex-direction:row!important;gap:8px!important;min-width:0!important}
 & .results-tools--ds2 strong{color:#14213d!important;font-size:17px!important;line-height:1.1!important;font-weight:950!important;letter-spacing:-.025em!important}
 & .results-tools--ds2 #resultSummary{color:#667085!important;font-size:8px!important;font-weight:750!important;white-space:nowrap!important}
-& .search3-results-meta{display:none!important}
 & .results-tools__actions,
 & .results-tools label{
   display:flex!important;

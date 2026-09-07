@@ -6,13 +6,13 @@ const events = new Map(), frames = [], classes = new Set();
 let observeResults, cards = true, emptyLocal = false;
 const properties = new Map();
 const style = { setProperty(k,v,priority) { assert.equal(priority,'important'); properties.set(k,v); }, removeProperty(k) { properties.delete(k); } };
-const counters = { textContent: '' };
-const meta = { querySelector() { return counters; }, remove() {} };
 const heading = { textContent: '' }, summary = { textContent: '' };
-const tools = { style, parentElement: { getBoundingClientRect() { return { left: 0 }; } }, querySelector(s) { return s === 'strong' ? heading : s === '.search3-results-meta' ? meta : null; } };
+const tools = { style, parentElement: { getBoundingClientRect() { return { left: 0 }; } }, querySelector(s) { assert.notEqual(s, '.search3-results-meta', 'hidden duplicate counters have no runtime owner'); return s === 'strong' ? heading : null; } };
 const results = { querySelector() { return cards ? {} : null; } };
-const form = { elements: {}, addEventListener() {} };
-const document = { getElementById(id) { return { tourSearch: form, resultsTools: tools, resultSummary: summary, results }[id] || null; }, querySelector(selector) { return selector === '.results-filter-rail[data-s3-empty-results="1"]' && emptyLocal ? {} : null; }, body: { classList: { toggle(n,on) { on ? classes.add(n) : classes.delete(n); }, remove(...names) { names.forEach(n=>classes.delete(n)); } } } };
+const route = { textContent: '' };
+const searchSummary = { querySelector() { return route; } };
+const form = { elements: { from: { value: 'Москва' }, country: { value: 'Турция' }, region: { value: 'Сиде' } }, addEventListener() {} };
+const document = { getElementById(id) { return { tourSearch: form, resultsTools: tools, resultSummary: summary, resultsSearchSummary: searchSummary, results }[id] || null; }, querySelector(selector) { assert.notEqual(selector, '.search3-page-intro', 'static intro stays owned by search-form'); return selector === '.results-filter-rail[data-s3-empty-results="1"]' && emptyLocal ? {} : null; }, body: { classList: { toggle(n,on) { on ? classes.add(n) : classes.delete(n); }, remove(...names) { names.forEach(n=>classes.delete(n)); } } } };
 const window = { innerWidth: 1440, addEventListener(n,fn) { events.set(n,fn); } };
 const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname,'../v2/search3-results-filters-v1.js'),'utf8');
 const bundledIife = require('./search3-bundle-iife.cjs');
@@ -27,6 +27,8 @@ emit('v2:results-rendered',[{ tours: [{},{}] }]); observeResults(); observeResul
 assert.equal(frames.length,1,'result mutations share one state frame'); flush();
 assert.equal(properties.size,0,'results presentation does not write inline geometry');
 assert.equal(heading.textContent,'Найдено 2 тура');
+assert.equal(summary.textContent,'1 отель · актуальные варианты');
+assert.equal(route.textContent,'Москва → Турция, Сиде');
 assert.ok(!events.has('resize'),'responsive geometry is owned by CSS');
 // A render event is queued before reset. Its old item count must not be used later.
 emit('v2:results-rendered',[{ tours:[{}] }]); cards = false; emit('v2:search-reset'); flush();

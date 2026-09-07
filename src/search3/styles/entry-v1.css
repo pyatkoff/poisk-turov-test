@@ -132,7 +132,7 @@ html body.search3-candidate{
   & #resultsTools > div:first-child strong {
     font-size:16px!important;
   }
-  & #resultsTools .search3-results-meta,& #resultsTools #resultSummary {
+  & #resultsTools #resultSummary {
     display:none!important;
   }
 

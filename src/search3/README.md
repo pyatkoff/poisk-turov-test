@@ -211,6 +211,9 @@ mutations may synchronize search state; resize must remain geometry-only so
 an open search editor is preserved. Queued geometry reads current cards, not
 an item count captured before reset. Keep these queues local to their owners;
 do not add a global scheduler or another observer for the same work.
+The visible count and route remain here; the permanently hidden duplicate meta
+counter has been retired. Static page intro text belongs only to `search-form.js`
+and is not rewritten on results, reset or form-change events.
 
 `results-presentation.js` owns a separate existing zero-delay mobile-toolbar mount.
 Progressive-result and compact-breakpoint bursts share one pending task. Reset or
