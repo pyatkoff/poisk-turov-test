@@ -50,13 +50,36 @@ Passing confirms only these read methods. Price search, live availability,
 booking permissions, full reference import, Andromeda, and Tourvisor are outside
 this diagnostic. No change to the site's live search is made.
 
-## Sources
+## Verified result: 2026-09-07
 
 Initial run [34140006120](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34140006120)
 reached the AnyTour host successfully. XML returned HTTP 200 for `currentstamp`,
 278 `state` records, and 850 `townstate` records. The API POST request returned
 HTTP 500. The follow-up uses the exact documented GET format to distinguish
 POST dispatch behaviour from a general API-access failure.
+
+Follow-up [run 34140139672](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34140139672)
+on source `85b2e7d93953e98c164e76217655b14fc08a0572` passed at
+15:48 UTC, including all 12 offline tests and the SSH-side checks:
+
+| Read method | HTTP | Records | Supplier request time |
+| --- | --- | --- | --- |
+| `SearchTour_TOWNFROMS` (GET) | 200 | 77 | 125 ms |
+| `currentstamp` | 200 | 1 | 192 ms |
+| `state` (first batch) | 200 | 278 | 204 ms |
+| `townstate` | 200 | 850 | 104 ms |
+
+Both supplied credentials work for these methods from the existing AnyTour host.
+GET succeeds where the tested POST returned 500, so use the verified GET format
+for this integration. The run does not establish the supplier's internal cause
+for the POST error. Country and route counts are raw supplier records, not
+necessarily the number of actively sold countries or unique routes.
+
+The next integration step is a bounded tour-price lookup with the available
+departure/destination IDs and then provider-specific mapping into AnyTour.
+No tour-price, availability, full import or booking result is claimed here.
+
+## Sources
 
 - [Online SAMO API](https://dokuwiki.samo.ru/doku.php?id=onlinest:api)
 - [XML gateway and reference synchronization](https://dokuwiki.samo.ru/doku.php?id=samotour:xml_gate)
