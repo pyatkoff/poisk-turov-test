@@ -45,7 +45,10 @@ async function inspect(browser, width, previous) {
     await page.waitForTimeout(400); // Drain the existing form's bounded settle timers.
     const initial = await state();
     assert.ok(initial.visible && !initial.overflow, 'usable initial form');
-    if (!previous) assert.equal(await page.locator('.mobile-search-sticky,.mobile-search-summary,.mobile-search-submit-sentinel').count(), 0, 'retired mobile surfaces absent');
+    if (!previous) {
+      assert.equal(await page.locator('.mobile-search-sticky,.mobile-search-summary,.mobile-search-submit-sentinel').count(), 0, 'retired mobile surfaces absent');
+      assert.equal(await page.locator('#tourSearch.search-params-filter-split,.result-filter-stars,.result-filter-meal').count(), 0, 'retired parameter/filter split markers absent');
+    }
     await emit('v2:search-started');
     const started = await state();
     await emit('v2:search-error', { phase: 'validation' });

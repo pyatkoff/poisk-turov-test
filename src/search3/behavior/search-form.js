@@ -16,7 +16,7 @@ function init(){
   var refs={};['from','country','dateFrom','dateTo','daysFrom','daysTill','count_people','child_count'].forEach(function(name){refs[name]=form.elements[name]||null;});
   var childAges=document.getElementById('childAges');
   var originalFields={};Object.keys(refs).forEach(function(name){var el=refs[name];originalFields[name]=el&&el.closest?el.closest('.field'):null;});
-  var submit=form.querySelector(':scope > .search-submit');if(childAges)childAges.remove();main.innerHTML='';main.className='main-fields search3-primary-grid';
+  var submit=form.querySelector(':scope > .search-submit'),starsField=field(form,'stars'),legacyGrid=extras.querySelector('.extra-grid'),ratingField=field(form,'rating');if(starsField&&main.contains(starsField)&&legacyGrid)legacyGrid.insertBefore(starsField,ratingField&&ratingField.parentNode===legacyGrid?ratingField:null);if(childAges)childAges.remove();main.innerHTML='';main.className='main-fields search3-primary-grid';
   function appendOriginal(name,label,cls){var f=originalFields[name];if(!f)return null;cleanField(f);var s=f.querySelector(':scope > span');if(s)s.textContent=label;if(cls)f.classList.add(cls);main.appendChild(f);return f;}
   appendOriginal('from','Откуда','search3-from');appendOriginal('country','Куда','search3-country');
   var region=field(form,'region');if(region){cleanField(region);var rs=region.querySelector(':scope > span');if(rs)rs.textContent='Курорт / регион';region.classList.add('search3-region');main.appendChild(region);}
