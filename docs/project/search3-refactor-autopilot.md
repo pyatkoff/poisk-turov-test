@@ -66,9 +66,37 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `bc5e0d123e125ddd6d4603e2c6051dbe161726c4`;
+The latest checked release source is `94c76b6dade243c06055b5ffe65395e33e3800e3`;
 the published preview remains on source `b9445bc3c8aa0713b148241bcddeefdf07576079`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
+
+### Latest checked checkpoint — selected-tour owner retirement — 2026-09-07
+
+PR #1467 / source `22c6a4dd0dbefe1e8885827ee74b160a7ee8f6f8`, integrated release
+`94c76b6dade243c06055b5ffe65395e33e3800e3`, retires the complete
+`selected-tour.css` presentation donor. Required shared shell, photo/facts/section
+primitives remain in the current `tour-detail.css` owner; fixed CTA and narrow-state
+rules remain in `selected-flow-v2.css`. Dead 330px picture geometry, forced results
+display and superseded narrow ordering were not copied.
+
+Eight raw assets **164762 → 163740 bytes (−1022 CSS)**. Main results CSS falls
+62808→60385 while selected-flow CSS grows 9401→10802 for retained live rules; six
+other assets are byte-identical. Security `34120401772` and exact artifact build
+`34120401716` succeeded. Reuse artifact `10017964340`, digest
+`sha256:6056d9b2a952b82b021bf0dc8c4e22052482cc4fb6eb36f0aa08fd55bfb0b9bb`;
+release/docs do not rebuild it. Audit: `docs/project/search3-selected-tour-owner-retirement.json`.
+
+The source-order audit caught a late narrow margin override, a stretched mobile
+back button and a photo/header seam risk; all three were corrected before the final
+build. Source build/check and the focused presentation suite pass. **Not published:**
+preview remains `b9445bc3`; main/production remain `fa58a0cb`. Actual browser
+geometry at 375/760/1000/1440, fixed-CTA safe-area and physical Safari remain deferred.
+
+Next: do not repeat #1466/#1467. Audit a whole results presentation owner: consolidate
+`results-top.js` into `results-presentation.js` only with exact initial/results/edit
+scheduling coverage, or retire a bounded `results-layout.css` family only after
+collapsed/expanded responsive geometry is available. Keep final-sections,
+booking-summary, price, lead, API and analytics contracts.
 
 ### Latest checked checkpoint — booking navigation and hidden card copy — 2026-09-07
 

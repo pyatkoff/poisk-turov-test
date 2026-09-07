@@ -53,27 +53,28 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1464 retires standalone booking-services and lead-note owners.166271→165508 raw bytes(−763 JS);11 settled markup snapshots match, source Security/artifact CI pass. Release only; preview remains b9445bc3.",
+    "last_material_progress": "#1467 retires the full selected-tour.css donor. 164762→163740 raw bytes (−1022 CSS); required Security/artifact CI pass. Release only; preview remains b9445bc3.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not repeat final-sections/lead-note owner retirement. Keep selected-tour.css until current-source detail/review/lead geometry at375/760/1000 is available; the supported cloud browser still has no viewport resize. Audit the remaining results-layout.css card family against results-cards-v2.css for a substantial owner batch, preserving expanded-card/mobile-fact boundaries; do not claim or publish uncertain visual removals. Accumulate technical reductions and reuse the checked source artifact at a justified publication.",
+    "next_action": "Do not repeat #1466 or #1467. selected-tour.css is retired and its required shell/mobile primitives live in current owners. Browser geometry at 375/760/1000 and physical Safari remain deferred; do not report them as passed. Next audit a whole results presentation owner: either consolidate results-top.js into results-presentation.js with exact initial/results/edit scheduling coverage, or retire a bounded results-layout.css family only after collapsed/expanded 375/760/999/1000/1440 geometry is available. Keep final-sections, booking-summary, price, lead, API and analytics contracts.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_NAVIGATION_OWNER_CONSOLIDATION",
-    "title": "Complete booking navigation owner and hidden card-copy CSS reduction",
+    "id": "S3_SELECTED_TOUR_OWNER_RETIREMENT",
+    "title": "Retire selected-tour presentation donor",
     "status": "CHECKED_RELEASE_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1466
+      1467
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
-    "artifact_run": 34119497935,
-    "artifact_id": 10017627199,
+    "implementation_sha": "22c6a4dd0dbefe1e8885827ee74b160a7ee8f6f8",
+    "release_integration_sha": "94c76b6dade243c06055b5ffe65395e33e3800e3",
+    "artifact_run": 34120401716,
+    "artifact_id": 10017964340,
     "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "next_action": "Do not repeat #1466 flight-continue/summary-cta/hidden-card-copy; its old uncommitted mirror on refactor/search3-results-card-owner-v1 is already integrated. Resume from fresh release, not that stale checkout. Next substantial candidate is the remaining results-layout.css card geometry family, but retain it until focused current-source collapsed/expanded geometry and specificity at375/760/999/1000/1440 are verified; the broad relocation experiment was excluded. Keep selected-tour.css pending detail/review/lead375/760/1000 evidence. The supported browser has no viewport resize; do not substitute desktop evidence or retry blocked URL workarounds. final-sections/booking-summary CSS still provide live service and summary geometry; restoreProductionLabels still repairs the core controller final button label. Do not delete these as dead code. Accumulate useful reductions and reuse the checked artifact at the next justified publication; no micro-deploy."
+    "next_action": "Do not repeat #1466 or #1467. selected-tour.css is retired and its required shell/mobile primitives live in current owners. Browser geometry at 375/760/1000 and physical Safari remain deferred; do not report them as passed. Next audit a whole results presentation owner: either consolidate results-top.js into results-presentation.js with exact initial/results/edit scheduling coverage, or retire a bounded results-layout.css family only after collapsed/expanded 375/760/999/1000/1440 geometry is available. Keep final-sections, booking-summary, price, lead, API and analytics contracts."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -899,6 +900,16 @@
       "source_sha": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
       "source_pr": 1466,
       "preview_published": false
+    },
+    "selected_tour_owner_retirement": {
+      "security_run": 34120401772,
+      "artifact_run": 34120401716,
+      "artifact_id": 10017964340,
+      "artifact_digest": "sha256:6056d9b2a952b82b021bf0dc8c4e22052482cc4fb6eb36f0aa08fd55bfb0b9bb",
+      "conclusion": "success",
+      "required_passed": 2,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
     }
   },
   "last_verified_commit": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
@@ -7127,7 +7138,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-07T12:03:29.617610+00:00",
+  "updated_at": "2026-09-07T12:15:00.000Z",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -7224,5 +7235,48 @@
   "reporting_preference": {
     "source": "explicit owner correction 2026-09-07",
     "routine_user_reports": "Only newly removed bytes for the current invocation; no original baseline/cumulative totals or percentages. Do not count prior local work again when integrating it."
+  },
+  "latest_selected_tour_owner_retirement": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "baseline": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
+    "implementation_sha": "22c6a4dd0dbefe1e8885827ee74b160a7ee8f6f8",
+    "release_integration_sha": "94c76b6dade243c06055b5ffe65395e33e3800e3",
+    "source_pr": 1467,
+    "audit": "docs/project/search3-selected-tour-owner-retirement.json",
+    "scope": "Retire the full selected-tour.css donor; retain shared shell/facts/sections in tour-detail.css and fixed CTA/narrow state in selected-flow-v2.css.",
+    "ci": {
+      "security_run": 34120401772,
+      "artifact_run": 34120401716,
+      "artifact_id": 10017964340,
+      "artifact_digest": "sha256:6056d9b2a952b82b021bf0dc8c4e22052482cc4fb6eb36f0aa08fd55bfb0b9bb",
+      "conclusion": "success",
+      "required_passed": 2,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
+    },
+    "public_assets": {
+      "css_bytes": 93084,
+      "js_bytes": 70656,
+      "total_bytes": 163740,
+      "scope": "Eight public paths, raw uncompressed bytes; six assets byte-identical."
+    },
+    "run_delta": {
+      "bytes": -1022,
+      "css_bytes": -1022,
+      "js_bytes": 0
+    },
+    "preview_updated": false,
+    "production_updated": false,
+    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "visual_verification": {
+      "performed": false,
+      "deferred": [
+        "detail/review/lead geometry at 375/760/1000/1440",
+        "fixed mobile CTA and safe-area in browser",
+        "physical Safari"
+      ],
+      "source_audit": "Caught and corrected a late mobile margin expansion, stretched back button and photo/header seam before final build."
+    },
+    "next_action": "Do not repeat #1466 or #1467. selected-tour.css is retired and its required shell/mobile primitives live in current owners. Browser geometry at 375/760/1000 and physical Safari remain deferred; do not report them as passed. Next audit a whole results presentation owner: either consolidate results-top.js into results-presentation.js with exact initial/results/edit scheduling coverage, or retire a bounded results-layout.css family only after collapsed/expanded 375/760/999/1000/1440 geometry is available. Keep final-sections, booking-summary, price, lead, API and analytics contracts."
   }
 }
