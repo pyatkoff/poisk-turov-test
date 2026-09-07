@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "base_release_sha": "45492347f760fdc6e568996c0319f7fef78fef68",
+  "scope": "Exclude complete unused confidence/compare presentation from Search3 shared startup; retain full legacy manifest.",
+  "retired_search3_owners": [
+    "conversion-confidence-v1.js",
+    "compare-refresh-guard-v1.js",
+    "conversion-confidence-v1.css"
+  ],
+  "retained_behavior": [
+    "Selected desktop confidence markup and styling in selected-flow-v2; one idempotent insertion per selected tour",
+    "Tour choice label and accessible date label in existing results card owner",
+    "Full legacy route bundle and compare behavior unchanged"
+  ],
+  "payload": {
+    "before": {
+      "css": 239583,
+      "css_endpoint": 241132,
+      "css_gzip": 43743,
+      "js": 275439,
+      "js_endpoint": 277324,
+      "js_gzip": 68874,
+      "eight_assets": 147043,
+      "raw_total": 662065,
+      "gzip_total": 146052
+    },
+    "after": {
+      "css": 227955,
+      "css_endpoint": 229459,
+      "css_gzip": 41554,
+      "js": 256635,
+      "js_endpoint": 258426,
+      "js_gzip": 64299,
+      "eight_assets": 149187,
+      "raw_total": 633777,
+      "gzip_total": 139934
+    }
+  },
+  "raw_saved_bytes": 28288,
+  "gzip_saved_bytes": 6118,
+  "measurement_scope": "raw_total sums shared scoped file contents and eight generated Search3 paths; gzip_total compresses CSS and JS endpoint bodies and all eight independent files, level 9. This includes shared CSS, which was omitted from the previous audit gzip subtotal.",
+  "protected_contracts": "Price arithmetic, Tourvisor/API, URL/payload, lead transport and field mapping, analytics/goals, native controls, logo and eight public Search3 asset paths unchanged.",
+  "verification": {
+    "source_sha": "ed0f8a299fd81c1f7d786b688ecdfdede1631585",
+    "source_pr": 1506,
+    "local_tests": "37 source/presentation tests passed (one PHP rendering test skipped locally), selected-flow/results scheduler and supplier flight formatting passed",
+    "initial_ci_failure": "Historical CSS baseline predates v2_bundle_files; fixed test loader compatibility and separately pinned runtime comparison to the PR base. No application defect or guard weakening.",
+    "lead_submitted": false,
+    "security_run": 34163231518,
+    "artifact_run": 34163330446,
+    "artifact_id": 10033349256,
+    "artifact_digest": "sha256:84d8e9e4cbdc12e039a0504e58d0ee42f51bb1ebcd9dd58e80931b84d2787e5d",
+    "source_ci": "SUCCESS",
+    "selected_geometry_states": 12,
+    "results_geometry_states": 12,
+    "entry_geometry_states": 3,
+    "selected_geometry_artifact_id": 10033348290,
+    "results_geometry_artifact_id": 10033348786,
+    "manual_screenshots_inspected": false,
+    "manual_inspection_deferred_reason": "Artifact materialization returned HTTP 403; automated browser geometry passed."
+  },
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "production_updated": false,
+  "deferred": [
+    "Live current-source visual interaction",
+    "Physical Safari and safe-area"
+  ],
+  "next_action": "Audit mobile-search-summary-v1.js (9381 raw) plus its CSS: Search3 hides its sticky CTA/summary, but retain or deliberately replace search-start collapse, dirty/validation recovery and field placement. Prove real-route mobile form state and 700/701/760/761 transitions before excluding. sales-leader-ui photo fallback and supplier salesLeader badge are live, so retain.",
+  "release_sha": "36758a05df21042fb39f253faa681ff1de89150d"
+}
