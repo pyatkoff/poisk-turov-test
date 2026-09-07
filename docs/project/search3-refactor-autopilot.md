@@ -1,2110 +1,19 @@
-# Search3 technical refactor autopilot
-
-Owner request recorded on 2026-09-06: Â«Ğ´Ğ°Ğ²Ğ°Ğ¹ Ğ½Ğ° Ğ°Ğ²Ñ‚Ğ¾Ğ¿Ğ¸Ğ»Ğ¾Ñ‚ Ğ¿Ğ¾ÑÑ‚Ğ°Ğ²ÑŒÂ».
-
-## Hourly development resumed â€” 2026-09-06
-
-The owner explicitly requested: Â«Ğ´Ğ°Ğ²Ğ°Ğ¹ Ñ‡Ñ‚Ğ¾-Ñ‚Ğ¾ Ğ³Ğ»Ğ¾Ğ±Ğ°Ğ»ÑŒĞ½ĞµĞµ; Ğ¼Ğ¾Ğ¶ĞµÑ‚ ÑĞ»Ğ¾Ğ¸ Ñ†ĞµĞ»Ğ¸ĞºĞ¾Ğ¼ ÑƒĞ´Ğ°Ğ»ÑÑ‚ÑŒ,
-Ğ° Ğ¿Ğ¾Ñ‚Ğ¾Ğ¼ Ğ´Ğ¾Ğ¿Ğ¸ÑˆĞµÑˆÑŒ Ñ‚Ğ¾ Ñ‡Ñ‚Ğ¾ ÑĞ»Ğ¾Ğ¼Ğ°Ğ»; Ğ¿Ğ¾ÑÑ‚Ğ°Ğ²Ğ¸ÑˆÑŒ Ğ½Ğ° Ğ°Ğ²Ñ‚Ğ¾Ğ¼Ğ°Ñ‚ ĞºĞ°Ğ¶Ğ´Ñ‹Ğ¹ Ñ‡Ğ°Ñ?Â»
-The existing automation `6a9b55c965ac81918c5327b6b43faed2` is now enabled with
-`RRULE:FREQ=HOURLY`, title Â«Ğ£Ğ¼ĞµĞ½ÑŒÑˆĞ°Ñ‚ÑŒ CSS/JS Search3Â». No duplicate task was created.
-The scheduler confirms enabled configuration; the first background run after this
-resume has not yet been observed. Previous PAUSED/scheduler-paused statements in
-historical checkpoints are superseded by this explicit owner request.
-
-Each run must perform actual development, prioritizing large reversible removals
-of obsolete presentation layers and compact repair of concrete preview regressions.
-Do not repeat the twelve retired layers or completed minifier/dominance/media scans.
-Read fresh release state and #996/#1334; checked code and published preview may differ.
-Continue beyond one PR while a safe independent next step remains. Avoid overlapping
-edits or duplicate deployments; retain the focused two-source-job policy and reuse
-the successful artifact. Do not publish or replay a browser journey merely because
-an hourly run or PR completed. Report real byte savings, actual checks, publication
-state and the next step; do not send repeated no-progress reports.
-
-This does not authorize main/production changes or modifications to protected
-price, URL/payload, Tourvisor/API, lead, analytics, logo or browser contracts.
-Experimental layout breakage is confined to reversible release/isolated-preview
-work; repair it or roll back the affected experiment. Unverified states remain
-deferred and are never reported as passed.
-
-## Latest checked follow-up â€” selected-tour phone repair â€” 2026-09-07
-
-Source PR#1470 / `1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e`, tree `809ea3719c67e140b3cd3c576d28acd4315f89dd`, closes the geometry evidence deferred in#1467. The first actual375px screenshots confirmed that the lead heading overlapped its explanation. Required phone root/heading layout, paragraph/fact spacing and picture/header borders now remain in `tour-detail.css`; the selected-tour donor stays retired.
-
-This invocation removes **0 new bytes** and adds **434 CSS bytes** for the repair. Eight raw served assets:163740â†’164174; CSS93518 / JS70656. Previously prepared retirement savings are not recounted.
-
-The existing exact-artifact job conditionally runs12 fixed-tour detail/review/lead states at375/760/1000/1440, using pre-retirement CSS0f1efa2b on the same current isolated payload. All visible rectangles/styles match after repair, no document overflow or unexpected API/lead call; screenshots inspected. The canonical host fixture correction and stable viewport coordinates are test-only. Compiled navigation13-transition invocation is restored. Security34122423681 and artifact34122423688 pass; reuse artifact10018756721 without release/docs rebuild. Evidence10018755973 and full hashes are recorded in `docs/project/search3-selected-geometry-repair.json`.
-
-Preview remains b9445bc3; main remains fa58a0cb. Physical Safari/safe-area and current-source live acceptance remain deferred. An existing11px mobile-bar button touch target requires a separate intentional fix.
-
-Concurrent#1471 advanced release to a5a494c1 after this repair. Its working source484d32de predates the434-byte phone repair. Neither independent source artifact is exact for the combined release; obtain a fresh combined-source artifact before publication.1470 geometry evidence stays scoped to1c1a885f. All1471 code is preserved in this documentation merge.
-
-Next: Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Concurrent#1471 already consolidated results-top.js in releasea5a494c1. Do not repeat it. The working-source484d32de artifact excludes the1470 phone repair; obtain a combined-source artifact before publishing current release. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required.
-
-## Current owner priority â€” rapid CSS/JS reduction
-
-The subsequent owner request on 2026-09-06 explicitly prioritizes quickly reducing
-and splitting Search3 CSS/JS for the isolated whole-site preview. Larger reversible
-presentation batches are authorized. This priority supersedes the older suggestion
-below to spend each continuation on another small toolbar/facet defect. Preserve
-protected contracts and the production lock; use focused checks and existing CI.
-
-### Current execution priority â€” batch reductions, limit manual checks â€” 2026-09-06
-
-The owner again requested faster CSS/JS reduction and objected to spending more
-than half an hour checking the preview for a 2827-byte saving. This instruction
-supersedes the earlier per-batch live journey wording below for behavior-preserving
-technical work. Production approval and protected contracts stay unchanged.
-
-- Keep several useful reductions in one release-based working draft, with separate
-  logical commits when practical. Push the completed batch for one final CI cycle.
-- Build generated assets once after the source batch, measure the eight served
-  files and run the narrow existing equivalence/affected-behavior check. Do not
-  repeat the full artifact check set locally.
-- Retain the two existing mandatory source jobs on the final SHA: Security
-  (including owner validators) and the exact artifact build (including focused
-  presentation/PHP/path/isolation checks). Release/docs reuse that artifact.
-- Do not publish or open a browser solely because a technical PR completed.
-  A checked batch may remain unpublished in release. Publish at an accumulated
-  checkpoint, for a relevant behavior/layout change, or on owner request.
-- At a justified publication, inspect the changed area. Do not replay the entire
-  search/flight/review/lead journey unless the affected behavior requires it.
-  Limit manual verification to five minutes. This is not permission to accept a
-  failed or missing check: mark evidence deferred, exclude uncertain changes from
-  the verified batch, and continue independent safe work.
-- Prioritize measured removal of large duplicate CSS/JS blocks. Use the current checked asset table below to identify the largest files. Add micro-savings opportunistically;
-  do not open separate PR/deploy/browser cycles for them.
-- Routine user reports: show only newly removed bytes in the current invocation. Do not repeat the original baseline, cumulative savings or percentages. Completing a previously reported local packet counts as zero new reduction; distinguish its integration from new work. Preserve historical source comparisons only in audits. Distinguish checked from published work.
-  Exact-artifact deployment, noindex, disabled preview leads, rollback and
-  production fingerprints still apply whenever publishing actually occurs.
-  Full applicable gates restore on ready_for_review; hourly development is enabled.
-
-The latest checked release source is `94c76b6dade243c06055b5ffe65395e33e3800e3`;
-the published preview remains on source `b9445bc3c8aa0713b148241bcddeefdf07576079`.
-See the newest checkpoint below. Historical publication notes remain for provenance.
-
-### Latest checked checkpoint â€” selected-tour owner retirement â€” 2026-09-07
-
-PR #1467 / source `22c6a4dd0dbefe1e8885827ee74b160a7ee8f6f8`, integrated release
-`94c76b6dade243c06055b5ffe65395e33e3800e3`, retires the complete
-`selected-tour.css` presentation donor. Required shared shell, photo/facts/section
-primitives remain in the current `tour-detail.css` owner; fixed CTA and narrow-state
-rules remain in `selected-flow-v2.css`. Dead 330px picture geometry, forced results
-display and superseded narrow ordering were not copied.
-
-Eight raw assets **164762 â†’ 163740 bytes (âˆ’1022 CSS)**. Main results CSS falls
-62808â†’60385 while selected-flow CSS grows 9401â†’10802 for retained live rules; six
-other assets are byte-identical. Security `34120401772` and exact artifact build
-`34120401716` succeeded. Reuse artifact `10017964340`, digest
-`sha256:6056d9b2a952b82b021bf0dc8c4e22052482cc4fb6eb36f0aa08fd55bfb0b9bb`;
-release/docs do not rebuild it. Audit: `docs/project/search3-selected-tour-owner-retirement.json`.
-
-The source-order audit caught a late narrow margin override, a stretched mobile
-back button and a photo/header seam risk; all three were corrected before the final
-build. Source build/check and the focused presentation suite pass. **Not published:**
-preview remains `b9445bc3`; main/production remain `fa58a0cb`. Actual browser
-geometry at 375/760/1000/1440, fixed-CTA safe-area and physical Safari remain deferred.
-
-Next: do not repeat #1466/#1467. Audit a whole results presentation owner: consolidate
-`results-top.js` into `results-presentation.js` only with exact initial/results/edit
-scheduling coverage, or retire a bounded `results-layout.css` family only after
-collapsed/expanded responsive geometry is available. Keep final-sections,
-booking-summary, price, lead, API and analytics contracts.
-
-### Latest checked checkpoint â€” booking navigation and hidden card copy â€” 2026-09-07
-
-Source PR #1466 / `bc5e0d123e125ddd6d4603e2c6051dbe161726c4`, tree `f837c7ea0a1c88717e9190f6904f012a369ebdcc`, completes the previously uncommitted packet. `flight-continue.js` is now a provenance-only slot; its live heading/review transitions share `summary-cta.js` root, tour/review tasks and document click handler. Current card CSS removes late typography/placement rules only for price-copy descendants already hidden by the retained has-results guard. Core selection button-label restoration remains live and necessary.
-
-**Current invocation:0 newly removed bytes.** This pass completes the previously reported local746-byte packet (CSS538 / JS208) through CI and release integration; do not count it again. Six other assets remain identical and main JS12â†’11 IIFEs. Per-source asset sizes and historical comparisons are retained in the audit, not routine user reports.
-
-The permanent `tests/search3-booking-navigation.cjs` executes compiled IIFEs and compares13 full DOM/event/scroll/focus snapshots with baseline7e51960a; digest `800e65e6d7658048cac39579fb279d2825987c25961995ee53e5902ed013232b`. Baseline snapshots match but the two-task queue fails the new one-task assertion. Current passes with one tour/review task and one click listener. The existing lead-note fixture needed classList.contains for the merged heading owner; corrected before CI. Source check and22 focused presentation checks pass; one local PHP skip is covered in artifact CI. Eleven earlier booking/services snapshots also remain green.
-
-Security `34119497936` and exact artifact `34119497935` SUCCESS. Reuse artifact `10017627199`, digest `sha256:86f485df344f956ae6a074b6f888604a882f9da9bbfe3ac92da8fac8019d3b34`; no release/docs rebuild. Full per-asset hashes: `docs/project/search3-navigation-owner-consolidation.json`.
-
-**Not published.** Preview remains b9445bc3, main fa58a0cb. Browser responsive/current-source lifecycle and physical Safari remain deferred. No duplicate source PR, deployment or production change.
-
-Next: Do not repeat #1466 flight-continue/summary-cta/hidden-card-copy; its old uncommitted mirror on refactor/search3-results-card-owner-v1 is already integrated. Resume from fresh release, not that stale checkout. Next substantial candidate is the remaining results-layout.css card geometry family, but retain it until focused current-source collapsed/expanded geometry and specificity at375/760/999/1000/1440 are verified; the broad relocation experiment was excluded. Keep selected-tour.css pending detail/review/lead375/760/1000 evidence. The supported browser has no viewport resize; do not substitute desktop evidence or retry blocked URL workarounds. final-sections/booking-summary CSS still provide live service and summary geometry; restoreProductionLabels still repairs the core controller final button label. Do not delete these as dead code. Accumulate useful reductions and reuse the checked artifact at the next justified publication; no micro-deploy.
-
-### Previous checked checkpoint â€” booking and lead-note owners â€” 2026-09-07
-
-PR #1464 / source `337955cb77977508da3f40df23ef9c926dd2dd1a`, tree
-`5c998ce960fd844e5769d8f814918294c90d46a3`, retires two standalone runtime owners.
-`booking/services.js` shares the existing booking summary tour/flight state,
-number/money helpers and event queue. Tour/flight bursts use one task instead of
-three; price-only updates do not recreate services. The private lead note shares
-the existing CTA tour/review task; other lifecycle events and public APIs retain
-scope. Services without a lead form and note insertion into replaced forms remain.
-
-Eight raw assets **166271 â†’ 165508 (âˆ’763 JS)**; CSS94644, JS70864.
-Seven assets are byte-identical. Main JS has14â†’12 IIFEs;9 untouched IIFEs are
-byte-identical, while unchanged search-form source has compiler-local identifier
-swaps only. This is a small measured technical batch, not a claimed large CSS win.
-Baseline301524â†’165508: **136016 bytes saved**.
-
-Both duplicate-task regressions first failed on the preceding published bundle.
-The final compiled source preserves11 settled markup/copy/layout snapshots
-(SHA256 `cc860066f8dbf857a76b926ac4bf5cae2b54e84981b86e319ebd4c9646a10234`).
-Existing summary/formatter checks pass. One write build and source check; final
-Security `34115679894` and exact artifact `34115679887` both succeed, including
-PHP/path/source/presentation/isolation checks. Reuse artifact `10016141814`, digest
-`sha256:f9ecccf03ccaaaba15612b46df347712b6e616a4fd88d4f6d5de3ecc941dd914`;
-release/docs do not rebuild it. Full per-asset hashes and evidence are in
-`docs/project/search3-booking-owner-consolidation.json`.
-
-**Not published.** Preview remains `b9445bc3`, main/production `fa58a0cb` unchanged.
-Responsive/lifecycle browser evidence and physical Safari remain deferred. Browser
-capabilities were refreshed: no viewport resize is advertised. No local/data URL
-workaround or repeated preview journey was attempted.
-
-Next: do not repeat these owners. Keep selected-tour.css until current-source
-375/760/1000 detail/review/lead geometry is available. Independently audit the
-remaining results-layout.css card family against results-cards-v2.css for a
-substantial batch; preserve expanded-card/mobile-fact boundaries and exclude
-uncertain visual removals. Accumulate technical work; no micro-deploy.
-
-### Latest published checkpoint â€” accumulated reduction and review repair â€” 2026-09-07
-
-The accumulated candidate was published through #1460 / run `34112546655` using
-the already-checked #1458 artifact. The bounded desktop inspection found a real
-cascade regression: the shared `body:has(#selectedTour) #selectedTour` selector
-carries two IDs and defeated the linked review owner's single-ID selector. The
-38px hotel heading was squeezed into a 176.844px column beside a 467.156px note.
-This intermediate visual state was not accepted as green.
-
-Correction #1461 / source `b9445bc3c8aa0713b148241bcddeefdf07576079` restores
-sufficient specificity inside the current review owner, with one compact gap and
-left-aligned note. No donor layer was restored. A focused regression failed first,
-then passed; the 22-test presentation suite completed with one PHP-only local skip
-covered by source CI. Security `34113092248` and exact artifact `34113092204` passed.
-
-Final artifact `10015159660`, digest
-`sha256:67310b31ff15ed13d0d7eb0ec5f4f5e770648bb0e5085f1fe5374e2d7d197d6f`,
-was reused without a rebuild in corrective publication #1462 / run `34113272969`.
-Deployment evidence `10015213085`, digest
-`sha256:95edb09b7c67bdcc0d19b778c4952635d3e80e6e5bd66a9fcc2d7023611dc84f`,
-confirms all715 exact files, noindex, counter0, disabled lead403, internal PHP denial,
-retained rollback and unchanged13 production fingerprints. Evidence ZIP and
-before/after/final fingerprints were independently verified after both publications.
-
-Final eight raw assets: **166978 â†’ 166271 bytes (âˆ’707 net this pass)**.
-The injector/boundary package saved863; the live correction adds156, fully counted.
-CSS **94644**, JS **71627**. Compared with the prior published219880 bytes, the
-preview is **53609 bytes smaller**; cumulative reduction from301524 is **135253**.
-Per-file hashes and full provenance: `search3-review-injector-boundary-repair.json`.
-
-Actual visual evidence: cloud Chromium **1363Ã—936**, initial form, results/tools,
-expanded hotel and selected flight/review. Corrective screenshot confirms LUXOR
-APART in one line at22px, a single632px heading column, left-aligned note,69301RUB
-total and the application CTA. No horizontal document overflow; all eight live
-cache keys match the final source. The lead form was not visited or submitted.
-Map label was inspected; map interaction was not. No full matrix was repeated.
-
-Responsive375/760/999/1000, lead lifecycle visuals and physical Safari remain
-**deferred**: this browser has no supported viewport-resize capability. The earlier
-local/data fixture policy blocks were not bypassed; normal public preview interaction
-was independently authorized. Main remains `fa58a0cba6dcfc8624d98c20d64fa06330eae309`.
-
-Next: retire the whole `selected-tour.css` donor only after current-source
-detail/review/lead geometry at375/760/1000. Its6002 emitted bytes still own shared
-shell/back/photo/facts/section-title/fixed-CTA primitives; salvage those in current
-owners. Estimated2â€“3KB net is an opportunity, not measured savings. If the viewport
-prerequisite remains unavailable, audit another independent presentation owner.
-Do not repeat completed removals or publish another micro-savings-only batch.
-
-### Previous checked candidate â€” final style injector and boundary repairs â€” 2026-09-07
-
-PR #1458 / source `90b3a3df3a54ccd513d76dade1307f8354920cbd` retires the last
-runtime CSS injector (`summary-cta-styles.js` and its private stylesheet). Common
-review grid anchors now have one linked owner in `review-layout.css`; phase
-isolation, phone recap geometry, CTA sizing and native nesting are retained.
-
-The same package repairs four confirmed boundaries from earlier unpublished
-retirements: compact toolbar display through 999px without duplicate desktop
-actions, default hiding of the phone entry on desktop, canonical map-button text,
-and synchronous displayed-total refresh through the compatible `decorate()` API.
-Price arithmetic and lead/API/analytics contracts are unchanged. Regressions were
-reproduced in focused tests before fixes; these tests are not visual acceptance.
-
-Eight raw assets: **166978 â†’ 166115 bytes (âˆ’863 net)**. JS falls **2899 bytes**;
-linked CSS grows **2036 bytes**, included in that net result. Injector consolidation
-alone saves 924 bytes; compact repairs add 61. Cumulative baseline reduction is
-**135409 bytes** from 301524. Audit with all eight exact hashes:
-`docs/project/search3-review-injector-boundary-repair.json`.
-
-Security `34111711478` and exact artifact build `34111711401` completed successfully.
-Reusable artifact `10014623594`, digest
-`sha256:bbd6ae86ba257c2c5f73c8a4c75c14971a7ad03d54902e16dd3017e7eb818eaf`.
-Local build/check, toolbar/results/selected-flow/linked-style regressions, 35
-source/presentation tests and owner validators passed; the one PHP-only local skip
-is covered by CI. Docs reuse the source artifact and do not rebuild it. The older
-results-context audit also receives a metadata-only empty-file SHA256 correction.
-
-**Not published.** Main remains `fa58a0cba6dcfc8624d98c20d64fa06330eae309`;
-no production or preview operation was performed. A cloud browser is available,
-but current-source local/data fixture navigation was blocked by its URL policy.
-Those attempts stopped without a workaround; no screenshots or visual pass are
-claimed. Current-source toolbar/entry/map/review geometry and Safari stay deferred.
-
-Next: reuse this exact artifact for a justified isolated-preview checkpoint and
-briefly inspect affected toolbar/entry/map/review states. Then retire the whole
-`selected-tour.css` donor only after current-source detail/review/lead geometry at
-375/760/1000 is checked. Its 6002 emitted bytes contain still-required shared
-shell, back-button, photo/facts, section-title and fixed-mobile-CTA primitives;
-salvage those into current owners. The estimated 2â€“3 KB opportunity is not measured
-savings or permission to remove the donor without the missing geometry evidence.
-
-### Latest checked candidate â€” legacy results context owner â€” 2026-09-07
-
-PR #1456 / source `9d24bb7242779f560bc1e603e0346078b591d818` retires
-the full legacy `results-context.css` top-chrome owner. Functional initial/results/
-edit/local-empty guards, shell isolation, mobile drawer default and expanded-card
-frame remain in current owners. The old five-column desktop summary, dense tools
-skin and list/map text substitutions were intentionally not copied.
-
-Eight raw assets fall **172787 â†’ 166978 bytes (âˆ’5809 CSS)**. Across #1455/#1456
-this run removes **9063 bytes**; cumulative baseline reduction is **134546 bytes**.
-
-Security `34109163416` and exact artifact build `34109163488` passed. Reusable
-artifact `10013640138`, digest
-`sha256:aafee14237902c79f00148eed35666f3882b0ae1ada71e00fddc3f0d2f6bd114`.
-Local exact build/check, focused state-owner regressions, 35 source/presentation
-tests and both owner validators pass; one PHP-only local skip is covered by CI.
-Audit: `docs/project/search3-results-context-owner-retirement.json`.
-
-This is a checked isolated-candidate design experiment, **not a published visual
-acceptance**. Preview remains `4b061396`; main/production remain `fa58a0cb`.
-Chromium is unavailable, so initial/results/edit/local-empty geometry at
-375/999/1000/1440 and the expanded-card frame remain deferred.
-
-Next: before publication, inspect the intentional summary/tools reset at 375 and
-1440 plus the toolbar seam at 999/1000. If browser evidence remains unavailable,
-continue auditing a different independent owner; do not restore this retired layer.
-
-### Latest checked candidate â€” card and selected presentation owners â€” 2026-09-07
-
-PR #1455 / source `a3d5b0a36f304bb7408d2d818d07f3d896439d34` retires
-the remaining `result-cards.css` donor, the static selected-tour style injector and
-the standalone `tour-presentation.js` scheduler. Live mobile entry/order rules now
-belong to current entry/results owners; selected formatting and price scope share
-the existing selected-flow RAF/observer and retain the compatibility facade.
-
-Eight raw assets fall **176041 â†’ 172787 bytes (âˆ’3254)**. CSS rises 566 bytes from
-moving live rules into linked owners; JS falls 3820 bytes by deleting two runtime
-owners. Cumulative baseline reduction is **128737 bytes**.
-
-Security `34107936139` and exact artifact build `34107936135` passed. Reusable
-artifact `10013136334`, digest
-`sha256:4050faa4151357634d9e2c2344f0924104b0ba0389fa27d3b2a72d0608dcc45d`.
-Local exact build/check, focused selected-flow/toolbar/linked-style regressions,
-35 source/presentation tests and both owner validators pass; one PHP-only local
-skip is covered by artifact CI. Audit:
-`docs/project/search3-card-selected-presentation-owner-retirement.json`.
-
-This source is **checked but not published**. Preview remains `4b061396`; main and
-production remain `fa58a0cb`. Chromium is unavailable, so mobile entry/result order,
-selected-tour geometry and physical Safari remain deferred; no visual equivalence
-is claimed.
-
-Next: audit `results-context.css` against current results-layout and entry owners.
-Keep its unique compact-summary and shell boundaries until exact ownership and
-responsive geometry are bounded.
-
-### Latest checked candidates â€” selected mobile and hotel package owners â€” 2026-09-07
-
-Two independent whole-owner packages were completed and fast-forwarded into release:
-
-- PR #1452 / source `b778f18b70fd6dab330696c5b7ef89bca406de8d`
-  removes `selected-tour-mobile.js`. The current selected-flow owner now provides the
-  single RAF/observer, mobile bar, compatibility API, lead-field normalization and
-  normal/no-flight CTA behavior.
-- PR #1453 / source `15ba3e46a43513b8452cc02a38ed6576ac59f3c1`
-  retires `hotel-packages.css`. Required expanded-offer and mobile package rules now
-  live in the current results layout owners; obsolete card/mobile fallbacks and dead
-  scrollbar selectors were not copied.
-
-Eight raw assets fall **180248 â†’ 176041 bytes (âˆ’4207)**: CSS 100125 â†’ 97695
-(âˆ’2430), JS 80123 â†’ 78346 (âˆ’1777). This is a net payload measurement: the mobile
-compatibility code moved into selected-flow is counted against the removed JS.
-Cumulative baseline reduction is **125483 bytes**.
-
-Both packages passed the two mandatory source jobs. Final Security is `34103338435`;
-final exact artifact build is `34103338407`, artifact `10011377372`, digest
-`sha256:9abca895127b7701554b3089f0a03512af17a789cf95bab81dcf5402170b7e6d`.
-Local exact build/check, 35 source/presentation tests, the selected-flow compatibility
-regression and both owner validators pass; one PHP-only local skip is covered by CI.
-Audit: `docs/project/search3-selected-mobile-package-owner-retirement.json`.
-
-This source is **checked but not published**. Preview remains `4b061396`; main and
-production remain `fa58a0cb`. Chromium was unavailable, so selected mobile/review/
-lead and expanded-package geometry plus physical Safari are deferred; no visual
-equivalence is claimed.
-
-Next: combine retirement of the remaining `result-cards.css` donor and static
-selected-tour style injector with another material owner package. Preserve mobile
-search entry/order and bound card/selected geometry before any preview publication.
-
-### Latest checked candidates â€” review and tour density retirement â€” 2026-09-07
-
-Two substantial packages were completed and fast-forwarded into release:
-
-- PR #1450 / source `62a21a311a411533ef4d85aa763badceed56f374`
-  removes the historical desktop/mobile review-density layer and stale mobile
-  grid rows 6/7. The current review board remains; a compact `<=999px` boundary
-  keeps the lead form and summary in one explicit column.
-- PR #1451 / source `f6496c8a7b2532914a3769bfd8f42aabb4f1bea6`
-  removes desktop tour/flight density overrides. Paired-flight layout, stage
-  isolation, secondary facts, room access and current CTA owners remain.
-
-Eight raw assets fall **185325 â†’ 180248 bytes (âˆ’5077)**: CSS 105202 â†’ 100125;
-JS remains 80123. Cumulative baseline reduction is **121276 bytes**. Both source
-packages passed Security and exact artifact CI. Final runs are Security
-`34097800910` and artifact `34097800920`; reusable artifact `10009288882`, digest
-`sha256:e5e2dfcae6e619c9e318bd8bdd68125157b91fbdce3df81625ade25db2cba220`.
-Local exact build/check, 35 source/presentation tests and both owner validators pass;
-one local PHP-only skip is covered by artifact CI. Audit:
-`docs/project/search3-review-tour-density-retirement.json`.
-
-This source is **checked but not published**. Preview remains `4b061396`; main and
-production remain `fa58a0cb`. Review/lead geometry, desktop tour/flight visual
-density and physical Safari are deferred and are not claimed as visually passed.
-
-Next: consolidate `selected-tour-mobile.js` into the current selected-flow owner
-while preserving its compatibility API, lead-field normalization and normal/no-flight
-CTA behavior. Accumulate the smaller result-card/injected-style remnants rather than
-opening standalone micro-PRs.
-
-### Previous checked candidate â€” hidden results chrome and shared drawer â€” 2026-09-07
-
-Source #1449 / exact release `bacc8d2547c0516229a1eb0e8e4938bbedec7d65`, tree
-`c424ad77b20853a4a870845c120c51e59d367681`, removes the permanently hidden
-results-meta renderer and repeated static intro resets. Visible counts/routes and
-the one search-form H1 owner remain. Repeated phone/tablet drawer surface rules
-now live in mobile-results-toolbar; unique sizing, padding and fixed/sticky action
-placement remain in their breakpoint modules. Original fractional media gaps remain.
-
-Eight raw assets fall **187488 â†’ 185325 bytes (âˆ’2163)**: CSS 106281 â†’ 105202
-(âˆ’1079), JS 81207 â†’ 80123 (âˆ’1084). Cumulative baseline reduction: **116199**.
-Five public files remain byte-identical; protected contracts are unchanged.
-
-Required source CI passed: Security `34095295829`; exact artifact `34095295930`,
-artifact `10008361158`, digest
-`sha256:544d437bfa48295b0518f61be4e160f72a27b589e56be63ae72b595c7f45673d`.
-35 local source/presentation tests pass, with one PHP-only local skip covered by CI.
-The hidden-meta regression first failed on baseline. The affected CSS final maps
-match at 375/760/760.5/761/999/999.5/1000. One local correction/rebuild retained the
-fractional gap before the only source push/CI; docs/release reuse that artifact.
-Audit: `docs/project/search3-results-chrome-drawer-retirement.json`.
-
-This source is **checked but not published**. Preview remains `4b061396`, main
-and production `fa58a0cb`. Browser connected, but local fixture navigation was
-blocked by URL policy; no workaround or visual acceptance is claimed. Public
-preview publication, drawer visual states and physical Safari are deferred.
-
-Next: Do not repeat hidden results meta/intro resets or phone/tablet drawer consolidation. Next substantial candidate: replace the historical 3521-source-byte desktop/mobile review-layout block with the compact current lead/review boundary, but first verify relevant geometry using an allowed browser fixture or exact isolated preview. Check the remaining mobile review grid-row 6/7 overrides before claiming the previous row compaction complete. Keep result-cards (~1022 net) and static-injector wrappers (~563 net) accumulated, not standalone PRs. Continue independent safe work if geometry remains unavailable.
-
-### Previous checked candidate â€” booking chrome owner retirement â€” 2026-09-07
-
-Source #1447 / exact release `7662d6e15122f58fdc8407431fceee8efd2f0513`,
-tree `2c02091d36b3013f566d925281d668b09665ac61`, retires the separate
-booking-progress runtime and CSS owner plus the decorative final-review heading
-runtime. The selected-tour path keeps its primary flight-to-review action,
-summary-to-lead/back actions, booking summary, lead lifecycle and accessible
-selected-hotel heading. The current selected-flow owner also continues to hide
-the old `.selected-tour-progress` donor.
-
-Selected and review grids no longer reserve empty rows for the removed chrome.
-Eight raw public assets fall **195944 â†’ 187488 bytes (âˆ’8456)**: CSS 110339 â†’
-106281 (âˆ’4058), JS 85605 â†’ 81207 (âˆ’4398). From the 301524-byte whole-layer
-baseline the checked reduction is now 114036 bytes. All eight public paths and
-protected business contracts remain unchanged.
-
-Both mandatory source jobs passed with guards unchanged: Security `34092785050`
-and exact artifact build `34092785098`; artifact `10007458840`, digest
-`sha256:bfb96aec3231e93ed4b7763e51469ddb81aae7f1d5fa4b79dae575c46511c1f6`.
-The single exact source build was reused. Local exact check and 35 focused
-source/presentation checks passed; one PHP-only local check was skipped because
-PHP is unavailable. Audit: `docs/project/search3-booking-chrome-owner-retirement.json`.
-
-This source is **checked but not published**. The isolated preview remains source
-`4b061396`; main and production remain `fa58a0cb`. No browser or visual pass is
-claimed. Selected-tour â†’ review â†’ lead/back and geometry at
-375/640/999/1000/1363 plus physical Safari remain deferred.
-
-Next: do not restore the retired progress strip or decorative review banner. A
-fresh independent audit measured only about 1022 net bytes from retiring
-`result-cards.css` after active-rule migration, so accumulate it with another
-substantial owner and only when bounded mobile/result-order geometry can be
-checked. Otherwise inspect a different large presentation owner. Protected
-price, Tourvisor/API, lead transport/mapping and analytics remain out of scope.
-
-### Previous checked candidate â€” form and mobile-entry owner retirement â€” 2026-09-07
-
-Source #1445 / exact release `c62ebc1dedcba458fe69ab232fea6000aadf781c`,
-tree `39b698edd9cb26e78df5bf2cf144c945073fc4ac`, retires the legacy form
-presentation family from `base.css`. That module now owns only the shell, page
-intro and mobile gutter. Required form surface, controls, guest popover, quick
-filters and responsive entry rules are retained in current `entry-v1.css`.
-
-The separate `mobile-search-entry.js` runtime donor is provenance-only. Its one
-trust/filter DOM instance and ARIA toggle now live inside the existing search-form
-composition; linked CSS remains the presentation owner and no runtime style is
-injected. The same package removes booking-summary's resize subscriber because
-its layout is already CSS-owned; render, price and review/lead lifecycle events
-are unchanged.
-
-Eight raw public assets fall **199740 â†’ 195944 bytes (âˆ’3796)**: CSS 111769 â†’
-110339 (âˆ’1430), JS 87971 â†’ 85605 (âˆ’2366). From the 301524-byte whole-layer
-baseline the checked reduction is now 105580 bytes. All eight public paths and
-protected business contracts remain unchanged.
-
-Both mandatory source jobs passed with guards unchanged: Security `34088767330`
-and exact artifact build `34088767361`; artifact `10006114313`, digest
-`sha256:3c9b75bdde96d378774a61df31af59ffe32925b86d25931bdc1b0b0f5d6286d9`.
-The single exact source build was reused. Local build check and 34 focused
-source/presentation checks passed; one PHP-only local check was skipped because
-PHP is unavailable. Audit: `docs/project/search3-form-mobile-owner-retirement.json`.
-
-This source is **checked but not published**. The isolated preview remains source
-`4b061396`; main and production remain `fa58a0cb`. The executor had no Chromium
-binary, so no browser claim is made. Initial/editing form widths, guest popover,
-child ages, mobile advanced toggle and physical Safari remain deferred.
-
-Next: do not repeat the base form or mobile-entry retirement. The complete
-`result-cards.css` donor is the next measured candidate, but its active mobile
-entry and result-order rules must first move to current owners and pass bounded
-browser geometry. If that evidence is unavailable, inspect a different large
-owner instead of speculatively removing it. Protected price presentation,
-`final-sections.js` and `review-layout.css` remain outside speculative deletion.
-
-### Latest checked candidate â€” review and focus owner retirement â€” 2026-09-07
-
-Source #1444 / exact release `ad997e4ed010f6178fabcdec2ba0d17fddadf0f8`,
-tree `3dca79618b8079e8ca79f965b017c389fbe9f50c`, retires the complete
-legacy `review.css` presentation donor and the obsolete desktop family in
-`selected-tour.css`. Unique heading/action/submit rules now live in current
-`review-layout.css`; four non-final grid/seam declarations are retained in
-`tour-detail.css`. The existing responsive review geometry block is byte-identical.
-
-The same package replaces six-frame selected-entry polling with one frame and
-removes Search3's duplicate eight-frame return-focus loop. Production renders the
-selected DOM before `v2:tour-selected`; the base `selected-tour-return-v1.js`
-remains the canonical owner that focuses the exact initiating tour button.
-Production-label recovery and `aria-busy` lifecycle remain in Search3.
-
-Eight raw public assets fall **203704 â†’ 199740 bytes (âˆ’3964)**: CSS 113988 â†’
-111769 (âˆ’2219), JS 89716 â†’ 87971 (âˆ’1745). From the 301524-byte whole-layer
-baseline the checked reduction is now 101784 bytes. All eight public paths and
-protected business contracts remain unchanged.
-
-Both mandatory final-source jobs passed with guards unchanged: Security
-`34085700487` and exact artifact build `34085700527`; artifact `10005140803`,
-digest `sha256:9351169c7b89c9dfb01998a4dd3e7c7dec34b7ae73521d32d5237dee8d8b7bad`.
-One exact source build was reused. Local exact check, 19 presentation tests (one
-PHP-only local skip), focused review/handoff/summary/selected regressions and diff
-check passed. Audit: `docs/project/search3-review-focus-owner-retirement.json`.
-
-An earlier Security attempt `34085544728` failed because the prior docs-only
-checkpoint contained a truncated `AUTOPILOT_STATE.json` Git blob. The exact local
-blob `bcc118b9c70707cd706de6f0394f9295912cf7f0` was restored; validators and runtime
-guards were not changed. The final exact head passed both required jobs.
-
-This source is **checked but not published**. The isolated preview deliberately
-remains source `4b061396`; main and production remain `fa58a0cb`. No browser or
-visual pass is claimed. Selected/back focus, review/lead geometry at
-375/430/641/999/1000/1363, final fact visibility and physical Safari remain deferred.
-
-Next: do not repeat `review.css`, selected-tour desktop geometry or the duplicate
-focus loops. `final-sections.js` remains the only visible owner of several review
-facts and must not be removed yet. The separately audited 3535-byte review-layout
-block still requires computed review/lead evidence. Audit a different large owner
-or combine other measured safe fragments; protected price presentation stays out
-of this reduction pass.
-
-### Latest checked candidate â€” filter and maket7 owner retirement â€” 2026-09-07
-
-Source #1443 / exact release `38be9f08c1b06635bb59d631e5cc85f7b3af3d70`,
-tree `04bfe2f0b2356a170e0ffee8172caac07041e6e8`, retires the complete
-`filters.css` presentation donor and the complete `maket7-lock.js` DOM/inline-style
-owner. Only active rail/mobile declarations move to `results-layout.css` and
-`mobile-results-toolbar.css`; the injected confidence grid becomes static in
-`selected-flow-v2.css`. Current search-form/entry modules retain field placement.
-The same package removes results-top inline width/offset/padding calculations and
-its resize listener while preserving coalesced result-state mutation updates.
-
-Eight raw public assets fall **209753 â†’ 203704 bytes (âˆ’6049)**: CSS 115796 â†’
-113988 (âˆ’1808), JS 93957 â†’ 89716 (âˆ’4241). From the 301524-byte whole-layer
-baseline the checked reduction is now 97820 bytes. All eight public paths and the
-protected business contracts remain unchanged.
-
-Both mandatory source jobs passed with guards unchanged: Security `34084631292`
-and exact artifact build `34084631257`; artifact `10004793873`, digest
-`sha256:098afd4abc7e9f2941e7d64fa87e37b57dcdb38267902effe9e638c25219dc89`.
-One exact source build was reused. Local exact check, 18 presentation tests (one
-PHP-only local skip), focused result scheduler/filter/mobile owner regressions and
-diff check passed. Audit: `docs/project/search3-filter-maket7-owner-retirement.json`.
-
-This source is **checked but not published**. The isolated preview deliberately
-remains source `4b061396`; main and production remain `fa58a0cb`. No browser or
-visual pass is claimed. Filter/results-tools geometry at 390/768/999/1000/1024/1440,
-selected confidence at 1000/1363, review/lead geometry and physical Safari remain
-deferred.
-
-Next: do not repeat `filters.css`, `maket7-lock.js` or results-top inline geometry.
-The separately audited 3535-byte review-layout block still requires computed
-review/lead evidence at 641/999/1000/1363. Until that evidence exists, inspect a
-different large presentation owner or combine the measured selected-tour and
-responsive fragments with a substantial safe package; do not touch protected
-price presentation merely to increase the byte saving.
-
-### Latest checked candidate â€” results donor retirement â€” 2026-09-07
-
-Source #1442 / exact release `8b0cc058cf33ba724a376f8dd254373e227ee990`,
-tree `78901179d7475cb35986536e48d5b5470011089c`, retires the complete legacy
-`hotel-results.css` presentation donor and preserves its active hotel/tour rules in
-the current `hotel-packages.css` owner. The same measured package consumes the
-previously accumulated superseded `results-context.css` set, removes the duplicate
-tour-list header renderer and orphan rules, and removes JS-owned booking-summary
-geometry while retaining its dataset/title/flight-label lifecycle contract.
-
-Eight raw public assets fall **215784 â†’ 209753 bytes (âˆ’6031)**: CSS 120391 â†’
-115796 (âˆ’4595), JS 95393 â†’ 93957 (âˆ’1436). From the 301524-byte whole-layer
-baseline the checked reduction is now 91771 bytes. All eight public paths and the
-protected business contracts remain unchanged.
-
-Both mandatory source jobs passed with guards unchanged: Security `34080753450`
-and exact artifact build `34080753417`; artifact `10003613312`, digest
-`sha256:79a9746e93a840a134ba3bc0b5847bba46efb861af00bf8b3794d17a3ec12fa1`.
-One exact source build was reused. Local exact check, 17 presentation tests (one
-PHP-only local skip), injected-style and mobile-toolbar scheduler/ownership checks
-and diff check passed.
-
-This source is **checked but not published**. The isolated preview deliberately
-remains source `4b061396`; main and production remain `fa58a0cb`. No browser or
-visual pass is claimed for this unpublished source. Hotel/tour states at
-390/768/1024/1440, collapsed/hidden rows, booking review/lead geometry at
-641/999/1000/1363 and physical Safari remain deferred.
-
-Next: do not repeat these retired owners. The next large candidate is the 3535-byte
-review-layout block at lines 15â€“71, but it is a medium-risk visual redesign and must
-first prove computed review/lead geometry at 641/999/1000/1363. If that evidence is
-not available, accumulate the independently safe 643-byte selected-tour and
-737-byte responsive fragments with another substantial owner before one build.
-
-### Latest checked candidate â€” acceptance card families â€” 2026-09-07
-
-Source #1441 / exact release `0dd4fd4e656f222bb8f75fce8e53772ea2133146`,
-tree `66071f29ad139260db6c69ef23d2d3325d2a022d`, removes two duplicate
-result-card/readability families from `acceptance-guards.css` and the earlier
-mobile lifecycle foundation from `lead-state.css`. Independent source audits
-found the unique mobile fact gap/min-height and stay-site width before deletion;
-those declarations now live in `results-cards-v2.css` and the retained current
-lead-state owner. Selected-tour typography lives in `selected-flow-v2.css`.
-The remaining acceptance and lead-state blocks are active and are not whole-file
-retirement candidates.
-
-Eight raw public assets fall **219880 â†’ 215784 bytes (âˆ’4096)**, entirely in CSS:
-124487 â†’ 120391. JS remains 95393 bytes. From the 301524-byte whole-layer
-baseline the checked reduction is now 85740 bytes. Paths and protected contracts
-are unchanged; this is raw byte accounting, not a transfer-size or speed claim.
-
-Both mandatory source jobs passed without guard changes: Security `34077463937`
-and exact artifact build `34077463934`; artifact `10002568100`, digest
-`sha256:da8d91f85e14f2f487da6d820d5a2e316fa2942bab6448e579c2e2b5d149e99d`.
-Local exact build/check, 16 presentation tests (one PHP-only local skip), injected
-style/toolbar ownership and diff checks passed. The successful source artifact was
-fast-forwarded into release without rebuilding.
-
-This source is **checked but not published**. The isolated preview deliberately
-remains source `4b061396`; main and production remain `fa58a0cb`. No browser or
-visual pass is claimed for the unpublished source. Card widths 375/430/1024/1348/
-1440, expanded tours 375/430, selected flight 375/1024, lifecycle states at mobile/
-tablet boundaries and physical Safari remain deferred.
-
-Next: do not repeat the retired acceptance/readability/lifecycle families. A fresh
-read-only audit found a proven superseded block set in `results-context.css` worth
-1064 public bytes, but it is too small for a standalone PR/build/deploy; accumulate
-it with another substantial safe owner removal. Do not retire `results-context.css`,
-`results-layout.css` or `tour-detail-convergence.css` wholesale: their lifecycle,
-structural/open-card and selected-tour geometry remains unique. Use one measured
-package, two mandatory jobs and an exact artifact; publish only at a justified
-checkpoint.
-
-### Latest checked and published candidate â€” lead review owners â€” 2026-09-07
-
-Two large reversible owners were retired in one run. Source #1437 / exact release
-`4b061396bf3374e026f29943c78f90396352a135`, tree
-`d00be539e6ca873658d22cbea0ae99f7996f8383`, removes the complete
-`lead-review.css` layer and the complete private lead-entry block from injected
-`selected-tour-mobile.css`. The compact active rules now live in current owners:
-`review-layout.css`, `selected-flow-v2.css` and `lead-state.css`. Consent and
-protection presentation, hidden duplicate summary/comment, mobile final rows and
-sending/success/error lifecycle are retained. Pending steps stay blank until
-complete; the sending state keeps its spinner instead of premature ticks.
-
-The same eight raw public assets fall **225972 â†’ 219880 bytes (âˆ’6092)**:
-CSS 128494 â†’ 124487 (âˆ’4007), JS 97478 â†’ 95393 (âˆ’2085). The first package
-saved 4175 bytes and the independent injected-owner package saved another 1917
-net bytes. From this run's 235139-byte start the total saving is 15259 bytes;
-from the 301524-byte whole-layer baseline it is 81644 bytes. These are raw asset
-bytes, not transfer-size or speed claims; all eight public paths are unchanged.
-
-Both mandatory source jobs passed with their owner/source/PHP/path/presentation/
-isolation guards unchanged: Security `34072173651`; artifact `34072173661`,
-artifact `10000822583`, digest
-`sha256:47025ef6e71d2e1ceaf24081fee8f8f7daf7ea1a56cb4516ecac2aa6d46ede7d`.
-The artifact has 715 files; archive, manifest and payload-control hashes are recorded
-in `docs/project/search3-lead-review-layer-retirement.json`.
-
-The first publication control #1438 / run `34072338032` failed safely before SSH:
-an incorrectly reconstructed local payload-control hash did not match the exact
-artifact. Nothing was published or changed on the server. The control was read
-from the downloaded artifact and the corrected #1439 / run `34072481129` succeeded.
-Deployment evidence `10000913111` confirms exact source/tree, all 715 files,
-noindex, counter 0, lead 403, retained rollback and the identical production
-fingerprint before/after/final. Preview and checked release now both use source
-`4b061396`; main/production remain `fa58a0cb` and unapproved.
-
-One bounded Chromium desktop check at 1363Ã—936 traversed live search, an expanded
-hotel, selected tour/flight, final review and the empty lead form without submission.
-The no-flight fallback reads Â«ĞÑÑ€Ğ¾Ñ„Ğ»Ğ¾Ñ‚ Â· Ñ€ĞµĞ¹Ñ ÑƒÑ‚Ğ¾Ñ‡Ğ½ÑĞµÑ‚ÑÑÂ», not fabricated `SU000`;
-real alternatives retain their supplied flight numbers. No horizontal overflow or
-lead-form clipping was found; consent is flex with a 15Ã—15 checkbox, protection text
-and the 320px summary are visible. All eight live cache keys match exact source
-hashes and no external Metrika/consultant script is loaded.
-
-The supported browser cannot resize this tab. Mobile 375/430, tablet 641/768/999,
-preview sending/success/error visuals, physical Safari, full matrix and real lead
-submission are deferred, not passed. Source lifecycle regressions passed, but they
-do not replace those visual claims.
-
-Next: audit obsolete block families inside `acceptance-guards.css` and
-`lead-state.css`; neither file is safe for whole-file deletion. Remove only proven
-superseded families in one measured batch while retaining lifecycle, hidden and
-accessibility fallbacks. Do not repeat the two lead owners or earlier retired layers.
-
-### Previous checked and published candidate â€” responsive review owners â€” 2026-09-07
-
-Source #1434 / `339a1aefa3ba87b156134da37ad2c40b7e5725f0`, tree
-`99b03301632b565c99bad491f17a88cfa6d7cd00`, is fast-forwarded into release.
-The complete legacy `review-responsive.css` layer and the earlier injected mobile
-final-review block are retired. Current summary CTA, selected-tour mobile, review
-layout and intrinsic flight owners retain the final, lead and tablet boundaries.
-
-Eight raw public assets fall **235139 â†’ 225972 bytes (âˆ’9167)**: CSS âˆ’7754,
-JS âˆ’1413 from removed private embedded CSS. Same eight public paths; no transfer-size
-or speed claim. One successful final build, 13 source-build tests, injection/root/
-idempotence and final/lead assertions, selected scheduler and all eight booking-summary
-operation traces passed locally.
-
-Both mandatory source jobs passed without guard changes: Security `34071038792`;
-artifact `34071038942`, artifact `10000469617`, digest
-`sha256:c0489ded399f00fa6227467407ecc47f88acbbd23f11a92e04736bb9ca6deab6`.
-The exact artifact was reused in isolated publication #1435 / run `34071230834`;
-deployment evidence `10000522297`. All 715 files, actual controls, noindex, counter0,
-disabled preview leads, rollback and unchanged production fingerprints passed.
-
-The published desktop initial page was inspected at 1363Ã—936: no horizontal overflow;
-all eight live cache keys match exact source hashes; no Metrika/consultant script.
-The supported cloud browser cannot resize this tab. Therefore affected mobile final
-review/lead at 375/430 and tablet flight choices at 641/768/999 are explicitly deferred,
-as are physical Safari, full matrix and real lead submission. Production/main remain
-unchanged and unapproved. Audit: `docs/project/search3-responsive-review-layer-retirement.json`.
-
-Next: audit the `lead-review.css` / `lead-state.css` lifecycle overlap as the next
-large reversible candidate. Do not repeat `review-responsive` or the earlier retired
-layers. Require sending/success/error and 641â€“999 boundary evidence before deletion.
-
-### Latest checked and published candidate â€” native cards and flights â€” 2026-09-07
-
-Source `71efd3fe4e42987fbd596c0e4d2bba08f785fa5d` (#1432), tree `a5b3994ffe8df4626b2e3fbc0134a89a00368705`.
-Preceding source `857fba4a3768b5647f1f1eb59641c5e372f952ce` (#1430).
-Three substantial presentation block families retired in one batch: old result-card
-geometry, private mobile/tablet microlayout, flight direction class-mutation + its CSS.
-The retained active lifecycle owners are not counted as wholly retired files.
-
-| Eight raw assets | Before this run | Final | Saved |
-| --- | ---: | ---: | ---: |
-| CSS | 142301 | 136248 | 6053 |
-| JS | 103190 | 98891 | 4299 |
-| Total | 245491 | 235139 | 10352 |
-
-Initial package245491â†’235657; corrective package235657â†’235139 (âˆ’518CSS, allJS identical).
-JS saving includes embedded CSS. Whole-layer baseline301524â†’235139 (âˆ’66385).
-Previously published267536â†’235139 (âˆ’32397); no compression or speed claim.
-
-Both mandatory source jobs passed. Final Security34069311162, artifact
-34069311068, artifact9999945885, digest `sha256:494c414b54be8320a3a3120972f11553b763f29ff4f936feca1618dcefc570ee`.
-One build per useful package; no release/docs rebuild. Existing owner/source/PHP/path/
-presentation/isolation guards unchanged. Focused scheduler/primary review-back,
-injection/root/idempotence and mobile toolbar ownership passed.
-
-Exact isolated preview published through#1433, run34069485080,
-evidence9999985225; source and published candidate now match.
-Actual archive, both controls and all715 files verified before activation; noindex,
-counter0, disabled leads, retained rollback, unchanged production fingerprints confirmed.
-Main staysfa58a0cba6dcfc8624d98c20d64fa06330eae309; production acceptance not granted.
-
-Browser was available through control-browser; the preceding no-browser conclusion
-was inaccurate and superseded here. Initial desktop1363Ã—936 inspection found narrow
-accommodation wrapping, tiny9/7.5px flight details and duplicate tick over price.
-Introduction by the last deletion was not proven. Removed the six-column/nth-position
-and tiny-font rules in their existing owners; kept existing14/12px flight text and
-native selected radio/border. Corrective visual evidence: Corrective Chromium1363x936 screenshots inspected: expanded LUXOR APART facts now have three readable columns without midword accommodation wrap; selected outbound/return airport text14px and secondary12px, duplicate selected tick no longer overlaps72832RUB price. Native radios and next CTA visible.
-Deferred: mobile/tablet widths, physical Safari, live no-flight branch, lead-entry/success/error, full filter/editor/price matrix. No full matrix or visual parity claim.
-Audit: `docs/project/search3-mobile-card-flight-retirement.json`.
-
-Next: Next substantial candidate: audit review-responsive.css mobile/tablet geometry against current selected-flow/review owners, retire duplicate layout only after protecting hidden/lead-shell/primary CTA boundaries. Do not repeat retired17CSS+1JS owner or the3block families and6-column/tiny-font repair. Current mobile/tablet, live no-flight and physical Safari remain deferred. Continue independent permitted work; production acceptance does not pause automation.
-
-### Latest checked follow-up â€” review/recap retirement â€” 2026-09-06
-
-Source PR#1428 is integrated into release at `211f792e5d64ee9016a1742c7fa802f6097a3ad1`.
-Four obsolete CSS geometry layers plus the live duplicate desktop recap are retired.
-Eight raw assets:265927â†’253113 (âˆ’12814:CSSâˆ’9250,JSâˆ’3564). Required source Security34067813555
-and artifact34067813526 both passed, first attempt. Exact artifact9999511038;
-sha256:92de0b79b0b83aa80b7524f635fdbef61a99ff01280208ceeaf69a9af727dc4d.
-No release/docs rebuild or deploy. Published preview still9b4303a5, main stillfa58a0cb.
-This is an intentional reversible geometry experiment, not visual equivalence.
-Selected/no-flight, review/mobile/tablet and lead-entry visual checks are DEFERRED:
-no current browser capability. Local scheduler/utility/ownership plus source PHP/path/
-presentation/isolation checks passed. Audit:search3-review-layer-retirement.json.
-The subsequent form-compatibility package is checked in#1429; see latest status above. Native four-column entry grid remains canonical; do not
-restore the superseded six-column form. Historical twelve layers below stay retired.
-
-### Latest checked follow-up â€” two results layers â€” 2026-09-06
-
-Source PR#1427 retires results-width-compatibility.css and hotel-card-convergence.css.
-After compact fallback salvage, public CSS/JS fall267536â†’265927 bytes:âˆ’1609CSS.
-All four JS files are byte-identical to the published ten-layer source.
-Across both batches in this continuation:301524â†’265927,âˆ’35597 bytes (11.8%).
-
-This follow-up is CHECKED, NOT PUBLISHED. Final source
-`db39eadb15149fd39fce2305fb6de49251685b38` passed Security34066837695 and artifact34066837736
-on the first attempt. Exact artifact9999214211 is retained.
-The current published preview remains9b4303a5/#1426 at267536 bytes; its focused
-desktop screenshots do not verify this follow-up source.
-
-Convergence facts, mobile title/place placement and flex price-row fallbacks now
-finish hotel-packages.css at the same position before subsequent owners. Shell,
-hidden/lifecycle/MRF and expanded-card guards begin results-context.css.
-Independent review identified and avoided moving old margin-left/right resets
-across the intervening filters.css shorthand. Uncertain toolbar padding,
-letter-spacing and gap were retained. These are compact owner transfers plus
-old geometry retirement, not a blanket pixel-equivalence claim.
-
-One source build and four exact JS hash comparisons passed. Source CI retains
-Security and the exact artifact job; no second preview/browser journey or
-release/docs artifact rebuild. Audit: `docs/project/search3-results-layer-retirement.json`.
-Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; hourly automation enabled by the latest owner request.
-
-### Historical published batch â€” retire ten whole CSS layers â€” 2026-09-06
-
-The owner explicitly requested a larger approach: delete entire layers and repair
-resulting breakage. This authorizes reversible presentation-layer experiments in
-release and the isolated preview. Protected business contracts and production
-approval remain unchanged; incomplete mobile evidence is never called passed.
-
-Source PR#1425 merged into release: `9b4303a50efe79ad6d3477d068bdf599092e74f6`.
-Security34065664531 and artifact34065664535 passed; exact artifact9998862575.
-One-shot control#1426 published that artifact in run34066277509 and closed without
-merge. Evidence9999036179; the deployment workflow is absent from release/main.
-
-| Eight public assets | Previous checked bytes | Published bytes | Saved |
-| --- | ---: | ---: | ---: |
-| CSS | 194729 | 160782 | 33947 |
-| JS | 106795 | 106754 | 41 |
-| Total | 301524 | 267536 | 33988 |
-
-Raw reduction11.27%; eight public paths and seven nonempty generated lines retained.
-Accumulated reduction versus the previous published preview bff20777:44151 bytes.
-No transfer-compression or page-speed claim.
-
-All nine historical cascade modules and visual-compatibility.css now contain
-provenance comments only. Small necessary rules belong to lead-state.css,
-tour-detail-convergence.css, hotel-packages.css and results-context.css.
-This preserves lead status/hidden lifecycle guards, desktop flight/continue
-isolation, expanded-tour grid and initial/reset results visibility. Existing
-public paths, source ordering and donor hash checks remain. Also removed unused
-summary-cost selectors; the only executable JS-tree difference is that exact
-CSS literal selector deletion. Three other JS assets are byte-identical.
-
-One asset build and narrow compiled summary/eight layout traces passed.
-The initial CI failure was a same-length drift fixture targeting !important,
-which no longer exists in marker-only donors. The fixture now corrupts a final
-newline with equal byte length; the hash guard remains and final CI passed.
-
-Publication verified the actual archive, both control hashes and all715 payload
-files before activation and again remotely. Nine routes, noindex, disabled
-preview lead403, counter0, internal PHP denial and retained rollback passed.
-All13 protected production fingerprints match before/after/final. Main remains
-fa58a0cba6dcfc8624d98c20d64fa06330eae309; no production migration.
-
-Fresh local artifact download returned403 and was not retried. Expected control
-hashes were independently reconstructed from the previously verified published
-manifest plus the exact eight-asset GitHub payload diff, verifying local assets
-against source blob IDs. Fresh archive hash came from green CI; unchanged
-deployment guards then verified the actual artifact. No fresh local archive
-validation is claimed. A local fixture file URL was also rejected by browser
-policy; no workaround or fixture acceptance claim.
-
-Focused live1363px inspection: initial form â†’100 hotels/426 tours â†’expanded
-LUXOR APART â†’selected tour with supplier placeholder flight â†’review. Screenshots
-inspected,75,005 RUB retained, next-to-application CTA visible, no horizontal
-overflow. No additional CSS repair was necessary in these observed states.
-No lead form opened or lead submitted. Mobile/intermediate widths, lead status
-visuals, full flight/return/filter matrix, full site/SEO and physical Safari remain
-deferred; this is not blanket visual parity or production acceptance.
-
-Audit: `docs/project/search3-whole-layer-retirement.json`.
-Next: Continue owner-authorized large reversible presentation-owner retirement in one useful batch; repair demonstrated layout breakage in current owners. Do not repeat ten-layer, minifier, comments, media/dominance or tiny factoring passes. Preserve eight public paths, hidden/lifecycle recovery states, price/API/URL/payload/lead/analytics/logo/browser contracts. Next candidates results-width-compatibility/hotel-card-convergence need active-rule assessment before removal; no safe wholesale deletion established yet. Keep narrow checks and two source CI jobs, reuse artifact; publish only for a justified layout/accumulated checkpoint. Mobile/intermediate widths, lead status visuals and physical Safari remain deferred, not passed. Main/production locked; scheduler paused.
-
-The sections below record status at their original completion; older statements
-that a batch was unpublished are historical. Batches#1422â€“#1424 are now included
-in the current publication.
-
-### Historical checkpoint at completion â€” common CSS blocks and JS spelling â€” 2026-09-06
-
-PR #1424, source `04cc08317bc0c4d64e31b60bf9694e30164fa972`. Two mandatory jobs passed on the final source:
-Security 34064217365 and artifact 34064217372; exact artifact 9998431100 retained.
-This is CHECKED, NOT PUBLISHED. Preview remains bff20777/#1421; main/production
-remain owner-approval locked and the scheduler stays paused.
-
-| Eight public assets | Previous bytes | Checked bytes | Saved |
-| --- | ---: | ---: | ---: |
-| CSS | 195173 | 194729 | 444 |
-| JS | 107035 | 106795 | 240 |
-| Total | 302208 | 301524 | 684 |
-
-Eight paths and seven nonempty generated lines remain. This is uncompressed size;
-no transfer/page-speed claim. Accumulated #1422/#1423/#1424 saving versus published
-preview: 10163 bytes. No artifact download, preview deployment or browser cycle.
-
-Seventeen adjacent leaf-rule groups share exact declaration sequences, crossing
-only disjoint reset families. Original selector strings and parent/media contexts
-remain; no nesting increase or selector-list specificity amplification. Independent
-review found no cascade/reset conflict. JS changes only second-stage quote/number/
-property-key/IIFE spelling; all four final executable Acorn trees and retained
-comment sequences match the previous source. First-stage exact printing and
-protected import fingerprints remain. Existing unit coverage includes public key
-order, prototype setter vs computed own property and numeric spelling.
-
-One final asset build passed. Initial CI found quote-dependent test adapters in CSS literal extraction and
-filter/mobile ownership. Literal checks now read actual Acorn values; ownership
-checks accept either valid quote spelling while keeping the same operation,
-selector and handoff assertions. Final source CI passes; broader responsive/site/SEO
-and physical Safari remain deferred.
-
-Further bounded scans found no recursive media gain, only19 bytes from a new
-selector-list factor,450 bytes from value pooling with new inherited-variable
-complexity, and no large identical helper inside26 JS owners/427 functions. These
-experiments were not applied. Previously deferred117/23-byte CSS cases stay deferred.
-The CSS444/JS240 tails were combined here; do not repeat completed scans. Further
-material reductions require a demonstrated redundant presentation owner while
-retaining fallback/intermediate card states and all protected contracts.
-
-Audits: `docs/project/search3-common-css-js-format-reduction.json` and
-`docs/project/search3-css-common-block-factoring.json`.
-
-### Previous checked release batch â€” media roots and cross-asset CSS â€” 2026-09-06
-
-PR #1423, source `9cf5fe886201e59c9f0be3acc096992dba308290`. Both required jobs passed on the first attempt:
-Security34062645262 and artifact34062645263; artifact9997962349 is retained.
-This checked batch is NOT PUBLISHED. Preview remains bff20777/#1421; no new
-deploy-control PR, artifact download or browser journey.
-
-| Eight public assets | Previous bytes | Checked bytes | Saved |
-| --- | ---: | ---: | ---: |
-| CSS | 199199 | 195173 | 4026 |
-| JS | 107035 | 107035 | 0 |
-| Total | 306234 | 302208 | 4026 |
-
-Uncompressed reduction 1.31%; all four JS files byte-identical. Eight public paths,
-source ordering, protected fingerprints and readable modules retained.
-The new build pass shares only contiguous equivalent single-selector roots
-across media, after exact printing. Explicit-& child rules, unchanged selector
-paths/conditions/order/style depth; comments in discarded wrappers reject grouping.
-The existing CSS test covers those boundaries, including comments inside media.
-
-The source pass removes 75 declarations/13 empty rules dominated by mandatory
-later entry/selected stylesheets. The PHP owner and existing presentation test
-prove all-or-none fixed main/entry/cards/selected inclusion. No new shorthand or
-lifecycle assumptions. Retained declaration stream and combined cascade maps agree
-at all42 width samples. One final local build and focused CSS tests passed; full
-responsive/site/SEO and physical Safari checks remain deferred.
-
-Card analysis found that visible results do not guarantee results-active or all
-final sibling/hidden predicates, so broad old-card removal was rejected. A separate
-JS formatter experiment yields only240 bytes; seven broader within-asset CSS
-deletions yield117 bytes. Neither micro-pass was applied. A subsequent remaining cross-asset basic enum/color
-scan found one23-byte deletion only; it was also deferred without source edits.
-
-Audits: `docs/project/search3-media-cross-asset-reduction.json` and
-`docs/project/search3-css-cross-asset-dominance.json`.
-Next: Completed follow-up: remaining cross-asset basic enum/color scan found one 23-byte deletion only; defer it and do not repeat that scan. Completed media-wrapper grouping and 75 cross-asset deletions stay in place; earlier completed passes must not repeat. Next substantive reduction needs structural ownership/declaration factoring with a measured net gain: preserve the fallback/intermediate hotel-card states because has-results does not imply results-active or final sibling/hidden predicates. Do not delete those old blocks on that false assumption. Preserve selector specificity, shorthand reset semantics, four-stylesheet order, native nesting depth and all public/protected contracts. Use one working draft per useful batch, narrow evidence and two mandatory CI jobs; no automatic preview/browser. Published preview remains bff20777; checked code9cf5fe; main/production locked, scheduler paused.
-
-### Previous checked release batch â€” source notes and numeric CSS â€” 2026-09-06
-
-Working PR #1422; final source `b926eeb4509da236597268af868457eb5f11ef43`. This batch is checked in release
-and intentionally NOT PUBLISHED under the owner batch policy. Published preview
-remains source bff20777 / deploy #1421. No new deploy-control PR or browser session.
-
-| Eight public assets | Previous bytes | Checked bytes | Saved |
-| --- | ---: | ---: | ---: |
-| CSS | 201014 | 199199 | 1815 |
-| JS | 110673 | 107035 | 3638 |
-| Total | 311687 | 306234 | 5453 |
-
-Net reduction 1.75%, uncompressed. Eight paths retained: four CSS files, three
-nonempty JS files and the existing empty overlay slot. Readable sources stay.
-All four executable JS ASTs match bff20777 exactly; license/tool comments and
-first-stage AST/comment equality remain. Test adapters extract actual compiled
-IIFEs by stable runtime markers. Source-drift fixtures now mutate executable code
-because ordinary comment-only edits intentionally leave generated files unchanged.
-
-CSS removes 61 dominated declarations plus 14 empty rules. Different-value
-witnesses are limited to simple supported numeric longhands; no supports or
-variable fallback removal. Retained declaration order and final selector/property
-cascade maps match across 42 width samples. Acceptance guards and nesting unchanged.
-
-One final local source build, compaction tests, eight affected compiled adapters
-and the two corrected drift fixtures passed. First CI attempt exposed those two
-comment-only fixtures; the corrected final source passed both mandatory jobs: artifact 34061763852 and
-Security 34061763860. Artifact 9997701449 is retained for a later publication.
-Broader suites and new live verification remain deferred, not passed.
-Audit: `docs/project/search3-batched-css-js-reduction.json`.
-
-Next: Next substantive step: consolidate the hotel-card CSS owner under #results across base/card/cascade/layout sources, first proving the affected final cascade including shorthand/longhand interactions and breakpoint states. Do not rerun completed private CSS optimization, markup helpers, source-comment filtering, 36 equal-value or 61 numeric-dominance deletions. Remaining JS micro-candidates measured below 500 bytes are deferred, not separate PRs. Use one working draft per useful batch, narrow evidence and the two required CI jobs. Do not automatically deploy or replay the live journey; current published preview remains bff20777. New local commands and focused tests worked in this continuation; the historical rejected HTTP poll was not retried. Main/production locked; scheduler paused.
-
-### Previous verification priority â€” lean preview cycle â€” 2026-09-06
-
-The owner explicitly requested fewer checks and faster file-size reduction:
-Â«Ğ¼Ğ¸Ğ»Ğ»Ğ¸Ğ¾Ğ½ Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€Ğ¾Ğº Ğ½Ğµ Ğ¾Ğ±ÑĞ·Ğ°Ñ‚ĞµĞ»ÑŒĞ½Ğ¾ ... Ñ†ĞµĞ»ÑŒ ĞºĞ°Ğº Ğ¼Ğ¾Ğ¶Ğ½Ğ¾ Ğ±Ñ‹ÑÑ‚Ñ€ĞµĞµ ÑƒĞ¼ĞµĞ½ÑŒÑˆĞ¸Ñ‚ÑŒ Ñ€Ğ°Ğ·Ğ¼ĞµÑ€Â».
-This supersedes older requirements below to run all 23 workflows, full responsive
-matrices, repeated screenshot comparisons or exhaustive journeys for every PR.
-
-Use working draft PRs based directly on `release/search3-production-ready-v1`;
-do not temporarily target main just to trigger unrelated CI. Batch useful source
-reductions before one release integration/publication. Locally run source build,
-size/import checks and the relevant small behavior tests. The existing artifact
-workflow supplies PHP rendering, presentation checks and preview isolation once.
-The owner additionally asks to remove more duplicate checks. Run two jobs on a
-working code draft: Security guard includes both owner-policy validators; the
-exact artifact job includes source/presentation, PHP syntax, path boundaries and
-isolation. Reuse this successful source artifact after release fast-forward and
-documentation checkpoints. The cumulative draft release runs only Security guard;
-do not rebuild or redeploy documentation. The source artifact SHA must remain an
-ancestor of the exact release pin, as enforced by the unchanged deploy control.
-
-Nineteen broader workflows plus standalone owner/boundary jobs defer only for
-draft Search3 release PRs or draft PRs targeting this release. Existing
-production-only jobs, main pushes, schedules and manual runs are unchanged.
-`ready_for_review` explicitly restores all applicable PR gates, including a fresh
-release artifact build, before production consideration; main remains locked.
-
-For a preview batch, inspect the changed controls in the live browser, normally
-one desktop and one mobile state when layout changed. Do not run the full site/SEO
-visual suite or compare dozens of screenshots after every small change. Broaden
-checks only for a concrete failure or at production acceptance. Do not call a
-deferred check passed. Keep exact-artifact publication, disabled preview leads,
-noindex, rollback and production fingerprints. Scheduler remains paused.
-
-Build compaction uses exact AST/comment equality only for the first printing
-stage. The next optimization stage may simplify JavaScript control flow and CSS
-values/rules. Preserve public keys, globals, function/class names, argument arity,
-eval scopes and getter side effects. Disable unsafe arithmetic and cross-statement
-sequence merging; retain native CSS nesting and the existing browser boundary.
-Readable runtime sources and protected business contracts remain unchanged.
-
-### Historical published checkpoint â€” private CSS, markup and media overlap â€” 2026-09-06
-
-Source `bff20777468c2a7d41df684dc1902c267adde3cf`, source PRs #1419/#1420; one isolated publication #1421,
-deploy 34060271120 succeeded on attempt 1. Each working draft passed Security and
-the exact artifact job. Release/docs reuse the final source artifact; full
-responsive/site/SEO workflows remain deferred under the owner lean policy.
-
-| Eight public assets | Previous bytes | Published bytes |
-| --- | ---: | ---: |
-| Four CSS | 202114 | 201014 |
-| Four JS | 112400 | 110673 |
-| Total | 314514 | 311687 |
-
-Net saving 2827 bytes (0.90%); 4 CSS + 55 JS = 59 generated lines. Uncompressed,
-excluding shared runtime/legacy and duplicate source; no page-speed claim.
-Two private style strings use the existing optimizer before escaping at their
-original JS insertion positions. Four behavior owners share private markup and
-class prefixes. Sixteen compiled old/new traces retain exact HTML, DOM/selector
-operations, listener registrations/arity and supplier getter reads. A conservative
-optimizer guard retains Raw CSS comment token boundaries.
-
-The CSS pass removes 36 identical-value declarations with exact-selector witnesses
-under broader media or important priority, then nine empty rules. Retained ordered
-streams are exact; final selector/property/priority maps match at all 42 numeric
-media boundary/adjacent points. Non-numeric/supports contexts and protected
-acceptance source stay unchanged. Donor/order and native nesting max three remain.
-Build/check/import tests pass; PHP rendering passed in artifact CI.
-
-Artifact 9997204595 from build 34060126171 /
-`sha256:d2c69cd121ccbd2ee4159b53fb77b27b698d1f4c3de8bd366b70658b605962cd`.
-All 715 payload hashes and eight generated assets verified before publication.
-Nine routes, noindex, counter zero, disabled leads, rollback and 13 unchanged
-production fingerprints are recorded in evidence 9997242581 /
-`sha256:ecb1cad2bf5682df01354e09e31d8d3a3a1c296e2aea949994d2e050ecba6580`.
-
-Focused live desktop 1363px: Moscow/Turkey, 10â€“11 Sep, seven nights, two adults;
-100 hotels / 480 tours -> ANAHTAR APART -> SU2156/SU2157, 72099 -> 89317 RUB ->
-review -> empty lead form -> review -> return 100 -> zero-filter 0 -> restore 100
-without another search -> editor dates/nights retained. Review and lead screenshots
-inspected; no horizontal overflow or real lead. Physical Safari/live mobile and
-the full responsive/site/SEO suite were deferred. Browser API had transient
-post-click timeouts; fresh DOM confirmed each resulting state.
-
-The local direct-HTTP asset-hash polling result is unconfirmed: automatic approval
-review rejected the poll because environment usage capacity was exhausted.
-No retry or indirect workaround was used; artifact/remote activation hash proofs,
-deployment evidence and the independent browser journey were completed.
-Main remains fa58a0cb; production/protected contracts untouched; scheduler paused.
-
-Audit: `docs/project/search3-static-css-publication.json`.
-Next: Continue measured reduction from source bff20777. Private injected CSS optimization, four presentation markup/class-prefix helpers and 36 exact-value media/priority deletions are complete; do not repeat them. Remaining different-value CSS candidates require browser-compatibility and cascade evidence before removal. Prefer the largest measured source simplification; preserve eight paths, native nesting max depth three, public keys/globals and price/API/lead/analytics contracts. Reuse one final working-source artifact, focused live checks only. Local command polling hit an environment usage-limit auto-review rejection; do not retry or bypass that blocked operation. Resume new local development when execution capacity is available. Main/production locked; scheduler paused.
-
-### Previous published checkpoint â€” single build and standard minification â€” 2026-09-06
-
-Source `47bc232e5f5b48b2a78a026c4f77f01b33fdc23e`, source PR #1416, isolated publication #1417,
-deploy 34058520640 (success, attempt 1). Working draft: two successful jobs, two
-standalone jobs deferred. Cumulative release draft: one Security job succeeded,
-23 jobs deferred; no duplicate release artifact build. Owner validators run in
-Security; PHP/path/presentation/isolation run in the one working-PR artifact.
-All applicable PR gates restore on ready_for_review; main/production stay locked.
-
-Follow-up #1418 removes twelve identical fixture builds from source-test setup
-and checks independent PHP/JS payload files in two processes. All baseline,
-drift/failure assertions and syntax checks remain. This changes CI only; the
-published source/artifact above remains exact and requires no second deployment.
-Follow-up `27d48f081e457a879aa55bcddb3a94d7e18129d2` is in release; Security and
-build 34058941809 passed. In these runs the focused stage fell from 48 to 24s
-and payload parsing/build from 26 to 10s (combined 74 to 34s). This is an observed
-CI run comparison, not a page-speed benchmark.
-
-| Public assets | Previous bytes | Published bytes |
-| --- | ---: | ---: |
-| Four CSS | 205437 | 202114 |
-| Four JS | 115477 | 112400 |
-| Total | 320914 | 314514 |
-
-Saving 6400 bytes (1.99% overall); 4 CSS + 55 JS = 59 generated lines.
-Build-only Lightning CSS 1.33.0 optimizes rules/values while retaining native
-nesting and the existing browser boundary. Terser compression preserves function
-and class names, argument arity, eval and getter behavior; unsafe arithmetic,
-property/global mangling and cross-statement sequence merging remain disabled.
-The first printing-stage exact AST guards remain. Readable runtime sources and
-all protected price/API/lead/analytics files remain unchanged. Metrics are
-uncompressed and exclude shared runtime/legacy; no page-speed benchmark claimed.
-
-Artifact 9996682414 from build 34058350586 / `sha256:92229fe8e5b17ce9744d4d8ff0922014eb0c25ec5f546f31fec2a0f4da111a7e`.
-Evidence 9996718591 / `sha256:4678457ba0263555cfc889084d5df026b8fdba34c96fd0e6d16d80b406c1b33e`. Exact 715-file payload verified;
-all seven changed CSS/JS matched by HTTP. Nine routes, noindex, counter zero,
-lead disabled, rollback retained, 13 production fingerprints unchanged.
-
-Focused live desktop 1363px: Moscow/Turkey 10â€“11 Sep, seven nights, two adults;
-100 hotels / 431 tours; zero-filter -> restore 100; ANAHTAR APART, SU2156/SU2157,
-72099 -> 89317 RUB; review -> empty lead form -> return to 100 results. No real
-lead or horizontal overflow. Results screenshot inspected. Full responsive matrix
-and physical Safari deferred; mobile live viewport unavailable in the supported
-browser surface, compiled mobile toolbar behavior passed in artifact CI.
-
-Audit: `docs/project/search3-single-build-minification.json`.
-Next: Continue measured CSS/JS reduction in release-based draft batches. Single-build CI routing and standard CSS/JS minification are complete: do not repeat optimizer comparisons or build after release/docs. Next inspect repeated static presentation strings/private injected CSS for a measured net reduction before source changes; retain readable source, eight paths, native nesting, globals/public keys and all price/API/lead contracts. One working source artifact plus focused live checks; broaden only for a concrete failure. Main/production locked; scheduler paused.
-
-### Previous published checkpoint â€” lean preview and local JS names â€” 2026-09-06
-
-Source `4ad216b457562097c78a6a6b9c179e7365d87a0c`, source PR #1414, isolated publication #1415,
-deploy 34056652968 (success, attempt 1). The lean verification policy above is active.
-Working PR: three required workflows passed, three deferred. Release draft: four
-required workflows passed, nineteen broad jobs deferred plus one old migration skip.
-Existing release-push rollback check also passed. Deferred checks are not acceptance.
-
-Local variable/parameter/label names now shorten in the build, with compression,
-global/top-level/property mangling disabled; function/class names and eval scopes
-stay. First-stage exact printing AST guard remains, followed by syntax parsing and
-focused compiled execution checks. Readable runtime sources and all CSS unchanged.
-
-| Public assets | Previous bytes | Published bytes |
-| --- | ---: | ---: |
-| Four CSS | 205437 | 205437 |
-| Four JS | 130610 | 115477 |
-| Total | 336047 | 320914 |
-
-Saving 15133 bytes (11.59% JS, 4.50% overall); 37 CSS + 55 JS = 92 generated lines.
-Uncompressed, excludes shared runtime/legacy and duplicate src; no speed benchmark.
-Artifact 9996124818 / `sha256:bec74724991723328cb8839c2e0cb54e4a7e7e5c97a5c279f2083f53004a2cf8`; evidence 9996165721 /
-`sha256:5333ce5d982a72f78d62eb392895eb1d830e746bcfad605d218ac8b129e4fc4a`. Exact 715-file deployment payload verified;
-all three changed JS files matched over HTTP. Nine routes pass, preview leads
-disabled, counter zero, rollback retained, thirteen production fingerprints unchanged.
-
-One focused live desktop 1363px scenario: Moscow/Turkey 10â€“11 Sep, seven nights,
-two adults -> 100 hotels / 425 tours -> zero price matches with visible rail ->
-restore 100 -> ANAHTAR APART -> choose SU2156/SU2157, 72099 -> 89317 RUB ->
-review -> empty lead form (inspected) -> review -> 100 results -> preserved editor.
-No real lead or horizontal overflow. Full responsive/site matrix intentionally
-deferred; physical Safari and prior production acceptance limitations remain.
-
-Audit: `docs/project/search3-lean-preview-reduction.json`.
-Next: Continue measured CSS/JS reduction in release-based draft batches with the lean preview cycle. Local-name shortening and workflow routing are complete. Inspect remaining repeated static presentation markup or build compaction opportunities; preserve public keys/globals, price/API/lead contracts and eight paths. Do not rerun full site/SEO/responsive matrices without a concrete failure; restore full applicable gates for production review. Preview-only exact publication, production locked, scheduler paused.
-
-### Previous published checkpoint â€” checked compact assets and zero-match recovery â€” 2026-09-06
-
-Published source/release integration: `53f87c79cb3d4ca139c2391d1bcf818fa874e737`. Source PRs #1408/#1409/#1410/#1412.
-Separate exact preview publications #1411 then #1413; #1413 supersedes #1411 with
-the inherited zero-match filter recovery fix. Earlier preparation/pending notes
-are historical and superseded by this checkpoint.
-
-| Eight public assets | Previous bytes / lines | Published bytes / lines |
-| --- | ---: | ---: |
-| Four CSS | 211465 / 4007 | 205437 / 37 |
-| Four JS | 140057 / 1826 | 130610 / 55 |
-| Total | 351522 / 5833 | 336047 / 92 |
-
-Net reduction 15475 bytes (4.40% overall; JS 6.75%) and 5741 generated lines.
-Uncompressed, excluding shared runtime/legacy and duplicate src; no speed or
-deferred-loading claim. Readable source parts remain. Rail owner 11175 -> 5746
-bytes, form owner 9433 -> 3682, with two private parts each in original scope.
-Eight public paths remain; no new runtime loader/request/global.
-
-Build-only pinned Terser 5.51.2 prints JS with compression and mangling disabled.
-Independent Acorn 8.18.0 ordered AST/comment equality rejects unsafe changes before
-writes. Pinned css-tree 3.2.1 removes external CSS formatting while selectors,
-conditions and value source slices stay exact; ordered AST roundtrip is required.
-Protected comments retained; nonshrinking files stay original. Cascade/order,
-acceptance guards and native nesting depth three remain. Source build requires
-`npm ci --prefix scripts/build/search3-js --ignore-scripts`; existing CI installs it.
-
-The live zero-match trap was also reproduced by the new compiled regression on
-pre-run b3b508d0, proving it inherited. The rail now marks local zero matches
-before synchronous render; existing geometry/card owners retain their shell.
-Restore, external fresh results and actual reset clear it. No filter/price logic
-change. Fix costs 347 JS bytes; net savings above already include it.
-
-All four sources passed 23 applicable workflows and one expected skip. Final
-core 34054786441, responsive 34054786477, flight 34054786509, build 34054786524.
-Twelve source-build, eight JS printing, six CSS printing and 14 presentation tests;
-PHP covered in CI. Existing responsive CI verifies zero matches -> resize
-1000/1440 -> visible slider End restoration -> reset. New empty-rail screenshot
-inspected. Editors at 375/1440 inspected and pixel-identical; 33/42 final common
-images exact, nine fixture calendar/date/control variations retained. No blanket
-pixel parity. Physical Safari remains unqualified; native nesting contract stays.
-
-Final artifact 9995634191 / ZIP `sha256:7b7588e9e9ee754f2024016ce7242f096591bae99d0a1a9ffaf030468fb8c6ff`.
-Deploy 34055271173 succeeded attempt 1; evidence 9995763506 /
-ZIP `sha256:4055ea6d3d8b4c7192384f5f4ee37eb6cab471bbba628b1f72e1cfb2b4550731`. All 715 payload files and eight live assets match.
-Nine routes HTTP 200/noindex; counter 0, disabled synthetic lead 403, internal PHP
-denied, rollback retained; 13 production fingerprints unchanged before/after/final.
-Main stays `fa58a0cba6dcfc8624d98c20d64fa06330eae309`; production untouched.
-
-Fresh live desktop 1363px: Moscow/Turkey, 10â€“11 September 2026, seven nights,
-two adults -> 100 hotels / 430 tours. Slider Home 70000 -> zero cards and visible
-rail/empty message; End 265000 -> 100 cards without new search. ANAHTAR APART ->
-flights 6 -> 71 -> 6 -> review 72099 RUB -> empty lead -> review -> return with
-100 cards -> editor retaining dates/nights. Review/lead screenshots inspected;
-summary column 3 / row 4â€“12 -> column 2 / row 1 -> restored review layout.
-No horizontal overflow or real lead submission. Editor opened after asynchronous
-return completed. Live no-flight fallback, physical Safari and inherited hidden
-legacy backdrop on desktop-to-mobile transition remain outside qualification.
-
-Consolidated audit: `docs/project/search3-compact-assets-publication.json`.
-Source audits: `search3-filter-rail-private-parts.json`,
-`search3-js-build-compaction.json`, `search3-css-external-formatting.json`,
-`search3-empty-local-filter-shell.json` (all under `docs/project/`).
-
-Next: Refresh release, PRs and publication before another bounded reduction. Remaining results/cards.js (7698 source bytes) and tour-presentation.js (6114) were inspected: mixed DOM decoration and protected price presentation require a focused behavior trace before deduplicating their helpers. Measure a concrete saving before another source PR. Do not repeat completed rail/form splits, checked JS/CSS printing, or the zero-match shell fix. Keep eight public paths, event/data/price/lead contracts and maximum CSS nesting depth three. Separate exact preview publication only; production locked; scheduler paused.
-
-### Previous published checkpoint â€” descendant CSS and private booking layout â€” 2026-09-06
-
-Published source and release integration: `360cf4b7f9b08ca0a85e6d4f96a83997dd07b477`. Source PRs #1405/#1406;
-one exact-artifact isolated preview publication #1407. Preparation notes below are
-historical and their pending-publication statements are superseded here.
-
-138 adjacent groups now share repeated complete descendant prefixes inside the
-existing CSS nesting. Each new parent has one selector and only nested rules;
-each child retains one leading explicit `&`, including bare `&` for the parent.
-Maximum nesting depth is three. Recursive expansion preserves the complete
-ordered selector/declaration/media stream. All declarations and specificity stay;
-acceptance guards, cascade donor and section order are unchanged. Public CSS
-saves 37946 bytes. The native nesting boundary remains Safari 16.5+ and supporting
-modern engines; physical Safari is not qualified.
-
-`booking-summary.js` is reduced from 6859 to 4472 source bytes, with a 2246-byte
-private `booking/layout.js` part inside the original IIFE. Fifteen setters share
-one local function, saving 183 served JS bytes. Eight layout states pass against
-baseline and current compiled owners. Reversing only these setter replacements
-restores the original compiled owner exactly; all other compiled JS owners are
-byte-identical. Event scheduling, rendering, price and lead contracts remain.
-No new public path, request, runtime loader or global.
-
-| Eight public assets | Previous bytes / lines | Published bytes / lines |
-| --- | ---: | ---: |
-| Four CSS | 249411 / 3783 | 211465 / 4007 |
-| Four JS | 140240 / 1825 | 140057 / 1826 |
-| Total | 389651 / 5608 | 351522 / 5833 |
-
-Reduction: 38129 bytes (9.79% overall, 15.21% CSS). Physical lines increase 225
-because of explicit grouping braces. Uncompressed; excludes shared runtime/legacy
-and duplicate src. This is not a speed benchmark or deferred-loading claim.
-
-Both exact sources passed 23 applicable workflows and one expected migration skip.
-Final core 34050151325, responsive 34050151371, flight 34050151339, build 34050151346.
-Eleven source-build and 14 presentation tests, with PHP covered in CI; eight layout
-states checked. Responsive 375/430/1024/1348/1440 and toolbar 999/1000 roundtrip pass.
-Inspected 375/1440 editor images are pixel-identical to the prior publication.
-18/24 final compared images match exactly; fixture calendar/date/control variation
-remains. No blanket pixel-parity or physical-device acceptance claim.
-
-Artifact 9994293361 / ZIP `sha256:8829e481d385895c4aeeba10c2d5934c5f2421cb1c5ce8b35ce0c40772b34b46`.
-Deploy 34050404831 succeeded on attempt 1; evidence 9994364828 / ZIP `sha256:d72f71abae36f2164089e5179b546c9c498b4bb323204ce0fd25a5432d68332a`.
-All 715 payload hashes and eight served assets match. Nine routes are HTTP 200 /
-noindex; counter 0, disabled synthetic lead 403, internal PHP denied, rollback
-retained. All 13 production fingerprints before/after/final are unchanged.
-Main remains `fa58a0cba6dcfc8624d98c20d64fa06330eae309`; production is untouched.
-
-Live desktop 1363px: Moscow â†’ Turkey, 10â€“11 September 2026, seven nights, two adults
-â†’ 100 hotels / 322 tours â†’ ANAHTAR APART â†’ flights 6 â†’ 71 â†’ 6 â†’ review 72099 RUB
-â†’ visible empty lead form â†’ review â†’ return with 100 cards â†’ editor preserving
-dates/nights. Review summary uses column 3 / row 4â€“12, lead summary column 2 / row 1,
-and returning restores review layout. Review and empty lead screenshots inspected.
-No horizontal overflow or real lead submission. Existing hidden legacy-filter
-backdrop and immediate editor click during asynchronous return remain outside
-qualification; this editor opened after return completed. No live no-flight
-fallback or physical Safari test is claimed.
-
-Audits: `docs/project/search3-css-descendant-results.json`,
-`docs/project/search3-css-descendant-secondary.json`,
-`docs/project/search3-descendant-publication.json`.
-
-Next: Refresh release, PRs and publication before another bounded reduction. Inspect remaining repeated static markup and private source boundaries in active filter-rail/search-form JS; require measured net savings and compiled behavior evidence. Keep event/data/price/lead contracts and eight public paths. Do not deepen CSS nesting beyond three levels or repeat completed root/descendant grouping, overridden declarations, CSS injections, booking-layout and earlier source splits. Publish only a separate exact preview artifact. Production locked.
-
-### Previous published checkpoint â€” private CSS and overridden declarations â€” 2026-09-06
-
-Published source and release integration: `731eb3a8e1e490d2c07f4727135c373449d4958f`. Source PRs #1402/#1403;
-one exact-artifact isolated preview publication #1404. Preparation notes below are
-historical and their pending-publication statements are superseded here.
-
-Two static style injections now use private CSS sources compiled into escaped
-JS literals at the original insertion positions. IDs/order/root guard/idempotence
-remain. Six single-parent explicit-& groups preserve expanded ordered CSS streams.
-Injection source owners 11230 â†’ 490 and 4218 â†’ 434 bytes; public JS saves 1940 bytes.
-All other compiled JS behavior owners are byte-identical. No new public path,
-browser request, runtime loader/global or move into earlier linked stylesheets.
-
-Removed 182 earlier CSS declarations shadowed by later identical full expanded
-selector lists/media-supports contexts/properties/important priority. Each deletion
-records its later witness; browser CI confirms CSS.supports for all 182 witnesses.
-No shorthand expansion or selector-list merging. Removed 74 now-empty rules/groups;
-retained declaration order and final per-selector/context/property/priority maps
-match baseline. CSS saves 8057 bytes. Cascade donor/order and acceptance guards stay.
-
-| Eight public assets | Previous bytes / lines | Published bytes / lines |
-| --- | ---: | ---: |
-| Four CSS | 257468 /3855 | 249411 /3783 |
-| Four JS | 142180 /1903 | 140240 /1825 |
-| Total | 399648 /5758 | 389651 /5608 |
-
-Combined reduction 9997 bytes (2.50%) and 150 lines. Uncompressed; excludes shared
-runtime/legacy and duplicate src. Private CSS is counted in its JS host. No speed
-benchmark or deferred-loading claim. Native nesting browser boundary is unchanged:
-Safari  16.5+ and supported modern engines; physical Safari remains unqualified.
-
-Both exact code heads passed 23 applicable workflows and one expected migration
-skip. Final core 34047451648, responsive 34047451646, flight 34047451706,
-build 34047451594. Eleven build tests and 14 presentation tests, PHP covered by CI.
-Responsive 375/430/1024/1348/1440 passed; inspected editor 375/1440 images match prior
-preview pixel-for-pixel. 19/24 compared images exact; fixture scroll/date/control
-state variation remains. No blanket pixel-parity or physical-device acceptance.
-
-Artifact 9993533050 / ZIP `sha256:209b7c4a42fcd353bb7db37a629efeba47628277ff3a36ea0e24658d6e6ea8db`.
-Deploy 34047654589 succeeded; evidence 9993589644 / ZIP `sha256:3f94fb1ac4529fe1b01cfef498eec0103047ff57dd2fe259ffc009fec304404d`.
-All 715 payload hashes and 8 served assets exact; 9 routes 200/noindex, counter 0,
-disabled synthetic lead 403, internal PHP denied, rollback retained. All 13 production
-fingerprints before/after/final unchanged. Main `fa58a0cba6dcfc8624d98c20d64fa06330eae309`; no production publication.
-
-Live 1363 px: Moscow â†’ Turkey 10â€“11 Sep 2026,7 nights,2 adults  â†’ 100 hotels/423 tours  â†’
-ANAHTAR APART  â†’ flights 6 â†’ 78 â†’ 6  â†’ review 72099 RUB  â†’ visible empty lead form  â†’ return
-with 100 cards and hidden selected tour  â†’ editor with dates/nights retained.
-Both injected styles occur once and contain the compiled nesting. No horizontal
-overflow; phone empty, no lead sent. Existing hidden legacy-filter backdrop and
-immediate-editor-click during asynchronous return remain outside qualification;
-the checked editor opened after return completed. No live no-flight fallback or
-physical Safari test is claimed.
-
-Audits: `search3-injected-css-sources.json`, `search3-active-css-declarations.json`,
-and consolidated `docs/project/search3-continued-reduction-publication.json`.
-
-Next: Refresh release/PRs and publication before another bounded reduction. Inspect remaining repeated inline-style setter groups in active results/selected presentation JS; require identical DOM operation order/values/priority and measured net savings before changing them. The private CSS string extraction and the 182 same-selector/context overridden declarations are complete; do not repeat these or prior nesting, compaction, formatter, filter/toolbar and source-split passes. Preserve eight paths, IIFEs and protected business contracts; publish only a separate exact preview artifact. Production locked.
-
-### Previous published checkpoint â€” native CSS nesting â€” 2026-09-06
-
-Published source and release integration: `74b87bff36db79f40fb17e18fb9478d339b6bc8c`. Source PRs #1399 and #1400;
-isolated one-shot preview #1401. Both passes are complete; preparation notes below
-are historical. This checkpoint supersedes their pending-CI/publication statuses.
-
-Consecutive rules sharing one identical `body.search3-candidate` or
-`html body.search3-candidate` parent now use explicit `&`: 131 groups across46
-source modules. No declarations or at-rules occur in grouping parents. Expanding
-the nesting reproduces ordered selectors, declaration values/important flags and
-media contexts exactly; original declaration bytes and public asset order retained.
-Cascade donor identity/order and protected acceptance guards retained.
-
-| Eight public assets | Previous bytes / lines | Published bytes / lines |
-| --- | ---: | ---: |
-| Four CSS | 290846 /3593 | 257468 /3855 |
-| Four JS | 142180 /1903 | 142180 /1903 |
-| Total | 433026 /5496 | 399648 /5758 |
-
-Reduction:33378 CSS bytes (11.48%;7.71% of the eight-asset total). Main results CSS
-removes29802 bytes; remaining three stylesheets remove3576. JS is byte-identical.
-Physical lines increase262 for explicit grouping braces. Uncompressed, excluding
-shared runtime/legacy and duplicate src; no speed benchmark or deferred-load claim.
-
-Browser boundary: this preview requires native CSS nesting. Explicit `&` works in
-[Safari16.5+ per WebKit](https://webkit.org/blog/14154/webkit-features-in-safari-16-5/).
-Older engines without nesting are unsupported; physical Safari is not qualified.
-Single-parent specificity follows the [CSS nesting specification](https://www.w3.org/TR/css-nesting-1/#nest-selector).
-
-Each exact code head passed23 applicable workflows and one expected migration skip.
-Final core34045800403, responsive34045800482, flight34045800430, build34045800429.
-Nine source-build tests and14 presentation tests, PHP covered in CI. Responsive
-375/430/1024/1348/1440;375/1440 editor images inspected and pixel-identical to prior
-publication.19 of24 compared images are pixel-identical; calendar scroll/header
-and date-selection variation remain in fixture captures. No blanket pixel-parity
-or physical-device acceptance claim. Source audits: search3-css-nesting-results.json
-and search3-css-nesting-secondary.json; consolidated evidence:
-`docs/project/search3-css-nesting-publication.json`.
-
-Artifact9993052180, ZIP `sha256:0dc48f09371af3424e8de13d160eb2bd41832a1aa83cfe49ca25bec4c5a8c830`.
-Deploy34046027330 succeeded; evidence9993119103, ZIP `sha256:a4b1a28daea5cd93fa55cb300eeda67ebbed9ce598d0eb9c09a5457de85f19e8`.
-715 payload hashes and8 live assets match.9 routes200/noindex; counter0, disabled
-synthetic lead403, internal PHP denied and rollback retained. All13 production
-fingerprints unchanged; main remainsfa58a0cb. No production publication.
-
-Live1363px: Moscowâ†’Turkey,10â€“11Sep2026,7nights,2adults â†’100hotels/449tours â†’
-ANAHTAR APART â†’flight disclosure6â†’109â†’6 â†’review72099 RUB â†’visible empty lead
-form â†’return/offers/editor with dates and nights retained. No horizontal overflow.
-Phone remains empty; no lead submitted. Return completed despite one automation
-snapshot protocol timeout; fresh DOM verified completion before editor click.
-Earlier immediate-click return race and inherited legacy advanced-filter backdrop
-on desktopâ†’mobile remain outside this qualification. No-flight fallback and
-physical Safari were not tested live in this pass.
-
-Next: Refresh release, active PRs and this publication before the next bounded reduction. Inspect remaining active CSS declaration duplication and JS presentation owners for measured net savings, preserving media/order/specificity, IIFE ownership and protected business contracts. Do not repeat completed nesting, indentation/comment compaction, private JS extraction, geometry helpers, retired selectors or shared formatters. Keep eight public paths; preview only via a separate exact-artifact publication. Production locked.
-
-### Previous published checkpoint â€” CSS output indentation â€” 2026-09-06
-
-Exact runtime/release code: `4517879c22929706aabc3365b7e3906ecf19bc24`. Source #1397; preview control #1398.
-This continuation also completed JS source split #1395 and publication #1396 below.
-
-The dependency-free builder removes4667 CSS bytes of horizontal indentation after
-ordinary newlines. Newline separators, strings/comments and whitespace after
-escaped newline/hex-escape terminators remain. Readable source formatting stays.
-Full recursive CSS token sequences match after normalizing whitespace-token
-contents only; no token removed or reordered. Four JS assets stay byte-identical.
-Audit: search3-css-output-indentation.json. Nine source-build tests pass, including
-escape terminators;14 presentation tests with PHP covered in CI.
-
-| Public assets | Previous bytes / lines | Published bytes / lines |
-| --- | ---: | ---: |
-| Four CSS | 295513 /3593 | 290846 /3593 |
-| Four JS | 142180 /1903 | 142180 /1903 |
-| Total | 437693 /5496 | 433026 /5496 |
-
-Together with #1395:5126 fewer bytes from438152 (-1.17%); five private JS source
-parts, with two additional physical lines. Uncompressed; excludes shared runtime,
-legacy and duplicate source files. No speed benchmark or deferred-loading claim.
-
-All23 applicable PR workflows succeeded, one expected migration skip. Core
-34042766478, responsive34042766475, flight34042766521, build34042766609.
-375/1440 editor screenshots inspected. Artifact9992182320, digest
-`sha256:d2e0fe380bb1e1f7ab14942f928e2faac7bc141cd3a060a29293475997609723`.
-Deployment34042946055 succeeded; evidence9992236531, digest
-`sha256:f16906a2d9a2ec922a2dc0c95078cd451cdb0a4b540fd8ea2108a97fa54e09c8`.715 payload hashes and8 served assets match;
-9 routes200/noindex, lead403, counter0, internal PHP denied, rollback retained.
-13 production fingerprints unchanged. Main remainsfa58a0cb; no production release.
-
-Latest live1363px entry/native-controls check passed. The same JS was verified
-earlier in this continuation with100 hotels/428 tours and ANAHTAR APART flight
-disclosure6â†’78â†’6; that scoped evidence remains below and in publication history.
-No repeated live lead journey, physical Safari, no-flight fallback or inherited
-backdrop acceptance claimed. Immediate editor click during asynchronous return
-was superseded in the earlier check; not fixed or requalified by indentation.
-
-Next: refresh release; inspect remaining active CSS/JS owners for measured net
-reduction. Do not repeat this indentation step, private extractions, geometry
-helpers or earlier CSS/shared formatter work. Preserve eight paths and protected
-contracts; preview publication remains separate, production remains locked.
-
-### Previous published checkpoint â€” private JS parts â€” 2026-09-06
-
-Exact runtime/release code: `c5fcbea26ddd4e54628c8b60966ca186deb09ecc`.
-Source PR #1395; separate one-shot preview control #1396.
-
-Results labels/cards/toolbar and selected-flight fallback/disclosure now have five
-private source parts, expanded within their original IIFEs by the dependency-free
-builder. Shared state, declaration order and public adapters are preserved; both
-extracted compiled IIFEs remain byte-identical. No new global, runtime loader or
-browser request. Main source owners shrink17427â†’4027 and13205â†’7490 bytes; the
-largest private part is7619 bytes. Audit: search3-private-js-parts.json.
-
-Toolbar inline-style helpers remove459 served JS bytes.48 baseline/current
-geometry traces match operation order, values and important priority. Seven of
-eight public assets are byte-identical. Local build tests cover private-part
-drift, cycles, duplicates and outside-root paths; regression adapters exercise
-compiled results and selected-flow code.
-
-| Public assets | Previous bytes / lines | Published bytes / lines |
-| --- | ---: | ---: |
-| Four CSS | 295513 /3593 | 295513 /3593 |
-| Four JS | 142639 /1901 | 142180 /1903 |
-| Total | 438152 /5494 | 437693 /5496 |
-
-This pass principally separates source ownership; payload savings are459 bytes
-(0.105%), with two additional physical lines. Counts are uncompressed, excluding
-shared runtime/legacy; no deferred loading or speed benchmark is claimed.
-
-All23 applicable PR workflows succeeded, one expected migration skip. Core
-34040858804, responsive34040858748, flight34040858761, build34040858770.375px
-readability and1348px toolbar screenshots inspected. Source artifact9991626458,
-digest `sha256:a49995acfc219f50eb3121a8cf5ac17db22e7c1c986148fd79ddd89ce0a6c5dc`.
-Deployment34041100182 succeeded; evidence9991692069,
-digest `sha256:5085190aed04e8f28a24e266813af8fc24ede52dd4173eb9c8e2ed01f3ecf89b`.
-All715 payload hashes and8 served assets match;9 routes200/noindex, counter0,
-disabled lead403, internal PHP denied, rollback retained.13 production
-fingerprints unchanged. Main remainsfa58a0cb; no production release.
-
-Live desktop1363px: Moscowâ€“Turkey,10â€“11 September2026,7 nights,2 adults;
-100 hotels /428 tours. ANAHTAR APART opens2 tours and78 flight choices;
-disclosure6â†’78â†’6 verified with stable collapsed screenshot. Base total72099 RUB
-retained; after return settles, editor preserves dates and7â€“7 nights. An immediate
-editor click during asynchronous return was superseded; not fixed in this pass.
-Document width1348<=1363. No lead sent.
-Inherited legacy backdrop, physical Safari and live no-flight fallback were not
-requalified; earlier full lead journey remains in publication history.
-
-Next: refresh release; inspect remaining active source owners for measured net
-CSS/JS reduction. Do not repeat these private extractions/geometry helpers or the
-completed CSS and shared formatter work below. Preserve eight public paths,
-IIFE ownership and protected contracts; preview publication remains separate.
-
-### Previous published checkpoint â€” CSS build compaction and entry split â€” 2026-09-06
-
-Exact runtime/release code: `9bedc2be31c5765c2fde2f383647487616127cc5`.
-Source PR #1393; separate one-shot preview control #1394.
-
-- The dependency-free builder compacts private CSS comments into empty token
-  separators. Source notes and donor markers stay in source; licenses, strings,
-  escapes and whitespace are retained. This is payload reduction, not a claim
-  that source complexity or browser execution time decreased by that amount.
-- Twenty-eight adjacent rules with identical declaration blocks share selector
-  lists. Expanded selector/declaration/media token streams match the baseline.
-- Entry CSS is split into calendar, responsive entry, toolbar and native controls;
-  the four ordered chunks reproduce the original source bytes. Four public JS
-  files remain byte-identical. Source audit: search3-css-build-compaction.json.
-
-| Public assets | Previous bytes / lines | Published bytes / lines |
-| --- | ---: | ---: |
-| Four CSS | 311609 / 3653 | 295513 / 3593 |
-| Four JS | 142639 / 1901 | 142639 / 1901 |
-| Total | 454248 / 5554 | 438152 / 5494 |
-
-Reduction: 16,096 bytes /60 lines (3.54%). Uncompressed; excludes shared runtime,
-legacy and source duplication. No page-load speed benchmark is claimed.
-
-All 23 applicable workflows succeeded, one expected migration-only skip.
-Core 34030842353, responsive 34030842375, flight 34030842370, build 34030842392.
-Responsive 375px editor and 1440px calendar screenshots inspected.
-Artifact 9988542775 digest
-`sha256:b20f486345c0fa934afdd6e6aecfea5370622613e67ec21d49cb735e9929df02`.
-Deployment 34030973693 succeeded; evidence 9988586892 digest
-`sha256:9fcd903bc2de8f357c4f6f4a73ef336c696a3f429cbe9a8df96b5cec47d894a2`.
-All 715 payload hashes and eight served assets match. Nine routes 200/noindex,
-counter 0, disabled lead 403, internal PHP denied, rollback retained; 13 protected
-production fingerprints unchanged. Main remains fa58a0cb; no production release.
-
-Targeted live search/editor verification is recorded in AUTOPILOT_STATE.json.
-The previous full live journey to the unsubmitted lead form remains historical
-evidence below. No new lead delivery, physical Safari or production acceptance
-is claimed. The inherited legacy advanced-filter backdrop remains documented.
-
-Next: refresh release and inspect remaining active results/selected presentation
-owners for a net source-level reduction. Preserve distinct formatter contracts
-and IIFE lifecycle; do not repeat entry split, comment compaction, adjacent merges,
-retired-state cleanup or shared text/plural work. Keep eight public asset paths
-and protected contracts; preview publication remains a separate exact operation.
-
-### Previous published checkpoint â€” retired CSS and shared JS â€” 2026-09-06
-
-Exact preview runtime: `3f32ebb377795d2d146a0e0a2f3c8c3e18fbfa18`.
-Release integration: `84ae82a58f18460994fe8d5d584d7e82bbc73d3b`.
-Source PR #1389; separate one-shot preview control PR #1392. Older pending
-statements below are historical checkpoints, not the current publication state.
-
-- Removed 136 rules /147 selectors requiring 21 retired positive classes and
-  two empty media containers: 21,788 CSS bytes. Negative conditions remain.
-- Consolidated 35 equal-specificity compound selector groups: 2,566 CSS bytes.
-  Expanding retained selectors reproduces the ordered declaration/media stream
-  against concurrent release f8e10a30. Audit: search3-css-owner-retirement.json.
-- Preserved concurrent #1385/#1386/#1388/#1390 shared text, inflection, helper
-  cleanup, fact typography and regression tests, plus #1391 checkpoint history.
-  The overlapping local formatter experiment was withdrawn; no second namespace
-  is shipped. Do not repeat these completed steps.
-
-| Eight public assets | Previous preview bytes / lines | Published bytes / lines |
-| --- | ---: | ---: |
-| Four CSS | 336274 / 3871 | 311609 / 3653 |
-| Four JS | 144163 / 1926 | 142639 / 1901 |
-| Total | 480437 / 5797 | 454248 / 5554 |
-
-Net reduction since previous preview: 26,189 bytes (5.45%) /243 lines, including
-concurrent changes. Own CSS reduction against f8e10a30: 24,354 bytes /215 lines.
-Uncompressed assets excluding shared runtime/legacy; not a speed benchmark.
-
-All 23 applicable workflows passed, one expected skip. Core 34028476949,
-responsive 34028476946, flight 34028476933, artifact 34028476925.
-Responsive 375/1440 editor screenshots inspected; physical Safari not tested.
-Source artifact 9987823291 digest
-`sha256:0cd1cc2a6b6f12a5bb3485aa6444bd282077fa96893715c9f7c508653c2e03fe`.
-Deployment 34028783194 succeeded; evidence 9987916338 digest
-`sha256:6887eb1d1abdb40dd29747f63241e358c2bd9d491daf5f0f3a0e63e28a2f7248`.
-All 715 payload hashes and eight served assets match. Nine routes 200/noindex,
-lead-disabled probe 403, counter 0, internal PHP denied, rollback retained;
-13 production fingerprints identical before/after/final. Main remains fa58a0cb.
-
-Live desktop 1363px: Moscowâ€“Turkey, 10 September 2026, 7 nights, 2 adults;
-100 hotels /370 tours. ANAHTAR APART â†’ flight choices â†’ review â†’ visible
-unsubmitted lead form, one 72,099 RUB sidebar total; phone empty and document
-width 1363px. The inherited legacy advanced-filter backdrop on desktop-to-mobile
-resize remains documented; this desktop journey does not requalify that case.
-
-Next: inspect remaining large active cascade owners and repeated result templates
-for equivalent consolidation from refreshed release. Preserve eight public paths,
-protected contracts, source ownership and existing publication history. Keep main
-and production locked; publish preview through the exact-artifact process.
-
-### Previous code checkpoint â€” CI-verified, not republished â€” 2026-09-06
-
-Exact release code: `f8e10a30b57fa965ee8f5e7294a1e08819b75fc2`.
-Preparation PRs: #1388 and #1390. The exact preview below remains on the older
-published code `26988e62`; this checkpoint was not deployed.
-
-- One earlier-loaded immutable presentation-text owner now serves HTML escaping,
-  supplier scalar/array normalization, compact party labels and hotel place labels
-  used by booking summary, final sections and the selected-tour rail.
-- Snapshot and load-order regression covers escaping, supported supplier shapes,
-  compact party/place output, owner immutability and all three consumers. The
-  intentionally different human-readable final-party formatter remains local.
-- Three identical hotel/tour fact typography rules are consolidated with `:is()`.
-  Both arguments preserve the original one-class specificity and the trailing
-  element selector is unchanged.
-- Price-number/money helpers were deliberately excluded: price arithmetic and
-  presentation ownership remain untouched. Generated assets and import hashes were
-  rebuilt together; all eight public paths and their order remain unchanged.
-
-On the final code, **22 workflow runs completed successfully** and one migration-only
-workflow was expectedly skipped. The sole job `101473212868` in the remaining SEO
-primitives run `34028335788` and all its steps completed successfully, while GitHub
-still reported its run wrapper as `in_progress` at checkpoint time; do not count it
-as a 23rd completed workflow until rechecked. Core `34028335801`, responsive
-`34028335842`, flight `34028335806`, whole-site artifact `34028335783`. Visual
-artifact `9987783755`, digest
-`sha256:2b2266489194c444d40f94660b19a4f311460ac4aa7bd7242b8e09b9492fcc4b`;
-whole-site artifact `9987780814`, digest
-`sha256:c011dac1edc2eed227a1427c53f2925c1ec83634dafecc4b73fcfcbb6b0da158`.
-The 375px and 1440px search/readability images were inspected without new clipping,
-overflow or typography drift. This is not a physical Safari or live-preview
-acceptance claim.
-
-| Public assets | Bytes / lines |
-| --- | ---: |
-| Four CSS | 335,963 / 3,868 |
-| Four JS | 142,639 / 1,901 |
-| Total | 478,602 / 5,769 |
-
-This continuation removes another **1,045 bytes / 8 lines** from `4a4d762c`;
-cumulative reduction from `684825be` is **45,123 bytes / 349 lines**. Counts are
-uncompressed and exclude shared runtime/legacy plus duplicate source files; they
-are not a page-load benchmark.
-
-Next: first recheck SEO primitives run `34028335788`. Then audit only a new proven
-equivalent presentation/cascade duplicate. The remaining `number`/`money` helpers
-belong to protected price paths and are not a safe generic-dedup target; the flight,
-selected-flow and final-party text helpers have different contracts and must not be
-folded into the shared owner. Do not add abstraction without a net reduction or
-publish preview as a refactor side effect.
-
-### Previous published checkpoint â€” 2026-09-06
-
-Exact runtime code: `26988e62eb674f8165d380de71e3be3d8feb19c3`.
-Release integration: `0fabb1eca248b0f6b48ffe750cc73eaf93f52956`.
-Source PR: #1382; separate exact-artifact preview publication: #1384.
-The preparation/pending notes in older sections below are historical snapshots.
-
-Two completed refactor passes:
-
-- Seven large CSS owners split into 21 component/breakpoint files. Two static
-  style-injection modules separated from mobile-bar/summary-CTA behavior. Local
-  selector constants preserve exact emitted CSS while removing 10,219 JS bytes.
-- Seventy-four plain-class selector lists share their ancestor prefix with
-  equal-specificity `:is()` groups, removing 12,098 CSS bytes. Expanding the groups
-  reproduces the same rule/media/declaration stream; cascade order is preserved.
-- Retired the inactive Search3 footer replacement, its two private stylesheets,
-  five orphan footer rules and obsolete presentation-only messenger selector.
-  The server already emits the canonical shared footer with the marker that made
-  the old replacement return immediately. This step removes 20,971 bytes / 215
-  lines. Canonical PHP/footer styles, logo, destinations and lead transport remain.
-
-The concurrent price-facet fix and publication history through `684825be` and
-`154700ea` were preserved. The source builder remains dependency-free and all
-eight public paths remain fixed. Source modules now total 69.
-
-| Public assets | Before (`684825be`) bytes / lines | Published bytes / lines |
-| --- | ---: | ---: |
-| Four CSS | 363,166 / 4,175 | 336,274 / 3,871 |
-| Four JS | 160,559 / 1,943 | 144,163 / 1,926 |
-| Total | 523,725 / 6,118 | 480,437 / 5,797 |
-
-Reduction: **43,288 bytes (8.3%) / 321 physical lines**. Uncompressed asset
-accounting, excluding shared runtime/legacy and duplicate `src` files; not a
-measured page-load improvement. Both injected styles are byte-identical to the
-baseline, with guards, insertion order and idempotency preserved. Footer ownership
-regression failed before removal and passed afterward.
-
-All **23 applicable workflows passed**, with one expected migration-only skip:
-core `34024249265`, responsive `34024249262`, flight `34024249322`, artifact build
-`34024249256`. Final responsive 375px results and 1348px editor images inspected;
-PHP rendering passed in existing CI. Visual artifact `9986537178`, digest
-`sha256:6074e34be1da4588a7a487d5b7ada719099c2220ebd2d988f4e205317a378e46`.
-
-Preview publication run **`34024574911` succeeded**, using source artifact
-`9986530879` (digest `sha256:5a9343dd778c06fbc0e6547e3121816e203563df7d01755061926699a830e812`).
-Evidence `9986634293` (digest `sha256:085c2521f407c358ad6bad49c7774519ec12b944d0f3af4d18ac9cd8b44d88d3`)
-confirms all 715 payload files, nine HTTP-200/noindex routes, counter zero, disabled
-synthetic lead probe 403, internal-PHP denial and retained rollback. The 13
-production fingerprints match before/after/final; `main` remains `fa58a0cb`.
-
-All eight live Search3 assets matched source/artifact bytes. A real desktop
-1363px journey found 100 hotels / 186 tours (Moscowâ€“Turkey, 10 September, seven
-nights, two adults), opened ANAHTAR APART, inspected flight choices, and reached
-review and the visible lead form with one 72,099 RUB sidebar total. Screenshot
-inspected; no horizontal overflow; phone empty and no lead submitted.
-
-Boundary: published and live-desktop-verified **preview only**. Physical Safari
-and production acceptance are not claimed. The previously recorded hidden legacy
-advanced-filter backdrop on desktop-to-mobile resize remains a known limitation;
-its earlier controlled reproduction is preserved in publication history. This
-pass did not change that owner or claim a new full live responsive acceptance.
-
-Next: refresh the release head; inspect repeated templates in
-`behavior/results-presentation.js` and remaining `styles/cascade` owners for
-equivalent consolidation, then batch verified removals. Do not repeat these
-splits, restore the retired footer or redo completed filter/toolbar work. Preserve
-protected contracts and the eight public paths. Main/production remain locked;
-preview publication remains a separate exact-artifact operation.
-
-## Execution and activation are separate
-
-This is the persistent task prompt for autonomous Search3 presentation refactoring. It does not create a scheduler, start a background coding process or authorize production publication.
-
-The existing project records name a ChatGPT task Â«ĞŸÑ€Ğ¾Ğ´Ğ¾Ğ»Ğ¶Ğ°Ñ‚ÑŒ Ñ€Ğ°Ğ·Ñ€Ğ°Ğ±Ğ¾Ñ‚ĞºÑƒ AnyTourÂ», with hourly continuation in Europe/Amsterdam. Its current enabled state, task ID and next run have not been verified in this session: scheduler-management tools were unavailable. Reuse/update that existing task rather than create a duplicate. Keep its model/settings unless the owner changes them. Desired cadence remains hourly; do not describe it as continuous execution or claim activation without a scheduler confirmation.
-
-GitHub issue #2 and autopilot-runtime-state.yml persist CI signals only. A successful CI run or this document is not evidence that a new coding session will start.
-
-## Copyable task prompt
-
-ĞŸÑ€Ğ¾Ğ´Ğ¾Ğ»Ğ¶Ğ°Ğ¹ Ğ°Ğ²Ñ‚Ğ¾Ğ½Ğ¾Ğ¼Ğ½Ñ‹Ğ¹ Ñ‚ĞµÑ…Ğ½Ğ¸Ñ‡ĞµÑĞºĞ¸Ğ¹ refactor-pass Search3 Ğ² Ñ€ĞµĞ¿Ğ¾Ğ·Ğ¸Ñ‚Ğ¾Ñ€Ğ¸Ğ¸ pyatkoff/poisk-turov-test. Ğ’Ñ‹Ğ¿Ğ¾Ğ»Ğ½ÑĞ¹ Ñ€Ğ°Ğ·Ñ€Ğ°Ğ±Ğ¾Ñ‚ĞºÑƒ, Ğ° Ğ½Ğµ Ñ‚Ğ¾Ğ»ÑŒĞºĞ¾ Ğ¼Ğ¾Ğ½Ğ¸Ñ‚Ğ¾Ñ€Ğ¸Ğ½Ğ³ Ğ¸ Ğ¾Ñ‚Ñ‡Ñ‘Ñ‚. Ğ Ğ°Ğ±Ğ¾Ñ‚Ğ°Ğ¹ Ğ¿Ğ¾ Ğ°ĞºÑ‚Ğ¸Ğ²Ğ½Ğ¾Ğ¹ Ğ²ĞµÑ‚ĞºĞµ release/search3-production-ready-v1 Ğ»Ğ¸Ğ±Ğ¾ ÑĞ²Ğ½Ğ¾ ÑĞ¾Ğ³Ğ»Ğ°ÑĞ¾Ğ²Ğ°Ğ½Ğ½Ğ¾Ğ¹ Ğ² #996 Ğ²ĞµÑ‚ĞºĞµ-Ğ¿Ñ€ĞµĞµĞ¼Ğ½Ğ¸ĞºÑƒ; Ñ‚ĞµĞºÑƒÑ‰Ğ¸Ğ¹ release draft â€” #1334.
-
-Ğ’ Ğ½Ğ°Ñ‡Ğ°Ğ»Ğµ ĞºĞ°Ğ¶Ğ´Ğ¾Ğ³Ğ¾ Ğ·Ğ°Ğ¿ÑƒÑĞºĞ° Ğ¿Ñ€Ğ¾Ñ‡Ğ¸Ñ‚Ğ°Ğ¹ #996 Ñ Ğ¿Ğ¾ÑĞ»ĞµĞ´Ğ½Ğ¸Ğ¼Ğ¸ ĞºĞ¾Ğ¼Ğ¼ĞµĞ½Ñ‚Ğ°Ñ€Ğ¸ÑĞ¼Ğ¸ Ğ¸ #1334; Ğ·Ğ°Ñ‚ĞµĞ¼ AGENTS.md, OWNER_PRIORITY.json, AUTOPILOT.md, AUTOPILOT_STATE.json, src/search3/AGENTS.md, src/search3/README.md Ğ¸ ÑÑ‚Ğ¾Ñ‚ Ğ´Ğ¾ĞºÑƒĞ¼ĞµĞ½Ñ‚ Ğ˜Ğ— ĞĞšĞ¢Ğ˜Ğ’ĞĞĞ™ Ğ’Ğ•Ğ¢ĞšĞ˜. ĞĞ±Ñ‰Ğ¸Ğ¹ roadmap #1 â€” ĞºĞ¾Ğ½Ñ‚ĞµĞºÑÑ‚, Ğ½Ğµ Ğ¿Ğ¾Ğ²Ğ¾Ğ´ Ğ¿ĞµÑ€ĞµĞ·Ğ°Ğ¿ÑƒÑĞºĞ°Ñ‚ÑŒ Ğ·Ğ°Ğ²ĞµÑ€ÑˆÑ‘Ğ½Ğ½Ñ‹Ğµ ÑÑ‚Ğ°Ğ¿Ñ‹. Search2/#810 Ğ¸ ÑÑ‚Ğ°Ñ€Ñ‹Ğµ Ğ·Ğ°Ğ¿Ğ¸ÑĞ¸ Ğ² main Ğ½Ğµ ÑĞ²Ğ»ÑÑÑ‚ÑÑ Ñ‚ĞµĞºÑƒÑ‰ĞµĞ¹ Ğ¾Ñ‡ĞµÑ€ĞµĞ´ÑŒÑ. Ğ£ÑÑ‚Ğ°Ñ€ĞµĞ²ÑˆĞ¸Ğµ ÑƒĞ¿Ğ¾Ğ¼Ğ¸Ğ½Ğ°Ğ½Ğ¸Ñ Ğ¾Ğ±Ñ‰ĞµĞ³Ğ¾ Ğ¾Ñ‚Ğ»Ğ¾Ğ¶ĞµĞ½Ğ½Ğ¾Ğ³Ğ¾ refactor Ğ½Ğµ Ğ¾Ñ‚Ğ¼ĞµĞ½ÑÑÑ‚ Ğ¿Ğ¾ÑĞ»ĞµĞ´ÑƒÑÑ‰ĞµĞµ Ñ€Ğ°Ğ·Ñ€ĞµÑˆĞµĞ½Ğ¸Ğµ Ğ²Ğ»Ğ°Ğ´ĞµĞ»ÑŒÑ†Ğ° Ğ½Ğ° Ğ¾Ğ³Ñ€Ğ°Ğ½Ğ¸Ñ‡ĞµĞ½Ğ½Ñ‹Ğ¹ Search3 presentation refactor; Ğ¾Ğ½Ğ¾ Ğ½Ğµ Ñ€Ğ°ÑĞ¿Ñ€Ğ¾ÑÑ‚Ñ€Ğ°Ğ½ÑĞµÑ‚ÑÑ Ğ½Ğ° Ğ·Ğ°Ñ‰Ğ¸Ñ‰Ñ‘Ğ½Ğ½Ñ‹Ğµ ĞºĞ¾Ğ½Ñ‚Ñ€Ğ°ĞºÑ‚Ñ‹.
-
-ĞŸĞ¾ÑĞ»ĞµĞ´Ğ½ÑÑ Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€ĞµĞ½Ğ½Ğ°Ñ Ñ‚Ğ¾Ñ‡ĞºĞ° ĞºĞ¾Ğ´Ğ° Ğ½Ğ° Ğ¼Ğ¾Ğ¼ĞµĞ½Ñ‚ Ğ·Ğ°Ğ¿Ğ¸ÑĞ¸: 57a675f0a43a1a6ddf2cb7e24dafebc94a11a9f8. Ğ¢Ñ€Ğ¸ toolbar-Ğ¿Ñ€Ğ¾Ñ…Ğ¾Ğ´Ğ° #1373/#1374/#1375 ÑƒĞ¶Ğµ Ğ·Ğ°Ğ²ĞµÑ€ÑˆĞµĞ½Ñ‹ Ğ¸ Ğ¸Ğ½Ñ‚ĞµĞ³Ñ€Ğ¸Ñ€Ğ¾Ğ²Ğ°Ğ½Ñ‹ Ñ‚Ğ¾Ğ»ÑŒĞºĞ¾ Ğ² release; Ğ¿Ğ¾Ğ´Ñ€Ğ¾Ğ±Ğ½Ğ¾ÑÑ‚Ğ¸ Ğ¿Ğ¾ÑĞ»ĞµĞ´Ğ½ĞµĞ¹ Ñ‚Ğ¾Ñ‡ĞºĞ¸ Ğ½Ğ¸Ğ¶Ğµ. ĞŸĞµÑ€ĞµĞ´ Ğ¸Ğ·Ğ¼ĞµĞ½ĞµĞ½Ğ¸ÑĞ¼Ğ¸ Ğ·Ğ°Ğ½Ğ¾Ğ²Ğ¾ Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€ÑŒ Ñ„Ğ°ĞºÑ‚Ğ¸Ñ‡ĞµÑĞºĞ¸Ğµ head Ğ²ĞµÑ‚ĞºĞ¸/main, PR, CI Ğ¸ Ğ¿Ğ°Ñ€Ğ°Ğ»Ğ»ĞµĞ»ÑŒĞ½ÑƒÑ Ñ€Ğ°Ğ±Ğ¾Ñ‚Ñƒ. ĞĞµ Ğ¾Ñ‚ĞºĞ°Ñ‚Ñ‹Ğ²Ğ°Ğ¹ Ğ²ĞµÑ‚ĞºÑƒ Ğº ÑÑ‚Ğ¾Ğ¼Ñƒ SHA, ĞµÑĞ»Ğ¸ Ğ¾Ğ½Ğ° ÑƒĞ¶Ğµ Ğ¿Ñ€Ğ¾Ğ´Ğ²Ğ¸Ğ½ÑƒĞ»Ğ°ÑÑŒ. ĞĞµ Ğ¿ĞµÑ€ĞµÑ‚Ğ¸Ñ€Ğ°Ğ¹ Ñ‡ÑƒĞ¶Ğ¸Ğµ Ğ¸Ğ·Ğ¼ĞµĞ½ĞµĞ½Ğ¸Ñ, Ğ½Ğµ force-push Ğ¸ Ğ½Ğµ Ğ´ÑƒĞ±Ğ»Ğ¸Ñ€ÑƒĞ¹ Ğ²Ñ‹Ğ¿Ğ¾Ğ»Ğ½ÑÑÑ‰Ğ¸Ğ¹ÑÑ ÑˆĞ°Ğ³/Ğ²Ñ‹ĞºĞ»Ğ°Ğ´ĞºÑƒ. ĞŸÑ€Ğ¸ Ğ¿Ğ°Ñ€Ğ°Ğ»Ğ»ĞµĞ»ÑŒĞ½Ğ¾Ğ¼ Ğ²Ñ‹Ğ¿Ğ¾Ğ»Ğ½ĞµĞ½Ğ¸Ğ¸ Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€ÑŒ ĞµĞ³Ğ¾ Ñ€ĞµĞ·ÑƒĞ»ÑŒÑ‚Ğ°Ñ‚ Ğ¸Ğ»Ğ¸ Ğ²Ñ‹Ğ±ĞµÑ€Ğ¸ Ğ½ĞµĞ·Ğ°Ğ²Ğ¸ÑĞ¸Ğ¼Ñ‹Ğ¹ Ğ±ĞµĞ·Ğ¾Ğ¿Ğ°ÑĞ½Ñ‹Ğ¹ Ğ¿ÑƒĞ½ĞºÑ‚.
-
-Ğ£Ğ¶Ğµ Ğ·Ğ°Ğ²ĞµÑ€ÑˆĞµĞ½Ñ‹: source split Ğ´ĞµĞ²ÑÑ‚Ğ¸ cascade-Ğ¼Ğ¾Ğ´ÑƒĞ»ĞµĞ¹ Ğ½Ğ° 03e7422e; ÑƒĞ´Ğ°Ğ»ĞµĞ½Ğ¸Ğµ 127 cascade-Ğ´ĞµĞºĞ»Ğ°Ñ€Ğ°Ñ†Ğ¸Ğ¹ Ğ¸ 60 Ğ¿ÑƒÑÑ‚Ñ‹Ñ… Ğ±Ğ»Ğ¾ĞºĞ¾Ğ² Ğ½Ğ° 91a7ff5d; ÑƒĞ´Ğ°Ğ»ĞµĞ½Ğ¸Ğµ ĞµÑ‰Ñ‘ 75 compatibility-Ğ´ĞµĞºĞ»Ğ°Ñ€Ğ°Ñ†Ğ¸Ğ¹ Ğ¸ 17 Ğ¾Ğ¿ÑƒÑÑ‚ĞµĞ²ÑˆĞ¸Ñ… Ğ¿Ñ€Ğ°Ğ²Ğ¸Ğ» Ğ½Ğ° 2d4cd972; ĞµĞ´Ğ¸Ğ½Ñ‹Ğ¹ Ğ²Ğ»Ğ°Ğ´ĞµĞ»ĞµÑ† Ğ¼Ğ¾Ğ±Ğ¸Ğ»ÑŒĞ½Ğ¾Ğ³Ğ¾ Ñ„Ğ¸Ğ»ÑŒÑ‚Ñ€Ğ° Ğ¸ ÑƒĞ´Ğ°Ğ»ĞµĞ½Ğ¸Ğµ orphan lifecycle/cascade Ğ½Ğ° 53f482eb/35e2ae36; frame-coalescing price slider, Ğ¾Ğ´Ğ½Ğ° final-count Ğ½Ğ¾Ñ‚Ğ¸Ñ„Ğ¸ĞºĞ°Ñ†Ğ¸Ñ, Ğ¾Ñ‚Ğ¼ĞµĞ½Ğ° Ğ¾Ğ¶Ğ¸Ğ´Ğ°ÑÑ‰ĞµĞ³Ğ¾ price render Ğ¿Ñ€Ğ¸ reset/sea/charter/fresh-source, Ğ¿Ğ¾Ğ²Ñ‚Ğ¾Ñ€Ğ½Ğ¾Ğµ Ğ¿Ñ€Ğ¸Ğ¼ĞµĞ½ĞµĞ½Ğ¸Ğµ Ğ°ĞºÑ‚Ğ¸Ğ²Ğ½Ñ‹Ñ… Ñ„Ğ¸Ğ»ÑŒÑ‚Ñ€Ğ¾Ğ² Ğº ÑĞ²ĞµĞ¶Ğ¸Ğ¼ progressive results, Ğ¿Ğ¾Ğ´Ğ°Ğ²Ğ»ĞµĞ½Ğ¸Ğµ sort/same-reference filter events/DOM writes Ğ¸ ÑĞ¾Ñ…Ñ€Ğ°Ğ½ĞµĞ½Ğ¸Ğµ ÑĞ¼Ğ¾Ğ½Ñ‚Ğ¸Ñ€Ğ¾Ğ²Ğ°Ğ½Ğ½Ñ‹Ñ… ĞºĞ¾Ğ½Ñ‚Ñ€Ğ¾Ğ»Ğ¾Ğ² Ğ¿Ñ€Ğ¸ progressive refresh Ğ½Ğ° 51ebb674/4679200a/35345fb1/35207333/b1b5791c/b72f7494/43856063/56099e49/f0198905. Ğ£ÑÑ‚Ğ°Ñ€ĞµĞ²ÑˆĞ¸Ğ¹ silent-mode Ğ¿Ğ¾Ğ»Ğ½Ğ¾Ğ¹ Ğ¾Ñ‚Ñ€Ğ¸ÑĞ¾Ğ²ĞºĞ¸ ÑƒĞ´Ğ°Ğ»Ñ‘Ğ½ Ğ½Ğ° a8ae0202; Ğ²Ñ‹Ğ±Ñ€Ğ°Ğ½Ğ½Ñ‹Ğ¹ Ñ†ĞµĞ½Ğ¾Ğ²Ğ¾Ğ¹ Ğ¿Ñ€ĞµĞ´ĞµĞ» Ğ¿ĞµÑ€ĞµĞ¶Ğ¸Ğ²Ğ°ĞµÑ‚ Ğ²Ñ€ĞµĞ¼ĞµĞ½Ğ½Ğ¾Ğµ ÑÑƒĞ¶ĞµĞ½Ğ¸Ğµ source bounds Ğ½Ğ° 21bf320c; Ğ¿Ğ°Ñ€Ğ½Ñ‹Ğµ budget/flight Ğ¿Ğ¾Ğ»Ñ Ğ¾Ñ‡Ğ¸Ñ‰Ğ°ÑÑ‚ÑÑ Ğ½Ğ° d66183a4; charter result/form state ÑĞ¸Ğ½Ñ…Ñ€Ğ¾Ğ½Ğ¸Ğ·Ğ¸Ñ€Ğ¾Ğ²Ğ°Ğ½ Ğ½Ğ° 41c27412; Ğ¿ÑƒÑÑ‚Ğ¾Ğ¹ Ğ¸ÑÑ‚Ğ¾Ñ‡Ğ½Ğ¸Ğº ĞºĞ¾Ñ€Ñ€ĞµĞºÑ‚Ğ½Ğ¾ Ğ¾Ğ±ÑŠÑĞ²Ğ»ÑĞµÑ‚ ÑĞ¼ĞµĞ½Ñƒ Ñ„Ğ¸Ğ»ÑŒÑ‚Ñ€Ğ¾Ğ² Ğ½Ğ° 6978435a; Ğ¿Ğ¾Ğ²Ñ‚Ğ¾Ñ€Ğ½Ğ°Ñ Ğ¿ÑƒÑÑ‚Ğ°Ñ Ğ¾Ñ‚Ñ€Ğ¸ÑĞ¾Ğ²ĞºĞ° Ğ½Ğµ ÑƒĞ½Ğ¸Ñ‡Ñ‚Ğ¾Ğ¶Ğ°ĞµÑ‚ Ğ¸ÑÑ…Ğ¾Ğ´Ğ½Ñ‹Ğ¹ Ğ½Ğ°Ğ±Ğ¾Ñ€ Ğ½Ğ° 243d0515; Search3 price input Ğ¾Ñ‚Ğ´ĞµĞ»Ñ‘Ğ½ Ğ¾Ñ‚ legacy DS2 listener Ğ½Ğ° 134611b5; Ğ½ĞµĞ¿Ğ¾Ğ»Ğ½Ñ‹Ğ¹ seaDistance facet ÑĞºÑ€Ñ‹Ğ²Ğ°ĞµÑ‚ÑÑ Ğ¸ ÑĞ±Ñ€Ğ°ÑÑ‹Ğ²Ğ°ĞµÑ‚ÑÑ Ğ½Ğ° 0dc0efe6; reset Ğ²Ğ¾ÑÑÑ‚Ğ°Ğ½Ğ°Ğ²Ğ»Ğ¸Ğ²Ğ°ĞµÑ‚ source Ğ¸ Ğ¾Ğ±ÑŠÑĞ²Ğ»ÑĞµÑ‚ Ñ„Ğ¸Ğ½Ğ°Ğ»ÑŒĞ½Ñ‹Ğ¹ count Ñ€Ğ¾Ğ²Ğ½Ğ¾ Ğ¾Ğ´Ğ¸Ğ½ Ñ€Ğ°Ğ· Ğ½Ğ° 911ef327; Ğ»Ğ¸ÑˆĞ½Ğ¸Ğ¹ Ğ¾Ğ±Ñ‰Ğ¸Ğ¹ price collector Ğ´Ğ»Ñ Ğ¾Ñ‚ĞµĞ»Ñ Ğ±ĞµĞ· tour rows ÑƒĞ´Ğ°Ğ»Ñ‘Ğ½ Ğ½Ğ° 623b5c17. ĞŸÑ€Ğ¾Ğ¼ĞµĞ¶ÑƒÑ‚Ğ¾Ñ‡Ğ½Ñ‹Ğ¹ c4d796e2 Ñ‚Ğ¾Ğ»ÑŒĞºĞ¾ Ğ²Ğ¾ÑÑÑ‚Ğ°Ğ½Ğ¾Ğ²Ğ¸Ğ» Ğ¿Ğ¾Ğ»Ğ½Ğ¾ÑÑ‚ÑŒÑ Ğ¿ĞµÑ€ĞµĞ´Ğ°Ğ½Ğ½Ñ‹Ğ¹ generated bundle Ğ¿Ğ¾ÑĞ»Ğµ Ñ‚Ñ€Ğ°Ğ½ÑĞ¿Ğ¾Ñ€Ñ‚Ğ½Ğ¾Ğ³Ğ¾ ÑƒÑĞµÑ‡ĞµĞ½Ğ¸Ñ Ğ¸ Ğ½Ğµ ÑĞ²Ğ»ÑĞµÑ‚ÑÑ Ğ¾Ñ‚Ğ´ĞµĞ»ÑŒĞ½Ñ‹Ğ¼ Ğ¸Ğ·Ğ¼ĞµĞ½ĞµĞ½Ğ¸ĞµĞ¼ Ğ¿Ğ¾Ğ²ĞµĞ´ĞµĞ½Ğ¸Ñ. ĞŸÑƒÑÑ‚Ğ¾Ğ¹ @media iteration1b ÑƒĞ¶Ğµ ÑƒĞ´Ğ°Ğ»Ñ‘Ğ½. Ğ¡Ğ¾Ñ…Ñ€Ğ°Ğ½ĞµĞ½Ñ‹ Ğ¿Ñ€ĞµĞ´Ñ‹Ğ´ÑƒÑ‰Ğ¸Ğµ JS event-coalescing, latest-price-wins, idempotent DOM/aria/dataset updates Ğ¸ ĞºĞµÑˆ ĞºĞ°Ğ»ĞµĞ½Ğ´Ğ°Ñ€Ñ. ĞĞµ Ğ¿Ğ¾Ğ²Ñ‚Ğ¾Ñ€ÑĞ¹ ÑÑ‚Ğ¸ Ğ¿Ñ€Ğ¾Ñ…Ğ¾Ğ´Ñ‹. ĞŸÑ€ĞµĞ¶Ğ½Ğ¸Ğ¹ Ğ½ĞµÑƒĞ´Ğ°Ñ‡Ğ½Ñ‹Ğ¹ split filter-rail.js Ğ¿Ğ¾Ğ»Ğ½Ğ¾ÑÑ‚ÑŒÑ Ğ¾Ñ‚Ğ¼ĞµĞ½Ñ‘Ğ½; Ğ½Ğµ ÑÑ‡Ğ¸Ñ‚Ğ°Ñ‚ÑŒ ĞµĞ³Ğ¾ Ğ²Ñ‹Ğ¿Ğ¾Ğ»Ğ½ĞµĞ½Ğ½Ñ‹Ğ¼.
-
-Ğ’Ñ‹Ğ±Ğ¸Ñ€Ğ°Ğ¹ ÑĞ»ĞµĞ´ÑƒÑÑ‰Ğ¸Ğ¹ ÑˆĞ°Ğ³ Ğ¿Ğ¾ Ñ€ĞµĞ°Ğ»ÑŒĞ½Ğ¾Ğ¼Ñƒ ÑƒĞ¼ĞµĞ½ÑŒÑˆĞµĞ½Ğ¸Ñ ÑĞ»Ğ¾Ğ¶Ğ½Ğ¾ÑÑ‚Ğ¸ Ğ¸ Ñ€Ğ¸ÑĞºĞ°, Ğ° Ğ½Ğµ Ğ¿Ğ¾ Ñ‡Ğ¸ÑĞ»Ñƒ ĞºĞ¾Ğ¼Ğ¼Ğ¸Ñ‚Ğ¾Ğ². Ğ¡Ğ»ĞµĞ´ÑƒÑÑ‰Ğ¸Ğ¹ ĞºĞ°Ğ½Ğ´Ğ¸Ğ´Ğ°Ñ‚ Ğ´Ğ»Ñ Ğ°Ğ½Ğ°Ğ»Ğ¸Ğ·Ğ° â€” Ğ¾ÑÑ‚Ğ°Ğ²ÑˆĞ¸ĞµÑÑ Ğ¿ĞµÑ€ĞµĞºÑ€Ñ‹Ñ‚Ğ¸Ñ CSS Ğ¼Ğ¾Ğ±Ğ¸Ğ»ÑŒĞ½Ğ¾Ğ³Ğ¾ toolbar Ğ² results-context.css/results-layout.css. Ğ”Ğ¾ ÑƒĞ´Ğ°Ğ»ĞµĞ½Ğ¸Ñ Ğ°ĞºÑ‚Ğ¸Ğ²Ğ½Ñ‹Ñ… Ğ¿Ñ€Ğ°Ğ²Ğ¸Ğ» Ğ´Ğ¾ĞºĞ°Ğ·Ğ°Ñ‚ÑŒ ÑĞºĞ²Ğ¸Ğ²Ğ°Ğ»ĞµĞ½Ñ‚Ğ½Ğ¾ÑÑ‚ÑŒ computed styles Ğ² initial/results/editor/selected/reset Ğ½Ğ° 375/430/768/999/1000/1348/1440. Ğ—Ğ°Ğ²ĞµÑ€ÑˆÑ‘Ğ½Ğ½Ñ‹Ğµ selector cleanup, local queue Ğ¸ desktop boundary Ğ½Ğµ Ğ¿Ğ¾Ğ²Ñ‚Ğ¾Ñ€ÑÑ‚ÑŒ. ĞĞµ Ğ¿Ğ¾Ğ²Ñ‚Ğ¾Ñ€ÑÑ‚ÑŒ ÑƒĞ¶Ğµ Ğ·Ğ°Ğ²ĞµÑ€ÑˆÑ‘Ğ½Ğ½Ñ‹Ğµ ownership, price-frame Ğ¸ fresh-announcement Ğ¸ÑĞ¿Ñ€Ğ°Ğ²Ğ»ĞµĞ½Ğ¸Ñ, Ğ½Ğµ Ñ€Ğ°Ğ·Ñ€ĞµĞ·Ğ°Ñ‚ÑŒ IIFE Ğ²ÑĞ»ĞµĞ¿ÑƒÑ Ğ¸ Ğ½Ğµ Ğ´Ğ¾Ğ±Ğ°Ğ²Ğ»ÑÑ‚ÑŒ Ğ³Ğ»Ğ¾Ğ±Ğ°Ğ»ÑŒĞ½Ñ‹Ğ¹ scheduler Ğ¸Ğ»Ğ¸ Ğ´ÑƒĞ±Ğ»Ğ¸Ñ€ÑƒÑÑ‰Ğ¸Ğµ observers. ĞĞ»ÑŒÑ‚ĞµÑ€Ğ½Ğ°Ñ‚Ğ¸Ğ²Ğ½Ñ‹Ğ¹ Ğ½ĞµĞ·Ğ°Ğ²Ğ¸ÑĞ¸Ğ¼Ñ‹Ğ¹ ÑˆĞ°Ğ³ â€” Ğ´Ğ¾ĞºĞ°Ğ·ÑƒĞµĞ¼Ñ‹Ğµ Ğ¾ÑÑ‚Ğ°Ğ²ÑˆĞ¸ĞµÑÑ CSS-Ğ´ÑƒĞ±Ğ»Ğ¸ Ğ² ÑÑƒÑ‰ĞµÑÑ‚Ğ²ÑƒÑÑ‰Ğ¸Ñ… owners. Ğ Ğ°Ğ·Ğ½Ñ‹Ğµ media/specificity, shorthand, Ğ¿ĞµÑ€ĞµĞ¼ĞµĞ½Ğ½Ñ‹Ğµ Ğ¸ fallback Ğ½Ğµ Ğ¾Ğ±ÑŠÑĞ²Ğ»ÑÑ‚ÑŒ Ğ´ÑƒĞ±Ğ»ÑĞ¼Ğ¸ Ğ±ĞµĞ· Ğ¾Ñ‚Ğ´ĞµĞ»ÑŒĞ½Ğ¾Ğ³Ğ¾ Ğ´Ğ¾ĞºĞ°Ğ·Ğ°Ñ‚ĞµĞ»ÑŒÑÑ‚Ğ²Ğ°. ĞĞµ Ğ´Ğ¾Ğ±Ğ°Ğ²Ğ»ÑÑ‚ÑŒ ĞºĞ¾Ğ´ Ğ¸Ğ»Ğ¸ Ñ‚ĞµÑÑ‚Ñ‹ Ñ‚Ğ¾Ğ»ÑŒĞºĞ¾ Ñ€Ğ°Ğ´Ğ¸ Ğ°ĞºÑ‚Ğ¸Ğ²Ğ½Ğ¾ÑÑ‚Ğ¸.
-
-Ğ ĞµĞ´Ğ°ĞºÑ‚Ğ¸Ñ€ÑƒĞ¹ src/search3, Ğ·Ğ°Ñ‚ĞµĞ¼ Ğ¸ÑĞ¿Ğ¾Ğ»ÑŒĞ·ÑƒĞ¹ python3 scripts/build/search3_assets.py --write Ğ¸ --check. Source, generated assets, Ğ½ÑƒĞ¶Ğ½Ñ‹Ğµ section contracts Ğ¸ production-import hashes ĞºĞ¾Ğ¼Ğ¼Ğ¸Ñ‚ÑŒ Ğ²Ğ¼ĞµÑÑ‚Ğµ. Ğ¡Ğ¾Ñ…Ñ€Ğ°Ğ½ÑĞ¹ Ğ²Ğ¾ÑĞµĞ¼ÑŒ Ğ¿ÑƒĞ±Ğ»Ğ¸Ñ‡Ğ½Ñ‹Ñ… asset paths, Ğ¿Ğ¾Ñ€ÑĞ´Ğ¾Ğº Ğ¿Ğ¾Ğ´ĞºĞ»ÑÑ‡ĞµĞ½Ğ¸Ñ Ğ¸ Ğ·Ğ°Ñ‰Ğ¸Ñ‰Ñ‘Ğ½Ğ½Ñ‹Ğµ ĞºĞ¾Ğ½Ñ‚Ñ€Ğ°ĞºÑ‚Ñ‹. ĞŸÑ€Ğ¸Ğ¼ĞµĞ½ÑĞ¹ Ñ‚ĞµĞºÑƒÑ‰Ğ¸Ğ¹ lean preview cycle Ğ²Ñ‹ÑˆĞµ: Ñ€Ğ°Ğ±Ğ¾Ñ‡Ğ¸Ğµ PR ÑÑ€Ğ°Ğ·Ñƒ Ğ² release, ĞºĞ¾Ñ€Ğ¾Ñ‚ĞºĞ¸Ğµ Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€ĞºĞ¸ ÑĞ±Ğ¾Ñ€ĞºĞ¸/Ñ€Ğ°Ğ·Ğ¼ĞµÑ€Ğ°/Ğ·Ğ°Ñ‚Ñ€Ğ¾Ğ½ÑƒÑ‚Ğ¾Ğ³Ğ¾ Ğ¿Ğ¾Ğ²ĞµĞ´ĞµĞ½Ğ¸Ñ, Ğ¾Ğ´Ğ½Ğ° Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€ĞºĞ° Ğ¸Ğ·Ğ¼ĞµĞ½Ñ‘Ğ½Ğ½Ğ¾Ğ³Ğ¾ ÑÑ†ĞµĞ½Ğ°Ñ€Ğ¸Ñ Ğ¿Ğ¾ÑĞ»Ğµ Ğ¿Ğ°ĞºĞµÑ‚Ğ½Ğ¾Ğ¹ Ğ¿ÑƒĞ±Ğ»Ğ¸ĞºĞ°Ñ†Ğ¸Ğ¸. ĞŸĞ¾Ğ»Ğ½Ñ‹Ğµ CI/visual/SEO Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€ĞºĞ¸ Ğ¾Ñ‚Ğ»Ğ¾Ğ¶ĞµĞ½Ñ‹ Ğ´Ğ»Ñ Search3 draft Ğ¿Ğ¾ ÑĞ²Ğ½Ğ¾Ğ¼Ñƒ ÑƒĞºĞ°Ğ·Ğ°Ğ½Ğ¸Ñ Ğ²Ğ»Ğ°Ğ´ĞµĞ»ÑŒÑ†Ğ°; Ğ¿ĞµÑ€ĞµĞ´ production-review Ğ¾Ğ½Ğ¸ Ğ²Ğ¾Ğ·Ğ²Ñ€Ğ°Ñ‰Ğ°ÑÑ‚ÑÑ. ĞĞµ ÑĞ¾Ğ·Ğ´Ğ°Ğ²Ğ°Ğ¹ Ğ´ÑƒĞ±Ğ»Ğ¸Ñ€ÑƒÑÑ‰ÑƒÑ CI-Ğ¸Ğ½Ñ„Ñ€Ğ°ÑÑ‚Ñ€ÑƒĞºÑ‚ÑƒÑ€Ñƒ Ğ¸ Ğ½Ğµ Ğ·Ğ°Ğ¿ÑƒÑĞºĞ°Ğ¹ Ğ¿Ğ¾Ğ»Ğ½Ñ‹Ğ¹ visual suite Ñ€Ğ°Ğ´Ğ¸ Ğ´Ğ¾ĞºÑƒĞ¼ĞµĞ½Ñ‚Ğ°Ñ†Ğ¸Ğ¸.
-
-ĞĞµ Ğ¾ÑÑ‚Ğ°Ğ½Ğ°Ğ²Ğ»Ğ¸Ğ²Ğ°Ñ‚ÑŒÑÑ Ğ¿Ğ¾ÑĞ»Ğµ Ğ¾Ğ´Ğ½Ğ¾Ğ³Ğ¾ PR Ğ¸Ğ»Ğ¸ ĞºĞ¾Ğ¼Ğ¼Ğ¸Ñ‚Ğ°, ĞµÑĞ»Ğ¸ Ğ² Ñ‚ĞµĞºÑƒÑ‰ĞµĞ¼ Ğ·Ğ°Ğ¿ÑƒÑĞºĞµ ĞµÑÑ‚ÑŒ Ğ²Ğ¾Ğ·Ğ¼Ğ¾Ğ¶Ğ½Ğ¾ÑÑ‚ÑŒ ÑĞ»ĞµĞ´ÑƒÑÑ‰ĞµĞ³Ğ¾ Ğ±ĞµĞ·Ğ¾Ğ¿Ğ°ÑĞ½Ğ¾Ğ³Ğ¾ ÑˆĞ°Ğ³Ğ°. Ğ¡Ğ½Ğ°Ñ‡Ğ°Ğ»Ğ° Ğ´Ğ¾Ğ²Ğ¾Ğ´Ğ¸ Ğ±Ğ»Ğ¾ĞºĞ¸Ñ€ÑƒÑÑ‰Ğ¸Ğµ Ğ¾ÑˆĞ¸Ğ±ĞºĞ¸ ÑĞ²Ğ¾ĞµĞ³Ğ¾ Ğ¸Ğ·Ğ¼ĞµĞ½ĞµĞ½Ğ¸Ñ Ğ´Ğ¾ Ğ¸ÑĞ¿Ñ€Ğ°Ğ²Ğ»ĞµĞ½Ğ¸Ñ Ğ»Ğ¸Ğ±Ğ¾ Ğ±ĞµĞ·Ğ¾Ğ¿Ğ°ÑĞ½Ğ¾Ğ³Ğ¾ Ğ¾Ñ‚ĞºĞ°Ñ‚Ğ°, Ğ·Ğ°Ñ‚ĞµĞ¼ Ğ¿Ñ€Ğ¾Ğ´Ğ¾Ğ»Ğ¶Ğ°Ğ¹. ĞŸÑ€Ğ¸ Ğ²Ğ½ĞµÑˆĞ½ĞµĞ¼ Ğ±Ğ»Ğ¾ĞºĞµÑ€Ğµ Ğ·Ğ°Ğ¿Ğ¸ÑˆĞ¸ ĞµĞ³Ğ¾ Ğ¸ Ğ¿Ñ€Ğ¾Ğ´Ğ¾Ğ»Ğ¶Ğ¸ Ğ½ĞµĞ·Ğ°Ğ²Ğ¸ÑĞ¸Ğ¼ÑƒÑ Ğ±ĞµĞ·Ğ¾Ğ¿Ğ°ÑĞ½ÑƒÑ Ñ€Ğ°Ğ±Ğ¾Ñ‚Ñƒ. Ğ¢Ñ€ĞµĞ±ÑƒĞµĞ¼Ğ°Ñ Ñ„Ğ¸Ğ·Ğ¸Ñ‡ĞµÑĞºĞ°Ñ Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€ĞºĞ° Safari, ÑÑ€Ğ¸Ğ´Ğ¸Ñ‡ĞµÑĞºĞ¸Ğµ Ğ¼Ğ°Ñ‚ĞµÑ€Ğ¸Ğ°Ğ»Ñ‹ Ğ¸ production approval Ğ½Ğµ Ğ±Ğ»Ğ¾ĞºĞ¸Ñ€ÑƒÑÑ‚ Ğ½ĞµĞ·Ğ°Ğ²Ğ¸ÑĞ¸Ğ¼Ñ‹Ğ¹ Ñ€Ğ°Ğ·Ñ€ĞµÑˆÑ‘Ğ½Ğ½Ñ‹Ğ¹ presentation refactor, Ğ½Ğ¾ Ğ½Ğµ Ğ¼Ğ¾Ğ³ÑƒÑ‚ Ğ±Ñ‹Ñ‚ÑŒ Ğ¾Ğ±ÑŠÑĞ²Ğ»ĞµĞ½Ñ‹ Ğ²Ñ‹Ğ¿Ğ¾Ğ»Ğ½ĞµĞ½Ğ½Ñ‹Ğ¼Ğ¸ Ğ°Ğ²Ñ‚Ğ¾Ğ¼Ğ°Ñ‚Ğ¸Ñ‡ĞµÑĞºĞ¸.
-
-Ğ—Ğ°Ğ¿Ñ€ĞµÑ‰ĞµĞ½Ğ¾ Ğ¼ĞµĞ½ÑÑ‚ÑŒ Tourvisor/API, Ñ€Ğ°ÑÑ‡Ñ‘Ñ‚ Ñ†ĞµĞ½Ñ‹, lead transport/Ğ¼Ğ°Ğ¿Ğ¿Ğ¸Ğ½Ğ³, ĞœĞµÑ‚Ñ€Ğ¸ĞºÑƒ/Ñ†ĞµĞ»Ğ¸, Ğ»Ğ¾Ğ³Ğ¾Ñ‚Ğ¸Ğ¿ Ğ¸ ÑĞ¾ÑĞµĞ´Ğ½Ğ¸Ğµ Ğ¿Ñ€Ğ¾ĞµĞºÑ‚Ñ‹. ĞĞµ Ğ¾Ñ‚Ğ¿Ñ€Ğ°Ğ²Ğ»ÑĞ¹ Ñ€ĞµĞ°Ğ»ÑŒĞ½Ñ‹Ğµ Ğ·Ğ°ÑĞ²ĞºĞ¸. Ğ Ğ°Ğ·Ñ€ĞµÑˆĞµĞ½Ñ‹ Ğ²ĞµÑ‚ĞºĞ¸, ĞºĞ¾Ğ¼Ğ¼Ğ¸Ñ‚Ñ‹, draft PR Ğ¸ CI. ĞĞµ merge Ğ² main Ğ¸ Ğ½Ğµ deploy production. ĞĞµ Ğ·Ğ°Ğ¿ÑƒÑĞºĞ°Ğ¹ Ğ°Ğ²Ñ‚Ğ¾Ğ¼Ğ°Ñ‚Ğ¸Ñ‡ĞµÑĞºĞ¸Ğ¹ deploy ĞºĞ°Ğº Ğ¿Ğ¾Ğ±Ğ¾Ñ‡Ğ½Ñ‹Ğ¹ ÑÑ„Ñ„ĞµĞºÑ‚ refactor-pass; Ğ¾Ñ‚Ğ´ĞµĞ»ÑŒĞ½Ğ¾ Ñ€Ğ°Ğ·Ñ€ĞµÑˆÑ‘Ğ½Ğ½Ñ‹Ğ¹ preview-Ğ¿Ñ€Ğ¾Ñ†ĞµÑÑ Ğ¾ÑÑ‚Ğ°Ñ‘Ñ‚ÑÑ Ğ¾Ñ‚Ğ´ĞµĞ»ÑŒĞ½Ğ¾Ğ¹ exact-SHA Ğ¾Ğ¿ĞµÑ€Ğ°Ñ†Ğ¸ĞµĞ¹ Ñ ĞµĞ³Ğ¾ ÑÑƒÑ‰ĞµÑÑ‚Ğ²ÑƒÑÑ‰Ğ¸Ğ¼Ğ¸ Ğ¾Ğ³Ñ€Ğ°Ğ½Ğ¸Ñ‡ĞµĞ½Ğ¸ÑĞ¼Ğ¸. ĞĞµ Ğ¸Ğ·Ğ¼ĞµĞ½ÑĞ¹ ÑĞµÑ€Ğ²ĞµÑ€Ñ‹ Ñ‡ĞµÑ€ĞµĞ· SentinelX Ğ² Ñ€Ğ°Ğ¼ĞºĞ°Ñ… ÑÑ‚Ğ¾Ğ³Ğ¾ Ğ·Ğ°Ğ´Ğ°Ğ½Ğ¸Ñ.
-
-ĞŸĞ¾ÑĞ»Ğµ ĞºĞ°Ğ¶Ğ´Ğ¾Ğ³Ğ¾ ÑÑƒÑ‰ĞµÑÑ‚Ğ²ĞµĞ½Ğ½Ğ¾Ğ³Ğ¾ Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€ĞµĞ½Ğ½Ğ¾Ğ³Ğ¾ ÑˆĞ°Ğ³Ğ° Ğ¾Ğ±Ğ½Ğ¾Ğ²Ğ»ÑĞ¹ presentation_refactor_checkpoint Ğ² AUTOPILOT_STATE.json Ğ¸ handoff Ğ² #1334/#996, Ğ½Ğµ Ğ·Ğ°Ğ¼ĞµĞ½ÑÑ Ğ¸ÑÑ‚Ğ¾Ñ€Ğ¸Ñ Ğ¿ÑƒĞ±Ğ»Ğ¸ĞºĞ°Ñ†Ğ¸Ğ¹ Ñ€ĞµĞ·ÑƒĞ»ÑŒÑ‚Ğ°Ñ‚Ğ°Ğ¼Ğ¸ Ğ»Ğ¾ĞºĞ°Ğ»ÑŒĞ½Ğ¾Ğ¹ ÑĞ±Ğ¾Ñ€ĞºĞ¸. Ğ—Ğ°Ñ„Ğ¸ĞºÑĞ¸Ñ€ÑƒĞ¹ ÑĞ»ĞµĞ´ÑƒÑÑ‰Ğ¸Ğ¹ ĞºĞ¾Ğ½ĞºÑ€ĞµÑ‚Ğ½Ñ‹Ğ¹ ÑˆĞ°Ğ³ Ğ¸ Ğ³Ñ€Ğ°Ğ½Ğ¸Ñ†Ñ‹. Ğ’ Ğ¸Ñ‚Ğ¾Ğ³Ğ¾Ğ²Ğ¾Ğ¼ Ğ¾Ñ‚Ñ‡Ñ‘Ñ‚Ğµ ÑƒĞºĞ°Ğ¶Ğ¸ Ñ‚Ğ¾Ñ‡Ğ½Ñ‹Ğ¹ SHA, Ñ„Ğ°ĞºÑ‚Ğ¸Ñ‡ĞµÑĞºĞ¸ Ğ²Ñ‹Ğ¿Ğ¾Ğ»Ğ½ĞµĞ½Ğ½Ñ‹Ğµ Ğ¸Ğ·Ğ¼ĞµĞ½ĞµĞ½Ğ¸Ñ, Ñ€ĞµĞ·ÑƒĞ»ÑŒÑ‚Ğ°Ñ‚Ñ‹ Ğ¿Ñ€Ğ¸Ğ¼ĞµĞ½Ğ¸Ğ¼Ñ‹Ñ… Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€Ğ¾Ğº Ğ¸ Ğ¾Ğ±Ñ‰Ğ¸Ğ¹ Ñ€Ğ°Ğ·Ğ¼ĞµÑ€/Ñ‡Ğ¸ÑĞ»Ğ¾ ÑÑ‚Ñ€Ğ¾Ğº Ñ‡ĞµÑ‚Ñ‹Ñ€Ñ‘Ñ… CSS Ğ¸ Ñ‡ĞµÑ‚Ñ‹Ñ€Ñ‘Ñ… JS Ğ¸Ğ· manifest Ğ±ĞµĞ· Ğ´Ğ²Ğ¾Ğ¹Ğ½Ğ¾Ğ³Ğ¾ ÑƒÑ‡Ñ‘Ñ‚Ğ° src/v2. ĞÑ‚Ğ»Ğ¸Ñ‡Ğ°Ğ¹ Â«Ğ¿Ğ¾Ğ´Ğ³Ğ¾Ñ‚Ğ¾Ğ²Ğ»ĞµĞ½Ğ¾Â», Â«CI Ğ¿Ñ€Ğ¾Ğ¹Ğ´ĞµĞ½Â», Â«Ğ¾Ğ¿ÑƒĞ±Ğ»Ğ¸ĞºĞ¾Ğ²Ğ°Ğ½Ğ¾ Ğ² previewÂ» Ğ¸ Â«Ğ¿Ñ€Ğ¾Ğ²ĞµÑ€ĞµĞ½Ğ¾ Ğ² productionÂ». ĞĞµ Ğ¾Ğ±ĞµÑ‰Ğ°Ğ¹ Ğ¿Ñ€Ğ¾Ğ´Ğ¾Ğ»Ğ¶ĞµĞ½Ğ¸Ğµ Ğ¼ĞµĞ¶Ğ´Ñƒ Ğ·Ğ°Ğ¿ÑƒÑĞºĞ°Ğ¼Ğ¸ Ğ±ĞµĞ· Ñ€ĞµĞ°Ğ»ÑŒĞ½Ğ¾ Ğ²ĞºĞ»ÑÑ‡Ñ‘Ğ½Ğ½Ğ¾Ğ³Ğ¾ Ğ¿Ğ»Ğ°Ğ½Ğ¸Ñ€Ğ¾Ğ²Ñ‰Ğ¸ĞºĞ°.
-
-## Checkpoint metrics, not a live measurement
-
-At code SHA 2d4cd972: Search3 CSS is 375,207 bytes / 4,268 physical lines; JS is 162,360 bytes / 1,928 lines. Total: 537,567 bytes / 6,196 lines across eight public assets, uncompressed, excluding shared runtime/legacy. Recompute after material code changes. These source metrics do not establish deployed size or measured page-load performance.
-
-The code checkpoint passed 23 PR workflows, with one expected skipped workflow, as recorded in PR #1334. This handoff-only document makes no new runtime/visual/production verification claim.
-
-## Verified filter-rail checkpoint â€” 2026-09-06
-
-Exact code head: `623b5c17b9fef927c8e95fb6a42333a905e9b584`.
-
-- `53f482eb` removed the unused mobile drawer lifecycle so the active mobile controls have one owner.
-- `51ebb674` keeps slider labels immediate but coalesces rapid price filtering to one render per animation frame with the latest values.
-- `4679200a` removed the second filter-change announcement after a fresh result source; `renderRail()` remains the single announcement owner.
-- `35345fb1` invalidates a queued price render on both local reset and `v2:search-reset`.
-- `35e2ae36` removed the corresponding orphan drawer cascade after the ownership regression proved those selectors had no owner.
-- `35207333` cancels a superseded queued price render when a sea-distance or charter change immediately applies the same latest price state.
-- `b1b5791c` reapplies active local filters when a fresh progressive result source arrives, so new unfiltered cards cannot leak into the visible set.
-- `b72f7494` cancels a pending price frame when that fresh source already consumed the latest price state.
-- `43856063` keeps sort/same-reference rerenders outside the public filter-change event contract.
-- `56099e49` skips the redundant count/word DOM writes for that same-reference path.
-- `f0198905` keeps the existing filter controls mounted during progressive source updates while synchronizing their price bounds and preserving the selected price.
-- `a8ae0202` removes the now-obsolete silent full-render mode, leaving one explicit initialization/reset contract.
-- `21bf320c` keeps the user's price limit separate from temporary source bounds, so a narrower intermediate result only clamps the displayed slider and the chosen limit returns with wider results.
-- `d66183a4` makes â€œreset allâ€ clear both form budget bounds and both flight constraints before the existing single desktop submit.
-- `41c27412` restores the result-rail charter state from the form on search reset and mirrors local charter changes back to that form without adding another search request.
-- `6978435a` keeps the active-filter count and public event synchronized when price, sea or charter changes while the current source is empty.
-- `243d0515` treats an empty filtered output as a valid previous render, preserving the original hotels when that output is rendered again and the filter is later cleared.
-- `134611b5` removes the legacy `data-ds2-price` opt-in from the Search3 slider, so the retained base listener cannot perform a second immediate filter pass before Search3's scheduled pass.
-- `0dc0efe6` exposes the sea-distance facet only for a complete positive `seaDistance` payload and resets it before filtering when a progressive source becomes incomplete.
-- `911ef327` restores the unfiltered result source once on reset and publishes one final count event instead of two identical announcements.
-- `623b5c17` removes the general price collector from the no-tour branch and reads the normalized hotel price directly; focused regression preserves exclusion and restoration behavior.
-
-`c4d796e2` is a transport-recovery commit only: it restores the complete generated bundle after the preceding API upload was truncated, and introduces no separate behavior change. The final source/generated tree is exact and verified.
-
-Focused price-input and filter-ownership regressions pass, the generated assets match their sources, and all 23 applicable PR workflows passed with one expected migration-only skip. Core run: `34019983915`; responsive visual run: `34019983937`, artifact `9985164901`, digest `sha256:aac4f850d4db60708ea895031d1ce4552ef2f8e720d784e697312621216d3d37`; whole-site artifact run: `34019983948`, artifact `9985158068`, digest `sha256:4b08abf84d934b222994c460ad498260c5d66cebb40bb1c2b6f832ad4f9e7896`.
-
-At this code head, the four public CSS assets are 366,267 bytes / 4,196 physical lines; the four public JS assets are 158,758 bytes / 1,921 lines. Total: 525,025 bytes / 6,117 lines, uncompressed, excluding shared runtime and legacy and without double-counting `src` and generated `v2` files. Compared with the `2d4cd972` checkpoint, the active eight-asset set is 12,542 bytes and 79 lines smaller; this aggregate includes both the JS work and the independently completed orphan CSS/lifecycle cleanup, so it is not attributed to one commit or presented as a measured page-load gain.
-
-Status boundary: prepared and CI-verified only. This refactor pass did not publish a new preview, merge `main`, deploy production, alter Tourvisor/API, price arithmetic, lead transport/mapping, Metrika/goals, logo or neighboring projects. The next run must refresh the release head and prove a new independent problem before changing code.
-
-## S3_RETIRED_TOOLBAR_CSS â€” verified preparation, 2026-09-06
-
-Code: `5cd00f0d3795822803b19c0464d1d3134b996440`. Removed only retired mobile action/filter/sort/chip selectors in four existing CSS sources. Actual toolbar shell, mrf bar/sheet and sort owner retained. All seven other public assets and protected runtime unchanged.
-
-Public assets: 521702 bytes / 6091 physical lines. Standard PR CI still pending at this checkpoint; no merge to main or deploy. Earlier completed steps above must not be repeated.
-
-Next: Run standard PR CI and integrate into release only; continue the separately reproduced duplicate toolbar-task scheduler step. Never merge main or deploy as a side effect.
-
-## S3_TOOLBAR_LOCAL_QUEUE â€” verified preparation, 2026-09-06
-
-Code: `f3804f9e64b49751994fa99f0b6a11e1a13ae4c6`. One local zero-delay task for progressive-results and compact-breakpoint toolbar mounts, cancelled on reset or empty results. Timer ID zero, late mrf initialization, stable DOM and two-way native/proxy sort handoff covered. No new observer/global scheduler or filtering/search/price/lead contract change.
-
-Existing responsive test passes 375/430/1024/1348/1440. Standard PR CI pending. Public assets: 522235 bytes / 6107 lines; no main merge or deployment.
-
-Next: Review and integrate CSS then scheduler PR into release only after applicable CI. Inspect fresh responsive evidence, update #996/#1334, and audit the remaining toolbar visibility across desktop resize before changing another owner. No main merge/deploy.
-
-Scheduler source formatting normalized as `7b869e12d80d7c6c047559545a3118a64e39249e`; behavior unchanged and exact local source hash verified. CSS #1373 integrated as27649614 with23applicable CI success +1expected skipped. Scheduler PR #1374 remains release-only, no deployment.
-
-## Current verified toolbar checkpoint â€” 2026-09-06
-
-Exact code: `57a675f0a43a1a6ddf2cb7e24dafebc94a11a9f8`; release integration: `0448750ba6c7ad77538794a0c45f97a5e11ea18d`. Historical pending/preparation notes above describe their earlier snapshots, not the current queue.
-
-- #1373 â†’ `27649614`: removed retired mobile action/filter/sort/chip CSS; canonical mrf owner and actual toolbar retained. CSS cleanup removed 3323 bytes / 26 lines.
-- #1374 â†’ `204b7104`: one deferred toolbar mount for result/breakpoint bursts, with reset/empty cancellation. Regression: 40 pending tasks before, 1 after; stable DOM and two-way sort retained.
-- #1375 â†’ `0448750b`: mobile-to-desktop resize no longer exposes an extra mobile sort row. Existing browser regression covers both sides of999/1000, preserved form values, roundtrip to430, Escape and focus return.
-
-Code build/source (5 tests), presentation (12 tests) and existing responsive checks passed. Final code integration passed 23 applicable PR workflows plus one expected migration-only skip: core34022534281, visual34022534319, whole-site artifact34022534215. Focused responsive evidence: run34022311073, artifact9985910235, sha256:380826e39991d04d3427274eec2c49dd7a742d7119d42eeed7f2d1404f72dbe1. Desktop1348/mobile430 screenshots inspected; physical Safari and live-site acceptance are not claimed. The earlier test initialization race was diagnosed and corrected in the fixture; no assertion was removed.
-
-Eight public assets: CSS363166 bytes/4175 lines; JS159313/1937; total522479/6112, uncompressed. Net for this continuation from49f2d2e: -2546 bytes/-5 lines. This is source accounting, not a page-load benchmark. Prior preview/production publication records are preserved; no main merge, deployment or real leads in this continuation.
-
-Next: audit only proven remaining toolbar cascade overlap using the existing browser suite and source owners. Do not create another drawer, observer, global scheduler or test workflow, repeat these three completed steps, or alter protected contracts.
-
-## S3_CHARTER_FACET_COMPLETENESS â€” verified release checkpoint, 2026-09-06
-
-Exact release code: `5832457c6d43270290967a49f815a12463b19c18`; preparation PR: #1377.
-
-- The result-rail charter facet is visible only when every loaded normalized tour row contains an explicit boolean `isCharter` value.
-- An incomplete progressive source hides and clears only the local facet. It does not silently rewrite the primary `onlyCharter` search constraint.
-- When complete data arrives again, the local control and active-count state are restored from the primary form.
-- The focused regression failed against the unchanged runtime, then passed after the guard. It covers empty, complete, incomplete-progressive and restored-form paths.
-
-The source build/check, focused filter-rail checks and production-presentation suite passed locally. On the integrated release SHA, all 23 applicable PR workflows passed and one migration-only workflow was expectedly skipped. Core run: `34022965922`; responsive visual run: `34022965889`, artifact `9986123628`, digest `sha256:143d2e896580549a814c39534e37644fefdea77b43737eb4ac0d6fae77f1cb30`; whole-site artifact run: `34022965916`, artifact `9986118224`, digest `sha256:26493e2cafc0274a3556480c3e0dda0f32f42bb21197886e49576451368e4afb`. Search/readability images at 375 and 1440 px were inspected; no new clipping or owner regression was found. This is not a physical Safari or live-site acceptance claim.
-
-Eight public assets: CSS 363,166 bytes / 4,175 lines; JS 160,007 bytes / 1,940 lines; total 523,173 bytes / 6,115 lines, uncompressed and without double-counting `src` and generated `v2` files. The +694 bytes / +3 lines from the previous release code is the explicit completeness guard and regression-backed state synchronization, not a measured page-load result.
-
-Status boundary: integrated and CI-verified in the release draft only. Preview, `main` and production were not updated; Tourvisor/API, price arithmetic, lead transport/mapping, Metrika/goals, logo and neighboring projects were not changed.
-
-Next: refresh the release head and prove a new independent presentation ownership or incomplete-facet defect before editing. Do not repeat charter/sea completeness, reset, price-frame or the three completed toolbar passes.
-
-## S3_PRICE_FACET_COMPLETENESS â€” verified release checkpoint, 2026-09-06
-
-Exact release code: `312353cad6aedec005dab4d590c97a1e1c216d17`; preparation PR: #1379.
-
-- The local price facet is visible only when every loaded normalized tour row has a positive price, or a hotel without tour rows has its own positive normalized price.
-- An incomplete progressive source hides the price control and clears its local limit, so an unknown price is not presented under a misleading visible â€œup toâ€ promise.
-- The existing no-tour hotel price path remains supported and is covered by the focused regression.
-- The focused regression failed against the unchanged runtime, then passed after the completeness guard. Empty, complete and incomplete-progressive paths are covered.
-
-Source build/check, focused filter-rail checks and the production-presentation suite passed locally. On the integrated release SHA, 22 applicable workflow runs completed successfully and one migration-only run was expectedly skipped. The only job (`101459884290`) in Security guard run `34023357535` and all of its steps completed successfully at `2026-09-06T08:59:20Z`, while GitHub still reported the enclosing run wrapper as `in_progress` at checkpoint time; do not convert that external status lag into a claim of 23 completed workflows until rechecked. Core run: `34023357536`; responsive visual run: `34023357572`, artifact `9986254745`, digest `sha256:fe7badee8d98acca7f1d9028d9beec4e4e0eb41ffcc6be0cb1328ee00aae414f`; whole-site artifact run: `34023357550`, artifact `9986248680`, digest `sha256:8dfe129b8f4de840927e7feda7707a29429e4be15c6412e89c0f56548f494fb5`. Readability images at 375 and 1440 px were inspected with no new clipping or owner regression. This is not a physical Safari or live-site acceptance claim.
-
-Eight public assets: CSS 363,166 bytes / 4,175 lines; JS 160,559 bytes / 1,943 lines; total 523,725 bytes / 6,118 lines, uncompressed and without double-counting `src` and generated `v2` files. The +552 bytes / +3 lines from the previous code checkpoint are the explicit completeness guard and regression, not a measured page-load result.
-
-Status boundary: integrated in the release draft; 22 workflows and the Security guard job are verified successful, with the enclosing Security workflow run status still lagging. Preview, `main` and production were not updated; Tourvisor/API, price arithmetic, lead transport/mapping, Metrika/goals, logo and neighboring projects were not changed.
-
-Next: first recheck Security guard run `34023357535`. After its wrapper finalizes, update the exact CI count; then prove a new independent defect before editing. Do not repeat price/charter/sea completeness, reset, price-frame or the three completed toolbar passes.
-
-
-### Completed source preparation: native CSS nesting in results
-
-- Baseline release `86697aa10be922f041c66603f352c7479f227aa1`; published preview remains `4517879c22929706aabc3365b7e3906ecf19bc24` until an exact artifact passes CI and isolated publication.
-- Grouped consecutive rules under a single identical `body.search3-candidate` or `html body.search3-candidate` parent, with explicit `&` in every child. No declarations or at-rules in grouping parents; existing media contexts/order and declaration bytes preserved.
-- Main results CSS: 258997 â†’ 229195 bytes (âˆ’29802). Eight public assets: 433026 â†’ 403224 bytes; seven other assets remain byte-identical. Audit: `docs/project/search3-css-nesting-results.json`.
-- Expanded ordered selector/declaration/media streams match the baseline exactly. Source build tests and focused presentation tests pass locally; PHP-dependent local check awaits CI. Cascade ownership hashes updated without changing donor identity or section order.
-- Browser boundary: this test variant requires native CSS nesting (explicit `&`, Safari 16.5+ per WebKit); engines without nesting are unsupported. Physical Safari qualification remains open. Production and protected business contracts remain locked.
-- Next: responsive/browser CI, then the same bounded rewrite in the remaining CSS owners and one combined exact-artifact preview publication.
-
-
-### Completed source preparation: remaining CSS owners
-
-- Builds on results nesting code `9597192cb58c00814a84ba21ee3f32f96f38dc53` / #1399; public preview has not changed yet.
-- Applied the same single-parent, explicit-`&` rewrite to six modules in entry, result cards and selected flow: 23 groups, âˆ’3576 bytes. All four expanded CSS streams match this baseline; all four JS files and the main results CSS are byte-identical. Audit: `docs/project/search3-css-nesting-secondary.json`.
-- Combined reduction from release `86697aa`: CSS 290846 â†’ 257468 bytes (âˆ’33378, 11.48%); JS stays 142180 bytes. Eight-asset total 433026 â†’ 399648 bytes (âˆ’7.71%).
-- Native CSS nesting browser boundary from the results pass applies. Existing source ownership, protected acceptance guards and production/business locks remain unchanged. Publish only the final combined artifact after required CI and release integration.
-
-
-### Completed source preparation â€” private injected CSS sources
-
-Baseline release `d7882e504a6e66d3f3d71910e4f6f4650aa8b494`; preview remains `74b87bff` until separate publication. Two static injected-style owners now use private CSS sources and build-time escaped string literals at the original insertion positions. Six explicit single-parent nesting groups preserve expanded ordered selector/declaration/media streams. Original IDs, selected-root guard and idempotence verified against compiled owners. No earlier linked stylesheet, new request/global or behavior/price/lead/API change.
-
-JS123837â†’121897 for the main asset (âˆ’1940 bytes); seven other assets byte-identical. Eight-asset total399648â†’397708 bytes /5680lines; CSS257468/3855, JS140240/1825. Source owners11230â†’490 and4218â†’434bytes. Eleven build tests and14 presentation checks pass locally with one PHP-dependent local skip; PHP awaits existing CI. Audit: `docs/project/search3-injected-css-sources.json`. Next: CI, then remaining proven same-selector/context declaration repetition; one combined exact-artifact preview after checks.
-
-
-### Completed source preparation â€” later CSS declarations
-
-Private injected CSS #1402 / `10d78a4463732a1d730d94af90b04cb6af795d37` passed23 applicable workflows and one expected skip: core34047082610, visual34047082664, flight34047082620, build34047082564. Preview still74b87bff.
-
-The next source pass removes182 earlier declarations with a later identical full expanded selector list, media/supports context, property and important flag; retained values win later in the same stylesheet. Every removal records its later witness; existing browser CI now requires CSS.supports for those witnesses. No shorthand expansion, selector-list merging or protected acceptance-source change. Removed74 now-empty style/group/media rules; retained ordered declaration stream verified. Full public final per-selector/context/property/priority maps match baseline. Audit: `docs/project/search3-active-css-declarations.json`. Cascade donor/order unchanged; hashes updated. Publish only after responsive and applicable CI pass.
-
-### Completed source preparation â€” repeated descendant prefixes in main CSS
-
-Baseline release `2b2213db2865973ff4f26c3194a7cfdb6f0feaac`; published preview remains `731eb3a8e1e490d2c07f4727135c373449d4958f` until separate exact publication. Factored 119 adjacent groups under repeated complete descendant prefixes within existing main CSS nesting. Every new parent has one selector and only nested rules; every child has one leading explicit `&`, including bare `&` when selecting the parent itself. Maximum nesting depth is three. Recursive expanded ordered selector/declaration/media streams are exact. Acceptance guards and cascade donor/order remain; cascade hashes updated.
-
-Main CSS saves 32659 public bytes; seven other assets are byte-identical. Total eight files: 389651 â†’ 356992 bytes. Audit: `docs/project/search3-css-descendant-results.json`. Browser compatibility remains native nesting, Safari 16.5+; physical Safari unqualified. Next: existing responsive CI, then remaining CSS owners and a bounded booking-layout JS reduction; one combined isolated preview after checks. No production or protected business changes.
-
-### Completed source preparation â€” remaining descendant groups and booking layout
-
-First source #1405 / `56bc654af46ee8814ad2b62eec5d83f9ae02aaa4` passed 23 applicable workflows and one expected skip; integrated into release only. Core 34049874338, responsive 34049874332, flight 34049874340, build 34049874271. Editor images at 375/1440 inspected. Published preview still `731eb3a8`.
-
-Nineteen additional single-parent groups in entry/cards/selected CSS preserve recursively expanded ordered CSS streams. Public secondary CSS saves 5287 bytes. Booking layout is a private include inside the original IIFE; source owner 6859 â†’ 4472 bytes and layout part 2246 bytes. Fifteen setters share one local function, saving 183 served JS bytes. Eight layout states pass against baseline and current compiled owners; reversing only the setter replacement restores the original compiled owner exactly. Price arithmetic, rendering, scheduling and events remain unchanged.
-
-Combined eight-asset total: 389651 â†’ 351522 bytes (âˆ’38129). CSS 211465 bytes /4007 lines; JS 140057 /1826; total 5833 lines, +225 due to explicit grouping. Audit: `docs/project/search3-css-descendant-secondary.json`. Next: second source CI and one combined exact isolated preview publication. Native nesting boundary and production/protected locks retained.
-
-## S3_RESULTS_CARD_OWNER_RETIREMENT â€” checked release, 2026-09-07
-
-Source PR #1475 / `7c2f5a07146e5b1c03c2484e0d1ee174ae072655`; checked release `85e387ce3325f186128c86e53e36d9745fdbdb5b`. The complete legacy result-card and expanded-package geometry family was removed from `results-layout.css`. Required card, facts, disclosure and direct-tour geometry remains in the current `results-cards-v2.css` owner; obsolete comparison, inline-detail and decision-badge chrome is not restored.
-
-Eight public assets are **163280 â†’ 161470 raw bytes (âˆ’1810 CSS bytes)**. Main CSS is 60819 â†’ 55036 (âˆ’5783); the compact current card owner is 6798 â†’ 10771 (+3973); six assets are byte-identical. This is the measured reduction for this source package, not a cumulative baseline claim.
-
-Security `34129515788` and exact artifact build `34129515852` completed successfully. Reusable whole-site artifact `10021526537`, digest `sha256:a37c645ecff250626d0ca4aed903cb8a5c72d7caef306d70344efe08635ba350`. Geometry evidence `10021525549`, digest `sha256:405ffc4000cc166ca0bb2f1caa8a6fd0980776a3453c59404d03dec208627cd6`, covers collapsed and expanded cards at 375/760/999/1000/1440: no horizontal overflow, photo/body overlap, hidden-row leak or clipped facts/actions. Representative images were inspected. Source build/check,13 source-build tests,22 presentation tests and both owner validators passed; one local PHP-only skip is covered by exact artifact CI.
-
-Status boundary: checked release only. Published preview remains `b9445bc3c8aa0713b148241bcddeefdf07576079`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical Safari/safe-area and live current-source acceptance are deferred. Do not repeat #1474 or #1475; audit the next whole presentation owner from fresh release and bundle only a material reduction. Price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping, analytics and eight public paths remain protected.
-
-## S3_BOOKING_FORMAT_OWNER_LOCALIZATION â€” checked release, 2026-09-07
-
-Source PR #1476 / `11cbdb17e7cf241e5ad8c719d0554a23ef9e58f4`; checked release `b995bdda0598fb1c3bb4e8efa2f9387c058c0f0b`. The standalone `presentation-text.js` and `flight-presentation.js` runtime owners were retired. Their required escaping, supplier-text, party/destination, flight and baggage presentation now live as private `booking-summary` format/services parts; the internal global adapters and one runtime IIFE are gone.
-
-Eight public assets are **161470 â†’ 161116 raw bytes (âˆ’354 JS bytes)**. `v2/search3-results-filters-v1.js` is 54407 â†’ 54053; seven assets are byte-identical. This is the measured reduction for this source package, not a cumulative baseline claim.
-
-Security `34130331196` and exact artifact build `34130331206` completed successfully. Reusable whole-site artifact `10021826730`, digest `sha256:2ed6b2ba104e775be24ddf308ee9e61910d0a2e3d7108c232d37cea663d7518a`. Source build/write/check, presentation utilities, flight presentation, booking summary/services and source/presentation suites passed. Price arithmetic, tour/flight events, booking scheduling, lead lifecycle, URL/payload, Tourvisor/API and analytics were not changed.
-
-Status boundary: checked release only. Published preview remains `b9445bc3c8aa0713b148241bcddeefdf07576079`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical Safari/safe-area and live current-source acceptance remain deferred. Do not repeat #1474, #1475 or #1476; audit the next whole presentation owner from the fresh release and bundle only a material reduction.
-
-## S3_ENTRY_RUNTIME_OWNER_LOCALIZATION â€” checked release, 2026-09-07
-
-Source PR #1480 / `d3132c72ab1b98b1819cd6568076c6cda45deba2`; checked release `6eebb1a510e257392e0ebd6c8ea17d554e3be954`. The standalone `entry-v1.js` runtime was retired into a private part of the current `search-form.js` owner. The public `search3-entry-v1.js` path remains present with a zero-byte payload. `Search3CandidateEntryV1.sync`, responsive region placement, the existing price-calendar adapter, results summary, four-delay settle schedule and legacy matchMedia listener fallback remain available.
-
-Eight public assets are **161116 â†’ 160579 raw bytes (âˆ’537 JS bytes)**. `search3-entry-v1.js` is 3226 â†’ 0; `search3-results-filters-v1.js` is 54053 â†’ 56742; six assets are byte-identical. This is the measured reduction for this source package, not a cumulative baseline claim.
-
-Security `34133307944` and exact artifact build `34133307934` completed successfully. Reusable whole-site artifact `10022984486`, digest `sha256:e30614dd479563f2e50f64da1419e26a7bb78e0057d569f6c7631b2f663b9bdf`. Source build/check and 36 source/presentation checks passed; one local PHP-only skip is covered by the exact artifact CI. Price arithmetic, search API, URL/payload, Tourvisor, lead transport/mapping and analytics were not changed.
-
-Status boundary: checked release only. Published preview remains `b9445bc3c8aa0713b148241bcddeefdf07576079`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical Safari/safe-area and live current-source acceptance remain deferred. Next validated candidate is the full `acceptance-guards.css` retirement; rebase its prototype on the fresh release, retain the current drawer/readability/hidden contracts, run focused card and selected-flow geometry, and do not remove `results-tablet-layout.css`.
-
-## S3_ACCEPTANCE_GUARD_OWNER_RETIREMENT â€” checked release, 2026-09-07
-
-Source PR #1482 / `6bf28b3d89426c3aed3f06683d0339aa8e48e6de`; checked release `c42a8bca9bacb447a9bbed529761993669fc61be`. The complete live `acceptance-guards.css` overlay is now provenance-only. Necessary drawer visibility, results/filter/card readability, selected-flow isolation and selected-tour hidden-state truth live in their current toolbar, results, cards, tour-detail and selected-flow owners. Redundant phone alignment, desktop grid/height and completion-status overrides were not restored.
-
-Eight public assets are **159805 â†’ 157523 raw bytes (âˆ’2282 CSS bytes)**. Main results CSS is 54262 â†’ 51784 (âˆ’2478); cards CSS is 10771 â†’ 10894 (+123); selected CSS is 10802 â†’ 10875 (+73); five assets are byte-identical. This is the measured reduction for this source package, not a cumulative baseline claim.
-
-Security `34134720944` and exact artifact build `34134720906` completed successfully. Reusable whole-site artifact `10023536739`, digest `sha256:3f4600d19aab8503a56e6ec53620e257ac25b33e25d2f34b6968a8af71cb6ef5`. Results/drawer geometry artifact `10023536324`, digest `sha256:d156d33365bda1264b06e261853e3eaa26138ad70c8b605445e5f0a76c79854b`, covers 12 collapsed/expanded states at 375/760/761/999/1000/1440. Selected geometry artifact `10023535920`, digest `sha256:ee476ec6d410cb1218bd97ad13c85f73000fed26c41915acf999c4271d468b0d`, proves detail/review/lead equivalence in 12 states at 375/760/1000/1440. Source build/check and 37 source/presentation checks passed; one local PHP-only skip is covered by exact artifact CI.
-
-Status boundary: checked release only. Published preview remains `b9445bc3c8aa0713b148241bcddeefdf07576079`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical Safari/safe-area and live current-source acceptance remain deferred. Do not repeat #1482 or remove `results-tablet-layout.css`; audit the next whole presentation owner against the fresh release and bundle only a material reduction.
-
-## S3_MOBILE_SALES_CARD_OWNER â€” checked release, 2026-09-07
-
-Source PR #1485 / `cca517ac14d7938a7d228d10fdce80d1d450c0ee`; release integration `591feb00f5d3cf1c574093210663c94ef881d019`. The separate `results-mobile-layout.css` donor is provenance-only. Live phone card rules now belong to `results-cards-v2.css`; results tools, drawer/actions, safe-area and scan order remain in `mobile-results-toolbar.css`. The retired five-row compatibility grid and 390px 10/11px fact squeeze were not restored.
-
-Eight public assets are **157523 â†’ 156516 raw bytes (âˆ’1007 CSS bytes)**. Security `34140643757` and exact artifact `34140643794` passed. Reusable whole-site artifact `10025783714`, digest `sha256:e20f0df72a3d5ed509eeeb981ebfb0735fee37117968fbacd04244c819bb6bf1`. Results geometry artifact `10025782914`, digest `sha256:5ee98fb8dabb84ae22e5b3a3469723deb88b959b72dea9f25ef802540c60b1ad`, covers 12 collapsed/expanded card and drawer states at 375/760/761/999/1000/1440.
-
-Status boundary: checked release only. Preview remains `b9445bc3c8aa0713b148241bcddeefdf07576079`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical Safari/safe-area and live current-source interaction are deferred. Audit: `docs/project/search3-mobile-sales-card-owner.json`.
-
-## S3_SINGLE_DESKTOP_FILTER_OWNER â€” checked release, 2026-09-07
-
-Source PR #1486 / `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; checked release `4063a48049f46704dcb94a623d3219361808914b`. The already loaded DS2 result filters are now the sole desktop result-filter UI. Search3 retains only a compact empty-result/reset bridge. Direct/charter/concrete-hotel parameters remain in the canonical edit-search form instead of a duplicate result rail. Two repeated lead-entry hide lists were removed because `Search3SummaryCta.isolateRootChildren()` owns that state synchronously.
-
-Eight public assets are **156516 â†’ 147378 raw bytes (âˆ’9138: âˆ’8605 JS, âˆ’533 CSS)**. `search3-results-filters-v1.js` is 56742 â†’ 48137; main CSS is 49859 â†’ 49326; six assets are byte-identical. Security `34141824444` and exact artifact `34141824479` passed. Reusable artifact `10026227838`, digest `sha256:290789ab82bda4e2169a488ceb3c0449842facce120d47ee811781cb0ad5909b`. The existing selected-geometry detector was strengthened to cover all current selected/review/lead owners; its 12 detail/review/lead states at 375/760/1000/1440 ran and passed. Evidence artifact `10026226970`, digest `sha256:e976c332cd8963aa7b54d00a99082a09e0d58a1c0b4d646b4a7675d03d2a1450`.
-
-The technical raw-size target is reached at **147378 bytes**. Stop byte-only micro-PRs: do not restore the duplicate rail or remove active `results-tablet-layout.css`. Next prepare one accumulated exact isolated preview with a bounded card/filter acceptance pass, then switch priority to selling search UX and a lean Search3 base bundle. Preview is still `b9445bc3`; production remains unchanged and requires explicit visual approval. Live current-source filter interaction and physical Safari/safe-area are deferred. Audit: `docs/project/search3-single-desktop-filter-owner.json`.
-
-## S3_FILTER_MOBILE_ACCUMULATED_PREVIEW â€” published, 2026-09-07
-
-Exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3` was published to the existing isolated whole-site preview by one-shot control #1489 / run `34143220797`; the control was closed without merge. Evidence artifact `10026686548`, digest `sha256:fb43e9546a7df9a836473faf631c3bd6bef1d1336a610371657b7e9491a34589`. The deployment reused source artifact `10026227838` without rebuilding it and verified the exact source tree, archive, manifest, payload checksums and all 715 files.
-
-Noindex, preview lead HTTP 403, Metrika counter 0, internal PHP denial, HTTPS-to-SSH target binding, atomic rollback and 13 unchanged production fingerprints passed. `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`.
-
-Bounded live check: Moscowâ†’Turkey completed with 100 hotels / 445 tours. The desktop budget rail reduced visible hotels 100â†’3 at 80000 RUB and Reset restored 100. Supplier-incomplete meal/category/rating/sea facets stayed hidden by the existing completeness guard; `Ğ˜Ğ·Ğ¼ĞµĞ½Ğ¸Ñ‚ÑŒ Ğ¿Ğ¾Ğ¸ÑĞº` exposed category, rating, meal, concrete hotel and direct-flight parameters. No lead was submitted. Physical Safari and device safe-area remain deferred.
-
-The byte-only stage and its accumulated preview acceptance are complete. Next switch priority to selling search UX and a lean Search3 base bundle; do not restore the duplicate rail or remove active `results-tablet-layout.css`. Audit: `docs/project/search3-filter-mobile-preview-publication.json`.
-
-## S3_RETIRED_FILTER_PRESENTATION â€” checked release, 2026-09-07
-
-Source PR #1490 / `b71d99e6dae73e406190c9d4cea64acbf1f3f2db`; checked release `04f726371d3e62913ec734df99ed29b806ae2091`. After DS2 became the sole desktop filter owner, the remaining unreachable Search3 filter-section, edit-row, radio-skin and empty filter-subtitle families were removed. DS2 budget/meal/category/rating/sea/reset/count, the mobile filter, zero-result bridge and all protected business contracts remain.
-
-Eight public assets are **147378 â†’ 145660 raw bytes (âˆ’1718 CSS bytes)**. Seven assets are byte-identical. Security `34143403167` and exact artifact/results-geometry run `34143403145` succeeded. Reusable artifact `10026777435`, digest `sha256:cae31b2ff8e194bacb1caa1e228a46912d39554a4b8d14f7d43181739e8715c6`; results geometry artifact `10026776947`, digest `sha256:60579f3eb925391942354f73df6690fb7173b85794104d661beccc37a1ef144f`.
-
-Status boundary: checked release only. The isolated preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3` at 147378 bytes; the later 1718-byte removal is unreachable CSS and was not republished. `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical Safari/safe-area remains deferred. Audit: `docs/project/search3-retired-filter-presentation.json`.
-
-Next: the byte-only stage is closed. Do not open micro-reduction PRs, restore the duplicate rail or remove active `results-tablet-layout.css`. Begin the selling-search UX stage and lean Search3 base bundle; production still requires explicit visual approval.
-
-## S3_MOBILE_SELECTED_CTA_SALES_REPAIR â€” checked release, 2026-09-07
-
-Source PR #1492 / `1afd5c5d0866a26284be015c2cfc70e2818af534`; checked release `5b491ce0d0a05d7ee7a6a815564b529fa89589d3`. The first conversion-critical product repair closes the confirmed 375px selected-tour defect where the fixed mobile CTA had no height owner and could collapse to roughly 11px. The current `selected-flow-v2.css` owner now gives the existing `<=640px` action a 48px minimum height.
-
-Eight public assets are **145660 â†’ 145676 raw bytes (+16 CSS bytes)**. This is an intentional accessibility/conversion repair, not a size saving. Seven assets are byte-identical. Security `34144224022` and exact artifact/selected-geometry run `34144224020` succeeded; the ready-for-review repeat `34144352197` also succeeded. Reusable artifact `10027068097`, digest `sha256:c7e1ce6a777179518a8e0aad25f3d1f9b49a519ad4f5c81df24c4bc274e5b957`; selected geometry artifact `10027067465`, digest `sha256:ad41486e5ef0fd7125712838adb7b9453fbb89572c956daf657006523bab0b55`.
-
-The browser fixture requires the 375px CTA to be at least 48px and permits change only inside that mobile bar; the rest of detail/review/lead geometry at 375/760/1000/1440 remains equal, with no overflow or lead submission. The change is checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical iPhone/Safari safe-area and live current-source journey remain deferred.
-
-Next: audit search-form completion friction and local-filter feedback using the current single-owner architecture. Accumulate the next product batch before preview publication; do not return to byte-only micro-PRs. Plan: `docs/project/search3-size-and-sales-plan.md`. Audit: `docs/project/search3-mobile-selected-cta.json`.
-
-## S3_MOBILE_SEARCH_FORM_USABILITY â€” checked release, 2026-09-07
-
-Source PR #1494 / `d65a0f8e2acfdcc1c7475806563cdb80119b967b`; checked release `8d5db6ca041c4d6b84271b8d1cf0cc1a7ccde4a0`. Mobile form labels are now at least 12px, primary inputs 16px, primary controls/search/advanced-filter action 48px, and quick filters 44px. The tourist popover follows the taller summary and its selectors are 44px/16px. Form values, request behavior and all protected business contracts are unchanged.
-
-Eight public assets are **145676 â†’ 146599 raw bytes (+923 CSS bytes)**. This is intentional sales-readiness weight, not a size saving; seven assets are byte-identical. Security `34148483288`, initial exact artifact `34148483292` and ready repeat `34148657647` succeeded. Reusable artifact `10028594347`, digest `sha256:84f9e32eb8a2e9fbff1ad0ca77f0d81b42be00df44fad728a9d8b9a7aadf763a`; combined results/entry geometry artifact `10028594064`, digest `sha256:ca6aff6e7a028fcd431b5d44c53b253810f5a1c605840c4aa22abb4e09313fc3`.
-
-The Chromium fixture passed entry geometry at 375/760/761 and the existing 12 collapsed/expanded result states, with no horizontal overflow. Screenshots were retained but not manually inspected; no lead was submitted. The change is checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical iPhone/Safari safe-area and live current-source interaction remain deferred.
-
-Next: add immediate, accessible local-filter feedback and a recoverable zero-results state in the single DS2 owner. Do not add a second filter runtime or a request per local change. Accumulate a meaningful product checkpoint before the next isolated preview publication. Audit: `docs/project/search3-mobile-form-usability.json`.
-
-## S3_LOCAL_FILTER_FEEDBACK â€” checked release, 2026-09-07
-
-Source PR #1496 / `3a9fe863edb6c44adda45fc9a0b35bbf9e1136f3`; checked release `95ad5f3ff5bc9545ef7c877676c60c8e68f500ec`. The sole DS2 desktop filter owner now exposes its live result count as a polite atomic status. A local zero match uses the explicit heading â€œĞĞ¸Ñ‡ĞµĞ³Ğ¾ Ğ½Ğµ Ğ½Ğ°Ğ¹Ğ´ĞµĞ½Ğ¾â€ and the recovery copy â€œĞ¡Ğ±Ñ€Ğ¾ÑÑŒÑ‚Ğµ Ñ„Ğ¸Ğ»ÑŒÑ‚Ñ€Ñ‹ Ğ¸Ğ»Ğ¸ Ğ¸Ğ·Ğ¼ĞµĞ½Ğ¸Ñ‚Ğµ Ğ¿Ğ°Ñ€Ğ°Ğ¼ĞµÑ‚Ñ€Ñ‹â€; resetting restores the source result count. The synchronous local renderer remains the only execution path, with no Tourvisor/API request added.
-
-The eight Search3 public assets remain **146599 â†’ 146599 raw bytes (0)**. The already loaded `v2/ds2-results-filters.js` changes **10913 â†’ 11091 bytes (+178 JS)**. Security `34149537357`, initial exact artifact `34149537437` and ready repeat `34149630582` succeeded. Reusable artifact `10028902712`, digest `sha256:71b4038743cc80b42ddd0a1cdb5832084a48c90c95183b5652a2d3aee07e35ab`.
-
-Focused VM acceptance covered complete facets, a legitimate zero match, Search3 empty-shell preservation, recovery copy, reset, restored source results and the sole-owner boundary. This package did not trigger or claim browser geometry evidence. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred; no lead was submitted.
-
-Next: audit the â€œĞ‘Ğ»Ğ¸Ğ¶Ğµ Ğº Ğ¼Ğ¾Ñ€Ñâ€ sort and common map action. Keep only controls backed by complete supplier data and working behavior. Accumulate the next product checkpoint before isolated preview publication. Audit: `docs/project/search3-local-filter-feedback.json`.
-
-## S3_HONEST_RESULTS_CONTROLS â€” checked release, 2026-09-07
-
-Source PR #1498 / `24e893e60958b6f12df66cecb8acc1e5d67bc628`; checked release `8980502708a1c7dd77e2dfec81131ae88e3f5562`. The offered â€œĞ‘Ğ»Ğ¸Ğ¶Ğµ Ğº Ğ¼Ğ¾Ñ€Ñâ€ mode was not implemented and silently used price order. The common map button dispatched `v2:results-map-requested`, but the repository had no consumer. Both misleading controls and their dead runtime/CSS branches are removed. Price, rating and star sorting plus list/grid views remain.
-
-The eight Search3 assets remain **146599 â†’ 146599 raw bytes (0)**. Three supporting loaded files shrink **29214 â†’ 28737 bytes (âˆ’477 raw bytes)**: `v2/index.php` 12872â†’12731, `v2/ds2-search.css` 11843â†’11755 and `v2/search-redesign-v2.js` 4499â†’4251. Security `34150688964`, initial exact artifact `34150688836` and ready repeat `34150780889` succeeded. Reusable artifact `10029282505`, digest `sha256:8b49234e3cd866af6e538144eca3f16e660ac4e0601dbd345e418bb94e5f3c4c`.
-
-Focused tests require exactly the three implemented sort modes, preserve the mobile sort proxy and results lifecycle, and reject reintroduction of the unhandled map action. This non-geometric package did not run or claim browser geometry. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred; no lead was submitted.
-
-Next: audit the result-card action hierarchy and keep one clear primary path from hotel to tour selection. Preserve supplier data, price arithmetic, selection/lead lifecycle and analytics. Accumulate before isolated preview publication. Audit: `docs/project/search3-honest-results-controls.json`.
-
-## S3_SINGLE_CARD_PRIMARY_CTA â€” checked release, 2026-09-07
-
-Source PR #1500 / `635e512f469dab9222b12fa7637672428ab40c5a`; checked release `2e79f12c74f24ae2737de8827447b44b134acf77`. The result card now has one count-aware primary action (`ĞŸĞ¾ĞºĞ°Ğ·Ğ°Ñ‚ÑŒ N Ñ‚ÑƒÑ€Ğ¾Ğ²`) instead of a separate availability sentence plus generic `ĞŸĞ¾ĞºĞ°Ğ·Ğ°Ñ‚ÑŒ Ñ‚ÑƒÑ€Ñ‹`. Correct Russian plural forms, expanded `Ğ¡ĞºÑ€Ñ‹Ñ‚ÑŒ Ñ‚ÑƒÑ€Ñ‹`, collapse restoration and each concrete offer's `Ğ’Ñ‹Ğ±Ñ€Ğ°Ñ‚ÑŒ Ñ‚ÑƒÑ€` action remain in the current results owner.
-
-Eight public Search3 assets are **146599 â†’ 145974 raw bytes (âˆ’625: âˆ’597 CSS, âˆ’28 JS)**. The removed `.search3-hotel-action__copy` markup and responsive presentation are no longer emitted. Five assets are byte-identical. Price arithmetic, supplier facts, Tourvisor/API, URL/payload, selection, lead transport/mapping and analytics are unchanged.
-
-Security `34152822504`, initial exact artifact `34152822452` and ready repeat `34152950201` succeeded. Reusable artifact `10029998652`, digest `sha256:56dbeb79466ea02d559e2a65284c4fd0ff0fe79efeefe7880726abb15f01ee4b`; results geometry artifact `10029998348`, digest `sha256:25ef1a9f56a652e3d6c01891d5c9b8b73098bc2c018bb7ab01b2a6a2f799469f`. The Chromium fixture passed 12 collapsed/expanded states at 375/760/761/999/1000/1440 with no horizontal overflow. Screenshots were retained but not manually inspected; no lead was submitted.
-
-Status boundary: checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3` at 147378 Search3 bytes; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred.
-
-Next: verify whether Search3's list/grid switch produces two distinct layouts despite the current one-column Search3 result owner. Remove or condition only a nonfunctional Search3 control while preserving the working legacy `/poisk-turov-old/` grid. Audit: `docs/project/search3-single-card-primary-cta.json`.
-
-## S3_HONEST_VIEW_CONTROL â€” checked release, 2026-09-07
-
-Source PR #1502 / `2f300216b61b900614f443af907f04eb92a3fcba`; checked release `d2077ede44e9517fd06af6cfc0c081a04ee02d45`. The shared list/grid switch changed classes and localStorage, but Search3's stronger current results owner always renders a one-column flex list. Search3 therefore no longer emits the two ineffective view buttons. The maintained `/poisk-turov-old/` presentation still renders both controls and keeps the existing shared runtime and grid CSS.
-
-The eight Search3 public assets remain **145974 â†’ 145974 raw bytes (0)**. The rendered Search3 HTML removes **268 bytes** and two misleading controls; this supporting-payload reduction is recorded separately and is not counted as an eight-asset reduction. Price/rating/stars sorting, supplier data, Tourvisor/API, URL/payload, selection, lead transport/mapping and analytics are unchanged.
-
-Security `34156356460`, exact artifact `34156356467` and standalone navigation `34156356471` succeeded. Reusable artifact `10031101653`, digest `sha256:3080f8b043d65042d94f10e65214e4777e611196d27f58d9963610c2a064c81f`. Exact PHP rendering verifies the Search3 switch is absent and both legacy controls remain. No CSS/card geometry changed, so the geometry jobs correctly skipped; no visual acceptance is claimed and no lead was submitted.
-
-Status boundary: checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3` at 147378 Search3 bytes; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred.
-
-Next: begin the lean Search3 base-bundle audit. Classify full-manifest modules by Search3 dependency, then use the existing bundle endpoint for a route-scoped Search3 manifest while keeping `/poisk-turov-old/` on the complete legacy bundle. Require measured loaded raw/gzip savings and source/closure/browser evidence before changing the route. Audit: `docs/project/search3-honest-view-control.json`.
-
-## S3_LEAN_BASE_BUNDLE_V1 â€” checked release, 2026-09-07
-
-Source PR #1504 / `826c424ee2f8f5c9b3e5bbc0fd19a337fbe6b126`; checked release `fc3550dd320cbc1791f7fb7f04d186a5a88dd8c0`. The existing `bundle-v1.php` endpoint now selects a Search3 manifest scope on the canonical route while the legacy `/poisk-turov-old/` route retains the complete original manifest and URL contract. Search3 excludes the complete `search-redesign-v2.js` owner: its list/grid behavior is legacy-only, and the required route/date/night/guest summary now belongs to the current Search3 results owner.
-
-Loaded Search3 CSS/JS is **665247 â†’ 662065 raw bytes (âˆ’3182)**. The shared JavaScript scope is 279690 â†’ 275439 (âˆ’4251), while the eight Search3 assets are 145974 â†’ 147043 (+1069) for the retained summary behavior. The endpoint plus independent-asset gzip estimate is 102901 â†’ 102309 (âˆ’592). Shared CSS is unchanged at 239583 bytes. This is a route-loaded total; the eight-path subtotal is recorded separately and is not mislabeled as a reduction.
-
-Security `34160747906`, exact artifact `34160834731` and preview-boundary `34160834648` succeeded. Reusable artifact `10032545333`, digest `sha256:7e4e4e025bb75ba1486a56ef5bf5bd16353b5aad6f4b6efdae916c90e493b8b2`. Closure checks prove 44 full versus 43 Search3 JavaScript owners, unchanged CSS scope, legacy retention and Search3 exclusion. Focused VM tests cover route, dates, nights, tourists, results/reset and edit focus. No CSS geometry changed; browser geometry correctly skipped and no visual acceptance or lead submission is claimed.
-
-Status boundary: checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction and physical iPhone/Safari safe-area remain deferred.
-
-Next: audit `conversion-confidence-v1` as the next whole-owner Search3 exclusion candidate. Its compare/decision/agency surfaces are currently hidden or unreachable under the Search3 presentation, but preserve any genuinely live selected CTA/trust behavior in a current owner before excluding it. Keep the full legacy bundle unchanged. Audit: `docs/project/search3-lean-base-bundle-v1.json`.
-
-## S3_LEAN_CONFIDENCE_OWNER â€” checked release, 2026-09-07
-
-Source PR #1506 / `ed0f8a299fd81c1f7d786b688ecdfdede1631585`; checked code release `36758a05df21042fb39f253faa681ff1de89150d`. Search3 no longer loads the complete `conversion-confidence-v1.js`, `compare-refresh-guard-v1.js` and `conversion-confidence-v1.css` owners. Hidden compare/decision/result-note/agency surfaces are no longer created. Desktop selected-tour trust and tour-choice labels are retained by the existing selected/results owners. All three original files and the full legacy route manifest remain unchanged.
-
-This invocation removes **28288 raw bytes: 662065 â†’ 633777** across the scoped shared CSS/JS and eight public Search3 assets. Shared CSS is 239583 â†’227955, shared JS 275439 â†’256635, and the eight-asset subtotal is 147043 â†’149187 (+2144 for retained behavior/styles). Gzip estimate is 146052 â†’139934 (âˆ’6118), including BOTH shared CSS/JS endpoint bodies and the eight independent files. The earlier lean-bundle audit's gzip totals omitted unchanged shared CSS; its âˆ’592 delta is valid, but those totals were a partial subtotal.
-
-Security `34163231518`, exact artifact `34163231531` and ready repeat `34163330446` succeeded on the final source. Reusable artifact `10033349256`, digest `sha256:84d8e9e4cbdc12e039a0504e58d0ee42f51bb1ebcd9dd58e80931b84d2787e5d`. Selected geometry artifact `10033348290`; results/entry geometry artifact `10033348786`. The browser suite passed 12 detail/review/lead states at 375/760/1000/1440, 12 result states at 375/760/761/999/1000/1440 and three entry states. It now uses the actual scoped CSS and compares prior-release runtime alongside the retained frozen CSS baseline. Desktop trust remains visible, mobile trust remains hidden, and the retired surfaces/global are absent. Initial test-loader incompatibility with the pre-scope historical baseline was repaired without relaxing the geometry comparison. No lead was submitted.
-
-Status boundary: checked release only; no new publication. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main/production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Manual screenshot inspection was deferred: artifact materialization returned HTTP 403. Live current-source interaction and physical Safari/safe-area remain deferred; automated geometry is not manual visual approval.
-
-Next: audit `mobile-search-summary-v1.js` (9381 raw) and its CSS (4907 raw). Search3 hides its sticky CTA/summary, but its search-start collapse, dirty/validation recovery and field-placement side effects must be retained or deliberately replaced in current owners. Require real-route mobile form/recovery and 700/701/760/761 transition evidence before excluding it. Keep the live sales-leader photo fallback/supplier badge and protected contracts. Audit: `docs/project/search3-lean-confidence-owner.json`.
-
-## S3_LEAN_MOBILE_SUMMARY â€” checked release, 2026-09-07
-
-Source PR #1509 / `019420f4181630c3de35849004ede9e1119a414a`; checked code release `cdc2d82d7785dcc82843cf74b489e3e3259b712f`. Search3 excludes the complete `mobile-search-summary-v1.js` and CSS owners. The current entry owner preserves the 700px search-start collapse, dirty/validation recovery and desktop restore. The retired sticky CTA/summary/sentinel and duplicate observers are absent; canonical fields and native inputs are retained. Full legacy manifest/files remain unchanged.
-
-Packet loaded raw **633777 â†’ 620431 (âˆ’13346)**; shared CSS 227955 â†’223048, shared JS 256635 â†’247254, eight Search3 paths 149187 â†’150129 (+942 for retained lifecycle). Gzip estimate across both shared endpoint bodies and eight independent files is 139934 â†’136884 (âˆ’3050). Together with #1506, this invocation is **662065 â†’620431 raw (âˆ’41634)** and 146052 â†’136884 gzip (âˆ’9168). These are loaded totals; the eight-file subtotal alone increased, so it is not reported as an eight-asset reduction.
-
-Security `34164093668`, exact artifact `34164093654` and ready repeat `34164198720` passed. Reusable artifact `10033635222`, digest `sha256:2a1f82cedf72543136a2124624bfb4c46c24a3820d74d89a6caba0f6b6b6b8ee`. Selected/lifecycle evidence `10033634255`, results/entry evidence `10033634715`. Real isolated-route Chromium assertions passed 30 form states at 375/700/701/760/761/1440 (initial, started, validation, dirty, resize), 12 selected, 12 results and three entry geometry states. Form values/order, visibility/recovery and overflow are checked. The first new comparison exposed the intentionally removed 1px sticky sentinel; reference canonicalization removes only that retired node, preserving strict field/form comparison. Existing source/PHP/path/presentation/isolation guards remain enabled. No lead or supplier request was sent by the new fixture.
-
-Checked release is ahead of published preview: no publication in this invocation. Preview stays at `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main/production stay at `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, manual screenshots (artifact download HTTP 403), physical Safari and safe-area acceptance are deferred. Automated assertions are not owner visual acceptance.
-
-Next: audit the complete `primary-meal-ux-v1.js`/CSS owner (7301+2040 raw). Its meal catalogue API loading, URL food restoration and reset preservation are live and must remain in a current owner before excluding obsolete quick-choice presentation. Do not blindly remove it or the live sales-leader photo fallback/supplier badge. Audit: `docs/project/search3-lean-mobile-summary.json`.
-
-
-## S3_LEAN_PRIMARY_MEAL_OWNER â€” checked release, 2026-09-07
-
-Source PR #1512 / `46388519c2832eb55f7804e256df501ba2873e3d`; checked release `05763d64cfeab128c84698b58fd6630123edef1c`. Search3 excludes the complete `primary-meal-ux-v1.js` and CSS owners. The current catalog owner exposes its existing meal loader, and the current Search3 form owner loads it on native-select focus plus the existing bounded automatic attempt, restores `food` from the URL after asynchronous options arrive and retains stars/meal values across the legacy additional-filter reset. Obsolete quick choices are absent. The full legacy manifest/files remain unchanged.
-
-Loaded raw is **620431 â†’ 612019 bytes (âˆ’8412)**: shared CSS 223048â†’221008, shared JS 247254â†’240024 and eight Search3 assets 150129â†’150987 (+858 for retained current-owner behavior). Exact emitted endpoint plus eight independent-file gzip is **136884 â†’ 134646 (âˆ’2238)**. The eight-path increase is not mislabeled as a saving.
-
-Security `34165119169`, initial exact artifact `34165119105` and ready repeat `34165273963` passed. Reusable artifact `10033962139`, digest `sha256:70b665898145c6881d7c237f1efc002d76322cb967bbb378146305597a588bbe`; selected evidence `10033961421`, results/entry evidence `10033961789`. Browser checks cover accessible native meal options, URL value restoration and no retired quick choices at 375/700/701/760/761/1440, plus the existing 12 selected and 12 result states. No supplier search or lead was submitted.
-
-No publication: preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main/production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Manual screenshot inspection and physical Safari/safe-area are deferred.
-
-## S3_LEAN_PARAMETER_FILTER_RAIL â€” checked release, 2026-09-07
-
-Source PR #1514 / `ee11ef2cb06771dc2e25688acf39349c213dbd56`; checked code release `ba8ff686c4bc9995762a3c09a4ad7e7b6a8b6241`. Search3 excludes the complete `search-params-filter-rail-v1.js` and CSS pair; current Search3 form and DS2 desktop/mobile result-filter owners remain. The full legacy route retains both files.
-
-The first exact browser run found a real hidden dependency: `search-filters-ux-v1.js` temporarily placed the hotel-category field in the legacy main grid, and the retired rail moved it out before the current Search3 owner cleared that grid. The current form owner now performs this one existing-node move before clearing legacy markup. The strict field-order/value/geometry comparison was preserved and passed after the repair.
-
-Packet loaded raw is **612019 â†’ 605488 bytes (âˆ’6531)**: shared CSS 221008â†’218589, shared JS 240024â†’235774 and eight Search3 assets 150987â†’151125 (+138 retained behavior). Gzip is **134646 â†’ 133134 (âˆ’1512)**. Combined with #1512, this invocation is **620431 â†’ 605488 raw (âˆ’14943)** and **136884 â†’ 133134 gzip (âˆ’3750)**.
-
-Security `34166319834`, initial exact artifact `34166319872` and ready repeat `34166449552` passed. Reusable artifact `10034328909`, digest `sha256:d7bdf4003890865a4b990527eec476df66b604eb32e932e6dcdef157bc5191a0`; selected evidence `10034327927`, results/entry evidence `10034328420`. Chromium passed 30 form lifecycle states at 375/700/701/760/761/1440, 12 selected states and 12 result states. No real request or lead was sent.
-
-PR #1513 attempted whole `ds2-search-intro-v1.css` exclusion but exact CI failed all 12 selected-tour geometry states. It was closed unmerged; its projected bytes are not counted. This proves that owner still contains live selected-tour geometry and must not be retried as a blanket removal.
-
-Checked release is ahead of the published preview. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main/production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Manual screenshot inspection, live current-source interaction and physical Safari/safe-area are deferred. Audit: `docs/project/search3-lean-primary-meal-and-params.json`.
-
-Next: audit complete `results-layout-guard-v1.css` exclusion against the current card/drawer owners. Preserve the full legacy manifest and require exact 12-state results plus selected geometry. Do not retry blanket `ds2-search-intro-v1.css` deletion.
-
-
-## S3_LEAN_LEGACY_GUARDS â€” checked release, 2026-09-07
-
-Source PRs #1516 / `93e7cfbd685d32cf0a377262a5b29c1e3e6f5dbb`, #1517 / `56345ec59e08808336d0bdfbc0449b31c27ff44c` and #1520 / `2230920eb0a96c16d3eced698dcbdc4b420b6120`; checked code release `26fc0efbe8b306fbaca87b2d5330bc3311d97c6b`.
-
-Search3 excludes three complete obsolete CSS owners while the full legacy route keeps them:
-- `results-layout-guard-v1.css`: old card/photo/sidebar/nights overrides superseded by current results/card/mobile owners;
-- `search-header-layout-guard-v1.css`: desktop compatibility geometry superseded by the current shared header;
-- `ds2-search-tablet-filters-v1.css`: 701â€“820px styling for the hidden legacy `details.extras`; Search3 uses its current quality grid.
-
-No compensation code was added. Loaded Search3 raw is **605488 â†’ 594063 (âˆ’11425)**, entirely scoped shared CSS: 218589â†’207164. Shared JS remains 235774 and the eight public Search3 paths remain exactly 151125. Exact emitted endpoints plus eight independent files gzip is **133134 â†’ 131441 (âˆ’1693)**.
-
-Each source passed Security and both initial/ready exact artifacts: Security `34167475861`, `34167795105`, `34168181748`; exact `34167475846`/ready `34167577360`, `34167795073`/ready `34167934629`, `34168181757`/ready `34168312060`. Final reusable artifact `10034902803`, digest `sha256:9420a39c0a653f38de70e6f0300dc5126e2cca3c7b0d398f91312ce55833b61f`; selected evidence `10034902422`, results/entry evidence `10034902626`.
-
-Chromium retained 12 selected detail/review/lead states, 12 result-card/drawer states and the six-width entry lifecycle including 700/701/760/761. No real supplier request or lead was sent. Screenshots were retained but not manually inspected.
-
-Checked release is ahead of published preview. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`. During final checkpointing, `main` independently advanced from `fa58a0cba6dcfc8624d98c20d64fa06330eae309` to `47d6ccd0c324aceb4d6090fe53ffac03b9c41816` through #1519, which changed only `.github/workflows/deploy-anytoour.yml`; none of these Search3 PRs targeted `main`. No Search3 production deployment was performed, and production SHA was not re-verified in this invocation. Live current-source interaction, manual screenshot review and physical Safari/safe-area remain deferred. Audit: `docs/project/search3-lean-legacy-guards.json`.
-
-Next: combine `selected-tour-layout-guard-v1.css`, `search-footer-rhythm-v1.css` and `search-shell-grid-v1.css` into one â‰¥1 KB legacy-guard audit. Do not open separate micro PRs. Preserve exact selected/shell/footer geometry and the full legacy manifest.
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éíëõí:-jZ.¶›­–)Ş³R26V&6ƒ2FV6†æ–6Â&Vf7F÷"WF÷–Æ÷@ ¤÷væW"&WVW7B&V6÷&FVBöâ##bÓ’Óc¢*½M-’İ--íı½í"ıí--Ì+²à ¢22†÷W&Ç’FWfVÆ÷ÖVçB&W7VÖVB(	B##bÓ’Ó` ¥F†R÷væW"W‡Æ–6—FÇ’&WVW7FVC¢*½M-’}-âİ-â=½í½Íİ]S²Íím]"½í‚m]½­íÂ=M½ı-ÂÀ­ıí-íÂMíı]Â-â}-â½íÍ³²ıí--Âİ--íÍ"­mM½’}ü+°¥F†RW†—7F–ærWFöÖF–öâf–#SV3“cV3ƒ“†3S3#v#f#C6fVC&—2æ÷rVæ&ÆVBv—F€¦%%TÄS¤e$UÔ„õU$Å–ÂF—FÆR*½
+=Í]İÍ-Â552ô¥26V&6ƒ<+²âæòGWÆ–6FRF6²v27&VFVBà¥F†R66†VGVÆW"6öæf—&×2Væ&ÆVB6öæf–wW&F–öã²F†Rf—'7B&6¶w&÷VæB'VâgFW"F†—0§&W7VÖR†2æ÷B–WB&VVâö'6W'fVBâ&Wf–÷W2U4TB÷66†VGVÆW"×W6VB7FFVÖVçG2–à¦†—7F÷&–6Â6†V6·ö–çG2&R7WW'6VFVB'’F†—2W‡Æ–6—B÷væW"&WVW7Bà ¤V6‚'Vâ×W7BW&f÷&Ò7GVÂFWfVÆ÷ÖVçBÂ&–÷&—F—¦–ærÆ&vR&WfW'6–&ÆR&VÖ÷fÇ0¦öbö'6öÆWFR&W6VçFF–öâÆ–W'2æB6ö×7B&W—"öb6öæ7&WFR&Wf–Wr&Vw&W76–öç2à¤Fòæ÷B&WVBF†RGvVÇfR&WF—&VBÆ–W'2÷"6ö×ÆWFVBÖ–æ–f–W"öFöÖ–ææ6RöÖVF–66ç2à¥&VBg&W6‚&VÆV6R7FFRæB3““bò333C²6†V6¶VB6öFRæBV&Æ—6†VB&Wf–WrÖ’F–ffW"à¤6öçF–çVR&W–öæBöæR"v†–ÆR6fR–æFWVæFVçBæW‡B7FW&VÖ–ç2âfö–B÷fW&Æ–æp¦VF—G2÷"GWÆ–6FRFWÆ÷–ÖVçG3²&WF–âF†Rfö7W6VBGvò×6÷W&6RÖ¦ö"öÆ–7’æB&WW6P§F†R7V66W76gVÂ'F–f7BâFòæ÷BV&Æ—6‚÷"&WÆ’'&÷w6W"¦÷W&æW’ÖW&VÇ’&V6W6P¦â†÷W&Ç’'Vâ÷""6ö×ÆWFVBâ&W÷'B&VÂ'—FR6f–æw2Â7GVÂ6†V6·2ÂV&Æ–6F–öà§7FFRæBF†RæW‡B7FW²Fòæ÷B6VæB&WVFVBæò×&öw&W72&W÷'G2à ¥F†—2FöW2æ÷BWF†÷&—¦RÖ–â÷&öGV7F–öâ6†ævW2÷"ÖöF–f–6F–öç2Fò&÷FV7FV@§&–6RÂU$Â÷–ÆöBÂF÷W'f—6÷"ô’ÂÆVBÂæÇ—F–72ÂÆövò÷"'&÷w6W"6öçG&7G2à¤W‡W&–ÖVçFÂÆ–÷WB'&V¶vR—26öæf–æVBFò&WfW'6–&ÆR&VÆV6Rö—6öÆFVB×&Wf–Wp§v÷&³²&W—"—B÷"&öÆÂ&6²F†RffV7FVBW‡W&–ÖVçBâVçfW&–f–VB7FFW2&VÖ–à¦FVfW'&VBæB&RæWfW"&W÷'FVB276VBà ¢22ÆFW7B6†V6¶VBföÆÆ÷r×W(	B6VÆV7FVB×F÷W"†öæR&W—"(	B##bÓ’Óp ¥6÷W&6R"3Csò3ƒƒVfF&cCC6V#s#–#6&3F6FS“F&†VÂG&VRƒ–V3s–3cvSC#66C63SsfC#†6CC3Vcƒ–FFÂ6Æ÷6W2F†RvVöÖWG'’Wf–FVæ6RFVfW'&VB–â3CcrâF†Rf—'7B7GVÃ3sW‚67&VVç6†÷G26öæf—&ÖVBF†BF†RÆVB†VF–ær÷fW&ÆVB—G2W‡ÆæF–öââ&WV—&VB†öæR&ö÷Bö†VF–ærÆ–÷WBÂ&w&‚öf7B76–æræB–7GW&Rö†VFW"&÷&FW'2æ÷r&VÖ–â–âF÷W"ÖFWF–Âæ776²F†R6VÆV7FVB×F÷W"Föæ÷"7F—2&WF—&VBà ¥F†—2–çfö6F–öâ&VÖ÷fW2¢£æWr'—FW2¢¢æBFG2¢£C3B552'—FW2¢¢f÷"F†R&W—"âV–v‡B&r6W'fVB76WG3£c3sC(i#cCsC²553“3S‚ò¥3scSbâ&Wf–÷W6Ç’&W&VB&WF—&VÖVçB6f–æw2&Ræ÷B&V6÷VçFVBà ¥F†RW†—7F–ærW†7BÖ'F–f7B¦ö"6öæF—F–öæÆÇ’'Vç3"f—†VB×F÷W"FWF–Â÷&Wf–WröÆVB7FFW2C3sRóscóóCCÂW6–ær&R×&WF—&VÖVçB553cVf&"öâF†R6ÖR7W'&VçB—6öÆFVB–ÆöBâÆÂf—6–&ÆR&V7FævÆW2÷7G–ÆW2ÖF6‚gFW"&W—"ÂæòFö7VÖVçB÷fW&fÆ÷r÷"VæW‡V7FVB’öÆVB6ÆÃ²67&VVç6†÷G2–ç7V7FVBâF†R6æöæ–6Â†÷7Bf—‡GW&R6÷'&V7F–öâæB7F&ÆRf–Ww÷'B6ö÷&F–æFW2&RFW7BÖöæÇ’â6ö×–ÆVBæf–vF–öã2×G&ç6—F–öâ–çfö6F–öâ—2&W7F÷&VBâ6V7W&—G“3C##C#3cƒæB'F–f7C3C##C#3cƒ‚73²&WW6R'F–f7CƒsScs#v—F†÷WB&VÆV6RöFö72&V'V–ÆBâWf–FVæ6SƒsSS“s2æBgVÆÂ†6†W2&R&V6÷&FVB–âFö72÷&ö¦V7B÷6V&6ƒ2×6VÆV7FVBÖvVöÖWG'’×&W—"æ§6öæà ¥&Wf–Wr&VÖ–ç2#“CCV&33²Ö–â&VÖ–ç2fS†6"â‡—6–6Â6f&’÷6fRÖ&VæB7W'&VçB×6÷W&6RÆ—fR66WFæ6R&VÖ–âFVfW'&VBââW†—7F–æs‚Öö&–ÆRÖ&"'WGFöâF÷V6‚F&vWB&WV—&W26W&FR–çFVçF–öæÂf—‚à ¤6öæ7W'&VçB3CsGfæ6VB&VÆV6RFòVC“F3gFW"F†—2&W—"â—G2v÷&¶–ær6÷W&6SCƒFC3&FR&VFFW2F†SC3BÖ'—FR†öæR&W—"âæV—F†W"–æFWVæFVçB6÷W&6R'F–f7B—2W†7Bf÷"F†R6öÖ&–æVB&VÆV6S²ö'F–âg&W6‚6öÖ&–æVB×6÷W&6R'F–f7B&Vf÷&RV&Æ–6F–öâãCsvVöÖWG'’Wf–FVæ6R7F—266÷VBFó3ƒƒVbâÆÃCs6öFR—2&W6W'fVB–âF†—2Fö7VÖVçFF–öâÖW&vRà ¤æW‡C¢Fòæ÷B&WVB6VÆV7FVB×F÷W"&WF—&VÖVçB÷"—G2†öæR&W—"‚3Ccrò3Cs’âF†Rfö7W6VB6‡&öÖ—VÒf—‡GW&R6÷fW'2FWF–Â÷&Wf–WröÆVBC3sRóscóóCC²&WW6RF†R6†V6¶VB'F–f7Bâ6öæ7W'&VçB3CsÇ&VG’6öç6öÆ–FFVB&W7VÇG2×F÷æ§2–â&VÆV6VVC“F3âFòæ÷B&WVB—BâF†Rv÷&¶–ær×6÷W&6SCƒFC3&FR'F–f7BW†6ÇVFW2F†SCs†öæR&W—#²ö'F–â6öÖ&–æVB×6÷W&6R'F–f7B&Vf÷&RV&Æ—6†–ær7W'&VçB&VÆV6Râ&WF–â&W7VÇG2ÖÆ–÷WBæ772VçF–Â6öÆÆ6VBöW‡æFVB6&BvVöÖWG'’—2f–Æ&ÆRâF†Rf—‡GW&RÇ6ò&WfVÇ2&RÖW†—7F–æs‚Öö&–ÆRÖ&"'WGFöâ†V–v‡BC3sS²†æFÆRF†RF÷V6‚×F&vWBFVfV7B6W&FVÇ’v—F‚–çFVçF–öæÂvVöÖWG'’Wf–FVæ6Râ‡—6–6Â6f&’÷6fRÖ&VÂÆ—fR7W'&VçB×6÷W&6RæBgVÆÂ6&BöVF—F÷"ÖG&–6W2&VÖ–âFVfW'&VC²&öGV7F–öâ&÷fÂ&VÖ–ç2&WV—&VBà ¢227W'&VçB÷væW"&–÷&—G’(	B&–B552ô¥2&VGV7F–öà ¥F†R7V'6WVVçB÷væW"&WVW7Böâ##bÓ’ÓbW‡Æ–6—FÇ’&–÷&—F—¦W2V–6¶Ç’&VGV6–æp¦æB7Æ—GF–ær6V&6ƒ2552ô¥2f÷"F†R—6öÆFVBv†öÆR×6—FR&Wf–WrâÆ&vW"&WfW'6–&ÆP§&W6VçFF–öâ&F6†W2&RWF†÷&—¦VBâF†—2&–÷&—G’7WW'6VFW2F†RöÆFW"7VvvW7F–öà¦&VÆ÷rFò7VæBV6‚6öçF–çVF–öâöâæ÷F†W"6ÖÆÂFööÆ&"öf6WBFVfV7Bâ&W6W'fP§&÷FV7FVB6öçG&7G2æBF†R&öGV7F–öâÆö6³²W6Rfö7W6VB6†V6·2æBW†—7F–ær4’à ¢2227W'&VçBW†V7WF–öâ&–÷&—G’(	B&F6‚&VGV7F–öç2ÂÆ–Ö—BÖçVÂ6†V6·2(	B##bÓ’Ó` ¥F†R÷væW"v–â&WVW7FVBf7FW"552ô¥2&VGV7F–öâæBö&¦V7FVBFò7VæF–ærÖ÷&P§F†â†Æbâ†÷W"6†V6¶–ærF†R&Wf–Wrf÷"#ƒ#rÖ'—FR6f–ærâF†—2–ç7G'V7F–öà§7WW'6VFW2F†RV&Æ–W"W"Ö&F6‚Æ—fR¦÷W&æW’v÷&F–ær&VÆ÷rf÷"&V†f–÷"×&W6W'f–æp§FV6†æ–6Âv÷&²â&öGV7F–öâ&÷fÂæB&÷FV7FVB6öçG&7G27F’Væ6†ævVBà ¢Ò¶VW6WfW&ÂW6VgVÂ&VGV7F–öç2–âöæR&VÆV6RÖ&6VBv÷&¶–ærG&gBÂv—F‚6W&FP¢Æöv–6Â6öÖÖ—G2v†Vâ&7F–6ÂâW6‚F†R6ö×ÆWFVB&F6‚f÷"öæRf–æÂ4’7–6ÆRà¢Ò'V–ÆBvVæW&FVB76WG2öæ6RgFW"F†R6÷W&6R&F6‚ÂÖV7W&RF†RV–v‡B6W'fV@¢f–ÆW2æB'VâF†Ræ'&÷rW†—7F–ærWV—fÆVæ6RöffV7FVBÖ&V†f–÷"6†V6²âFòæ÷@¢&WVBF†RgVÆÂ'F–f7B6†V6²6WBÆö6ÆÇ’à¢Ò&WF–âF†RGvòW†—7F–ærÖæFF÷'’6÷W&6R¦ö'2öâF†Rf–æÂ4„¢6V7W&—G¢†–æ6ÇVF–ær÷væW"fÆ–FF÷'2’æBF†RW†7B'F–f7B'V–ÆB†–æ6ÇVF–ærfö7W6V@¢&W6VçFF–öâõ…÷F‚ö—6öÆF–öâ6†V6·2’â&VÆV6RöFö72&WW6RF†B'F–f7Bà¢ÒFòæ÷BV&Æ—6‚÷"÷Vâ'&÷w6W"6öÆVÇ’&V6W6RFV6†æ–6Â"6ö×ÆWFVBà¢6†V6¶VB&F6‚Ö’&VÖ–âVçV&Æ—6†VB–â&VÆV6RâV&Æ—6‚Bâ67V×VÆFV@¢6†V6·ö–çBÂf÷"&VÆWfçB&V†f–÷"öÆ–÷WB6†ævRÂ÷"öâ÷væW"&WVW7Bà¢ÒB§W7F–f–VBV&Æ–6F–öâÂ–ç7V7BF†R6†ævVB&VâFòæ÷B&WÆ’F†RVçF—&P¢6V&6‚öfÆ–v‡B÷&Wf–WröÆVB¦÷W&æW’VæÆW72F†RffV7FVB&V†f–÷"&WV—&W2—Bà¢Æ–Ö—BÖçVÂfW&–f–6F–öâFòf—fRÖ–çWFW2âF†—2—2æ÷BW&Ö—76–öâFò66WB¢f–ÆVB÷"Ö—76–ær6†V6³¢Ö&²Wf–FVæ6RFVfW'&VBÂW†6ÇVFRVæ6W'F–â6†ævW2g&öĞ¢F†RfW&–f–VB&F6‚ÂæB6öçF–çVR–æFWVæFVçB6fRv÷&²à¢Ò&–÷&—F—¦RÖV7W&VB&VÖ÷fÂöbÆ&vRGWÆ–6FR552ô¥2&Æö6·2âW6RF†R7W'&VçB6†V6¶VB76WBF&ÆR&VÆ÷rFò–FVçF–g’F†RÆ&vW7Bf–ÆW2âFBÖ–7&ò×6f–æw2÷÷'GVæ—7F–6ÆÇ“°¢Fòæ÷B÷Vâ6W&FR"öFWÆ÷’ö'&÷w6W"7–6ÆW2f÷"F†VÒà¢Ò&÷WF–æRW6W"&W÷'G3¢6†÷röæÇ’æWvÇ’&VÖ÷fVB'—FW2–âF†R7W'&VçB–çfö6F–öââFòæ÷B&WVBF†R÷&–v–æÂ&6VÆ–æRÂ7V×VÆF—fR6f–æw2÷"W&6VçFvW2â6ö×ÆWF–ær&Wf–÷W6Ç’&W÷'FVBÆö6Â6¶WB6÷VçG22¦W&òæWr&VGV7F–öã²F—7F–æwV—6‚—G2–çFVw&F–öâg&öÒæWrv÷&²â&W6W'fR†—7F÷&–6Â6÷W&6R6ö×&—6öç2öæÇ’–âVF—G2âF—7F–æwV—6‚6†V6¶VBg&öÒV&Æ—6†VBv÷&²à¢W†7BÖ'F–f7BFWÆ÷–ÖVçBÂæö–æFW‚ÂF—6&ÆVB&Wf–WrÆVG2Â&öÆÆ&6²æ@¢&öGV7F–öâf–ævW'&–çG27F–ÆÂÇ’v†VæWfW"V&Æ—6†–ær7GVÆÇ’ö67W'2à¢gVÆÂÆ–6&ÆRvFW2&W7F÷&Röâ&VG•öf÷%÷&Wf–Ws²†÷W&Ç’FWfVÆ÷ÖVçB—2Væ&ÆVBà ¥F†RÆFW7B6†V6¶VB&VÆV6R6÷W&6R—2“F3sf#fFFS#C63cSV#VffScS3“VS36S3ƒS6°§F†RV&Æ—6†VB&Wf–Wr&VÖ–ç2öâ6÷W&6R#“CCV&363†s6#Cƒ#C&6FFVVfFcsSscs–à¥6VRF†RæWvW7B6†V6·ö–çB&VÆ÷râ†—7F÷&–6ÂV&Æ–6F–öâæ÷FW2&VÖ–âf÷"&÷fVææ6Rà ¢222ÆFW7B6†V6¶VB6†V6·ö–çB(	B6VÆV7FVB×F÷W"÷væW"&WF—&VÖVçB(	B##bÓ’Óp ¥"3Ccrò6÷W&6R#&3fFFCF&VfSSƒƒƒSƒ#vVSsF#cvVS†cfc†Â–çFVw&FVB&VÆV6P¦“F3sf#fFFS#C63cSV#VffScS3“VS36S3ƒS6Â&WF—&W2F†R6ö×ÆWFP¦6VÆV7FVB×F÷W"æ776&W6VçFF–öâFöæ÷"â&WV—&VB6†&VB6†VÆÂÂ†÷Fòöf7G2÷6V7F–öà§&–Ö—F—fW2&VÖ–â–âF†R7W'&VçBF÷W"ÖFWF–Âæ776÷væW#²f—†VB5DæBæ'&÷r×7FFP§'VÆW2&VÖ–â–â6VÆV7FVBÖfÆ÷r×c"æ776âFVB33‚–7GW&RvVöÖWG'’Âf÷&6VB&W7VÇG0¦F—7Æ’æB7WW'6VFVBæ'&÷r÷&FW&–ærvW&Ræ÷B6÷–VBà ¤V–v‡B&r76WG2¢£cCsc"(i"c3sC'—FW2(‰##"552’¢¢âÖ–â&W7VÇG2552fÆÇ0£c#ƒ(i#c3ƒRv†–ÆR6VÆV7FVBÖfÆ÷r552w&÷w2“C(i#ƒ"f÷"&WF–æVBÆ—fR'VÆW3²6—€¦÷F†W"76WG2&R'—FRÖ–FVçF–6Ââ6V7W&—G’3C#Css&æBW†7B'F–f7B'V–Æ@¦3C#Csf7V66VVFVBâ&WW6R'F–f7Bs“cC3CÂF–vW7@¦6†#Sc£cSfC–#&“S&#ƒ&##&cF3†3FS##S#Cƒ&63Ff#fV#3fc†fCSV&f##–&&°§&VÆV6RöFö72Fòæ÷B&V'V–ÆB—BâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2×6VÆV7FVB×F÷W"Ö÷væW"×&WF—&VÖVçBæ§6öæà ¥F†R6÷W&6RÖ÷&FW"VF—B6Vv‡BÆFRæ'&÷rÖ&v–â÷fW'&–FRÂ7G&WF6†VBÖö&–ÆP¦&6²'WGFöâæB†÷Fòö†VFW"6VÒ&—6³²ÆÂF‡&VRvW&R6÷'&V7FVB&Vf÷&RF†Rf–æÀ¦'V–ÆBâ6÷W&6R'V–ÆBö6†V6²æBF†Rfö7W6VB&W6VçFF–öâ7V—FR72â¢¤æ÷BV&Æ—6†VC¢¢ §&Wf–Wr&VÖ–ç2#“CCV&36²Ö–â÷&öGV7F–öâ&VÖ–âfS†6&â7GVÂ'&÷w6W ¦vVöÖWG'’B3sRóscóóCCÂf—†VBÔ5D6fRÖ&VæB‡—6–6Â6f&’&VÖ–âFVfW'&VBà ¤æW‡C¢Fòæ÷B&WVB3Ccbò3CcrâVF—Bv†öÆR&W7VÇG2&W6VçFF–öâ÷væW#¢6öç6öÆ–FFP¦&W7VÇG2×F÷æ§6–çFò&W7VÇG2×&W6VçFF–öâæ§6öæÇ’v—F‚W†7B–æ—F–Â÷&W7VÇG2öVF—@§66†VGVÆ–ær6÷fW&vRÂ÷"&WF—&R&÷VæFVB&W7VÇG2ÖÆ–÷WBæ776fÖ–Ç’öæÇ’gFW ¦6öÆÆ6VBöW‡æFVB&W7öç6—fRvVöÖWG'’—2f–Æ&ÆRâ¶VWf–æÂ×6V7F–öç2À¦&öö¶–ær×7VÖÖ'’Â&–6RÂÆVBÂ’æBæÇ—F–726öçG&7G2à ¢222ÆFW7B6†V6¶VB6†V6·ö–çB(	B&öö¶–æræf–vF–öâæB†–FFVâ6&B6÷’(	B##bÓ’Óp ¥6÷W&6R"3Ccbò&3VSC#6S#VFFCfCCc6S&3cSF&Scs#f3FÂG&VRcƒ3v3vV3ƒƒsvS““cc“Fc&3c–V&F66Â6ö×ÆWFW2F†R&Wf–÷W6Ç’Væ6öÖÖ—GFVB6¶WBâfÆ–v‡BÖ6öçF–çVRæ§6—2æ÷r&÷fVææ6RÖöæÇ’6Æ÷C²—G2Æ—fR†VF–ær÷&Wf–WrG&ç6—F–öç26†&R7VÖÖ'’Ö7Fæ§6&ö÷BÂF÷W"÷&Wf–WrF6·2æBFö7VÖVçB6Æ–6²†æFÆW"â7W'&VçB6&B552&VÖ÷fW2ÆFRG—öw&‡’÷Æ6VÖVçB'VÆW2öæÇ’f÷"&–6RÖ6÷’FW66VæFçG2Ç&VG’†–FFVâ'’F†R&WF–æVB†2×&W7VÇG2wV&Bâ6÷&R6VÆV7F–öâ'WGFöâÖÆ&VÂ&W7F÷&F–öâ&VÖ–ç2Æ—fRæBæV6W76'’à ¢¢¤7W'&VçB–çfö6F–öã£æWvÇ’&VÖ÷fVB'—FW2â¢¢F†—2726ö×ÆWFW2F†R&Wf–÷W6Ç’&W÷'FVBÆö6ÃsCbÖ'—FR6¶WB„553S3‚ò¥3#‚’F‡&÷Vv‚4’æB&VÆV6R–çFVw&F–öã²Fòæ÷B6÷VçB—Bv–ââ6—‚÷F†W"76WG2&VÖ–â–FVçF–6ÂæBÖ–â¥3.(i#””dW2âW"×6÷W&6R76WB6—¦W2æB†—7F÷&–6Â6ö×&—6öç2&R&WF–æVB–âF†RVF—BÂæ÷B&÷WF–æRW6W"&W÷'G2à ¥F†RW&ÖæVçBFW7G2÷6V&6ƒ2Ö&öö¶–ærÖæf–vF–öâæ6§6W†V7WFW26ö×–ÆVB””dW2æB6ö×&W32gVÆÂDôÒöWfVçB÷67&öÆÂöfö7W26æ6†÷G2v—F‚&6VÆ–æSvSS“c²F–vW7BƒScVSfCscSƒC†633“Ss–f##s–C#ƒ#S“ƒv3#S“c““VVSS6SS“&VC3#3&&â&6VÆ–æR6æ6†÷G2ÖF6‚'WBF†RGvò×F6²VWVRf–Ç2F†RæWröæR×F6²76W'F–öââ7W'&VçB76W2v—F‚öæRF÷W"÷&Wf–WrF6²æBöæR6Æ–6²Æ—7FVæW"âF†RW†—7F–ærÆVBÖæ÷FRf—‡GW&RæVVFVB6Æ74Æ—7Bæ6öçF–ç2f÷"F†RÖW&vVB†VF–ær÷væW#²6÷'&V7FVB&Vf÷&R4’â6÷W&6R6†V6²æC#"fö7W6VB&W6VçFF–öâ6†V6·273²öæRÆö6Â…6¶——26÷fW&VB–â'F–f7B4’âVÆWfVâV&Æ–W"&öö¶–ær÷6W'f–6W26æ6†÷G2Ç6ò&VÖ–âw&VVâà ¥6V7W&—G’3C“C“s“3fæBW†7B'F–f7B3C“C“s“3V5T44U52â&WW6R'F–f7Bsc#s“–ÂF–vW7B6†#Sc£ƒfcCƒVFc3CFc“SfSfsF#fcƒƒƒcFƒƒ&c–F–&&fS63“&F†f3ƒ–C6#3F²æò&VÆV6RöFö72&V'V–ÆBâgVÆÂW"Ö76WB†6†W3¢Fö72÷&ö¦V7B÷6V&6ƒ2Öæf–vF–öâÖ÷væW"Ö6öç6öÆ–FF–öâæ§6öæà ¢¢¤æ÷BV&Æ—6†VBâ¢¢&Wf–Wr&VÖ–ç2#“CCV&32ÂÖ–âfS†6"â'&÷w6W"&W7öç6—fRö7W'&VçB×6÷W&6RÆ–fV7–6ÆRæB‡—6–6Â6f&’&VÖ–âFVfW'&VBâæòGWÆ–6FR6÷W&6R"ÂFWÆ÷–ÖVçB÷"&öGV7F–öâ6†ævRà ¤æW‡C¢Fòæ÷B&WVB3CcbfÆ–v‡BÖ6öçF–çVR÷7VÖÖ'’Ö7Fö†–FFVâÖ6&BÖ6÷“²—G2öÆBVæ6öÖÖ—GFVBÖ—'&÷"öâ&Vf7F÷"÷6V&6ƒ2×&W7VÇG2Ö6&BÖ÷væW"×c—2Ç&VG’–çFVw&FVBâ&W7VÖRg&öÒg&W6‚&VÆV6RÂæ÷BF†B7FÆR6†V6¶÷WBâæW‡B7V'7FçF–Â6æF–FFR—2F†R&VÖ–æ–ær&W7VÇG2ÖÆ–÷WBæ7726&BvVöÖWG'’fÖ–Ç’Â'WB&WF–â—BVçF–Âfö7W6VB7W'&VçB×6÷W&6R6öÆÆ6VBöW‡æFVBvVöÖWG'’æB7V6–f–6—G’C3sRóscó““’óóCC&RfW&–f–VC²F†R'&öB&VÆö6F–öâW‡W&–ÖVçBv2W†6ÇVFVBâ¶VW6VÆV7FVB×F÷W"æ772VæF–ærFWF–Â÷&Wf–WröÆVC3sRóscóWf–FVæ6RâF†R7W÷'FVB'&÷w6W"†2æòf–Ww÷'B&W6—¦S²Fòæ÷B7V'7F—GWFRFW6·F÷Wf–FVæ6R÷"&WG'’&Æö6¶VBU$Âv÷&¶&÷VæG2âf–æÂ×6V7F–öç2ö&öö¶–ær×7VÖÖ'’5527F–ÆÂ&÷f–FRÆ—fR6W'f–6RæB7VÖÖ'’vVöÖWG'“²&W7F÷&U&öGV7F–öäÆ&VÇ27F–ÆÂ&W—'2F†R6÷&R6öçG&öÆÆW"f–æÂ'WGFöâÆ&VÂâFòæ÷BFVÆWFRF†W6R2FVB6öFRâ67V×VÆFRW6VgVÂ&VGV7F–öç2æB&WW6RF†R6†V6¶VB'F–f7BBF†RæW‡B§W7F–f–VBV&Æ–6F–öã²æòÖ–7&òÖFWÆ÷’à ¢222&Wf–÷W26†V6¶VB6†V6·ö–çB(	B&öö¶–æræBÆVBÖæ÷FR÷væW'2(	B##bÓ’Óp ¥"3CcBò6÷W&6R33s“SV6#ss“ssS†F6cCFc#6Vc–3“#fFC&FCÂG&VP¦V3““†6S“cfCƒCFSSsc–C†cƒC“ƒ#“F3“CCf6Â&WF—&W2Gvò7FæFÆöæR'VçF–ÖR÷væW'2à¦&öö¶–ær÷6W'f–6W2æ§66†&W2F†RW†—7F–ær&öö¶–ær7VÖÖ'’F÷W"öfÆ–v‡B7FFRÀ¦çVÖ&W"öÖöæW’†VÇW'2æBWfVçBVWVRâF÷W"öfÆ–v‡B'W'7G2W6RöæRF6²–ç7FVBö`§F‡&VS²&–6RÖöæÇ’WFFW2Fòæ÷B&V7&VFR6W'f–6W2âF†R&—fFRÆVBæ÷FR6†&W0§F†RW†—7F–ær5DF÷W"÷&Wf–WrF6³²÷F†W"Æ–fV7–6ÆRWfVçG2æBV&Æ–2—2&WF–à§66÷Râ6W'f–6W2v—F†÷WBÆVBf÷&ÒæBæ÷FR–ç6W'F–öâ–çFò&WÆ6VBf÷&×2&VÖ–âà ¤V–v‡B&r76WG2¢£cc#s(i"cSS‚(‰#sc2¥2’¢£²553“CcCBÂ¥3sƒcBà¥6WfVâ76WG2&R'—FRÖ–FVçF–6ÂâÖ–â¥2†3N(i#"””dW3³’VçF÷V6†VB””dW2&P¦'—FRÖ–FVçF–6ÂÂv†–ÆRVæ6†ævVB6V&6‚Öf÷&Ò6÷W&6R†26ö×–ÆW"ÖÆö6Â–FVçF–f–W §7v2öæÇ’âF†—2—26ÖÆÂÖV7W&VBFV6†æ–6Â&F6‚Âæ÷B6Æ–ÖVBÆ&vR552v–âà¤&6VÆ–æS3S#N(i#cSSƒ¢¢£3cb'—FW26fVB¢¢à ¤&÷F‚GWÆ–6FR×F6²&Vw&W76–öç2f—'7Bf–ÆVBöâF†R&V6VF–ærV&Æ—6†VB'VæFÆRà¥F†Rf–æÂ6ö×–ÆVB6÷W&6R&W6W'fW36WGFÆVBÖ&·Wö6÷’öÆ–÷WB6æ6†÷G0¢…4„#Sb63ƒccfc†F&cƒSvsf#“#f3F&cV6S&#SFSƒC“ƒ#ƒfS3–V&CF3“cCf#3F’à¤W†—7F–ær7VÖÖ'’öf÷&ÖGFW"6†V6·272âöæRw&—FR'V–ÆBæB6÷W&6R6†V6³²f–æÀ¥6V7W&—G’3CScs“ƒ“FæBW†7B'F–f7B3CScs“ƒƒv&÷F‚7V66VVBÂ–æ6ÇVF–æp¥…÷F‚÷6÷W&6R÷&W6VçFF–öâö—6öÆF–öâ6†V6·2â&WW6R'F–f7BcCƒFÂF–vW7@¦6†#Sc¦c–V666c666&Sc&#CfFc3Css&#fScfFfCƒ†CFcfCVFS6V63“CFC“F°§&VÆV6RöFö72Fòæ÷B&V'V–ÆB—BâgVÆÂW"Ö76WB†6†W2æBWf–FVæ6R&R–à¦Fö72÷&ö¦V7B÷6V&6ƒ2Ö&öö¶–ærÖ÷væW"Ö6öç6öÆ–FF–öâæ§6öæà ¢¢¤æ÷BV&Æ—6†VBâ¢¢&Wf–Wr&VÖ–ç2#“CCV&36ÂÖ–â÷&öGV7F–öâfS†6&Væ6†ævVBà¥&W7öç6—fRöÆ–fV7–6ÆR'&÷w6W"Wf–FVæ6RæB‡—6–6Â6f&’&VÖ–âFVfW'&VBâ'&÷w6W ¦6&–Æ—F–W2vW&R&Vg&W6†VC¢æòf–Ww÷'B&W6—¦R—2GfW'F—6VBâæòÆö6ÂöFFU$À§v÷&¶&÷VæB÷"&WVFVB&Wf–Wr¦÷W&æW’v2GFV×FVBà ¤æW‡C¢Fòæ÷B&WVBF†W6R÷væW'2â¶VW6VÆV7FVB×F÷W"æ772VçF–Â7W'&VçB×6÷W&6P£3sRóscóFWF–Â÷&Wf–WröÆVBvVöÖWG'’—2f–Æ&ÆRâ–æFWVæFVçFÇ’VF—BF†P§&VÖ–æ–ær&W7VÇG2ÖÆ–÷WBæ7726&BfÖ–Ç’v–ç7B&W7VÇG2Ö6&G2×c"æ772f÷"§7V'7FçF–Â&F6ƒ²&W6W'fRW‡æFVBÖ6&BöÖö&–ÆRÖf7B&÷VæF&–W2æBW†6ÇVFP§Væ6W'F–âf—7VÂ&VÖ÷fÇ2â67V×VÆFRFV6†æ–6Âv÷&³²æòÖ–7&òÖFWÆ÷’à ¢222ÆFW7BV&Æ—6†VB6†V6·ö–çB(	B67V×VÆFVB&VGV7F–öâæB&Wf–Wr&W—"(	B##bÓ’Óp ¥F†R67V×VÆFVB6æF–FFRv2V&Æ—6†VBF‡&÷Vv‚3Ccò'Vâ3C#SCccSVW6–æp§F†RÇ&VG’Ö6†V6¶VB3CS‚'F–f7BâF†R&÷VæFVBFW6·F÷–ç7V7F–öâf÷VæB&VÀ¦666FR&Vw&W76–öã¢F†R6†&VB&öG“¦†2‚76VÆV7FVEF÷W"’76VÆV7FVEF÷W&6VÆV7F÷ ¦6'&–W2Gvò”G2æBFVfVFVBF†RÆ–æ¶VB&Wf–Wr÷væW"w26–ævÆRÔ”B6VÆV7F÷"âF†P£3‡‚†÷FVÂ†VF–ærv27VVW¦VB–çFòsbãƒCG‚6öÇVÖâ&W6–FRCcrãSg‚æ÷FRà¥F†—2–çFW&ÖVF–FRf—7VÂ7FFRv2æ÷B66WFVB2w&VVâà ¤6÷'&V7F–öâ3Ccò6÷W&6R#“CCV&363†s6#Cƒ#C&6FFVVfFcsSscs–&W7F÷&W0§7Vff–6–VçB7V6–f–6—G’–ç6–FRF†R7W'&VçB&Wf–Wr÷væW"Âv—F‚öæR6ö×7Bvæ@¦ÆVgBÖÆ–væVBæ÷FRâæòFöæ÷"Æ–W"v2&W7F÷&VBâfö7W6VB&Vw&W76–öâf–ÆVBf—'7BÀ§F†Vâ76VC²F†R#"×FW7B&W6VçFF–öâ7V—FR6ö×ÆWFVBv—F‚öæR…ÖöæÇ’Æö6Â6¶— ¦6÷fW&VB'’6÷W&6R4’â6V7W&—G’3C3“##C†æBW†7B'F–f7B3C3“##F76VBà ¤f–æÂ'F–f7BSS“ccÂF–vW7@¦6†#Sc£cs3#3fcVVC6CCvV#V3VcFcVSsscC†&#SSƒVcfSS3sFS&CvC“vCffÀ§v2&WW6VBv—F†÷WB&V'V–ÆB–â6÷'&V7F—fRV&Æ–6F–öâ3Cc"ò'Vâ3C3#s#“c–à¤FWÆ÷–ÖVçBWf–FVæ6RS#3ƒVÂF–vW7@¦6†#Sc£“VVF#–#v3cv&F63C–#ss†3C“S#c3VC6SƒSfSV&Ccf–f63&Cs#3cF3ƒFfÀ¦6öæf—&×2ÆÃsRW†7Bf–ÆW2Âæö–æFW‚Â6÷VçFW#ÂF—6&ÆVBÆVCC2Â–çFW&æÂ…FVæ–ÂÀ§&WF–æVB&öÆÆ&6²æBVæ6†ævVC2&öGV7F–öâf–ævW'&–çG2âWf–FVæ6R¤•æ@¦&Vf÷&RögFW"öf–æÂf–ævW'&–çG2vW&R–æFWVæFVçFÇ’fW&–f–VBgFW"&÷F‚V&Æ–6F–öç2à ¤f–æÂV–v‡B&r76WG3¢¢£cc“s‚(i"cc#s'—FW2(‰#sræWBF†—272’¢¢à¥F†R–æ¦V7F÷"ö&÷VæF'’6¶vR6fVCƒc3²F†RÆ—fR6÷'&V7F–öâFG3SbÂgVÆÇ’6÷VçFVBà¤552¢£“CcCB¢¢Â¥2¢£sc#r¢¢â6ö×&VBv—F‚F†R&–÷"V&Æ—6†VC#“ƒƒ'—FW2ÂF†P§&Wf–Wr—2¢£S3c’'—FW26ÖÆÆW"¢£²7V×VÆF—fR&VGV7F–öâg&öÓ3S#B—2¢£3S#S2¢¢à¥W"Öf–ÆR†6†W2æBgVÆÂ&÷fVææ6S¢6V&6ƒ2×&Wf–WrÖ–æ¦V7F÷"Ö&÷VæF'’×&W—"æ§6öæà ¤7GVÂf—7VÂWf–FVæ6S¢6Æ÷VB6‡&öÖ—VÒ¢£3c<9s“3b¢¢Â–æ—F–Âf÷&ÒÂ&W7VÇG2÷FööÇ2À¦W‡æFVB†÷FVÂæB6VÆV7FVBfÆ–v‡B÷&Wf–Wrâ6÷'&V7F—fR67&VVç6†÷B6öæf—&×2ÅU„õ ¤%B–âöæRÆ–æRC#'‚Â6–ævÆSc3'‚†VF–ær6öÇVÖâÂÆVgBÖÆ–væVBæ÷FRÃc“3%T §F÷FÂæBF†RÆ–6F–öâ5Dâæò†÷&—¦öçFÂFö7VÖVçB÷fW&fÆ÷s²ÆÂV–v‡BÆ—fP¦66†R¶W—2ÖF6‚F†Rf–æÂ6÷W&6RâF†RÆVBf÷&Òv2æ÷Bf—6—FVB÷"7V&Ö—GFVBà¤ÖÆ&VÂv2–ç7V7FVC²Ö–çFW&7F–öâv2æ÷BâæògVÆÂÖG&—‚v2&WVFVBà ¥&W7öç6—fS3sRóscó““’óÂÆVBÆ–fV7–6ÆRf—7VÇ2æB‡—6–6Â6f&’&VÖ–à¢¢¦FVfW'&VB¢£¢F†—2'&÷w6W"†2æò7W÷'FVBf–Ww÷'B×&W6—¦R6&–Æ—G’âF†RV&Æ–W ¦Æö6ÂöFFf—‡GW&RöÆ–7’&Æö6·2vW&Ræ÷B'—76VC²æ÷&ÖÂV&Æ–2&Wf–Wr–çFW&7F–öà§v2–æFWVæFVçFÇ’WF†÷&—¦VBâÖ–â&VÖ–ç2fS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–à ¤æW‡C¢&WF—&RF†Rv†öÆR6VÆV7FVB×F÷W"æ776Föæ÷"öæÇ’gFW"7W'&VçB×6÷W&6P¦FWF–Â÷&Wf–WröÆVBvVöÖWG'’C3sRóscóâ—G3c"VÖ—GFVB'—FW27F–ÆÂ÷vâ6†&V@§6†VÆÂö&6²÷†÷Fòöf7G2÷6V7F–öâ×F—FÆRöf—†VBÔ5D&–Ö—F—fW3²6ÇfvRF†÷6R–â7W'&Vç@¦÷væW'2âW7F–ÖFVC.(	34´"æWB—2â÷÷'GVæ—G’Âæ÷BÖV7W&VB6f–æw2â–bF†Rf–Ww÷'@§&W&WV—6—FR&VÖ–ç2Væf–Æ&ÆRÂVF—Bæ÷F†W"–æFWVæFVçB&W6VçFF–öâ÷væW"à¤Fòæ÷B&WVB6ö×ÆWFVB&VÖ÷fÇ2÷"V&Æ—6‚æ÷F†W"Ö–7&ò×6f–æw2ÖöæÇ’&F6‚à ¢222&Wf–÷W26†V6¶VB6æF–FFR(	Bf–æÂ7G–ÆR–æ¦V7F÷"æB&÷VæF'’&W—'2(	B##bÓ’Óp ¥"3CS‚ò6÷W&6R“#66Fc6SF66CS6CsfFFS3vcƒ3SC“#6&F&WF—&W2F†RÆ7@§'VçF–ÖR552–æ¦V7F÷"†7VÖÖ'’Ö7F×7G–ÆW2æ§6æB—G2&—fFR7G–ÆW6†VWB’â6öÖÖöà§&Wf–Wrw&–Bæ6†÷'2æ÷r†fRöæRÆ–æ¶VB÷væW"–â&Wf–WrÖÆ–÷WBæ776²†6P¦—6öÆF–öâÂ†öæR&V6vVöÖWG'’Â5D6—¦–æræBæF—fRæW7F–ær&R&WF–æVBà ¥F†R6ÖR6¶vR&W—'2f÷W"6öæf—&ÖVB&÷VæF&–W2g&öÒV&Æ–W"VçV&Æ—6†V@§&WF—&VÖVçG3¢6ö×7BFööÆ&"F—7Æ’F‡&÷Vv‚““—‚v—F†÷WBGWÆ–6FRFW6·F÷ ¦7F–öç2ÂFVfVÇB†–F–æröbF†R†öæRVçG'’öâFW6·F÷Â6æöæ–6ÂÖÖ'WGFöâFW‡BÀ¦æB7–æ6‡&öæ÷W2F—7Æ–VB×F÷FÂ&Vg&W6‚F‡&÷Vv‚F†R6ö×F–&ÆRFV6÷&FR‚–’à¥&–6R&—F†ÖWF–2æBÆVBô’öæÇ—F–726öçG&7G2&RVæ6†ævVBâ&Vw&W76–öç2vW&P§&W&öGV6VB–âfö7W6VBFW7G2&Vf÷&Rf—†W3²F†W6RFW7G2&Ræ÷Bf—7VÂ66WFæ6Rà ¤V–v‡B&r76WG3¢¢£cc“s‚(i"ccR'—FW2(‰#ƒc2æWB’¢¢â¥2fÆÇ2¢£#ƒ“’'—FW2¢£°¦Æ–æ¶VB552w&÷w2¢£#3b'—FW2¢¢Â–æ6ÇVFVB–âF†BæWB&W7VÇBâ–æ¦V7F÷"6öç6öÆ–FF–öà¦ÆöæR6fW2“#B'—FW3²6ö×7B&W—'2FBcâ7V×VÆF—fR&6VÆ–æR&VGV7F–öâ—0¢¢£3SC’'—FW2¢¢g&öÒ3S#BâVF—Bv—F‚ÆÂV–v‡BW†7B†6†W3 ¦Fö72÷&ö¦V7B÷6V&6ƒ2×&Wf–WrÖ–æ¦V7F÷"Ö&÷VæF'’×&W—"æ§6öæà ¥6V7W&—G’3CsCs†æBW†7B'F–f7B'V–ÆB3CsC6ö×ÆWFVB7V66W76gVÆÇ’à¥&WW6&ÆR'F–f7BCc#3S“FÂF–vW7@¦6†#Sc¦&&CfSƒf&#Sv3&3Vcs63†F3sV3C“svC6CSC“&SfFC3vSvV#ƒ†Vfà¤Æö6Â'V–ÆBö6†V6²ÂFööÆ&"÷&W7VÇG2÷6VÆV7FVBÖfÆ÷röÆ–æ¶VB×7G–ÆR&Vw&W76–öç2Â3P§6÷W&6R÷&W6VçFF–öâFW7G2æB÷væW"fÆ–FF÷'276VC²F†RöæR…ÖöæÇ’Æö6Â6¶— ¦—26÷fW&VB'’4’âFö72&WW6RF†R6÷W&6R'F–f7BæBFòæ÷B&V'V–ÆB—BâF†RöÆFW §&W7VÇG2Ö6öçFW‡BVF—BÇ6ò&V6V—fW2ÖWFFFÖöæÇ’V×G’Öf–ÆR4„#Sb6÷'&V7F–öâà ¢¢¤æ÷BV&Æ—6†VBâ¢¢Ö–â&VÖ–ç2fS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–°¦æò&öGV7F–öâ÷"&Wf–Wr÷W&F–öâv2W&f÷&ÖVBâ6Æ÷VB'&÷w6W"—2f–Æ&ÆRÀ¦'WB7W'&VçB×6÷W&6RÆö6ÂöFFf—‡GW&Ræf–vF–öâv2&Æö6¶VB'’—G2U$ÂöÆ–7’à¥F†÷6RGFV×G27F÷VBv—F†÷WBv÷&¶&÷VæC²æò67&VVç6†÷G2÷"f—7VÂ72&P¦6Æ–ÖVBâ7W'&VçB×6÷W&6RFööÆ&"öVçG'’öÖ÷&Wf–WrvVöÖWG'’æB6f&’7F’FVfW'&VBà ¤æW‡C¢&WW6RF†—2W†7B'F–f7Bf÷"§W7F–f–VB—6öÆFVB×&Wf–Wr6†V6·ö–çBæ@¦'&–VfÇ’–ç7V7BffV7FVBFööÆ&"öVçG'’öÖ÷&Wf–Wr7FFW2âF†Vâ&WF—&RF†Rv†öÆP¦6VÆV7FVB×F÷W"æ776Föæ÷"öæÇ’gFW"7W'&VçB×6÷W&6RFWF–Â÷&Wf–WröÆVBvVöÖWG'’@£3sRóscó—26†V6¶VBâ—G2c"VÖ—GFVB'—FW26öçF–â7F–ÆÂ×&WV—&VB6†&V@§6†VÆÂÂ&6²Ö'WGFöâÂ†÷Fòöf7G2Â6V7F–öâ×F—FÆRæBf—†VBÖÖö&–ÆRÔ5D&–Ö—F—fW3°§6ÇfvRF†÷6R–çFò7W'&VçB÷væW'2âF†RW7F–ÖFVB.(	32´"÷÷'GVæ—G’—2æ÷BÖV7W&V@§6f–æw2÷"W&Ö—76–öâFò&VÖ÷fRF†RFöæ÷"v—F†÷WBF†RÖ—76–ærvVöÖWG'’Wf–FVæ6Rà ¢222ÆFW7B6†V6¶VB6æF–FFR(	BÆVv7’&W7VÇG26öçFW‡B÷væW"(	B##bÓ’Óp ¥"3CSbò6÷W&6R–C#F&#s#C#ss–cSc&3Sc6S3Ccs†#S“Cƒ†&WF—&W0§F†RgVÆÂÆVv7’&W7VÇG2Ö6öçFW‡Bæ776F÷Ö6‡&öÖR÷væW"âgVæ7F–öæÂ–æ—F–Â÷&W7VÇG2ğ¦VF—BöÆö6ÂÖV×G’wV&G2Â6†VÆÂ—6öÆF–öâÂÖö&–ÆRG&vW"FVfVÇBæBW‡æFVBÖ6&@¦g&ÖR&VÖ–â–â7W'&VçB÷væW'2âF†RöÆBf—fRÖ6öÇVÖâFW6·F÷7VÖÖ'’ÂFVç6RFööÇ0§6¶–âæBÆ—7BöÖFW‡B7V'7F—GWF–öç2vW&R–çFVçF–öæÆÇ’æ÷B6÷–VBà ¤V–v‡B&r76WG2fÆÂ¢£s#sƒr(i"cc“s‚'—FW2(‰#Sƒ’552’¢¢â7&÷723CSRò3CS`§F†—2'Vâ&VÖ÷fW2¢£“c2'—FW2¢£²7V×VÆF—fR&6VÆ–æR&VGV7F–öâ—2¢£3CSCb'—FW2¢¢à ¥6V7W&—G’3C“c3CfæBW†7B'F–f7B'V–ÆB3C“c3Cƒ†76VBâ&WW6&ÆP¦'F–f7B3cC3†ÂF–vW7@¦6†#Sc¦fVSC#3s“&3s–cC†VVC3Sccfc3ƒƒ&#SFsSfFF36cC&cf&CFà¤Æö6ÂW†7B'V–ÆBö6†V6²Âfö7W6VB7FFRÖ÷væW"&Vw&W76–öç2Â3R6÷W&6R÷&W6VçFF–öà§FW7G2æB&÷F‚÷væW"fÆ–FF÷'273²öæR…ÖöæÇ’Æö6Â6¶——26÷fW&VB'’4’à¤VF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2×&W7VÇG2Ö6öçFW‡BÖ÷væW"×&WF—&VÖVçBæ§6öæà ¥F†—2—26†V6¶VB—6öÆFVBÖ6æF–FFRFW6–vâW‡W&–ÖVçBÂ¢¦æ÷BV&Æ—6†VBf—7VÀ¦66WFæ6R¢¢â&Wf–Wr&VÖ–ç2F#c3“f²Ö–â÷&öGV7F–öâ&VÖ–âfS†6&à¤6‡&öÖ—VÒ—2Væf–Æ&ÆRÂ6ò–æ—F–Â÷&W7VÇG2öVF—BöÆö6ÂÖV×G’vVöÖWG'’@£3sRó““’óóCCæBF†RW‡æFVBÖ6&Bg&ÖR&VÖ–âFVfW'&VBà ¤æW‡C¢&Vf÷&RV&Æ–6F–öâÂ–ç7V7BF†R–çFVçF–öæÂ7VÖÖ'’÷FööÇ2&W6WBB3sRæ@£CCÇW2F†RFööÆ&"6VÒB““’óâ–b'&÷w6W"Wf–FVæ6R&VÖ–ç2Væf–Æ&ÆRÀ¦6öçF–çVRVF—F–ærF–ffW&VçB–æFWVæFVçB÷væW#²Fòæ÷B&W7F÷&RF†—2&WF—&VBÆ–W"à ¢222ÆFW7B6†V6¶VB6æF–FFR(	B6&BæB6VÆV7FVB&W6VçFF–öâ÷væW'2(	B##bÓ’Óp ¥"3CSRò6÷W&6R6CV#3fc3F&#sC†C&Cƒ†Cvc6Cƒ“cC3–C3F&WF—&W0§F†R&VÖ–æ–ær&W7VÇBÖ6&G2æ776Föæ÷"ÂF†R7FF–26VÆV7FVB×F÷W"7G–ÆR–æ¦V7F÷"æ@§F†R7FæFÆöæRF÷W"×&W6VçFF–öâæ§666†VGVÆW"âÆ—fRÖö&–ÆRVçG'’ö÷&FW"'VÆW2æ÷p¦&VÆöærFò7W'&VçBVçG'’÷&W7VÇG2÷væW'3²6VÆV7FVBf÷&ÖGF–æræB&–6R66÷R6†&P§F†RW†—7F–ær6VÆV7FVBÖfÆ÷r$böö'6W'fW"æB&WF–âF†R6ö×F–&–Æ—G’f6FRà ¤V–v‡B&r76WG2fÆÂ¢£scC(i"s#sƒr'—FW2(‰#3#SB’¢¢â552&—6W2Scb'—FW2g&öĞ¦Ö÷f–ærÆ—fR'VÆW2–çFòÆ–æ¶VB÷væW'3²¥2fÆÇ23ƒ#'—FW2'’FVÆWF–ærGvò'VçF–ÖP¦÷væW'2â7V×VÆF—fR&6VÆ–æR&VGV7F–öâ—2¢£#ƒs3r'—FW2¢¢à ¥6V7W&—G’3Cs“3c3–æBW†7B'F–f7B'V–ÆB3Cs“3c3V76VBâ&WW6&ÆP¦'F–f7B33c33FÂF–vW7@¦6†#Sc£CSfCS3Ssc3FC–S&3#3CFc“#CF#&3ƒ–f#vC6#&s&Cc†F63CVFà¤Æö6ÂW†7B'V–ÆBö6†V6²Âfö7W6VB6VÆV7FVBÖfÆ÷r÷FööÆ&"öÆ–æ¶VB×7G–ÆR&Vw&W76–öç2À£3R6÷W&6R÷&W6VçFF–öâFW7G2æB&÷F‚÷væW"fÆ–FF÷'273²öæR…ÖöæÇ’Æö6À§6¶——26÷fW&VB'’'F–f7B4’âVF—C ¦Fö72÷&ö¦V7B÷6V&6ƒ2Ö6&B×6VÆV7FVB×&W6VçFF–öâÖ÷væW"×&WF—&VÖVçBæ§6öæà ¥F†—26÷W&6R—2¢¦6†V6¶VB'WBæ÷BV&Æ—6†VB¢¢â&Wf–Wr&VÖ–ç2F#c3“f²Ö–âæ@§&öGV7F–öâ&VÖ–âfS†6&â6‡&öÖ—VÒ—2Væf–Æ&ÆRÂ6òÖö&–ÆRVçG'’÷&W7VÇB÷&FW"À§6VÆV7FVB×F÷W"vVöÖWG'’æB‡—6–6Â6f&’&VÖ–âFVfW'&VC²æòf—7VÂWV—fÆVæ6P¦—26Æ–ÖVBà ¤æW‡C¢VF—B&W7VÇG2Ö6öçFW‡Bæ776v–ç7B7W'&VçB&W7VÇG2ÖÆ–÷WBæBVçG'’÷væW'2à¤¶VW—G2Væ—VR6ö×7B×7VÖÖ'’æB6†VÆÂ&÷VæF&–W2VçF–ÂW†7B÷væW'6†—æ@§&W7öç6—fRvVöÖWG'’&R&÷VæFVBà ¢222ÆFW7B6†V6¶VB6æF–FFW2(	B6VÆV7FVBÖö&–ÆRæB†÷FVÂ6¶vR÷væW'2(	B##bÓ’Óp ¥Gvò–æFWVæFVçBv†öÆRÖ÷væW"6¶vW2vW&R6ö×ÆWFVBæBf7BÖf÷'v&FVB–çFò&VÆV6S  ¢Ò"3CS"ò6÷W&6R#ss†c†#sfCfF#33c“f3V#vVcƒ–&6CfFS†F ¢&VÖ÷fW26VÆV7FVB×F÷W"ÖÖö&–ÆRæ§6âF†R7W'&VçB6VÆV7FVBÖfÆ÷r÷væW"æ÷r&÷f–FW2F†P¢6–ævÆR$böö'6W'fW"ÂÖö&–ÆR&"Â6ö×F–&–Æ—G’’ÂÆVBÖf–VÆBæ÷&ÖÆ—¦F–öâæ@¢æ÷&ÖÂöæòÖfÆ–v‡B5D&V†f–÷"à¢Ò"3CS2ò6÷W&6RV&6SCfC3S6#ƒCS&63&3†VCcSsf3S–c63 ¢&WF—&W2†÷FVÂ×6¶vW2æ776â&WV—&VBW‡æFVBÖöffW"æBÖö&–ÆR6¶vR'VÆW2æ÷p¢Æ—fR–âF†R7W'&VçB&W7VÇG2Æ–÷WB÷væW'3²ö'6öÆWFR6&BöÖö&–ÆRfÆÆ&6·2æBFV@¢67&öÆÆ&"6VÆV7F÷'2vW&Ræ÷B6÷–VBà ¤V–v‡B&r76WG2fÆÂ¢£ƒ#C‚(i"scC'—FW2(‰#C#r’¢£¢552#R(i"“sc“P¢(‰##C3’Â¥2ƒ#2(i"sƒ3Cb(‰#ssr’âF†—2—2æWB–ÆöBÖV7W&VÖVçC¢F†RÖö&–ÆP¦6ö×F–&–Æ—G’6öFRÖ÷fVB–çFò6VÆV7FVBÖfÆ÷r—26÷VçFVBv–ç7BF†R&VÖ÷fVB¥2à¤7V×VÆF—fR&6VÆ–æR&VGV7F–öâ—2¢£#SCƒ2'—FW2¢¢à ¤&÷F‚6¶vW276VBF†RGvòÖæFF÷'’6÷W&6R¦ö'2âf–æÂ6V7W&—G’—23C333ƒC3V°¦f–æÂW†7B'F–f7B'V–ÆB—23C333ƒCvÂ'F–f7B3ss3s&ÂF–vW7@¦6†#Sc£–&6ƒ“S#v#ssSSF#3ƒ–c3S&cvsƒ–6c“V&#ƒF6cSC#s#vSfFà¤Æö6ÂW†7B'V–ÆBö6†V6²Â3R6÷W&6R÷&W6VçFF–öâFW7G2ÂF†R6VÆV7FVBÖfÆ÷r6ö×F–&–Æ—G§&Vw&W76–öâæB&÷F‚÷væW"fÆ–FF÷'273²öæR…ÖöæÇ’Æö6Â6¶——26÷fW&VB'’4’à¤VF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2×6VÆV7FVBÖÖö&–ÆR×6¶vRÖ÷væW"×&WF—&VÖVçBæ§6öæà ¥F†—26÷W&6R—2¢¦6†V6¶VB'WBæ÷BV&Æ—6†VB¢¢â&Wf–Wr&VÖ–ç2F#c3“f²Ö–âæ@§&öGV7F–öâ&VÖ–âfS†6&â6‡&öÖ—VÒv2Væf–Æ&ÆRÂ6ò6VÆV7FVBÖö&–ÆR÷&Wf–Wrğ¦ÆVBæBW‡æFVB×6¶vRvVöÖWG'’ÇW2‡—6–6Â6f&’&RFVfW'&VC²æòf—7VÀ¦WV—fÆVæ6R—26Æ–ÖVBà ¤æW‡C¢6öÖ&–æR&WF—&VÖVçBöbF†R&VÖ–æ–ær&W7VÇBÖ6&G2æ776Föæ÷"æB7FF–0§6VÆV7FVB×F÷W"7G–ÆR–æ¦V7F÷"v—F‚æ÷F†W"ÖFW&–Â÷væW"6¶vRâ&W6W'fRÖö&–ÆP§6V&6‚VçG'’ö÷&FW"æB&÷VæB6&B÷6VÆV7FVBvVöÖWG'’&Vf÷&Rç’&Wf–WrV&Æ–6F–öâà ¢222ÆFW7B6†V6¶VB6æF–FFW2(	B&Wf–WræBF÷W"FVç6—G’&WF—&VÖVçB(	B##bÓ’Óp ¥Gvò7V'7FçF–Â6¶vW2vW&R6ö×ÆWFVBæBf7BÖf÷'v&FVB–çFò&VÆV6S  ¢Ò"3CSò6÷W&6Rc&#3CS36VcFCƒVsc6&F6VVCSfc3sF ¢&VÖ÷fW2F†R†—7F÷&–6ÂFW6·F÷öÖö&–ÆR&Wf–WrÖFVç6—G’Æ–W"æB7FÆRÖö&–ÆP¢w&–B&÷w2bórâF†R7W'&VçB&Wf–Wr&ö&B&VÖ–ç3²6ö×7BÃÓ““—†&÷VæF'¢¶VW2F†RÆVBf÷&ÒæB7VÖÖ'’–âöæRW‡Æ–6—B6öÇVÖâà¢Ò"3CSò6÷W&6RccC“f3†v##S3#“F3sc–&fC†cC&&#Fc&Vf ¢&VÖ÷fW2FW6·F÷F÷W"öfÆ–v‡BFVç6—G’÷fW'&–FW2â—&VBÖfÆ–v‡BÆ–÷WBÂ7FvP¢—6öÆF–öâÂ6V6öæF'’f7G2Â&ööÒ66W72æB7W'&VçB5D÷væW'2&VÖ–âà ¤V–v‡B&r76WG2fÆÂ¢£ƒS3#R(i"ƒ#C‚'—FW2(‰#Ssr’¢£¢552S#"(i"#S°¤¥2&VÖ–ç2ƒ#2â7V×VÆF—fR&6VÆ–æR&VGV7F–öâ—2¢£##sb'—FW2¢¢â&÷F‚6÷W&6P§6¶vW276VB6V7W&—G’æBW†7B'F–f7B4’âf–æÂ'Vç2&R6V7W&—G¦3C“sƒ“æB'F–f7B3C“sƒ“#²&WW6&ÆR'F–f7B“#ƒƒƒƒ&ÂF–vW7@¦6†#Sc¦SVS&Ff6SfSc–3–S3†&C†&FCcƒ#SSv#“f&F6S6Fcƒc#VFS#VF#&6&##à¤Æö6ÂW†7B'V–ÆBö6†V6²Â3R6÷W&6R÷&W6VçFF–öâFW7G2æB&÷F‚÷væW"fÆ–FF÷'273°¦öæRÆö6Â…ÖöæÇ’6¶——26÷fW&VB'’'F–f7B4’âVF—C ¦Fö72÷&ö¦V7B÷6V&6ƒ2×&Wf–Wr×F÷W"ÖFVç6—G’×&WF—&VÖVçBæ§6öæà ¥F†—26÷W&6R—2¢¦6†V6¶VB'WBæ÷BV&Æ—6†VB¢¢â&Wf–Wr&VÖ–ç2F#c3“f²Ö–âæ@§&öGV7F–öâ&VÖ–âfS†6&â&Wf–WröÆVBvVöÖWG'’ÂFW6·F÷F÷W"öfÆ–v‡Bf—7VÀ¦FVç6—G’æB‡—6–6Â6f&’&RFVfW'&VBæB&Ræ÷B6Æ–ÖVB2f—7VÆÇ’76VBà ¤æW‡C¢6öç6öÆ–FFR6VÆV7FVB×F÷W"ÖÖö&–ÆRæ§6–çFòF†R7W'&VçB6VÆV7FVBÖfÆ÷r÷væW §v†–ÆR&W6W'f–ær—G26ö×F–&–Æ—G’’ÂÆVBÖf–VÆBæ÷&ÖÆ—¦F–öâæBæ÷&ÖÂöæòÖfÆ–v‡@¤5D&V†f–÷"â67V×VÆFRF†R6ÖÆÆW"&W7VÇBÖ6&Bö–æ¦V7FVB×7G–ÆR&VÖæçG2&F†W"F†à¦÷Væ–ær7FæFÆöæRÖ–7&òÕ'2à ¢222&Wf–÷W26†V6¶VB6æF–FFR(	B†–FFVâ&W7VÇG26‡&öÖRæB6†&VBG&vW"(	B##bÓ’Óp ¥6÷W&6R3CC’òW†7B&VÆV6R&63†C#SCv3Sc##–V#S†SC“3†&&VFV3vCcVÂG&VP¦3C#FCsv##ƒS6FƒsƒCV3#3SSS–C3cscƒÂ&VÖ÷fW2F†RW&ÖæVçFÇ’†–FFVà§&W7VÇG2ÖÖWF&VæFW&W"æB&WVFVB7FF–2–çG&ò&W6WG2âf—6–&ÆR6÷VçG2÷&÷WFW2æ@§F†RöæR6V&6‚Öf÷&Òƒ÷væW"&VÖ–ââ&WVFVB†öæR÷F&ÆWBG&vW"7W&f6R'VÆW0¦æ÷rÆ—fR–âÖö&–ÆR×&W7VÇG2×FööÆ&#²Væ—VR6—¦–ærÂFF–æræBf—†VB÷7F–6·’7F–öà§Æ6VÖVçB&VÖ–â–âF†V—"'&V·ö–çBÖöGVÆW2â÷&–v–æÂg&7F–öæÂÖVF–v2&VÖ–âà ¤V–v‡B&r76WG2fÆÂ¢£ƒsCƒ‚(i"ƒS3#R'—FW2(‰##c2’¢£¢552c#ƒ(i"S# ¢(‰#s’’Â¥2ƒ#r(i"ƒ#2(‰#ƒB’â7V×VÆF—fR&6VÆ–æR&VGV7F–öã¢¢£c“’¢¢à¤f—fRV&Æ–2f–ÆW2&VÖ–â'—FRÖ–FVçF–6Ã²&÷FV7FVB6öçG&7G2&RVæ6†ævVBà ¥&WV—&VB6÷W&6R4’76VC¢6V7W&—G’3C“S#“Sƒ#–²W†7B'F–f7B3C“S#“S“3À¦'F–f7Bƒ3cS†ÂF–vW7@¦6†#Sc£SCFCC3v&fCƒ#“V#S†cc&SFSccs&#v#Sƒ–SSf&Sc6Ss&#S“V3vcCScs6Fà£3RÆö6Â6÷W&6R÷&W6VçFF–öâFW7G272Âv—F‚öæR…ÖöæÇ’Æö6Â6¶—6÷fW&VB'’4’à¥F†R†–FFVâÖÖWF&Vw&W76–öâf—'7Bf–ÆVBöâ&6VÆ–æRâF†RffV7FVB552f–æÂÖ0¦ÖF6‚B3sRóscóscãRóscó““’ó““’ãRóâöæRÆö6Â6÷'&V7F–öâ÷&V'V–ÆB&WF–æVBF†P¦g&7F–öæÂv&Vf÷&RF†RöæÇ’6÷W&6RW6‚ô4“²Fö72÷&VÆV6R&WW6RF†B'F–f7Bà¤VF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2×&W7VÇG2Ö6‡&öÖRÖG&vW"×&WF—&VÖVçBæ§6öæà ¥F†—26÷W&6R—2¢¦6†V6¶VB'WBæ÷BV&Æ—6†VB¢¢â&Wf–Wr&VÖ–ç2F#c3“fÂÖ–à¦æB&öGV7F–öâfS†6&â'&÷w6W"6öææV7FVBÂ'WBÆö6Âf—‡GW&Ræf–vF–öâv0¦&Æö6¶VB'’U$ÂöÆ–7“²æòv÷&¶&÷VæB÷"f—7VÂ66WFæ6R—26Æ–ÖVBâV&Æ–0§&Wf–WrV&Æ–6F–öâÂG&vW"f—7VÂ7FFW2æB‡—6–6Â6f&’&RFVfW'&VBà ¤æW‡C¢Fòæ÷B&WVB†–FFVâ&W7VÇG2ÖWFö–çG&ò&W6WG2÷"†öæR÷F&ÆWBG&vW"6öç6öÆ–FF–öââæW‡B7V'7FçF–Â6æF–FFS¢&WÆ6RF†R†—7F÷&–6Â3S#×6÷W&6RÖ'—FRFW6·F÷öÖö&–ÆR&Wf–WrÖÆ–÷WB&Æö6²v—F‚F†R6ö×7B7W'&VçBÆVB÷&Wf–Wr&÷VæF'’Â'WBf—'7BfW&–g’&VÆWfçBvVöÖWG'’W6–ærâÆÆ÷vVB'&÷w6W"f—‡GW&R÷"W†7B—6öÆFVB&Wf–Wrâ6†V6²F†R&VÖ–æ–ærÖö&–ÆR&Wf–Wrw&–B×&÷rbór÷fW'&–FW2&Vf÷&R6Æ–Ö–ærF†R&Wf–÷W2&÷r6ö×7F–öâ6ö×ÆWFRâ¶VW&W7VÇBÖ6&G2‡ã#"æWB’æB7FF–2Ö–æ¦V7F÷"w&W'2‡ãSc2æWB’67V×VÆFVBÂæ÷B7FæFÆöæR'2â6öçF–çVR–æFWVæFVçB6fRv÷&²–bvVöÖWG'’&VÖ–ç2Væf–Æ&ÆRà ¢222&Wf–÷W26†V6¶VB6æF–FFR(	B&öö¶–ær6‡&öÖR÷væW"&WF—&VÖVçB(	B##bÓ’Óp ¥6÷W&6R3CCròW†7B&VÆV6Rscc&CfSS#&cS†fF3ƒCsC3f6VVS†VfC&cS6À§G&VR&3#“C3f#36cScfC“#S#ƒCcc†#“ccV3cÂ&WF—&W2F†R6W&FP¦&öö¶–ær×&öw&W72'VçF–ÖRæB552÷væW"ÇW2F†RFV6÷&F—fRf–æÂ×&Wf–Wr†VF–æp§'VçF–ÖRâF†R6VÆV7FVB×F÷W"F‚¶VW2—G2&–Ö'’fÆ–v‡B×Fò×&Wf–Wr7F–öâÀ§7VÖÖ'’×FòÖÆVBö&6²7F–öç2Â&öö¶–ær7VÖÖ'’ÂÆVBÆ–fV7–6ÆRæB66W76–&ÆP§6VÆV7FVBÖ†÷FVÂ†VF–ærâF†R7W'&VçB6VÆV7FVBÖfÆ÷r÷væW"Ç6ò6öçF–çVW2Fò†–FP§F†RöÆBç6VÆV7FVB×F÷W"×&öw&W76Föæ÷"à ¥6VÆV7FVBæB&Wf–Wrw&–G2æòÆöævW"&W6W'fRV×G’&÷w2f÷"F†R&VÖ÷fVB6‡&öÖRà¤V–v‡B&rV&Æ–276WG2fÆÂ¢£“S“CB(i"ƒsCƒ‚'—FW2(‰#ƒCSb’¢£¢55233’(i £c#ƒ(‰#CS‚’Â¥2ƒScR(i"ƒ#r(‰#C3“‚’âg&öÒF†R3S#BÖ'—FRv†öÆRÖÆ–W ¦&6VÆ–æRF†R6†V6¶VB&VGV7F–öâ—2æ÷rC3b'—FW2âÆÂV–v‡BV&Æ–2F‡2æ@§&÷FV7FVB'W6–æW726öçG&7G2&VÖ–âVæ6†ævVBà ¤&÷F‚ÖæFF÷'’6÷W&6R¦ö'276VBv—F‚wV&G2Væ6†ævVC¢6V7W&—G’3C“#sƒSS ¦æBW†7B'F–f7B'V–ÆB3C“#sƒS“†²'F–f7BsCSƒƒCÂF–vW7@¦6†#Sc¦&f#“fV33#3S“6VCF#ssc6SSCc–FF#ƒSvcCVfF#s–FSSsV3CcS3cfà¥F†R6–ævÆRW†7B6÷W&6R'V–ÆBv2&WW6VBâÆö6ÂW†7B6†V6²æB3Rfö7W6V@§6÷W&6R÷&W6VçFF–öâ6†V6·276VC²öæR…ÖöæÇ’Æö6Â6†V6²v26¶—VB&V6W6P¥…—2Væf–Æ&ÆRâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Ö&öö¶–ærÖ6‡&öÖRÖ÷væW"×&WF—&VÖVçBæ§6öæà ¥F†—26÷W&6R—2¢¦6†V6¶VB'WBæ÷BV&Æ—6†VB¢¢âF†R—6öÆFVB&Wf–Wr&VÖ–ç26÷W&6P¦F#c3“f²Ö–âæB&öGV7F–öâ&VÖ–âfS†6&âæò'&÷w6W"÷"f—7VÂ72—0¦6Æ–ÖVBâ6VÆV7FVB×F÷W"(i"&Wf–Wr(i"ÆVBö&6²æBvVöÖWG'’@£3sRócCó““’óó3c2ÇW2‡—6–6Â6f&’&VÖ–âFVfW'&VBà ¤æW‡C¢Fòæ÷B&W7F÷&RF†R&WF—&VB&öw&W727G&—÷"FV6÷&F—fR&Wf–Wr&ææW"â¦g&W6‚–æFWVæFVçBVF—BÖV7W&VBöæÇ’&÷WB#"æWB'—FW2g&öÒ&WF—&–æp¦&W7VÇBÖ6&G2æ776gFW"7F—fR×'VÆRÖ–w&F–öâÂ6ò67V×VÆFR—Bv—F‚æ÷F†W §7V'7FçF–Â÷væW"æBöæÇ’v†Vâ&÷VæFVBÖö&–ÆR÷&W7VÇBÖ÷&FW"vVöÖWG'’6â&P¦6†V6¶VBâ÷F†W'v—6R–ç7V7BF–ffW&VçBÆ&vR&W6VçFF–öâ÷væW"â&÷FV7FV@§&–6RÂF÷W'f—6÷"ô’ÂÆVBG&ç7÷'BöÖ–æræBæÇ—F–72&VÖ–â÷WBöb66÷Rà ¢222&Wf–÷W26†V6¶VB6æF–FFR(	Bf÷&ÒæBÖö&–ÆRÖVçG'’÷væW"&WF—&VÖVçB(	B##bÓ’Óp ¥6÷W&6R3CCRòW†7B&VÆV6R3c&V&3FVF6&CS†fSc–##3&fVcFcsƒ6À§G&VR3–#c“†VFC–6##fSs†FcV&c&6cCF3“CSs6f3F6Â&WF—&W2F†RÆVv7’f÷&Ğ§&W6VçFF–öâfÖ–Ç’g&öÒ&6Ræ776âF†BÖöGVÆRæ÷r÷vç2öæÇ’F†R6†VÆÂÂvP¦–çG&òæBÖö&–ÆRwWGFW"â&WV—&VBf÷&Ò7W&f6RÂ6öçG&öÇ2ÂwVW7B÷÷fW"ÂV–6°¦f–ÇFW'2æB&W7öç6—fRVçG'’'VÆW2&R&WF–æVB–â7W'&VçBVçG'’×cæ776à ¥F†R6W&FRÖö&–ÆR×6V&6‚ÖVçG'’æ§6'VçF–ÖRFöæ÷"—2&÷fVææ6RÖöæÇ’â—G2öæP§G'W7Böf–ÇFW"DôÒ–ç7Fæ6RæB$”FövvÆRæ÷rÆ—fR–ç6–FRF†RW†—7F–ær6V&6‚Öf÷&Ğ¦6ö×÷6—F–öã²Æ–æ¶VB552&VÖ–ç2F†R&W6VçFF–öâ÷væW"æBæò'VçF–ÖR7G–ÆR—0¦–æ¦V7FVBâF†R6ÖR6¶vR&VÖ÷fW2&öö¶–ær×7VÖÖ'’w2&W6—¦R7V'67&–&W"&V6W6P¦—G2Æ–÷WB—2Ç&VG’552Ö÷væVC²&VæFW"Â&–6RæB&Wf–WröÆVBÆ–fV7–6ÆRWfVçG0¦&RVæ6†ævVBà ¤V–v‡B&rV&Æ–276WG2fÆÂ¢£““sC(i"“S“CB'—FW2(‰#3s“b’¢£¢552sc’(i £33’(‰#C3’Â¥2ƒs“s(i"ƒScR(‰##3cb’âg&öÒF†R3S#BÖ'—FRv†öÆRÖÆ–W ¦&6VÆ–æRF†R6†V6¶VB&VGV7F–öâ—2æ÷rSSƒ'—FW2âÆÂV–v‡BV&Æ–2F‡2æ@§&÷FV7FVB'W6–æW726öçG&7G2&VÖ–âVæ6†ævVBà ¤&÷F‚ÖæFF÷'’6÷W&6R¦ö'276VBv—F‚wV&G2Væ6†ævVC¢6V7W&—G’3Cƒƒscs33 ¦æBW†7B'F–f7B'V–ÆB3Cƒƒscs3c²'F–f7BcC36ÂF–vW7@¦6†#Sc£63–#sV&FFS“fC3sƒssFcFc3cS–ffS3#“#V#ƒfC#S“3&F3##cVCc#ƒfC–à¥F†R6–ævÆRW†7B6÷W&6R'V–ÆBv2&WW6VBâÆö6Â'V–ÆB6†V6²æB3Bfö7W6V@§6÷W&6R÷&W6VçFF–öâ6†V6·276VC²öæR…ÖöæÇ’Æö6Â6†V6²v26¶—VB&V6W6P¥…—2Væf–Æ&ÆRâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Öf÷&ÒÖÖö&–ÆRÖ÷væW"×&WF—&VÖVçBæ§6öæà ¥F†—26÷W&6R—2¢¦6†V6¶VB'WBæ÷BV&Æ—6†VB¢¢âF†R—6öÆFVB&Wf–Wr&VÖ–ç26÷W&6P¦F#c3“f²Ö–âæB&öGV7F–öâ&VÖ–âfS†6&âF†RW†V7WF÷"†Bæò6‡&öÖ—VĞ¦&–æ'’Â6òæò'&÷w6W"6Æ–Ò—2ÖFRâ–æ—F–ÂöVF—F–ærf÷&Òv–GF‡2ÂwVW7B÷÷fW"À¦6†–ÆBvW2ÂÖö&–ÆRGfæ6VBFövvÆRæB‡—6–6Â6f&’&VÖ–âFVfW'&VBà ¤æW‡C¢Fòæ÷B&WVBF†R&6Rf÷&Ò÷"Öö&–ÆRÖVçG'’&WF—&VÖVçBâF†R6ö×ÆWFP¦&W7VÇBÖ6&G2æ776Föæ÷"—2F†RæW‡BÖV7W&VB6æF–FFRÂ'WB—G27F—fRÖö&–ÆP¦VçG'’æB&W7VÇBÖ÷&FW"'VÆW2×W7Bf—'7BÖ÷fRFò7W'&VçB÷væW'2æB72&÷VæFV@¦'&÷w6W"vVöÖWG'’â–bF†BWf–FVæ6R—2Væf–Æ&ÆRÂ–ç7V7BF–ffW&VçBÆ&vP¦÷væW"–ç7FVBöb7V7VÆF—fVÇ’&VÖ÷f–ær—Bâ&÷FV7FVB&–6R&W6VçFF–öâÀ¦f–æÂ×6V7F–öç2æ§6æB&Wf–WrÖÆ–÷WBæ776&VÖ–â÷WG6–FR7V7VÆF—fRFVÆWF–öâà ¢222ÆFW7B6†V6¶VB6æF–FFR(	B&Wf–WræBfö7W2÷væW"&WF—&VÖVçB(	B##bÓ’Óp ¥6÷W&6R3CCBòW†7B&VÆV6RC““vSFVCccs†f&6FV3&&CvfFFFcc†À§G&VR6F6s“c†#ƒs–S†6s–c“cV#v33ƒ–f&S–cS6Â&WF—&W2F†R6ö×ÆWFP¦ÆVv7’&Wf–Wræ776&W6VçFF–öâFöæ÷"æBF†Rö'6öÆWFRFW6·F÷fÖ–Ç’–à¦6VÆV7FVB×F÷W"æ776âVæ—VR†VF–ærö7F–öâ÷7V&Ö—B'VÆW2æ÷rÆ—fR–â7W'&Vç@¦&Wf–WrÖÆ–÷WBæ776²f÷W"æöâÖf–æÂw&–B÷6VÒFV6Æ&F–öç2&R&WF–æVB–à¦F÷W"ÖFWF–Âæ776âF†RW†—7F–ær&W7öç6—fR&Wf–WrvVöÖWG'’&Æö6²—2'—FRÖ–FVçF–6Âà ¥F†R6ÖR6¶vR&WÆ6W26—‚Ög&ÖR6VÆV7FVBÖVçG'’öÆÆ–ærv—F‚öæRg&ÖRæ@§&VÖ÷fW26V&6ƒ2w2GWÆ–6FRV–v‡BÖg&ÖR&WGW&âÖfö7W2Æö÷â&öGV7F–öâ&VæFW'2F†P§6VÆV7FVBDôÒ&Vf÷&Rc#§F÷W"×6VÆV7FVF²F†R&6R6VÆV7FVB×F÷W"×&WGW&â×cæ§6 §&VÖ–ç2F†R6æöæ–6Â÷væW"F†Bfö7W6W2F†RW†7B–æ—F–F–ærF÷W"'WGFöâà¥&öGV7F–öâÖÆ&VÂ&V6÷fW'’æB&–Ö'W7–Æ–fV7–6ÆR&VÖ–â–â6V&6ƒ2à ¤V–v‡B&rV&Æ–276WG2fÆÂ¢£#3sB(i"““sC'—FW2(‰#3“cB’¢£¢5523“ƒ‚(i £sc’(‰###’’Â¥2ƒ“sb(i"ƒs“s(‰#sCR’âg&öÒF†R3S#BÖ'—FRv†öÆRÖÆ–W ¦&6VÆ–æRF†R6†V6¶VB&VGV7F–öâ—2æ÷rsƒB'—FW2âÆÂV–v‡BV&Æ–2F‡2æ@§&÷FV7FVB'W6–æW726öçG&7G2&VÖ–âVæ6†ævVBà ¤&÷F‚ÖæFF÷'’f–æÂ×6÷W&6R¦ö'276VBv—F‚wV&G2Væ6†ævVC¢6V7W&—G¦3CƒSsCƒvæBW†7B'F–f7B'V–ÆB3CƒSsS#v²'F–f7BSCƒ6À¦F–vW7B6†#Sc£“3Sc–3v#ƒ–3–Ff#““†FFC6Sv3vFV33F#vSs3S#C3&CS#3vFVS†C†#v&Fà¤öæRW†7B6÷W&6R'V–ÆBv2&WW6VBâÆö6ÂW†7B6†V6²Â’&W6VçFF–öâFW7G2†öæP¥…ÖöæÇ’Æö6Â6¶—’Âfö7W6VB&Wf–Wrö†æFöfb÷7VÖÖ'’÷6VÆV7FVB&Vw&W76–öç2æBF–f`¦6†V6²76VBâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2×&Wf–WrÖfö7W2Ö÷væW"×&WF—&VÖVçBæ§6öæà ¤âV&Æ–W"6V7W&—G’GFV×B3CƒSSCCs#†f–ÆVB&V6W6RF†R&–÷"Fö72ÖöæÇ¦6†V6·ö–çB6öçF–æVBG'Væ6FVBUDõ”ÄõEõ5DDRæ§6öæv—B&Æö"âF†RW†7BÆö6À¦&Æö"&63†#–3ssv6CsfFSfc3“Fc“#“S“&6cvcv2&W7F÷&VC²fÆ–FF÷'2æB'VçF–ÖP¦wV&G2vW&Ræ÷B6†ævVBâF†Rf–æÂW†7B†VB76VB&÷F‚&WV—&VB¦ö'2à ¥F†—26÷W&6R—2¢¦6†V6¶VB'WBæ÷BV&Æ—6†VB¢¢âF†R—6öÆFVB&Wf–WrFVÆ–&W&FVÇ§&VÖ–ç26÷W&6RF#c3“f²Ö–âæB&öGV7F–öâ&VÖ–âfS†6&âæò'&÷w6W"÷ §f—7VÂ72—26Æ–ÖVBâ6VÆV7FVBö&6²fö7W2Â&Wf–WröÆVBvVöÖWG'’@£3sRóC3ócCó““’óó3c2Âf–æÂf7Bf—6–&–Æ—G’æB‡—6–6Â6f&’&VÖ–âFVfW'&VBà ¤æW‡C¢Fòæ÷B&WVB&Wf–Wræ776Â6VÆV7FVB×F÷W"FW6·F÷vVöÖWG'’÷"F†RGWÆ–6FP¦fö7W2Æö÷2âf–æÂ×6V7F–öç2æ§6&VÖ–ç2F†RöæÇ’f—6–&ÆR÷væW"öb6WfW&Â&Wf–Wp¦f7G2æB×W7Bæ÷B&R&VÖ÷fVB–WBâF†R6W&FVÇ’VF—FVB3S3RÖ'—FR&Wf–WrÖÆ–÷W@¦&Æö6²7F–ÆÂ&WV—&W26ö×WFVB&Wf–WröÆVBWf–FVæ6RâVF—BF–ffW&VçBÆ&vR÷væW ¦÷"6öÖ&–æR÷F†W"ÖV7W&VB6fRg&vÖVçG3²&÷FV7FVB&–6R&W6VçFF–öâ7F—2÷W@¦öbF†—2&VGV7F–öâ72à ¢222ÆFW7B6†V6¶VB6æF–FFR(	Bf–ÇFW"æBÖ¶WCr÷væW"&WF—&VÖVçB(	B##bÓ’Óp ¥6÷W&6R3CC2òW†7B&VÆV6R3†&S–c†3#cc3V&#S–Cc3SV63ƒVcv#6c6CsÀ§G&VRF&fS&c##3SfsSffVSƒs&63sCSfS†Â&WF—&W2F†R6ö×ÆWFP¦f–ÇFW'2æ776&W6VçFF–öâFöæ÷"æBF†R6ö×ÆWFRÖ¶WCrÖÆö6²æ§6DôÒö–æÆ–æR×7G–ÆP¦÷væW"âöæÇ’7F—fR&–ÂöÖö&–ÆRFV6Æ&F–öç2Ö÷fRFò&W7VÇG2ÖÆ–÷WBæ776æ@¦Öö&–ÆR×&W7VÇG2×FööÆ&"æ776²F†R–æ¦V7FVB6öæf–FVæ6Rw&–B&V6öÖW27FF–2–à¦6VÆV7FVBÖfÆ÷r×c"æ776â7W'&VçB6V&6‚Öf÷&ÒöVçG'’ÖöGVÆW2&WF–âf–VÆBÆ6VÖVçBà¥F†R6ÖR6¶vR&VÖ÷fW2&W7VÇG2×F÷–æÆ–æRv–GF‚ööfg6WB÷FF–ær6Æ7VÆF–öç2æ@¦—G2&W6—¦RÆ—7FVæW"v†–ÆR&W6W'f–ær6öÆW66VB&W7VÇB×7FFR×WFF–öâWFFW2à ¤V–v‡B&rV&Æ–276WG2fÆÂ¢£#“sS2(i"#3sB'—FW2(‰#cC’’¢£¢552Ss“b(i £3“ƒ‚(‰#ƒ‚’Â¥2“3“Sr(i"ƒ“sb(‰#C#C’âg&öÒF†R3S#BÖ'—FRv†öÆRÖÆ–W ¦&6VÆ–æRF†R6†V6¶VB&VGV7F–öâ—2æ÷r“sƒ#'—FW2âÆÂV–v‡BV&Æ–2F‡2æBF†P§&÷FV7FVB'W6–æW726öçG&7G2&VÖ–âVæ6†ævVBà ¤&÷F‚ÖæFF÷'’6÷W&6R¦ö'276VBv—F‚wV&G2Væ6†ævVC¢6V7W&—G’3CƒCc3#“& ¦æBW†7B'F–f7B'V–ÆB3CƒCc3#Sv²'F–f7BCs“3ƒs6ÂF–vW7@¦6†#Sc£“†fCF&3vS–c#“CSvCcFfƒvS3v#SvF6F#3ƒ#cs“&VffS–Sc3†3#S#–F3ƒ–à¤öæRW†7B6÷W&6R'V–ÆBv2&WW6VBâÆö6ÂW†7B6†V6²Â‚&W6VçFF–öâFW7G2†öæP¥…ÖöæÇ’Æö6Â6¶—’Âfö7W6VB&W7VÇB66†VGVÆW"öf–ÇFW"öÖö&–ÆR÷væW"&Vw&W76–öç2æ@¦F–fb6†V6²76VBâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Öf–ÇFW"ÖÖ¶WCrÖ÷væW"×&WF—&VÖVçBæ§6öæà ¥F†—26÷W&6R—2¢¦6†V6¶VB'WBæ÷BV&Æ—6†VB¢¢âF†R—6öÆFVB&Wf–WrFVÆ–&W&FVÇ§&VÖ–ç26÷W&6RF#c3“f²Ö–âæB&öGV7F–öâ&VÖ–âfS†6&âæò'&÷w6W"÷ §f—7VÂ72—26Æ–ÖVBâf–ÇFW"÷&W7VÇG2×FööÇ2vVöÖWG'’B3“ósc‚ó““’óó#BóCCÀ§6VÆV7FVB6öæf–FVæ6RBó3c2Â&Wf–WröÆVBvVöÖWG'’æB‡—6–6Â6f&’&VÖ–à¦FVfW'&VBà ¤æW‡C¢Fòæ÷B&WVBf–ÇFW'2æ776ÂÖ¶WCrÖÆö6²æ§6÷"&W7VÇG2×F÷–æÆ–æRvVöÖWG'’à¥F†R6W&FVÇ’VF—FVB3S3RÖ'—FR&Wf–WrÖÆ–÷WB&Æö6²7F–ÆÂ&WV—&W26ö×WFV@§&Wf–WröÆVBWf–FVæ6RBcCó““’óó3c2âVçF–ÂF†BWf–FVæ6RW†—7G2Â–ç7V7B¦F–ffW&VçBÆ&vR&W6VçFF–öâ÷væW"÷"6öÖ&–æRF†RÖV7W&VB6VÆV7FVB×F÷W"æ@§&W7öç6—fRg&vÖVçG2v—F‚7V'7FçF–Â6fR6¶vS²Fòæ÷BF÷V6‚&÷FV7FV@§&–6R&W6VçFF–öâÖW&VÇ’Fò–æ7&V6RF†R'—FR6f–ærà ¢222ÆFW7B6†V6¶VB6æF–FFR(	B&W7VÇG2Föæ÷"&WF—&VÖVçB(	B##bÓ’Óp ¥6÷W&6R3CC"òW†7B&VÆV6R†#63S†6c36&s#F3sfc†FC#SC3s6S##vVS““À§G&VRsƒ“s–CsCsV6#3S“ƒcS3fSC†CV#SCsƒ–6Â&WF—&W2F†R6ö×ÆWFRÆVv7¦†÷FVÂ×&W7VÇG2æ776&W6VçFF–öâFöæ÷"æB&W6W'fW2—G27F—fR†÷FVÂ÷F÷W"'VÆW2–à§F†R7W'&VçB†÷FVÂ×6¶vW2æ776÷væW"âF†R6ÖRÖV7W&VB6¶vR6öç7VÖW2F†P§&Wf–÷W6Ç’67V×VÆFVB7WW'6VFVB&W7VÇG2Ö6öçFW‡Bæ7766WBÂ&VÖ÷fW2F†RGWÆ–6FP§F÷W"ÖÆ—7B†VFW"&VæFW&W"æB÷'†â'VÆW2ÂæB&VÖ÷fW2¥2Ö÷væVB&öö¶–ær×7VÖÖ'¦vVöÖWG'’v†–ÆR&WF–æ–ær—G2FF6WB÷F—FÆRöfÆ–v‡BÖÆ&VÂÆ–fV7–6ÆR6öçG&7Bà ¤V–v‡B&rV&Æ–276WG2fÆÂ¢£#SsƒB(i"#“sS2'—FW2(‰#c3’¢£¢552#3“(i £Ss“b(‰#CS“R’Â¥2“S3“2(i"“3“Sr(‰#C3b’âg&öÒF†R3S#BÖ'—FRv†öÆRÖÆ–W ¦&6VÆ–æRF†R6†V6¶VB&VGV7F–öâ—2æ÷r“ss'—FW2âÆÂV–v‡BV&Æ–2F‡2æBF†P§&÷FV7FVB'W6–æW726öçG&7G2&VÖ–âVæ6†ævVBà ¤&÷F‚ÖæFF÷'’6÷W&6R¦ö'276VBv—F‚wV&G2Væ6†ævVC¢6V7W&—G’3CƒsS3CS ¦æBW†7B'F–f7B'V–ÆB3CƒsS3Cv²'F–f7B3c33&ÂF–vW7@¦6†#Sc£s–“sCfS“6ƒC3F&6&3#SƒCv&&CfVf#ƒcc&c†#3s“FCv6V3&fà¤öæRW†7B6÷W&6R'V–ÆBv2&WW6VBâÆö6ÂW†7B6†V6²Âr&W6VçFF–öâFW7G2†öæP¥…ÖöæÇ’Æö6Â6¶—’Â–æ¦V7FVB×7G–ÆRæBÖö&–ÆR×FööÆ&"66†VGVÆW"ö÷væW'6†—6†V6·0¦æBF–fb6†V6²76VBà ¥F†—26÷W&6R—2¢¦6†V6¶VB'WBæ÷BV&Æ—6†VB¢¢âF†R—6öÆFVB&Wf–WrFVÆ–&W&FVÇ§&VÖ–ç26÷W&6RF#c3“f²Ö–âæB&öGV7F–öâ&VÖ–âfS†6&âæò'&÷w6W"÷ §f—7VÂ72—26Æ–ÖVBf÷"F†—2VçV&Æ—6†VB6÷W&6Râ†÷FVÂ÷F÷W"7FFW2@£3“ósc‚ó#BóCCÂ6öÆÆ6VBö†–FFVâ&÷w2Â&öö¶–ær&Wf–WröÆVBvVöÖWG'’@£cCó““’óó3c2æB‡—6–6Â6f&’&VÖ–âFVfW'&VBà ¤æW‡C¢Fòæ÷B&WVBF†W6R&WF—&VB÷væW'2âF†RæW‡BÆ&vR6æF–FFR—2F†R3S3RÖ'—FP§&Wf–WrÖÆ–÷WB&Æö6²BÆ–æW2^(	3sÂ'WB—B—2ÖVF—VÒ×&—6²f—7VÂ&VFW6–vâæB×W7@¦f—'7B&÷fR6ö×WFVB&Wf–WröÆVBvVöÖWG'’BcCó““’óó3c2â–bF†BWf–FVæ6R—0¦æ÷Bf–Æ&ÆRÂ67V×VÆFRF†R–æFWVæFVçFÇ’6fRcC2Ö'—FR6VÆV7FVB×F÷W"æ@£s3rÖ'—FR&W7öç6—fRg&vÖVçG2v—F‚æ÷F†W"7V'7FçF–Â÷væW"&Vf÷&RöæR'V–ÆBà ¢222ÆFW7B6†V6¶VB6æF–FFR(	B66WFæ6R6&BfÖ–Æ–W2(	B##bÓ’Óp ¥6÷W&6R3CCòW†7B&VÆV6RFCFfCFScSfc##&&#†csVf6S†SS3ss&V#33CfÀ§G&VRccsc#–C3“#cF#f3c–Vc#6C&C33#VC&#&FÂ&VÖ÷fW2GvòGWÆ–6FP§&W7VÇBÖ6&B÷&VF&–Æ—G’fÖ–Æ–W2g&öÒ66WFæ6RÖwV&G2æ776æBF†RV&Æ–W ¦Öö&–ÆRÆ–fV7–6ÆRf÷VæFF–öâg&öÒÆVB×7FFRæ776â–æFWVæFVçB6÷W&6RVF—G0¦f÷VæBF†RVæ—VRÖö&–ÆRf7BvöÖ–âÖ†V–v‡BæB7F’×6—FRv–GF‚&Vf÷&RFVÆWF–öã°§F†÷6RFV6Æ&F–öç2æ÷rÆ—fR–â&W7VÇG2Ö6&G2×c"æ776æBF†R&WF–æVB7W'&Vç@¦ÆVB×7FFR÷væW"â6VÆV7FVB×F÷W"G—öw&‡’Æ—fW2–â6VÆV7FVBÖfÆ÷r×c"æ776à¥F†R&VÖ–æ–ær66WFæ6RæBÆVB×7FFR&Æö6·2&R7F—fRæB&Ræ÷Bv†öÆRÖf–ÆP§&WF—&VÖVçB6æF–FFW2à ¤V–v‡B&rV&Æ–276WG2fÆÂ¢£#“ƒƒ(i"#SsƒB'—FW2(‰#C“b’¢¢ÂVçF—&VÇ’–â553 £#CCƒr(i"#3“â¥2&VÖ–ç2“S3“2'—FW2âg&öÒF†R3S#BÖ'—FRv†öÆRÖÆ–W ¦&6VÆ–æRF†R6†V6¶VB&VGV7F–öâ—2æ÷rƒSsC'—FW2âF‡2æB&÷FV7FVB6öçG&7G0¦&RVæ6†ævVC²F†—2—2&r'—FR66÷VçF–ærÂæ÷BG&ç6fW"×6—¦R÷"7VVB6Æ–Òà ¤&÷F‚ÖæFF÷'’6÷W&6R¦ö'276VBv—F†÷WBwV&B6†ævW3¢6V7W&—G’3CssCc3“3v ¦æBW†7B'F–f7B'V–ÆB3CssCc3“3F²'F–f7B#ScƒÂF–vW7@¦6†#Sc¦F†C“cƒVSFc&cCƒvFfCƒ#CV&S3ff#“C&&#cCC†SSs–3&S&#VCC–S“–Fà¤Æö6ÂW†7B'V–ÆBö6†V6²Âb&W6VçFF–öâFW7G2†öæR…ÖöæÇ’Æö6Â6¶—’Â–æ¦V7FV@§7G–ÆR÷FööÆ&"÷væW'6†—æBF–fb6†V6·276VBâF†R7V66W76gVÂ6÷W&6R'F–f7Bv0¦f7BÖf÷'v&FVB–çFò&VÆV6Rv—F†÷WB&V'V–ÆF–ærà ¥F†—26÷W&6R—2¢¦6†V6¶VB'WBæ÷BV&Æ—6†VB¢¢âF†R—6öÆFVB&Wf–WrFVÆ–&W&FVÇ§&VÖ–ç26÷W&6RF#c3“f²Ö–âæB&öGV7F–öâ&VÖ–âfS†6&âæò'&÷w6W"÷ §f—7VÂ72—26Æ–ÖVBf÷"F†RVçV&Æ—6†VB6÷W&6Râ6&Bv–GF‡23sRóC3ó#Bó3C‚ğ£CCÂW‡æFVBF÷W'23sRóC3Â6VÆV7FVBfÆ–v‡B3sRó#BÂÆ–fV7–6ÆR7FFW2BÖö&–ÆRğ§F&ÆWB&÷VæF&–W2æB‡—6–6Â6f&’&VÖ–âFVfW'&VBà ¤æW‡C¢Fòæ÷B&WVBF†R&WF—&VB66WFæ6R÷&VF&–Æ—G’öÆ–fV7–6ÆRfÖ–Æ–W2âg&W6€§&VBÖöæÇ’VF—Bf÷VæB&÷fVâ7WW'6VFVB&Æö6²6WB–â&W7VÇG2Ö6öçFW‡Bæ776v÷'F€£cBV&Æ–2'—FW2Â'WB—B—2Föò6ÖÆÂf÷"7FæFÆöæR"ö'V–ÆBöFWÆ÷“²67V×VÆFP¦—Bv—F‚æ÷F†W"7V'7FçF–Â6fR÷væW"&VÖ÷fÂâFòæ÷B&WF—&R&W7VÇG2Ö6öçFW‡Bæ776À¦&W7VÇG2ÖÆ–÷WBæ776÷"F÷W"ÖFWF–ÂÖ6öçfW&vVæ6Ræ776v†öÆW6ÆS¢F†V—"Æ–fV7–6ÆRÀ§7G'V7GW&Âö÷VâÖ6&BæB6VÆV7FVB×F÷W"vVöÖWG'’&VÖ–ç2Væ—VRâW6RöæRÖV7W&V@§6¶vRÂGvòÖæFF÷'’¦ö'2æBâW†7B'F–f7C²V&Æ—6‚öæÇ’B§W7F–f–V@¦6†V6·ö–çBà ¢222ÆFW7B6†V6¶VBæBV&Æ—6†VB6æF–FFR(	BÆVB&Wf–Wr÷væW'2(	B##bÓ’Óp ¥GvòÆ&vR&WfW'6–&ÆR÷væW'2vW&R&WF—&VB–âöæR'Vââ6÷W&6R3C3ròW†7B&VÆV6P¦F#c3“f&c33sFS#fc#““C63s†c“3“c3S&3VÂG&VP¦C&SS3–Sf6ƒs3cS†C#&6&VS“–cs““fcƒ3ƒ6Â&VÖ÷fW2F†R6ö×ÆWFP¦ÆVB×&Wf–Wræ776Æ–W"æBF†R6ö×ÆWFR&—fFRÆVBÖVçG'’&Æö6²g&öÒ–æ¦V7FV@¦6VÆV7FVB×F÷W"ÖÖö&–ÆRæ776âF†R6ö×7B7F—fR'VÆW2æ÷rÆ—fR–â7W'&VçB÷væW'3 ¦&Wf–WrÖÆ–÷WBæ776Â6VÆV7FVBÖfÆ÷r×c"æ776æBÆVB×7FFRæ776â6öç6VçBæ@§&÷FV7F–öâ&W6VçFF–öâÂ†–FFVâGWÆ–6FR7VÖÖ'’ö6öÖÖVçBÂÖö&–ÆRf–æÂ&÷w2æ@§6VæF–ær÷7V66W72öW'&÷"Æ–fV7–6ÆR&R&WF–æVBâVæF–ær7FW27F’&Ææ²VçF–À¦6ö×ÆWFS²F†R6VæF–ær7FFR¶VW2—G27–ææW"–ç7FVBöb&VÖGW&RF–6·2à ¥F†R6ÖRV–v‡B&rV&Æ–276WG2fÆÂ¢£##S“s"(i"#“ƒƒ'—FW2(‰#c“"’¢£ ¤552#ƒC“B(i"#CCƒr(‰#Cr’Â¥2“sCs‚(i"“S3“2(‰##ƒR’âF†Rf—'7B6¶vP§6fVBCsR'—FW2æBF†R–æFWVæFVçB–æ¦V7FVBÖ÷væW"6¶vR6fVBæ÷F†W"“p¦æWB'—FW2âg&öÒF†—2'Vâw2#3S3’Ö'—FR7F'BF†RF÷FÂ6f–ær—2S#S’'—FW3°¦g&öÒF†R3S#BÖ'—FRv†öÆRÖÆ–W"&6VÆ–æR—B—2ƒcCB'—FW2âF†W6R&R&r76W@¦'—FW2Âæ÷BG&ç6fW"×6—¦R÷"7VVB6Æ–×3²ÆÂV–v‡BV&Æ–2F‡2&RVæ6†ævVBà ¤&÷F‚ÖæFF÷'’6÷W&6R¦ö'276VBv—F‚F†V—"÷væW"÷6÷W&6Rõ…÷F‚÷&W6VçFF–öâğ¦—6öÆF–öâwV&G2Væ6†ævVC¢6V7W&—G’3Cs#s3cS²'F–f7B3Cs#s3ccÀ¦'F–f7Bƒ##Sƒ6ÂF–vW7@¦6†#Sc£Cs#VVcfSsC&S6Vc#CƒfVS†c†cvFcvVSf6#CSfV63&fCCfVFSvFà¥F†R'F–f7B†2sRf–ÆW3²&6†—fRÂÖæ–fW7BæB–ÆöBÖ6öçG&öÂ†6†W2&R&V6÷&FV@¦–âFö72÷&ö¦V7B÷6V&6ƒ2ÖÆVB×&Wf–WrÖÆ–W"×&WF—&VÖVçBæ§6öæà ¥F†Rf—'7BV&Æ–6F–öâ6öçG&öÂ3C3‚ò'Vâ3Cs#33ƒ3&f–ÆVB6fVÇ’&Vf÷&R54ƒ ¦â–æ6÷'&V7FÇ’&V6öç7G'V7FVBÆö6Â–ÆöBÖ6öçG&öÂ†6‚F–Bæ÷BÖF6‚F†RW†7@¦'F–f7Bâæ÷F†–ærv2V&Æ—6†VB÷"6†ævVBöâF†R6W'fW"âF†R6öçG&öÂv2&V@¦g&öÒF†RF÷væÆöFVB'F–f7BæBF†R6÷'&V7FVB3C3’ò'Vâ3Cs#Cƒ#–7V66VVFVBà¤FWÆ÷–ÖVçBWf–FVæ6R“36öæf—&×2W†7B6÷W&6R÷G&VRÂÆÂsRf–ÆW2À¦æö–æFW‚Â6÷VçFW"ÂÆVBC2Â&WF–æVB&öÆÆ&6²æBF†R–FVçF–6Â&öGV7F–öà¦f–ævW'&–çB&Vf÷&RögFW"öf–æÂâ&Wf–WræB6†V6¶VB&VÆV6Ræ÷r&÷F‚W6R6÷W&6P¦F#c3“f²Ö–â÷&öGV7F–öâ&VÖ–âfS†6&æBVæ&÷fVBà ¤öæR&÷VæFVB6‡&öÖ—VÒFW6·F÷6†V6²B3c<9s“3bG&fW'6VBÆ—fR6V&6‚ÂâW‡æFV@¦†÷FVÂÂ6VÆV7FVBF÷W"öfÆ–v‡BÂf–æÂ&Wf–WræBF†RV×G’ÆVBf÷&Òv—F†÷WB7V&Ö—76–öâà¥F†RæòÖfÆ–v‡BfÆÆ&6²&VG2*½	İíM½í"+r]=-í}İı]-ü+²Âæ÷Bf'&–6FVB5S°§&VÂÇFW&æF—fW2&WF–âF†V—"7WÆ–VBfÆ–v‡BçVÖ&W'2âæò†÷&—¦öçFÂ÷fW&fÆ÷r÷ ¦ÆVBÖf÷&Ò6Æ—–ærv2f÷VæC²6öç6VçB—2fÆW‚v—F‚\9sR6†V6¶&÷‚Â&÷FV7F–öâFW‡@¦æBF†R3#‚7VÖÖ'’&Rf—6–&ÆRâÆÂV–v‡BÆ—fR66†R¶W—2ÖF6‚W†7B6÷W&6P¦†6†W2æBæòW‡FW&æÂÖWG&–¶ö6öç7VÇFçB67&—B—2ÆöFVBà ¥F†R7W÷'FVB'&÷w6W"6ææ÷B&W6—¦RF†—2F"âÖö&–ÆR3sRóC3ÂF&ÆWBcCósc‚ó““’À§&Wf–Wr6VæF–ær÷7V66W72öW'&÷"f—7VÇ2Â‡—6–6Â6f&’ÂgVÆÂÖG&—‚æB&VÂÆV@§7V&Ö—76–öâ&RFVfW'&VBÂæ÷B76VBâ6÷W&6RÆ–fV7–6ÆR&Vw&W76–öç276VBÂ'WBF†W¦Fòæ÷B&WÆ6RF†÷6Rf—7VÂ6Æ–×2à ¤æW‡C¢VF—Bö'6öÆWFR&Æö6²fÖ–Æ–W2–ç6–FR66WFæ6RÖwV&G2æ776æ@¦ÆVB×7FFRæ776²æV—F†W"f–ÆR—26fRf÷"v†öÆRÖf–ÆRFVÆWF–öââ&VÖ÷fRöæÇ’&÷fVà§7WW'6VFVBfÖ–Æ–W2–âöæRÖV7W&VB&F6‚v†–ÆR&WF–æ–ærÆ–fV7–6ÆRÂ†–FFVâæ@¦66W76–&–Æ—G’fÆÆ&6·2âFòæ÷B&WVBF†RGvòÆVB÷væW'2÷"V&Æ–W"&WF—&VBÆ–W'2à ¢222&Wf–÷W26†V6¶VBæBV&Æ—6†VB6æF–FFR(	B&W7öç6—fR&Wf–Wr÷væW'2(	B##bÓ’Óp ¥6÷W&6R3C3Bò33–Vf6&ƒv#Sc3FF3vC&3C#vSSs#VcÂG&VP¦“–#33c3&#ScV3“–&CC“cvƒ†6ffCv6CÂ—2f7BÖf÷'v&FVB–çFò&VÆV6Rà¥F†R6ö×ÆWFRÆVv7’&Wf–Wr×&W7öç6—fRæ776Æ–W"æBF†RV&Æ–W"–æ¦V7FVBÖö&–ÆP¦f–æÂ×&Wf–Wr&Æö6²&R&WF—&VBâ7W'&VçB7VÖÖ'’5DÂ6VÆV7FVB×F÷W"Öö&–ÆRÂ&Wf–Wp¦Æ–÷WBæB–çG&–ç6–2fÆ–v‡B÷væW'2&WF–âF†Rf–æÂÂÆVBæBF&ÆWB&÷VæF&–W2à ¤V–v‡B&rV&Æ–276WG2fÆÂ¢£#3S3’(i"##S“s"'—FW2(‰#“cr’¢£¢552(‰#ssSBÀ¤¥2(‰#C2g&öÒ&VÖ÷fVB&—fFRVÖ&VFFVB552â6ÖRV–v‡BV&Æ–2F‡3²æòG&ç6fW"×6—¦P¦÷"7VVB6Æ–ÒâöæR7V66W76gVÂf–æÂ'V–ÆBÂ26÷W&6RÖ'V–ÆBFW7G2Â–æ¦V7F–öâ÷&ö÷Bğ¦–FV×÷FVæ6RæBf–æÂöÆVB76W'F–öç2Â6VÆV7FVB66†VGVÆW"æBÆÂV–v‡B&öö¶–ær×7VÖÖ'¦÷W&F–öâG&6W276VBÆö6ÆÇ’à ¤&÷F‚ÖæFF÷'’6÷W&6R¦ö'276VBv—F†÷WBwV&B6†ævW3¢6V7W&—G’3Cs3ƒs“&°¦'F–f7B3Cs3ƒ“C&Â'F–f7BCc“cvÂF–vW7@¦6†#Sc¦3Cƒ–FVC3“–cfc##sCcsCvV63Cvcƒ†6&&C#6c“&SCs3f&#–6fFV#fà¥F†RW†7B'F–f7Bv2&WW6VB–â—6öÆFVBV&Æ–6F–öâ3C3Rò'Vâ3Cs#3ƒ3F°¦FWÆ÷–ÖVçBWf–FVæ6RS###“vâÆÂsRf–ÆW2Â7GVÂ6öçG&öÇ2Âæö–æFW‚Â6÷VçFW#À¦F—6&ÆVB&Wf–WrÆVG2Â&öÆÆ&6²æBVæ6†ævVB&öGV7F–öâf–ævW'&–çG276VBà ¥F†RV&Æ—6†VBFW6·F÷–æ—F–ÂvRv2–ç7V7FVBB3c<9s“3c¢æò†÷&—¦öçFÂ÷fW&fÆ÷s°¦ÆÂV–v‡BÆ—fR66†R¶W—2ÖF6‚W†7B6÷W&6R†6†W3²æòÖWG&–¶ö6öç7VÇFçB67&—Bà¥F†R7W÷'FVB6Æ÷VB'&÷w6W"6ææ÷B&W6—¦RF†—2F"âF†W&Vf÷&RffV7FVBÖö&–ÆRf–æÀ§&Wf–WröÆVBB3sRóC3æBF&ÆWBfÆ–v‡B6†ö–6W2BcCósc‚ó““’&RW‡Æ–6—FÇ’FVfW'&VBÀ¦2&R‡—6–6Â6f&’ÂgVÆÂÖG&—‚æB&VÂÆVB7V&Ö—76–öââ&öGV7F–öâöÖ–â&VÖ–à§Væ6†ævVBæBVæ&÷fVBâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2×&W7öç6—fR×&Wf–WrÖÆ–W"×&WF—&VÖVçBæ§6öæà ¤æW‡C¢VF—BF†RÆVB×&Wf–Wræ776òÆVB×7FFRæ776Æ–fV7–6ÆR÷fW&Æ2F†RæW‡@¦Æ&vR&WfW'6–&ÆR6æF–FFRâFòæ÷B&WVB&Wf–Wr×&W7öç6—fV÷"F†RV&Æ–W"&WF—&V@¦Æ–W'2â&WV—&R6VæF–ær÷7V66W72öW'&÷"æBcC(	3““’&÷VæF'’Wf–FVæ6R&Vf÷&RFVÆWF–öâà ¢222ÆFW7B6†V6¶VBæBV&Æ—6†VB6æF–FFR(	BæF—fR6&G2æBfÆ–v‡G2(	B##bÓ’Óp ¥6÷W&6RsVfC6fSFSC#“ƒvf&CS“f3SFC&&&†csƒVfVF‚3C3"’ÂG&VRV#3““FffS†FcCc#f#&S6f&33Fƒ–3cƒsVà¥&V6VF–ær6÷W&6RƒSvf&F3sc†#ScCvccV#S“cC3VS3s&c“S&6V‚3C3’à¥F‡&VR7V'7FçF–Â&W6VçFF–öâ&Æö6²fÖ–Æ–W2&WF—&VB–âöæR&F6ƒ¢öÆB&W7VÇBÖ6&@¦vVöÖWG'’Â&—fFRÖö&–ÆR÷F&ÆWBÖ–7&öÆ–÷WBÂfÆ–v‡BF—&V7F–öâ6Æ72Ö×WFF–öâ²—G2552à¥F†R&WF–æVB7F—fRÆ–fV7–6ÆR÷væW'2&Ræ÷B6÷VçFVB2v†öÆÇ’&WF—&VBf–ÆW2à §ÂV–v‡B&r76WG2Â&Vf÷&RF†—2'VâÂf–æÂÂ6fVBÀ§ÂÒÒÒÂÒÒÓ¢ÂÒÒÓ¢ÂÒÒÓ¢À§Â552ÂC#3Â3c#C‚ÂcS2À§Â¥2Â3“Â“ƒƒ“ÂC#“’À§ÂF÷FÂÂ#CSC“Â#3S3’Â3S"À ¤–æ—F–Â6¶vS#CSC“(i##3ScSs²6÷'&V7F—fR6¶vS#3ScS~(i##3S3’(‰#S„552ÂÆÄ¥2–FVçF–6Â’à¤¥26f–ær–æ6ÇVFW2VÖ&VFFVB552âv†öÆRÖÆ–W"&6VÆ–æS3S#N(i##3S3’(‰#cc3ƒR’à¥&Wf–÷W6Ç’V&Æ—6†VC#csS3n(i##3S3’(‰#3#3“r“²æò6ö×&W76–öâ÷"7VVB6Æ–Òà ¤&÷F‚ÖæFF÷'’6÷W&6R¦ö'276VBâf–æÂ6V7W&—G“3Cc“3c"Â'F–f7@£3Cc“3c‚Â'F–f7C“““““CSƒƒRÂF–vW7B6†#Sc£C“F3CF#SF&Sƒ3#63#“s&cSS6#sc6c#–fcFc“3ffV6c†F6Vf3SsVVà¤öæR'V–ÆBW"W6VgVÂ6¶vS²æò&VÆV6RöFö72&V'V–ÆBâW†—7F–ær÷væW"÷6÷W&6Rõ…÷F‚ğ§&W6VçFF–öâö—6öÆF–öâwV&G2Væ6†ævVBâfö7W6VB66†VGVÆW"÷&–Ö'’&Wf–WrÖ&6²À¦–æ¦V7F–öâ÷&ö÷Bö–FV×÷FVæ6RæBÖö&–ÆRFööÆ&"÷væW'6†—76VBà ¤W†7B—6öÆFVB&Wf–WrV&Æ—6†VBF‡&÷Vv‚3C32Â'Vã3Cc“CƒSƒÀ¦Wf–FVæ6S“““““ƒS##S²6÷W&6RæBV&Æ—6†VB6æF–FFRæ÷rÖF6‚à¤7GVÂ&6†—fRÂ&÷F‚6öçG&öÇ2æBÆÃsRf–ÆW2fW&–f–VB&Vf÷&R7F—fF–öã²æö–æFW‚À¦6÷VçFW#ÂF—6&ÆVBÆVG2Â&WF–æVB&öÆÆ&6²ÂVæ6†ævVB&öGV7F–öâf–ævW'&–çG26öæf—&ÖVBà¤Ö–â7F—6fS†6&fF6f3ƒc#FC“†3#CcFfc33VS3“²&öGV7F–öâ66WFæ6Ræ÷Bw&çFVBà ¤'&÷w6W"v2f–Æ&ÆRF‡&÷Vv‚6öçG&öÂÖ'&÷w6W#²F†R&V6VF–æræòÖ'&÷w6W"6öæ6ÇW6–öà§v2–æ67W&FRæB7WW'6VFVB†W&Râ–æ—F–ÂFW6·F÷3c<9s“3b–ç7V7F–öâf÷VæBæ'&÷p¦66öÖÖöFF–öâw&–ærÂF–ç“’órãW‚fÆ–v‡BFWF–Ç2æBGWÆ–6FRF–6²÷fW"&–6Rà¤–çG&öGV7F–öâ'’F†RÆ7BFVÆWF–öâv2æ÷B&÷fVââ&VÖ÷fVBF†R6—‚Ö6öÇVÖâöçF‚×÷6—F–öà¦æBF–ç’ÖföçB'VÆW2–âF†V—"W†—7F–ær÷væW'3²¶WBW†—7F–æsBó'‚fÆ–v‡BFW‡Bæ@¦æF—fR6VÆV7FVB&F–òö&÷&FW"â6÷'&V7F—fRf—7VÂWf–FVæ6S¢6÷'&V7F—fR6‡&öÖ—VÓ3c7ƒ“3b67&VVç6†÷G2–ç7V7FVC¢W‡æFVBÅU„õ"%Bf7G2æ÷r†fRF‡&VR&VF&ÆR6öÇVÖç2v—F†÷WBÖ–Gv÷&B66öÖÖöFF–öâw&²6VÆV7FVB÷WF&÷VæB÷&WGW&â—'÷'BFW‡CG‚æB6V6öæF'“'‚ÂGWÆ–6FR6VÆV7FVBF–6²æòÆöævW"÷fW&Æ3s#ƒ3%%T"&–6RâæF—fR&F–÷2æBæW‡B5Df—6–&ÆRà¤FVfW'&VC¢Öö&–ÆR÷F&ÆWBv–GF‡2Â‡—6–6Â6f&’ÂÆ—fRæòÖfÆ–v‡B'&æ6‚ÂÆVBÖVçG'’÷7V66W72öW'&÷"ÂgVÆÂf–ÇFW"öVF—F÷"÷&–6RÖG&—‚âæògVÆÂÖG&—‚÷"f—7VÂ&—G’6Æ–Òà¤VF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÖö&–ÆRÖ6&BÖfÆ–v‡B×&WF—&VÖVçBæ§6öæà ¤æW‡C¢æW‡B7V'7FçF–Â6æF–FFS¢VF—B&Wf–Wr×&W7öç6—fRæ772Öö&–ÆR÷F&ÆWBvVöÖWG'’v–ç7B7W'&VçB6VÆV7FVBÖfÆ÷r÷&Wf–Wr÷væW'2Â&WF—&RGWÆ–6FRÆ–÷WBöæÇ’gFW"&÷FV7F–ær†–FFVâöÆVB×6†VÆÂ÷&–Ö'’5D&÷VæF&–W2âFòæ÷B&WVB&WF—&VCt552³¥2÷væW"÷"F†S6&Æö6²fÖ–Æ–W2æCbÖ6öÇVÖâ÷F–ç’ÖföçB&W—"â7W'&VçBÖö&–ÆR÷F&ÆWBÂÆ—fRæòÖfÆ–v‡BæB‡—6–6Â6f&’&VÖ–âFVfW'&VBâ6öçF–çVR–æFWVæFVçBW&Ö—GFVBv÷&³²&öGV7F–öâ66WFæ6RFöW2æ÷BW6RWFöÖF–öâà ¢222ÆFW7B6†V6¶VBföÆÆ÷r×W(	B&Wf–Wr÷&V6&WF—&VÖVçB(	B##bÓ’Ó` ¥6÷W&6R"3C#‚—2–çFVw&FVB–çFò&VÆV6RB#cs“&SVCcFVS“fsC&3vfƒ&cc“v6Cà¤f÷W"ö'6öÆWFR552vVöÖWG'’Æ–W'2ÇW2F†RÆ—fRGWÆ–6FRFW6·F÷&V6&R&WF—&VBà¤V–v‡B&r76WG3£#cS“#~(i##S32(‰##ƒC¤55>(‰#“#SÄ¥>(‰#3ScB’â&WV—&VB6÷W&6R6V7W&—G“3Ccsƒ3SSP¦æB'F–f7C3Ccsƒ3S#b&÷F‚76VBÂf—'7BGFV×BâW†7B'F–f7C““““S3ƒ°§6†#Sc£“&FS#s–##ƒ6ƒ#sS#Fcc3VfF&Vcc“–fc#ƒ#†6VVcc––cs#vF3FBà¤æò&VÆV6RöFö72&V'V–ÆB÷"FWÆ÷’âV&Æ—6†VB&Wf–Wr7F–ÆÃ–#C36RÂÖ–â7F–ÆÆfS†6"à¥F†—2—2â–çFVçF–öæÂ&WfW'6–&ÆRvVöÖWG'’W‡W&–ÖVçBÂæ÷Bf—7VÂWV—fÆVæ6Rà¥6VÆV7FVBöæòÖfÆ–v‡BÂ&Wf–WröÖö&–ÆR÷F&ÆWBæBÆVBÖVçG'’f—7VÂ6†V6·2&RDTdU%$TC ¦æò7W'&VçB'&÷w6W"6&–Æ—G’âÆö6Â66†VGVÆW"÷WF–Æ—G’ö÷væW'6†—ÇW26÷W&6R…÷F‚ğ§&W6VçFF–öâö—6öÆF–öâ6†V6·276VBâVF—C§6V&6ƒ2×&Wf–WrÖÆ–W"×&WF—&VÖVçBæ§6öâà¥F†R7V'6WVVçBf÷&ÒÖ6ö×F–&–Æ—G’6¶vR—26†V6¶VB–â3C#“²6VRÆFW7B7FGW2&÷fRâæF—fRf÷W"Ö6öÇVÖâVçG'’w&–B&VÖ–ç26æöæ–6Ã²Fòæ÷@§&W7F÷&RF†R7WW'6VFVB6—‚Ö6öÇVÖâf÷&Òâ†—7F÷&–6ÂGvVÇfRÆ–W'2&VÆ÷r7F’&WF—&VBà ¢222ÆFW7B6†V6¶VBföÆÆ÷r×W(	BGvò&W7VÇG2Æ–W'2(	B##bÓ’Ó` ¥6÷W&6R"3C#r&WF—&W2&W7VÇG2×v–GF‚Ö6ö×F–&–Æ—G’æ772æB†÷FVÂÖ6&BÖ6öçfW&vVæ6Ræ772à¤gFW"6ö×7BfÆÆ&6²6ÇfvRÂV&Æ–2552ô¥2fÆÃ#csS3n(i##cS“#r'—FW3®(‰#c”552à¤ÆÂf÷W"¥2f–ÆW2&R'—FRÖ–FVçF–6ÂFòF†RV&Æ—6†VBFVâÖÆ–W"6÷W&6Rà¤7&÷72&÷F‚&F6†W2–âF†—26öçF–çVF–öã£3S#N(i##cS“#rÎ(‰#3SS“r'—FW2ƒã‚R’à ¥F†—2föÆÆ÷r×W—24„T4´TBÂäõBT$Ä•4„TBâf–æÂ6÷W&6P¦F#3–VF#SC–fC3–f6S#3Vf#fFSC“#ScƒV#3†76VB6V7W&—G“3Cccƒ3sc“RæB'F–f7C3Cccƒ3ss3`¦öâF†Rf—'7BGFV×BâW†7B'F–f7C““““#C#—2&WF–æVBà¥F†R7W'&VçBV&Æ—6†VB&Wf–Wr&VÖ–ç3–#C36Rò3C#bC#csS3b'—FW3²—G2fö7W6V@¦FW6·F÷67&VVç6†÷G2Fòæ÷BfW&–g’F†—2föÆÆ÷r×W6÷W&6Rà ¤6öçfW&vVæ6Rf7G2ÂÖö&–ÆRF—FÆR÷Æ6RÆ6VÖVçBæBfÆW‚&–6R×&÷rfÆÆ&6·2æ÷p¦f–æ—6‚†÷FVÂ×6¶vW2æ772BF†R6ÖR÷6—F–öâ&Vf÷&R7V'6WVVçB÷væW'2â6†VÆÂÀ¦†–FFVâöÆ–fV7–6ÆRôÕ$bæBW‡æFVBÖ6&BwV&G2&Vv–â&W7VÇG2Ö6öçFW‡Bæ772à¤–æFWVæFVçB&Wf–Wr–FVçF–f–VBæBfö–FVBÖ÷f–æröÆBÖ&v–âÖÆVgB÷&–v‡B&W6WG0¦7&÷72F†R–çFW'fVæ–ærf–ÇFW'2æ7726†÷'F†æBâVæ6W'F–âFööÆ&"FF–ærÀ¦ÆWGFW"×76–æræBvvW&R&WF–æVBâF†W6R&R6ö×7B÷væW"G&ç6fW'2ÇW0¦öÆBvVöÖWG'’&WF—&VÖVçBÂæ÷B&Ææ¶WB—†VÂÖWV—fÆVæ6R6Æ–Òà ¤öæR6÷W&6R'V–ÆBæBf÷W"W†7B¥2†6‚6ö×&—6öç276VBâ6÷W&6R4’&WF–ç0¥6V7W&—G’æBF†RW†7B'F–f7B¦ö#²æò6V6öæB&Wf–Wrö'&÷w6W"¦÷W&æW’÷ §&VÆV6RöFö72'F–f7B&V'V–ÆBâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2×&W7VÇG2ÖÆ–W"×&WF—&VÖVçBæ§6öæà¥GvVÇfR†—7F÷&–6Â552Æ–W'2†fRæ÷r&VVâ&WF—&VB7&÷723C#Rò3C#s²Fòæ÷B&WVBF†÷6RÖöGVÆW2÷"6ö×ÆWFVBÖ–æ–f–6F–öâöFöÖ–ææ6Rö6öÖÖVçBöÖVF–66ç2âV&Æ—6†VB&Wf–Wr&VÖ–ç3–#C36Rv—F‚fö7W6VBFW6·F÷Wf–FVæ6S²GvòÖÆ–W"föÆÆ÷r×W6÷W&6Rv—G2F†RæW‡B§W7F–f–VBV&Æ–6F–öââ&W6W'fR&VÖ–æ–ær6†VÆÂö†–FFVâôÕ$böÖö&–ÆRf7G2öfÆW‚æBÆVB×7FFRfÆÆ&6·2âæògW'F†W"&VG’Æ&vR6fR&F6‚—2W7F&Æ—6†VB–âF†—2'Vã²gW'F†W"7F—fRÖÆ–W"&VÖ÷fÂæVVG26öæ7&WFR7FFR6÷fW&vRæB6ö×7B6ÇfvRÂv—F‚Öö&–ÆRö–çFW&ÖVF–FRæBÆVB×7FFRWf–FVæ6R7F–ÆÂFVfW'&VBâ¶VWöæRW6VgVÂ6÷W&6R&F6‚÷GvòÖæFF÷'’4’¦ö'2æB'F–f7B&WW6RâÖ–â÷&öGV7F–öâÆö6¶VC²†÷W&Ç’WFöÖF–öâVæ&ÆVB'’F†RÆFW7B÷væW"&WVW7Bà ¢222†—7F÷&–6ÂV&Æ—6†VB&F6‚(	B&WF—&RFVâv†öÆR552Æ–W'2(	B##bÓ’Ó` ¥F†R÷væW"W‡Æ–6—FÇ’&WVW7FVBÆ&vW"&ö6ƒ¢FVÆWFRVçF—&RÆ–W'2æB&W— §&W7VÇF–ær'&V¶vRâF†—2WF†÷&—¦W2&WfW'6–&ÆR&W6VçFF–öâÖÆ–W"W‡W&–ÖVçG2–à§&VÆV6RæBF†R—6öÆFVB&Wf–Wrâ&÷FV7FVB'W6–æW726öçG&7G2æB&öGV7F–öà¦&÷fÂ&VÖ–âVæ6†ævVC²–æ6ö×ÆWFRÖö&–ÆRWf–FVæ6R—2æWfW"6ÆÆVB76VBà ¥6÷W&6R"3C#RÖW&vVB–çFò&VÆV6S¢–#C36SVfSs–CfC3CsvCc†&FcS“““&SsFcfà¥6V7W&—G“3CcSccCS3æB'F–f7C3CcSccCS3R76VC²W†7B'F–f7C“““ƒƒc#SsRà¤öæR×6†÷B6öçG&öÂ3C#bV&Æ—6†VBF†B'F–f7B–â'Vã3Ccc#ssS’æB6Æ÷6VBv—F†÷W@¦ÖW&vRâWf–FVæ6S““““3cs“²F†RFWÆ÷–ÖVçBv÷&¶fÆ÷r—2'6VçBg&öÒ&VÆV6RöÖ–âà §ÂV–v‡BV&Æ–276WG2Â&Wf–÷W26†V6¶VB'—FW2ÂV&Æ—6†VB'—FW2Â6fVBÀ§ÂÒÒÒÂÒÒÓ¢ÂÒÒÓ¢ÂÒÒÓ¢À§Â552Â“Cs#’Âcsƒ"Â33“CrÀ§Â¥2Âcs“RÂcsSBÂCÀ§ÂF÷FÂÂ3S#BÂ#csS3bÂ33“ƒ‚À ¥&r&VGV7F–öãã#rS²V–v‡BV&Æ–2F‡2æB6WfVâæöæV×G’vVæW&FVBÆ–æW2&WF–æVBà¤67V×VÆFVB&VGV7F–öâfW'7W2F†R&Wf–÷W2V&Æ—6†VB&Wf–Wr&fc#sss£CCS'—FW2à¤æòG&ç6fW"Ö6ö×&W76–öâ÷"vR×7VVB6Æ–Òà ¤ÆÂæ–æR†—7F÷&–6Â666FRÖöGVÆW2æBf—7VÂÖ6ö×F–&–Æ—G’æ772æ÷r6öçF–à§&÷fVææ6R6öÖÖVçG2öæÇ’â6ÖÆÂæV6W76'’'VÆW2&VÆöærFòÆVB×7FFRæ772À§F÷W"ÖFWF–ÂÖ6öçfW&vVæ6Ræ772Â†÷FVÂ×6¶vW2æ772æB&W7VÇG2Ö6öçFW‡Bæ772à¥F†—2&W6W'fW2ÆVB7FGW2ö†–FFVâÆ–fV7–6ÆRwV&G2ÂFW6·F÷fÆ–v‡Bö6öçF–çVP¦—6öÆF–öâÂW‡æFVB×F÷W"w&–BæB–æ—F–Â÷&W6WB&W7VÇG2f—6–&–Æ—G’âW†—7F–æp§V&Æ–2F‡2Â6÷W&6R÷&FW&–æræBFöæ÷"†6‚6†V6·2&VÖ–ââÇ6ò&VÖ÷fVBVçW6V@§7VÖÖ'’Ö6÷7B6VÆV7F÷'3²F†RöæÇ’W†V7WF&ÆR¥2×G&VRF–ffW&Væ6R—2F†BW†7@¤552Æ—FW&Â6VÆV7F÷"FVÆWF–öââF‡&VR÷F†W"¥276WG2&R'—FRÖ–FVçF–6Âà ¤öæR76WB'V–ÆBæBæ'&÷r6ö×–ÆVB7VÖÖ'’öV–v‡BÆ–÷WBG&6W276VBà¥F†R–æ—F–Â4’f–ÇW&Rv26ÖRÖÆVæwF‚G&–gBf—‡GW&RF&vWF–ær–×÷'FçBÀ§v†–6‚æòÆöævW"W†—7G2–âÖ&¶W"ÖöæÇ’Föæ÷'2âF†Rf—‡GW&Ræ÷r6÷''WG2f–æÀ¦æWvÆ–æRv—F‚WVÂ'—FRÆVæwFƒ²F†R†6‚wV&B&VÖ–ç2æBf–æÂ4’76VBà ¥V&Æ–6F–öâfW&–f–VBF†R7GVÂ&6†—fRÂ&÷F‚6öçG&öÂ†6†W2æBÆÃsR–Æö@¦f–ÆW2&Vf÷&R7F—fF–öâæBv–â&VÖ÷FVÇ’âæ–æR&÷WFW2Âæö–æFW‚ÂF—6&ÆV@§&Wf–WrÆVCC2Â6÷VçFW#Â–çFW&æÂ…FVæ–ÂæB&WF–æVB&öÆÆ&6²76VBà¤ÆÃ2&÷FV7FVB&öGV7F–öâf–ævW'&–çG2ÖF6‚&Vf÷&RögFW"öf–æÂâÖ–â&VÖ–ç0¦fS†6&fF6f3ƒc#FC“†3#CcFfc33VS3“²æò&öGV7F–öâÖ–w&F–öâà ¤g&W6‚Æö6Â'F–f7BF÷væÆöB&WGW&æVCC2æBv2æ÷B&WG&–VBâW‡V7FVB6öçG&öÀ¦†6†W2vW&R–æFWVæFVçFÇ’&V6öç7G'V7FVBg&öÒF†R&Wf–÷W6Ç’fW&–f–VBV&Æ—6†V@¦Öæ–fW7BÇW2F†RW†7BV–v‡BÖ76WBv—D‡V"–ÆöBF–fbÂfW&–g––ærÆö6Â76WG0¦v–ç7B6÷W&6R&Æö"”G2âg&W6‚&6†—fR†6‚6ÖRg&öÒw&VVâ4“²Væ6†ævV@¦FWÆ÷–ÖVçBwV&G2F†VâfW&–f–VBF†R7GVÂ'F–f7Bâæòg&W6‚Æö6Â&6†—fP§fÆ–FF–öâ—26Æ–ÖVBâÆö6Âf—‡GW&Rf–ÆRU$Âv2Ç6ò&V¦V7FVB'’'&÷w6W §öÆ–7“²æòv÷&¶&÷VæB÷"f—‡GW&R66WFæ6R6Æ–Òà ¤fö7W6VBÆ—fS3c7‚–ç7V7F–öã¢–æ—F–Âf÷&Ò(i#†÷FVÇ2óC#bF÷W'2(i&W‡æFV@¤ÅU„õ"%B(i'6VÆV7FVBF÷W"v—F‚7WÆ–W"Æ6V†öÆFW"fÆ–v‡B(i'&Wf–Wrâ67&VVç6†÷G0¦–ç7V7FVBÃsRÃR%T"&WF–æVBÂæW‡B×FòÖÆ–6F–öâ5Df—6–&ÆRÂæò†÷&—¦öçFÀ¦÷fW&fÆ÷râæòFF—F–öæÂ552&W—"v2æV6W76'’–âF†W6Rö'6W'fVB7FFW2à¤æòÆVBf÷&Ò÷VæVB÷"ÆVB7V&Ö—GFVBâÖö&–ÆRö–çFW&ÖVF–FRv–GF‡2ÂÆVB7FGW0§f—7VÇ2ÂgVÆÂfÆ–v‡B÷&WGW&âöf–ÇFW"ÖG&—‚ÂgVÆÂ6—FRõ4TòæB‡—6–6Â6f&’&VÖ–à¦FVfW'&VC²F†—2—2æ÷B&Ææ¶WBf—7VÂ&—G’÷"&öGV7F–öâ66WFæ6Rà ¤VF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2×v†öÆRÖÆ–W"×&WF—&VÖVçBæ§6öæà¤æW‡C¢6öçF–çVR÷væW"ÖWF†÷&—¦VBÆ&vR&WfW'6–&ÆR&W6VçFF–öâÖ÷væW"&WF—&VÖVçB–âöæRW6VgVÂ&F6ƒ²&W—"FVÖöç7G&FVBÆ–÷WB'&V¶vR–â7W'&VçB÷væW'2âFòæ÷B&WVBFVâÖÆ–W"ÂÖ–æ–f–W"Â6öÖÖVçG2ÂÖVF–öFöÖ–ææ6R÷"F–ç’f7F÷&–ær76W2â&W6W'fRV–v‡BV&Æ–2F‡2Â†–FFVâöÆ–fV7–6ÆR&V6÷fW'’7FFW2Â&–6Rô’õU$Â÷–ÆöBöÆVBöæÇ—F–72öÆövòö'&÷w6W"6öçG&7G2âæW‡B6æF–FFW2&W7VÇG2×v–GF‚Ö6ö×F–&–Æ—G’ö†÷FVÂÖ6&BÖ6öçfW&vVæ6RæVVB7F—fR×'VÆR76W76ÖVçB&Vf÷&R&VÖ÷fÃ²æò6fRv†öÆW6ÆRFVÆWF–öâW7F&Æ—6†VB–WBâ¶VWæ'&÷r6†V6·2æBGvò6÷W&6R4’¦ö'2Â&WW6R'F–f7C²V&Æ—6‚öæÇ’f÷"§W7F–f–VBÆ–÷WBö67V×VÆFVB6†V6·ö–çBâÖö&–ÆRö–çFW&ÖVF–FRv–GF‡2ÂÆVB7FGW2f—7VÇ2æB‡—6–6Â6f&’&VÖ–âFVfW'&VBÂæ÷B76VBâÖ–â÷&öGV7F–öâÆö6¶VC²66†VGVÆW"W6VBà ¥F†R6V7F–öç2&VÆ÷r&V6÷&B7FGW2BF†V—"÷&–v–æÂ6ö×ÆWF–öã²öÆFW"7FFVÖVçG0§F†B&F6‚v2VçV&Æ—6†VB&R†—7F÷&–6Ââ&F6†W23C#.(	23C#B&Ræ÷r–æ6ÇVFV@¦–âF†R7W'&VçBV&Æ–6F–öâà ¢222†—7F÷&–6Â6†V6·ö–çBB6ö×ÆWF–öâ(	B6öÖÖöâ552&Æö6·2æB¥27VÆÆ–ær(	B##bÓ’Ó` ¥"3C#BÂ6÷W&6RF63ƒ3v&33FCcFS3#c&c“c“FS3cFf“s&âGvòÖæFF÷'’¦ö'276VBöâF†Rf–æÂ6÷W&6S ¥6V7W&—G’3CcC#s3cRæB'F–f7B3CcC#s3s#²W†7B'F–f7B“““ƒC3&WF–æVBà¥F†—2—24„T4´TBÂäõBT$Ä•4„TBâ&Wf–Wr&VÖ–ç2&fc#ssrò3C#²Ö–â÷&öGV7F–öà§&VÖ–â÷væW"Ö&÷fÂÆö6¶VBæBF†R66†VGVÆW"7F—2W6VBà §ÂV–v‡BV&Æ–276WG2Â&Wf–÷W2'—FW2Â6†V6¶VB'—FW2Â6fVBÀ§ÂÒÒÒÂÒÒÓ¢ÂÒÒÓ¢ÂÒÒÓ¢À§Â552Â“Ss2Â“Cs#’ÂCCBÀ§Â¥2Âs3RÂcs“RÂ#CÀ§ÂF÷FÂÂ3##‚Â3S#BÂcƒBÀ ¤V–v‡BF‡2æB6WfVâæöæV×G’vVæW&FVBÆ–æW2&VÖ–ââF†—2—2Væ6ö×&W76VB6—¦S°¦æòG&ç6fW"÷vR×7VVB6Æ–Òâ67V×VÆFVB3C#"ò3C#2ò3C#B6f–ærfW'7W2V&Æ—6†V@§&Wf–Ws¢c2'—FW2âæò'F–f7BF÷væÆöBÂ&Wf–WrFWÆ÷–ÖVçB÷"'&÷w6W"7–6ÆRà ¥6WfVçFVVâF¦6VçBÆVb×'VÆRw&÷W26†&RW†7BFV6Æ&F–öâ6WVVæ6W2Â7&÷76–æp¦öæÇ’F—6¦ö–çB&W6WBfÖ–Æ–W2â÷&–v–æÂ6VÆV7F÷"7G&–æw2æB&VçBöÖVF–6öçFW‡G0§&VÖ–ã²æòæW7F–ær–æ7&V6R÷"6VÆV7F÷"ÖÆ—7B7V6–f–6—G’×Æ–f–6F–öââ–æFWVæFVç@§&Wf–Wrf÷VæBæò666FR÷&W6WB6öæfÆ–7Bâ¥26†ævW2öæÇ’6V6öæB×7FvRV÷FRöçVÖ&W"ğ§&÷W'G’Ö¶W’ô””dR7VÆÆ–æs²ÆÂf÷W"f–æÂW†V7WF&ÆR6÷&âG&VW2æB&WF–æV@¦6öÖÖVçB6WVVæ6W2ÖF6‚F†R&Wf–÷W26÷W&6Râf—'7B×7FvRW†7B&–çF–æræ@§&÷FV7FVB–×÷'Bf–ævW'&–çG2&VÖ–ââW†—7F–ærVæ—B6÷fW&vR–æ6ÇVFW2V&Æ–2¶W¦÷&FW"Â&÷F÷G—R6WGFW"g26ö×WFVB÷vâ&÷W'G’æBçVÖW&–27VÆÆ–ærà ¤öæRf–æÂ76WB'V–ÆB76VBâ–æ—F–Â4’f÷VæBV÷FRÖFWVæFVçBFW7BFFW'2–â552Æ—FW&ÂW‡G&7F–öâæ@¦f–ÇFW"öÖö&–ÆR÷væW'6†—âÆ—FW&Â6†V6·2æ÷r&VB7GVÂ6÷&âfÇVW3²÷væW'6†— ¦6†V6·266WBV—F†W"fÆ–BV÷FR7VÆÆ–ærv†–ÆR¶VW–ærF†R6ÖR÷W&F–öâÀ§6VÆV7F÷"æB†æFöfb76W'F–öç2âf–æÂ6÷W&6R4’76W3²'&öFW"&W7öç6—fR÷6—FRõ4Tğ¦æB‡—6–6Â6f&’&VÖ–âFVfW'&VBà ¤gW'F†W"&÷VæFVB66ç2f÷VæBæò&V7W'6—fRÖVF–v–âÂöæÇ“’'—FW2g&öÒæWp§6VÆV7F÷"ÖÆ—7Bf7F÷"ÃCS'—FW2g&öÒfÇVRööÆ–ærv—F‚æWr–æ†W&—FVB×f&–&ÆP¦6ö×ÆW†—G’ÂæBæòÆ&vR–FVçF–6Â†VÇW"–ç6–FS#b¥2÷væW'2óC#rgVæ7F–öç2âF†W6P¦W‡W&–ÖVçG2vW&Ræ÷BÆ–VBâ&Wf–÷W6Ç’FVfW'&VCró#2Ö'—FR55266W27F’FVfW'&VBà¥F†R553CCBô¥3#CF–Ç2vW&R6öÖ&–æVB†W&S²Fòæ÷B&WVB6ö×ÆWFVB66ç2âgW'F†W ¦ÖFW&–Â&VGV7F–öç2&WV—&RFVÖöç7G&FVB&VGVæFçB&W6VçFF–öâ÷væW"v†–ÆP§&WF–æ–ærfÆÆ&6²ö–çFW&ÖVF–FR6&B7FFW2æBÆÂ&÷FV7FVB6öçG&7G2à ¤VF—G3¢Fö72÷&ö¦V7B÷6V&6ƒ2Ö6öÖÖöâÖ772Ö§2Öf÷&ÖB×&VGV7F–öâæ§6öææ@¦Fö72÷&ö¦V7B÷6V&6ƒ2Ö772Ö6öÖÖöâÖ&Æö6²Öf7F÷&–æræ§6öæà ¢222&Wf–÷W26†V6¶VB&VÆV6R&F6‚(	BÖVF–&ö÷G2æB7&÷72Ö76WB552(	B##bÓ’Ó` ¥"3C#2Â6÷W&6R–6cVfSƒƒc#SS–3–c&S663“c““&F&3ƒ#“â&÷F‚&WV—&VB¦ö'276VBöâF†Rf—'7BGFV×C ¥6V7W&—G“3Cc#cCS#c"æB'F–f7C3Cc#cCS#c3²'F–f7C“““s“c#3C’—2&WF–æVBà¥F†—26†V6¶VB&F6‚—2äõBT$Ä•4„TBâ&Wf–Wr&VÖ–ç2&fc#ssrò3C#²æòæWp¦FWÆ÷’Ö6öçG&öÂ"Â'F–f7BF÷væÆöB÷"'&÷w6W"¦÷W&æW’à §ÂV–v‡BV&Æ–276WG2Â&Wf–÷W2'—FW2Â6†V6¶VB'—FW2Â6fVBÀ§ÂÒÒÒÂÒÒÓ¢ÂÒÒÓ¢ÂÒÒÓ¢À§Â552Â“““’Â“Ss2ÂC#bÀ§Â¥2Âs3RÂs3RÂÀ§ÂF÷FÂÂ3c#3BÂ3##‚ÂC#bÀ ¥Væ6ö×&W76VB&VGV7F–öâã3S²ÆÂf÷W"¥2f–ÆW2'—FRÖ–FVçF–6ÂâV–v‡BV&Æ–2F‡2À§6÷W&6R÷&FW&–ærÂ&÷FV7FVBf–ævW'&–çG2æB&VF&ÆRÖöGVÆW2&WF–æVBà¥F†RæWr'V–ÆB726†&W2öæÇ’6öçF–wV÷W2WV—fÆVçB6–ævÆR×6VÆV7F÷"&ö÷G0¦7&÷72ÖVF–ÂgFW"W†7B&–çF–ærâW‡Æ–6—BÒb6†–ÆB'VÆW2ÂVæ6†ævVB6VÆV7F÷ §F‡2ö6öæF—F–öç2ö÷&FW"÷7G–ÆRFWFƒ²6öÖÖVçG2–âF—66&FVBw&W'2&V¦V7Bw&÷W–ærà¥F†RW†—7F–ær552FW7B6÷fW'2F†÷6R&÷VæF&–W2Â–æ6ÇVF–ær6öÖÖVçG2–ç6–FRÖVF–à ¥F†R6÷W&6R72&VÖ÷fW2sRFV6Æ&F–öç2ó2V×G’'VÆW2FöÖ–æFVB'’ÖæFF÷'¦ÆFW"VçG'’÷6VÆV7FVB7G–ÆW6†VWG2âF†R…÷væW"æBW†—7F–ær&W6VçFF–öâFW7@§&÷fRÆÂÖ÷"ÖæöæRf—†VBÖ–âöVçG'’ö6&G2÷6VÆV7FVB–æ6ÇW6–öââæòæWr6†÷'F†æB÷ ¦Æ–fV7–6ÆR77V×F–öç2â&WF–æVBFV6Æ&F–öâ7G&VÒæB6öÖ&–æVB666FRÖ2w&VP¦BÆÃC"v–GF‚6×ÆW2âöæRf–æÂÆö6Â'V–ÆBæBfö7W6VB552FW7G276VC²gVÆÀ§&W7öç6—fR÷6—FRõ4TòæB‡—6–6Â6f&’6†V6·2&VÖ–âFVfW'&VBà ¤6&BæÇ—6—2f÷VæBF†Bf—6–&ÆR&W7VÇG2Fòæ÷BwV&çFVR&W7VÇG2Ö7F—fR÷"ÆÀ¦f–æÂ6–&Æ–ærö†–FFVâ&VF–6FW2Â6ò'&öBöÆBÖ6&B&VÖ÷fÂv2&V¦V7FVBâ6W&FP¤¥2f÷&ÖGFW"W‡W&–ÖVçB––VÆG2öæÇ“#C'—FW3²6WfVâ'&öFW"v—F†–âÖ76WB550¦FVÆWF–öç2––VÆCr'—FW2âæV—F†W"Ö–7&ò×72v2Æ–VBâ7V'6WVVçB&VÖ–æ–ær7&÷72Ö76WB&6–2VçVÒö6öÆ÷ §66âf÷VæBöæS#2Ö'—FRFVÆWF–öâöæÇ“²—Bv2Ç6òFVfW'&VBv—F†÷WB6÷W&6RVF—G2à ¤VF—G3¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÖVF–Ö7&÷72Ö76WB×&VGV7F–öâæ§6öææ@¦Fö72÷&ö¦V7B÷6V&6ƒ2Ö772Ö7&÷72Ö76WBÖFöÖ–ææ6Ræ§6öæà¤æW‡C¢6ö×ÆWFVBföÆÆ÷r×W¢&VÖ–æ–ær7&÷72Ö76WB&6–2VçVÒö6öÆ÷"66âf÷VæBöæR#2Ö'—FRFVÆWF–öâöæÇ“²FVfW"—BæBFòæ÷B&WVBF†B66ââ6ö×ÆWFVBÖVF–×w&W"w&÷W–æræBsR7&÷72Ö76WBFVÆWF–öç27F’–âÆ6S²V&Æ–W"6ö×ÆWFVB76W2×W7Bæ÷B&WVBâæW‡B7V'7FçF—fR&VGV7F–öâæVVG27G'V7GW&Â÷væW'6†—öFV6Æ&F–öâf7F÷&–ærv—F‚ÖV7W&VBæWBv–ã¢&W6W'fRF†RfÆÆ&6²ö–çFW&ÖVF–FR†÷FVÂÖ6&B7FFW2&V6W6R†2×&W7VÇG2FöW2æ÷B–×Ç’&W7VÇG2Ö7F—fR÷"f–æÂ6–&Æ–ærö†–FFVâ&VF–6FW2âFòæ÷BFVÆWFRF†÷6RöÆB&Æö6·2öâF†BfÇ6R77V×F–öââ&W6W'fR6VÆV7F÷"7V6–f–6—G’Â6†÷'F†æB&W6WB6VÖçF–72Âf÷W"×7G–ÆW6†VWB÷&FW"ÂæF—fRæW7F–ærFWF‚æBÆÂV&Æ–2÷&÷FV7FVB6öçG&7G2âW6RöæRv÷&¶–ærG&gBW"W6VgVÂ&F6‚Âæ'&÷rWf–FVæ6RæBGvòÖæFF÷'’4’¦ö'3²æòWFöÖF–2&Wf–Wrö'&÷w6W"âV&Æ—6†VB&Wf–Wr&VÖ–ç2&fc#sss²6†V6¶VB6öFS–6cVfS²Ö–â÷&öGV7F–öâÆö6¶VBÂ66†VGVÆW"W6VBà ¢222&Wf–÷W26†V6¶VB&VÆV6R&F6‚(	B6÷W&6Ræ÷FW2æBçVÖW&–2552(	B##bÓ’Ó` ¥v÷&¶–ær"3C##²f–æÂ6÷W&6R#“#fVV#CS–F#3cS“s#c†cƒcƒCSvV#VcVcC6âF†—2&F6‚—26†V6¶VB–â&VÆV6P¦æB–çFVçF–öæÆÇ’äõBT$Ä•4„TBVæFW"F†R÷væW"&F6‚öÆ–7’âV&Æ—6†VB&Wf–Wp§&VÖ–ç26÷W&6R&fc#ssròFWÆ÷’3C#âæòæWrFWÆ÷’Ö6öçG&öÂ"÷"'&÷w6W"6W76–öâà §ÂV–v‡BV&Æ–276WG2Â&Wf–÷W2'—FW2Â6†V6¶VB'—FW2Â6fVBÀ§ÂÒÒÒÂÒÒÓ¢ÂÒÒÓ¢ÂÒÒÓ¢À§Â552Â#BÂ“““’ÂƒRÀ§Â¥2Âcs2Âs3RÂ3c3‚À§ÂF÷FÂÂ3cƒrÂ3c#3BÂSCS2À ¤æWB&VGV7F–öâãsRRÂVæ6ö×&W76VBâV–v‡BF‡2&WF–æVC¢f÷W"552f–ÆW2ÂF‡&VP¦æöæV×G’¥2f–ÆW2æBF†RW†—7F–ærV×G’÷fW&Æ’6Æ÷Bâ&VF&ÆR6÷W&6W27F’à¤ÆÂf÷W"W†V7WF&ÆR¥25G2ÖF6‚&fc#ssrW†7FÇ“²Æ–6Vç6R÷FööÂ6öÖÖVçG2æ@¦f—'7B×7FvR5Bö6öÖÖVçBWVÆ—G’&VÖ–ââFW7BFFW'2W‡G&7B7GVÂ6ö×–ÆV@¤””dW2'’7F&ÆR'VçF–ÖRÖ&¶W'2â6÷W&6RÖG&–gBf—‡GW&W2æ÷r×WFFRW†V7WF&ÆR6öFP¦&V6W6R÷&F–æ'’6öÖÖVçBÖöæÇ’VF—G2–çFVçF–öæÆÇ’ÆVfRvVæW&FVBf–ÆW2Væ6†ævVBà ¤552&VÖ÷fW2cFöÖ–æFVBFV6Æ&F–öç2ÇW2BV×G’'VÆW2âF–ffW&VçB×fÇVP§v—FæW76W2&RÆ–Ö—FVBFò6–×ÆR7W÷'FVBçVÖW&–2Æöæv†æG3²æò7W÷'G2÷ §f&–&ÆRfÆÆ&6²&VÖ÷fÂâ&WF–æVBFV6Æ&F–öâ÷&FW"æBf–æÂ6VÆV7F÷"÷&÷W'G¦666FRÖ2ÖF6‚7&÷72C"v–GF‚6×ÆW2â66WFæ6RwV&G2æBæW7F–ærVæ6†ævVBà ¤öæRf–æÂÆö6Â6÷W&6R'V–ÆBÂ6ö×7F–öâFW7G2ÂV–v‡BffV7FVB6ö×–ÆVBFFW'0¦æBF†RGvò6÷'&V7FVBG&–gBf—‡GW&W276VBâf—'7B4’GFV×BW‡÷6VBF†÷6RGvğ¦6öÖÖVçBÖöæÇ’f—‡GW&W3²F†R6÷'&V7FVBf–æÂ6÷W&6R76VB&÷F‚ÖæFF÷'’¦ö'3¢'F–f7B3Ccsc3ƒS"æ@¥6V7W&—G’3Ccsc3ƒcâ'F–f7B“““ssCC’—2&WF–æVBf÷"ÆFW"V&Æ–6F–öâà¤'&öFW"7V—FW2æBæWrÆ—fRfW&–f–6F–öâ&VÖ–âFVfW'&VBÂæ÷B76VBà¤VF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Ö&F6†VBÖ772Ö§2×&VGV7F–öâæ§6öæà ¤æW‡C¢æW‡B7V'7FçF—fR7FW¢6öç6öÆ–FFRF†R†÷FVÂÖ6&B552÷væW"VæFW"7&W7VÇG27&÷72&6Rö6&Bö666FRöÆ–÷WB6÷W&6W2Âf—'7B&÷f–ærF†RffV7FVBf–æÂ666FR–æ6ÇVF–ær6†÷'F†æBöÆöæv†æB–çFW&7F–öç2æB'&V·ö–çB7FFW2âFòæ÷B&W'Vâ6ö×ÆWFVB&—fFR552÷F–Ö—¦F–öâÂÖ&·W†VÇW'2Â6÷W&6RÖ6öÖÖVçBf–ÇFW&–ærÂ3bWVÂ×fÇVR÷"cçVÖW&–2ÖFöÖ–ææ6RFVÆWF–öç2â&VÖ–æ–ær¥2Ö–7&òÖ6æF–FFW2ÖV7W&VB&VÆ÷rS'—FW2&RFVfW'&VBÂæ÷B6W&FR'2âW6RöæRv÷&¶–ærG&gBW"W6VgVÂ&F6‚Âæ'&÷rWf–FVæ6RæBF†RGvò&WV—&VB4’¦ö'2âFòæ÷BWFöÖF–6ÆÇ’FWÆ÷’÷"&WÆ’F†RÆ—fR¦÷W&æW“²7W'&VçBV&Æ—6†VB&Wf–Wr&VÖ–ç2&fc#ssrâæWrÆö6Â6öÖÖæG2æBfö7W6VBFW7G2v÷&¶VB–âF†—26öçF–çVF–öã²F†R†—7F÷&–6Â&V¦V7FVB…EEöÆÂv2æ÷B&WG&–VBâÖ–â÷&öGV7F–öâÆö6¶VC²66†VGVÆW"W6VBà ¢222&Wf–÷W2fW&–f–6F–öâ&–÷&—G’(	BÆVâ&Wf–Wr7–6ÆR(	B##bÓ’Ó` ¥F†R÷væW"W‡Æ–6—FÇ’&WVW7FVBfWvW"6†V6·2æBf7FW"f–ÆR×6—¦R&VGV7F–öã ¬*½Í½½íÒıí-]í¢İRíı}-]½Íİââââm]½Â­¢Íímİâ½-]R=Í]İÍ-Â}Í]+²à¥F†—27WW'6VFW2öÆFW"&WV—&VÖVçG2&VÆ÷rFò'VâÆÂ#2v÷&¶fÆ÷w2ÂgVÆÂ&W7öç6—fP¦ÖG&–6W2Â&WVFVB67&VVç6†÷B6ö×&—6öç2÷"W††W7F—fR¦÷W&æW—2f÷"WfW'’"à ¥W6Rv÷&¶–ærG&gB'2&6VBF—&V7FÇ’öâ&VÆV6R÷6V&6ƒ2×&öGV7F–öâ×&VG’×c°¦Fòæ÷BFV×÷&&–Ç’F&vWBÖ–â§W7BFòG&–vvW"Vç&VÆFVB4’â&F6‚W6VgVÂ6÷W&6P§&VGV7F–öç2&Vf÷&RöæR&VÆV6R–çFVw&F–öâ÷V&Æ–6F–öââÆö6ÆÇ’'Vâ6÷W&6R'V–ÆBÀ§6—¦Rö–×÷'B6†V6·2æBF†R&VÆWfçB6ÖÆÂ&V†f–÷"FW7G2âF†RW†—7F–ær'F–f7@§v÷&¶fÆ÷r7WÆ–W2…&VæFW&–ærÂ&W6VçFF–öâ6†V6·2æB&Wf–Wr—6öÆF–öâöæ6Rà¥F†R÷væW"FF—F–öæÆÇ’6·2Fò&VÖ÷fRÖ÷&RGWÆ–6FR6†V6·2â'VâGvò¦ö'2öâ§v÷&¶–ær6öFRG&gC¢6V7W&—G’wV&B–æ6ÇVFW2&÷F‚÷væW"×öÆ–7’fÆ–FF÷'3²F†P¦W†7B'F–f7B¦ö"–æ6ÇVFW26÷W&6R÷&W6VçFF–öâÂ…7–çF‚ÂF‚&÷VæF&–W2æ@¦—6öÆF–öââ&WW6RF†—27V66W76gVÂ6÷W&6R'F–f7BgFW"&VÆV6Rf7BÖf÷'v&Bæ@¦Fö7VÖVçFF–öâ6†V6·ö–çG2âF†R7V×VÆF—fRG&gB&VÆV6R'Vç2öæÇ’6V7W&—G’wV&C°¦Fòæ÷B&V'V–ÆB÷"&VFWÆ÷’Fö7VÖVçFF–öââF†R6÷W&6R'F–f7B4„×W7B&VÖ–âà¦æ6W7F÷"öbF†RW†7B&VÆV6R–âÂ2Væf÷&6VB'’F†RVæ6†ævVBFWÆ÷’6öçG&öÂà ¤æ–æWFVVâ'&öFW"v÷&¶fÆ÷w2ÇW27FæFÆöæR÷væW"ö&÷VæF'’¦ö'2FVfW"öæÇ’f÷ ¦G&gB6V&6ƒ2&VÆV6R'2÷"G&gB'2F&vWF–ærF†—2&VÆV6RâW†—7F–æp§&öGV7F–öâÖöæÇ’¦ö'2ÂÖ–âW6†W2Â66†VGVÆW2æBÖçVÂ'Vç2&RVæ6†ævVBà¦&VG•öf÷%÷&Wf–WvW‡Æ–6—FÇ’&W7F÷&W2ÆÂÆ–6&ÆR"vFW2Â–æ6ÇVF–ærg&W6€§&VÆV6R'F–f7B'V–ÆBÂ&Vf÷&R&öGV7F–öâ6öç6–FW&F–öã²Ö–â&VÖ–ç2Æö6¶VBà ¤f÷"&Wf–Wr&F6‚Â–ç7V7BF†R6†ævVB6öçG&öÇ2–âF†RÆ—fR'&÷w6W"Âæ÷&ÖÆÇ¦öæRFW6·F÷æBöæRÖö&–ÆR7FFRv†VâÆ–÷WB6†ævVBâFòæ÷B'VâF†RgVÆÂ6—FRõ4Tğ§f—7VÂ7V—FR÷"6ö×&RF÷¦Vç2öb67&VVç6†÷G2gFW"WfW'’6ÖÆÂ6†ævRâ'&öFVà¦6†V6·2öæÇ’f÷"6öæ7&WFRf–ÇW&R÷"B&öGV7F–öâ66WFæ6RâFòæ÷B6ÆÂ¦FVfW'&VB6†V6²76VBâ¶VWW†7BÖ'F–f7BV&Æ–6F–öâÂF—6&ÆVB&Wf–WrÆVG2À¦æö–æFW‚Â&öÆÆ&6²æB&öGV7F–öâf–ævW'&–çG2â66†VGVÆW"&VÖ–ç2W6VBà ¤'V–ÆB6ö×7F–öâW6W2W†7B5Bö6öÖÖVçBWVÆ—G’öæÇ’f÷"F†Rf—'7B&–çF–æp§7FvRâF†RæW‡B÷F–Ö—¦F–öâ7FvRÖ’6–×Æ–g’¦f67&—B6öçG&öÂfÆ÷ræB550§fÇVW2÷'VÆW2â&W6W'fRV&Æ–2¶W—2ÂvÆö&Ç2ÂgVæ7F–öâö6Æ72æÖW2Â&wVÖVçB&—G’À¦WfÂ66÷W2æBvWGFW"6–FRVffV7G2âF—6&ÆRVç6fR&—F†ÖWF–2æB7&÷72×7FFVÖVç@§6WVVæ6RÖW&v–æs²&WF–âæF—fR552æW7F–æræBF†RW†—7F–ær'&÷w6W"&÷VæF'’à¥&VF&ÆR'VçF–ÖR6÷W&6W2æB&÷FV7FVB'W6–æW726öçG&7G2&VÖ–âVæ6†ævVBà ¢222†—7F÷&–6ÂV&Æ—6†VB6†V6·ö–çB(	B&—fFR552ÂÖ&·WæBÖVF–÷fW&Æ(	B##bÓ’Ó` ¥6÷W&6R&fc#sssCc†3&vCCFccƒFF3“&3#cvFFS66fÂ6÷W&6R'23C’ò3C#²öæR—6öÆFVBV&Æ–6F–öâ3C#À¦FWÆ÷’3Cc#s#7V66VVFVBöâGFV×BâV6‚v÷&¶–ærG&gB76VB6V7W&—G’æ@§F†RW†7B'F–f7B¦ö"â&VÆV6RöFö72&WW6RF†Rf–æÂ6÷W&6R'F–f7C²gVÆÀ§&W7öç6—fR÷6—FRõ4Tòv÷&¶fÆ÷w2&VÖ–âFVfW'&VBVæFW"F†R÷væW"ÆVâöÆ–7’à §ÂV–v‡BV&Æ–276WG2Â&Wf–÷W2'—FW2ÂV&Æ—6†VB'—FW2À§ÂÒÒÒÂÒÒÓ¢ÂÒÒÓ¢À§Âf÷W"552Â##BÂ#BÀ§Âf÷W"¥2Â#CÂcs2À§ÂF÷FÂÂ3CSBÂ3cƒrÀ ¤æWB6f–ær#ƒ#r'—FW2ƒã“R“²B552²SR¥2ÒS’vVæW&FVBÆ–æW2âVæ6ö×&W76VBÀ¦W†6ÇVF–ær6†&VB'VçF–ÖRöÆVv7’æBGWÆ–6FR6÷W&6S²æòvR×7VVB6Æ–Òà¥Gvò&—fFR7G–ÆR7G&–æw2W6RF†RW†—7F–ær÷F–Ö—¦W"&Vf÷&RW66–ærBF†V— ¦÷&–v–æÂ¥2–ç6W'F–öâ÷6—F–öç2âf÷W"&V†f–÷"÷væW'26†&R&—fFRÖ&·Wæ@¦6Æ72&Vf—†W2â6—‡FVVâ6ö×–ÆVBöÆBöæWrG&6W2&WF–âW†7B…DÔÂÂDôÒ÷6VÆV7F÷ ¦÷W&F–öç2ÂÆ—7FVæW"&Vv—7G&F–öç2ö&—G’æB7WÆ–W"vWGFW"&VG2â6öç6W'fF—fP¦÷F–Ö—¦W"wV&B&WF–ç2&r5526öÖÖVçBFö¶Vâ&÷VæF&–W2à ¥F†R55272&VÖ÷fW23b–FVçF–6Â×fÇVRFV6Æ&F–öç2v—F‚W†7B×6VÆV7F÷"v—FæW76W0§VæFW"'&öFW"ÖVF–÷"–×÷'FçB&–÷&—G’ÂF†Vâæ–æRV×G’'VÆW2â&WF–æVB÷&FW&V@§7G&V×2&RW†7C²f–æÂ6VÆV7F÷"÷&÷W'G’÷&–÷&—G’Ö2ÖF6‚BÆÂC"çVÖW&–0¦ÖVF–&÷VæF'’öF¦6VçBö–çG2âæöâÖçVÖW&–2÷7W÷'G26öçFW‡G2æB&÷FV7FV@¦66WFæ6R6÷W&6R7F’Væ6†ævVBâFöæ÷"ö÷&FW"æBæF—fRæW7F–ærÖ‚F‡&VR&VÖ–âà¤'V–ÆBö6†V6²ö–×÷'BFW7G273²…&VæFW&–ær76VB–â'F–f7B4’à ¤'F–f7B“““s#CS“Rg&öÒ'V–ÆB3Cc#csğ¦6†#Sc¦C&3c–6C#66&C&VSCS–#S6f#sv##v#c“†CcF36FS†&C3cf#scS†#cS“c&6Fà¤ÆÂsR–ÆöB†6†W2æBV–v‡BvVæW&FVB76WG2fW&–f–VB&Vf÷&RV&Æ–6F–öâà¤æ–æR&÷WFW2Âæö–æFW‚Â6÷VçFW"¦W&òÂF—6&ÆVBÆVG2Â&öÆÆ&6²æB2Væ6†ævV@§&öGV7F–öâf–ævW'&–çG2&R&V6÷&FVB–âWf–FVæ6R“““s#C#Sƒğ¦6†#Sc¦V6#6C&&cScƒ&Fc3SFS–S3C†C663#“fS&V“C“““FC&SSV6&cSƒà ¤fö7W6VBÆ—fRFW6·F÷3c7ƒ¢Ö÷66÷rõGW&¶W’Â(	36WÂ6WfVâæ–v‡G2ÂGvòGVÇG3°£†÷FVÇ2òCƒF÷W'2Óâä…D"%BÓâ5S#Sbõ5S#SrÂs#“’Óâƒ“3r%T"Óà§&Wf–WrÓâV×G’ÆVBf÷&ÒÓâ&Wf–WrÓâ&WGW&âÓâ¦W&òÖf–ÇFW"Óâ&W7F÷&R §v—F†÷WBæ÷F†W"6V&6‚ÓâVF—F÷"FFW2öæ–v‡G2&WF–æVBâ&Wf–WræBÆVB67&VVç6†÷G0¦–ç7V7FVC²æò†÷&—¦öçFÂ÷fW&fÆ÷r÷"&VÂÆVBâ‡—6–6Â6f&’öÆ—fRÖö&–ÆRæ@§F†RgVÆÂ&W7öç6—fR÷6—FRõ4Tò7V—FRvW&RFVfW'&VBâ'&÷w6W"’†BG&ç6–Vç@§÷7BÖ6Æ–6²F–ÖV÷WG3²g&W6‚DôÒ6öæf—&ÖVBV6‚&W7VÇF–ær7FFRà ¥F†RÆö6ÂF—&V7BÔ…EE76WBÖ†6‚öÆÆ–ær&W7VÇB—2Væ6öæf—&ÖVC¢WFöÖF–2&÷fÀ§&Wf–Wr&V¦V7FVBF†RöÆÂ&V6W6RVçf—&öæÖVçBW6vR66—G’v2W†xß^í¢G§²ÚîÆ­yÒ¶æ÷vâÆ–Ö—FF–öã°¦—G2V&Æ–W"6öçG&öÆÆVB&W&öGV7F–öâ—2&W6W'fVB–âV&Æ–6F–öâ†—7F÷'’âF†—0§72F–Bæ÷B6†ævRF†B÷væW"÷"6Æ–ÒæWrgVÆÂÆ—fR&W7öç6—fR66WFæ6Rà ¤æW‡C¢&Vg&W6‚F†R&VÆV6R†VC²–ç7V7B&WVFVBFV×ÆFW2–à¦&V†f–÷"÷&W7VÇG2×&W6VçFF–öâæ§6æB&VÖ–æ–ær7G–ÆW2ö666FV÷væW'2f÷ ¦WV—fÆVçB6öç6öÆ–FF–öâÂF†Vâ&F6‚fW&–f–VB&VÖ÷fÇ2âFòæ÷B&WVBF†W6P§7Æ—G2Â&W7F÷&RF†R&WF—&VBfö÷FW"÷"&VFò6ö×ÆWFVBf–ÇFW"÷FööÆ&"v÷&²â&W6W'fP§&÷FV7FVB6öçG&7G2æBF†RV–v‡BV&Æ–2F‡2âÖ–â÷&öGV7F–öâ&VÖ–âÆö6¶VC°§&Wf–WrV&Æ–6F–öâ&VÖ–ç26W&FRW†7BÖ'F–f7B÷W&F–öâà ¢22W†V7WF–öâæB7F—fF–öâ&R6W&FP ¥F†—2—2F†RW'6—7FVçBF6²&ö×Bf÷"WFöæöÖ÷W26V&6ƒ2&W6VçFF–öâ&Vf7F÷&–ærâ—BFöW2æ÷B7&VFR66†VGVÆW"Â7F'B&6¶w&÷VæB6öF–ær&ö6W72÷"WF†÷&—¦R&öGV7F–öâV&Æ–6F–öâà ¥F†RW†—7F–ær&ö¦V7B&V6÷&G2æÖR6†DuBF6²*½	ıíMí½m-Â}í-­2ç•F÷W,+²Âv—F‚†÷W&Ç’6öçF–çVF–öâ–âWW&÷Rô×7FW&FÒâ—G27W'&VçBVæ&ÆVB7FFRÂF6²”BæBæW‡B'Vâ†fRæ÷B&VVâfW&–f–VB–âF†—26W76–öã¢66†VGVÆW"ÖÖævVÖVçBFööÇ2vW&RVæf–Æ&ÆRâ&WW6R÷WFFRF†BW†—7F–ærF6²&F†W"F†â7&VFRGWÆ–6FRâ¶VW—G2ÖöFVÂ÷6WGF–æw2VæÆW72F†R÷væW"6†ævW2F†VÒâFW6—&VB6FVæ6R&VÖ–ç2†÷W&Ç“²Fòæ÷BFW67&–&R—B26öçF–çV÷W2W†V7WF–öâ÷"6Æ–Ò7F—fF–öâv—F†÷WB66†VGVÆW"6öæf—&ÖF–öâà ¤v—D‡V"—77VR3"æBWF÷–Æ÷B×'VçF–ÖR×7FFRç–ÖÂW'6—7B4’6–væÇ2öæÇ’â7V66W76gVÂ4’'Vâ÷"F†—2Fö7VÖVçB—2æ÷BWf–FVæ6RF†BæWr6öF–ær6W76–öâv–ÆÂ7F'Bà ¢226÷–&ÆRF6²&ö×@ ­	ıíMí½m’--íİíÍİ½’-]]İ}]­’&Vf7F÷"×726V&6ƒ2"]ıí}-í‚–F¶öfb÷ö—6²×GW&÷b×FW7Bâ	-½ıí½İı’}í-­2ÂİR-í½Í­âÍíİ-íİ2‚í-}"â
+í-’ıâ­--İí’-]-­R&VÆV6R÷6V&6ƒ2×&öGV7F–öâ×&VG’×c½âı-İâí=½í-İİí’"3““b-]-­Rİı]]Íİ­3²-]­=’&VÆV6RG&gB(	B333Bà ­	"İ}½R­mMí=â}ı=­ıí}-’3““bıí½]MİÍ‚­íÍÍ]İ-ıÍ‚‚333C²}-]ÂtTåE2æÖBÂõtäU%õ$”õ$•E’æ§6öâÂUDõ”ÄõBæÖBÂUDõ”ÄõEõ5DDRæ§6öâÂ7&2÷6V&6ƒ2ôtTåE2æÖBÂ7&2÷6V&6ƒ2õ$TDÔRæÖB‚İ-í"Mí­=Í]İ"		r		­
+-		-	İ	í	’	-	]
+-	­	‚â	í’&öFÖ3(	B­íİ-]­"ÂİRıí-íBı]]}ı=­-Â}-]İİ½Rİ-ı²â6V&6ƒ"ò3ƒ‚-½R}ı‚"Ö–âİRı-½ıí-ò-]­=]’í}]]MÍââ
+=-]-R=ıíÍİİòí]=âí-½ím]İİí=â&Vf7F÷"İRí-Í]İıí"ıí½]M=í]R}]]İR-½M]½Ímİí=İ}]İİ½’6V&6ƒ2&W6VçFF–öâ&Vf7F÷#²íİâİRıí-İı]-òİ}İİ½R­íİ-­-²à ­	ıí½]Mİıòıí-]]İİò-í}­­íMİÍíÍ]İ"}ıƒ¢SvcsVcC6fFFc&6#vS#FFfV&3“F–c‚â
+-‚FööÆ&"İıí]íM33s2ò33sBò33sR=mR}-]]İ²‚İ-]=í-İ²-í½Í­â"&VÆV6S²ıíMíİí-‚ıí½]Mİ]’-í}­‚İmRâ	ı]]B}Í]İ]İıÍ‚}İí-âıí-]ÂM­-}]­R†VB-]-­‚öÖ–âÂ"Â4’‚ı½½]½Íİ=âí-2â	İRí-­-½-’-]-­2¢İ-íÍ24„Â]½‚íİ=mRıíM-İ=½Ââ	İRı]]-’}=mR}Í]İ]İòÂİRf÷&6R×W6‚‚İRM=½=’-½ıí½İıíò2ı-½­½M­2â	ı‚ı½½]½ÍİíÂ-½ıí½İ]İ‚ıí-]Â]=â]}=½Í-"½‚-½]‚İ]}-Í½’]}íıİ½’ı=İ­"à ­
+=mR}-]]İ³¢6÷W&6R7Æ—BM]-ı-‚666FRİÍíM=½]’İ6SsC#&S²=M½]İR#r666FRİM]­½m’‚cı=-½R½í­í"İ“vfcVC²=M½]İR]sR6ö×F–&–Æ—G’İM]­½m’‚ríı=-]-Rı-²İ&CF6C“s#²]Mİ½’-½M]½]bÍí½Íİí=âM½Í-‚=M½]İR÷'†âÆ–fV7–6ÆRö666FRİS6cCƒ&V"ó3VS&S3c²g&ÖRÖ6öÆW66–ær&–6R6Æ–FW"ÂíMİf–æÂÖ6÷VçBİí-M­mòÂí-Í]İímMí]=â&–6R&VæFW"ı‚&W6WB÷6Vö6†'FW"ög&W6‚×6÷W&6RÂıí--íİíRıÍ]İ]İR­--İ½RM½Í-í"¢-]mÂ&öw&W76—fR&W7VÇG2ÂıíM-½]İR6÷'B÷6ÖR×&VfW&Væ6Rf–ÇFW"WfVçG2ôDôÒw&—FW2‚í]İ]İRÍíİ-í-İİ½R­íİ-í½í"ı‚&öw&W76—fR&Vg&W6‚İSV&#csBóCcs“#ó3S3CVf#ó3S#s332ö##Ss“2ö#s&csC“BóC3ƒScc2óSc“–SC’öc“ƒ“Râ
+=-]-’6–ÆVçBÖÖöFRıí½İí’í-í-­‚=M½Òİ†S##²-½İİ½’m]İí-í’ı]M]²ı]]m-]"-]Í]İİíR=m]İR6÷W&6R&÷VæG2İ#&c3#3²ıİ½R'VFvWBöfÆ–v‡Bıí½òí}í-òİCccƒ6C²6†'FW"&W7VÇBöf÷&Ò7FFRİ]íİ}í-ÒİC3#sC#²ı=-í’-í}İ¢­í]­-İâí­ı-½ı]"Í]İ2M½Í-í"İc“sƒC3V²ıí--íİòı=-òí-í-­İR=İ}-ím]"]íMİ½’İíİ#C6CSS²6V&6ƒ2&–6R–çWBí-M]½Òí"ÆVv7’E3"Æ—7FVæW"İ3Cc#S²İ]ıí½İ½’6VF—7Fæ6Rf6WB­½-]-ò‚½-]-òİF3VfSc²&W6WB-í-İ-½-]"6÷W&6R‚í­ı-½ı]"Mİ½Íİ½’6÷VçBí-İâíMÒrİ“Vc3#s²½İ’í’&–6R6öÆÆV7F÷"M½òí-]½ò]rF÷W"&÷w2=M½Òİc#6#V3râ	ıíÍ]m=-í}İ½’3FCs“fS"-í½Í­â-í-İí-²ıí½İí-Íâı]]Mİİ½’vVæW&FVB'VæFÆRıí½R-İıí-İí=â=]}]İò‚İRı-½ı]-òí-M]½Íİ½Â}Í]İ]İ]Âıí-]M]İòâ	ı=-í’ÖVF–—FW&F–öã"=mR=M½Òâ
+í]İ]İ²ı]M½M=R¥2WfVçBÖ6öÆW66–ærÂÆFW7B×&–6R×v–ç2Â–FV×÷FVçBDôÒö&–öFF6WBWFFW2‚­]‚­½]İMòâ	İRıí--íı’İ-‚ıí]íM²â	ı]mİ’İ]=M}İ½’7Æ—Bf–ÇFW"×&–Âæ§2ıí½İí-Íâí-Í]İÓ²İR}--Â]=â-½ıí½İ]İİ½Âà ­	-½’½]M=í’2ıâ]½ÍİíÍ2=Í]İÍ]İâ½ímİí-‚‚­ÂİRıâ}½2­íÍÍ-í"â
+½]M=í’­İMM"M½òİ½}(	Bí--]òı]]­½-ò552Íí½Íİí=âFööÆ&""&W7VÇG2Ö6öçFW‡Bæ772÷&W7VÇG2ÖÆ–÷WBæ772â	Mâ=M½]İò­--İ½Rı-²Mí­}-Âİ­--½]İ-İí-Â6ö×WFVB7G–ÆW2"–æ—F–Â÷&W7VÇG2öVF—F÷"÷6VÆV7FVB÷&W6WBİ3sRóC3ósc‚ó““’óó3C‚óCCâ	}-]İİ½R6VÆV7F÷"6ÆVçWÂÆö6ÂVWVR‚FW6·F÷&÷VæF'’İRıí--íı-Ââ	İRıí--íı-Â=mR}-]İİ½R÷væW'6†—Â&–6RÖg&ÖR‚g&W6‚Öææ÷Væ6VÖVçBı-½]İòÂİR}]}-Â””dR-½]ı=â‚İRMí-½ı-Â=½í½Íİ½’66†VGVÆW"½‚M=½=íRö'6W'fW'2â	½Í-]İ--İ½’İ]}-Í½’2(	BMí­}=]Í½Rí--]ò552İM=½‚"=]--=íR÷væW'2â
+}İ½RÖVF–÷7V6–f–6—G’Â6†÷'F†æBÂı]]Í]İİ½R‚fÆÆ&6²İRí­ı-½ı-ÂM=½ıÍ‚]rí-M]½Íİí=âMí­}-]½Í--â	İRMí-½ı-Â­íB½‚-]-²-í½Í­âM‚­--İí-‚à ­
+]M­-=’7&2÷6V&6ƒ2Â}-]Âıí½Í}=’—F†öã267&—G2ö'V–ÆB÷6V&6ƒ5ö76WG2ç’Ò×w&—FR‚ÒÖ6†V6²â6÷W&6RÂvVæW&FVB76WG2Âİ=mİ½R6V7F–öâ6öçG&7G2‚&öGV7F–öâÖ–×÷'B†6†W2­íÍÍ-Â-Í]-Râ
+í]İı’-í]ÍÂı=½}İ½R76WBF‡2ÂıíıMí¢ıíM­½í}]İò‚}İİ½R­íİ-­-²â	ıÍ]İı’-]­=’ÆVâ&Wf–Wr7–6ÆR-½S¢í}R"}2"&VÆV6RÂ­íí-­Rıí-]­‚í­‚ı}Í]ı}-íİ=-í=âıí-]M]İòÂíMİıí-]­}Í]İİİí=âm]İòıí½Rı­]-İí’ı=½­m‚â	ıí½İ½R4’÷f—7VÂõ4Tòıí-]­‚í-½ím]İ²M½ò6V&6ƒ2G&gBıâı-İíÍ2=­}İâ-½M]½Ím²ı]]B&öGV7F–öâ×&Wf–Wríİ‚-í}-í-òâ	İRí}M-’M=½=í=â4’İİM-=­-=2‚İR}ı=­’ıí½İ½’f—7VÂ7V—FRM‚Mí­=Í]İ-m‚à ­	İRí-İ-½--Íòıí½RíMİí=â"½‚­íÍÍ-Â]½‚"-]­=]Â}ı=­R]-Â-í}Íímİí-Â½]M=í]=â]}íıİí=â=â
+İ}½Mí-íM‚½í­=íRí­‚-í]=â}Í]İ]İòMâı-½]İò½â]}íıİí=âí-­-Â}-]ÂıíMí½m’â	ı‚-İ]İ]Â½í­]R}ı‚]=â‚ıíMí½m‚İ]}-Í=â]}íıİ=âí-2â
+-]=]ÍòM}}]­òıí-]­6f&’ÂíM}]­RÍ-]½²‚&öGV7F–öâ&÷fÂİR½í­=í"İ]}-Í½’}]İİ½’&W6VçFF–öâ&Vf7F÷"ÂİâİRÍí=="½-Âí­ı-½]İ²-½ıí½İ]İİ½Í‚--íÍ-}]­‚à ­	}ı]]İâÍ]İı-ÂF÷W'f—6÷"ô’Â}"m]İ²ÂÆVBG&ç7÷'BıÍııİ2Â	Í]-­2ım]½‚Â½í=í-ò‚í]MİRıí]­-²â	İRí-ı-½ı’]½Íİ½R}ı-­‚â
+}]]İ²-]-­‚Â­íÍÍ-²ÂG&gB"‚4’â	İRÖW&vR"Ö–â‚İRFWÆ÷’&öGV7F–öââ	İR}ı=­’--íÍ-}]­’FWÆ÷’­¢ıíí}İ½’İMM]­"&Vf7F÷"×73²í-M]½Íİâ}]İİ½’&Wf–Wrİıím]í--òí-M]½Íİí’W†7BÕ4„íı]m]’]=â=]--=íÍ‚í=İ}]İıÍ‚â	İR}Í]İı’]-]²}]]r6VçF–æVÅ‚"Í­Rİ-í=â}Mİòà ­	ıí½R­mMí=â=]--]İİí=âıí-]]İİí=â=íİí-½ı’&W6VçFF–öå÷&Vf7F÷%ö6†V6·ö–çB"UDõ”ÄõEõ5DDRæ§6öâ‚†æFöfb"333Bò3““bÂİR}Í]İıò-íâı=½­m’]}=½Í--Í‚½í­½Íİí’í­‚â	}M­=’½]M=í’­íİ­]-İ½’2‚=İm²â	"-í=í-íÂí-}-R=­m‚-í}İ½’4„ÂM­-}]­‚-½ıí½İ]İİ½R}Í]İ]İòÂ]}=½Í--²ıÍ]İÍ½Rıí-]í¢‚í’}Í]ı}½â-í¢}]-½R552‚}]-½R¥2rÖæ–fW7B]rM-íİí=â=}-7&2÷c"â	í-½}’*½ıíM=í-í-½]İì+²Â*´4’ıíM]Ü+²Â*½íı=½­í-İâ"&Wf–W|+²‚*½ıí-]]İâ"&öGV7F–öì+²â	İRí]’ıíMí½m]İRÍ]mM2}ı=­Í‚]r]½Íİâ-­½í}İİí=âı½İí-­à ¢226†V6·ö–çBÖWG&–72Âæ÷BÆ—fRÖV7W&VÖVç@ ¤B6öFR4„&CF6C“s#¢6V&6ƒ2552—23sRÃ#r'—FW2òBÃ#c‚‡—6–6ÂÆ–æW3²¥2—2c"Ã3c'—FW2òÃ“#‚Æ–æW2âF÷FÃ¢S3rÃScr'—FW2òbÃ“bÆ–æW27&÷72V–v‡BV&Æ–276WG2ÂVæ6ö×&W76VBÂW†6ÇVF–ær6†&VB'VçF–ÖRöÆVv7’â&V6ö×WFRgFW"ÖFW&–Â6öFR6†ævW2âF†W6R6÷W&6RÖWG&–72Fòæ÷BW7F&Æ—6‚FWÆ÷–VB6—¦R÷"ÖV7W&VBvRÖÆöBW&f÷&Öæ6Rà ¥F†R6öFR6†V6·ö–çB76VB#2"v÷&¶fÆ÷w2Âv—F‚öæRW‡V7FVB6¶—VBv÷&¶fÆ÷rÂ2&V6÷&FVB–â"333BâF†—2†æFöfbÖöæÇ’Fö7VÖVçBÖ¶W2æòæWr'VçF–ÖR÷f—7VÂ÷&öGV7F–öâfW&–f–6F–öâ6Æ–Òà ¢22fW&–f–VBf–ÇFW"×&–Â6†V6·ö–çB(	B##bÓ’Ó` ¤W†7B6öFR†VC¢c#6#V3v#–fVc“#v3†S“Vf#fC#336“VS–#SƒFà ¢ÒS6cCƒ&V&&VÖ÷fVBF†RVçW6VBÖö&–ÆRG&vW"Æ–fV7–6ÆR6òF†R7F—fRÖö&–ÆR6öçG&öÇ2†fRöæR÷væW"à¢ÒSV&#csF¶VW26Æ–FW"Æ&VÇ2–ÖÖVF–FR'WB6öÆW66W2&–B&–6Rf–ÇFW&–ærFòöæR&VæFW"W"æ–ÖF–öâg&ÖRv—F‚F†RÆFW7BfÇVW2à¢ÒCcs“#&VÖ÷fVBF†R6V6öæBf–ÇFW"Ö6†ævRææ÷Væ6VÖVçBgFW"g&W6‚&W7VÇB6÷W&6S²&VæFW%&–Â‚–&VÖ–ç2F†R6–ævÆRææ÷Væ6VÖVçB÷væW"à¢Ò3S3CVf#–çfÆ–FFW2VWVVB&–6R&VæFW"öâ&÷F‚Æö6Â&W6WBæBc#§6V&6‚×&W6WFà¢Ò3VS&S3f&VÖ÷fVBF†R6÷'&W7öæF–ær÷'†âG&vW"666FRgFW"F†R÷væW'6†—&Vw&W76–öâ&÷fVBF†÷6R6VÆV7F÷'2†Bæò÷væW"à¢Ò3S#s3366æ6VÇ27WW'6VFVBVWVVB&–6R&VæFW"v†Vâ6VÖF—7Fæ6R÷"6†'FW"6†ævR–ÖÖVF–FVÇ’Æ–W2F†R6ÖRÆFW7B&–6R7FFRà¢Ò##Ss“6&VÆ–W27F—fRÆö6Âf–ÇFW'2v†Vâg&W6‚&öw&W76—fR&W7VÇB6÷W&6R'&—fW2Â6òæWrVæf–ÇFW&VB6&G26ææ÷BÆV²–çFòF†Rf—6–&ÆR6WBà¢Ò#s&csC“F6æ6VÇ2VæF–ær&–6Rg&ÖRv†VâF†Bg&W6‚6÷W&6RÇ&VG’6öç7VÖVBF†RÆFW7B&–6R7FFRà¢ÒC3ƒScc6¶VW26÷'B÷6ÖR×&VfW&Væ6R&W&VæFW'2÷WG6–FRF†RV&Æ–2f–ÇFW"Ö6†ævRWfVçB6öçG&7Bà¢ÒSc“–SC–6¶—2F†R&VGVæFçB6÷VçB÷v÷&BDôÒw&—FW2f÷"F†B6ÖR×&VfW&Væ6RF‚à¢Òc“ƒ“V¶VW2F†RW†—7F–ærf–ÇFW"6öçG&öÇ2Ö÷VçFVBGW&–ær&öw&W76—fR6÷W&6RWFFW2v†–ÆR7–æ6‡&öæ—¦–ærF†V—"&–6R&÷VæG2æB&W6W'f–ærF†R6VÆV7FVB&–6Rà¢Ò†S#&&VÖ÷fW2F†Ræ÷rÖö'6öÆWFR6–ÆVçBgVÆÂ×&VæFW"ÖöFRÂÆVf–æröæRW‡Æ–6—B–æ—F–Æ—¦F–öâ÷&W6WB6öçG&7Bà¢Ò#&c3#6¶VW2F†RW6W"w2&–6RÆ–Ö—B6W&FRg&öÒFV×÷&'’6÷W&6R&÷VæG2Â6òæ'&÷vW"–çFW&ÖVF–FR&W7VÇBöæÇ’6Æ×2F†RF—7Æ–VB6Æ–FW"æBF†R6†÷6VâÆ–Ö—B&WGW&ç2v—F‚v–FW"&W7VÇG2à¢ÒCccƒ6FÖ¶W2(	Ç&W6WBÆÎ(	Ò6ÆV"&÷F‚f÷&Ò'VFvWB&÷VæG2æB&÷F‚fÆ–v‡B6öç7G&–çG2&Vf÷&RF†RW†—7F–ær6–ævÆRFW6·F÷7V&Ö—Bà¢ÒC3#sC&&W7F÷&W2F†R&W7VÇB×&–Â6†'FW"7FFRg&öÒF†Rf÷&Òöâ6V&6‚&W6WBæBÖ—'&÷'2Æö6Â6†'FW"6†ævW2&6²FòF†Bf÷&Òv—F†÷WBFF–æræ÷F†W"6V&6‚&WVW7Bà¢Òc“sƒC3V¶VW2F†R7F—fRÖf–ÇFW"6÷VçBæBV&Æ–2WfVçB7–æ6‡&öæ—¦VBv†Vâ&–6RÂ6V÷"6†'FW"6†ævW2v†–ÆRF†R7W'&VçB6÷W&6R—2V×G’à¢Ò#C6CSVG&VG2âV×G’f–ÇFW&VB÷WGWB2fÆ–B&Wf–÷W2&VæFW"Â&W6W'f–ærF†R÷&–v–æÂ†÷FVÇ2v†VâF†B÷WGWB—2&VæFW&VBv–âæBF†Rf–ÇFW"—2ÆFW"6ÆV&VBà¢Ò3Cc#V&VÖ÷fW2F†RÆVv7’FFÖG3"×&–6V÷BÖ–âg&öÒF†R6V&6ƒ26Æ–FW"Â6òF†R&WF–æVB&6RÆ—7FVæW"6ææ÷BW&f÷&Ò6V6öæB–ÖÖVF–FRf–ÇFW"72&Vf÷&R6V&6ƒ2w266†VGVÆVB72à¢ÒF3VfSfW‡÷6W2F†R6VÖF—7Fæ6Rf6WBöæÇ’f÷"6ö×ÆWFR÷6—F—fR6VF—7Fæ6V–ÆöBæB&W6WG2—B&Vf÷&Rf–ÇFW&–ærv†Vâ&öw&W76—fR6÷W&6R&V6öÖW2–æ6ö×ÆWFRà¢Ò“Vc3#v&W7F÷&W2F†RVæf–ÇFW&VB&W7VÇB6÷W&6Röæ6Röâ&W6WBæBV&Æ—6†W2öæRf–æÂ6÷VçBWfVçB–ç7FVBöbGvò–FVçF–6Âææ÷Væ6VÖVçG2à¢Òc#6#V3v&VÖ÷fW2F†RvVæW&Â&–6R6öÆÆV7F÷"g&öÒF†Ræò×F÷W"'&æ6‚æB&VG2F†Ræ÷&ÖÆ—¦VB†÷FVÂ&–6RF—&V7FÇ“²fö7W6VB&Vw&W76–öâ&W6W'fW2W†6ÇW6–öâæB&W7F÷&F–öâ&V†f–÷"à ¦3FCs“fS&—2G&ç7÷'B×&V6÷fW'’6öÖÖ—BöæÇ“¢—B&W7F÷&W2F†R6ö×ÆWFRvVæW&FVB'VæFÆRgFW"F†R&V6VF–ær’WÆöBv2G'Væ6FVBÂæB–çG&öGV6W2æò6W&FR&V†f–÷"6†ævRâF†Rf–æÂ6÷W&6RövVæW&FVBG&VR—2W†7BæBfW&–f–VBà ¤fö7W6VB&–6RÖ–çWBæBf–ÇFW"Ö÷væW'6†—&Vw&W76–öç272ÂF†RvVæW&FVB76WG2ÖF6‚F†V—"6÷W&6W2ÂæBÆÂ#2Æ–6&ÆR"v÷&¶fÆ÷w276VBv—F‚öæRW‡V7FVBÖ–w&F–öâÖöæÇ’6¶—â6÷&R'Vã¢3C““ƒ3“V²&W7öç6—fRf—7VÂ'Vã¢3C““ƒ3“3vÂ'F–f7B““ƒScC“ÂF–vW7B6†#Sc¦3FcƒSCFF#cs†Vƒ“S3C6SCSS&Vc&c†Ss#CsƒFSc“s3#c##fC6C3v²v†öÆR×6—FR'F–f7B'Vã¢3C““ƒ3“C†Â'F–f7B““ƒSSƒc†ÂF–vW7B6†#Sc£F#†&cƒFC“3F####““F3CcCC“ƒ#c3VCcf6V&#C&#3&#fcƒ3&CFc–Ssƒ“fà ¤BF†—26öFR†VBÂF†Rf÷W"V&Æ–255276WG2&R3cbÃ#cr'—FW2òBÃ“b‡—6–6ÂÆ–æW3²F†Rf÷W"V&Æ–2¥276WG2&RS‚ÃsS‚'—FW2òÃ“#Æ–æW2âF÷FÃ¢S#RÃ#R'—FW2òbÃrÆ–æW2ÂVæ6ö×&W76VBÂW†6ÇVF–ær6†&VB'VçF–ÖRæBÆVv7’æBv—F†÷WBF÷V&ÆRÖ6÷VçF–ær7&6æBvVæW&FVBc&f–ÆW2â6ö×&VBv—F‚F†R&CF6C“s&6†V6·ö–çBÂF†R7F—fRV–v‡BÖ76WB6WB—2"ÃSC"'—FW2æBs’Æ–æW26ÖÆÆW#²F†—2vw&VvFR–æ6ÇVFW2&÷F‚F†R¥2v÷&²æBF†R–æFWVæFVçFÇ’6ö×ÆWFVB÷'†â552öÆ–fV7–6ÆR6ÆVçWÂ6ò—B—2æ÷BGG&–'WFVBFòöæR6öÖÖ—B÷"&W6VçFVB2ÖV7W&VBvRÖÆöBv–âà ¥7FGW2&÷VæF'“¢&W&VBæB4’×fW&–f–VBöæÇ’âF†—2&Vf7F÷"72F–Bæ÷BV&Æ—6‚æWr&Wf–WrÂÖW&vRÖ–æÂFWÆ÷’&öGV7F–öâÂÇFW"F÷W'f—6÷"ô’Â&–6R&—F†ÖWF–2ÂÆVBG&ç7÷'BöÖ–ærÂÖWG&–¶övöÇ2ÂÆövò÷"æV–v†&÷&–ær&ö¦V7G2âF†RæW‡B'Vâ×W7B&Vg&W6‚F†R&VÆV6R†VBæB&÷fRæWr–æFWVæFVçB&ö&ÆVÒ&Vf÷&R6†æv–ær6öFRà ¢2235õ$UD•$TEõDôôÄ$%ô552(	BfW&–f–VB&W&F–öâÂ##bÓ’Ó` ¤6öFS¢V6CcC3s“Sƒ##ƒ6#–3CcFCC33F#““cCCâ&VÖ÷fVBöæÇ’&WF—&VBÖö&–ÆR7F–öâöf–ÇFW"÷6÷'Bö6†—6VÆV7F÷'2–âf÷W"W†—7F–ær5526÷W&6W2â7GVÂFööÆ&"6†VÆÂÂ×&b&"÷6†VWBæB6÷'B÷væW"&WF–æVBâÆÂ6WfVâ÷F†W"V&Æ–276WG2æB&÷FV7FVB'VçF–ÖRVæ6†ævVBà ¥V&Æ–276WG3¢S#s"'—FW2òc“‡—6–6ÂÆ–æW2â7FæF&B"4’7F–ÆÂVæF–ærBF†—26†V6·ö–çC²æòÖW&vRFòÖ–â÷"FWÆ÷’âV&Æ–W"6ö×ÆWFVB7FW2&÷fR×W7Bæ÷B&R&WVFVBà ¤æW‡C¢'Vâ7FæF&B"4’æB–çFVw&FR–çFò&VÆV6RöæÇ“²6öçF–çVRF†R6W&FVÇ’&W&öGV6VBGWÆ–6FRFööÆ&"×F6²66†VGVÆW"7FWâæWfW"ÖW&vRÖ–â÷"FWÆ÷’26–FRVffV7Bà ¢2235õDôôÄ$%ôÄô4ÅõTUTR(	BfW&–f–VB&W&F–öâÂ##bÓ’Ó` ¤6öFS¢c3ƒFc–ScF#C“sS““Ff“–c#fS6SF3fâöæRÆö6Â¦W&òÖFVÆ’F6²f÷"&öw&W76—fR×&W7VÇG2æB6ö×7BÖ'&V·ö–çBFööÆ&"Ö÷VçG2Â6æ6VÆÆVBöâ&W6WB÷"V×G’&W7VÇG2âF–ÖW"”B¦W&òÂÆFR×&b–æ—F–Æ—¦F–öâÂ7F&ÆRDôÒæBGvò×v’æF—fR÷&÷‡’6÷'B†æFöfb6÷fW&VBâæòæWrö'6W'fW"övÆö&Â66†VGVÆW"÷"f–ÇFW&–ær÷6V&6‚÷&–6RöÆVB6öçG&7B6†ævRà ¤W†—7F–ær&W7öç6—fRFW7B76W23sRóC3ó#Bó3C‚óCCâ7FæF&B"4’VæF–ærâV&Æ–276WG3¢S###3R'—FW2òcrÆ–æW3²æòÖ–âÖW&vR÷"FWÆ÷–ÖVçBà ¤æW‡C¢&Wf–WræB–çFVw&FR552F†Vâ66†VGVÆW""–çFò&VÆV6RöæÇ’gFW"Æ–6&ÆR4’â–ç7V7Bg&W6‚&W7öç6—fRWf–FVæ6RÂWFFR3““bò333BÂæBVF—BF†R&VÖ–æ–ærFööÆ&"f—6–&–Æ—G’7&÷72FW6·F÷&W6—¦R&Vf÷&R6†æv–æræ÷F†W"÷væW"âæòÖ–âÖW&vRöFWÆ÷’à ¥66†VGVÆW"6÷W&6Rf÷&ÖGF–æræ÷&ÖÆ—¦VB2v#ƒc–S&CƒCv3f3CsSS“SCV3†cFS3“#C–V²&V†f–÷"Væ6†ævVBæBW†7BÆö6Â6÷W&6R†6‚fW&–f–VBâ55233s2–çFVw&FVB3#scC“cBv—Fƒ#6Æ–6&ÆR4’7V66W72³W‡V7FVB6¶—VBâ66†VGVÆW""33sB&VÖ–ç2&VÆV6RÖöæÇ’ÂæòFWÆ÷–ÖVçBà ¢227W'&VçBfW&–f–VBFööÆ&"6†V6·ö–çB(	B##bÓ’Ó` ¤W†7B6öFS¢SvcsVcC6fFFc&6#vS#FFfV&3“F–c†²&VÆV6R–çFVw&F–öã¢CCƒsS&f3vCssS3ƒs“F3CVc“vVSV†Fâ†—7F÷&–6ÂVæF–ær÷&W&F–öâæ÷FW2&÷fRFW67&–&RF†V—"V&Æ–W"6æ6†÷G2Âæ÷BF†R7W'&VçBVWVRà ¢Ò33s2(i"#scC“cF¢&VÖ÷fVB&WF—&VBÖö&–ÆR7F–öâöf–ÇFW"÷6÷'Bö6†—553²6æöæ–6Â×&b÷væW"æB7GVÂFööÆ&"&WF–æVBâ5526ÆVçW&VÖ÷fVB33#2'—FW2ò#bÆ–æW2à¢Ò33sB(i"#F#sF¢öæRFVfW'&VBFööÆ&"Ö÷VçBf÷"&W7VÇBö'&V·ö–çB'W'7G2Âv—F‚&W6WBöV×G’6æ6VÆÆF–öââ&Vw&W76–öã¢CVæF–ærF6·2&Vf÷&RÂgFW#²7F&ÆRDôÒæBGvò×v’6÷'B&WF–æVBà¢Ò33sR(i"CCƒsS&¢Öö&–ÆR×FòÖFW6·F÷&W6—¦RæòÆöævW"W‡÷6W2âW‡G&Öö&–ÆR6÷'B&÷râW†—7F–ær'&÷w6W"&Vw&W76–öâ6÷fW'2&÷F‚6–FW2öc““’óÂ&W6W'fVBf÷&ÒfÇVW2Â&÷VæGG&—FóC3ÂW66RæBfö7W2&WGW&âà ¤6öFR'V–ÆB÷6÷W&6RƒRFW7G2’Â&W6VçFF–öâƒ"FW7G2’æBW†—7F–ær&W7öç6—fR6†V6·276VBâf–æÂ6öFR–çFVw&F–öâ76VB#2Æ–6&ÆR"v÷&¶fÆ÷w2ÇW2öæRW‡V7FVBÖ–w&F–öâÖöæÇ’6¶—¢6÷&S3C##S3C#ƒÂf—7VÃ3C##S3C3’Âv†öÆR×6—FR'F–f7C3C##S3C#Râfö7W6VB&W7öç6—fRWf–FVæ6S¢'Vã3C##3s2Â'F–f7C““ƒS“#3RÂ6†#Sc£3ƒƒ#fS3“““CFC3C#s#sFVV3&3C–FCvsC&Cs–CC&VVVCvc&CCFcs&F&SâFW6·F÷3C‚öÖö&–ÆSC367&VVç6†÷G2–ç7V7FVC²‡—6–6Â6f&’æBÆ—fR×6—FR66WFæ6R&Ræ÷B6Æ–ÖVBâF†RV&Æ–W"FW7B–æ—F–Æ—¦F–öâ&6Rv2F–væ÷6VBæB6÷'&V7FVB–âF†Rf—‡GW&S²æò76W'F–öâv2&VÖ÷fVBà ¤V–v‡BV&Æ–276WG3¢5533c3cb'—FW2óCsRÆ–æW3²¥3S“32ó“3s²F÷FÃS##Cs’óc"ÂVæ6ö×&W76VBâæWBf÷"F†—26öçF–çVF–öâg&öÓC–c&C&S¢Ó#SCb'—FW2òÓRÆ–æW2âF†—2—26÷W&6R66÷VçF–ærÂæ÷BvRÖÆöB&Væ6†Ö&²â&–÷"&Wf–Wr÷&öGV7F–öâV&Æ–6F–öâ&V6÷&G2&R&W6W'fVC²æòÖ–âÖW&vRÂFWÆ÷–ÖVçB÷"&VÂÆVG2–âF†—26öçF–çVF–öâà ¤æW‡C¢VF—BöæÇ’&÷fVâ&VÖ–æ–ærFööÆ&"666FR÷fW&ÆW6–ærF†RW†—7F–ær'&÷w6W"7V—FRæB6÷W&6R÷væW'2âFòæ÷B7&VFRæ÷F†W"G&vW"Âö'6W'fW"ÂvÆö&Â66†VGVÆW"÷"FW7Bv÷&¶fÆ÷rÂ&WVBF†W6RF‡&VR6ö×ÆWFVB7FW2Â÷"ÇFW"&÷FV7FVB6öçG&7G2à ¢2235ô4„%DU%ôd4UEô4ôÕÄUDTäU52(	BfW&–f–VB&VÆV6R6†V6·ö–çBÂ##bÓ’Ó` ¤W†7B&VÆV6R6öFS¢Sƒ3#CSv3fCC3#s#““cvC–cƒV#Cc6#–3†²&W&F–öâ#¢33srà ¢ÒF†R&W7VÇB×&–Â6†'FW"f6WB—2f—6–&ÆRöæÇ’v†VâWfW'’ÆöFVBæ÷&ÖÆ—¦VBF÷W"&÷r6öçF–ç2âW‡Æ–6—B&ööÆVâ—46†'FW&fÇVRà¢Òâ–æ6ö×ÆWFR&öw&W76—fR6÷W&6R†–FW2æB6ÆV'2öæÇ’F†RÆö6Âf6WBâ—BFöW2æ÷B6–ÆVçFÇ’&Ww&—FRF†R&–Ö'’öæÇ”6†'FW&6V&6‚6öç7G&–çBà¢Òv†Vâ6ö×ÆWFRFF'&—fW2v–âÂF†RÆö6Â6öçG&öÂæB7F—fRÖ6÷VçB7FFR&R&W7F÷&VBg&öÒF†R&–Ö'’f÷&Òà¢ÒF†Rfö7W6VB&Vw&W76–öâf–ÆVBv–ç7BF†RVæ6†ævVB'VçF–ÖRÂF†Vâ76VBgFW"F†RwV&Bâ—B6÷fW'2V×G’Â6ö×ÆWFRÂ–æ6ö×ÆWFR×&öw&W76—fRæB&W7F÷&VBÖf÷&ÒF‡2à ¥F†R6÷W&6R'V–ÆBö6†V6²Âfö7W6VBf–ÇFW"×&–Â6†V6·2æB&öGV7F–öâ×&W6VçFF–öâ7V—FR76VBÆö6ÆÇ’âöâF†R–çFVw&FVB&VÆV6R4„ÂÆÂ#2Æ–6&ÆR"v÷&¶fÆ÷w276VBæBöæRÖ–w&F–öâÖöæÇ’v÷&¶fÆ÷rv2W‡V7FVFÇ’6¶—VBâ6÷&R'Vã¢3C##“cS“#&²&W7öç6—fRf—7VÂ'Vã¢3C##“cSƒƒ–Â'F–f7B““ƒc#3c#†ÂF–vW7B6†#Sc£C6C&Sƒ“cSƒSC–ƒF33“S3FS3scCFfVfFVsv#C3s3vV#F3CffSsvc6#3²v†öÆR×6—FR'F–f7B'Vã¢3C##“cS“fÂ'F–f7B““ƒcƒ##FÂF–vW7B6†#Sc£#cC“6S&6f3#sF3SScCƒ36SFFc3&cC&&##“sƒƒfSC“SscCS3c†SFf&â6V&6‚÷&VF&–Æ—G’–ÖvW2B3sRæBCC‚vW&R–ç7V7FVC²æòæWr6Æ—–ær÷"÷væW"&Vw&W76–öâv2f÷VæBâF†—2—2æ÷B‡—6–6Â6f&’÷"Æ—fR×6—FR66WFæ6R6Æ–Òà ¤V–v‡BV&Æ–276WG3¢5523c2Ãcb'—FW2òBÃsRÆ–æW3²¥2cÃr'—FW2òÃ“CÆ–æW3²F÷FÂS#2Ãs2'—FW2òbÃRÆ–æW2ÂVæ6ö×&W76VBæBv—F†÷WBF÷V&ÆRÖ6÷VçF–ær7&6æBvVæW&FVBc&f–ÆW2âF†R³c“B'—FW2ò³2Æ–æW2g&öÒF†R&Wf–÷W2&VÆV6R6öFR—2F†RW‡Æ–6—B6ö×ÆWFVæW72wV&BæB&Vw&W76–öâÖ&6¶VB7FFR7–æ6‡&öæ—¦F–öâÂæ÷BÖV7W&VBvRÖÆöB&W7VÇBà ¥7FGW2&÷VæF'“¢–çFVw&FVBæB4’×fW&–f–VB–âF†R&VÆV6RG&gBöæÇ’â&Wf–WrÂÖ–ææB&öGV7F–öâvW&Ræ÷BWFFVC²F÷W'f—6÷"ô’Â&–6R&—F†ÖWF–2ÂÆVBG&ç7÷'BöÖ–ærÂÖWG&–¶övöÇ2ÂÆövòæBæV–v†&÷&–ær&ö¦V7G2vW&Ræ÷B6†ævVBà ¤æW‡C¢&Vg&W6‚F†R&VÆV6R†VBæB&÷fRæWr–æFWVæFVçB&W6VçFF–öâ÷væW'6†—÷"–æ6ö×ÆWFRÖf6WBFVfV7B&Vf÷&RVF—F–ærâFòæ÷B&WVB6†'FW"÷6V6ö×ÆWFVæW72Â&W6WBÂ&–6RÖg&ÖR÷"F†RF‡&VR6ö×ÆWFVBFööÆ&"76W2à ¢2235õ$”4Uôd4UEô4ôÕÄUDTäU52(	BfW&–f–VB&VÆV6R6†V6·ö–çBÂ##bÓ’Ó` ¤W†7B&VÆV6R6öFS¢3#3S66CfVFV3VF#FCS“3“vS3#fCv²&W&F–öâ#¢33s’à ¢ÒF†RÆö6Â&–6Rf6WB—2f—6–&ÆRöæÇ’v†VâWfW'’ÆöFVBæ÷&ÖÆ—¦VBF÷W"&÷r†2÷6—F—fR&–6RÂ÷"†÷FVÂv—F†÷WBF÷W"&÷w2†2—G2÷vâ÷6—F—fRæ÷&ÖÆ—¦VB&–6Rà¢Òâ–æ6ö×ÆWFR&öw&W76—fR6÷W&6R†–FW2F†R&–6R6öçG&öÂæB6ÆV'2—G2Æö6ÂÆ–Ö—BÂ6òâVæ¶æ÷vâ&–6R—2æ÷B&W6VçFVBVæFW"Ö—6ÆVF–ærf—6–&ÆR(	ÇWFş(	Ò&öÖ—6Rà¢ÒF†RW†—7F–æræò×F÷W"†÷FVÂ&–6RF‚&VÖ–ç27W÷'FVBæB—26÷fW&VB'’F†Rfö7W6VB&Vw&W76–öâà¢ÒF†Rfö7W6VB&Vw&W76–öâf–ÆVBv–ç7BF†RVæ6†ævVB'VçF–ÖRÂF†Vâ76VBgFW"F†R6ö×ÆWFVæW72wV&BâV×G’Â6ö×ÆWFRæB–æ6ö×ÆWFR×&öw&W76—fRF‡2&R6÷fW&VBà ¥6÷W&6R'V–ÆBö6†V6²Âfö7W6VBf–ÇFW"×&–Â6†V6·2æBF†R&öGV7F–öâ×&W6VçFF–öâ7V—FR76VBÆö6ÆÇ’âöâF†R–çFVw&FVB&VÆV6R4„Â#"Æ–6&ÆRv÷&¶fÆ÷r'Vç26ö×ÆWFVB7V66W76gVÆÇ’æBöæRÖ–w&F–öâÖöæÇ’'Vâv2W‡V7FVFÇ’6¶—VBâF†RöæÇ’¦ö"†CS“ƒƒC#“’–â6V7W&—G’wV&B'Vâ3C#33SsS3VæBÆÂöb—G27FW26ö×ÆWFVB7V66W76gVÆÇ’B##bÓ’ÓeCƒ£S“£#¦Âv†–ÆRv—D‡V"7F–ÆÂ&W÷'FVBF†RVæ6Æ÷6–ær'Vâw&W"2–å÷&öw&W76B6†V6·ö–çBF–ÖS²Fòæ÷B6öçfW'BF†BW‡FW&æÂ7FGW2Ær–çFò6Æ–Òöb#26ö×ÆWFVBv÷&¶fÆ÷w2VçF–Â&V6†V6¶VBâ6÷&R'Vã¢3C#33SsS3f²&W7öç6—fRf—7VÂ'Vã¢3C#33SsSs&Â'F–f7B““ƒc#SCsCVÂF–vW7B6†#Sc¦fSv&FVS†C“†66vcC“#†C–&VV3FSFSV#Cff63f&S6#3#†VSSCFf²v†öÆR×6—FR'F–f7B'Vã¢3C#33SsSSÂ'F–f7B““ƒc#CƒcƒÂF–vW7B6†#Sc£†FfS#–#†cFFSƒC“#vSvfVFssv#“C#–SF&SV3cC&Sƒ–3cScSC†cC“Ff#Vâ&VF&–Æ—G’–ÖvW2B3sRæBCC‚vW&R–ç7V7FVBv—F‚æòæWr6Æ—–ær÷"÷væW"&Vw&W76–öââF†—2—2æ÷B‡—6–6Â6f&’÷"Æ—fR×6—FR66WFæ6R6Æ–Òà ¤V–v‡BV&Æ–276WG3¢5523c2Ãcb'—FW2òBÃsRÆ–æW3²¥2cÃSS’'—FW2òÃ“C2Æ–æW3²F÷FÂS#2Ãs#R'—FW2òbÃ‚Æ–æW2ÂVæ6ö×&W76VBæBv—F†÷WBF÷V&ÆRÖ6÷VçF–ær7&6æBvVæW&FVBc&f–ÆW2âF†R³SS"'—FW2ò³2Æ–æW2g&öÒF†R&Wf–÷W26öFR6†V6·ö–çB&RF†RW‡Æ–6—B6ö×ÆWFVæW72wV&BæB&Vw&W76–öâÂæ÷BÖV7W&VBvRÖÆöB&W7VÇBà ¥7FGW2&÷VæF'“¢–çFVw&FVB–âF†R&VÆV6RG&gC²#"v÷&¶fÆ÷w2æBF†R6V7W&—G’wV&B¦ö"&RfW&–f–VB7V66W76gVÂÂv—F‚F†RVæ6Æ÷6–ær6V7W&—G’v÷&¶fÆ÷r'Vâ7FGW27F–ÆÂÆvv–ærâ&Wf–WrÂÖ–ææB&öGV7F–öâvW&Ræ÷BWFFVC²F÷W'f—6÷"ô’Â&–6R&—F†ÖWF–2ÂÆVBG&ç7÷'BöÖ–ærÂÖWG&–¶övöÇ2ÂÆövòæBæV–v†&÷&–ær&ö¦V7G2vW&Ræ÷B6†ævVBà ¤æW‡C¢f—'7B&V6†V6²6V7W&—G’wV&B'Vâ3C#33SsS3VâgFW"—G2w&W"f–æÆ—¦W2ÂWFFRF†RW†7B4’6÷VçC²F†Vâ&÷fRæWr–æFWVæFVçBFVfV7B&Vf÷&RVF—F–ærâFòæ÷B&WVB&–6Rö6†'FW"÷6V6ö×ÆWFVæW72Â&W6WBÂ&–6RÖg&ÖR÷"F†RF‡&VR6ö×ÆWFVBFööÆ&"76W2à  ¢2226ö×ÆWFVB6÷W&6R&W&F–öã¢æF—fR552æW7F–ær–â&W7VÇG0 ¢Ò&6VÆ–æR&VÆV6Rƒcc“v&S“#&cC3ccc6c3S&3sCs–c##v²V&Æ—6†VB&Wf–Wr&VÖ–ç2CSsƒs–3##“#“sf&333cV#vS3“fV6c–&3#FVçF–ÂâW†7B'F–f7B76W24’æB—6öÆFVBV&Æ–6F–öâà¢Òw&÷WVB6öç6V7WF—fR'VÆW2VæFW"6–ævÆR–FVçF–6Â&öG’ç6V&6ƒ2Ö6æF–FFV÷"‡FÖÂ&öG’ç6V&6ƒ2Ö6æF–FFV&VçBÂv—F‚W‡Æ–6—Bf–âWfW'’6†–ÆBâæòFV6Æ&F–öç2÷"B×'VÆW2–âw&÷W–ær&VçG3²W†—7F–ærÖVF–6öçFW‡G2ö÷&FW"æBFV6Æ&F–öâ'—FW2&W6W'fVBà¢ÒÖ–â&W7VÇG2553¢#Sƒ““r(i"##““R'—FW2(‰##“ƒ"’âV–v‡BV&Æ–276WG3¢C33#b(i"C3##B'—FW3²6WfVâ÷F†W"76WG2&VÖ–â'—FRÖ–FVçF–6ÂâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Ö772ÖæW7F–ær×&W7VÇG2æ§6öæà¢ÒW‡æFVB÷&FW&VB6VÆV7F÷"öFV6Æ&F–öâöÖVF–7G&V×2ÖF6‚F†R&6VÆ–æRW†7FÇ’â6÷W&6R'V–ÆBFW7G2æBfö7W6VB&W6VçFF–öâFW7G272Æö6ÆÇ“²…ÖFWVæFVçBÆö6Â6†V6²v—G24’â666FR÷væW'6†—†6†W2WFFVBv—F†÷WB6†æv–ærFöæ÷"–FVçF—G’÷"6V7F–öâ÷&FW"à¢Ò'&÷w6W"&÷VæF'“¢F†—2FW7Bf&–çB&WV—&W2æF—fR552æW7F–ær†W‡Æ–6—BfÂ6f&’bãR²W"vV$¶—B“²Væv–æW2v—F†÷WBæW7F–ær&RVç7W÷'FVBâ‡—6–6Â6f&’VÆ–f–6F–öâ&VÖ–ç2÷Vââ&öGV7F–öâæB&÷FV7FVB'W6–æW726öçG&7G2&VÖ–âÆö6¶VBà¢ÒæW‡C¢&W7öç6—fRö'&÷w6W"4’ÂF†VâF†R6ÖR&÷VæFVB&Ww&—FR–âF†R&VÖ–æ–ær552÷væW'2æBöæR6öÖ&–æVBW†7BÖ'F–f7B&Wf–WrV&Æ–6F–öâà  ¢2226ö×ÆWFVB6÷W&6R&W&F–öã¢&VÖ–æ–ær552÷væW'0 ¢Ò'V–ÆG2öâ&W7VÇG2æW7F–ær6öFR“S“s“&6#S†3ƒFƒF&#VS6c3&c“fc3†F3S6ò33““²V&Æ–2&Wf–Wr†2æ÷B6†ævVB–WBà¢ÒÆ–VBF†R6ÖR6–ævÆR×&VçBÂW‡Æ–6—BÖf&Ww&—FRFò6—‚ÖöGVÆW2–âVçG'’Â&W7VÇB6&G2æB6VÆV7FVBfÆ÷s¢#2w&÷W2Â(‰#3Ssb'—FW2âÆÂf÷W"W‡æFVB5527G&V×2ÖF6‚F†—2&6VÆ–æS²ÆÂf÷W"¥2f–ÆW2æBF†RÖ–â&W7VÇG2552&R'—FRÖ–FVçF–6ÂâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Ö772ÖæW7F–ær×6V6öæF'’æ§6öæà¢Ò6öÖ&–æVB&VGV7F–öâg&öÒ&VÆV6Rƒcc“v¢552#“ƒCb(i"#SsCc‚'—FW2(‰#333s‚ÂãC‚R“²¥27F—2C#ƒ'—FW2âV–v‡BÖ76WBF÷FÂC33#b(i"3““cC‚'—FW2(‰#rãsR’à¢ÒæF—fR552æW7F–ær'&÷w6W"&÷VæF'’g&öÒF†R&W7VÇG272Æ–W2âW†—7F–ær6÷W&6R÷væW'6†—Â&÷FV7FVB66WFæ6RwV&G2æB&öGV7F–öâö'W6–æW72Æö6·2&VÖ–âVæ6†ævVBâV&Æ—6‚öæÇ’F†Rf–æÂ6öÖ&–æVB'F–f7BgFW"&WV—&VB4’æB&VÆV6R–çFVw&F–öâà  ¢2226ö×ÆWFVB6÷W&6R&W&F–öâ(	B&—fFR–æ¦V7FVB5526÷W&6W0 ¤&6VÆ–æR&VÆV6RCsƒƒ&SSFfScfC6c6Cs“SFcfcCcS†#C“F²&Wf–Wr&VÖ–ç2sF#ƒv&ffVçF–Â6W&FRV&Æ–6F–öââGvò7FF–2–æ¦V7FVB×7G–ÆR÷væW'2æ÷rW6R&—fFR5526÷W&6W2æB'V–ÆB×F–ÖRW66VB7G&–ærÆ—FW&Ç2BF†R÷&–v–æÂ–ç6W'F–öâ÷6—F–öç2â6—‚W‡Æ–6—B6–ævÆR×&VçBæW7F–ærw&÷W2&W6W'fRW‡æFVB÷&FW&VB6VÆV7F÷"öFV6Æ&F–öâöÖVF–7G&V×2â÷&–v–æÂ”G2Â6VÆV7FVB×&ö÷BwV&BæB–FV×÷FVæ6RfW&–f–VBv–ç7B6ö×–ÆVB÷væW'2âæòV&Æ–W"Æ–æ¶VB7G–ÆW6†VWBÂæWr&WVW7BövÆö&Â÷"&V†f–÷"÷&–6RöÆVBô’6†ævRà ¤¥3#3ƒ3~(i##ƒ“rf÷"F†RÖ–â76WB(‰#“C'—FW2“²6WfVâ÷F†W"76WG2'—FRÖ–FVçF–6ÂâV–v‡BÖ76WBF÷FÃ3““cC(i#3“ss‚'—FW2óScƒÆ–æW3²553#SsCc‚ó3ƒSRÂ¥3C#Cóƒ#Râ6÷W&6R÷væW'3#3(i#C“æCC#(i#C3F'—FW2âVÆWfVâ'V–ÆBFW7G2æCB&W6VçFF–öâ6†V6·272Æö6ÆÇ’v—F‚öæR…ÖFWVæFVçBÆö6Â6¶—²…v—G2W†—7F–ær4’âVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Ö–æ¦V7FVBÖ772×6÷W&6W2æ§6öæâæW‡C¢4’ÂF†Vâ&VÖ–æ–ær&÷fVâ6ÖR×6VÆV7F÷"ö6öçFW‡BFV6Æ&F–öâ&WWF—F–öã²öæR6öÖ&–æVBW†7BÖ'F–f7B&Wf–WrgFW"6†V6·2à  ¢2226ö×ÆWFVB6÷W&6R&W&F–öâ(	BÆFW"552FV6Æ&F–öç0 ¥&—fFR–æ¦V7FVB5523C"òCs†CCc3s3&Cs3C“Fc“#F6#fcs“VC3v76VC#2Æ–6&ÆRv÷&¶fÆ÷w2æBöæRW‡V7FVB6¶—¢6÷&S3CCsƒ#cÂf—7VÃ3CCsƒ#ccBÂfÆ–v‡C3CCsƒ#c#Â'V–ÆC3CCsƒ#ScBâ&Wf–Wr7F–ÆÃsF#ƒv&fbà ¥F†RæW‡B6÷W&6R72&VÖ÷fW3ƒ"V&Æ–W"FV6Æ&F–öç2v—F‚ÆFW"–FVçF–6ÂgVÆÂW‡æFVB6VÆV7F÷"Æ—7BÂÖVF–÷7W÷'G26öçFW‡BÂ&÷W'G’æB–×÷'FçBfÆs²&WF–æVBfÇVW2v–âÆFW"–âF†R6ÖR7G–ÆW6†VWBâWfW'’&VÖ÷fÂ&V6÷&G2—G2ÆFW"v—FæW73²W†—7F–ær'&÷w6W"4’æ÷r&WV—&W2552ç7W÷'G2f÷"F†÷6Rv—FæW76W2âæò6†÷'F†æBW‡ç6–öâÂ6VÆV7F÷"ÖÆ—7BÖW&v–ær÷"&÷FV7FVB66WFæ6R×6÷W&6R6†ævRâ&VÖ÷fVCsBæ÷rÖV×G’7G–ÆRöw&÷WöÖVF–'VÆW3²&WF–æVB÷&FW&VBFV6Æ&F–öâ7G&VÒfW&–f–VBâgVÆÂV&Æ–2f–æÂW"×6VÆV7F÷"ö6öçFW‡B÷&÷W'G’÷&–÷&—G’Ö2ÖF6‚&6VÆ–æRâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Ö7F—fRÖ772ÖFV6Æ&F–öç2æ§6öæâ666FRFöæ÷"ö÷&FW"Væ6†ævVC²†6†W2WFFVBâV&Æ—6‚öæÇ’gFW"&W7öç6—fRæBÆ–6&ÆR4’72à ¢2226ö×ÆWFVB6÷W&6R&W&F–öâ(	B&WVFVBFW66VæFçB&Vf—†W2–âÖ–â550 ¤&6VÆ–æR&VÆV6R&###6F##ƒcS“s6fcFc#f33“Fv6fF#fcfV6²V&Æ—6†VB&Wf–Wr&VÖ–ç2s3V#6†SSC“C&3vcCs#s3V33s3CC–CC“S†fVçF–Â6W&FRW†7BV&Æ–6F–öââf7F÷&VB’F¦6VçBw&÷W2VæFW"&WVFVB6ö×ÆWFRFW66VæFçB&Vf—†W2v—F†–âW†—7F–ærÖ–â552æW7F–ærâWfW'’æWr&VçB†2öæR6VÆV7F÷"æBöæÇ’æW7FVB'VÆW3²WfW'’6†–ÆB†2öæRÆVF–ærW‡Æ–6—BfÂ–æ6ÇVF–ær&&Rfv†Vâ6VÆV7F–ærF†R&VçB—G6VÆbâÖ†–×VÒæW7F–ærFWF‚—2F‡&VRâ&V7W'6—fRW‡æFVB÷&FW&VB6VÆV7F÷"öFV6Æ&F–öâöÖVF–7G&V×2&RW†7Bâ66WFæ6RwV&G2æB666FRFöæ÷"ö÷&FW"&VÖ–ã²666FR†6†W2WFFVBà ¤Ö–â5526fW23#cS’V&Æ–2'—FW3²6WfVâ÷F†W"76WG2&R'—FRÖ–FVçF–6ÂâF÷FÂV–v‡Bf–ÆW3¢3ƒ“cS(i"3Sc““"'—FW2âVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Ö772ÖFW66VæFçB×&W7VÇG2æ§6öæâ'&÷w6W"6ö×F–&–Æ—G’&VÖ–ç2æF—fRæW7F–ærÂ6f&’bãR³²‡—6–6Â6f&’VçVÆ–f–VBâæW‡C¢W†—7F–ær&W7öç6—fR4’ÂF†Vâ&VÖ–æ–ær552÷væW'2æB&÷VæFVB&öö¶–ærÖÆ–÷WB¥2&VGV7F–öã²öæR6öÖ&–æVB—6öÆFVB&Wf–WrgFW"6†V6·2âæò&öGV7F–öâ÷"&÷FV7FVB'W6–æW726†ævW2à ¢2226ö×ÆWFVB6÷W&6R&W&F–öâ(	B&VÖ–æ–ærFW66VæFçBw&÷W2æB&öö¶–ærÆ–÷W@ ¤f—'7B6÷W&6R3CRòSf&3cSFcCfVSƒƒFC&#c&VV3VCƒ6c–S&F76VB#2Æ–6&ÆRv÷&¶fÆ÷w2æBöæRW‡V7FVB6¶—²–çFVw&FVB–çFò&VÆV6RöæÇ’â6÷&R3CC“ƒsC33‚Â&W7öç6—fR3CC“ƒsC33"ÂfÆ–v‡B3CC“ƒsC3CÂ'V–ÆB3CC“ƒsC#sâVF—F÷"–ÖvW2B3sRóCC–ç7V7FVBâV&Æ—6†VB&Wf–Wr7F–ÆÂs3V#6†à ¤æ–æWFVVâFF—F–öæÂ6–ævÆR×&VçBw&÷W2–âVçG'’ö6&G2÷6VÆV7FVB552&W6W'fR&V7W'6—fVÇ’W‡æFVB÷&FW&VB5527G&V×2âV&Æ–26V6öæF'’5526fW2S#ƒr'—FW2â&öö¶–ærÆ–÷WB—2&—fFR–æ6ÇVFR–ç6–FRF†R÷&–v–æÂ””dS²6÷W&6R÷væW"cƒS’(i"CCs"'—FW2æBÆ–÷WB'B##Cb'—FW2âf–gFVVâ6WGFW'26†&RöæRÆö6ÂgVæ7F–öâÂ6f–ærƒ26W'fVB¥2'—FW2âV–v‡BÆ–÷WB7FFW272v–ç7B&6VÆ–æRæB7W'&VçB6ö×–ÆVB÷væW'3²&WfW'6–æröæÇ’F†R6WGFW"&WÆ6VÖVçB&W7F÷&W2F†R÷&–v–æÂ6ö×–ÆVB÷væW"W†7FÇ’â&–6R&—F†ÖWF–2Â&VæFW&–ærÂ66†VGVÆ–æræBWfVçG2&VÖ–âVæ6†ævVBà ¤6öÖ&–æVBV–v‡BÖ76WBF÷FÃ¢3ƒ“cS(i"3SS#"'—FW2(‰#3ƒ#’’â552#CcR'—FW2óCrÆ–æW3²¥2CSróƒ#c²F÷FÂSƒ32Æ–æW2Â³##RGVRFòW‡Æ–6—Bw&÷W–ærâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Ö772ÖFW66VæFçB×6V6öæF'’æ§6öæâæW‡C¢6V6öæB6÷W&6R4’æBöæR6öÖ&–æVBW†7B—6öÆFVB&Wf–WrV&Æ–6F–öââæF—fRæW7F–ær&÷VæF'’æB&öGV7F–öâ÷&÷FV7FVBÆö6·2&WF–æVBà ¢2235õ$U5TÅE5ô4$EôõtäU%õ$UD•$TÔTåB(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3CsRòv3&cVsCfSV#363#CƒFSCVSsFSs#cSV²6†V6¶VB&VÆV6RƒVS3ƒv6S33#Vcƒc#†3ƒfSS6S3fC“sCVfF&F#V&âF†R6ö×ÆWFRÆVv7’&W7VÇBÖ6&BæBW‡æFVB×6¶vRvVöÖWG'’fÖ–Ç’v2&VÖ÷fVBg&öÒ&W7VÇG2ÖÆ–÷WBæ776â&WV—&VB6&BÂf7G2ÂF—66Æ÷7W&RæBF—&V7B×F÷W"vVöÖWG'’&VÖ–ç2–âF†R7W'&VçB&W7VÇG2Ö6&G2×c"æ776÷væW#²ö'6öÆWFR6ö×&—6öâÂ–æÆ–æRÖFWF–ÂæBFV6—6–öâÖ&FvR6‡&öÖR—2æ÷B&W7F÷&VBà ¤V–v‡BV&Æ–276WG2&R¢£c3#ƒ(i"cCs&r'—FW2(‰#ƒ552'—FW2’¢¢âÖ–â552—2cƒ’(i"SS3b(‰#Ssƒ2“²F†R6ö×7B7W'&VçB6&B÷væW"—2cs“‚(i"ss‚³3“s2“²6—‚76WG2&R'—FRÖ–FVçF–6ÂâF†—2—2F†RÖV7W&VB&VGV7F–öâf÷"F†—26÷W&6R6¶vRÂæ÷B7V×VÆF—fR&6VÆ–æR6Æ–Òà ¥6V7W&—G’3C#“SSsƒ†æBW†7B'F–f7B'V–ÆB3C#“SSƒS&6ö×ÆWFVB7V66W76gVÆÇ’â&WW6&ÆRv†öÆR×6—FR'F–f7B#S#cS3vÂF–vW7B6†#Sc¦3v3cCVV6fc#Sc#fC6FVC“66#†V3s&Cv6Vc3fCs3CFVfSƒc3V&3SâvVöÖWG'’Wf–FVæ6R#S#SSC–ÂF–vW7B6†#Sc£CVff3C63cf6&#&c6†ffC“ƒssf3CS63S“CFC6FV3#ƒc#v6CfÂ6÷fW'26öÆÆ6VBæBW‡æFVB6&G2B3sRóscó““’óóCC¢æò†÷&—¦öçFÂ÷fW&fÆ÷rÂ†÷Fòö&öG’÷fW&ÆÂ†–FFVâ×&÷rÆV²÷"6Æ—VBf7G2ö7F–öç2â&W&W6VçFF—fR–ÖvW2vW&R–ç7V7FVBâ6÷W&6R'V–ÆBö6†V6²Ã26÷W&6RÖ'V–ÆBFW7G2Ã#"&W6VçFF–öâFW7G2æB&÷F‚÷væW"fÆ–FF÷'276VC²öæRÆö6Â…ÖöæÇ’6¶——26÷fW&VB'’W†7B'F–f7B4’à ¥7FGW2&÷VæF'“¢6†V6¶VB&VÆV6RöæÇ’âV&Æ—6†VB&Wf–Wr&VÖ–ç2#“CCV&363†s6#Cƒ#C&6FFVVfFcsSscs–²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–â‡—6–6Â6f&’÷6fRÖ&VæBÆ—fR7W'&VçB×6÷W&6R66WFæ6R&RFVfW'&VBâFòæ÷B&WVB3CsB÷"3CsS²VF—BF†RæW‡Bv†öÆR&W6VçFF–öâ÷væW"g&öÒg&W6‚&VÆV6RæB'VæFÆRöæÇ’ÖFW&–Â&VGV7F–öââ&–6R&—F†ÖWF–2ÂU$Â÷–ÆöBÂF÷W'f—6÷"ô’ÂÆVBG&ç7÷'BöÖ–ærÂæÇ—F–72æBV–v‡BV&Æ–2F‡2&VÖ–â&÷FV7FVBà ¢2235ô$ôô´”äuôdõ$ÔEôõtäU%ôÄô4Ä•¤D”ôâ(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3Csbò6&F#vSv6c#CSVC†3s–CSSF#6Vc–SS†cF²6†V6¶VB&VÆV6R#““V&FFS“†f#36&#FS†Vf&c“3ƒv3S†3c&âF†R7FæFÆöæR&W6VçFF–öâ×FW‡Bæ§6æBfÆ–v‡B×&W6VçFF–öâæ§6'VçF–ÖR÷væW'2vW&R&WF—&VBâF†V—"&WV—&VBW66–ærÂ7WÆ–W"×FW‡BÂ'G’öFW7F–æF–öâÂfÆ–v‡BæB&vvvR&W6VçFF–öâæ÷rÆ—fR2&—fFR&öö¶–ær×7VÖÖ'–f÷&ÖB÷6W'f–6W2'G3²F†R–çFW&æÂvÆö&ÂFFW'2æBöæR'VçF–ÖR””dR&RvöæRà ¤V–v‡BV&Æ–276WG2&R¢£cCs(i"cb&r'—FW2(‰#3SB¥2'—FW2’¢¢âc"÷6V&6ƒ2×&W7VÇG2Öf–ÇFW'2×cæ§6—2SCCr(i"SCS3²6WfVâ76WG2&R'—FRÖ–FVçF–6ÂâF†—2—2F†RÖV7W&VB&VGV7F–öâf÷"F†—26÷W&6R6¶vRÂæ÷B7V×VÆF—fR&6VÆ–æR6Æ–Òà ¥6V7W&—G’3C333“fæBW†7B'F–f7B'V–ÆB3C333#f6ö×ÆWFVB7V66W76gVÆÇ’â&WW6&ÆRv†öÆR×6—FR'F–f7B#ƒ#cs3ÂF–vW7B6†#Sc£&VCf#&&FSssV&S#FFFc3†VS–Sc“C&S6Cs†3#3&C3v6Vcc6CsS†â6÷W&6R'V–ÆB÷w&—FRö6†V6²Â&W6VçFF–öâWF–Æ—F–W2ÂfÆ–v‡B&W6VçFF–öâÂ&öö¶–ær7VÖÖ'’÷6W'f–6W2æB6÷W&6R÷&W6VçFF–öâ7V—FW276VBâ&–6R&—F†ÖWF–2ÂF÷W"öfÆ–v‡BWfVçG2Â&öö¶–ær66†VGVÆ–ærÂÆVBÆ–fV7–6ÆRÂU$Â÷–ÆöBÂF÷W'f—6÷"ô’æBæÇ—F–72vW&Ræ÷B6†ævVBà ¥7FGW2&÷VæF'“¢6†V6¶VB&VÆV6RöæÇ’âV&Æ—6†VB&Wf–Wr&VÖ–ç2#“CCV&363†s6#Cƒ#C&6FFVVfFcsSscs–²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–â‡—6–6Â6f&’÷6fRÖ&VæBÆ—fR7W'&VçB×6÷W&6R66WFæ6R&VÖ–âFVfW'&VBâFòæ÷B&WVB3CsBÂ3CsR÷"3Csc²VF—BF†RæW‡Bv†öÆR&W6VçFF–öâ÷væW"g&öÒF†Rg&W6‚&VÆV6RæB'VæFÆRöæÇ’ÖFW&–Â&VGV7F–öâà ¢2235ôTåE%•õ%TåD”ÔUôõtäU%ôÄô4Ä•¤D”ôâ(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3CƒòC33&3s&##“†#ƒ–6CcScƒsf3f6FCVFV&&²6†V6¶VB&VÆV6RfVV&#SS#Ss3“&SV&Cf3†VvCSSFS6&S“SFâF†R7FæFÆöæRVçG'’×cæ§6'VçF–ÖRv2&WF—&VB–çFò&—fFR'BöbF†R7W'&VçB6V&6‚Öf÷&Òæ§6÷væW"âF†RV&Æ–26V&6ƒ2ÖVçG'’×cæ§6F‚&VÖ–ç2&W6VçBv—F‚¦W&òÖ'—FR–ÆöBâ6V&6ƒ46æF–FFTVçG'•cç7–æ6Â&W7öç6—fR&Vv–öâÆ6VÖVçBÂF†RW†—7F–ær&–6RÖ6ÆVæF"FFW"Â&W7VÇG27VÖÖ'’Âf÷W"ÖFVÆ’6WGFÆR66†VGVÆRæBÆVv7’ÖF6„ÖVF–Æ—7FVæW"fÆÆ&6²&VÖ–âf–Æ&ÆRà ¤V–v‡BV&Æ–276WG2&R¢£cb(i"cSs’&r'—FW2(‰#S3r¥2'—FW2’¢¢â6V&6ƒ2ÖVçG'’×cæ§6—23##b(i"²6V&6ƒ2×&W7VÇG2Öf–ÇFW'2×cæ§6—2SCS2(i"ScsC#²6—‚76WG2&R'—FRÖ–FVçF–6ÂâF†—2—2F†RÖV7W&VB&VGV7F–öâf÷"F†—26÷W&6R6¶vRÂæ÷B7V×VÆF—fR&6VÆ–æR6Æ–Òà ¥6V7W&—G’3C333s“CFæBW†7B'F–f7B'V–ÆB3C333s“3F6ö×ÆWFVB7V66W76gVÆÇ’â&WW6&ÆRv†öÆR×6—FR'F–f7B##“ƒCCƒfÂF–vW7B6†#Sc¦S3cFFCCs“Sc6c&SSccFFC–S#fv&#s†SSvCSc–cf3sc3#&ccc6#–&Ffâ6÷W&6R'V–ÆBö6†V6²æB3b6÷W&6R÷&W6VçFF–öâ6†V6·276VC²öæRÆö6Â…ÖöæÇ’6¶——26÷fW&VB'’F†RW†7B'F–f7B4’â&–6R&—F†ÖWF–2Â6V&6‚’ÂU$Â÷–ÆöBÂF÷W'f—6÷"ÂÆVBG&ç7÷'BöÖ–æræBæÇ—F–72vW&Ræ÷B6†ævVBà ¥7FGW2&÷VæF'“¢6†V6¶VB&VÆV6RöæÇ’âV&Æ—6†VB&Wf–Wr&VÖ–ç2#“CCV&363†s6#Cƒ#C&6FFVVfFcsSscs–²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–â‡—6–6Â6f&’÷6fRÖ&VæBÆ—fR7W'&VçB×6÷W&6R66WFæ6R&VÖ–âFVfW'&VBâæW‡BfÆ–FFVB6æF–FFR—2F†RgVÆÂ66WFæ6RÖwV&G2æ776&WF—&VÖVçC²&V&6R—G2&÷F÷G—RöâF†Rg&W6‚&VÆV6RÂ&WF–âF†R7W'&VçBG&vW"÷&VF&–Æ—G’ö†–FFVâ6öçG&7G2Â'Vâfö7W6VB6&BæB6VÆV7FVBÖfÆ÷rvVöÖWG'’ÂæBFòæ÷B&VÖ÷fR&W7VÇG2×F&ÆWBÖÆ–÷WBæ776à ¢2235ô44UDä4UôuT$EôõtäU%õ$UD•$TÔTåB(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3Cƒ"òf&c#†#6Cƒ“C#f36VC6cccƒ6C33–†SC†SfFV²6†V6¶VB&VÆV6R3C&†&6–&6#CCv–&&VCS#“sc““3cc–f3c&VâF†R6ö×ÆWFRÆ—fR66WFæ6RÖwV&G2æ776÷fW&Æ’—2æ÷r&÷fVææ6RÖöæÇ’âæV6W76'’G&vW"f—6–&–Æ—G’Â&W7VÇG2öf–ÇFW"ö6&B&VF&–Æ—G’Â6VÆV7FVBÖfÆ÷r—6öÆF–öâæB6VÆV7FVB×F÷W"†–FFVâ×7FFRG'WF‚Æ—fR–âF†V—"7W'&VçBFööÆ&"Â&W7VÇG2Â6&G2ÂF÷W"ÖFWF–ÂæB6VÆV7FVBÖfÆ÷r÷væW'2â&VGVæFçB†öæRÆ–væÖVçBÂFW6·F÷w&–Bö†V–v‡BæB6ö×ÆWF–öâ×7FGW2÷fW'&–FW2vW&Ræ÷B&W7F÷&VBà ¤V–v‡BV&Æ–276WG2&R¢£S“ƒR(i"SsS#2&r'—FW2(‰###ƒ"552'—FW2’¢¢âÖ–â&W7VÇG2552—2SC#c"(i"SsƒB(‰##Cs‚“²6&G2552—2ss(i"ƒ“B‚³#2“²6VÆV7FVB552—2ƒ"(i"ƒsR‚³s2“²f—fR76WG2&R'—FRÖ–FVçF–6ÂâF†—2—2F†RÖV7W&VB&VGV7F–öâf÷"F†—26÷W&6R6¶vRÂæ÷B7V×VÆF—fR&6VÆ–æR6Æ–Òà ¥6V7W&—G’3C3Cs#“CFæBW†7B'F–f7B'V–ÆB3C3Cs#“f6ö×ÆWFVB7V66W76gVÆÇ’â&WW6&ÆRv†öÆR×6—FR'F–f7B#3S3cs3–ÂF–vW7B6†#Sc£6cCcC–#ƒS6SfSfV3S3c#S#Sv3#V#36S#VC&c3F#c“c††cs6#fVcVâ&W7VÇG2öG&vW"vVöÖWG'’'F–f7B#3S3c3#FÂF–vW7B6†#Sc¦CSfC333cV&F#cF#fS#cƒS6S6V#c3†Cs3†#cSCCVSVcsf3s“ƒSF&Â6÷fW'2"6öÆÆ6VBöW‡æFVB7FFW2B3sRóscóscó““’óóCCâ6VÆV7FVBvVöÖWG'’'F–f7B#3S3S“#ÂF–vW7B6†#Sc¦VSCsfV3fCC6##†&C“vC63ƒVcs3fVC#f3C“V6c““–3C#sCCc†#FÂ&÷fW2FWF–Â÷&Wf–WröÆVBWV—fÆVæ6R–â"7FFW2B3sRóscóóCCâ6÷W&6R'V–ÆBö6†V6²æB3r6÷W&6R÷&W6VçFF–öâ6†V6·276VC²öæRÆö6Â…ÖöæÇ’6¶——26÷fW&VB'’W†7B'F–f7B4’à ¥7FGW2&÷VæF'“¢6†V6¶VB&VÆV6RöæÇ’âV&Æ—6†VB&Wf–Wr&VÖ–ç2#“CCV&363†s6#Cƒ#C&6FFVVfFcsSscs–²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–â‡—6–6Â6f&’÷6fRÖ&VæBÆ—fR7W'&VçB×6÷W&6R66WFæ6R&VÖ–âFVfW'&VBâFòæ÷B&WVB3Cƒ"÷"&VÖ÷fR&W7VÇG2×F&ÆWBÖÆ–÷WBæ776²VF—BF†RæW‡Bv†öÆR&W6VçFF–öâ÷væW"v–ç7BF†Rg&W6‚&VÆV6RæB'VæFÆRöæÇ’ÖFW&–Â&VGV7F–öâà ¢2235ôÔô$”ÄUõ4ÄU5ô4$EôõtäU"(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3CƒRò66Sv3FCs“3†vC##†CfF6SƒCCCS3VV²&VÆV6R–çFVw&F–öâS“fV#cVC66c3SsC“3#cc63“FVcƒƒC–âF†R6W&FR&W7VÇG2ÖÖö&–ÆRÖÆ–÷WBæ776Föæ÷"—2&÷fVææ6RÖöæÇ’âÆ—fR†öæR6&B'VÆW2æ÷r&VÆöærFò&W7VÇG2Ö6&G2×c"æ776²&W7VÇG2FööÇ2ÂG&vW"ö7F–öç2Â6fRÖ&VæB66â÷&FW"&VÖ–â–âÖö&–ÆR×&W7VÇG2×FööÆ&"æ776âF†R&WF—&VBf—fR×&÷r6ö×F–&–Æ—G’w&–BæB3“‚ó‚f7B7VVW¦RvW&Ræ÷B&W7F÷&VBà ¤V–v‡BV&Æ–276WG2&R¢£SsS#2(i"ScSb&r'—FW2(‰#r552'—FW2’¢¢â6V7W&—G’3CCcC3sSvæBW†7B'F–f7B3CCcC3s“F76VBâ&WW6&ÆRv†öÆR×6—FR'F–f7B#Ssƒ3sFÂF–vW7B6†#Sc¦S#cFcs&6CVVCS–VVV#“ƒV&f#s3VfVS3ss“c†f&6CC#CF3ƒ–&#f&câ&W7VÇG2vVöÖWG'’'F–f7B#Ssƒ#“FÂF–vW7B6†#Sc£VVS“†f#†F&#ƒFS#&SV#63Cc“s#6FV#ƒ†#“S–#s&FV–c#VVcƒ#SC3c#FÂ6÷fW'2"6öÆÆ6VBöW‡æFVB6&BæBG&vW"7FFW2B3sRóscóscó““’óóCCà ¥7FGW2&÷VæF'“¢6†V6¶VB&VÆV6RöæÇ’â&Wf–Wr&VÖ–ç2#“CCV&363†s6#Cƒ#C&6FFVVfFcsSscs–²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–â‡—6–6Â6f&’÷6fRÖ&VæBÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâ&RFVfW'&VBâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÖö&–ÆR×6ÆW2Ö6&BÖ÷væW"æ§6öæà ¢2235õ4”ätÄUôDU4µDõôd”ÅDU%ôõtäU"(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3Cƒbò3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6²6†V6¶VB&VÆV6RCc6CƒC–cCcsFF6#“Fc#6C3#“3cƒƒ“F&âF†RÇ&VG’ÆöFVBE3"&W7VÇBf–ÇFW'2&Ræ÷rF†R6öÆRFW6·F÷&W7VÇBÖf–ÇFW"T’â6V&6ƒ2&WF–ç2öæÇ’6ö×7BV×G’×&W7VÇB÷&W6WB'&–FvRâF—&V7Bö6†'FW"ö6öæ7&WFRÖ†÷FVÂ&ÖWFW'2&VÖ–â–âF†R6æöæ–6ÂVF—B×6V&6‚f÷&Ò–ç7FVBöbGWÆ–6FR&W7VÇB&–ÂâGvò&WVFVBÆVBÖVçG'’†–FRÆ—7G2vW&R&VÖ÷fVB&V6W6R6V&6ƒ57VÖÖ'”7Fæ—6öÆFU&ö÷D6†–ÆG&Vâ‚–÷vç2F†B7FFR7–æ6‡&öæ÷W6Ç’à ¤V–v‡BV&Æ–276WG2&R¢£ScSb(i"Cs3s‚&r'—FW2(‰#“3ƒ¢(‰#ƒcR¥2Â(‰#S32552’¢¢â6V&6ƒ2×&W7VÇG2Öf–ÇFW'2×cæ§6—2ScsC"(i"Cƒ3s²Ö–â552—2C“ƒS’(i"C“3#c²6—‚76WG2&R'—FRÖ–FVçF–6Ââ6V7W&—G’3CCƒ#CCCFæBW†7B'F–f7B3CCƒ#CCs–76VBâ&WW6&ÆR'F–f7B#c##sƒ3†ÂF–vW7B6†#Sc£#“sƒ–#ƒ&&FFS#c–Cƒ†6V#63CC“ƒC&f66S#CCvVSƒsƒ6#CS“–&âF†RW†—7F–ær6VÆV7FVBÖvVöÖWG'’FWFV7F÷"v27G&VæwF†VæVBFò6÷fW"ÆÂ7W'&VçB6VÆV7FVB÷&Wf–WröÆVB÷væW'3²—G2"FWF–Â÷&Wf–WröÆVB7FFW2B3sRóscóóCC&âæB76VBâWf–FVæ6R'F–f7B#c##c“sÂF–vW7B6†#Sc¦S“sf333&6Cƒ“c6v#SFC““ƒ&–SCS†3#FCcCf#FscsVC6C&CSà ¥F†RFV6†æ–6Â&r×6—¦RF&vWB—2&V6†VBB¢£Cs3s‚'—FW2¢¢â7F÷'—FRÖöæÇ’Ö–7&òÕ'3¢Fòæ÷B&W7F÷&RF†RGWÆ–6FR&–Â÷"&VÖ÷fR7F—fR&W7VÇG2×F&ÆWBÖÆ–÷WBæ776âæW‡B&W&RöæR67V×VÆFVBW†7B—6öÆFVB&Wf–Wrv—F‚&÷VæFVB6&Böf–ÇFW"66WFæ6R72ÂF†Vâ7v—F6‚&–÷&—G’Fò6VÆÆ–ær6V&6‚U‚æBÆVâ6V&6ƒ2&6R'VæFÆRâ&Wf–Wr—27F–ÆÂ#“CCV&36²&öGV7F–öâ&VÖ–ç2Væ6†ævVBæB&WV—&W2W‡Æ–6—Bf—7VÂ&÷fÂâÆ—fR7W'&VçB×6÷W&6Rf–ÇFW"–çFW&7F–öâæB‡—6–6Â6f&’÷6fRÖ&V&RFVfW'&VBâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2×6–ævÆRÖFW6·F÷Öf–ÇFW"Ö÷væW"æ§6öæà ¢2235ôd”ÅDU%ôÔô$”ÄUô45TÕTÄDTEõ$Ud”Ur(	BV&Æ—6†VBÂ##bÓ’Óp ¤W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6v2V&Æ—6†VBFòF†RW†—7F–ær—6öÆFVBv†öÆR×6—FR&Wf–Wr'’öæR×6†÷B6öçG&öÂ3Cƒ’ò'Vâ3CC3##s“v²F†R6öçG&öÂv26Æ÷6VBv—F†÷WBÖW&vRâWf–FVæ6R'F–f7B#ccƒcSC†ÂF–vW7B6†#Sc¦f#C6S“SCfvFc–ƒ3cCs6fcc336&Cf&VcC33fc3scSv#vS“C“3CSƒ–âF†RFWÆ÷–ÖVçB&WW6VB6÷W&6R'F–f7B#c##sƒ3†v—F†÷WB&V'V–ÆF–ær—BæBfW&–f–VBF†RW†7B6÷W&6RG&VRÂ&6†—fRÂÖæ–fW7BÂ–ÆöB6†V6·7V×2æBÆÂsRf–ÆW2à ¤æö–æFW‚Â&Wf–WrÆVB…EEC2ÂÖWG&–¶6÷VçFW"Â–çFW&æÂ…FVæ–ÂÂ…EE2×FòÕ54‚F&vWB&–æF–ærÂFöÖ–2&öÆÆ&6²æB2Væ6†ævVB&öGV7F–öâf–ævW'&–çG276VBâÖ–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–à ¤&÷VæFVBÆ—fR6†V6³¢Ö÷66÷~(i%GW&¶W’6ö×ÆWFVBv—F‚†÷FVÇ2òCCRF÷W'2âF†RFW6·F÷'VFvWB&–Â&VGV6VBf—6–&ÆR†÷FVÇ2(i#2Bƒ%T"æB&W6WB&W7F÷&VBâ7WÆ–W"Ö–æ6ö×ÆWFRÖVÂö6FVv÷'’÷&F–ær÷6Vf6WG27F–VB†–FFVâ'’F†RW†—7F–ær6ö×ÆWFVæW72wV&C²	}Í]İ-Âıí¦W‡÷6VB6FVv÷'’Â&F–ærÂÖVÂÂ6öæ7&WFR†÷FVÂæBF—&V7BÖfÆ–v‡B&ÖWFW'2âæòÆVBv27V&Ö—GFVBâ‡—6–6Â6f&’æBFWf–6R6fRÖ&V&VÖ–âFVfW'&VBà ¥F†R'—FRÖöæÇ’7FvRæB—G267V×VÆFVB&Wf–Wr66WFæ6R&R6ö×ÆWFRâæW‡B7v—F6‚&–÷&—G’Fò6VÆÆ–ær6V&6‚U‚æBÆVâ6V&6ƒ2&6R'VæFÆS²Fòæ÷B&W7F÷&RF†RGWÆ–6FR&–Â÷"&VÖ÷fR7F—fR&W7VÇG2×F&ÆWBÖÆ–÷WBæ776âVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Öf–ÇFW"ÖÖö&–ÆR×&Wf–Wr×V&Æ–6F–öâæ§6öæà ¢2235õ$UD•$TEôd”ÅDU%õ$U4TåDD”ôâ(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3C“ò#sC“–SfFSs6SCc“3–CF6VcF6&cc6c&F&²6†V6¶VB&VÆV6RFcs#c3sC6Sc#“6V3s3FFc“–VC#–#ƒfS#“âgFW"E3"&V6ÖRF†R6öÆRFW6·F÷f–ÇFW"÷væW"ÂF†R&VÖ–æ–ærVç&V6†&ÆR6V&6ƒ2f–ÇFW"×6V7F–öâÂVF—B×&÷rÂ&F–ò×6¶–âæBV×G’f–ÇFW"×7V'F—FÆRfÖ–Æ–W2vW&R&VÖ÷fVBâE3"'VFvWBöÖVÂö6FVv÷'’÷&F–ær÷6V÷&W6WBö6÷VçBÂF†RÖö&–ÆRf–ÇFW"Â¦W&ò×&W7VÇB'&–FvRæBÆÂ&÷FV7FVB'W6–æW726öçG&7G2&VÖ–âà ¤V–v‡BV&Æ–276WG2&R¢£Cs3s‚(i"CScc&r'—FW2(‰#s‚552'—FW2’¢¢â6WfVâ76WG2&R'—FRÖ–FVçF–6Ââ6V7W&—G’3CC3C3cvæBW†7B'F–f7B÷&W7VÇG2ÖvVöÖWG'’'Vâ3CC3C3CV7V66VVFVBâ&WW6&ÆR'F–f7B#csssC3VÂF–vW7B6†#Sc¦6S3#&fc†S“F&6#6S##†Cc“&C3“SSFF#†CFcvCC3ƒs3–SƒsV3f²&W7VÇG2vVöÖWG'’'F–f7B#cssc“CvÂF–vW7B6†#Sc£cSs–c6V#“#S3““C#3SFcs6Fccc“f#ss6#ƒSs“CFCcc&V6633vVcCFfà ¥7FGW2&÷VæF'“¢6†V6¶VB&VÆV6RöæÇ’âF†R—6öÆFVB&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6BCs3s‚'—FW3²F†RÆFW"s‚Ö'—FR&VÖ÷fÂ—2Vç&V6†&ÆR552æBv2æ÷B&WV&Æ—6†VBâÖ–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–â‡—6–6Â6f&’÷6fRÖ&V&VÖ–ç2FVfW'&VBâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2×&WF—&VBÖf–ÇFW"×&W6VçFF–öâæ§6öæà ¤æW‡C¢F†R'—FRÖöæÇ’7FvR—26Æ÷6VBâFòæ÷B÷VâÖ–7&ò×&VGV7F–öâ'2Â&W7F÷&RF†RGWÆ–6FR&–Â÷"&VÖ÷fR7F—fR&W7VÇG2×F&ÆWBÖÆ–÷WBæ776â&Vv–âF†R6VÆÆ–ær×6V&6‚U‚7FvRæBÆVâ6V&6ƒ2&6R'VæFÆS²&öGV7F–öâ7F–ÆÂ&WV—&W2W‡Æ–6—Bf—7VÂ&÷fÂà ¢2235ôÔô$”ÄUõ4TÄT5DTEô5Dõ4ÄU5õ$U•"(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3C“"òfCV3VCƒcf#c#ƒF&SV3&6f3sS#ƒ†cS3F²6†V6¶VB&VÆV6RV#C“6SCVCvVSvfƒSScF#S#–fƒ“Sƒ–C6âF†Rf—'7B6öçfW'6–öâÖ7&—F–6Â&öGV7B&W—"6Æ÷6W2F†R6öæf—&ÖVB3sW‚6VÆV7FVB×F÷W"FVfV7Bv†W&RF†Rf—†VBÖö&–ÆR5D†Bæò†V–v‡B÷væW"æB6÷VÆB6öÆÆ6RFò&÷Vv†Ç’‚âF†R7W'&VçB6VÆV7FVBÖfÆ÷r×c"æ776÷væW"æ÷rv—fW2F†RW†—7F–ærÃÓcC†7F–öâC‡‚Ö–æ–×VÒ†V–v‡Bà ¤V–v‡BV&Æ–276WG2&R¢£CScc(i"CScsb&r'—FW2‚³b552'—FW2’¢¢âF†—2—2â–çFVçF–öæÂ66W76–&–Æ—G’ö6öçfW'6–öâ&W—"Âæ÷B6—¦R6f–ærâ6WfVâ76WG2&R'—FRÖ–FVçF–6Ââ6V7W&—G’3CCC##C#&æBW†7B'F–f7B÷6VÆV7FVBÖvVöÖWG'’'Vâ3CCC##C#7V66VVFVC²F†R&VG’Öf÷"×&Wf–Wr&WVB3CCC3S#“vÇ6ò7V66VVFVBâ&WW6&ÆR'F–f7B#scƒ“vÂF–vW7B6†#Sc¦3vS6Sfssss“S††SC#Vc6Cc–#C–S–CFcV3ƒFc#F3F&3#sFSV#“Sv²6VÆV7FVBvVöÖWG'’'F–f7B#scsCcVÂF–vW7B6†#Sc¦CCCƒfSVVcfCs#Ss#ƒ3†F#v#“CS6f&#ƒ“Ss&3“SfFccSscS#6&##SVà ¥F†R'&÷w6W"f—‡GW&R&WV—&W2F†R3sW‚5DFò&RBÆV7BC‡‚æBW&Ö—G26†ævRöæÇ’–ç6–FRF†BÖö&–ÆR&#²F†R&W7BöbFWF–Â÷&Wf–WröÆVBvVöÖWG'’B3sRóscóóCC&VÖ–ç2WVÂÂv—F‚æò÷fW&fÆ÷r÷"ÆVB7V&Ö—76–öââF†R6†ævR—26†V6¶VB&VÆV6RöæÇ’â&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–â‡—6–6Â•†öæRõ6f&’6fRÖ&VæBÆ—fR7W'&VçB×6÷W&6R¦÷W&æW’&VÖ–âFVfW'&VBà ¤æW‡C¢VF—B6V&6‚Öf÷&Ò6ö×ÆWF–öâg&–7F–öâæBÆö6ÂÖf–ÇFW"fVVF&6²W6–ærF†R7W'&VçB6–ævÆRÖ÷væW"&6†—FV7GW&Râ67V×VÆFRF†RæW‡B&öGV7B&F6‚&Vf÷&R&Wf–WrV&Æ–6F–öã²Fòæ÷B&WGW&âFò'—FRÖöæÇ’Ö–7&òÕ'2âÆã¢Fö72÷&ö¦V7B÷6V&6ƒ2×6—¦RÖæB×6ÆW2×ÆâæÖFâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÖö&–ÆR×6VÆV7FVBÖ7Fæ§6öæà ¢2235ôÔô$”ÄUõ4T$4…ôdõ$ÕõU4$”Ä•E’(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3C“BòCcVc†S&6fF633sCsSƒcSc66F#ƒ–#“cv&²6†V6¶VB&VÆV6R†CVF#f6C3FCf#ƒC#s#†C6c63v66FSFâÖö&–ÆRf÷&ÒÆ&VÇ2&Ræ÷rBÆV7B'‚Â&–Ö'’–çWG2g‚Â&–Ö'’6öçG&öÇ2÷6V&6‚öGfæ6VBÖf–ÇFW"7F–öâC‡‚ÂæBV–6²f–ÇFW'2CG‚âF†RF÷W&—7B÷÷fW"föÆÆ÷w2F†RFÆÆW"7VÖÖ'’æB—G26VÆV7F÷'2&RCG‚óg‚âf÷&ÒfÇVW2Â&WVW7B&V†f–÷"æBÆÂ&÷FV7FVB'W6–æW726öçG&7G2&RVæ6†ævVBà ¤V–v‡BV&Æ–276WG2&R¢£CScsb(i"CcS“’&r'—FW2‚³“#2552'—FW2’¢¢âF†—2—2–çFVçF–öæÂ6ÆW2×&VF–æW72vV–v‡BÂæ÷B6—¦R6f–æs²6WfVâ76WG2&R'—FRÖ–FVçF–6Ââ6V7W&—G’3CCƒCƒ3#ƒ†Â–æ—F–ÂW†7B'F–f7B3CCƒCƒ3#“&æB&VG’&WVB3CCƒcSscCv7V66VVFVBâ&WW6&ÆR'F–f7B#ƒS“C3CvÂF–vW7B6†#Sc£ƒFc–S3&V#†&S–f&fcC6svcCƒ#C&&SFcCFfCs#†–C†#–vFcsc6²6öÖ&–æVB&W7VÇG2öVçG'’vVöÖWG'’'F–f7B#ƒS“CcFÂF–vW7B6†#Sc¦6ffcfSv#†f6CC3#VCCF3S6##S3ƒcV3cSƒC3F#&&#FS“36f36à ¥F†R6‡&öÖ—VÒf—‡GW&R76VBVçG'’vVöÖWG'’B3sRóscóscæBF†RW†—7F–ær"6öÆÆ6VBöW‡æFVB&W7VÇB7FFW2Âv—F‚æò†÷&—¦öçFÂ÷fW&fÆ÷râ67&VVç6†÷G2vW&R&WF–æVB'WBæ÷BÖçVÆÇ’–ç7V7FVC²æòÆVBv27V&Ö—GFVBâF†R6†ævR—26†V6¶VB&VÆV6RöæÇ’â&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–â‡—6–6Â•†öæRõ6f&’6fRÖ&VæBÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâ&VÖ–âFVfW'&VBà ¤æW‡C¢FB–ÖÖVF–FRÂ66W76–&ÆRÆö6ÂÖf–ÇFW"fVVF&6²æB&V6÷fW&&ÆR¦W&ò×&W7VÇG27FFR–âF†R6–ævÆRE3"÷væW"âFòæ÷BFB6V6öæBf–ÇFW"'VçF–ÖR÷"&WVW7BW"Æö6Â6†ævRâ67V×VÆFRÖVæ–ævgVÂ&öGV7B6†V6·ö–çB&Vf÷&RF†RæW‡B—6öÆFVB&Wf–WrV&Æ–6F–öââVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÖö&–ÆRÖf÷&Ò×W6&–Æ—G’æ§6öæà ¢2235ôÄô4Åôd”ÅDU%ôdTTD$4²(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3C“bò6–fSƒc6VF#f3CFFFCVf3–#3V&&c–S3fc6²6†V6¶VB&VÆV6R“VCVc6fcV&3“SCVVcv3ƒsscsf3c3†Sc†cSV6âF†R6öÆRE3"FW6·F÷f–ÇFW"÷væW"æ÷rW‡÷6W2—G2Æ—fR&W7VÇB6÷VçB2öÆ—FRFöÖ–27FGW2âÆö6Â¦W&òÖF6‚W6W2F†RW‡Æ–6—B†VF–ær(	Í	İ}]=âİRİM]İî(	ÒæBF†R&V6÷fW'’6÷’(	Í
+íÍ-RM½Í-²½‚}Í]İ-RıÍ]-¾(	Ó²&W6WGF–ær&W7F÷&W2F†R6÷W&6R&W7VÇB6÷VçBâF†R7–æ6‡&öæ÷W2Æö6Â&VæFW&W"&VÖ–ç2F†RöæÇ’W†V7WF–öâF‚Âv—F‚æòF÷W'f—6÷"ô’&WVW7BFFVBà ¥F†RV–v‡B6V&6ƒ2V&Æ–276WG2&VÖ–â¢£CcS“’(i"CcS“’&r'—FW2ƒ’¢¢âF†RÇ&VG’ÆöFVBc"öG3"×&W7VÇG2Öf–ÇFW'2æ§66†ævW2¢£“2(i"“'—FW2‚³s‚¥2’¢¢â6V7W&—G’3CC“S3s3SvÂ–æ—F–ÂW†7B'F–f7B3CC“S3sC3væB&VG’&WVB3CC“c3Sƒ&7V66VVFVBâ&WW6&ÆR'F–f7B#ƒ“#s&ÂF–vW7B6†#Sc£s#C3ƒsC663ƒ#C&FFC6F#Sƒ3#ƒFC†3“3“Sƒ6#ScS&&C6VSvS3V&à ¤fö7W6VBdÒ66WFæ6R6÷fW&VB6ö×ÆWFRf6WG2ÂÆVv—F–ÖFR¦W&òÖF6‚Â6V&6ƒ2V×G’×6†VÆÂ&W6W'fF–öâÂ&V6÷fW'’6÷’Â&W6WBÂ&W7F÷&VB6÷W&6R&W7VÇG2æBF†R6öÆRÖ÷væW"&÷VæF'’âF†—26¶vRF–Bæ÷BG&–vvW"÷"6Æ–Ò'&÷w6W"vVöÖWG'’Wf–FVæ6Râ&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–âÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâÂ‡—6–6Â•†öæRõ6f&’æB6fRÖ&V66WFæ6R&VÖ–âFVfW'&VC²æòÆVBv27V&Ö—GFVBà ¤æW‡C¢VF—BF†R(	Í	½mR¢Ííî(	Ò6÷'BæB6öÖÖöâÖ7F–öââ¶VWöæÇ’6öçG&öÇ2&6¶VB'’6ö×ÆWFR7WÆ–W"FFæBv÷&¶–ær&V†f–÷"â67V×VÆFRF†RæW‡B&öGV7B6†V6·ö–çB&Vf÷&R—6öÆFVB&Wf–WrV&Æ–6F–öââVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÆö6ÂÖf–ÇFW"ÖfVVF&6²æ§6öæà ¢2235ô„ôäU5Eõ$U5TÅE5ô4ôåE$ôÅ2(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3C“‚ò#FSƒ“6Sc“S†#fc&Fccf6V6#†63SVCcv&3c#†²6†V6¶VB&VÆV6Rƒ“ƒS#s†3vFCsvS&FfV3ƒ3Sƒ†S6cSSc&âF†RöffW&VB(	Í	½mR¢Ííî(	ÒÖöFRv2æ÷B–×ÆVÖVçFVBæB6–ÆVçFÇ’W6VB&–6R÷&FW"âF†R6öÖÖöâÖ'WGFöâF—7F6†VBc#§&W7VÇG2ÖÖ×&WVW7FVFÂ'WBF†R&W÷6—F÷'’†Bæò6öç7VÖW"â&÷F‚Ö—6ÆVF–ær6öçG&öÇ2æBF†V—"FVB'VçF–ÖRô552'&æ6†W2&R&VÖ÷fVBâ&–6RÂ&F–æræB7F"6÷'F–ærÇW2Æ—7Böw&–Bf–Ww2&VÖ–âà ¥F†RV–v‡B6V&6ƒ276WG2&VÖ–â¢£CcS“’(i"CcS“’&r'—FW2ƒ’¢¢âF‡&VR7W÷'F–ærÆöFVBf–ÆW26‡&–æ²¢£#“#B(i"#ƒs3r'—FW2(‰#Csr&r'—FW2’¢£¢c"ö–æFW‚ç‡#ƒs.(i##s3Âc"öG3"×6V&6‚æ776ƒC>(i#sSRæBc"÷6V&6‚×&VFW6–vâ×c"æ§6CC“(i#C#Sâ6V7W&—G’3CScƒƒ“cFÂ–æ—F–ÂW†7B'F–f7B3CScƒƒƒ3fæB&VG’&WVB3CSsƒƒƒ–7V66VVFVBâ&WW6&ÆR'F–f7B#“#ƒ#SVÂF–vW7B6†#Sc£†#C“#3FS66CƒcfcfSS3ƒCFV66cfScc3FScF&C3CVSC†&#“FSVc63F6à ¤fö7W6VBFW7G2&WV—&RW†7FÇ’F†RF‡&VR–×ÆVÖVçFVB6÷'BÖöFW2Â&W6W'fRF†RÖö&–ÆR6÷'B&÷‡’æB&W7VÇG2Æ–fV7–6ÆRÂæB&V¦V7B&V–çG&öGV7F–öâöbF†RVæ†æFÆVBÖ7F–öââF†—2æöâÖvVöÖWG&–26¶vRF–Bæ÷B'Vâ÷"6Æ–Ò'&÷w6W"vVöÖWG'’â&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–âÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâÂ‡—6–6Â•†öæRõ6f&’æB6fRÖ&V66WFæ6R&VÖ–âFVfW'&VC²æòÆVBv27V&Ö—GFVBà ¤æW‡C¢VF—BF†R&W7VÇBÖ6&B7F–öâ†–W&&6‡’æB¶VWöæR6ÆV"&–Ö'’F‚g&öÒ†÷FVÂFòF÷W"6VÆV7F–öââ&W6W'fR7WÆ–W"FFÂ&–6R&—F†ÖWF–2Â6VÆV7F–öâöÆVBÆ–fV7–6ÆRæBæÇ—F–72â67V×VÆFR&Vf÷&R—6öÆFVB&Wf–WrV&Æ–6F–öââVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Ö†öæW7B×&W7VÇG2Ö6öçG&öÇ2æ§6öæà ¢2235õ4”ätÄUô4$Eõ$”Ô%•ô5D(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3Sòc3VSS&cCc–F#“##&#&fsc3scs#C#†#C3V²6†V6¶VB&VÆV6R&Ss–c&3sFc#FS#s3vFSƒƒ#sCCv#CF#3F6csvâF†R&W7VÇB6&Bæ÷r†2öæR6÷VçBÖv&R&–Ö'’7F–öâ†	ıí­}-Ââ-=í&’–ç7FVBöb6W&FRf–Æ&–Æ—G’6VçFVæ6RÇW2vVæW&–2	ıí­}-Â-=¶â6÷'&V7B'W76–âÇW&Âf÷&×2ÂW‡æFVB
+­½-Â-=¶Â6öÆÆ6R&W7F÷&F–öâæBV6‚6öæ7&WFRöffW"w2	-½-Â-=7F–öâ&VÖ–â–âF†R7W'&VçB&W7VÇG2÷væW"à ¤V–v‡BV&Æ–26V&6ƒ276WG2&R¢£CcS“’(i"CS“sB&r'—FW2(‰#c#S¢(‰#S“r552Â(‰##‚¥2’¢¢âF†R&VÖ÷fVBç6V&6ƒ2Ö†÷FVÂÖ7F–öåõö6÷–Ö&·WæB&W7öç6—fR&W6VçFF–öâ&RæòÆöævW"VÖ—GFVBâf—fR76WG2&R'—FRÖ–FVçF–6Ââ&–6R&—F†ÖWF–2Â7WÆ–W"f7G2ÂF÷W'f—6÷"ô’ÂU$Â÷–ÆöBÂ6VÆV7F–öâÂÆVBG&ç7÷'BöÖ–æræBæÇ—F–72&RVæ6†ævVBà ¥6V7W&—G’3CS#ƒ##SFÂ–æ—F–ÂW†7B'F–f7B3CS#ƒ##CS&æB&VG’&WVB3CS#“S#7V66VVFVBâ&WW6&ÆR'F–f7B#“““ƒcS&ÂF–vW7B6†#Sc£SfF&V#s“CcfV&CSS–S&cS#ƒF3FfCfcfSs–VfVVfSsƒƒs#f&#VcVSF&²&W7VÇG2vVöÖWG'’'F–f7B#“““ƒ3C†ÂF–vW7B6†#Sc£#VVc–cSfcS&S6Cf3ƒ“CV3–#†#s3“†&3&3†&#v##&f&cs““Cc–fâF†R6‡&öÖ—VÒf—‡GW&R76VB"6öÆÆ6VBöW‡æFVB7FFW2B3sRóscóscó““’óóCCv—F‚æò†÷&—¦öçFÂ÷fW&fÆ÷râ67&VVç6†÷G2vW&R&WF–æVB'WBæ÷BÖçVÆÇ’–ç7V7FVC²æòÆVBv27V&Ö—GFVBà ¥7FGW2&÷VæF'“¢6†V6¶VB&VÆV6RöæÇ’â&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6BCs3s‚6V&6ƒ2'—FW3²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–âÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâÂ‡—6–6Â•†öæRõ6f&’æB6fRÖ&V66WFæ6R&VÖ–âFVfW'&VBà ¤æW‡C¢fW&–g’v†WF†W"6V&6ƒ2w2Æ—7Böw&–B7v—F6‚&öGV6W2GvòF—7F–æ7BÆ–÷WG2FW7—FRF†R7W'&VçBöæRÖ6öÇVÖâ6V&6ƒ2&W7VÇB÷væW"â&VÖ÷fR÷"6öæF—F–öâöæÇ’æöægVæ7F–öæÂ6V&6ƒ26öçG&öÂv†–ÆR&W6W'f–ærF†Rv÷&¶–ærÆVv7’÷ö—6²×GW&÷bÖöÆBöw&–BâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2×6–ævÆRÖ6&B×&–Ö'’Ö7Fæ§6öæà ¢2235ô„ôäU5Eõd”Uuô4ôåE$ôÂ(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3S"ò&c3#f#c#“cFcCC6c“vcFV#“&6f6&²6†V6¶VB&VÆV6RC#svVFSCFS“SvfCfcf6f33ƒFVS&CCVâF†R6†&VBÆ—7Böw&–B7v—F6‚6†ævVB6Æ76W2æBÆö6Å7F÷&vRÂ'WB6V&6ƒ2w27G&öævW"7W'&VçB&W7VÇG2÷væW"Çv—2&VæFW'2öæRÖ6öÇVÖâfÆW‚Æ—7Bâ6V&6ƒ2F†W&Vf÷&RæòÆöævW"VÖ—G2F†RGvò–æVffV7F—fRf–Wr'WGFöç2âF†RÖ–çF–æVB÷ö—6²×GW&÷bÖöÆBö&W6VçFF–öâ7F–ÆÂ&VæFW'2&÷F‚6öçG&öÇ2æB¶VW2F†RW†—7F–ær6†&VB'VçF–ÖRæBw&–B552à ¥F†RV–v‡B6V&6ƒ2V&Æ–276WG2&VÖ–â¢£CS“sB(i"CS“sB&r'—FW2ƒ’¢¢âF†R&VæFW&VB6V&6ƒ2…DÔÂ&VÖ÷fW2¢£#c‚'—FW2¢¢æBGvòÖ—6ÆVF–ær6öçG&öÇ3²F†—27W÷'F–ær×–ÆöB&VGV7F–öâ—2&V6÷&FVB6W&FVÇ’æB—2æ÷B6÷VçFVB2âV–v‡BÖ76WB&VGV7F–öââ&–6R÷&F–ær÷7F'26÷'F–ærÂ7WÆ–W"FFÂF÷W'f—6÷"ô’ÂU$Â÷–ÆöBÂ6VÆV7F–öâÂÆVBG&ç7÷'BöÖ–æræBæÇ—F–72&RVæ6†ævVBà ¥6V7W&—G’3CSc3ScCcÂW†7B'F–f7B3CSc3ScCcvæB7FæFÆöæRæf–vF–öâ3CSc3ScCs7V66VVFVBâ&WW6&ÆR'F–f7B3cS6ÂF–vW7B6†#Sc£3ƒc†#C6CcSC&C“FcScS#FSCssvSc“fC#vcS†C““c3c3&cF3ƒfâW†7B…&VæFW&–ærfW&–f–W2F†R6V&6ƒ27v—F6‚—2'6VçBæB&÷F‚ÆVv7’6öçG&öÇ2&VÖ–ââæò552ö6&BvVöÖWG'’6†ævVBÂ6òF†RvVöÖWG'’¦ö'26÷'&V7FÇ’6¶—VC²æòf—7VÂ66WFæ6R—26Æ–ÖVBæBæòÆVBv27V&Ö—GFVBà ¥7FGW2&÷VæF'“¢6†V6¶VB&VÆV6RöæÇ’â&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6BCs3s‚6V&6ƒ2'—FW3²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–âÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâÂ‡—6–6Â•†öæRõ6f&’æB6fRÖ&V66WFæ6R&VÖ–âFVfW'&VBà ¤æW‡C¢&Vv–âF†RÆVâ6V&6ƒ2&6RÖ'VæFÆRVF—Bâ6Æ76–g’gVÆÂÖÖæ–fW7BÖöGVÆW2'’6V&6ƒ2FWVæFVæ7’ÂF†VâW6RF†RW†—7F–ær'VæFÆRVæGö–çBf÷"&÷WFR×66÷VB6V&6ƒ2Öæ–fW7Bv†–ÆR¶VW–ær÷ö—6²×GW&÷bÖöÆBööâF†R6ö×ÆWFRÆVv7’'VæFÆRâ&WV—&RÖV7W&VBÆöFVB&röw¦—6f–æw2æB6÷W&6Rö6Æ÷7W&Rö'&÷w6W"Wf–FVæ6R&Vf÷&R6†æv–ærF†R&÷WFRâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2Ö†öæW7B×f–WrÖ6öçG&öÂæ§6öæà ¢2235ôÄTåô$4Uô%TäDÄUõc(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3SBòƒ#f3C#FVS&c†cV3–#6SV&&3fC–33vf&Sf##f²6†V6¶VB&VÆV6Rf33SSFC3#6&3s“cvf#vcFCƒfVƒ†FC†3âF†RW†—7F–ær'VæFÆR×cç‡VæGö–çBæ÷r6VÆV7G26V&6ƒ2Öæ–fW7B66÷RöâF†R6æöæ–6Â&÷WFRv†–ÆRF†RÆVv7’÷ö—6²×GW&÷bÖöÆBö&÷WFR&WF–ç2F†R6ö×ÆWFR÷&–v–æÂÖæ–fW7BæBU$Â6öçG&7Bâ6V&6ƒ2W†6ÇVFW2F†R6ö×ÆWFR6V&6‚×&VFW6–vâ×c"æ§6÷væW#¢—G2Æ—7Böw&–B&V†f–÷"—2ÆVv7’ÖöæÇ’ÂæBF†R&WV—&VB&÷WFRöFFRöæ–v‡BöwVW7B7VÖÖ'’æ÷r&VÆöæw2FòF†R7W'&VçB6V&6ƒ2&W7VÇG2÷væW"à ¤ÆöFVB6V&6ƒ2552ô¥2—2¢£ccS#Cr(i"cc#cR&r'—FW2(‰#3ƒ"’¢¢âF†R6†&VB¦f67&—B66÷R—2#s“c“(i"#sSC3’(‰#C#S’Âv†–ÆRF†RV–v‡B6V&6ƒ276WG2&RCS“sB(i"CsC2‚³c’’f÷"F†R&WF–æVB7VÖÖ'’&V†f–÷"âF†RVæGö–çBÇW2–æFWVæFVçBÖ76WBw¦—W7F–ÖFR—2#“(i"#3’(‰#S“"’â6†&VB552—2Væ6†ævVBB#3“Sƒ2'—FW2âF†—2—2&÷WFRÖÆöFVBF÷FÃ²F†RV–v‡B×F‚7V'F÷FÂ—2&V6÷&FVB6W&FVÇ’æB—2æ÷BÖ—6Æ&VÆVB2&VGV7F–öâà ¥6V7W&—G’3CcsCs“fÂW†7B'F–f7B3Ccƒ3Cs3æB&Wf–WrÖ&÷VæF'’3Ccƒ3CcC†7V66VVFVBâ&WW6&ÆR'F–f7B3#SCS336ÂF–vW7B6†#Sc£vSFSFS#V&#sV&CƒfSfVcV&cV&Cc3S6#VCfcF#fVfFS“f3“SC“6#†#&â6Æ÷7W&R6†V6·2&÷fRCBgVÆÂfW'7W2C26V&6ƒ2¦f67&—B÷væW'2ÂVæ6†ævVB55266÷RÂÆVv7’&WFVçF–öâæB6V&6ƒ2W†6ÇW6–öââfö7W6VBdÒFW7G26÷fW"&÷WFRÂFFW2Âæ–v‡G2ÂF÷W&—7G2Â&W7VÇG2÷&W6WBæBVF—Bfö7W2âæò552vVöÖWG'’6†ævVC²'&÷w6W"vVöÖWG'’6÷'&V7FÇ’6¶—VBæBæòf—7VÂ66WFæ6R÷"ÆVB7V&Ö—76–öâ—26Æ–ÖVBà ¥7FGW2&÷VæF'“¢6†V6¶VB&VÆV6RöæÇ’â&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6²Ö–ææB&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–âÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâæB‡—6–6Â•†öæRõ6f&’6fRÖ&V&VÖ–âFVfW'&VBà ¤æW‡C¢VF—B6öçfW'6–öâÖ6öæf–FVæ6R×c2F†RæW‡Bv†öÆRÖ÷væW"6V&6ƒ2W†6ÇW6–öâ6æF–FFRâ—G26ö×&RöFV6—6–öâövVæ7’7W&f6W2&R7W'&VçFÇ’†–FFVâ÷"Vç&V6†&ÆRVæFW"F†R6V&6ƒ2&W6VçFF–öâÂ'WB&W6W'fRç’vVçV–æVÇ’Æ—fR6VÆV7FVB5D÷G'W7B&V†f–÷"–â7W'&VçB÷væW"&Vf÷&RW†6ÇVF–ær—Bâ¶VWF†RgVÆÂÆVv7’'VæFÆRVæ6†ævVBâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÆVâÖ&6RÖ'VæFÆR×cæ§6öæà ¢2235ôÄTåô4ôäd”DTä4UôõtäU"(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3SbòVCc†#“–fCƒ3cvCsƒf#cƒ†V6FfFVFSc3SƒV²6†V6¶VB6öFR&VÆV6R3csS†VFc#C&f#3–c#S6fcƒfcFSƒ“SFâ6V&6ƒ2æòÆöævW"ÆöG2F†R6ö×ÆWFR6öçfW'6–öâÖ6öæf–FVæ6R×cæ§6Â6ö×&R×&Vg&W6‚ÖwV&B×cæ§6æB6öçfW'6–öâÖ6öæf–FVæ6R×cæ776÷væW'2â†–FFVâ6ö×&RöFV6—6–öâ÷&W7VÇBÖæ÷FRövVæ7’7W&f6W2&RæòÆöævW"7&VFVBâFW6·F÷6VÆV7FVB×F÷W"G'W7BæBF÷W"Ö6†ö–6RÆ&VÇ2&R&WF–æVB'’F†RW†—7F–ær6VÆV7FVB÷&W7VÇG2÷væW'2âÆÂF‡&VR÷&–v–æÂf–ÆW2æBF†RgVÆÂÆVv7’&÷WFRÖæ–fW7B&VÖ–âVæ6†ævVBà ¥F†—2–çfö6F–öâ&VÖ÷fW2¢£#ƒ#ƒ‚&r'—FW3¢cc#cR(i"c33ssr¢¢7&÷72F†R66÷VB6†&VB552ô¥2æBV–v‡BV&Æ–26V&6ƒ276WG2â6†&VB552—2#3“Sƒ2(i###s“SRÂ6†&VB¥2#sSC3’(i##Scc3RÂæBF†RV–v‡BÖ76WB7V'F÷FÂ—2CsC2(i#C“ƒr‚³#CBf÷"&WF–æVB&V†f–÷"÷7G–ÆW2’âw¦—W7F–ÖFR—2CcS"(i#3““3B(‰#c‚’Â–æ6ÇVF–ær$õD‚6†&VB552ô¥2VæGö–çB&öF–W2æBF†RV–v‡B–æFWVæFVçBf–ÆW2âF†RV&Æ–W"ÆVâÖ'VæFÆRVF—Bw2w¦—F÷FÇ2öÖ—GFVBVæ6†ævVB6†&VB553²—G2(‰#S“"FVÇF—2fÆ–BÂ'WBF†÷6RF÷FÇ2vW&R'F–Â7V'F÷FÂà ¥6V7W&—G’3Cc3#3S†ÂW†7B'F–f7B3Cc3#3S3æB&VG’&WVB3Cc333CCf7V66VVFVBöâF†Rf–æÂ6÷W&6Râ&WW6&ÆR'F–f7B333C“#SfÂF–vW7B6†#Sc£ƒFC†S–SF6&F3&S3–SFSS†CVSC&cS&#V&6C–FCS†Sƒ“3#ƒFC#sƒvSVFâ6VÆV7FVBvVöÖWG'’'F–f7B333Cƒ#“²&W7VÇG2öVçG'’vVöÖWG'’'F–f7B333CƒsƒfâF†R'&÷w6W"7V—FR76VB"FWF–Â÷&Wf–WröÆVB7FFW2B3sRóscóóCCÂ"&W7VÇB7FFW2B3sRóscóscó““’óóCCæBF‡&VRVçG'’7FFW2â—Bæ÷rW6W2F†R7GVÂ66÷VB552æB6ö×&W2&–÷"×&VÆV6R'VçF–ÖRÆöæw6–FRF†R&WF–æVBg&÷¦Vâ552&6VÆ–æRâFW6·F÷G'W7B&VÖ–ç2f—6–&ÆRÂÖö&–ÆRG'W7B&VÖ–ç2†–FFVâÂæBF†R&WF—&VB7W&f6W2övÆö&Â&R'6VçBâ–æ—F–ÂFW7BÖÆöFW"–æ6ö×F–&–Æ—G’v—F‚F†R&R×66÷R†—7F÷&–6Â&6VÆ–æRv2&W—&VBv—F†÷WB&VÆ†–ærF†RvVöÖWG'’6ö×&—6öââæòÆVBv27V&Ö—GFVBà ¥7FGW2&÷VæF'“¢6†V6¶VB&VÆV6RöæÇ“²æòæWrV&Æ–6F–öââ&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6²Ö–â÷&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–âÖçVÂ67&VVç6†÷B–ç7V7F–öâv2FVfW'&VC¢'F–f7BÖFW&–Æ—¦F–öâ&WGW&æVB…EEC2âÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâæB‡—6–6Â6f&’÷6fRÖ&V&VÖ–âFVfW'&VC²WFöÖFVBvVöÖWG'’—2æ÷BÖçVÂf—7VÂ&÷fÂà ¤æW‡C¢VF—BÖö&–ÆR×6V&6‚×7VÖÖ'’×cæ§6ƒ“3ƒ&r’æB—G2552ƒC“r&r’â6V&6ƒ2†–FW2—G27F–6·’5D÷7VÖÖ'’Â'WB—G26V&6‚×7F'B6öÆÆ6RÂF—'G’÷fÆ–FF–öâ&V6÷fW'’æBf–VÆB×Æ6VÖVçB6–FRVffV7G2×W7B&R&WF–æVB÷"FVÆ–&W&FVÇ’&WÆ6VB–â7W'&VçB÷væW'2â&WV—&R&VÂ×&÷WFRÖö&–ÆRf÷&Ò÷&V6÷fW'’æBsósóscóscG&ç6—F–öâWf–FVæ6R&Vf÷&RW†6ÇVF–ær—Bâ¶VWF†RÆ—fR6ÆW2ÖÆVFW"†÷FòfÆÆ&6²÷7WÆ–W"&FvRæB&÷FV7FVB6öçG&7G2âVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÆVâÖ6öæf–FVæ6RÖ÷væW"æ§6öæà ¢2235ôÄTåôÔô$”ÄUõ5TÔÔ%’(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3S’ò“C#cCƒc336FS3SƒC“FVFS–S–CF²6†V6¶VB6öFR&VÆV6R6F3&Cƒ&CssƒVF63ƒ#ƒC66csF#Cƒ–S6S3#S–#s&fâ6V&6ƒ2W†6ÇVFW2F†R6ö×ÆWFRÖö&–ÆR×6V&6‚×7VÖÖ'’×cæ§6æB552÷væW'2âF†R7W'&VçBVçG'’÷væW"&W6W'fW2F†Rs‚6V&6‚×7F'B6öÆÆ6RÂF—'G’÷fÆ–FF–öâ&V6÷fW'’æBFW6·F÷&W7F÷&RâF†R&WF—&VB7F–6·’5D÷7VÖÖ'’÷6VçF–æVÂæBGWÆ–6FRö'6W'fW'2&R'6VçC²6æöæ–6Âf–VÆG2æBæF—fR–çWG2&R&WF–æVBâgVÆÂÆVv7’Öæ–fW7Böf–ÆW2&VÖ–âVæ6†ævVBà ¥6¶WBÆöFVB&r¢£c33ssr(i"c#C3(‰#33Cb’¢£²6†&VB552##s“SR(i###3C‚Â6†&VB¥2#Scc3R(i##Cs#SBÂV–v‡B6V&6ƒ2F‡2C“ƒr(i#S#’‚³“C"f÷"&WF–æVBÆ–fV7–6ÆR’âw¦—W7F–ÖFR7&÷72&÷F‚6†&VBVæGö–çB&öF–W2æBV–v‡B–æFWVæFVçBf–ÆW2—23““3B(i#3cƒƒB(‰#3S’âFövWF†W"v—F‚3SbÂF†—2–çfö6F–öâ—2¢£cc#cR(i#c#C3&r(‰#Cc3B’¢¢æBCcS"(i#3cƒƒBw¦—(‰#“c‚’âF†W6R&RÆöFVBF÷FÇ3²F†RV–v‡BÖf–ÆR7V'F÷FÂÆöæR–æ7&V6VBÂ6ò—B—2æ÷B&W÷'FVB2âV–v‡BÖ76WB&VGV7F–öâà ¥6V7W&—G’3CcC“3cc†ÂW†7B'F–f7B3CcC“3cSFæB&VG’&WVB3CcC“ƒs#76VBâ&WW6&ÆR'F–f7B33c3S##&ÂF–vW7B6†#Sc£&cƒ&6VFcs#SC33f##Cc#F&f#F3Cf3#F3ƒ#CsFCƒ–f6&cf#f#f#†VVâ6VÆV7FVBöÆ–fV7–6ÆRWf–FVæ6R33c3C#SVÂ&W7VÇG2öVçG'’Wf–FVæ6R33c3CsVâ&VÂ—6öÆFVB×&÷WFR6‡&öÖ—VÒ76W'F–öç276VB3f÷&Ò7FFW2B3sRósósóscóscóCC†–æ—F–ÂÂ7F'FVBÂfÆ–FF–öâÂF—'G’Â&W6—¦R’Â"6VÆV7FVBÂ"&W7VÇG2æBF‡&VRVçG'’vVöÖWG'’7FFW2âf÷&ÒfÇVW2ö÷&FW"Âf—6–&–Æ—G’÷&V6÷fW'’æB÷fW&fÆ÷r&R6†V6¶VBâF†Rf—'7BæWr6ö×&—6öâW‡÷6VBF†R–çFVçF–öæÆÇ’&VÖ÷fVB‚7F–6·’6VçF–æVÃ²&VfW&Væ6R6æöæ–6Æ—¦F–öâ&VÖ÷fW2öæÇ’F†B&WF—&VBæöFRÂ&W6W'f–ær7G&–7Bf–VÆBöf÷&Ò6ö×&—6öââW†—7F–ær6÷W&6Rõ…÷F‚÷&W6VçFF–öâö—6öÆF–öâwV&G2&VÖ–âVæ&ÆVBâæòÆVB÷"7WÆ–W"&WVW7Bv26VçB'’F†RæWrf—‡GW&Rà ¤6†V6¶VB&VÆV6R—2†VBöbV&Æ—6†VB&Wf–Ws¢æòV&Æ–6F–öâ–âF†—2–çfö6F–öââ&Wf–Wr7F—2B3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6²Ö–â÷&öGV7F–öâ7F’BfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–âÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâÂÖçVÂ67&VVç6†÷G2†'F–f7BF÷væÆöB…EEC2’Â‡—6–6Â6f&’æB6fRÖ&V66WFæ6R&RFVfW'&VBâWFöÖFVB76W'F–öç2&Ræ÷B÷væW"f—7VÂ66WFæ6Rà ¤æW‡C¢VF—BF†R6ö×ÆWFR&–Ö'’ÖÖVÂ×W‚×cæ§6ô552÷væW"ƒs3³#C&r’â—G2ÖVÂ6FÆöwVR’ÆöF–ærÂU$ÂfööB&W7F÷&F–öâæB&W6WB&W6W'fF–öâ&RÆ—fRæB×W7B&VÖ–â–â7W'&VçB÷væW"&Vf÷&RW†6ÇVF–ærö'6öÆWFRV–6²Ö6†ö–6R&W6VçFF–öââFòæ÷B&Æ–æFÇ’&VÖ÷fR—B÷"F†RÆ—fR6ÆW2ÖÆVFW"†÷FòfÆÆ&6²÷7WÆ–W"&FvRâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÆVâÖÖö&–ÆR×7VÖÖ'’æ§6öæà  ¢2235ôÄTåõ$”Ô%•ôÔTÅôõtäU"(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3S"òCc3ƒƒS–3#ƒ3&V#SVcsƒFS#SfFcS&#ƒs6S6F²6†V6¶VB&VÆV6RSsc6CcF6fV##†3ƒCc“†#S†fCcc3#6VFVc6â6V&6ƒ2W†6ÇVFW2F†R6ö×ÆWFR&–Ö'’ÖÖVÂ×W‚×cæ§6æB552÷væW'2âF†R7W'&VçB6FÆör÷væW"W‡÷6W2—G2W†—7F–ærÖVÂÆöFW"ÂæBF†R7W'&VçB6V&6ƒ2f÷&Ò÷væW"ÆöG2—BöâæF—fR×6VÆV7Bfö7W2ÇW2F†RW†—7F–ær&÷VæFVBWFöÖF–2GFV×BÂ&W7F÷&W2fööFg&öÒF†RU$ÂgFW"7–æ6‡&öæ÷W2÷F–öç2'&—fRæB&WF–ç27F'2öÖVÂfÇVW27&÷72F†RÆVv7’FF—F–öæÂÖf–ÇFW"&W6WBâö'6öÆWFRV–6²6†ö–6W2&R'6VçBâF†RgVÆÂÆVv7’Öæ–fW7Böf–ÆW2&VÖ–âVæ6†ævVBà ¤ÆöFVB&r—2¢£c#C3(i"c#’'—FW2(‰#ƒC"’¢£¢6†&VB552##3C(i###‚Â6†&VB¥2#Cs#SN(i##C#BæBV–v‡B6V&6ƒ276WG2S#(i#S“ƒr‚³ƒS‚f÷"&WF–æVB7W'&VçBÖ÷væW"&V†f–÷"’âW†7BVÖ—GFVBVæGö–çBÇW2V–v‡B–æFWVæFVçBÖf–ÆRw¦——2¢£3cƒƒB(i"3CcCb(‰###3‚’¢¢âF†RV–v‡B×F‚–æ7&V6R—2æ÷BÖ—6Æ&VÆVB26f–ærà ¥6V7W&—G’3CcS“c–Â–æ—F–ÂW†7B'F–f7B3CcS“VæB&VG’&WVB3CcS#s3“c676VBâ&WW6&ÆR'F–f7B33“c#3–ÂF–vW7B6†#Sc£s#ccSƒ“ƒCV3cƒƒCv3#3vcVf3&Csc3#&6#“cv&&#3sƒCc3SS“vSƒ†&&V²6VÆV7FVBWf–FVæ6R33“cC#Â&W7VÇG2öVçG'’Wf–FVæ6R33“csƒ–â'&÷w6W"6†V6·26÷fW"66W76–&ÆRæF—fRÖVÂ÷F–öç2ÂU$ÂfÇVR&W7F÷&F–öâæBæò&WF—&VBV–6²6†ö–6W2B3sRósósóscóscóCCÂÇW2F†RW†—7F–ær"6VÆV7FVBæB"&W7VÇB7FFW2âæò7WÆ–W"6V&6‚÷"ÆVBv27V&Ö—GFVBà ¤æòV&Æ–6F–öã¢&Wf–Wr&VÖ–ç23–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6²Ö–â÷&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–âÖçVÂ67&VVç6†÷B–ç7V7F–öâæB‡—6–6Â6f&’÷6fRÖ&V&RFVfW'&VBà ¢2235ôÄTåõ$ÔUDU%ôd”ÅDU%õ$”Â(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R"3SBòVSVc&6#cssF3&S#Scƒ†6c3“3C–3#6F&CSf²6†V6¶VB6öFR&VÆV6R&†fccƒf3F&3“““Ssc&63–FCvSv#f†#c#Câ6V&6ƒ2W†6ÇVFW2F†R6ö×ÆWFR6V&6‚×&×2Öf–ÇFW"×&–Â×cæ§6æB552—#²7W'&VçB6V&6ƒ2f÷&ÒæBE3"FW6·F÷öÖö&–ÆR&W7VÇBÖf–ÇFW"÷væW'2&VÖ–ââF†RgVÆÂÆVv7’&÷WFR&WF–ç2&÷F‚f–ÆW2à ¥F†Rf—'7BW†7B'&÷w6W"'Vâf÷VæB&VÂ†–FFVâFWVæFVæ7“¢6V&6‚Öf–ÇFW'2×W‚×cæ§6FV×÷&&–Ç’Æ6VBF†R†÷FVÂÖ6FVv÷'’f–VÆB–âF†RÆVv7’Ö–âw&–BÂæBF†R&WF—&VB&–ÂÖ÷fVB—B÷WB&Vf÷&RF†R7W'&VçB6V&6ƒ2÷væW"6ÆV&VBF†Bw&–BâF†R7W'&VçBf÷&Ò÷væW"æ÷rW&f÷&×2F†—2öæRW†—7F–ærÖæöFRÖ÷fR&Vf÷&R6ÆV&–ærÆVv7’Ö&·WâF†R7G&–7Bf–VÆBÖ÷&FW"÷fÇVRövVöÖWG'’6ö×&—6öâv2&W6W'fVBæB76VBgFW"F†R&W—"à ¥6¶WBÆöFVB&r—2¢£c#’(i"cSCƒ‚'—FW2(‰#cS3’¢£¢6†&VB552##(i##ƒSƒ’Â6†&VB¥2#C#N(i##3SssBæBV–v‡B6V&6ƒ276WG2S“ƒ~(i#S#R‚³3‚&WF–æVB&V†f–÷"’âw¦——2¢£3CcCb(i"333B(‰#S"’¢¢â6öÖ&–æVBv—F‚3S"ÂF†—2–çfö6F–öâ—2¢£c#C3(i"cSCƒ‚&r(‰#C“C2’¢¢æB¢£3cƒƒB(i"333Bw¦—(‰#3sS’¢¢à ¥6V7W&—G’3Ccc3“ƒ3FÂ–æ—F–ÂW†7B'F–f7B3Ccc3“ƒs&æB&VG’&WVB3CccCC“SS&76VBâ&WW6&ÆR'F–f7B3C3#ƒ“–ÂF–vW7B6†#Sc¦Cv&FcC3ƒ“ƒcVF#““S#vVV3CsfFccf#cFV#3&S“3&SfF6FVcSv&3S“²6VÆV7FVBWf–FVæ6R3C3#s“#vÂ&W7VÇG2öVçG'’Wf–FVæ6R3C3#ƒC#â6‡&öÖ—VÒ76VB3f÷&ÒÆ–fV7–6ÆR7FFW2B3sRósósóscóscóCCÂ"6VÆV7FVB7FFW2æB"&W7VÇB7FFW2âæò&VÂ&WVW7B÷"ÆVBv26VçBà ¥"3S2GFV×FVBv†öÆRG3"×6V&6‚Ö–çG&ò×cæ776W†6ÇW6–öâ'WBW†7B4’f–ÆVBÆÂ"6VÆV7FVB×F÷W"vVöÖWG'’7FFW2â—Bv26Æ÷6VBVæÖW&vVC²—G2&ö¦V7FVB'—FW2&Ræ÷B6÷VçFVBâF†—2&÷fW2F†B÷væW"7F–ÆÂ6öçF–ç2Æ—fR6VÆV7FVB×F÷W"vVöÖWG'’æB×W7Bæ÷B&R&WG&–VB2&Ææ¶WB&VÖ÷fÂà ¤6†V6¶VB&VÆV6R—2†VBöbF†RV&Æ—6†VB&Wf–Wrâ&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6²Ö–â÷&öGV7F–öâ&VÖ–âfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–âÖçVÂ67&VVç6†÷B–ç7V7F–öâÂÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâæB‡—6–6Â6f&’÷6fRÖ&V&RFVfW'&VBâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÆVâ×&–Ö'’ÖÖVÂÖæB×&×2æ§6öæà ¤æW‡C¢VF—B6ö×ÆWFR&W7VÇG2ÖÆ–÷WBÖwV&B×cæ776W†6ÇW6–öâv–ç7BF†R7W'&VçB6&BöG&vW"÷væW'2â&W6W'fRF†RgVÆÂÆVv7’Öæ–fW7BæB&WV—&RW†7B"×7FFR&W7VÇG2ÇW26VÆV7FVBvVöÖWG'’âFòæ÷B&WG'’&Ææ¶WBG3"×6V&6‚Ö–çG&ò×cæ776FVÆWF–öâà  ¢2235ôÄTåôÄTt5•ôuT$E2(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R'23Sbò“6Sv6f&CcƒVC3&6c3ss#c&V##–3S6SfcVF&&Â3SròSc3CVV3S–Sƒƒƒ33fC&Ff&3CC–#33#vfcCF6æB3S#ò##3“#V#“f3fC6V6VCc“†F6&F3F#C##c#²6†V6¶VB6öFR&VÆV6R#ff3Vf&S†#3ff&6ƒv#&CS33&333C“v3f&à ¥6V&6ƒ2W†6ÇVFW2F‡&VR6ö×ÆWFRö'6öÆWFR552÷væW'2v†–ÆRF†RgVÆÂÆVv7’&÷WFR¶VW2F†VÓ ¢Ò&W7VÇG2ÖÆ–÷WBÖwV&B×cæ776¢öÆB6&B÷†÷Fò÷6–FV&"öæ–v‡G2÷fW'&–FW27WW'6VFVB'’7W'&VçB&W7VÇG2ö6&BöÖö&–ÆR÷væW'3°¢Ò6V&6‚Ö†VFW"ÖÆ–÷WBÖwV&B×cæ776¢FW6·F÷6ö×F–&–Æ—G’vVöÖWG'’7WW'6VFVB'’F†R7W'&VçB6†&VB†VFW#°¢ÒG3"×6V&6‚×F&ÆWBÖf–ÇFW'2×cæ776¢s(	3ƒ#‚7G–Æ–ærf÷"F†R†–FFVâÆVv7’FWF–Ç2æW‡G&6²6V&6ƒ2W6W2—G27W'&VçBVÆ—G’w&–Bà ¤æò6ö×Vç6F–öâ6öFRv2FFVBâÆöFVB6V&6ƒ2&r—2¢£cSCƒ‚(i"S“Cc2(‰#C#R’¢¢ÂVçF—&VÇ’66÷VB6†&VB553¢#ƒSƒ(i##scBâ6†&VB¥2&VÖ–ç2#3SssBæBF†RV–v‡BV&Æ–26V&6ƒ2F‡2&VÖ–âW†7FÇ’S#RâW†7BVÖ—GFVBVæGö–çG2ÇW2V–v‡B–æFWVæFVçBf–ÆW2w¦——2¢£333B(i"3CC(‰#c“2’¢¢à ¤V6‚6÷W&6R76VB6V7W&—G’æB&÷F‚–æ—F–Â÷&VG’W†7B'F–f7G3¢6V7W&—G’3CcsCsSƒcÂ3Ccss“SVÂ3CcƒƒsC†²W†7B3CcsCsSƒCf÷&VG’3CcsSss3cÂ3Ccss“Ss6÷&VG’3Ccs“3Cc#–Â3CcƒƒsSv÷&VG’3Ccƒ3#câf–æÂ&WW6&ÆR'F–f7B3C“#ƒ6ÂF–vW7B6†#Sc£“C#3–3cS6c3†FSsSfc3F3S#fS&6663v#C3“†c“3&6SSSƒ36#cf²6VÆV7FVBWf–FVæ6R3C“#C#&Â&W7VÇG2öVçG'’Wf–FVæ6R3C“#c#fà ¤6‡&öÖ—VÒ&WF–æVB"6VÆV7FVBFWF–Â÷&Wf–WröÆVB7FFW2Â"&W7VÇBÖ6&BöG&vW"7FFW2æBF†R6—‚×v–GF‚VçG'’Æ–fV7–6ÆR–æ6ÇVF–ærsósóscóscâæò&VÂ7WÆ–W"&WVW7B÷"ÆVBv26VçBâ67&VVç6†÷G2vW&R&WF–æVB'WBæ÷BÖçVÆÇ’–ç7V7FVBà ¤6†V6¶VB&VÆV6R—2†VBöbV&Æ—6†VB&Wf–Wrâ&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6âGW&–ærf–æÂ6†V6·ö–çF–ærÂÖ–æ–æFWVæFVçFÇ’Gfæ6VBg&öÒfS†6&fF6f3ƒc#FC“†3#CcFfc33VS3–FòCvCf66C33#F6V#FCc“fSS6ff36#–3CƒfF‡&÷Vv‚3S’Âv†–6‚6†ævVBöæÇ’æv—F‡V"÷v÷&¶fÆ÷w2öFWÆ÷’Öç—Fö÷W"ç–ÖÆ²æöæRöbF†W6R6V&6ƒ2'2F&vWFVBÖ–æâæò6V&6ƒ2&öGV7F–öâFWÆ÷–ÖVçBv2W&f÷&ÖVBÂæB&öGV7F–öâ4„v2æ÷B&R×fW&–f–VB–âF†—2–çfö6F–öââÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâÂÖçVÂ67&VVç6†÷B&Wf–WræB‡—6–6Â6f&’÷6fRÖ&V&VÖ–âFVfW'&VBâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÆVâÖÆVv7’ÖwV&G2æ§6öæà ¤æW‡C¢6öÖ&–æR6VÆV7FVB×F÷W"ÖÆ–÷WBÖwV&B×cæ776Â6V&6‚Öfö÷FW"×&‡—F†Ò×cæ776æB6V&6‚×6†VÆÂÖw&–B×cæ776–çFòöæR(šS´"ÆVv7’ÖwV&BVF—BâFòæ÷B÷Vâ6W&FRÖ–7&ò'2â&W6W'fRW†7B6VÆV7FVB÷6†VÆÂöfö÷FW"vVöÖWG'’æBF†RgVÆÂÆVv7’Öæ–fW7Bà ¢2235ôÄTåõ4„TÄÅô4„T4´õUEôõtäU%2(	B6†V6¶VB&VÆV6RÂ##bÓ’Óp ¥6÷W&6R'23S#2òƒ&c&###ƒcFCSFSv&f6&c3C†Vf#sC##Sƒ6væB3S#BòSf3&3CV&FFssCvCsV33f3cs#&c–V3““#–²6†V6¶VB6öFR&VÆV6R6Cƒ6SVC–VFCC3Fcc3“Fcƒ“S“3sfC#–CCVâ6V&6ƒ2æòÆöævW"ÆöG26ö×ÆWFR6V&6‚×6†VÆÂÖw&–B×cæ776Â6V&6‚Öfö÷FW"×&‡—F†Ò×cæ776æB6†V6¶÷WBÖW‡W&–Væ6R×cæ776÷væW'2âF†RgVÆÂÆVv7’&÷WFR&WF–ç2WfW'’f–ÆRâ6VÆV7FVB×F÷W"ÖÆ–÷WBÖwV&B×cæ776&VÖ–ç2ÆöFVB&V6W6RW†7B4’&÷fVBF†B—B7F–ÆÂ÷vç2Æ—fRvVöÖWG'’â6†V6¶÷WB¦f67&—B&VÖ–ç2ÆöFVBà ¤ÆöFVB&r—2¢£S“Cc2(i"SƒCS3b'—FW2(‰#“S#r’¢£¢66÷VB6†&VB552#scN(i#“c“ƒBÂ6†&VB¥2&VÖ–ç2#3SssBæBF†RV–v‡B6V&6ƒ2F‡2S#^(i#Sss‚‚³cS2&WF–æVB7W'&VçBÖ÷væW"'VÆW2’âW†7BVÖ—GFVBVæGö–çG2ÇW2F†RV–v‡B–æFWVæFVçBf–ÆW2w¦——2¢£3CC(i"#“cC‚(‰#s“2’¢¢âF†W6R&RæWB&÷WFRÖÆöFVBF÷FÇ3²G&ç6fW'&VB'VÆW2&R–æ6ÇVFVBà ¢3S#276VB6V7W&—G’3Cc““C#6æBf–æÂW†7B'F–f7B3CscsVâ3S#B76VB6V7W&—G’3CsCc#“s†æBW†7B'F–f7B3CsCc#“s&â&WW6&ÆRf–æÂ'F–f7B3SƒS“#ÂF–vW7B6†#Sc¦&##†cS–#SsCS–CV&6FC3#3S&&“3ƒv3–cCcƒsffcS†Fcfc#VSC–²6VÆV7FVBWf–FVæ6R3SƒSƒ3cVÂ&W7VÇG2öVçG'’Wf–FVæ6R3SƒSƒsCfâW†7B6‡&öÖ—VÒ76VB"6VÆV7FVBFWF–Â÷&Wf–WröÆVB7FFW2B3sRóscóóCCÂ"&W7VÇB7FFW2B3sRóscóscó““’óóCCæBF†RVçG'’Æ–fV7–6ÆRv–GF‡2â–æ—F–Â6†V6¶÷WB×&VÖ÷fÂ'Vç2f–ÆVBöâ6VÆV7FVBvVöÖWG'“²öæÇ’c#b'—FW2öbFVÖöç7G&FVB–ÖvRöfÆ–v‡BöÆVB'VÆW2vW&R&W7F÷&VB–â7W'&VçB÷væW'2âwV&G2vW&Ræ÷BvV¶VæVBà ¤ÖçVÆÇ’–ç7V7FVBf–æÂ7W'&VçB67&VVç6†÷G2f÷"6VÆV7FVBFWF–ÂB3sRÂÆVBVçG'’BCCÂf–ÇFW"G&vW"B3sRæBW‡æFVB&W7VÇB6&BBCCâæòæWr÷fW&fÆ÷r÷"6Æ—–ærv2f÷VæB&VÆF—fRFòF†RW†7B&WF–æVB&6VÆ–æS²F†RC‡‚Öö&–ÆR6VÆV7FVB5D&VÖ–ç2âæò7WÆ–W"&WVW7B÷"ÆVBv26VçBà ¤6†V6¶VB&VÆV6R—2†VBöbV&Æ—6†VB&Wf–Wrâ&Wf–Wr&VÖ–ç2W†7B6÷W&6R3–&s“S#†V&3ƒ3cƒ63–Cv3V&Sc†cƒv#V#6²Ö–â&VÖ–ç2CvCf66C33#F6V#FCc“fSS6ff36#–3CƒfæBv2æ÷B6†ævVB'’F†W6R'2âæò6V&6ƒ2&öGV7F–öâFWÆ÷–ÖVçBö67W'&VBâÆ—fR7W'&VçB×6÷W&6R–çFW&7F–öâÂ‡—6–6Â6f&’÷6fRÖ&VæB÷væW"f—7VÂ66WFæ6R&VÖ–âFVfW'&VBâVF—C¢Fö72÷&ö¦V7B÷6V&6ƒ2ÖÆVâ×6†VÆÂÖ6†V6¶÷WBÖ÷væW'2æ§6öæà ¤æW‡C¢VF—BF†R6ö×ÆWFR6†V6¶÷WBÖW‡W&–Væ6R×cæ§6&W6VçFF–öâ'VçF–ÖRâ&WF–â÷F–öæÂÆVBÖf–VÆBF—66Æ÷7W&RæBç’&WV—&VB6Æ76W2ô$”–â7W'&VçB÷væW'2Â&W6W'fRÆVBG&ç7÷'BæBF†RgVÆÂÆVv7’&÷WFRÂæBW†6ÇVFRF†Rv†öÆR'VçF–ÖRöæÇ’gFW"fö7W6VBÆ–fV7–6ÆRæBW†7B'&÷w6W"4’72à 
