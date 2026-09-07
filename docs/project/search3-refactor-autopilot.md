@@ -66,54 +66,51 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest publication is source9b4303a5, source PR#1425 and isolated deploy#1426.
+The latest publication is source71efd3fe, corrective source#1432; see current checkpoint below.
 Previously checked batches#1422–#1424 are included in this publication.
 New local commands and focused tests succeeded in the subsequent #1422 continuation.
 The earlier rejected direct-HTTP poll was not retried or bypassed.
 
-### Latest checked candidate — review + form layers — 2026-09-06
+### Latest checked and published candidate — native cards and flights — 2026-09-07
 
-Two substantial source PRs#1428/#1429 are integrated into release. Latest code:
-`373821646774a1adc277b8818fc548e87ea17701` (#1429); preceding package:
-`211f792e5d64ee9016a1742c7fa802f6097a3ad1` (#1428).
-Five CSS layers and the live duplicate desktop recap owner were retired in this run.
-Do not repeat these or the twelve historical layers. Compact rules remain in current
-review/base owners; native four-column form, dates/nights, hidden/lifecycle, native
-facts/summary and primary flight/no-flight continue are retained. No protected
-price arithmetic, API, URL/payload, lead transport/mapping, analytics or logo changes.
+Source `71efd3fe4e42987fbd596c0e4d2bba08f785fa5d` (#1432), tree `a5b3994ffe8df4626b2e3fbc0134a89a00368705`.
+Preceding source `857fba4a3768b5647f1f1eb59641c5e372f952ce` (#1430).
+Three substantial presentation block families retired in one batch: old result-card
+geometry, private mobile/tablet microlayout, flight direction class-mutation + its CSS.
+The retained active lifecycle owners are not counted as wholly retired files.
 
-| Eight raw public assets | Before this run | Checked now | Saved |
+| Eight raw assets | Before this run | Final | Saved |
 | --- | ---: | ---: | ---: |
-| CSS | 159173 | 142301 | 16872 |
-| JS | 106754 | 103190 | 3564 |
-| Total | 265927 | 245491 | 20436 |
+| CSS | 142301 | 136248 | 6053 |
+| JS | 103190 | 98891 | 4299 |
+| Total | 245491 | 235139 | 10352 |
 
-Form follow-up alone:253113→245491 (−7622CSS), all four JS byte-identical.
-Across whole-layer continuation:301524→245491 (−56033). No compression/speed claim.
-Both source packages passed required Security+exact artifact CI on their first attempt.
-Latest:Security34068042044, artifact34068042025, exact artifact9999577320,
-sha256:a5fce9e0cefe6672d15e485e564a6ba13aeaf4e57312a844e69caf995417617c.
-Draft standalone owner-policy workflow skipped; required Security contains owner validators.
-One source build per substantial package, no release/docs rebuild or deploy.
-Focused entry scheduler, selected no-flight single activation, presentation utilities,
-active ownership checks and CSS parse passed. PHP/path/presentation/isolation guards
-passed in source CI unchanged. Audits:search3-review-layer-retirement.json and
-search3-form-layer-retirement.json.
+Initial package245491→235657; corrective package235657→235139 (−518CSS, allJS identical).
+JS saving includes embedded CSS. Whole-layer baseline301524→235139 (−66385).
+Previously published267536→235139 (−32397); no compression or speed claim.
 
-**CHECKED RELEASE, NOT PUBLISHED, VISUAL DEFERRED.** Preview remains9b4303a5/#1426;
-main remainsfa58a0cb. No current manual browser capability is exposed. Initial/editing
-768/1440, selected/no-flight, review desktop/tablet/mobile and lead-entry boundaries
-must be inspected at a justified exact-artifact publication. This intentional geometry
-experiment is not a pixel-equivalence or visual-acceptance claim. Earlier browser/artifact
-access denials were not retried/bypassed. Reuse the artifact, keep preview isolation,
-rollback and production fingerprints; do not replay unrelated full-site checks.
+Both mandatory source jobs passed. Final Security34069311162, artifact
+34069311068, artifact9999945885, digest `sha256:494c414b54be8320a3a3120972f11553b763f29ff4f936feca1618dcefc570ee`.
+One build per useful package; no release/docs rebuild. Existing owner/source/PHP/path/
+presentation/isolation guards unchanged. Focused scheduler/primary review-back,
+injection/root/idempotence and mobile toolbar ownership passed.
 
-Next: obtain that focused visual evidence and repair concrete geometry regressions
-in current owners, or roll back the affected experiment. Further layer candidate is
-active injected selected-tour-mobile.css: establish a compact hidden/lead/mobile/tablet
-replacement before whole-layer retirement. No safe whole-owner deletion there is yet
-established. Continue independent authorized work; production acceptance does not
-pause the enabled automation. The older checkpoints below are history.
+Exact isolated preview published through#1433, run34069485080,
+evidence9999985225; source and published candidate now match.
+Actual archive, both controls and all715 files verified before activation; noindex,
+counter0, disabled leads, retained rollback, unchanged production fingerprints confirmed.
+Main staysfa58a0cba6dcfc8624d98c20d64fa06330eae309; production acceptance not granted.
+
+Browser was available through control-browser; the preceding no-browser conclusion
+was inaccurate and superseded here. Initial desktop1363×936 inspection found narrow
+accommodation wrapping, tiny9/7.5px flight details and duplicate tick over price.
+Introduction by the last deletion was not proven. Removed the six-column/nth-position
+and tiny-font rules in their existing owners; kept existing14/12px flight text and
+native selected radio/border. Corrective visual evidence: Corrective Chromium1363x936 screenshots inspected: expanded LUXOR APART facts now have three readable columns without midword accommodation wrap; selected outbound/return airport text14px and secondary12px, duplicate selected tick no longer overlaps72832RUB price. Native radios and next CTA visible.
+Deferred: mobile/tablet widths, physical Safari, live no-flight branch, lead-entry/success/error, full filter/editor/price matrix. No full matrix or visual parity claim.
+Audit: `docs/project/search3-mobile-card-flight-retirement.json`.
+
+Next: Next substantial candidate: audit review-responsive.css mobile/tablet geometry against current selected-flow/review owners, retire duplicate layout only after protecting hidden/lead-shell/primary CTA boundaries. Do not repeat retired17CSS+1JS owner or the3block families and6-column/tiny-font repair. Current mobile/tablet, live no-flight and physical Safari remain deferred. Continue independent permitted work; production acceptance does not pause automation.
 
 ### Latest checked follow-up — review/recap retirement — 2026-09-06
 
@@ -156,7 +153,7 @@ Security and the exact artifact job; no second preview/browser journey or
 release/docs artifact rebuild. Audit: `docs/project/search3-results-layer-retirement.json`.
 Twelve historical CSS layers have now been retired across#1425/#1427; do not repeat those modules or completed minification/dominance/comment/media scans. Published preview remains9b4303a5 with focused desktop evidence; two-layer follow-up source awaits the next justified publication. Preserve remaining shell/hidden/MRF/mobile facts/flex and lead-state fallbacks. No further ready large safe batch is established in this run; further active-layer removal needs concrete state coverage and compact salvage, with mobile/intermediate and lead-state evidence still deferred. Keep one useful source batch/two mandatory CI jobs and artifact reuse. Main/production locked; hourly automation enabled by the latest owner request.
 
-### Current published batch — retire ten whole CSS layers — 2026-09-06
+### Historical published batch — retire ten whole CSS layers — 2026-09-06
 
 The owner explicitly requested a larger approach: delete entire layers and repair
 resulting breakage. This authorizes reversible presentation-layer experiments in
@@ -374,7 +371,7 @@ eval scopes and getter side effects. Disable unsafe arithmetic and cross-stateme
 sequence merging; retain native CSS nesting and the existing browser boundary.
 Readable runtime sources and protected business contracts remain unchanged.
 
-### Current published checkpoint — private CSS, markup and media overlap — 2026-09-06
+### Historical published checkpoint — private CSS, markup and media overlap — 2026-09-06
 
 Source `bff20777468c2a7d41df684dc1902c267adde3cf`, source PRs #1419/#1420; one isolated publication #1421,
 deploy 34060271120 succeeded on attempt 1. Each working draft passed Security and

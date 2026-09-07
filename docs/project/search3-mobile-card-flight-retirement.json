@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "PUBLISHED_INITIAL_BATCH_DESKTOP_DEFECT_REPAIR_PREPARED",
+  "stage": "CHECKED_AND_PUBLISHED_CORRECTED_DESKTOP_MOBILE_DEFERRED",
   "base_release_sha": "cca1d56605db6260071dfe2ff24ed8f46b437b21",
   "published_preview_source_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
   "scope": "Three substantial obsolete presentation block families retired in one batch; retained active lifecycle owners are not claimed fully retired.",
@@ -120,7 +120,7 @@
   },
   "preview_updated": true,
   "production_updated": false,
-  "next_action": "Finish mandatory source CI and reuse repair artifact for isolated corrective publication; inspect only repaired row/flight text. Then audit remaining review-responsive mobile geometry against current review owner; protect hidden/lead/CTA boundaries. Mobile/Safari/no-flight/full matrix deferred.",
+  "next_action": "Next substantial candidate: audit review-responsive.css mobile/tablet geometry against current selected-flow/review owners, retire duplicate layout only after protecting hidden/lead-shell/primary CTA boundaries. Do not repeat retired17CSS+1JS owner or the3block families and6-column/tiny-font repair. Current mobile/tablet, live no-flight and physical Safari remain deferred. Continue independent permitted work; production acceptance does not pause automation.",
   "implementation_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
   "preview_publication": {
     "control_pr": 1431,
@@ -137,7 +137,7 @@
   },
   "repair": {
     "base_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
-    "status": "SOURCE_PREPARED_CI_PENDING",
+    "status": "CHECKED_AND_PUBLISHED",
     "changes": [
       "Remove six-column/nth-position microlayout in hotel-packages; three flexible columns",
       "Remove9/7.5px flight text overrides in convergence; existing selected-flow14/12px owner applies",
@@ -195,6 +195,62 @@
       "mobile toolbar ownership PASS",
       "CSS parse/diffcheck PASS"
     ],
-    "visual": "PENDING corrective publication"
-  }
+    "visual": {
+      "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+      "viewport": [
+        1363,
+        936
+      ],
+      "verified_at": "2026-09-07T00:22:33.879812+00:00",
+      "summary": "Corrective Chromium1363x936 screenshots inspected: expanded LUXOR APART facts now have three readable columns without midword accommodation wrap; selected outbound/return airport text14px and secondary12px, duplicate selected tick no longer overlaps72832RUB price. Native radios and next CTA visible.",
+      "expanded_card_screenshot_inspected": true,
+      "selected_flight_screenshot_inspected": true,
+      "hotels": 97,
+      "tours": 515,
+      "hotel": "LUXOR APART",
+      "price_rub": 72832,
+      "real_lead_submitted": false,
+      "full_matrix_run": false,
+      "deferred": [
+        "mobile/tablet widths",
+        "physical Safari",
+        "live no-flight branch",
+        "lead-entry/success/error",
+        "full filter/editor/price matrix"
+      ],
+      "earlier_source_evidence": {
+        "source_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
+        "states": [
+          "initial form",
+          "results/expanded card",
+          "selected flight",
+          "review/back"
+        ],
+        "findings_corrected": true
+      }
+    },
+    "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+    "source_tree": "a5b3994ffe8df4626b2e3fbc0134a89a00368705",
+    "source_pr": 1432,
+    "ci": {
+      "security_run": 34069311162,
+      "artifact_run": 34069311068,
+      "artifact_id": 9999945885,
+      "artifact_digest": "sha256:494c414b54be8320a3a3120972f11553b763f29ff4f936feca1618dcefc570ee",
+      "archive_sha256": "c400293d3d02a5cd4fb0ee654c861d271e24033c852c4093b54b391525ab5b9a",
+      "manifest_sha256": "2329fea78d1113abe4dc5893c700f98541145b595ec7b07b9107a14066e32e2e",
+      "payload_sha256": "62c6191b5ab628a24b05e112df10e96ee942174778f64c1797073f014b892376",
+      "conclusion": "success"
+    },
+    "publication": {
+      "deploy_pr": 1433,
+      "deploy_run": 34069485080,
+      "control_sha": "23f0d3ce059f11d7b32e85aa5a2fe202cc1b187c",
+      "deployment_evidence_artifact": 9999985225,
+      "deployment_evidence_digest": "sha256:83c91132587677f62aece10e71301e6926298ed99f9e8dba32f01ec9daec991a",
+      "conclusion": "success"
+    }
+  },
+  "latest_published_source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+  "verified_at": "2026-09-07T00:22:33.904891+00:00"
 }
