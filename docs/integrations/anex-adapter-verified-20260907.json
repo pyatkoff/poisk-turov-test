@@ -1,0 +1,238 @@
+{
+  "adapter_requests": 5,
+  "checked_at": "2026-09-07T17:13:22.9598912Z",
+  "checks": [
+    {
+      "check": "api_townfroms",
+      "count": 77,
+      "elapsed_ms": 138,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_states",
+      "count": 53,
+      "elapsed_ms": 76,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_checkin",
+      "elapsed_ms": 1617,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_currencies",
+      "count": 2,
+      "elapsed_ms": 216,
+      "http_status": 200,
+      "status": "ok"
+    },
+    {
+      "check": "api_nights",
+      "elapsed_ms": 127,
+      "http_status": 200,
+      "status": "ok"
+    }
+  ],
+  "expanded_offers": 18,
+  "external_search_pending": false,
+  "flights": {
+    "final_price_verified": false,
+    "itinerary_details_available": false,
+    "option_count": 2,
+    "route_count": 2,
+    "routes": [
+      {
+        "date": "20260914",
+        "from": "Москва",
+        "options": [
+          {
+            "arrival": {
+              "airport": null,
+              "airport_code": null,
+              "time": null
+            },
+            "carrier": null,
+            "classes": [
+              {
+                "availability": "Y",
+                "baggage": null,
+                "hand_baggage": null,
+                "infant_baggage": null,
+                "name": null
+              },
+              {
+                "availability": "N",
+                "baggage": null,
+                "hand_baggage": null,
+                "infant_baggage": null,
+                "name": null
+              },
+              {
+                "availability": "N",
+                "baggage": null,
+                "hand_baggage": null,
+                "infant_baggage": null,
+                "name": null
+              },
+              {
+                "availability": "N",
+                "baggage": null,
+                "hand_baggage": null,
+                "infant_baggage": null,
+                "name": null
+              }
+            ],
+            "departure": {
+              "airport": null,
+              "airport_code": null,
+              "time": null
+            },
+            "name": "Регулярный",
+            "transport_type": null
+          }
+        ],
+        "to": "Шарм Эль Шейх"
+      },
+      {
+        "date": "20260921",
+        "from": "Шарм Эль Шейх",
+        "options": [
+          {
+            "arrival": {
+              "airport": null,
+              "airport_code": null,
+              "time": null
+            },
+            "carrier": null,
+            "classes": [
+              {
+                "availability": "Y",
+                "baggage": null,
+                "hand_baggage": null,
+                "infant_baggage": null,
+                "name": null
+              },
+              {
+                "availability": "N",
+                "baggage": null,
+                "hand_baggage": null,
+                "infant_baggage": null,
+                "name": null
+              },
+              {
+                "availability": "N",
+                "baggage": null,
+                "hand_baggage": null,
+                "infant_baggage": null,
+                "name": null
+              },
+              {
+                "availability": "N",
+                "baggage": null,
+                "hand_baggage": null,
+                "infant_baggage": null,
+                "name": null
+              }
+            ],
+            "departure": {
+              "airport": null,
+              "airport_code": null,
+              "time": null
+            },
+            "name": "Регулярный",
+            "transport_type": null
+          }
+        ],
+        "to": "Москва"
+      }
+    ],
+    "selected": false,
+    "status": "ok"
+  },
+  "hotel_filter_fallback": true,
+  "mode": "adapter",
+  "ok": true,
+  "price_hotel_card_id_agrees": true,
+  "rejected_count": 0,
+  "run_url": "https://github.com/pyatkoff/poisk-turov-test/actions/runs/34146672980",
+  "samples": [
+    {
+      "anex_hotel_id": 5844,
+      "checkin": "2026-09-14",
+      "checkout": "2026-09-21",
+      "converted_price": {
+        "amount": "112681",
+        "currency": "RUB"
+      },
+      "final_price_verified": false,
+      "hotel": "Swiss Heaven Sharming Inn Hotel",
+      "kind": "concrete",
+      "local_hotel_id": null,
+      "meal": "AI",
+      "nights": 7,
+      "price": {
+        "amount": "1222",
+        "currency": "USD"
+      },
+      "room": "Standard Room",
+      "supplier_booking_flag": true
+    },
+    {
+      "anex_hotel_id": 5844,
+      "checkin": "2026-09-14",
+      "checkout": "2026-09-21",
+      "converted_price": {
+        "amount": "113695",
+        "currency": "RUB"
+      },
+      "final_price_verified": false,
+      "hotel": "Swiss Heaven Sharming Inn Hotel",
+      "kind": "concrete",
+      "local_hotel_id": null,
+      "meal": "AI",
+      "nights": 7,
+      "price": {
+        "amount": "1233",
+        "currency": "USD"
+      },
+      "room": "Standard Room",
+      "supplier_booking_flag": true
+    },
+    {
+      "anex_hotel_id": 5844,
+      "checkin": "2026-09-14",
+      "checkout": "2026-09-21",
+      "converted_price": {
+        "amount": "116185",
+        "currency": "RUB"
+      },
+      "final_price_verified": false,
+      "hotel": "Swiss Heaven Sharming Inn Hotel",
+      "kind": "concrete",
+      "local_hotel_id": null,
+      "meal": "AI",
+      "nights": 7,
+      "price": {
+        "amount": "1260",
+        "currency": "USD"
+      },
+      "room": "Pool View Room",
+      "supplier_booking_flag": true
+    }
+  ],
+  "search": {
+    "adults": 2,
+    "checkin": "20260914",
+    "children": 0,
+    "departure": "Москва",
+    "destination": "Египет",
+    "nights": 7
+  },
+  "search_mapped": 0,
+  "search_offers": 161,
+  "source_sha": "51c25555d5b797925c1aab21b5954397237016fa",
+  "status": "ok"
+}

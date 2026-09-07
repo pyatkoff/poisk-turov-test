@@ -76,6 +76,56 @@ with the existing diagnostic evidence from draft #1484. Source changes are held
 in `feature/anex-search-adapter-20260907`; no merge, preview publication or
 production deployment is part of this batch.
 
+## Verified result: 2026-09-07T17:13:22.9598912Z
+
+[Adapter run 34146672980](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34146672980)
+passed on exact source `51c25555d5b797925c1aab21b5954397237016fa`.
+[Security guard](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34146676080)
+passed on the same source. PHP syntax and all four focused smoke suites passed:
+identity registry (159 assertions), client (13 cases), normalizer and integrated
+search/expansion/flight handling. All 34 Python tests passed in the same job.
+
+The live selection was Moscow to Egypt, departure 2026-09-14, seven nights,
+two adults, no children. The initial filter for the three Egyptian pilot hotel
+IDs returned no usable offers for that selection; the documented single fallback
+removed this hotel filter. It returned 161 normalized search rows, with zero
+rejected rows and no external dynamic search pending. Expanding one hotel group
+returned 18 concrete proposals. All remained unmapped to the five-entry preview
+registry; no fallback to supplier IDs or unreviewed name matching occurred.
+
+| Hotel / room / meal | ANEX hotel ID | Search amount | Supplier conversion |
+| --- | ---: | --- | --- |
+| Swiss Heaven Sharming Inn Hotel / Standard Room / AI | 5844 | 1222 USD | 112681 RUB |
+| Swiss Heaven Sharming Inn Hotel / Standard Room / AI | 5844 | 1233 USD | 113695 RUB |
+| Swiss Heaven Sharming Inn Hotel / Pool View Room / AI | 5844 | 1260 USD | 116185 RUB |
+
+`Hotels_DETAILS(5844).id` agreed with the selected `PRICES.hotelKey`. The three
+shown proposals had the supplier booking flag enabled; their native offer IDs
+are intentionally not published. Similar visible descriptions do not establish
+duplicate offers. Amounts are the response at the recorded time, not final quotes.
+
+Flight inventory returned two directions (Moscow–Sharm El Sheikh and return),
+one option per direction named `Регулярный`. Documented `yesplace/noplace`
+statuses now survive as Y/N. The normalized result has no actual flight number,
+carrier, airports, times or baggage for this selection, and
+`itinerary_details_available=false`. This does not establish why details were
+absent from the adapter result or whether another flight selection would expose
+them. No flight was selected and no final price or baggage inclusion was claimed.
+
+The check made five dictionary requests through the proven diagnostic transport
+and five requests through the new PHP client (initial search, fallback search,
+group expansion, hotel card, flight inventory). No booking, DB write or server
+file change occurred. Existing live local-hotel attachment remains unverified:
+the registry behavior is covered by focused tests, while this live run validates
+the unmapped path. A follow-up should match an actually returned hotel such as
+5844 before demonstrating an existing AnyTour card with a live ANEX offer.
+
+[Final sanitized evidence](anex-adapter-verified-20260907.json) and
+[first-run evidence](anex-adapter-first-run-20260907.json) are retained. The first
+run already proved search and expansion; source review then corrected the
+documented flight-status strings and numeric baggage handling before the final
+run. No supplier raw bodies or tokens are stored in these evidence files.
+
 ## Remaining product steps
 
 1. Resolve remaining mapping candidates and grow a measured mapping cohort.
