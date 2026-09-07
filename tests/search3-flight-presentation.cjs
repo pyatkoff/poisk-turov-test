@@ -3,12 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const source = fs.readFileSync(path.join(__dirname, '../v2/search3-results-filters-v1.js'), 'utf8');
-const bundledIife = require('./search3-bundle-iife.cjs');
-const context = { window: {} };
-vm.runInNewContext(bundledIife(source, { global: 'Search3FlightPresentation' })
-  + bundledIife(source, { global: 'Search3PresentationText' }), context);
-const helper = context.window.Search3FlightPresentation;
+const source = fs.readFileSync(path.join(__dirname, '../src/search3/behavior/booking/format.js'), 'utf8');
+const context = {};
+vm.runInNewContext(source, context);
+const helper = { placeholder: context.placeholder, flightLabel: context.supplierFlightLabel, baggage: context.flightBaggage };
 const segment = (changes = {}) => ({
   company: { name: 'Аэрофлот' }, number: 'SU000',
   departure: { time: '00:00' }, arrival: { time: '00:00' },

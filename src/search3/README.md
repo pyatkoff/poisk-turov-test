@@ -93,7 +93,7 @@ separate cascade evidence.
 | Results header and summary | `behavior/results-presentation.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
 | Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/results-cards-v2.css` |
 | Selected tour and mobile action | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
-| Flight labels and display-only price parsing | `behavior/presentation-text.js`, `behavior/flight-price-presentation.js` |
+| Flight labels and display-only price parsing | `behavior/booking/format.js` inside `booking-summary.js`, `behavior/flight-price-presentation.js` |
 | Summary and handoff | `behavior/booking-summary.js`, `behavior/results-presentation.js` |
 | Selected services and tourists | `behavior/booking/services.js`, inside the booking summary owner |
 | Final review actions and responsive layout | `behavior/summary-cta.js`, `styles/review-layout.css`; `styles/review.css` is retired |
@@ -206,7 +206,9 @@ elements and unequal-specificity alternatives were excluded. The audit is in
 `booking-summary.js` coalesces tour/flight/price/layout events into one deferred
 update; full render includes layout and consumes the latest values.
 Its private `booking/services.js` uses the same selected tour, flight, numeric
-formatters and queue. Tour/flight events request both sections; price-only and
+formatters and queue. Its private `booking/format.js` owns the text, escaping,
+place, party, flight-label and baggage helpers; the standalone presentation-text
+and flight-presentation slots retain provenance only. Tour/flight events request both sections; price-only and
 lead-success events rebuild only the summary, and stage events keep layout-only
 behavior. Services still render if the lead form is absent. The standalone
 `final-sections.js` state/listeners are retired. Compiled regressions preserve

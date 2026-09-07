@@ -2,14 +2,14 @@
 
 /* donor:search3-booking-summary.js @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
 (function(){'use strict';
+/* @include behavior/booking/format.js */
 const summaryClass='search3-booking-summary';
 let lastTour=null,lastFlight=null,selectedTotal=0;
-const {esc,text,people,place}=window.Search3PresentationText;
 function number(v){if(v&&typeof v==='object'&&v.value!==undefined)v=v.value;const n=Number(v||0);return Number.isFinite(n)?n:0;}
 function money(v){const n=number(v);return n>0?new Intl.NumberFormat('ru-RU').format(n)+' ₽':'—';}
 function meal(t){return text(t&&t.meal)||'—';}
 function operator(t){return text(t&&t.operator)||'—';}
-function flightLabel(v){const root=document.getElementById('selectedTour'),pending=root&&root.classList.contains('search3-lead-entry')&&!v;return window.Search3FlightPresentation.flightLabel(v,pending?'Рейс уточнит менеджер':'Выберите рейс');}
+function flightLabel(v){const root=document.getElementById('selectedTour'),pending=root&&root.classList.contains('search3-lead-entry')&&!v;return supplierFlightLabel(v,pending?'Рейс уточнит менеджер':'Выберите рейс');}
 function normalizedTotal(detail){const d=detail||{},tour=d.tour||lastTour||{};if(d.pricePending)return number(d.basePrice)||number(tour.price);return number(d.price)||number(d.basePrice)||number(tour.price);}
 function detailRow(label,value){return '<div><dt>'+label+'</dt><dd>'+value+'</dd></div>';}
 function summaryHtml(t){const h=t&&t.hotel||{};const pic=t&&t.picture||h.picturelink||'';return ('<aside class="'+summaryClass+'" aria-label="Ваш тур">')+

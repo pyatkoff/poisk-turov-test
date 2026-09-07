@@ -39,9 +39,7 @@ function fixture() {
     getElementById(id) { assert.equal(id, 'selectedTour'); return tourRoot ? root : null; },
     createElement(tag) { assert.equal(tag, 'div'); return { className: '', innerHTML: '', remove() { services = null; } }; }
   };
-  const sources = [iife(bundle, { global: 'Search3PresentationText' }), iife(bundle, { global: 'Search3FlightPresentation' }),
-    iife(bundle, { global: 'Search3BookingSummary' }), iife(bundle, { literal: 'search3-final-' })];
-  vm.runInNewContext([...new Set(sources)].join('\n'), { window, document, setTimeout(fn) { timers.push(fn); } });
+  vm.runInNewContext(iife(bundle, { global: 'Search3BookingSummary' }), { window, document, setTimeout(fn) { timers.push(fn); } });
   return {
     window,
     emit(name, detail) { for (const fn of events.get(name) || []) fn({ detail }); },
