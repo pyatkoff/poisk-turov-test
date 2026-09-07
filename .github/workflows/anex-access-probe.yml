@@ -15,6 +15,8 @@ on:
       - 'scripts/diagnostics/anex_adapter_runner.php'
       - 'scripts/diagnostics/anex_full_catalog_probe.py'
       - 'scripts/diagnostics/anex_geo_enrichment.py'
+      - 'scripts/diagnostics/anex_geo_checkpoint_restore.py'
+      - 'tests/anex_geo_enrichment_test.py'
       - 'scripts/diagnostics/anex_catalog_bulk_reader.php'
       - 'app/integrations/**'
       - 'tests/anex-*-smoke.php'
@@ -23,10 +25,11 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: anytour-anex-access-probe
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   verify-access:
@@ -55,6 +58,11 @@ jobs:
           php tests/anex-client-smoke.php
           php tests/anex-normalizer-smoke.php
           php tests/anex-search-smoke.php
+      - name: Restore cumulative hotel enrichment checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_geo_checkpoint_restore.py
       - name: Download full ANEX hotel reference and match the AnyTour catalogue
         env:
           ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}

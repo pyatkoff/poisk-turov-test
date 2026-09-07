@@ -4,6 +4,45 @@ Loaded after the access, pilot matching and full-catalog helpers.
 """
 
 
+import hashlib
+
+
+def geo_fingerprint(match):
+    fields = [match.get(k, "") for k in ("external_id", "name", "alternate_name", "country", "town")]
+    return hashlib.sha256(json.dumps(fields, ensure_ascii=False).encode()).hexdigest()[:24]
+
+
+def load_geo_checkpoint(directory):
+    path = Path(directory) / "anex-hotel-geo-enrichment.json"
+    if not path.exists():
+        return {"rows": []}
+    checkpoint = json.loads(path.read_text(encoding="utf-8"))
+    if checkpoint.get("schema_version") not in (1, 2) or not isinstance(checkpoint.get("rows"), list):
+        raise ValueError("invalid geographic checkpoint")
+    if checkpoint["schema_version"] == 1:
+        previous = json.loads((Path(directory) / "anex-hotel-catalog-match.json").read_text(encoding="utf-8"))
+        matches = {r["external_id"]: r for r in previous["matches"]}
+        for row in checkpoint["rows"]:
+            row["fingerprint"] = geo_fingerprint(matches[row["external_id"]])
+    identifiers = set()
+    for row in checkpoint["rows"]:
+        identifier = row.get("external_id")
+        if (type(identifier) is not int or identifier <= 0 or identifier in identifiers
+                or not re.fullmatch(r"[0-9a-f]{24}", row.get("fingerprint", ""))):
+            raise ValueError("invalid geographic checkpoint row")
+        identifiers.add(identifier)
+    return checkpoint
+
+
+def merge_geo_checkpoint(previous, batch):
+    rows = {r["external_id"]: r for r in previous["rows"]}
+    rows.update({r["external_id"]: r for r in batch["rows"]})
+    return dict(batch, rows=[rows[key] for key in sorted(rows)], processed_total=len(rows),
+                counts={s: sum(r["status"] == s for r in rows.values())
+                        for s in ("strong_candidate", "review", "unmatched")},
+                batch_counts=batch["counts"])
+
+
 def geo_decision(api, candidates, relation):
     if relation != "same_record":
         return "review", "supplier_identity_unverified"
@@ -29,17 +68,23 @@ def geo_decision(api, candidates, relation):
 
 
 def enrich_geo_sample(tokens, matches, hotels):
-    # Ten deterministic review records: reproducible pilot, not a full queue pass.
-    selected = sorted((r for r in matches if r["status"] == "review"),
-                      key=lambda r: r["external_id"])[:10]
+    completed = tokens.get("geo_completed", {})
+    pending = sorted((r for r in matches if r["status"] == "review"
+                      and completed.get(str(r["external_id"])) != geo_fingerprint(r)),
+                     key=lambda r: r["external_id"])
+    selected = pending[:30]
+    deadline = time.monotonic() + 240
     xml_by_id = {positive_id({"id": h.get("inc")}): h for h in hotels}
     rows, checks = [], []
     for match in selected:
+        if time.monotonic() >= deadline:
+            break
         identifier = match["external_id"]
         raw = xml_by_id.get(identifier, {})
         xml = {"id": identifier, "name": match["name"], "alternate_name": match["alternate_name"],
                "town_id": positive_id({"id": raw.get("town")})}
-        row = {"external_id": identifier, "original_status": match["status"], "xml": xml,
+        row = {"external_id": identifier, "fingerprint": geo_fingerprint(match),
+               "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(), "original_status": match["status"], "xml": xml,
                "status": "review", "reason": "details_unavailable", "candidates": []}
         rows.append(row)
         try:
@@ -69,6 +114,7 @@ def enrich_geo_sample(tokens, matches, hotels):
             row["candidates"] = candidates
         except StopProbe:
             continue
-    return {"schema_version": 1, "preview_only": True, "selection": "first_10_review_by_external_id",
+    return {"schema_version": 2, "preview_only": True, "selection": "pending_review_by_external_id",
+            "remaining": len(pending) - len(rows), "batch_limit": 30,
             "selected": len(rows), "counts": {s: sum(r["status"] == s for r in rows)
             for s in ("strong_candidate", "review", "unmatched")}, "rows": rows}

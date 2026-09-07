@@ -108,21 +108,36 @@ assumes that an XML hotel ID is also an `anex_online` hotel ID. The CSV is
 bounded, digest-checked, duplicate-rejecting and sorted by numeric external ID,
 so regenerating it from the same evidence is idempotent.
 
-### Bounded geographic enrichment pilot
+### Resumable geographic enrichment
 
-The catalog diagnostic additionally reads Online `Hotels_DETAILS` for the first
-10 XML review IDs in ascending order. It checks XML/Online ID, name, town ID
+The catalog diagnostic additionally reads Online `Hotels_DETAILS` for up to
+30 pending XML review IDs in ascending order, with a 240-second batch deadline. It checks XML/Online ID, name, town ID
 and known country consistency before using details. AnyTour candidates are
 read in read-only transactions; addresses and coordinates are retained in the
 separate `anex-hotel-geo-enrichment.json` Actions artifact. Address equality is
 supporting evidence only. No mappings are applied and exact-pass counts remain
-unchanged. Results are not a full-queue coverage estimate.
+unchanged. Results are not a full-queue coverage estimate; `remaining` reports the current review queue still awaiting a first pass.
 
 `strong_candidate` requires matching known countries, name similarity >=0.90,
 distance <=200m, no competing score within 0.10, no recognized section-name
 difference, and fewer than the enrichment reader limit of 64 candidates (the original pilot retains eight). This remains
 a review proposal, not proof of identity: shared complex coordinates, omitted
 section names and candidate retrieval limits can still hide ambiguity.
-Missing details and supplier-namespace conflicts remain in review. This pilot
-makes at most ten detail calls; it does not implement a resumable whole-catalog
-cache. Room categories and property area are not used without verified fields.
+Missing details and supplier-namespace conflicts remain in review. Each run
+restores the last successful same-branch workflow artifact and merges its new
+rows into cumulative JSON and `anex-hotel-geo-review.csv`. The schema-1 pilot
+is migrated using its accompanying full-catalog snapshot. A fingerprint of XML
+ID/name/alternate name/country/town skips previously attempted unchanged rows;
+changed reference records are checked again. Historical rows retain their
+check time and do not constitute current production identity approvals.
+
+Failed lookups remain visible for a separate retry pass; ordinary continuation
+does not retry them or refresh changed local AnyTour details. `processed_total`
+means unique attempted IDs, including failed lookups. Aggregate counts cover
+saved history; `remaining` covers the fresh review queue. No schedule or
+self-dispatch is installed: a workflow invocation processes the next batch.
+Actions artifacts expire after 30 days. Missing/expired/corrupt checkpoints
+stop continuation instead of silently restarting. Concurrency is serialized
+without cancelling an active batch. A failed batch can be retried from the
+last successful checkpoint. Room categories and property area are not used
+without verified fields.

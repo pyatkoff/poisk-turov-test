@@ -518,6 +518,9 @@ def ssh_probe():
         encoded = base64.b64encode(zlib.compress(source.encode("utf-8"))).decode("ascii")
         source = "import base64,zlib;exec(zlib.decompress(base64.b64decode(" + repr(encoded) + ")))"
     if catalog:
+        artifact_dir = os.environ.get("ANEX_CATALOG_ARTIFACT_DIR", "").strip()
+        checkpoint = load_geo_checkpoint(artifact_dir) if artifact_dir else {"rows": []}
+        tokens["geo_completed"] = {str(r["external_id"]): r["fingerprint"] for r in checkpoint["rows"]}
         source = source.rsplit('\nif __name__ == "__main__":', 1)[0]
         source += "\n" + Path(__file__).with_name("anex_full_catalog_probe.py").read_text(encoding="utf-8")
         source += "\n" + Path(__file__).with_name("anex_hotel_match_probe.py").read_text(encoding="utf-8")
@@ -543,8 +546,11 @@ def ssh_probe():
             + " --remote" + (" --catalog" if catalog else " --adapter" if adapter else " --hotels" if hotels else " --prices" if prices else ""),
         ]
         child_env = {k: v for k, v in os.environ.items() if k not in names}
+        payload = json.dumps(tokens)
+        if len(payload) >= 1_048_576:
+            raise ValueError("checkpoint request exceeds input budget")
         try:
-            completed = subprocess.run(command, input=json.dumps(tokens), text=True,
+            completed = subprocess.run(command, input=payload, text=True,
                                        capture_output=True, timeout=900 if catalog else 290 if prices or hotels or adapter else 110, env=child_env)
         except subprocess.TimeoutExpired:
             return {"ok": False, "checks": [{"check": "ssh", "status": "ssh_timeout"}]}
@@ -557,7 +563,8 @@ def ssh_probe():
             return {"ok": False, "checks": [{"check": "ssh", "status": status}]}
         report = json.loads(completed.stdout)
         if catalog:
-            artifact_dir = os.environ.get("ANEX_CATALOG_ARTIFACT_DIR", "").strip()
+            if report.get("geo_enrichment") is not None:
+                report["geo_enrichment"] = merge_geo_checkpoint(checkpoint, report["geo_enrichment"])
             if report.get("ok") and artifact_dir:
                 save_full_catalog_artifacts(report, artifact_dir)
             report = catalog_summary(report)
@@ -576,8 +583,10 @@ def main():
             exec(Path(__file__).with_name("anex_adapter_probe.py").read_text(encoding="utf-8"), globals())
         if "--catalog" in sys.argv and "remote_full_catalog_probe" not in globals():
             exec(Path(__file__).with_name("anex_full_catalog_probe.py").read_text(encoding="utf-8"), globals())
+        if "--catalog" in sys.argv and "load_geo_checkpoint" not in globals():
+            exec(Path(__file__).with_name("anex_geo_enrichment.py").read_text(encoding="utf-8"), globals())
         remote = remote_full_catalog_probe if "--catalog" in sys.argv else remote_adapter_probe if "--adapter" in sys.argv else remote_hotel_probe if "--hotels" in sys.argv else remote_price_probe if "--prices" in sys.argv else remote_probe
-        report = remote(json.loads(sys.stdin.read(16_384))) if "--remote" in sys.argv else ssh_probe()
+        report = remote(json.loads(sys.stdin.read(1_048_576))) if "--remote" in sys.argv else ssh_probe()
         if "--catalog" not in sys.argv:
             report = clean_report(report)
     except Exception:

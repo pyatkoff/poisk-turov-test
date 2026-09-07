@@ -36,8 +36,43 @@ class GeoTest(unittest.TestCase):
         matches = [dict(self.match,external_id=i) for i in range(1,41)]
         with patch.object(probe,'api_data',side_effect=probe.StopProbe) as fetch:
             report = probe.enrich_geo_sample({'ANEX_API_TOKEN':'test'},matches,[])
-        self.assertEqual(fetch.call_count,10)
-        self.assertEqual(report['selected'],10)
+        self.assertEqual(fetch.call_count,30)
+        self.assertEqual(report['selected'],30)
+        self.assertEqual(report['remaining'],10)
+
+class ResumeTest(unittest.TestCase):
+    def test_skips_prior_and_rechecks_changed_record(self):
+        matches = [dict(external_id=i, name='Hotel', alternate_name='', country='Turkey', town='Kas', status='review') for i in range(1, 4)]
+        completed = {str(r['external_id']): probe.geo_fingerprint(r) for r in matches[:2]}
+        matches[0]['town'] = 'Kemer'
+        with patch.object(probe,'api_data',side_effect=probe.StopProbe) as fetch:
+            batch = probe.enrich_geo_sample({'ANEX_API_TOKEN':'test','geo_completed':completed},matches,[])
+        self.assertEqual([r['external_id'] for r in batch['rows']], [1,3])
+        self.assertEqual(batch['remaining'],0)
+    def test_merge_retains_previous_and_replaces_rechecked(self):
+        previous = {'rows':[{'external_id':1,'status':'review'},{'external_id':2,'status':'review'}]}
+        batch = {'rows':[{'external_id':1,'status':'strong_candidate'}],'counts':{'strong_candidate':1},'remaining':0}
+        merged = probe.merge_geo_checkpoint(previous,batch)
+        self.assertEqual(merged['processed_total'],2)
+        self.assertEqual(merged['counts']['strong_candidate'],1)
+        self.assertEqual(merged['counts']['review'],1)
+    def test_checkpoint_migration_and_corruption(self):
+        import tempfile,json
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as temp:
+            p = Path(temp)
+            (p/'anex-hotel-geo-enrichment.json').write_text(json.dumps({'schema_version':1,'rows':[{'external_id':1,'status':'review'}]}))
+            (p/'anex-hotel-catalog-match.json').write_text(json.dumps({'matches':[{'external_id':1,'name':'Hotel'}]}))
+            loaded = probe.load_geo_checkpoint(temp)
+            self.assertEqual(loaded['rows'][0]['fingerprint'],probe.geo_fingerprint({'external_id':1,'name':'Hotel'}))
+            (p/'anex-hotel-geo-enrichment.json').write_text('{}')
+            with self.assertRaises(ValueError): probe.load_geo_checkpoint(temp)
+    def test_deadline_preserves_remaining(self):
+        match = {'external_id':1,'status':'review'}
+        with patch.object(probe.time,'monotonic',side_effect=[0,241]), patch.object(probe,'api_data') as fetch:
+            batch = probe.enrich_geo_sample({'ANEX_API_TOKEN':'test'},[match],[])
+        fetch.assert_not_called()
+        self.assertEqual(batch['remaining'],1)
 
 if __name__ == '__main__':
     unittest.main()

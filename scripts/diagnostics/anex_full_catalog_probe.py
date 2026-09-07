@@ -280,6 +280,13 @@ def save_full_catalog_artifacts(report, directory):
     (directory / "anex-hotel-catalog-match.json").write_text(json.dumps(safe, ensure_ascii=False, indent=2) + "\n")
     if report.get("geo_enrichment") is not None:
         (directory / "anex-hotel-geo-enrichment.json").write_text(json.dumps(report["geo_enrichment"], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        with (directory / "anex-hotel-geo-review.csv").open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(["anex_id", "anex_name", "status", "reason", "candidate_id", "candidate_name", "distance_m", "name_similarity"])
+            for row in report["geo_enrichment"]["rows"]:
+                best = (row["candidates"] or [{}])[0]
+                writer.writerow([row["external_id"], row["xml"]["name"], row["status"], row["reason"],
+                                 best.get("id", ""), best.get("name", ""), best.get("distance_m", ""), best.get("name_similarity", "")])
     queue_header = ["anex_id", "anex_name", "country", "town", "status", "candidate_id",
                     "candidate_name", "candidate_country", "candidate_region", "candidate_town", "score"]
     for filename, queue_status in (("anex-hotel-review.csv", "review"),
@@ -308,4 +315,7 @@ def catalog_summary(report):
         return {"mode": "full_catalog", "ok": False, "status": report.get("status", "invalid_catalog"),
                 "failed_stage": report.get("failed_stage", "unknown"), "progress": report.get("progress", {})}
     return {"mode": "full_catalog", "ok": True, "status": "ok", "counts": report["counts"], "pages": report["pages"],
+            "geo_remaining": (report.get("geo_enrichment") or {}).get("remaining"),
+            "geo_processed_total": (report.get("geo_enrichment") or {}).get("processed_total"),
+            "geo_batch_selected": (report.get("geo_enrichment") or {}).get("selected"),
             "geo_enrichment_counts": (report.get("geo_enrichment") or {}).get("counts", {})}
