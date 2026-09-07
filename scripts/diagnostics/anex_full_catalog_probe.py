@@ -130,14 +130,35 @@ def catalog_similarity(left, right):
 
 
 def catalog_local_data():
-    completed = subprocess.run(["php", "-d", "display_errors=0", "-d", "log_errors=0", "-r", CATALOG_BULK_PHP],
-                               input='{"limit":100000}', text=True, capture_output=True, timeout=180)
-    if completed.returncode or not completed.stdout or len(completed.stdout) > 83_886_080:
-        raise StopProbe()
-    data = json.loads(completed.stdout)
-    if data.get("status") != "ok" or not isinstance(data.get("hotels"), list):
-        raise StopProbe()
-    return data["hotels"]
+    hotels, seen = [], set()
+    after_id = 0
+    for _page in range(100):
+        payload = json.dumps({"after_id": after_id, "limit": 5000}, separators=(",", ":"))
+        completed = subprocess.run(
+            ["php", "-d", "display_errors=0", "-d", "log_errors=0", "-r", CATALOG_BULK_PHP],
+            input=payload, text=True, capture_output=True, timeout=60,
+        )
+        if completed.returncode or not completed.stdout or len(completed.stdout) > 12_582_912:
+            raise StopProbe()
+        data = json.loads(completed.stdout)
+        batch = data.get("hotels")
+        next_after_id = data.get("next_after_id")
+        if (data.get("status") != "ok" or not isinstance(batch, list)
+                or not isinstance(data.get("has_more"), bool)
+                or not isinstance(next_after_id, int) or next_after_id < after_id):
+            raise StopProbe()
+        for hotel in batch:
+            hotel_id = positive_id(hotel)
+            if hotel_id is None or hotel_id in seen or hotel_id <= after_id:
+                raise StopProbe()
+            seen.add(hotel_id)
+            hotels.append(hotel)
+        if not data["has_more"]:
+            return hotels
+        if not batch or next_after_id <= after_id:
+            raise StopProbe()
+        after_id = next_after_id
+    raise StopProbe()
 
 
 def catalog_candidate(local, score):

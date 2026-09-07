@@ -1,5 +1,5 @@
 <?php
-// Read all active AnyTour catalogue hotels once for an in-memory comparison.
+// Read one bounded page of active AnyTour catalogue hotels for comparison.
 // No schema or row is changed and no configuration detail leaves the process.
 error_reporting(0);
 ob_start();
@@ -8,7 +8,12 @@ $transaction = false;
 $result = array('status' => 'catalog_unavailable', 'hotels' => array());
 try {
     $input = json_decode((string)file_get_contents('php://stdin', false, null, 0, 1025), true);
-    if (!is_array($input) || $input !== array('limit' => 100000)) throw new RuntimeException();
+    if (!is_array($input) || !array_key_exists('after_id', $input)
+        || !array_key_exists('limit', $input) || count($input) !== 2
+        || !is_int($input['after_id']) || $input['after_id'] < 0
+        || $input['after_id'] > 2147483647 || $input['limit'] !== 5000) {
+        throw new RuntimeException();
+    }
     $root = realpath(getcwd());
     if ($root === false || basename($root) !== 'anytoour.ru') throw new RuntimeException();
     $helper = false;
@@ -27,11 +32,15 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->exec('START TRANSACTION READ ONLY');
     $transaction = true;
-    $sql = 'SELECT /*+ MAX_EXECUTION_TIME(60000) */ id,name,normalized_name,'
+    $sql = 'SELECT /*+ MAX_EXECUTION_TIME(30000) */ id,name,normalized_name,'
         . 'country_name,region_name,subregion_name '
-        . 'FROM catalog_hotels WHERE is_active=1 ORDER BY id LIMIT 100001';
-    $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-    if (count($rows) > 100000) throw new RuntimeException();
+        . 'FROM catalog_hotels WHERE is_active=1 AND id > :after_id ORDER BY id LIMIT 5001';
+    $statement = $pdo->prepare($sql);
+    $statement->bindValue(':after_id', $input['after_id'], PDO::PARAM_INT);
+    $statement->execute();
+    $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+    $hasMore = count($rows) > 5000;
+    if ($hasMore) array_pop($rows);
     $hotels = array();
     foreach ($rows as $row) {
         $id = isset($row['id']) ? (int)$row['id'] : 0;
@@ -45,7 +54,9 @@ try {
     }
     $pdo->exec('ROLLBACK');
     $transaction = false;
-    $result = array('status' => 'ok', 'hotels' => $hotels);
+    $nextAfterId = count($hotels) ? $hotels[count($hotels) - 1]['id'] : $input['after_id'];
+    $result = array('status' => 'ok', 'hotels' => $hotels,
+        'has_more' => $hasMore, 'next_after_id' => $nextAfterId);
 } catch (Throwable $ignored) {
     if ($pdo instanceof PDO && $transaction) {
         try { $pdo->exec('ROLLBACK'); } catch (Throwable $rollbackIgnored) {}
