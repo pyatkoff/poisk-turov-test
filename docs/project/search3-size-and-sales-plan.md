@@ -68,8 +68,16 @@ Before production migration: owner visual approval, physical Safari/iPhone pass,
 legacy-search rollback, protected production fingerprints and post-release search
 and lead-path verification.
 
-## First product batch
+## Completed product batches
 
-Fix the confirmed collapsed mobile selected-tour CTA, then audit search-form
-completion friction and local-filter feedback using the current single-owner
-architecture.
+1. Fixed the collapsed mobile selected-tour CTA with a 48 px minimum target.
+2. Made the mobile search form readable and touch-safe: 12–16 px text, 48 px
+   primary controls and 44 px quick filters, protected by Chromium geometry at
+   375/760/761 px.
+
+## Next product batch
+
+Add immediate, accessible local-filter feedback and a recoverable zero-results
+state in the single DS2 owner. Do not add a second filter runtime or trigger a
+Tourvisor request per local change. Accumulate this with the next meaningful
+sales-ready improvement before publishing the isolated preview.
