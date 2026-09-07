@@ -93,9 +93,14 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('.search3-final-review.search3-lead-entry .lead-selection-summary{display:none!important}', lead_state)
         self.assertIn('.search3-lead-shell.search3-lead-shell{grid-row:6!important}', lead_state)
         self.assertIn('.search3-final-sections.search3-final-sections{grid-row:7!important}', lead_state)
+        self.assertIn(':is(.selected-head>:not(:first-child),.tour-flights .flight-baggage,.tour-flights .section-heading span){display:none!important}', lead_state)
         self.assertNotIn('min-height:280px!important;display:flex!important;align-items:center!important', all_styles)
         self.assertNotIn('& .lead-fields {gap:14px!important;grid-template-columns:1fr 1fr!important}', all_styles)
         self.assertEqual(lead_state.count('.lead-form[data-search3-lead-state]~.search3-booking-summary'), 1)
+
+        injected = (ROOT / 'src/search3/styles/injected/selected-tour-mobile.css').read_text()
+        self.assertNotIn('#selectedTour.search3-final-review.search3-lead-entry', injected)
+        self.assertIn('#selectedTour:not(.search3-final-review)', injected)
 
     def test_cascade_split_rejects_byte_drift(self):
         spec = importlib.util.spec_from_file_location(

@@ -30,8 +30,8 @@ assert(styles.every(style => style.tag === 'style' && style.textContent.includes
 const [selectedMobile, finalReview] = styles.map(style => style.textContent);
 assert.match(selectedMobile, /#selectedTour:not\(\.search3-final-review\).*\.search3-booking-stepper/s);
 assert.doesNotMatch(selectedMobile, /#selectedTour\.search3-final-review:not\(\.search3-lead-entry\)/);
-assert.match(selectedMobile, /#selectedTour\.search3-final-review\.search3-lead-entry/);
-assert.match(selectedMobile, /\.search3-lead-shell>\.lead-form\{[^}]*display:block!important/);
+assert.doesNotMatch(selectedMobile, /#selectedTour\.search3-final-review\.search3-lead-entry/);
+assert.doesNotMatch(selectedMobile, /\.search3-lead-shell>\.lead-form\{[^}]*display:block!important/);
 assert.match(finalReview, /#selectedTour\.search3-final-review:not\(\.search3-lead-entry\)/);
 assert.match(finalReview, /\.search3-lead-shell>\.lead-form\{[^}]*display:none!important/);
 assert.match(finalReview, /\.search3-booking-summary\{[^}]*display:block!important/);
