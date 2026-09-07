@@ -53,26 +53,27 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Source #1449: hidden result chrome retired and phone/tablet drawer declarations consolidated; 187488→185325 raw bytes (−2163). Both mandatory source jobs passed; checked bacc8d25 differs from published 4b061396.",
+    "last_material_progress": "Sources #1450/#1451: historical review/mobile and desktop tour density layers retired; 185325→180248 raw bytes (−5077). Both mandatory source jobs passed for both packages; checked f6496c8a differs from published 4b061396.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not repeat hidden results meta/intro resets or phone/tablet drawer consolidation. Next substantial candidate: replace the historical 3521-source-byte desktop/mobile review-layout block with the compact current lead/review boundary, but first verify relevant geometry using an allowed browser fixture or exact isolated preview. Check the remaining mobile review grid-row 6/7 overrides before claiming the previous row compaction complete. Keep result-cards (~1022 net) and static-injector wrappers (~563 net) accumulated, not standalone PRs. Continue independent safe work if geometry remains unavailable.",
+    "next_action": "Do not repeat review density, mobile rows 6/7 or desktop tour density retirement. Next substantial candidate: consolidate selected-tour-mobile.js into selected-flow-v2 while preserving compatibility API, lead-field normalization and normal/no-flight CTA ownership. Keep result-cards and static-injector remnants accumulated unless their geometry is bounded.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_RESULTS_CHROME_DRAWER_RETIREMENT",
-    "title": "Retire hidden results chrome and duplicate drawer CSS",
+    "id": "S3_REVIEW_TOUR_DENSITY_RETIREMENT",
+    "title": "Retire legacy review and desktop tour density layers",
     "status": "CHECKED_RELEASE_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1449
+      1450,
+      1451
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "bacc8d2547c0516229a1eb0e8e4938bbedec7d65",
-    "artifact_run": 34095295930,
-    "artifact_id": 10008361158,
-    "next_action": "Do not repeat hidden results meta/intro resets or phone/tablet drawer consolidation. Next substantial candidate: replace the historical 3521-source-byte desktop/mobile review-layout block with the compact current lead/review boundary, but first verify relevant geometry using an allowed browser fixture or exact isolated preview. Check the remaining mobile review grid-row 6/7 overrides before claiming the previous row compaction complete. Keep result-cards (~1022 net) and static-injector wrappers (~563 net) accumulated, not standalone PRs. Continue independent safe work if geometry remains unavailable."
+    "implementation_sha": "f6496c8a7b2532914a3769bfd8f42aabb4f1bea6",
+    "artifact_run": 34097800920,
+    "artifact_id": 10009288882,
+    "next_action": "Consolidate selected-tour-mobile.js into selected-flow-v2 while preserving compatibility API, lead-field normalization and normal/no-flight CTA ownership; combine smaller result-card/injected-style remnants only when their geometry is bounded."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -6433,5 +6434,46 @@
     "production_updated": false,
     "next_action": "Do not repeat hidden results meta/intro resets or phone/tablet drawer consolidation. Next substantial candidate: replace the historical 3521-source-byte desktop/mobile review-layout block with the compact current lead/review boundary, but first verify relevant geometry using an allowed browser fixture or exact isolated preview. Check the remaining mobile review grid-row 6/7 overrides before claiming the previous row compaction complete. Keep result-cards (~1022 net) and static-injector wrappers (~563 net) accumulated, not standalone PRs. Continue independent safe work if geometry remains unavailable."
   },
-  "updated_at": "2026-09-07T07:26:59.764771+00:00"
+  "latest_review_tour_density_retirement": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "base_release_sha": "f4932f561915a401312577cddbbfb7a3792e0e1c",
+    "implementation_shas": [
+      "62a21a311a411533ef4d85aa763badceed56f374",
+      "f6496c8a7b2532914a3769bfd8f42aabb4f1bea6"
+    ],
+    "source_prs": [1450, 1451],
+    "audit": "docs/project/search3-review-tour-density-retirement.json",
+    "ci": {
+      "security_runs": [34097511897, 34097800910],
+      "artifact_runs": [34097511816, 34097800920],
+      "final_artifact_id": 10009288882,
+      "final_artifact_digest": "sha256:e5e2dfcae6e619c9e318bd8bdd68125157b91fbdce3df81625ade25db2cba220",
+      "conclusion": "success",
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
+    },
+    "public_assets": {
+      "css_bytes": 100125,
+      "js_bytes": 80123,
+      "total_bytes": 180248
+    },
+    "package_delta": {"bytes": -5077, "css_bytes": -5077, "js_bytes": 0},
+    "continuation_total": {"baseline_bytes": 301524, "after_bytes": 180248, "saved_bytes": 121276},
+    "preview": {
+      "published": false,
+      "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+      "checked_release_sha": "f6496c8a7b2532914a3769bfd8f42aabb4f1bea6"
+    },
+    "visual_verification": {
+      "performed": false,
+      "deferred": [
+        "review and lead geometry at 375/640/641/999/1000/1363",
+        "desktop tour facts and paired-flight visual density",
+        "physical Safari"
+      ]
+    },
+    "production_updated": false,
+    "next_action": "Consolidate selected-tour-mobile.js into selected-flow-v2 while preserving compatibility API, lead-field normalization and normal/no-flight CTA ownership; combine smaller result-card/injected-style remnants only when their geometry is bounded."
+  },
+  "updated_at": "2026-09-07T07:58:00.000000+00:00"
 }

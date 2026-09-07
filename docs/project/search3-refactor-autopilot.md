@@ -66,11 +66,41 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `bacc8d2547c0516229a1eb0e8e4938bbedec7d65`;
+The latest checked release source is `f6496c8a7b2532914a3769bfd8f42aabb4f1bea6`;
 the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
 
-### Latest checked candidate — hidden results chrome and shared drawer — 2026-09-07
+### Latest checked candidates — review and tour density retirement — 2026-09-07
+
+Two substantial packages were completed and fast-forwarded into release:
+
+- PR #1450 / source `62a21a311a411533ef4d85aa763badceed56f374`
+  removes the historical desktop/mobile review-density layer and stale mobile
+  grid rows 6/7. The current review board remains; a compact `<=999px` boundary
+  keeps the lead form and summary in one explicit column.
+- PR #1451 / source `f6496c8a7b2532914a3769bfd8f42aabb4f1bea6`
+  removes desktop tour/flight density overrides. Paired-flight layout, stage
+  isolation, secondary facts, room access and current CTA owners remain.
+
+Eight raw assets fall **185325 → 180248 bytes (−5077)**: CSS 105202 → 100125;
+JS remains 80123. Cumulative baseline reduction is **121276 bytes**. Both source
+packages passed Security and exact artifact CI. Final runs are Security
+`34097800910` and artifact `34097800920`; reusable artifact `10009288882`, digest
+`sha256:e5e2dfcae6e619c9e318bd8bdd68125157b91fbdce3df81625ade25db2cba220`.
+Local exact build/check, 35 source/presentation tests and both owner validators pass;
+one local PHP-only skip is covered by artifact CI. Audit:
+`docs/project/search3-review-tour-density-retirement.json`.
+
+This source is **checked but not published**. Preview remains `4b061396`; main and
+production remain `fa58a0cb`. Review/lead geometry, desktop tour/flight visual
+density and physical Safari are deferred and are not claimed as visually passed.
+
+Next: consolidate `selected-tour-mobile.js` into the current selected-flow owner
+while preserving its compatibility API, lead-field normalization and normal/no-flight
+CTA behavior. Accumulate the smaller result-card/injected-style remnants rather than
+opening standalone micro-PRs.
+
+### Previous checked candidate — hidden results chrome and shared drawer — 2026-09-07
 
 Source #1449 / exact release `bacc8d2547c0516229a1eb0e8e4938bbedec7d65`, tree
 `c424ad77b20853a4a870845c120c51e59d367681`, removes the permanently hidden
