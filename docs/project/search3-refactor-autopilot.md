@@ -66,11 +66,40 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `c62ebc1dedcba458fe69ab232fea6000aadf781c`;
+The latest checked release source is `bacc8d2547c0516229a1eb0e8e4938bbedec7d65`;
 the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
 
-### Latest checked candidate — booking chrome owner retirement — 2026-09-07
+### Latest checked candidate — hidden results chrome and shared drawer — 2026-09-07
+
+Source #1449 / exact release `bacc8d2547c0516229a1eb0e8e4938bbedec7d65`, tree
+`c424ad77b20853a4a870845c120c51e59d367681`, removes the permanently hidden
+results-meta renderer and repeated static intro resets. Visible counts/routes and
+the one search-form H1 owner remain. Repeated phone/tablet drawer surface rules
+now live in mobile-results-toolbar; unique sizing, padding and fixed/sticky action
+placement remain in their breakpoint modules. Original fractional media gaps remain.
+
+Eight raw assets fall **187488 → 185325 bytes (−2163)**: CSS 106281 → 105202
+(−1079), JS 81207 → 80123 (−1084). Cumulative baseline reduction: **116199**.
+Five public files remain byte-identical; protected contracts are unchanged.
+
+Required source CI passed: Security `34095295829`; exact artifact `34095295930`,
+artifact `10008361158`, digest
+`sha256:544d437bfa48295b0518f61be4e160f72a27b589e56be63ae72b595c7f45673d`.
+35 local source/presentation tests pass, with one PHP-only local skip covered by CI.
+The hidden-meta regression first failed on baseline. The affected CSS final maps
+match at 375/760/760.5/761/999/999.5/1000. One local correction/rebuild retained the
+fractional gap before the only source push/CI; docs/release reuse that artifact.
+Audit: `docs/project/search3-results-chrome-drawer-retirement.json`.
+
+This source is **checked but not published**. Preview remains `4b061396`, main
+and production `fa58a0cb`. Browser connected, but local fixture navigation was
+blocked by URL policy; no workaround or visual acceptance is claimed. Public
+preview publication, drawer visual states and physical Safari are deferred.
+
+Next: Do not repeat hidden results meta/intro resets or phone/tablet drawer consolidation. Next substantial candidate: replace the historical 3521-source-byte desktop/mobile review-layout block with the compact current lead/review boundary, but first verify relevant geometry using an allowed browser fixture or exact isolated preview. Check the remaining mobile review grid-row 6/7 overrides before claiming the previous row compaction complete. Keep result-cards (~1022 net) and static-injector wrappers (~563 net) accumulated, not standalone PRs. Continue independent safe work if geometry remains unavailable.
+
+### Previous checked candidate — booking chrome owner retirement — 2026-09-07
 
 Source #1447 / exact release `7662d6e15122f58fdc8407431fceee8efd2f0513`,
 tree `2c02091d36b3013f566d925281d668b09665ac61`, retires the separate

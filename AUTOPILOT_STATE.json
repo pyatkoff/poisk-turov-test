@@ -53,26 +53,26 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Source#1447: redundant booking-progress runtime/CSS and decorative review-heading runtime retired; primary flight/review/lead/back owners and selected-heading accessibility retained;195944→187488 raw bytes (−8456). Both mandatory source jobs passed; release checked at7662d6e1, preview intentionally remains4b061396.",
+    "last_material_progress": "Source #1449: hidden result chrome retired and phone/tablet drawer declarations consolidated; 187488→185325 raw bytes (−2163). Both mandatory source jobs passed; checked bacc8d25 differs from published 4b061396.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not restore the booking stepper or decorative review heading. The complete result-cards.css donor has only about 1022 bytes of conservative net saving after active-rule migration, so accumulate it with another substantial owner and only when bounded mobile/result-order geometry is available; otherwise inspect a different large presentation owner. Protected contracts and production lock remain.",
+    "next_action": "Do not repeat hidden results meta/intro resets or phone/tablet drawer consolidation. Next substantial candidate: replace the historical 3521-source-byte desktop/mobile review-layout block with the compact current lead/review boundary, but first verify relevant geometry using an allowed browser fixture or exact isolated preview. Check the remaining mobile review grid-row 6/7 overrides before claiming the previous row compaction complete. Keep result-cards (~1022 net) and static-injector wrappers (~563 net) accumulated, not standalone PRs. Continue independent safe work if geometry remains unavailable.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_BOOKING_CHROME_OWNER_RETIREMENT",
-    "title": "Retire redundant booking progress and review banner ownership",
-    "status": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
+    "id": "S3_RESULTS_CHROME_DRAWER_RETIREMENT",
+    "title": "Retire hidden results chrome and duplicate drawer CSS",
+    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1447
+      1449
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "7662d6e15122f58fdc8407431fceee8efd2f0513",
-    "artifact_run": 34092785098,
-    "artifact_id": 10007458840,
-    "next_action": "Accumulate the measured result-cards.css net fragment with another substantial owner only when bounded browser geometry is available; otherwise audit a different large owner. Main/production remain locked; hourly development stays enabled."
+    "implementation_sha": "bacc8d2547c0516229a1eb0e8e4938bbedec7d65",
+    "artifact_run": 34095295930,
+    "artifact_id": 10008361158,
+    "next_action": "Do not repeat hidden results meta/intro resets or phone/tablet drawer consolidation. Next substantial candidate: replace the historical 3521-source-byte desktop/mobile review-layout block with the compact current lead/review boundary, but first verify relevant geometry using an allowed browser fixture or exact isolated preview. Check the remaining mobile review grid-row 6/7 overrides before claiming the previous row compaction complete. Keep result-cards (~1022 net) and static-injector wrappers (~563 net) accumulated, not standalone PRs. Continue independent safe work if geometry remains unavailable."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -6383,5 +6383,55 @@
     "visual_run": 33976375814
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
-  "updated_at": "2026-09-07T06:54:53Z"
+  "latest_results_chrome_drawer_retirement": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "base_release_sha": "b8d7282a2a90117a0fd7d291d946e6b2315399ae",
+    "implementation_sha": "bacc8d2547c0516229a1eb0e8e4938bbedec7d65",
+    "release_integration_sha": "bacc8d2547c0516229a1eb0e8e4938bbedec7d65",
+    "source_tree": "c424ad77b20853a4a870845c120c51e59d367681",
+    "source_pr": 1449,
+    "audit": "docs/project/search3-results-chrome-drawer-retirement.json",
+    "ci": {
+      "security_run": 34095295829,
+      "artifact_run": 34095295930,
+      "artifact_id": 10008361158,
+      "artifact_digest": "sha256:544d437bfa48295b0518f61be4e160f72a27b589e56be63ae72b595c7f45673d",
+      "required_passed": 2,
+      "conclusion": "success",
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
+    },
+    "public_assets": {
+      "css_bytes": 105202,
+      "js_bytes": 80123,
+      "total_bytes": 185325
+    },
+    "package_delta": {
+      "bytes": -2163,
+      "css_bytes": -1079,
+      "js_bytes": -1084
+    },
+    "continuation_total": {
+      "baseline_bytes": 301524,
+      "after_bytes": 185325,
+      "saved_bytes": 116199
+    },
+    "preview": {
+      "published": false,
+      "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+      "checked_release_sha": "bacc8d2547c0516229a1eb0e8e4938bbedec7d65"
+    },
+    "visual_verification": {
+      "performed": false,
+      "reason": "Not performed. Browser runtime connected; local data fixture navigation was blocked by browser URL policy. No workaround or preview publication was attempted."
+    },
+    "deferred": [
+      "Browser drawer open/closed geometry and physical Safari",
+      "Earlier unpublished selected/review/lead geometry",
+      "Potential remaining mobile review grid-row 6/7 override; source evidence only, not a confirmed visible regression"
+    ],
+    "production_updated": false,
+    "next_action": "Do not repeat hidden results meta/intro resets or phone/tablet drawer consolidation. Next substantial candidate: replace the historical 3521-source-byte desktop/mobile review-layout block with the compact current lead/review boundary, but first verify relevant geometry using an allowed browser fixture or exact isolated preview. Check the remaining mobile review grid-row 6/7 overrides before claiming the previous row compaction complete. Keep result-cards (~1022 net) and static-injector wrappers (~563 net) accumulated, not standalone PRs. Continue independent safe work if geometry remains unavailable."
+  },
+  "updated_at": "2026-09-07T07:26:59.764771+00:00"
 }
