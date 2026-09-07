@@ -76,9 +76,11 @@ and lead-path verification.
    375/760/761 px.
 3. Added immediate accessible desktop-filter feedback and a clear recoverable
    zero-results state in the single DS2 owner, without network requests.
+4. Removed the unimplemented “Ближе к морю” sort and the map action with no
+   consumer; retained price/rating/stars sorting and list/grid views.
 
 ## Next product batch
 
-Audit the “Ближе к морю” sort and the common map action. Keep only controls
-backed by complete supplier data and working behavior. Accumulate this with the
-next meaningful sales-ready improvement before publishing the isolated preview.
+Audit the result-card action hierarchy and keep one clear primary path from
+hotel to tour selection. Preserve supplier facts, price arithmetic, selection
+and lead lifecycle. Accumulate before publishing the isolated preview.
