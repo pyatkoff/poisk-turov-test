@@ -1991,3 +1991,13 @@ The eight Search3 public assets remain **146599 → 146599 raw bytes (0)**. The 
 Focused VM acceptance covered complete facets, a legitimate zero match, Search3 empty-shell preservation, recovery copy, reset, restored source results and the sole-owner boundary. This package did not trigger or claim browser geometry evidence. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred; no lead was submitted.
 
 Next: audit the “Ближе к морю” sort and common map action. Keep only controls backed by complete supplier data and working behavior. Accumulate the next product checkpoint before isolated preview publication. Audit: `docs/project/search3-local-filter-feedback.json`.
+
+## S3_HONEST_RESULTS_CONTROLS — checked release, 2026-09-07
+
+Source PR #1498 / `24e893e60958b6f12df66cecb8acc1e5d67bc628`; checked release `8980502708a1c7dd77e2dfec81131ae88e3f5562`. The offered “Ближе к морю” mode was not implemented and silently used price order. The common map button dispatched `v2:results-map-requested`, but the repository had no consumer. Both misleading controls and their dead runtime/CSS branches are removed. Price, rating and star sorting plus list/grid views remain.
+
+The eight Search3 assets remain **146599 → 146599 raw bytes (0)**. Three supporting loaded files shrink **29214 → 28737 bytes (−477 raw bytes)**: `v2/index.php` 12872→12731, `v2/ds2-search.css` 11843→11755 and `v2/search-redesign-v2.js` 4499→4251. Security `34150688964`, initial exact artifact `34150688836` and ready repeat `34150780889` succeeded. Reusable artifact `10029282505`, digest `sha256:8b49234e3cd866af6e538144eca3f16e660ac4e0601dbd345e418bb94e5f3c4c`.
+
+Focused tests require exactly the three implemented sort modes, preserve the mobile sort proxy and results lifecycle, and reject reintroduction of the unhandled map action. This non-geometric package did not run or claim browser geometry. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred; no lead was submitted.
+
+Next: audit the result-card action hierarchy and keep one clear primary path from hotel to tour selection. Preserve supplier data, price arithmetic, selection/lead lifecycle and analytics. Accumulate before isolated preview publication. Audit: `docs/project/search3-honest-results-controls.json`.
