@@ -83,6 +83,10 @@ final class AnyTourAnexSearch
                 || !preg_match('~\A[A-Za-z0-9][A-Za-z0-9_.:,;\~@+/=|\-]{0,2047}\z~D', $offer['supplier_offer_id'])
                 || strpos($offer['supplier_offer_id'], '://') !== false
                 || !in_array($offer['kind'], ['group_minimum', 'concrete'], true)
+                || !hash_equals(
+                    'anex_online:' . hash('sha256', $offer['kind'] . "\0" . $offer['supplier_offer_id']),
+                    $offer['offer_key']
+                )
                 || !is_string($offer['hotel_external_id'])
                 || !preg_match('/\A[1-9][0-9]{0,7}\z/D', $offer['hotel_external_id'])) {
                 throw new InvalidArgumentException('ANEX_INVALID_SESSION');

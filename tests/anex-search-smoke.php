@@ -120,6 +120,12 @@ search_reject(static function () use ($gateway, &$corrupt, $publicGroup): void {
     $gateway->handle(['offer_key' => $publicGroup['offer_key'], 'action' => 'expand'], $corrupt);
 });
 search_check(count($gatewayCalls) === $beforeCorrupt, 'corrupt session cannot reach supplier');
+$wrongBinding = $session;
+$wrongBinding['search']['offers'][0]['supplier_offer_id'] = 'other-valid-reference';
+search_reject(static function () use ($gateway, &$wrongBinding, $publicGroup): void {
+    $gateway->handle(['action' => 'expand', 'offer_key' => $publicGroup['offer_key']], $wrongBinding);
+});
+search_check(count($gatewayCalls) === $beforeCorrupt, 'offer key binding is verified before supplier call');
 $clock += 901;
 search_reject(static function () use ($gateway, &$session, $publicConcrete): void {
     $gateway->handle(['action' => 'flights', 'offer_key' => $publicConcrete['offer_key']], $session);

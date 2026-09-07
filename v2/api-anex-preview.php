@@ -28,6 +28,9 @@ function anytour_anex_preview_token(): string
     return defined('ANEX_API_TOKEN') ? trim((string) ANEX_API_TOKEN) : '';
 }
 
+$privateConfig = __DIR__ . '/config.php';
+if (is_file($privateConfig)) require_once $privateConfig;
+
 if (!anytour_anex_preview_enabled()) {
     anytour_anex_preview_out(['ok' => false, 'error' => 'not_found'], 404);
 }
@@ -58,8 +61,6 @@ if (!is_array($request)) {
     anytour_anex_preview_out(['ok' => false, 'error' => 'invalid_request'], 400);
 }
 
-$privateConfig = __DIR__ . '/config.php';
-if (is_file($privateConfig)) require_once $privateConfig;
 $token = anytour_anex_preview_token();
 if ($token === '') {
     anytour_anex_preview_out(['ok' => false, 'error' => 'temporarily_unavailable'], 503);
@@ -93,7 +94,8 @@ try {
 } catch (InvalidArgumentException $error) {
     session_write_close();
     $status = $error->getMessage() === 'ANEX_SESSION_REQUIRED' ? 409 : 400;
-    anytour_anex_preview_out(['ok' => false, 'error' => strtolower($error->getMessage())], $status);
+    $message = $status === 409 ? 'search_expired' : 'invalid_request';
+    anytour_anex_preview_out(['ok' => false, 'error' => $message], $status);
 } catch (RuntimeException $error) {
     session_write_close();
     if ($error->getMessage() === 'ANEX_RATE_LIMIT') {
