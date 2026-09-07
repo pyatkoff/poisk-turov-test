@@ -93,7 +93,7 @@ separate cascade evidence.
 | Selected tour and mobile action | `behavior/tour-presentation.js`, `behavior/selected-tour-mobile.js` |
 | Flight labels and display-only price parsing | `behavior/flight-presentation.js`, `behavior/flight-price-presentation.js` |
 | Summary and handoff | `behavior/booking-summary.js`, `behavior/selected-tour-handoff.js` |
-| Final review heading, actions and responsive layout | `styles/review-layout.css`; `styles/review.css` is retired |
+| Final review actions and responsive layout | `behavior/summary-cta.js`, `styles/review-layout.css`; `styles/review.css` is retired |
 | Lead entry and lifecycle presentation | `behavior/summary-cta.js`, `behavior/lead-flow.js`, `styles/lead-state.css` |
 | Selected price, fallback and disclosure adapter | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Accepted isolation/readability/geometry guards | `styles/acceptance-guards.css` |
@@ -261,6 +261,11 @@ its ARIA toggle. The retired `mobile-search-entry.js` remains a provenance-only
 manifest slot; linked `result-cards.css` supplies its presentation without a
 runtime `<style>` injection. Legacy form presentation was removed from `base.css`;
 current form and guest rules live in `entry-v1.css`.
+
+The booking path uses its primary flight-continue and summary-to-lead actions
+instead of a second clickable progress strip. `booking-stepper.js`,
+`booking-stepper.css` and `review-heading.js` are provenance-only slots; the
+selected hotel heading and booking summary retain the accessible review context.
 
 The subsequent results-layer pass also retires `styles/results-width-compatibility.css`
 and `styles/hotel-card-convergence.css`. Their remaining shell/lifecycle/MRF and
