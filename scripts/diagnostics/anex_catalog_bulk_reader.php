@@ -27,8 +27,8 @@ try {
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->exec('START TRANSACTION READ ONLY');
     $transaction = true;
-    $sql = 'SELECT /*+ MAX_EXECUTION_TIME(20000) */ id,name,normalized_name,search_key,'
-        . 'country_name,region_name,subregion_name,category,latitude,longitude '
+    $sql = 'SELECT /*+ MAX_EXECUTION_TIME(60000) */ id,name,normalized_name,'
+        . 'country_name,region_name,subregion_name '
         . 'FROM catalog_hotels WHERE is_active=1 ORDER BY id LIMIT 100001';
     $rows = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     if (count($rows) > 100000) throw new RuntimeException();
@@ -37,13 +37,9 @@ try {
         $id = isset($row['id']) ? (int)$row['id'] : 0;
         if ($id < 1) continue;
         $item = array('id' => $id);
-        foreach (array('name','normalized_name','search_key','country_name','region_name','subregion_name','category') as $key) {
+        foreach (array('name','normalized_name','country_name','region_name','subregion_name') as $key) {
             $value = isset($row[$key]) ? trim((string)$row[$key]) : '';
             $item[$key] = preg_match('//u', $value) && strlen($value) <= 1024 ? $value : '';
-        }
-        foreach (array('latitude','longitude') as $key) {
-            $value = $row[$key];
-            $item[$key] = is_numeric($value) && is_finite((float)$value) ? (float)$value : null;
         }
         $hotels[] = $item;
     }

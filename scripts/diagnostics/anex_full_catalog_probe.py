@@ -131,8 +131,8 @@ def catalog_similarity(left, right):
 
 def catalog_local_data():
     completed = subprocess.run(["php", "-d", "display_errors=0", "-d", "log_errors=0", "-r", CATALOG_BULK_PHP],
-                               input='{"limit":100000}', text=True, capture_output=True, timeout=60)
-    if completed.returncode or not completed.stdout or len(completed.stdout) > 67_108_864:
+                               input='{"limit":100000}', text=True, capture_output=True, timeout=180)
+    if completed.returncode or not completed.stdout or len(completed.stdout) > 83_886_080:
         raise StopProbe()
     data = json.loads(completed.stdout)
     if data.get("status") != "ok" or not isinstance(data.get("hotels"), list):
