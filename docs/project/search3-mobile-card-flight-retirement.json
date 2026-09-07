@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "stage": "SOURCE_PREPARED_VISUAL_DEFERRED",
+  "base_release_sha": "cca1d56605db6260071dfe2ff24ed8f46b437b21",
+  "published_preview_source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+  "scope": "Three substantial obsolete presentation block families retired in one batch; retained active lifecycle owners are not claimed fully retired.",
+  "removed": [
+    "Old result-cards photo-height/dense facts/tablet/desktop geometry blocks",
+    "Private injected mobile microlayout/tablet board/misplaced desktop results geometry",
+    "Flight markDirections class-mutation pass and its classified roundtrip geometry"
+  ],
+  "retained": [
+    "All81 remaining result-cards declarations have baseline selector/media/value/priority",
+    "All114 remaining flights declarations have baseline selector/media/value/priority",
+    "Mobile final-review/lead-entry/state and price-bar injected blocks literal-equivalent; injection order/root guard/idempotence unchanged",
+    "Current readability/layout/acceptance and native entry/night controls unchanged",
+    "Flight continue equals baseline minus markDirections and its3calls; primary CTA/review/back/heading/events unchanged",
+    "Supplier direction headings/order, price arithmetic, URL/payload, Tourvisor/API, leads/analytics/logo and explicit-& native nesting protected"
+  ],
+  "public_assets": [
+    {
+      "path": "v2/search3-results-filters-v1.js",
+      "before": 92082,
+      "after": 87783,
+      "saved": 4299
+    },
+    {
+      "path": "v2/search3-results-filters-v1.css",
+      "before": 121818,
+      "after": 116283,
+      "saved": 5535
+    },
+    {
+      "path": "v2/search3-entry-v1.css",
+      "before": 9662,
+      "after": 9662,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-entry-v1.js",
+      "before": 3226,
+      "after": 3226,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-results-cards-v2.css",
+      "before": 4007,
+      "after": 4007,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-results-cards-v2.js",
+      "before": 0,
+      "after": 0,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.css",
+      "before": 6814,
+      "after": 6814,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.js",
+      "before": 7882,
+      "after": 7882,
+      "saved": 0
+    }
+  ],
+  "totals": {
+    "before": 245491,
+    "after": 235657,
+    "saved": 9834,
+    "css_before": 142301,
+    "css_after": 136766,
+    "js_before": 103190,
+    "js_after": 98891
+  },
+  "accounting_note": "Raw public bytes, not compression or speed; JS asset saving includes private embedded CSS. Six other public assets byte-identical.",
+  "local_checks": {
+    "source_build": "PASS one combined --write build",
+    "selected_flow_scheduler": "PASS compiled fallback plus primary review/back/new-tour trace without supplier segment queries/mutation",
+    "injected_styles": "PASS compiled insertion order/root guard/idempotence",
+    "mobile_toolbar_ownership": "PASS",
+    "independent_css_ast_review": "PASS exact retained selector/media/declaration streams and flight JS operation deletion",
+    "diff_check": "PASS"
+  },
+  "source_ci": "PENDING required Security with owner validators and exact artifact build; guards unchanged",
+  "visual_verification": {
+    "status": "DEFERRED",
+    "performed": false,
+    "required": [
+      "results cards375/768/1440",
+      "selected tour mobile/tablet",
+      "normal flight choice/review/back and no-flight CTA",
+      "inherited initial/editing and lead-entry boundaries"
+    ],
+    "reason": "No browser capability exposed in current runtime. Experimental geometry is not visual equivalence; review/lead lifecycle rules retained literally."
+  },
+  "preview_updated": false,
+  "production_updated": false,
+  "next_action": "After source CI retain exact artifact, then focused accumulated-candidate visual inspection at justified isolated publication when browser capability is available. Audit remaining summary-cta mobile geometry against current review owner without removing its lead-shell/CTA/hidden boundaries; no wholesale deletion established yet. Continue permitted independent work; do not repeat completed block retirement."
+}

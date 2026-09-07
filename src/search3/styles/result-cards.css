@@ -18,6 +18,7 @@ body.search3-candidate{
 & #results :is(.hotel-main,.hotel-photo,.hotel-body){margin:0!important}
 }
 .search3-mobile-search-entry{display:none}
+/* Retained desktop tools/rail positioning; current results owners supply card geometry. */
 @media(min-width:1000px){
   body.search3-candidate{
 &.search3-has-results {
@@ -35,9 +36,6 @@ body.search3-candidate{
     top:18px!important;
     align-self:start!important;
   }
-  & #results .hotel-photo {border-radius:0!important}
-  & #results .hotel-main {overflow:hidden!important;border-radius:11px!important}
-  & #results .search3-hotel-facts {max-width:100%!important}
 }
 }
 }
@@ -103,77 +101,6 @@ body.search3-candidate{
     margin-top:12px!important;
   }
 }
-  &:not(.search3-hotel-tours-open) #results {
-& .hotel-card {overflow:hidden!important;border-radius:11px!important}
-  & .hotel-photo {width:100%!important;border-radius:0!important}
-  & .hotel-body {grid-template-rows:auto auto auto auto auto auto!important}
-  & .search3-hotel-facts {
-    grid-column:1/3!important;
-    grid-row:4!important;
-    display:grid!important;
-    grid-template-columns:repeat(4,minmax(0,1fr))!important;
-    gap:0!important;
-    margin:7px 0 0!important;
-    overflow:hidden!important;
-    border:1px solid #edf0f5!important;
-    border-radius:7px!important;
-    background:#fafbfc!important;
-  }
-  & .search3-hotel-facts>span {min-width:0!important;padding:5px 4px!important;border-right:1px solid #edf0f5!important}
-  & .search3-hotel-facts>span:last-child {border-right:0!important}
-  & .search3-hotel-facts small {display:block!important;font-size:5.8px!important;line-height:1!important;white-space:nowrap!important}
-  & .search3-hotel-facts b {display:block!important;margin-top:2px!important;font-size:7.2px!important;line-height:1.15!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-  & .search3-hotel-action {grid-column:1/3!important;grid-row:6!important;margin-top:7px!important;padding-top:0!important;border-top:0!important}
-}
-}
-}
-
-/* Search3 live-card height sync */
-@media(min-width:761px){
- body.search3-candidate{
-& #results .hotel-main{min-height:188px!important}
- & #results .hotel-photo,
-& #results .hotel-photo img{
-  height:100%!important;
-  min-height:188px!important;
-}
-& #results .hotel-photo{
-  align-self:stretch!important;
-}
-}
-}
-@media(max-width:760px){
- body.search3-candidate{
-& #results .hotel-photo{height:158px!important;min-height:158px!important}
- & #results .hotel-photo img{height:158px!important}
-}
-}
-
-/* Keep the media column flush with the taller information column. */
-@media(min-width:761px){
- body.search3-candidate{
-&:not(.search3-hotel-tours-open) #results .hotel-card .hotel-main>.hotel-photo{height:auto!important;min-height:188px!important;align-self:stretch!important}
- &:not(.search3-hotel-tours-open) #results .hotel-card .hotel-main>.hotel-photo>img{height:100%!important;min-height:188px!important}
-}
-}
-
-/* Match the results-width contract specificity, then replace its legacy 156px media lock. */
-@media(min-width:761px){
- html body.search3-candidate{
-&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card {
-& .hotel-photo,
-& .hotel-photo>img{
-  min-height:188px!important;
-  max-height:none!important;
-}
-& .hotel-photo{
-  height:auto!important;
-  align-self:stretch!important;
-}
-& .hotel-photo>img{
-  height:100%!important;
-}
-}
 }
 }
 
@@ -202,64 +129,6 @@ body.search3-candidate #results .hotel-best-offer>small,html body.search3-candid
 }
 }
 
-/* Tablet card density: preserve the desktop hierarchy without crushing the content column. */
-@media(min-width:761px) and (max-width:999px){
- html body.search3-candidate{
-&.search3-has-results #results {
-& .hotel-main {grid-template-columns:232px minmax(0,1fr)!important}
- & .hotel-body {grid-template-columns:minmax(0,1fr) 150px!important;column-gap:12px!important;padding:12px!important}
- & .hotel-title {font-size:14px!important}
- & .hotel-bottom {padding-left:12px!important}
- & .hotel-price {font-size:18px!important}
- & .search3-hotel-action {grid-template-columns:minmax(0,1fr) 150px!important;gap:12px!important}
-}
-}
-}
 
-/* Approved mockup #1: compact hotel-level decision hierarchy. */
-@media(min-width:1000px){
-  html body.search3-candidate{
-&.search3-has-results:not(.search3-hotel-tours-open) #results {
-& .hotel-main,& .hotel-photo,& .hotel-photo>img {
-    min-height:166px!important;
-  }
-  & .hotel-body {
-    padding:10px 14px 9px!important;
-    row-gap:0!important;
-  }
-  & .search3-hotel-facts {
-    margin-top:5px!important;
-  }
-  & .search3-hotel-action {
-    min-height:40px!important;
-    margin-top:5px!important;
-    padding-top:5px!important;
-  }
-}
-}
-}
-
-/* Win the legacy :has() 188px media lock for the compact desktop candidate. */
-@media(min-width:1000px){
-
-  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-body{
-    padding:10px 14px 9px!important;
-  }
-}
-
-/* Use the approved landscape crop instead of the source image intrinsic ratio. */
-@media(min-width:1000px){
-  html body.search3-candidate{
-&.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card {
-& .hotel-main,
-& .hotel-photo,& .hotel-photo>img{
-  height:166px!important;
-  min-height:166px!important;
-}
-& .hotel-photo,& .hotel-photo>img{
-  max-height:166px!important;
-  object-fit:cover!important;
-}
-}
-}
-}
+/* Retired historical photo-height, dense facts and tablet/desktop card geometry.
+   results layout and results-cards-v2 retain readable active card presentation. */

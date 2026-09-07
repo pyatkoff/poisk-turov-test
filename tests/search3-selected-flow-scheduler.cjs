@@ -217,3 +217,59 @@ assert.equal(flightRootReads, 2, 'each no-flight sync reuses one flight root for
 assert.equal(fallbackDataWrites, 1, 'stable fallback dataset marker is written only once');
 
 console.log('PASS: selected-flow coalesces updates and reuses stable disclosure/fallback DOM state');
+
+// The primary continue owner changes booking phase without classifying or
+// rearranging supplier flight segments. Exercise it separately from fallback.
+{
+  const phase = new Set();
+  const callbacks = new Map();
+  const notifications = [];
+  const tasks = [];
+  let onClick;
+  let scrolls = 0;
+  const heading = { textContent: '' };
+  const hint = { textContent: '' };
+  const button = { textContent: '' };
+  const action = { hidden: true, querySelector() { return button; } };
+  const flightRoot = {
+    querySelector() { return action; },
+    scrollIntoView() { scrolls += 1; }
+  };
+  const root = {
+    classList: {
+      contains: name => phase.has(name),
+      add: name => phase.add(name),
+      remove: name => phase.delete(name)
+    },
+    querySelector(selector) {
+      if (selector === '.tour-flights') return flightRoot;
+      if (selector.endsWith('.section-heading strong')) return heading;
+      if (selector.endsWith('.section-heading span')) return hint;
+      if (selector === '.search3-final-sections,.search3-lead-shell,.lead-form') return flightRoot;
+      throw new Error('Unexpected query: ' + selector);
+    }
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/search3/behavior/flight-continue.js'), 'utf8'), {
+    document: { getElementById() { return root; }, addEventListener(_name, fn) { onClick = fn; } },
+    window: { addEventListener(name, fn) { callbacks.set(name, fn); }, dispatchEvent(event) { notifications.push(event.type); } },
+    setTimeout(fn) { tasks.push(fn); },
+    CustomEvent: function (type) { this.type = type; }
+  });
+  callbacks.get('v2:flight-selected')();
+  while (tasks.length) tasks.shift()();
+  assert.equal(action.hidden, false);
+  assert.equal(button.textContent, 'Далее: итог тура');
+  const click = { target: { closest() { return button; } }, preventDefault() {} };
+  onClick(click);
+  assert.equal(phase.has('search3-final-review'), true);
+  assert.deepEqual(notifications, ['v2:booking-review']);
+  assert.equal(button.textContent, 'Изменить рейс');
+  onClick(click);
+  assert.equal(phase.has('search3-final-review'), false);
+  assert.equal(heading.textContent, 'Выберите рейс');
+  assert.equal(scrolls, 2);
+  callbacks.get('v2:tour-selected')();
+  while (tasks.length) tasks.shift()();
+  assert.equal(phase.has('search3-final-review'), false);
+  console.log('PASS: primary flight continue preserves review/back transitions without supplier segment mutation');
+}
