@@ -3,6 +3,32 @@ function installEntryPresentation(form, main, grid, region) {
   var mobile = window.matchMedia && window.matchMedia('(max-width:760px)');
   var settleTimers = [], adaptedPriceCalendar = null;
   if (!mobile) return;
+  var collapseMobile = window.matchMedia('(max-width:700px)');
+
+  function expandSearch() {
+    form.classList.remove('mobile-search-collapsed');
+    if (collapseMobile.matches) window.setTimeout(function () {
+      form.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }, 20);
+  }
+
+  window.addEventListener('v2:search-started', function () {
+    if (!collapseMobile.matches) return;
+    form.classList.add('mobile-search-collapsed');
+    var details = form.querySelector('details.extras');
+    if (details) details.open = false;
+    window.setTimeout(function () {
+      var status = document.getElementById('status');
+      if (status) status.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }, 80);
+  });
+  window.addEventListener('v2:search-dirty', expandSearch);
+  window.addEventListener('v2:search-error', function (event) {
+    if (event.detail && event.detail.phase === 'validation') expandSearch();
+  });
+  function expandAtDesktop() { if (!collapseMobile.matches) expandSearch(); }
+  if (collapseMobile.addEventListener) collapseMobile.addEventListener('change', expandAtDesktop);
+  else if (collapseMobile.addListener) collapseMobile.addListener(expandAtDesktop);
 
   function nodeText(id) {
     var node = document.getElementById(id);

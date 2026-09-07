@@ -227,3 +227,5 @@ html body.search3-candidate{
   }
 }
 }
+/* Search collapse belongs to the current form; the hidden legacy sticky UI is not loaded. */
+@media(max-width:700px){.mobile-search-collapsed{display:none!important}}
