@@ -172,7 +172,10 @@ def catalog_candidate(local, score):
 def match_catalog(hotels, towns, states, townstates, local_hotels):
     state_names = {row.get("inc"): row.get("name", "") for row in states}
     town_names = {row.get("inc"): row.get("name", "") for row in towns}
-    town_state = {row.get("town"): row.get("state") for row in townstates}
+    town_state = {row.get("inc"): row.get("state") for row in towns
+                  if row.get("inc") and row.get("state")}
+    town_state.update({row.get("town"): row.get("state") for row in townstates
+                       if row.get("town") and row.get("state")})
     exact = {}
     for local in local_hotels:
         for value in (local.get("name"), local.get("normalized_name")):

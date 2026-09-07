@@ -48,6 +48,13 @@ class FullCatalog(unittest.TestCase):
         self.assertEqual(rows[0]["status"], "deleted")
         self.assertIsNone(rows[0]["catalog_hotel_id"])
 
+    def test_town_reference_supplies_country_when_townstate_is_absent(self):
+        towns = [{"inc": "10", "name": "Шарм Эль Шейх", "state": "1"}]
+        rows = probe.match_catalog([{"inc": "469", "name": "Jaz Sharm Dreams", "town": "10"}],
+                                   towns, self.states, [], self.locals)
+        self.assertEqual(rows[0]["country"], "Египет")
+        self.assertEqual(rows[0]["status"], "verified_auto")
+
     def test_artifacts_separate_verified_and_manual_queue(self):
         rows = probe.match_catalog([{"inc": "469", "name": "Jaz Sharm Dreams", "town": "10"},
                                     {"inc": "777", "name": "Unknown fixture", "town": "10"}],
