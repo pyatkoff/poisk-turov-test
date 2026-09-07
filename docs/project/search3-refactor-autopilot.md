@@ -1971,3 +1971,13 @@ Eight public assets are **145660 → 145676 raw bytes (+16 CSS bytes)**. This is
 The browser fixture requires the 375px CTA to be at least 48px and permits change only inside that mobile bar; the rest of detail/review/lead geometry at 375/760/1000/1440 remains equal, with no overflow or lead submission. The change is checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical iPhone/Safari safe-area and live current-source journey remain deferred.
 
 Next: audit search-form completion friction and local-filter feedback using the current single-owner architecture. Accumulate the next product batch before preview publication; do not return to byte-only micro-PRs. Plan: `docs/project/search3-size-and-sales-plan.md`. Audit: `docs/project/search3-mobile-selected-cta.json`.
+
+## S3_MOBILE_SEARCH_FORM_USABILITY — checked release, 2026-09-07
+
+Source PR #1494 / `d65a0f8e2acfdcc1c7475806563cdb80119b967b`; checked release `8d5db6ca041c4d6b84271b8d1cf0cc1a7ccde4a0`. Mobile form labels are now at least 12px, primary inputs 16px, primary controls/search/advanced-filter action 48px, and quick filters 44px. The tourist popover follows the taller summary and its selectors are 44px/16px. Form values, request behavior and all protected business contracts are unchanged.
+
+Eight public assets are **145676 → 146599 raw bytes (+923 CSS bytes)**. This is intentional sales-readiness weight, not a size saving; seven assets are byte-identical. Security `34148483288`, initial exact artifact `34148483292` and ready repeat `34148657647` succeeded. Reusable artifact `10028594347`, digest `sha256:84f9e32eb8a2e9fbff1ad0ca77f0d81b42be00df44fad728a9d8b9a7aadf763a`; combined results/entry geometry artifact `10028594064`, digest `sha256:ca6aff6e7a028fcd431b5d44c53b253810f5a1c605840c4aa22abb4e09313fc3`.
+
+The Chromium fixture passed entry geometry at 375/760/761 and the existing 12 collapsed/expanded result states, with no horizontal overflow. Screenshots were retained but not manually inspected; no lead was submitted. The change is checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical iPhone/Safari safe-area and live current-source interaction remain deferred.
+
+Next: add immediate, accessible local-filter feedback and a recoverable zero-results state in the single DS2 owner. Do not add a second filter runtime or a request per local change. Accumulate a meaningful product checkpoint before the next isolated preview publication. Audit: `docs/project/search3-mobile-form-usability.json`.

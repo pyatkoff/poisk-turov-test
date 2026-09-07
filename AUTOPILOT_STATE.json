@@ -53,30 +53,32 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "The byte-only sequence #1485/#1486/#1490 reduced the eight assets 157523→145660 raw bytes. Exact source c9ba7952 at147378 bytes is published in the isolated preview; later dead-CSS removal #1490 is checked release only. Product PR #1492 then restores a confirmed collapsed mobile CTA with a 48px minimum touch target, 145660→145676 (+16 CSS). Main/production remain unchanged.",
+    "last_material_progress": "Product PR #1494 makes the mobile search form readable and touch-safe: labels are at least 12px, primary inputs are 16px, primary controls/submit/advanced-filter action are 48px and quick filters are 44px. The eight assets move 145676→146599 (+923 CSS); this is intentional product weight, not a size saving. Chromium entry geometry at375/760/761 and existing result geometry passed. Main/production remain unchanged.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Continue the selling-search UX stage: audit search-form completion friction and local-filter feedback, then accumulate the next product batch before preview publication. Stop byte-only micro-PRs; do not restore the duplicate desktop rail or remove results-tablet-layout.css. Physical Safari/safe-area remains deferred; production still requires explicit visual approval.",
+    "next_action": "Continue the selling-search UX stage with explicit local-filter feedback and recoverable zero-results behavior in the single DS2 owner. Accumulate the next product batch before preview publication. Stop byte-only micro-PRs; do not restore the duplicate desktop rail or remove results-tablet-layout.css. Physical Safari/safe-area remains deferred; production still requires explicit visual approval.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_MOBILE_SELECTED_CTA_SALES_REPAIR",
-    "title": "Restore the mobile selected-tour primary action touch target",
+    "id": "S3_MOBILE_SEARCH_FORM_USABILITY",
+    "title": "Make the mobile search form readable and touch-safe",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [1492],
+    "source_prs": [
+      1494
+    ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "1afd5c5d0866a26284be015c2cfc70e2818af534",
-    "release_sha": "5b491ce0d0a05d7ee7a6a815564b529fa89589d3",
-    "artifact_run": 34144224020,
-    "artifact_id": 10027068097,
-    "artifact_digest": "sha256:c7e1ce6a777179518a8e0aad25f3d1f9b49a519ad4f5c81df24c4bc274e5b957",
-    "selected_geometry_artifact_id": 10027067465,
+    "implementation_sha": "d65a0f8e2acfdcc1c7475806563cdb80119b967b",
+    "release_sha": "8d5db6ca041c4d6b84271b8d1cf0cc1a7ccde4a0",
+    "artifact_run": 34148657647,
+    "artifact_id": 10028594347,
+    "artifact_digest": "sha256:84f9e32eb8a2e9fbff1ad0ca77f0d81b42be00df44fad728a9d8b9a7aadf763a",
+    "results_geometry_artifact_id": 10028594064,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "checked_release_asset_bytes": 145676,
+    "checked_release_asset_bytes": 146599,
     "published_preview_asset_bytes": 147378,
-    "next_action": "The 48px mobile CTA repair is checked release only. Audit search-form completion friction and local-filter feedback, then publish the next accumulated product checkpoint; production approval remains required."
+    "next_action": "Add immediate, accessible local-filter feedback and a recoverable zero-results state in the single DS2 owner, then accumulate a justified preview checkpoint; production approval remains required."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -7556,7 +7558,11 @@
     "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "baseline": "45c589b06d939fe5ff494733e259745c41ea4d97",
     "release_integration_sha": "04f726371d3e62913ec734df99ed29b806ae2091",
-    "source_prs": [1485, 1486, 1490],
+    "source_prs": [
+      1485,
+      1486,
+      1490
+    ],
     "source_shas": [
       "cca517ac14d7938a7d228d10fdce80d1d450c0ee",
       "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
@@ -7660,7 +7666,59 @@
     "preview_updated": false,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "production_updated": false,
-    "deferred": ["Physical iPhone and Safari safe-area acceptance", "Live current-source journey"],
+    "deferred": [
+      "Physical iPhone and Safari safe-area acceptance",
+      "Live current-source journey"
+    ],
     "next_action": "Audit search-form completion friction and local-filter feedback using the current single-owner architecture; accumulate the next product batch before preview publication."
+  },
+  "latest_mobile_search_form_usability": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "base_release_sha": "6626ac58e27c85229de0f4e2d60cbbb2f5da5221",
+    "implementation_sha": "d65a0f8e2acfdcc1c7475806563cdb80119b967b",
+    "release_sha": "8d5db6ca041c4d6b84271b8d1cf0cc1a7ccde4a0",
+    "source_pr": 1494,
+    "audit": "docs/project/search3-mobile-form-usability.json",
+    "scope": "Raise mobile form labels, fields, submit, advanced-filter action, tourist controls and quick filters to readable typography and conversion-safe touch targets without changing form values or request behavior.",
+    "ci": {
+      "security_run": 34148483288,
+      "initial_artifact_run": 34148483292,
+      "ready_repeat_artifact_run": 34148657647,
+      "artifact_id": 10028594347,
+      "artifact_digest": "sha256:84f9e32eb8a2e9fbff1ad0ca77f0d81b42be00df44fad728a9d8b9a7aadf763a",
+      "results_and_entry_geometry_artifact": 10028594064,
+      "results_and_entry_geometry_digest": "sha256:ca6aff6e7a028fcd431b5d44c53b253810f5a1c605840c4aa22abb4e09313fc3",
+      "conclusion": "success"
+    },
+    "public_assets": {
+      "before_bytes": 145676,
+      "after_bytes": 146599,
+      "delta_bytes": 923,
+      "css_bytes": 86333,
+      "js_bytes": 60266,
+      "unchanged_asset_count": 7
+    },
+    "browser_verification": {
+      "entry_widths": [
+        375,
+        760,
+        761
+      ],
+      "entry_states": 3,
+      "existing_result_states": 12,
+      "horizontal_overflow": false,
+      "screenshots_retained": true,
+      "screenshots_manually_inspected": false,
+      "lead_submitted": false
+    },
+    "preview_updated": false,
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "published_preview_asset_bytes": 147378,
+    "production_updated": false,
+    "deferred": [
+      "Physical iPhone and Safari safe-area acceptance",
+      "Live current-source interaction and visual inspection"
+    ],
+    "next_action": "Add immediate, accessible local-filter feedback and a recoverable zero-results state in the single DS2 owner; accumulate before the next isolated preview publication."
   }
 }
