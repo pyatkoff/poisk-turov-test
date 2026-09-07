@@ -80,10 +80,12 @@ and lead-path verification.
    consumer; retained price/rating/stars sorting and list/grid views.
 5. Consolidated the hotel card to one count-aware primary CTA while preserving
    expanded collapse behavior and each concrete tour-selection action.
+6. Removed the ineffective Search3 list/grid switch while preserving both
+   working view controls on the maintained legacy search route.
 
 ## Next product batch
 
-Verify whether the Search3 list/grid switch produces distinct layouts under the
-current one-column result owner. If it does not, remove or condition that
-Search3-only control while preserving the working legacy-search grid. Combine
-it with a meaningful product or payload package before publication.
+Build the lean Search3 base-bundle boundary. Classify every shared-manifest
+module as Search3-required or legacy-only, retain the complete bundle on
+`/poisk-turov-old/`, and switch Search3 only after measured loaded raw/gzip
+savings plus source-closure and browser evidence.
