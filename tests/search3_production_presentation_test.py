@@ -211,6 +211,27 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         entry = (ROOT / 'src/search3/styles/entry-v1.css').read_text()
         self.assertIn('#tourSearch>details.extras[hidden]{display:none!important}', entry)
 
+    def test_small_legacy_layout_guards_are_not_search3_owners(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        for name in (
+            'search-shell-grid-v1.css',
+            'search-footer-rhythm-v1.css',
+            'selected-tour-layout-guard-v1.css',
+        ):
+            self.assertIn(repr(name), manifest)
+            self.assertIn(repr(name), scoped)
+
+        shell = (ROOT / 'src/search3/styles/base.css').read_text()
+        entry = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
+        selected = ''.join((ROOT / 'src/search3/styles' / name).read_text() for name in (
+            'tour-detail.css', 'selected-flow-v2.css', 'review-layout.css'
+        ))
+        self.assertIn('.v2-shell{display:block!important;width:min(var(--at-shell)', shell)
+        self.assertIn(':not(.search3-has-results) .ds2-site-footer{margin-top:24px!important}', entry)
+        self.assertIn('grid-template-columns:minmax(0,1fr)!important', selected)
+        self.assertIn('.selected-price{display:none!important}', selected)
+
     def test_retired_tablet_drawer_and_redundant_phone_rules_have_current_owners(self):
         tablet = (ROOT / 'src/search3/styles/results-tablet-layout.css').read_text()
         toolbar = (ROOT / 'src/search3/styles/mobile-results-toolbar.css').read_text()
