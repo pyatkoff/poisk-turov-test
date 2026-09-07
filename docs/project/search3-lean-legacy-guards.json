@@ -106,11 +106,14 @@
   "protected_contracts": "Tourvisor/API, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls, logo and eight public Search3 paths unchanged.",
   "publication": "NOT_PUBLISHED",
   "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-  "main_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
   "deferred": [
     "Live current-source visual interaction",
     "Manual screenshot inspection",
     "Physical Safari and safe-area"
   ],
-  "next_action": "Combine the remaining small Search3-only legacy guards (`selected-tour-layout-guard-v1.css`, `search-footer-rhythm-v1.css`, `search-shell-grid-v1.css`) into one >=1 KB audit packet. Remove only if current selected/shell/footer owners preserve exact geometry. Keep full legacy manifest unchanged; do not open separate micro PRs."
+  "next_action": "Combine the remaining small Search3-only legacy guards (`selected-tour-layout-guard-v1.css`, `search-footer-rhythm-v1.css`, `search-shell-grid-v1.css`) into one >=1 KB audit packet. Remove only if current selected/shell/footer owners preserve exact geometry. Keep full legacy manifest unchanged; do not open separate micro PRs.",
+  "main_sha_at_start": "fa58a0cba6dcfc8624d98c20d64fa06330eae309",
+  "main_sha_observed_after_checkpoint": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "main_change_scope": "Independent PR #1519 changed only .github/workflows/deploy-anytoour.yml. None of the Search3 source or docs PRs in this audit targeted main.",
+  "production_verification": "NOT_PERFORMED_IN_THIS_SEARCH3_INVOCATION; no Search3 production deployment was made."
 }
