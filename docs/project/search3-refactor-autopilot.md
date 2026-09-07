@@ -2088,3 +2088,23 @@ PR #1513 attempted whole `ds2-search-intro-v1.css` exclusion but exact CI failed
 Checked release is ahead of the published preview. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main/production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Manual screenshot inspection, live current-source interaction and physical Safari/safe-area are deferred. Audit: `docs/project/search3-lean-primary-meal-and-params.json`.
 
 Next: audit complete `results-layout-guard-v1.css` exclusion against the current card/drawer owners. Preserve the full legacy manifest and require exact 12-state results plus selected geometry. Do not retry blanket `ds2-search-intro-v1.css` deletion.
+
+
+## S3_LEAN_LEGACY_GUARDS — checked release, 2026-09-07
+
+Source PRs #1516 / `93e7cfbd685d32cf0a377262a5b29c1e3e6f5dbb`, #1517 / `56345ec59e08808336d0bdfbc0449b31c27ff44c` and #1520 / `2230920eb0a96c16d3eced698dcbdc4b420b6120`; checked code release `26fc0efbe8b306fbaca87b2d5330bc3311d97c6b`.
+
+Search3 excludes three complete obsolete CSS owners while the full legacy route keeps them:
+- `results-layout-guard-v1.css`: old card/photo/sidebar/nights overrides superseded by current results/card/mobile owners;
+- `search-header-layout-guard-v1.css`: desktop compatibility geometry superseded by the current shared header;
+- `ds2-search-tablet-filters-v1.css`: 701–820px styling for the hidden legacy `details.extras`; Search3 uses its current quality grid.
+
+No compensation code was added. Loaded Search3 raw is **605488 → 594063 (−11425)**, entirely scoped shared CSS: 218589→207164. Shared JS remains 235774 and the eight public Search3 paths remain exactly 151125. Exact emitted endpoints plus eight independent files gzip is **133134 → 131441 (−1693)**.
+
+Each source passed Security and both initial/ready exact artifacts: Security `34167475861`, `34167795105`, `34168181748`; exact `34167475846`/ready `34167577360`, `34167795073`/ready `34167934629`, `34168181757`/ready `34168312060`. Final reusable artifact `10034902803`, digest `sha256:9420a39c0a653f38de70e6f0300dc5126e2cca3c7b0d398f91312ce55833b61f`; selected evidence `10034902422`, results/entry evidence `10034902626`.
+
+Chromium retained 12 selected detail/review/lead states, 12 result-card/drawer states and the six-width entry lifecycle including 700/701/760/761. No real supplier request or lead was sent. Screenshots were retained but not manually inspected.
+
+Checked release is ahead of published preview. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main/production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, manual screenshot review and physical Safari/safe-area remain deferred. Audit: `docs/project/search3-lean-legacy-guards.json`.
+
+Next: combine `selected-tour-layout-guard-v1.css`, `search-footer-rhythm-v1.css` and `search-shell-grid-v1.css` into one ≥1 KB legacy-guard audit. Do not open separate micro PRs. Preserve exact selected/shell/footer geometry and the full legacy manifest.
