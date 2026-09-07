@@ -90,7 +90,7 @@ separate cascade evidence.
 | Desktop local result-filter rail | `behavior/filter-rail.js`, `styles/results-layout.css` |
 | Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/mobile-results-toolbar.css` |
 | Canonical mobile filter bar and sheet | Existing `v2/mobile-results-filters-v1.js`; Search3 reuses `.mrf-bar` and `.mrf-sheet`, not a second drawer |
-| Results header and summary | `behavior/results-top.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
+| Results header and summary | `behavior/results-presentation.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
 | Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/results-cards-v2.css` |
 | Selected tour and mobile action | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Flight labels and display-only price parsing | `behavior/flight-presentation.js`, `behavior/flight-price-presentation.js` |
@@ -214,7 +214,7 @@ eleven settled markup/copy/layout snapshots from the preceding published source.
 `summary-cta.js` runs the private lead note in its existing tour/review task;
 the former `lead-note.js` listeners are retired. Public CTA methods and other
 lead lifecycle events retain their scope.
-`results-top.js` owns one animation-frame queue for result state. Result
+`results-presentation.js` owns one animation-frame queue for result state. Result
 mutations may synchronize search state; resize must remain geometry-only so
 an open search editor is preserved. Queued geometry reads current cards, not
 an item count captured before reset. Keep these queues local to their owners;
@@ -223,7 +223,10 @@ The visible count and route remain here; the permanently hidden duplicate meta
 counter has been retired. Static page intro text belongs only to `search-form.js`
 and is not rewritten on results, reset or form-change events.
 
-`results-presentation.js` owns a separate existing zero-delay mobile-toolbar mount.
+The retired `results-top.js` slot retains provenance only. Its result header,
+route, edit and state lifecycle now shares the current results presentation IIFE
+and its existing results/reset subscriptions. The same owner keeps a separate
+zero-delay mobile-toolbar mount.
 Progressive-result and compact-breakpoint bursts share one pending task. Reset or
 empty results cancel it; a later eligible event can retry a missing canonical
 filter bar. Mounting retains the existing toolbar, native sort handoff and control

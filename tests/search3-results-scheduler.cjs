@@ -2,29 +2,45 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const events = new Map(), frames = [], classes = new Set();
+const events = new Map(), frames = [], timers = [], classes = new Set();
 let observeResults, cards = true, emptyLocal = false;
+let scrolled = 0, focused = 0;
 const properties = new Map();
 const style = { setProperty(k,v,priority) { assert.equal(priority,'important'); properties.set(k,v); }, removeProperty(k) { properties.delete(k); } };
 const heading = { textContent: '' }, summary = { textContent: '' };
 const mapButton = { textContent: 'На карте', setAttribute() {} };
 const tools = { style, parentElement: { getBoundingClientRect() { return { left: 0 }; } }, querySelector(s) { assert.notEqual(s, '.search3-results-meta', 'hidden duplicate counters have no runtime owner'); return s === 'strong' ? heading : s === '.results-map-button' ? mapButton : null; } };
-const results = { querySelector() { return cards ? {} : null; } };
+const results = {
+ querySelector() { return cards ? {} : null; },
+ querySelectorAll() { return []; },
+ contains() { return false; }
+};
 const route = { textContent: '' };
 const searchSummary = { querySelector() { return route; } };
-const form = { elements: { from: { value: 'Москва' }, country: { value: 'Турция' }, region: { value: 'Сиде' } }, addEventListener() {} };
-const document = { getElementById(id) { return { tourSearch: form, resultsTools: tools, resultSummary: summary, resultsSearchSummary: searchSummary, results }[id] || null; }, querySelector(selector) { assert.notEqual(selector, '.search3-page-intro', 'static intro stays owned by search-form'); return selector === '.results-filter-rail[data-s3-empty-results="1"]' && emptyLocal ? {} : null; }, body: { classList: { toggle(n,on) { on ? classes.add(n) : classes.delete(n); }, remove(...names) { names.forEach(n=>classes.delete(n)); } } } };
-const window = { innerWidth: 1440, addEventListener(n,fn) { events.set(n,fn); } };
+const focusTarget = { focus() { focused++; } };
+const edit = { addEventListener(type, handler) { assert.equal(type, 'click'); this.click = handler; } };
+const form = { elements: { from: { value: 'Москва' }, country: { value: 'Турция' }, region: { value: 'Сиде' } }, addEventListener() {}, scrollIntoView() { scrolled++; }, querySelector() { return focusTarget; } };
+const document = { getElementById(id) { return { tourSearch: form, resultsTools: tools, resultSummary: summary, resultsSearchSummary: searchSummary, resultsSearchEdit: edit, results }[id] || null; }, querySelector(selector) { assert.notEqual(selector, '.search3-page-intro', 'static intro stays owned by search-form'); return selector === '.results-filter-rail[data-s3-empty-results="1"]' && emptyLocal ? {} : null; }, addEventListener() {}, body: { classList: { contains(n) { return n === 'search3-candidate' || classes.has(n); }, add(n) { classes.add(n); }, toggle(n,on) { on ? classes.add(n) : classes.delete(n); }, remove(...names) { names.forEach(n=>classes.delete(n)); } } } };
+const window = { innerWidth: 1440, addEventListener(n,fn) { assert.ok(!events.has(n), 'one listener per results lifecycle event'); events.set(n,fn); }, setTimeout() { return 1; }, clearTimeout() {}, matchMedia() { return { addEventListener() {} }; } };
 const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname,'../v2/search3-results-filters-v1.js'),'utf8');
 const bundledIife = require('./search3-bundle-iife.cjs');
 vm.runInNewContext(bundledIife(bundle, { literal: '#resultsSearchRoute' }), {
  document, window,
  MutationObserver: function(fn) { observeResults = fn; this.observe = ()=>{}; },
- requestAnimationFrame(fn) { frames.push(fn); }
+ requestAnimationFrame(fn) { frames.push(fn); },
+ setTimeout(fn) { timers.push(fn); }
 });
 const emit = (n,items) => events.get(n)({ detail: { items } });
 assert.equal(mapButton.textContent, 'На карте', 'canonical map label survives without retired pseudo-content CSS');
 const flush = () => { while(frames.length) frames.shift()(); };
+assert.ok(classes.has('search3-has-results'), 'initial result state is synchronized');
+assert.equal(route.textContent,'Москва → Турция, Сиде');
+edit.click();
+assert.ok(classes.has('search3-editing-search'));
+assert.equal(scrolled, 1);
+assert.equal(timers.length, 1);
+timers.shift()();
+assert.equal(focused, 1);
 emit('v2:results-rendered',[{ tours: [{},{}] }]); observeResults(); observeResults();
 assert.equal(frames.length,1,'result mutations share one state frame'); flush();
 assert.equal(properties.size,0,'results presentation does not write inline geometry');

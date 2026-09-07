@@ -23,8 +23,8 @@ function harness() {
     toggle(name, enabled) { if (enabled) classes.add(name); else classes.delete(name); },
     remove: name => classes.delete(name)
   } };
-  const results = { querySelectorAll: () => [] };
-  const tools = { insertAdjacentElement(where, node) { assert.equal(where, 'afterend'); toolbar = node; stats.mounts++; } };
+  const results = { querySelector: () => null, querySelectorAll: () => [] };
+  const tools = { querySelector: () => null, insertAdjacentElement(where, node) { assert.equal(where, 'afterend'); toolbar = node; stats.mounts++; } };
   const document = {
     body,
     getElementById: id => ({ results, resultsTools: tools, sortResults: sort }[id] || null),
@@ -42,7 +42,11 @@ function harness() {
     matchMedia: () => ({ addEventListener(type, callback) { mediaEvents.set(type, callback); } })
   };
   class Event { constructor(type, options) { this.type = type; this.bubbles = !!(options && options.bubbles); } }
-  vm.runInNewContext(source, { window, document, Event }, { filename: 'results-presentation.js' });
+  vm.runInNewContext(source, {
+    window, document, Event,
+    MutationObserver: function () { this.observe = function () {}; },
+    requestAnimationFrame: callback => callback()
+  }, { filename: 'results-presentation.js' });
   return {
     stats, timers, sort, proxy, filterBar, slot, format: window.Search3CandidateResultsV1,
     results(items = [{ id: 'hotel' }]) { events.get('v2:results-rendered')({ detail: { items } }); },
