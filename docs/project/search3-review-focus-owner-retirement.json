@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
+  "base_release_sha": "60e73acfc9ae0a7d8a1413386b26b333725e9a41",
+  "source_sha": "ad997e4ed010f6178fabcdec2ba0d17fddadf0f8",
+  "source_tree": "3dca79618b8079e8ca79f965b017c389fbe9f50c",
+  "source_pr": 1444,
+  "scope": "Retire the complete legacy review presentation donor, the obsolete selected-tour desktop family and duplicate multi-frame selected/return focus ownership while preserving active review controls, non-final seams, busy state and canonical return focus in current owners.",
+  "removed": [
+    "review.css as a live presentation layer",
+    "selected-tour.css obsolete desktop geometry family",
+    "six-frame selected-entry focus polling",
+    "eight-frame Search3 return-focus loop and its cancellation listeners"
+  ],
+  "retained": [
+    "review-layout.css current review heading, actions, submit visibility and responsive geometry ownership",
+    "tour-detail.css current non-final desktop grid and picture/head seam ownership",
+    "one animation frame to focus the already-rendered selected context",
+    "selected-tour-return-v1.js as the canonical exact initiating-tour return-focus owner",
+    "production button-label recovery and selected aria-busy lifecycle",
+    "all eight public paths and protected price, URL/payload, Tourvisor/API, lead transport/mapping and analytics contracts"
+  ],
+  "public_assets": [
+    {"path": "v2/search3-results-filters-v1.css", "before": 89668, "after": 87449, "saved": 2219, "sha256": "034d4d72bcffe534acc2751d7b355a24c3bf7a9cbbfc04b9c89707d0f1548263"},
+    {"path": "v2/search3-entry-v1.css", "before": 9662, "after": 9662, "saved": 0, "sha256": "7b899275f03cdd818d34de921b0340d3840c49673d3864514ff58e15d8a402c3"},
+    {"path": "v2/search3-results-cards-v2.css", "before": 6611, "after": 6611, "saved": 0, "sha256": "225ca5c5f32a538dffa0b0fb2ba48147619d2e71fe20b9b8b560a3d2467d7bd7"},
+    {"path": "v2/search3-selected-flow-v2.css", "before": 8047, "after": 8047, "saved": 0, "sha256": "72129e53604d5a32be8b2794bf11e107aa1bef0e550a69f27bc81809a9684e64"},
+    {"path": "v2/search3-results-filters-v1.js", "before": 78608, "after": 76863, "saved": 1745, "sha256": "240f7509803a26829b004b4e544b5ff766bbc22d6db21651c9f0ad3c1862c726"},
+    {"path": "v2/search3-entry-v1.js", "before": 3226, "after": 3226, "saved": 0, "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"},
+    {"path": "v2/search3-results-cards-v2.js", "before": 0, "after": 0, "saved": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"path": "v2/search3-selected-flow-v2.js", "before": 7882, "after": 7882, "saved": 0, "sha256": "9073087372ffaac8d0d0b04afc00a9da0f10739e9865692691727f20ea19587b"}
+  ],
+  "totals": {
+    "before": 203704,
+    "after": 199740,
+    "saved": 3964,
+    "css_before": 113988,
+    "css_after": 111769,
+    "css_saved": 2219,
+    "js_before": 89716,
+    "js_after": 87971,
+    "js_saved": 1745,
+    "whole_layer_baseline": 301524,
+    "whole_layer_saved": 101784
+  },
+  "verification": {
+    "local": "One exact build/write followed by check; 19 production-presentation tests passed with one local PHP-only skip; focused selected-handoff, review owner, booking summary, selected scheduler and injected-style regressions passed; diff check passed.",
+    "source_ci": {
+      "security_run": 34085700487,
+      "security_job": 101629203005,
+      "artifact_run": 34085700527,
+      "artifact_job": 101629202831,
+      "artifact_id": 10005140803,
+      "artifact_digest": "sha256:9351169c7b89c9dfb01998a4dd3e7c7dec34b7ae73521d32d5237dee8d8b7bad",
+      "required_passed": 2,
+      "conclusion": "success",
+      "guards": "unchanged"
+    },
+    "initial_ci_failure": {
+      "security_run": 34085544728,
+      "artifact_run": 34085544729,
+      "reason": "The prior docs-only checkpoint had a truncated AUTOPILOT_STATE Git blob. The exact local blob bcc118b9c70707cd706de6f0394f9295912cf7f0 was restored; no validator or runtime guard changed."
+    },
+    "source_review": "Independent audits rejected final-sections.js because it remains the only visible owner of several review facts and kept the 3535-byte review-layout geometry block deferred. The retired review and focus owners had complete current replacements.",
+    "visual": "Deferred. No preview publication or browser claim was made for this source."
+  },
+  "preview": {
+    "published": false,
+    "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+    "checked_release_sha": "ad997e4ed010f6178fabcdec2ba0d17fddadf0f8",
+    "reason": "Review and focus ownership changed, but the required responsive visual states have not had the bounded browser pass."
+  },
+  "deferred": [
+    "selected/back focus in a real browser",
+    "review and lead geometry at 375/430/641/999/1000/1363",
+    "final-services and booking-summary visibility matrix",
+    "physical Safari"
+  ],
+  "production_updated": false,
+  "next_action": "Do not repeat review.css, selected-tour desktop geometry or duplicate focus loops. Keep final-sections.js and the remaining 3535-byte review-layout block until their review fact/geometry replacements are proven; audit a different large owner or accumulate the measured selected-tour/responsive fragments."
+}

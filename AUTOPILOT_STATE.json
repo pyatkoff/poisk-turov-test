@@ -53,26 +53,26 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Source#1443: complete filters.css and maket7-lock.js owners retired; active rail/mobile/confidence rules moved to current CSS owners and results-top inline geometry removed;209753→203704 raw bytes (−6049). Both mandatory source jobs passed; release checked at38be9f08, preview intentionally remains4b061396.",
+    "last_material_progress": "Source#1444: complete review.css owner, obsolete selected-tour desktop family and duplicate multi-frame selected/return focus loops retired;203704→199740 raw bytes (−3964). Both mandatory final-source jobs passed after restoring a truncated docs-state blob; release checked atad997e4e, preview intentionally remains4b061396.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not repeat filters.css, maket7-lock.js or results-top inline geometry. The audited3535-byte review-layout block remains deferred until computed review/lead geometry at641/999/1000/1363 is available. Inspect a different large presentation owner or combine measured selected-tour/responsive fragments with another substantial safe owner; protected price presentation remains out of scope. Physical Safari remains deferred.",
+    "next_action": "Do not repeat review.css, selected-tour desktop geometry or duplicate focus loops. Keep final-sections.js because it remains the visible owner of several review facts, and keep the audited3535-byte review-layout block until computed review/lead geometry at641/999/1000/1363 is available. Inspect a different large owner or combine other measured safe fragments; protected price presentation remains out of scope. Physical Safari remains deferred.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_FILTER_MAKET7_OWNER_RETIREMENT",
-    "title": "Retire legacy filter, maket7 and inline result geometry ownership",
+    "id": "S3_REVIEW_FOCUS_OWNER_RETIREMENT",
+    "title": "Retire legacy review and duplicate selected-focus ownership",
     "status": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1443
+      1444
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "38be9f08c1b06635bb59d631e5cc85f7b3af3d70",
-    "artifact_run": 34084631257,
-    "artifact_id": 10004793873,
-    "next_action": "Keep review-layout deferred until computed-state evidence at641/999/1000/1363; inspect a different large owner or accumulate safe selected-tour/responsive fragments without protected price changes. Main/production remain locked; hourly development stays enabled."
+    "implementation_sha": "ad997e4ed010f6178fabcdec2ba0d17fddadf0f8",
+    "artifact_run": 34085700527,
+    "artifact_id": 10005140803,
+    "next_action": "Keep final-sections.js and review-layout until review facts and computed-state evidence are preserved; inspect a different large owner or accumulate safe fragments without protected price changes. Main/production remain locked; hourly development stays enabled."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -823,6 +823,24 @@
       "artifact_rebuilt_on_release": false,
       "artifact_rebuilt_for_docs": false,
       "full_responsive_site_seo": "deferred, not passed"
+    },
+    "review_focus_owner_retirement": {
+      "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
+      "source_sha": "ad997e4ed010f6178fabcdec2ba0d17fddadf0f8",
+      "source_pr": 1444,
+      "security_run": 34085700487,
+      "security_job": 101629203005,
+      "artifact_run": 34085700527,
+      "artifact_job": 101629202831,
+      "artifact_id": 10005140803,
+      "artifact_digest": "sha256:9351169c7b89c9dfb01998a4dd3e7c7dec34b7ae73521d32d5237dee8d8b7bad",
+      "required_passed": 2,
+      "first_attempt_passed": false,
+      "initial_security_failure": "Prior docs-only AUTOPILOT_STATE Git blob was truncated; exact local blob restored without validator changes.",
+      "preview_published": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "full_responsive_site_seo": "deferred, not passed"
     }
   },
   "last_verified_commit": "4b061396bf3374e026f29943c78f90396352a135",
@@ -859,6 +877,50 @@
   },
   "owner_priority_source": "OWNER_PRIORITY.json",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
+  "latest_review_focus_owner_retirement": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
+    "base_release_sha": "60e73acfc9ae0a7d8a1413386b26b333725e9a41",
+    "implementation_sha": "ad997e4ed010f6178fabcdec2ba0d17fddadf0f8",
+    "release_integration_sha": "ad997e4ed010f6178fabcdec2ba0d17fddadf0f8",
+    "source_tree": "3dca79618b8079e8ca79f965b017c389fbe9f50c",
+    "source_pr": 1444,
+    "audit": "docs/project/search3-review-focus-owner-retirement.json",
+    "scope": "Complete review.css owner, obsolete selected-tour desktop family and duplicate multi-frame selected/return focus loops retired; current review, tour-detail and base return owners preserved.",
+    "ci": {
+      "security_run": 34085700487,
+      "artifact_run": 34085700527,
+      "artifact_id": 10005140803,
+      "artifact_digest": "sha256:9351169c7b89c9dfb01998a4dd3e7c7dec34b7ae73521d32d5237dee8d8b7bad",
+      "required_passed": 2,
+      "conclusion": "success",
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
+    },
+    "public_assets": {
+      "css_bytes": 111769,
+      "js_bytes": 87971,
+      "total_bytes": 199740,
+      "scope": "Eight public paths, raw uncompressed bytes; no transfer-size or speed claim."
+    },
+    "package_delta": {"bytes": -3964, "css_bytes": -2219, "js_bytes": -1745},
+    "continuation_total": {"baseline_bytes": 301524, "after_bytes": 199740, "saved_bytes": 101784},
+    "preview": {
+      "published": false,
+      "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+      "checked_release_sha": "ad997e4ed010f6178fabcdec2ba0d17fddadf0f8"
+    },
+    "visual_verification": {
+      "performed": false,
+      "deferred": [
+        "selected/back focus in a real browser",
+        "review and lead geometry at375/430/641/999/1000/1363",
+        "final fact visibility matrix",
+        "physical Safari"
+      ]
+    },
+    "production_updated": false,
+    "next_action": "Keep final-sections.js and review-layout until their review facts and computed geometry have proven replacements; inspect a different large owner or combine other measured safe fragments."
+  },
   "latest_filter_maket7_owner_retirement": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
     "base_release_sha": "d7b59a5cd1d559fcc0700787a864c7e340bf7339",

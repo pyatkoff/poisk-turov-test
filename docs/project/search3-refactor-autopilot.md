@@ -66,9 +66,53 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `38be9f08c1b06635bb59d631e5cc85f7b3af3d70`;
+The latest checked release source is `ad997e4ed010f6178fabcdec2ba0d17fddadf0f8`;
 the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
+
+### Latest checked candidate — review and focus owner retirement — 2026-09-07
+
+Source #1444 / exact release `ad997e4ed010f6178fabcdec2ba0d17fddadf0f8`,
+tree `3dca79618b8079e8ca79f965b017c389fbe9f50c`, retires the complete
+legacy `review.css` presentation donor and the obsolete desktop family in
+`selected-tour.css`. Unique heading/action/submit rules now live in current
+`review-layout.css`; four non-final grid/seam declarations are retained in
+`tour-detail.css`. The existing responsive review geometry block is byte-identical.
+
+The same package replaces six-frame selected-entry polling with one frame and
+removes Search3's duplicate eight-frame return-focus loop. Production renders the
+selected DOM before `v2:tour-selected`; the base `selected-tour-return-v1.js`
+remains the canonical owner that focuses the exact initiating tour button.
+Production-label recovery and `aria-busy` lifecycle remain in Search3.
+
+Eight raw public assets fall **203704 → 199740 bytes (−3964)**: CSS 113988 →
+111769 (−2219), JS 89716 → 87971 (−1745). From the 301524-byte whole-layer
+baseline the checked reduction is now 101784 bytes. All eight public paths and
+protected business contracts remain unchanged.
+
+Both mandatory final-source jobs passed with guards unchanged: Security
+`34085700487` and exact artifact build `34085700527`; artifact `10005140803`,
+digest `sha256:9351169c7b89c9dfb01998a4dd3e7c7dec34b7ae73521d32d5237dee8d8b7bad`.
+One exact source build was reused. Local exact check, 19 presentation tests (one
+PHP-only local skip), focused review/handoff/summary/selected regressions and diff
+check passed. Audit: `docs/project/search3-review-focus-owner-retirement.json`.
+
+An earlier Security attempt `34085544728` failed because the prior docs-only
+checkpoint contained a truncated `AUTOPILOT_STATE.json` Git blob. The exact local
+blob `bcc118b9c70707cd706de6f0394f9295912cf7f0` was restored; validators and runtime
+guards were not changed. The final exact head passed both required jobs.
+
+This source is **checked but not published**. The isolated preview deliberately
+remains source `4b061396`; main and production remain `fa58a0cb`. No browser or
+visual pass is claimed. Selected/back focus, review/lead geometry at
+375/430/641/999/1000/1363, final fact visibility and physical Safari remain deferred.
+
+Next: do not repeat `review.css`, selected-tour desktop geometry or the duplicate
+focus loops. `final-sections.js` remains the only visible owner of several review
+facts and must not be removed yet. The separately audited 3535-byte review-layout
+block still requires computed review/lead evidence. Audit a different large owner
+or combine other measured safe fragments; protected price presentation stays out
+of this reduction pass.
 
 ### Latest checked candidate — filter and maket7 owner retirement — 2026-09-07
 
