@@ -94,7 +94,9 @@ children. The departure date comes from the availability string within the next
 from the API. No provider IDs or offer records are invented.
 
 The first price page uses `FREIGHT=1`, `FILTER=1`, `DYN_SEPARATE=1` and hotel
-minimum-price grouping. Local supplier prices are inspected; external-result
+minimum-price grouping. One returned group is then expanded with its own
+`CATCLAIM` and `HOTELS` identifiers, removing `PARTITION_PRICE`. A group with
+hotel availability is preferred. Local supplier prices are inspected; external-result
 polling is not performed. SAMO may initiate external-source searches internally.
 The report contains at most three sample offers with allowlisted hotel/meal/date
 fields, native price/currency, and separately parsed converted price/currency.
@@ -108,6 +110,16 @@ they do not establish final quote actualization. The diagnostic creates no
 booking, lead, payment, database record or server file. It does not change the
 site search. Each response stays capped at 2 MiB with a 20-second socket timeout;
 price mode has a 290-second SSH deadline and a maximum budget of 12 API reads.
+
+Initial price [run 34140983282](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34140983282)
+on source `24112883b68c5d2df187645282ec46c451349d3e` succeeded at 15:58 UTC:
+Moscow → Turkey, 2026-09-14 to 2026-09-21, seven nights, two adults, no children.
+The first page contained 300 valid full-package grouped rows. Native prices
+were EUR with separately returned RUB equivalents. The first sample was The
+Lola Hotel, 773 EUR / 82,796 RUB, room Economy Double Room, RO. Both economy
+flight flags were Y, while hotel availability was RRRR (on request). This is a
+search result at the recorded time, not a confirmed booking or final quote.
+The follow-up expands a returned group to verify a concrete ungrouped offer.
 
 ### Price method documentation
 

@@ -90,6 +90,34 @@ class PriceProbeTest(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(request.call_args_list[-1].args[0]["NIGHTS_FROM"], 10)
 
+    def test_group_is_expanded_without_partition_and_missing_booking_is_unknown(self):
+        payloads = copy.deepcopy(self.payloads)
+        payloads[-1]["prices"][0].update(grouped=1, hotelKey=123, bron=0)
+        expanded = copy.deepcopy(self.row)
+        expanded["grouped"] = False
+        expanded.pop("bron")
+        replies = [reply(action, data) for action, data in zip(METHODS, payloads)]
+        replies.append(reply("SearchTour_PRICES", {"prices": [expanded]}))
+        with mock.patch.object(probe, "request", side_effect=replies) as request:
+            result = probe.clean_report(probe.remote_price_probe(TOKENS))
+        self.assertTrue(result["ok"])
+        self.assertEqual(request.call_count, 7)
+        params = request.call_args_list[-1].args[0]
+        self.assertEqual(params["CATCLAIM"], self.row["id"])
+        self.assertEqual(params["HOTELS"], 123)
+        self.assertNotIn("PARTITION_PRICE", params)
+        self.assertEqual(result["expanded_offers"], 1)
+        self.assertIsNone(result["samples"][0]["bookable"])
+        self.assertIs(result["samples"][0]["grouped"], False)
+        self.assertNotIn(self.row["id"], json.dumps(result))
+
+    def test_boolean_booking_flags_are_preserved(self):
+        payloads = copy.deepcopy(self.payloads)
+        payloads[-1]["prices"][0]["bron"] = True
+        result, _ = self.run_probe(payloads)
+        self.assertIs(result["samples"][0]["bookable"], True)
+        self.assertEqual(result["bookable_offers"], 1)
+
     def test_unavailable_dates_are_not_selected(self):
         data = {"start": self.start.strftime("%Y%m%d"), "valid": "0720"}
         dates = probe.available_dates(data, self.today)

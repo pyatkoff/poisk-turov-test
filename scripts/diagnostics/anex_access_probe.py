@@ -271,6 +271,14 @@ def amount(value):
     return float(number) if 0 < number <= 1_000_000_000 else None
 
 
+def flag(value):
+    if value in (1, "1", True):
+        return True
+    if value in (0, "0", False):
+        return False
+    return None
+
+
 def offer_sample(row, selected):
     if not isinstance(row, dict):
         return None
@@ -293,8 +301,8 @@ def offer_sample(row, selected):
                   "checkin": checkin.strftime("%Y%m%d"), "checkout": checkout.strftime("%Y%m%d"),
                   "nights": nights, "adults": int(row["adult"]), "children": int(row["child"]),
                   "price": price, "currency": currency,
-                  "bookable": str(row.get("bron")) == "1",
-                  "grouped": str(row.get("grouped")) == "1"}
+                  "bookable": flag(row.get("bron")),
+                  "grouped": flag(row.get("grouped"))}
         converted = re.fullmatch(r"([\d .,\u00a0]+)\s+([A-Z]{3})", str(row.get("convertedPrice", "")))
         if converted and amount(converted.group(1)):
             sample.update(converted_price=amount(converted.group(1)), converted_currency=converted.group(2))
@@ -304,9 +312,9 @@ def offer_sample(row, selected):
         freights = row.get("freights", {})
         econom = freights.get("econom", {}) if isinstance(freights, dict) else {}
         for source, target in (("in", "flight_outbound"), ("out", "flight_return")):
-            flag = econom.get(source) if isinstance(econom, dict) else None
-            if flag in ("Y", "N", "F", "R"):
-                sample[target] = flag
+            availability_flag = econom.get(source) if isinstance(econom, dict) else None
+            if availability_flag in ("Y", "N", "F", "R"):
+                sample[target] = availability_flag
         return sample if sample["hotel"] else None
     except (KeyError, TypeError, ValueError, InvalidOperation):
         return None
@@ -377,12 +385,35 @@ def remote_price_probe(tokens):
         valid = [offer_sample(row, selected) for row in rows]
         valid = [sample for sample in valid if sample is not None]
         report["valid_offers"] = len(valid)
-        report["bookable_offers"] = sum(sample["bookable"] for sample in valid)
+        report["bookable_offers"] = sum(sample["bookable"] is True for sample in valid)
         samples.extend(valid[:3])
         if not rows:
             stop("no_prices")
         elif not valid:
             stop("invalid_offer")
+        grouped = [row for row in rows if isinstance(row, dict) and flag(row.get("grouped")) is True
+                   and offer_sample(row, selected) is not None
+                   and positive_id({"id": row.get("hotelKey")})]
+        if grouped:
+            grouped.sort(key=lambda row: "Y" not in str(row.get("hotelAvailability", ""))
+                         or "R" in str(row.get("hotelAvailability", "")))
+            chosen = grouped[0]
+            expand = dict(params, CATCLAIM=chosen["id"], HOTELS=chosen["hotelKey"])
+            expand.pop("PARTITION_PRICE")
+            detail = api_data(token, "SearchTour_PRICES", expand, checks, expanded=True)
+            detail_rows = detail.get("prices", []) if isinstance(detail, dict) else detail
+            if not isinstance(detail_rows, list):
+                checks[-1]["status"] = "invalid_response"
+                raise StopProbe()
+            checks[-1]["count"] = len(detail_rows)
+            detailed = [offer_sample(row, selected) for row in detail_rows]
+            detailed = [sample for sample in detailed if sample is not None and sample["grouped"] is False]
+            report["expanded_offers"] = len(detailed)
+            if detailed:
+                report["bookable_offers"] = sum(sample["bookable"] is True for sample in detailed)
+                samples[:] = detailed[:3]
+            else:
+                stop("invalid_offer")
     except StopProbe:
         pass
     except (KeyError, TypeError, ValueError):
@@ -415,7 +446,7 @@ def clean_report(report):
         for key in ("adults", "children", "nights_from", "nights_till"):
             if type(search.get(key)) is int and 0 <= search[key] <= 100:
                 result["search"][key] = search[key]
-        for key in ("valid_offers", "bookable_offers"):
+        for key in ("valid_offers", "bookable_offers", "expanded_offers"):
             if type(report.get(key)) is int and 0 <= report[key] <= 10000:
                 result[key] = report[key]
         result["external_results_not_loaded"] = report.get("external_results_not_loaded") is True
@@ -430,7 +461,7 @@ def clean_report(report):
                 if type(sample.get(key)) in (int, float) and 0 <= sample[key] <= 1_000_000_000:
                     clean[key] = sample[key]
             for key in ("bookable", "grouped"):
-                clean[key] = sample.get(key) is True
+                clean[key] = sample.get(key) if type(sample.get(key)) is bool else None
             result["samples"].append(clean)
         result["ok"] = result["ok"] and bool(result["samples"])
     return result
