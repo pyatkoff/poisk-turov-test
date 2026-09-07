@@ -78,9 +78,12 @@ and lead-path verification.
    zero-results state in the single DS2 owner, without network requests.
 4. Removed the unimplemented “Ближе к морю” sort and the map action with no
    consumer; retained price/rating/stars sorting and list/grid views.
+5. Consolidated the hotel card to one count-aware primary CTA while preserving
+   expanded collapse behavior and each concrete tour-selection action.
 
 ## Next product batch
 
-Audit the result-card action hierarchy and keep one clear primary path from
-hotel to tour selection. Preserve supplier facts, price arithmetic, selection
-and lead lifecycle. Accumulate before publishing the isolated preview.
+Verify whether the Search3 list/grid switch produces distinct layouts under the
+current one-column result owner. If it does not, remove or condition that
+Search3-only control while preserving the working legacy-search grid. Combine
+it with a meaningful product or payload package before publication.
