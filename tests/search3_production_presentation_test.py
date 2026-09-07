@@ -180,8 +180,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('&.search3-final-review .search3-lead-comment{display:none!important}', lead_state)
         self.assertIn('.search3-booking-summary__price-note{display:none!important}', lead_state)
         self.assertIn('.search3-final-review.search3-lead-entry .lead-selection-summary{display:none!important}', lead_state)
-        self.assertIn('.search3-lead-shell.search3-lead-shell{grid-row:6!important}', lead_state)
-        self.assertIn('.search3-final-sections.search3-final-sections{grid-row:7!important}', lead_state)
+        self.assertNotIn('.search3-lead-shell.search3-lead-shell{grid-row:6!important}', lead_state)
+        self.assertNotIn('.search3-final-sections.search3-final-sections{grid-row:7!important}', lead_state)
         self.assertIn(':is(.selected-head>:not(:first-child),.tour-flights .flight-baggage,.tour-flights .section-heading span){display:none!important}', lead_state)
         self.assertNotIn('min-height:280px!important;display:flex!important;align-items:center!important', all_styles)
         self.assertNotIn('& .lead-fields {gap:14px!important;grid-template-columns:1fr 1fr!important}', all_styles)
@@ -204,6 +204,11 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         ):
             self.assertIn(marker, review)
         self.assertNotIn('search3-review-heading', review)
+        self.assertNotIn('.selected-picture {height:154px!important', review)
+        self.assertNotIn('#selectedTour.search3-lead-entry{display:flex!important', review)
+        self.assertIn('.search3-lead-shell{display:contents!important}', review)
+        self.assertIn('@media(max-width:999px)', review)
+        self.assertIn('.search3-lead-shell>.search3-booking-summary{grid-column:1!important;grid-row:2!important;position:static!important}', review)
 
         selected = (ROOT / 'src/search3/styles/selected-tour.css').read_text()
         detail = (ROOT / 'src/search3/styles/tour-detail.css').read_text()

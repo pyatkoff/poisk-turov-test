@@ -34,8 +34,6 @@ body.search3-candidate #selectedTour{
 @media(max-width:640px){
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-selection-summary{display:none!important}
 html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry){
-& .search3-lead-shell.search3-lead-shell{grid-row:6!important}
-& .search3-final-sections.search3-final-sections{grid-row:7!important}
 & :is(.selected-head>:not(:first-child),.tour-flights .flight-baggage,.tour-flights .section-heading span){display:none!important}
 }
 }
