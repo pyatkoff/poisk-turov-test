@@ -5,58 +5,28 @@ const bundledIife = require('./search3-bundle-iife.cjs');
 
 const root = path.join(__dirname, '..');
 const bundle = fs.readFileSync(path.join(root, 'v2/search3-results-filters-v1.js'), 'utf8');
-const rail = bundledIife(bundle, { literal: '.results-filter-rail' });
-const stylesRoot = path.join(root, 'src/search3/styles');
-const retiredStyles = fs.readFileSync(path.join(stylesRoot, 'filters.css'), 'utf8');
-const currentStyles = fs.readFileSync(path.join(stylesRoot, 'mobile-results-toolbar.css'), 'utf8');
+const bridge = bundledIife(bundle, { literal: '.results-filter-rail' });
+const desktop = fs.readFileSync(path.join(root, 'v2/ds2-results-filters.js'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');
-const legacyDesktop = fs.readFileSync(path.join(root, 'v2/ds2-results-filters.js'), 'utf8');
 const presentation = require('./search3-bundled-results.cjs');
 
-function cssFiles(dir) {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = path.join(dir, entry.name);
-    return entry.isDirectory() ? cssFiles(full) : (entry.isFile() && entry.name.endsWith('.css') ? [full] : []);
-  });
+assert.match(bridge, /window\.DS2ResultsFilters/, 'Search3 bridge requires the loaded DS2 owner');
+assert.match(bridge, /window\.__DS2ResultsRailApplying/, 'bridge scopes the zero-result marker to DS2 renders');
+assert.match(bridge, /dataset\.s3EmptyResults/, 'bridge preserves the Search3 empty-shell contract');
+for (const marker of ['data-s3-price', 'data-s3-panel', 'data-s3-reset', 'data-s3-charter-check']) {
+  assert.ok(!bridge.includes(marker), `retired duplicate desktop control is absent: ${marker}`);
 }
 
-for (const marker of [
-  'search3:filters-opened',
-  'search3:filters-cancelled',
-  'search3:filters-committed',
-  'search3-filter-subpanel',
-  'data-s3-subpanel',
-  'search3-filter-open',
-  'search3-filter-overlay',
-  'data-s3-close-filters',
-  'data-s3-commit-filters'
-]) {
-  assert.ok(!rail.includes(marker), `filter rail no longer owns orphan mobile lifecycle: ${marker}`);
+assert.match(desktop, /window\.DS2ResultsFilters=\{/, 'DS2 is the sole desktop filter owner');
+for (const marker of ['data-ds2-price', 'data-ds2-meal-fieldset', 'data-ds2-stars-fieldset',
+  'data-ds2-rating-fieldset', 'data-ds2-sea-fieldset', 'data-ds2-reset']) {
+  assert.ok(desktop.includes(marker), `DS2 owner retains ${marker}`);
 }
+assert.ok(desktop.includes('window.__DS2ResultsRailApplying=true'), 'DS2 exposes only its synchronous render boundary');
+assert.match(mobile, /sheet\.className=(['"])mrf-sheet\1/, 'mobile sheet remains independently owned');
+assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('),
+  'mobile open/close lifecycle remains live');
+assert.match(presentation, /document\.querySelector\((['"])\.mrf-bar\1\)/,
+  'Search3 still mounts the canonical mobile filter bar');
 
-assert.match(
-  rail,
-  /[A-Za-z_$][\w$]*\.target\.closest\((['"])\[data-s3-panel\]\1\)\?editSearch\(\):/,
-  'desktop result-filter edit rows keep their existing edit-search handoff'
-);
-assert.equal(retiredStyles.replace(/\/\*[\s\S]*?\*\//g, '').trim(), '',
-  'the retired filter presentation donor contains no live CSS');
-assert.match(currentStyles, /@media\(max-width:999px\)\{[\s\S]*?\.results-filter-rail\s*\{display:none!important\}/,
-  'the current mobile toolbar owner explicitly hides the desktop rail');
-
-for (const file of cssFiles(stylesRoot)) {
-  const source = fs.readFileSync(file, 'utf8');
-  for (const marker of ['search3-filter-subpanel', 'search3-filter-open', 'search3-filter-overlay']) {
-    assert.ok(!source.includes(marker), `${path.relative(root, file)} no longer contains orphan drawer marker: ${marker}`);
-  }
-}
-
-assert.match(mobile, /sheet\.className=(['"])mrf-sheet\1/, 'base mobile result-filter sheet remains the mobile owner');
-assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('), 'mobile owner retains open/close lifecycle');
-assert.match(presentation, /document\.querySelector\((['"])\.mrf-bar\1\)/, 'Search3 presentation still mounts the canonical mobile filter bar');
-assert.match(legacyDesktop, /t\.matches\((['"])\[data-ds2-price\]\1\)/,
-  'the base bundle retains its legacy desktop price listener');
-assert.ok(!rail.includes('data-ds2-price'),
-  'the Search3 price control does not opt into the legacy desktop listener');
-
-console.log('PASS: one mobile filter owner; orphan drawer CSS absent across Search3 styles');
+console.log('PASS: one DS2 desktop filter owner, scoped Search3 empty bridge, independent mobile owner');
