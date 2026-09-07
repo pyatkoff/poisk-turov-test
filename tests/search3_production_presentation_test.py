@@ -96,6 +96,44 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertNotIn('ensureTourListHead', cards)
         self.assertIn('search3-hotel-action__copy', cards)
 
+    def test_retired_filter_and_maket7_owners_have_static_replacements(self):
+        filters = (ROOT / 'src/search3/styles/filters.css').read_text()
+        maket7 = (ROOT / 'src/search3/behavior/maket7-lock.js').read_text()
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', filters, flags=re.S).strip(), '')
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', maket7, flags=re.S).strip(), '')
+
+        results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
+        mobile = (ROOT / 'src/search3/styles/mobile-results-toolbar.css').read_text()
+        selected = (ROOT / 'src/search3/styles/selected-flow-v2.css').read_text()
+        results_top = (ROOT / 'src/search3/behavior/results-top.js').read_text()
+        all_source = ''.join(
+            path.read_text() for path in (ROOT / 'src/search3').rglob('*')
+            if path.is_file()
+        )
+
+        for marker in (
+            '& .search3-filter-section{margin:0!important;padding:11px 0!important',
+            '& input[type=radio]:checked{border:4px solid #1463ff!important}',
+            '& .search3-filter-edit-row{display:grid!important;align-items:center!important',
+        ):
+            self.assertIn(marker, results)
+        for marker in (
+            'position:static!important',
+            'background:transparent!important',
+            'backdrop-filter:none!important',
+        ):
+            self.assertIn(marker, mobile)
+        self.assertIn('.selected-confidence{grid-column:1/3!important', selected)
+        self.assertIn('.selected-confidence-steps{min-width:0!important}', selected)
+
+        self.assertNotIn('search3-desktop-two-row', all_source)
+        self.assertNotIn('search3-selected-confidence-grid-lock', all_source)
+        self.assertNotIn('getBoundingClientRect', results_top)
+        self.assertNotIn('style.setProperty', results_top)
+        self.assertNotIn("addEventListener('resize'", results_top)
+        self.assertIn('MutationObserver(scheduleResultsSync)', results_top)
+        self.assertIn('function scheduleResultsSync()', results_top)
+
     def test_lead_review_layer_is_retired_without_losing_lifecycle_truth(self):
         retired = (ROOT / 'src/search3/styles/lead-review.css').read_text()
         self.assertEqual(re.sub(r'/\*.*?\*/', '', retired, flags=re.S).strip(), '')

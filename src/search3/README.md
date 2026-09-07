@@ -83,7 +83,7 @@ separate cascade evidence.
 
 | Concern | Source |
 | --- | --- |
-| Primary form and field placement | `behavior/search-form.js`, `behavior/maket7-lock.js` |
+| Primary form and field placement | `behavior/search-form.js`, `behavior/entry-v1.js` |
 | Responsive entry and existing price-calendar adapter | `behavior/entry-v1.js`, `styles/entry-v1.css` |
 | Desktop local result-filter rail | `behavior/filter-rail.js`, `styles/filters.css` |
 | Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
@@ -205,7 +205,7 @@ elements and unequal-specificity alternatives were excluded. The audit is in
 
 `booking-summary.js` coalesces tour/flight/price/layout events into one deferred
 update; full render includes layout and consumes the latest values.
-`results-top.js` owns one animation-frame queue for result geometry. Result
+`results-top.js` owns one animation-frame queue for result state. Result
 mutations may synchronize search state; resize must remain geometry-only so
 an open search editor is preserved. Queued geometry reads current cards, not
 an item count captured before reset. Keep these queues local to their owners;

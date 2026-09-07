@@ -7,7 +7,8 @@ const root = path.join(__dirname, '..');
 const bundle = fs.readFileSync(path.join(root, 'v2/search3-results-filters-v1.js'), 'utf8');
 const rail = bundledIife(bundle, { literal: '.results-filter-rail' });
 const stylesRoot = path.join(root, 'src/search3/styles');
-const styles = fs.readFileSync(path.join(stylesRoot, 'filters.css'), 'utf8');
+const retiredStyles = fs.readFileSync(path.join(stylesRoot, 'filters.css'), 'utf8');
+const currentStyles = fs.readFileSync(path.join(stylesRoot, 'mobile-results-toolbar.css'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');
 const legacyDesktop = fs.readFileSync(path.join(root, 'v2/ds2-results-filters.js'), 'utf8');
 const presentation = require('./search3-bundled-results.cjs');
@@ -38,7 +39,10 @@ assert.match(
   /[A-Za-z_$][\w$]*\.target\.closest\((['"])\[data-s3-panel\]\1\)\?editSearch\(\):/,
   'desktop result-filter edit rows keep their existing edit-search handoff'
 );
-assert.match(styles, /@media\(max-width:999px\)\{[\s\S]*?\.results-filter-rail\{display:none!important\}/, 'desktop rail is explicitly absent under the mobile ownership boundary');
+assert.equal(retiredStyles.replace(/\/\*[\s\S]*?\*\//g, '').trim(), '',
+  'the retired filter presentation donor contains no live CSS');
+assert.match(currentStyles, /@media\(max-width:999px\)\{[\s\S]*?\.results-filter-rail\s*\{display:none!important\}/,
+  'the current mobile toolbar owner explicitly hides the desktop rail');
 
 for (const file of cssFiles(stylesRoot)) {
   const source = fs.readFileSync(file, 'utf8');
