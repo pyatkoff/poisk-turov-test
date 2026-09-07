@@ -7,8 +7,8 @@ html body.search3-candidate.search3-results-active #resultsSearchSummary~#result
 & .hotel-title{font-size:18px!important;line-height:1.15!important}
 & :is(.hotel-compare-toggle,.hotel-actions,.hotel-inline-detail,.result-decision-badges,.hotel-choice-hint,.hotel-decision-line){display:none!important}
 & .search3-hotel-facts{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;margin-top:5px!important}
-& .search3-hotel-action{display:grid!important;align-items:center!important}
-& .search3-show-tours{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:100%!important;min-height:44px!important;border:0!important;border-radius:7px!important;background:#ff510c!important;color:#fff!important;font-size:14px!important;font-weight:900!important}
+& .search3-hotel-action{display:flex!important;align-items:center!important;justify-content:flex-end!important}
+& .search3-show-tours{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:min(184px,100%)!important;min-height:44px!important;border:0!important;border-radius:7px!important;background:#ff510c!important;color:#fff!important;font-size:14px!important;font-weight:900!important}
 & :is(.hotel-tours[hidden],.tour-row[hidden]){display:none!important}
 & .hotel-tours:not([hidden]){display:block!important;margin:0!important}
 & .hotel-tours:not([hidden]) .tour-row{display:grid!important}
@@ -42,7 +42,7 @@ html body.search3-candidate.search3-results-active #resultsSearchSummary~#result
 & .hotel-bottom{grid-column:2!important;grid-row:1/4!important;align-self:start!important;padding:1px 0 0 15px!important;border-top:0!important;border-left:1px solid #eef1f5!important;text-align:right!important}
 & .hotel-bottom>.hotel-best-offer>.hotel-price{font-size:21px!important;line-height:1!important;white-space:nowrap!important}
 & .search3-hotel-facts{grid-column:1!important;margin-top:5px!important}
-& .search3-hotel-action{grid-column:1/3!important;grid-row:4!important;grid-template-columns:minmax(0,1fr) 184px!important;gap:15px!important;margin-top:5px!important;padding-top:5px!important;border-top:1px solid #eef1f5!important}
+& .search3-hotel-action{grid-column:1/3!important;grid-row:4!important;margin-top:5px!important;padding-top:5px!important;border-top:1px solid #eef1f5!important}
 & .hotel-tours:not([hidden]){padding:14px!important}
 & .hotel-tours:not([hidden]) .tour-row{grid-template-columns:minmax(0,1fr) 252px!important;gap:14px!important;margin:8px 0 0!important;padding:11px 12px!important}
 & .hotel-tours:not([hidden]) .tour-action{grid-template-columns:minmax(0,1fr) 132px!important;gap:12px!important}
@@ -55,7 +55,8 @@ html body.search3-candidate.search3-results-active #resultsSearchSummary~#result
 & .hotel-bottom{grid-column:2!important;grid-row:1/4!important;align-self:start!important;margin:0!important;padding:1px 0 0 12px!important;border-top:0!important;border-left:1px solid #eef1f5!important;text-align:right!important}
 & .hotel-bottom>.hotel-best-offer>.hotel-price{font-size:21px!important;line-height:1!important;white-space:nowrap!important}
 & .search3-hotel-facts{grid-column:1!important}
-& .search3-hotel-action{grid-column:1/3!important;grid-row:4!important;grid-template-columns:minmax(0,1fr) 150px!important;gap:12px!important;margin-top:5px!important;padding-top:5px!important;border-top:1px solid #eef1f5!important}
+& .search3-hotel-action{grid-column:1/3!important;grid-row:4!important;margin-top:5px!important;padding-top:5px!important;border-top:1px solid #eef1f5!important}
+& .search3-show-tours{width:150px!important}
 }
 }
 
@@ -130,13 +131,12 @@ html body.search3-candidate{
   border-bottom:1px solid #edf0f5!important;
 }
 
-& .search3-hotel-facts :is(small,b),& .search3-hotel-action__copy :is(strong,span) {
+& .search3-hotel-facts :is(small,b) {
   min-width:0!important;
   overflow:visible!important;
   text-overflow:clip!important;
   white-space:normal!important;
 }
-& .search3-hotel-action__copy :is(strong,span){font-size:12px!important;line-height:1.4!important}
 
 & .search3-hotel-facts small {
   font-size:12px!important;
@@ -150,10 +150,6 @@ html body.search3-candidate{
 
 
 
-& .search3-hotel-action__copy {
-  min-width:0!important;
-  flex-wrap:wrap!important;
-}
 }
 }
 
@@ -172,10 +168,7 @@ html body.search3-candidate{
     column-gap:12px!important;
   }
 
-  & .search3-hotel-action {
-    grid-template-columns:minmax(0,1fr) 150px!important;
-    gap:12px!important;
-  }
+  & .search3-show-tours {width:150px!important}
 
   & .search3-hotel-facts {
     grid-template-columns:repeat(4,minmax(0,1fr))!important;
@@ -193,14 +186,6 @@ html body.search3-candidate{
     grid-template-columns:minmax(0,1.2fr) minmax(112px,.8fr)!important;
   }
 
-  & .search3-hotel-action__copy {
-    display:flex!important;
-    align-items:baseline!important;
-    gap:4px!important;
-    margin:0 0 6px!important;
-    font-size:9px!important;
-    line-height:1.2!important;
-  }
 }
 }
 }

@@ -188,7 +188,7 @@
     card.classList.toggle('search3-tours-open', open);
     tours.hidden = !open;
     button.setAttribute('aria-expanded', open ? 'true' : 'false');
-    button.textContent = open ? 'Скрыть туры' : 'Показать туры';
+    button.textContent = open ? 'Скрыть туры' : (button.dataset.search3ShowLabel || 'Показать туры');
   }, true);
 
   document.addEventListener('keydown', function (event) {

@@ -224,7 +224,6 @@ body.search3-candidate :is(.mrf-bar,.mrf-sheet){display:none!important}
     column-gap:12px!important;
     padding:12px!important;
   }
-  & .search3-hotel-action {grid-template-columns:minmax(0,1fr) 150px!important;gap:12px!important}
 }
 }
 
