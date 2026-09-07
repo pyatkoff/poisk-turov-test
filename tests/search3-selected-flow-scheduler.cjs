@@ -59,6 +59,22 @@ const mobileBar = {
     return null;
   }
 };
+const selectedPriceLabel = { textContent: 'Стоимость тура' };
+const selectedPriceAttributes = new Map();
+const selectedPrice = {
+  childNodes: [{ nodeType: 3, textContent: '100 000 ₽' }],
+  querySelector(selector) { return selector === 'small' ? selectedPriceLabel : null; },
+  getAttribute(name) { return selectedPriceAttributes.get(name) || null; },
+  setAttribute(name, value) { selectedPriceAttributes.set(name, value); }
+};
+const dateValue = { textContent: '' };
+const dateRow = {
+  querySelector(selector) {
+    if (selector === 'span') return { textContent: 'Дата' };
+    if (selector === 'b') return dateValue;
+    return null;
+  }
+};
 let flightDataPresent = true;
 let fallbackDataWrites = 0;
 let fallbackDataValue;
@@ -96,8 +112,8 @@ const selected = {
   },
   querySelector(selector) {
     assert.ok(!selector.includes('search3-tour-detail-rail'), 'retired rail is not queried during selected-flow updates');
-    if (selector === '.selected-price > small') return { textContent: 'Стоимость тура' };
-    if (selector === '.selected-price') return { childNodes: [{ nodeType: 3, textContent: '100 000 ₽' }] };
+    if (selector === '.selected-price > small') return selectedPriceLabel;
+    if (selector === '.selected-price') return selectedPrice;
     if (selector === '.lead-form') return leadForm;
     if (selector === '.search3-flight-continue button') return fallbackButton;
     if (selector === '.tour-flights') {
@@ -108,6 +124,8 @@ const selected = {
   },
   querySelectorAll(selector) {
     if (selector === '.search3-booking-summary__total') return [priceBox];
+    if (selector === '.facts > div') return [dateRow];
+    if (selector === '.search3-booking-summary dl > div' || selector === '.search3-final-services > article') return [];
     return [];
   },
   contains() { return true; }
@@ -132,7 +150,14 @@ const document = {
 const window = {
   addEventListener(name, handler) { events.set(name, handler); },
   requestAnimationFrame(handler) { frames.push(handler); },
-  matchMedia() { return { matches: true }; }
+  matchMedia() { return { matches: true }; },
+  Search3CandidateResultsV1: {
+    partyLabel(adults, childs) { return `${adults} взрослых, ${childs} ребёнок`; },
+    formatDate() { return '7 сентября'; },
+    mealLabel() { return 'Всё включено'; },
+    roomLabel() { return 'Стандарт'; },
+    placementLabel() { return '2+1'; }
+  }
 };
 
 vm.runInNewContext(
@@ -166,6 +191,7 @@ priceWrites = 0;
 priceAttributeWrites = 0;
 priceAriaLabel = '';
 
+events.get('v2:tour-selected')({ detail: { tour: { price: 100000, adults: 2, childs: 1, date: '2026-09-07' } } });
 events.get('v2:tour-price-updated')({ detail: { price: 100000 } });
 events.get('v2:tour-price-updated')({ detail: { price: 120000 } });
 
@@ -178,6 +204,9 @@ assert.equal(priceWrites, 1, 'latest price is written once');
 assert.equal(priceAttributeWrites, 1, 'latest price aria-label is written once');
 assert.match(mobileAmount.textContent, /120[\s\u00a0]?000/, 'mobile price shares the latest selected total');
 assert.match(strongText, /120[\s\u00a0]?000/, 'latest queued price wins');
+assert.equal(dateValue.textContent, '7 сентября', 'selected facts use the canonical date formatter');
+assert.equal(selectedPriceLabel.textContent, 'За весь тур · 2 взрослых, 1 ребёнок', 'party scope is owned by selected-flow');
+assert.equal(selectedDataset.search3SelectedPresentation, '1', 'compatibility presentation marker is retained');
 window.Search3SelectedFlowV2.syncDisplayedPrice();
 window.Search3SelectedFlowV2.syncDisplayedPrice();
 assert.equal(priceWrites, 1, 'unchanged price text is not rewritten');

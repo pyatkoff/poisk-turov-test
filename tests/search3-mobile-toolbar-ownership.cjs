@@ -27,7 +27,7 @@ function hits(fileList) {
 }
 
 const presentation = require('./search3-bundled-results.cjs');
-const selectedPresentation = fs.readFileSync(path.join(root, 'src/search3/behavior/tour-presentation.js'), 'utf8');
+const selectedPresentation = fs.readFileSync(path.join(root, 'src/search3/behavior/selected-flow-v2.js'), 'utf8');
 const searchForm = fs.readFileSync(path.join(root, 'src/search3/behavior/search-form.js'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');
 
@@ -38,9 +38,9 @@ assert.match(presentation, /document\.querySelector\((['"])\.mrf-bar\1\)/, 'Sear
 assert.match(mobile, /sheet\.className\s*=\s*(['"])mrf-sheet\1/, 'base mobile results filter sheet remains canonical');
 assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('), 'canonical mobile filter lifecycle remains intact');
 assert.ok(!selectedPresentation.includes('function plural('), 'selected-tour presentation reuses the canonical inflection owner');
-assert.ok(selectedPresentation.includes('format.partyLabel('), 'selected-tour party wording consumes the canonical inflection owner');
+assert.ok(selectedPresentation.includes('format.partyLabel('), 'selected-flow consumes the canonical party inflection owner');
 assert.ok(!selectedPresentation.includes('dateWithNights'), 'retired desktop recap has no remaining private date-and-nights formatter');
-assert.ok(!selectedPresentation.includes('function text('), 'unused selected-tour text normalizer stays retired');
+assert.equal((selectedPresentation.match(/function text\(/g) || []).length, 1, 'selected-flow keeps one shared text normalizer');
 assert.ok(!searchForm.includes('function formatDate('), 'unused private date formatter stays retired from the search form');
 
 const runtimeHits = hits([

@@ -55,6 +55,7 @@
   var selected = document.getElementById('selectedTour');
   if (!body || !body.classList.contains('search3-candidate') || !selected) return;
 
+  var format = window.Search3CandidateResultsV1;
   var queued = false;
   var currentTour = null;
   var currentTotal = 0;
@@ -100,6 +101,46 @@
   function money(value) {
     var amount = number(value);
     return amount > 0 ? new Intl.NumberFormat('ru-RU').format(amount) + ' ₽' : '';
+  }
+
+  function labelValueRows(scope, rowSelector, labelSelector, valueSelector, values) {
+    if (!scope) return;
+    scope.querySelectorAll(rowSelector).forEach(function (row) {
+      var label = row.querySelector(labelSelector);
+      var value = row.querySelector(valueSelector);
+      var key = text(label).toLowerCase();
+      if (value && values[key]) setText(value, values[key]);
+    });
+  }
+
+  function displayValues(value) {
+    if (!format) return {};
+    return {
+      'дата': format.formatDate(value && value.date),
+      'питание': format.mealLabel(value && value.meal),
+      'номер': format.roomLabel(value && value.roomType),
+      'размещение': format.placementLabel(value && value.placement)
+    };
+  }
+
+  function syncPresentation() {
+    if (!currentTour || selected.hidden || !format) return;
+    var values = displayValues(currentTour);
+    labelValueRows(selected, '.facts > div', 'span', 'b', values);
+    labelValueRows(selected, '.search3-booking-summary dl > div', 'dt', 'dd', values);
+    labelValueRows(selected, '.search3-final-services > article', 'span', 'strong', values);
+    selected.querySelectorAll('.search3-final-services > article').forEach(function (article) {
+      if (text(article.querySelector('span')).toLowerCase() === 'номер') {
+        setText(article.querySelector('small'), values['размещение']);
+      }
+    });
+    var scope = 'За весь тур · ' + format.partyLabel(number(currentTour.adults) || 2, number(currentTour.childs));
+    var selectedPrice = selected.querySelector('.selected-price');
+    setText(selectedPrice && selectedPrice.querySelector('small'), scope);
+    if (selectedPrice && currentTotal > 0) setAttribute(selectedPrice, 'aria-label', money(currentTotal) + ', ' + scope.toLowerCase());
+    var flightContinue = selected.querySelector('.search3-flight-continue button');
+    if (flightContinue && !selected.classList.contains('search3-final-review')) setText(flightContinue, flowLabel('flight'));
+    setData(selected, 'search3SelectedPresentation', '1');
   }
 
   function selectedAmount(source) {
@@ -229,6 +270,7 @@
       setText(mobileBar.querySelector('[data-s3-selected-lead]'), flowLabel('flight'));
     }
     var flights = selected.querySelector('.tour-flights');
+    syncPresentation();
     syncDisplayedPrice();
     syncLeadCopy();
     syncFlightDisclosure(flights);
@@ -297,6 +339,12 @@
     normalizedTotal: normalizedTotal,
     selectedAmount: selectedAmount
   };
+  window.Search3CandidateSelectedPresentationV1 = Object.freeze({
+    version: 1,
+    decorate: syncPresentation,
+    displayValues: displayValues,
+    normalizedTotal: function (detail) { return normalizedTotal(detail, currentTour); }
+  });
   window.Search3SelectedFlowV2 = Object.freeze({
     version: 4,
     sync: sync,

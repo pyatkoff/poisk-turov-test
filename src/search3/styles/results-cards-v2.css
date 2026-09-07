@@ -19,6 +19,10 @@ html body.search3-candidate.search3-results-active #results{
 & .direct-tour{font-size:14px!important}
 }
 
+/* The normalized price already contains the “от” prefix. */
+body.search3-candidate #results .hotel-best-offer>small,
+html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best-offer>small{display:none!important}
+
 @media(max-width:760px){
 html body.search3-candidate.search3-results-active #results{
 & .search3-hotel-heading{grid-column:1/3!important}

@@ -89,8 +89,8 @@ separate cascade evidence.
 | Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/mobile-results-toolbar.css` |
 | Canonical mobile filter bar and sheet | Existing `v2/mobile-results-filters-v1.js`; Search3 reuses `.mrf-bar` and `.mrf-sheet`, not a second drawer |
 | Results header and summary | `behavior/results-top.js`, `styles/results-context.css` |
-| Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/result-cards.css` |
-| Selected tour and mobile action | `behavior/tour-presentation.js`, `behavior/selected-flow-v2.js` |
+| Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/results-cards-v2.css` |
+| Selected tour and mobile action | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Flight labels and display-only price parsing | `behavior/flight-presentation.js`, `behavior/flight-price-presentation.js` |
 | Summary and handoff | `behavior/booking-summary.js`, `behavior/selected-tour-handoff.js` |
 | Final review actions and responsive layout | `behavior/summary-cta.js`, `styles/review-layout.css`; `styles/review.css` is retired |
@@ -154,9 +154,8 @@ source bytes. Adjacent rules with identical declarations share selector lists;
 the selector/declaration/media token proof is recorded in
 `docs/project/search3-css-build-compaction.json`.
 
-`behavior/selected-tour-mobile-styles.js` and `behavior/summary-cta-styles.js`
-own the two static style injections immediately before their behavior modules.
-Their CSS lives in `styles/injected/selected-tour-mobile.css` and
+`behavior/summary-cta-styles.js` owns the remaining static style injection
+immediately before its behavior module. Its CSS lives in
 `styles/injected/summary-cta.css`. A `/* @css-string styles/path.css */ ""`
 placeholder compiles to one escaped JavaScript string literal. CSS sources use
 single-parent explicit-`&` groups; expanded selectors, declaration values and
@@ -260,10 +259,10 @@ lifecycle. Its `search-form/primary-controls.js` and `secondary-controls.js` par
 expand at the original positions inside `init()`. Dates, nights, guests, secondary
 fields and delayed cleanup keep their shared lexical scope and exact source bytes.
 The secondary composition now also owns the single mobile trust/filter entry and
-its ARIA toggle. The retired `mobile-search-entry.js` remains a provenance-only
-manifest slot; linked `result-cards.css` supplies its presentation without a
-runtime `<style>` injection. Legacy form presentation was removed from `base.css`;
-current form and guest rules live in `entry-v1.css`.
+its ARIA toggle. The retired `mobile-search-entry.js` and `result-cards.css` remain
+provenance-only manifest slots; current entry/results owners supply their retained
+presentation. Legacy form presentation was removed from `base.css`; current form
+and guest rules live in `entry-v1.css`.
 
 The booking path uses its primary flight-continue and summary-to-lead actions
 instead of a second clickable progress strip. `booking-stepper.js`,
