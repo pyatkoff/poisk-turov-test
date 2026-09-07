@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "stage": "SOURCE_CANDIDATE_NOT_PUBLISHED",
+  "base_release_sha": "e8dd3a2053cdc49e56ce4cd10f0e9131a9a8a049",
+  "scope": "Remove the unreachable Search3 desktop filter presentation left after the DS2 runtime became the sole desktop filter owner.",
+  "removed": [
+    "search3-filter-section layout and heading rules",
+    "search3-filter-edit-row layout and typography rules",
+    "radio control skin used only by the retired Search3 rail",
+    "empty filter-head subtitle rules used only by the retired Search3 rail"
+  ],
+  "retained": [
+    "DS2 budget range presentation",
+    "DS2 meal, hotel category, rating and sea-distance checkbox presentation",
+    "DS2 reset action and result count presentation",
+    "Search3 zero-result bridge and mobile filter owner",
+    "All eight public Search3 asset paths",
+    "Protected price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping and analytics contracts"
+  ],
+  "evidence": {
+    "runtime_markup_search": "No live source outside the retired stylesheet and generated asset contains search3-filter-section, search3-filter-edit-row or filter-rail-head small markup.",
+    "ownership_test": "The compiled Search3 CSS excludes all three retired selector families while the DS2 runtime retains price, meal, category, rating, sea and reset controls."
+  },
+  "served_assets": {
+    "before_bytes": 147378,
+    "after_bytes": 145660,
+    "removed_bytes": 1718,
+    "css_before_bytes": 87112,
+    "css_after_bytes": 85394,
+    "js_bytes": 60266,
+    "changed": {
+      "path": "v2/search3-results-filters-v1.css",
+      "before_bytes": 49326,
+      "after_bytes": 47608,
+      "removed_bytes": 1718
+    },
+    "unchanged_asset_count": 7
+  },
+  "verification": {
+    "local": "Exact build/write/check, filter owner and behavior regressions, CSS/JS compaction, 13 source-build tests, 24 presentation tests with one PHP-only local skip, owner-priority and diff checks passed.",
+    "source_ci": "PENDING"
+  },
+  "publication": "NOT_PUBLISHED",
+  "production_updated": false,
+  "deferred": [
+    "Exact artifact CI browser matrix",
+    "Physical Safari acceptance"
+  ],
+  "next_action": "Merge only after Security and exact artifact CI pass; keep preview, main and production unchanged."
+}

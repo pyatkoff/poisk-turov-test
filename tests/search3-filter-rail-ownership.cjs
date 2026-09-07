@@ -8,6 +8,7 @@ const bundle = fs.readFileSync(path.join(root, 'v2/search3-results-filters-v1.js
 const bridge = bundledIife(bundle, { literal: '.results-filter-rail' });
 const desktop = fs.readFileSync(path.join(root, 'v2/ds2-results-filters.js'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');
+const styles = fs.readFileSync(path.join(root, 'v2/search3-results-filters-v1.css'), 'utf8');
 const presentation = require('./search3-bundled-results.cjs');
 
 assert.match(bridge, /window\.DS2ResultsFilters/, 'Search3 bridge requires the loaded DS2 owner');
@@ -23,6 +24,9 @@ for (const marker of ['data-ds2-price', 'data-ds2-meal-fieldset', 'data-ds2-star
   assert.ok(desktop.includes(marker), `DS2 owner retains ${marker}`);
 }
 assert.ok(desktop.includes('window.__DS2ResultsRailApplying=true'), 'DS2 exposes only its synchronous render boundary');
+for (const selector of ['search3-filter-section', 'search3-filter-edit-row', 'input[type=radio]']) {
+  assert.ok(!styles.includes(selector), `retired desktop rail presentation is absent: ${selector}`);
+}
 assert.match(mobile, /sheet\.className=(['"])mrf-sheet\1/, 'mobile sheet remains independently owned');
 assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('),
   'mobile open/close lifecycle remains live');
