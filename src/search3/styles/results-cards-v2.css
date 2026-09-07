@@ -75,7 +75,7 @@ html body.search3-candidate{
   border-bottom:1px solid #edf0f5!important;
 }
 
-& .search3-hotel-facts :is(small,b),& .hotel-price-context span,& .search3-hotel-action__copy :is(strong,span) {
+& .search3-hotel-facts :is(small,b),& .search3-hotel-action__copy :is(strong,span) {
   min-width:0!important;
   overflow:visible!important;
   text-overflow:clip!important;
@@ -159,7 +159,6 @@ html body.search3-candidate{
 }
 
 /* Keep the photo useful; spend less space repeating package details. */
-html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card .hotel-price-context{font-size:13px!important;line-height:1.4!important;text-transform:none!important}
 @media(max-width:760px){
 html body.search3-candidate{
 &.search3-results-active.search3-has-results:not(.search3-hotel-tours-open) #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-card {
@@ -181,9 +180,7 @@ html body.search3-candidate{
   object-fit:cover!important;
 }
 & .hotel-best-offer {display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:3px 12px!important;text-align:left!important;width:100%!important}
-& .hotel-best-offer>small:not(.hotel-price-context) {grid-column:1!important;font-size:11px!important;text-align:left!important}
 & .hotel-price {grid-column:2!important;grid-row:1/3!important;margin:0!important;font-size:24px!important;white-space:nowrap!important}
-& .hotel-price-context {grid-column:1!important;grid-row:2!important;margin:0!important;text-align:left!important}
 }
 }
 }

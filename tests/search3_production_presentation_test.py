@@ -227,8 +227,10 @@ class Search3ProductionPresentationTest(unittest.TestCase):
 
         selected = (ROOT / 'src/search3/styles/selected-tour.css').read_text()
         detail = (ROOT / 'src/search3/styles/tour-detail.css').read_text()
-        self.assertNotIn('maket7 desktop uses a compact hotel summary', selected)
-        self.assertNotIn('@media(min-width:1000px)', selected)
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', selected, flags=re.S).strip(), '')
+        self.assertIn('#selectedTour{max-width:var(--at-shell)!important', detail)
+        self.assertIn('& .selected-picture img{width:100%!important;height:100%!important;object-fit:cover!important}', detail)
+        self.assertIn('& .facts{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important', detail)
         self.assertIn('#selectedTour:not(.search3-final-review){display:grid!important', detail)
         self.assertIn('grid-row:1!important;justify-self:start!important', detail)
         self.assertIn('height:176px!important;border:1px solid var(--at-line)!important;border-right:0!important', detail)
@@ -239,6 +241,10 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertNotIn('min-width:188px!important;min-height:42px!important', convergence)
         self.assertIn('.flight-variant {display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important', convergence)
         self.assertIn('.search3-flight-continue {grid-column:1/3!important;width:100%!important;max-width:none!important}', convergence)
+
+        selected_flow = (ROOT / 'src/search3/styles/selected-flow-v2.css').read_text()
+        self.assertIn('.search3-selected-mobile-bar:not([hidden]){position:fixed', selected_flow)
+        self.assertIn('& .selected-price{display:none!important}', selected_flow)
 
     def test_redundant_booking_chrome_is_retired_without_losing_flow_owners(self):
         stepper_js = (ROOT / 'src/search3/behavior/booking-stepper.js').read_text()
@@ -263,7 +269,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         summary_owner = (ROOT / 'src/search3/behavior/summary-cta.js').read_text()
         lead_owner = (ROOT / 'src/search3/behavior/lead-flow.js').read_text()
         handoff = (ROOT / 'src/search3/behavior/selected-tour-handoff.js').read_text()
-        self.assertIn("dispatchEvent(new CustomEvent('v2:booking-review'", continue_owner)
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', continue_owner, flags=re.S).strip(), '')
+        self.assertIn("dispatchEvent(new CustomEvent('v2:booking-review'", summary_owner)
+        self.assertIn("closest('#selectedTour .search3-flight-continue button')", summary_owner)
         self.assertIn("dispatchEvent(new CustomEvent('search3:lead-entry'", summary_owner)
         self.assertIn("window.addEventListener('v2:lead-started'", lead_owner)
         self.assertIn("window.addEventListener('v2:lead-success'", lead_owner)
