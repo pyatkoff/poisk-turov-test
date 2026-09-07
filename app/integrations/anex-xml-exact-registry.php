@@ -1,12 +1,20 @@
 <?php
 declare(strict_types=1);
 
-/** Preview-only compact identities produced by the audited ANEX XML exact pass. */
+/**
+ * Preview-only compact identities produced by the audited ANEX XML exact pass.
+ *
+ * The mapping evidence originates from XML, while the ANEX gateway uses the
+ * same hotel ID in XML hotel.inc, Online Hotels_DETAILS.id and PRICES.hotelKey.
+ * Provider labels remain explicit so no other supplier namespace can inherit
+ * these identities.
+ */
 final class AnyTourAnexXmlExactRegistry
 {
     private const MANIFEST_MAX_BYTES = 16384;
     private const MAPPING_MAX_BYTES = 524288;
     private const MAPPING_MAX_ROWS = 20000;
+    private const ANEX_HOTEL_ID_PROVIDERS = ['anex_xml' => true, 'anex_online' => true];
     private $index;
 
     private function __construct(array $index)
@@ -75,10 +83,18 @@ final class AnyTourAnexXmlExactRegistry
     public function resolve(string $provider, $externalId, string $scope = 'production'): ?int
     {
         $id = self::externalId($externalId);
-        if ($scope !== 'preview' || $provider !== 'anex_xml' || $id === null) {
+        if ($scope !== 'preview' || !isset(self::ANEX_HOTEL_ID_PROVIDERS[$provider]) || $id === null) {
             return null;
         }
         return $this->index[$id] ?? null;
+    }
+
+    /** Explicit adapter for preview search; production remains fail-closed. */
+    public function previewResolver(): callable
+    {
+        return function (string $provider, $externalId): ?int {
+            return $this->resolve($provider, $externalId, 'preview');
+        };
     }
 
     public function count(): int
