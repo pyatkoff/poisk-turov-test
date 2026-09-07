@@ -8,8 +8,7 @@ let scrolled = 0, focused = 0;
 const properties = new Map();
 const style = { setProperty(k,v,priority) { assert.equal(priority,'important'); properties.set(k,v); }, removeProperty(k) { properties.delete(k); } };
 const heading = { textContent: '' }, summary = { textContent: '' };
-const mapButton = { textContent: 'На карте', setAttribute() {} };
-const tools = { style, parentElement: { getBoundingClientRect() { return { left: 0 }; } }, querySelector(s) { assert.notEqual(s, '.search3-results-meta', 'hidden duplicate counters have no runtime owner'); return s === 'strong' ? heading : s === '.results-map-button' ? mapButton : null; } };
+const tools = { style, parentElement: { getBoundingClientRect() { return { left: 0 }; } }, querySelector(s) { assert.notEqual(s, '.search3-results-meta', 'hidden duplicate counters have no runtime owner'); assert.notEqual(s, '.results-map-button', 'retired map control has no runtime owner'); return s === 'strong' ? heading : null; } };
 const results = {
  querySelector() { return cards ? {} : null; },
  querySelectorAll() { return []; },
@@ -31,7 +30,6 @@ vm.runInNewContext(bundledIife(bundle, { literal: '#resultsSearchRoute' }), {
  setTimeout(fn) { timers.push(fn); }
 });
 const emit = (n,items) => events.get(n)({ detail: { items } });
-assert.equal(mapButton.textContent, 'На карте', 'canonical map label survives without retired pseudo-content CSS');
 const flush = () => { while(frames.length) frames.shift()(); };
 assert.ok(classes.has('search3-has-results'), 'initial result state is synchronized');
 assert.equal(route.textContent,'Москва → Турция, Сиде');
