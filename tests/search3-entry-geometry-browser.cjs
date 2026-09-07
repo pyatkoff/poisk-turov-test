@@ -4,9 +4,10 @@ const path = require('node:path');
 const { chromium } = require('playwright');
 
 const root = path.resolve(__dirname, '..');
-const manifest = fs.readFileSync(path.join(root, 'v2/bundle-manifest-v1.php'), 'utf8');
-const cssBlock = manifest.match(/'css'\s*=>\s*\[([\s\S]*?)\],/)[1];
-const legacyNames = [...cssBlock.matchAll(/'([^']+\.css)'/g)].map(match => match[1]);
+const { execFileSync } = require('node:child_process');
+const legacyNames = JSON.parse(execFileSync('php', ['-r',
+  'require "v2/bundle-manifest-v1.php"; echo json_encode(v2_bundle_files("css", "search3"));'
+], { cwd: root, encoding: 'utf8' }));
 const searchNames = [
   'search3-results-filters-v1.css',
   'search3-entry-v1.css',

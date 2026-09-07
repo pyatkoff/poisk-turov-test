@@ -246,7 +246,7 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- src/search3/styles/selected-tour.css src/search3/styles/tour-detail.css src/search3/styles/review-layout.css src/search3/styles/lead-state.css src/search3/styles/booking-summary.css src/search3/styles/final-sections.css src/search3/styles/selected-flow-v2.css tests/search3-selected-geometry-browser.cjs; then
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/behavior/selected-flow-v2.js src/search3/styles/selected-tour.css src/search3/styles/tour-detail.css src/search3/styles/review-layout.css src/search3/styles/lead-state.css src/search3/styles/booking-summary.css src/search3/styles/final-sections.css src/search3/styles/selected-flow-v2.css tests/search3-selected-geometry-browser.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -257,7 +257,7 @@ jobs:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-entry-geometry-browser.cjs; then
+          if ! git diff --quiet "$BASE_SHA" "$SOURCE_SHA" -- v2/bundle-manifest-v1.php v2/assets.php src/search3/styles/results-layout.css src/search3/styles/results-cards-v2.css src/search3/styles/results-mobile-layout.css src/search3/styles/results-tablet-layout.css src/search3/styles/acceptance-guards.css src/search3/styles/entry-v1.css src/search3/styles/entry-native-controls.css tests/search3-results-geometry-browser.cjs tests/search3-entry-geometry-browser.cjs; then
             echo "required=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -273,6 +273,7 @@ jobs:
         shell: bash
         env:
           SEARCH3_GEOMETRY_BASE: 0f1efa2b22cd7069a0d96adbbdca1bcfa694f309 # last checked source before selected-tour retirement
+          SEARCH3_RUNTIME_BASE: ${{ github.event.pull_request.base.sha }}
           SEARCH3_VISUAL_BASE: http://127.0.0.1:8098/_preview/search3-site-candidate
           SEARCH3_GEOMETRY_OUTPUT: ${{ runner.temp }}/search3-selected-geometry
         run: |

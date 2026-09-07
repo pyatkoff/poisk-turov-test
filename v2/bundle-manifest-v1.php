@@ -22,9 +22,10 @@ function v2_bundle_files(string $type, string $scope = 'full'): array
     if ($scope !== 'search3') return $manifest[$type];
 
     $excluded = [
-        'css' => [],
-        // Search3 owns the result summary and intentionally has no list/grid switch.
-        'js' => ['search-redesign-v2.js'],
+        'css' => ['conversion-confidence-v1.css'],
+        // Current Search3 owners retain summary, tour CTA and selected trust.
+        // Compare, decision badges and agency inserts are hidden in Search3.
+        'js' => ['search-redesign-v2.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js'],
     ];
     return array_values(array_diff($manifest[$type], $excluded[$type]));
 }

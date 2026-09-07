@@ -74,6 +74,8 @@
       var price = action && action.querySelector(':scope > b');
       var productionChoice = action && action.querySelector('button[data-tid]');
       if (productionChoice && !productionChoice.dataset.search3ProductionLabel) {
+        productionChoice.textContent = 'Проверить тур';
+        productionChoice.setAttribute('aria-label', date && date.textContent ? 'Проверить тур на ' + date.textContent : 'Проверить выбранный тур');
         productionChoice.dataset.search3ProductionLabel = (productionChoice.textContent || '').replace(/\s+/g, ' ').trim();
       }
       if (action && price) {

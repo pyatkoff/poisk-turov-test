@@ -72,6 +72,19 @@
     return String(node && node.textContent || '').replace(/\s+/g, ' ').trim();
   }
 
+  function ensureSelectedTrust() {
+    if (selected.querySelector('.selected-confidence')) return;
+    var form = selected.querySelector('.lead-form');
+    if (!form) return;
+    var flights = selected.querySelector('.tour-flights');
+    var box = document.createElement('section');
+    box.className = 'selected-confidence';
+    box.setAttribute('aria-label', 'Покупка и сопровождение AnyTour');
+    box.innerHTML = '<div><span>Покупка с сопровождением</span><strong>Без оплаты на этом шаге</strong><p>Менеджер проверит детали тура, оформит договор до оплаты и останется на связи до вылета и во время поездки.</p></div><div class="selected-confidence-steps"><b>Договор до оплаты</b><b>Уточним рейс и итоговую стоимость</b><b>Поддержка до и во время отдыха</b></div>';
+    if (flights) flights.insertAdjacentElement('afterend', box);
+    else form.insertAdjacentElement('beforebegin', box);
+  }
+
   function setText(node, value) {
     var next = String(value || '').trim();
     var comparable = next.replace(/\s+/g, ' ');
@@ -308,6 +321,7 @@
   });
 
   window.addEventListener('v2:tour-selected', function (event) {
+    ensureSelectedTrust();
     currentTour = event && event.detail && event.detail.tour || null;
     currentTotal = normalizedTotal({ tour: currentTour }, currentTour);
     schedule();
@@ -329,6 +343,7 @@
     attributeFilter: ['hidden', 'class', 'style']
   });
 
+  ensureSelectedTrust();
   schedule();
   window.Search3SelectedTourMobile = {
     version: 14,
