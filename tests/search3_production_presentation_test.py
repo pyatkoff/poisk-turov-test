@@ -109,6 +109,7 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         context = (ROOT / 'src/search3/styles/results-context.css').read_text()
         base = (ROOT / 'src/search3/styles/base.css').read_text()
         results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
+        card_styles = (ROOT / 'src/search3/styles/results-cards-v2.css').read_text()
         mobile = (ROOT / 'src/search3/styles/results-mobile-layout.css').read_text()
         cards = (ROOT / 'src/search3/behavior/results/cards.js').read_text()
         all_source = ''.join(
@@ -121,8 +122,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('&:not(.search3-has-results) .results-layout{display:none!important}', results)
         self.assertIn('&.search3-has-results.search3-editing-search #tourSearch{display:block!important', results)
         self.assertEqual(re.sub(r'/\*.*?\*/', '', packages, flags=re.S).strip(), '')
-        self.assertIn('& #results .hotel-tours::before{display:none!important;content:none!important}', results)
-        self.assertIn('& #results .tour-row[hidden]{display:none!important}', results)
+        self.assertIn('& .hotel-tours::before{display:none!important;content:none!important}', card_styles)
+        self.assertIn(':is(.hotel-tours[hidden],.tour-row[hidden]){display:none!important}', card_styles)
         self.assertIn('.direct-tour{width:100%!important;min-height:36px!important', results)
         self.assertIn('grid-template-columns:repeat(3,minmax(0,1fr))!important', results)
         self.assertIn('& .tour-fact-badge b {display:inline-flex!important', results)
