@@ -27,10 +27,14 @@ async function inspect(browser, width, previous) {
     if (previous && old) return route.fulfill({ status: 200, contentType: type === 'css' ? 'text/css' : 'application/javascript', body: old });
     return route.continue();
   });
-  const state = () => page.evaluate(() => {
+  const state = () => page.evaluate(previous => {
+    // The retired sticky owner's 1px boundary marker is an intentional removal.
+    // Strip only that marker from the reference before comparing the live form.
+    // This also prevents its late insertion from occupying a mobile grid cell.
+    if (previous) document.querySelectorAll('.mobile-search-submit-sentinel').forEach(node => node.remove());
     const form = document.getElementById('tourSearch'), r = form.getBoundingClientRect();
     return { visible: r.width > 0 && r.height > 0, width: Math.round(r.width), height: Math.round(r.height), fields: [...form.elements].filter(n => n.name).map(n => [n.name, n.value]), overflow: document.documentElement.scrollWidth > innerWidth + 2 };
-  });
+  }, previous);
   const emit = (name, detail = {}) => page.evaluate(({ name, detail }) => window.dispatchEvent(new CustomEvent(name, { detail })), { name, detail });
   try {
     const response = await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' });
