@@ -1,5 +1,6 @@
 /* Search3 selected/final/lead presentation overlay. Preview only. */
 .search3-selected-mobile-bar{display:none}
+html body.search3-candidate #selectedTour[hidden]{display:none!important}
 @media(max-width:640px){
 body.search3-candidate{padding-bottom:78px!important}
 .search3-selected-mobile-bar:not([hidden]){position:fixed;z-index:80;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px calc(9px + env(safe-area-inset-bottom));border-top:1px solid var(--at-line);background:rgba(255,255,255,.97);box-shadow:0 -8px 26px rgba(31,52,109,.12);backdrop-filter:blur(12px)}

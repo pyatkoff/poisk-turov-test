@@ -9,6 +9,8 @@ body.search3-candidate :is(.mrf-bar,.mrf-sheet){display:none!important}
 
 @media(max-width:999px){
   body.search3-candidate{
+& .mrf-sheet{display:block!important}
+& .mrf-sheet.is-open{visibility:visible!important;pointer-events:auto!important}
 &.search3-results-active{
     --search3-results-inline-gutter:max(0px,calc((48px - (100vw - 100%))/2));
   }
