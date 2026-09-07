@@ -17,7 +17,7 @@ MANIFEST = json.loads((ROOT / 'docs/project/search3-production-import.json').rea
 class Search3ProductionPresentationTest(unittest.TestCase):
     @unittest.skipUnless(shutil.which('node'), 'Node required for summary event regression')
     def test_booking_summary_event_bursts(self):
-        for name in ('search3-presentation-utils.cjs', 'search3-booking-summary.cjs', 'search3-booking-services.cjs', 'search3-lead-note-owner.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-selected-handoff-ownership.cjs', 'search3-entry-summary.cjs', 'search3-mobile-toolbar-scheduler.cjs', 'search3-injected-styles.cjs'):
+        for name in ('search3-presentation-utils.cjs', 'search3-booking-summary.cjs', 'search3-booking-services.cjs', 'search3-lead-note-owner.cjs', 'search3-booking-navigation.cjs', 'search3-results-scheduler.cjs', 'search3-selected-flow-scheduler.cjs', 'search3-selected-handoff-ownership.cjs', 'search3-entry-summary.cjs', 'search3-mobile-toolbar-scheduler.cjs', 'search3-injected-styles.cjs'):
             subprocess.run(['node', str(ROOT / 'tests' / name)], check=True)
 
     @unittest.skipUnless(shutil.which('node'), 'Node required for filter ownership regression')
@@ -263,7 +263,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         summary_owner = (ROOT / 'src/search3/behavior/summary-cta.js').read_text()
         lead_owner = (ROOT / 'src/search3/behavior/lead-flow.js').read_text()
         handoff = (ROOT / 'src/search3/behavior/selected-tour-handoff.js').read_text()
-        self.assertIn("dispatchEvent(new CustomEvent('v2:booking-review'", continue_owner)
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', continue_owner, flags=re.S).strip(), '')
+        self.assertIn("dispatchEvent(new CustomEvent('v2:booking-review'", summary_owner)
+        self.assertIn("closest('#selectedTour .search3-flight-continue button')", summary_owner)
         self.assertIn("dispatchEvent(new CustomEvent('search3:lead-entry'", summary_owner)
         self.assertIn("window.addEventListener('v2:lead-started'", lead_owner)
         self.assertIn("window.addEventListener('v2:lead-success'", lead_owner)

@@ -366,6 +366,7 @@ console.log('PASS: selected-flow coalesces updates and reuses stable disclosure/
     scrollIntoView() { scrolls += 1; }
   };
   const root = {
+    children: [],
     classList: {
       contains: name => phase.has(name),
       add: name => phase.add(name),
@@ -376,20 +377,22 @@ console.log('PASS: selected-flow coalesces updates and reuses stable disclosure/
       if (selector.endsWith('.section-heading strong')) return heading;
       if (selector.endsWith('.section-heading span')) return hint;
       if (selector === '.search3-final-sections,.search3-lead-shell,.lead-form') return flightRoot;
+      if (selector === '.search3-booking-summary' || selector === '.lead-form') return null;
       throw new Error('Unexpected query: ' + selector);
     }
   };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/search3/behavior/flight-continue.js'), 'utf8'), {
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../src/search3/behavior/summary-cta.js'), 'utf8'), {
     document: { getElementById() { return root; }, addEventListener(_name, fn) { onClick = fn; } },
     window: { addEventListener(name, fn) { callbacks.set(name, fn); }, dispatchEvent(event) { notifications.push(event.type); } },
     setTimeout(fn) { tasks.push(fn); },
+    ensureLeadNote() {},
     CustomEvent: function (type) { this.type = type; }
   });
   callbacks.get('v2:flight-selected')();
   while (tasks.length) tasks.shift()();
   assert.equal(action.hidden, false);
   assert.equal(button.textContent, 'Далее: итог тура');
-  const click = { target: { closest() { return button; } }, preventDefault() {} };
+  const click = { target: { closest(selector) { return selector === '#selectedTour .search3-flight-continue button' ? button : null; } }, preventDefault() {} };
   onClick(click);
   assert.equal(phase.has('search3-final-review'), true);
   assert.deepEqual(notifications, ['v2:booking-review']);
@@ -399,6 +402,7 @@ console.log('PASS: selected-flow coalesces updates and reuses stable disclosure/
   assert.equal(heading.textContent, 'Выберите рейс');
   assert.equal(scrolls, 2);
   callbacks.get('v2:tour-selected')();
+  assert.equal(tasks.length, 1, 'tour reset shares one review/lead task');
   while (tasks.length) tasks.shift()();
   assert.equal(phase.has('search3-final-review'), false);
   console.log('PASS: primary flight continue preserves review/back transitions without supplier segment mutation');

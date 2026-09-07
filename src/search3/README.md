@@ -158,18 +158,10 @@ source bytes. Adjacent rules with identical declarations share selector lists;
 the selector/declaration/media token proof is recorded in
 `docs/project/search3-css-build-compaction.json`.
 
-`behavior/summary-cta-styles.js` owns the remaining static style injection
-immediately before its behavior module. Its CSS lives in
-`styles/injected/summary-cta.css`. A `/* @css-string styles/path.css */ ""`
-placeholder compiles to one escaped JavaScript string literal. CSS sources use
-single-parent explicit-`&` groups; expanded selectors, declaration values and
-media contexts match the original injections. Style IDs, insertion order and
-the original selected-root guard stay unchanged; the CSS is not loaded earlier.
-These private files add no public path, runtime loader or browser request.
-CSS references must stay inside the source root, occur once and use `.css`;
-invalid/missing/repeated references fail before any output is written.
-`tests/search3-injected-styles.cjs` executes the compiled owners and checks order,
-guard and repeated execution. Audit: `search3-injected-css-sources.json`.
+`behavior/summary-cta-styles.js` and its private CSS are retired provenance slots.
+Final-review presentation now has one linked owner in `styles/review-layout.css`;
+the source/build tests keep the private CSS-string compiler covered with isolated
+fixtures, without restoring a runtime style injector.
 
 Repeated ancestor prefixes in 74 CSS selector lists now use `:is()` for plain
 class alternatives with equal specificity. Declarations and media boundaries are
@@ -277,8 +269,9 @@ provenance-only manifest slots; current entry/results owners supply their retain
 presentation. Legacy form presentation was removed from `base.css`; current form
 and guest rules live in `entry-v1.css`.
 
-The booking path uses its primary flight-continue and summary-to-lead actions
-instead of a second clickable progress strip. `booking-stepper.js`,
+The booking path uses one summary CTA owner for flight-to-review,
+summary-to-lead and lead-to-review transitions instead of separate listeners or
+a second clickable progress strip. `flight-continue.js`, `booking-stepper.js`,
 `booking-stepper.css` and `review-heading.js` are provenance-only slots; the
 selected hotel heading and booking summary retain the accessible review context.
 
