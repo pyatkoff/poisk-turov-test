@@ -66,9 +66,43 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `0dd4fd4e656f222bb8f75fce8e53772ea2133146`;
+The latest checked release source is `8b0cc058cf33ba724a376f8dd254373e227ee990`;
 the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
+
+### Latest checked candidate — results donor retirement — 2026-09-07
+
+Source #1442 / exact release `8b0cc058cf33ba724a376f8dd254373e227ee990`,
+tree `78901179d7475cb35986536e48d5b5470011089c`, retires the complete legacy
+`hotel-results.css` presentation donor and preserves its active hotel/tour rules in
+the current `hotel-packages.css` owner. The same measured package consumes the
+previously accumulated superseded `results-context.css` set, removes the duplicate
+tour-list header renderer and orphan rules, and removes JS-owned booking-summary
+geometry while retaining its dataset/title/flight-label lifecycle contract.
+
+Eight raw public assets fall **215784 → 209753 bytes (−6031)**: CSS 120391 →
+115796 (−4595), JS 95393 → 93957 (−1436). From the 301524-byte whole-layer
+baseline the checked reduction is now 91771 bytes. All eight public paths and the
+protected business contracts remain unchanged.
+
+Both mandatory source jobs passed with guards unchanged: Security `34080753450`
+and exact artifact build `34080753417`; artifact `10003613312`, digest
+`sha256:79a9746e93a840a134ba3bc0b5847bba46efb861af00bf8b3794d17a3ec12fa1`.
+One exact source build was reused. Local exact check, 17 presentation tests (one
+PHP-only local skip), injected-style and mobile-toolbar scheduler/ownership checks
+and diff check passed.
+
+This source is **checked but not published**. The isolated preview deliberately
+remains source `4b061396`; main and production remain `fa58a0cb`. No browser or
+visual pass is claimed for this unpublished source. Hotel/tour states at
+390/768/1024/1440, collapsed/hidden rows, booking review/lead geometry at
+641/999/1000/1363 and physical Safari remain deferred.
+
+Next: do not repeat these retired owners. The next large candidate is the 3535-byte
+review-layout block at lines 15–71, but it is a medium-risk visual redesign and must
+first prove computed review/lead geometry at 641/999/1000/1363. If that evidence is
+not available, accumulate the independently safe 643-byte selected-tour and
+737-byte responsive fragments with another substantial owner before one build.
 
 ### Latest checked candidate — acceptance card families — 2026-09-07
 

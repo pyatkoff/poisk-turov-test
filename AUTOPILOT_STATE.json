@@ -53,26 +53,26 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Source#1441: two duplicate acceptance card/readability families plus the earlier mobile lead lifecycle foundation retired;219880→215784 raw bytes (−4096). Both mandatory source jobs passed; release checked at0dd4fd4e, preview intentionally remains4b061396.",
+    "last_material_progress": "Source#1442: the complete legacy hotel-results donor, accumulated results-context duplicates, duplicate tour-list header and JS-owned booking-summary geometry retired;215784→209753 raw bytes (−6031). Both mandatory source jobs passed; release checked at8b0cc058, preview intentionally remains4b061396.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Accumulate the proven 1064-public-byte superseded block set in results-context.css with another substantial safe owner removal before one build/PR; do not spend a standalone cycle on it. Do not retire results-context.css, results-layout.css or tour-detail-convergence.css wholesale: their lifecycle/structural states remain unique. Card375/430/1024/1348/1440, expanded tours375/430, selected flight375/1024, lifecycle375/430/641/768/999 and physical Safari remain deferred.",
+    "next_action": "Do not repeat the retired hotel-results/results-context/tour-list-head/inline-layout families. The next substantial candidate is the 3535-byte review-layout block at lines15–71, but it is a medium-risk visual redesign: prove computed review/lead geometry at641/999/1000/1363 before retiring it, or accumulate the safe 643-byte selected-tour and737-byte responsive candidates with another large owner. Physical Safari remains deferred.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_ACCEPTANCE_GUARD_FAMILY_RETIREMENT",
-    "title": "Retire duplicate acceptance card and mobile lifecycle families",
+    "id": "S3_RESULTS_DONOR_RETIREMENT",
+    "title": "Retire legacy hotel results donor and duplicate rendering ownership",
     "status": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1441
+      1442
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "0dd4fd4e656f222bb8f75fce8e53772ea2133146",
-    "artifact_run": 34077463934,
-    "artifact_id": 10002568100,
-    "next_action": "Carry the proven results-context.css superseded blocks (1064 public bytes) into the next substantial safe owner-removal batch; no standalone micro PR/build/deploy. Whole-file results-context/results-layout/tour-detail removal is unsafe. Main/production remain locked; hourly development stays enabled."
+    "implementation_sha": "8b0cc058cf33ba724a376f8dd254373e227ee990",
+    "artifact_run": 34080753417,
+    "artifact_id": 10003613312,
+    "next_action": "Evaluate the 3535-byte review-layout block only with computed-state evidence at641/999/1000/1363; otherwise accumulate the safe selected-tour/responsive fragments into a larger package. Main/production remain locked; hourly development stays enabled."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -6137,5 +6137,5 @@
     "visual_run": 33976375814
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
-  "updated_at": "2026-09-07T01:22:00Z"
+  "updated_at": "2026-09-07T03:48:00Z"
 }
