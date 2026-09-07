@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "base_release_sha": "591feb00f5d3cf1c574093210663c94ef881d019",
+  "scope": "Use the already loaded DS2 result filters as the sole desktop owner, retain a small Search3 empty-result bridge and remove duplicate lead-entry CSS hiding.",
+  "retired_owners": [
+    "src/search3/behavior/filter-rail/availability.js",
+    "src/search3/behavior/filter-rail/render.js",
+    "the duplicate desktop UI/filter implementation in src/search3/behavior/filter-rail.js"
+  ],
+  "current_owner": "v2/ds2-results-filters.js",
+  "served_assets": {
+    "before_bytes": 156516,
+    "after_bytes": 147378,
+    "removed_bytes": 9138,
+    "changed": {
+      "v2/search3-results-filters-v1.js": {
+        "before_bytes": 56742,
+        "after_bytes": 48137,
+        "removed_bytes": 8605
+      },
+      "v2/search3-results-filters-v1.css": {
+        "before_bytes": 49859,
+        "after_bytes": 49326,
+        "removed_bytes": 533
+      }
+    },
+    "unchanged_asset_count": 6
+  },
+  "product_change": [
+    "desktop results now expose one instant local filter UI for price, meal, hotel category, rating and sea distance",
+    "direct flight, charter and concrete-hotel search parameters remain available in the canonical edit-search form instead of being duplicated in the result rail",
+    "the Search3 bridge keeps legitimate zero-match results visible and recoverable"
+  ],
+  "removed_css_redundancy": "Two lead-entry root-child hide lists already enforced synchronously by Search3SummaryCta.isolateRootChildren().",
+  "focused_checks": [
+    "python3 scripts/build/search3_assets.py --write",
+    "python3 scripts/build/search3_assets.py --check",
+    "node tests/search3-filter-rail-ownership.cjs",
+    "node tests/search3-filter-rail-price-input.cjs",
+    "python3 -m unittest tests.search3_source_build_test tests.search3_production_presentation_test",
+    "python3 scripts/ci/validate_owner_priority.py"
+  ],
+  "ci_required": [
+    "Security guard including owner validators",
+    "exact artifact build including results and selected detail/review/lead geometry"
+  ],
+  "publication": "NOT_PUBLISHED",
+  "deferred": "Live current-source filter interaction, physical Safari and safe-area acceptance",
+  "protected_contracts": "Eight public paths, price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping and analytics unchanged"
+}
