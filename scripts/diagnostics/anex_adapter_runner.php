@@ -64,6 +64,7 @@ try {
     try {
         $flights = $service->flights($first['offer_key']);
         $report['flights'] = ['status' => 'ok', 'route_count' => count($flights['routes']),
+            'itinerary_details_available' => $flights['itinerary_details_available'],
             'option_count' => array_sum(array_map(static function (array $route): int { return count($route['options']); }, $flights['routes'])),
             'selected' => false, 'final_price_verified' => false, 'routes' => []];
         foreach (array_slice($flights['routes'], 0, 2) as $route) {

@@ -138,6 +138,7 @@ def clean_adapter_report(report):
         result["samples"].append(output)
     flights = report.get("flights", {})
     result["flights"] = {"status": status(flights.get("status")), "route_count": count(flights.get("route_count"), 6),
+                          "itinerary_details_available": flights.get("itinerary_details_available") is True,
                           "option_count": count(flights.get("option_count"), 360), "selected": False,
                           "final_price_verified": False, "routes": []}
     for route in flights.get("routes", [])[:2]:

@@ -29,8 +29,9 @@ $transport = static function (string $url, array $options) use (&$calls, $baseRo
             'freights' => [['name' => 'TEST 123', 'transportCompany' => 'Fixture carrier',
                 'departure' => ['portAlias' => 'SVO', 'time' => '10:00'],
                 'arrival' => ['portAlias' => 'SSH', 'time' => '16:00'],
-                'places' => [['class' => 'Economy', 'status' => 'R',
-                    'baggage' => ['baggage' => '20 kg', 'baggageHand' => 'fixture-secret']]]]]
+                'places' => [['class' => 'Economy', 'status' => 'yesplace',
+                    'baggage' => ['baggage' => 20, 'baggageHand' => 'fixture-secret', 'baggageInfant' => 3]],
+                    ['class' => 'Business', 'status' => 'noplace', 'baggage' => ['baggage' => 0, 'baggageHand' => 5.5]]]]]
         ]]]])];
     }
     if (isset($params['CATCLAIM'])) {
@@ -59,7 +60,12 @@ search_check(count($expanded['offers']) === 1 && $expanded['rejected_count'] ===
 $offer = $expanded['offers'][0];
 search_check($offer['final_price_verified'] === false, 'search price promoted to final');
 $flights = $search->flights($offer['offer_key']);
-search_check($flights['routes'][0]['options'][0]['classes'][0]['baggage'] === '20 kg', 'baggage missing');
+search_check($flights['routes'][0]['options'][0]['classes'][0]['baggage'] === '20', 'numeric baggage missing');
+search_check($flights['routes'][0]['options'][0]['classes'][0]['availability'] === 'Y', 'yesplace missing');
+search_check($flights['routes'][0]['options'][0]['classes'][1]['availability'] === 'N', 'noplace missing');
+search_check($flights['routes'][0]['options'][0]['classes'][1]['baggage'] === '0', 'explicit zero lost');
+search_check($flights['routes'][0]['options'][0]['classes'][1]['hand_baggage'] === '5.5', 'decimal baggage missing');
+search_check($flights['itinerary_details_available'], 'complete itinerary not recognized');
 search_check($flights['routes'][0]['options'][0]['classes'][0]['hand_baggage'] === null, 'secret leaked');
 search_check(!$flights['selected'] && !$flights['included_in_search_price_verified'], 'flight options treated as selected');
 search_check($client->requestsMade() === 3, 'unexpected requests');

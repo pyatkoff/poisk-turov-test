@@ -122,6 +122,7 @@ final class AnyTourAnexSearch
         if (!isset($data['routes']) || !is_array($data['routes'])) throw new RuntimeException('ANEX_INVALID_FLIGHTS');
         $result = ['provider' => 'anex', 'offer_key' => $offerKey, 'routes' => [],
             'selected' => false, 'included_in_search_price_verified' => false,
+            'itinerary_details_available' => false,
             'final_price_verified' => false, 'truncated' => count($data['routes']) > 6];
         foreach (array_slice($data['routes'], 0, 6) as $route) {
             if (!is_array($route) || !is_array($route['info'] ?? null) || !is_array($route['freights'] ?? null)) {
@@ -143,6 +144,10 @@ final class AnyTourAnexSearch
                         'airport_code' => $this->label($location['portAlias'] ?? null),
                         'time' => $this->label($location['time'] ?? null)];
                 }
+                $item['itinerary_details_available'] = $item['name'] !== null && $item['carrier'] !== null
+                    && $item['departure']['airport_code'] !== null && $item['departure']['time'] !== null
+                    && $item['arrival']['airport_code'] !== null && $item['arrival']['time'] !== null;
+                $result['itinerary_details_available'] = $result['itinerary_details_available'] || $item['itinerary_details_available'];
                 $places = $freight['places'] ?? [];
                 if (!is_array($places)) throw new RuntimeException('ANEX_INVALID_FLIGHTS');
                 $result['truncated'] = $result['truncated'] || count($places) > 10;
@@ -150,10 +155,10 @@ final class AnyTourAnexSearch
                     if (!is_array($place)) throw new RuntimeException('ANEX_INVALID_FLIGHTS');
                     $baggage = is_array($place['baggage'] ?? null) ? $place['baggage'] : [];
                     $item['classes'][] = ['name' => $this->label($place['class'] ?? null),
-                        'availability' => in_array($place['status'] ?? null, ['Y', 'N', 'F', 'R'], true) ? $place['status'] : null,
-                        'baggage' => $this->label($baggage['baggage'] ?? null),
-                        'hand_baggage' => $this->label($baggage['baggageHand'] ?? null),
-                        'infant_baggage' => $this->label($baggage['baggageInfant'] ?? null)];
+                        'availability' => $this->flightAvailability($place['status'] ?? null),
+                        'baggage' => $this->baggage($baggage['baggage'] ?? null),
+                        'hand_baggage' => $this->baggage($baggage['baggageHand'] ?? null),
+                        'infant_baggage' => $this->baggage($baggage['baggageInfant'] ?? null)];
                 }
                 $entry['options'][] = $item;
             }
@@ -181,5 +186,22 @@ final class AnyTourAnexSearch
     {
         return anytour_anex_normalizer_label($value,
             anytour_anex_normalizer_sensitive($this->sensitive), 180);
+    }
+
+    private function baggage($value): ?string
+    {
+        if (is_int($value) || is_float($value)) {
+            if (!is_finite((float)$value) || $value < 0) return null;
+            $value = (string)$value;
+        }
+        // No unit or package-inclusion claim is invented from a bare number.
+        return $this->label($value);
+    }
+
+    private function flightAvailability($value): ?string
+    {
+        if ($value === 'yesplace') return 'Y';
+        if ($value === 'noplace') return 'N';
+        return in_array($value, ['Y', 'N', 'F', 'R'], true) ? $value : null;
     }
 }
