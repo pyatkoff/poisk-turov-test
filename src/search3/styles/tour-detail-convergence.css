@@ -62,14 +62,10 @@ html body.search3-candidate{
 & .flight-segment {min-width:0!important;padding:9px 10px!important;border-top:1px solid var(--at-line-soft)!important}
 & .flight-segment:nth-of-type(2) {border-right:1px solid var(--at-line-soft)!important}
 & .flight-segment-title {margin-bottom:6px!important;gap:8px!important}
-& .flight-segment-title strong {font-size:9px!important}
-& .flight-segment-title span {font-size:7.5px!important}
 & .flight-route {grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)!important;gap:5px!important}
-& .flight-route b {font-size:9px!important;line-height:1.15!important}
-& .flight-route span {font-size:7.5px!important}
 & .flight-arrow {font-size:11px!important}
-& .flight-baggage {margin-top:6px!important;font-size:7.5px!important}
-& .flight-fuel {grid-column:1/-1!important;padding:7px 10px!important;font-size:7.5px!important}
+& .flight-baggage {margin-top:6px!important}
+& .flight-fuel {grid-column:1/-1!important;padding:7px 10px!important}
 }
 }
 }

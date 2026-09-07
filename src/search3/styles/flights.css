@@ -56,3 +56,6 @@ body.search3-candidate{
 & .flight-choice {min-height:54px!important}& .flight-choice>span {font-size:8.5px!important}& .flight-choice-summary {font-size:9.5px!important}& .flight-choice-tradeoffs {margin-top:3px!important}
 }
 }}
+
+/* Native radio and selected border already convey selection; no price overlay. */
+body.search3-candidate #selectedTour .flight-variant.is-selected:before{content:none!important}

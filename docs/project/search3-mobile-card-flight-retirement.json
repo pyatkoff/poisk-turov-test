@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "stage": "SOURCE_PREPARED_VISUAL_DEFERRED",
+  "stage": "PUBLISHED_INITIAL_BATCH_DESKTOP_DEFECT_REPAIR_PREPARED",
   "base_release_sha": "cca1d56605db6260071dfe2ff24ed8f46b437b21",
-  "published_preview_source_sha": "9b4303a50efe79ad6d3477d068bdf599092e74f6",
+  "published_preview_source_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
   "scope": "Three substantial obsolete presentation block families retired in one batch; retained active lifecycle owners are not claimed fully retired.",
   "removed": [
     "Old result-cards photo-height/dense facts/tablet/desktop geometry blocks",
@@ -85,19 +85,116 @@
     "independent_css_ast_review": "PASS exact retained selector/media/declaration streams and flight JS operation deletion",
     "diff_check": "PASS"
   },
-  "source_ci": "PENDING required Security with owner validators and exact artifact build; guards unchanged",
-  "visual_verification": {
-    "status": "DEFERRED",
-    "performed": false,
-    "required": [
-      "results cards375/768/1440",
-      "selected tour mobile/tablet",
-      "normal flight choice/review/back and no-flight CTA",
-      "inherited initial/editing and lead-entry boundaries"
-    ],
-    "reason": "No browser capability exposed in current runtime. Experimental geometry is not visual equivalence; review/lead lifecycle rules retained literally."
+  "source_ci": {
+    "security_run": 34068579112,
+    "artifact_run": 34068579131,
+    "artifact_id": 9999733380,
+    "conclusion": "success",
+    "guards": "unchanged"
   },
-  "preview_updated": false,
+  "visual_verification": {
+    "status": "DESKTOP_OBSERVED_DEFECTS_REPAIR_PREPARED",
+    "performed": true,
+    "viewport": [
+      1363,
+      936
+    ],
+    "states": [
+      "initial form",
+      "results and expanded LUXOR APART",
+      "selected flight",
+      "review and back"
+    ],
+    "findings": [
+      "Accommodation column splits label/value midword",
+      "Existing convergence gives airport9px and secondary7.5px",
+      "Legacy selected checkmark overlaps price"
+    ],
+    "attribution": "Observed on published857; introduction by this deletion not proven.",
+    "deferred": [
+      "mobile/tablet/Safari",
+      "live no-flight branch",
+      "lead-entry and full matrix"
+    ],
+    "capability_correction": "Browser connected through control-browser; earlier no-browser statement was inaccurate. Artifact materialization403 was not retried; unchanged publisher verified actual archive/controls."
+  },
+  "preview_updated": true,
   "production_updated": false,
-  "next_action": "After source CI retain exact artifact, then focused accumulated-candidate visual inspection at justified isolated publication when browser capability is available. Audit remaining summary-cta mobile geometry against current review owner without removing its lead-shell/CTA/hidden boundaries; no wholesale deletion established yet. Continue permitted independent work; do not repeat completed block retirement."
+  "next_action": "Finish mandatory source CI and reuse repair artifact for isolated corrective publication; inspect only repaired row/flight text. Then audit remaining review-responsive mobile geometry against current review owner; protect hidden/lead/CTA boundaries. Mobile/Safari/no-flight/full matrix deferred.",
+  "implementation_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
+  "preview_publication": {
+    "control_pr": 1431,
+    "control_sha": "e1a611baf2afd53fbb46441227780b184d94d7f8",
+    "run": 34068938069,
+    "conclusion": "success",
+    "evidence_artifact": 9999833035,
+    "file_count": 715,
+    "production_fingerprints": "unchanged",
+    "rollback": "retained",
+    "noindex": true,
+    "metrika_counter": 0,
+    "production_leads": false
+  },
+  "repair": {
+    "base_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
+    "status": "SOURCE_PREPARED_CI_PENDING",
+    "changes": [
+      "Remove six-column/nth-position microlayout in hotel-packages; three flexible columns",
+      "Remove9/7.5px flight text overrides in convergence; existing selected-flow14/12px owner applies",
+      "Suppress duplicate legacy selected pseudo-tick; native radio/border preserved"
+    ],
+    "assets": [
+      {
+        "path": "v2/search3-entry-v1.css",
+        "before": 9662,
+        "after": 9662
+      },
+      {
+        "path": "v2/search3-results-cards-v2.css",
+        "before": 4007,
+        "after": 4007
+      },
+      {
+        "path": "v2/search3-results-filters-v1.css",
+        "before": 116283,
+        "after": 115765
+      },
+      {
+        "path": "v2/search3-selected-flow-v2.css",
+        "before": 6814,
+        "after": 6814
+      },
+      {
+        "path": "v2/search3-entry-v1.js",
+        "before": 3226,
+        "after": 3226
+      },
+      {
+        "path": "v2/search3-results-cards-v2.js",
+        "before": 0,
+        "after": 0
+      },
+      {
+        "path": "v2/search3-results-filters-v1.js",
+        "before": 87783,
+        "after": 87783
+      },
+      {
+        "path": "v2/search3-selected-flow-v2.js",
+        "before": 7882,
+        "after": 7882
+      }
+    ],
+    "before": 235657,
+    "after": 235139,
+    "saved": 518,
+    "all_js_unchanged": true,
+    "checks": [
+      "one source build PASS",
+      "selected scheduler/primary review-back PASS",
+      "mobile toolbar ownership PASS",
+      "CSS parse/diffcheck PASS"
+    ],
+    "visual": "PENDING corrective publication"
+  }
 }

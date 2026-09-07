@@ -1,26 +1,22 @@
-/* Desktop package rows follow maket7's scan order using only fields already present in the normalized Tourvisor result. */
+/* Expanded offers keep complete normalized facts in flexible columns; price/action have their own column. */
 @media(min-width:1000px){
 body.search3-candidate{
 & #results .hotel-tours {
 & .tour-row {grid-template-columns:minmax(0,1fr) 156px!important;gap:18px!important;}
 & .tour-meta {
   display:grid!important;
-  grid-template-columns:minmax(112px,1.25fr) minmax(90px,.9fr) 76px 48px minmax(98px,.95fr) minmax(66px,.7fr)!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:10px 14px!important;
   align-items:start!important;
   min-width:0!important;
 }
-& .tour-meta>strong {grid-column:3!important;grid-row:1!important;min-width:0!important;margin:0!important;color:#14213d!important;line-height:1.2!important;font-weight:900!important;white-space:nowrap!important}
+& .tour-meta>strong {min-width:0!important;margin:0!important;color:#14213d!important;line-height:1.2!important;font-weight:900!important;white-space:nowrap!important}
 & .tour-meta>strong::before {content:'Вылет';display:block!important;margin-bottom:4px!important;color:#98a2b3!important;font-size:7px!important;line-height:1!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.02em!important}
 & .tour-facts {display:contents!important}
 & .tour-fact {display:block!important;min-width:0!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;line-height:1.15!important}
 & .tour-fact small {display:block!important;margin-bottom:4px!important;color:#98a2b3!important;font-size:7px!important;line-height:1!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.02em!important}
 & .tour-fact b {display:block!important;min-width:0!important;color:#344054!important;font-weight:850!important;white-space:normal!important;overflow-wrap:anywhere!important}
-& .tour-fact:nth-child(1) {grid-column:4!important;grid-row:1!important}
-& .tour-fact:nth-child(2) {grid-column:5!important;grid-row:1!important}
-& .tour-fact:nth-child(3) {grid-column:1!important;grid-row:1!important}
-& .tour-fact:nth-child(4) {grid-column:6!important;grid-row:1!important}
-& .tour-fact:nth-child(5) {grid-column:2!important;grid-row:1!important}
-& .tour-fact-badge {grid-column:2!important;grid-row:2!important;margin-top:5px!important;color:#177245!important}
+& .tour-fact-badge {margin-top:5px!important;color:#177245!important}
 & .tour-fact-badge b {display:inline-flex!important;width:auto!important;padding:3px 5px!important;border-radius:5px!important;background:#eef8f1!important;color:#177245!important;font-size:7px!important}
 & .tour-action {align-self:stretch!important;justify-content:center!important;border-left:1px solid #eef1f5!important}
 & .tour-action>b {line-height:1!important;text-align:right!important}
