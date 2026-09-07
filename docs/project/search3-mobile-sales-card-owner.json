@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "base_release_sha": "45c589b06d939fe5ff494733e259745c41ea4d97",
+  "scope": "Retire the separate phone result layout donor and simplify the narrow result card into the current card and toolbar owners.",
+  "retired_owner": "src/search3/styles/results-mobile-layout.css",
+  "current_owners": [
+    "src/search3/styles/results-cards-v2.css",
+    "src/search3/styles/mobile-results-toolbar.css"
+  ],
+  "served_assets": {
+    "before_bytes": 157523,
+    "after_bytes": 156516,
+    "removed_bytes": 1007,
+    "changed": {
+      "v2/search3-results-filters-v1.css": {
+        "before_bytes": 51784,
+        "after_bytes": 49859,
+        "removed_bytes": 1925
+      },
+      "v2/search3-results-cards-v2.css": {
+        "before_bytes": 10894,
+        "after_bytes": 11812,
+        "added_bytes": 918
+      }
+    },
+    "unchanged_asset_count": 6
+  },
+  "product_change": [
+    "phone hotel cards use one simple vertical content flow instead of the retired five-row compatibility grid",
+    "the old 390px 10/11px fact-type squeeze is removed; the current readable card scale remains active",
+    "expanded package rows remain single-column and contained"
+  ],
+  "retained_contracts": [
+    "native mobile sort focus visibility",
+    "phone filter drawer full-width panel, fixed actions and safe-area padding",
+    "phone result scan order and in-progress status positioning",
+    "collapsed and expanded card containment, hotel facts, price, disclosure and package CTA"
+  ],
+  "local_checks": [
+    "python3 scripts/build/search3_assets.py --write",
+    "python3 scripts/build/search3_assets.py --check",
+    "python3 -m unittest tests.search3_source_build_test tests.search3_production_presentation_test",
+    "node tests/search3-mobile-toolbar-ownership.cjs",
+    "python3 scripts/ci/validate_owner_priority.py"
+  ],
+  "ci_required": [
+    "Security guard including owner validators",
+    "exact artifact build including 12-state results geometry at 375/760/761/999/1000/1440"
+  ],
+  "publication": "NOT_PUBLISHED",
+  "deferred": "Physical Safari/safe-area and live current-source preview acceptance",
+  "protected_contracts": "Eight public paths, price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping and analytics unchanged"
+}
