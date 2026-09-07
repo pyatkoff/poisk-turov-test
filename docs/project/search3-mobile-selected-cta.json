@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "SOURCE_CANDIDATE_NOT_PUBLISHED",
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
   "base_release_sha": "04f726371d3e62913ec734df99ed29b806ae2091",
   "scope": "Restore a conversion-safe touch target for the fixed mobile selected-tour CTA.",
   "root_cause": "The mobile CTA had horizontal padding and typography but no height owner, allowing the rendered button to collapse to approximately 11px at 375px.",
@@ -26,12 +26,23 @@
   "protected_contracts": "Price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping, Metrika/goals and the canonical logo are unchanged.",
   "verification": {
     "local": "Exact build/write/check, selected-flow scheduler, browser-test syntax, 13 source-build and 24 presentation tests with one PHP-only local skip, JSON and diff checks passed.",
-    "source_ci": "PENDING"
+    "source_sha": "1afd5c5d0866a26284be015c2cfc70e2818af534",
+    "source_pr": 1492,
+    "security_run": 34144224022,
+    "artifact_run": 34144224020,
+    "artifact_id": 10027068097,
+    "artifact_digest": "sha256:c7e1ce6a777179518a8e0aad25f3d1f9b49a519ad4f5c81df24c4bc274e5b957",
+    "selected_geometry_artifact": 10027067465,
+    "selected_geometry_digest": "sha256:ad41486e5ef0fd7125712838adb7b9453fbb89572c956daf657006523bab0b55",
+    "ready_repeat_artifact_run": 34144352197,
+    "source_ci": "SUCCESS"
   },
+  "release_sha": "5b491ce0d0a05d7ee7a6a815564b529fa89589d3",
   "publication": "NOT_PUBLISHED",
   "production_updated": false,
   "deferred": [
     "Physical iPhone and Safari safe-area acceptance",
     "Live current-source journey"
-  ]
+  ],
+  "next_action": "Audit search-form completion friction and local-filter feedback using the current single-owner architecture; accumulate the next product batch before preview publication."
 }

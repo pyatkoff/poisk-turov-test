@@ -53,29 +53,30 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1485 retires the separate phone result-layout donor and #1486 removes the duplicate Search3 desktop filter owner plus repeated lead-entry hiding. 157523→147378 raw bytes in this invocation (−10145: −9612 JS/CSS owner bytes plus −533 repeated CSS); both required CI pass. Release only; preview remains b9445bc3.",
+    "last_material_progress": "The byte-only sequence #1485/#1486/#1490 reduced the eight assets 157523→145660 raw bytes. Exact source c9ba7952 at147378 bytes is published in the isolated preview; later dead-CSS removal #1490 is checked release only. Product PR #1492 then restores a confirmed collapsed mobile CTA with a 48px minimum touch target, 145660→145676 (+16 CSS). Main/production remain unchanged.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "The technical raw-size target has been reached at 147378 bytes. Do not repeat #1485/#1486, restore the duplicate desktop rail, or remove results-tablet-layout.css. Publish one accumulated exact isolated preview only when a bounded live filter/card acceptance pass can be performed; then switch priority from byte-only work to selling search UX and the lean Search3 base bundle. Physical Safari/safe-area remains deferred.",
+    "next_action": "Continue the selling-search UX stage: audit search-form completion friction and local-filter feedback, then accumulate the next product batch before preview publication. Stop byte-only micro-PRs; do not restore the duplicate desktop rail or remove results-tablet-layout.css. Physical Safari/safe-area remains deferred; production still requires explicit visual approval.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_SINGLE_FILTER_AND_MOBILE_CARD_OWNERS",
-    "title": "Retire duplicate desktop filter and phone result-layout owners",
-    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "id": "S3_MOBILE_SELECTED_CTA_SALES_REPAIR",
+    "title": "Restore the mobile selected-tour primary action touch target",
+    "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [1485, 1486],
+    "source_prs": [1492],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "release_sha": "4063a48049f46704dcb94a623d3219361808914b",
-    "artifact_run": 34141824479,
-    "artifact_id": 10026227838,
-    "artifact_digest": "sha256:290789ab82bda4e2169a488ceb3c0449842facce120d47ee811781cb0ad5909b",
-    "geometry_artifact_id": 10025782914,
-    "selected_geometry_artifact_id": 10026226970,
-    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "next_action": "Reuse artifact10026227838 only for source c9ba7952; checked release is 4063a480 and published preview remains b9445bc3. The byte-only target is reached. Next prepare one accumulated isolated preview acceptance for cards and the sole DS2 desktop rail, then begin the selling-search UX stage. Production approval remains required."
+    "implementation_sha": "1afd5c5d0866a26284be015c2cfc70e2818af534",
+    "release_sha": "5b491ce0d0a05d7ee7a6a815564b529fa89589d3",
+    "artifact_run": 34144224020,
+    "artifact_id": 10027068097,
+    "artifact_digest": "sha256:c7e1ce6a777179518a8e0aad25f3d1f9b49a519ad4f5c81df24c4bc274e5b957",
+    "selected_geometry_artifact_id": 10027067465,
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "checked_release_asset_bytes": 145676,
+    "published_preview_asset_bytes": 147378,
+    "next_action": "The 48px mobile CTA repair is checked release only. Audit search-form completion friction and local-filter feedback, then publish the next accumulated product checkpoint; production approval remains required."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -7552,17 +7553,19 @@
     }
   },
   "latest_single_filter_and_mobile_card_owners": {
-    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "stage": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "baseline": "45c589b06d939fe5ff494733e259745c41ea4d97",
-    "release_integration_sha": "4063a48049f46704dcb94a623d3219361808914b",
-    "source_prs": [1485, 1486],
+    "release_integration_sha": "04f726371d3e62913ec734df99ed29b806ae2091",
+    "source_prs": [1485, 1486, 1490],
     "source_shas": [
       "cca517ac14d7938a7d228d10fdce80d1d450c0ee",
-      "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3"
+      "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+      "b71d99e6dae73e406190c9d4cea64acbf1f3f2db"
     ],
     "audits": [
       "docs/project/search3-mobile-sales-card-owner.json",
-      "docs/project/search3-single-desktop-filter-owner.json"
+      "docs/project/search3-single-desktop-filter-owner.json",
+      "docs/project/search3-retired-filter-presentation.json"
     ],
     "scope": "Retire the separate phone results layout donor; keep current card/toolbar owners. Use the already loaded DS2 filters as the sole desktop filter owner, retain a compact zero-result bridge, and remove duplicate lead-entry hiding.",
     "ci": {
@@ -7578,33 +7581,86 @@
       "filter_artifact_digest": "sha256:290789ab82bda4e2169a488ceb3c0449842facce120d47ee811781cb0ad5909b",
       "selected_geometry_artifact_id": 10026226970,
       "selected_geometry_digest": "sha256:e976c332cd8963aa7b54d00a99082a09e0d58a1c0b4d646b4a7675d03d2a1450",
-      "required_passed": 4,
+      "retired_filter_security_run": 34143403167,
+      "retired_filter_artifact_run": 34143403145,
+      "retired_filter_artifact_id": 10026777435,
+      "retired_filter_artifact_digest": "sha256:cae31b2ff8e194bacb1caa1e228a46912d39554a4b8d14f7d43181739e8715c6",
+      "retired_filter_results_geometry_artifact": 10026776947,
+      "required_passed": 6,
       "artifact_rebuilt_on_release": false,
       "artifact_rebuilt_for_docs": false
     },
     "public_assets": {
       "before_bytes": 157523,
-      "after_bytes": 147378,
-      "css_bytes": 87112,
+      "after_bytes": 145660,
+      "css_bytes": 85394,
       "js_bytes": 60266,
-      "removed_bytes": 10145,
-      "css_removed_bytes": 1540,
+      "removed_bytes": 11863,
+      "css_removed_bytes": 3258,
       "js_removed_bytes": 8605,
       "scope": "Eight public paths, raw uncompressed bytes."
     },
     "visual_verification": {
       "mobile_results_states": "12 collapsed/expanded result and drawer states at375/760/761/999/1000/1440 passed in Chromium",
       "selected_states": "12 detail/review/lead states at375/760/1000/1440 passed in Chromium after strengthening the existing geometry detector",
-      "live_preview_checked": false,
+      "live_preview_checked": true,
+      "live_search": "Moscow to Turkey completed with 100 hotels and 445 tours; budget 160000→80000 reduced visible hotels 100→3 and reset restored100.",
+      "facet_boundary": "Incomplete supplier facets stayed hidden by the completeness guard; stars/rating/meal/concrete-hotel/direct-flight remain available through Edit search.",
       "lead_submitted": false
     },
-    "preview_updated": false,
+    "preview_publication": {
+      "control_pr": 1489,
+      "deploy_run": 34143220797,
+      "evidence_artifact": 10026686548,
+      "evidence_digest": "sha256:fb43e9546a7df9a836473faf631c3bd6bef1d1336a610371657b7e9491a34589",
+      "payload_file_count": 715,
+      "noindex": true,
+      "preview_lead_status": 403,
+      "metrika_counter": 0,
+      "production_fingerprints_unchanged": 13,
+      "rollback_retained": true
+    },
+    "preview_updated": true,
     "production_updated": false,
-    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "deferred": [
-      "live current-source desktop filter and mobile card interaction",
       "physical Safari and device safe-area"
     ],
-    "next_action": "The planned technical size target is reached. Do not restore the duplicate Search3 desktop rail or retire results-tablet-layout.css. Prepare one accumulated isolated preview with bounded card/filter acceptance, then switch to selling search UX and a lean Search3 base bundle; production still requires explicit visual approval."
+    "checked_release_asset_bytes": 145660,
+    "published_preview_asset_bytes": 147378,
+    "checked_release_sha": "04f726371d3e62913ec734df99ed29b806ae2091",
+    "next_action": "Technical size and accumulated isolated-preview acceptance are complete. Later #1490 dead CSS is checked release only and does not require a visual republish. Do not restore the duplicate Search3 desktop rail or retire results-tablet-layout.css. Continue selling search UX; production still requires explicit visual approval."
+  },
+  "latest_mobile_selected_cta_sales_repair": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "base_release_sha": "04f726371d3e62913ec734df99ed29b806ae2091",
+    "implementation_sha": "1afd5c5d0866a26284be015c2cfc70e2818af534",
+    "release_sha": "5b491ce0d0a05d7ee7a6a815564b529fa89589d3",
+    "source_pr": 1492,
+    "audit": "docs/project/search3-mobile-selected-cta.json",
+    "scope": "Restore a 48px minimum touch target for the fixed mobile selected-tour CTA while preserving all other detail/review/lead geometry.",
+    "ci": {
+      "security_run": 34144224022,
+      "artifact_run": 34144224020,
+      "artifact_id": 10027068097,
+      "artifact_digest": "sha256:c7e1ce6a777179518a8e0aad25f3d1f9b49a519ad4f5c81df24c4bc274e5b957",
+      "selected_geometry_artifact": 10027067465,
+      "selected_geometry_digest": "sha256:ad41486e5ef0fd7125712838adb7b9453fbb89572c956daf657006523bab0b55",
+      "ready_repeat_artifact_run": 34144352197,
+      "conclusion": "success"
+    },
+    "public_assets": {
+      "before_bytes": 145660,
+      "after_bytes": 145676,
+      "delta_bytes": 16,
+      "css_bytes": 85410,
+      "js_bytes": 60266,
+      "unchanged_asset_count": 7
+    },
+    "preview_updated": false,
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "production_updated": false,
+    "deferred": ["Physical iPhone and Safari safe-area acceptance", "Live current-source journey"],
+    "next_action": "Audit search-form completion friction and local-filter feedback using the current single-owner architecture; accumulate the next product batch before preview publication."
   }
 }

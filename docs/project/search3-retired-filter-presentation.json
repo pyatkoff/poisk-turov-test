@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "SOURCE_CANDIDATE_NOT_PUBLISHED",
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
   "base_release_sha": "e8dd3a2053cdc49e56ce4cd10f0e9131a9a8a049",
   "scope": "Remove the unreachable Search3 desktop filter presentation left after the DS2 runtime became the sole desktop filter owner.",
   "removed": [
@@ -38,13 +38,21 @@
   },
   "verification": {
     "local": "Exact build/write/check, filter owner and behavior regressions, CSS/JS compaction, 13 source-build tests, 24 presentation tests with one PHP-only local skip, owner-priority and diff checks passed.",
-    "source_ci": "PENDING"
+    "source_sha": "b71d99e6dae73e406190c9d4cea64acbf1f3f2db",
+    "source_pr": 1490,
+    "security_run": 34143403167,
+    "artifact_run": 34143403145,
+    "artifact_id": 10026777435,
+    "artifact_digest": "sha256:cae31b2ff8e194bacb1caa1e228a46912d39554a4b8d14f7d43181739e8715c6",
+    "results_geometry_artifact": 10026776947,
+    "results_geometry_digest": "sha256:60579f3eb925391942354f73df6690fb7173b85794104d661beccc37a1ef144f",
+    "source_ci": "SUCCESS"
   },
+  "release_sha": "04f726371d3e62913ec734df99ed29b806ae2091",
   "publication": "NOT_PUBLISHED",
   "production_updated": false,
   "deferred": [
-    "Exact artifact CI browser matrix",
     "Physical Safari acceptance"
   ],
-  "next_action": "Merge only after Security and exact artifact CI pass; keep preview, main and production unchanged."
+  "next_action": "Keep this dead-CSS-only package checked but unpublished; the isolated preview remains exact source c9ba7952. End byte-only micro-PRs and begin the selling-search UX stage."
 }
