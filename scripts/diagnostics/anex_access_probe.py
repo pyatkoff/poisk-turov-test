@@ -483,6 +483,7 @@ def ssh_probe():
     prices = "--prices" in sys.argv
     hotels = "--hotels" in sys.argv
     adapter = "--adapter" in sys.argv
+    catalog = "--catalog" in sys.argv
     names = ("ANEX_API_TOKEN", "ANEX_REFERENCE_TOKEN", "ANYTOOUR_DEPLOY_SSH_KEY",
              "ANYTOOUR_DEPLOY_HOST", "ANYTOOUR_DEPLOY_USER")
     missing = [name for name in names if not os.environ.get(name, "").strip()]
@@ -516,6 +517,13 @@ def ssh_probe():
         source += '\nif __name__ == "__main__":\n    sys.exit(main())\n'
         encoded = base64.b64encode(zlib.compress(source.encode("utf-8"))).decode("ascii")
         source = "import base64,zlib;exec(zlib.decompress(base64.b64decode(" + repr(encoded) + ")))"
+    if catalog:
+        source = source.rsplit('\nif __name__ == "__main__":', 1)[0]
+        source += "\n" + Path(__file__).with_name("anex_full_catalog_probe.py").read_text(encoding="utf-8")
+        source += "\nCATALOG_BULK_PHP = " + repr(Path(__file__).with_name("anex_catalog_bulk_reader.php").read_text(encoding="utf-8").removeprefix("<?php"))
+        source += '\nif __name__ == "__main__":\n    sys.exit(main())\n'
+        encoded = base64.b64encode(zlib.compress(source.encode("utf-8"))).decode("ascii")
+        source = "import base64,zlib;exec(zlib.decompress(base64.b64decode(" + repr(encoded) + ")))"
     with tempfile.TemporaryDirectory(prefix="anex-probe-", dir=os.environ.get("RUNNER_TEMP")) as temp:
         key = Path(temp) / "ssh_key"
         fd = os.open(str(key), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -529,12 +537,12 @@ def ssh_probe():
             "-o", "ServerAliveCountMax=2", "-o", "LogLevel=ERROR",
             "-l", user, host,
             'cd "$HOME/www/anytoour.ru" && python3 -B -c ' + shlex.quote(source)
-            + " --remote" + (" --adapter" if adapter else " --hotels" if hotels else " --prices" if prices else ""),
+            + " --remote" + (" --catalog" if catalog else " --adapter" if adapter else " --hotels" if hotels else " --prices" if prices else ""),
         ]
         child_env = {k: v for k, v in os.environ.items() if k not in names}
         try:
             completed = subprocess.run(command, input=json.dumps(tokens), text=True,
-                                       capture_output=True, timeout=290 if prices or hotels or adapter else 110, env=child_env)
+                                       capture_output=True, timeout=900 if catalog else 290 if prices or hotels or adapter else 110, env=child_env)
         except subprocess.TimeoutExpired:
             return {"ok": False, "checks": [{"check": "ssh", "status": "ssh_timeout"}]}
         if completed.returncode and not completed.stdout.strip():
@@ -544,7 +552,14 @@ def ssh_probe():
             elif "REMOTE HOST IDENTIFICATION HAS CHANGED" in completed.stderr:
                 status = "ssh_host_key_changed"
             return {"ok": False, "checks": [{"check": "ssh", "status": status}]}
-        report = clean_report(json.loads(completed.stdout))
+        report = json.loads(completed.stdout)
+        if catalog:
+            artifact_dir = os.environ.get("ANEX_CATALOG_ARTIFACT_DIR", "").strip()
+            if report.get("ok") and artifact_dir:
+                save_full_catalog_artifacts(report, artifact_dir)
+            report = catalog_summary(report)
+        else:
+            report = clean_report(report)
         if completed.returncode and report["ok"]:
             return {"ok": False, "checks": [{"check": "ssh", "status": "ssh_failed"}]}
         return report
@@ -556,9 +571,12 @@ def main():
             exec(Path(__file__).with_name("anex_hotel_match_probe.py").read_text(encoding="utf-8"), globals())
         if "--adapter" in sys.argv and "remote_adapter_probe" not in globals():
             exec(Path(__file__).with_name("anex_adapter_probe.py").read_text(encoding="utf-8"), globals())
-        remote = remote_adapter_probe if "--adapter" in sys.argv else remote_hotel_probe if "--hotels" in sys.argv else remote_price_probe if "--prices" in sys.argv else remote_probe
+        if "--catalog" in sys.argv and "remote_full_catalog_probe" not in globals():
+            exec(Path(__file__).with_name("anex_full_catalog_probe.py").read_text(encoding="utf-8"), globals())
+        remote = remote_full_catalog_probe if "--catalog" in sys.argv else remote_adapter_probe if "--adapter" in sys.argv else remote_hotel_probe if "--hotels" in sys.argv else remote_price_probe if "--prices" in sys.argv else remote_probe
         report = remote(json.loads(sys.stdin.read(16_384))) if "--remote" in sys.argv else ssh_probe()
-        report = clean_report(report)
+        if "--catalog" not in sys.argv:
+            report = clean_report(report)
     except Exception:
         # Do not print exception text: urllib exceptions can include token URLs.
         report = {"ok": False, "checks": [

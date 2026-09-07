@@ -13,6 +13,8 @@ on:
       - 'tests/anex_hotel_match_probe_test.py'
       - 'scripts/diagnostics/anex_adapter_probe.py'
       - 'scripts/diagnostics/anex_adapter_runner.php'
+      - 'scripts/diagnostics/anex_full_catalog_probe.py'
+      - 'scripts/diagnostics/anex_catalog_bulk_reader.php'
       - 'app/integrations/**'
       - 'tests/anex-*-smoke.php'
       - 'tests/anex_adapter_probe_test.py'
@@ -39,8 +41,10 @@ jobs:
           python3 -B tests/anex_price_probe_test.py
           python3 -B tests/anex_hotel_match_probe_test.py
           python3 -B tests/anex_adapter_probe_test.py
+          python3 -B tests/anex_full_catalog_probe_test.py
           php -l scripts/diagnostics/anex_catalog_reader.php
           php -l scripts/diagnostics/anex_adapter_runner.php
+          php -l scripts/diagnostics/anex_catalog_bulk_reader.php
           for file in app/integrations/*.php; do php -l "$file"; done
           php tests/anex-hotel-identities-smoke.php
           php tests/anex-client-smoke.php
@@ -54,3 +58,19 @@ jobs:
           ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
         run: python3 -B scripts/diagnostics/anex_access_probe.py --adapter
+      - name: Download full ANEX hotel reference and match the AnyTour catalogue
+        env:
+          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANEX_REFERENCE_TOKEN: ${{ secrets.ANEX_REFERENCE_TOKEN }}
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_access_probe.py --catalog
+      - name: Preserve full matching tables for manual review
+        uses: actions/upload-artifact@v4
+        with:
+          name: anex-hotel-catalog-match
+          path: ${{ runner.temp }}/anex-catalog/
+          if-no-files-found: error
+          retention-days: 14
