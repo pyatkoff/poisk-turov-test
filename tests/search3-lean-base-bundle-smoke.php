@@ -17,7 +17,7 @@ foreach (['search-redesign-v2.js', 'conversion-confidence-v1.js', 'compare-refre
     if (in_array($excluded, $search3Js, true)) lean_bundle_fail('legacy owner leaked into Search3: ' . $excluded);
 }
 if (count($fullJs) !== count($search3Js) + 5) lean_bundle_fail('unexpected JavaScript scope delta');
-if (array_values(array_diff($fullCss, $search3Css)) !== ['conversion-confidence-v1.css', 'primary-meal-ux-v1.css', 'mobile-search-summary-v1.css']) lean_bundle_fail('unreviewed CSS scope delta');
+if (array_values(array_diff($fullCss, $search3Css)) !== ['conversion-confidence-v1.css', 'primary-meal-ux-v1.css', 'mobile-search-summary-v1.css', 'ds2-search-intro-v1.css']) lean_bundle_fail('unreviewed CSS scope delta');
 if (!in_array('conversion-confidence-v1.css', $fullCss, true)) lean_bundle_fail('legacy confidence CSS missing');
 if (v2_bundle_content_version('css', 'full') === v2_bundle_content_version('css', 'search3')) lean_bundle_fail('CSS scope versions collide');
 if (v2_bundle_content_version('js', 'full') === v2_bundle_content_version('js', 'search3')) lean_bundle_fail('scope versions collide');

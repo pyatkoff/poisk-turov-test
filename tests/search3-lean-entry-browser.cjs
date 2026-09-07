@@ -35,7 +35,8 @@ async function inspect(browser, width, previous) {
     // This also prevents its late insertion from occupying a mobile grid cell.
     if (previous) document.querySelectorAll('.mobile-search-submit-sentinel').forEach(node => node.remove());
     const form = document.getElementById('tourSearch'), r = form.getBoundingClientRect();
-    return { visible: r.width > 0 && r.height > 0, width: Math.round(r.width), height: Math.round(r.height), fields: [...form.elements].filter(n => n.name).map(n => [n.name, n.value]), overflow: document.documentElement.scrollWidth > innerWidth + 2 };
+    const box = selector => { const node = document.querySelector(selector); if (!node) return null; const b = node.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), width: Math.round(b.width), height: Math.round(b.height), visible: b.width > 0 && b.height > 0 }; };
+    return { visible: r.width > 0 && r.height > 0, width: Math.round(r.width), height: Math.round(r.height), fields: [...form.elements].filter(n => n.name).map(n => [n.name, n.value]), header: box('.at-site-header'), shell: box('.v2-shell'), intro: box('.search3-page-intro'), overflow: document.documentElement.scrollWidth > innerWidth + 2 };
   }, previous);
   const emit = (name, detail = {}) => page.evaluate(({ name, detail }) => window.dispatchEvent(new CustomEvent(name, { detail })), { name, detail });
   try {
@@ -45,6 +46,9 @@ async function inspect(browser, width, previous) {
     await page.waitForTimeout(400); // Drain the existing form's bounded settle timers.
     const initial = await state();
     assert.ok(initial.visible && !initial.overflow, 'usable initial form');
+    assert.ok(initial.header && initial.header.visible, 'site header remains visible');
+    assert.ok(initial.shell && initial.shell.visible, 'site shell remains visible');
+    assert.ok(initial.intro && initial.intro.visible, 'current Search3 intro remains visible');
     if (!previous) assert.equal(await page.locator('.mobile-search-sticky,.mobile-search-summary,.mobile-search-submit-sentinel').count(), 0, 'retired mobile surfaces absent');
     await emit('v2:search-started');
     const started = await state();
