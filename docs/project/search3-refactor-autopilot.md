@@ -38,7 +38,9 @@ The existing exact-artifact job conditionally runs12 fixed-tour detail/review/le
 
 Preview remains b9445bc3; main remains fa58a0cb. Physical Safari/safe-area and current-source live acceptance remain deferred. An existing11px mobile-bar button touch target requires a separate intentional fix.
 
-Next: Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Next audit results-top.js consolidation into results-presentation.js with exact initial/results/edit/reset scheduling coverage. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required.
+Concurrent#1471 advanced release to a5a494c1 after this repair. Its working source484d32de predates the434-byte phone repair. Neither independent source artifact is exact for the combined release; obtain a fresh combined-source artifact before publication.1470 geometry evidence stays scoped to1c1a885f. All1471 code is preserved in this documentation merge.
+
+Next: Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Concurrent#1471 already consolidated results-top.js in releasea5a494c1. Do not repeat it. The working-source484d32de artifact excludes the1470 phone repair; obtain a combined-source artifact before publishing current release. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required.
 
 ## Current owner priority — rapid CSS/JS reduction
 

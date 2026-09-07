@@ -143,6 +143,7 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         mobile = (ROOT / 'src/search3/styles/mobile-results-toolbar.css').read_text()
         selected = (ROOT / 'src/search3/styles/selected-flow-v2.css').read_text()
         results_top = (ROOT / 'src/search3/behavior/results-top.js').read_text()
+        results_presentation = (ROOT / 'src/search3/behavior/results-presentation.js').read_text()
         all_source = ''.join(
             path.read_text() for path in (ROOT / 'src/search3').rglob('*')
             if path.is_file()
@@ -168,8 +169,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertNotIn('getBoundingClientRect', results_top)
         self.assertNotIn('style.setProperty', results_top)
         self.assertNotIn("addEventListener('resize'", results_top)
-        self.assertIn('MutationObserver(scheduleResultsSync)', results_top)
-        self.assertIn('function scheduleResultsSync()', results_top)
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', results_top, flags=re.S).strip(), '')
+        self.assertIn('new MutationObserver(scheduleResultsSync)', results_presentation)
+        self.assertIn('function scheduleResultsSync()', results_presentation)
 
     def test_lead_review_layer_is_retired_without_losing_lifecycle_truth(self):
         retired = (ROOT / 'src/search3/styles/lead-review.css').read_text()

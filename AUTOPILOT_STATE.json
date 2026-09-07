@@ -73,7 +73,7 @@
     "artifact_run": 34122423688,
     "artifact_id": 10018756721,
     "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Next audit results-top.js consolidation into results-presentation.js with exact initial/results/edit/reset scheduling coverage. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required."
+    "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Concurrent#1471 already consolidated results-top.js in releasea5a494c1. Do not repeat it. The working-source484d32de artifact excludes the1470 phone repair; obtain a combined-source artifact before publishing current release. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1406,7 +1406,7 @@
       "full results/editor matrix",
       "pre-existing11px mobile-bar button touch target"
     ],
-    "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Next audit results-top.js consolidation into results-presentation.js with exact initial/results/edit/reset scheduling coverage. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required."
+    "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Concurrent#1471 already consolidated results-top.js in releasea5a494c1. Do not repeat it. The working-source484d32de artifact excludes the1470 phone repair; obtain a combined-source artifact before publishing current release. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required."
   },
   "presentation_refactor_history": [
     {
@@ -3607,7 +3607,7 @@
       "artifact_digest": "sha256:eff631d2d657b0ba5cb3853ecdbf49ed7d4d98aae5ee89d317a7a110a0d39d62",
       "branch": "release/search3-production-ready-v1",
       "exact_artifact": 10018756721,
-      "exact_artifact_status": "CHECKED_NOT_PUBLISHED",
+      "exact_artifact_status": "VERIFIED1470_ONLY_COMBINED1471_RELEASE_REQUIRES_FRESH_ARTIFACT",
       "final_verification_artifact": 10015213085,
       "final_verification_run": 34113272969,
       "implementation_verified_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
@@ -3789,7 +3789,9 @@
           "pre-existing11px mobile-bar button touch target"
         ],
         "reason": "Focused isolated fixture is not live or physical Safari acceptance."
-      }
+      },
+      "combined_release_source_sha": "a5a494c1b85131b9603d5e3619720c4b18908577",
+      "combined_release_artifact": "PENDING: concurrent1471 working source484d32de excludes1470 phone repair; neither source artifact represents the combined release."
     }
   },
   "results_geometry_queue": {
@@ -7490,6 +7492,12 @@
       "full results/editor matrix",
       "pre-existing11px mobile-bar button touch target"
     ],
-    "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Next audit results-top.js consolidation into results-presentation.js with exact initial/results/edit/reset scheduling coverage. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required."
+    "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Concurrent#1471 already consolidated results-top.js in releasea5a494c1. Do not repeat it. The working-source484d32de artifact excludes the1470 phone repair; obtain a combined-source artifact before publishing current release. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required.",
+    "concurrent_results_owner": {
+      "pr": 1471,
+      "release_sha": "a5a494c1b85131b9603d5e3619720c4b18908577",
+      "source_sha": "484d32de05aa92c90143a89cf08185f6edd4d996",
+      "artifact_scope": "Do not use as combined release artifact; working source predates phone repair."
+    }
   }
 }
