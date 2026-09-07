@@ -23,7 +23,12 @@ body.search3-candidate{
 /* Compact contact/lifecycle essentials retained from the retired lead-review layer. */
 body.search3-candidate #selectedTour{
 & .lead-consent{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important}
+& .lead-form :is(input,textarea){background:#fff!important}
+& .lead-consent{border-radius:12px!important;background:#fff!important}
 & .lead-consent input{flex:0 0 15px;width:15px!important;height:15px!important;margin:1px 0 0;accent-color:var(--at-brand)}
+& .lead-consent a{color:#2743cb!important}
+& .lead-message{color:#2743cb!important;font-weight:600!important}
+& .lead-form.checkout-lead .primary{padding-inline:20px!important}
 & .search3-lead-protection{display:flex;align-items:center;gap:7px;color:var(--at-muted);font-weight:700}
 & .search3-lead-protection span{display:grid;place-items:center;flex:0 0 18px;width:18px;height:18px;border:1px solid #dfe5ef;border-radius:50%;color:var(--at-brand);font-size:9px}
 &.search3-final-review .search3-lead-comment{display:none!important}

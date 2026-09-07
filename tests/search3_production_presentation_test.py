@@ -238,6 +238,11 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         for marker in ('.selected-head', '.selected-picture', '.facts', '.flight-variant',
                        '.search3-booking-summary', '.lead-form'):
             self.assertIn(marker, current)
+        flights = (ROOT / 'src/search3/styles/flights.css').read_text()
+        self.assertIn('position:relative!important', flights)
+        self.assertIn('.flight-variant{margin:0!important}', flights)
+        self.assertIn('min-height:380px!important', current)
+        self.assertIn('.lead-message{color:#2743cb!important;font-weight:600!important}', current)
 
     def test_retired_tablet_drawer_and_redundant_phone_rules_have_current_owners(self):
         tablet = (ROOT / 'src/search3/styles/results-tablet-layout.css').read_text()
