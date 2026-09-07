@@ -111,7 +111,10 @@ so regenerating it from the same evidence is idempotent.
 ### Resumable geographic enrichment
 
 The catalog diagnostic additionally reads Online `Hotels_DETAILS` for up to
-30 pending XML review IDs in ascending order, with a 240-second batch deadline. It checks XML/Online ID, name, town ID
+30 pending XML review IDs per batch in ascending order, with a 240-second batch deadline.
+One run reuses its reference snapshot across up to ten sequential batches
+(300 hotels), bounded by a shared 600-second enrichment deadline. A whole batch
+without details stops the run and retains its attempted rows for review. It checks XML/Online ID, name, town ID
 and known country consistency before using details. AnyTour candidates are
 read in read-only transactions; addresses and coordinates are retained in the
 separate `anex-hotel-geo-enrichment.json` Actions artifact. Address equality is
@@ -135,7 +138,7 @@ Failed lookups remain visible for a separate retry pass; ordinary continuation
 does not retry them or refresh changed local AnyTour details. `processed_total`
 means unique attempted IDs, including failed lookups. Aggregate counts cover
 saved history; `remaining` covers the fresh review queue. No schedule or
-self-dispatch is installed: a workflow invocation processes the next batch.
+self-dispatch is installed: a workflow invocation processes up to ten batches.
 Actions artifacts expire after 30 days. Missing/expired/corrupt checkpoints
 stop continuation instead of silently restarting. Concurrency is serialized
 without cancelling an active batch. A failed batch can be retried from the

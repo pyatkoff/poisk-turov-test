@@ -67,13 +67,15 @@ def geo_decision(api, candidates, relation):
     return "review", "insufficient_independent_evidence"
 
 
-def enrich_geo_sample(tokens, matches, hotels):
+def enrich_geo_sample(tokens, matches, hotels, run_deadline=None):
     completed = tokens.get("geo_completed", {})
     pending = sorted((r for r in matches if r["status"] == "review"
                       and completed.get(str(r["external_id"])) != geo_fingerprint(r)),
                      key=lambda r: r["external_id"])
     selected = pending[:30]
     deadline = time.monotonic() + 240
+    if run_deadline is not None:
+        deadline = min(deadline, run_deadline)
     xml_by_id = {positive_id({"id": h.get("inc")}): h for h in hotels}
     rows, checks = [], []
     for match in selected:
@@ -118,3 +120,38 @@ def enrich_geo_sample(tokens, matches, hotels):
             "remaining": len(pending) - len(rows), "batch_limit": 30,
             "selected": len(rows), "counts": {s: sum(r["status"] == s for r in rows)
             for s in ("strong_candidate", "review", "unmatched")}, "rows": rows}
+
+
+
+def enrich_geo_run(tokens, matches, hotels):
+    """Reuse one reference snapshot for up to ten sequential 30-hotel batches."""
+    state = dict(tokens, geo_completed=dict(tokens.get("geo_completed", {})))
+    deadline = time.monotonic() + 600
+    rows, batches = [], 0
+    remaining = sum(r["status"] == "review" and
+                    state["geo_completed"].get(str(r["external_id"])) != geo_fingerprint(r)
+                    for r in matches)
+    stop_reason = "run_limit"
+    while remaining and batches < 10:
+        if time.monotonic() >= deadline:
+            stop_reason = "time_budget"
+            break
+        batch = enrich_geo_sample(state, matches, hotels, run_deadline=deadline)
+        if not batch["rows"]:
+            stop_reason = "no_progress"
+            break
+        batches += 1
+        rows.extend(batch["rows"])
+        state["geo_completed"].update({str(r["external_id"]): r["fingerprint"] for r in batch["rows"]})
+        remaining = batch["remaining"]
+        # Do not hammer a unavailable supplier/catalogue for the rest of the run.
+        if all(r["reason"] in ("details_unavailable", "catalog_unavailable") for r in batch["rows"]):
+            stop_reason = "batch_without_details"
+            break
+    if not remaining:
+        stop_reason = "queue_complete"
+    return {"schema_version": 2, "preview_only": True, "selection": "pending_review_by_external_id",
+            "remaining": remaining, "batch_limit": 30, "run_limit": 300, "batches": batches,
+            "stop_reason": stop_reason, "selected": len(rows),
+            "counts": {s: sum(r["status"] == s for r in rows)
+                       for s in ("strong_candidate", "review", "unmatched")}, "rows": rows}

@@ -74,5 +74,33 @@ class ResumeTest(unittest.TestCase):
         fetch.assert_not_called()
         self.assertEqual(batch['remaining'],1)
 
+class MultiBatchTest(unittest.TestCase):
+    def test_moves_through_batches_without_requery(self):
+        matches = [dict(external_id=i, name='Blue Hotel', alternate_name='', country='Turkey', town='Kas', status='review') for i in range(1, 66)]
+        tokens = {'ANEX_API_TOKEN':'test', 'geo_completed':{'1':probe.geo_fingerprint(matches[0])}}
+        # Identity conflict is a completed review, without local DB reads.
+        with patch.object(probe,'api_data',return_value={'id':999,'name':'Other'}) as fetch:
+            run = probe.enrich_geo_run(tokens,matches,[])
+        ids = [r['external_id'] for r in run['rows']]
+        self.assertEqual(ids,list(range(2,66)))
+        self.assertEqual(fetch.call_count,64)
+        self.assertEqual(run['batches'],3)
+        self.assertEqual(run['stop_reason'],'queue_complete')
+        self.assertEqual(len(tokens['geo_completed']),1)
+    def test_service_outage_stops_after_one_batch(self):
+        matches = [dict(external_id=i, name='Blue', alternate_name='', country='Turkey', status='review') for i in range(1,101)]
+        with patch.object(probe,'api_data',side_effect=probe.StopProbe) as fetch:
+            run = probe.enrich_geo_run({'ANEX_API_TOKEN':'test'},matches,[])
+        self.assertEqual(fetch.call_count,30)
+        self.assertEqual(run['remaining'],70)
+        self.assertEqual(run['stop_reason'],'batch_without_details')
+    def test_run_cap(self):
+        matches = [dict(external_id=i, name='Blue', alternate_name='', country='Turkey', status='review') for i in range(1,351)]
+        with patch.object(probe,'api_data',return_value={'id':999,'name':'Other'}) as fetch:
+            run = probe.enrich_geo_run({'ANEX_API_TOKEN':'test'},matches,[])
+        self.assertEqual(fetch.call_count,300)
+        self.assertEqual(run['remaining'],50)
+        self.assertEqual(run['stop_reason'],'run_limit')
+
 if __name__ == '__main__':
     unittest.main()

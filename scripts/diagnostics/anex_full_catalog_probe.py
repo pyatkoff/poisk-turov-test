@@ -264,7 +264,7 @@ def remote_full_catalog_probe(tokens):
                            "verified_unique_anytour": verified_unique_anytour, **counts},
                 "pages": {"hotels": hotel_pages, "towns": town_pages, "states": state_pages, "stars": star_pages},
                 "matches": matches,
-                "geo_enrichment": enrich_geo_sample(tokens, matches, hotels) if "enrich_geo_sample" in globals() else None}
+                "geo_enrichment": enrich_geo_run(tokens, matches, hotels) if "enrich_geo_run" in globals() else None}
     except StopProbe:
         return {"mode": "full_catalog", "ok": False, "status": "catalog_unavailable", "failed_stage": stage, "progress": progress}
     except (ET.ParseError, ValueError, TypeError, KeyError, subprocess.TimeoutExpired):
