@@ -66,10 +66,40 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest publication is source71efd3fe, corrective source#1432; see current checkpoint below.
-Previously checked batches#1422–#1424 are included in this publication.
-New local commands and focused tests succeeded in the subsequent #1422 continuation.
-The earlier rejected direct-HTTP poll was not retried or bypassed.
+The latest checked and published source is `339a1aefa3ba87b156134da37ad2c40b7e5725f0`;
+see the newest checkpoint below. Historical publication notes remain for provenance.
+
+### Latest checked and published candidate — responsive review owners — 2026-09-07
+
+Source #1434 / `339a1aefa3ba87b156134da37ad2c40b7e5725f0`, tree
+`99b03301632b565c99bad491f17a88cfa6d7cd00`, is fast-forwarded into release.
+The complete legacy `review-responsive.css` layer and the earlier injected mobile
+final-review block are retired. Current summary CTA, selected-tour mobile, review
+layout and intrinsic flight owners retain the final, lead and tablet boundaries.
+
+Eight raw public assets fall **235139 → 225972 bytes (−9167)**: CSS −7754,
+JS −1413 from removed private embedded CSS. Same eight public paths; no transfer-size
+or speed claim. One successful final build, 13 source-build tests, injection/root/
+idempotence and final/lead assertions, selected scheduler and all eight booking-summary
+operation traces passed locally.
+
+Both mandatory source jobs passed without guard changes: Security `34071038792`;
+artifact `34071038942`, artifact `10000469617`, digest
+`sha256:c0489ded399f00fa6227467407ecc47f88acbbd23f11a92e04736bb9ca6deab6`.
+The exact artifact was reused in isolated publication #1435 / run `34071230834`;
+deployment evidence `10000522297`. All 715 files, actual controls, noindex, counter0,
+disabled preview leads, rollback and unchanged production fingerprints passed.
+
+The published desktop initial page was inspected at 1363×936: no horizontal overflow;
+all eight live cache keys match exact source hashes; no Metrika/consultant script.
+The supported cloud browser cannot resize this tab. Therefore affected mobile final
+review/lead at 375/430 and tablet flight choices at 641/768/999 are explicitly deferred,
+as are physical Safari, full matrix and real lead submission. Production/main remain
+unchanged and unapproved. Audit: `docs/project/search3-responsive-review-layer-retirement.json`.
+
+Next: audit the `lead-review.css` / `lead-state.css` lifecycle overlap as the next
+large reversible candidate. Do not repeat `review-responsive` or the earlier retired
+layers. Require sending/success/error and 641–999 boundary evidence before deletion.
 
 ### Latest checked and published candidate — native cards and flights — 2026-09-07
 

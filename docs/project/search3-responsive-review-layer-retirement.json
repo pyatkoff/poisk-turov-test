@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "SOURCE_CANDIDATE_LOCAL_CHECKS_PASSED",
+  "stage": "CHECKED_RELEASE_AND_PUBLISHED_DESKTOP_SMOKE_MOBILE_TABLET_DEFERRED",
   "base_release_sha": "89515c0e48bec8916ec9efe37b158a18908895c5",
   "scope": "Retire the complete legacy review-responsive CSS layer and the earlier injected mobile final-review owner superseded by summary-cta.",
   "removed": [
@@ -37,19 +37,43 @@
     "diff_check": "PASS"
   },
   "source_ci": {
-    "security_run": null,
-    "artifact_run": null,
-    "artifact_id": null,
-    "conclusion": "PENDING",
+    "source_pr": 1434,
+    "source_sha": "339a1aefa3ba87b156134da37ad2c40b7e5725f0",
+    "source_tree": "99b03301632b565c99bad491f17a88cfa6d7cd00",
+    "security_run": 34071038792,
+    "artifact_run": 34071038942,
+    "artifact_id": 10000469617,
+    "artifact_digest": "sha256:c0489ded399f00fa6227467407ecc47f88acbbd23f11a92e04736bb9ca6deab6",
+    "archive_sha256": "e3bc23004e449e94b61ea71e04bddcab387088e092ac31936d19f1a08561f37e",
+    "manifest_sha256": "489a78f8ba656990aca647664a80f4c9c553b05ac003f6e0e2ab0171ef732064",
+    "payload_sha256": "927f39d15c320ff029ee5f3fcf3de77f8d2426f17488b838dafa33b634924962",
+    "conclusion": "success",
     "guards": "unchanged"
   },
   "visual_verification": {
-    "status": "PENDING_SOURCE_CI_AND_ISOLATED_PREVIEW",
-    "performed": false,
-    "required": ["mobile final review and lead-entry boundary at 375/430", "tablet selected flight choices at 641/768/999"],
+    "status": "DESKTOP_INITIAL_SMOKE_ONLY",
+    "performed": true,
+    "viewport": [1363, 936],
+    "observed": "Published search page renders without horizontal overflow; noindex is present; all eight live cache keys exactly match the source artifact hashes; no Metrika or consultant script is present.",
+    "required_deferred": ["mobile final review and lead-entry boundary at 375/430", "tablet selected flight choices at 641/768/999"],
     "deferred": ["physical Safari", "full site/responsive/SEO matrix", "real lead submission"]
   },
-  "preview_updated": false,
+  "preview_updated": true,
+  "preview_publication": {
+    "control_pr": 1435,
+    "control_sha": "8a695276fb0a6648e545c4ee60ca988dfebdefcd",
+    "deploy_run": 34071230834,
+    "deployment_evidence_artifact": 10000522297,
+    "deployment_evidence_digest": "sha256:04e68a1e41204cb8767e39fc03ceff5ba650e725908233c0197d9b915b80f831",
+    "conclusion": "success",
+    "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "file_count": 715,
+    "noindex": true,
+    "preview_metrika_counter": 0,
+    "production_leads": false,
+    "rollback": "retained",
+    "production_fingerprints": "unchanged"
+  },
   "production_updated": false,
-  "next_action": "Run the two required source workflows. If green, integrate exact artifact into release, publish the justified responsive change to the existing isolated preview, inspect the affected mobile/tablet states, then audit lead-review versus lead-state as the next large candidate."
+  "next_action": "Audit lead-review versus lead-state as the next large candidate. Mobile 375/430 final-review/lead and tablet 641/768/999 flight geometry remain required before claiming responsive visual acceptance; physical Safari stays deferred."
 }

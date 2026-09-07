@@ -53,9 +53,9 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Source#1430 + corrective#1432:245491→235139 raw bytes (−10352);3large block families retired; six-column/tiny-font owners removed to fix live desktop defects. Exact artifacts reused for#1431/corrective publication.",
+    "last_material_progress": "Source#1434: complete review-responsive layer plus an earlier injected mobile final-review block retired;235139→225972 raw bytes (−9167). Both required source jobs passed and exact artifact published through#1435.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Next substantial candidate: audit review-responsive.css mobile/tablet geometry against current selected-flow/review owners, retire duplicate layout only after protecting hidden/lead-shell/primary CTA boundaries. Do not repeat retired17CSS+1JS owner or the3block families and6-column/tiny-font repair. Current mobile/tablet, live no-flight and physical Safari remain deferred. Continue independent permitted work; production acceptance does not pause automation.",
+    "next_action": "Audit lead-review.css versus lead-state.css lifecycle overlap as the next large reversible candidate. Require sending/success/error and641–999 boundary evidence before deletion. Mobile375/430 final review/lead and tablet641/768/999 flight geometry for source339a1aef remain deferred; do not repeat review-responsive or earlier retired layers.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
@@ -808,8 +808,8 @@
       "full_responsive_site_seo": "deferred, not passed"
     }
   },
-  "last_verified_commit": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
-  "last_verified_commit_scope": "Exact source Security+artifact passed; exact artifact published, corrected desktop states inspected. Other states explicitly deferred.",
+  "last_verified_commit": "339a1aefa3ba87b156134da37ad2c40b7e5725f0",
+  "last_verified_commit_scope": "Exact source Security+artifact passed and exact artifact published. Desktop initial page/hash/isolation smoke passed; affected mobile/tablet review and flight states explicitly deferred.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -842,6 +842,69 @@
   },
   "owner_priority_source": "OWNER_PRIORITY.json",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
+  "latest_responsive_review_retirement": {
+    "stage": "CHECKED_RELEASE_AND_PUBLISHED_DESKTOP_SMOKE_MOBILE_TABLET_DEFERRED",
+    "baseline": "89515c0e48bec8916ec9efe37b158a18908895c5",
+    "implementation_sha": "339a1aefa3ba87b156134da37ad2c40b7e5725f0",
+    "release_integration_sha": "339a1aefa3ba87b156134da37ad2c40b7e5725f0",
+    "source_pr": 1434,
+    "audit": "docs/project/search3-responsive-review-layer-retirement.json",
+    "scope": "Complete legacy review-responsive CSS layer and earlier injected mobile final-review owner retired; current summary CTA, selected mobile, review layout and flight owners retained.",
+    "ci": {
+      "security_run": 34071038792,
+      "artifact_run": 34071038942,
+      "artifact_id": 10000469617,
+      "artifact_digest": "sha256:c0489ded399f00fa6227467407ecc47f88acbbd23f11a92e04736bb9ca6deab6",
+      "archive_sha256": "e3bc23004e449e94b61ea71e04bddcab387088e092ac31936d19f1a08561f37e",
+      "manifest_sha256": "489a78f8ba656990aca647664a80f4c9c553b05ac003f6e0e2ab0171ef732064",
+      "payload_sha256": "927f39d15c320ff029ee5f3fcf3de77f8d2426f17488b838dafa33b634924962",
+      "required_passed": 2,
+      "conclusion": "success",
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
+    },
+    "public_assets": {
+      "css_bytes": 128494,
+      "js_bytes": 97478,
+      "total_bytes": 225972,
+      "css_lines": 4,
+      "js_lines": 3,
+      "total_lines": 7,
+      "scope": "Eight public paths, raw uncompressed bytes. JS includes embedded private CSS; no speed claim."
+    },
+    "run_delta": {"bytes": -9167, "css_bytes": -7754, "js_bytes": -1413},
+    "continuation_total": {
+      "baseline_bytes": 301524,
+      "after_bytes": 225972,
+      "saved_bytes": 75552,
+      "retired_layers": 19,
+      "retired_css_layers": 18,
+      "retired_js_owners": 1,
+      "additional_retired_block_families": 4
+    },
+    "preview": {
+      "deploy_pr": 1435,
+      "deploy_run": 34071230834,
+      "control_sha": "8a695276fb0a6648e545c4ee60ca988dfebdefcd",
+      "deployment_evidence_artifact": 10000522297,
+      "deployment_evidence_digest": "sha256:04e68a1e41204cb8767e39fc03ceff5ba650e725908233c0197d9b915b80f831",
+      "conclusion": "success",
+      "file_count": 715,
+      "noindex": true,
+      "metrika_counter": 0,
+      "production_leads": false,
+      "rollback": "retained",
+      "production_fingerprints": "unchanged"
+    },
+    "visual_verification": {
+      "viewport": [1363, 936],
+      "scope": "Initial published search page only: no overflow; eight cache keys exact; no Metrika/consultant script.",
+      "real_lead_submitted": false,
+      "deferred": ["mobile final review/lead at375/430", "tablet flight choices at641/768/999", "physical Safari", "full matrix"]
+    },
+    "production_updated": false,
+    "next_action": "Audit lead-review versus lead-state; delete only after sending/success/error and intermediate-width evidence."
+  },
   "presentation_refactor_checkpoint": {
     "stage": "CHECKED_AND_PUBLISHED_CORRECTED_DESKTOP_MOBILE_DEFERRED",
     "baseline": "cca1d56605db6260071dfe2ff24ed8f46b437b21",
@@ -2645,26 +2708,26 @@
     "verification_update": "Evidence9965993909:9routes/noindex/lead403/internalPHPdeny/counter0/retainedrollback/identical before-after-final production fingerprints."
   },
   "preview_publication": {
-    "deploy_pr": 1433,
-    "deploy_run": 34069485080,
-    "control_sha": "23f0d3ce059f11d7b32e85aa5a2fe202cc1b187c",
-    "deployment_evidence_artifact": 9999985225,
-    "deployment_evidence_digest": "sha256:83c91132587677f62aece10e71301e6926298ed99f9e8dba32f01ec9daec991a",
+    "deploy_pr": 1435,
+    "deploy_run": 34071230834,
+    "control_sha": "8a695276fb0a6648e545c4ee60ca988dfebdefcd",
+    "deployment_evidence_artifact": 10000522297,
+    "deployment_evidence_digest": "sha256:04e68a1e41204cb8767e39fc03ceff5ba650e725908233c0197d9b915b80f831",
     "conclusion": "success",
-    "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
-    "source_tree": "a5b3994ffe8df4626b2e3fbc0134a89a00368705",
-    "release_pin_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
-    "artifact_id": 9999945885,
-    "artifact_run": 34069311068,
-    "artifact_digest": "sha256:494c414b54be8320a3a3120972f11553b763f29ff4f936feca1618dcefc570ee",
-    "archive_sha256": "c400293d3d02a5cd4fb0ee654c861d271e24033c852c4093b54b391525ab5b9a",
-    "manifest_sha256": "2329fea78d1113abe4dc5893c700f98541145b595ec7b07b9107a14066e32e2e",
-    "payload_sha256": "62c6191b5ab628a24b05e112df10e96ee942174778f64c1797073f014b892376",
-    "status": "PUBLISHED_CORRECTED_DESKTOP_OBSERVED_MOBILE_DEFERRED",
+    "source_sha": "339a1aefa3ba87b156134da37ad2c40b7e5725f0",
+    "source_tree": "99b03301632b565c99bad491f17a88cfa6d7cd00",
+    "release_pin_sha": "339a1aefa3ba87b156134da37ad2c40b7e5725f0",
+    "artifact_id": 10000469617,
+    "artifact_run": 34071038942,
+    "artifact_digest": "sha256:c0489ded399f00fa6227467407ecc47f88acbbd23f11a92e04736bb9ca6deab6",
+    "archive_sha256": "e3bc23004e449e94b61ea71e04bddcab387088e092ac31936d19f1a08561f37e",
+    "manifest_sha256": "489a78f8ba656990aca647664a80f4c9c553b05ac003f6e0e2ab0171ef732064",
+    "payload_sha256": "927f39d15c320ff029ee5f3fcf3de77f8d2426f17488b838dafa33b634924962",
+    "status": "PUBLISHED_DESKTOP_INITIAL_SMOKE_MOBILE_TABLET_DEFERRED",
     "public_assets": {
-      "css_bytes": 136248,
-      "js_bytes": 98891,
-      "total_bytes": 235139,
+      "css_bytes": 128494,
+      "js_bytes": 97478,
+      "total_bytes": 225972,
       "css_lines": 4,
       "js_lines": 3,
       "total_lines": 7,
@@ -2674,7 +2737,16 @@
     "production_unchanged": true,
     "real_lead_submitted": false,
     "physical_safari_tested": false,
-    "verification": {
+    "latest_verification": {
+      "source_sha": "339a1aefa3ba87b156134da37ad2c40b7e5725f0",
+      "viewport": [1363, 936],
+      "verified_at": "2026-09-07T00:55:30Z",
+      "summary": "Published initial search page inspected: no horizontal overflow; noindex present; eight cache keys exactly match source artifact hashes; no Metrika or consultant script present.",
+      "real_lead_submitted": false,
+      "full_matrix_run": false,
+      "deferred": ["mobile final review/lead at375/430", "tablet flight choices at641/768/999", "physical Safari", "full matrix"]
+    },
+    "previous_verification": {
       "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
       "viewport": [
         1363,
@@ -2708,10 +2780,10 @@
         "findings_corrected": true
       }
     },
-    "verified_at": "2026-09-07T00:22:33.904891+00:00",
+    "verified_at": "2026-09-07T00:55:30Z",
     "deployment_guards": "Actual archive/control/all715 hashes; noindex/counter0/disabledlead403/internalPHPdeny/retained rollback; production fingerprints before/after/final equal.",
-    "artifact_verification": "Expected controls reconstructed from verifiedbff manifest + exact8asset diff; build/isolation unchanged. Actual artifact/controls verified by unchanged publisher; no local materialization retry or rebuild.",
-    "browser_contract": "Native browser controls and explicit-& nesting retained; current Chromium desktop inspected, mobile/tablet/physical Safari deferred.",
+    "artifact_verification": "Exact artifact downloaded and its release control values read; unchanged publisher verified actual archive/control/all715 payload hashes before activation. No release/docs rebuild.",
+    "browser_contract": "Native browser controls and explicit-& nesting retained; current Chromium desktop initial state inspected, mobile/tablet/physical Safari deferred.",
     "artifact_asset_sha256": [
       {
         "path": "v2/search3-entry-v1.css",
@@ -2727,8 +2799,8 @@
       },
       {
         "path": "v2/search3-results-filters-v1.css",
-        "sha256": "f5d5cbaabff3af622f41518b644e7c2d60fa11dcb1e482482d95d5773ace8236",
-        "size": 115765,
+        "sha256": "9c767e969649e63c487861ff262b96d78de9677b4b32406e3fd73361cc195805",
+        "size": 108011,
         "verification_method": "Exact source blob plus successful publisher715-file verification"
       },
       {
@@ -2751,8 +2823,8 @@
       },
       {
         "path": "v2/search3-results-filters-v1.js",
-        "sha256": "f391f15be81c020016c58b819c5d3073bd6a2905f008885b2f25cd8a41090635",
-        "size": 87783,
+        "sha256": "dc7b19a060c79f95ca29dcdb28e90f96de3bb39764c1a4b66507412fab096944",
+        "size": 86370,
         "verification_method": "Exact source blob plus successful publisher715-file verification"
       },
       {
@@ -2941,13 +3013,13 @@
       "url": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/"
     },
     "site_draft": {
-      "artifact_digest": "sha256:494c414b54be8320a3a3120972f11553b763f29ff4f936feca1618dcefc570ee",
+      "artifact_digest": "sha256:c0489ded399f00fa6227467407ecc47f88acbbd23f11a92e04736bb9ca6deab6",
       "branch": "release/search3-production-ready-v1",
-      "exact_artifact": 9999945885,
+      "exact_artifact": 10000469617,
       "exact_artifact_status": "CHECKED_AND_PUBLISHED",
-      "final_verification_artifact": 9999985225,
-      "final_verification_run": 34069485080,
-      "implementation_verified_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+      "final_verification_artifact": 10000522297,
+      "final_verification_run": 34071230834,
+      "implementation_verified_sha": "339a1aefa3ba87b156134da37ad2c40b7e5725f0",
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -2999,8 +3071,17 @@
         "Published with#1426, source batch#1424:17 common CSS declaration groups and shorter JS spelling save684 bytes; executable JS trees unchanged.",
         "Published#1425/#1426: ten entire historical CSS layers retired with four current-owner salvages;33,988 fewer CSS/JS bytes; focused desktop only.",
         "Checked#1427,not published:2 further historical results layers retired with lifecycle/mobile fallback salvage;1609 fewerCSSbytes and all4JS unchanged.",
-        "Published#1430/#1432:3large presentation block families removed; native package and flight readability repaired by removing old six-column/tiny-font overrides,245491→235139 rawbytes."
+        "Published#1430/#1432:3large presentation block families removed; native package and flight readability repaired by removing old six-column/tiny-font overrides,245491→235139 rawbytes.",
+        "Published#1434/#1435: complete responsive-review layer and earlier embedded mobile-review block retired,235139→225972 rawbytes; responsive mobile/tablet visual states deferred."
       ],
+      "latest_publication_verification": {
+        "source_sha": "339a1aefa3ba87b156134da37ad2c40b7e5725f0",
+        "viewport": [1363, 936],
+        "verified_at": "2026-09-07T00:55:30Z",
+        "summary": "Initial published search page only: no overflow, noindex, exact eight asset cache keys, no Metrika/consultant script.",
+        "real_lead_submitted": false,
+        "deferred": ["mobile final review/lead at375/430", "tablet flight choices at641/768/999", "physical Safari", "full matrix"]
+      },
       "live_browser_verification": {
         "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
         "viewport": [
@@ -5929,5 +6010,5 @@
     "visual_run": 33976375814
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
-  "updated_at": "2026-09-07T00:22:33.904891+00:00"
+  "updated_at": "2026-09-07T00:56:13Z"
 }
