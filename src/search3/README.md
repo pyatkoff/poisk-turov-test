@@ -88,7 +88,7 @@ separate cascade evidence.
 | Desktop local result-filter rail | `behavior/filter-rail.js`, `styles/results-layout.css` |
 | Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/mobile-results-toolbar.css` |
 | Canonical mobile filter bar and sheet | Existing `v2/mobile-results-filters-v1.js`; Search3 reuses `.mrf-bar` and `.mrf-sheet`, not a second drawer |
-| Results header and summary | `behavior/results-top.js`, `styles/results-context.css` |
+| Results header and summary | `behavior/results-top.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
 | Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/results-cards-v2.css` |
 | Selected tour and mobile action | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Flight labels and display-only price parsing | `behavior/flight-presentation.js`, `behavior/flight-price-presentation.js` |
@@ -269,9 +269,10 @@ instead of a second clickable progress strip. `booking-stepper.js`,
 `booking-stepper.css` and `review-heading.js` are provenance-only slots; the
 selected hotel heading and booking summary retain the accessible review context.
 
-The subsequent results-layer pass also retires `styles/results-width-compatibility.css`
-and `styles/hotel-card-convergence.css`. Their remaining shell/lifecycle/MRF and
-mobile facts/placement/flex guards live in `results-context.css` and
-`hotel-packages.css`; the retired files contain provenance comments only.
+The subsequent results-layer passes retire `styles/results-width-compatibility.css`,
+`styles/hotel-card-convergence.css`, `styles/results-context.css` and
+`styles/hotel-packages.css`. Current shell, lifecycle, MRF, card and mobile-fact
+guards live in the base/results/toolbar/card owners; retired files contain
+provenance comments only.
 See `docs/project/search3-results-layer-retirement.json` for measured bytes and
 checked-versus-published scope.

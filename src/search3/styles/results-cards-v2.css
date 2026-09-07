@@ -23,6 +23,12 @@ html body.search3-candidate.search3-results-active #results{
 body.search3-candidate #results .hotel-best-offer>small,
 html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best-offer>small{display:none!important}
 
+/* Expanded packages keep the card frame without a second focus/glow outline. */
+@media(min-width:761px){body.search3-candidate{
+& #results .hotel-card:has(.search3-show-tours[aria-expanded="true"]){outline:0!important;border-color:#e2e8f0!important;box-shadow:0 2px 8px rgba(16,24,40,.03)!important;filter:none!important}
+& #results .hotel-card:has(.search3-show-tours[aria-expanded="true"])::before,& #results .hotel-card:has(.search3-show-tours[aria-expanded="true"])::after{content:none!important;display:none!important;outline:0!important;box-shadow:none!important;filter:none!important}
+}}
+
 @media(max-width:760px){
 html body.search3-candidate.search3-results-active #results{
 & .search3-hotel-heading{grid-column:1/3!important}

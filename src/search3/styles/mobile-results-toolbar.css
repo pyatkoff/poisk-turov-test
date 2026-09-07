@@ -1,5 +1,6 @@
 
 body.search3-candidate .search3-mobile-toolbar{display:none}
+body.search3-candidate :is(.mrf-bar,.mrf-sheet){display:none!important}
 
 /* Retain the mobile owner across resize, but keep only the native desktop sort visible. */
 @media(min-width:1000px){
