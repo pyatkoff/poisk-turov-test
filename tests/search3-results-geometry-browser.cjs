@@ -27,7 +27,7 @@ const card = `
       <div class="hotel-decision-line"><span>★ 4,7/5</span><span>До моря 350 м</span></div>
       <div class="hotel-bottom"><div class="hotel-best-offer"><small>За весь тур</small><strong class="hotel-price">от 148 500 ₽</strong><small class="hotel-price-context"><span>2 взрослых</span></small></div></div>
       <div class="search3-hotel-facts"><span><small>Вылет</small><b>12 сент. 2026</b></span><span><small>Ночей</small><b>9</b></span><span><small>Питание</small><b>Всё включено</b></span><span><small>Рейс</small><b>Чартер</b></span></div>
-      <div class="search3-hotel-action"><div class="search3-hotel-action__copy"><strong>16 туров</strong><span>доступно по выбранным датам</span></div><button class="search3-show-tours" type="button">Показать туры</button></div>
+      <div class="search3-hotel-action"><button class="search3-show-tours" type="button" data-search3-show-label="Показать 16 туров">Показать 16 туров</button></div>
       <div class="hotel-actions"></div><div class="hotel-inline-detail"></div><button class="hotel-compare-toggle"></button><div class="result-decision-badges"></div>
     </div>
   </div>

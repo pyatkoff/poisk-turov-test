@@ -93,7 +93,7 @@
     if (tours) tours.hidden = true;
     if (button) {
       button.setAttribute('aria-expanded', 'false');
-      button.textContent = 'Показать туры';
+      button.textContent = button.dataset.search3ShowLabel || 'Показать туры';
     }
   }
 
@@ -126,11 +126,11 @@
     }
 
     var count = Array.isArray(hotel.tours) ? hotel.tours.length : tours.querySelectorAll('.tour-row').length;
+    var showLabel = 'Показать ' + count + ' ' + tourWord(count);
     var action = document.createElement('div');
     action.className = 'search3-hotel-action';
-    action.innerHTML = '<div class="search3-hotel-action__copy"><strong>' + count + ' ' + tourWord(count)
-      + '</strong><span>доступно по выбранным датам</span></div>'
-      + '<button type="button" class="search3-show-tours" aria-expanded="false">Показать туры</button>';
+    action.innerHTML = '<button type="button" class="search3-show-tours" aria-expanded="false" data-search3-show-label="'
+      + safe(showLabel) + '">' + safe(showLabel) + '</button>';
     bodyNode.appendChild(action);
 
     if (!tours.id) tours.id = 'search3-hotel-tours-' + safe(String(card.dataset.hotelId || 'result'));

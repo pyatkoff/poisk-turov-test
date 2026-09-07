@@ -18,7 +18,7 @@ const cardHtml = `
           <span><small>Питание</small><b>Всё включено</b></span>
           <span><small>Рейс</small><b>Чартер</b></span>
         </div>
-        <div class="search3-hotel-action"><div class="search3-hotel-action__copy"><strong>16 туров</strong><span>доступно по выбранным датам</span></div><button class="search3-show-tours" type="button">Показать туры</button></div>
+        <div class="search3-hotel-action"><button class="search3-show-tours" type="button" data-search3-show-label="Показать 16 туров">Показать 16 туров</button></div>
       </div>
     </div>
   </article>`;

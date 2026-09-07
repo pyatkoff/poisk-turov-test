@@ -146,7 +146,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertNotIn('.search3-hotel-highlights::-webkit-scrollbar', all_source)
         self.assertNotIn('search3-tour-list-head', all_source)
         self.assertNotIn('ensureTourListHead', cards)
-        self.assertIn('search3-hotel-action__copy', cards)
+        self.assertIn("var showLabel = 'Показать ' + count + ' ' + tourWord(count);", cards)
+        self.assertIn('data-search3-show-label', cards)
+        self.assertNotIn('search3-hotel-action__copy', cards)
 
     def test_retired_filter_and_maket7_owners_have_static_replacements(self):
         filters = (ROOT / 'src/search3/styles/filters.css').read_text()
@@ -221,7 +223,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertNotIn('search3-filter-edit-row', results)
         self.assertNotIn('input[type=radio]', results)
         self.assertIn('font-size:14px!important', cards)
-        self.assertIn('.search3-hotel-action__copy :is(strong,span){font-size:12px!important', cards)
+        self.assertNotIn('.search3-hotel-action__copy', cards)
+        self.assertIn('.search3-show-tours{width:150px!important}', cards)
         self.assertIn('.search3-results-active.search3-selected-open .v2-shell>', detail)
         self.assertIn('.search3-selected-open .ds2-site-footer{display:none!important}', detail)
         self.assertIn('#selectedTour[hidden]{display:none!important}', selected)
