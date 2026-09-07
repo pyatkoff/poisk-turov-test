@@ -53,24 +53,29 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Source #1458: last CSS injector retired and compact toolbar, desktop entry, map-label and compatibility-decorate regressions repaired; 166978→166115 raw bytes (−863 net). Security and exact artifact CI passed; checked 90b3a3df differs from published 4b061396.",
+    "last_material_progress": "#1458 retired final CSS injector and repaired four presentation boundaries. #1461 fixed live review cascade collision.166978→166271 bytes(−707 net); final source/artifact CI green and exact preview b9445bc3 published through1462, desktop review rechecked.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Reuse the checked artifact at the next justified isolated publication and inspect toolbar/map/entry/review. Before retiring selected-tour.css, obtain current-source detail/review/lead geometry at 375/760/1000; preserve shared primitives and fixed CTA.",
+    "next_action": "Retire selected-tour.css donor (6002 emitted bytes) only after current-source detail/review/lead geometry at375/760/1000, preserving shared shell/back/photo/facts/section/fixed-CTA primitives. Current browser lacks viewport resize; do not substitute desktop evidence. Independently audit other presentation owners if that prerequisite remains unavailable; do not repeat completed injectors or start micro-deploy loops.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
     "id": "S3_REVIEW_INJECTOR_BOUNDARY_REPAIR",
     "title": "Retire the final CSS injector and repair presentation boundaries",
-    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "status": "PUBLISHED_DESKTOP_REVIEW_REPAIRED_RESPONSIVE_DEFERRED",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [1458],
+    "source_prs": [
+      1458,
+      1461
+    ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "90b3a3df3a54ccd513d76dade1307f8354920cbd",
-    "artifact_run": 34111711401,
-    "artifact_id": 10014623594,
-    "next_action": "Reuse checked artifact for the next justified isolated publication; inspect repaired toolbar/map/entry/review. Defer selected-tour.css retirement until current-source 375/760/1000 detail/review/lead geometry is bounded."
+    "implementation_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "artifact_run": 34113092204,
+    "artifact_id": 10015159660,
+    "next_action": "Retire selected-tour.css donor (6002 emitted bytes) only after current-source detail/review/lead geometry at375/760/1000, preserving shared shell/back/photo/facts/section/fixed-CTA primitives. Current browser lacks viewport resize; do not substitute desktop evidence. Independently audit other presentation owners if that prerequisite remains unavailable; do not repeat completed injectors or start micro-deploy loops.",
+    "deploy_pr": 1462,
+    "deploy_run": 34113272969
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -875,8 +880,8 @@
       "full_responsive_site_seo": "deferred, not passed"
     }
   },
-  "last_verified_commit": "4b061396bf3374e026f29943c78f90396352a135",
-  "last_verified_commit_scope": "Exact source Security+artifact passed and exact artifact published. Desktop search-to-empty-lead smoke, eight live cache keys and deployment isolation passed; mobile/tablet, lifecycle visuals and physical Safari explicitly deferred.",
+  "last_verified_commit": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+  "last_verified_commit_scope": "Exact source Security/artifact and isolated publication passed; corrected desktop review22px/one-column title/note/CTA and eight cache keys checked. Mobile/tablet/lead lifecycle/Safari explicitly deferred.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -3034,132 +3039,117 @@
     "verification_update": "Evidence9965993909:9routes/noindex/lead403/internalPHPdeny/counter0/retainedrollback/identical before-after-final production fingerprints."
   },
   "preview_publication": {
-    "deploy_pr": 1439,
-    "deploy_run": 34072481129,
-    "control_sha": "abfb620b74432d6f4d17ad55b932edf2632ba0fa",
-    "deployment_evidence_artifact": 10000913111,
-    "deployment_evidence_digest": "sha256:bced6c9554d9fbeb32421c994b1fd3edb35fc3842056c43ffd7eebd0343b0f60",
+    "archive_sha256": "846f2a6e4c0a7e47f9ee61c5505025391da6f197be3b6177447843a2a033abe5",
+    "artifact_asset_sha256": [
+      {
+        "bytes": 15099,
+        "path": "v2/search3-entry-v1.css",
+        "sha256": "7b8ca77d07ed57b2c96d09f1b6080a77d7049f0c676cd793910f9ada730f0c17"
+      },
+      {
+        "bytes": 3226,
+        "path": "v2/search3-entry-v1.js",
+        "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"
+      },
+      {
+        "bytes": 7336,
+        "path": "v2/search3-results-cards-v2.css",
+        "sha256": "51a834052985443303f55c72ddcb7db6c985ba028626068bf815bef94e7e8ce0"
+      },
+      {
+        "bytes": 0,
+        "path": "v2/search3-results-cards-v2.js",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "bytes": 62808,
+        "path": "v2/search3-results-filters-v1.css",
+        "sha256": "e41042ceb37ca28dda107a2f0fa164d487ddf034abbc01ec18d9fd78a62a8078"
+      },
+      {
+        "bytes": 56272,
+        "path": "v2/search3-results-filters-v1.js",
+        "sha256": "5ad3fdb672495ab663ba8ba05344068b3abbdc0d089fe86a22d16ea8d16c8420"
+      },
+      {
+        "bytes": 9401,
+        "path": "v2/search3-selected-flow-v2.css",
+        "sha256": "6b3b3dd5b67ea4a1ac5305ad9bb1592dc0fa8d0a4e2ab26213c8613b5b89a3b3"
+      },
+      {
+        "bytes": 12129,
+        "path": "v2/search3-selected-flow-v2.js",
+        "sha256": "a84ea3c53dfddb33c1d4cdbcfbb3ebeb1a9276facd0f0e458d73fbe36487f82b"
+      }
+    ],
+    "artifact_digest": "sha256:67310b31ff15ed13d0d7eb0ec5f4f5e770648bb0e5085f1fe5374e2d7d197d6f",
+    "artifact_id": 10015159660,
+    "artifact_run": 34113092204,
     "conclusion": "success",
-    "source_sha": "4b061396bf3374e026f29943c78f90396352a135",
-    "source_tree": "d00be539e6ca873658d22cbea0ae99f7996f8383",
-    "release_pin_sha": "4b061396bf3374e026f29943c78f90396352a135",
-    "artifact_id": 10000822583,
-    "artifact_run": 34072173661,
-    "artifact_digest": "sha256:47025ef6e71d2e1ceaf24081fee8f8f7daf7ea1a56cb4516ecac2aa6d46ede7d",
-    "archive_sha256": "f3a5efb81d93592db70322587a887a1c32ea35c7b2435570b1cd737e34531950",
-    "manifest_sha256": "806d3796e3a365becea0dcfa7a65af45880128b8f9434766319702b791d54f44",
-    "payload_sha256": "aa000c8bb58d1cf545a37b3333702530c768283d091d42be93488313f386c9ed",
-    "status": "PUBLISHED_DESKTOP_SEARCH_TO_LEAD_SMOKE_MOBILE_TABLET_DEFERRED",
-    "public_assets": {
-      "css_bytes": 124487,
-      "js_bytes": 95393,
-      "total_bytes": 219880,
-      "css_lines": 4,
-      "js_lines": 3,
-      "total_lines": 7,
-      "scope": "Eight public paths, raw uncompressed bytes. JS includes embedded private CSS; no page speed claim."
-    },
-    "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-    "production_unchanged": true,
-    "real_lead_submitted": false,
-    "physical_safari_tested": false,
+    "control_sha": "222b2da1986e05c8c7fcec2e88dc51b0c1426679",
+    "deploy_pr": 1462,
+    "deploy_run": 34113272969,
+    "deployment_evidence_artifact": 10015213085,
+    "deployment_evidence_digest": "sha256:95edb09b7c67bdcc0d19b778c4952635d3e80e6e5bd66a9fcc2d7023611dc84f",
+    "deployment_guards": "715 exact payload hashes, ZIP/archive/manifest/checksum pins; noindex/counter0/lead403/internalPHPdeny/retained rollback;13 production fingerprints before/after/final independently compared equal.",
     "latest_verification": {
-      "source_sha": "4b061396bf3374e026f29943c78f90396352a135",
-      "viewport": [1363, 936],
-      "verified_at": "2026-09-07T01:20:00Z",
-      "summary": "Published desktop search-to-empty-lead path inspected without submission: no horizontal overflow or clipped lead form; fallback says рейс уточняется rather than SU000; consent15x15, protection and summary visible; eight cache keys exactly match source hashes; no external Metrika or consultant script.",
-      "real_lead_submitted": false,
+      "deferred": [
+        "375/760/999/1000 responsive states; browser has no viewport-resize capability",
+        "physical iPhone/Safari",
+        "lead-entry/sending/success/error visuals",
+        "map interaction (label only checked)",
+        "full matrix"
+      ],
       "full_matrix_run": false,
-      "deferred": ["mobile final review/lead at375/430", "tablet lead/flight boundaries at641/768/999", "sending/success/error preview visuals", "physical Safari", "full matrix"]
-    },
-    "previous_verification": {
-      "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+      "header_after": {
+        "columns": "632px",
+        "font": "22px",
+        "note_align": "left"
+      },
+      "header_before": {
+        "columns": "176.844px 467.156px",
+        "font": "38px"
+      },
+      "lead_form_visited": false,
+      "real_lead_submitted": false,
+      "source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+      "states": [
+        "initial form and results/tools at first publication90b3a3df",
+        "selected flight and final review",
+        "corrected review header at b9445bc3"
+      ],
+      "summary": "Cloud Chromium desktop: initial form and results/expanded hotel inspected, map label present, no duplicate mobile entry seen. A confirmed review cascade collision was found at 90b3a3df and repaired via1461/1462. Corrected LUXOR APART title is22px on one line, header one632px column, note left-aligned,69301RUB total and CTA visible, no horizontal document overflow. Eight live cache keys match exact final source.",
+      "verified_at": "2026-09-07T10:52:37Z",
       "viewport": [
         1363,
         936
-      ],
-      "verified_at": "2026-09-07T00:22:33.879812+00:00",
-      "summary": "Corrective Chromium1363x936 screenshots inspected: expanded LUXOR APART facts now have three readable columns without midword accommodation wrap; selected outbound/return airport text14px and secondary12px, duplicate selected tick no longer overlaps72832RUB price. Native radios and next CTA visible.",
-      "expanded_card_screenshot_inspected": true,
-      "selected_flight_screenshot_inspected": true,
-      "hotels": 97,
-      "tours": 515,
-      "hotel": "LUXOR APART",
-      "price_rub": 72832,
-      "real_lead_submitted": false,
-      "full_matrix_run": false,
-      "deferred": [
-        "mobile/tablet widths",
-        "physical Safari",
-        "live no-flight branch",
-        "lead-entry/success/error",
-        "full filter/editor/price matrix"
-      ],
-      "earlier_source_evidence": {
-        "source_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
-        "states": [
-          "initial form",
-          "results/expanded card",
-          "selected flight",
-          "review/back"
-        ],
-        "findings_corrected": true
-      }
+      ]
     },
-    "verified_at": "2026-09-07T01:20:00Z",
-    "deployment_guards": "Actual archive/control/all715 hashes; noindex/counter0/disabledlead403/internalPHPdeny/retained rollback; production fingerprints before/after/final equal.",
-    "artifact_verification": "Exact artifact downloaded and its release control values read; unchanged publisher verified actual archive/control/all715 payload hashes before activation. No release/docs rebuild.",
-    "browser_contract": "Native browser controls and explicit-& nesting retained; Chromium desktop search-to-empty-lead inspected, mobile/tablet/lifecycle/physical Safari deferred.",
-    "artifact_asset_sha256": [
-      {
-        "path": "v2/search3-entry-v1.css",
-        "sha256": "7b899275f03cdd818d34de921b0340d3840c49673d3864514ff58e15d8a402c3",
-        "size": 9662,
-        "verification_method": "Exact source blob plus successful publisher715-file verification"
-      },
-      {
-        "path": "v2/search3-results-cards-v2.css",
-        "sha256": "b82c4bbb1b9cbfdaa9ae0508245143da117288aa919876b4b6387e56200341aa",
-        "size": 4007,
-        "verification_method": "Exact source blob plus successful publisher715-file verification"
-      },
-      {
-        "path": "v2/search3-results-filters-v1.css",
-        "sha256": "257feb506f32cc17f79f5a11ed2dc117ca3e4d7afc174d14d29b593b61abec4d",
-        "size": 104004,
-        "verification_method": "Exact source blob plus successful publisher715-file verification"
-      },
-      {
-        "path": "v2/search3-selected-flow-v2.css",
-        "sha256": "a397b15a06d853f9012f9335f80de17609e5b2eba350da426029069b8d66f58c",
-        "size": 6814,
-        "verification_method": "Exact source blob plus successful publisher715-file verification"
-      },
-      {
-        "path": "v2/search3-entry-v1.js",
-        "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b",
-        "size": 3226,
-        "verification_method": "Exact source blob plus successful publisher715-file verification"
-      },
-      {
-        "path": "v2/search3-results-cards-v2.js",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "size": 0,
-        "verification_method": "Exact source blob plus successful publisher715-file verification"
-      },
-      {
-        "path": "v2/search3-results-filters-v1.js",
-        "sha256": "d5a348b8d4946b14639848f43ecab0a18ffd013be6486570dd5dc0e924875d01",
-        "size": 84285,
-        "verification_method": "Exact source blob plus successful publisher715-file verification"
-      },
-      {
-        "path": "v2/search3-selected-flow-v2.js",
-        "sha256": "9073087372ffaac8d0d0b04afc00a9da0f10739e9865692691727f20ea19587b",
-        "size": 7882,
-        "verification_method": "Exact source blob plus successful publisher715-file verification"
-      }
-    ]
+    "manifest_sha256": "37b70ad3f40857e52a835d76dbfdf99aa839e47f27f2a467b8eb0b5115203c2b",
+    "payload_sha256": "9ef45e366e9d6a06f50e0a939eccc7b13d145356517e3a89abeec2c96cdb708b",
+    "physical_safari_tested": false,
+    "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+    "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+    "production_unchanged": true,
+    "public_assets": {
+      "css_bytes": 94644,
+      "js_bytes": 71627,
+      "scope": "Eight public paths; raw uncompressed bytes, not a page-speed claim.",
+      "total_bytes": 166271
+    },
+    "real_lead_submitted": false,
+    "release_pin_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "source_tree": "11be080d74b26eddb9e25a5c020805ddb7fbcdf3",
+    "status": "PUBLISHED_DESKTOP_REVIEW_REPAIRED_RESPONSIVE_DEFERRED",
+    "supersedes_intermediate_publication": {
+      "conclusion": "publication guards passed; review-header visual regression found and corrected, not accepted as all-green",
+      "deploy_pr": 1460,
+      "deploy_run": 34112546655,
+      "evidence_artifact": 10014929810,
+      "source_sha": "90b3a3df3a54ccd513d76dade1307f8354920cbd"
+    },
+    "verified_at": "2026-09-07T10:52:37Z"
   },
   "preview_verification_policy": {
     "batch_execution": {
@@ -3522,6 +3512,162 @@
   },
   "schema_version": 29,
   "site_preview_publication_history": [
+    {
+      "recorded_at": "2026-09-07T10:52:37Z",
+      "reason": "Superseded4b061396 with accumulated retirement and corrective review publication; prior evidence retained.",
+      "previous_current_task": {
+        "artifact_id": 10014623594,
+        "artifact_run": 34111711401,
+        "branch": "release/search3-production-ready-v1",
+        "id": "S3_REVIEW_INJECTOR_BOUNDARY_REPAIR",
+        "implementation_sha": "90b3a3df3a54ccd513d76dade1307f8354920cbd",
+        "issue": 996,
+        "next_action": "Reuse checked artifact for the next justified isolated publication; inspect repaired toolbar/map/entry/review. Defer selected-tour.css retirement until current-source 375/760/1000 detail/review/lead geometry is bounded.",
+        "pr": 1334,
+        "source_prs": [
+          1458
+        ],
+        "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+        "title": "Retire the final CSS injector and repair presentation boundaries"
+      },
+      "previous_preview_publication": {
+        "archive_sha256": "f3a5efb81d93592db70322587a887a1c32ea35c7b2435570b1cd737e34531950",
+        "artifact_asset_sha256": [
+          {
+            "path": "v2/search3-entry-v1.css",
+            "sha256": "7b899275f03cdd818d34de921b0340d3840c49673d3864514ff58e15d8a402c3",
+            "size": 9662,
+            "verification_method": "Exact source blob plus successful publisher715-file verification"
+          },
+          {
+            "path": "v2/search3-results-cards-v2.css",
+            "sha256": "b82c4bbb1b9cbfdaa9ae0508245143da117288aa919876b4b6387e56200341aa",
+            "size": 4007,
+            "verification_method": "Exact source blob plus successful publisher715-file verification"
+          },
+          {
+            "path": "v2/search3-results-filters-v1.css",
+            "sha256": "257feb506f32cc17f79f5a11ed2dc117ca3e4d7afc174d14d29b593b61abec4d",
+            "size": 104004,
+            "verification_method": "Exact source blob plus successful publisher715-file verification"
+          },
+          {
+            "path": "v2/search3-selected-flow-v2.css",
+            "sha256": "a397b15a06d853f9012f9335f80de17609e5b2eba350da426029069b8d66f58c",
+            "size": 6814,
+            "verification_method": "Exact source blob plus successful publisher715-file verification"
+          },
+          {
+            "path": "v2/search3-entry-v1.js",
+            "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b",
+            "size": 3226,
+            "verification_method": "Exact source blob plus successful publisher715-file verification"
+          },
+          {
+            "path": "v2/search3-results-cards-v2.js",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "size": 0,
+            "verification_method": "Exact source blob plus successful publisher715-file verification"
+          },
+          {
+            "path": "v2/search3-results-filters-v1.js",
+            "sha256": "d5a348b8d4946b14639848f43ecab0a18ffd013be6486570dd5dc0e924875d01",
+            "size": 84285,
+            "verification_method": "Exact source blob plus successful publisher715-file verification"
+          },
+          {
+            "path": "v2/search3-selected-flow-v2.js",
+            "sha256": "9073087372ffaac8d0d0b04afc00a9da0f10739e9865692691727f20ea19587b",
+            "size": 7882,
+            "verification_method": "Exact source blob plus successful publisher715-file verification"
+          }
+        ],
+        "artifact_digest": "sha256:47025ef6e71d2e1ceaf24081fee8f8f7daf7ea1a56cb4516ecac2aa6d46ede7d",
+        "artifact_id": 10000822583,
+        "artifact_run": 34072173661,
+        "artifact_verification": "Exact artifact downloaded and its release control values read; unchanged publisher verified actual archive/control/all715 payload hashes before activation. No release/docs rebuild.",
+        "browser_contract": "Native browser controls and explicit-& nesting retained; Chromium desktop search-to-empty-lead inspected, mobile/tablet/lifecycle/physical Safari deferred.",
+        "conclusion": "success",
+        "control_sha": "abfb620b74432d6f4d17ad55b932edf2632ba0fa",
+        "deploy_pr": 1439,
+        "deploy_run": 34072481129,
+        "deployment_evidence_artifact": 10000913111,
+        "deployment_evidence_digest": "sha256:bced6c9554d9fbeb32421c994b1fd3edb35fc3842056c43ffd7eebd0343b0f60",
+        "deployment_guards": "Actual archive/control/all715 hashes; noindex/counter0/disabledlead403/internalPHPdeny/retained rollback; production fingerprints before/after/final equal.",
+        "latest_verification": {
+          "deferred": [
+            "mobile final review/lead at375/430",
+            "tablet lead/flight boundaries at641/768/999",
+            "sending/success/error preview visuals",
+            "physical Safari",
+            "full matrix"
+          ],
+          "full_matrix_run": false,
+          "real_lead_submitted": false,
+          "source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+          "summary": "Published desktop search-to-empty-lead path inspected without submission: no horizontal overflow or clipped lead form; fallback says рейс уточняется rather than SU000; consent15x15, protection and summary visible; eight cache keys exactly match source hashes; no external Metrika or consultant script.",
+          "verified_at": "2026-09-07T01:20:00Z",
+          "viewport": [
+            1363,
+            936
+          ]
+        },
+        "manifest_sha256": "806d3796e3a365becea0dcfa7a65af45880128b8f9434766319702b791d54f44",
+        "payload_sha256": "aa000c8bb58d1cf545a37b3333702530c768283d091d42be93488313f386c9ed",
+        "physical_safari_tested": false,
+        "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+        "previous_verification": {
+          "deferred": [
+            "mobile/tablet widths",
+            "physical Safari",
+            "live no-flight branch",
+            "lead-entry/success/error",
+            "full filter/editor/price matrix"
+          ],
+          "earlier_source_evidence": {
+            "findings_corrected": true,
+            "source_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
+            "states": [
+              "initial form",
+              "results/expanded card",
+              "selected flight",
+              "review/back"
+            ]
+          },
+          "expanded_card_screenshot_inspected": true,
+          "full_matrix_run": false,
+          "hotel": "LUXOR APART",
+          "hotels": 97,
+          "price_rub": 72832,
+          "real_lead_submitted": false,
+          "selected_flight_screenshot_inspected": true,
+          "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+          "summary": "Corrective Chromium1363x936 screenshots inspected: expanded LUXOR APART facts now have three readable columns without midword accommodation wrap; selected outbound/return airport text14px and secondary12px, duplicate selected tick no longer overlaps72832RUB price. Native radios and next CTA visible.",
+          "tours": 515,
+          "verified_at": "2026-09-07T00:22:33.879812+00:00",
+          "viewport": [
+            1363,
+            936
+          ]
+        },
+        "production_unchanged": true,
+        "public_assets": {
+          "css_bytes": 124487,
+          "css_lines": 4,
+          "js_bytes": 95393,
+          "js_lines": 3,
+          "scope": "Eight public paths, raw uncompressed bytes. JS includes embedded private CSS; no page speed claim.",
+          "total_bytes": 219880,
+          "total_lines": 7
+        },
+        "real_lead_submitted": false,
+        "release_pin_sha": "4b061396bf3374e026f29943c78f90396352a135",
+        "source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+        "source_tree": "d00be539e6ca873658d22cbea0ae99f7996f8383",
+        "status": "PUBLISHED_DESKTOP_SEARCH_TO_LEAD_SMOKE_MOBILE_TABLET_DEFERRED",
+        "verified_at": "2026-09-07T01:20:00Z"
+      }
+    },
     {
       "previous_site_draft": {
         "artifact_digest": "sha256:8e00b4db62bd7dfd91dae7e33ef71553f91adb2aa009477e7a4ca3e22130b1ed",
@@ -6539,7 +6685,7 @@
   "latest_review_injector_boundary_repair": {
     "source_pr": 1458,
     "source_sha": "90b3a3df3a54ccd513d76dade1307f8354920cbd",
-    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "status": "PUBLISHED_DESKTOP_REVIEW_REPAIRED_RESPONSIVE_DEFERRED",
     "audit": "docs/project/search3-review-injector-boundary-repair.json",
     "raw_bytes_before": 166978,
     "raw_bytes_after": 166115,
@@ -6550,9 +6696,169 @@
     "artifact_id": 10014623594,
     "artifact_digest": "sha256:bbd6ae86ba257c2c5f73c8a4c75c14971a7ad03d54902e16dd3017e7eb818eaf",
     "ci_conclusion": "success",
-    "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
     "browser": "Cloud browser available, but current-source local transport blocked by policy. No visual acceptance or publication; existing responsive/Safari evidence remains deferred.",
-    "next": "Reuse checked artifact for isolated publication and affected-state checks; selected-tour.css retirement needs 375/760/1000 detail/review/lead geometry before salvaging shared primitives and fixed CTA."
+    "next": "Reuse checked artifact for isolated publication and affected-state checks; selected-tour.css retirement needs 375/760/1000 detail/review/lead geometry before salvaging shared primitives and fixed CTA.",
+    "final_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "final_source_pr": 1461,
+    "final_source_ci": {
+      "security": 34113092248,
+      "artifact": 34113092204,
+      "conclusion": "success"
+    },
+    "final_artifact_id": 10015159660,
+    "final_artifact_digest": "sha256:67310b31ff15ed13d0d7eb0ec5f4f5e770648bb0e5085f1fe5374e2d7d197d6f",
+    "final_raw_bytes": 166271,
+    "final_net_saved": 707,
+    "correction_added_bytes": 156,
+    "published_preview_updated": true,
+    "publication": {
+      "archive_sha256": "846f2a6e4c0a7e47f9ee61c5505025391da6f197be3b6177447843a2a033abe5",
+      "artifact_asset_sha256": [
+        {
+          "bytes": 15099,
+          "path": "v2/search3-entry-v1.css",
+          "sha256": "7b8ca77d07ed57b2c96d09f1b6080a77d7049f0c676cd793910f9ada730f0c17"
+        },
+        {
+          "bytes": 3226,
+          "path": "v2/search3-entry-v1.js",
+          "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"
+        },
+        {
+          "bytes": 7336,
+          "path": "v2/search3-results-cards-v2.css",
+          "sha256": "51a834052985443303f55c72ddcb7db6c985ba028626068bf815bef94e7e8ce0"
+        },
+        {
+          "bytes": 0,
+          "path": "v2/search3-results-cards-v2.js",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "bytes": 62808,
+          "path": "v2/search3-results-filters-v1.css",
+          "sha256": "e41042ceb37ca28dda107a2f0fa164d487ddf034abbc01ec18d9fd78a62a8078"
+        },
+        {
+          "bytes": 56272,
+          "path": "v2/search3-results-filters-v1.js",
+          "sha256": "5ad3fdb672495ab663ba8ba05344068b3abbdc0d089fe86a22d16ea8d16c8420"
+        },
+        {
+          "bytes": 9401,
+          "path": "v2/search3-selected-flow-v2.css",
+          "sha256": "6b3b3dd5b67ea4a1ac5305ad9bb1592dc0fa8d0a4e2ab26213c8613b5b89a3b3"
+        },
+        {
+          "bytes": 12129,
+          "path": "v2/search3-selected-flow-v2.js",
+          "sha256": "a84ea3c53dfddb33c1d4cdbcfbb3ebeb1a9276facd0f0e458d73fbe36487f82b"
+        }
+      ],
+      "artifact_digest": "sha256:67310b31ff15ed13d0d7eb0ec5f4f5e770648bb0e5085f1fe5374e2d7d197d6f",
+      "artifact_id": 10015159660,
+      "artifact_run": 34113092204,
+      "conclusion": "success",
+      "control_sha": "222b2da1986e05c8c7fcec2e88dc51b0c1426679",
+      "deploy_pr": 1462,
+      "deploy_run": 34113272969,
+      "deployment_evidence_artifact": 10015213085,
+      "deployment_evidence_digest": "sha256:95edb09b7c67bdcc0d19b778c4952635d3e80e6e5bd66a9fcc2d7023611dc84f",
+      "deployment_guards": "715 exact payload hashes, ZIP/archive/manifest/checksum pins; noindex/counter0/lead403/internalPHPdeny/retained rollback;13 production fingerprints before/after/final independently compared equal.",
+      "latest_verification": {
+        "deferred": [
+          "375/760/999/1000 responsive states; browser has no viewport-resize capability",
+          "physical iPhone/Safari",
+          "lead-entry/sending/success/error visuals",
+          "map interaction (label only checked)",
+          "full matrix"
+        ],
+        "full_matrix_run": false,
+        "header_after": {
+          "columns": "632px",
+          "font": "22px",
+          "note_align": "left"
+        },
+        "header_before": {
+          "columns": "176.844px 467.156px",
+          "font": "38px"
+        },
+        "lead_form_visited": false,
+        "real_lead_submitted": false,
+        "source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+        "states": [
+          "initial form and results/tools at first publication90b3a3df",
+          "selected flight and final review",
+          "corrected review header at b9445bc3"
+        ],
+        "summary": "Cloud Chromium desktop: initial form and results/expanded hotel inspected, map label present, no duplicate mobile entry seen. A confirmed review cascade collision was found at 90b3a3df and repaired via1461/1462. Corrected LUXOR APART title is22px on one line, header one632px column, note left-aligned,69301RUB total and CTA visible, no horizontal document overflow. Eight live cache keys match exact final source.",
+        "verified_at": "2026-09-07T10:52:37Z",
+        "viewport": [
+          1363,
+          936
+        ]
+      },
+      "manifest_sha256": "37b70ad3f40857e52a835d76dbfdf99aa839e47f27f2a467b8eb0b5115203c2b",
+      "payload_sha256": "9ef45e366e9d6a06f50e0a939eccc7b13d145356517e3a89abeec2c96cdb708b",
+      "physical_safari_tested": false,
+      "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
+      "production_fingerprint_sha256": "5adf7a6ea9ba70f07531760c5a3295e5e295f64f97a47873c62892c769134340",
+      "production_unchanged": true,
+      "public_assets": {
+        "css_bytes": 94644,
+        "js_bytes": 71627,
+        "scope": "Eight public paths; raw uncompressed bytes, not a page-speed claim.",
+        "total_bytes": 166271
+      },
+      "real_lead_submitted": false,
+      "release_pin_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+      "source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+      "source_tree": "11be080d74b26eddb9e25a5c020805ddb7fbcdf3",
+      "status": "PUBLISHED_DESKTOP_REVIEW_REPAIRED_RESPONSIVE_DEFERRED",
+      "supersedes_intermediate_publication": {
+        "conclusion": "publication guards passed; review-header visual regression found and corrected, not accepted as all-green",
+        "deploy_pr": 1460,
+        "deploy_run": 34112546655,
+        "evidence_artifact": 10014929810,
+        "source_sha": "90b3a3df3a54ccd513d76dade1307f8354920cbd"
+      },
+      "verified_at": "2026-09-07T10:52:37Z"
+    },
+    "visual": {
+      "deferred": [
+        "375/760/999/1000 responsive states; browser has no viewport-resize capability",
+        "physical iPhone/Safari",
+        "lead-entry/sending/success/error visuals",
+        "map interaction (label only checked)",
+        "full matrix"
+      ],
+      "full_matrix_run": false,
+      "header_after": {
+        "columns": "632px",
+        "font": "22px",
+        "note_align": "left"
+      },
+      "header_before": {
+        "columns": "176.844px 467.156px",
+        "font": "38px"
+      },
+      "lead_form_visited": false,
+      "real_lead_submitted": false,
+      "source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+      "states": [
+        "initial form and results/tools at first publication90b3a3df",
+        "selected flight and final review",
+        "corrected review header at b9445bc3"
+      ],
+      "summary": "Cloud Chromium desktop: initial form and results/expanded hotel inspected, map label present, no duplicate mobile entry seen. A confirmed review cascade collision was found at 90b3a3df and repaired via1461/1462. Corrected LUXOR APART title is22px on one line, header one632px column, note left-aligned,69301RUB total and CTA visible, no horizontal document overflow. Eight live cache keys match exact final source.",
+      "verified_at": "2026-09-07T10:52:37Z",
+      "viewport": [
+        1363,
+        936
+      ]
+    },
+    "next_action": "Retire selected-tour.css donor (6002 emitted bytes) only after current-source detail/review/lead geometry at375/760/1000, preserving shared shell/back/photo/facts/section/fixed-CTA primitives. Current browser lacks viewport resize; do not substitute desktop evidence. Independently audit other presentation owners if that prerequisite remains unavailable; do not repeat completed injectors or start micro-deploy loops."
   },
   "latest_results_context_owner_retirement": {
     "status": "CHECKED_RELEASE_NOT_PUBLISHED",
@@ -6587,5 +6893,5 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-07T10:35:44.000000+00:00"
+  "updated_at": "2026-09-07T10:52:37Z"
 }

@@ -66,11 +66,60 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `90b3a3df3a54ccd513d76dade1307f8354920cbd`;
-the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
+The latest checked release source is `b9445bc3c8aa0713b148241bcddeefdf07576079`;
+the published preview now uses the same source `b9445bc3c8aa0713b148241bcddeefdf07576079`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
 
-### Latest checked candidate — final style injector and boundary repairs — 2026-09-07
+### Latest published checkpoint — accumulated reduction and review repair — 2026-09-07
+
+The accumulated candidate was published through #1460 / run `34112546655` using
+the already-checked #1458 artifact. The bounded desktop inspection found a real
+cascade regression: the shared `body:has(#selectedTour) #selectedTour` selector
+carries two IDs and defeated the linked review owner's single-ID selector. The
+38px hotel heading was squeezed into a 176.844px column beside a 467.156px note.
+This intermediate visual state was not accepted as green.
+
+Correction #1461 / source `b9445bc3c8aa0713b148241bcddeefdf07576079` restores
+sufficient specificity inside the current review owner, with one compact gap and
+left-aligned note. No donor layer was restored. A focused regression failed first,
+then passed; the 22-test presentation suite completed with one PHP-only local skip
+covered by source CI. Security `34113092248` and exact artifact `34113092204` passed.
+
+Final artifact `10015159660`, digest
+`sha256:67310b31ff15ed13d0d7eb0ec5f4f5e770648bb0e5085f1fe5374e2d7d197d6f`,
+was reused without a rebuild in corrective publication #1462 / run `34113272969`.
+Deployment evidence `10015213085`, digest
+`sha256:95edb09b7c67bdcc0d19b778c4952635d3e80e6e5bd66a9fcc2d7023611dc84f`,
+confirms all715 exact files, noindex, counter0, disabled lead403, internal PHP denial,
+retained rollback and unchanged13 production fingerprints. Evidence ZIP and
+before/after/final fingerprints were independently verified after both publications.
+
+Final eight raw assets: **166978 → 166271 bytes (−707 net this pass)**.
+The injector/boundary package saved863; the live correction adds156, fully counted.
+CSS **94644**, JS **71627**. Compared with the prior published219880 bytes, the
+preview is **53609 bytes smaller**; cumulative reduction from301524 is **135253**.
+Per-file hashes and full provenance: `search3-review-injector-boundary-repair.json`.
+
+Actual visual evidence: cloud Chromium **1363×936**, initial form, results/tools,
+expanded hotel and selected flight/review. Corrective screenshot confirms LUXOR
+APART in one line at22px, a single632px heading column, left-aligned note,69301RUB
+total and the application CTA. No horizontal document overflow; all eight live
+cache keys match the final source. The lead form was not visited or submitted.
+Map label was inspected; map interaction was not. No full matrix was repeated.
+
+Responsive375/760/999/1000, lead lifecycle visuals and physical Safari remain
+**deferred**: this browser has no supported viewport-resize capability. The earlier
+local/data fixture policy blocks were not bypassed; normal public preview interaction
+was independently authorized. Main remains `fa58a0cba6dcfc8624d98c20d64fa06330eae309`.
+
+Next: retire the whole `selected-tour.css` donor only after current-source
+detail/review/lead geometry at375/760/1000. Its6002 emitted bytes still own shared
+shell/back/photo/facts/section-title/fixed-CTA primitives; salvage those in current
+owners. Estimated2–3KB net is an opportunity, not measured savings. If the viewport
+prerequisite remains unavailable, audit another independent presentation owner.
+Do not repeat completed removals or publish another micro-savings-only batch.
+
+### Previous checked candidate — final style injector and boundary repairs — 2026-09-07
 
 PR #1458 / source `90b3a3df3a54ccd513d76dade1307f8354920cbd` retires the last
 runtime CSS injector (`summary-cta-styles.js` and its private stylesheet). Common
