@@ -25,6 +25,82 @@ final class AnyTourAnexSearch
     {
         // A failed replacement search must never leave selectable stale offers.
         $this->offers = $this->params = $this->context = [];
+        $params = $this->buildParams($criteria);
+        // Validate the normalizer's full context before making a network request.
+        anytour_anex_normalize_prices(['prices' => []], $criteria, $this->resolver, $this->sensitive);
+        $data = $this->client->request('SearchTour_PRICES', $params);
+        $result = anytour_anex_normalize_prices($data, $criteria, $this->resolver, $this->sensitive);
+        if (isset($criteria['hotel_ids'])) {
+            $requestedHotels = array_map('strval', $criteria['hotel_ids']);
+            $accepted = [];
+            foreach ($result['offers'] as $offer) {
+                if (in_array($offer['hotel']['external_id'], $requestedHotels, true)) {
+                    $accepted[] = $offer;
+                } else {
+                    $result['rejected_count']++;
+                }
+            }
+            $result['offers'] = $accepted;
+        }
+        $this->params = $params;
+        $this->context = $criteria;
+        $this->remember($result['offers']);
+        return $result;
+    }
+
+    /** Export the minimum server-only state needed by a later HTTP request. */
+    public function snapshot(): array
+    {
+        if ($this->context === [] || $this->params === []) {
+            throw new LogicException('ANEX_SEARCH_NOT_STARTED');
+        }
+        return ['schema_version' => 1, 'context' => $this->context,
+            'offers' => array_values($this->offers)];
+    }
+
+    /** Restore a server-owned snapshot without serializing the token-bearing client. */
+    public function restore(array $snapshot): void
+    {
+        $this->offers = $this->params = $this->context = [];
+        if (!self::exactKeys($snapshot, ['schema_version', 'context', 'offers'])
+            || $snapshot['schema_version'] !== 1 || !is_array($snapshot['context'])
+            || !is_array($snapshot['offers']) || count($snapshot['offers']) > 600
+            || ($snapshot['offers'] !== []
+                && array_keys($snapshot['offers']) !== range(0, count($snapshot['offers']) - 1))) {
+            throw new InvalidArgumentException('ANEX_INVALID_SESSION');
+        }
+        $params = $this->buildParams($snapshot['context']);
+        anytour_anex_normalize_prices(
+            ['prices' => []], $snapshot['context'], $this->resolver, $this->sensitive
+        );
+        $offers = [];
+        foreach ($snapshot['offers'] as $offer) {
+            if (!is_array($offer) || !self::exactKeys($offer, [
+                'offer_key', 'supplier_offer_id', 'kind', 'hotel_external_id'
+            ]) || !is_string($offer['offer_key'])
+                || !preg_match('/\Aanex_online:[a-f0-9]{64}\z/D', $offer['offer_key'])
+                || isset($offers[$offer['offer_key']]) || !is_string($offer['supplier_offer_id'])
+                || !preg_match('~\A[A-Za-z0-9][A-Za-z0-9_.:,;\~@+/=|\-]{0,2047}\z~D', $offer['supplier_offer_id'])
+                || strpos($offer['supplier_offer_id'], '://') !== false
+                || !in_array($offer['kind'], ['group_minimum', 'concrete'], true)
+                || !is_string($offer['hotel_external_id'])
+                || !preg_match('/\A[1-9][0-9]{0,7}\z/D', $offer['hotel_external_id'])) {
+                throw new InvalidArgumentException('ANEX_INVALID_SESSION');
+            }
+            $offers[$offer['offer_key']] = [
+                'offer_key' => $offer['offer_key'],
+                'supplier_offer_id' => $offer['supplier_offer_id'],
+                'kind' => $offer['kind'],
+                'hotel' => ['external_id' => $offer['hotel_external_id']],
+            ];
+        }
+        $this->params = $params;
+        $this->context = $snapshot['context'];
+        $this->offers = $offers;
+    }
+
+    private function buildParams(array $criteria): array
+    {
         if (($criteria['supplier_namespace'] ?? '') !== 'anex_online') {
             throw new InvalidArgumentException('ANEX_SUPPLIER_NAMESPACE_REQUIRED');
         }
@@ -69,26 +145,13 @@ final class AnyTourAnexSearch
         }
         $params += ['FREIGHT' => 1, 'FILTER' => 1, 'PRICEPAGE' => 1,
             'PARTITION_PRICE' => 32, 'SORT' => 'ASC', 'DYN_SEPARATE' => 1];
-        // Validate the normalizer's full context before making a network request.
-        anytour_anex_normalize_prices(['prices' => []], $criteria, $this->resolver, $this->sensitive);
-        $data = $this->client->request('SearchTour_PRICES', $params);
-        $result = anytour_anex_normalize_prices($data, $criteria, $this->resolver, $this->sensitive);
-        if (isset($criteria['hotel_ids'])) {
-            $requestedHotels = array_map('strval', $criteria['hotel_ids']);
-            $accepted = [];
-            foreach ($result['offers'] as $offer) {
-                if (in_array($offer['hotel']['external_id'], $requestedHotels, true)) {
-                    $accepted[] = $offer;
-                } else {
-                    $result['rejected_count']++;
-                }
-            }
-            $result['offers'] = $accepted;
-        }
-        $this->params = $params;
-        $this->context = $criteria;
-        $this->remember($result['offers']);
-        return $result;
+        return $params;
+    }
+
+    private static function exactKeys(array $value, array $expected): bool
+    {
+        return count($value) === count($expected)
+            && array_diff($expected, array_keys($value)) === [];
     }
 
     public function expand(string $offerKey): array
@@ -171,7 +234,12 @@ final class AnyTourAnexSearch
     {
         foreach ($offers as $offer) {
             if (count($this->offers) >= 600 && !isset($this->offers[$offer['offer_key']])) break;
-            $this->offers[$offer['offer_key']] = $offer;
+            $this->offers[$offer['offer_key']] = [
+                'offer_key' => $offer['offer_key'],
+                'supplier_offer_id' => $offer['supplier_offer_id'],
+                'kind' => $offer['kind'],
+                'hotel' => ['external_id' => $offer['hotel']['external_id']],
+            ];
         }
     }
 

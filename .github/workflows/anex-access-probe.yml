@@ -20,6 +20,7 @@ on:
       - 'tests/anex_geo_checkpoint_restore_test.py'
       - 'scripts/diagnostics/anex_catalog_bulk_reader.php'
       - 'app/integrations/**'
+      - 'v2/api-anex-preview.php'
       - 'tests/anex-*-smoke.php'
       - 'tests/anex_adapter_probe_test.py'
   workflow_dispatch:
@@ -55,6 +56,7 @@ jobs:
           php -l scripts/diagnostics/anex_catalog_bulk_reader.php
           php -l app/integrations/anex-xml-exact-registry.php
           for file in app/integrations/*.php; do php -l "$file"; done
+          php -l v2/api-anex-preview.php
           php tests/anex-hotel-identities-smoke.php
           php tests/anex-xml-exact-registry-smoke.php
           php tests/anex-client-smoke.php

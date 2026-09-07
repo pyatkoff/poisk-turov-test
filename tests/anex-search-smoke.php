@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/../app/integrations/anex-search.php';
+require_once __DIR__ . '/../app/integrations/anex-preview-gateway.php';
 
 function search_check(bool $condition, string $message): void {
     if (!$condition) throw new RuntimeException($message);
@@ -72,4 +73,61 @@ search_check($client->requestsMade() === 3, 'unexpected requests');
 search_reject(static function () use ($search, $criteria) { $search->search(array_replace($criteria, ['supplier_namespace' => 'tourvisor'])); });
 search_reject(static function () use ($search, $offer) { $search->flights($offer['offer_key']); });
 search_check($client->requestsMade() === 3, 'invalid search reached network');
+
+$clock = 1000;
+$gatewayCalls = [];
+$gatewayFactory = static function () use (&$gatewayCalls, $baseRow): AnyTourAnexClient {
+    return new AnyTourAnexClient('gateway-secret', static function (string $url) use (&$gatewayCalls, $baseRow): array {
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $params);
+        $gatewayCalls[] = $params;
+        $method = $params['action'];
+        if ($method === 'FreightMonitor_FREIGHTSBYPACKET') {
+            $payload = ['routes' => []];
+        } elseif (isset($params['CATCLAIM'])) {
+            $payload = ['prices' => [array_replace($baseRow, [
+                'id' => 'gateway-concrete', 'grouped' => 0, 'bron' => 1,
+            ])]];
+        } else {
+            $payload = ['prices' => [$baseRow]];
+        }
+        return ['status' => 200, 'body' => json_encode([$method => $payload])];
+    });
+};
+$gateway = new AnyTourAnexPreviewGateway($gatewayFactory,
+    static function (string $provider, string $id): ?int {
+        return $provider === 'anex_online' && $id === '469' ? 245 : null;
+    }, ['gateway-secret'], static function () use (&$clock): int { return $clock; });
+$session = [];
+$publicGroups = $gateway->handle(['action' => 'search', 'criteria' => $criteria], $session);
+$publicGroup = $publicGroups['offers'][0];
+search_check(!isset($publicGroup['supplier_offer_id'])
+    && $publicGroup['hotel']['local_id'] === 245, 'gateway exposes only public mapped group');
+search_check(isset($session['search']['offers'][0]['supplier_offer_id'])
+    && strpos(json_encode($session), 'gateway-secret') === false, 'session keeps reference without token');
+$publicExpanded = $gateway->handle(['action' => 'expand', 'offer_key' => $publicGroup['offer_key']], $session);
+$publicConcrete = $publicExpanded['offers'][0];
+search_check(!isset($publicConcrete['supplier_offer_id'])
+    && count($session['search']['offers']) === 2, 'gateway restores and extends server state');
+$publicFlights = $gateway->handle(['action' => 'flights', 'offer_key' => $publicConcrete['offer_key']], $session);
+search_check($publicFlights['routes'] === [] && count($gatewayCalls) === 3, 'gateway spans HTTP-style calls');
+search_reject(static function () use ($gateway, &$session): void {
+    $gateway->handle(['action' => 'expand', 'offer_key' => 'anex_online:' . str_repeat('0', 64)], $session);
+});
+$corrupt = $session;
+$corrupt['search']['offers'][0]['supplier_offer_id'] = 'https://invalid/?oauth_token=gateway-secret';
+$beforeCorrupt = count($gatewayCalls);
+search_reject(static function () use ($gateway, &$corrupt, $publicGroup): void {
+    $gateway->handle(['offer_key' => $publicGroup['offer_key'], 'action' => 'expand'], $corrupt);
+});
+search_check(count($gatewayCalls) === $beforeCorrupt, 'corrupt session cannot reach supplier');
+$clock += 901;
+search_reject(static function () use ($gateway, &$session, $publicConcrete): void {
+    $gateway->handle(['action' => 'flights', 'offer_key' => $publicConcrete['offer_key']], $session);
+});
+search_check(!isset($session['search']), 'expired session drops supplier references');
+$freshSession = [];
+search_reject(static function () use ($gateway, &$freshSession, $criteria): void {
+    $gateway->handle(['action' => 'search', 'criteria' => array_replace($criteria, ['extra' => 1])], $freshSession);
+});
+search_check(!isset($freshSession['search']), 'failed replacement leaves no stale search');
 echo "ANEX_SEARCH_SMOKE_OK search/expand/flights/stale-state/source-identity\n";
