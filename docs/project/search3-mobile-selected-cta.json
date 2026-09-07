@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "stage": "SOURCE_CANDIDATE_NOT_PUBLISHED",
+  "base_release_sha": "04f726371d3e62913ec734df99ed29b806ae2091",
+  "scope": "Restore a conversion-safe touch target for the fixed mobile selected-tour CTA.",
+  "root_cause": "The mobile CTA had horizontal padding and typography but no height owner, allowing the rendered button to collapse to approximately 11px at 375px.",
+  "change": "The current selected-flow owner sets a 48px minimum height at the existing max-width 640px boundary.",
+  "acceptance": [
+    "Selected-tour CTA is at least 48px high at 375px detail state",
+    "Non-mobile-bar detail geometry remains identical to the checked release",
+    "Review and lead states remain identical at 375, 760, 1000 and 1440",
+    "No horizontal overflow and no lead submission in the browser fixture"
+  ],
+  "served_assets": {
+    "before_bytes": 145660,
+    "after_bytes": 145676,
+    "delta_bytes": 16,
+    "changed": {
+      "path": "v2/search3-selected-flow-v2.css",
+      "before_bytes": 10875,
+      "after_bytes": 10891,
+      "delta_bytes": 16
+    },
+    "unchanged_asset_count": 7
+  },
+  "protected_contracts": "Price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping, Metrika/goals and the canonical logo are unchanged.",
+  "verification": {
+    "local": "Exact build/write/check, selected-flow scheduler, browser-test syntax, 13 source-build and 24 presentation tests with one PHP-only local skip, JSON and diff checks passed.",
+    "source_ci": "PENDING"
+  },
+  "publication": "NOT_PUBLISHED",
+  "production_updated": false,
+  "deferred": [
+    "Physical iPhone and Safari safe-area acceptance",
+    "Live current-source journey"
+  ]
+}

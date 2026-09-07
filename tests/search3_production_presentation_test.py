@@ -299,6 +299,7 @@ class Search3ProductionPresentationTest(unittest.TestCase):
 
         selected_flow = (ROOT / 'src/search3/styles/selected-flow-v2.css').read_text()
         self.assertIn('.search3-selected-mobile-bar:not([hidden]){position:fixed', selected_flow)
+        self.assertIn('.search3-selected-mobile-bar button{min-height:48px', selected_flow)
         self.assertIn('& .selected-price{display:none!important}', selected_flow)
 
     def test_redundant_booking_chrome_is_retired_without_losing_flow_owners(self):
