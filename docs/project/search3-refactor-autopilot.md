@@ -69,7 +69,60 @@ technical work. Production approval and protected contracts stay unchanged.
 The latest checked and published source is `339a1aefa3ba87b156134da37ad2c40b7e5725f0`;
 see the newest checkpoint below. Historical publication notes remain for provenance.
 
-### Latest checked and published candidate — responsive review owners — 2026-09-07
+### Latest checked and published candidate — lead review owners — 2026-09-07
+
+Two large reversible owners were retired in one run. Source #1437 / exact release
+`4b061396bf3374e026f29943c78f90396352a135`, tree
+`d00be539e6ca873658d22cbea0ae99f7996f8383`, removes the complete
+`lead-review.css` layer and the complete private lead-entry block from injected
+`selected-tour-mobile.css`. The compact active rules now live in current owners:
+`review-layout.css`, `selected-flow-v2.css` and `lead-state.css`. Consent and
+protection presentation, hidden duplicate summary/comment, mobile final rows and
+sending/success/error lifecycle are retained. Pending steps stay blank until
+complete; the sending state keeps its spinner instead of premature ticks.
+
+The same eight raw public assets fall **225972 → 219880 bytes (−6092)**:
+CSS 128494 → 124487 (−4007), JS 97478 → 95393 (−2085). The first package
+saved 4175 bytes and the independent injected-owner package saved another 1917
+net bytes. From this run's 235139-byte start the total saving is 15259 bytes;
+from the 301524-byte whole-layer baseline it is 81644 bytes. These are raw asset
+bytes, not transfer-size or speed claims; all eight public paths are unchanged.
+
+Both mandatory source jobs passed with their owner/source/PHP/path/presentation/
+isolation guards unchanged: Security `34072173651`; artifact `34072173661`,
+artifact `10000822583`, digest
+`sha256:47025ef6e71d2e1ceaf24081fee8f8f7daf7ea1a56cb4516ecac2aa6d46ede7d`.
+The artifact has 715 files; archive, manifest and payload-control hashes are recorded
+in `docs/project/search3-lead-review-layer-retirement.json`.
+
+The first publication control #1438 / run `34072338032` failed safely before SSH:
+an incorrectly reconstructed local payload-control hash did not match the exact
+artifact. Nothing was published or changed on the server. The control was read
+from the downloaded artifact and the corrected #1439 / run `34072481129` succeeded.
+Deployment evidence `10000913111` confirms exact source/tree, all 715 files,
+noindex, counter 0, lead 403, retained rollback and the identical production
+fingerprint before/after/final. Preview and checked release now both use source
+`4b061396`; main/production remain `fa58a0cb` and unapproved.
+
+One bounded Chromium desktop check at 1363×936 traversed live search, an expanded
+hotel, selected tour/flight, final review and the empty lead form without submission.
+The no-flight fallback reads «Аэрофлот · рейс уточняется», not fabricated `SU000`;
+real alternatives retain their supplied flight numbers. No horizontal overflow or
+lead-form clipping was found; consent is flex with a 15×15 checkbox, protection text
+and the 320px summary are visible. All eight live cache keys match exact source
+hashes and no external Metrika/consultant script is loaded.
+
+The supported browser cannot resize this tab. Mobile 375/430, tablet 641/768/999,
+preview sending/success/error visuals, physical Safari, full matrix and real lead
+submission are deferred, not passed. Source lifecycle regressions passed, but they
+do not replace those visual claims.
+
+Next: audit obsolete block families inside `acceptance-guards.css` and
+`lead-state.css`; neither file is safe for whole-file deletion. Remove only proven
+superseded families in one measured batch while retaining lifecycle, hidden and
+accessibility fallbacks. Do not repeat the two lead owners or earlier retired layers.
+
+### Previous checked and published candidate — responsive review owners — 2026-09-07
 
 Source #1434 / `339a1aefa3ba87b156134da37ad2c40b7e5725f0`, tree
 `99b03301632b565c99bad491f17a88cfa6d7cd00`, is fast-forwarded into release.
