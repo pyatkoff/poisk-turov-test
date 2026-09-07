@@ -7,7 +7,6 @@
       "behavior/mobile-search-entry.js",
       "behavior/results-top.js",
       "behavior/selected-tour-mobile-styles.js",
-      "behavior/selected-tour-mobile.js",
       "behavior/maket7-lock.js",
       "behavior/lead-flow.js",
       "behavior/flight-presentation.js",

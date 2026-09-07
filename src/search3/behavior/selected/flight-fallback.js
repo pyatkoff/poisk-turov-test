@@ -36,20 +36,10 @@
     return true;
   }
 
-  function bindAction(button) {
-    if (!button || button.dataset.search3SelectedFlowBound === '1') return;
-    setData(button, 'search3SelectedFlowBound', '1');
-    button.addEventListener('click', function (event) {
-      if (button.dataset.search3SelectedFlowAction !== '1') return;
-      activateReview(event);
-    }, true);
-  }
-
   function syncMobileAction(noFlight) {
     var button = document.querySelector('.search3-selected-mobile-bar [data-s3-selected-lead]');
     if (!button) return;
     setText(button, flowLabel('flight'));
-    bindAction(button);
     if (noFlight) {
       setData(button, 'search3SelectedFlowAction', '1');
       setAttribute(button, 'aria-label', 'Перейти к итогу тура без выбранного рейса');

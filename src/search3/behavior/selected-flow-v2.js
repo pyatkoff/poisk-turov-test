@@ -58,6 +58,14 @@
   var queued = false;
   var currentTour = null;
   var currentTotal = 0;
+  var mobileBar = document.querySelector('.search3-selected-mobile-bar');
+  if (!mobileBar) {
+    mobileBar = document.createElement('div');
+    mobileBar.className = 'search3-selected-mobile-bar';
+    mobileBar.hidden = true;
+    mobileBar.innerHTML = '<div class="search3-selected-mobile-bar__price"><small>Стоимость тура</small><strong data-s3-selected-price>—</strong></div><button type="button" data-s3-selected-lead>Далее: итог тура</button>';
+    body.appendChild(mobileBar);
+  }
 
   function text(node) {
     return String(node && node.textContent || '').replace(/\s+/g, ' ').trim();
@@ -94,6 +102,71 @@
     return amount > 0 ? new Intl.NumberFormat('ru-RU').format(amount) + ' ₽' : '';
   }
 
+  function selectedAmount(source) {
+    if (currentTotal > 0) return money(currentTotal);
+    if (!source) return '';
+    return Array.from(source.childNodes || []).filter(function (node) {
+      return node.nodeType === 3;
+    }).map(function (node) {
+      return text(node);
+    }).filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function normalizeLeadFields() {
+    if (!window.matchMedia || !window.matchMedia('(max-width:640px)').matches
+        || !selected.classList.contains('search3-lead-entry')) return;
+    var form = selected.querySelector('.lead-form');
+    var fields = form && form.querySelector('.lead-fields');
+    var name = form && form.querySelector('input[name="name"]');
+    var phone = form && form.querySelector('input[name="phone"]');
+    if (!form || !fields || !name || !phone || form.dataset.search3MobileLeadNormalized === '1') return;
+    form.dataset.search3MobileLeadNormalized = '1';
+    var nameLabel = name.closest('label');
+    var phoneLabel = phone.closest('label');
+    if (nameLabel) {
+      nameLabel.hidden = false;
+      nameLabel.removeAttribute('hidden');
+      nameLabel.style.setProperty('display', 'grid', 'important');
+      name.hidden = false;
+      name.removeAttribute('hidden');
+      if (phoneLabel && nameLabel.nextElementSibling !== phoneLabel) fields.insertBefore(nameLabel, phoneLabel);
+      else if (!phoneLabel && fields.firstElementChild !== nameLabel) fields.prepend(nameLabel);
+    }
+    if (phoneLabel) {
+      phoneLabel.hidden = false;
+      phoneLabel.removeAttribute('hidden');
+      phoneLabel.style.setProperty('display', 'grid', 'important');
+    }
+    Array.from(form.querySelectorAll('button,summary')).forEach(function (node) {
+      if (/^Дополнить заявку/i.test(text(node))) {
+        node.hidden = true;
+        if (node.style.display !== 'none') node.style.setProperty('display', 'none', 'important');
+      }
+    });
+  }
+
+  function continueFlow() {
+    if (selected.classList.contains('search3-lead-entry')) return;
+    if (selected.classList.contains('search3-final-review')) {
+      if (window.Search3SummaryCta && typeof window.Search3SummaryCta.enterLead === 'function') {
+        window.Search3SummaryCta.enterLead('mobile-bar');
+        return;
+      }
+      var summary = selected.querySelector('.search3-summary-submit');
+      if (summary) {
+        summary.click();
+        return;
+      }
+    }
+    var next = selected.querySelector('.search3-flight-continue button');
+    if (next) {
+      next.click();
+      return;
+    }
+    var flights = selected.querySelector('.tour-flights');
+    if (flights) flights.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   function priceScope() {
     return text(selected.querySelector('.selected-price > small')) || 'Стоимость тура';
   }
@@ -108,10 +181,9 @@
       setText(box.querySelector(':scope > strong'), amount);
       setAttribute(box, 'aria-label', ariaLabel);
     });
-    var mobile = document.querySelector('.search3-selected-mobile-bar');
-    if (mobile) {
-      setText(mobile.querySelector('.search3-selected-mobile-bar__price small'), scope);
-      var mobileAmount = mobile.querySelector('[data-s3-selected-price]');
+    if (mobileBar) {
+      setText(mobileBar.querySelector('.search3-selected-mobile-bar__price small'), scope);
+      var mobileAmount = mobileBar.querySelector('[data-s3-selected-price]');
       setText(mobileAmount, amount);
       setAttribute(mobileAmount, 'aria-label', ariaLabel);
     }
@@ -144,6 +216,18 @@
   }
 
   function sync() {
+    var visible = !selected.hidden && getComputedStyle(selected).display !== 'none' && selected.children.length > 0;
+    body.classList.toggle('search3-selected-open', visible);
+    var leadEntry = selected.classList.contains('search3-lead-entry');
+    var finalReview = selected.classList.contains('search3-final-review');
+    setHidden(mobileBar, !visible || leadEntry || finalReview);
+    if (visible && leadEntry) normalizeLeadFields();
+    if (visible) {
+      var selectedPrice = selected.querySelector('.selected-price');
+      setText(mobileBar.querySelector('.search3-selected-mobile-bar__price small'), priceScope());
+      setText(mobileBar.querySelector('[data-s3-selected-price]'), selectedAmount(selectedPrice) || '—');
+      setText(mobileBar.querySelector('[data-s3-selected-lead]'), flowLabel('flight'));
+    }
     var flights = selected.querySelector('.tour-flights');
     syncDisplayedPrice();
     syncLeadCopy();
@@ -169,6 +253,12 @@
   }
 
   document.addEventListener('click', function (event) {
+    var mobileAction = event.target && event.target.closest && event.target.closest('[data-s3-selected-lead]');
+    if (mobileAction) {
+      event.preventDefault();
+      continueFlow();
+      return;
+    }
     var button = event.target && event.target.closest && event.target.closest('.search3-flight-show-all');
     if (!button || !selected.contains(button)) return;
     event.preventDefault();
@@ -184,7 +274,8 @@
     currentTotal = normalizedTotal(event && event.detail, currentTour);
     schedule();
   });
-  ['v2:flight-selected', 'v2:booking-review', 'search3:lead-entry'].forEach(function (name) {
+  ['v2:flight-selected', 'v2:selected-tour-opened', 'v2:selected-tour-closed', 'v2:results-rendered',
+    'v2:booking-review', 'search3:lead-entry', 'v2:lead-started', 'v2:lead-success', 'v2:lead-error'].forEach(function (name) {
     window.addEventListener(name, schedule);
   });
 
@@ -193,14 +284,21 @@
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['hidden', 'class']
+    attributeFilter: ['hidden', 'class', 'style']
   });
-  var mobileBar = document.querySelector('.search3-selected-mobile-bar');
-  if (mobileBar) observer.observe(mobileBar, { childList: true, subtree: true, characterData: true });
 
   schedule();
+  window.Search3SelectedTourMobile = {
+    version: 14,
+    sync: sync,
+    scheduleSync: schedule,
+    continueFlow: continueFlow,
+    normalizeLeadFields: normalizeLeadFields,
+    normalizedTotal: normalizedTotal,
+    selectedAmount: selectedAmount
+  };
   window.Search3SelectedFlowV2 = Object.freeze({
-    version: 3,
+    version: 4,
     sync: sync,
     noFlightState: noFlightState,
     activateReview: activateReview,

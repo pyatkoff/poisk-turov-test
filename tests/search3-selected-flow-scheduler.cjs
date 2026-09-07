@@ -10,6 +10,8 @@ let priceWrites = 0;
 let priceAttributeWrites = 0;
 let priceAriaLabel = '';
 let strongText = '';
+let documentClick;
+const bodyClasses = new Set(['search3-candidate']);
 
 const label = { textContent: '' };
 const strong = {};
@@ -33,6 +35,30 @@ const priceBox = {
     }
   }
 };
+const mobileAttributes = new Map();
+const mobileLabel = { textContent: '' };
+const mobileAmount = {
+  textContent: '',
+  getAttribute(name) { return mobileAttributes.get(name) || null; },
+  setAttribute(name, value) { mobileAttributes.set(name, value); }
+};
+const mobileButton = {
+  textContent: '',
+  dataset: {},
+  getAttribute(name) { return mobileAttributes.get('button:' + name) || null; },
+  hasAttribute(name) { return mobileAttributes.has('button:' + name); },
+  setAttribute(name, value) { mobileAttributes.set('button:' + name, value); },
+  removeAttribute(name) { mobileAttributes.delete('button:' + name); }
+};
+const mobileBar = {
+  hidden: true,
+  querySelector(selector) {
+    if (selector === '.search3-selected-mobile-bar__price small') return mobileLabel;
+    if (selector === '[data-s3-selected-price]') return mobileAmount;
+    if (selector === '[data-s3-selected-lead]') return mobileButton;
+    return null;
+  }
+};
 let flightDataPresent = true;
 let fallbackDataWrites = 0;
 let fallbackDataValue;
@@ -43,6 +69,8 @@ Object.defineProperty(selectedDataset, 'search3FlightFallback', {
   set(value) { fallbackDataValue = value; fallbackDataWrites += 1; }
 });
 let fallbackClicks = 0;
+let leadForm = null;
+const selectedClasses = new Set();
 const fallbackButton = { textContent: 'Далее: итог тура', click() { fallbackClicks += 1; } };
 const fallbackAction = {
   classList: { add() {} },
@@ -58,15 +86,20 @@ const flights = {
   }
 };
 const selected = {
+  hidden: false,
+  children: [{}],
   dataset: selectedDataset,
   classList: {
-    add() {},
-    remove() {},
-    contains() { return false; }
+    add(name) { selectedClasses.add(name); },
+    remove(name) { selectedClasses.delete(name); },
+    contains(name) { return selectedClasses.has(name); }
   },
   querySelector(selector) {
     assert.ok(!selector.includes('search3-tour-detail-rail'), 'retired rail is not queried during selected-flow updates');
     if (selector === '.selected-price > small') return { textContent: 'Стоимость тура' };
+    if (selector === '.selected-price') return { childNodes: [{ nodeType: 3, textContent: '100 000 ₽' }] };
+    if (selector === '.lead-form') return leadForm;
+    if (selector === '.search3-flight-continue button') return fallbackButton;
     if (selector === '.tour-flights') {
       flightRootReads += 1;
       return flights;
@@ -80,15 +113,26 @@ const selected = {
   contains() { return true; }
 };
 const document = {
-  body: { classList: { contains(name) { return name === 'search3-candidate'; } } },
+  body: {
+    classList: {
+      contains(name) { return bodyClasses.has(name); },
+      toggle(name, enabled) { if (enabled) bodyClasses.add(name); else bodyClasses.delete(name); }
+    },
+    appendChild() { throw new Error('existing mobile bar should be reused'); }
+  },
   getElementById(id) { return id === 'selectedTour' ? selected : null; },
-  querySelector() { return null; },
-  addEventListener() {},
+  querySelector(selector) {
+    if (selector === '.search3-selected-mobile-bar') return mobileBar;
+    if (selector === '.search3-selected-mobile-bar [data-s3-selected-lead]') return mobileButton;
+    return null;
+  },
+  addEventListener(name, handler) { if (name === 'click') documentClick = handler; },
   createElement() { throw new Error('unexpected createElement'); }
 };
 const window = {
   addEventListener(name, handler) { events.set(name, handler); },
-  requestAnimationFrame(handler) { frames.push(handler); }
+  requestAnimationFrame(handler) { frames.push(handler); },
+  matchMedia() { return { matches: true }; }
 };
 
 vm.runInNewContext(
@@ -102,7 +146,8 @@ vm.runInNewContext(
     Array,
     Number,
     String,
-    Object
+    Object,
+    getComputedStyle() { return { display: 'block' }; }
   }
 );
 
@@ -111,6 +156,11 @@ const flush = () => {
 };
 
 flush();
+assert.ok(bodyClasses.has('search3-selected-open'), 'shared owner synchronizes selected visibility');
+assert.equal(mobileBar.hidden, false, 'shared owner exposes the mobile action for a selected tour');
+assert.equal(window.Search3SelectedTourMobile.version, 14, 'legacy compatibility API remains available');
+assert.equal(window.Search3SelectedTourMobile.sync, window.Search3SelectedFlowV2.sync,
+  'legacy compatibility API delegates to the single selected-flow owner');
 flightRootReads = 0;
 priceWrites = 0;
 priceAttributeWrites = 0;
@@ -126,6 +176,7 @@ flush();
 
 assert.equal(priceWrites, 1, 'latest price is written once');
 assert.equal(priceAttributeWrites, 1, 'latest price aria-label is written once');
+assert.match(mobileAmount.textContent, /120[\s\u00a0]?000/, 'mobile price shares the latest selected total');
 assert.match(strongText, /120[\s\u00a0]?000/, 'latest queued price wins');
 window.Search3SelectedFlowV2.syncDisplayedPrice();
 window.Search3SelectedFlowV2.syncDisplayedPrice();
@@ -215,6 +266,46 @@ window.Search3SelectedFlowV2.sync();
 window.Search3SelectedFlowV2.sync();
 assert.equal(flightRootReads, 2, 'each no-flight sync reuses one flight root for all fallback work');
 assert.equal(fallbackDataWrites, 1, 'stable fallback dataset marker is written only once');
+
+documentClick({
+  target: { closest(selector) { return selector === '[data-s3-selected-lead]' ? mobileButton : null; } },
+  preventDefault() {}
+});
+assert.equal(fallbackClicks, 2, 'compatibility CTA delegates the no-flight path exactly once');
+
+flightDataPresent = true;
+window.Search3SelectedFlowV2.sync();
+documentClick({
+  target: { closest(selector) { return selector === '[data-s3-selected-lead]' ? mobileButton : null; } },
+  preventDefault() {}
+});
+assert.equal(fallbackClicks, 3, 'compatibility CTA delegates the normal flight path exactly once');
+
+const style = { display: '', setProperty(name, value) { if (name === 'display') this.display = value; } };
+const nameLabel = { hidden: true, style, removeAttribute() {}, nextElementSibling: null };
+const phoneStyle = { display: '', setProperty(name, value) { if (name === 'display') this.display = value; } };
+const phoneLabel = { hidden: true, style: phoneStyle, removeAttribute() {} };
+nameLabel.nextElementSibling = phoneLabel;
+const nameInput = { hidden: true, closest() { return nameLabel; }, removeAttribute() {} };
+const phoneInput = { closest() { return phoneLabel; } };
+const optional = { textContent: 'Дополнить заявку', hidden: false, style: { display: '', setProperty(name, value) { if (name === 'display') this.display = value; } } };
+const leadFields = { firstElementChild: nameLabel, insertBefore() {}, prepend() {} };
+leadForm = {
+  dataset: {},
+  querySelector(selector) {
+    if (selector === '.lead-fields') return leadFields;
+    if (selector === 'input[name="name"]') return nameInput;
+    if (selector === 'input[name="phone"]') return phoneInput;
+    return null;
+  },
+  querySelectorAll(selector) { return selector === 'button,summary' ? [optional] : []; }
+};
+selectedClasses.add('search3-lead-entry');
+window.Search3SelectedTourMobile.normalizeLeadFields();
+assert.equal(leadForm.dataset.search3MobileLeadNormalized, '1', 'mobile lead normalization remains idempotently marked');
+assert.equal(nameLabel.hidden, false, 'name field remains visible in mobile lead entry');
+assert.equal(phoneLabel.hidden, false, 'phone field remains visible in mobile lead entry');
+assert.equal(optional.hidden, true, 'obsolete optional lead expander remains hidden');
 
 console.log('PASS: selected-flow coalesces updates and reuses stable disclosure/fallback DOM state');
 
