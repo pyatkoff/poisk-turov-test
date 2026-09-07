@@ -16,8 +16,11 @@ on:
       - 'scripts/diagnostics/anex_full_catalog_probe.py'
       - 'scripts/diagnostics/anex_geo_enrichment.py'
       - 'scripts/diagnostics/anex_geo_checkpoint_restore.py'
+      - 'scripts/diagnostics/anex_staging_import.py'
+      - 'scripts/diagnostics/anex_staging_writer.php'
       - 'tests/anex_geo_enrichment_test.py'
       - 'tests/anex_geo_checkpoint_restore_test.py'
+      - 'tests/anex_staging_import_test.py'
       - 'scripts/diagnostics/anex_catalog_bulk_reader.php'
       - 'app/integrations/**'
       - 'v2/api-anex-preview.php'
@@ -50,10 +53,12 @@ jobs:
           python3 -B tests/anex_full_catalog_probe_test.py
           python3 -B tests/anex_geo_enrichment_test.py
           python3 -B tests/anex_geo_checkpoint_restore_test.py
+          python3 -B tests/anex_staging_import_test.py
           python3 -B tests/anex_exact_registry_builder_test.py
           php -l scripts/diagnostics/anex_catalog_reader.php
           php -l scripts/diagnostics/anex_adapter_runner.php
           php -l scripts/diagnostics/anex_catalog_bulk_reader.php
+          php -l scripts/diagnostics/anex_staging_writer.php
           php -l app/integrations/anex-xml-exact-registry.php
           for file in app/integrations/*.php; do php -l "$file"; done
           php -l v2/api-anex-preview.php
@@ -76,6 +81,13 @@ jobs:
           ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_access_probe.py --catalog
+      - name: Persist validated checkpoint in isolated ANEX staging tables
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_staging_import.py
       - name: Preserve full matching tables for manual review
         uses: actions/upload-artifact@v4
         with:
