@@ -54,8 +54,16 @@ final class AnyTourAnexSearch
         if ($this->context === [] || $this->params === []) {
             throw new LogicException('ANEX_SEARCH_NOT_STARTED');
         }
-        return ['schema_version' => 1, 'context' => $this->context,
-            'offers' => array_values($this->offers)];
+        $offers = [];
+        foreach ($this->offers as $offer) {
+            $offers[] = [
+                'offer_key' => $offer['offer_key'],
+                'supplier_offer_id' => $offer['supplier_offer_id'],
+                'kind' => $offer['kind'],
+                'hotel_external_id' => $offer['hotel']['external_id'],
+            ];
+        }
+        return ['schema_version' => 1, 'context' => $this->context, 'offers' => $offers];
     }
 
     /** Restore a server-owned snapshot without serializing the token-bearing client. */
