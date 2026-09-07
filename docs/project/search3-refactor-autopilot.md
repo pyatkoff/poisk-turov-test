@@ -28,6 +28,18 @@ Experimental layout breakage is confined to reversible release/isolated-preview
 work; repair it or roll back the affected experiment. Unverified states remain
 deferred and are never reported as passed.
 
+## Latest checked follow-up — selected-tour phone repair — 2026-09-07
+
+Source PR#1470 / `1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e`, tree `809ea3719c67e140b3cd3c576d28acd4315f89dd`, closes the geometry evidence deferred in#1467. The first actual375px screenshots confirmed that the lead heading overlapped its explanation. Required phone root/heading layout, paragraph/fact spacing and picture/header borders now remain in `tour-detail.css`; the selected-tour donor stays retired.
+
+This invocation removes **0 new bytes** and adds **434 CSS bytes** for the repair. Eight raw served assets:163740→164174; CSS93518 / JS70656. Previously prepared retirement savings are not recounted.
+
+The existing exact-artifact job conditionally runs12 fixed-tour detail/review/lead states at375/760/1000/1440, using pre-retirement CSS0f1efa2b on the same current isolated payload. All visible rectangles/styles match after repair, no document overflow or unexpected API/lead call; screenshots inspected. The canonical host fixture correction and stable viewport coordinates are test-only. Compiled navigation13-transition invocation is restored. Security34122423681 and artifact34122423688 pass; reuse artifact10018756721 without release/docs rebuild. Evidence10018755973 and full hashes are recorded in `docs/project/search3-selected-geometry-repair.json`.
+
+Preview remains b9445bc3; main remains fa58a0cb. Physical Safari/safe-area and current-source live acceptance remain deferred. An existing11px mobile-bar button touch target requires a separate intentional fix.
+
+Next: Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Next audit results-top.js consolidation into results-presentation.js with exact initial/results/edit/reset scheduling coverage. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required.
+
 ## Current owner priority — rapid CSS/JS reduction
 
 The subsequent owner request on 2026-09-06 explicitly prioritizes quickly reducing

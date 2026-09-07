@@ -1,0 +1,152 @@
+{
+  "source_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+  "source_tree": "809ea3719c67e140b3cd3c576d28acd4315f89dd",
+  "source_pr": 1470,
+  "ci": {
+    "security_run": 34122423681,
+    "artifact_run": 34122423688,
+    "artifact_id": 10018756721,
+    "artifact_digest": "sha256:eff631d2d657b0ba5cb3853ecdbf49ed7d4d98aae5ee89d317a7a110a0d39d62",
+    "archive_sha256": "810b9486ab6c3121ba33915ff8eb8d5c7df200df9f3719f397c6bce179530ae4",
+    "conclusion": "success",
+    "required_passed": 2,
+    "artifact_rebuilt_on_release": false,
+    "artifact_rebuilt_for_docs": false
+  },
+  "geometry": {
+    "baseline_source": "0f1efa2b22cd7069a0d96adbbdca1bcfa694f309",
+    "artifact_id": 10018755973,
+    "artifact_digest": "sha256:bd135bc0b83f5f3d0055e9454173176a401cc51f87b4cb6916b9ab21d84b8a01",
+    "states": 12,
+    "widths": [
+      375,
+      760,
+      1000,
+      1440
+    ],
+    "phases": [
+      "detail",
+      "review",
+      "lead"
+    ],
+    "differences": [],
+    "overflow": false,
+    "api_calls_per_journey": {
+      "tour": 1,
+      "flights": 1,
+      "other": 0
+    },
+    "lead_submitted": false,
+    "screenshots_inspected": [
+      "375-detail",
+      "375-lead",
+      "760-review",
+      "1000-lead",
+      "1440-review"
+    ],
+    "scope": "Chromium fixed-tour fixture; responsive geometry preservation, not live or physical Safari acceptance"
+  },
+  "schema_version": 1,
+  "updated_at": "2026-09-07T12:35:59.454814+00:00",
+  "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "scope": "Repair measured phone geometry regression after selected-tour donor retirement and retain focused evidence in the existing exact-artifact job.",
+  "assets": [
+    {
+      "asset": "search3-results-filters-v1.js",
+      "before_bytes": 55301,
+      "after_bytes": 55301,
+      "delta_bytes": 0,
+      "sha256": "2a7246ae3536ac716c4b883e4b7901006cf0d3ad352a7b9b6dd7d1b4547809b5"
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "before_bytes": 60385,
+      "after_bytes": 60819,
+      "delta_bytes": 434,
+      "sha256": "bd68e86bbf8c110bf9c81b2f7b1514a3fe05872793b71fd5d35ffc1249b0ed09"
+    },
+    {
+      "asset": "search3-entry-v1.css",
+      "before_bytes": 15099,
+      "after_bytes": 15099,
+      "delta_bytes": 0,
+      "sha256": "7b8ca77d07ed57b2c96d09f1b6080a77d7049f0c676cd793910f9ada730f0c17"
+    },
+    {
+      "asset": "search3-entry-v1.js",
+      "before_bytes": 3226,
+      "after_bytes": 3226,
+      "delta_bytes": 0,
+      "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "before_bytes": 6798,
+      "after_bytes": 6798,
+      "delta_bytes": 0,
+      "sha256": "aa2c13b37ffe905bd84b17e2977a45bf46d9d6cb768d19ff0dfbbcaebaf1715f"
+    },
+    {
+      "asset": "search3-results-cards-v2.js",
+      "before_bytes": 0,
+      "after_bytes": 0,
+      "delta_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "asset": "search3-selected-flow-v2.css",
+      "before_bytes": 10802,
+      "after_bytes": 10802,
+      "delta_bytes": 0,
+      "sha256": "faa7809542f0980c2ae8a6204c6eafe3177ff42748f83f0e8feb71762f8e58a9"
+    },
+    {
+      "asset": "search3-selected-flow-v2.js",
+      "before_bytes": 12129,
+      "after_bytes": 12129,
+      "delta_bytes": 0,
+      "sha256": "a84ea3c53dfddb33c1d4cdbcfbb3ebeb1a9276facd0f0e458d73fbe36487f82b"
+    }
+  ],
+  "totals": {
+    "before_bytes": 163740,
+    "after_bytes": 164174,
+    "css_bytes": 93518,
+    "js_bytes": 70656,
+    "delta_bytes": 434
+  },
+  "run_delta": {
+    "newly_removed_bytes": 0,
+    "css_bytes": 434,
+    "js_bytes": 0,
+    "bytes": 434,
+    "reason": "This invocation repairs a previously prepared retirement; no new removal is claimed."
+  },
+  "root_cause": "The retained mobile rules were narrowed to non-review; shared root flex, column section headings, phone paragraph/fact spacing and picture/header borders were omitted. At375 the lead heading overlapped its explanation.",
+  "repair": "Nine source lines retain the needed phone primitives in tour-detail.css with original body.search3-candidate #selectedTour specificity. The retired donor remains comment-only.",
+  "navigation": "Restored tests/search3-booking-navigation.cjs in the presentation suite after its invocation was lost during1467 integration;13 exact transitions pass, digest800e65e6d7658048cac39579fb279d2825987c25961995ee53e5902ed013232b.",
+  "first_geometry_failure": {
+    "source_sha": "7a9c118a25d8e814e4cdf857a861f779e8b8dfc8",
+    "run": 34121915404,
+    "artifact": 10018561842,
+    "different_states": [
+      "375-detail",
+      "375-review",
+      "375-lead"
+    ],
+    "screenshots_inspected": [
+      "375-review",
+      "375-lead"
+    ]
+  },
+  "preview_updated": false,
+  "production_updated": false,
+  "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+  "deferred": [
+    "physical Safari and device safe-area",
+    "live current-source verification",
+    "full results/editor matrix",
+    "pre-existing11px mobile-bar button touch target"
+  ],
+  "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Next audit results-top.js consolidation into results-presentation.js with exact initial/results/edit/reset scheduling coverage. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required."
+}

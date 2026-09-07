@@ -60,21 +60,20 @@
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_SELECTED_TOUR_OWNER_RETIREMENT",
-    "title": "Retire selected-tour presentation donor",
+    "id": "S3_SELECTED_GEOMETRY_REPAIR",
+    "title": "Repair and verify selected-tour phone geometry",
     "status": "CHECKED_RELEASE_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1467
+      1470
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "22c6a4dd0dbefe1e8885827ee74b160a7ee8f6f8",
-    "release_integration_sha": "94c76b6dade243c06055b5ffe65395e33e3800e3",
-    "artifact_run": 34120401716,
-    "artifact_id": 10017964340,
+    "implementation_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+    "artifact_run": 34122423688,
+    "artifact_id": 10018756721,
     "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "next_action": "Do not repeat #1466 or #1467. selected-tour.css is retired and its required shell/mobile primitives live in current owners. Browser geometry at 375/760/1000 and physical Safari remain deferred; do not report them as passed. Next audit a whole results presentation owner: either consolidate results-top.js into results-presentation.js with exact initial/results/edit scheduling coverage, or retire a bounded results-layout.css family only after collapsed/expanded 375/760/999/1000/1440 geometry is available. Keep final-sections, booking-summary, price, lead, API and analytics contracts."
+    "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Next audit results-top.js consolidation into results-presentation.js with exact initial/results/edit/reset scheduling coverage. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -910,10 +909,24 @@
       "required_passed": 2,
       "artifact_rebuilt_on_release": false,
       "artifact_rebuilt_for_docs": false
+    },
+    "selected_geometry_repair": {
+      "security_run": 34122423681,
+      "artifact_run": 34122423688,
+      "artifact_id": 10018756721,
+      "artifact_digest": "sha256:eff631d2d657b0ba5cb3853ecdbf49ed7d4d98aae5ee89d317a7a110a0d39d62",
+      "archive_sha256": "810b9486ab6c3121ba33915ff8eb8d5c7df200df9f3719f397c6bce179530ae4",
+      "conclusion": "success",
+      "required_passed": 2,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "source_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+      "source_pr": 1470,
+      "preview_published": false
     }
   },
-  "last_verified_commit": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
-  "last_verified_commit_scope": "Security and exact artifact CI passed including source/PHP/path/presentation/isolation. Thirteen compiled navigation snapshots preserve DOM/events/scroll/focus and reduce two tasks/listeners to one; existing eleven booking snapshots retained. Browser geometry and physical Safari deferred. Not published.",
+  "last_verified_commit": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+  "last_verified_commit_scope": "Security and exact source artifact passed;12 Chromium detail/review/lead states at375/760/1000/1440 match pre-retirement geometry/styles after phone repair. Corrected screenshots inspected. Physical Safari and live current source deferred. Not published.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -1320,53 +1333,80 @@
   },
   "presentation_refactor_checkpoint": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
-    "baseline": "7e51960a17efcb26a885c4d5a09900edae788ee8",
-    "implementation_sha": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
-    "release_integration_sha": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
-    "audit": "docs/project/search3-navigation-owner-consolidation.json",
-    "scope": "Complete pre-existing navigation/card-copy packet; retire standalone flight-continue into summary-cta and remove late styles on hidden card price-copy descendants.",
+    "baseline": "eb8729e17dd3c8ee88f96f9143bcd936b01db78a",
+    "implementation_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+    "release_integration_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+    "audit": "docs/project/search3-selected-geometry-repair.json",
+    "scope": "Repair measured phone geometry regression after selected-tour donor retirement and retain focused evidence in the existing exact-artifact job.",
     "ci": {
-      "security_run": 34119497936,
-      "artifact_run": 34119497935,
-      "artifact_id": 10017627199,
-      "artifact_digest": "sha256:86f485df344f956ae6a074b6f888604a882f9da9bbfe3ac92da8fac8019d3b34",
+      "security_run": 34122423681,
+      "artifact_run": 34122423688,
+      "artifact_id": 10018756721,
+      "artifact_digest": "sha256:eff631d2d657b0ba5cb3853ecdbf49ed7d4d98aae5ee89d317a7a110a0d39d62",
+      "archive_sha256": "810b9486ab6c3121ba33915ff8eb8d5c7df200df9f3719f397c6bce179530ae4",
       "conclusion": "success",
       "required_passed": 2,
       "artifact_rebuilt_on_release": false,
       "artifact_rebuilt_for_docs": false
     },
     "public_assets": {
-      "css_bytes": 94106,
+      "before_bytes": 163740,
+      "after_bytes": 164174,
+      "css_bytes": 93518,
       "js_bytes": 70656,
-      "total_bytes": 164762,
-      "scope": "Eight public paths, raw bytes; six assets identical. No page-speed claim."
+      "delta_bytes": 434,
+      "scope": "Eight raw served assets; seven byte-identical; no page-speed claim."
     },
     "run_delta": {
-      "bytes": 0,
-      "css_bytes": 0,
+      "newly_removed_bytes": 0,
+      "css_bytes": 434,
       "js_bytes": 0,
-      "scope": "No new reduction this invocation; completed and integrated the previously reported local746-byte packet.",
-      "previously_prepared_bytes_integrated": 746
-    },
-    "continuation_total": {
-      "baseline_bytes": 301524,
-      "after_bytes": 164762,
-      "saved_bytes": 136762
+      "bytes": 434,
+      "reason": "This invocation repairs a previously prepared retirement; no new removal is claimed."
     },
     "preview_updated": false,
     "production_updated": false,
     "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "visual_verification": [
-      "Current-source responsive card/detail/review/lead browser geometry",
-      "physical Safari",
-      "live current-source navigation inspection"
+    "visual_verification": {
+      "baseline_source": "0f1efa2b22cd7069a0d96adbbdca1bcfa694f309",
+      "artifact_id": 10018755973,
+      "artifact_digest": "sha256:bd135bc0b83f5f3d0055e9454173176a401cc51f87b4cb6916b9ab21d84b8a01",
+      "states": 12,
+      "widths": [
+        375,
+        760,
+        1000,
+        1440
+      ],
+      "phases": [
+        "detail",
+        "review",
+        "lead"
+      ],
+      "differences": [],
+      "overflow": false,
+      "api_calls_per_journey": {
+        "tour": 1,
+        "flights": 1,
+        "other": 0
+      },
+      "lead_submitted": false,
+      "screenshots_inspected": [
+        "375-detail",
+        "375-lead",
+        "760-review",
+        "1000-lead",
+        "1440-review"
+      ],
+      "scope": "Chromium fixed-tour fixture; responsive geometry preservation, not live or physical Safari acceptance"
+    },
+    "deferred": [
+      "physical Safari and device safe-area",
+      "live current-source verification",
+      "full results/editor matrix",
+      "pre-existing11px mobile-bar button touch target"
     ],
-    "next_action": "Do not repeat #1466 flight-continue/summary-cta/hidden-card-copy; its old uncommitted mirror on refactor/search3-results-card-owner-v1 is already integrated. Resume from fresh release, not that stale checkout. Next substantial candidate is the remaining results-layout.css card geometry family, but retain it until focused current-source collapsed/expanded geometry and specificity at375/760/999/1000/1440 are verified; the broad relocation experiment was excluded. Keep selected-tour.css pending detail/review/lead375/760/1000 evidence. The supported browser has no viewport resize; do not substitute desktop evidence or retry blocked URL workarounds. final-sections/booking-summary CSS still provide live service and summary geometry; restoreProductionLabels still repairs the core controller final button label. Do not delete these as dead code. Accumulate useful reductions and reuse the checked artifact at the next justified publication; no micro-deploy.",
-    "source_delta": {
-      "bytes": -746,
-      "css_bytes": -538,
-      "js_bytes": -208
-    }
+    "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Next audit results-top.js consolidation into results-presentation.js with exact initial/results/edit/reset scheduling coverage. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required."
   },
   "presentation_refactor_history": [
     {
@@ -3200,6 +3240,56 @@
         "current-source browser lifecycle inspection"
       ],
       "next_action": "Do not repeat final-sections/lead-note owner retirement. Keep selected-tour.css until current-source detail/review/lead geometry at375/760/1000 is available; the supported cloud browser still has no viewport resize. Audit the remaining results-layout.css card family against results-cards-v2.css for a substantial owner batch, preserving expanded-card/mobile-fact boundaries; do not claim or publish uncertain visual removals. Accumulate technical reductions and reuse the checked source artifact at a justified publication."
+    },
+    {
+      "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+      "baseline": "7e51960a17efcb26a885c4d5a09900edae788ee8",
+      "implementation_sha": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
+      "release_integration_sha": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
+      "audit": "docs/project/search3-navigation-owner-consolidation.json",
+      "scope": "Complete pre-existing navigation/card-copy packet; retire standalone flight-continue into summary-cta and remove late styles on hidden card price-copy descendants.",
+      "ci": {
+        "security_run": 34119497936,
+        "artifact_run": 34119497935,
+        "artifact_id": 10017627199,
+        "artifact_digest": "sha256:86f485df344f956ae6a074b6f888604a882f9da9bbfe3ac92da8fac8019d3b34",
+        "conclusion": "success",
+        "required_passed": 2,
+        "artifact_rebuilt_on_release": false,
+        "artifact_rebuilt_for_docs": false
+      },
+      "public_assets": {
+        "css_bytes": 94106,
+        "js_bytes": 70656,
+        "total_bytes": 164762,
+        "scope": "Eight public paths, raw bytes; six assets identical. No page-speed claim."
+      },
+      "run_delta": {
+        "bytes": 0,
+        "css_bytes": 0,
+        "js_bytes": 0,
+        "scope": "No new reduction this invocation; completed and integrated the previously reported local746-byte packet.",
+        "previously_prepared_bytes_integrated": 746
+      },
+      "continuation_total": {
+        "baseline_bytes": 301524,
+        "after_bytes": 164762,
+        "saved_bytes": 136762
+      },
+      "preview_updated": false,
+      "production_updated": false,
+      "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+      "visual_verification": [
+        "Current-source responsive card/detail/review/lead browser geometry",
+        "physical Safari",
+        "live current-source navigation inspection"
+      ],
+      "next_action": "Do not repeat #1466 flight-continue/summary-cta/hidden-card-copy; its old uncommitted mirror on refactor/search3-results-card-owner-v1 is already integrated. Resume from fresh release, not that stale checkout. Next substantial candidate is the remaining results-layout.css card geometry family, but retain it until focused current-source collapsed/expanded geometry and specificity at375/760/999/1000/1440 are verified; the broad relocation experiment was excluded. Keep selected-tour.css pending detail/review/lead375/760/1000 evidence. The supported browser has no viewport resize; do not substitute desktop evidence or retry blocked URL workarounds. final-sections/booking-summary CSS still provide live service and summary geometry; restoreProductionLabels still repairs the core controller final button label. Do not delete these as dead code. Accumulate useful reductions and reuse the checked artifact at the next justified publication; no micro-deploy.",
+      "source_delta": {
+        "bytes": -746,
+        "css_bytes": -538,
+        "js_bytes": -208
+      }
     }
   ],
   "preview_isolation_followup": {
@@ -3475,6 +3565,11 @@
       "id": "S3_NAVIGATION_OWNER_CONSOLIDATION",
       "sha": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
       "status": "CHECKED_RELEASE_NOT_PUBLISHED"
+    },
+    {
+      "id": "S3_SELECTED_GEOMETRY_REPAIR",
+      "sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+      "status": "CHECKED_RELEASE_NOT_PUBLISHED"
     }
   ],
   "release_status": {
@@ -3509,13 +3604,13 @@
       "url": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/"
     },
     "site_draft": {
-      "artifact_digest": "sha256:86f485df344f956ae6a074b6f888604a882f9da9bbfe3ac92da8fac8019d3b34",
+      "artifact_digest": "sha256:eff631d2d657b0ba5cb3853ecdbf49ed7d4d98aae5ee89d317a7a110a0d39d62",
       "branch": "release/search3-production-ready-v1",
-      "exact_artifact": 10017627199,
+      "exact_artifact": 10018756721,
       "exact_artifact_status": "CHECKED_NOT_PUBLISHED",
       "final_verification_artifact": 10015213085,
       "final_verification_run": 34113272969,
-      "implementation_verified_sha": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
+      "implementation_verified_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -3571,7 +3666,8 @@
         "Published#1434/#1435: complete responsive-review layer and earlier embedded mobile-review block retired,235139→225972 rawbytes; responsive mobile/tablet visual states deferred.",
         "Published#1437/#1439: complete lead-review layer and embedded lead-entry owner retired,225972→219880 rawbytes; desktop search-to-empty-lead inspected, mobile/tablet/lifecycle visuals deferred.",
         "Checked#1464: standalone booking-services and lead-note owners consolidated,166271→165508 raw bytes,11 settled markup snapshots retained; not yet published.",
-        "Checked#1466: standalone flight-continue retired into summary-cta; hidden card price-copy styling removed,165508→164762 bytes;13 complete compiled navigation snapshots retained. Not published."
+        "Checked#1466: standalone flight-continue retired into summary-cta; hidden card price-copy styling removed,165508→164762 bytes;13 complete compiled navigation snapshots retained. Not published.",
+        "Checked#1470: phone lead overlap repaired;12 targeted Chromium detail/review/lead states match pre-retirement source. Current pass adds434 CSS bytes and claims0 new removal. Not published."
       ],
       "latest_publication_verification": {
         "deferred": [
@@ -3646,19 +3742,53 @@
       "preview_deploy_workflow_conclusion": "success",
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
       "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-      "release_merge_sha": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
-      "source_tree": "f837c7ea0a1c88717e9190f6904f012a369ebdcc",
+      "release_merge_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+      "source_tree": "809ea3719c67e140b3cd3c576d28acd4315f89dd",
       "status": "CHECKED_SOURCE_AHEAD_OF_PUBLISHED_PREVIEW",
       "superseded_artifact": 9999511038,
       "pending_visual_verification": {
-        "source_sha": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
-        "status": "DEFERRED",
+        "source_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+        "status": "PARTIAL_CHROMIUM_TARGETED_PASS",
+        "passed": {
+          "baseline_source": "0f1efa2b22cd7069a0d96adbbdca1bcfa694f309",
+          "artifact_id": 10018755973,
+          "artifact_digest": "sha256:bd135bc0b83f5f3d0055e9454173176a401cc51f87b4cb6916b9ab21d84b8a01",
+          "states": 12,
+          "widths": [
+            375,
+            760,
+            1000,
+            1440
+          ],
+          "phases": [
+            "detail",
+            "review",
+            "lead"
+          ],
+          "differences": [],
+          "overflow": false,
+          "api_calls_per_journey": {
+            "tour": 1,
+            "flights": 1,
+            "other": 0
+          },
+          "lead_submitted": false,
+          "screenshots_inspected": [
+            "375-detail",
+            "375-lead",
+            "760-review",
+            "1000-lead",
+            "1440-review"
+          ],
+          "scope": "Chromium fixed-tour fixture; responsive geometry preservation, not live or physical Safari acceptance"
+        },
         "states": [
-          "responsive detail/review/lead geometry at375/760/1000",
-          "physical Safari",
-          "current-source browser lifecycle inspection"
+          "physical Safari and device safe-area",
+          "live current-source verification",
+          "full results/editor matrix",
+          "pre-existing11px mobile-bar button touch target"
         ],
-        "reason": "Source is not published; supported browser has no viewport resize."
+        "reason": "Focused isolated fixture is not live or physical Safari acceptance."
       }
     }
   },
@@ -7138,7 +7268,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-07T12:15:00.000Z",
+  "updated_at": "2026-09-07T12:35:59.454814+00:00",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
@@ -7277,6 +7407,89 @@
       ],
       "source_audit": "Caught and corrected a late mobile margin expansion, stretched back button and photo/header seam before final build."
     },
-    "next_action": "Do not repeat #1466 or #1467. selected-tour.css is retired and its required shell/mobile primitives live in current owners. Browser geometry at 375/760/1000 and physical Safari remain deferred; do not report them as passed. Next audit a whole results presentation owner: either consolidate results-top.js into results-presentation.js with exact initial/results/edit scheduling coverage, or retire a bounded results-layout.css family only after collapsed/expanded 375/760/999/1000/1440 geometry is available. Keep final-sections, booking-summary, price, lead, API and analytics contracts."
+    "next_action": "Do not repeat #1466 or #1467. selected-tour.css is retired and its required shell/mobile primitives live in current owners. Browser geometry at 375/760/1000 and physical Safari remain deferred; do not report them as passed. Next audit a whole results presentation owner: either consolidate results-top.js into results-presentation.js with exact initial/results/edit scheduling coverage, or retire a bounded results-layout.css family only after collapsed/expanded 375/760/999/1000/1440 geometry is available. Keep final-sections, booking-summary, price, lead, API and analytics contracts.",
+    "geometry_followup": {
+      "source_pr": 1470,
+      "source_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+      "status": "CHROMIUM12_STATES_PASS_PHONE_REPAIRED",
+      "audit": "docs/project/search3-selected-geometry-repair.json"
+    }
+  },
+  "latest_selected_geometry_repair": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "baseline": "eb8729e17dd3c8ee88f96f9143bcd936b01db78a",
+    "implementation_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+    "release_integration_sha": "1c1a885fdbf0d1140ceb729b0acbc14cde94ba8e",
+    "audit": "docs/project/search3-selected-geometry-repair.json",
+    "scope": "Repair measured phone geometry regression after selected-tour donor retirement and retain focused evidence in the existing exact-artifact job.",
+    "ci": {
+      "security_run": 34122423681,
+      "artifact_run": 34122423688,
+      "artifact_id": 10018756721,
+      "artifact_digest": "sha256:eff631d2d657b0ba5cb3853ecdbf49ed7d4d98aae5ee89d317a7a110a0d39d62",
+      "archive_sha256": "810b9486ab6c3121ba33915ff8eb8d5c7df200df9f3719f397c6bce179530ae4",
+      "conclusion": "success",
+      "required_passed": 2,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
+    },
+    "public_assets": {
+      "before_bytes": 163740,
+      "after_bytes": 164174,
+      "css_bytes": 93518,
+      "js_bytes": 70656,
+      "delta_bytes": 434,
+      "scope": "Eight raw served assets; seven byte-identical; no page-speed claim."
+    },
+    "run_delta": {
+      "newly_removed_bytes": 0,
+      "css_bytes": 434,
+      "js_bytes": 0,
+      "bytes": 434,
+      "reason": "This invocation repairs a previously prepared retirement; no new removal is claimed."
+    },
+    "preview_updated": false,
+    "production_updated": false,
+    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "visual_verification": {
+      "baseline_source": "0f1efa2b22cd7069a0d96adbbdca1bcfa694f309",
+      "artifact_id": 10018755973,
+      "artifact_digest": "sha256:bd135bc0b83f5f3d0055e9454173176a401cc51f87b4cb6916b9ab21d84b8a01",
+      "states": 12,
+      "widths": [
+        375,
+        760,
+        1000,
+        1440
+      ],
+      "phases": [
+        "detail",
+        "review",
+        "lead"
+      ],
+      "differences": [],
+      "overflow": false,
+      "api_calls_per_journey": {
+        "tour": 1,
+        "flights": 1,
+        "other": 0
+      },
+      "lead_submitted": false,
+      "screenshots_inspected": [
+        "375-detail",
+        "375-lead",
+        "760-review",
+        "1000-lead",
+        "1440-review"
+      ],
+      "scope": "Chromium fixed-tour fixture; responsive geometry preservation, not live or physical Safari acceptance"
+    },
+    "deferred": [
+      "physical Safari and device safe-area",
+      "live current-source verification",
+      "full results/editor matrix",
+      "pre-existing11px mobile-bar button touch target"
+    ],
+    "next_action": "Do not repeat selected-tour retirement or its phone repair (#1467/#1470). The focused Chromium fixture covers detail/review/lead at375/760/1000/1440; reuse the checked artifact. Next audit results-top.js consolidation into results-presentation.js with exact initial/results/edit/reset scheduling coverage. Retain results-layout.css until collapsed/expanded card geometry is available. The fixture also reveals a pre-existing11px mobile-bar button height at375; handle the touch-target defect separately with intentional geometry evidence. Physical Safari/safe-area, live current-source and full card/editor matrices remain deferred; production approval remains required."
   }
 }
