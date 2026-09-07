@@ -2061,3 +2061,30 @@ Security `34164093668`, exact artifact `34164093654` and ready repeat `341641987
 Checked release is ahead of published preview: no publication in this invocation. Preview stays at `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main/production stay at `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, manual screenshots (artifact download HTTP 403), physical Safari and safe-area acceptance are deferred. Automated assertions are not owner visual acceptance.
 
 Next: audit the complete `primary-meal-ux-v1.js`/CSS owner (7301+2040 raw). Its meal catalogue API loading, URL food restoration and reset preservation are live and must remain in a current owner before excluding obsolete quick-choice presentation. Do not blindly remove it or the live sales-leader photo fallback/supplier badge. Audit: `docs/project/search3-lean-mobile-summary.json`.
+
+
+## S3_LEAN_PRIMARY_MEAL_OWNER — checked release, 2026-09-07
+
+Source PR #1512 / `46388519c2832eb55f7804e256df501ba2873e3d`; checked release `05763d64cfeab128c84698b58fd6630123edef1c`. Search3 excludes the complete `primary-meal-ux-v1.js` and CSS owners. The current catalog owner exposes its existing meal loader, and the current Search3 form owner loads it on native-select focus plus the existing bounded automatic attempt, restores `food` from the URL after asynchronous options arrive and retains stars/meal values across the legacy additional-filter reset. Obsolete quick choices are absent. The full legacy manifest/files remain unchanged.
+
+Loaded raw is **620431 → 612019 bytes (−8412)**: shared CSS 223048→221008, shared JS 247254→240024 and eight Search3 assets 150129→150987 (+858 for retained current-owner behavior). Exact emitted endpoint plus eight independent-file gzip is **136884 → 134646 (−2238)**. The eight-path increase is not mislabeled as a saving.
+
+Security `34165119169`, initial exact artifact `34165119105` and ready repeat `34165273963` passed. Reusable artifact `10033962139`, digest `sha256:70b665898145c6881d7c237f1efc002d76322cb967bbb378146305597a588bbe`; selected evidence `10033961421`, results/entry evidence `10033961789`. Browser checks cover accessible native meal options, URL value restoration and no retired quick choices at 375/700/701/760/761/1440, plus the existing 12 selected and 12 result states. No supplier search or lead was submitted.
+
+No publication: preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main/production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Manual screenshot inspection and physical Safari/safe-area are deferred.
+
+## S3_LEAN_PARAMETER_FILTER_RAIL — checked release, 2026-09-07
+
+Source PR #1514 / `ee11ef2cb06771dc2e25688acf39349c213dbd56`; checked code release `ba8ff686c4bc9995762a3c09a4ad7e7b6a8b6241`. Search3 excludes the complete `search-params-filter-rail-v1.js` and CSS pair; current Search3 form and DS2 desktop/mobile result-filter owners remain. The full legacy route retains both files.
+
+The first exact browser run found a real hidden dependency: `search-filters-ux-v1.js` temporarily placed the hotel-category field in the legacy main grid, and the retired rail moved it out before the current Search3 owner cleared that grid. The current form owner now performs this one existing-node move before clearing legacy markup. The strict field-order/value/geometry comparison was preserved and passed after the repair.
+
+Packet loaded raw is **612019 → 605488 bytes (−6531)**: shared CSS 221008→218589, shared JS 240024→235774 and eight Search3 assets 150987→151125 (+138 retained behavior). Gzip is **134646 → 133134 (−1512)**. Combined with #1512, this invocation is **620431 → 605488 raw (−14943)** and **136884 → 133134 gzip (−3750)**.
+
+Security `34166319834`, initial exact artifact `34166319872` and ready repeat `34166449552` passed. Reusable artifact `10034328909`, digest `sha256:d7bdf4003890865a4b990527eec476df66b604eb32e932e6dcdef157bc5191a0`; selected evidence `10034327927`, results/entry evidence `10034328420`. Chromium passed 30 form lifecycle states at 375/700/701/760/761/1440, 12 selected states and 12 result states. No real request or lead was sent.
+
+PR #1513 attempted whole `ds2-search-intro-v1.css` exclusion but exact CI failed all 12 selected-tour geometry states. It was closed unmerged; its projected bytes are not counted. This proves that owner still contains live selected-tour geometry and must not be retried as a blanket removal.
+
+Checked release is ahead of the published preview. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main/production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Manual screenshot inspection, live current-source interaction and physical Safari/safe-area are deferred. Audit: `docs/project/search3-lean-primary-meal-and-params.json`.
+
+Next: audit complete `results-layout-guard-v1.css` exclusion against the current card/drawer owners. Preserve the full legacy manifest and require exact 12-state results plus selected geometry. Do not retry blanket `ds2-search-intro-v1.css` deletion.
