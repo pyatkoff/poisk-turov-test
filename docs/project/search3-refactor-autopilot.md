@@ -66,9 +66,45 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `8b0cc058cf33ba724a376f8dd254373e227ee990`;
+The latest checked release source is `38be9f08c1b06635bb59d631e5cc85f7b3af3d70`;
 the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
+
+### Latest checked candidate — filter and maket7 owner retirement — 2026-09-07
+
+Source #1443 / exact release `38be9f08c1b06635bb59d631e5cc85f7b3af3d70`,
+tree `04bfe2f0b2356a170e0ffee8172caac07041e6e8`, retires the complete
+`filters.css` presentation donor and the complete `maket7-lock.js` DOM/inline-style
+owner. Only active rail/mobile declarations move to `results-layout.css` and
+`mobile-results-toolbar.css`; the injected confidence grid becomes static in
+`selected-flow-v2.css`. Current search-form/entry modules retain field placement.
+The same package removes results-top inline width/offset/padding calculations and
+its resize listener while preserving coalesced result-state mutation updates.
+
+Eight raw public assets fall **209753 → 203704 bytes (−6049)**: CSS 115796 →
+113988 (−1808), JS 93957 → 89716 (−4241). From the 301524-byte whole-layer
+baseline the checked reduction is now 97820 bytes. All eight public paths and the
+protected business contracts remain unchanged.
+
+Both mandatory source jobs passed with guards unchanged: Security `34084631292`
+and exact artifact build `34084631257`; artifact `10004793873`, digest
+`sha256:098afd4abc7e9f2941e7d64fa87e37b57dcdb38267902effe9e638c25219dc89`.
+One exact source build was reused. Local exact check, 18 presentation tests (one
+PHP-only local skip), focused result scheduler/filter/mobile owner regressions and
+diff check passed. Audit: `docs/project/search3-filter-maket7-owner-retirement.json`.
+
+This source is **checked but not published**. The isolated preview deliberately
+remains source `4b061396`; main and production remain `fa58a0cb`. No browser or
+visual pass is claimed. Filter/results-tools geometry at 390/768/999/1000/1024/1440,
+selected confidence at 1000/1363, review/lead geometry and physical Safari remain
+deferred.
+
+Next: do not repeat `filters.css`, `maket7-lock.js` or results-top inline geometry.
+The separately audited 3535-byte review-layout block still requires computed
+review/lead evidence at 641/999/1000/1363. Until that evidence exists, inspect a
+different large presentation owner or combine the measured selected-tour and
+responsive fragments with a substantial safe package; do not touch protected
+price presentation merely to increase the byte saving.
 
 ### Latest checked candidate — results donor retirement — 2026-09-07
 
