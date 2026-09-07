@@ -66,9 +66,51 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `9d24bb7242779f560bc1e603e0346078b591d818`;
+The latest checked release source is `90b3a3df3a54ccd513d76dade1307f8354920cbd`;
 the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
+
+### Latest checked candidate — final style injector and boundary repairs — 2026-09-07
+
+PR #1458 / source `90b3a3df3a54ccd513d76dade1307f8354920cbd` retires the last
+runtime CSS injector (`summary-cta-styles.js` and its private stylesheet). Common
+review grid anchors now have one linked owner in `review-layout.css`; phase
+isolation, phone recap geometry, CTA sizing and native nesting are retained.
+
+The same package repairs four confirmed boundaries from earlier unpublished
+retirements: compact toolbar display through 999px without duplicate desktop
+actions, default hiding of the phone entry on desktop, canonical map-button text,
+and synchronous displayed-total refresh through the compatible `decorate()` API.
+Price arithmetic and lead/API/analytics contracts are unchanged. Regressions were
+reproduced in focused tests before fixes; these tests are not visual acceptance.
+
+Eight raw assets: **166978 → 166115 bytes (−863 net)**. JS falls **2899 bytes**;
+linked CSS grows **2036 bytes**, included in that net result. Injector consolidation
+alone saves 924 bytes; compact repairs add 61. Cumulative baseline reduction is
+**135409 bytes** from 301524. Audit with all eight exact hashes:
+`docs/project/search3-review-injector-boundary-repair.json`.
+
+Security `34111711478` and exact artifact build `34111711401` completed successfully.
+Reusable artifact `10014623594`, digest
+`sha256:bbd6ae86ba257c2c5f73c8a4c75c14971a7ad03d54902e16dd3017e7eb818eaf`.
+Local build/check, toolbar/results/selected-flow/linked-style regressions, 35
+source/presentation tests and owner validators passed; the one PHP-only local skip
+is covered by CI. Docs reuse the source artifact and do not rebuild it. The older
+results-context audit also receives a metadata-only empty-file SHA256 correction.
+
+**Not published.** Main remains `fa58a0cba6dcfc8624d98c20d64fa06330eae309`;
+no production or preview operation was performed. A cloud browser is available,
+but current-source local/data fixture navigation was blocked by its URL policy.
+Those attempts stopped without a workaround; no screenshots or visual pass are
+claimed. Current-source toolbar/entry/map/review geometry and Safari stay deferred.
+
+Next: reuse this exact artifact for a justified isolated-preview checkpoint and
+briefly inspect affected toolbar/entry/map/review states. Then retire the whole
+`selected-tour.css` donor only after current-source detail/review/lead geometry at
+375/760/1000 is checked. Its 6002 emitted bytes contain still-required shared
+shell, back-button, photo/facts, section-title and fixed-mobile-CTA primitives;
+salvage those into current owners. The estimated 2–3 KB opportunity is not measured
+savings or permission to remove the donor without the missing geometry evidence.
 
 ### Latest checked candidate — legacy results context owner — 2026-09-07
 
