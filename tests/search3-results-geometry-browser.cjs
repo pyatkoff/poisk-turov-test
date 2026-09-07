@@ -40,7 +40,8 @@ const card = `
   </div>
 </article>`;
 
-const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box-sizing:border-box}html,body{margin:0}.v2-shell{display:block!important;width:100%!important;max-width:none!important;padding:0!important}.results-layout{display:block!important;width:calc(100% - 48px)!important;max-width:951px!important;margin:24px auto!important}.results-filter-rail{display:none!important}.results-layout #results{display:flex!important;width:100%!important;max-width:none!important;margin:0!important}@media(min-width:1000px){.results-layout{width:min(886px,calc(100% - 48px))!important}}</style><body class="search3-candidate search3-results-active search3-has-results"><main class="v2-shell"><section id="resultsSearchSummary">Параметры поиска</section><section id="resultsTools"><strong>1 тур</strong></section><div class="results-layout"><aside class="results-filter-rail"></aside><section id="results">${card}</section></div></main></body>`;
+const drawer = `<div class="mrf-sheet"><div class="mrf-backdrop"></div><section class="mrf-panel"><div class="mrf-grab"></div><div class="mrf-head"><h3>Фильтры</h3><button class="mrf-close" type="button">×</button></div><div class="mrf-section"><strong>Категория отеля</strong><div class="mrf-options"><button class="mrf-choice is-active" type="button">5★</button></div></div><div class="mrf-section"><strong>Цена за тур, до</strong><div class="mrf-price"><input type="number"><span>₽</span></div></div><div class="mrf-actions"><button class="mrf-reset" type="button">Сбросить</button><button class="mrf-apply" type="button">Показать</button></div></section></div>`;
+const html = `<!doctype html><meta charset="utf-8"><style>*,*:before,*:after{box-sizing:border-box}html,body{margin:0}.v2-shell{display:block!important;width:100%!important;max-width:none!important;padding:0!important}.results-layout{display:block!important;width:calc(100% - 48px)!important;max-width:951px!important;margin:24px auto!important}.results-filter-rail{display:none!important}.results-layout #results{display:flex!important;width:100%!important;max-width:none!important;margin:0!important}@media(min-width:1000px){.results-layout{width:min(886px,calc(100% - 48px))!important}}</style><body class="search3-candidate search3-results-active search3-has-results"><main class="v2-shell"><section id="resultsSearchSummary">Параметры поиска</section><section id="resultsTools"><strong>1 тур</strong></section><div class="results-layout"><aside class="results-filter-rail"></aside><section id="results">${card}</section></div></main>${drawer}</body>`;
 
 function inside(inner, outer, message) {
   assert.ok(inner.left >= outer.left - 1 && inner.right <= outer.right + 1
@@ -56,7 +57,7 @@ function inside(inner, outer, message) {
   if (output) fs.mkdirSync(output, { recursive: true });
   let states = 0;
   try {
-    for (const width of [375, 760, 999, 1000, 1440]) {
+    for (const width of [375, 760, 761, 999, 1000, 1440]) {
       for (const expanded of [false, true]) {
         const page = await browser.newPage({ viewport: { width, height: 1000 } });
         try {
@@ -76,14 +77,18 @@ function inside(inner, outer, message) {
             document.body.classList.add('search3-hotel-tours-open');
             document.querySelector('.hotel-card').classList.add('search3-tours-open');
             document.querySelector('.hotel-tours').hidden = false;
+            document.querySelector('.mrf-sheet').classList.add('is-open');
           });
           await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+          if (expanded && width <= 999) await page.waitForTimeout(250);
           const state = await page.evaluate(() => {
             const pick = selector => {
               const node = document.querySelector(selector);
               const value = node.getBoundingClientRect();
               const box = { left: value.left, top: value.top, right: value.right, bottom: value.bottom, width: value.width, height: value.height };
-              return { box, display: getComputedStyle(node).display };
+              const style = getComputedStyle(node);
+              return { box, display: style.display, visibility: style.visibility, pointerEvents: style.pointerEvents,
+                opacity: Number(style.opacity), transform: style.transform, position: style.position };
             };
             return {
               overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -92,6 +97,8 @@ function inside(inner, outer, message) {
               action: pick('.search3-hotel-action'), disclosure: pick('.search3-show-tours'),
               tours: pick('.hotel-tours'), row: pick('.tour-row'), meta: pick('.tour-meta'),
               tourAction: pick('.tour-action'), direct: pick('.direct-tour'),
+              sheet: pick('.mrf-sheet'), backdrop: pick('.mrf-backdrop'), panel: pick('.mrf-panel'),
+              close: pick('.mrf-close'), drawerActions: pick('.mrf-actions'),
               retired: ['.hotel-actions', '.hotel-inline-detail', '.hotel-compare-toggle', '.result-decision-badges', '.hotel-choice-hint', '.hotel-decision-line'].map(selector => pick(selector).display),
             };
           });
@@ -107,6 +114,21 @@ function inside(inner, outer, message) {
           assert.ok(state.retired.every(display => display === 'none'), `${width}: retired card chrome stays hidden`);
           assert.ok(state.photo.box.right <= state.body.box.left + 1 || state.photo.box.bottom <= state.body.box.top + 1,
             `${width}: photo and body do not overlap`);
+          if (width <= 999) {
+            assert.equal(state.sheet.display, 'block', `${width}: compact drawer remains mounted`);
+            assert.equal(state.sheet.visibility, expanded ? 'visible' : 'hidden', `${width}: drawer visibility follows open state`);
+            assert.equal(state.sheet.pointerEvents, expanded ? 'auto' : 'none', `${width}: drawer pointer state follows open state`);
+            if (expanded) {
+              assert.ok(state.backdrop.opacity >= .99, `${width}: open drawer backdrop is opaque`);
+              assert.ok(Math.abs(state.panel.box.right - width) <= 1, `${width}: open drawer stays right-aligned`);
+              assert.ok(state.close.box.width >= 43.5 && state.close.box.height >= 43.5, `${width}: drawer close keeps a 44px target`);
+              assert.equal(state.drawerActions.position, width <= 760 ? 'fixed' : 'sticky', `${width}: drawer actions retain breakpoint ownership`);
+              assert.ok(Math.abs(state.panel.box.width - (width <= 760 ? width : 440)) <= 1,
+                `${width}: drawer width retains phone/tablet geometry`);
+            }
+          } else {
+            assert.equal(state.sheet.display, 'none', `${width}: compact drawer stays absent on desktop`);
+          }
           if (width >= 1000) assert.ok(Math.abs(state.main.box.height - 230) <= 1, `${width}: desktop card owner keeps 230px geometry`);
           if (expanded) {
             assert.notEqual(state.tours.display, 'none', `${width}: expanded packages are visible`);

@@ -174,6 +174,32 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('new MutationObserver(scheduleResultsSync)', results_presentation)
         self.assertIn('function scheduleResultsSync()', results_presentation)
 
+    def test_retired_tablet_drawer_and_redundant_phone_rules_have_current_owners(self):
+        tablet = (ROOT / 'src/search3/styles/results-tablet-layout.css').read_text()
+        toolbar = (ROOT / 'src/search3/styles/mobile-results-toolbar.css').read_text()
+        mobile = (ROOT / 'src/search3/styles/results-mobile-layout.css').read_text()
+        cards = (ROOT / 'src/search3/styles/results-cards-v2.css').read_text()
+        guards = (ROOT / 'src/search3/styles/acceptance-guards.css').read_text()
+
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', tablet, flags=re.S).strip(), '')
+        for marker in (
+            '@media(max-width:760px),(min-width:761px){',
+            '& .mrf-sheet,& .mrf-backdrop{inset:0!important}',
+            '& .mrf-panel,& .mrf-head,& .mrf-choice,& .mrf-actions,& .mrf-reset{background:#fff!important}',
+            '& .mrf-section{border-top:1px solid #edf0f5!important}',
+        ):
+            self.assertIn(marker, toolbar)
+        for marker in (
+            '& .results-search-summary {margin:8px var(--search3-results-inline-gutter)!important',
+            '& .hotel-title {font-size:16px!important}',
+            '& .search3-show-tours{min-height:44px!important}',
+            ':is(.results-search-summary,.results-tools--ds2,.search3-mobile-toolbar)',
+        ):
+            self.assertNotIn(marker, mobile)
+        self.assertIn('.hotel-title{font-size:18px!important', cards)
+        self.assertIn('.hotel-tours:not([hidden]) .direct-tour{width:118px!important;min-width:118px!important;min-height:44px!important', cards)
+        self.assertIn('width:calc(100% - 24px)!important', guards)
+
     def test_lead_review_layer_is_retired_without_losing_lifecycle_truth(self):
         retired = (ROOT / 'src/search3/styles/lead-review.css').read_text()
         self.assertEqual(re.sub(r'/\*.*?\*/', '', retired, flags=re.S).strip(), '')
