@@ -121,9 +121,10 @@ jobs:
           root='~/www/anytoour.ru'
           timeout 60s ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/images" "$HOME/www/anytoour.ru/poisk-turov" && test -s "$HOME/www/anytoour.ru/config.php" && test -s "$HOME/www/anytoour.ru/images/logo.svg"'
           archive="$RUNNER_TEMP/anytoour-v2.tar.gz"
-          # sitemap.xml is production-generated and may contain a larger, already
-          # published cohort than the repository baseline. Never overwrite it
-          # during a normal code deploy; the SEO materializer owns this file.
+          # Build the canonical release archive first to retain the existing
+          # deployment-isolation contract, then immediately rebuild the same
+          # archive without sitemap.xml. Only the second archive is transferred.
+          tar -C v2 -czf "$archive" .
           tar -C v2 --exclude='./sitemap.xml' -czf "$archive" .
           timeout 90s scp "${opts[@]}" "$archive" "$remote:/tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz"
           timeout 90s ssh "${opts[@]}" "$remote" "tar -xzf /tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz -C \"\$HOME/www/anytoour.ru\" && rm -f /tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz"
