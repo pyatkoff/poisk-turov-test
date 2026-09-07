@@ -17,6 +17,7 @@ on:
       - 'scripts/diagnostics/anex_geo_enrichment.py'
       - 'scripts/diagnostics/anex_geo_checkpoint_restore.py'
       - 'tests/anex_geo_enrichment_test.py'
+      - 'tests/anex_geo_checkpoint_restore_test.py'
       - 'scripts/diagnostics/anex_catalog_bulk_reader.php'
       - 'app/integrations/**'
       - 'tests/anex-*-smoke.php'
@@ -47,6 +48,7 @@ jobs:
           python3 -B tests/anex_adapter_probe_test.py
           python3 -B tests/anex_full_catalog_probe_test.py
           python3 -B tests/anex_geo_enrichment_test.py
+          python3 -B tests/anex_geo_checkpoint_restore_test.py
           python3 -B tests/anex_exact_registry_builder_test.py
           php -l scripts/diagnostics/anex_catalog_reader.php
           php -l scripts/diagnostics/anex_adapter_runner.php
@@ -75,7 +77,7 @@ jobs:
       - name: Preserve full matching tables for manual review
         uses: actions/upload-artifact@v4
         with:
-          name: anex-hotel-catalog-match
+          name: anex-hotel-catalog-match-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/anex-catalog/
           if-no-files-found: error
           retention-days: 30

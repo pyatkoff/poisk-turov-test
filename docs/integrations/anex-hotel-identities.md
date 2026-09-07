@@ -127,7 +127,7 @@ difference, and fewer than the enrichment reader limit of 256 candidates (the or
 a review proposal, not proof of identity: shared complex coordinates, omitted
 section names and candidate retrieval limits can still hide ambiguity.
 Missing details and supplier-namespace conflicts remain in review. Each run
-restores the last successful same-branch workflow artifact and merges its new
+restores the newest saved same-branch, same-workflow artifact and merges its new
 rows into cumulative JSON and `anex-hotel-geo-review.csv`. The schema-1 pilot
 is migrated using its accompanying full-catalog snapshot. A fingerprint of XML
 ID/name/alternate name/country/town skips previously attempted unchanged rows;
@@ -142,7 +142,7 @@ self-dispatch is installed: a workflow invocation processes up to ten batches.
 Actions artifacts expire after 30 days. Missing/expired/corrupt checkpoints
 stop continuation instead of silently restarting. Concurrency is serialized
 without cancelling an active batch. A failed batch can be retried from the
-last successful checkpoint. Room categories and property area are not used
+latest saved checkpoint. Room categories and property area are not used
 without verified fields.
 
 
@@ -153,3 +153,12 @@ truncated rows are requeued automatically; a new full 256-row page still
 blocks strong-candidate classification. The per-row candidate limit records
 which retrieval breadth was used. This change does not relax identity,
 country, distance, name, section or ambiguity checks.
+
+
+Checkpoint restoration selects the newest artifact from the last 100 runs of
+this workflow on the ANEX branch, including an artifact from an earlier
+attempt of a currently running job. It examines the latest 100 repository
+artifacts and stops if none belong to that workflow history. An expired latest
+checkpoint does not cause fallback to older progress. Each run attempt saves
+a distinct artifact name with run ID and attempt number; prior snapshots are
+retained. This prevents rollback or artifact-name collisions on retries.
