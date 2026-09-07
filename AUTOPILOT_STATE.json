@@ -53,26 +53,26 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Source#1445: legacy base form presentation and standalone mobile-entry runtime owners retired; active form/guest/toggle rules live in current entry and form-composition owners;199740→195944 raw bytes (−3796). Both mandatory source jobs passed; release checked atc62ebc1d, preview intentionally remains4b061396.",
+    "last_material_progress": "Source#1447: redundant booking-progress runtime/CSS and decorative review-heading runtime retired; primary flight/review/lead/back owners and selected-heading accessibility retained;195944→187488 raw bytes (−8456). Both mandatory source jobs passed; release checked at7662d6e1, preview intentionally remains4b061396.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not repeat base form or mobile-entry retirement. The complete result-cards.css donor is the next measured candidate, but retire it only after its mobile entry and result-order replacements pass bounded browser geometry; otherwise inspect a different large owner. Keep protected price, final-sections.js and review-layout out of speculative removal. Physical Safari remains deferred.",
+    "next_action": "Do not restore the booking stepper or decorative review heading. The complete result-cards.css donor has only about 1022 bytes of conservative net saving after active-rule migration, so accumulate it with another substantial owner and only when bounded mobile/result-order geometry is available; otherwise inspect a different large presentation owner. Protected contracts and production lock remain.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_FORM_MOBILE_OWNER_RETIREMENT",
-    "title": "Retire legacy form and standalone mobile-entry ownership",
+    "id": "S3_BOOKING_CHROME_OWNER_RETIREMENT",
+    "title": "Retire redundant booking progress and review banner ownership",
     "status": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1445
+      1447
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "c62ebc1dedcba458fe69ab232fea6000aadf781c",
-    "artifact_run": 34088767361,
-    "artifact_id": 10006114313,
-    "next_action": "Evaluate complete result-cards.css retirement only with bounded mobile/result-order browser evidence; otherwise inspect a different large owner. Main/production remain locked; hourly development stays enabled."
+    "implementation_sha": "7662d6e15122f58fdc8407431fceee8efd2f0513",
+    "artifact_run": 34092785098,
+    "artifact_id": 10007458840,
+    "next_action": "Accumulate the measured result-cards.css net fragment with another substantial owner only when bounded browser geometry is available; otherwise audit a different large owner. Main/production remain locked; hourly development stays enabled."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -852,6 +852,23 @@
       "artifact_job": 101637847358,
       "artifact_id": 10006114313,
       "artifact_digest": "sha256:3c9b75bdde96d378774a61df31af59ffe32925b86d25931bdc1b0b0f5d6286d9",
+      "required_passed": 2,
+      "first_attempt_passed": true,
+      "preview_published": false,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false,
+      "full_responsive_site_seo": "deferred, not passed"
+    },
+    "booking_chrome_owner_retirement": {
+      "policy": "OWNER_AUTHORIZED_WHOLE_LAYER_REMOVAL_AND_TARGETED_REPAIR",
+      "source_sha": "7662d6e15122f58fdc8407431fceee8efd2f0513",
+      "source_pr": 1447,
+      "security_run": 34092785050,
+      "security_job": 101649652379,
+      "artifact_run": 34092785098,
+      "artifact_job": 101649652372,
+      "artifact_id": 10007458840,
+      "artifact_digest": "sha256:bfb96aec3231e93ed4b7763e51469ddb81aae7f1d5fa4b79dae575c46511c1f6",
       "required_passed": 2,
       "first_attempt_passed": true,
       "preview_published": false,
@@ -6301,6 +6318,50 @@
       "verified_at": "2026-09-06T23:18:28.983Z"
     }
   ],
+  "latest_booking_chrome_owner_retirement": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
+    "base_release_sha": "17d160c5d1be60c5515975425fb8bc3c3bdf9bb5",
+    "implementation_sha": "7662d6e15122f58fdc8407431fceee8efd2f0513",
+    "release_integration_sha": "7662d6e15122f58fdc8407431fceee8efd2f0513",
+    "source_tree": "2c02091d36b3013f566d925281d668b09665ac61",
+    "source_pr": 1447,
+    "audit": "docs/project/search3-booking-chrome-owner-retirement.json",
+    "scope": "Redundant booking-progress runtime/CSS and decorative review-heading runtime retired; primary flight/review/lead/back and selected-heading accessibility owners retained; empty selected/review grid rows compacted.",
+    "ci": {
+      "security_run": 34092785050,
+      "artifact_run": 34092785098,
+      "artifact_id": 10007458840,
+      "artifact_digest": "sha256:bfb96aec3231e93ed4b7763e51469ddb81aae7f1d5fa4b79dae575c46511c1f6",
+      "required_passed": 2,
+      "conclusion": "success",
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
+    },
+    "public_assets": {
+      "css_bytes": 106281,
+      "js_bytes": 81207,
+      "total_bytes": 187488,
+      "scope": "Eight public paths, raw uncompressed bytes; no transfer-size or speed claim."
+    },
+    "package_delta": {"bytes": -8456, "css_bytes": -4058, "js_bytes": -4398},
+    "continuation_total": {"baseline_bytes": 301524, "after_bytes": 187488, "saved_bytes": 114036},
+    "preview": {
+      "published": false,
+      "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+      "checked_release_sha": "7662d6e15122f58fdc8407431fceee8efd2f0513"
+    },
+    "visual_verification": {
+      "performed": false,
+      "reason": "No preview publication or browser geometry pass was performed; no visual claim is made.",
+      "deferred": [
+        "selected tour to flight to review to lead and back",
+        "selected/review geometry at 375/640/999/1000/1363",
+        "physical Safari"
+      ]
+    },
+    "production_updated": false,
+    "next_action": "Do not restore the retired booking chrome. Combine the approximately 1022-byte result-cards.css net retirement with another substantial owner only when bounded mobile/result-order geometry is available; otherwise inspect a different large owner."
+  },
   "site_wide_score": {
     "note": "Historical assessment from 2026-09-02. Not reevaluated for Search3 and not a current acceptance score.",
     "scale": 10,
@@ -6322,5 +6383,5 @@
     "visual_run": 33976375814
   },
   "task_tracker": "https://github.com/pyatkoff/poisk-turov-test/issues/996",
-  "updated_at": "2026-09-07T03:48:00Z"
+  "updated_at": "2026-09-07T06:54:53Z"
 }

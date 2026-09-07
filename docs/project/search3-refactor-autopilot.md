@@ -70,7 +70,42 @@ The latest checked release source is `c62ebc1dedcba458fe69ab232fea6000aadf781c`;
 the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
 
-### Latest checked candidate — form and mobile-entry owner retirement — 2026-09-07
+### Latest checked candidate — booking chrome owner retirement — 2026-09-07
+
+Source #1447 / exact release `7662d6e15122f58fdc8407431fceee8efd2f0513`,
+tree `2c02091d36b3013f566d925281d668b09665ac61`, retires the separate
+booking-progress runtime and CSS owner plus the decorative final-review heading
+runtime. The selected-tour path keeps its primary flight-to-review action,
+summary-to-lead/back actions, booking summary, lead lifecycle and accessible
+selected-hotel heading. The current selected-flow owner also continues to hide
+the old `.selected-tour-progress` donor.
+
+Selected and review grids no longer reserve empty rows for the removed chrome.
+Eight raw public assets fall **195944 → 187488 bytes (−8456)**: CSS 110339 →
+106281 (−4058), JS 85605 → 81207 (−4398). From the 301524-byte whole-layer
+baseline the checked reduction is now 114036 bytes. All eight public paths and
+protected business contracts remain unchanged.
+
+Both mandatory source jobs passed with guards unchanged: Security `34092785050`
+and exact artifact build `34092785098`; artifact `10007458840`, digest
+`sha256:bfb96aec3231e93ed4b7763e51469ddb81aae7f1d5fa4b79dae575c46511c1f6`.
+The single exact source build was reused. Local exact check and 35 focused
+source/presentation checks passed; one PHP-only local check was skipped because
+PHP is unavailable. Audit: `docs/project/search3-booking-chrome-owner-retirement.json`.
+
+This source is **checked but not published**. The isolated preview remains source
+`4b061396`; main and production remain `fa58a0cb`. No browser or visual pass is
+claimed. Selected-tour → review → lead/back and geometry at
+375/640/999/1000/1363 plus physical Safari remain deferred.
+
+Next: do not restore the retired progress strip or decorative review banner. A
+fresh independent audit measured only about 1022 net bytes from retiring
+`result-cards.css` after active-rule migration, so accumulate it with another
+substantial owner and only when bounded mobile/result-order geometry can be
+checked. Otherwise inspect a different large presentation owner. Protected
+price, Tourvisor/API, lead transport/mapping and analytics remain out of scope.
+
+### Previous checked candidate — form and mobile-entry owner retirement — 2026-09-07
 
 Source #1445 / exact release `c62ebc1dedcba458fe69ab232fea6000aadf781c`,
 tree `39b698edd9cb26e78df5bf2cf144c945073fc4ac`, retires the legacy form
