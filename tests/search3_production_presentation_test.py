@@ -419,6 +419,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
 
         canonical = render('anytoour.ru', 'poisk-turov/index.php')
         self.assertIn('<body class="search3-candidate">', canonical)
+        self.assertNotIn('class="results-view-switch"', canonical)
+        self.assertNotIn('data-results-view=', canonical)
         self.assertEqual(canonical.count('data-site-footer="shared"'), 1)
         self.assertIn('class="ds2-site-footer__logo"', canonical)
         for kind, suffix in [('css', 'style'), ('js', 'script')]:
@@ -434,6 +436,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertNotIn('?lead=disabled', canonical)
         legacy = render('anytoour.ru', 'poisk-turov-old/index.php')
         self.assertNotIn('id="search3-entry-v1-style"', legacy)
+        self.assertIn('class="results-view-switch"', legacy)
+        self.assertEqual(legacy.count('data-results-view='), 2)
         self.assertIn('content="noindex,follow', legacy)
         self.assertIn('href="https://anytoour.ru/poisk-turov/"', legacy)
         self.assertIn('leadApi:"/lead-adapter-v2.php"', legacy)
