@@ -53,31 +53,31 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1506 excludes complete confidence/compare JS and CSS from the Search3 scoped base. Desktop trust and tour CTA labels retained in current owners. This pass: 662065 to 633777 loaded raw bytes (-28288); 27 browser states and required CI passed. Preview unchanged.",
+    "last_material_progress": "PRs #1506/#1509 retire five complete legacy CSS/JS owners from Search3 only. Current invocation loaded raw 662065 to 620431 (-41634), gzip estimate -9168. Required CI and focused browser geometry/lifecycle passed; no publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit mobile-search-summary-v1.js/CSS: preserve search collapse, dirty/validation recovery and field placement; verify actual mobile route and 700/701/760/761 transitions before excluding the hidden legacy summary/sticky owner.",
+    "next_action": "Audit primary-meal-ux-v1.js/CSS (7301+2040 raw) as a whole presentation candidate, but retain catalogue meals loading, URL food restoration and reset preservation before any exclusion. Its meals API and form reset logic are live. No blanket deletion.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_CONFIDENCE_OWNER",
-    "title": "Retire shared confidence presentation from Search3 lean bundle",
+    "id": "S3_LEAN_MOBILE_SUMMARY",
+    "title": "Retire legacy mobile summary and retain form lifecycle in current entry owner",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1506
+      1509
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "ed0f8a299fd81c1f7d786b688ecdfdede1631585",
-    "release_sha": "36758a05df21042fb39f253faa681ff1de89150d",
-    "artifact_run": 34163330446,
-    "artifact_id": 10033349256,
-    "artifact_digest": "sha256:84d8e9e4cbdc12e039a0504e58d0ee42f51bb1ebcd9dd58e80931b84d2787e5d",
+    "implementation_sha": "019420f4181630c3de35849004ede9e1119a414a",
+    "release_sha": "cdc2d82d7785dcc82843cf74b489e3e3259b712f",
+    "artifact_run": 34164198720,
+    "artifact_id": 10033635222,
+    "artifact_digest": "sha256:2a1f82cedf72543136a2124624bfb4c46c24a3820d74d89a6caba0f6b6b6b8ee",
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "checked_release_asset_bytes": 149187,
+    "checked_release_asset_bytes": 150129,
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit mobile-search-summary-v1.js/CSS: preserve search collapse, dirty/validation recovery and field placement; verify actual mobile route and 700/701/760/761 transitions before excluding the hidden legacy summary/sticky owner."
+    "next_action": "Audit primary-meal-ux-v1.js/CSS (7301+2040 raw) as a whole presentation candidate, but retain catalogue meals loading, URL food restoration and reset preservation before any exclusion. Its meals API and form reset logic are live. No blanket deletion."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -7323,7 +7323,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-07T12:35:59.454814+00:00",
+  "updated_at": "2026-09-07T21:49:41.532990+00:00",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
