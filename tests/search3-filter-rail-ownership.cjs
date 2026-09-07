@@ -19,6 +19,8 @@ for (const marker of ['data-s3-price', 'data-s3-panel', 'data-s3-reset', 'data-s
 }
 
 assert.match(desktop, /window\.DS2ResultsFilters=\{/, 'DS2 is the sole desktop filter owner');
+assert.match(desktop, /role="status" aria-live="polite" aria-atomic="true"/, 'the sole owner announces local result-count changes');
+assert.ok(desktop.includes('Сбросьте фильтры или измените параметры'), 'the sole owner explains zero-result recovery');
 for (const marker of ['data-ds2-price', 'data-ds2-meal-fieldset', 'data-ds2-stars-fieldset',
   'data-ds2-rating-fieldset', 'data-ds2-sea-fieldset', 'data-ds2-reset']) {
   assert.ok(desktop.includes(marker), `DS2 owner retains ${marker}`);

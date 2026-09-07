@@ -70,9 +70,12 @@ function choose(name, value) {
 choose('ds2-stars', '5');
 assert.equal(renders.at(-1).length, 0, '5-star filter can produce a legitimate empty result');
 assert.equal(rail.dataset.s3EmptyResults, '1', 'Search3 keeps the shell for a DS2 zero-match render');
+assert.equal(heading.textContent, 'Ничего не найдено', 'zero matches use an explicit visible heading');
+assert.equal(summary.textContent, 'Сбросьте фильтры или измените параметры', 'zero matches explain how to recover');
 choose('ds2-stars', '0');
 assert.equal(renders.at(-1).length, 2, 'Any category restores the original hotels');
 assert.equal(rail.dataset.s3EmptyResults, '', 'restored results clear the bridge marker');
+assert.equal(heading.textContent, 'Найдено 2 отеля', 'recovered results restore the visible count');
 
 choose('ds2-meal', 'ai');
 assert.equal(renders.at(-1).length, 1, 'meal filtering uses the loaded result data');
@@ -85,6 +88,7 @@ assert.deepEqual(Object.values(fields).map(field => field.hidden), [true, true, 
   'partial data hides facets instead of filtering silently');
 emit('v2:search-reset', {});
 assert.equal(rail.dataset.s3EmptyResults, '', 'search reset clears the Search3 empty marker');
-assert.equal(window.DS2ResultsFilters.version, 13);
+assert.match(rail.innerHTML, /role="status" aria-live="polite" aria-atomic="true"/, 'filter count announces local changes without taking focus');
+assert.equal(window.DS2ResultsFilters.version, 14);
 
 console.log('PASS: DS2 desktop facets filter, recover, reset and preserve the Search3 empty shell');
