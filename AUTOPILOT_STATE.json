@@ -53,32 +53,31 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Product PR #1494 makes the mobile search form readable and touch-safe: labels are at least 12px, primary inputs are 16px, primary controls/submit/advanced-filter action are 48px and quick filters are 44px. The eight assets move 145676→146599 (+923 CSS); this is intentional product weight, not a size saving. Chromium entry geometry at375/760/761 and existing result geometry passed. Main/production remain unchanged.",
+    "last_material_progress": "Product PR #1496 adds explicit accessible feedback to the single DS2 desktop filter owner: local count changes are announced, zero matches say what happened and how to recover, and reset restores the count. Eight Search3 assets remain 146599 bytes; the loaded DS2 filter runtime grows 10913→11091 (+178 JS). Main/production remain unchanged.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Continue the selling-search UX stage with explicit local-filter feedback and recoverable zero-results behavior in the single DS2 owner. Accumulate the next product batch before preview publication. Stop byte-only micro-PRs; do not restore the duplicate desktop rail or remove results-tablet-layout.css. Physical Safari/safe-area remains deferred; production still requires explicit visual approval.",
+    "next_action": "Continue the selling-search UX stage by auditing the 'Ближе к морю' sort and the common map action; keep only controls backed by complete data and working behavior. Accumulate before preview publication. Stop byte-only micro-PRs; do not restore the duplicate desktop rail or remove results-tablet-layout.css. Physical Safari/safe-area remains deferred; production still requires explicit visual approval.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_MOBILE_SEARCH_FORM_USABILITY",
-    "title": "Make the mobile search form readable and touch-safe",
+    "id": "S3_LOCAL_FILTER_FEEDBACK",
+    "title": "Make local filter results and recovery explicit",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1494
+      1496
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "d65a0f8e2acfdcc1c7475806563cdb80119b967b",
-    "release_sha": "8d5db6ca041c4d6b84271b8d1cf0cc1a7ccde4a0",
-    "artifact_run": 34148657647,
-    "artifact_id": 10028594347,
-    "artifact_digest": "sha256:84f9e32eb8a2e9fbff1ad0ca77f0d81b42be00df44fad728a9d8b9a7aadf763a",
-    "results_geometry_artifact_id": 10028594064,
+    "implementation_sha": "3a9fe863edb6c44adda45fc9a0b35bbf9e1136f3",
+    "release_sha": "95ad5f3ff5bc9545ef7c877676c60c8e68f500ec",
+    "artifact_run": 34149630582,
+    "artifact_id": 10028902712,
+    "artifact_digest": "sha256:71b4038743cc80b42ddd0a1cdb5832084a48c90c95183b5652a2d3aee07e35ab",
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "checked_release_asset_bytes": 146599,
     "published_preview_asset_bytes": 147378,
-    "next_action": "Add immediate, accessible local-filter feedback and a recoverable zero-results state in the single DS2 owner, then accumulate a justified preview checkpoint; production approval remains required."
+    "next_action": "Audit the 'Ближе к морю' sort and common map action; remove or repair controls that are not backed by complete data and working behavior, then accumulate a justified preview checkpoint."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -7720,5 +7719,51 @@
       "Live current-source interaction and visual inspection"
     ],
     "next_action": "Add immediate, accessible local-filter feedback and a recoverable zero-results state in the single DS2 owner; accumulate before the next isolated preview publication."
+  },
+  "latest_local_filter_feedback": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "base_release_sha": "a396833d08714ea7f7488b5ef8e5e2e2b4e44357",
+    "implementation_sha": "3a9fe863edb6c44adda45fc9a0b35bbf9e1136f3",
+    "release_sha": "95ad5f3ff5bc9545ef7c877676c60c8e68f500ec",
+    "source_pr": 1496,
+    "audit": "docs/project/search3-local-filter-feedback.json",
+    "scope": "Announce local desktop-filter counts and provide explicit zero-result recovery in the sole DS2 owner without adding network requests or a second filter runtime.",
+    "ci": {
+      "security_run": 34149537357,
+      "initial_artifact_run": 34149537437,
+      "ready_repeat_artifact_run": 34149630582,
+      "artifact_id": 10028902712,
+      "artifact_digest": "sha256:71b4038743cc80b42ddd0a1cdb5832084a48c90c95183b5652a2d3aee07e35ab",
+      "conclusion": "success"
+    },
+    "public_search3_assets": {
+      "before_bytes": 146599,
+      "after_bytes": 146599,
+      "delta_bytes": 0
+    },
+    "loaded_ds2_filter_runtime": {
+      "path": "v2/ds2-results-filters.js",
+      "before_bytes": 10913,
+      "after_bytes": 11091,
+      "delta_bytes": 178
+    },
+    "focused_verification": {
+      "zero_match_heading": "Ничего не найдено",
+      "recovery_copy": "Сбросьте фильтры или измените параметры",
+      "reset_restores_source_results": true,
+      "aria_live": "polite atomic status",
+      "network_requests_added": 0,
+      "browser_geometry_run": false,
+      "lead_submitted": false
+    },
+    "preview_updated": false,
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "published_preview_asset_bytes": 147378,
+    "production_updated": false,
+    "deferred": [
+      "Live current-source interaction and visual inspection",
+      "Physical iPhone and Safari safe-area acceptance"
+    ],
+    "next_action": "Audit the 'Ближе к морю' sort and common map action; keep only controls backed by complete supplier data and working behavior."
   }
 }

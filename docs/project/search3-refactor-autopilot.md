@@ -1981,3 +1981,13 @@ Eight public assets are **145676 → 146599 raw bytes (+923 CSS bytes)**. This i
 The Chromium fixture passed entry geometry at 375/760/761 and the existing 12 collapsed/expanded result states, with no horizontal overflow. Screenshots were retained but not manually inspected; no lead was submitted. The change is checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical iPhone/Safari safe-area and live current-source interaction remain deferred.
 
 Next: add immediate, accessible local-filter feedback and a recoverable zero-results state in the single DS2 owner. Do not add a second filter runtime or a request per local change. Accumulate a meaningful product checkpoint before the next isolated preview publication. Audit: `docs/project/search3-mobile-form-usability.json`.
+
+## S3_LOCAL_FILTER_FEEDBACK — checked release, 2026-09-07
+
+Source PR #1496 / `3a9fe863edb6c44adda45fc9a0b35bbf9e1136f3`; checked release `95ad5f3ff5bc9545ef7c877676c60c8e68f500ec`. The sole DS2 desktop filter owner now exposes its live result count as a polite atomic status. A local zero match uses the explicit heading “Ничего не найдено” and the recovery copy “Сбросьте фильтры или измените параметры”; resetting restores the source result count. The synchronous local renderer remains the only execution path, with no Tourvisor/API request added.
+
+The eight Search3 public assets remain **146599 → 146599 raw bytes (0)**. The already loaded `v2/ds2-results-filters.js` changes **10913 → 11091 bytes (+178 JS)**. Security `34149537357`, initial exact artifact `34149537437` and ready repeat `34149630582` succeeded. Reusable artifact `10028902712`, digest `sha256:71b4038743cc80b42ddd0a1cdb5832084a48c90c95183b5652a2d3aee07e35ab`.
+
+Focused VM acceptance covered complete facets, a legitimate zero match, Search3 empty-shell preservation, recovery copy, reset, restored source results and the sole-owner boundary. This package did not trigger or claim browser geometry evidence. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred; no lead was submitted.
+
+Next: audit the “Ближе к морю” sort and common map action. Keep only controls backed by complete supplier data and working behavior. Accumulate the next product checkpoint before isolated preview publication. Audit: `docs/project/search3-local-filter-feedback.json`.
