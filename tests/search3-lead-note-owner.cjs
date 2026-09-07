@@ -21,7 +21,7 @@ function makeForm() {
     snapshot() { return { title: title.textContent, subtitle: subtitle.textContent, note, classes: [...classes], inserts }; }
   };
 }
-const root = { classList: { remove() {} }, children: [], querySelector: s => s === '.lead-form' && hasForm ? form : null };
+const root = { classList: { remove() {}, contains() { return false; } }, children: [], querySelector: s => s === '.lead-form' && hasForm ? form : null };
 const window = { addEventListener(name, fn) { if (!events.has(name)) events.set(name, []); events.get(name).push(fn); } };
 const source = [...new Set([iife(bundle, { global: 'Search3SummaryCta' }), iife(bundle, { literal: 'search3-lead-protection' })])].join('\n');
 vm.runInNewContext(source, {
