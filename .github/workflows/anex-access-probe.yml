@@ -25,12 +25,12 @@ permissions:
 
 concurrency:
   group: anytour-anex-access-probe
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   verify-access:
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
