@@ -20,17 +20,6 @@ body.search3-candidate{
 & .search3-msg-btn--disabled{border:1px solid #d8deea;background:#f5f7fb;color:#9aa3b7;cursor:not-allowed}
 & .search3-stay-site{border:0;background:transparent;color:#075cff}
 }
-@media(max-width:640px){
-body.search3-candidate{
-& .search3-lead-status{grid-template-columns:1fr;gap:10px;padding:4px 0}
-& .search3-lead-status__icon{width:44px;height:44px;font-size:21px}
-& .search3-lead-status h3{font-size:19px}
-& .search3-lead-status p{font-size:11px}
-& :is(.search3-messenger-actions,.search3-error-actions){display:grid;grid-template-columns:1fr}
-& :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-lead,.search3-stay-site){width:100%;min-height:44px}
-}
-}
-
 /* Compact contact/lifecycle essentials retained from the retired lead-review layer. */
 body.search3-candidate #selectedTour{
 & .lead-consent{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important}
@@ -102,7 +91,7 @@ html body.search3-candidate{
 }
 & :is(.search3-messenger-actions,.search3-error-actions) {display:grid!important;grid-template-columns:1fr!important;gap:8px!important;width:100%!important;margin-top:10px!important}
 & :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-lead) {width:100%!important;min-height:44px!important;border-radius:7px!important}
-& .search3-stay-site {justify-self:center!important;min-height:34px!important;margin-top:2px!important}
+& .search3-stay-site {width:100%!important;justify-self:center!important;min-height:34px!important;margin-top:2px!important}
 }
 }
 }

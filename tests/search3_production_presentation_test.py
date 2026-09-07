@@ -56,17 +56,27 @@ class Search3ProductionPresentationTest(unittest.TestCase):
                 self.assertTrue(raw.endswith(b'\n'), name)
                 self.assertFalse(raw.endswith(b'\n\n'), name)
 
-    def test_shared_fact_typography_keeps_equal_specificity(self):
-        source = (ROOT / 'src/search3/styles/acceptance-guards.css').read_text()
+    def test_card_readability_has_one_current_owner(self):
+        retired = (ROOT / 'src/search3/styles/acceptance-guards.css').read_text()
+        source = (ROOT / 'src/search3/styles/results-cards-v2.css').read_text()
         prefix = 'html body.search3-candidate.search3-results-active #results '
         shared = ':is(.search3-hotel-facts,.tour-fact)'
-        self.assertEqual(source.count(prefix + shared + ' small{'), 2)
-        self.assertEqual(source.count(prefix + shared + ' b{'), 1)
+        self.assertNotIn('.search3-hotel-heading{', retired)
+        self.assertNotIn('.hotel-best-offer>small.hotel-price-context{', retired)
+        self.assertNotIn('#selectedTour:not(.search3-final-review)', retired)
+        self.assertEqual(source.count('& ' + shared + ' small{'), 1)
+        self.assertEqual(source.count('& ' + shared + ' b{'), 1)
         for selector in ('.search3-hotel-facts', '.tour-fact'):
             self.assertNotIn(prefix + selector + ' small{', source)
         # :is() contributes its most-specific argument: one class, exactly as
         # either replaced selector did. The trailing element is unchanged.
         self.assertEqual(shared.count('.'), 2)
+
+    def test_mobile_lead_lifecycle_has_one_current_owner(self):
+        source = (ROOT / 'src/search3/styles/lead-state.css').read_text()
+        self.assertEqual(source.count('.search3-lead-status {display:grid!important;grid-template-columns:1fr!important'), 1)
+        self.assertEqual(source.count(':is(.search3-messenger-actions,.search3-error-actions) {display:grid!important'), 1)
+        self.assertEqual(source.count('.search3-stay-site {width:100%!important'), 1)
 
     def test_lead_review_layer_is_retired_without_losing_lifecycle_truth(self):
         retired = (ROOT / 'src/search3/styles/lead-review.css').read_text()
