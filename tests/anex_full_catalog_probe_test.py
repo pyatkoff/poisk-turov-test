@@ -57,9 +57,10 @@ class FullCatalog(unittest.TestCase):
 
     def test_artifacts_separate_verified_and_manual_queue(self):
         rows = probe.match_catalog([{"inc": "469", "name": "Jaz Sharm Dreams", "town": "10"},
+                                    {"inc": "465", "name": "Dreams Beach", "town": "10"},
                                     {"inc": "777", "name": "Unknown fixture", "town": "10"}],
                                    self.towns, self.states, self.links, self.locals)
-        report = {"reference_stamp": "0x0000000000000001", "counts": {"anex_hotels": 2},
+        report = {"reference_stamp": "0x0000000000000001", "counts": {"anex_hotels": 3},
                   "pages": {"hotels": 1}, "matches": rows}
         with tempfile.TemporaryDirectory() as directory:
             probe.save_full_catalog_artifacts(report, directory)
@@ -67,10 +68,13 @@ class FullCatalog(unittest.TestCase):
                 verified = list(csv.DictReader(handle))
             with Path(directory, "anex-hotel-review.csv").open() as handle:
                 review = list(csv.DictReader(handle))
+            with Path(directory, "anex-hotel-unmatched.csv").open() as handle:
+                unmatched = list(csv.DictReader(handle))
             data = json.loads(Path(directory, "anex-hotel-catalog-match.json").read_text())
         self.assertEqual(verified[0]["external_hotel_id"], "469")
-        self.assertEqual(review[0]["anex_id"], "777")
-        self.assertEqual(len(data["matches"]), 2)
+        self.assertEqual(review[0]["anex_id"], "465")
+        self.assertEqual(unmatched[0]["anex_id"], "777")
+        self.assertEqual(len(data["matches"]), 3)
 
     def test_tokens_and_markup_do_not_enter_catalog(self):
         self.assertEqual(probe.catalog_text("Hotel fixture-secret"), "")

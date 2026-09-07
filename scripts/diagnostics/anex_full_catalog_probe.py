@@ -255,10 +255,13 @@ def remote_full_catalog_probe(tokens):
         matches = match_catalog(hotels, towns, states, townstates, local_hotels)
         counts = {key: sum(row["status"] == key for row in matches)
                   for key in ("verified_auto", "review", "unmatched", "deleted")}
+        verified_unique_anytour = len({row["catalog_hotel_id"] for row in matches
+                                      if row["status"] == "verified_auto"})
         return {"mode": "full_catalog", "ok": True, "status": "ok", "reference_stamp": stamp,
                 "counts": {"anex_hotels": len(matches), "anytour_hotels": len(local_hotels),
                            "states": len(states), "towns": len(towns), "stars": len(stars),
-                           "townstate_links": len(townstates), **counts},
+                           "townstate_links": len(townstates),
+                           "verified_unique_anytour": verified_unique_anytour, **counts},
                 "pages": {"hotels": hotel_pages, "towns": town_pages, "states": state_pages, "stars": star_pages},
                 "matches": matches}
     except StopProbe:
@@ -274,17 +277,21 @@ def save_full_catalog_artifacts(report, directory):
             "reference_stamp": report["reference_stamp"], "counts": report["counts"], "pages": report["pages"],
             "matches": report["matches"]}
     (directory / "anex-hotel-catalog-match.json").write_text(json.dumps(safe, ensure_ascii=False, indent=2) + "\n")
-    with (directory / "anex-hotel-review.csv").open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["anex_id", "anex_name", "country", "town", "status", "candidate_id", "candidate_name", "candidate_country", "candidate_region", "candidate_town", "score"])
-        for row in report["matches"]:
-            if row["status"] not in ("review", "unmatched"):
-                continue
-            candidates = row["candidates"] or [{}]
-            for candidate in candidates:
-                writer.writerow([row["external_id"], row["name"], row["country"], row["town"], row["status"],
-                                 candidate.get("id", ""), candidate.get("name", ""), candidate.get("country", ""),
-                                 candidate.get("region", ""), candidate.get("town", ""), candidate.get("score", "")])
+    queue_header = ["anex_id", "anex_name", "country", "town", "status", "candidate_id",
+                    "candidate_name", "candidate_country", "candidate_region", "candidate_town", "score"]
+    for filename, queue_status in (("anex-hotel-review.csv", "review"),
+                                   ("anex-hotel-unmatched.csv", "unmatched")):
+        with (directory / filename).open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.writer(handle)
+            writer.writerow(queue_header)
+            for row in report["matches"]:
+                if row["status"] != queue_status:
+                    continue
+                candidates = row["candidates"] or [{}]
+                for candidate in candidates:
+                    writer.writerow([row["external_id"], row["name"], row["country"], row["town"], row["status"],
+                                     candidate.get("id", ""), candidate.get("name", ""), candidate.get("country", ""),
+                                     candidate.get("region", ""), candidate.get("town", ""), candidate.get("score", "")])
     with (directory / "anex-hotel-verified.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(["provider", "external_hotel_id", "catalog_hotel_id", "status", "anex_name", "country", "town"])
