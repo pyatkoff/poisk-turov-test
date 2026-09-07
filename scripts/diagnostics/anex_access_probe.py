@@ -520,6 +520,9 @@ def ssh_probe():
     if catalog:
         source = source.rsplit('\nif __name__ == "__main__":', 1)[0]
         source += "\n" + Path(__file__).with_name("anex_full_catalog_probe.py").read_text(encoding="utf-8")
+        source += "\n" + Path(__file__).with_name("anex_hotel_match_probe.py").read_text(encoding="utf-8")
+        source += "\n" + Path(__file__).with_name("anex_geo_enrichment.py").read_text(encoding="utf-8")
+        source += "\nCATALOG_PHP = " + repr(Path(__file__).with_name("anex_catalog_reader.php").read_text(encoding="utf-8").removeprefix("<?php"))
         source += "\nCATALOG_BULK_PHP = " + repr(Path(__file__).with_name("anex_catalog_bulk_reader.php").read_text(encoding="utf-8").removeprefix("<?php"))
         source += '\nif __name__ == "__main__":\n    sys.exit(main())\n'
         encoded = base64.b64encode(zlib.compress(source.encode("utf-8"))).decode("ascii")

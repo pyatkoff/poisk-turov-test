@@ -107,3 +107,22 @@ only the explicit `anex_xml` namespace and exact `preview` scope. It never
 assumes that an XML hotel ID is also an `anex_online` hotel ID. The CSV is
 bounded, digest-checked, duplicate-rejecting and sorted by numeric external ID,
 so regenerating it from the same evidence is idempotent.
+
+### Bounded geographic enrichment pilot
+
+The catalog diagnostic additionally reads Online `Hotels_DETAILS` for the first
+10 XML review IDs in ascending order. It checks XML/Online ID, name, town ID
+and known country consistency before using details. AnyTour candidates are
+read in read-only transactions; addresses and coordinates are retained in the
+separate `anex-hotel-geo-enrichment.json` Actions artifact. Address equality is
+supporting evidence only. No mappings are applied and exact-pass counts remain
+unchanged. Results are not a full-queue coverage estimate.
+
+`strong_candidate` requires matching known countries, name similarity >=0.90,
+distance <=200m, no competing score within 0.10, no recognized section-name
+difference, and fewer than the reader limit of eight candidates. This remains
+a review proposal, not proof of identity: shared complex coordinates, omitted
+section names and candidate retrieval limits can still hide ambiguity.
+Missing details and supplier-namespace conflicts remain in review. This pilot
+makes at most ten detail calls; it does not implement a resumable whole-catalog
+cache. Room categories and property area are not used without verified fields.

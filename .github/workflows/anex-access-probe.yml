@@ -14,6 +14,7 @@ on:
       - 'scripts/diagnostics/anex_adapter_probe.py'
       - 'scripts/diagnostics/anex_adapter_runner.php'
       - 'scripts/diagnostics/anex_full_catalog_probe.py'
+      - 'scripts/diagnostics/anex_geo_enrichment.py'
       - 'scripts/diagnostics/anex_catalog_bulk_reader.php'
       - 'app/integrations/**'
       - 'tests/anex-*-smoke.php'
@@ -42,6 +43,7 @@ jobs:
           python3 -B tests/anex_hotel_match_probe_test.py
           python3 -B tests/anex_adapter_probe_test.py
           python3 -B tests/anex_full_catalog_probe_test.py
+          python3 -B tests/anex_geo_enrichment_test.py
           python3 -B tests/anex_exact_registry_builder_test.py
           php -l scripts/diagnostics/anex_catalog_reader.php
           php -l scripts/diagnostics/anex_adapter_runner.php

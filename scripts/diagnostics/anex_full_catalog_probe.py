@@ -263,7 +263,8 @@ def remote_full_catalog_probe(tokens):
                            "townstate_links": len(townstates),
                            "verified_unique_anytour": verified_unique_anytour, **counts},
                 "pages": {"hotels": hotel_pages, "towns": town_pages, "states": state_pages, "stars": star_pages},
-                "matches": matches}
+                "matches": matches,
+                "geo_enrichment": enrich_geo_sample(tokens, matches, hotels) if "enrich_geo_sample" in globals() else None}
     except StopProbe:
         return {"mode": "full_catalog", "ok": False, "status": "catalog_unavailable", "failed_stage": stage, "progress": progress}
     except (ET.ParseError, ValueError, TypeError, KeyError, subprocess.TimeoutExpired):
@@ -277,6 +278,8 @@ def save_full_catalog_artifacts(report, directory):
             "reference_stamp": report["reference_stamp"], "counts": report["counts"], "pages": report["pages"],
             "matches": report["matches"]}
     (directory / "anex-hotel-catalog-match.json").write_text(json.dumps(safe, ensure_ascii=False, indent=2) + "\n")
+    if report.get("geo_enrichment") is not None:
+        (directory / "anex-hotel-geo-enrichment.json").write_text(json.dumps(report["geo_enrichment"], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     queue_header = ["anex_id", "anex_name", "country", "town", "status", "candidate_id",
                     "candidate_name", "candidate_country", "candidate_region", "candidate_town", "score"]
     for filename, queue_status in (("anex-hotel-review.csv", "review"),
@@ -304,4 +307,5 @@ def catalog_summary(report):
     if not report.get("ok"):
         return {"mode": "full_catalog", "ok": False, "status": report.get("status", "invalid_catalog"),
                 "failed_stage": report.get("failed_stage", "unknown"), "progress": report.get("progress", {})}
-    return {"mode": "full_catalog", "ok": True, "status": "ok", "counts": report["counts"], "pages": report["pages"]}
+    return {"mode": "full_catalog", "ok": True, "status": "ok", "counts": report["counts"], "pages": report["pages"],
+            "geo_enrichment_counts": (report.get("geo_enrichment") or {}).get("counts", {})}
