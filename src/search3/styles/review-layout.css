@@ -13,12 +13,13 @@ body.search3-candidate #selectedTour.search3-final-review{
 & .hotel-desc,& .selected-head .eyebrow{display:none!important}
 & .selected-head{align-items:center!important}
 }
-html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry){
+html body.search3-candidate.search3-selected-open #selectedTour#selectedTour.search3-final-review:not(.search3-lead-entry){
 &{display:grid!important}
 & :is(.selected-price,.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.room-details-host,.selected-confidence){display:none!important}
 & .back-results{grid-column:1/-1!important;grid-row:1!important}
 & .selected-picture{display:block!important;grid-column:1!important;grid-row:2!important;margin:0!important}
-& .selected-head{grid-column:2!important;grid-row:2!important;min-width:0!important;margin:0!important}
+& .selected-head{grid-column:2!important;grid-row:2!important;min-width:0!important;margin:0!important;gap:8px!important}
+& .selected-price-confidence{max-width:none!important;margin:0!important;text-align:left!important}
 & :is(.tour-flights,.search3-final-sections){width:100%!important;margin:0!important}
 & .search3-booking-summary{display:block!important;grid-row:5!important;position:static!important;margin:0!important}
 & :is(.search3-booking-summary__image,.search3-booking-summary__hotel,.search3-booking-summary__place),& .search3-booking-summary dl{display:none!important}
@@ -58,7 +59,7 @@ html body.search3-candidate.search3-selected-open #selectedTour.search3-final-re
 /* One responsive review board replaces the retired desktop/tablet geometry layers.
    Lead-entry and mobile review keep their separate lifecycle owners. */
 @media(min-width:641px){
-html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry){
+html body.search3-candidate.search3-selected-open #selectedTour#selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry){
 &{grid-template-columns:210px minmax(0,1fr)!important;gap:12px 0!important;align-items:start!important}
 & .back-results{margin:0!important}
 & .selected-picture{width:100%!important;height:164px!important;min-height:164px!important;border-radius:12px 0 0 12px!important}
@@ -72,7 +73,7 @@ html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.se
 }
 }
 @media(min-width:1000px){
-html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry){
+html body.search3-candidate.search3-selected-open #selectedTour#selectedTour.selected-tour.search3-final-review[data-search3-final-layout="maket7"]:not(.search3-lead-entry){
 &{grid-template-columns:260px minmax(0,1fr) 300px!important;column-gap:14px!important}
 & .search3-booking-summary{grid-column:3!important;grid-row:2/5!important;position:sticky!important;top:18px!important}
 }
@@ -80,7 +81,7 @@ html body.search3-candidate.search3-selected-open #selectedTour.selected-tour.se
 
 /* Phone review uses the same phase guards and grid anchors as the wider board. */
 @media(max-width:640px){
-html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry){
+html body.search3-candidate.search3-selected-open #selectedTour#selectedTour.search3-final-review:not(.search3-lead-entry){
 &{grid-template-columns:108px minmax(0,1fr)!important;column-gap:10px!important;row-gap:10px!important;align-items:stretch!important;max-width:none!important;margin:10px var(--at-page-edge) 36px!important}
 & .back-results{display:inline-flex!important;margin:0 0 2px!important}
 & .selected-picture{width:108px!important;height:104px!important;min-height:104px!important;border-radius:12px!important;overflow:hidden!important}
