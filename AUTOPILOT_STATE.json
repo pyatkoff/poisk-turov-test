@@ -53,16 +53,16 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1485 retires the separate phone result-layout donor and #1486 removes the duplicate Search3 desktop filter owner plus repeated lead-entry hiding. 157523→147378 raw bytes in this invocation (−10145: −9612 JS/CSS owner bytes plus −533 repeated CSS); both required CI pass. Release only; preview remains b9445bc3.",
+    "last_material_progress": "#1485/#1486 reduce the eight assets 157523→147378 raw bytes (−10145 this invocation). Exact source c9ba7952 is now published in the isolated preview via run34143220797; bounded live search, budget-filter and reset checks pass. Main/production remain unchanged.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "The technical raw-size target has been reached at 147378 bytes. Do not repeat #1485/#1486, restore the duplicate desktop rail, or remove results-tablet-layout.css. Publish one accumulated exact isolated preview only when a bounded live filter/card acceptance pass can be performed; then switch priority from byte-only work to selling search UX and the lean Search3 base bundle. Physical Safari/safe-area remains deferred.",
+    "next_action": "The technical raw-size target and accumulated preview publication are complete. Stop byte-only micro-PRs; do not restore the duplicate desktop rail or remove results-tablet-layout.css. Switch to selling search UX and the lean Search3 base bundle. Physical Safari/safe-area remains deferred; production still requires explicit visual approval.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
     "id": "S3_SINGLE_FILTER_AND_MOBILE_CARD_OWNERS",
     "title": "Retire duplicate desktop filter and phone result-layout owners",
-    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "status": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [1485, 1486],
@@ -74,8 +74,8 @@
     "artifact_digest": "sha256:290789ab82bda4e2169a488ceb3c0449842facce120d47ee811781cb0ad5909b",
     "geometry_artifact_id": 10025782914,
     "selected_geometry_artifact_id": 10026226970,
-    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "next_action": "Reuse artifact10026227838 only for source c9ba7952; checked release is 4063a480 and published preview remains b9445bc3. The byte-only target is reached. Next prepare one accumulated isolated preview acceptance for cards and the sole DS2 desktop rail, then begin the selling-search UX stage. Production approval remains required."
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "next_action": "The checked code release is 4063a480 and exact source c9ba7952 is published in the isolated preview. Begin the selling-search UX stage and lean Search3 base bundle; production approval remains required."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -7552,7 +7552,7 @@
     }
   },
   "latest_single_filter_and_mobile_card_owners": {
-    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "stage": "PUBLISHED_IN_ISOLATED_PREVIEW_NOT_PRODUCTION",
     "baseline": "45c589b06d939fe5ff494733e259745c41ea4d97",
     "release_integration_sha": "4063a48049f46704dcb94a623d3219361808914b",
     "source_prs": [1485, 1486],
@@ -7595,16 +7595,29 @@
     "visual_verification": {
       "mobile_results_states": "12 collapsed/expanded result and drawer states at375/760/761/999/1000/1440 passed in Chromium",
       "selected_states": "12 detail/review/lead states at375/760/1000/1440 passed in Chromium after strengthening the existing geometry detector",
-      "live_preview_checked": false,
+      "live_preview_checked": true,
+      "live_search": "Moscow to Turkey completed with 100 hotels and 445 tours; budget 160000→80000 reduced visible hotels 100→3 and reset restored100.",
+      "facet_boundary": "Incomplete supplier facets stayed hidden by the completeness guard; stars/rating/meal/concrete-hotel/direct-flight remain available through Edit search.",
       "lead_submitted": false
     },
-    "preview_updated": false,
+    "preview_publication": {
+      "control_pr": 1489,
+      "deploy_run": 34143220797,
+      "evidence_artifact": 10026686548,
+      "evidence_digest": "sha256:fb43e9546a7df9a836473faf631c3bd6bef1d1336a610371657b7e9491a34589",
+      "payload_file_count": 715,
+      "noindex": true,
+      "preview_lead_status": 403,
+      "metrika_counter": 0,
+      "production_fingerprints_unchanged": 13,
+      "rollback_retained": true
+    },
+    "preview_updated": true,
     "production_updated": false,
-    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "deferred": [
-      "live current-source desktop filter and mobile card interaction",
       "physical Safari and device safe-area"
     ],
-    "next_action": "The planned technical size target is reached. Do not restore the duplicate Search3 desktop rail or retire results-tablet-layout.css. Prepare one accumulated isolated preview with bounded card/filter acceptance, then switch to selling search UX and a lean Search3 base bundle; production still requires explicit visual approval."
+    "next_action": "Technical size and accumulated isolated-preview acceptance are complete. Do not restore the duplicate Search3 desktop rail or retire results-tablet-layout.css. Switch to selling search UX and a lean Search3 base bundle; production still requires explicit visual approval."
   }
 }

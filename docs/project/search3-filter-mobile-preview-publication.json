@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "source_tree_sha": "5cb7bf87a69ee1f3ae717e3b3f5f54135987dc1d",
+  "checked_code_release_sha": "4063a48049f46704dcb94a623d3219361808914b",
+  "documentation_release_sha": "e8dd3a2053cdc49e56ce4cd10f0e9131a9a8a049",
+  "artifact_run": 34141824479,
+  "artifact_id": 10026227838,
+  "artifact_digest": "sha256:290789ab82bda4e2169a488ceb3c0449842facce120d47ee811781cb0ad5909b",
+  "deploy_control_pr": 1489,
+  "deploy_run": 34143220797,
+  "evidence_artifact": 10026686548,
+  "evidence_digest": "sha256:fb43e9546a7df9a836473faf631c3bd6bef1d1336a610371657b7e9491a34589",
+  "route": "https://anytoour.ru/_preview/search3-site-candidate/",
+  "invariants": {
+    "payload_file_count": 715,
+    "noindex": true,
+    "preview_lead_http_status": 403,
+    "metrika_counter": 0,
+    "internal_php_denied": true,
+    "rollback_retained": true,
+    "production_fingerprints_unchanged": 13
+  },
+  "live_check": {
+    "route": "https://anytoour.ru/_preview/search3-site-candidate/poisk-turov/",
+    "query": "Moscow to Turkey, 2026-09-08 to 2026-09-21, 7-10 nights, 2 adults",
+    "result": "100 hotels and 445 tours",
+    "budget_filter": "160000 to 80000 reduced visible hotels 100 to 3; reset restored 100",
+    "facet_boundary": "Supplier-incomplete instant facets remained hidden; stars, rating, meal, concrete hotel and direct flight remained available through Edit search.",
+    "lead_submitted": false
+  },
+  "publication": "PUBLISHED_ISOLATED_PREVIEW_NOT_PRODUCTION",
+  "deferred": ["physical Safari", "device safe-area"],
+  "production_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309"
+}
