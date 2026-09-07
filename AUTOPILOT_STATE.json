@@ -53,29 +53,29 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1476 retires the standalone booking text/flight formatting runtime owners into booking-summary. 161470→161116 raw bytes (−354 JS); required Security/artifact CI and focused formatting/summary checks pass. Release only; preview remains b9445bc3.",
+    "last_material_progress": "#1480 retires standalone entry-v1 runtime into the current search-form owner. 161116→160579 raw bytes (−537 JS); required Security/artifact CI and 36 source/presentation checks pass. Release only; preview remains b9445bc3.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not repeat #1474, #1475 or #1476. The selected handoff, result-card geometry and standalone booking-format runtime donors are retired. Audit a fresh whole presentation owner against release b995bdda and bundle only a material reduction; preserve the compact result-card owner and booking-summary private format/services parts. Physical Safari and current-source live preview acceptance remain deferred. Keep final-sections, price, lead, API and analytics contracts.",
+    "next_action": "Do not repeat #1474–#1476 or #1480. Next validated candidate is full acceptance-guards.css retirement: prototype 161116→158834 before #1480; rebase and remeasure against release 6eebb1a5, retain drawer visibility/readability/hidden truth in current owners, and run card plus selected detail/review/lead geometry. Do not remove results-tablet-layout.css. Physical Safari and live current-source preview acceptance remain deferred.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_BOOKING_FORMAT_OWNER_LOCALIZATION",
-    "title": "Localize booking formatting into its current summary owner",
+    "id": "S3_ENTRY_RUNTIME_OWNER_LOCALIZATION",
+    "title": "Retire standalone entry presentation runtime",
     "status": "CHECKED_RELEASE_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1476
+      1480
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "11cbdb17e7cf241e5ad8c719d0554a23ef9e58f4",
-    "release_sha": "b995bdda0598fb1c3bb4e8efa2f9387c058c0f0b",
-    "artifact_run": 34130331206,
-    "artifact_id": 10021826730,
-    "artifact_digest": "sha256:2ed6b2ba104e775be24ddf308ee9e61910d0a2e3d7108c232d37cea663d7518a",
+    "implementation_sha": "d3132c72ab1b98b1819cd6568076c6cda45deba2",
+    "release_sha": "6eebb1a510e257392e0ebd6c8ea17d554e3be954",
+    "artifact_run": 34133307934,
+    "artifact_id": 10022984486,
+    "artifact_digest": "sha256:e30614dd479563f2e50f64da1419e26a7bb78e0057d569f6c7631b2f663b9bdf",
     "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "next_action": "Do not repeat selected-handoff #1474, result-card retirement #1475 or booking-format localization #1476. Reuse artifact10021826730 only for source11cbdb17; checked release isb995bdda and published preview remains b9445bc3. Audit the next whole presentation owner against the fresh release and bundle a material reduction; do not spend a PR on micro fragments. Physical Safari/safe-area and live current-source acceptance remain deferred; production approval remains required."
+    "next_action": "Do not repeat #1474–#1476 or entry runtime retirement #1480. Reuse artifact10022984486 only for sourced3132c72; checked release is6eebb1a5 and published preview remains b9445bc3. Rebase the proven acceptance-guards.css retirement prototype on the fresh release, remeasure all eight assets, preserve current drawer/readability/hidden owners, and run focused card plus selected-flow geometry. Do not remove results-tablet-layout.css. Production approval remains required."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -127,6 +127,16 @@
     "visual_ci": 33934082023
   },
   "last_ci": {
+    "entry_runtime_owner_localization": {
+      "artifact_digest": "sha256:e30614dd479563f2e50f64da1419e26a7bb78e0057d569f6c7631b2f663b9bdf",
+      "artifact_id": 10022984486,
+      "artifact_run": 34133307934,
+      "preview_published": false,
+      "required_passed": 2,
+      "security_run": 34133307944,
+      "source_pr": 1480,
+      "source_sha": "d3132c72ab1b98b1819cd6568076c6cda45deba2"
+    },
     "booking_format_owner_localization": {
       "artifact_digest": "sha256:2ed6b2ba104e775be24ddf308ee9e61910d0a2e3d7108c232d37cea663d7518a",
       "artifact_id": 10021826730,
