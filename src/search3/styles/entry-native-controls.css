@@ -38,3 +38,9 @@ html body.search3-candidate{
 
 &:not(.search3-has-results) .ds2-site-footer{margin-top:24px!important}
 }
+
+@media(max-width:760px){
+ html body.search3-candidate{
+& #tourSearch :is(.search3-dates,.search3-nights) .search3-composite__control{min-height:48px!important}
+ }
+}
