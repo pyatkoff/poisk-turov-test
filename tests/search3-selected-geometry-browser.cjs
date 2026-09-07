@@ -12,8 +12,15 @@ const output = process.env.SEARCH3_GEOMETRY_OUTPUT;
 assert.ok(output, 'evidence output required');
 fs.mkdirSync(output, { recursive: true });
 const baselineStyles = new Map(Object.keys(require('../src/search3/manifest.json').assets)
-  .filter(name => name.endsWith('.css'))
   .map(name => [name, execFileSync('git', ['show', `${baseline}:v2/${name}`])]));
+// Compare the actual route closures, including retired shared owners and runtime.
+const baselineManifest = execFileSync('git', ['show', `${baseline}:v2/bundle-manifest-v1.php`]);
+const baselineBundles = Object.fromEntries(['css', 'js'].map(type => {
+  const names = JSON.parse(execFileSync('php', ['-r',
+    'eval("?>" . stream_get_contents(STDIN)); echo json_encode(v2_bundle_files($argv[1], "search3"));', type
+  ], { input: baselineManifest, encoding: 'utf8' }));
+  return [type, names.map(name => execFileSync('git', ['show', `${baseline}:v2/${name}`], { encoding: 'utf8' })).join(type === 'js' ? '\n;\n' : '\n')];
+}));
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750"><path fill="#9ac7df" d="M0 0h1200v750H0z"/><path fill="#f5efe0" d="M250 150h700v600H250z"/></svg>');
 const tour = { id: 'geometry-tour', price: 148500, hotel: { name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' } }, departure: { name: 'Москва' }, date: '2026-09-12', nights: 9, adults: 2, childs: 1, meal: { name: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL + CHD', operator: { name: 'TEST OPERATOR' }, isCharter: true, picture, hotelDescription: 'Описание проверочного отеля. '.repeat(16) };
 const segment = { company: { name: 'Test airline' }, number: 'AB123', departure: { name: 'Москва', airport: { name: 'Шереметьево', code: 'SVO' }, time: '09:30' }, arrival: { name: 'Анталья', airport: { name: 'Анталья', code: 'AYT' }, time: '14:00' }, baggage: 20, carryOn: '5 кг' };
@@ -47,7 +54,12 @@ async function run(browser, width, previous) {
     const request=route.request(),url=new URL(request.url());
     if(url.origin!==new URL(base).origin || request.method()!=='GET' || /\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) return route.abort();
     const old=baselineStyles.get(url.pathname.split('/').pop());
-    if(previous && old) return route.fulfill({status:200,contentType:'text/css',body:old});
+    if(previous && old) return route.fulfill({status:200,contentType:url.pathname.endsWith('.css')?'text/css':'application/javascript',body:old});
+    if(previous && url.pathname.endsWith('/bundle-v1.php')) {
+      const type=url.searchParams.get('type');
+      assert.ok(type in baselineBundles, 'known scoped bundle type');
+      return route.fulfill({status:200,contentType:type==='css'?'text/css':'application/javascript',body:baselineBundles[type]});
+    }
     return route.continue();
   });
   try {
@@ -69,6 +81,12 @@ async function run(browser, width, previous) {
     await page.waitForFunction(()=>document.getElementById('selectedTour').dataset.search3SelectedPresentation==='1');
     const prefix=(previous?'baseline':'current')+'-'+width;
     const states={detail:await capture(page,prefix+'-detail')};
+    assert.equal(await page.locator('#selectedTour .selected-confidence').count(),1,'exactly one retained trust block');
+    assert.equal(await page.locator('#selectedTour .selected-confidence').isVisible(),width>=1000,'desktop trust remains, mobile stays hidden');
+    if(!previous) {
+      assert.equal(await page.evaluate(()=>typeof window.V2ConversionConfidenceV1),'undefined','retired runtime is absent');
+      assert.equal(await page.locator('#v2CompareTray,#v2CompareOverlay,#v2AgencyTrust,#v2ResultsConfidence').count(),0,'retired surfaces are not constructed');
+    }
     await page.locator('#selectedTour .search3-flight-continue button').click();
     await page.waitForSelector('#selectedTour.search3-final-review .search3-summary-submit');
     states.review=await capture(page,prefix+'-review');
