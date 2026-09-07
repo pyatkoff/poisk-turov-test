@@ -20,5 +20,10 @@ assert.doesNotMatch(redesign, /results-map-requested|data-results-map/);
 assert.doesNotMatch(styles, /results-map-button/);
 assert.match(renderer, /if\(m==='rating'\)/);
 assert.match(renderer, /if\(m==='stars'\)/);
+assert.match(
+  page,
+  /<\?php if\(!v2_search3_enabled\(\)\):\?><div class="results-view-switch"[\s\S]*?<\?php endif;\?>/,
+  'list/grid controls are emitted only for the legacy presentation'
+);
 
-console.log('PASS: results controls expose only implemented sorting and views');
+console.log('PASS: Search3 exposes implemented sorting without a false view switch; legacy views remain');
