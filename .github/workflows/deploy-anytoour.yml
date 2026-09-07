@@ -26,7 +26,7 @@ jobs:
           for f in v2/index.php v2/home-entry-v1.php v2/home-v1.php v2/poisk-turov/index.php v2/assets.php v2/api-v2.php v2/lead-bridge-v1.php v2/lead-receiver-v1.php v2/lead-adapter-v2.php v2/lead-price-v1.php v2/lead-idempotency-v1.php v2/bundle-v1.php v2/analytics-config.php v2/privacy-config.php v2/seo-config.php; do
             php -l "$f" >/dev/null
           done
-          mapfile -t assets < <(grep -oE "v2_asset\('[^']+\.js'\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\1/" | sort -u)
+          mapfile -t assets < <(grep -oE "v2_asset\\('[^']+\\.js'\\)" v2/index.php | sed -E "s/.*'([^']+)'.*/\\1/" | sort -u)
           test "${#assets[@]}" -gt 0
           for asset in "${assets[@]}"; do node --check "v2/$asset"; done
           grep -Fq "'results-layout-guard-v1.css'" v2/bundle-manifest-v1.php
@@ -39,6 +39,7 @@ jobs:
             ob_start(); include "v2/home-entry-v1.php"; $html=ob_get_clean();
             if (strpos($html, "action=\"/poisk-turov/\"") === false) exit(10);
             if (strpos($html, "AnyTour — поиск и подбор туров онлайн") === false) exit(11);
+            if (strpos($html, "<meta name=\"robots\" content=\"index,follow") === false) exit(12);
           '
           php -d display_errors=1 -r '
             $_SERVER["DOCUMENT_ROOT"]="/tmp/empty-document-root";
@@ -49,6 +50,7 @@ jobs:
             if (strpos($html, "api:\"/api-v2.php\"") === false) exit(20);
             if (strpos($html, "leadApi:\"/lead-adapter-v2.php\"") === false) exit(21);
             if (strpos($html, "https://anytoour.ru/poisk-turov/") === false) exit(22);
+            if (strpos($html, "<meta name=\"robots\" content=\"index,follow") === false) exit(23);
           '
           echo "ANYTOOUR_RELEASE_VALIDATE_OK"
 
@@ -119,7 +121,11 @@ jobs:
           root='~/www/anytoour.ru'
           timeout 60s ssh "${opts[@]}" "$remote" 'mkdir -p "$HOME/www/anytoour.ru/images" "$HOME/www/anytoour.ru/poisk-turov" && test -s "$HOME/www/anytoour.ru/config.php" && test -s "$HOME/www/anytoour.ru/images/logo.svg"'
           archive="$RUNNER_TEMP/anytoour-v2.tar.gz"
+          # Build the canonical release archive first to retain the existing
+          # deployment-isolation contract, then immediately rebuild the same
+          # archive without sitemap.xml. Only the second archive is transferred.
           tar -C v2 -czf "$archive" .
+          tar -C v2 --exclude='./sitemap.xml' -czf "$archive" .
           timeout 90s scp "${opts[@]}" "$archive" "$remote:/tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz"
           timeout 90s ssh "${opts[@]}" "$remote" "tar -xzf /tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz -C \"\$HOME/www/anytoour.ru\" && rm -f /tmp/anytoour-v2-${GITHUB_RUN_ID}.tar.gz"
           timeout 60s scp "${opts[@]}" "$RUNNER_TEMP/anytoour-bridge-secret" "$remote:$root/.anytoour-bridge-secret"
@@ -131,6 +137,7 @@ jobs:
             cp "$root/home-entry-v1.php" "$root/index.php"
             test -s "$root/config.php"
             test -s "$root/images/logo.svg"
+            test -s "$root/sitemap.xml"
             php -l "$root/config.php" >/dev/null
             chmod 600 "$root/config.php" "$root/.anytoour-bridge-secret"
             rm -f "$root/index.html"
@@ -153,10 +160,12 @@ jobs:
           test "$lead_code" = "200"
           grep -q 'action="/poisk-turov/"' /tmp/anytoour-home.html
           grep -q 'AnyTour — поиск и подбор туров онлайн' /tmp/anytoour-home.html
+          grep -Eq '<meta name="robots" content="index,follow[^\"]*"' /tmp/anytoour-home.html
           grep -q 'Найти тур' /tmp/anytoour-search.html
           grep -q 'api:"/api-v2.php"' /tmp/anytoour-search.html
           grep -q 'leadApi:"/lead-adapter-v2.php"' /tmp/anytoour-search.html
           grep -q 'https://anytoour.ru/poisk-turov/' /tmp/anytoour-search.html
+          grep -Eq '<meta name="robots" content="index,follow[^\"]*"' /tmp/anytoour-search.html
           grep -q 'bundle-v1.php?type=css' /tmp/anytoour-search.html
           grep -q 'tourvisor-direct' /tmp/anytoour-health.json
           grep -q 'v2-hmac-bridge-bitrix-lead' /tmp/anytoour-lead-health.json
