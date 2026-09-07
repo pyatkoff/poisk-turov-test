@@ -33,7 +33,7 @@ async function capture(page, label) {
     const properties = ['display','position','grid-template-columns','grid-template-rows','flex-direction','align-items','justify-content','gap','padding','margin','border-width','border-radius','font-family','font-size','font-weight','line-height','white-space','overflow-x','overflow-y','color','background-color','object-fit'];
     const all = [root, ...root.querySelectorAll('*'), ...document.querySelectorAll('.search3-selected-mobile-bar,.search3-selected-mobile-bar *')];
     const visible = all.filter(n => { const r=n.getBoundingClientRect(); return r.width>0 && r.height>0 && getComputedStyle(n).visibility!=='hidden'; });
-    const nodes=visible.map(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n),fixed=n.closest('.search3-selected-mobile-bar');return {tag:n.tagName,classes:[...n.classList].sort().join(' '),rect:[r.x-(fixed?0:rr.x),r.y-(fixed?0:rr.y),r.width,r.height].map(round),styles:Object.fromEntries(properties.map(p=>[p,s.getPropertyValue(p)]))};});
+    const nodes=visible.map(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n),fixed=n.closest('.search3-selected-mobile-bar');return {tag:n.tagName,classes:[...n.classList].sort().join(' '),mobileBar:!!fixed,mobileCta:n.matches('[data-s3-selected-lead]'),rect:[r.x-(fixed?0:rr.x),r.y-(fixed?0:rr.y),r.width,r.height].map(round),styles:Object.fromEntries(properties.map(p=>[p,s.getPropertyValue(p)]))};});
     return {overflow:document.documentElement.scrollWidth>innerWidth+2,rootWidth:round(rr.width),nodes};
   });
   await page.locator('#selectedTour').screenshot({ path: path.join(output, label+'.png'), animations:'disabled' });
@@ -96,7 +96,13 @@ async function run(browser, width, previous) {
       evidence.widths[width]={before,after};
       for(const phase of ['detail','review','lead']){
         const a=before[phase],b=after[phase];
-        if(JSON.stringify(a)!==JSON.stringify(b)) evidence.differences.push({width,phase,beforeNodes:a.nodes.length,afterNodes:b.nodes.length});
+        const intentionalMobileCta=width===375&&phase==='detail';
+        const comparable=snapshot=>intentionalMobileCta?{...snapshot,nodes:snapshot.nodes.filter(n=>!n.mobileBar)}:snapshot;
+        if(JSON.stringify(comparable(a))!==JSON.stringify(comparable(b))) evidence.differences.push({width,phase,beforeNodes:a.nodes.length,afterNodes:b.nodes.length});
+        if(intentionalMobileCta){
+          const cta=b.nodes.find(n=>n.mobileCta);
+          if(!cta||cta.rect[3]<48) evidence.differences.push({width,phase,error:'mobile selected CTA is below 48px'});
+        }
         if(b.overflow) evidence.differences.push({width,phase,error:'horizontal overflow'});
       }
       console.log('SELECTED_GEOMETRY_CAPTURED',width);
