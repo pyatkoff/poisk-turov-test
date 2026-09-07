@@ -68,6 +68,35 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         # either replaced selector did. The trailing element is unchanged.
         self.assertEqual(shared.count('.'), 2)
 
+    def test_lead_review_layer_is_retired_without_losing_lifecycle_truth(self):
+        retired = (ROOT / 'src/search3/styles/lead-review.css').read_text()
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', retired, flags=re.S).strip(), '')
+
+        lead_state = (ROOT / 'src/search3/styles/lead-state.css').read_text()
+        all_styles = ''.join(path.read_text() for path in (ROOT / 'src/search3/styles').rglob('*.css'))
+        self.assertNotRegex(lead_state, r"content\s*:\s*['\"]✓['\"]")
+        self.assertRegex(
+            lead_state,
+            r"\.search3-lead-status ol li:before\s*\{[^}]*content\s*:\s*['\"]{2}[^}]*background\s*:\s*#fff[^}]*color\s*:\s*transparent",
+        )
+        self.assertRegex(
+            lead_state,
+            r"data-search3-lead-state\s*=\s*['\"]sending['\"][^}]*animation\s*:\s*search3LeadSpin",
+        )
+        self.assertEqual(all_styles.count('@keyframes search3LeadSpin'), 1)
+        self.assertEqual(all_styles.count('animation:search3LeadSpin'), 1)
+        self.assertRegex(lead_state, r"\.lead-consent input\{[^}]*flex:0 0 15px[^}]*width:15px!important[^}]*height:15px!important")
+        self.assertRegex(lead_state, r"\.search3-lead-protection\{[^}]*display:flex[^}]*gap:7px")
+        self.assertRegex(lead_state, r"\.search3-lead-protection span\{[^}]*display:grid[^}]*width:18px[^}]*height:18px")
+        self.assertIn('&.search3-final-review .search3-lead-comment{display:none!important}', lead_state)
+        self.assertIn('.search3-booking-summary__price-note{display:none!important}', lead_state)
+        self.assertIn('.search3-final-review.search3-lead-entry .lead-selection-summary{display:none!important}', lead_state)
+        self.assertIn('.search3-lead-shell.search3-lead-shell{grid-row:6!important}', lead_state)
+        self.assertIn('.search3-final-sections.search3-final-sections{grid-row:7!important}', lead_state)
+        self.assertNotIn('min-height:280px!important;display:flex!important;align-items:center!important', all_styles)
+        self.assertNotIn('& .lead-fields {gap:14px!important;grid-template-columns:1fr 1fr!important}', all_styles)
+        self.assertEqual(lead_state.count('.lead-form[data-search3-lead-state]~.search3-booking-summary'), 1)
+
     def test_cascade_split_rejects_byte_drift(self):
         spec = importlib.util.spec_from_file_location(
             'search3_cascade_sections', ROOT / 'scripts/build/search3_cascade_sections.py')

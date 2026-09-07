@@ -11,7 +11,7 @@ body.search3-candidate{
 & .search3-lead-status__icon--success{background:#20bd63;color:#fff}
 & .search3-lead-status__icon--error{background:#ef5350;color:#fff}
 & .search3-lead-status ol{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:8px;color:#33405f;font-size:11px}
-& .search3-lead-status ol li:before{content:'✓';display:inline-flex;width:18px;height:18px;margin-right:7px;align-items:center;justify-content:center;border:1px solid #075cff;border-radius:50%;color:#075cff;font-size:9px;font-weight:900}
+& .search3-lead-status ol li:before{content:'';display:inline-flex;flex:0 0 18px;width:18px;height:18px;margin-right:8px;align-items:center;justify-content:center;border:2px solid #cdd9f3;border-radius:50%;background:#fff;color:transparent;font-size:9px;font-weight:900}
 & .search3-lead-id{font-weight:800;color:#0d1b4c!important}
 & :is(.search3-messenger-actions,.search3-error-actions){display:flex;gap:8px;flex-wrap:wrap}
 & :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-lead,.search3-stay-site){display:inline-flex;min-height:42px;padding:0 16px;align-items:center;justify-content:center;border-radius:8px;text-decoration:none;font:800 11px/1 var(--at-font);cursor:pointer}
@@ -28,6 +28,25 @@ body.search3-candidate{
 & .search3-lead-status p{font-size:11px}
 & :is(.search3-messenger-actions,.search3-error-actions){display:grid;grid-template-columns:1fr}
 & :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-lead,.search3-stay-site){width:100%;min-height:44px}
+}
+}
+
+/* Compact contact/lifecycle essentials retained from the retired lead-review layer. */
+body.search3-candidate #selectedTour{
+& .lead-consent{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important}
+& .lead-consent input{flex:0 0 15px;width:15px!important;height:15px!important;margin:1px 0 0;accent-color:var(--at-brand)}
+& .search3-lead-protection{display:flex;align-items:center;gap:7px}
+& .search3-lead-protection span{display:grid;place-items:center;flex:0 0 18px;width:18px;height:18px;border:1px solid #dfe5ef;border-radius:50%;color:var(--at-brand);font-size:9px}
+&.search3-final-review .search3-lead-comment{display:none!important}
+& .lead-form[data-search3-lead-state="sending"] .search3-lead-status ol li:first-child:before{border-color:#075cff!important;border-top-color:transparent!important;animation:search3LeadSpin .8s linear infinite}
+&.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__price-note{display:none!important}
+}
+@keyframes search3LeadSpin{to{transform:rotate(360deg)}}
+@media(max-width:640px){
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-selection-summary{display:none!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry){
+& .search3-lead-shell.search3-lead-shell{grid-row:6!important}
+& .search3-final-sections.search3-final-sections{grid-row:7!important}
 }
 }
 
