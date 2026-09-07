@@ -6,20 +6,23 @@ const { execFileSync } = require('node:child_process');
 const assert = require('node:assert/strict');
 const baseline = process.env.SEARCH3_GEOMETRY_BASE;
 assert.match(baseline || '', /^[0-9a-f]{40}$/, 'exact baseline commit required');
+const runtimeBaseline = process.env.SEARCH3_RUNTIME_BASE || baseline;
+assert.match(runtimeBaseline, /^[0-9a-f]{40}$/, 'exact runtime baseline required');
 const base = process.env.SEARCH3_VISUAL_BASE;
 assert.ok(base && new URL(base).hostname === '127.0.0.1', 'fixture must use the isolated local payload');
 const output = process.env.SEARCH3_GEOMETRY_OUTPUT;
 assert.ok(output, 'evidence output required');
 fs.mkdirSync(output, { recursive: true });
 const baselineStyles = new Map(Object.keys(require('../src/search3/manifest.json').assets)
-  .map(name => [name, execFileSync('git', ['show', `${baseline}:v2/${name}`])]));
+  .map(name => [name, execFileSync('git', ['show', `${name.endsWith('.css') ? baseline : runtimeBaseline}:v2/${name}`])]));
 // Compare the actual route closures, including retired shared owners and runtime.
-const baselineManifest = execFileSync('git', ['show', `${baseline}:v2/bundle-manifest-v1.php`]);
 const baselineBundles = Object.fromEntries(['css', 'js'].map(type => {
+  const commit = type === 'css' ? baseline : runtimeBaseline;
+  const baselineManifest = execFileSync('git', ['show', `${commit}:v2/bundle-manifest-v1.php`]);
   const names = JSON.parse(execFileSync('php', ['-r',
-    'eval("?>" . stream_get_contents(STDIN)); echo json_encode(v2_bundle_files($argv[1], "search3"));', type
+    'eval("?>" . stream_get_contents(STDIN)); echo json_encode(function_exists("v2_bundle_files") ? v2_bundle_files($argv[1], "search3") : v2_bundle_manifest()[$argv[1]]);', type
   ], { input: baselineManifest, encoding: 'utf8' }));
-  return [type, names.map(name => execFileSync('git', ['show', `${baseline}:v2/${name}`], { encoding: 'utf8' })).join(type === 'js' ? '\n;\n' : '\n')];
+  return [type, names.map(name => execFileSync('git', ['show', `${commit}:v2/${name}`], { encoding: 'utf8' })).join(type === 'js' ? '\n;\n' : '\n')];
 }));
 const picture = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750"><path fill="#9ac7df" d="M0 0h1200v750H0z"/><path fill="#f5efe0" d="M250 150h700v600H250z"/></svg>');
 const tour = { id: 'geometry-tour', price: 148500, hotel: { name: 'Проверочный отель с длинным названием', country: { name: 'Турция' }, region: { name: 'Анталья' } }, departure: { name: 'Москва' }, date: '2026-09-12', nights: 9, adults: 2, childs: 1, meal: { name: 'Всё включено' }, roomType: 'STANDARD LAND VIEW', placement: 'DBL + CHD', operator: { name: 'TEST OPERATOR' }, isCharter: true, picture, hotelDescription: 'Описание проверочного отеля. '.repeat(16) };
@@ -107,7 +110,7 @@ async function run(browser, width, previous) {
 }
 (async()=>{
   const browser=await chromium.launch({headless:true});
-  const evidence={baseline,differences:[],widths:{}};
+  const evidence={baseline,runtimeBaseline,differences:[],widths:{}};
   try {
     for(const width of [375,760,1000,1440]){
       const before=await run(browser,width,true),after=await run(browser,width,false);
