@@ -69,7 +69,7 @@ class FullCatalog(unittest.TestCase):
         self.assertEqual(probe.catalog_text("Hotel fixture-secret"), "")
         self.assertEqual(probe.catalog_text("<b>Hotel</b>"), "")
 
-    def test_broad_fuzzy_token_stays_in_manual_unmatched_queue(self):
+    def test_non_exact_name_stays_in_manual_unmatched_queue(self):
         locals_ = [{"id": index + 1, "name": f"Grand Fixture {index}",
                     "normalized_name": f"grand fixture {index}", "country_name": "Египет",
                     "region_name": "Шарм Эль Шейх", "subregion_name": ""}

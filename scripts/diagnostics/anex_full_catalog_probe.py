@@ -1,6 +1,5 @@
 """Full ANEX reference download and conservative read-only AnyTour matching."""
 import csv
-import difflib
 import io
 import unicodedata
 
@@ -131,11 +130,6 @@ def catalog_town_match(supplier, local):
     return bool(left and right and (left <= right or right <= left))
 
 
-def catalog_similarity(left, right):
-    left, right = catalog_norm(left), catalog_norm(right)
-    return difflib.SequenceMatcher(None, left, right).ratio() if left and right else 0.0
-
-
 def catalog_local_data():
     hotels, seen = [], set()
     after_id = 0
@@ -179,14 +173,12 @@ def match_catalog(hotels, towns, states, townstates, local_hotels):
     state_names = {row.get("inc"): row.get("name", "") for row in states}
     town_names = {row.get("inc"): row.get("name", "") for row in towns}
     town_state = {row.get("town"): row.get("state") for row in townstates}
-    exact, tokens = {}, {}
+    exact = {}
     for local in local_hotels:
         for value in (local.get("name"), local.get("normalized_name")):
             name = catalog_norm(value)
             if name:
                 exact.setdefault(name, {})[local["id"]] = local
-                for token in {word for word in name.split() if len(word) >= 4}:
-                    tokens.setdefault(token, {})[local["id"]] = local
     output = []
     for hotel in hotels:
         external_id = positive_id({"id": hotel.get("inc")})
@@ -205,30 +197,8 @@ def match_catalog(hotels, towns, states, townstates, local_hotels):
         for local in candidate_map.values():
             same_country = bool(supplier_country) and catalog_country(supplier_country) == catalog_country(local.get("country_name"))
             same_town = catalog_town_match(supplier_town, local.get("subregion_name")) or catalog_town_match(supplier_town, local.get("region_name"))
-            similarity = max(catalog_similarity(value, local.get("name")) for value in (name, alternate))
-            ranked.append((1.0 + (0.2 if same_country else -0.3) + (0.2 if same_town else 0), local, same_country, same_town, similarity))
-        if not ranked and status == "active":
-            pool = {}
-            # A rare name token is a useful candidate generator. Broad tokens
-            # such as "grand" or "beach" are deliberately not compared with
-            # thousands of hotels: those rows remain in the manual queue.
-            words = sorted(
-                {word for normalized in names for word in normalized.split()
-                 if len(word) >= 4 and 0 < len(tokens.get(word, {})) <= 1000},
-                key=lambda word: (len(tokens[word]), -len(word), word),
-            )[:2]
-            for word in words:
-                pool.update(tokens.get(word, {}))
-                if len(pool) >= 1200:
-                    break
-            for local in pool.values():
-                same_country = bool(supplier_country) and catalog_country(supplier_country) == catalog_country(local.get("country_name"))
-                if supplier_country and not same_country:
-                    continue
-                similarity = max(catalog_similarity(value, local.get("name")) for value in (name, alternate))
-                same_town = catalog_town_match(supplier_town, local.get("subregion_name")) or catalog_town_match(supplier_town, local.get("region_name"))
-                if similarity >= 0.72:
-                    ranked.append((0.65 * similarity + (0.2 if same_country else 0) + (0.15 if same_town else 0), local, same_country, same_town, similarity))
+            ranked.append((1.0 + (0.2 if same_country else -0.3) + (0.2 if same_town else 0),
+                           local, same_country, same_town, 1.0))
         ranked.sort(key=lambda item: (-item[0], item[1]["id"]))
         exact_geo = [item for item in ranked if item[4] >= 0.999 and item[2] and item[3]]
         match_status = "deleted" if status == "deleted" else "verified_auto" if len(exact_geo) == 1 else "review" if ranked else "unmatched"
