@@ -66,9 +66,65 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `15ba3e46a43513b8452cc02a38ed6576ac59f3c1`;
+The latest checked release source is `9d24bb7242779f560bc1e603e0346078b591d818`;
 the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
+
+### Latest checked candidate — legacy results context owner — 2026-09-07
+
+PR #1456 / source `9d24bb7242779f560bc1e603e0346078b591d818` retires
+the full legacy `results-context.css` top-chrome owner. Functional initial/results/
+edit/local-empty guards, shell isolation, mobile drawer default and expanded-card
+frame remain in current owners. The old five-column desktop summary, dense tools
+skin and list/map text substitutions were intentionally not copied.
+
+Eight raw assets fall **172787 → 166978 bytes (−5809 CSS)**. Across #1455/#1456
+this run removes **9063 bytes**; cumulative baseline reduction is **134546 bytes**.
+
+Security `34109163416` and exact artifact build `34109163488` passed. Reusable
+artifact `10013640138`, digest
+`sha256:aafee14237902c79f00148eed35666f3882b0ae1ada71e00fddc3f0d2f6bd114`.
+Local exact build/check, focused state-owner regressions, 35 source/presentation
+tests and both owner validators pass; one PHP-only local skip is covered by CI.
+Audit: `docs/project/search3-results-context-owner-retirement.json`.
+
+This is a checked isolated-candidate design experiment, **not a published visual
+acceptance**. Preview remains `4b061396`; main/production remain `fa58a0cb`.
+Chromium is unavailable, so initial/results/edit/local-empty geometry at
+375/999/1000/1440 and the expanded-card frame remain deferred.
+
+Next: before publication, inspect the intentional summary/tools reset at 375 and
+1440 plus the toolbar seam at 999/1000. If browser evidence remains unavailable,
+continue auditing a different independent owner; do not restore this retired layer.
+
+### Latest checked candidate — card and selected presentation owners — 2026-09-07
+
+PR #1455 / source `a3d5b0a36f304bb7408d2d818d07f3d896439d34` retires
+the remaining `result-cards.css` donor, the static selected-tour style injector and
+the standalone `tour-presentation.js` scheduler. Live mobile entry/order rules now
+belong to current entry/results owners; selected formatting and price scope share
+the existing selected-flow RAF/observer and retain the compatibility facade.
+
+Eight raw assets fall **176041 → 172787 bytes (−3254)**. CSS rises 566 bytes from
+moving live rules into linked owners; JS falls 3820 bytes by deleting two runtime
+owners. Cumulative baseline reduction is **128737 bytes**.
+
+Security `34107936139` and exact artifact build `34107936135` passed. Reusable
+artifact `10013136334`, digest
+`sha256:4050faa4151357634d9e2c2344f0924104b0ba0389fa27d3b2a72d0608dcc45d`.
+Local exact build/check, focused selected-flow/toolbar/linked-style regressions,
+35 source/presentation tests and both owner validators pass; one PHP-only local
+skip is covered by artifact CI. Audit:
+`docs/project/search3-card-selected-presentation-owner-retirement.json`.
+
+This source is **checked but not published**. Preview remains `4b061396`; main and
+production remain `fa58a0cb`. Chromium is unavailable, so mobile entry/result order,
+selected-tour geometry and physical Safari remain deferred; no visual equivalence
+is claimed.
+
+Next: audit `results-context.css` against current results-layout and entry owners.
+Keep its unique compact-summary and shell boundaries until exact ownership and
+responsive geometry are bounded.
 
 ### Latest checked candidates — selected mobile and hotel package owners — 2026-09-07
 

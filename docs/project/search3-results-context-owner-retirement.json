@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "base_release_sha": "a3d5b0a36f304bb7408d2d818d07f3d896439d34",
+  "source_pr": 1456,
+  "source_sha": "9d24bb7242779f560bc1e603e0346078b591d818",
+  "source_tree": "4dea12d246ad2c87e74494f4bfbd676bb341759c",
+  "scope": "Retire the full legacy results-context top-chrome owner as an isolated candidate design experiment while retaining functional shell, result-state, drawer and expanded-card guards in current owners.",
+  "removed": [
+    "five-column desktop results-summary skin",
+    "legacy results-tools density and list/map text substitutions",
+    "duplicate card width/stretch and 1025px density overrides",
+    "superseded mobile summary/tools presentation"
+  ],
+  "retained": [
+    "Candidate shell and disabled consultant/mobile-sticky boundaries",
+    "Initial, populated, edit, local-empty and reset visibility guards",
+    "Mobile filter bar/sheet closed default with current breakpoint owners",
+    "Expanded hotel-card frame without duplicate outline/glow",
+    "All eight public asset paths and protected price, URL, Tourvisor/API, lead and analytics contracts"
+  ],
+  "public_assets": [
+    {"path":"v2/search3-results-filters-v1.css","before":66967,"after":60666,"saved":6301,"sha256":"13e39100d92671b483119af7e572619dc8ca43d5e17f84510cf8e4474685442d"},
+    {"path":"v2/search3-results-filters-v1.js","before":59224,"after":59224,"saved":0,"sha256":"6305432b31100671f1919cfa118e926481ad10035a544efbaf4fb251462fc2a1"},
+    {"path":"v2/search3-entry-v1.css","before":15049,"after":15049,"saved":0,"sha256":"d7b5a8aa170b32d70d00bac381887f8b158bd1208283aead170cecdbac285933"},
+    {"path":"v2/search3-entry-v1.js","before":3226,"after":3226,"saved":0,"sha256":"05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"},
+    {"path":"v2/search3-results-cards-v2.css","before":6844,"after":7336,"saved":-492,"sha256":"51a834052985443303f55c72ddcb7db6c985ba028626068bf815bef94e7e8ce0"},
+    {"path":"v2/search3-results-cards-v2.js","before":0,"after":0,"saved":0,"sha256":"e3b0c44298fc1c149afbf4b8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"path":"v2/search3-selected-flow-v2.css","before":9401,"after":9401,"saved":0,"sha256":"6b3b3dd5b67ea4a1ac5305ad9bb1592dc0fa8d0a4e2ab26213c8613b5b89a3b3"},
+    {"path":"v2/search3-selected-flow-v2.js","before":12076,"after":12076,"saved":0,"sha256":"0866db647e89bbc6b7dd7c239aee8fa7691cf8bf26421d62345839c184c190cf"}
+  ],
+  "totals": {
+    "before": 172787,
+    "after": 166978,
+    "saved": 5809,
+    "css_before": 98261,
+    "css_after": 92452,
+    "css_saved": 5809,
+    "js_before": 74526,
+    "js_after": 74526,
+    "js_saved": 0,
+    "whole_layer_baseline": 301524,
+    "whole_layer_saved": 134546
+  },
+  "verification": {
+    "local": "Exact build/check; toolbar and selected-flow focused regressions; 35 source/presentation tests; both owner validators and diff check passed. One PHP-only local skip is covered by artifact CI.",
+    "source_ci": {
+      "security_run": 34109163416,
+      "artifact_run": 34109163488,
+      "artifact_id": 10013640138,
+      "artifact_digest": "sha256:aafee14237902c79f00148eed35666f3882b0ae1ada71e00fddc3f0d2f6bd114",
+      "conclusion": "success"
+    },
+    "browser": "Deferred: Chromium is unavailable; the intentional summary/tools visual reset is not claimed as accepted."
+  },
+  "preview": {
+    "published": false,
+    "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+    "checked_release_sha": "9d24bb7242779f560bc1e603e0346078b591d818"
+  },
+  "deferred": [
+    "Initial/results/edit/local-empty/reset geometry at 375/999/1000/1440",
+    "Expanded/collapsed card frame visual check",
+    "Physical iPhone/Safari acceptance"
+  ],
+  "production_updated": false,
+  "next_action": "Before publishing, bound the intentional results summary/tools reset at 375 and 1440 plus the 999/1000 toolbar seam. If browser evidence is unavailable, audit a different independent owner and do not restore results-context.css."
+}
