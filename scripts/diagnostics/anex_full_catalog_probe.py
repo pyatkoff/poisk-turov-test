@@ -212,16 +212,31 @@ def remote_full_catalog_probe(tokens):
     token = tokens.get("ANEX_REFERENCE_TOKEN", "").strip()
     if not token:
         return {"mode": "full_catalog", "ok": False, "status": "missing_secret"}
+    stage = "currentstamp"
+    progress = {}
     try:
         stamp_result, stamp = reference_check(token, "currentstamp")
         if stamp_result.get("status") != "ok" or not stamp:
             raise StopProbe()
+        stage = "states"
         states, state_pages = catalog_all(token, "state", stamp)
+        progress["states"] = len(states)
+        stage = "towns"
         towns, town_pages = catalog_all(token, "town", stamp)
+        progress["towns"] = len(towns)
+        stage = "stars"
         stars, star_pages = catalog_all(token, "star", stamp)
+        progress["stars"] = len(stars)
+        stage = "hotels"
         hotels, hotel_pages = catalog_all(token, "hotel", stamp)
+        progress["hotels"] = len(hotels)
+        stage = "townstate"
         townstates = catalog_static(token, "townstate")
+        progress["townstate"] = len(townstates)
+        stage = "anytour_catalog"
         local_hotels = catalog_local_data()
+        progress["anytour_hotels"] = len(local_hotels)
+        stage = "matching"
         matches = match_catalog(hotels, towns, states, townstates, local_hotels)
         counts = {key: sum(row["status"] == key for row in matches)
                   for key in ("verified_auto", "review", "unmatched", "deleted")}
@@ -232,9 +247,9 @@ def remote_full_catalog_probe(tokens):
                 "pages": {"hotels": hotel_pages, "towns": town_pages, "states": state_pages, "stars": star_pages},
                 "matches": matches}
     except StopProbe:
-        return {"mode": "full_catalog", "ok": False, "status": "catalog_unavailable"}
+        return {"mode": "full_catalog", "ok": False, "status": "catalog_unavailable", "failed_stage": stage, "progress": progress}
     except (ET.ParseError, ValueError, TypeError, KeyError, subprocess.TimeoutExpired):
-        return {"mode": "full_catalog", "ok": False, "status": "invalid_catalog"}
+        return {"mode": "full_catalog", "ok": False, "status": "invalid_catalog", "failed_stage": stage, "progress": progress}
 
 
 def save_full_catalog_artifacts(report, directory):
@@ -265,5 +280,6 @@ def save_full_catalog_artifacts(report, directory):
 
 def catalog_summary(report):
     if not report.get("ok"):
-        return {"mode": "full_catalog", "ok": False, "status": report.get("status", "invalid_catalog")}
+        return {"mode": "full_catalog", "ok": False, "status": report.get("status", "invalid_catalog"),
+                "failed_stage": report.get("failed_stage", "unknown"), "progress": report.get("progress", {})}
     return {"mode": "full_catalog", "ok": True, "status": "ok", "counts": report["counts"], "pages": report["pages"]}
