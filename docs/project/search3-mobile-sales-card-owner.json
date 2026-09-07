@@ -1,6 +1,9 @@
 {
   "schema_version": 1,
   "base_release_sha": "45c589b06d939fe5ff494733e259745c41ea4d97",
+  "source_pr": 1485,
+  "source_sha": "cca517ac14d7938a7d228d10fdce80d1d450c0ee",
+  "release_integration_sha": "591feb00f5d3cf1c574093210663c94ef881d019",
   "scope": "Retire the separate phone result layout donor and simplify the narrow result card into the current card and toolbar owners.",
   "retired_owner": "src/search3/styles/results-mobile-layout.css",
   "current_owners": [
@@ -47,6 +50,16 @@
     "Security guard including owner validators",
     "exact artifact build including 12-state results geometry at 375/760/761/999/1000/1440"
   ],
+  "ci_result": {
+    "security_run": 34140643757,
+    "artifact_run": 34140643794,
+    "artifact_id": 10025783714,
+    "artifact_digest": "sha256:e20f0df72a3d5ed509eeeb981ebfb0735fee37117968fbacd04244c819bb6bf1",
+    "geometry_artifact_id": 10025782914,
+    "geometry_digest": "sha256:5ee98fb8dabb84ae22e5b3a3469723deb88b959b72dea9f25ef802540c60b1ad",
+    "geometry_states": "12 collapsed/expanded result and drawer states at 375/760/761/999/1000/1440",
+    "conclusion": "SUCCESS"
+  },
   "publication": "NOT_PUBLISHED",
   "deferred": "Physical Safari/safe-area and live current-source preview acceptance",
   "protected_contracts": "Eight public paths, price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping and analytics unchanged"
