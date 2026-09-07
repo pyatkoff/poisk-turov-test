@@ -53,31 +53,29 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1482 retires the complete acceptance-guards.css overlay into current presentation owners. 159805→157523 raw bytes (−2282 CSS); required Security/artifact CI, 12 result/drawer states and 12 selected detail/review/lead states pass. Release only; preview remains b9445bc3.",
+    "last_material_progress": "#1485 retires the separate phone result-layout donor and #1486 removes the duplicate Search3 desktop filter owner plus repeated lead-entry hiding. 157523→147378 raw bytes in this invocation (−10145: −9612 JS/CSS owner bytes plus −533 repeated CSS); both required CI pass. Release only; preview remains b9445bc3.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not repeat #1474–#1476, #1479, #1480 or #1482. The acceptance overlay is retired; retain its drawer/readability/selected/hidden contracts in current owners. Audit the next whole presentation owner against release c42a8bca and bundle only a material reduction. Do not remove results-tablet-layout.css: its 761–999 drawer geometry is active. Physical Safari and live current-source preview acceptance remain deferred.",
+    "next_action": "The technical raw-size target has been reached at 147378 bytes. Do not repeat #1485/#1486, restore the duplicate desktop rail, or remove results-tablet-layout.css. Publish one accumulated exact isolated preview only when a bounded live filter/card acceptance pass can be performed; then switch priority from byte-only work to selling search UX and the lean Search3 base bundle. Physical Safari/safe-area remains deferred.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_ACCEPTANCE_GUARD_OWNER_RETIREMENT",
-    "title": "Retire the acceptance overlay into current owners",
+    "id": "S3_SINGLE_FILTER_AND_MOBILE_CARD_OWNERS",
+    "title": "Retire duplicate desktop filter and phone result-layout owners",
     "status": "CHECKED_RELEASE_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [
-      1482
-    ],
+    "source_prs": [1485, 1486],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "6bf28b3d89426c3aed3f06683d0339aa8e48e6de",
-    "release_sha": "c42a8bca9bacb447a9bbed529761993669fc61be",
-    "artifact_run": 34134720906,
-    "artifact_id": 10023536739,
-    "artifact_digest": "sha256:3f4600d19aab8503a56e6ec53620e257ac25b33e25d2f34b6968a8af71cb6ef5",
-    "geometry_artifact_id": 10023536324,
-    "selected_geometry_artifact_id": 10023535920,
+    "implementation_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "release_sha": "4063a48049f46704dcb94a623d3219361808914b",
+    "artifact_run": 34141824479,
+    "artifact_id": 10026227838,
+    "artifact_digest": "sha256:290789ab82bda4e2169a488ceb3c0449842facce120d47ee811781cb0ad5909b",
+    "geometry_artifact_id": 10025782914,
+    "selected_geometry_artifact_id": 10026226970,
     "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "next_action": "Do not repeat #1474–#1476, #1479, #1480 or acceptance owner retirement #1482. Reuse artifact10023536739 only for source6bf28b3d; checked release isc42a8bca and published preview remains b9445bc3. Audit the next whole presentation owner against the fresh release and bundle only a material reduction. Preserve current drawer/readability/selected/hidden owners and results-tablet-layout.css. Production approval remains required."
+    "next_action": "Reuse artifact10026227838 only for source c9ba7952; checked release is 4063a480 and published preview remains b9445bc3. The byte-only target is reached. Next prepare one accumulated isolated preview acceptance for cards and the sole DS2 desktop rail, then begin the selling-search UX stage. Production approval remains required."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -7552,5 +7550,61 @@
       "source_sha": "484d32de05aa92c90143a89cf08185f6edd4d996",
       "artifact_scope": "Do not use as combined release artifact; working source predates phone repair."
     }
+  },
+  "latest_single_filter_and_mobile_card_owners": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "baseline": "45c589b06d939fe5ff494733e259745c41ea4d97",
+    "release_integration_sha": "4063a48049f46704dcb94a623d3219361808914b",
+    "source_prs": [1485, 1486],
+    "source_shas": [
+      "cca517ac14d7938a7d228d10fdce80d1d450c0ee",
+      "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3"
+    ],
+    "audits": [
+      "docs/project/search3-mobile-sales-card-owner.json",
+      "docs/project/search3-single-desktop-filter-owner.json"
+    ],
+    "scope": "Retire the separate phone results layout donor; keep current card/toolbar owners. Use the already loaded DS2 filters as the sole desktop filter owner, retain a compact zero-result bridge, and remove duplicate lead-entry hiding.",
+    "ci": {
+      "mobile_security_run": 34140643757,
+      "mobile_artifact_run": 34140643794,
+      "mobile_artifact_id": 10025783714,
+      "mobile_artifact_digest": "sha256:e20f0df72a3d5ed509eeeb981ebfb0735fee37117968fbacd04244c819bb6bf1",
+      "mobile_geometry_artifact_id": 10025782914,
+      "mobile_geometry_digest": "sha256:5ee98fb8dabb84ae22e5b3a3469723deb88b959b72dea9f25ef802540c60b1ad",
+      "filter_security_run": 34141824444,
+      "filter_artifact_run": 34141824479,
+      "filter_artifact_id": 10026227838,
+      "filter_artifact_digest": "sha256:290789ab82bda4e2169a488ceb3c0449842facce120d47ee811781cb0ad5909b",
+      "selected_geometry_artifact_id": 10026226970,
+      "selected_geometry_digest": "sha256:e976c332cd8963aa7b54d00a99082a09e0d58a1c0b4d646b4a7675d03d2a1450",
+      "required_passed": 4,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
+    },
+    "public_assets": {
+      "before_bytes": 157523,
+      "after_bytes": 147378,
+      "css_bytes": 87112,
+      "js_bytes": 60266,
+      "removed_bytes": 10145,
+      "css_removed_bytes": 1540,
+      "js_removed_bytes": 8605,
+      "scope": "Eight public paths, raw uncompressed bytes."
+    },
+    "visual_verification": {
+      "mobile_results_states": "12 collapsed/expanded result and drawer states at375/760/761/999/1000/1440 passed in Chromium",
+      "selected_states": "12 detail/review/lead states at375/760/1000/1440 passed in Chromium after strengthening the existing geometry detector",
+      "live_preview_checked": false,
+      "lead_submitted": false
+    },
+    "preview_updated": false,
+    "production_updated": false,
+    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "deferred": [
+      "live current-source desktop filter and mobile card interaction",
+      "physical Safari and device safe-area"
+    ],
+    "next_action": "The planned technical size target is reached. Do not restore the duplicate Search3 desktop rail or retire results-tablet-layout.css. Prepare one accumulated isolated preview with bounded card/filter acceptance, then switch to selling search UX and a lean Search3 base bundle; production still requires explicit visual approval."
   }
 }
