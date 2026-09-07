@@ -53,27 +53,27 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Sources #1450/#1451: historical review/mobile and desktop tour density layers retired; 185325→180248 raw bytes (−5077). Both mandatory source jobs passed for both packages; checked f6496c8a differs from published 4b061396.",
+    "last_material_progress": "Sources #1452/#1453: standalone selected-tour mobile runtime and hotel-package fallback owner retired; 180248→176041 raw bytes (−4207). Both mandatory source jobs passed for both packages; checked 15ba3e46 differs from published 4b061396.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not repeat review density, mobile rows 6/7 or desktop tour density retirement. Next substantial candidate: consolidate selected-tour-mobile.js into selected-flow-v2 while preserving compatibility API, lead-field normalization and normal/no-flight CTA ownership. Keep result-cards and static-injector remnants accumulated unless their geometry is bounded.",
+    "next_action": "Do not repeat selected-tour-mobile or hotel-packages retirement. Combine result-cards.css retirement and the static selected-tour style injector with another material owner package; preserve mobile search entry/order and bound affected card/selected geometry before publication.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_REVIEW_TOUR_DENSITY_RETIREMENT",
-    "title": "Retire legacy review and desktop tour density layers",
+    "id": "S3_SELECTED_MOBILE_PACKAGE_OWNER_RETIREMENT",
+    "title": "Retire selected mobile runtime and hotel package fallback owners",
     "status": "CHECKED_RELEASE_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1450,
-      1451
+      1452,
+      1453
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "f6496c8a7b2532914a3769bfd8f42aabb4f1bea6",
-    "artifact_run": 34097800920,
-    "artifact_id": 10009288882,
-    "next_action": "Consolidate selected-tour-mobile.js into selected-flow-v2 while preserving compatibility API, lead-field normalization and normal/no-flight CTA ownership; combine smaller result-card/injected-style remnants only when their geometry is bounded."
+    "implementation_sha": "15ba3e46a43513b8452cc02a38ed6576ac59f3c1",
+    "artifact_run": 34103338407,
+    "artifact_id": 10011377372,
+    "next_action": "Combine result-cards.css retirement and static selected-tour style injection removal with the next material owner package; preserve mobile search entry/order and bound affected geometry before publication."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -3523,7 +3523,7 @@
       "automation_updated_at": "2026-09-06T23:32:40.307000+00:00"
     }
   },
-  "schema_version": 28,
+  "schema_version": 29,
   "site_preview_publication_history": [
     {
       "previous_site_draft": {
@@ -6475,5 +6475,37 @@
     "production_updated": false,
     "next_action": "Consolidate selected-tour-mobile.js into selected-flow-v2 while preserving compatibility API, lead-field normalization and normal/no-flight CTA ownership; combine smaller result-card/injected-style remnants only when their geometry is bounded."
   },
-  "updated_at": "2026-09-07T07:58:00.000000+00:00"
+  "latest_selected_mobile_package_owner_retirement": {
+    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_prs": [1452, 1453],
+    "source_shas": [
+      "b778f18b70fd6dab330696c5b7ef89bca406de8d",
+      "15ba3e46a43513b8452cc02a38ed6576ac59f3c1"
+    ],
+    "checked_release_sha": "15ba3e46a43513b8452cc02a38ed6576ac59f3c1",
+    "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+    "eight_assets": {
+      "before": 180248,
+      "after": 176041,
+      "saved": 4207,
+      "css_saved": 2430,
+      "js_saved": 1777,
+      "baseline_saved": 125483
+    },
+    "required_ci": [
+      {"pr":1452,"security_run":34102526996,"artifact_run":34102526876,"artifact_id":10011064554,"conclusion":"success"},
+      {"pr":1453,"security_run":34103338435,"artifact_run":34103338407,"artifact_id":10011377372,"conclusion":"success"}
+    ],
+    "visual_verification": {
+      "performed": false,
+      "deferred": [
+        "selected mobile/review/lead and expanded package geometry at 375/1024",
+        "physical Safari"
+      ]
+    },
+    "production_updated": false,
+    "audit": "docs/project/search3-selected-mobile-package-owner-retirement.json",
+    "next_action": "Combine result-cards.css retirement and static selected-tour style injection removal with the next material owner package; preserve mobile search entry/order and bound affected geometry before publication."
+  },
+  "updated_at": "2026-09-07T09:01:00.000000+00:00"
 }

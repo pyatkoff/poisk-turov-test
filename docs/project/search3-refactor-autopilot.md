@@ -66,9 +66,43 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `f6496c8a7b2532914a3769bfd8f42aabb4f1bea6`;
+The latest checked release source is `15ba3e46a43513b8452cc02a38ed6576ac59f3c1`;
 the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
+
+### Latest checked candidates — selected mobile and hotel package owners — 2026-09-07
+
+Two independent whole-owner packages were completed and fast-forwarded into release:
+
+- PR #1452 / source `b778f18b70fd6dab330696c5b7ef89bca406de8d`
+  removes `selected-tour-mobile.js`. The current selected-flow owner now provides the
+  single RAF/observer, mobile bar, compatibility API, lead-field normalization and
+  normal/no-flight CTA behavior.
+- PR #1453 / source `15ba3e46a43513b8452cc02a38ed6576ac59f3c1`
+  retires `hotel-packages.css`. Required expanded-offer and mobile package rules now
+  live in the current results layout owners; obsolete card/mobile fallbacks and dead
+  scrollbar selectors were not copied.
+
+Eight raw assets fall **180248 → 176041 bytes (−4207)**: CSS 100125 → 97695
+(−2430), JS 80123 → 78346 (−1777). This is a net payload measurement: the mobile
+compatibility code moved into selected-flow is counted against the removed JS.
+Cumulative baseline reduction is **125483 bytes**.
+
+Both packages passed the two mandatory source jobs. Final Security is `34103338435`;
+final exact artifact build is `34103338407`, artifact `10011377372`, digest
+`sha256:9abca895127b7701554b3089f0a03512af17a789cf95bab81dcf5402170b7e6d`.
+Local exact build/check, 35 source/presentation tests, the selected-flow compatibility
+regression and both owner validators pass; one PHP-only local skip is covered by CI.
+Audit: `docs/project/search3-selected-mobile-package-owner-retirement.json`.
+
+This source is **checked but not published**. Preview remains `4b061396`; main and
+production remain `fa58a0cb`. Chromium was unavailable, so selected mobile/review/
+lead and expanded-package geometry plus physical Safari are deferred; no visual
+equivalence is claimed.
+
+Next: combine retirement of the remaining `result-cards.css` donor and static
+selected-tour style injector with another material owner package. Preserve mobile
+search entry/order and bound card/selected geometry before any preview publication.
 
 ### Latest checked candidates — review and tour density retirement — 2026-09-07
 
