@@ -5,3 +5,7 @@
 @media(min-width:1025px){.at-global-header__inner{gap:18px}.at-global-header__nav a{min-height:38px;padding-inline:9px;font-size:13px}.at-global-header__phone{font-size:15px}.at-global-header__cta{min-height:40px;padding-inline:16px}}
 @media(max-width:1024px){.at-global-header__inner{padding-block:7px}.at-global-header__mobile-panel{top:46px}}
 @media(max-width:520px){.at-global-header__inner{padding-block:6px}}
+
+/* The header leads into search; the form owns the filled primary action. */
+.at-global-header .at-global-header__cta{min-height:44px;border:1px solid var(--at-line);background:#fff;color:var(--at-ink);box-shadow:none}
+.at-global-header .at-global-header__cta:hover{background:var(--at-soft-blue);border-color:var(--at-brand)}

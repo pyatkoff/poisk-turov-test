@@ -2,6 +2,7 @@ name: Validate V2 SEO publishability
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     branches: [main]
     paths:
       - 'v2/seo-page-primitives-v1.php'
@@ -18,6 +19,7 @@ permissions:
 
 jobs:
   publishability:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || (github.head_ref != 'release/search3-production-ready-v1' && github.base_ref != 'release/search3-production-ready-v1') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

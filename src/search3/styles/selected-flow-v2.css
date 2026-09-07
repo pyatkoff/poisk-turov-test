@@ -1,0 +1,298 @@
+/* Retained desktop trust from the retired shared confidence owner. */
+.selected-confidence{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:14px;margin:16px 0 0;padding:12px 14px;border:1px solid #dce5f5;border-radius:14px;background:#f8fbff}.selected-confidence>div:first-child>span{display:block;margin-bottom:3px;color:#3154cf;font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.055em}.selected-confidence strong{display:block;color:#172033;font-size:14px;line-height:1.25}.selected-confidence p{display:none}.selected-confidence-steps{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px 14px}.selected-confidence-steps b{display:flex;align-items:center;gap:6px;padding:0;background:transparent;color:#536076;font-size:10.5px;font-weight:750;line-height:1.35}.selected-confidence-steps b:before{content:"✓";display:grid;place-items:center;flex:0 0 17px;width:17px;height:17px;border-radius:999px;background:#eaf7ef;color:#25834a;font-size:9px;font-weight:900}
+/* Search3 selected/final/lead presentation overlay. Preview only. */
+.search3-selected-mobile-bar{display:none}
+html body.search3-candidate #selectedTour[hidden]{display:none!important}
+@media(max-width:640px){
+body.search3-candidate{padding-bottom:78px!important}
+.search3-selected-mobile-bar:not([hidden]){position:fixed;z-index:80;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px calc(9px + env(safe-area-inset-bottom));border-top:1px solid var(--at-line);background:rgba(255,255,255,.97);box-shadow:0 -8px 26px rgba(31,52,109,.12);backdrop-filter:blur(12px)}
+.search3-selected-mobile-bar__price{min-width:0;display:flex;flex-direction:column;gap:2px}
+.search3-selected-mobile-bar__price small{color:var(--at-muted);font-weight:800}
+.search3-selected-mobile-bar__price strong{color:var(--at-ink);font-weight:950;white-space:nowrap}
+.search3-selected-mobile-bar button{min-height:48px;padding:0 15px;border:0;border-radius:10px;background:#ff5a0a;color:#fff;font:900 11px/1 var(--at-font)}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review){
+& .back-results{align-self:flex-start!important}
+& .selected-picture{border:1px solid var(--at-line)!important}
+& .selected-head{border-top:0!important}
+& .selected-price{display:none!important}
+& :is(.hotel-desc,.tour-flights,.lead-form){margin-top:9px!important}
+& .section-heading{align-items:flex-start!important;flex-direction:column!important;gap:2px!important}
+& .flight-variant{border-radius:10px!important}
+}
+}
+/* The existing checkout decorator can reinsert these after a phase change. */
+html body.search3-candidate #selectedTour :is(.checkout-journey,.checkout-facts-heading,.selected-tour-progress){
+  display: none !important;
+}
+
+body.search3-candidate{
+& #selectedTour.search3-flight-fallback .tour-flights {
+  border-color: #d9e2f5 !important;
+  background: linear-gradient(180deg, #fff, #fbfcff) !important;
+}
+
+& #selectedTour.search3-flight-fallback .tour-flights .selected-loading {
+  max-width: 720px;
+  margin: 10px 0 0 !important;
+  padding: 16px 18px !important;
+  border: 1px solid #dce5f7;
+  border-radius: 12px;
+  background: #f6f8ff;
+  color: #58657c !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  text-align: left !important;
+}
+
+& #selectedTour .search3-flight-continue--fallback {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+& #selectedTour .search3-flight-continue--fallback::after {
+  content: "Заявка не отправится — сначала вы проверите итог тура";
+  max-width: 340px;
+  color: #6b768a;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+& #selectedTour .search3-flight-continue--fallback button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 9px;
+  background: #ff510c;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+& #selectedTour {
+& .search3-flight-continue--fallback button:focus-visible,& .search3-flight-show-all:focus-visible {
+  outline: 2px solid #2743cb;
+  outline-offset: 3px;
+}
+
+& .flight-variants[data-search3-flight-disclosure] > .flight-variant[hidden] {
+  display: none !important;
+}
+
+& .search3-flight-show-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 0 16px;
+  border: 1px solid #cbd6ec;
+  border-radius: 9px;
+  background: #fff;
+  color: #2743cb;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+}
+
+& #selectedTour.search3-final-review .search3-flight-show-all[hidden] {
+  display: none !important;
+}
+
+& #selectedTour.search3-flight-fallback .search3-booking-summary__flight {
+  color: #2743cb !important;
+  font-weight: 750 !important;
+}
+
+& #selectedTour.search3-final-review.search3-flight-fallback .search3-booking-summary {
+  border-color: #cfdcf5 !important;
+  box-shadow: 0 14px 34px rgba(39, 67, 203, .08) !important;
+}
+
+& #selectedTour.search3-final-review.search3-flight-fallback .search3-flight-continue--fallback::after {
+  content: "Рейс уточнит менеджер до подтверждения тура";
+}
+
+& #selectedTour.search3-lead-entry.search3-flight-fallback .lead-form {
+  border-color: #cfdcf5 !important;
+  box-shadow: 0 14px 34px rgba(39, 67, 203, .07) !important;
+}
+}
+
+@media (max-width: 640px) {
+  body.search3-candidate{
+& #selectedTour.search3-flight-fallback .tour-flights .selected-loading {
+    margin-top: 8px !important;
+    padding: 13px 14px !important;
+    font-size: 13px !important;
+  }
+
+  & #selectedTour .search3-flight-continue--fallback {
+    display: grid;
+    gap: 8px;
+  }
+
+  & #selectedTour .search3-flight-continue--fallback button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  & #selectedTour .search3-flight-continue--fallback::after {
+    max-width: none;
+  }
+
+  & #selectedTour .search3-flight-show-all {
+    width: 100%;
+    min-height: 48px;
+  }
+}
+}
+
+/* Readable conditions and summaries throughout flight/review/application states. */
+html body.search3-candidate{
+& #selectedTour {
+& :is(.section-heading span,.selected-head p,.flight-segment-title span,.flight-route span,.flight-baggage,.flight-fuel,.facts span,.search3-final-services span,.search3-final-tourists span,.search3-final-section__heading span,.search3-booking-summary dt,.search3-booking-summary__place,.search3-booking-summary__price-note,.search3-lead-protection,.lead-selection-summary small,.lead-phone-hint,.back-results) {font-size:12px!important;line-height:1.45!important}
+& :is(.flight-route b,.flight-choice>span,.flight-choice-summary,.flight-choice-tradeoffs span,.facts b,.search3-final-services strong,.search3-final-tourists strong,.search3-booking-summary dd,.lead-selection-summary b,.lead-form label,.lead-trust-note) {font-size:14px!important;line-height:1.45!important;white-space:normal!important;overflow-wrap:anywhere}
+& :is(.search3-summary-submit,.search3-flight-continue button,.lead-form button[type=submit]) {font-size:15px!important;min-height:48px!important}
+& .lead-form input[type=tel] {font-size:16px!important}
+& .lead-selection-summary {display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
+& .lead-selection-summary>span {display:grid!important;gap:5px!important;min-width:0!important}
+& .lead-selection-summary>span:first-child b {font-size:22px!important}
+& .search3-final-services {grid-template-columns:repeat(3,minmax(0,1fr))!important}
+& .search3-booking-summary dl>div {grid-template-columns:84px minmax(0,1fr)!important}
+}
+}
+@media(max-width:640px){
+ html body.search3-candidate{
+& #selectedTour .search3-final-services{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ & #selectedTour .flight-segment-title{flex-wrap:wrap!important}
+}
+}
+html body.search3-candidate{
+&.search3-selected-open {
+& #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-summary {font-size:14px!important;line-height:1.4!important}
+& #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-tradeoffs span {font-size:12px!important;line-height:1.4!important}
+& #selectedTour:not(.search3-final-review) {
+& .selected-head p{font-size:13px!important;line-height:1.4!important}
+& .facts span{font-size:11px!important;line-height:1.25!important}
+& .facts b{font-size:13px!important;line-height:1.35!important}
+& .hotel-desc{font-size:13px!important;line-height:1.55!important}
+& .tour-flights .section-heading span{font-size:12px!important;line-height:1.35!important}
+& .search3-flight-continue button{font-size:14px!important}
+}
+& #selectedTour.search3-final-review[data-search3-final-layout="maket7"] {
+& .search3-summary-submit {font-size:15px!important}
+& .search3-summary-actions p,& .search3-booking-summary__total span {font-size:12px!important}
+}
+}
+
+/* Approved lead kit: one calm contact column beside the retained tour card. */
+&.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry {
+& .lead-form .section-heading span {
+  max-width: none !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+& .lead-fields {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 18px !important;
+}
+& .lead-form :is(input:not([type=checkbox]), textarea) {
+  min-height: 48px !important;
+  padding: 12px 14px !important;
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+}
+& :is(.lead-phone-hint, .lead-consent, .lead-message),
+& .lead-trust-note{
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+& .lead-trust-note{
+  margin: 14px 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--at-muted) !important;
+}
+& .search3-summary-actions[hidden] {
+  display: none !important;
+}
+& .search3-booking-summary__image {
+  height: auto !important;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+}
+}
+@media(max-width:760px){
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review){
+& .facts span{font-size:12px!important}
+& .facts b{font-size:14px!important}
+}
+}
+@media(min-width:1000px) {
+  html body.search3-candidate{
+&.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry {
+& .lead-selection-summary {
+    display: none !important;
+  }
+  & .lead-form {
+    min-height: 0 !important;
+    box-shadow: none !important;
+  }
+}
+}
+}
+
+/* Readable, touch-sized navigation on the actual lead stage. */
+html body.search3-candidate{
+&.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry {
+& .search3-lead-back,& .lead-form .lead-optional-toggle {
+  font-size:14px!important;line-height:1.4!important;min-height:44px!important;
+}
+& .lead-form button[type=submit] {
+  font-size:15px!important;line-height:1.4!important;min-height:48px!important;
+}
+}
+
+}
+
+/* Static owner for the retired maket7-lock.js confidence-grid injection. */
+@media(min-width:1000px){
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-confidence{grid-column:1/3!important;width:100%!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-confidence>div:first-child{min-width:180px!important}
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-confidence-steps{min-width:0!important}
+}
+
+/* Narrow selected-tour layout is linked with its runtime instead of injected. */
+@media(max-width:999px){html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review){
+& .selected-lead-cta,& .selected-lead-cta-note,& .selected-choice-summary,& .facts-secondary-toggle,& .selected-confidence,& .search3-lead-shell,&>.lead-form{display:none!important}
+&{display:flex!important;flex-direction:column!important}
+& .back-results{order:0!important}
+& .selected-picture{order:1!important;height:178px!important;min-height:178px!important;border-radius:12px 12px 0 0!important}
+& .selected-head{order:2!important;min-height:0!important;grid-template-columns:minmax(0,1fr)!important;padding:14px!important}
+& .selected-head h2{font-size:22px!important}
+& .facts{order:3!important}
+& .tour-flights{order:4!important;width:100%!important}
+& .room-details-host{order:5!important;width:100%!important}
+& .search3-final-sections{order:6!important;width:100%!important}
+& .hotel-desc{order:7!important}
+& .hotel-desc-toggle{order:8!important;align-self:flex-start!important}
+}}
+@media(max-width:640px){
+html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review){
+& .flight-choice{grid-template-columns:17px minmax(0,1fr)!important}
+& .flight-choice b{grid-column:2!important;justify-self:start!important}
+}
+.search3-selected-mobile-bar:not([hidden]){gap:12px!important}
+.search3-selected-mobile-bar__price{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-items:baseline!important;max-width:60%!important}
+.search3-selected-mobile-bar__price small{white-space:normal!important;line-height:1.2!important}
+.search3-selected-mobile-bar__price strong{display:block!important;margin-top:2px!important;line-height:1.2!important;white-space:normal!important}
+}

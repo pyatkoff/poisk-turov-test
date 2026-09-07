@@ -192,3 +192,11 @@ Later, reporting frequency may be reduced as the product stabilizes.
 ## Core principle
 
 Optimize for a product that is reliable, beautiful, fast, understandable and commercially effective — not for number of commits or number of features shipped.
+
+## Search3 presentation source ownership
+
+The owner authorized search refactoring on 2026-09-05. Search3 presentation source
+modules now live in `src/search3/`; see its README and AGENTS.md before changing
+the generated `v2/search3-*` assets. Run `python3 scripts/build/search3_assets.py --write`
+and commit modules, generated assets and import hashes together. This scoped
+refactor does not lift the production visual-approval gate or protected contracts.

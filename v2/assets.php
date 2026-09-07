@@ -19,6 +19,12 @@ function v2_public_base_path(): string
 function v2_public_path(string $file): string
 {
     $name = ltrim($file, '/');
+    if ($name === 'api-v2.php' && defined('V2_API_PUBLIC_PATH')) {
+        return (string)V2_API_PUBLIC_PATH;
+    }
+    if ($name === 'lead-adapter-v2.php' && defined('V2_LEAD_PUBLIC_PATH')) {
+        return (string)V2_LEAD_PUBLIC_PATH;
+    }
     return v2_public_base_path() . '/' . $name;
 }
 
@@ -33,24 +39,40 @@ function v2_asset(string $file): string
     return v2_public_path(rawurlencode($name)) . '?v=' . rawurlencode($version);
 }
 
-function v2_bundle_content_version(string $type): string
+function v2_bundle_scope(?string $scope = null): string
 {
-    $manifest = v2_bundle_manifest();
-    if (!isset($manifest[$type])) return '0';
+    if ($scope === null || $scope === '') {
+        return defined('V2_SEARCH3_PRESENTATION') && V2_SEARCH3_PRESENTATION === true ? 'search3' : 'full';
+    }
+    if (!in_array($scope, ['full', 'search3'], true)) {
+        throw new InvalidArgumentException('Invalid V2 bundle scope');
+    }
+    return $scope;
+}
+
+function v2_bundle_content_version(string $type, ?string $scope = null): string
+{
+    $scope = v2_bundle_scope($scope);
+    try {
+        $files = v2_bundle_files($type, $scope);
+    } catch (InvalidArgumentException $error) {
+        return '0';
+    }
     $ctx = hash_init('sha256');
-    foreach ($manifest[$type] as $file) {
+    foreach ($files as $file) {
         $path = __DIR__ . '/' . $file;
         hash_update($ctx, $file . ':' . v2_asset_content_version($path) . ';');
     }
     return substr(hash_final($ctx), 0, 16);
 }
 
-function v2_bundle_asset(string $type): string
+function v2_bundle_asset(string $type, ?string $scope = null): string
 {
-    $manifest = v2_bundle_manifest();
-    if (!isset($manifest[$type])) throw new InvalidArgumentException('Invalid V2 bundle type');
-    $url = v2_public_path('bundle-v1.php') . '?type=' . rawurlencode($type) . '&v=' . rawurlencode(v2_bundle_content_version($type));
+    $scope = v2_bundle_scope($scope);
+    $files = v2_bundle_files($type, $scope);
+    $url = v2_public_path('bundle-v1.php') . '?type=' . rawurlencode($type) . '&v=' . rawurlencode(v2_bundle_content_version($type, $scope));
+    if ($scope !== 'full') $url .= '&scope=' . rawurlencode($scope);
     // Keep source-closure names visible to legacy production verification without creating requests.
-    if ($type === 'js') $url .= '#' . implode(',', array_map('rawurlencode', $manifest['js']));
+    if ($type === 'js') $url .= '#' . implode(',', array_map('rawurlencode', $files));
     return $url;
 }

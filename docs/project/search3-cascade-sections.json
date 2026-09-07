@@ -1,0 +1,25 @@
+{
+  "schema_version": 2,
+  "source_root": "src/search3/styles/cascade",
+  "donor_source_sha": "e5baf32f455cdb0aa1a704964f28e5efbebf57ff",
+  "combined_bytes": 2195,
+  "combined_git_blob_sha": "40c2c2c72ec7a95724da0a702cdc608c32c96e57",
+  "sections": [
+    "search3-batch-iteration1.css",
+    "search3-batch-iteration1b.css",
+    "search3-batch-iteration1c.css",
+    "search3-batch-iteration2.css",
+    "search3-batch-iteration2b.css",
+    "search3-batch-iteration2c.css",
+    "search3-convergence.css",
+    "search3-form-contract.css",
+    "search3-full-cycle-contract.css"
+  ],
+  "status": "RETIRED_CSS_PROVENANCE_ONLY",
+  "active_owners": [
+    "styles/lead-state.css",
+    "styles/tour-detail-convergence.css",
+    "styles/results-context.css",
+    "styles/hotel-packages.css"
+  ]
+}

@@ -11,3 +11,21 @@ function v2_bundle_manifest(): array
         ],
     ];
 }
+
+/** Route-scoped startup files. The full manifest remains the legacy contract. */
+function v2_bundle_files(string $type, string $scope = 'full'): array
+{
+    $manifest = v2_bundle_manifest();
+    if (!isset($manifest[$type]) || !in_array($scope, ['full', 'search3'], true)) {
+        throw new InvalidArgumentException('Invalid V2 bundle scope');
+    }
+    if ($scope !== 'search3') return $manifest[$type];
+
+    $excluded = [
+        'css' => ['conversion-confidence-v1.css', 'mobile-search-summary-v1.css', 'primary-meal-ux-v1.css', 'search-params-filter-rail-v1.css', 'results-layout-guard-v1.css'],
+        // Current Search3 owners retain summary, tour CTA and selected trust.
+        // Compare, decision badges and agency inserts are hidden in Search3.
+        'js' => ['search-redesign-v2.js', 'conversion-confidence-v1.js', 'compare-refresh-guard-v1.js', 'mobile-search-summary-v1.js', 'primary-meal-ux-v1.js', 'search-params-filter-rail-v1.js'],
+    ];
+    return array_values(array_diff($manifest[$type], $excluded[$type]));
+}

@@ -1,0 +1,302 @@
+{
+  "baseline": "50fd49cea3b167c05b7d97ef265fe00e7ae1a64b",
+  "method": "Ordered selectors/declarations/media token stream identical after expanding adjacent selector lists and excluding comments; strings/escapes/whitespace/value tokens preserved. All four JS assets byte-identical.",
+  "assets": [
+    {
+      "asset": "search3-results-filters-v1.js",
+      "before": 124296,
+      "after": 124296,
+      "before_lines": 1426,
+      "after_lines": 1426,
+      "sha256": "4a90f468694e2fa3b40fef8c982cbeaf3f229127ad8f56c63695447ec1bf46be"
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "before": 277112,
+      "after": 262609,
+      "before_lines": 2994,
+      "after_lines": 2949,
+      "sha256": "0af1948f7b2741ba737ff7cc1b00366343335efeb268e7cd0f2741b8af5585af"
+    },
+    {
+      "asset": "search3-entry-v1.css",
+      "before": 14959,
+      "after": 14240,
+      "before_lines": 280,
+      "after_lines": 269,
+      "sha256": "385a82fe64f63b67a6bab7cee1699ab1cdbca0edeb6ae06bfbc7113e48b4cea2"
+    },
+    {
+      "asset": "search3-entry-v1.js",
+      "before": 5050,
+      "after": 5050,
+      "before_lines": 132,
+      "after_lines": 132,
+      "sha256": "6e8631ea926a103661a824739fcdf218e83c07b6ca4f7d0786ed23fcacb41e0b"
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "before": 8758,
+      "after": 8238,
+      "before_lines": 144,
+      "after_lines": 140,
+      "sha256": "91bf0abec5f334554f1d1cc4b09b5693e3d734f558c6c10d9445cf39b8d1a6ba"
+    },
+    {
+      "asset": "search3-results-cards-v2.js",
+      "before": 88,
+      "after": 88,
+      "before_lines": 1,
+      "after_lines": 1,
+      "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266"
+    },
+    {
+      "asset": "search3-selected-flow-v2.css",
+      "before": 10780,
+      "after": 10426,
+      "before_lines": 235,
+      "after_lines": 235,
+      "sha256": "453db6a734306a459699649ef6df8a4a7f17ddce9e8b616625b1c6ea429f88b8"
+    },
+    {
+      "asset": "search3-selected-flow-v2.js",
+      "before": 13205,
+      "after": 13205,
+      "before_lines": 342,
+      "after_lines": 342,
+      "sha256": "a4db64b0d1752ca15eea9f6cab1587d38139c4cc16681932f1e9a9dc2408544c"
+    }
+  ],
+  "merged_rules": [
+    {
+      "source": "src/search3/styles/entry-v1.css",
+      "context": [
+        "(max-width:999px)"
+      ],
+      "before": "html body.search3-candidate.search3-results-active #status.status:has(.search-progress-done) .search-progress-head strong",
+      "after": "html body.search3-candidate.search3-results-active #status.status:has(.search-progress-done) .search-progress-head span",
+      "declarations": "font-size:12px!important;"
+    },
+    {
+      "source": "src/search3/styles/entry-v1.css",
+      "context": [
+        "(max-width:999px)"
+      ],
+      "before": "html body.search3-candidate.search3-results-active #resultsTools .search3-results-meta",
+      "after": "html body.search3-candidate.search3-results-active #resultsTools #resultSummary",
+      "declarations": "display:none!important;"
+    },
+    {
+      "source": "src/search3/styles/entry-v1.css",
+      "context": [
+        "(max-width:760px)"
+      ],
+      "before": "html body.search3-candidate #tourSearch,\nhtml body.search3-candidate #tourSearch :is(.search3-primary-grid,.search3-quality__grid)",
+      "after": "html body.search3-candidate #tourSearch .search3-primary-grid > *,\n  html body.search3-candidate #tourSearch .search3-quality__grid > *",
+      "declarations": "min-width:0!important;\n    max-width:100%!important;\n    box-sizing:border-box!important;"
+    },
+    {
+      "source": "src/search3/styles/tour-detail.css",
+      "context": [
+        "(min-width:1000px)"
+      ],
+      "before": "body.search3-candidate #selectedTour:not(.search3-final-review) .search3-final-sections",
+      "after": "body.search3-candidate #selectedTour:not(.search3-final-review) .search3-lead-shell",
+      "declarations": "grid-column:1/3!important"
+    },
+    {
+      "source": "src/search3/styles/hotel-card-convergence.css",
+      "context": [
+        "(max-width:760px)"
+      ],
+      "before": "body.search3-candidate #results .hotel-price",
+      "after": "body.search3-candidate #results .hotel-price-context",
+      "declarations": "margin-top:0!important;"
+    },
+    {
+      "source": "src/search3/styles/lead-review.css",
+      "context": [
+        "(max-width:640px)"
+      ],
+      "before": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .selected-head>:not(:first-child)",
+      "after": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .tour-flights .flight-baggage",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/lead-review.css",
+      "context": [
+        "(max-width:640px)"
+      ],
+      "before": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .tour-flights .flight-baggage",
+      "after": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry) .tour-flights .section-heading span",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/results-mobile-layout.css",
+      "context": [
+        "(max-width:760px)"
+      ],
+      "before": "body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .hotel-decision-line",
+      "after": "body.search3-candidate.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts",
+      "declarations": "grid-column:1/3!important"
+    },
+    {
+      "source": "src/search3/styles/review-layout.css",
+      "context": [],
+      "before": "body.search3-candidate #selectedTour.search3-final-review :is(.selected-lead-cta,.selected-lead-cta-note)",
+      "after": "body.search3-candidate #selectedTour.search3-final-review:not(.search3-lead-entry) .lead-form",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/review-layout.css",
+      "context": [],
+      "before": "body.search3-candidate #selectedTour.search3-final-review:not(.search3-lead-entry) .lead-form",
+      "after": "body.search3-candidate #selectedTour.search3-lead-entry :is(.back-results,.search3-booking-stepper,.search3-review-heading,.selected-picture,.selected-head,.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.tour-flights,.search3-final-sections,.selected-confidence,.search3-selected-mobile-bar)",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/review-desktop-board.css",
+      "context": [
+        "(min-width:1000px)"
+      ],
+      "before": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"] .selected-price",
+      "after": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"] :is(.facts,.facts-secondary-toggle,.selected-choice-summary,.hotel-desc,.hotel-desc-toggle,.room-details-host,.selected-confidence,.search3-tour-detail-rail)",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/visual-compatibility.css",
+      "context": [
+        "(min-width:1000px)"
+      ],
+      "before": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-head h2",
+      "after": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .selected-price",
+      "declarations": "font-size:22px!important"
+    },
+    {
+      "source": "src/search3/styles/visual-compatibility.css",
+      "context": [
+        "(min-width:1000px)"
+      ],
+      "before": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-lead-shell,\nhtml body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review)>:is(.lead-form,.lead-submit),\nhtml body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review)>button[type=\"submit\"]",
+      "after": "html body.search3-candidate.search3-selected-open #selectedTour :is(.tour-flights[hidden],.flight-variants[hidden])",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/results-context.css",
+      "context": [],
+      "before": "body.search3-candidate.search3-has-results .v2-product-hero",
+      "after": "body.search3-candidate.search3-has-results #tourSearch",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/results-context.css",
+      "context": [],
+      "before": "body.search3-candidate.search3-has-results.search3-editing-search .results-search-summary",
+      "after": "body.search3-candidate.search3-has-results :is(#v2ResultsConfidence,#v2AgencyTrust)",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/booking-stepper.css",
+      "context": [
+        "(min-width:1000px)"
+      ],
+      "before": "body.search3-candidate #selectedTour .selected-picture",
+      "after": "body.search3-candidate #selectedTour .selected-head",
+      "declarations": "grid-row:3!important"
+    },
+    {
+      "source": "src/search3/styles/results-width-compatibility.css",
+      "context": [],
+      "before": "body.search3-candidate :is(.results-search-summary[hidden],.results-tools--ds2[hidden])",
+      "after": "body.search3-candidate:not(.search3-has-results) .results-layout",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/result-cards.css",
+      "context": [],
+      "before": "body.search3-candidate #results .hotel-best-offer>small",
+      "after": "html body.search3-candidate.search3-has-results #results .hotel-card .hotel-best-offer>small",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/result-cards.css",
+      "context": [
+        "(min-width:1000px)"
+      ],
+      "before": "html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-main",
+      "after": "html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo,\n  html body.search3-candidate.search3-has-results:not(.search3-hotel-tours-open) #results .hotel-photo>img",
+      "declarations": "min-height:166px!important;"
+    },
+    {
+      "source": "src/search3/styles/acceptance-guards.css",
+      "context": [],
+      "before": "html body.search3-candidate.search3-results-active #results .hotel-price-context",
+      "after": "html body.search3-candidate.search3-results-active #results .search3-tour-list-head span",
+      "declarations": "font-size:12px!important;line-height:1.35!important"
+    },
+    {
+      "source": "src/search3/styles/acceptance-guards.css",
+      "context": [
+        "(max-width:760px)"
+      ],
+      "before": "html body.search3-candidate.search3-results-active #results .tour-meta>strong",
+      "after": "html body.search3-candidate.search3-results-active #results .tour-fact b",
+      "declarations": "font-size:14px!important"
+    },
+    {
+      "source": "src/search3/styles/review.css",
+      "context": [],
+      "before": "body.search3-candidate #selectedTour.search3-final-review .hotel-desc",
+      "after": "body.search3-candidate #selectedTour.search3-final-review .selected-head .eyebrow",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/cascade/search3-batch-iteration2.css",
+      "context": [],
+      "before": "body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quality",
+      "after": "body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quick",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/cascade/search3-batch-iteration2.css",
+      "context": [
+        "(max-width:640px)"
+      ],
+      "before": "body.search3-candidate #selectedTour .tour-flights",
+      "after": "body.search3-candidate #selectedTour .lead-form",
+      "declarations": "margin-top:8px!important"
+    },
+    {
+      "source": "src/search3/styles/cascade/search3-batch-iteration2b.css",
+      "context": [
+        "(min-width:761px)"
+      ],
+      "before": "body.search3-candidate.search3-has-results.search3-editing-search #tourSearch",
+      "after": "body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-quality",
+      "declarations": "display:block!important"
+    },
+    {
+      "source": "src/search3/styles/cascade/search3-batch-iteration2b.css",
+      "context": [
+        "(max-width:760px)"
+      ],
+      "before": "body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quality",
+      "after": "body.search3-candidate:not(.search3-has-results) #tourSearch:not(.search3-advanced-open) .search3-quick",
+      "declarations": "display:none!important"
+    },
+    {
+      "source": "src/search3/styles/cascade/search3-batch-iteration1b.css",
+      "context": [],
+      "before": "body.search3-candidate.search3-has-results .results-search-summary",
+      "after": "body.search3-candidate.search3-has-results .results-tools--ds2",
+      "declarations": "margin-bottom:8px!important"
+    },
+    {
+      "source": "src/search3/styles/cascade/search3-batch-iteration1b.css",
+      "context": [],
+      "before": "body.search3-candidate #selectedTour .tour-flights",
+      "after": "body.search3-candidate #selectedTour .lead-form",
+      "declarations": "margin-top:10px!important"
+    }
+  ]
+}

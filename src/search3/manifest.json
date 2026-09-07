@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "assets": {
+    "search3-results-filters-v1.js": [
+      "behavior/search-form.js",
+      "behavior/filter-rail.js",
+      "behavior/mobile-search-entry.js",
+      "behavior/results-top.js",
+      "behavior/selected-tour-mobile-styles.js",
+      "behavior/maket7-lock.js",
+      "behavior/lead-flow.js",
+      "behavior/flight-presentation.js",
+      "behavior/presentation-text.js",
+      "behavior/booking-summary.js",
+      "behavior/booking-stepper.js",
+      "behavior/final-sections.js",
+      "behavior/flight-continue.js",
+      "behavior/review-heading.js",
+      "behavior/summary-cta-styles.js",
+      "behavior/summary-cta.js",
+      "behavior/lead-note.js",
+      "behavior/tour-detail-rail.js",
+      "behavior/results-presentation.js",
+      "behavior/tour-presentation.js",
+      "behavior/flight-price-presentation.js",
+      "behavior/selected-tour-handoff.js"
+    ],
+    "search3-results-filters-v1.css": [
+      "styles/base.css",
+      "styles/hotel-results.css",
+      "styles/hotel-packages.css",
+      "styles/hotel-card-convergence.css",
+      "styles/results-width-compatibility.css",
+      "styles/filters.css",
+      "styles/results-context.css",
+      "styles/selected-tour.css",
+      "styles/cascade/search3-batch-iteration1.css",
+      "styles/cascade/search3-batch-iteration1b.css",
+      "styles/cascade/search3-batch-iteration1c.css",
+      "styles/cascade/search3-batch-iteration2.css",
+      "styles/cascade/search3-batch-iteration2b.css",
+      "styles/cascade/search3-batch-iteration2c.css",
+      "styles/cascade/search3-convergence.css",
+      "styles/cascade/search3-form-contract.css",
+      "styles/cascade/search3-full-cycle-contract.css",
+      "styles/booking-summary.css",
+      "styles/booking-stepper.css",
+      "styles/flights.css",
+      "styles/review.css",
+      "styles/final-sections.css",
+      "styles/lead-review.css",
+      "styles/tour-detail.css",
+      "styles/tour-detail-convergence.css",
+      "styles/review-layout.css",
+      "styles/review-specificity-guards.css",
+      "styles/review-desktop-board.css",
+      "styles/lead-state.css",
+      "styles/shell.css",
+      "styles/visual-compatibility.css",
+      "styles/booking-board-mobile.css",
+      "styles/booking-board-tablet.css",
+      "styles/result-cards.css",
+      "styles/form-compatibility.css",
+      "styles/results-layout.css",
+      "styles/mobile-results-toolbar.css",
+      "styles/results-tablet-layout.css",
+      "styles/results-mobile-layout.css",
+      "styles/acceptance-guards.css"
+    ],
+    "search3-entry-v1.css": [
+      "styles/entry-calendar.css",
+      "styles/entry-v1.css",
+      "styles/entry-toolbar.css",
+      "styles/entry-native-controls.css"
+    ],
+    "search3-entry-v1.js": [
+      "behavior/entry-v1.js"
+    ],
+    "search3-results-cards-v2.css": [
+      "styles/results-cards-v2.css"
+    ],
+    "search3-results-cards-v2.js": [
+      "behavior/results-cards-v2.js"
+    ],
+    "search3-selected-flow-v2.css": [
+      "styles/selected-flow-v2.css"
+    ],
+    "search3-selected-flow-v2.js": [
+      "behavior/selected-flow-v2.js"
+    ]
+  }
+}

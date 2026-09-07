@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "base_release_sha": "adfd16f02d3c76585ab1e3c7e6331795e2859b83",
+  "scope": "Serve a smaller Search3 base bundle from the existing endpoint while preserving the complete legacy bundle on /poisk-turov-old/.",
+  "change": [
+    "Added an explicit Search3 manifest scope without changing the bundle-v1.php public path",
+    "Excluded the complete legacy search-redesign-v2.js view owner only from Search3",
+    "Moved required route/date/night/guest summary updates into the current Search3 results owner",
+    "Kept the full CSS and JavaScript manifests unchanged for the legacy route"
+  ],
+  "payload": {
+    "shared_css_before_bytes": 239583,
+    "shared_css_after_bytes": 239583,
+    "shared_js_before_bytes": 279690,
+    "shared_js_after_bytes": 275439,
+    "search3_eight_assets_before_bytes": 145974,
+    "search3_eight_assets_after_bytes": 147043,
+    "loaded_total_before_bytes": 665247,
+    "loaded_total_after_bytes": 662065,
+    "loaded_total_saved_bytes": 3182,
+    "estimated_gzip_before_bytes": 102901,
+    "estimated_gzip_after_bytes": 102309,
+    "estimated_gzip_saved_bytes": 592
+  },
+  "protected_contracts": "The eight Search3 paths, bundle endpoint path, full legacy manifest, price arithmetic, URL/payload, Tourvisor/API, supplier data, selection and lead lifecycle, lead transport/mapping, Metrika/goals and native controls are unchanged.",
+  "verification": {
+    "source_sha": "826c424ee2f8f5c9b3e5bbc0fd19a337fbe6b126",
+    "source_pr": 1504,
+    "security_run": 34160747906,
+    "artifact_run": 34160834731,
+    "boundary_run": 34160834648,
+    "artifact_id": 10032545333,
+    "artifact_digest": "sha256:7e4e4e025bb75ba1486a56ef5bf5bd16353b5aad6f4b6efdae916c90e493b8b2",
+    "full_js_owner_count": 44,
+    "search3_js_owner_count": 43,
+    "full_css_equals_search3_css": true,
+    "legacy_closure_retains_search_redesign": true,
+    "search3_closure_excludes_search_redesign": true,
+    "trip_summary_vm_checked": true,
+    "exact_php_render_checked": true,
+    "browser_geometry_run": false,
+    "lead_submitted": false,
+    "source_ci": "SUCCESS"
+  },
+  "release_sha": "fc3550dd320cbc1791f7fb7f04d186a5a88dd8c0",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "published_preview_asset_bytes": 147378,
+  "production_updated": false,
+  "deferred": [
+    "Live current-source interaction and visual inspection",
+    "Physical iPhone and Safari safe-area acceptance"
+  ],
+  "next_action": "Audit conversion-confidence-v1 as the next whole-owner Search3 exclusion candidate; preserve any live CTA/trust behavior in current owners and keep the legacy bundle unchanged."
+}

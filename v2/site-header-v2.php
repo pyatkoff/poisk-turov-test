@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/phone-value.php';
+require_once __DIR__ . '/site-path-v1.php';
 
 function v2_header_e($value): string {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
@@ -38,22 +39,22 @@ function v2_render_site_header(string $phone, string $phoneHref, string $activeP
 </script>
 <header class="at-global-header">
   <div class="at-global-header__inner">
-    <a class="at-global-header__logo" href="/" aria-label="AnyTour — на главную"><img src="/images/logo.svg" alt="AnyTour"></a>
+    <a class="at-global-header__logo" href="<?=v2_header_e(v2_site_href('/'))?>" aria-label="AnyTour — на главную"><img src="/images/logo.svg" alt="AnyTour"></a>
     <nav class="at-global-header__nav" aria-label="Основное меню">
       <?php foreach ($nav as [$href, $label]): $isActive = v2_header_path_is_active($activePath, $href); ?>
-        <a href="<?=v2_header_e($href)?>"<?=$isActive?' aria-current="page"':''?>><?=v2_header_e($label)?></a>
+        <a href="<?=v2_header_e(v2_site_href($href))?>"<?=$isActive?' aria-current="page"':''?>><?=v2_header_e($label)?></a>
       <?php endforeach; ?>
     </nav>
     <div class="at-global-header__actions">
       <a class="at-global-header__phone" href="tel:<?=v2_header_e($phoneHref)?>"><?=v2_header_e($phone)?></a>
-      <a class="at-global-header__cta" href="/poisk-turov/">Найти тур</a>
+      <a class="at-global-header__cta" href="<?=v2_header_e(v2_site_href('/poisk-turov/'))?>">Найти тур</a>
     </div>
     <details class="at-global-header__mobile">
       <summary aria-label="Открыть меню"><span></span><span></span><span></span></summary>
       <div class="at-global-header__mobile-panel">
         <a class="at-global-header__mobile-phone" href="tel:<?=v2_header_e($phoneHref)?>"><?=v2_header_e($phone)?></a>
         <?php foreach ($nav as [$href, $label]): $isActive = v2_header_path_is_active($activePath, $href); ?>
-          <a href="<?=v2_header_e($href)?>"<?=$isActive?' aria-current="page"':''?>><?=v2_header_e($label)?></a>
+          <a href="<?=v2_header_e(v2_site_href($href))?>"<?=$isActive?' aria-current="page"':''?>><?=v2_header_e($label)?></a>
         <?php endforeach; ?>
       </div>
     </details>

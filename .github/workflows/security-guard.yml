@@ -15,6 +15,11 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Validate Search3 draft owner policy in the shared guard
+        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && (github.head_ref == 'release/search3-production-ready-v1' || github.base_ref == 'release/search3-production-ready-v1') }}
+        run: |
+          python3 scripts/ci/validate_owner_priority.py
+          python3 scripts/ci/validate_technical_refactor_lock.py
       - name: Reject tracked secret files
         shell: bash
         run: |

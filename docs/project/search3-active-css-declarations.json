@@ -1,0 +1,3537 @@
+{
+  "baseline": "10d78a4463732a1d730d94af90b04cb6af795d37",
+  "method": "Remove earlier declarations only when the identical expanded full selector list, complete media/supports context, property and important flag occurs later in the same public stylesheet. Later values use existing standard CSS; browser CI must confirm CSS.supports for every later witness. No unsupported-value fallback removal is accepted. Every removal records its later witness. No shorthand expansion or selector-list merging. Preserve guarded acceptance source. Final per-selector/context/property/priority map is exact; relative order of retained declarations is unchanged.",
+  "assets": [
+    {
+      "asset": "search3-results-filters-v1.css",
+      "removed": 182,
+      "bytes_saved": 5691,
+      "rows": [
+        {
+          "module": "styles/tour-detail-convergence.css",
+          "line": 45,
+          "selectors": [
+            "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .search3-tour-detail-rail"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-row",
+          "important": true,
+          "value": "3/11",
+          "later_value": "2/8",
+          "later_module": "styles/visual-compatibility.css",
+          "later_line": 51
+        },
+        {
+          "module": "styles/tour-detail-convergence.css",
+          "line": 41,
+          "selectors": [
+            "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-row",
+          "important": true,
+          "value": "9",
+          "later_value": "6",
+          "later_module": "styles/visual-compatibility.css",
+          "later_line": 49
+        },
+        {
+          "module": "styles/tour-detail-convergence.css",
+          "line": 37,
+          "selectors": [
+            "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .hotel-desc"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-row",
+          "important": true,
+          "value": "6",
+          "later_value": "5",
+          "later_module": "styles/visual-compatibility.css",
+          "later_line": 48
+        },
+        {
+          "module": "styles/review.css",
+          "line": 46,
+          "selectors": [
+            "body.search3-candidate #selectedTour.search3-final-review .search3-booking-summary"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "box-shadow",
+          "important": true,
+          "value": "0 8px 24px rgba(31,52,109,.06)",
+          "later_value": "none",
+          "later_module": "styles/review-layout.css",
+          "later_line": 31
+        },
+        {
+          "module": "styles/review.css",
+          "line": 43,
+          "selectors": [
+            "body.search3-candidate #selectedTour.search3-final-review .selected-head"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "18px 20px",
+          "later_value": "14px 16px",
+          "later_module": "styles/review-layout.css",
+          "later_line": 20
+        },
+        {
+          "module": "styles/review.css",
+          "line": 43,
+          "selectors": [
+            "body.search3-candidate #selectedTour.search3-final-review .selected-head"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "0 14px 14px 0",
+          "later_value": "0 12px 12px 0",
+          "later_module": "styles/review-layout.css",
+          "later_line": 20
+        },
+        {
+          "module": "styles/review.css",
+          "line": 42,
+          "selectors": [
+            "body.search3-candidate #selectedTour.search3-final-review .selected-picture"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "14px 0 0 14px",
+          "later_value": "12px 0 0 12px",
+          "later_module": "styles/review-layout.css",
+          "later_line": 19
+        },
+        {
+          "module": "styles/cascade/search3-full-cycle-contract.css",
+          "line": 19,
+          "selectors": [
+            "body.search3-candidate #selectedTour .lead-form button[type=submit]"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "background",
+          "important": true,
+          "value": "#ff4f0a",
+          "later_value": "#ff5a0a",
+          "later_module": "styles/review.css",
+          "later_line": 39
+        },
+        {
+          "module": "styles/cascade/search3-full-cycle-contract.css",
+          "line": 19,
+          "selectors": [
+            "body.search3-candidate #selectedTour .lead-form button[type=submit]"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "8px",
+          "later_value": "10px",
+          "later_module": "styles/review.css",
+          "later_line": 39
+        },
+        {
+          "module": "styles/cascade/search3-full-cycle-contract.css",
+          "line": 19,
+          "selectors": [
+            "body.search3-candidate #selectedTour .lead-form button[type=submit]"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "min-height",
+          "important": true,
+          "value": "46px",
+          "later_value": "48px",
+          "later_module": "styles/review.css",
+          "later_line": 39
+        },
+        {
+          "module": "styles/cascade/search3-convergence.css",
+          "line": 35,
+          "selectors": [
+            "body.search3-candidate.search3-selected-open #selectedTour"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "330px minmax(0,1fr)",
+          "later_value": "300px minmax(0,1fr)",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 7
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 79,
+          "selectors": [
+            "body.search3-candidate #results .hotel-photo"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "min-height",
+          "important": true,
+          "value": "116px",
+          "later_value": "158px",
+          "later_module": "styles/result-cards.css",
+          "later_line": 135
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 79,
+          "selectors": [
+            "body.search3-candidate #results .hotel-photo"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "height",
+          "important": true,
+          "value": "116px",
+          "later_value": "158px",
+          "later_module": "styles/result-cards.css",
+          "later_line": 135
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 46,
+          "selectors": [
+            "body.search3-candidate #results .hotel-price-context"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "line-height",
+          "important": true,
+          "value": "1.25",
+          "later_value": "1.3",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 75
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 46,
+          "selectors": [
+            "body.search3-candidate #results .hotel-price-context"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "font-size",
+          "important": true,
+          "value": "6.5px",
+          "later_value": "8px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 75
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 46,
+          "selectors": [
+            "body.search3-candidate #results .hotel-price-context"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "margin-top",
+          "important": true,
+          "value": "5px",
+          "later_value": "7px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 75
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 45,
+          "selectors": [
+            "body.search3-candidate #results .hotel-price"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "font-size",
+          "important": true,
+          "value": "18px",
+          "later_value": "22px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 74
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 44,
+          "selectors": [
+            "body.search3-candidate #results .hotel-best-offer>small"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "font-size",
+          "important": true,
+          "value": "6.5px",
+          "later_value": "8px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 73
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 43,
+          "selectors": [
+            "body.search3-candidate #results .hotel-bottom"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "0 0 0 13px",
+          "later_value": "2px 0 0 20px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 72
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 38,
+          "selectors": [
+            "body.search3-candidate #results .hotel-decision-line>span"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "font-size",
+          "important": true,
+          "value": "7px",
+          "later_value": "8px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 71
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 38,
+          "selectors": [
+            "body.search3-candidate #results .hotel-decision-line>span"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "4px",
+          "later_value": "5px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 71
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 38,
+          "selectors": [
+            "body.search3-candidate #results .hotel-decision-line>span"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "0 6px",
+          "later_value": "0 8px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 71
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 38,
+          "selectors": [
+            "body.search3-candidate #results .hotel-decision-line>span"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "min-height",
+          "important": true,
+          "value": "18px",
+          "later_value": "21px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 71
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 37,
+          "selectors": [
+            "body.search3-candidate #results .hotel-decision-line"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "gap",
+          "important": true,
+          "value": "5px",
+          "later_value": "6px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 70
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 37,
+          "selectors": [
+            "body.search3-candidate #results .hotel-decision-line"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "margin-top",
+          "important": true,
+          "value": "6px",
+          "later_value": "8px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 70
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 36,
+          "selectors": [
+            "body.search3-candidate #results .hotel-place"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "font-size",
+          "important": true,
+          "value": "7.5px",
+          "later_value": "9px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 69
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 36,
+          "selectors": [
+            "body.search3-candidate #results .hotel-place"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "margin-top",
+          "important": true,
+          "value": "3px",
+          "later_value": "5px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 69
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 35,
+          "selectors": [
+            "body.search3-candidate #results .hotel-title"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "letter-spacing",
+          "important": true,
+          "value": "-.18px",
+          "later_value": "-.24px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 68
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 35,
+          "selectors": [
+            "body.search3-candidate #results .hotel-title"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "line-height",
+          "important": true,
+          "value": "1.12",
+          "later_value": "1.14",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 68
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 35,
+          "selectors": [
+            "body.search3-candidate #results .hotel-title"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "font-size",
+          "important": true,
+          "value": "14px",
+          "later_value": "17px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 68
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 34,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "10px 11px 8px",
+          "later_value": "15px 16px 13px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 67
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 34,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "column-gap",
+          "important": true,
+          "value": "14px",
+          "later_value": "20px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 67
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 34,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-rows",
+          "important": true,
+          "value": "auto auto auto auto 1fr auto",
+          "later_value": "auto auto auto 1fr auto",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 67
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 34,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 158px",
+          "later_value": "minmax(0,1fr) 196px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 67
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 33,
+          "selectors": [
+            "body.search3-candidate #results .hotel-photo"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "min-height",
+          "important": true,
+          "value": "154px",
+          "later_value": "166px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 66
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 33,
+          "selectors": [
+            "body.search3-candidate #results .hotel-photo"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "height",
+          "important": true,
+          "value": "154px",
+          "later_value": "166px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 66
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 32,
+          "selectors": [
+            "body.search3-candidate #results .hotel-main"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "min-height",
+          "important": true,
+          "value": "154px",
+          "later_value": "166px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 65
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 32,
+          "selectors": [
+            "body.search3-candidate #results .hotel-main"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "214px minmax(0,1fr)",
+          "later_value": "258px minmax(0,1fr)",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 65
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 31,
+          "selectors": [
+            "body.search3-candidate #results .hotel-card"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "box-shadow",
+          "important": true,
+          "value": "0 2px 7px rgba(16,24,40,.025)",
+          "later_value": "0 2px 8px rgba(16,24,40,.025)",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 64
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 31,
+          "selectors": [
+            "body.search3-candidate #results .hotel-card"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "9px",
+          "later_value": "12px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 64
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 30,
+          "selectors": [
+            "body.search3-candidate #results"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "gap",
+          "important": true,
+          "value": "9px",
+          "later_value": "12px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 63
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 16,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "box-shadow",
+          "important": true,
+          "value": "0 2px 6px rgba(16,24,40,.025)",
+          "later_value": "0 2px 8px rgba(16,24,40,.025)",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 59
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 16,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "9px",
+          "later_value": "11px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 59
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 16,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "10px 10px 11px",
+          "later_value": "13px 12px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 59
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 10,
+          "selectors": [
+            "body.search3-candidate.search3-has-results .results-tools--ds2"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "width",
+          "important": true,
+          "value": "calc(100% - 220px)",
+          "later_value": "calc(100% - 210px)",
+          "later_module": "styles/cascade/search3-convergence.css",
+          "later_line": 10
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 9,
+          "selectors": [
+            "body.search3-candidate.search3-has-results .results-layout"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "gap",
+          "important": true,
+          "value": "14px",
+          "later_value": "12px",
+          "later_module": "styles/cascade/search3-convergence.css",
+          "later_line": 9
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 9,
+          "selectors": [
+            "body.search3-candidate.search3-has-results .results-layout"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "206px minmax(0,1fr)",
+          "later_value": "198px minmax(0,1fr)",
+          "later_module": "styles/cascade/search3-convergence.css",
+          "later_line": 9
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 82,
+          "selectors": [
+            "body.search3-candidate #results .search3-hotel-facts>span"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "5px 6px",
+          "later_value": "4px 5px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 86
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 80,
+          "selectors": [
+            "body.search3-candidate #results .hotel-title"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "line-height",
+          "important": true,
+          "value": "1.12",
+          "later_value": "1.08",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 81
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 79,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "8px",
+          "later_value": "8px 8px 7px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 78,
+          "selectors": [
+            "body.search3-candidate #results .hotel-photo"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "height",
+          "important": true,
+          "value": "auto",
+          "later_value": "158px",
+          "later_module": "styles/result-cards.css",
+          "later_line": 135
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 77,
+          "selectors": [
+            "body.search3-candidate #results .hotel-main"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "display",
+          "important": true,
+          "value": "grid",
+          "later_value": "block",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 78
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 57,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "21px 23px",
+          "later_value": "18px 22px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 10
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 52,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours .direct-tour"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "7px",
+          "later_value": "6px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 61
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 48,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours .tour-row"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "10px",
+          "later_value": "8px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 57
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 48,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours .tour-row"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "9px 11px",
+          "later_value": "7px 8px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 57
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 43,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "11px 13px 13px",
+          "later_value": "9px 10px 10px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 52
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 37,
+          "selectors": [
+            "body.search3-candidate #results .search3-hotel-action"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 170px",
+          "later_value": "minmax(0,1fr) 158px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 47
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 36,
+          "selectors": [
+            "body.search3-candidate #results .search3-hotel-facts"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "max-width",
+          "important": true,
+          "value": "680px",
+          "later_value": "none",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 39
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 35,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "12px 14px 10px",
+          "later_value": "15px 16px 13px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 67
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 35,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 170px",
+          "later_value": "minmax(0,1fr) 196px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 67
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 33,
+          "selectors": [
+            "body.search3-candidate #results .hotel-main"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "226px minmax(0,1fr)",
+          "later_value": "258px minmax(0,1fr)",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 65
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 76,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "8px 9px",
+          "later_value": "10px 11px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 47
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 63,
+          "selectors": [
+            "body.search3-candidate .search3-show-tours"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "min-height",
+          "important": true,
+          "value": "36px",
+          "later_value": "44px",
+          "later_module": "styles/results-mobile-layout.css",
+          "later_line": 85
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 61,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "8px 9px",
+          "later_value": "8px 8px 7px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 61,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 96px",
+          "later_value": "minmax(0,1fr) 86px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 37,
+          "selectors": [
+            "body.search3-candidate #selectedTour .lead-form button[type=submit]"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "9px",
+          "later_value": "10px",
+          "later_module": "styles/review.css",
+          "later_line": 39
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 32,
+          "selectors": [
+            "body.search3-candidate #selectedTour .facts>div"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "10px 11px",
+          "later_value": "11px 14px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 14
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 30,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head .eyebrow"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "color",
+          "important": true,
+          "value": "#667085",
+          "later_value": "#e94f00",
+          "later_module": "styles/cascade/search3-batch-iteration2.css",
+          "later_line": 58
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 30,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head .eyebrow"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "background",
+          "important": true,
+          "value": "#f8fafc",
+          "later_value": "#fff3ec",
+          "later_module": "styles/cascade/search3-batch-iteration2.css",
+          "later_line": 58
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 28,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "20px 22px",
+          "later_value": "18px 22px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 10
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 22,
+          "selectors": [
+            "body.search3-candidate .search3-hotel-action"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 164px",
+          "later_value": "minmax(0,1fr) 196px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 76
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 20,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "11px 13px 10px",
+          "later_value": "15px 16px 13px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 67
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 20,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 164px",
+          "later_value": "minmax(0,1fr) 196px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 67
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 18,
+          "selectors": [
+            "body.search3-candidate #results .hotel-main"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "212px minmax(0,1fr)",
+          "later_value": "258px minmax(0,1fr)",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 65
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 16,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail .filter-option"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "margin",
+          "important": true,
+          "value": "5px 0",
+          "later_value": "4px 0",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 24
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 15,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail .filter-range>span",
+            "body.search3-candidate .results-filter-rail legend"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "font-size",
+          "important": true,
+          "value": "9px",
+          "later_value": "8.5px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 23
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 15,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail .filter-range>span",
+            "body.search3-candidate .results-filter-rail legend"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "margin-bottom",
+          "important": true,
+          "value": "6px",
+          "later_value": "6px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 23
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 14,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail fieldset",
+            "body.search3-candidate .results-filter-rail .filter-range"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "9px 0",
+          "later_value": "9px 0",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 21
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 87,
+          "selectors": [
+            "body.search3-candidate #selectedTour :is(.tour-flights,.lead-form)"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "10px",
+          "later_value": "9px",
+          "later_module": "styles/cascade/search3-batch-iteration1c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 86,
+          "selectors": [
+            "body.search3-candidate #selectedTour .facts>div",
+            "body.search3-candidate #selectedTour .facts>div:nth-child(n)"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "6px 8px",
+          "later_value": "6px 7px",
+          "later_module": "styles/cascade/search3-batch-iteration1c.css",
+          "later_line": 79
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 83,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "9px 10px",
+          "later_value": "10px 11px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 47
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 71,
+          "selectors": [
+            "body.search3-candidate #results .hotel-title"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "line-height",
+          "important": true,
+          "value": "1.15",
+          "later_value": "1.08",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 81
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 70,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 100px",
+          "later_value": "minmax(0,1fr) 86px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 70,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "9px",
+          "later_value": "8px 8px 7px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 68,
+          "selectors": [
+            "body.search3-candidate #results .hotel-card"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "11px",
+          "later_value": "9px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 77
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 67,
+          "selectors": [
+            "body.search3-candidate #results"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "gap",
+          "important": true,
+          "value": "7px",
+          "later_value": "8px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 76
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 62,
+          "selectors": [
+            "body.search3-candidate.search3-has-results .search3-page-intro"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "display",
+          "important": true,
+          "value": "none",
+          "later_value": "block",
+          "later_module": "styles/cascade/search3-batch-iteration2.css",
+          "later_line": 69
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 55,
+          "selectors": [
+            "body.search3-candidate #selectedTour :is(.tour-flights,.lead-form)"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "14px",
+          "later_value": "12px",
+          "later_module": "styles/cascade/search3-batch-iteration2.css",
+          "later_line": 62
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 55,
+          "selectors": [
+            "body.search3-candidate #selectedTour :is(.tour-flights,.lead-form)"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "15px 16px",
+          "later_value": "14px",
+          "later_module": "styles/cascade/search3-batch-iteration1c.css",
+          "later_line": 35
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 54,
+          "selectors": [
+            "body.search3-candidate #selectedTour .facts>div"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "11px 12px",
+          "later_value": "11px 14px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 14
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 49,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "22px",
+          "later_value": "18px 22px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 10
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 32,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours .tour-row"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "10px 12px",
+          "later_value": "7px 8px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 57
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 31,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "background",
+          "important": true,
+          "value": "#f9fbfd",
+          "later_value": "#f8fafc",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 52
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 31,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "12px 14px 14px",
+          "later_value": "9px 10px 10px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 52
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 27,
+          "selectors": [
+            "body.search3-candidate .search3-hotel-action"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding-top",
+          "important": true,
+          "value": "7px",
+          "later_value": "8px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 76
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 27,
+          "selectors": [
+            "body.search3-candidate .search3-hotel-action"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "margin-top",
+          "important": true,
+          "value": "7px",
+          "later_value": "8px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 76
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 27,
+          "selectors": [
+            "body.search3-candidate .search3-hotel-action"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "gap",
+          "important": true,
+          "value": "14px",
+          "later_value": "20px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 76
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 27,
+          "selectors": [
+            "body.search3-candidate .search3-hotel-action"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 158px",
+          "later_value": "minmax(0,1fr) 196px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 76
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 25,
+          "selectors": [
+            "body.search3-candidate #results .hotel-title"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "max-width",
+          "important": true,
+          "value": "780px",
+          "later_value": "690px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 68
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 23,
+          "selectors": [
+            "body.search3-candidate #results .hotel-main"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "224px minmax(0,1fr)",
+          "later_value": "258px minmax(0,1fr)",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 65
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 22,
+          "selectors": [
+            "body.search3-candidate #results .hotel-card"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "13px",
+          "later_value": "12px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 64
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 17,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "box-shadow",
+          "important": true,
+          "value": "none",
+          "later_value": "0 2px 8px rgba(16,24,40,.025)",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 59
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 17,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "12px",
+          "later_value": "11px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 59
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 17,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "12px",
+          "later_value": "13px 12px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 59
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 17,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "width",
+          "important": true,
+          "value": "196px",
+          "later_value": "auto",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 59
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 16,
+          "selectors": [
+            "body.search3-candidate .results-layout"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "gap",
+          "important": true,
+          "value": "14px",
+          "later_value": "16px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 58
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1b.css",
+          "line": 16,
+          "selectors": [
+            "body.search3-candidate .results-layout"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "196px minmax(0,1fr)",
+          "later_value": "214px minmax(0,1fr)",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 58
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 101,
+          "selectors": [
+            "body.search3-candidate.search3-has-results .results-tools--ds2"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "width",
+          "important": true,
+          "value": "calc(100% - 230px)",
+          "later_value": "calc(100% - 210px)",
+          "later_module": "styles/cascade/search3-convergence.css",
+          "later_line": 10
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 71,
+          "selectors": [
+            "body.search3-candidate #results .hotel-title"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "line-height",
+          "important": true,
+          "value": "1.16",
+          "later_value": "1.08",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 81
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 70,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 104px",
+          "later_value": "minmax(0,1fr) 86px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 70,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "10px",
+          "later_value": "8px 8px 7px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 56,
+          "selectors": [
+            "body.search3-candidate #tourSearch .search3-primary-grid"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "gap",
+          "important": true,
+          "value": "7px",
+          "later_value": "6px",
+          "later_module": "styles/cascade/search3-batch-iteration1c.css",
+          "later_line": 45
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 45,
+          "selectors": [
+            "body.search3-candidate #selectedTour .facts>div"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "12px 14px",
+          "later_value": "11px 14px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 14
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 43,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "0 16px 16px 0",
+          "later_value": "0 12px 12px 0",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 10
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 43,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "22px 24px",
+          "later_value": "18px 22px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 10
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 42,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-picture"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "16px 0 0 16px",
+          "later_value": "12px 0 0 12px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 9
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 41,
+          "selectors": [
+            "body.search3-candidate #selectedTour"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "340px minmax(0,1fr)",
+          "later_value": "380px minmax(0,1fr)",
+          "later_module": "styles/cascade/search3-batch-iteration1b.css",
+          "later_line": 47
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 23,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours .tour-row"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "12px",
+          "later_value": "8px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 57
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 23,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours .tour-row"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "13px 14px",
+          "later_value": "7px 8px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 57
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 22,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "14px 16px 16px",
+          "later_value": "9px 10px 10px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 52
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 21,
+          "selectors": [
+            "body.search3-candidate .search3-show-tours"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "min-height",
+          "important": true,
+          "value": "40px",
+          "later_value": "38px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 79
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 20,
+          "selectors": [
+            "body.search3-candidate .search3-hotel-action"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 166px",
+          "later_value": "minmax(0,1fr) 196px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 76
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 19,
+          "selectors": [
+            "body.search3-candidate #results .hotel-price"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "margin-top",
+          "important": true,
+          "value": "6px",
+          "later_value": "0",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 74
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 18,
+          "selectors": [
+            "body.search3-candidate #results .hotel-bottom"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "justify-content",
+          "important": true,
+          "value": "flex-start",
+          "later_value": "center",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 43
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 18,
+          "selectors": [
+            "body.search3-candidate #results .hotel-bottom"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "align-self",
+          "important": true,
+          "value": "stretch",
+          "later_value": "start",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 72
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 16,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "14px 16px 12px",
+          "later_value": "15px 16px 13px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 67
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 16,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 166px",
+          "later_value": "minmax(0,1fr) 196px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 67
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 14,
+          "selectors": [
+            "body.search3-candidate #results .hotel-main"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "244px minmax(0,1fr)",
+          "later_value": "258px minmax(0,1fr)",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 65
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 51,
+          "selectors": [
+            "body.search3-candidate #selectedTour :is(.hotel-desc,.tour-flights,.lead-form)"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "12px",
+          "later_value": "10px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 50
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 51,
+          "selectors": [
+            "body.search3-candidate #selectedTour :is(.hotel-desc,.tour-flights,.lead-form)"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "11px",
+          "later_value": "10px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 50
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 51,
+          "selectors": [
+            "body.search3-candidate #selectedTour .facts>div",
+            "body.search3-candidate #selectedTour .facts>div:nth-child(n)"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "8px 10px",
+          "later_value": "6px 7px",
+          "later_module": "styles/cascade/search3-batch-iteration1c.css",
+          "later_line": 79
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 51,
+          "selectors": [
+            "body.search3-candidate #selectedTour .facts"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "0 0 13px 13px",
+          "later_value": "0 0 10px 10px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 49
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 51,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "11px 12px",
+          "later_value": "10px 11px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 47
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 51,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-picture"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:640px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "13px 13px 0 0",
+          "later_value": "10px 10px 0 0",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 46
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 42,
+          "selectors": [
+            "body.search3-candidate #selectedTour .facts"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "16px",
+          "later_value": "12px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 13
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 42,
+          "selectors": [
+            "body.search3-candidate #selectedTour .facts"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-row",
+          "important": true,
+          "value": "3",
+          "later_value": "4",
+          "later_module": "styles/booking-stepper.css",
+          "later_line": 16
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 40,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "0 18px 18px 0",
+          "later_value": "0 12px 12px 0",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 10
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 39,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-picture"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "18px 0 0 18px",
+          "later_value": "12px 0 0 12px",
+          "later_module": "styles/cascade/search3-full-cycle-contract.css",
+          "later_line": 9
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 37,
+          "selectors": [
+            "body.search3-candidate #selectedTour"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "300px minmax(0,1fr)",
+          "later_value": "380px minmax(0,1fr)",
+          "later_module": "styles/cascade/search3-batch-iteration1b.css",
+          "later_line": 47
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 30,
+          "selectors": [
+            "body.search3-candidate #selectedTour .flight-variant.is-selected"
+          ],
+          "context": [],
+          "property": "background",
+          "important": true,
+          "value": "var(--at-soft-blue)",
+          "later_value": "#fff",
+          "later_module": "styles/flights.css",
+          "later_line": 9
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 12,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head .eyebrow"
+          ],
+          "context": [],
+          "property": "letter-spacing",
+          "important": true,
+          "value": ".08em",
+          "later_value": ".035em",
+          "later_module": "styles/cascade/search3-batch-iteration1.css",
+          "later_line": 34
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 12,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head .eyebrow"
+          ],
+          "context": [],
+          "property": "font-weight",
+          "important": true,
+          "value": "900",
+          "later_value": "850",
+          "later_module": "styles/cascade/search3-batch-iteration1b.css",
+          "later_line": 41
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 12,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head .eyebrow"
+          ],
+          "context": [],
+          "property": "color",
+          "important": true,
+          "value": "var(--at-brand)",
+          "later_value": "#e94f00",
+          "later_module": "styles/cascade/search3-batch-iteration1.css",
+          "later_line": 34
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 12,
+          "selectors": [
+            "body.search3-candidate #selectedTour .selected-head .eyebrow"
+          ],
+          "context": [],
+          "property": "display",
+          "important": true,
+          "value": "block",
+          "later_value": "inline-flex",
+          "later_module": "styles/cascade/search3-batch-iteration1.css",
+          "later_line": 34
+        },
+        {
+          "module": "styles/results-context.css",
+          "line": 43,
+          "selectors": [
+            "body.search3-candidate .results-layout"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "gap",
+          "important": true,
+          "value": "12px",
+          "later_value": "16px",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 58
+        },
+        {
+          "module": "styles/results-context.css",
+          "line": 43,
+          "selectors": [
+            "body.search3-candidate .results-layout"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "198px minmax(0,1fr)",
+          "later_value": "214px minmax(0,1fr)",
+          "later_module": "styles/form-compatibility.css",
+          "later_line": 58
+        },
+        {
+          "module": "styles/filters.css",
+          "line": 19,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail input[type=range]"
+          ],
+          "context": [],
+          "property": "accent-color",
+          "important": true,
+          "value": "#0066ff",
+          "later_value": "#1463ff",
+          "later_module": "styles/results-layout.css",
+          "later_line": 106
+        },
+        {
+          "module": "styles/filters.css",
+          "line": 18,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail .filter-range>small"
+          ],
+          "context": [],
+          "property": "font-weight",
+          "important": true,
+          "value": "850",
+          "later_value": "800",
+          "later_module": "styles/results-layout.css",
+          "later_line": 102
+        },
+        {
+          "module": "styles/filters.css",
+          "line": 18,
+          "selectors": [
+            "body.search3-candidate .results-filter-rail .filter-range>small"
+          ],
+          "context": [],
+          "property": "margin",
+          "important": true,
+          "value": "4px 0 7px",
+          "later_value": "5px 0 7px",
+          "later_module": "styles/results-layout.css",
+          "later_line": 99
+        },
+        {
+          "module": "styles/results-width-compatibility.css",
+          "line": 40,
+          "selectors": [
+            "body.search3-candidate .results-layout"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:999px)"
+            ]
+          ],
+          "property": "margin",
+          "important": true,
+          "value": "0 0 48px",
+          "later_value": "0 var(--at-page-edge) 48px",
+          "later_module": "styles/filters.css",
+          "later_line": 32
+        },
+        {
+          "module": "styles/results-width-compatibility.css",
+          "line": 40,
+          "selectors": [
+            "body.search3-candidate .results-layout"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:999px)"
+            ]
+          ],
+          "property": "width",
+          "important": true,
+          "value": "100%",
+          "later_value": "auto",
+          "later_module": "styles/filters.css",
+          "later_line": 32
+        },
+        {
+          "module": "styles/results-width-compatibility.css",
+          "line": 6,
+          "selectors": [
+            "body.search3-candidate .results-layout"
+          ],
+          "context": [],
+          "property": "max-width",
+          "important": true,
+          "value": "none",
+          "later_value": "var(--at-shell)",
+          "later_module": "styles/filters.css",
+          "later_line": 6
+        },
+        {
+          "module": "styles/results-width-compatibility.css",
+          "line": 6,
+          "selectors": [
+            "body.search3-candidate .results-layout"
+          ],
+          "context": [],
+          "property": "width",
+          "important": true,
+          "value": "100%",
+          "later_value": "calc(100% - var(--at-page-gutter))",
+          "later_module": "styles/filters.css",
+          "later_line": 6
+        },
+        {
+          "module": "styles/hotel-card-convergence.css",
+          "line": 32,
+          "selectors": [
+            "body.search3-candidate .search3-hotel-action"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "padding-top",
+          "important": true,
+          "value": "0",
+          "later_value": "7px",
+          "later_module": "styles/cascade/search3-batch-iteration1.css",
+          "later_line": 74
+        },
+        {
+          "module": "styles/hotel-card-convergence.css",
+          "line": 22,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "10px 11px 11px",
+          "later_value": "8px 8px 7px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/hotel-card-convergence.css",
+          "line": 22,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) auto",
+          "later_value": "minmax(0,1fr) 86px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 25,
+          "selectors": [
+            "body.search3-candidate .search3-hotel-action"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "grid-row",
+          "important": true,
+          "value": "4",
+          "later_value": "6",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 32
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 25,
+          "selectors": [
+            "body.search3-candidate #results .hotel-bottom"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "border-top",
+          "important": true,
+          "value": "0",
+          "later_value": "1px solid #eef1f5",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 29
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 25,
+          "selectors": [
+            "body.search3-candidate #results .hotel-bottom"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "border-left",
+          "important": true,
+          "value": "0",
+          "later_value": "1px solid #edf0f5",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 89
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 25,
+          "selectors": [
+            "body.search3-candidate #results .hotel-bottom"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "grid-row",
+          "important": true,
+          "value": "3",
+          "later_value": "5",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 29
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 25,
+          "selectors": [
+            "body.search3-candidate #results .hotel-bottom"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "grid-column",
+          "important": true,
+          "value": "2",
+          "later_value": "1/3",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 29
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 25,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "9px 10px 10px",
+          "later_value": "8px 8px 7px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 25,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "grid-template-rows",
+          "important": true,
+          "value": "auto auto auto auto",
+          "later_value": "auto auto auto auto auto auto",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 22
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 25,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 108px",
+          "later_value": "minmax(0,1fr) 86px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 80
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 25,
+          "selectors": [
+            "body.search3-candidate #results .hotel-card"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "border-radius",
+          "important": true,
+          "value": "10px",
+          "later_value": "9px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 77
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 19,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours .tour-action"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "gap",
+          "important": true,
+          "value": "8px",
+          "later_value": "6px",
+          "later_module": "styles/cascade/search3-batch-iteration1b.css",
+          "later_line": 34
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 11,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours .tour-fact b"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "line-height",
+          "important": true,
+          "value": "1.2",
+          "later_value": "1.25",
+          "later_module": "styles/cascade/search3-batch-iteration1.css",
+          "later_line": 26
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 5,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours .tour-meta"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(126px,1.35fr) minmax(94px,.9fr) 82px 54px minmax(104px,.95fr) minmax(70px,.7fr)",
+          "later_value": "minmax(112px,1.25fr) minmax(90px,.9fr) 76px 48px minmax(98px,.95fr) minmax(66px,.7fr)",
+          "later_module": "styles/cascade/search3-batch-iteration1b.css",
+          "later_line": 33
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 4,
+          "selectors": [
+            "body.search3-candidate #results .hotel-tours .tour-row"
+          ],
+          "context": [
+            [
+              "media",
+              "(min-width:1000px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "11px 12px",
+          "later_value": "7px 8px",
+          "later_module": "styles/cascade/search3-batch-iteration2c.css",
+          "later_line": 57
+        },
+        {
+          "module": "styles/hotel-results.css",
+          "line": 16,
+          "selectors": [
+            "body.search3-candidate .search3-hotel-action__copy"
+          ],
+          "context": [],
+          "property": "gap",
+          "important": true,
+          "value": "8px",
+          "later_value": "6px",
+          "later_module": "styles/results-layout.css",
+          "later_line": 271
+        },
+        {
+          "module": "styles/hotel-results.css",
+          "line": 15,
+          "selectors": [
+            "body.search3-candidate #results .hotel-bottom"
+          ],
+          "context": [],
+          "property": "grid-row",
+          "important": true,
+          "value": "1/5",
+          "later_value": "1/6",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 14
+        },
+        {
+          "module": "styles/hotel-results.css",
+          "line": 14,
+          "selectors": [
+            "body.search3-candidate #results .hotel-decision-line"
+          ],
+          "context": [],
+          "property": "display",
+          "important": true,
+          "value": "flex",
+          "later_value": "none",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 9
+        },
+        {
+          "module": "styles/hotel-results.css",
+          "line": 13,
+          "selectors": [
+            "body.search3-candidate #results .hotel-title"
+          ],
+          "context": [],
+          "property": "letter-spacing",
+          "important": true,
+          "value": "-.18px",
+          "later_value": "-.16px",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 7
+        },
+        {
+          "module": "styles/hotel-results.css",
+          "line": 13,
+          "selectors": [
+            "body.search3-candidate #results .hotel-title"
+          ],
+          "context": [],
+          "property": "line-height",
+          "important": true,
+          "value": "1.13",
+          "later_value": "1.18",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 7
+        },
+        {
+          "module": "styles/hotel-results.css",
+          "line": 12,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [],
+          "property": "padding",
+          "important": true,
+          "value": "12px 14px 11px",
+          "later_value": "14px 16px 12px",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 6
+        },
+        {
+          "module": "styles/hotel-results.css",
+          "line": 12,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [],
+          "property": "grid-template-rows",
+          "important": true,
+          "value": "auto auto auto 1fr auto",
+          "later_value": "auto auto auto auto 1fr auto",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 6
+        },
+        {
+          "module": "styles/hotel-results.css",
+          "line": 12,
+          "selectors": [
+            "body.search3-candidate #results .hotel-body"
+          ],
+          "context": [],
+          "property": "grid-template-columns",
+          "important": true,
+          "value": "minmax(0,1fr) 180px",
+          "later_value": "minmax(0,1fr) 188px",
+          "later_module": "styles/hotel-card-convergence.css",
+          "later_line": 6
+        },
+        {
+          "module": "styles/base.css",
+          "line": 68,
+          "selectors": [
+            "body.search3-candidate #tourSearch .search3-primary-grid>.search-submit"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "min-height",
+          "important": true,
+          "value": "46px",
+          "later_value": "42px",
+          "later_module": "styles/cascade/search3-batch-iteration1c.css",
+          "later_line": 50
+        },
+        {
+          "module": "styles/base.css",
+          "line": 68,
+          "selectors": [
+            "body.search3-candidate #tourSearch"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "padding",
+          "important": true,
+          "value": "12px",
+          "later_value": "10px",
+          "later_module": "styles/cascade/search3-batch-iteration1.css",
+          "later_line": 55
+        },
+        {
+          "module": "styles/base.css",
+          "line": 68,
+          "selectors": [
+            "body.search3-candidate .search3-page-intro h1"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "font-size",
+          "important": true,
+          "value": "24px",
+          "later_value": "22px",
+          "later_module": "styles/cascade/search3-batch-iteration1.css",
+          "later_line": 53
+        },
+        {
+          "module": "styles/base.css",
+          "line": 68,
+          "selectors": [
+            "body.search3-candidate .search3-page-intro"
+          ],
+          "context": [
+            [
+              "media",
+              "(max-width:760px)"
+            ]
+          ],
+          "property": "margin",
+          "important": true,
+          "value": "14px auto 10px",
+          "later_value": "10px auto 6px",
+          "later_module": "styles/cascade/search3-batch-iteration1.css",
+          "later_line": 52
+        }
+      ]
+    },
+    {
+      "asset": "search3-entry-v1.css",
+      "removed": 0,
+      "bytes_saved": 0,
+      "rows": []
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "removed": 0,
+      "bytes_saved": 0,
+      "rows": []
+    },
+    {
+      "asset": "search3-selected-flow-v2.css",
+      "removed": 0,
+      "bytes_saved": 0,
+      "rows": []
+    }
+  ],
+  "empty_rule_cleanup": [
+    {
+      "module": "styles/base.css",
+      "empty_rules": 2,
+      "bytes_saved": 49
+    },
+    {
+      "module": "styles/hotel-results.css",
+      "empty_rules": 1,
+      "bytes_saved": 31
+    },
+    {
+      "module": "styles/hotel-packages.css",
+      "empty_rules": 1,
+      "bytes_saved": 24
+    },
+    {
+      "module": "styles/results-width-compatibility.css",
+      "empty_rules": 2,
+      "bytes_saved": 66
+    },
+    {
+      "module": "styles/filters.css",
+      "empty_rules": 1,
+      "bytes_saved": 45
+    },
+    {
+      "module": "styles/results-context.css",
+      "empty_rules": 1,
+      "bytes_saved": 20
+    },
+    {
+      "module": "styles/selected-tour.css",
+      "empty_rules": 2,
+      "bytes_saved": 88
+    },
+    {
+      "module": "styles/cascade/search3-batch-iteration1.css",
+      "empty_rules": 16,
+      "bytes_saved": 463
+    },
+    {
+      "module": "styles/cascade/search3-batch-iteration1b.css",
+      "empty_rules": 17,
+      "bytes_saved": 544
+    },
+    {
+      "module": "styles/cascade/search3-batch-iteration1c.css",
+      "empty_rules": 8,
+      "bytes_saved": 289
+    },
+    {
+      "module": "styles/cascade/search3-batch-iteration2.css",
+      "empty_rules": 8,
+      "bytes_saved": 233
+    },
+    {
+      "module": "styles/cascade/search3-batch-iteration2c.css",
+      "empty_rules": 12,
+      "bytes_saved": 372
+    },
+    {
+      "module": "styles/cascade/search3-full-cycle-contract.css",
+      "empty_rules": 1,
+      "bytes_saved": 49
+    },
+    {
+      "module": "styles/tour-detail-convergence.css",
+      "empty_rules": 2,
+      "bytes_saved": 160
+    }
+  ],
+  "empty_rule_cleanup_method": "Remove only rules with no content tokens except whitespace; iterate for newly empty parent/media containers. Exact retained ordered selector/declaration/context stream verified.",
+  "public_assets": [
+    {
+      "asset": "search3-results-filters-v1.js",
+      "before_bytes": 121897,
+      "after_bytes": 121897,
+      "lines": 1350,
+      "sha256": "0737301f752e6404e5fe7f203bddf8cb6090dfdff1fbac0f8e2d7fb6662775e6"
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "before_bytes": 229195,
+      "after_bytes": 221138,
+      "lines": 3093,
+      "sha256": "2a4f883306d118fffb50ae7a53d5fc1181dd74a08b647396a8b8591d8f3ee751"
+    },
+    {
+      "asset": "search3-entry-v1.css",
+      "before_bytes": 11640,
+      "after_bytes": 11640,
+      "lines": 289,
+      "sha256": "4bb5ab8f95950872e0f9d3a2ac6ce0f4ec9135345888e3d4898b24c0b61c55f8"
+    },
+    {
+      "asset": "search3-entry-v1.js",
+      "before_bytes": 5050,
+      "after_bytes": 5050,
+      "lines": 132,
+      "sha256": "6e8631ea926a103661a824739fcdf218e83c07b6ca4f7d0786ed23fcacb41e0b"
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "before_bytes": 7532,
+      "after_bytes": 7532,
+      "lines": 150,
+      "sha256": "443245d844059d26e4b58dff54d9cdc2ebebb0a15403d19d1cb87c1b6336adc2"
+    },
+    {
+      "asset": "search3-results-cards-v2.js",
+      "before_bytes": 88,
+      "after_bytes": 88,
+      "lines": 1,
+      "sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266"
+    },
+    {
+      "asset": "search3-selected-flow-v2.css",
+      "before_bytes": 9101,
+      "after_bytes": 9101,
+      "lines": 251,
+      "sha256": "e2755b0d795748decadb4e9a333b9db843d47f2971384f91ce6b08d8fc662f6d"
+    },
+    {
+      "asset": "search3-selected-flow-v2.js",
+      "before_bytes": 13205,
+      "after_bytes": 13205,
+      "lines": 342,
+      "sha256": "a4db64b0d1752ca15eea9f6cab1587d38139c4cc16681932f1e9a9dc2408544c"
+    }
+  ],
+  "public_reduction_bytes": 8057,
+  "reference": "https://www.w3.org/TR/css-cascade-5/#cascade-sort"
+}

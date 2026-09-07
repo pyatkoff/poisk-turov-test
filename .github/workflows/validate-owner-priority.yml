@@ -2,6 +2,7 @@ name: Validate owner policy
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - 'OWNER_PRIORITY.json'
       - 'TECHNICAL_REFACTOR_LOCK.json'
@@ -14,6 +15,8 @@ on:
 
 jobs:
   validate:
+    # These two commands run in Security guard for the owner's lean preview cycle.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || (github.head_ref != 'release/search3-production-ready-v1' && github.base_ref != 'release/search3-production-ready-v1') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

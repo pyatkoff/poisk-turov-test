@@ -51,3 +51,10 @@
   .sp-breadcrumbs .sp-wrap{overflow:visible;flex-wrap:wrap;align-content:center;row-gap:0;padding-block:6px}
   .sp-breadcrumbs span[aria-current=page]{flex:1 1 180px;overflow:visible;text-overflow:clip;white-space:normal;line-height:1.35;overflow-wrap:anywhere}
 }
+
+/* Main next-step actions share the search form colour across site pages. */
+.sp-main .sp-primary,.sp-hero .sp-primary{background:#0066ff;color:#fff;min-height:44px}
+.sp-main .sp-primary:hover,.sp-hero .sp-primary:hover{background:#0754d1}
+
+.sp-office-card .sp-office-map{display:flex;align-items:center;min-height:44px;width:fit-content;max-width:100%;font-size:14px;line-height:1.5;margin-top:4px}
+.sp-office-map:focus-visible{outline:3px solid var(--at-focus);outline-offset:3px}

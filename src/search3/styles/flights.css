@@ -1,0 +1,61 @@
+
+
+/* donor:search3-flight-contract.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+/* Search3 flight selection visual contract. Uses only existing real flight data/controls. */
+body.search3-candidate{
+& #selectedTour {
+& .tour-flights {scroll-margin-top:18px}
+& .flight-variants {display:grid;gap:10px}
+& .flight-variant {padding:0!important;border:1px solid var(--at-line)!important;background:#fff!important;overflow:hidden!important}
+& .flight-variant.is-selected {border-color:var(--at-brand)!important;background:#fff!important;box-shadow:0 0 0 1px var(--at-brand) inset!important}
+& .flight-choice {display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:9px!important;margin:0!important;padding:11px 13px!important;border-bottom:1px solid var(--at-line-soft)!important;background:#fafcff!important;cursor:pointer!important}
+& .flight-choice input {width:16px!important;height:16px!important;margin:0!important;accent-color:var(--at-brand)!important}
+& .flight-choice span {color:var(--at-ink)!important;font:850 11px/1.25 var(--at-font)!important}
+& .flight-choice b {color:var(--at-ink)!important;font:950 13px/1 var(--at-font)!important;white-space:nowrap!important}
+& .flight-segment {padding:12px 13px!important;border:0!important;border-top:1px solid var(--at-line-soft)!important;background:#fff!important}
+& .flight-choice+.flight-segment {border-top:0!important}
+& .flight-segment-title {display:flex!important;align-items:baseline!important;justify-content:space-between!important;gap:12px!important;margin-bottom:9px!important}
+& .flight-segment-title strong {color:var(--at-ink)!important;font:900 11px/1.2 var(--at-font)!important}
+& .flight-segment-title span {min-width:0;color:var(--at-muted)!important;font:750 9px/1.25 var(--at-font)!important;text-align:right!important}
+& .flight-route {display:grid!important;grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr)!important;align-items:center!important;gap:8px!important}
+& .flight-route>div:not(.flight-arrow) {display:grid!important;gap:3px!important}
+& .flight-route b {color:var(--at-ink)!important;font:900 11px/1.2 var(--at-font)!important}
+& .flight-route span {color:var(--at-muted)!important;font:750 9px/1.25 var(--at-font)!important}
+& .flight-arrow {display:grid!important;place-items:center!important;color:var(--at-brand)!important;font-size:15px!important}
+& :is(.flight-baggage,.flight-fuel) {margin-top:9px!important;color:var(--at-muted)!important;font:750 9px/1.35 var(--at-font)!important}
+& .flight-fuel {padding:9px 13px!important;margin-top:0!important;border-top:1px solid var(--at-line-soft)!important;background:#fafcff!important}
+& .lead-form {scroll-margin-top:18px}
+& .search3-flight-continue {display:flex;justify-content:flex-end;margin-top:12px}
+& .search3-flight-continue button {min-width:210px;border:0;border-radius:10px;background:#ff5a0a;color:#fff;font:900 12px/1 var(--at-font);cursor:pointer}
+}
+
+/* Board 3: one real Tourvisor option remains one atomic choice, but its real legs read as two directions. */
+& #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) {
+& :is(.flight-segment,.flight-fuel) {display:none!important}
+& .flight-choice {border-bottom:0!important;background:#fff!important}
+}
+& #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) .flight-choice-tradeoffs {
+& span {min-height:0!important;padding:0!important;border:0!important;background:transparent!important;color:var(--at-muted)!important}
+& span.is-best-price {color:var(--at-brand-dark)!important}
+}
+
+& #selectedTour.search3-final-review .flight-variant:not(.is-selected){display:none!important}
+/* Confirmation is read-only: show the selected real segments, not the variant picker row. */
+& #selectedTour.search3-final-review {
+& .flight-choice {display:none!important}
+& .flight-choice input {visibility:hidden;width:0!important;margin:0!important}
+& .search3-flight-continue button {background:#fff!important;color:var(--at-brand)!important;border:1px solid var(--at-brand)!important}
+}
+}
+@media(min-width:1000px){body.search3-candidate{
+& #selectedTour .tour-flights{padding:18px 20px!important}& #selectedTour .flight-variants{grid-template-columns:1fr!important}
+}.flight-segment-title span{max-width:55%}}
+@media(max-width:640px){body.search3-candidate{
+& #selectedTour {
+& .flight-choice {padding:9px 10px!important;gap:7px!important}& .flight-choice span {font-size:9px!important}& .flight-choice b {font-size:11px!important}& .flight-segment {padding:10px!important}& .flight-segment-title {align-items:flex-start!important;flex-direction:column!important;gap:2px!important}& .flight-segment-title span {text-align:left!important}& .flight-route {grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr)!important;gap:5px!important}& .search3-flight-continue {display:block}& .search3-flight-continue button {width:100%;min-width:0}}& #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) {
+& .flight-choice {min-height:54px!important}& .flight-choice>span {font-size:8.5px!important}& .flight-choice-summary {font-size:9.5px!important}& .flight-choice-tradeoffs {margin-top:3px!important}
+}
+}}
+
+/* Native radio and selected border already convey selection; no price overlay. */
+body.search3-candidate #selectedTour .flight-variant.is-selected:before{content:none!important}

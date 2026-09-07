@@ -1,0 +1,56 @@
+{
+  "baseline": "d48a7fe5200c0dbf1d25084f32f16a27f2674dc4",
+  "status": "LOCAL_VERIFIED_AWAITING_EXACT_CI",
+  "scope": "Remove formatting around linked CSS blocks and declarations. Exact selector, at-rule condition and declaration-value source slices retained; full ordered AST roundtrip equal. No value optimization, rule merge, specificity change or deeper nesting.",
+  "before": {
+    "css_bytes": 211465,
+    "css_lines": 4007,
+    "js_bytes": 130263,
+    "js_lines": 55,
+    "total_bytes": 341728,
+    "total_lines": 4062
+  },
+  "after": {
+    "css_bytes": 205437,
+    "css_lines": 37,
+    "js_bytes": 130263,
+    "js_lines": 55,
+    "total_bytes": 335700,
+    "total_lines": 92
+  },
+  "saved_css_bytes": 6028,
+  "fragments": {
+    "search3-results-filters-v1.css": {
+      "beforeBytes": 188479,
+      "afterBytes": 183507,
+      "fragmentsSHA256": "3fdcebf21e1b96164ec3a7d5cf032b20f96f4125c8b7097cc4ec3742f33542ef"
+    },
+    "search3-entry-v1.css": {
+      "beforeBytes": 10496,
+      "afterBytes": 10091,
+      "fragmentsSHA256": "5d49370ea3657f6aeaf500559fb04077b5db67decf896e09037622057b73531e"
+    },
+    "search3-results-cards-v2.css": {
+      "beforeBytes": 4430,
+      "afterBytes": 4253,
+      "fragmentsSHA256": "d29fe8933aaae57edfbf8ae60c4fea90995264ba0cedf956e6577da4b4551d63"
+    },
+    "search3-selected-flow-v2.css": {
+      "beforeBytes": 8060,
+      "afterBytes": 7586,
+      "fragmentsSHA256": "a7b3ac42cfbccf3e81dbe816c2c7fbeb13b777fc137c0d3dac04e97d3c152cf4"
+    }
+  },
+  "tool": "css-tree 3.2.1, locked build-only dependency",
+  "checks": [
+    "All four actual CSS assets retain identical ordered raw source fragments",
+    "Full CSS AST equality is enforced on every build",
+    "Six focused CSS cases cover nesting, calc/comment token boundaries, escapes, custom values and supports",
+    "Protected note fallback and invalid-input rejection covered",
+    "12 source-build tests and 14 presentation tests pass locally; one PHP skip awaits existing CI",
+    "Four public JS assets byte-identical"
+  ],
+  "protected": "All CSS source modules, acceptance guards, cascade donor/order and injected CSS remain unchanged. No runtime dependency, extra request or public path. Production/API/price/lead/analytics unchanged.",
+  "preview_updated": false,
+  "production_updated": false
+}

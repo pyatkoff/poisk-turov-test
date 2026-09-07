@@ -26,6 +26,11 @@ function v2_seo_request_path(): string
 
 function v2_seo_indexable(array $siteParams = []): bool
 {
+    if (defined('V2_LEGACY_SEARCH') && V2_LEGACY_SEARCH === true) return false;
+    // Whole-site review routes must never inherit a production indexation allowlist.
+    // site-path-v1.php is loaded by every published Search3 preview entry before
+    // this function is evaluated; production calls remain unchanged.
+    if (function_exists('v2_site_preview_mode') && v2_site_preview_mode()) return false;
     if (!v2_seo_is_anytoour_host() || empty($siteParams['SEO_INDEXABLE'])) {
         return false;
     }

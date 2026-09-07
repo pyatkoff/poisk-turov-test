@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "status": "CHECKED_REQUIRED_CI_PASSED_NOT_PUBLISHED",
+  "baseline_source": "bc5e0d123e125ddd6d4603e2c6051dbe161726c4",
+  "source_sha": "22c6a4dd0dbefe1e8885827ee74b160a7ee8f6f8",
+  "release_sha": "94c76b6dade243c06055b5ffe65395e33e3800e3",
+  "source_pr": 1467,
+  "assets": [
+    {
+      "asset": "search3-results-filters-v1.css",
+      "before": 62808,
+      "after": 60385,
+      "saved": 2423,
+      "sha256": "85b9bec4c23ff0795fec65f5f8b95dcc44fa160d2f26f51e1317377c22d1618a"
+    },
+    {
+      "asset": "search3-entry-v1.css",
+      "before": 15099,
+      "after": 15099,
+      "saved": 0,
+      "sha256": "7b8ca77d07ed57b2c96d09f1b6080a77d7049f0c676cd793910f9ada730f0c17"
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "before": 6798,
+      "after": 6798,
+      "saved": 0,
+      "sha256": "aa2c13b37ffe905bd84b17e2977a45bf46d9d6cb768d19ff0dfbbcaebaf1715f"
+    },
+    {
+      "asset": "search3-selected-flow-v2.css",
+      "before": 9401,
+      "after": 10802,
+      "saved": -1401,
+      "sha256": "faa7809542f0980c2ae8a6204c6eafe3177ff42748f83f0e8feb71762f8e58a9"
+    },
+    {
+      "asset": "search3-results-filters-v1.js",
+      "before": 55301,
+      "after": 55301,
+      "saved": 0,
+      "sha256": "2a7246ae3536ac716c4b883e4b7901006cf0d3ad352a7b9b6dd7d1b4547809b5"
+    },
+    {
+      "asset": "search3-entry-v1.js",
+      "before": 3226,
+      "after": 3226,
+      "saved": 0,
+      "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"
+    },
+    {
+      "asset": "search3-results-cards-v2.js",
+      "before": 0,
+      "after": 0,
+      "saved": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "asset": "search3-selected-flow-v2.js",
+      "before": 12129,
+      "after": 12129,
+      "saved": 0,
+      "sha256": "a84ea3c53dfddb33c1d4cdbcfbb3ebeb1a9276facd0f0e458d73fbe36487f82b"
+    }
+  ],
+  "totals": {
+    "before": 164762,
+    "after": 163740,
+    "saved": 1022,
+    "css_before": 94106,
+    "css_after": 93084,
+    "js_before": 70656,
+    "js_after": 70656
+  },
+  "retired_layers": [
+    "src/search3/styles/selected-tour.css"
+  ],
+  "salvage": {
+    "tour_detail": "Shared selected shell, back button, photo, facts, section and desktop detail primitives.",
+    "selected_flow_v2": "Fixed mobile CTA, narrow selected-price hiding, touch layout and retained seam/back-button rules."
+  },
+  "verification": {
+    "source_build": "passed",
+    "presentation_suite": "passed; PHP-only local render covered by exact artifact CI",
+    "security_run": 34120401772,
+    "artifact_run": 34120401716,
+    "artifact_id": 10017964340,
+    "artifact_digest": "sha256:6056d9b2a952b82b021bf0dc8c4e22052482cc4fb6eb36f0aa08fd55bfb0b9bb",
+    "preview_published": false,
+    "visual": "not performed",
+    "deferred": [
+      "375/760/1000/1440 detail/review/lead geometry",
+      "mobile fixed CTA safe-area",
+      "physical Safari"
+    ]
+  },
+  "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+  "production_updated": false,
+  "next_action": "Do not repeat #1466 or #1467. Audit results-top.js against results-presentation.js with exact initial/results/edit scheduling coverage, or a bounded results-layout.css family after collapsed/expanded responsive geometry is available. Preserve final-sections, booking-summary, price, lead, API and analytics contracts.",
+  "updated_at": "2026-09-07T12:15:00.000Z"
+}

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/site-header-v2.php';
+require_once __DIR__ . '/site-path-v1.php';
 $homeSiteParams = is_array($params ?? null) ? $params : [];
 $homeForm = v2_form_defaults($_GET, $homeSiteParams);
 $homePhone = v2_site_phone($homeSiteParams, '8 (800) 100 - 61 - 50');
@@ -8,7 +9,7 @@ $homeDescription = 'AnyTour — удобный поиск туров с акту
 $homeCanonical = 'https://anytoour.ru/';
 $homeRobots = v2_seo_robots_content(v2_seo_indexable($homeSiteParams));
 $homeSchema = v2_seo_schema($homePhone, $homeDescription);
-$homeLegacyBase = '';
+$homeLegacyBase = v2_site_base_path();
 function home_e($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
 ?><!doctype html>
 <html lang="ru">
@@ -54,17 +55,20 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
     </div>
   </section>
 
-  <form class="at-home-search" action="/poisk-turov/" method="get" autocomplete="off" data-home-search>
+  <form class="at-home-search" action="<?=home_e(v2_site_href('/poisk-turov/'))?>" method="get" autocomplete="off" data-home-search>
     <div class="at-home-search__grid">
       <label class="at-home-field"><span>Вылет из</span><select name="from" data-home-departures required><option value="<?=home_e($homeForm['from'])?>">Загружаем города…</option></select></label>
       <label class="at-home-field"><span>Страна</span><select name="country" data-home-countries required><option value="<?=home_e($homeForm['country'])?>">Загружаем страны…</option></select></label>
       <label class="at-home-field"><span>Вылет с</span><input type="date" name="dateFrom" value="<?=home_e($homeForm['date_from'])?>" required></label>
       <label class="at-home-field"><span>Вылет до</span><input type="date" name="dateTo" value="<?=home_e($homeForm['date_till'])?>" required></label>
-      <label class="at-home-field"><span>Ночей</span><input type="number" name="daysFrom" min="1" max="28" value="<?=home_e($homeForm['nights_from'])?>" required data-home-nights><input type="hidden" name="daysTill" value="<?=home_e($homeForm['nights_from'])?>" data-home-nights-till></label>
+      <label class="at-home-field"><span>Ночей от</span><select name="daysFrom" required><?php for($i=1;$i<=28;$i++): ?><option value="<?=$i?>" <?=$i===(int)$homeForm['nights_from']?'selected':''?>><?=$i?></option><?php endfor; ?></select></label>
+      <label class="at-home-field"><span>Ночей до</span><select name="daysTill" required><?php for($i=1;$i<=28;$i++): ?><option value="<?=$i?>" <?=$i===(int)$homeForm['nights_till']?'selected':''?>><?=$i?></option><?php endfor; ?></select></label>
       <label class="at-home-field"><span>Взрослых</span><select name="count_people"><?php for($i=1;$i<=6;$i++): ?><option value="<?=$i?>" <?=$i===(int)$homeForm['count_people']?'selected':''?>><?=$i?></option><?php endfor; ?></select></label>
+      <label class="at-home-field"><span>Детей</span><select data-home-children><?php for($i=0;$i<=3;$i++): ?><option value="<?=$i?>" <?=$i===count($homeForm['child_ages'])?'selected':''?>><?=$i===0?'Без детей':$i?></option><?php endfor; ?></select></label>
+      <div class="at-home-child-ages" data-home-child-ages></div>
       <button type="submit">Найти туры</button>
     </div>
-    <a class="at-home-search__more" href="/poisk-turov/">Расширенный поиск и все фильтры →</a>
+    <a class="at-home-search__more" href="<?=home_e(v2_site_href('/poisk-turov/'))?>">Расширенный поиск и все фильтры →</a>
   </form>
 
   <section class="at-home-section at-home-section--discovery">
@@ -73,7 +77,7 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
       <a class="at-home-direction at-home-direction--primary" href="<?=home_e($homeLegacyBase)?>/country/"><strong>Страны и курорты</strong><span>Выберите направление и перейдите к актуальным турам</span></a>
       <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/hot/"><strong>Горящие туры</strong><span>Поиск вариантов на ближайшие даты</span></a>
       <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/rb/"><strong>Раннее бронирование</strong><span>Сравните варианты заранее без спешки</span></a>
-      <a class="at-home-direction" href="/poisk-turov/"><strong>Полный поиск</strong><span>Все фильтры, отели, питание и актуальные предложения</span></a>
+      <a class="at-home-direction" href="<?=home_e(v2_site_href('/poisk-turov/'))?>"><strong>Полный поиск</strong><span>Все фильтры, отели, питание и актуальные предложения</span></a>
       <a class="at-home-direction" href="<?=home_e($homeLegacyBase)?>/how-to-buy/"><strong>Как купить тур</strong><span>Понятный путь от выбора до бронирования</span></a>
     </div>
   </section>
@@ -92,8 +96,20 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
 <script>
 (function(){
   const dep=document.querySelector('[data-home-departures]'),country=document.querySelector('[data-home-countries]');
-  const nights=document.querySelector('[data-home-nights]'),nightsTill=document.querySelector('[data-home-nights-till]');
-  if(nights&&nightsTill){const syncNights=()=>{nightsTill.value=nights.value;};nights.addEventListener('input',syncNights);nights.addEventListener('change',syncNights);syncNights();}
+  const form=document.querySelector('[data-home-search]');
+  const childCount=form.querySelector('[data-home-children]'),childBox=form.querySelector('[data-home-child-ages]');
+  const initialAges=<?=json_encode($homeForm['child_ages'])?>;
+  function renderAges(){const previous=[...childBox.querySelectorAll('select')].map(el=>el.value);childBox.replaceChildren();childBox.hidden=Number(childCount.value)===0;
+    for(let i=0;i<Number(childCount.value);i++){const label=document.createElement('label');label.className='at-home-field';const title=document.createElement('span');title.textContent='Возраст ребёнка '+(i+1);const select=document.createElement('select');select.name='child_age[]';select.required=true;select.setAttribute('aria-label',title.textContent);
+      const placeholder=new Option('Выберите возраст','');select.add(placeholder);for(let age=0;age<=17;age++)select.add(new Option(age+' лет',String(age)));select.value=previous[i]??(initialAges[i]===undefined?'':String(initialAges[i]));label.append(title,select);childBox.append(label);
+    }
+  }
+  childCount.addEventListener('change',renderAges);renderAges();
+  const more=form.querySelector('.at-home-search__more');
+  const syncMore=()=>{more.href=form.action+'?'+new URLSearchParams(new FormData(form)).toString();};
+  form.addEventListener('input',syncMore);form.addEventListener('change',syncMore);more.addEventListener('click',event=>{if(!form.reportValidity()){event.preventDefault();return;}syncMore();});
+  const validateRange=()=>{form.elements.daysTill.setCustomValidity(Number(form.elements.daysTill.value)<Number(form.elements.daysFrom.value)?'Максимум ночей должен быть не меньше минимума':'');};
+  form.addEventListener('change',validateRange);
   if(!dep||!country)return;
   const initialDeparture=String(dep.value||'1'),initialCountry=String(country.value||'4');
   async function get(action,params){const u=new URL('/api-v2.php',location.origin);u.searchParams.set('action',action);Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));const r=await fetch(u,{credentials:'same-origin'});if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}

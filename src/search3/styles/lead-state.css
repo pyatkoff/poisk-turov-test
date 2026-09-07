@@ -1,0 +1,95 @@
+/* Lead lifecycle foundations retained from the retired full-cycle layer. */
+body.search3-candidate{
+& #selectedTour .lead-form[data-search3-lead-state]>*:not(.search3-lead-status){display:none!important}
+& .search3-lead-status{display:grid;grid-template-columns:54px minmax(0,1fr);gap:16px;align-items:start;padding:8px 0}
+& .search3-lead-status[hidden]{display:none!important}
+& .search3-lead-status h3{margin:0 0 6px;color:#0d1b4c;font-size:22px;line-height:1.15}
+& .search3-lead-status p{margin:0 0 12px;color:#68708a;font-size:12px;line-height:1.45}
+& .search3-lead-status strong{display:block;margin:14px 0 10px;color:#0d1b4c;font-size:13px}
+& .search3-lead-status__icon{display:flex;width:48px;height:48px;align-items:center;justify-content:center;border-radius:50%;font-size:24px;font-weight:900}
+& .search3-lead-status__icon--sending{background:#eef5ff;color:#075cff}
+& .search3-lead-status__icon--success{background:#20bd63;color:#fff}
+& .search3-lead-status__icon--error{background:#ef5350;color:#fff}
+& .search3-lead-status ol{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:8px;color:#33405f;font-size:11px}
+& .search3-lead-status ol li:before{content:'';display:inline-flex;flex:0 0 18px;width:18px;height:18px;margin-right:8px;align-items:center;justify-content:center;border:2px solid #cdd9f3;border-radius:50%;background:#fff;color:transparent;font-size:9px;font-weight:900}
+& .search3-lead-id{font-weight:800;color:#0d1b4c!important}
+& :is(.search3-messenger-actions,.search3-error-actions){display:flex;gap:8px;flex-wrap:wrap}
+& :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-lead,.search3-stay-site){display:inline-flex;min-height:42px;padding:0 16px;align-items:center;justify-content:center;border-radius:8px;text-decoration:none;font:800 11px/1 var(--at-font);cursor:pointer}
+& :is(.search3-msg-btn--max,.search3-retry-lead){border:1px solid #075cff;background:#075cff;color:#fff}
+& :is(.search3-msg-btn--tg,.search3-edit-lead){border:1px solid #075cff;background:#fff;color:#075cff}
+& .search3-msg-btn--disabled{border:1px solid #d8deea;background:#f5f7fb;color:#9aa3b7;cursor:not-allowed}
+& .search3-stay-site{border:0;background:transparent;color:#075cff}
+}
+/* Compact contact/lifecycle essentials retained from the retired lead-review layer. */
+body.search3-candidate #selectedTour{
+& .lead-consent{display:flex!important;grid-template-columns:none!important;align-items:flex-start;gap:8px!important}
+& .lead-consent input{flex:0 0 15px;width:15px!important;height:15px!important;margin:1px 0 0;accent-color:var(--at-brand)}
+& .search3-lead-protection{display:flex;align-items:center;gap:7px;color:var(--at-muted);font-weight:700}
+& .search3-lead-protection span{display:grid;place-items:center;flex:0 0 18px;width:18px;height:18px;border:1px solid #dfe5ef;border-radius:50%;color:var(--at-brand);font-size:9px}
+&.search3-final-review .search3-lead-comment{display:none!important}
+& .lead-form[data-search3-lead-state="sending"] .search3-lead-status ol li:first-child:before{border-color:#075cff!important;border-top-color:transparent!important;animation:search3LeadSpin .8s linear infinite}
+&.search3-final-review[data-search3-final-layout="maket7"] .search3-booking-summary__price-note{display:none!important}
+}
+@keyframes search3LeadSpin{to{transform:rotate(360deg)}}
+@media(max-width:640px){
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-selection-summary{display:none!important}
+html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry){
+& :is(.selected-head>:not(:first-child),.tour-flights .flight-baggage,.tour-flights .section-heading span){display:none!important}
+}
+}
+
+
+
+/* donor:search3-lead-state-convergence.css @ e5baf32f455cdb0aa1a704964f28e5efbebf57ff */
+/* Lead lifecycle convergence against approved DS2 lead UI kit. Visual only. */
+@media(min-width:1000px){
+body.search3-candidate{
+& #selectedTour.search3-final-review {
+& .lead-form[data-search3-lead-state] {
+& {min-height:248px!important;padding:18px 20px!important;background:#fff!important}
+& .search3-lead-status {padding:12px 8px!important;grid-template-columns:58px minmax(0,1fr)!important;gap:16px!important;align-items:start!important}
+& .search3-lead-status__icon {width:52px!important;height:52px!important;font-size:22px!important;box-shadow:none!important}
+& .search3-lead-status h3 {font-size:20px!important;line-height:1.12!important;margin-bottom:5px!important}
+& .search3-lead-status p {max-width:500px!important;font-size:9px!important;line-height:1.45!important;margin-bottom:10px!important}
+& .search3-lead-status strong {margin:12px 0 8px!important;font-size:10px!important}
+& .search3-lead-status ol {gap:7px!important;margin-top:11px!important}
+& .search3-lead-status ol li {min-height:18px!important;font-size:9px!important}
+& .search3-lead-status ol li:before {flex-basis:15px!important;width:15px!important;height:15px!important;margin-right:7px!important;border-width:1.5px!important}
+}
+& :is(.search3-messenger-actions,.search3-error-actions) {gap:8px!important;margin-top:8px!important}
+& :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-lead,.search3-stay-site) {min-height:38px!important;padding:0 14px!important;border-radius:6px!important;font-size:9px!important}
+& :is(.search3-msg-btn--max,.search3-msg-btn--tg) {min-width:156px!important}
+& .search3-stay-site {padding-left:6px!important;padding-right:6px!important}
+}
+}
+}
+
+@media(max-width:640px){
+/* Board 6.2: entry form first; selected-tour recap stays compact below it. */
+html body.search3-candidate{
+&.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry {
+& .search3-lead-shell>.search3-booking-summary {
+& {padding:10px!important;border-radius:11px!important}
+& .search3-booking-summary__image {height:96px!important;border-radius:9px!important}
+& .search3-booking-summary__title {font-size:14px!important;margin-bottom:8px!important}
+}
+}
+
+/* Boards 6.4 / 6.6 / 6.8: sending, success and error are standalone mobile states. */
+&.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry {
+& .lead-form[data-search3-lead-state]~.search3-booking-summary {display:none!important}
+& .lead-form[data-search3-lead-state] {
+& {padding:16px 14px!important;border-radius:12px!important;min-height:0!important}
+& .search3-lead-status {display:grid!important;grid-template-columns:1fr!important;gap:10px!important;padding:6px 2px!important}
+& .search3-lead-status__icon {width:52px!important;height:52px!important;font-size:22px!important;box-shadow:none!important}
+& .search3-lead-status h3 {font-size:20px!important;line-height:1.12!important;margin:0 0 4px!important}
+& .search3-lead-status p {font-size:10px!important;line-height:1.45!important;margin:0 0 8px!important}
+& .search3-lead-status ol {gap:8px!important;margin-top:10px!important}
+& .search3-lead-status ol li {min-height:20px!important;font-size:9px!important}
+}
+& :is(.search3-messenger-actions,.search3-error-actions) {display:grid!important;grid-template-columns:1fr!important;gap:8px!important;width:100%!important;margin-top:10px!important}
+& :is(.search3-msg-btn,.search3-retry-lead,.search3-edit-lead) {width:100%!important;min-height:44px!important;border-radius:7px!important}
+& .search3-stay-site {width:100%!important;justify-self:center!important;min-height:34px!important;margin-top:2px!important}
+}
+}
+}

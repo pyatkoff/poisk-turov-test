@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_AND_PUBLISHED_CORRECTED_DESKTOP_MOBILE_DEFERRED",
+  "base_release_sha": "cca1d56605db6260071dfe2ff24ed8f46b437b21",
+  "published_preview_source_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
+  "scope": "Three substantial obsolete presentation block families retired in one batch; retained active lifecycle owners are not claimed fully retired.",
+  "removed": [
+    "Old result-cards photo-height/dense facts/tablet/desktop geometry blocks",
+    "Private injected mobile microlayout/tablet board/misplaced desktop results geometry",
+    "Flight markDirections class-mutation pass and its classified roundtrip geometry"
+  ],
+  "retained": [
+    "All81 remaining result-cards declarations have baseline selector/media/value/priority",
+    "All114 remaining flights declarations have baseline selector/media/value/priority",
+    "Mobile final-review/lead-entry/state and price-bar injected blocks literal-equivalent; injection order/root guard/idempotence unchanged",
+    "Current readability/layout/acceptance and native entry/night controls unchanged",
+    "Flight continue equals baseline minus markDirections and its3calls; primary CTA/review/back/heading/events unchanged",
+    "Supplier direction headings/order, price arithmetic, URL/payload, Tourvisor/API, leads/analytics/logo and explicit-& native nesting protected"
+  ],
+  "public_assets": [
+    {
+      "path": "v2/search3-results-filters-v1.js",
+      "before": 92082,
+      "after": 87783,
+      "saved": 4299
+    },
+    {
+      "path": "v2/search3-results-filters-v1.css",
+      "before": 121818,
+      "after": 116283,
+      "saved": 5535
+    },
+    {
+      "path": "v2/search3-entry-v1.css",
+      "before": 9662,
+      "after": 9662,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-entry-v1.js",
+      "before": 3226,
+      "after": 3226,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-results-cards-v2.css",
+      "before": 4007,
+      "after": 4007,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-results-cards-v2.js",
+      "before": 0,
+      "after": 0,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.css",
+      "before": 6814,
+      "after": 6814,
+      "saved": 0
+    },
+    {
+      "path": "v2/search3-selected-flow-v2.js",
+      "before": 7882,
+      "after": 7882,
+      "saved": 0
+    }
+  ],
+  "totals": {
+    "before": 245491,
+    "after": 235657,
+    "saved": 9834,
+    "css_before": 142301,
+    "css_after": 136766,
+    "js_before": 103190,
+    "js_after": 98891
+  },
+  "accounting_note": "Raw public bytes, not compression or speed; JS asset saving includes private embedded CSS. Six other public assets byte-identical.",
+  "local_checks": {
+    "source_build": "PASS one combined --write build",
+    "selected_flow_scheduler": "PASS compiled fallback plus primary review/back/new-tour trace without supplier segment queries/mutation",
+    "injected_styles": "PASS compiled insertion order/root guard/idempotence",
+    "mobile_toolbar_ownership": "PASS",
+    "independent_css_ast_review": "PASS exact retained selector/media/declaration streams and flight JS operation deletion",
+    "diff_check": "PASS"
+  },
+  "source_ci": {
+    "security_run": 34068579112,
+    "artifact_run": 34068579131,
+    "artifact_id": 9999733380,
+    "conclusion": "success",
+    "guards": "unchanged"
+  },
+  "visual_verification": {
+    "status": "DESKTOP_OBSERVED_DEFECTS_REPAIR_PREPARED",
+    "performed": true,
+    "viewport": [
+      1363,
+      936
+    ],
+    "states": [
+      "initial form",
+      "results and expanded LUXOR APART",
+      "selected flight",
+      "review and back"
+    ],
+    "findings": [
+      "Accommodation column splits label/value midword",
+      "Existing convergence gives airport9px and secondary7.5px",
+      "Legacy selected checkmark overlaps price"
+    ],
+    "attribution": "Observed on published857; introduction by this deletion not proven.",
+    "deferred": [
+      "mobile/tablet/Safari",
+      "live no-flight branch",
+      "lead-entry and full matrix"
+    ],
+    "capability_correction": "Browser connected through control-browser; earlier no-browser statement was inaccurate. Artifact materialization403 was not retried; unchanged publisher verified actual archive/controls."
+  },
+  "preview_updated": true,
+  "production_updated": false,
+  "next_action": "Next substantial candidate: audit review-responsive.css mobile/tablet geometry against current selected-flow/review owners, retire duplicate layout only after protecting hidden/lead-shell/primary CTA boundaries. Do not repeat retired17CSS+1JS owner or the3block families and6-column/tiny-font repair. Current mobile/tablet, live no-flight and physical Safari remain deferred. Continue independent permitted work; production acceptance does not pause automation.",
+  "implementation_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
+  "preview_publication": {
+    "control_pr": 1431,
+    "control_sha": "e1a611baf2afd53fbb46441227780b184d94d7f8",
+    "run": 34068938069,
+    "conclusion": "success",
+    "evidence_artifact": 9999833035,
+    "file_count": 715,
+    "production_fingerprints": "unchanged",
+    "rollback": "retained",
+    "noindex": true,
+    "metrika_counter": 0,
+    "production_leads": false
+  },
+  "repair": {
+    "base_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
+    "status": "CHECKED_AND_PUBLISHED",
+    "changes": [
+      "Remove six-column/nth-position microlayout in hotel-packages; three flexible columns",
+      "Remove9/7.5px flight text overrides in convergence; existing selected-flow14/12px owner applies",
+      "Suppress duplicate legacy selected pseudo-tick; native radio/border preserved"
+    ],
+    "assets": [
+      {
+        "path": "v2/search3-entry-v1.css",
+        "before": 9662,
+        "after": 9662
+      },
+      {
+        "path": "v2/search3-results-cards-v2.css",
+        "before": 4007,
+        "after": 4007
+      },
+      {
+        "path": "v2/search3-results-filters-v1.css",
+        "before": 116283,
+        "after": 115765
+      },
+      {
+        "path": "v2/search3-selected-flow-v2.css",
+        "before": 6814,
+        "after": 6814
+      },
+      {
+        "path": "v2/search3-entry-v1.js",
+        "before": 3226,
+        "after": 3226
+      },
+      {
+        "path": "v2/search3-results-cards-v2.js",
+        "before": 0,
+        "after": 0
+      },
+      {
+        "path": "v2/search3-results-filters-v1.js",
+        "before": 87783,
+        "after": 87783
+      },
+      {
+        "path": "v2/search3-selected-flow-v2.js",
+        "before": 7882,
+        "after": 7882
+      }
+    ],
+    "before": 235657,
+    "after": 235139,
+    "saved": 518,
+    "all_js_unchanged": true,
+    "checks": [
+      "one source build PASS",
+      "selected scheduler/primary review-back PASS",
+      "mobile toolbar ownership PASS",
+      "CSS parse/diffcheck PASS"
+    ],
+    "visual": {
+      "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+      "viewport": [
+        1363,
+        936
+      ],
+      "verified_at": "2026-09-07T00:22:33.879812+00:00",
+      "summary": "Corrective Chromium1363x936 screenshots inspected: expanded LUXOR APART facts now have three readable columns without midword accommodation wrap; selected outbound/return airport text14px and secondary12px, duplicate selected tick no longer overlaps72832RUB price. Native radios and next CTA visible.",
+      "expanded_card_screenshot_inspected": true,
+      "selected_flight_screenshot_inspected": true,
+      "hotels": 97,
+      "tours": 515,
+      "hotel": "LUXOR APART",
+      "price_rub": 72832,
+      "real_lead_submitted": false,
+      "full_matrix_run": false,
+      "deferred": [
+        "mobile/tablet widths",
+        "physical Safari",
+        "live no-flight branch",
+        "lead-entry/success/error",
+        "full filter/editor/price matrix"
+      ],
+      "earlier_source_evidence": {
+        "source_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
+        "states": [
+          "initial form",
+          "results/expanded card",
+          "selected flight",
+          "review/back"
+        ],
+        "findings_corrected": true
+      }
+    },
+    "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+    "source_tree": "a5b3994ffe8df4626b2e3fbc0134a89a00368705",
+    "source_pr": 1432,
+    "ci": {
+      "security_run": 34069311162,
+      "artifact_run": 34069311068,
+      "artifact_id": 9999945885,
+      "artifact_digest": "sha256:494c414b54be8320a3a3120972f11553b763f29ff4f936feca1618dcefc570ee",
+      "archive_sha256": "c400293d3d02a5cd4fb0ee654c861d271e24033c852c4093b54b391525ab5b9a",
+      "manifest_sha256": "2329fea78d1113abe4dc5893c700f98541145b595ec7b07b9107a14066e32e2e",
+      "payload_sha256": "62c6191b5ab628a24b05e112df10e96ee942174778f64c1797073f014b892376",
+      "conclusion": "success"
+    },
+    "publication": {
+      "deploy_pr": 1433,
+      "deploy_run": 34069485080,
+      "control_sha": "23f0d3ce059f11d7b32e85aa5a2fe202cc1b187c",
+      "deployment_evidence_artifact": 9999985225,
+      "deployment_evidence_digest": "sha256:83c91132587677f62aece10e71301e6926298ed99f9e8dba32f01ec9daec991a",
+      "conclusion": "success"
+    }
+  },
+  "latest_published_source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+  "verified_at": "2026-09-07T00:22:33.904891+00:00"
+}

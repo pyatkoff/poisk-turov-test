@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+  "base_release_sha": "4ec1c5f86ccb17996a567cd47c40f68de9fe0874",
+  "scope": "Use one count-aware primary hotel-card action without changing supplier, price, selection or lead behavior.",
+  "change": [
+    "Replaced the separate availability sentence and generic card action with `Показать N туров`",
+    "Preserved correct Russian tour-count plural forms",
+    "Preserved expanded `Скрыть туры`, collapse restoration and each offer's `Выбрать тур` action",
+    "Removed the retired action-copy markup and its responsive CSS"
+  ],
+  "payload": {
+    "search3_eight_assets_before_bytes": 146599,
+    "search3_eight_assets_after_bytes": 145974,
+    "search3_saved_bytes": 625,
+    "css_saved_bytes": 597,
+    "js_saved_bytes": 28,
+    "paths": {
+      "v2/search3-results-filters-v1.css": {"before_bytes": 47608, "after_bytes": 47513},
+      "v2/search3-results-cards-v2.css": {"before_bytes": 11812, "after_bytes": 11310},
+      "v2/search3-results-filters-v1.js": {"before_bytes": 48137, "after_bytes": 48109}
+    }
+  },
+  "protected_contracts": "Price arithmetic, URL/payload, Tourvisor/API, supplier data, selected-tour and lead lifecycle, lead transport/mapping, Metrika/goals, eight public paths and native controls are unchanged.",
+  "verification": {
+    "source_sha": "635e512f469dab9222b12fa7637672428ab40c5a",
+    "source_pr": 1500,
+    "security_run": 34152822504,
+    "initial_artifact_run": 34152822452,
+    "ready_repeat_artifact_run": 34152950201,
+    "artifact_id": 10029998652,
+    "artifact_digest": "sha256:56dbeb79466ea02d559e2a65284c4fd0ff0fe79efeefe7880726abb15f01ee4b",
+    "results_geometry_artifact": 10029998348,
+    "results_geometry_digest": "sha256:25ef1a9f56a652e3d6c01891d5c9b8b73098bc2c018bb7ab01b2a6a2f799469f",
+    "widths": [375, 760, 761, 999, 1000, 1440],
+    "collapsed_and_expanded_states": 12,
+    "horizontal_overflow": false,
+    "screenshots_retained": true,
+    "screenshots_manually_inspected": false,
+    "lead_submitted": false,
+    "source_ci": "SUCCESS"
+  },
+  "release_sha": "2e79f12c74f24ae2737de8827447b44b134acf77",
+  "publication": "NOT_PUBLISHED",
+  "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "published_preview_asset_bytes": 147378,
+  "production_updated": false,
+  "deferred": [
+    "Live current-source interaction and visual inspection",
+    "Physical iPhone and Safari safe-area acceptance"
+  ],
+  "next_action": "Audit whether the Search3 list/grid switch has distinct working layouts; preserve legacy-search grid behavior and remove only a nonfunctional Search3 control."
+}

@@ -1,6 +1,6 @@
 # poisk-turov-test — Autopilot Roadmap
 
-Updated: 2026-09-02
+Updated: 2026-09-04
 
 Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priority source; `AUTOPILOT_STATE.json` is the machine-readable resume point. `ARCHITECTURE.md` owns architecture and `TEST_MATRIX.md` owns CI/test mapping.
 
@@ -8,11 +8,15 @@ Operational companion to `AGENTS.md`. `OWNER_PRIORITY.json` is the owner-priorit
 
 AnyTour Design System 2.0 is the only canonical design system. Do not restore, introduce or reference Design System 1.0 as current. Treat the public site as one product across homepage → destination/country → hot/search → results → selected tour → lead.
 
-Priority order after emergency overrides is: search user journey → loaded-results local filtering → hotel/tour cards and selected-tour → desktop/mobile visual consistency → shared DS2 header/navigation/footer → site-wide DS2 convergence. Technical refactor remains deferred.
+Active owner-directed continuation is [Search3 site completion, issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996). Finish the new design across the site before expanding SEO or refactoring. The coherent whole-site preview is published from checked source `39d376436e3553d16755a7da1c77cb4c3f5156bf`; desktop real-catalogue acceptance reaches the lead form, unavailable-flight/retry branches pass deterministic browser coverage, result cards are readable at 375/430/1024/1440, localized decimal flight-price tradeoffs are internally consistent, and resort destination copy uses the reviewed grammatical form. Physical iPhone/Safari remains. The existing search-only deploy still accepts only nine search files and is unchanged. The stable DS2 mode/phase/stage identifiers remain unchanged; Search3 is the active substage.
+
+Priority order after emergency overrides is: confirmed search/mobile defects → common site presentation → whole-site preview and handoff → truthful content/working links and offer freshness → end-to-end acceptance → owner-approved migration. Owner explicitly authorized Search3 presentation refactoring on 2026-09-05. Source ownership and reproducible build are in scope; broader technical refactor and mass SEO expansion remain deferred.
 
 New design/layout concepts require explicit owner approval. Existing approved DS2 owners may be repaired and converged autonomously when a concrete defect is confirmed.
 
-**Search 2.0 release lock:** draft PR #810 is design-approval work. The owner explicitly approved publishing this branch to the isolated preview route `https://anytoour.ru/_preview/search2/poisk-turov/`; preview-only deploys from `design/search2-form-polish` are therefore allowed and should be used for visual review. Do not merge #810 to `main` and do not deploy its redesign to production `/poisk-turov/` until the owner explicitly approves the visual design for production.
+**Search3 release lock:** isolated preview publication is authorized; production draft [#1334](https://github.com/pyatkoff/poisk-turov-test/pull/1334) must not merge to `main` or replace production `/poisk-turov/` until the owner explicitly approves the concrete visual release. Current whole-site preview: `https://anytoour.ru/_preview/search3-site-candidate/`; the earlier search-only preview remains separate at `https://anytoour.ru/_preview/search3-candidate/poisk-turov/`. Preparing code, tasks, evidence and rollback is authorized; the remaining production approval does not block independent safe work.
+
+**Historical Search2 lock:** #810 remains subject to its previous preview-only restriction. It is not the active development target; do not resume Search2 merely because old evidence below refers to it.
 
 ## Architecture and protections
 
@@ -25,7 +29,9 @@ New design/layout concepts require explicit owner approval. Existing approved DS
 - Do not migrate unresolved legal/payment content.
 - PR #254 remains deferred pending a fresh architecture review. `technical_refactor` remains deferred pending explicit owner direction.
 
-## Current DS2 production state
+## Historical DS2 production evidence through 2026-09-02
+
+The following records are retained for provenance, not as the current Search3 queue or latest release status.
 
 The shared DS2 shell is established across `/`, `/poisk-turov/`, `/hot/`, `/contacts/`, `/how-to-buy/`, `/rb/`, `/country/` and representative country pages. Existing production gates cover required widths 375/430/768/1024/1440 and preserve search/results/selected-tour regressions.
 
@@ -51,6 +57,20 @@ Search/Tourvisor, analytics/Metrika, pricing, lead transport, logo, verified des
 
 ## Resume point
 
-Whole-product score remains **7.3/10**. Search 2.0 now has a fully green five-width preview baseline and the prior mobile document-overflow defect is closed. Selected-tour interaction sizing is live on the shared 44 px DS2 rhythm, and the production visual gate now validates the canonical DS2 footer rather than a removed legacy block. The score is intentionally held because Search 2.0 is still preview-only.
+Search3 candidate `470474414a3930f1f6c095a8dbbc187075b253c0` is published in the isolated search preview. CI `33925976956` and deployment `33926206799` passed; deployment PR #1339. Evidence covers 375/430/768/1024/1440 and wide 1920/2048. Owner confirmed the iPhone calendar opens; system night-picker appearance and Safari alignment still require device confirmation. This evidence is not whole-site or real lead-delivery acceptance.
 
-Continue the Search 2.0 initial form only through confirmed visual gaps against the approved design, using run #51 as the green 375/430/768/1024/1440 baseline. Preserve the target composition `Откуда → Куда → Когда → Ночи → Туристы → Найти туры`, blue CTA, truthful compact secondary filters and unchanged underlying search values/contracts. Do not add another CSS layer. PR #810 remains draft/preview-only and must not reach production until explicit owner visual approval. In parallel, continue only confirmed independent shared DS2 wrapping/touch/hierarchy fixes on production-safe pages, with relevant green PR/deploy/live evidence. PR #254, `technical_refactor` and unresolved legal/payment work remain deferred.
+Draft #1334 contains the production import, old-search route, client-facing copy, independent home night ranges/child ages, and date/night/party-preserving links from snapshot/month pages. These changes are prepared and checked, not published on the main site. The previous 7.3/10 score is historical; no new whole-product score has been assigned.
+
+Continue from `AUTOPILOT_STATE.json` current task/queue and [issue #996](https://github.com/pyatkoff/poisk-turov-test/issues/996):
+
+1. Keep the published whole-site preview isolated and exact; source `47e54a02`, deploy `33942600148`, deployment record #1346.
+2. Complete physical iPhone/Safari acceptance. Desktop home → search → hotel → tour → flight → summary → lead form passed without sending a lead; deterministic Chromium also covers empty-flight retry, recovery and the fallback path to the lead form without invoking lead transport.
+3. Supplier normalization of ages `0/17` from requested `2+2` to offer placement `3+1` is confirmed by a control search. The UI now labels this truthfully as the tour operator's placement and keeps original ages in the lead context; do not change Tourvisor, price or lead contracts.
+4. Resolve confirmed broken legal/payment links only from existing approved content; record missing content rather than invent terms.
+5. Obtain owner visual approval on a specific release, retain previous deployment artifact/configuration, verify rollback and `/poisk-turov-old/`, then execute the approved migration and post-deploy verification.
+
+Published in the current exact preview: result cards from `17b674fc54fa6b49aaa73379bcbdc35bfccfda28` use taller mobile hotel photos and readable fact/action typography while preserving a compact desktop layout. Visual run `33941679993` passed at 375/430/1024/1440; artifact `9962036028` was inspected. Date, nights, meal and flight are not repeated below the price; that line contains only the party composition. The current source additionally fixes localized decimal flight-price tradeoffs without changing raw Tourvisor values, price selection or lead payloads. Live verification showed `72 832 ₽` → `90 050 ₽` with the correct `+17 218 ₽`, then reached the lead form without submission.
+
+Detailed status and legacy-search limits: `docs/project/search3-site-finish-and-legacy.md`. Issue #2 is a machine-maintained CI signal, not the product task list. An hourly scheduled development task is enabled. It must continue beyond one PR whenever time remains for another safe step; it is not a nonstop process. PR #254, technical refactor and unresolved legal-content authoring remain deferred.
+
+Owner continuation rule: **do not stop after one PR if the current run has time for the next safe step**. Update the handoff after each checked change and continue. A final production visual-approval gate blocks production publication only, not other authorized safe preparation.

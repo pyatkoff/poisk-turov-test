@@ -3,6 +3,7 @@
  * Route-independent server-rendered primitives for future indexable AnyTour pages.
  * These helpers intentionally do not alter the current V2 search route or its indexing policy.
  */
+require_once __DIR__ . '/site-path-v1.php';
 
 function v2_seo_escape($value): string
 {
@@ -46,7 +47,7 @@ function v2_seo_render_breadcrumbs(array $items): string
             continue;
         }
         if ($item['href'] === null) continue;
-        $parts[] = '<li><a href="'.v2_seo_escape($item['href']).'">'.v2_seo_escape($item['label']).'</a></li>';
+        $parts[] = '<li><a href="'.v2_seo_escape(v2_site_href($item['href'])).'">'.v2_seo_escape($item['label']).'</a></li>';
     }
     if (!$parts) return '';
     return '<nav class="v2-seo-breadcrumbs" aria-label="Хлебные крошки"><ol>'.implode('', $parts).'</ol></nav>';
@@ -79,7 +80,7 @@ function v2_seo_render_related_links(string $title, array $links): string
         $href = v2_seo_stable_internal_href($link['href'] ?? '');
         if ($label === '' || $href === null || isset($seenHrefs[$href])) continue;
         $seenHrefs[$href] = true;
-        $items[] = '<li><a href="'.v2_seo_escape($href).'">'.v2_seo_escape($label).'</a></li>';
+        $items[] = '<li><a href="'.v2_seo_escape(v2_site_href($href)).'">'.v2_seo_escape($label).'</a></li>';
     }
     if (!$items) return '';
     return '<nav class="v2-seo-related" aria-label="'.v2_seo_escape($title).'"><h2>'.v2_seo_escape($title).'</h2><ul>'.implode('', $items).'</ul></nav>';
@@ -89,6 +90,7 @@ function v2_seo_search_handoff_url(string $searchPath, array $state): string
 {
     $path = v2_seo_stable_internal_href($searchPath);
     if ($path === null) throw new InvalidArgumentException('Search handoff path must be a stable first-party path');
+    $path = v2_site_href($path);
 
     $allowed = [
         'from','country','dateFrom','dateTo','daysFrom','daysTill','count_people',
@@ -103,4 +105,19 @@ function v2_seo_search_handoff_url(string $searchPath, array $state): string
     }
     if (!$query) return $path;
     return $path.'?'.http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+}
+
+/** Retain the advertised package dates and duration on a search handoff. */
+function v2_seo_offer_search_state(array $state, array $offer): array
+{
+    $departure = (int)($offer['departureId'] ?? 0);
+    if ($departure > 0) $state['from'] = $departure;
+    $date = (string)($offer['departureDate'] ?? '');
+    $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+    if ($parsed && $parsed->format('Y-m-d') === $date) $state['dateFrom'] = $state['dateTo'] = $date;
+    $nights = (int)($offer['nights'] ?? 0);
+    if ($nights >= 1 && $nights <= 28) $state['daysFrom'] = $state['daysTill'] = $nights;
+    // Public snapshot prices represent two adults without children.
+    $state['count_people'] = 2;
+    return $state;
 }

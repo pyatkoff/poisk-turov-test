@@ -1,0 +1,941 @@
+{
+  "baseline": "2b2213db2865973ff4f26c3194a7cfdb6f0feaac",
+  "method": "Factor only adjacent leaf rules with a repeated complete descendant prefix inside existing native nesting groups. Each new parent has one selector, no declarations or at-rules; every child uses one explicit leading &. No selector-list parent or reordering. Recursively expanded ordered selector/declaration/media streams match exactly. Maximum nesting depth three; acceptance guards unchanged.",
+  "assets": [
+    {
+      "asset": "search3-results-filters-v1.css",
+      "source_bytes_saved": 32679,
+      "groups": [
+        {
+          "module": "styles/hotel-results.css",
+          "line": 8,
+          "parent": "& #results",
+          "rules": 15,
+          "depth": 2
+        },
+        {
+          "module": "styles/hotel-results.css",
+          "line": 22,
+          "parent": "& #results",
+          "rules": 9,
+          "depth": 2
+        },
+        {
+          "module": "styles/hotel-packages.css",
+          "line": 4,
+          "parent": "& #results .hotel-tours",
+          "rules": 17,
+          "depth": 2
+        },
+        {
+          "module": "styles/results-width-compatibility.css",
+          "line": 19,
+          "parent": "&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden]))",
+          "rules": 10,
+          "depth": 2
+        },
+        {
+          "module": "styles/results-width-compatibility.css",
+          "line": 21,
+          "parent": "& #results .hotel-card",
+          "rules": 9,
+          "depth": 3
+        },
+        {
+          "module": "styles/filters.css",
+          "line": 16,
+          "parent": "& .results-filter-rail",
+          "rules": 7,
+          "depth": 2
+        },
+        {
+          "module": "styles/results-context.css",
+          "line": 67,
+          "parent": "&.search3-has-results",
+          "rules": 9,
+          "depth": 2
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 10,
+          "parent": "& #selectedTour",
+          "rules": 20,
+          "depth": 2
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 36,
+          "parent": "& #selectedTour",
+          "rules": 6,
+          "depth": 2
+        },
+        {
+          "module": "styles/selected-tour.css",
+          "line": 49,
+          "parent": "& #selectedTour",
+          "rules": 20,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 46,
+          "parent": "& #tourSearch:not(.search3-advanced-open)",
+          "rules": 3,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 63,
+          "parent": "& #selectedTour",
+          "rules": 6,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 78,
+          "parent": "&.search3-has-results",
+          "rules": 5,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 90,
+          "parent": "&.search3-has-results",
+          "rules": 5,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1.css",
+          "line": 97,
+          "parent": "& #resultsSearchSummary",
+          "rules": 5,
+          "depth": 3
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 21,
+          "parent": "& #selectedTour",
+          "rules": 8,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 49,
+          "parent": "&.search3-has-results",
+          "rules": 5,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 67,
+          "parent": "& #selectedTour",
+          "rules": 5,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration1c.css",
+          "line": 52,
+          "parent": "& #resultsSearchSummary",
+          "rules": 5,
+          "depth": 3
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 14,
+          "parent": "&:not(.search3-has-results)",
+          "rules": 5,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2.css",
+          "line": 64,
+          "parent": "&.search3-has-results",
+          "rules": 7,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2b.css",
+          "line": 9,
+          "parent": "&:not(.search3-has-results)",
+          "rules": 7,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2b.css",
+          "line": 19,
+          "parent": "&.search3-has-results.search3-editing-search",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2b.css",
+          "line": 10,
+          "parent": "& #tourSearch",
+          "rules": 7,
+          "depth": 3
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 9,
+          "parent": "&.search3-has-results",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 18,
+          "parent": "& .results-filter-rail",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 28,
+          "parent": "& #results",
+          "rules": 10,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 40,
+          "parent": "& #results",
+          "rules": 9,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 57,
+          "parent": "&.search3-has-results",
+          "rules": 5,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-batch-iteration2c.css",
+          "line": 65,
+          "parent": "& #results",
+          "rules": 18,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-convergence.css",
+          "line": 9,
+          "parent": "&.search3-has-results",
+          "rules": 25,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-convergence.css",
+          "line": 35,
+          "parent": "&.search3-selected-open",
+          "rules": 18,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-convergence.css",
+          "line": 59,
+          "parent": "&.search3-has-results:not(.search3-hotel-tours-open) #results",
+          "rules": 7,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-convergence.css",
+          "line": 68,
+          "parent": "&.search3-selected-open",
+          "rules": 15,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-convergence.css",
+          "line": 12,
+          "parent": "& #results",
+          "rules": 23,
+          "depth": 3
+        },
+        {
+          "module": "styles/cascade/search3-convergence.css",
+          "line": 38,
+          "parent": "& #selectedTour",
+          "rules": 18,
+          "depth": 3
+        },
+        {
+          "module": "styles/cascade/search3-convergence.css",
+          "line": 75,
+          "parent": "& #selectedTour",
+          "rules": 15,
+          "depth": 3
+        },
+        {
+          "module": "styles/cascade/search3-form-contract.css",
+          "line": 7,
+          "parent": "& #tourSearch",
+          "rules": 10,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-full-cycle-contract.css",
+          "line": 8,
+          "parent": "& #selectedTour",
+          "rules": 11,
+          "depth": 2
+        },
+        {
+          "module": "styles/cascade/search3-full-cycle-contract.css",
+          "line": 45,
+          "parent": "& #selectedTour",
+          "rules": 6,
+          "depth": 2
+        },
+        {
+          "module": "styles/booking-summary.css",
+          "line": 25,
+          "parent": "& #selectedTour",
+          "rules": 6,
+          "depth": 2
+        },
+        {
+          "module": "styles/flights.css",
+          "line": 6,
+          "parent": "& #selectedTour",
+          "rules": 23,
+          "depth": 2
+        },
+        {
+          "module": "styles/flights.css",
+          "line": 31,
+          "parent": "& #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected)",
+          "rules": 2,
+          "depth": 2
+        },
+        {
+          "module": "styles/flights.css",
+          "line": 33,
+          "parent": "& #selectedTour",
+          "rules": 6,
+          "depth": 2
+        },
+        {
+          "module": "styles/flights.css",
+          "line": 39,
+          "parent": "& #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected) .flight-choice-tradeoffs",
+          "rules": 2,
+          "depth": 2
+        },
+        {
+          "module": "styles/flights.css",
+          "line": 44,
+          "parent": "& #selectedTour.search3-final-review",
+          "rules": 3,
+          "depth": 2
+        },
+        {
+          "module": "styles/flights.css",
+          "line": 49,
+          "parent": "& #selectedTour .flight-variant.has-simple-roundtrip.is-selected",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/flights.css",
+          "line": 55,
+          "parent": "& #selectedTour",
+          "rules": 16,
+          "depth": 2
+        },
+        {
+          "module": "styles/flights.css",
+          "line": 56,
+          "parent": "& #selectedTour:not(.search3-final-review) .flight-variant:not(.is-selected)",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/flights.css",
+          "line": 38,
+          "parent": "& .flight-variant.has-roundtrip-pair.is-selected",
+          "rules": 6,
+          "depth": 3
+        },
+        {
+          "module": "styles/flights.css",
+          "line": 68,
+          "parent": "& .flight-variant.has-roundtrip-pair.is-selected",
+          "rules": 5,
+          "depth": 3
+        },
+        {
+          "module": "styles/review.css",
+          "line": 12,
+          "parent": "& #selectedTour.search3-final-review",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/review.css",
+          "line": 26,
+          "parent": "& #selectedTour",
+          "rules": 14,
+          "depth": 2
+        },
+        {
+          "module": "styles/review.css",
+          "line": 40,
+          "parent": "& #selectedTour.search3-final-review",
+          "rules": 6,
+          "depth": 2
+        },
+        {
+          "module": "styles/review.css",
+          "line": 50,
+          "parent": "& #selectedTour.search3-final-review",
+          "rules": 3,
+          "depth": 2
+        },
+        {
+          "module": "styles/final-sections.css",
+          "line": 19,
+          "parent": "& #selectedTour.search3-final-review",
+          "rules": 3,
+          "depth": 2
+        },
+        {
+          "module": "styles/lead-review.css",
+          "line": 6,
+          "parent": "& #selectedTour",
+          "rules": 9,
+          "depth": 2
+        },
+        {
+          "module": "styles/lead-review.css",
+          "line": 15,
+          "parent": "& #selectedTour.search3-final-review",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/lead-review.css",
+          "line": 20,
+          "parent": "& #selectedTour",
+          "rules": 13,
+          "depth": 2
+        },
+        {
+          "module": "styles/lead-review.css",
+          "line": 36,
+          "parent": "& #selectedTour.search3-final-review",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/lead-review.css",
+          "line": 39,
+          "parent": "& #selectedTour",
+          "rules": 7,
+          "depth": 2
+        },
+        {
+          "module": "styles/lead-review.css",
+          "line": 44,
+          "parent": "&.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry",
+          "rules": 7,
+          "depth": 2
+        },
+        {
+          "module": "styles/lead-review.css",
+          "line": 56,
+          "parent": "&.search3-selected-open #selectedTour.search3-final-review:not(.search3-lead-entry)",
+          "rules": 3,
+          "depth": 2
+        },
+        {
+          "module": "styles/lead-review.css",
+          "line": 25,
+          "parent": "& .lead-form[data-search3-lead-state]",
+          "rules": 8,
+          "depth": 3
+        },
+        {
+          "module": "styles/lead-review.css",
+          "line": 48,
+          "parent": "& .lead-form[data-search3-lead-state]",
+          "rules": 4,
+          "depth": 3
+        },
+        {
+          "module": "styles/tour-detail.css",
+          "line": 10,
+          "parent": "& #selectedTour:not(.search3-final-review)",
+          "rules": 9,
+          "depth": 2
+        },
+        {
+          "module": "styles/tour-detail.css",
+          "line": 19,
+          "parent": "& .search3-tour-detail-rail",
+          "rules": 5,
+          "depth": 2
+        },
+        {
+          "module": "styles/tour-detail-convergence.css",
+          "line": 10,
+          "parent": "& #selectedTour:not(.search3-final-review)",
+          "rules": 18,
+          "depth": 2
+        },
+        {
+          "module": "styles/tour-detail-convergence.css",
+          "line": 36,
+          "parent": "&.search3-selected-open #selectedTour:not(.search3-final-review)",
+          "rules": 5,
+          "depth": 2
+        },
+        {
+          "module": "styles/tour-detail-convergence.css",
+          "line": 46,
+          "parent": "&.search3-selected-open #selectedTour:not(.search3-final-review)",
+          "rules": 13,
+          "depth": 2
+        },
+        {
+          "module": "styles/review-layout.css",
+          "line": 8,
+          "parent": "& #selectedTour.search3-lead-entry",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/review-layout.css",
+          "line": 15,
+          "parent": "& #selectedTour.search3-final-review",
+          "rules": 25,
+          "depth": 2
+        },
+        {
+          "module": "styles/review-layout.css",
+          "line": 41,
+          "parent": "& #selectedTour.search3-lead-entry",
+          "rules": 7,
+          "depth": 2
+        },
+        {
+          "module": "styles/review-layout.css",
+          "line": 53,
+          "parent": "& #selectedTour.search3-lead-entry",
+          "rules": 7,
+          "depth": 2
+        },
+        {
+          "module": "styles/review-layout.css",
+          "line": 18,
+          "parent": "& .search3-review-heading",
+          "rules": 4,
+          "depth": 3
+        },
+        {
+          "module": "styles/review-specificity-guards.css",
+          "line": 4,
+          "parent": "&.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/review-desktop-board.css",
+          "line": 7,
+          "parent": "&.search3-selected-open",
+          "rules": 25,
+          "depth": 2
+        },
+        {
+          "module": "styles/review-desktop-board.css",
+          "line": 8,
+          "parent": "& #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"]",
+          "rules": 25,
+          "depth": 3
+        },
+        {
+          "module": "styles/lead-state.css",
+          "line": 7,
+          "parent": "& #selectedTour.search3-final-review",
+          "rules": 13,
+          "depth": 2
+        },
+        {
+          "module": "styles/lead-state.css",
+          "line": 26,
+          "parent": "&.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry",
+          "rules": 3,
+          "depth": 2
+        },
+        {
+          "module": "styles/lead-state.css",
+          "line": 31,
+          "parent": "&.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry",
+          "rules": 11,
+          "depth": 2
+        },
+        {
+          "module": "styles/lead-state.css",
+          "line": 8,
+          "parent": "& .lead-form[data-search3-lead-state]",
+          "rules": 9,
+          "depth": 3
+        },
+        {
+          "module": "styles/lead-state.css",
+          "line": 29,
+          "parent": "& .search3-lead-shell>.search3-booking-summary",
+          "rules": 3,
+          "depth": 3
+        },
+        {
+          "module": "styles/lead-state.css",
+          "line": 37,
+          "parent": "& .lead-form[data-search3-lead-state]",
+          "rules": 7,
+          "depth": 3
+        },
+        {
+          "module": "styles/visual-compatibility.css",
+          "line": 12,
+          "parent": "&.search3-has-results",
+          "rules": 28,
+          "depth": 2
+        },
+        {
+          "module": "styles/visual-compatibility.css",
+          "line": 41,
+          "parent": "&.search3-selected-open",
+          "rules": 15,
+          "depth": 2
+        },
+        {
+          "module": "styles/visual-compatibility.css",
+          "line": 60,
+          "parent": "&.search3-selected-open",
+          "rules": 16,
+          "depth": 2
+        },
+        {
+          "module": "styles/visual-compatibility.css",
+          "line": 15,
+          "parent": "& #results",
+          "rules": 26,
+          "depth": 3
+        },
+        {
+          "module": "styles/visual-compatibility.css",
+          "line": 44,
+          "parent": "& #selectedTour:not(.search3-final-review)",
+          "rules": 11,
+          "depth": 3
+        },
+        {
+          "module": "styles/visual-compatibility.css",
+          "line": 63,
+          "parent": "& #selectedTour.search3-final-review",
+          "rules": 16,
+          "depth": 3
+        },
+        {
+          "module": "styles/booking-board-mobile.css",
+          "line": 9,
+          "parent": "&.search3-selected-open #selectedTour.selected-tour:not(.search3-final-review)",
+          "rules": 20,
+          "depth": 2
+        },
+        {
+          "module": "styles/booking-board-mobile.css",
+          "line": 42,
+          "parent": "&.search3-selected-open #selectedTour.selected-tour.search3-final-review[data-search3-final-layout=\"maket7\"]:not(.search3-lead-entry)",
+          "rules": 6,
+          "depth": 2
+        },
+        {
+          "module": "styles/booking-board-tablet.css",
+          "line": 5,
+          "parent": "&.search3-selected-open",
+          "rules": 22,
+          "depth": 2
+        },
+        {
+          "module": "styles/booking-board-tablet.css",
+          "line": 6,
+          "parent": "& #selectedTour.selected-tour.search3-final-review[data-search3-final-layout=\"maket7\"]:not(.search3-lead-entry)",
+          "rules": 22,
+          "depth": 3
+        },
+        {
+          "module": "styles/result-cards.css",
+          "line": 23,
+          "parent": "&.search3-has-results",
+          "rules": 5,
+          "depth": 2
+        },
+        {
+          "module": "styles/result-cards.css",
+          "line": 89,
+          "parent": "& #tourSearch.search3-mobile-advanced-open",
+          "rules": 3,
+          "depth": 2
+        },
+        {
+          "module": "styles/result-cards.css",
+          "line": 102,
+          "parent": "&:not(.search3-hotel-tours-open) #results",
+          "rules": 9,
+          "depth": 2
+        },
+        {
+          "module": "styles/result-cards.css",
+          "line": 151,
+          "parent": "&:not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card",
+          "rules": 2,
+          "depth": 2
+        },
+        {
+          "module": "styles/result-cards.css",
+          "line": 168,
+          "parent": "&.search3-has-results",
+          "rules": 8,
+          "depth": 2
+        },
+        {
+          "module": "styles/result-cards.css",
+          "line": 182,
+          "parent": "&.search3-has-results #results",
+          "rules": 6,
+          "depth": 2
+        },
+        {
+          "module": "styles/result-cards.css",
+          "line": 194,
+          "parent": "&.search3-has-results:not(.search3-hotel-tours-open) #results",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/result-cards.css",
+          "line": 224,
+          "parent": "&.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card",
+          "rules": 2,
+          "depth": 2
+        },
+        {
+          "module": "styles/form-compatibility.css",
+          "line": 64,
+          "parent": "& #results",
+          "rules": 12,
+          "depth": 2
+        },
+        {
+          "module": "styles/form-compatibility.css",
+          "line": 84,
+          "parent": "&:not(.search3-hotel-tours-open)",
+          "rules": 7,
+          "depth": 2
+        },
+        {
+          "module": "styles/review-responsive.css",
+          "line": 7,
+          "parent": "&.search3-selected-open",
+          "rules": 25,
+          "depth": 2
+        },
+        {
+          "module": "styles/review-responsive.css",
+          "line": 87,
+          "parent": "&.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights",
+          "rules": 7,
+          "depth": 2
+        },
+        {
+          "module": "styles/review-responsive.css",
+          "line": 21,
+          "parent": "& #selectedTour.selected-tour.search3-final-review[data-search3-final-layout=\"maket7\"]:not(.search3-lead-entry)>.selected-picture",
+          "rules": 2,
+          "depth": 3
+        },
+        {
+          "module": "styles/review-responsive.css",
+          "line": 36,
+          "parent": "& #selectedTour.selected-tour.search3-final-review[data-search3-final-layout=\"maket7\"]:not(.search3-lead-entry)>.selected-head",
+          "rules": 3,
+          "depth": 3
+        },
+        {
+          "module": "styles/review-responsive.css",
+          "line": 71,
+          "parent": "& #selectedTour.selected-tour.search3-final-review[data-search3-final-layout=\"maket7\"]:not(.search3-lead-entry)>.facts",
+          "rules": 2,
+          "depth": 3
+        },
+        {
+          "module": "styles/review-responsive.css",
+          "line": 74,
+          "parent": "& #selectedTour.selected-tour.search3-final-review[data-search3-final-layout=\"maket7\"]:not(.search3-lead-entry)>.tour-flights",
+          "rules": 2,
+          "depth": 3
+        },
+        {
+          "module": "styles/results-layout.css",
+          "line": 57,
+          "parent": "& .results-filter-rail",
+          "rules": 12,
+          "depth": 2
+        },
+        {
+          "module": "styles/results-layout.css",
+          "line": 135,
+          "parent": "&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results",
+          "rules": 20,
+          "depth": 2
+        },
+        {
+          "module": "styles/results-layout.css",
+          "line": 294,
+          "parent": "& #results .hotel-tours:not([hidden])",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/mobile-results-toolbar.css",
+          "line": 14,
+          "parent": "&.search3-results-active",
+          "rules": 5,
+          "depth": 2
+        },
+        {
+          "module": "styles/mobile-results-toolbar.css",
+          "line": 44,
+          "parent": "& .search3-mobile-filter-slot",
+          "rules": 8,
+          "depth": 2
+        },
+        {
+          "module": "styles/mobile-results-toolbar.css",
+          "line": 97,
+          "parent": "&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/results-mobile-layout.css",
+          "line": 4,
+          "parent": "&.search3-results-active",
+          "rules": 4,
+          "depth": 2
+        },
+        {
+          "module": "styles/results-mobile-layout.css",
+          "line": 48,
+          "parent": "&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results",
+          "rules": 9,
+          "depth": 2
+        },
+        {
+          "module": "styles/results-mobile-layout.css",
+          "line": 133,
+          "parent": "&.search3-results-active #resultsSearchSummary ~ #resultsTools:not([hidden]) ~ .results-layout #results .search3-hotel-facts",
+          "rules": 2,
+          "depth": 2
+        }
+      ],
+      "expanded_stream_sha256": "450a71ee45b7d23e0cd4f7219d5573256c884813e1b1a16efa3bb52983383577",
+      "expanded_stream_after_sha256": "450a71ee45b7d23e0cd4f7219d5573256c884813e1b1a16efa3bb52983383577",
+      "expanded_records": 1479
+    },
+    {
+      "asset": "search3-entry-v1.css",
+      "source_bytes_saved": 0,
+      "groups": [],
+      "expanded_stream_sha256": "cb687748562222b0ec7c20532c74caed1eb6be5b1aaf2662b973bf13bcf9d32f",
+      "expanded_stream_after_sha256": "cb687748562222b0ec7c20532c74caed1eb6be5b1aaf2662b973bf13bcf9d32f",
+      "expanded_records": 80
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "source_bytes_saved": 0,
+      "groups": [],
+      "expanded_stream_sha256": "9b165994b7b13afe974d5ac771a04c423851304d959761344e0d2609a6c6e4af",
+      "expanded_stream_after_sha256": "9b165994b7b13afe974d5ac771a04c423851304d959761344e0d2609a6c6e4af",
+      "expanded_records": 25
+    },
+    {
+      "asset": "search3-selected-flow-v2.css",
+      "source_bytes_saved": 0,
+      "groups": [],
+      "expanded_stream_sha256": "a9de343e2e9a1cc1bcaca525a855ea9d2c95c3b597eeade4499598696e2916e4",
+      "expanded_stream_after_sha256": "a9de343e2e9a1cc1bcaca525a855ea9d2c95c3b597eeade4499598696e2916e4",
+      "expanded_records": 50
+    }
+  ],
+  "public_assets": {
+    "search3-results-filters-v1.js": {
+      "before_bytes": 121897,
+      "after_bytes": 121897,
+      "before_lines": 1350,
+      "after_lines": 1350,
+      "before_sha256": "0737301f752e6404e5fe7f203bddf8cb6090dfdff1fbac0f8e2d7fb6662775e6",
+      "after_sha256": "0737301f752e6404e5fe7f203bddf8cb6090dfdff1fbac0f8e2d7fb6662775e6"
+    },
+    "search3-results-filters-v1.css": {
+      "before_bytes": 221138,
+      "after_bytes": 188479,
+      "before_lines": 3093,
+      "after_lines": 3312,
+      "before_sha256": "2a4f883306d118fffb50ae7a53d5fc1181dd74a08b647396a8b8591d8f3ee751",
+      "after_sha256": "9399dfbba8e9b43f2815d6d555c4a72a5a60850c73c14eb4e82c1144f7a8db2d"
+    },
+    "search3-entry-v1.css": {
+      "before_bytes": 11640,
+      "after_bytes": 11640,
+      "before_lines": 289,
+      "after_lines": 289,
+      "before_sha256": "4bb5ab8f95950872e0f9d3a2ac6ce0f4ec9135345888e3d4898b24c0b61c55f8",
+      "after_sha256": "4bb5ab8f95950872e0f9d3a2ac6ce0f4ec9135345888e3d4898b24c0b61c55f8"
+    },
+    "search3-entry-v1.js": {
+      "before_bytes": 5050,
+      "after_bytes": 5050,
+      "before_lines": 132,
+      "after_lines": 132,
+      "before_sha256": "6e8631ea926a103661a824739fcdf218e83c07b6ca4f7d0786ed23fcacb41e0b",
+      "after_sha256": "6e8631ea926a103661a824739fcdf218e83c07b6ca4f7d0786ed23fcacb41e0b"
+    },
+    "search3-results-cards-v2.css": {
+      "before_bytes": 7532,
+      "after_bytes": 7532,
+      "before_lines": 150,
+      "after_lines": 150,
+      "before_sha256": "443245d844059d26e4b58dff54d9cdc2ebebb0a15403d19d1cb87c1b6336adc2",
+      "after_sha256": "443245d844059d26e4b58dff54d9cdc2ebebb0a15403d19d1cb87c1b6336adc2"
+    },
+    "search3-results-cards-v2.js": {
+      "before_bytes": 88,
+      "after_bytes": 88,
+      "before_lines": 1,
+      "after_lines": 1,
+      "before_sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
+      "after_sha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266"
+    },
+    "search3-selected-flow-v2.css": {
+      "before_bytes": 9101,
+      "after_bytes": 9101,
+      "before_lines": 251,
+      "after_lines": 251,
+      "before_sha256": "e2755b0d795748decadb4e9a333b9db843d47f2971384f91ce6b08d8fc662f6d",
+      "after_sha256": "e2755b0d795748decadb4e9a333b9db843d47f2971384f91ce6b08d8fc662f6d"
+    },
+    "search3-selected-flow-v2.js": {
+      "before_bytes": 13205,
+      "after_bytes": 13205,
+      "before_lines": 342,
+      "after_lines": 342,
+      "before_sha256": "a4db64b0d1752ca15eea9f6cab1587d38139c4cc16681932f1e9a9dc2408544c",
+      "after_sha256": "a4db64b0d1752ca15eea9f6cab1587d38139c4cc16681932f1e9a9dc2408544c"
+    }
+  },
+  "total_before_bytes": 389651,
+  "total_after_bytes": 356992,
+  "acceptance_guards_unchanged": true
+}

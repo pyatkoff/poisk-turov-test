@@ -19,3 +19,4 @@ deploy_key
 # Local secret material
 .secrets/
 secrets.local.*
+/scripts/build/search3-js/node_modules/

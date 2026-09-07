@@ -1,0 +1,1548 @@
+{
+  "baseline": "03e7422eb3efa2cf4382e89bfdb610d9dadc7bd1",
+  "scope": "src/search3/styles/cascade",
+  "method": "Audit-only tinycss2. Remove only earlier !important numeric-px longhands with the same literal selector, media stack and property as a later valid numeric-px declaration. No shorthand, variable, fallback keyword, selector, media or priority rewrites. Preserve all surviving declaration order; compare exact last-occurrence declaration streams. Remove parsed empty blocks, three orphan footer comments and surplus blank lines. No project dependency.",
+  "parser_version": "1.5.1",
+  "declarations_before": 1252,
+  "declarations_after": 1125,
+  "removed_declarations": 127,
+  "removed_empty_blocks": 60,
+  "empty_blocks_before": 1,
+  "cascade_before": {
+    "bytes": 78306,
+    "lines": 874,
+    "sha256": "cdceed259acea02e4b4660c4fcf89520f6a45f90f21ae23df2cf573b3c6024c7"
+  },
+  "cascade_after": {
+    "bytes": 71256,
+    "lines": 770,
+    "sha256": "d268b7777c27837fc3737fb560b6c02c8652f7df273d7ce381f39b2f145af19e"
+  },
+  "asset_before": {
+    "bytes": 349588,
+    "lines": 3700,
+    "sha256": "b94f15eaa963b5ccb7437553b1ac7ee9c10bd6dd9a20d038994287f2c702d202"
+  },
+  "asset_after": {
+    "bytes": 342538,
+    "lines": 3596,
+    "sha256": "0644c80ac4e088137cc0a3d2cb1d1891dc3267d9d2a5c8161a2940c67cb1bea8"
+  },
+  "winning_stream_sha256": "6424d9e8108d6e24517c04b7ab213788f7124a4771facb8a04fdb0d8f196ace9",
+  "sections": [
+    {
+      "name": "search3-batch-iteration1.css",
+      "before": {
+        "bytes": 10969,
+        "lines": 130,
+        "sha256": "e855cf3c62c51cc03f486cde8719d443e352ad5a718e78ac59cb5eeceec3f7c5"
+      },
+      "after": {
+        "bytes": 9308,
+        "lines": 113,
+        "sha256": "582f722739e9aea50697fa8f6ac9d450e41bf15542126bf77c6279a6b8f6fde6"
+      }
+    },
+    {
+      "name": "search3-batch-iteration1b.css",
+      "before": {
+        "bytes": 9297,
+        "lines": 125,
+        "sha256": "2fe0b0e9275f31c9d7b94e9fcb5649a0cb23b154827cb0a158d5732fd528dd0b"
+      },
+      "after": {
+        "bytes": 7366,
+        "lines": 100,
+        "sha256": "8ed429044043cd312adf4bbc4195d5ef686c21489fcce03f995288ecc0b51b5f"
+      }
+    },
+    {
+      "name": "search3-batch-iteration1c.css",
+      "before": {
+        "bytes": 8240,
+        "lines": 102,
+        "sha256": "034fbbe15b58b90d96676b3893978373a81394e8d2034f19655eedd4a954395e"
+      },
+      "after": {
+        "bytes": 6755,
+        "lines": 86,
+        "sha256": "bbc42215768e32de5419630ec90e85711b35fb952d7a102eb74ffd7ecdddd963"
+      }
+    },
+    {
+      "name": "search3-batch-iteration2.css",
+      "before": {
+        "bytes": 10086,
+        "lines": 112,
+        "sha256": "8b2ed816ec14a99d377844b2d81b22b9205e1086eb6b7889ea7cc9e205554bc5"
+      },
+      "after": {
+        "bytes": 8707,
+        "lines": 99,
+        "sha256": "917239bfb5bc491ec5202fe3edc4af71dd15a77d4df3fabc197c2a8216cac840"
+      }
+    },
+    {
+      "name": "search3-batch-iteration2b.css",
+      "before": {
+        "bytes": 3680,
+        "lines": 39,
+        "sha256": "b20cb325c0b25c4624bb9bc0211581be2c66dd6c3878b2f587a539046131164a"
+      },
+      "after": {
+        "bytes": 3680,
+        "lines": 39,
+        "sha256": "b20cb325c0b25c4624bb9bc0211581be2c66dd6c3878b2f587a539046131164a"
+      }
+    },
+    {
+      "name": "search3-batch-iteration2c.css",
+      "before": {
+        "bytes": 10985,
+        "lines": 126,
+        "sha256": "5bb0e72b12f16334ff8084efeedcd04f384e9e4fce89a551e03190d18f716215"
+      },
+      "after": {
+        "bytes": 10519,
+        "lines": 110,
+        "sha256": "de7ea77fb4fd7cfc1aba93421a14d79bceff89b16d308f0eccb2a7a82c49f401"
+      }
+    },
+    {
+      "name": "search3-convergence.css",
+      "before": {
+        "bytes": 16945,
+        "lines": 134,
+        "sha256": "79cbfd81002e8da239348369ff3311d753451099d2df5ec753c0071a2dbde356"
+      },
+      "after": {
+        "bytes": 16916,
+        "lines": 132,
+        "sha256": "726b35c4276772d8a5690ee5f24bd3ac3b85fdeb7bbfbc9d08c454e708415ac7"
+      }
+    },
+    {
+      "name": "search3-form-contract.css",
+      "before": {
+        "bytes": 2335,
+        "lines": 53,
+        "sha256": "236815b7c3405cf1a5cb0f5d4ecfc7f43d8548e1fb0bff92cc8f7fe09517587f"
+      },
+      "after": {
+        "bytes": 2236,
+        "lines": 38,
+        "sha256": "b217b5e34bd4c88129025af777b9468efd4ed123236795e38c11325425dc8fcd"
+      }
+    },
+    {
+      "name": "search3-full-cycle-contract.css",
+      "before": {
+        "bytes": 5769,
+        "lines": 53,
+        "sha256": "9d899e3e07c45ad0a2c5e36ef311a7d191252e9954d38fc5f1d07c04aaab27ff"
+      },
+      "after": {
+        "bytes": 5769,
+        "lines": 53,
+        "sha256": "9d899e3e07c45ad0a2c5e36ef311a7d191252e9954d38fc5f1d07c04aaab27ff"
+      }
+    }
+  ],
+  "removed": [
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-main",
+      "property": "min-height",
+      "old": "168px",
+      "line": 21,
+      "winner": "154px",
+      "winner_line": 543
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "height",
+      "old": "168px",
+      "line": 22,
+      "winner": "154px",
+      "winner_line": 544
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "min-height",
+      "old": "168px",
+      "line": 22,
+      "winner": "154px",
+      "winner_line": 544
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-body",
+      "property": "column-gap",
+      "old": "18px",
+      "line": 23,
+      "winner": "14px",
+      "winner_line": 545
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-place",
+      "property": "font-size",
+      "old": "10px",
+      "line": 25,
+      "winner": "7.5px",
+      "winner_line": 547
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-decision-line",
+      "property": "margin-top",
+      "old": "9px",
+      "line": 26,
+      "winner": "6px",
+      "winner_line": 548
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-decision-line>span",
+      "property": "min-height",
+      "old": "22px",
+      "line": 27,
+      "winner": "18px",
+      "winner_line": 549
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-bottom",
+      "property": "padding-left",
+      "old": "16px",
+      "line": 28,
+      "winner": "14px",
+      "winner_line": 400
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-price",
+      "property": "font-size",
+      "old": "21px",
+      "line": 29,
+      "winner": "18px",
+      "winner_line": 556
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate .search3-hotel-action",
+      "property": "margin-top",
+      "old": "9px",
+      "line": 30,
+      "winner": "7px",
+      "winner_line": 159
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate .search3-hotel-action",
+      "property": "padding-top",
+      "old": "9px",
+      "line": 30,
+      "winner": "7px",
+      "winner_line": 159
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-row",
+      "property": "min-height",
+      "old": "82px",
+      "line": 33,
+      "winner": "61px",
+      "winner_line": 571
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-meta",
+      "property": "column-gap",
+      "old": "14px",
+      "line": 34,
+      "winner": "9px",
+      "winner_line": 411
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-fact b",
+      "property": "font-size",
+      "old": "10px",
+      "line": 36,
+      "winner": "7.8px",
+      "winner_line": 573
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-action",
+      "property": "padding-left",
+      "old": "14px",
+      "line": 37,
+      "winner": "10px",
+      "winner_line": 166
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-action>b",
+      "property": "font-size",
+      "old": "18px",
+      "line": 38,
+      "winner": "14px",
+      "winner_line": 574
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .direct-tour",
+      "property": "font-size",
+      "old": "10px",
+      "line": 39,
+      "winner": "7.5px",
+      "winner_line": 575
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .direct-tour",
+      "property": "min-height",
+      "old": "38px",
+      "line": 39,
+      "winner": "31px",
+      "winner_line": 575
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-picture",
+      "property": "height",
+      "old": "220px",
+      "line": 50,
+      "winner": "176px",
+      "winner_line": 829
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-head",
+      "property": "min-height",
+      "old": "220px",
+      "line": 51,
+      "winner": "176px",
+      "winner_line": 830
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-price",
+      "property": "font-size",
+      "old": "27px",
+      "line": 53,
+      "winner": "24px",
+      "winner_line": 832
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #tourSearch .field>span",
+      "property": "font-size",
+      "old": "8px",
+      "line": 66,
+      "winner": "7px",
+      "winner_line": 300
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #tourSearch .search3-primary-grid>.search-submit",
+      "property": "min-height",
+      "old": "44px",
+      "line": 68,
+      "winner": "42px",
+      "winner_line": 302
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate .search3-advanced-toggle",
+      "property": "min-height",
+      "old": "40px",
+      "line": 71,
+      "winner": "36px",
+      "winner_line": 303
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate .search3-quick",
+      "property": "margin-top",
+      "old": "8px",
+      "line": 73,
+      "winner": "6px",
+      "winner_line": 304
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "height",
+      "old": "124px",
+      "line": 80,
+      "winner": "116px",
+      "winner_line": 604
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "min-height",
+      "old": "124px",
+      "line": 80,
+      "winner": "116px",
+      "winner_line": 604
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-title",
+      "property": "font-size",
+      "old": "14px",
+      "line": 82,
+      "winner": "11.5px",
+      "winner_line": 606
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-price",
+      "property": "font-size",
+      "old": "17px",
+      "line": 85,
+      "winner": "14px",
+      "winner_line": 615
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate .search3-show-tours",
+      "property": "min-height",
+      "old": "42px",
+      "line": 87,
+      "winner": "36px",
+      "winner_line": 318
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo",
+      "property": "height",
+      "old": "150px",
+      "line": 90,
+      "winner": "158px",
+      "winner_line": 746
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo",
+      "property": "min-height",
+      "old": "150px",
+      "line": 90,
+      "winner": "158px",
+      "winner_line": 746
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-title",
+      "property": "font-size",
+      "old": "16px",
+      "line": 92,
+      "winner": "14px",
+      "winner_line": 748
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate.search3-has-results .results-tools--ds2",
+      "property": "margin-left",
+      "old": "230px",
+      "line": 119,
+      "winner": "210px",
+      "winner_line": 643
+    },
+    {
+      "media": [],
+      "selector": "body.search3-candidate.search3-has-results .search3-page-intro",
+      "property": "margin-bottom",
+      "old": "6px",
+      "line": 137,
+      "winner": "8px",
+      "winner_line": 364
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-main",
+      "property": "min-height",
+      "old": "156px",
+      "line": 151,
+      "winner": "154px",
+      "winner_line": 543
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "height",
+      "old": "156px",
+      "line": 152,
+      "winner": "154px",
+      "winner_line": 544
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "min-height",
+      "old": "156px",
+      "line": 152,
+      "winner": "154px",
+      "winner_line": 544
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-title",
+      "property": "font-size",
+      "old": "16px",
+      "line": 154,
+      "winner": "14px",
+      "winner_line": 546
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-decision-line",
+      "property": "margin-top",
+      "old": "7px",
+      "line": 156,
+      "winner": "6px",
+      "winner_line": 548
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-bottom",
+      "property": "padding-left",
+      "old": "13px",
+      "line": 157,
+      "winner": "14px",
+      "winner_line": 400
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-row",
+      "property": "margin-top",
+      "old": "7px",
+      "line": 164,
+      "winner": "5px",
+      "winner_line": 571
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-row",
+      "property": "min-height",
+      "old": "70px",
+      "line": 164,
+      "winner": "61px",
+      "winner_line": 571
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-meta",
+      "property": "column-gap",
+      "old": "10px",
+      "line": 165,
+      "winner": "9px",
+      "winner_line": 411
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-action>b",
+      "property": "font-size",
+      "old": "17px",
+      "line": 167,
+      "winner": "14px",
+      "winner_line": 574
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .direct-tour",
+      "property": "min-height",
+      "old": "36px",
+      "line": 168,
+      "winner": "31px",
+      "winner_line": 575
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-picture",
+      "property": "height",
+      "old": "232px",
+      "line": 178,
+      "winner": "176px",
+      "winner_line": 829
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-head",
+      "property": "min-height",
+      "old": "232px",
+      "line": 179,
+      "winner": "176px",
+      "winner_line": 830
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-head h2",
+      "property": "font-size",
+      "old": "26px",
+      "line": 180,
+      "winner": "23px",
+      "winner_line": 831
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-price",
+      "property": "font-size",
+      "old": "25px",
+      "line": 182,
+      "winner": "24px",
+      "winner_line": 832
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .facts",
+      "property": "margin-top",
+      "old": "8px",
+      "line": 183,
+      "winner": "10px",
+      "winner_line": 833
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-has-results #resultsSearchSummary",
+      "property": "margin-bottom",
+      "old": "7px",
+      "line": 194,
+      "winner": "6px",
+      "winner_line": 598
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "height",
+      "old": "112px",
+      "line": 199,
+      "winner": "116px",
+      "winner_line": 604
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "min-height",
+      "old": "112px",
+      "line": 199,
+      "winner": "116px",
+      "winner_line": 604
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-title",
+      "property": "font-size",
+      "old": "13px",
+      "line": 201,
+      "winner": "11.5px",
+      "winner_line": 606
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-price",
+      "property": "font-size",
+      "old": "16px",
+      "line": 202,
+      "winner": "14px",
+      "winner_line": 615
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate .search3-show-tours",
+      "property": "min-height",
+      "old": "38px",
+      "line": 203,
+      "winner": "36px",
+      "winner_line": 318
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo",
+      "property": "height",
+      "old": "132px",
+      "line": 205,
+      "winner": "158px",
+      "winner_line": 746
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo",
+      "property": "min-height",
+      "old": "132px",
+      "line": 205,
+      "winner": "158px",
+      "winner_line": 746
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-title",
+      "property": "font-size",
+      "old": "15px",
+      "line": 206,
+      "winner": "14px",
+      "winner_line": 748
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .tour-row",
+      "property": "margin-top",
+      "old": "6px",
+      "line": 211,
+      "winner": "5px",
+      "winner_line": 628
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .tour-action>b",
+      "property": "font-size",
+      "old": "17px",
+      "line": 212,
+      "winner": "15px",
+      "winner_line": 764
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .direct-tour",
+      "property": "min-height",
+      "old": "40px",
+      "line": 213,
+      "winner": "38px",
+      "winner_line": 765
+    },
+    {
+      "media": [
+        "(max-width:640px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-picture",
+      "property": "height",
+      "old": "148px",
+      "line": 229,
+      "winner": "178px",
+      "winner_line": 862
+    },
+    {
+      "media": [
+        "(max-width:640px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .facts>div,body.search3-candidate #selectedTour .facts>div:nth-child(n)",
+      "property": "min-height",
+      "old": "42px",
+      "line": 233,
+      "winner": "40px",
+      "winner_line": 341
+    },
+    {
+      "media": [
+        "(max-width:640px)"
+      ],
+      "selector": "body.search3-candidate .search3-selected-mobile-bar button",
+      "property": "min-height",
+      "old": "42px",
+      "line": 236,
+      "winner": "40px",
+      "winner_line": 346
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate .filter-rail-head",
+      "property": "margin-bottom",
+      "old": "4px",
+      "line": 266,
+      "winner": "0",
+      "winner_line": 524
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate .filter-rail-head",
+      "property": "padding-bottom",
+      "old": "8px",
+      "line": 266,
+      "winner": "7px",
+      "winner_line": 524
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate .filter-rail-title",
+      "property": "font-size",
+      "old": "12px",
+      "line": 267,
+      "winner": "13px",
+      "winner_line": 525
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate .filter-reset-link",
+      "property": "font-size",
+      "old": "8px",
+      "line": 268,
+      "winner": "7.5px",
+      "winner_line": 526
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate .results-filter-rail .filter-option",
+      "property": "font-size",
+      "old": "8px",
+      "line": 271,
+      "winner": "7.5px",
+      "winner_line": 533
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate .search3-filter-select",
+      "property": "font-size",
+      "old": "8px",
+      "line": 272,
+      "winner": "7.5px",
+      "winner_line": 536
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate .search3-filter-select",
+      "property": "min-height",
+      "old": "32px",
+      "line": 272,
+      "winner": "30px",
+      "winner_line": 536
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-main",
+      "property": "min-height",
+      "old": "150px",
+      "line": 273,
+      "winner": "154px",
+      "winner_line": 543
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "height",
+      "old": "150px",
+      "line": 274,
+      "winner": "154px",
+      "winner_line": 544
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "min-height",
+      "old": "150px",
+      "line": 274,
+      "winner": "154px",
+      "winner_line": 544
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-title",
+      "property": "font-size",
+      "old": "15px",
+      "line": 276,
+      "winner": "14px",
+      "winner_line": 546
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-price",
+      "property": "font-size",
+      "old": "19px",
+      "line": 277,
+      "winner": "18px",
+      "winner_line": 556
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-picture",
+      "property": "height",
+      "old": "224px",
+      "line": 283,
+      "winner": "176px",
+      "winner_line": 829
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-head",
+      "property": "min-height",
+      "old": "224px",
+      "line": 284,
+      "winner": "176px",
+      "winner_line": 830
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-head h2",
+      "property": "font-size",
+      "old": "25px",
+      "line": 285,
+      "winner": "23px",
+      "winner_line": 831
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .section-heading strong",
+      "property": "font-size",
+      "old": "16px",
+      "line": 292,
+      "winner": "17px",
+      "winner_line": 837
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "height",
+      "old": "104px",
+      "line": 313,
+      "winner": "116px",
+      "winner_line": 604
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "min-height",
+      "old": "104px",
+      "line": 313,
+      "winner": "116px",
+      "winner_line": 604
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-decision-line>span",
+      "property": "font-size",
+      "old": "7px",
+      "line": 316,
+      "winner": "6px",
+      "winner_line": 609
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-decision-line>span",
+      "property": "min-height",
+      "old": "17px",
+      "line": 316,
+      "winner": "16px",
+      "winner_line": 609
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo",
+      "property": "height",
+      "old": "120px",
+      "line": 321,
+      "winner": "158px",
+      "winner_line": 746
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo",
+      "property": "min-height",
+      "old": "120px",
+      "line": 321,
+      "winner": "158px",
+      "winner_line": 746
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head",
+      "property": "margin-bottom",
+      "old": "5px",
+      "line": 323,
+      "winner": "7px",
+      "winner_line": 754
+    },
+    {
+      "media": [
+        "(max-width:640px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-picture",
+      "property": "height",
+      "old": "136px",
+      "line": 337,
+      "winner": "178px",
+      "winner_line": 862
+    },
+    {
+      "media": [
+        "(max-width:640px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-head h2",
+      "property": "font-size",
+      "old": "16px",
+      "line": 339,
+      "winner": "18px",
+      "winner_line": 864
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-body",
+      "property": "column-gap",
+      "old": "16px",
+      "line": 397,
+      "winner": "14px",
+      "winner_line": 545
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .search3-hotel-facts",
+      "property": "margin-top",
+      "old": "7px",
+      "line": 398,
+      "winner": "6px",
+      "winner_line": 550
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .search3-hotel-action",
+      "property": "margin-top",
+      "old": "7px",
+      "line": 399,
+      "winner": "5px",
+      "winner_line": 558
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-price",
+      "property": "font-size",
+      "old": "20px",
+      "line": 401,
+      "winner": "18px",
+      "winner_line": 556
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .search3-tour-list-head strong",
+      "property": "font-size",
+      "old": "15px",
+      "line": 407,
+      "winner": "13px",
+      "winner_line": 566
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-row",
+      "property": "min-height",
+      "old": "68px",
+      "line": 410,
+      "winner": "61px",
+      "winner_line": 571
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-fact span",
+      "property": "font-size",
+      "old": "7px",
+      "line": 412,
+      "winner": "5.8px",
+      "winner_line": 572
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-fact b",
+      "property": "font-size",
+      "old": "9px",
+      "line": 413,
+      "winner": "7.8px",
+      "winner_line": 573
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .tour-action>b",
+      "property": "font-size",
+      "old": "16px",
+      "line": 414,
+      "winner": "14px",
+      "winner_line": 574
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-tours .direct-tour",
+      "property": "min-height",
+      "old": "34px",
+      "line": 415,
+      "winner": "31px",
+      "winner_line": 575
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-picture",
+      "property": "height",
+      "old": "238px",
+      "line": 419,
+      "winner": "176px",
+      "winner_line": 829
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-head",
+      "property": "min-height",
+      "old": "238px",
+      "line": 420,
+      "winner": "176px",
+      "winner_line": 830
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-head h2",
+      "property": "font-size",
+      "old": "27px",
+      "line": 422,
+      "winner": "23px",
+      "winner_line": 831
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-has-results .search3-page-intro h1",
+      "property": "font-size",
+      "old": "19px",
+      "line": 432,
+      "winner": "17px",
+      "winner_line": 595
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-photo",
+      "property": "min-height",
+      "old": "132px",
+      "line": 442,
+      "winner": "116px",
+      "winner_line": 604
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-title",
+      "property": "font-size",
+      "old": "12px",
+      "line": 444,
+      "winner": "11.5px",
+      "winner_line": 606
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .search3-hotel-facts",
+      "property": "margin-top",
+      "old": "6px",
+      "line": 445,
+      "winner": "5px",
+      "winner_line": 610
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .search3-hotel-facts small",
+      "property": "font-size",
+      "old": "6px",
+      "line": 447,
+      "winner": "5px",
+      "winner_line": 612
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .search3-hotel-facts b",
+      "property": "font-size",
+      "old": "7.5px",
+      "line": 448,
+      "winner": "6.8px",
+      "winner_line": 613
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .search3-hotel-action",
+      "property": "margin-top",
+      "old": "6px",
+      "line": 449,
+      "winner": "5px",
+      "winner_line": 617
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .search3-hotel-action",
+      "property": "padding-top",
+      "old": "6px",
+      "line": 449,
+      "winner": "5px",
+      "winner_line": 617
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-price",
+      "property": "font-size",
+      "old": "15px",
+      "line": 451,
+      "winner": "14px",
+      "winner_line": 615
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate #results .hotel-price-context",
+      "property": "font-size",
+      "old": "7px",
+      "line": 452,
+      "winner": "6px",
+      "winner_line": 616
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo",
+      "property": "min-height",
+      "old": "142px",
+      "line": 455,
+      "winner": "158px",
+      "winner_line": 746
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head span",
+      "property": "font-size",
+      "old": "7px",
+      "line": 457,
+      "winner": "7.5px",
+      "winner_line": 756
+    },
+    {
+      "media": [
+        "(max-width:640px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-picture",
+      "property": "height",
+      "old": "154px",
+      "line": 462,
+      "winner": "178px",
+      "winner_line": 862
+    },
+    {
+      "media": [
+        "(max-width:640px)"
+      ],
+      "selector": "body.search3-candidate #selectedTour .selected-head h2",
+      "property": "font-size",
+      "old": "17px",
+      "line": 463,
+      "winner": "18px",
+      "winner_line": 864
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate.search3-has-results .results-layout",
+      "property": "margin-bottom",
+      "old": "30px",
+      "line": 516,
+      "winner": "28px",
+      "winner_line": 642
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate.search3-has-results .results-tools--ds2",
+      "property": "margin-bottom",
+      "old": "7px",
+      "line": 517,
+      "winner": "6px",
+      "winner_line": 643
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate.search3-has-results .results-tools--ds2",
+      "property": "margin-left",
+      "old": "220px",
+      "line": 517,
+      "winner": "210px",
+      "winner_line": 643
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate.search3-has-results .results-tools--ds2",
+      "property": "min-height",
+      "old": "44px",
+      "line": 517,
+      "winner": "40px",
+      "winner_line": 643
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo",
+      "property": "height",
+      "old": "126px",
+      "line": 623,
+      "winner": "158px",
+      "winner_line": 746
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tours-focused .hotel-photo",
+      "property": "min-height",
+      "old": "126px",
+      "line": 623,
+      "winner": "158px",
+      "winner_line": 746
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .search3-tour-list-head strong",
+      "property": "font-size",
+      "old": "12px",
+      "line": 625,
+      "winner": "14px",
+      "winner_line": 755
+    },
+    {
+      "media": [
+        "(max-width:760px)"
+      ],
+      "selector": "body.search3-candidate.search3-hotel-tours-open #results .direct-tour",
+      "property": "min-height",
+      "old": "34px",
+      "line": 629,
+      "winner": "38px",
+      "winner_line": 765
+    },
+    {
+      "media": [
+        "(min-width:1000px)"
+      ],
+      "selector": "body.search3-candidate.search3-selected-open #selectedTour",
+      "property": "max-width",
+      "old": "1120px",
+      "line": 668,
+      "winner": "1180px",
+      "winner_line": 827
+    }
+  ]
+}

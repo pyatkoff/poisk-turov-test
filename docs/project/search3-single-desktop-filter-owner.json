@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "base_release_sha": "591feb00f5d3cf1c574093210663c94ef881d019",
+  "source_pr": 1486,
+  "source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "release_integration_sha": "4063a48049f46704dcb94a623d3219361808914b",
+  "scope": "Use the already loaded DS2 result filters as the sole desktop owner, retain a small Search3 empty-result bridge and remove duplicate lead-entry CSS hiding.",
+  "retired_owners": [
+    "src/search3/behavior/filter-rail/availability.js",
+    "src/search3/behavior/filter-rail/render.js",
+    "the duplicate desktop UI/filter implementation in src/search3/behavior/filter-rail.js"
+  ],
+  "current_owner": "v2/ds2-results-filters.js",
+  "served_assets": {
+    "before_bytes": 156516,
+    "after_bytes": 147378,
+    "removed_bytes": 9138,
+    "changed": {
+      "v2/search3-results-filters-v1.js": {
+        "before_bytes": 56742,
+        "after_bytes": 48137,
+        "removed_bytes": 8605
+      },
+      "v2/search3-results-filters-v1.css": {
+        "before_bytes": 49859,
+        "after_bytes": 49326,
+        "removed_bytes": 533
+      }
+    },
+    "unchanged_asset_count": 6
+  },
+  "product_change": [
+    "desktop results now expose one instant local filter UI for price, meal, hotel category, rating and sea distance",
+    "direct flight, charter and concrete-hotel search parameters remain available in the canonical edit-search form instead of being duplicated in the result rail",
+    "the Search3 bridge keeps legitimate zero-match results visible and recoverable"
+  ],
+  "removed_css_redundancy": "Two lead-entry root-child hide lists already enforced synchronously by Search3SummaryCta.isolateRootChildren().",
+  "focused_checks": [
+    "python3 scripts/build/search3_assets.py --write",
+    "python3 scripts/build/search3_assets.py --check",
+    "node tests/search3-filter-rail-ownership.cjs",
+    "node tests/search3-filter-rail-price-input.cjs",
+    "python3 -m unittest tests.search3_source_build_test tests.search3_production_presentation_test",
+    "python3 scripts/ci/validate_owner_priority.py"
+  ],
+  "ci_required": [
+    "Security guard including owner validators",
+    "exact artifact build including results and selected detail/review/lead geometry"
+  ],
+  "ci_result": {
+    "security_run": 34141824444,
+    "artifact_run": 34141824479,
+    "artifact_id": 10026227838,
+    "artifact_digest": "sha256:290789ab82bda4e2169a488ceb3c0449842facce120d47ee811781cb0ad5909b",
+    "selected_geometry_artifact_id": 10026226970,
+    "selected_geometry_digest": "sha256:e976c332cd8963aa7b54d00a99082a09e0d58a1c0b4d646b4a7675d03d2a1450",
+    "selected_geometry_states": "12 detail/review/lead states at 375/760/1000/1440",
+    "geometry_guard": "Existing detector expanded to review-layout, lead-state, booking-summary and final-sections owners; selected geometry executed and passed, not skipped.",
+    "conclusion": "SUCCESS"
+  },
+  "publication": "NOT_PUBLISHED",
+  "deferred": "Live current-source filter interaction, physical Safari and safe-area acceptance",
+  "protected_contracts": "Eight public paths, price arithmetic, URL/payload, Tourvisor/API, lead transport/mapping and analytics unchanged"
+}

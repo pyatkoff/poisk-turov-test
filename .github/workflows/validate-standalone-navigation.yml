@@ -2,6 +2,7 @@ name: Validate standalone navigation
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
     paths:
       - 'v2/index.php'
       - 'v2/home-v1.php'
@@ -16,6 +17,7 @@ on:
 
 jobs:
   navigation-contract:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft || (github.head_ref != 'release/search3-production-ready-v1' && github.base_ref != 'release/search3-production-ready-v1') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -91,13 +93,13 @@ jobs:
             ob_start(); include "v2/home-entry-v1.php"; $html=ob_get_clean();
             if (strpos($html, "action=\"/poisk-turov/\"") === false) exit(10);
             if (strpos($html, "name=\"daysFrom\"") === false || strpos($html, "name=\"daysTill\"") === false) exit(11);
-            if (strpos($html, "data-home-nights") === false || strpos($html, "data-home-nights-till") === false) exit(12);
+            if (strpos($html, "<select name=\"daysFrom\"") === false || strpos($html, "<select name=\"daysTill\"") === false) exit(12);
             foreach (["/country/","/hot/","/contacts/","/how-to-buy/","/rb/"] as $path) {
               if (strpos($html, "href=\"".$path."\"") === false) exit(13);
             }
             if (strpos($html, "https://anytour.online/country/") !== false) exit(14);
           '
-          grep -Fq "nightsTill.value=nights.value" v2/home-v1.php
+          php tests/search-handoff-smoke.php
           grep -Fq "'/country/'" v2/header-current-site.js
           grep -Fq "'/hot/'" v2/header-current-site.js
           grep -Fq "'/contacts/'" v2/header-current-site.js

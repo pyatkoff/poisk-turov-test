@@ -1,0 +1,4373 @@
+{
+  "baseline_source": "b926eeb4509da236597268af868457eb5f11ef43",
+  "method": "Cross-asset removal from main CSS only, using mandatory later entry/selected CSS witnesses. Exact expanded selectors (with original specificity retained through :is/native nesting), or additional leading html ancestor of body in the HTML document. Same property only; no shorthand footprint expansion, lifecycle inference or state removal. Equal/broader numeric px media contexts. Witness wins by important/specificity or mandatory later asset order. Values identical, or basic numeric longhands verified by CSS grammar. No var/env or supports fallback changes.",
+  "import_contract": {
+    "owner": "v2/search3-presentation-v1.php",
+    "function": "v2_search3_asset_tags",
+    "order": [
+      "search3-results-filters-v1",
+      "search3-entry-v1",
+      "search3-results-cards-v2",
+      "search3-selected-flow-v2"
+    ],
+    "consumer": "v2/index.php",
+    "gate": "One v2_search3_enabled gate for all four stylesheets and body.search3-candidate. Unconditional foreach inserts all four CSS links once in fixed order.",
+    "existing_regression": "tests/search3_production_presentation_test.py asserts one of each CSS/JS tag, mandatory order and all-or-none canonical/legacy/disabled activation.",
+    "consumer_scan": "rg PHP/HTML/templates found sole tag consumer v2/index.php; no direct partial CSS consumer."
+  },
+  "removed": [
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 14,
+      "property": "font-size",
+      "value": "12px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .selected-head p",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .selected-head p",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .selected-head p",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 867
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 23,
+      "property": "font-size",
+      "value": "9px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .facts span",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .facts span",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .facts span",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 902
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 24,
+      "property": "font-size",
+      "value": "12px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .facts b",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .facts b",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 171,
+            "index": 4841,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .facts b",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "14px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 907
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 28,
+      "property": "font-size",
+      "value": "10px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .section-heading span",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .section-heading span",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .section-heading span",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 924
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 30,
+      "property": "min-height",
+      "value": "52px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .lead-form button[type=submit]",
+          "spec": [
+            1,
+            3,
+            2
+          ]
+        }
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .lead-form button[type=submit]",
+            "spec": [
+              1,
+              3,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 172,
+            "index": 4846,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .lead-form button[type=submit]",
+              "spec": [
+                1,
+                3,
+                3
+              ]
+            },
+            "context": [],
+            "property": "min-height",
+            "value": "48px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 928
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 30,
+      "property": "font-size",
+      "value": "14px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .lead-form button[type=submit]",
+          "spec": [
+            1,
+            3,
+            2
+          ]
+        }
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .lead-form button[type=submit]",
+            "spec": [
+              1,
+              3,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 172,
+            "index": 4845,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .lead-form button[type=submit]",
+              "spec": [
+                1,
+                3,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "15px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 930
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 54,
+      "property": "line-height",
+      "value": "1.25",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .selected-head p",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .selected-head p",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4840,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .selected-head p",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "line-height",
+            "value": "1.45",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 978
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 54,
+      "property": "font-size",
+      "value": "7px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .facts span",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .facts span",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .facts span",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 987
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 54,
+      "property": "font-size",
+      "value": "9px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .facts b",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .facts b",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 171,
+            "index": 4841,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .facts b",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "14px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 988
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 54,
+      "property": "line-height",
+      "value": "1.2",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .facts b",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .facts b",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 171,
+            "index": 4842,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .facts b",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "line-height",
+            "value": "1.45",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 989
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 54,
+      "property": "white-space",
+      "value": "normal",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .facts b",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .facts b",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 171,
+            "index": 4843,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .facts b",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "white-space",
+            "value": "normal",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 990
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/selected-tour.css",
+      "line": 54,
+      "property": "font-size",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .section-heading span",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .section-heading span",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .section-heading span",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 998
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration1b.css",
+      "line": 43,
+      "property": "font-size",
+      "value": "10px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .selected-head p",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .selected-head p",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .selected-head p",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1127
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration1b.css",
+      "line": 43,
+      "property": "line-height",
+      "value": "1.35",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .selected-head p",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .selected-head p",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4840,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .selected-head p",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "line-height",
+            "value": "1.45",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1128
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration1c.css",
+      "line": 22,
+      "property": "font-size",
+      "value": "9px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .back-results",
+          "spec": [
+            1,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .back-results",
+            "spec": [
+              1,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .back-results",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1160
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration1c.css",
+      "line": 28,
+      "property": "font-size",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .facts span",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .facts span",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .facts span",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1164
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration1c.css",
+      "line": 29,
+      "property": "font-size",
+      "value": "11px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .facts b",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .facts b",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 171,
+            "index": 4841,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .facts b",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "14px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1165
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration1c.css",
+      "line": 32,
+      "property": "font-size",
+      "value": "12px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .lead-form button[type=submit]",
+          "spec": [
+            1,
+            3,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .lead-form button[type=submit]",
+            "spec": [
+              1,
+              3,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 172,
+            "index": 4845,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .lead-form button[type=submit]",
+              "spec": [
+                1,
+                3,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "15px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1170
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration1c.css",
+      "line": 74,
+      "property": "font-size",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .back-results",
+          "spec": [
+            1,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .back-results",
+            "spec": [
+              1,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .back-results",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1197
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration1c.css",
+      "line": 77,
+      "property": "font-size",
+      "value": "7px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .selected-head p",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .selected-head p",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .selected-head p",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1198
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration2b.css",
+      "line": 13,
+      "property": "display",
+      "value": "grid",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid",
+          "spec": [
+            1,
+            3,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:761px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid",
+            "spec": [
+              1,
+              3,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-native-controls.css",
+            "line": 16,
+            "index": 4657,
+            "selector": {
+              "s": "html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid",
+              "spec": [
+                1,
+                3,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(min-width:761px)"
+              ]
+            ],
+            "property": "display",
+            "value": "grid",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1293
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration2b.css",
+      "line": 13,
+      "property": "gap",
+      "value": "12px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid",
+          "spec": [
+            1,
+            3,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:761px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid",
+            "spec": [
+              1,
+              3,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-native-controls.css",
+            "line": 16,
+            "index": 4660,
+            "selector": {
+              "s": "html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid",
+              "spec": [
+                1,
+                3,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(min-width:761px)"
+              ]
+            ],
+            "property": "gap",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1295
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration2b.css",
+      "line": 13,
+      "property": "align-items",
+      "value": "end",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid",
+          "spec": [
+            1,
+            3,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:761px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid",
+            "spec": [
+              1,
+              3,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-native-controls.css",
+            "line": 16,
+            "index": 4659,
+            "selector": {
+              "s": "html body.search3-candidate:not(.search3-has-results) #tourSearch .search3-primary-grid",
+              "spec": [
+                1,
+                3,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(min-width:761px)"
+              ]
+            ],
+            "property": "align-items",
+            "value": "end",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1296
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-batch-iteration2b.css",
+      "line": 26,
+      "property": "gap",
+      "value": "12px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid",
+          "spec": [
+            1,
+            4,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:761px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid",
+            "spec": [
+              1,
+              4,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-native-controls.css",
+            "line": 16,
+            "index": 4660,
+            "selector": {
+              "s": "html body.search3-candidate.search3-has-results.search3-editing-search #tourSearch .search3-primary-grid",
+              "spec": [
+                1,
+                4,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(min-width:761px)"
+              ]
+            ],
+            "property": "gap",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1308
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-form-contract.css",
+      "line": 9,
+      "property": "display",
+      "value": "grid",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate #tourSearch .search3-primary-grid",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate #tourSearch .search3-primary-grid",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-native-controls.css",
+            "line": 16,
+            "index": 4657,
+            "selector": {
+              "s": "html body.search3-candidate #tourSearch .search3-primary-grid",
+              "spec": [
+                1,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(min-width:761px)"
+              ]
+            ],
+            "property": "display",
+            "value": "grid",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1604
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-form-contract.css",
+      "line": 11,
+      "property": "gap",
+      "value": "12px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate #tourSearch .search3-primary-grid",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate #tourSearch .search3-primary-grid",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-native-controls.css",
+            "line": 16,
+            "index": 4660,
+            "selector": {
+              "s": "html body.search3-candidate #tourSearch .search3-primary-grid",
+              "spec": [
+                1,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(min-width:761px)"
+              ]
+            ],
+            "property": "gap",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1606
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-form-contract.css",
+      "line": 12,
+      "property": "align-items",
+      "value": "end",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate #tourSearch .search3-primary-grid",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate #tourSearch .search3-primary-grid",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-native-controls.css",
+            "line": 16,
+            "index": 4659,
+            "selector": {
+              "s": "html body.search3-candidate #tourSearch .search3-primary-grid",
+              "spec": [
+                1,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(min-width:761px)"
+              ]
+            ],
+            "property": "align-items",
+            "value": "end",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1607
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/cascade/search3-full-cycle-contract.css",
+      "line": 53,
+      "property": "min-height",
+      "value": "46px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .lead-form button[type=submit]",
+          "spec": [
+            1,
+            3,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .lead-form button[type=submit]",
+            "spec": [
+              1,
+              3,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 172,
+            "index": 4846,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .lead-form button[type=submit]",
+              "spec": [
+                1,
+                3,
+                3
+              ]
+            },
+            "context": [],
+            "property": "min-height",
+            "value": "48px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 1755
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/flights.css",
+      "line": 29,
+      "property": "min-height",
+      "value": "46px",
+      "important": false,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .search3-flight-continue button",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .search3-flight-continue button",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 172,
+            "index": 4846,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .search3-flight-continue button",
+              "spec": [
+                1,
+                3,
+                3
+              ]
+            },
+            "context": [],
+            "property": "min-height",
+            "value": "48px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2019
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/flights.css",
+      "line": 70,
+      "property": "font-size",
+      "value": "9px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .flight-route b",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .flight-route b",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 171,
+            "index": 4841,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .flight-route b",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "14px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2079
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/flights.css",
+      "line": 70,
+      "property": "font-size",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .flight-route span",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        },
+        {
+          "s": "body.search3-candidate #selectedTour .flight-baggage",
+          "spec": [
+            1,
+            2,
+            1
+          ]
+        },
+        {
+          "s": "body.search3-candidate #selectedTour .flight-fuel",
+          "spec": [
+            1,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .flight-route span",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .flight-route span",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        },
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .flight-baggage",
+            "spec": [
+              1,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .flight-baggage",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        },
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .flight-fuel",
+            "spec": [
+              1,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .flight-fuel",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2080
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review.css",
+      "line": 36,
+      "property": "font-size",
+      "value": "9px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .search3-booking-summary dt",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .search3-booking-summary dt",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .search3-booking-summary dt",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2167
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review.css",
+      "line": 37,
+      "property": "font-size",
+      "value": "10px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .search3-booking-summary dd",
+          "spec": [
+            1,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .search3-booking-summary dd",
+            "spec": [
+              1,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 171,
+            "index": 4841,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .search3-booking-summary dd",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "14px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2168
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review.css",
+      "line": 41,
+      "property": "font-size",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .search3-booking-summary__price-note",
+          "spec": [
+            1,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .search3-booking-summary__price-note",
+            "spec": [
+              1,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4839,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .search3-booking-summary__price-note",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2173
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review.css",
+      "line": 41,
+      "property": "line-height",
+      "value": "1.4",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .search3-booking-summary__price-note",
+          "spec": [
+            1,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .search3-booking-summary__price-note",
+            "spec": [
+              1,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 170,
+            "index": 4840,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .search3-booking-summary__price-note",
+              "spec": [
+                1,
+                2,
+                3
+              ]
+            },
+            "context": [],
+            "property": "line-height",
+            "value": "1.45",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2174
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review.css",
+      "line": 42,
+      "property": "min-height",
+      "value": "48px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #selectedTour .lead-form button[type=submit]",
+          "spec": [
+            1,
+            3,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #selectedTour .lead-form button[type=submit]",
+            "spec": [
+              1,
+              3,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 172,
+            "index": 4846,
+            "selector": {
+              "s": "html body.search3-candidate #selectedTour .lead-form button[type=submit]",
+              "spec": [
+                1,
+                3,
+                3
+              ]
+            },
+            "context": [],
+            "property": "min-height",
+            "value": "48px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2175
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/lead-review.css",
+      "line": 62,
+      "property": "max-width",
+      "value": "none",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form .section-heading span",
+          "spec": [
+            1,
+            6,
+            3
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form .section-heading span",
+            "spec": [
+              1,
+              6,
+              3
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 200,
+            "index": 4865,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form .section-heading span",
+              "spec": [
+                1,
+                6,
+                3
+              ]
+            },
+            "context": [],
+            "property": "max-width",
+            "value": "none",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2404
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/lead-review.css",
+      "line": 62,
+      "property": "font-size",
+      "value": "9px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form .section-heading span",
+          "spec": [
+            1,
+            6,
+            3
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form .section-heading span",
+            "spec": [
+              1,
+              6,
+              3
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 201,
+            "index": 4866,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form .section-heading span",
+              "spec": [
+                1,
+                6,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "14px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2407
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/lead-review.css",
+      "line": 62,
+      "property": "line-height",
+      "value": "1.35",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form .section-heading span",
+          "spec": [
+            1,
+            6,
+            3
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form .section-heading span",
+            "spec": [
+              1,
+              6,
+              3
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 202,
+            "index": 4867,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-form .section-heading span",
+              "spec": [
+                1,
+                6,
+                3
+              ]
+            },
+            "context": [],
+            "property": "line-height",
+            "value": "1.5",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2408
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/lead-review.css",
+      "line": 63,
+      "property": "font-size",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-phone-hint",
+          "spec": [
+            1,
+            5,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-phone-hint",
+            "spec": [
+              1,
+              5,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 215,
+            "index": 4874,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-phone-hint",
+              "spec": [
+                1,
+                5,
+                2
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2411
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/lead-review.css",
+      "line": 63,
+      "property": "line-height",
+      "value": "1.3",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-phone-hint",
+          "spec": [
+            1,
+            5,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-phone-hint",
+            "spec": [
+              1,
+              5,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 216,
+            "index": 4875,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-phone-hint",
+              "spec": [
+                1,
+                5,
+                2
+              ]
+            },
+            "context": [],
+            "property": "line-height",
+            "value": "1.5",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2412
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/lead-review.css",
+      "line": 64,
+      "property": "font-size",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-trust-note",
+          "spec": [
+            1,
+            5,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-trust-note",
+            "spec": [
+              1,
+              5,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 225,
+            "index": 4882,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-trust-note",
+              "spec": [
+                1,
+                5,
+                2
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2415
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/lead-review.css",
+      "line": 64,
+      "property": "line-height",
+      "value": "1.35",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-trust-note",
+          "spec": [
+            1,
+            5,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:640px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-trust-note",
+            "spec": [
+              1,
+              5,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 226,
+            "index": 4883,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review.search3-lead-entry .lead-trust-note",
+              "spec": [
+                1,
+                5,
+                2
+              ]
+            },
+            "context": [],
+            "property": "line-height",
+            "value": "1.5",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2416
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review-desktop-board.css",
+      "line": 28,
+      "property": "font-size",
+      "value": "10px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"] .search3-booking-summary__total span",
+          "spec": [
+            1,
+            5,
+            3
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"] .search3-booking-summary__total span",
+            "spec": [
+              1,
+              5,
+              3
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 193,
+            "index": 4864,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"] .search3-booking-summary__total span",
+              "spec": [
+                1,
+                5,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2827
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review-desktop-board.css",
+      "line": 32,
+      "property": "font-size",
+      "value": "11px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"] .search3-summary-submit",
+          "spec": [
+            1,
+            5,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"] .search3-summary-submit",
+            "spec": [
+              1,
+              5,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 192,
+            "index": 4863,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"] .search3-summary-submit",
+              "spec": [
+                1,
+                5,
+                2
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "15px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2837
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review-desktop-board.css",
+      "line": 33,
+      "property": "font-size",
+      "value": "7.5px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"] .search3-summary-actions p",
+          "spec": [
+            1,
+            5,
+            3
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:1000px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"] .search3-summary-actions p",
+            "spec": [
+              1,
+              5,
+              3
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 193,
+            "index": 4864,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour.search3-final-review[data-search3-final-layout=\"maket7\"] .search3-summary-actions p",
+              "spec": [
+                1,
+                5,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 2839
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/result-cards.css",
+      "line": 7,
+      "property": "display",
+      "value": "grid",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #tourSearch .search3-nights .search3-composite__control",
+          "spec": [
+            1,
+            3,
+            1
+          ]
+        }
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #tourSearch .search3-nights .search3-composite__control",
+            "spec": [
+              1,
+              3,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-native-controls.css",
+            "line": 4,
+            "index": 4631,
+            "selector": {
+              "s": "html body.search3-candidate #tourSearch .search3-nights .search3-composite__control",
+              "spec": [
+                1,
+                3,
+                2
+              ]
+            },
+            "context": [],
+            "property": "display",
+            "value": "grid",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 3243
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/result-cards.css",
+      "line": 9,
+      "property": "align-items",
+      "value": "center",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #tourSearch .search3-nights .search3-composite__control",
+          "spec": [
+            1,
+            3,
+            1
+          ]
+        }
+      ],
+      "context": [],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #tourSearch .search3-nights .search3-composite__control",
+            "spec": [
+              1,
+              3,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-native-controls.css",
+            "line": 4,
+            "index": 4633,
+            "selector": {
+              "s": "html body.search3-candidate #tourSearch .search3-nights .search3-composite__control",
+              "spec": [
+                1,
+                3,
+                2
+              ]
+            },
+            "context": [],
+            "property": "align-items",
+            "value": "center",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 3245
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 10,
+      "property": "gap",
+      "value": "12px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #tourSearch .search3-primary-grid",
+          "spec": [
+            1,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:761px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #tourSearch .search3-primary-grid",
+            "spec": [
+              1,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-native-controls.css",
+            "line": 16,
+            "index": 4660,
+            "selector": {
+              "s": "html body.search3-candidate #tourSearch .search3-primary-grid",
+              "spec": [
+                1,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(min-width:761px)"
+              ]
+            ],
+            "property": "gap",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 3425
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/form-compatibility.css",
+      "line": 10,
+      "property": "align-items",
+      "value": "end",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate #tourSearch .search3-primary-grid",
+          "spec": [
+            1,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:761px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate #tourSearch .search3-primary-grid",
+            "spec": [
+              1,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-native-controls.css",
+            "line": 16,
+            "index": 4659,
+            "selector": {
+              "s": "html body.search3-candidate #tourSearch .search3-primary-grid",
+              "spec": [
+                1,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(min-width:761px)"
+              ]
+            ],
+            "property": "align-items",
+            "value": "end",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 3426
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review-responsive.css",
+      "line": 126,
+      "property": "font-size",
+      "value": "9px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-summary",
+          "spec": [
+            1,
+            5,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:641px) and (max-width:999px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-summary",
+            "spec": [
+              1,
+              5,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 189,
+            "index": 4859,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-summary",
+              "spec": [
+                1,
+                5,
+                2
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "14px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 3746
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review-responsive.css",
+      "line": 127,
+      "property": "line-height",
+      "value": "1.25",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-summary",
+          "spec": [
+            1,
+            5,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:641px) and (max-width:999px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-summary",
+            "spec": [
+              1,
+              5,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 189,
+            "index": 4860,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-summary",
+              "spec": [
+                1,
+                5,
+                2
+              ]
+            },
+            "context": [],
+            "property": "line-height",
+            "value": "1.4",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 3747
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review-responsive.css",
+      "line": 142,
+      "property": "font-size",
+      "value": "8.5px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-tradeoffs span",
+          "spec": [
+            1,
+            5,
+            3
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:641px) and (max-width:999px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-tradeoffs span",
+            "spec": [
+              1,
+              5,
+              3
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 190,
+            "index": 4861,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-tradeoffs span",
+              "spec": [
+                1,
+                5,
+                3
+              ]
+            },
+            "context": [],
+            "property": "font-size",
+            "value": "12px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 3758
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/review-responsive.css",
+      "line": 143,
+      "property": "line-height",
+      "value": "1.1",
+      "important": true,
+      "selectors": [
+        {
+          "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-tradeoffs span",
+          "spec": [
+            1,
+            5,
+            3
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(min-width:641px) and (max-width:999px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-tradeoffs span",
+            "spec": [
+              1,
+              5,
+              3
+            ]
+          },
+          "witness": {
+            "file": "styles/selected-flow-v2.css",
+            "line": 190,
+            "index": 4862,
+            "selector": {
+              "s": "html body.search3-candidate.search3-selected-open #selectedTour:not(.search3-final-review) .tour-flights .flight-choice-tradeoffs span",
+              "spec": [
+                1,
+                5,
+                3
+              ]
+            },
+            "context": [],
+            "property": "line-height",
+            "value": "1.4",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 3759
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/mobile-results-toolbar.css",
+      "line": 33,
+      "property": "display",
+      "value": "grid",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+          "spec": [
+            0,
+            3,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:999px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+            "spec": [
+              0,
+              3,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 5,
+            "index": 4614,
+            "selector": {
+              "s": "html body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+              "spec": [
+                0,
+                3,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "display",
+            "value": "grid",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4033
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/mobile-results-toolbar.css",
+      "line": 35,
+      "property": "gap",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+          "spec": [
+            0,
+            3,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:999px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+            "spec": [
+              0,
+              3,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-v1.css",
+            "line": 122,
+            "index": 4587,
+            "selector": {
+              "s": "html body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+              "spec": [
+                0,
+                3,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "gap",
+            "value": "8px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4035
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 16,
+      "property": "display",
+      "value": "grid",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+          "spec": [
+            0,
+            3,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+            "spec": [
+              0,
+              3,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 5,
+            "index": 4614,
+            "selector": {
+              "s": "html body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+              "spec": [
+                0,
+                3,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "display",
+            "value": "grid",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4195
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 17,
+      "property": "grid-template-columns",
+      "value": "minmax(0,1fr) minmax(0,1fr)",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+          "spec": [
+            0,
+            3,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+            "spec": [
+              0,
+              3,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-v1.css",
+            "line": 120,
+            "index": 4585,
+            "selector": {
+              "s": "html body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+              "spec": [
+                0,
+                3,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "grid-template-columns",
+            "value": "minmax(0,1fr) minmax(0,1fr)",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4196
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 18,
+      "property": "gap",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+          "spec": [
+            0,
+            3,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+            "spec": [
+              0,
+              3,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-v1.css",
+            "line": 122,
+            "index": 4587,
+            "selector": {
+              "s": "html body.search3-candidate.search3-results-active .search3-mobile-toolbar",
+              "spec": [
+                0,
+                3,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "gap",
+            "value": "8px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4197
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 32,
+      "property": "position",
+      "value": "relative",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort",
+          "spec": [
+            0,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort",
+            "spec": [
+              0,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 6,
+            "index": 4615,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort",
+              "spec": [
+                0,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "position",
+            "value": "relative",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4214
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 33,
+      "property": "display",
+      "value": "flex",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort",
+          "spec": [
+            0,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort",
+            "spec": [
+              0,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 6,
+            "index": 4616,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort",
+              "spec": [
+                0,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "display",
+            "value": "flex",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4215
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 34,
+      "property": "align-items",
+      "value": "center",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort",
+          "spec": [
+            0,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort",
+            "spec": [
+              0,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 6,
+            "index": 4617,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort",
+              "spec": [
+                0,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "align-items",
+            "value": "center",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4216
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 35,
+      "property": "justify-content",
+      "value": "center",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort",
+          "spec": [
+            0,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort",
+            "spec": [
+              0,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 6,
+            "index": 4618,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort",
+              "spec": [
+                0,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "justify-content",
+            "value": "center",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4217
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 36,
+      "property": "min-height",
+      "value": "44px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort",
+          "spec": [
+            0,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort",
+            "spec": [
+              0,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 6,
+            "index": 4619,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort",
+              "spec": [
+                0,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "min-height",
+            "value": "44px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4218
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 37,
+      "property": "border",
+      "value": "1px solid #d7deeb",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort",
+          "spec": [
+            0,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort",
+            "spec": [
+              0,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 6,
+            "index": 4620,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort",
+              "spec": [
+                0,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "border",
+            "value": "1px solid #d7deeb",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4219
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 38,
+      "property": "border-radius",
+      "value": "8px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort",
+          "spec": [
+            0,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort",
+            "spec": [
+              0,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 6,
+            "index": 4621,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort",
+              "spec": [
+                0,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "border-radius",
+            "value": "8px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4220
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 39,
+      "property": "background",
+      "value": "#fff",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort",
+          "spec": [
+            0,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort",
+            "spec": [
+              0,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 6,
+            "index": 4622,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort",
+              "spec": [
+                0,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "background",
+            "value": "#fff",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4221
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 40,
+      "property": "color",
+      "value": "#14213d",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort",
+          "spec": [
+            0,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort",
+            "spec": [
+              0,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 6,
+            "index": 4623,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort",
+              "spec": [
+                0,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "color",
+            "value": "#14213d",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4222
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 41,
+      "property": "font-size",
+      "value": "11px",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort",
+          "spec": [
+            0,
+            2,
+            1
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort",
+            "spec": [
+              0,
+              2,
+              1
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 6,
+            "index": 4624,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort",
+              "spec": [
+                0,
+                2,
+                2
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "font-size",
+            "value": "13px",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4223
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 48,
+      "property": "position",
+      "value": "absolute",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort select",
+          "spec": [
+            0,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort select",
+            "spec": [
+              0,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 7,
+            "index": 4625,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort select",
+              "spec": [
+                0,
+                2,
+                3
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "position",
+            "value": "absolute",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4227
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 48,
+      "property": "inset",
+      "value": "0",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort select",
+          "spec": [
+            0,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort select",
+            "spec": [
+              0,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 7,
+            "index": 4626,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort select",
+              "spec": [
+                0,
+                2,
+                3
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "inset",
+            "value": "0",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4228
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 48,
+      "property": "width",
+      "value": "100%",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort select",
+          "spec": [
+            0,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort select",
+            "spec": [
+              0,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 7,
+            "index": 4627,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort select",
+              "spec": [
+                0,
+                2,
+                3
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "width",
+            "value": "100%",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4229
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 48,
+      "property": "height",
+      "value": "100%",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort select",
+          "spec": [
+            0,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort select",
+            "spec": [
+              0,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 7,
+            "index": 4628,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort select",
+              "spec": [
+                0,
+                2,
+                3
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "height",
+            "value": "100%",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4230
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 48,
+      "property": "opacity",
+      "value": "0",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort select",
+          "spec": [
+            0,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort select",
+            "spec": [
+              0,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 7,
+            "index": 4629,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort select",
+              "spec": [
+                0,
+                2,
+                3
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "opacity",
+            "value": "0",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4231
+    },
+    {
+      "asset": "search3-results-filters-v1.css",
+      "file": "styles/results-mobile-layout.css",
+      "line": 48,
+      "property": "cursor",
+      "value": "pointer",
+      "important": true,
+      "selectors": [
+        {
+          "s": "body.search3-candidate .search3-mobile-sort select",
+          "spec": [
+            0,
+            2,
+            2
+          ]
+        }
+      ],
+      "context": [
+        [
+          "media",
+          "(max-width:760px)"
+        ]
+      ],
+      "witnesses": [
+        {
+          "selector": {
+            "s": "body.search3-candidate .search3-mobile-sort select",
+            "spec": [
+              0,
+              2,
+              2
+            ]
+          },
+          "witness": {
+            "file": "styles/entry-toolbar.css",
+            "line": 7,
+            "index": 4630,
+            "selector": {
+              "s": "html body.search3-candidate .search3-mobile-sort select",
+              "spec": [
+                0,
+                2,
+                3
+              ]
+            },
+            "context": [
+              [
+                "media",
+                "(max-width:999px)"
+              ]
+            ],
+            "property": "cursor",
+            "value": "pointer",
+            "important": true
+          }
+        }
+      ],
+      "source_index": 4232
+    }
+  ],
+  "emptyRules": [
+    {
+      "file": "styles/selected-tour.css",
+      "source": "& .section-heading span {}"
+    },
+    {
+      "file": "styles/selected-tour.css",
+      "source": "& .facts b {}"
+    },
+    {
+      "file": "styles/cascade/search3-batch-iteration1b.css",
+      "source": "& #selectedTour .selected-head p{}"
+    },
+    {
+      "file": "styles/cascade/search3-batch-iteration1c.css",
+      "source": "& .selected-head p {}"
+    },
+    {
+      "file": "styles/cascade/search3-batch-iteration1c.css",
+      "source": "& .facts b {}"
+    },
+    {
+      "file": "styles/cascade/search3-batch-iteration1c.css",
+      "source": "& .facts span {}"
+    },
+    {
+      "file": "styles/flights.css",
+      "source": "& .flight-route span,& :is(.flight-baggage,.flight-fuel) {}"
+    },
+    {
+      "file": "styles/flights.css",
+      "source": "& .flight-route b {}"
+    },
+    {
+      "file": "styles/review.css",
+      "source": "& .search3-booking-summary__price-note {}"
+    },
+    {
+      "file": "styles/review.css",
+      "source": "& .search3-booking-summary dd {}"
+    },
+    {
+      "file": "styles/review.css",
+      "source": "& .search3-booking-summary dt {}"
+    },
+    {
+      "file": "styles/review-desktop-board.css",
+      "source": "& .search3-booking-summary__total span {}"
+    },
+    {
+      "file": "styles/results-mobile-layout.css",
+      "source": "& .search3-mobile-sort select{}"
+    }
+  ],
+  "sourceBytesRemoved": 2329,
+  "metrics": [
+    {
+      "asset": "search3-results-filters-v1.css",
+      "before": 176368,
+      "after": 174135
+    },
+    {
+      "asset": "search3-entry-v1.css",
+      "before": 9662,
+      "after": 9662
+    },
+    {
+      "asset": "search3-results-cards-v2.css",
+      "before": 4022,
+      "after": 4022
+    },
+    {
+      "asset": "search3-selected-flow-v2.css",
+      "before": 7354,
+      "after": 7354
+    }
+  ],
+  "verification": {
+    "ordered_retained_selector_context_property_value_specificity_stream": "exact",
+    "combined_final_selector_property_priority_maps": "equal at every numeric media partition point",
+    "numeric_media_partition_points": [
+      0,
+      0.01,
+      389.99,
+      390,
+      390.01,
+      519.99,
+      520,
+      520.01,
+      559.99,
+      560,
+      560.01,
+      639.99,
+      640,
+      640.01,
+      640.99,
+      641,
+      641.01,
+      759.99,
+      760,
+      760.01,
+      760.99,
+      761,
+      761.01,
+      998.99,
+      999,
+      999.01,
+      999.99,
+      1000,
+      1000.01,
+      1024.99,
+      1025,
+      1025.01,
+      1198.99,
+      1199,
+      1199.01,
+      1259.99,
+      1260,
+      1260.01,
+      1260.99,
+      1261,
+      1261.01,
+      4000
+    ],
+    "nesting": "No new rule/group/nesting level; only declarations and empty rules removed",
+    "acceptance_guards": "unchanged"
+  },
+  "deferred": "Whole build/CI handled once by parent batch; no browser or deployment in this pass."
+}

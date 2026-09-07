@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
+  "base_release_sha": "d7b59a5cd1d559fcc0700787a864c7e340bf7339",
+  "source_sha": "38be9f08c1b06635bb59d631e5cc85f7b3af3d70",
+  "source_tree": "04bfe2f0b2356a170e0ffee8172caac07041e6e8",
+  "source_pr": 1443,
+  "scope": "Retire the complete legacy filter presentation donor and maket7 DOM/inline-style owner, then remove results-top inline geometry while preserving active rail, toolbar, confidence-grid and result-state behavior in current owners.",
+  "removed": [
+    "filters.css as a live presentation layer",
+    "maket7-lock.js form-field relocation, resize/event replay and injected confidence-grid style",
+    "results-top.js inline width, offset, padding and resize geometry ownership"
+  ],
+  "retained": [
+    "results-layout.css as the current desktop rail and card-layout owner",
+    "mobile-results-toolbar.css as the current mobile toolbar and desktop-rail boundary owner",
+    "selected-flow-v2.css as the static confidence-grid owner",
+    "search-form and entry modules as the current field-placement owners",
+    "coalesced result-state mutation scheduling",
+    "all eight public paths and protected price, URL/payload, Tourvisor/API, lead transport/mapping and analytics contracts"
+  ],
+  "public_assets": [
+    {"path": "v2/search3-results-filters-v1.css", "before": 92032, "after": 89668, "saved": 2364, "sha256": "8feccaccc8d9d7adfc08c07834883a28ca4e343a2fffe8e20fe08bfd2c8e5826"},
+    {"path": "v2/search3-entry-v1.css", "before": 9662, "after": 9662, "saved": 0, "sha256": "7b899275f03cdd818d34de921b0340d3840c49673d3864514ff58e15d8a402c3"},
+    {"path": "v2/search3-results-cards-v2.css", "before": 6611, "after": 6611, "saved": 0, "sha256": "225ca5c5f32a538dffa0b0fb2ba48147619d2e71fe20b9b8b560a3d2467d7bd7"},
+    {"path": "v2/search3-selected-flow-v2.css", "before": 7491, "after": 8047, "saved": -556, "sha256": "72129e53604d5a32be8b2794bf11e107aa1bef0e550a69f27bc81809a9684e64"},
+    {"path": "v2/search3-results-filters-v1.js", "before": 82849, "after": 78608, "saved": 4241, "sha256": "e62b60f3187aca62784880df0241c8b936abc06931dc93a205626e0024bee750"},
+    {"path": "v2/search3-entry-v1.js", "before": 3226, "after": 3226, "saved": 0, "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"},
+    {"path": "v2/search3-results-cards-v2.js", "before": 0, "after": 0, "saved": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"path": "v2/search3-selected-flow-v2.js", "before": 7882, "after": 7882, "saved": 0, "sha256": "9073087372ffaac8d0d0b04afc00a9da0f10739e9865692691727f20ea19587b"}
+  ],
+  "totals": {
+    "before": 209753,
+    "after": 203704,
+    "saved": 6049,
+    "css_before": 115796,
+    "css_after": 113988,
+    "css_saved": 1808,
+    "js_before": 93957,
+    "js_after": 89716,
+    "js_saved": 4241,
+    "whole_layer_baseline": 301524,
+    "whole_layer_saved": 97820
+  },
+  "verification": {
+    "local": "One exact build/write followed by check; 18 production-presentation tests passed with one local PHP-only skip; focused result scheduler, filter rail, price input, mobile toolbar and owner-transfer regressions passed; diff check passed.",
+    "source_ci": {
+      "security_run": 34084631292,
+      "security_job": 101626205464,
+      "artifact_run": 34084631257,
+      "artifact_job": 101626205301,
+      "artifact_id": 10004793873,
+      "artifact_digest": "sha256:098afd4abc7e9f2941e7d64fa87e37b57dcdb38267902effe9e638c25219dc89",
+      "required_passed": 2,
+      "conclusion": "success",
+      "guards": "unchanged"
+    },
+    "source_review": "Independent CSS and JS owner audits selected filters.css and maket7-lock.js as safe complete retirements with compact salvage. A separate review-layout audit found a 3535-byte candidate but rejected deletion without computed review/lead geometry evidence.",
+    "visual": "Deferred. No preview publication or browser claim was made for this source."
+  },
+  "preview": {
+    "published": false,
+    "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+    "checked_release_sha": "38be9f08c1b06635bb59d631e5cc85f7b3af3d70",
+    "reason": "The source package is checked, but changed responsive filter, results-tools and selected confidence geometry has not had a bounded visual pass."
+  },
+  "deferred": [
+    "filter rail and results-tools geometry at 390/768/999/1000/1024/1440",
+    "selected confidence grid at 1000/1363",
+    "review and lead computed layout at 641/999/1000/1363",
+    "physical Safari"
+  ],
+  "production_updated": false,
+  "next_action": "Do not repeat filters.css, maket7-lock.js or results-top inline geometry. The 3535-byte review-layout block remains deferred until computed review/lead evidence at 641/999/1000/1363; next inspect a different large owner or combine the previously measured selected-tour/responsive fragments without touching protected price presentation."
+}

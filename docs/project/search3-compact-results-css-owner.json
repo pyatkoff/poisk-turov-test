@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "base_release_sha": "b193777c1f3136db66b1ad1303829ad1995de510",
+  "scope": "Retire the standalone tablet result-drawer stylesheet into the canonical mobile toolbar owner and remove seven phone declarations already superseded by current card, entry and acceptance owners.",
+  "retired_style_owner": "src/search3/styles/results-tablet-layout.css",
+  "current_drawer_owner": "src/search3/styles/mobile-results-toolbar.css",
+  "retained_phone_owner": "src/search3/styles/results-mobile-layout.css",
+  "served_assets": {
+    "before_bytes": 161116,
+    "after_bytes": 160342,
+    "removed_bytes": 774,
+    "css_before_bytes": 91708,
+    "css_after_bytes": 90934,
+    "js_before_bytes": 69408,
+    "js_after_bytes": 69408,
+    "changed": {
+      "v2/search3-results-filters-v1.css": {
+        "before_bytes": 55036,
+        "after_bytes": 54262,
+        "removed_bytes": 774
+      }
+    },
+    "unchanged_asset_count": 7
+  },
+  "preserved": [
+    "canonical base mobile-filter open, close and Escape lifecycle",
+    "phone drawer width and fixed actions through 760px",
+    "tablet 440px right drawer and sticky actions from 761px through 999px",
+    "desktop drawer absence from 1000px",
+    "collapsed and expanded result-card and package geometry",
+    "eight public asset paths and manifest order",
+    "URL, payload, Tourvisor/API, price, lead and analytics contracts"
+  ],
+  "removed": [
+    "standalone tablet drawer presentation owner",
+    "redundant phone summary and toolbar spacing declarations",
+    "superseded phone title and action touch-target declarations"
+  ],
+  "checks": [
+    "python3 scripts/build/search3_assets.py --write",
+    "python3 scripts/build/search3_assets.py --check",
+    "node tests/search3-mobile-toolbar-ownership.cjs",
+    "node tests/search3-mobile-toolbar-scheduler.cjs",
+    "node tests/search3-filter-rail-ownership.cjs",
+    "node tests/search3-filter-rail-price-input.cjs",
+    "node tests/search3-results-geometry-browser.cjs",
+    "python3 -m unittest tests.search3_source_build_test tests.search3_production_presentation_test"
+  ],
+  "publication": "NOT_PUBLISHED",
+  "deferred": [
+    "physical Safari and safe-area verification",
+    "live current-source preview acceptance"
+  ]
+}

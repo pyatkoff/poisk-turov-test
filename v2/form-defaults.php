@@ -44,7 +44,14 @@ function v2_form_defaults(array $query = [], array $siteParams = []): array
     $nightsTill = v2_positive_int(v2_query_alias($query, ['days_till', 'daysTill'], 10), 10, 28);
     if ($nightsTill < $nightsFrom) $nightsTill = $nightsFrom;
 
+    $ages = [];
+    $rawAges = $query['child_age'] ?? [];
+    if (is_array($rawAges)) foreach (array_slice($rawAges, 0, 3) as $age) {
+        $valid = filter_var($age, FILTER_VALIDATE_INT, ['options'=>['min_range'=>0,'max_range'=>17]]);
+        if ($valid !== false) $ages[] = (int)$valid;
+    }
     return [
+        'child_ages' => $ages,
         'from' => $from,
         'country' => $country,
         'date_from' => $dateFrom,
