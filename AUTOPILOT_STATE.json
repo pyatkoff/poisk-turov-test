@@ -53,29 +53,31 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1480 retires standalone entry-v1 runtime into the current search-form owner. 161116→160579 raw bytes (−537 JS); required Security/artifact CI and 36 source/presentation checks pass. Release only; preview remains b9445bc3.",
+    "last_material_progress": "#1482 retires the complete acceptance-guards.css overlay into current presentation owners. 159805→157523 raw bytes (−2282 CSS); required Security/artifact CI, 12 result/drawer states and 12 selected detail/review/lead states pass. Release only; preview remains b9445bc3.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Do not repeat #1474–#1476 or #1480. Next validated candidate is full acceptance-guards.css retirement: prototype 161116→158834 before #1480; rebase and remeasure against release 6eebb1a5, retain drawer visibility/readability/hidden truth in current owners, and run card plus selected detail/review/lead geometry. Do not remove results-tablet-layout.css. Physical Safari and live current-source preview acceptance remain deferred.",
+    "next_action": "Do not repeat #1474–#1476, #1479, #1480 or #1482. The acceptance overlay is retired; retain its drawer/readability/selected/hidden contracts in current owners. Audit the next whole presentation owner against release c42a8bca and bundle only a material reduction. Do not remove results-tablet-layout.css: its 761–999 drawer geometry is active. Physical Safari and live current-source preview acceptance remain deferred.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_ENTRY_RUNTIME_OWNER_LOCALIZATION",
-    "title": "Retire standalone entry presentation runtime",
+    "id": "S3_ACCEPTANCE_GUARD_OWNER_RETIREMENT",
+    "title": "Retire the acceptance overlay into current owners",
     "status": "CHECKED_RELEASE_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1480
+      1482
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "d3132c72ab1b98b1819cd6568076c6cda45deba2",
-    "release_sha": "6eebb1a510e257392e0ebd6c8ea17d554e3be954",
-    "artifact_run": 34133307934,
-    "artifact_id": 10022984486,
-    "artifact_digest": "sha256:e30614dd479563f2e50f64da1419e26a7bb78e0057d569f6c7631b2f663b9bdf",
+    "implementation_sha": "6bf28b3d89426c3aed3f06683d0339aa8e48e6de",
+    "release_sha": "c42a8bca9bacb447a9bbed529761993669fc61be",
+    "artifact_run": 34134720906,
+    "artifact_id": 10023536739,
+    "artifact_digest": "sha256:3f4600d19aab8503a56e6ec53620e257ac25b33e25d2f34b6968a8af71cb6ef5",
+    "geometry_artifact_id": 10023536324,
+    "selected_geometry_artifact_id": 10023535920,
     "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "next_action": "Do not repeat #1474–#1476 or entry runtime retirement #1480. Reuse artifact10022984486 only for sourced3132c72; checked release is6eebb1a5 and published preview remains b9445bc3. Rebase the proven acceptance-guards.css retirement prototype on the fresh release, remeasure all eight assets, preserve current drawer/readability/hidden owners, and run focused card plus selected-flow geometry. Do not remove results-tablet-layout.css. Production approval remains required."
+    "next_action": "Do not repeat #1474–#1476, #1479, #1480 or acceptance owner retirement #1482. Reuse artifact10023536739 only for source6bf28b3d; checked release isc42a8bca and published preview remains b9445bc3. Audit the next whole presentation owner against the fresh release and bundle only a material reduction. Preserve current drawer/readability/selected/hidden owners and results-tablet-layout.css. Production approval remains required."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -127,6 +129,22 @@
     "visual_ci": 33934082023
   },
   "last_ci": {
+    "acceptance_guard_owner_retirement": {
+      "artifact_digest": "sha256:3f4600d19aab8503a56e6ec53620e257ac25b33e25d2f34b6968a8af71cb6ef5",
+      "artifact_id": 10023536739,
+      "artifact_run": 34134720906,
+      "preview_published": false,
+      "required_passed": 2,
+      "results_geometry_artifact": 10023536324,
+      "results_geometry_digest": "sha256:d156d33365bda1264b06e261853e3eaa26138ad70c8b605445e5f0a76c79854b",
+      "results_geometry_states": "12 collapsed/expanded result and drawer states at375/760/761/999/1000/1440",
+      "security_run": 34134720944,
+      "selected_geometry_artifact": 10023535920,
+      "selected_geometry_digest": "sha256:ee476ec6d410cb1218bd97ad13c85f73000fed26c41915acf999c4271d468b0d",
+      "selected_geometry_states": "12 detail/review/lead states at375/760/1000/1440",
+      "source_pr": 1482,
+      "source_sha": "6bf28b3d89426c3aed3f06683d0339aa8e48e6de"
+    },
     "entry_runtime_owner_localization": {
       "artifact_digest": "sha256:e30614dd479563f2e50f64da1419e26a7bb78e0057d569f6c7631b2f663b9bdf",
       "artifact_id": 10022984486,
