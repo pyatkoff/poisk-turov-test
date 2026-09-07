@@ -29,9 +29,9 @@ html body.search3-candidate.search3-results-active :is(.search3-mobile-toolbar,.
 @media(min-width:1000px){
   html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card :is(.hotel-main,.hotel-photo,.hotel-body),
 html body.search3-candidate.search3-results-active.search3-has-results:not(.search3-hotel-tours-open):not(:has(#selectedTour:not([hidden]))):has(#resultsTools:not([hidden])) #results .hotel-card .hotel-photo>img{
-    height:210px!important;
-    min-height:210px!important;
-    max-height:210px!important;
+    height:230px!important;
+    min-height:230px!important;
+    max-height:230px!important;
   }
 }
 
