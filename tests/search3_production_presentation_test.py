@@ -223,6 +223,7 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         shell = (ROOT / 'src/search3/styles/base.css').read_text()
         entry = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
         self.assertIn('.v2-shell{display:block!important;width:min(var(--at-shell)', shell)
+        self.assertIn('padding-inline:0!important', shell)
         self.assertIn(':not(.search3-has-results) .ds2-site-footer{margin-top:24px!important}', entry)
 
     def test_retired_tablet_drawer_and_redundant_phone_rules_have_current_owners(self):
