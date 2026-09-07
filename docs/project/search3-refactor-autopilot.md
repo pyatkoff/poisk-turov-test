@@ -66,9 +66,48 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `ad997e4ed010f6178fabcdec2ba0d17fddadf0f8`;
+The latest checked release source is `c62ebc1dedcba458fe69ab232fea6000aadf781c`;
 the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
+
+### Latest checked candidate — form and mobile-entry owner retirement — 2026-09-07
+
+Source #1445 / exact release `c62ebc1dedcba458fe69ab232fea6000aadf781c`,
+tree `39b698edd9cb26e78df5bf2cf144c945073fc4ac`, retires the legacy form
+presentation family from `base.css`. That module now owns only the shell, page
+intro and mobile gutter. Required form surface, controls, guest popover, quick
+filters and responsive entry rules are retained in current `entry-v1.css`.
+
+The separate `mobile-search-entry.js` runtime donor is provenance-only. Its one
+trust/filter DOM instance and ARIA toggle now live inside the existing search-form
+composition; linked CSS remains the presentation owner and no runtime style is
+injected. The same package removes booking-summary's resize subscriber because
+its layout is already CSS-owned; render, price and review/lead lifecycle events
+are unchanged.
+
+Eight raw public assets fall **199740 → 195944 bytes (−3796)**: CSS 111769 →
+110339 (−1430), JS 87971 → 85605 (−2366). From the 301524-byte whole-layer
+baseline the checked reduction is now 105580 bytes. All eight public paths and
+protected business contracts remain unchanged.
+
+Both mandatory source jobs passed with guards unchanged: Security `34088767330`
+and exact artifact build `34088767361`; artifact `10006114313`, digest
+`sha256:3c9b75bdde96d378774a61df31af59ffe32925b86d25931bdc1b0b0f5d6286d9`.
+The single exact source build was reused. Local build check and 34 focused
+source/presentation checks passed; one PHP-only local check was skipped because
+PHP is unavailable. Audit: `docs/project/search3-form-mobile-owner-retirement.json`.
+
+This source is **checked but not published**. The isolated preview remains source
+`4b061396`; main and production remain `fa58a0cb`. The executor had no Chromium
+binary, so no browser claim is made. Initial/editing form widths, guest popover,
+child ages, mobile advanced toggle and physical Safari remain deferred.
+
+Next: do not repeat the base form or mobile-entry retirement. The complete
+`result-cards.css` donor is the next measured candidate, but its active mobile
+entry and result-order rules must first move to current owners and pass bounded
+browser geometry. If that evidence is unavailable, inspect a different large
+owner instead of speculatively removing it. Protected price presentation,
+`final-sections.js` and `review-layout.css` remain outside speculative deletion.
 
 ### Latest checked candidate — review and focus owner retirement — 2026-09-07
 

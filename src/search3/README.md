@@ -256,6 +256,11 @@ against the preceding bundle; no runtime loader or public asset was added.
 lifecycle. Its `search-form/primary-controls.js` and `secondary-controls.js` parts
 expand at the original positions inside `init()`. Dates, nights, guests, secondary
 fields and delayed cleanup keep their shared lexical scope and exact source bytes.
+The secondary composition now also owns the single mobile trust/filter entry and
+its ARIA toggle. The retired `mobile-search-entry.js` remains a provenance-only
+manifest slot; linked `result-cards.css` supplies its presentation without a
+runtime `<style>` injection. Legacy form presentation was removed from `base.css`;
+current form and guest rules live in `entry-v1.css`.
 
 The subsequent results-layer pass also retires `styles/results-width-compatibility.css`
 and `styles/hotel-card-convergence.css`. Their remaining shell/lifecycle/MRF and
