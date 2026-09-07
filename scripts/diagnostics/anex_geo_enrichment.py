@@ -34,6 +34,14 @@ def load_geo_checkpoint(directory):
     return checkpoint
 
 
+def geo_completed_map(checkpoint):
+    # Revisit only records whose previous candidate page was truncated under
+    # the smaller reader limit. Other historical results keep their progress.
+    return {str(r["external_id"]): r["fingerprint"] for r in checkpoint["rows"]
+            if not (r.get("reason") == "candidate_limit_reached"
+                    and r.get("candidate_limit", 64) < 256)}
+
+
 def merge_geo_checkpoint(previous, batch):
     rows = {r["external_id"]: r for r in previous["rows"]}
     rows.update({r["external_id"]: r for r in batch["rows"]})
@@ -53,8 +61,8 @@ def geo_decision(api, candidates, relation):
         return "review", "country_conflict"
     if best["distance_m"] is not None and best["distance_m"] > 5000:
         return "review", "coordinate_conflict"
-    # The reader returns at most 64 rows: a full page cannot prove uniqueness.
-    if len(candidates) >= 64:
+    # The reader returns at most 256 rows: a full page cannot prove uniqueness.
+    if len(candidates) >= 256:
         return "review", "candidate_limit_reached"
     if len(candidates) > 1 and best["score"] - candidates[1]["score"] < 0.1:
         return "review", "competing_candidates"
@@ -86,7 +94,7 @@ def enrich_geo_sample(tokens, matches, hotels, run_deadline=None):
         xml = {"id": identifier, "name": match["name"], "alternate_name": match["alternate_name"],
                "town_id": positive_id({"id": raw.get("town")})}
         row = {"external_id": identifier, "fingerprint": geo_fingerprint(match),
-               "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(), "original_status": match["status"], "xml": xml,
+               "candidate_limit": 256, "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(), "original_status": match["status"], "xml": xml,
                "status": "review", "reason": "details_unavailable", "candidates": []}
         rows.append(row)
         try:
@@ -103,7 +111,7 @@ def enrich_geo_sample(tokens, matches, hotels, run_deadline=None):
                 row["reason"] = "supplier_identity_unverified"
                 continue
             catalog = read_catalog([{"key": identifier, "names": [api["name"], xml["name"], xml["alternate_name"]],
-                                     "latitude": api["latitude"], "longitude": api["longitude"]}], candidate_limit=64)
+                                     "latitude": api["latitude"], "longitude": api["longitude"]}], candidate_limit=256)
             if catalog["status"] != "ok":
                 row["reason"] = "catalog_unavailable"
                 continue

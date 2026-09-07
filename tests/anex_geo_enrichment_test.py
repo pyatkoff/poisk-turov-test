@@ -74,6 +74,18 @@ class ResumeTest(unittest.TestCase):
         fetch.assert_not_called()
         self.assertEqual(batch['remaining'],1)
 
+class CandidateExpansionTest(unittest.TestCase):
+    def test_only_old_truncated_rows_are_requeued(self):
+        rows = [{'external_id':1,'fingerprint':'a','reason':'candidate_limit_reached'},
+                {'external_id':2,'fingerprint':'b','reason':'candidate_limit_reached','candidate_limit':256},
+                {'external_id':3,'fingerprint':'c','reason':'name_country_coordinates'}]
+        self.assertEqual(probe.geo_completed_map({'rows':rows}),{'2':'b','3':'c'})
+    def test_expanded_full_page_still_blocks_confirmation(self):
+        best = {'name':'Blue','name_similarity':1,'country_match':True,'distance_m':10,'score':1}
+        other = dict(best,name='Other',score=0.1)
+        self.assertEqual(probe.geo_decision({'name':'Blue'},[best]+[other]*255,'same_record')[1], 'candidate_limit_reached')
+        self.assertEqual(probe.geo_decision({'name':'Blue'},[best]+[other]*64,'same_record')[0], 'strong_candidate')
+
 class MultiBatchTest(unittest.TestCase):
     def test_moves_through_batches_without_requery(self):
         matches = [dict(external_id=i, name='Blue Hotel', alternate_name='', country='Turkey', town='Kas', status='review') for i in range(1, 66)]

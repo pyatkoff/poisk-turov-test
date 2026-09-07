@@ -520,7 +520,7 @@ def ssh_probe():
     if catalog:
         artifact_dir = os.environ.get("ANEX_CATALOG_ARTIFACT_DIR", "").strip()
         checkpoint = load_geo_checkpoint(artifact_dir) if artifact_dir else {"rows": []}
-        tokens["geo_completed"] = {str(r["external_id"]): r["fingerprint"] for r in checkpoint["rows"]}
+        tokens["geo_completed"] = geo_completed_map(checkpoint)
         source = source.rsplit('\nif __name__ == "__main__":', 1)[0]
         source += "\n" + Path(__file__).with_name("anex_full_catalog_probe.py").read_text(encoding="utf-8")
         source += "\n" + Path(__file__).with_name("anex_hotel_match_probe.py").read_text(encoding="utf-8")

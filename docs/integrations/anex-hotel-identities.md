@@ -123,7 +123,7 @@ unchanged. Results are not a full-queue coverage estimate; `remaining` reports t
 
 `strong_candidate` requires matching known countries, name similarity >=0.90,
 distance <=200m, no competing score within 0.10, no recognized section-name
-difference, and fewer than the enrichment reader limit of 64 candidates (the original pilot retains eight). This remains
+difference, and fewer than the enrichment reader limit of 256 candidates (the original pilot retains eight). This remains
 a review proposal, not proof of identity: shared complex coordinates, omitted
 section names and candidate retrieval limits can still hide ambiguity.
 Missing details and supplier-namespace conflicts remain in review. Each run
@@ -144,3 +144,12 @@ stop continuation instead of silently restarting. Concurrency is serialized
 without cancelling an active batch. A failed batch can be retried from the
 last successful checkpoint. Room categories and property area are not used
 without verified fields.
+
+
+The first 340-record snapshot contained 78 rows stopped at the 64-candidate
+reader cap. Enrichment now permits 256 candidates per single-hotel read,
+keeping the existing SQL time and response-size limits. Only those older
+truncated rows are requeued automatically; a new full 256-row page still
+blocks strong-candidate classification. The per-row candidate limit records
+which retrieval breadth was used. This change does not relax identity,
+country, distance, name, section or ambiguity checks.

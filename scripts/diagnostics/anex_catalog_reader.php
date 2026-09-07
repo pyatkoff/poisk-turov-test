@@ -75,7 +75,7 @@ try {
         || count($input['queries']) < 1 || count($input['queries']) > 10) {
         throw new RuntimeException();
     }
-    $candidateLimit = isset($input['candidate_limit']) && $input['candidate_limit'] === 64 ? 64 : 8;
+    $candidateLimit = isset($input['candidate_limit']) && in_array($input['candidate_limit'], array(64, 256), true) ? $input['candidate_limit'] : 8;
     $queries = array();
     foreach ($input['queries'] as $query) {
         if (!is_array($query) || !isset($query['key']) || !is_int($query['key'])
