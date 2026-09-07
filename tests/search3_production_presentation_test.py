@@ -204,6 +204,13 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         for contract in ['.results-layout', '.hotel-card', '.hotel-photo', '.hotel-tours', '.tour-row']:
             self.assertIn(contract, current)
 
+    def test_tablet_legacy_extras_are_not_a_search3_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        self.assertIn("'ds2-search-tablet-filters-v1.css'", scoped)
+        entry = (ROOT / 'src/search3/styles/entry-v1.css').read_text()
+        self.assertIn('#tourSearch>details.extras[hidden]{display:none!important}', entry)
+
     def test_retired_tablet_drawer_and_redundant_phone_rules_have_current_owners(self):
         tablet = (ROOT / 'src/search3/styles/results-tablet-layout.css').read_text()
         toolbar = (ROOT / 'src/search3/styles/mobile-results-toolbar.css').read_text()
