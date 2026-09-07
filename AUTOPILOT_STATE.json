@@ -53,31 +53,29 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Product PR #1498 removes two misleading result controls: 'Ближе к морю' silently fell through to price sorting and the common map action emitted an event with no consumer. Price/rating/stars and list/grid remain. Eight Search3 assets remain 146599 bytes; three supporting loaded files shrink by 477 raw bytes. Main/production remain unchanged.",
+    "last_material_progress": "Product PR #1500 consolidates the result-card availability copy and generic action into one count-aware primary CTA. Eight Search3 assets shrink 146599 to 145974 bytes. Collapsed/expanded result geometry passed at 375/760/761/999/1000/1440. Main/production remain unchanged.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Continue the selling-search UX stage by auditing the result-card action hierarchy and preserving one clear primary path from hotel to tour selection. Use only supplier-backed facts and current lifecycle owners. Accumulate before preview publication. Stop byte-only micro-PRs; do not restore the duplicate desktop rail or remove results-tablet-layout.css. Physical Safari/safe-area remains deferred; production still requires explicit visual approval.",
+    "next_action": "Audit the Search3 list/grid switch against the forced one-column Search3 result owner. Remove or condition any nonfunctional Search3 control while preserving the working legacy /poisk-turov-old/ grid. Require a meaningful product or payload package; do not open a byte-only micro-PR. Physical Safari/safe-area remains deferred; production still requires explicit visual approval.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_HONEST_RESULTS_CONTROLS",
-    "title": "Expose only implemented result sorting and view controls",
+    "id": "S3_SINGLE_CARD_PRIMARY_CTA",
+    "title": "Use one count-aware primary hotel-card action",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [
-      1498
-    ],
+    "source_prs": [1500],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "24e893e60958b6f12df66cecb8acc1e5d67bc628",
-    "release_sha": "8980502708a1c7dd77e2dfec81131ae88e3f5562",
-    "artifact_run": 34150780889,
-    "artifact_id": 10029282505,
-    "artifact_digest": "sha256:8b49234e3cd866af6e538144eca3f16e660ac4e0601dbd345e418bb94e5f3c4c",
+    "implementation_sha": "635e512f469dab9222b12fa7637672428ab40c5a",
+    "release_sha": "2e79f12c74f24ae2737de8827447b44b134acf77",
+    "artifact_run": 34152950201,
+    "artifact_id": 10029998652,
+    "artifact_digest": "sha256:56dbeb79466ea02d559e2a65284c4fd0ff0fe79efeefe7880726abb15f01ee4b",
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-    "checked_release_asset_bytes": 146599,
+    "checked_release_asset_bytes": 145974,
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit the result-card action hierarchy and keep one clear primary path from hotel to tour selection without changing supplier data, pricing or lead lifecycle."
+    "next_action": "Audit whether the Search3 list/grid switch has distinct working layouts; preserve legacy-search grid behavior and remove only a nonfunctional Search3 control."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -7815,5 +7813,49 @@
       "Physical iPhone and Safari safe-area acceptance"
     ],
     "next_action": "Audit the result-card action hierarchy and keep one clear primary path from hotel to tour selection without changing supplier data, pricing or lead lifecycle."
+  },
+  "latest_single_card_primary_cta": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "base_release_sha": "4ec1c5f86ccb17996a567cd47c40f68de9fe0874",
+    "implementation_sha": "635e512f469dab9222b12fa7637672428ab40c5a",
+    "release_sha": "2e79f12c74f24ae2737de8827447b44b134acf77",
+    "source_pr": 1500,
+    "audit": "docs/project/search3-single-card-primary-cta.json",
+    "scope": "Replace duplicated hotel-card availability copy and generic action with one count-aware primary CTA while preserving expanded collapse and per-offer selection.",
+    "ci": {
+      "security_run": 34152822504,
+      "initial_artifact_run": 34152822452,
+      "ready_repeat_artifact_run": 34152950201,
+      "artifact_id": 10029998652,
+      "artifact_digest": "sha256:56dbeb79466ea02d559e2a65284c4fd0ff0fe79efeefe7880726abb15f01ee4b",
+      "results_geometry_artifact": 10029998348,
+      "results_geometry_digest": "sha256:25ef1a9f56a652e3d6c01891d5c9b8b73098bc2c018bb7ab01b2a6a2f799469f",
+      "conclusion": "success"
+    },
+    "public_assets": {
+      "before_bytes": 146599,
+      "after_bytes": 145974,
+      "saved_bytes": 625,
+      "css_saved_bytes": 597,
+      "js_saved_bytes": 28,
+      "unchanged_asset_count": 5
+    },
+    "browser_verification": {
+      "widths": [375, 760, 761, 999, 1000, 1440],
+      "collapsed_and_expanded_states": 12,
+      "horizontal_overflow": false,
+      "screenshots_retained": true,
+      "screenshots_manually_inspected": false,
+      "lead_submitted": false
+    },
+    "preview_updated": false,
+    "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+    "published_preview_asset_bytes": 147378,
+    "production_updated": false,
+    "deferred": [
+      "Live current-source interaction and visual inspection",
+      "Physical iPhone and Safari safe-area acceptance"
+    ],
+    "next_action": "Audit whether the Search3 list/grid switch has distinct working layouts; preserve legacy-search grid behavior and remove only a nonfunctional Search3 control."
   }
 }

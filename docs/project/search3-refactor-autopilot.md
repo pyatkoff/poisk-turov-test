@@ -2001,3 +2001,15 @@ The eight Search3 assets remain **146599 → 146599 raw bytes (0)**. Three suppo
 Focused tests require exactly the three implemented sort modes, preserve the mobile sort proxy and results lifecycle, and reject reintroduction of the unhandled map action. This non-geometric package did not run or claim browser geometry. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred; no lead was submitted.
 
 Next: audit the result-card action hierarchy and keep one clear primary path from hotel to tour selection. Preserve supplier data, price arithmetic, selection/lead lifecycle and analytics. Accumulate before isolated preview publication. Audit: `docs/project/search3-honest-results-controls.json`.
+
+## S3_SINGLE_CARD_PRIMARY_CTA — checked release, 2026-09-07
+
+Source PR #1500 / `635e512f469dab9222b12fa7637672428ab40c5a`; checked release `2e79f12c74f24ae2737de8827447b44b134acf77`. The result card now has one count-aware primary action (`Показать N туров`) instead of a separate availability sentence plus generic `Показать туры`. Correct Russian plural forms, expanded `Скрыть туры`, collapse restoration and each concrete offer's `Выбрать тур` action remain in the current results owner.
+
+Eight public Search3 assets are **146599 → 145974 raw bytes (−625: −597 CSS, −28 JS)**. The removed `.search3-hotel-action__copy` markup and responsive presentation are no longer emitted. Five assets are byte-identical. Price arithmetic, supplier facts, Tourvisor/API, URL/payload, selection, lead transport/mapping and analytics are unchanged.
+
+Security `34152822504`, initial exact artifact `34152822452` and ready repeat `34152950201` succeeded. Reusable artifact `10029998652`, digest `sha256:56dbeb79466ea02d559e2a65284c4fd0ff0fe79efeefe7880726abb15f01ee4b`; results geometry artifact `10029998348`, digest `sha256:25ef1a9f56a652e3d6c01891d5c9b8b73098bc2c018bb7ab01b2a6a2f799469f`. The Chromium fixture passed 12 collapsed/expanded states at 375/760/761/999/1000/1440 with no horizontal overflow. Screenshots were retained but not manually inspected; no lead was submitted.
+
+Status boundary: checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3` at 147378 Search3 bytes; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred.
+
+Next: verify whether Search3's list/grid switch produces two distinct layouts despite the current one-column Search3 result owner. Remove or condition only a nonfunctional Search3 control while preserving the working legacy `/poisk-turov-old/` grid. Audit: `docs/project/search3-single-card-primary-cta.json`.
