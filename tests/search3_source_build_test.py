@@ -101,14 +101,14 @@ class Search3SourceBuildTest(unittest.TestCase):
         self.assertEqual(before, (self.root / 'docs/project/search3-production-import.json').read_bytes())
 
     def test_changed_source_requires_rebuild_and_preserves_other_assets(self):
-        source = self.root / 'src/search3/behavior/entry-v1.js'
+        source = self.root / 'src/search3/behavior/search-form/entry-presentation.js'
         source.write_bytes(source.read_bytes() + b'\nwindow.__search3SourceDriftFixture = "controlled test edit";\n')
         with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
             builder.build(self.root)
         builder.build(self.root, write=True)
         self.assertEqual(builder.build(self.root), 8)
         for name, original in self.outputs.items():
-            if name != 'search3-entry-v1.js':
+            if name != 'search3-results-filters-v1.js':
                 self.assertEqual((self.root / 'v2' / name).read_bytes(), original)
         reviewed = json.loads((self.root / 'docs/project/search3-production-import.json').read_text())
         self.assertEqual(reviewed['protectedSha256'], self.reviewed['protectedSha256'])
@@ -121,7 +121,7 @@ class Search3SourceBuildTest(unittest.TestCase):
             self.assertEqual((self.root / 'v2' / name).read_bytes(), original)
 
     def test_invalid_javascript_does_not_partially_write_outputs(self):
-        source = self.root / 'src/search3/behavior/entry-v1.js'
+        source = self.root / 'src/search3/behavior/search-form/entry-presentation.js'
         source.write_bytes(source.read_bytes() + b'\nconst =;\n')
         with self.assertRaises(ValueError):
             builder.build(self.root, write=True)

@@ -95,6 +95,19 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('.search3-mobile-search-filter-button{', styles)
         self.assertIn('#tourSearch.search3-mobile-advanced-open', styles)
 
+    def test_entry_presentation_has_one_current_runtime_owner(self):
+        retired = (ROOT / 'src/search3/behavior/entry-v1.js').read_text()
+        form = (ROOT / 'src/search3/behavior/search-form.js').read_text()
+        owner = (ROOT / 'src/search3/behavior/search-form/entry-presentation.js').read_text()
+        entry_asset = (ROOT / 'v2/search3-entry-v1.js').read_text()
+        compiled = (ROOT / 'v2/search3-results-filters-v1.js').read_text()
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', retired, flags=re.S).strip(), '')
+        self.assertEqual(entry_asset, '')
+        self.assertIn('@include behavior/search-form/entry-presentation.js', form)
+        self.assertIn('installEntryPresentation(form,main,grid,region)', form)
+        self.assertIn('window.Search3CandidateEntryV1', owner)
+        self.assertEqual(compiled.count('Search3CandidateEntryV1'), 2)
+
     def test_booking_summary_has_no_geometry_only_resize_owner(self):
         source = (ROOT / 'src/search3/behavior/booking-summary.js').read_text()
         layout = (ROOT / 'src/search3/behavior/booking/layout.js').read_text()

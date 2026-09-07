@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "base_release_sha": "b193777c1f3136db66b1ad1303829ad1995de510",
+  "scope": "Retire the standalone responsive entry runtime owner into the current search-form owner while preserving the public asset path.",
+  "retired_runtime_owner": "src/search3/behavior/entry-v1.js",
+  "current_owner": "src/search3/behavior/search-form.js",
+  "private_part": "src/search3/behavior/search-form/entry-presentation.js",
+  "served_assets": {
+    "before_bytes": 161116,
+    "after_bytes": 160579,
+    "removed_bytes": 537,
+    "changed": {
+      "v2/search3-results-filters-v1.js": {
+        "before_bytes": 54053,
+        "after_bytes": 56742,
+        "added_bytes": 2689
+      },
+      "v2/search3-entry-v1.js": {
+        "before_bytes": 3226,
+        "after_bytes": 0,
+        "removed_bytes": 3226
+      }
+    },
+    "unchanged_asset_count": 6
+  },
+  "preserved": [
+    "all eight public CSS/JS paths and manifest order",
+    "Search3CandidateEntryV1 version 1 sync API",
+    "desktop and mobile region placement",
+    "existing price-calendar content and date selection",
+    "results summary details",
+    "0/40/160/320 millisecond settle schedule",
+    "matchMedia addEventListener and addListener paths"
+  ],
+  "checks": [
+    "python3 scripts/build/search3_assets.py --write",
+    "python3 scripts/build/search3_assets.py --check",
+    "node tests/search3-entry-summary.cjs",
+    "node tests/search3-mobile-toolbar-ownership.cjs",
+    "python3 -m unittest tests.search3_source_build_test tests.search3_production_presentation_test",
+    "python3 scripts/ci/validate_owner_priority.py"
+  ],
+  "publication": "NOT_PUBLISHED",
+  "protected_contracts": "Price arithmetic, search API, URL/payload, Tourvisor, lead transport/mapping and analytics unchanged"
+}
