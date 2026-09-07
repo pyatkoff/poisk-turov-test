@@ -2013,3 +2013,15 @@ Security `34152822504`, initial exact artifact `34152822452` and ready repeat `3
 Status boundary: checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3` at 147378 Search3 bytes; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred.
 
 Next: verify whether Search3's list/grid switch produces two distinct layouts despite the current one-column Search3 result owner. Remove or condition only a nonfunctional Search3 control while preserving the working legacy `/poisk-turov-old/` grid. Audit: `docs/project/search3-single-card-primary-cta.json`.
+
+## S3_HONEST_VIEW_CONTROL — checked release, 2026-09-07
+
+Source PR #1502 / `2f300216b61b900614f443af907f04eb92a3fcba`; checked release `d2077ede44e9517fd06af6cfc0c081a04ee02d45`. The shared list/grid switch changed classes and localStorage, but Search3's stronger current results owner always renders a one-column flex list. Search3 therefore no longer emits the two ineffective view buttons. The maintained `/poisk-turov-old/` presentation still renders both controls and keeps the existing shared runtime and grid CSS.
+
+The eight Search3 public assets remain **145974 → 145974 raw bytes (0)**. The rendered Search3 HTML removes **268 bytes** and two misleading controls; this supporting-payload reduction is recorded separately and is not counted as an eight-asset reduction. Price/rating/stars sorting, supplier data, Tourvisor/API, URL/payload, selection, lead transport/mapping and analytics are unchanged.
+
+Security `34156356460`, exact artifact `34156356467` and standalone navigation `34156356471` succeeded. Reusable artifact `10031101653`, digest `sha256:3080f8b043d65042d94f10e65214e4777e611196d27f58d9963610c2a064c81f`. Exact PHP rendering verifies the Search3 switch is absent and both legacy controls remain. No CSS/card geometry changed, so the geometry jobs correctly skipped; no visual acceptance is claimed and no lead was submitted.
+
+Status boundary: checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3` at 147378 Search3 bytes; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Live current-source interaction, physical iPhone/Safari and safe-area acceptance remain deferred.
+
+Next: begin the lean Search3 base-bundle audit. Classify full-manifest modules by Search3 dependency, then use the existing bundle endpoint for a route-scoped Search3 manifest while keeping `/poisk-turov-old/` on the complete legacy bundle. Require measured loaded raw/gzip savings and source/closure/browser evidence before changing the route. Audit: `docs/project/search3-honest-view-control.json`.
