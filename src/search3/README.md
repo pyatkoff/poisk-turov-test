@@ -94,7 +94,7 @@ separate cascade evidence.
 | Hotel cards and disclosure | `behavior/results-presentation.js`, `behavior/results-cards-v2.js`, `styles/results-cards-v2.css` |
 | Selected tour and mobile action | `behavior/selected-flow-v2.js`, `styles/selected-flow-v2.css` |
 | Flight labels and display-only price parsing | `behavior/presentation-text.js`, `behavior/flight-price-presentation.js` |
-| Summary and handoff | `behavior/booking-summary.js`, `behavior/selected-tour-handoff.js` |
+| Summary and handoff | `behavior/booking-summary.js`, `behavior/results-presentation.js` |
 | Selected services and tourists | `behavior/booking/services.js`, inside the booking summary owner |
 | Final review actions and responsive layout | `behavior/summary-cta.js`, `styles/review-layout.css`; `styles/review.css` is retired |
 | Lead heading and contact note | `behavior/lead/note.js`, inside the summary CTA owner |
@@ -227,6 +227,10 @@ The retired `results-top.js` slot retains provenance only. Its result header,
 route, edit and state lifecycle now shares the current results presentation IIFE
 and its existing results/reset subscriptions. The same owner keeps a separate
 zero-delay mobile-toolbar mount.
+The retired `selected-tour-handoff.js` slot also retains provenance only. Result
+button labels, selected-tour busy state and entry focus share the existing
+results/reset/tour lifecycle in `results-presentation.js`; canonical return focus
+remains in the base runtime.
 Progressive-result and compact-breakpoint bursts share one pending task. Reset or
 empty results cancel it; a later eligible event can retry a missing canonical
 filter bar. Mounting retains the existing toolbar, native sort handoff and control

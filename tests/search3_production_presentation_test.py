@@ -271,6 +271,7 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         summary_owner = (ROOT / 'src/search3/behavior/summary-cta.js').read_text()
         lead_owner = (ROOT / 'src/search3/behavior/lead-flow.js').read_text()
         handoff = (ROOT / 'src/search3/behavior/selected-tour-handoff.js').read_text()
+        results_owner = (ROOT / 'src/search3/behavior/results-presentation.js').read_text()
         self.assertEqual(re.sub(r'/\*.*?\*/', '', continue_owner, flags=re.S).strip(), '')
         self.assertIn("dispatchEvent(new CustomEvent('v2:booking-review'", summary_owner)
         self.assertIn("closest('#selectedTour .search3-flight-continue button')", summary_owner)
@@ -278,7 +279,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn("window.addEventListener('v2:lead-started'", lead_owner)
         self.assertIn("window.addEventListener('v2:lead-success'", lead_owner)
         self.assertIn("window.addEventListener('v2:lead-error'", lead_owner)
-        self.assertIn("selected.querySelector('.selected-head h2')", handoff)
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', handoff, flags=re.S).strip(), '')
+        self.assertIn("selected.querySelector('.selected-head h2')", results_owner)
 
     def test_cascade_split_rejects_byte_drift(self):
         spec = importlib.util.spec_from_file_location(

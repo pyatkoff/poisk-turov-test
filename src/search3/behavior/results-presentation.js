@@ -10,6 +10,7 @@
   var results = document.getElementById('results');
   var tools = document.getElementById('resultsTools');
   var sort = document.getElementById('sortResults');
+  var selected = document.getElementById('selectedTour');
   if (!body || !body.classList.contains('search3-candidate') || !results || !tools) return;
 
   var form = document.getElementById('tourSearch');
@@ -21,6 +22,44 @@
   var hotelsById = new Map();
   var mobileToolbarTimer = null;
   var frameQueued = false;
+
+  function restoreProductionLabels() {
+    results.querySelectorAll('button[data-search3-production-label]').forEach(function (button) {
+      var original = String(button.dataset.search3ProductionLabel || '').trim();
+      var current = String(button.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!button.disabled && original && current !== original) button.textContent = original;
+    });
+  }
+
+  function isTourLoading() {
+    if (selected.hidden || selected.children.length !== 1) return false;
+    var onlyChild = selected.firstElementChild;
+    return !!(onlyChild && onlyChild.classList.contains('selected-loading') && !onlyChild.querySelector('button,a,input,select,textarea'));
+  }
+
+  function syncBusy() {
+    var next = isTourLoading() ? 'true' : 'false';
+    if (selected.getAttribute('aria-busy') !== next) selected.setAttribute('aria-busy', next);
+  }
+
+  function prepareSelectedContext() {
+    var selectedHeading = selected.querySelector('.selected-head h2');
+    if (!selectedHeading) return null;
+    if (!selectedHeading.id) selectedHeading.id = 'search3-selected-tour-heading';
+    selectedHeading.setAttribute('tabindex', '-1');
+    selected.setAttribute('tabindex', '-1');
+    selected.setAttribute('aria-labelledby', selectedHeading.id);
+    return selectedHeading;
+  }
+
+  function focusSelectedContext() {
+    if (selected.hidden || !prepareSelectedContext()) return;
+    try { selected.focus({ preventScroll: true }); } catch (_error) { selected.focus(); }
+  }
+
+  function scheduleSelectedContextFocus() {
+    window.requestAnimationFrame(focusSelectedContext);
+  }
 
   function word(number, one, few, many) {
     var value = Math.abs(Number(number) || 0) % 100;
@@ -118,9 +157,16 @@
     hotelsById.clear();
     collapseAll();
     body.classList.remove('search3-results-active');
+    if (selected) selected.setAttribute('aria-busy', 'false');
   });
 
-  window.addEventListener('v2:tour-selected', function () { collapseAll(); });
+  window.addEventListener('v2:tour-selected', function () {
+    collapseAll();
+    if (!selected) return;
+    selected.setAttribute('aria-busy', 'false');
+    restoreProductionLabels();
+    scheduleSelectedContextFocus();
+  });
 
   document.addEventListener('click', function (event) {
     var more = event.target && event.target.closest && event.target.closest('.tour-more-toggle');
@@ -181,6 +227,25 @@
 
   new MutationObserver(scheduleResultsSync).observe(results, { childList: true });
   syncResultsState();
+  if (selected) {
+    // Tour mutations only own busy state; result mutations own button labels.
+    new MutationObserver(syncBusy).observe(selected, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
+    new MutationObserver(restoreProductionLabels).observe(results, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['disabled']
+    });
+    syncBusy();
+    restoreProductionLabels();
+    window.Search3CandidateSelectedHandoffV1 = Object.freeze({
+      version: 1,
+      restoreProductionLabels: restoreProductionLabels,
+      syncBusy: syncBusy,
+      focusSelectedContext: focusSelectedContext,
+      scheduleSelectedContextFocus: scheduleSelectedContextFocus
+    });
+  }
   if (topReady) {
     if (edit) edit.addEventListener('click', function () {
       body.classList.add('search3-editing-search');

@@ -40,11 +40,22 @@ const button = {
   dataset: { search3ProductionLabel: 'Выбрать тур' },
   textContent: 'Загрузка'
 };
-const results = { querySelectorAll() { return [button]; } };
+const results = {
+  querySelector() { return null; },
+  querySelectorAll(selector) { return selector === 'button[data-search3-production-label]' ? [button] : []; },
+  contains() { return false; }
+};
+const tools = { querySelector() { return null; } };
 const document = {
   activeElement: null,
-  body: { classList: { contains(name) { return name === 'search3-candidate'; } } },
-  getElementById(id) { return id === 'selectedTour' ? selected : id === 'results' ? results : null; }
+  body: { classList: {
+    contains(name) { return name === 'search3-candidate'; },
+    toggle() {},
+    remove() {}
+  } },
+  getElementById(id) { return id === 'selectedTour' ? selected : id === 'results' ? results : id === 'resultsTools' ? tools : null; },
+  querySelector() { return null; },
+  addEventListener() {}
 };
 const window = {
   addEventListener(name, handler) { events.set(name, handler); },
@@ -55,6 +66,7 @@ vm.runInNewContext(owner, {
   document,
   window,
   MutationObserver: function () { this.observe = function () {}; },
+  requestAnimationFrame(handler) { frames.push(handler); },
   Object,
   String
 });
