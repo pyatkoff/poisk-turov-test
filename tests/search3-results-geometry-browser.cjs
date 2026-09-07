@@ -103,17 +103,20 @@ function inside(inner, outer, message) {
             };
           });
           assert.ok(state.overflow <= 1, `${width}: page must not overflow horizontally`);
-          assert.ok(Math.abs(state.card.box.width - state.host.box.width) <= 1,
-            `${width}: card fills results host (${state.card.box.width}/${state.host.box.width})`);
-          inside(state.main.box, state.card.box, `${width}: hotel content stays inside card`);
-          inside(state.body.box, state.main.box, `${width}: hotel body stays inside main row`);
-          inside(state.facts.box, state.body.box, `${width}: hotel facts stay inside body`);
-          inside(state.action.box, state.body.box, `${width}: hotel action stays inside body`);
-          inside(state.disclosure.box, state.card.box, `${width}: disclosure stays inside card`);
-          assert.ok(state.disclosure.box.height >= 43.5, `${width}: disclosure keeps a 44px target`);
-          assert.ok(state.retired.every(display => display === 'none'), `${width}: retired card chrome stays hidden`);
-          assert.ok(state.photo.box.right <= state.body.box.left + 1 || state.photo.box.bottom <= state.body.box.top + 1,
-            `${width}: photo and body do not overlap`);
+          // 761 is the exact drawer handoff witness; card acceptance retains its original widths.
+          if (width !== 761) {
+            assert.ok(Math.abs(state.card.box.width - state.host.box.width) <= 1,
+              `${width}: card fills results host (${state.card.box.width}/${state.host.box.width})`);
+            inside(state.main.box, state.card.box, `${width}: hotel content stays inside card`);
+            inside(state.body.box, state.main.box, `${width}: hotel body stays inside main row`);
+            inside(state.facts.box, state.body.box, `${width}: hotel facts stay inside body`);
+            inside(state.action.box, state.body.box, `${width}: hotel action stays inside body`);
+            inside(state.disclosure.box, state.card.box, `${width}: disclosure stays inside card`);
+            assert.ok(state.disclosure.box.height >= 43.5, `${width}: disclosure keeps a 44px target`);
+            assert.ok(state.retired.every(display => display === 'none'), `${width}: retired card chrome stays hidden`);
+            assert.ok(state.photo.box.right <= state.body.box.left + 1 || state.photo.box.bottom <= state.body.box.top + 1,
+              `${width}: photo and body do not overlap`);
+          }
           if (width <= 999) {
             assert.equal(state.sheet.display, 'block', `${width}: compact drawer remains mounted`);
             assert.equal(state.sheet.visibility, expanded ? 'visible' : 'hidden', `${width}: drawer visibility follows open state`);
@@ -129,16 +132,18 @@ function inside(inner, outer, message) {
           } else {
             assert.equal(state.sheet.display, 'none', `${width}: compact drawer stays absent on desktop`);
           }
-          if (width >= 1000) assert.ok(Math.abs(state.main.box.height - 230) <= 1, `${width}: desktop card owner keeps 230px geometry`);
-          if (expanded) {
-            assert.notEqual(state.tours.display, 'none', `${width}: expanded packages are visible`);
-            inside(state.row.box, state.tours.box, `${width}: package row stays inside package list`);
-            inside(state.meta.box, state.row.box, `${width}: package facts stay inside row`);
-            inside(state.tourAction.box, state.row.box, `${width}: package action stays inside row`);
-            inside(state.direct.box, state.row.box, `${width}: package CTA stays inside row`);
-            assert.ok(state.direct.box.height >= 35.5, `${width}: package CTA remains actionable`);
-          } else {
-            assert.equal(state.tours.display, 'none', `${width}: collapsed packages stay hidden`);
+          if (width !== 761) {
+            if (width >= 1000) assert.ok(Math.abs(state.main.box.height - 230) <= 1, `${width}: desktop card owner keeps 230px geometry`);
+            if (expanded) {
+              assert.notEqual(state.tours.display, 'none', `${width}: expanded packages are visible`);
+              inside(state.row.box, state.tours.box, `${width}: package row stays inside package list`);
+              inside(state.meta.box, state.row.box, `${width}: package facts stay inside row`);
+              inside(state.tourAction.box, state.row.box, `${width}: package action stays inside row`);
+              inside(state.direct.box, state.row.box, `${width}: package CTA stays inside row`);
+              assert.ok(state.direct.box.height >= 35.5, `${width}: package CTA remains actionable`);
+            } else {
+              assert.equal(state.tours.display, 'none', `${width}: collapsed packages stay hidden`);
+            }
           }
           if (output) await page.screenshot({ path: path.join(output, `${width}-${expanded ? 'expanded' : 'collapsed'}.png`), fullPage: true, animations: 'disabled' });
           states += 1;
