@@ -219,6 +219,12 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('height:176px!important;border:1px solid var(--at-line)!important;border-right:0!important', detail)
         self.assertIn('min-height:176px!important;border-left:0!important', detail)
 
+        convergence = (ROOT / 'src/search3/styles/tour-detail-convergence.css').read_text()
+        self.assertNotIn('grid-template-columns:repeat(5,minmax(0,1fr))!important', convergence)
+        self.assertNotIn('min-width:188px!important;min-height:42px!important', convergence)
+        self.assertIn('.flight-variant {display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important', convergence)
+        self.assertIn('.search3-flight-continue {grid-column:1/3!important;width:100%!important;max-width:none!important}', convergence)
+
     def test_redundant_booking_chrome_is_retired_without_losing_flow_owners(self):
         stepper_js = (ROOT / 'src/search3/behavior/booking-stepper.js').read_text()
         stepper_css = (ROOT / 'src/search3/styles/booking-stepper.css').read_text()

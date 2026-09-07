@@ -7,38 +7,6 @@
    the direct-to-lead shortcut so Tour Details has one clear next action: flights. */
 body.search3-candidate{
 &.search3-selected-open #selectedTour:not(.search3-final-review) :is(.checkout-journey,.checkout-facts-heading,.selected-lead-cta,.selected-lead-cta-note){display:none!important}
-& #selectedTour:not(.search3-final-review) {
-& .facts {display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:0!important;padding:0!important;border:1px solid var(--at-line)!important;border-radius:12px!important;background:#fff!important;overflow:hidden!important}
-& .facts>div {min-width:0!important;padding:11px 12px!important;border:0!important;border-right:1px solid var(--at-line-soft)!important;border-bottom:1px solid var(--at-line-soft)!important;background:#fff!important}
-& .facts>div:nth-child(5n) {border-right:0!important}
-& .facts>div:nth-last-child(-n/**/+5) {border-bottom:0!important}
-& .facts span {display:block!important;margin-bottom:4px!important;color:var(--at-muted)!important;font:800 8px/1.2 var(--at-font)!important}
-& .facts b {display:block!important;color:var(--at-ink)!important;font:900 10px/1.3 var(--at-font)!important;overflow-wrap:anywhere!important}
-& .hotel-desc,
-& .tour-flights{
-  border:1px solid var(--at-line)!important;
-  border-radius:12px!important;
-  background:#fff!important;
-}
-& .hotel-desc{
-  padding:14px 16px!important;
-  color:var(--at-muted)!important;
-  font:700 9px/1.5 var(--at-font)!important;
-}
-& .tour-flights{
-  padding:16px!important;
-}
-& .tour-flights .section-heading {display:flex!important;align-items:end!important;justify-content:space-between!important;gap:16px!important;margin-bottom:12px!important;padding:0!important;border:0!important}
-& .tour-flights .section-heading strong {font-size:15px!important}
-& .tour-flights .section-heading span {font-size:8px!important}
-& .flight-variants {gap:8px!important}
-& .flight-choice {min-height:38px!important;padding:8px 11px!important}
-& .flight-segment {padding:10px 11px!important}
-& .flight-segment-title {margin-bottom:7px!important}
-& .flight-baggage {margin-top:7px!important}
-& .search3-flight-continue {margin-top:10px!important}
-& .search3-flight-continue button {min-width:188px!important;min-height:42px!important;border-radius:8px!important;font-size:10px!important}
-}
 }
 /* The legacy decision-summary repeats facts already visible above and collapsed into a
    250px grid column, causing severe word breaks. Maket7 proceeds directly from tour facts
