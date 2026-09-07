@@ -28,7 +28,7 @@ site deployment, booking request, or persistent server file.
 
 At most four requests are made:
 
-1. Online API `SearchTour_TOWNFROMS`: departure-city count (POST).
+1. Online API `SearchTour_TOWNFROMS`: departure-city count (documented GET).
 2. XML `currentstamp`: validate synchronization stamp.
 3. XML `state`: first country batch only, using the stamp (no pagination).
 4. XML `townstate`: available departure/destination route count.
@@ -36,7 +36,7 @@ At most four requests are made:
 Each request has a 20-second socket timeout and a 2 MiB response limit. The SSH
 process has an overall 110-second timeout. HTTPS certificate verification stays
 enabled and redirects are refused. Tokens travel via encrypted SSH stdin;
-the XML gateway receives its token in the documented HTTPS query format.
+both supplier interfaces receive tokens in the documented HTTPS query format.
 No response bodies, token-bearing URLs, exception messages, or secret values
 are printed. Only fixed status names, HTTP codes, elapsed time, and counts leave
 the process. The SSH key is held in a temporary mode-0600 runner file, removed
@@ -51,6 +51,12 @@ booking permissions, full reference import, Andromeda, and Tourvisor are outside
 this diagnostic. No change to the site's live search is made.
 
 ## Sources
+
+Initial run [34140006120](https://github.com/pyatkoff/poisk-turov-test/actions/runs/34140006120)
+reached the AnyTour host successfully. XML returned HTTP 200 for `currentstamp`,
+278 `state` records, and 850 `townstate` records. The API POST request returned
+HTTP 500. The follow-up uses the exact documented GET format to distinguish
+POST dispatch behaviour from a general API-access failure.
 
 - [Online SAMO API](https://dokuwiki.samo.ru/doku.php?id=onlinest:api)
 - [XML gateway and reference synchronization](https://dokuwiki.samo.ru/doku.php?id=samotour:xml_gate)

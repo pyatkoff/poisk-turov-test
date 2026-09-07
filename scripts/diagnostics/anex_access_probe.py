@@ -84,7 +84,7 @@ def request(params, token, post=False):
 def api_check(token):
     result, body = request(
         {"samo_action": "api", "version": "1.0", "type": "json",
-         "action": "SearchTour_TOWNFROMS"}, token, post=True,
+         "action": "SearchTour_TOWNFROMS"}, token,
     )
     result["check"] = "api_townfroms"
     if body is None:

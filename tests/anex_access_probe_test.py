@@ -98,6 +98,7 @@ class SupplierResponseTest(unittest.TestCase):
         self.assertEqual([call.args[1] for call in request.call_args_list],
                          [API_TOKEN, REFERENCE_TOKEN, REFERENCE_TOKEN, REFERENCE_TOKEN])
         self.assertEqual(request.call_args_list[0].args[0]["action"], "SearchTour_TOWNFROMS")
+        self.assertFalse(request.call_args_list[0].kwargs.get("post", False))
         self.assertEqual(request.call_args_list[2].args[0],
                          {"samo_action": "reference", "type": "state",
                           "laststamp": "0x0000000000000000", "delstamp": STAMP})
