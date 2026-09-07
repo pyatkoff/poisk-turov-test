@@ -5,6 +5,7 @@ function field(form,name){var el=form&&form.elements&&form.elements[name];return
 function cleanField(f){if(!f)return;f.classList.remove('field-wide','main-stars','main-meal','primary-step','primary-step-1','primary-step-2','primary-step-3','primary-step-4','primary-step-5','primary-step-6','primary-step-7','result-filter-priority','result-filter-stars','result-filter-meal');var select=f.querySelector('select');if(select){select.classList.remove('ux-native-hidden','meal-native-select');select.removeAttribute('aria-hidden');select.tabIndex=0;}var q=f.querySelector('.stars-quick,.meal-quick');if(q)q.hidden=true;}
 function makeComposite(label,cls){var box=document.createElement('label');box.className='field search3-composite '+cls;box.innerHTML='<span>'+label+'</span><div class="search3-composite__control"></div>';return box;}
 function clampNight(v){var n=parseInt(v,10);if(!Number.isFinite(n))n=7;return Math.max(1,Math.min(28,n));}
+/* @include behavior/search-form/entry-presentation.js */
 function init(){
   var form=document.getElementById('tourSearch');if(!form||form.dataset.search3Ready==='1')return;
   form.dataset.search3Ready='1';document.body.classList.add('search3-candidate');
@@ -22,6 +23,7 @@ function init(){
 /* @include behavior/search-form/primary-controls.js */
   if(submit){submit.innerHTML='<span>Найти туры</span><b aria-hidden="true">→</b>';main.appendChild(submit);}
 /* @include behavior/search-form/secondary-controls.js */
+  installEntryPresentation(form,main,grid,region);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(init,20);},{once:true});else setTimeout(init,20);
 })();

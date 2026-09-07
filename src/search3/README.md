@@ -85,8 +85,8 @@ separate cascade evidence.
 
 | Concern | Source |
 | --- | --- |
-| Primary form and field placement | `behavior/search-form.js`, `behavior/entry-v1.js` |
-| Responsive entry and existing price-calendar adapter | `behavior/entry-v1.js`, `styles/entry-v1.css` |
+| Primary form and field placement | `behavior/search-form.js` |
+| Responsive entry and existing price-calendar adapter | `behavior/search-form/entry-presentation.js` inside `behavior/search-form.js`, `styles/entry-v1.css` |
 | Desktop local result-filter rail | `behavior/filter-rail.js`, `styles/results-layout.css` |
 | Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/mobile-results-toolbar.css` |
 | Canonical mobile filter bar and sheet | Existing `v2/mobile-results-filters-v1.js`; Search3 reuses `.mrf-bar` and `.mrf-sheet`, not a second drawer |

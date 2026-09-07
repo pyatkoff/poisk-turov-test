@@ -11,6 +11,10 @@ let calendarWrapperChecks = 0;
 let currentCalendar = null;
 let layoutWrites = 0;
 let layoutValue = '';
+const timeoutDelays = [];
+const windowEvents = [];
+const formEvents = [];
+const mobileEvents = [];
 
 const detail = {};
 Object.defineProperty(detail, 'textContent', {
@@ -60,7 +64,7 @@ const form = {
     if (selector === '.search3-quality__grid') return advanced;
     return null;
   },
-  addEventListener() {}
+  addEventListener(type) { formEvents.push(type); }
 };
 const values = {
   resultsSearchDates: { textContent: '10–17 сентября' },
@@ -96,22 +100,38 @@ const document = {
 };
 const mobile = {
   matches: false,
-  addEventListener() {}
+  addEventListener(type) { mobileEvents.push(type); }
 };
 const window = {
   matchMedia() { return mobile; },
-  addEventListener() {},
-  setTimeout() { return 1; },
+  addEventListener(type) { windowEvents.push(type); },
+  setTimeout(callback, delay) { timeoutDelays.push(delay); return timeoutDelays.length; },
   clearTimeout() {}
 };
 
+const source = fs.readFileSync(
+  path.join(__dirname, '../src/search3/behavior/search-form/entry-presentation.js'),
+  'utf8'
+);
 vm.runInNewContext(
-  fs.readFileSync(path.join(__dirname, '../src/search3/behavior/entry-v1.js'), 'utf8'),
-  { document, window, Object, String, Array }
+  `(function () {
+    function field(form, name) {
+      var el = form && form.elements && form.elements[name];
+      return el && el.closest ? el.closest('.field') : null;
+    }
+    ${source}
+    installEntryPresentation(document.getElementById('tourSearch'), main, advanced, region);
+  })();`,
+  { document, window, Object, String, Array, main, advanced, region }
 );
 
 const api = window.Search3CandidateEntryV1;
 assert.ok(api, 'entry adapter initialized');
+assert.deepEqual(timeoutDelays, [0, 40, 160, 320], 'initial settle schedule is preserved');
+assert.deepEqual(windowEvents, ['v2:search-reset', 'v2:results-rendered', 'v2:search-complete']);
+assert.deepEqual(formEvents, ['change']);
+assert.deepEqual(mobileEvents, ['change']);
+assert.match(source, /mobile\.addListener\(settle\)/, 'legacy matchMedia listener fallback is preserved');
 
 api.sync();
 api.sync();
