@@ -107,6 +107,8 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('installEntryPresentation(form,main,grid,region)', form)
         self.assertIn('window.Search3CandidateEntryV1', owner)
         self.assertEqual(compiled.count('Search3CandidateEntryV1'), 2)
+        self.assertIn("legacyGrid.insertBefore(starsField", form)
+        self.assertNotIn('search-params-filter-split', compiled)
 
     def test_booking_summary_has_no_geometry_only_resize_owner(self):
         source = (ROOT / 'src/search3/behavior/booking-summary.js').read_text()
