@@ -206,6 +206,7 @@ def api_data(token, action, params, checks, expanded=False):
     allowed = {"SearchTour_TOWNFROMS": "api_townfroms",
                "SearchTour_STATES": "api_states", "SearchTour_CHECKIN": "api_checkin",
                "SearchTour_CURRENCIES": "api_currencies", "SearchTour_NIGHTS": "api_nights",
+               "Hotels_DETAILS": "api_hotel_details",
                "SearchTour_PRICES": "api_prices_expanded" if expanded else "api_prices"}
     if action not in allowed or len(checks) >= 12:
         raise ValueError("invalid read method or request budget")
@@ -423,6 +424,8 @@ def remote_price_probe(tokens):
 
 def clean_report(report):
     """Only bounded, fixed-vocabulary diagnostics may leave either process."""
+    if isinstance(report, dict) and report.get("mode") == "hotels":
+        return clean_hotel_report(report)
     if not isinstance(report, dict) or not isinstance(report.get("checks"), list):
         raise ValueError("invalid report")
     if not 1 <= len(report["checks"]) <= (13 if report.get("mode") == "prices" else 4):
@@ -470,6 +473,7 @@ def clean_report(report):
 def ssh_probe():
     global SENSITIVE_VALUES
     prices = "--prices" in sys.argv
+    hotels = "--hotels" in sys.argv
     names = ("ANEX_API_TOKEN", "ANEX_REFERENCE_TOKEN", "ANYTOOUR_DEPLOY_SSH_KEY",
              "ANYTOOUR_DEPLOY_HOST", "ANYTOOUR_DEPLOY_USER")
     missing = [name for name in names if not os.environ.get(name, "").strip()]
@@ -486,6 +490,11 @@ def ssh_probe():
     if host.startswith("-") or any(c.isspace() for c in host + user):
         raise ValueError("invalid SSH target")
     source = Path(__file__).read_text(encoding="utf-8")
+    if hotels:
+        source = source.rsplit('\nif __name__ == "__main__":', 1)[0]
+        source += "\n" + Path(__file__).with_name("anex_hotel_match_probe.py").read_text(encoding="utf-8")
+        source += "\nCATALOG_PHP = " + repr(Path(__file__).with_name("anex_catalog_reader.php").read_text(encoding="utf-8").removeprefix("<?php"))
+        source += '\nif __name__ == "__main__":\n    sys.exit(main())\n'
     with tempfile.TemporaryDirectory(prefix="anex-probe-", dir=os.environ.get("RUNNER_TEMP")) as temp:
         key = Path(temp) / "ssh_key"
         fd = os.open(str(key), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -499,12 +508,12 @@ def ssh_probe():
             "-o", "ServerAliveCountMax=2", "-o", "LogLevel=ERROR",
             "-l", user, host,
             'cd "$HOME/www/anytoour.ru" && python3 -B -c ' + shlex.quote(source)
-            + " --remote" + (" --prices" if prices else ""),
+            + " --remote" + (" --hotels" if hotels else " --prices" if prices else ""),
         ]
         child_env = {k: v for k, v in os.environ.items() if k not in names}
         try:
             completed = subprocess.run(command, input=json.dumps(tokens), text=True,
-                                       capture_output=True, timeout=290 if prices else 110, env=child_env)
+                                       capture_output=True, timeout=290 if prices or hotels else 110, env=child_env)
         except subprocess.TimeoutExpired:
             return {"ok": False, "checks": [{"check": "ssh", "status": "ssh_timeout"}]}
         if completed.returncode and not completed.stdout.strip():
@@ -522,7 +531,9 @@ def ssh_probe():
 
 def main():
     try:
-        remote = remote_price_probe if "--prices" in sys.argv else remote_probe
+        if "--hotels" in sys.argv and "remote_hotel_probe" not in globals():
+            exec(Path(__file__).with_name("anex_hotel_match_probe.py").read_text(encoding="utf-8"), globals())
+        remote = remote_hotel_probe if "--hotels" in sys.argv else remote_price_probe if "--prices" in sys.argv else remote_probe
         report = remote(json.loads(sys.stdin.read(16_384))) if "--remote" in sys.argv else ssh_probe()
         report = clean_report(report)
     except Exception:
