@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "stage": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
+  "base_release_sha": "7e24e3df374152da5f86ecb6b716c23cbaf89b86",
+  "source_sha": "0dd4fd4e656f222bb8f75fce8e53772ea2133146",
+  "source_tree": "66071f29ad139260db6c69ef23d2d3325d2a022d",
+  "source_pr": 1441,
+  "scope": "Retire two duplicate result-card/readability families from acceptance-guards.css and one duplicate mobile lead lifecycle foundation; preserve unique declarations in the current card, selected-flow and lead-state owners.",
+  "removed": [
+    "acceptance-guards.css result-card conversion family",
+    "acceptance-guards.css result/selected readability family",
+    "lead-state.css earlier mobile lifecycle foundation"
+  ],
+  "retained": [
+    "results-cards-v2.css owns hotel identity, price context, facts, expanded-tour readability and mobile photo/fact geometry",
+    "selected-flow-v2.css owns selected-tour fact, description, section and flight-action readability",
+    "lead-state.css owns sending/success/error lifecycle and keeps the unique full-width stay-site action",
+    "remaining acceptance shell, hidden, accessibility, MRF, filter context and disclosure guards",
+    "all eight public paths and protected price, URL/payload, Tourvisor/API, lead transport/mapping and analytics contracts"
+  ],
+  "public_assets": [
+    {"path": "v2/search3-results-filters-v1.css", "before": 104004, "after": 96544, "saved": 7460, "sha256": "4d1e68eba709ee82b71151bd356f5d5d3519159aa9baecd9c34f8e2400d90a59"},
+    {"path": "v2/search3-entry-v1.css", "before": 9662, "after": 9662, "saved": 0, "sha256": "7b899275f03cdd818d34de921b0340d3840c49673d3864514ff58e15d8a402c3"},
+    {"path": "v2/search3-results-cards-v2.css", "before": 4007, "after": 6694, "saved": -2687, "sha256": "fbfdfa1e06d7b0bc153bd13582a1a74eedc91e29dc510497b0d345f63a00136a"},
+    {"path": "v2/search3-selected-flow-v2.css", "before": 6814, "after": 7491, "saved": -677, "sha256": "bff410d5571611a247a67224d468b900c46f7aca1c6ef69202724f1ae5d3d2f7"},
+    {"path": "v2/search3-results-filters-v1.js", "before": 84285, "after": 84285, "saved": 0, "sha256": "d5a348b8d4946b14639848f43ecab0a18ffd013be6486570dd5dc0e924875d01"},
+    {"path": "v2/search3-entry-v1.js", "before": 3226, "after": 3226, "saved": 0, "sha256": "05310d28246b5162ee64856de2b12b0c1bbccb8d28379f7320b16788d991c04b"},
+    {"path": "v2/search3-results-cards-v2.js", "before": 0, "after": 0, "saved": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"path": "v2/search3-selected-flow-v2.js", "before": 7882, "after": 7882, "saved": 0, "sha256": "9073087372ffaac8d0d0b04afc00a9da0f10739e9865692691727f20ea19587b"}
+  ],
+  "totals": {
+    "before": 219880,
+    "after": 215784,
+    "saved": 4096,
+    "css_before": 124487,
+    "css_after": 120391,
+    "css_saved": 4096,
+    "js_before": 95393,
+    "js_after": 95393,
+    "js_saved": 0,
+    "whole_layer_baseline": 301524,
+    "whole_layer_saved": 85740
+  },
+  "verification": {
+    "local": "One exact build/write followed by check; 16 production-presentation tests passed with one local PHP-only skip; injected-style and mobile-toolbar ownership tests passed; diff check passed.",
+    "source_ci": {
+      "security_run": 34077463937,
+      "artifact_run": 34077463934,
+      "artifact_id": 10002568100,
+      "artifact_digest": "sha256:da8d91f85e14f2f487da6d820d5a2e316fa2942bab6448e579c2e2b5d149e99d",
+      "required_passed": 2,
+      "conclusion": "success",
+      "guards": "unchanged"
+    },
+    "source_review": "Independent audits found and retained mobile facts gap/min-height and stay-site width; no other unique declarations remained in the retired families.",
+    "visual": "Deferred. No preview publication or browser claim was made for this source."
+  },
+  "preview": {
+    "published": false,
+    "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+    "checked_release_sha": "0dd4fd4e656f222bb8f75fce8e53772ea2133146",
+    "reason": "Behavior-preserving source consolidation did not justify another deployment/browser cycle by itself."
+  },
+  "deferred": [
+    "result cards at 375/430/1024/1348/1440",
+    "expanded tour facts at 375/430",
+    "selected flight typography at 375/1024",
+    "lead sending/success/error at 375/430 and boundaries 641/768/999",
+    "physical Safari"
+  ],
+  "production_updated": false,
+  "next_action": "Do not repeat acceptance card/readability or legacy mobile lifecycle families. Audit one new large active owner only with state evidence; remaining acceptance and lead-state blocks are live and not whole-file candidates."
+}

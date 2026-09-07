@@ -66,8 +66,44 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked and published source is `339a1aefa3ba87b156134da37ad2c40b7e5725f0`;
-see the newest checkpoint below. Historical publication notes remain for provenance.
+The latest checked release source is `0dd4fd4e656f222bb8f75fce8e53772ea2133146`;
+the published preview remains `4b061396bf3374e026f29943c78f90396352a135`.
+See the newest checkpoint below. Historical publication notes remain for provenance.
+
+### Latest checked candidate — acceptance card families — 2026-09-07
+
+Source #1441 / exact release `0dd4fd4e656f222bb8f75fce8e53772ea2133146`,
+tree `66071f29ad139260db6c69ef23d2d3325d2a022d`, removes two duplicate
+result-card/readability families from `acceptance-guards.css` and the earlier
+mobile lifecycle foundation from `lead-state.css`. Independent source audits
+found the unique mobile fact gap/min-height and stay-site width before deletion;
+those declarations now live in `results-cards-v2.css` and the retained current
+lead-state owner. Selected-tour typography lives in `selected-flow-v2.css`.
+The remaining acceptance and lead-state blocks are active and are not whole-file
+retirement candidates.
+
+Eight raw public assets fall **219880 → 215784 bytes (−4096)**, entirely in CSS:
+124487 → 120391. JS remains 95393 bytes. From the 301524-byte whole-layer
+baseline the checked reduction is now 85740 bytes. Paths and protected contracts
+are unchanged; this is raw byte accounting, not a transfer-size or speed claim.
+
+Both mandatory source jobs passed without guard changes: Security `34077463937`
+and exact artifact build `34077463934`; artifact `10002568100`, digest
+`sha256:da8d91f85e14f2f487da6d820d5a2e316fa2942bab6448e579c2e2b5d149e99d`.
+Local exact build/check, 16 presentation tests (one PHP-only local skip), injected
+style/toolbar ownership and diff checks passed. The successful source artifact was
+fast-forwarded into release without rebuilding.
+
+This source is **checked but not published**. The isolated preview deliberately
+remains source `4b061396`; main and production remain `fa58a0cb`. No browser or
+visual pass is claimed for the unpublished source. Card widths 375/430/1024/1348/
+1440, expanded tours 375/430, selected flight 375/1024, lifecycle states at mobile/
+tablet boundaries and physical Safari remain deferred.
+
+Next: do not repeat the retired acceptance/readability/lifecycle families. Audit a
+different large active presentation owner only with concrete state evidence; the
+remaining acceptance and lead-state blocks are live. Use one measured package,
+two mandatory jobs and an exact artifact; publish only at a justified checkpoint.
 
 ### Latest checked and published candidate — lead review owners — 2026-09-07
 

@@ -53,26 +53,26 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "Source#1437: complete lead-review.css plus the injected selected-tour-mobile lead-entry owner retired;225972→219880 raw bytes (−6092),15259 bytes saved in this run. Both required source jobs passed and the exact artifact was published through corrected control#1439.",
+    "last_material_progress": "Source#1441: two duplicate acceptance card/readability families plus the earlier mobile lead lifecycle foundation retired;219880→215784 raw bytes (−4096). Both mandatory source jobs passed; release checked at0dd4fd4e, preview intentionally remains4b061396.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit obsolete block families inside acceptance-guards.css and lead-state.css; neither file is safe for whole-file deletion. Retain lifecycle, hidden and accessibility fallbacks. Mobile375/430, tablet641/768/999, sending/success/error visuals and physical Safari remain deferred; do not repeat the retired lead/review owners.",
+    "next_action": "Do not repeat the retired acceptance card/readability or mobile lifecycle families. Remaining acceptance and lead-state blocks are live; audit one new large active presentation owner with concrete state evidence before deletion. Card375/430/1024/1348/1440, expanded tours375/430, selected flight375/1024, lifecycle375/430/641/768/999 and physical Safari remain deferred.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAD_REVIEW_LAYER_RETIREMENT",
-    "title": "Retire two lead presentation owners with compact lifecycle and layout salvage",
-    "status": "CHECKED_RELEASE_AND_PUBLISHED_DESKTOP_LEAD_SMOKE_MOBILE_DEFERRED",
+    "id": "S3_ACCEPTANCE_GUARD_FAMILY_RETIREMENT",
+    "title": "Retire duplicate acceptance card and mobile lifecycle families",
+    "status": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1437
+      1441
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "4b061396bf3374e026f29943c78f90396352a135",
-    "artifact_run": 34072173661,
-    "artifact_id": 10000822583,
-    "next_action": "Do not repeat lead-review.css or the injected lead-entry owner. Audit only proven obsolete block families in acceptance-guards.css and lead-state.css; whole-file deletion is unsafe. One measured source batch, two mandatory jobs and exact artifact reuse. Main/production remain locked; hourly development stays enabled."
+    "implementation_sha": "0dd4fd4e656f222bb8f75fce8e53772ea2133146",
+    "artifact_run": 34077463934,
+    "artifact_id": 10002568100,
+    "next_action": "Do not repeat completed acceptance/readability/lifecycle families. Select one new large active presentation owner only after state evidence; keep one measured source batch, two mandatory jobs and exact artifact reuse. Main/production remain locked; hourly development stays enabled."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -842,6 +842,48 @@
   },
   "owner_priority_source": "OWNER_PRIORITY.json",
   "phase": "ANYTOUR_DESIGN_SYSTEM_2_SEARCH_UX",
+  "latest_acceptance_guard_family_retirement": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED_VISUAL_STATES_DEFERRED",
+    "base_release_sha": "7e24e3df374152da5f86ecb6b716c23cbaf89b86",
+    "implementation_sha": "0dd4fd4e656f222bb8f75fce8e53772ea2133146",
+    "release_integration_sha": "0dd4fd4e656f222bb8f75fce8e53772ea2133146",
+    "source_tree": "66071f29ad139260db6c69ef23d2d3325d2a022d",
+    "source_pr": 1441,
+    "audit": "docs/project/search3-acceptance-guard-family-retirement.json",
+    "scope": "Two duplicate acceptance card/readability families and one earlier mobile lead lifecycle foundation retired; unique declarations retained in current card, selected-flow and lead-state owners.",
+    "ci": {
+      "security_run": 34077463937,
+      "artifact_run": 34077463934,
+      "artifact_id": 10002568100,
+      "artifact_digest": "sha256:da8d91f85e14f2f487da6d820d5a2e316fa2942bab6448e579c2e2b5d149e99d",
+      "required_passed": 2,
+      "conclusion": "success",
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
+    },
+    "public_assets": {
+      "css_bytes": 120391,
+      "js_bytes": 95393,
+      "total_bytes": 215784,
+      "css_lines": 4,
+      "js_lines": 3,
+      "total_lines": 7,
+      "scope": "Eight public paths, raw uncompressed bytes; no transfer-size or speed claim."
+    },
+    "package_delta": {"bytes": -4096, "css_bytes": -4096, "js_bytes": 0},
+    "continuation_total": {"baseline_bytes": 301524, "after_bytes": 215784, "saved_bytes": 85740},
+    "preview": {
+      "published": false,
+      "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
+      "checked_release_sha": "0dd4fd4e656f222bb8f75fce8e53772ea2133146"
+    },
+    "visual_verification": {
+      "status": "DEFERRED_NOT_RUN_FOR_UNPUBLISHED_SOURCE",
+      "deferred": ["cards375/430/1024/1348/1440", "expanded tours375/430", "selected flight375/1024", "lead lifecycle375/430/641/768/999", "physical Safari"]
+    },
+    "production_updated": false,
+    "next_action": "Remaining acceptance and lead-state blocks are live. Audit a different large owner with state evidence; do not repeat these families."
+  },
   "latest_lead_review_retirement": {
     "stage": "CHECKED_RELEASE_AND_PUBLISHED_DESKTOP_LEAD_SMOKE_MOBILE_DEFERRED",
     "base_release_sha": "3bb780783bd0ae1698b631c8fafdf6d3c3656a05",
