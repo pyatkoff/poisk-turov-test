@@ -20,7 +20,9 @@ async function inspect(browser, width, previous) {
   page.on('pageerror', error => errors.push(String(error)));
   await page.route('**/*', route => {
     const request = route.request(), url = new URL(request.url());
-    if (url.origin !== new URL(base).origin || request.method() !== 'GET' || /\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) return route.abort();
+    if (url.origin !== new URL(base).origin || request.method() !== 'GET') return route.abort();
+    if (/\/(?:api[^/]*)\.php$/.test(url.pathname) && url.searchParams.get('action') === 'meals') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([{ id: 'BB', russianName: 'Завтраки' }, { id: 'AI', russianName: 'Всё включено' }]) });
+    if (/\/(?:api[^/]*|lead[^/]*)\.php$/.test(url.pathname)) return route.abort();
     const name = url.pathname.split('/').pop();
     const type = name === 'bundle-v1.php' ? url.searchParams.get('type') : name.endsWith('.css') ? 'css' : 'js';
     const old = oldAssets.get(name) || (name === 'bundle-v1.php' && oldBundles[type]);
@@ -37,7 +39,7 @@ async function inspect(browser, width, previous) {
   }, previous);
   const emit = (name, detail = {}) => page.evaluate(({ name, detail }) => window.dispatchEvent(new CustomEvent(name, { detail })), { name, detail });
   try {
-    const response = await page.goto(base + '/poisk-turov/', { waitUntil: 'domcontentloaded' });
+    const response = await page.goto(base + '/poisk-turov/?food=AI', { waitUntil: 'domcontentloaded' });
     assert.equal(response.status(), 200);
     await page.waitForFunction(() => window.Search3CandidateEntryV1);
     await page.waitForTimeout(400); // Drain the existing form's bounded settle timers.
@@ -58,6 +60,22 @@ async function inspect(browser, width, previous) {
     await page.waitForTimeout(400);
     const resized = await state();
     assert.ok(resized.visible && !resized.overflow, 'crossing the collapse breakpoint restores a usable form');
+    if (!previous) {
+      await page.locator('[name="food"]').dispatchEvent('focus');
+      await page.waitForFunction(() => document.querySelector('[name="food"]').value === 'AI');
+      const meal = await page.locator('[name="food"]').evaluate(select => ({
+        value: select.value,
+        options: [...select.options].map(option => option.value),
+        ariaHidden: select.getAttribute('aria-hidden'),
+        tabIndex: select.tabIndex,
+        quickChoices: select.closest('.field').querySelectorAll('.meal-quick').length
+      }));
+      assert.deepEqual(meal.options, ['', 'BB', 'AI'], 'current catalog owner supplies meal choices');
+      assert.equal(meal.value, 'AI', 'food URL value is restored after async catalogue loading');
+      assert.equal(meal.ariaHidden, null, 'native meal select remains accessible');
+      assert.ok(meal.tabIndex >= 0, 'native meal select remains keyboard reachable');
+      assert.equal(meal.quickChoices, 0, 'retired quick-choice surface is absent');
+    }
     assert.deepEqual(errors, [], 'no browser exceptions');
     return { initial, started, validation, dirty, resized };
   } finally { await page.close(); }
