@@ -87,7 +87,7 @@ separate cascade evidence.
 | --- | --- |
 | Primary form and field placement | `behavior/search-form.js` |
 | Responsive entry and existing price-calendar adapter | `behavior/search-form/entry-presentation.js` inside `behavior/search-form.js`, `styles/entry-v1.css` |
-| Desktop local result-filter rail | `behavior/filter-rail.js`, `styles/results-layout.css` |
+| Desktop local result-filter rail | Existing `v2/ds2-results-filters.js`, `styles/results-layout.css`; `behavior/filter-rail.js` is the zero-result bridge |
 | Mobile toolbar shell and native sort proxy | `behavior/results-presentation.js`, `styles/mobile-results-toolbar.css` |
 | Canonical mobile filter bar and sheet | Existing `v2/mobile-results-filters-v1.js`; Search3 reuses `.mrf-bar` and `.mrf-sheet`, not a second drawer |
 | Results header and summary | `behavior/results-presentation.js`, `styles/results-layout.css`, `styles/entry-v1.css` |
@@ -269,11 +269,12 @@ functions inside that same IIFE. One local setter preserves the original target,
 property, value, important priority and operation order. The existing summary
 regression executes the compiled owner and covers all eight layout states.
 
-The desktop `filter-rail.js` keeps shared state, filtering and event handlers.
-Private `filter-rail/availability.js` and `filter-rail/render.js` retain complete
-function groups in their original IIFE positions. Sea options share one local
-markup function. The compiled regression checks exact HTML/data/event traces
-against the preceding bundle; no runtime loader or public asset was added.
+The already loaded `v2/ds2-results-filters.js` is the single desktop local-filter
+owner. Search3's `filter-rail.js` retains only the local zero-result shell bridge;
+`filter-rail/availability.js` and `filter-rail/render.js` are provenance-only
+manifest slots. The results-layout owner styles the live DS2 budget, meal,
+category, rating and sea-distance controls. Presentation for the retired Search3
+section, radio and edit-row markup is intentionally absent.
 
 `search-form.js` retains initialization, field references and the existing form
 lifecycle. Its `search-form/primary-controls.js` and `secondary-controls.js` parts

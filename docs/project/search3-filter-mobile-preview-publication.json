@@ -30,6 +30,14 @@
     "lead_submitted": false
   },
   "publication": "PUBLISHED_ISOLATED_PREVIEW_NOT_PRODUCTION",
+  "checked_release_after_publication": {
+    "release_sha": "04f726371d3e62913ec734df99ed29b806ae2091",
+    "source_pr": 1490,
+    "source_sha": "b71d99e6dae73e406190c9d4cea64acbf1f3f2db",
+    "public_asset_bytes": 145660,
+    "published_preview_asset_bytes": 147378,
+    "boundary": "The later release removes 1718 bytes of unreachable CSS and is checked but not published. The isolated preview remains exact source c9ba7952."
+  },
   "deferred": ["physical Safari", "device safe-area"],
   "production_sha": "fa58a0cba6dcfc8624d98c20d64fa06330eae309"
 }

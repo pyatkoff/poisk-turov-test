@@ -1951,3 +1951,23 @@ Noindex, preview lead HTTP 403, Metrika counter 0, internal PHP denial, HTTPS-to
 Bounded live check: Moscow→Turkey completed with 100 hotels / 445 tours. The desktop budget rail reduced visible hotels 100→3 at 80000 RUB and Reset restored 100. Supplier-incomplete meal/category/rating/sea facets stayed hidden by the existing completeness guard; `Изменить поиск` exposed category, rating, meal, concrete hotel and direct-flight parameters. No lead was submitted. Physical Safari and device safe-area remain deferred.
 
 The byte-only stage and its accumulated preview acceptance are complete. Next switch priority to selling search UX and a lean Search3 base bundle; do not restore the duplicate rail or remove active `results-tablet-layout.css`. Audit: `docs/project/search3-filter-mobile-preview-publication.json`.
+
+## S3_RETIRED_FILTER_PRESENTATION — checked release, 2026-09-07
+
+Source PR #1490 / `b71d99e6dae73e406190c9d4cea64acbf1f3f2db`; checked release `04f726371d3e62913ec734df99ed29b806ae2091`. After DS2 became the sole desktop filter owner, the remaining unreachable Search3 filter-section, edit-row, radio-skin and empty filter-subtitle families were removed. DS2 budget/meal/category/rating/sea/reset/count, the mobile filter, zero-result bridge and all protected business contracts remain.
+
+Eight public assets are **147378 → 145660 raw bytes (−1718 CSS bytes)**. Seven assets are byte-identical. Security `34143403167` and exact artifact/results-geometry run `34143403145` succeeded. Reusable artifact `10026777435`, digest `sha256:cae31b2ff8e194bacb1caa1e228a46912d39554a4b8d14f7d43181739e8715c6`; results geometry artifact `10026776947`, digest `sha256:60579f3eb925391942354f73df6690fb7173b85794104d661beccc37a1ef144f`.
+
+Status boundary: checked release only. The isolated preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3` at 147378 bytes; the later 1718-byte removal is unreachable CSS and was not republished. `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical Safari/safe-area remains deferred. Audit: `docs/project/search3-retired-filter-presentation.json`.
+
+Next: the byte-only stage is closed. Do not open micro-reduction PRs, restore the duplicate rail or remove active `results-tablet-layout.css`. Begin the selling-search UX stage and lean Search3 base bundle; production still requires explicit visual approval.
+
+## S3_MOBILE_SELECTED_CTA_SALES_REPAIR — checked release, 2026-09-07
+
+Source PR #1492 / `1afd5c5d0866a26284be015c2cfc70e2818af534`; checked release `5b491ce0d0a05d7ee7a6a815564b529fa89589d3`. The first conversion-critical product repair closes the confirmed 375px selected-tour defect where the fixed mobile CTA had no height owner and could collapse to roughly 11px. The current `selected-flow-v2.css` owner now gives the existing `<=640px` action a 48px minimum height.
+
+Eight public assets are **145660 → 145676 raw bytes (+16 CSS bytes)**. This is an intentional accessibility/conversion repair, not a size saving. Seven assets are byte-identical. Security `34144224022` and exact artifact/selected-geometry run `34144224020` succeeded; the ready-for-review repeat `34144352197` also succeeded. Reusable artifact `10027068097`, digest `sha256:c7e1ce6a777179518a8e0aad25f3d1f9b49a519ad4f5c81df24c4bc274e5b957`; selected geometry artifact `10027067465`, digest `sha256:ad41486e5ef0fd7125712838adb7b9453fbb89572c956daf657006523bab0b55`.
+
+The browser fixture requires the 375px CTA to be at least 48px and permits change only inside that mobile bar; the rest of detail/review/lead geometry at 375/760/1000/1440 remains equal, with no overflow or lead submission. The change is checked release only. Preview remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; `main` and production remain `fa58a0cba6dcfc8624d98c20d64fa06330eae309`. Physical iPhone/Safari safe-area and live current-source journey remain deferred.
+
+Next: audit search-form completion friction and local-filter feedback using the current single-owner architecture. Accumulate the next product batch before preview publication; do not return to byte-only micro-PRs. Plan: `docs/project/search3-size-and-sales-plan.md`. Audit: `docs/project/search3-mobile-selected-cta.json`.
