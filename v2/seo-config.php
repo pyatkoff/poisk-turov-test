@@ -26,19 +26,29 @@ function v2_seo_request_path(): string
 
 function v2_seo_indexable(array $siteParams = []): bool
 {
-    if (!v2_seo_is_anytoour_host() || empty($siteParams['SEO_INDEXABLE'])) {
+    if (!v2_seo_is_anytoour_host()) {
         return false;
     }
 
-    // A global launch flag alone must never open the whole site. Indexation is
-    // opt-in per clean path so the first SEO release can be rolled out as a
-    // narrow, reversible slice.
+    $current = v2_seo_request_path();
+
+    // The production home and canonical search page are permanent public
+    // entry points. Never let a rollout allowlist accidentally noindex them.
+    if ($current === '/' || $current === '/poisk-turov/') {
+        return true;
+    }
+
+    if (empty($siteParams['SEO_INDEXABLE'])) {
+        return false;
+    }
+
+    // Destination SEO routes remain exact-path controlled so review-only and
+    // hotel-tour routes cannot become indexable just because a global flag is on.
     $allowed = $siteParams['SEO_INDEXABLE_PATHS'] ?? [];
     if (!is_array($allowed) || $allowed === []) {
         return false;
     }
 
-    $current = v2_seo_request_path();
     foreach ($allowed as $path) {
         if (!is_string($path) || trim($path) === '') continue;
         if (v2_seo_normalize_path($path) === $current) return true;
