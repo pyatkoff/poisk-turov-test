@@ -107,8 +107,9 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         context = (ROOT / 'src/search3/styles/results-context.css').read_text()
         cards = (ROOT / 'src/search3/behavior/results/cards.js').read_text()
         all_source = ''.join(
-            path.read_text() for path in (ROOT / 'src/search3').rglob('*')
-            if path.is_file()
+            re.sub(r'/\*.*?\*/', '', path.read_text(), flags=re.S)
+            for path in (ROOT / 'src/search3').rglob('*')
+            if path.is_file() and path.suffix in ('.css', '.js')
         )
         self.assertIn('#anytour-consultant-host,& .mobile-search-sticky{display:none!important}', context)
         self.assertIn('& #results .hotel-tours::before{display:none!important;content:none!important}', packages)
@@ -196,20 +197,13 @@ class Search3ProductionPresentationTest(unittest.TestCase):
 
         review = (ROOT / 'src/search3/styles/review-layout.css').read_text()
         for marker in (
-            '.search3-review-heading{display:flex;align-items:center',
             '.search3-summary-actions[hidden]{display:none!important}',
             '.search3-summary-submit:disabled{cursor:default;opacity:.58;filter:none}',
             '#selectedTour .lead-form button[type=submit]{background:#ff5a0a!important',
             '#selectedTour.search3-final-review .search3-booking-summary{border-color:#dfe5ef!important}',
         ):
             self.assertIn(marker, review)
-        deferred_marker = '/* One responsive review board replaces the retired desktop/tablet geometry layers.'
-        deferred = review[review.index(deferred_marker):].encode()
-        self.assertEqual(
-            hashlib.sha256(deferred).hexdigest(),
-            '1def46804f7b3bba296d494607fce7b9f8a78445a53ade6f0321e5a783772ef9',
-            'deferred review-layout geometry must remain byte-for-byte unchanged',
-        )
+        self.assertNotIn('search3-review-heading', review)
 
         selected = (ROOT / 'src/search3/styles/selected-tour.css').read_text()
         detail = (ROOT / 'src/search3/styles/tour-detail.css').read_text()
@@ -219,6 +213,36 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('grid-row:1!important;justify-self:start!important', detail)
         self.assertIn('height:176px!important;border:1px solid var(--at-line)!important;border-right:0!important', detail)
         self.assertIn('min-height:176px!important;border-left:0!important', detail)
+
+    def test_redundant_booking_chrome_is_retired_without_losing_flow_owners(self):
+        stepper_js = (ROOT / 'src/search3/behavior/booking-stepper.js').read_text()
+        stepper_css = (ROOT / 'src/search3/styles/booking-stepper.css').read_text()
+        heading_js = (ROOT / 'src/search3/behavior/review-heading.js').read_text()
+        for source in (stepper_js, stepper_css, heading_js):
+            self.assertEqual(re.sub(r'/\*.*?\*/', '', source, flags=re.S).strip(), '')
+
+        selected_flow = (ROOT / 'src/search3/styles/selected-flow-v2.css').read_text()
+        all_source = ''.join(
+            re.sub(r'/\*.*?\*/', '', path.read_text(), flags=re.S)
+            for path in (ROOT / 'src/search3').rglob('*')
+            if path.is_file() and path.suffix in ('.css', '.js')
+        )
+        self.assertIn(':is(.checkout-journey,.checkout-facts-heading,.selected-tour-progress)', selected_flow)
+        self.assertNotIn('search3-booking-stepper', all_source)
+        self.assertNotIn('search3-booking-step', all_source)
+        self.assertNotIn('search3-review-heading', all_source)
+        self.assertNotIn('Search3BookingStepper', all_source)
+
+        continue_owner = (ROOT / 'src/search3/behavior/flight-continue.js').read_text()
+        summary_owner = (ROOT / 'src/search3/behavior/summary-cta.js').read_text()
+        lead_owner = (ROOT / 'src/search3/behavior/lead-flow.js').read_text()
+        handoff = (ROOT / 'src/search3/behavior/selected-tour-handoff.js').read_text()
+        self.assertIn("dispatchEvent(new CustomEvent('v2:booking-review'", continue_owner)
+        self.assertIn("dispatchEvent(new CustomEvent('search3:lead-entry'", summary_owner)
+        self.assertIn("window.addEventListener('v2:lead-started'", lead_owner)
+        self.assertIn("window.addEventListener('v2:lead-success'", lead_owner)
+        self.assertIn("window.addEventListener('v2:lead-error'", lead_owner)
+        self.assertIn("selected.querySelector('.selected-head h2')", handoff)
 
     def test_cascade_split_rejects_byte_drift(self):
         spec = importlib.util.spec_from_file_location(

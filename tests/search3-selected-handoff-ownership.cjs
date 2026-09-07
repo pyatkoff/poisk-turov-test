@@ -29,7 +29,6 @@ const selected = {
   firstElementChild: loadingChild,
   querySelector(selector) {
     if (selector === '.selected-head h2') return heading;
-    if (selector === '.search3-review-heading h2') return null;
     return null;
   },
   getAttribute(name) { return attributes.has(name) ? attributes.get(name) : null; },

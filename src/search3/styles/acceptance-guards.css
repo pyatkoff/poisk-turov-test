@@ -41,14 +41,7 @@ html body.search3-candidate.search3-results-active.search3-has-results #status:h
 /* Candidate accessibility guard: keep every hotel disclosure a 44px touch target. */
 html body.search3-candidate.search3-results-active:not(.search3-hotel-tours-open) #results .search3-show-tours{min-height:44px!important;font-size:14px!important}
 
-/* Keep the desktop booking steps inside the main column, clear of the sticky total rail. */
-@media(min-width:1000px){
-  html body.search3-candidate.search3-selected-open #selectedTour.selected-tour:not(.search3-final-review) > .search3-booking-stepper{
-    grid-column:1/3!important;
-  }
-}
-
-/* Keep the selected-tour view focused on its booking steps. */
+/* Keep the selected-tour view focused on its booking flow. */
 body.search3-candidate.search3-selected-open .ds2-site-footer{display:none!important}
 /* Keep results mounted for Back, but remove them from layout and focus order
    throughout flight, review and lead stages. selectedTour is a sibling. */

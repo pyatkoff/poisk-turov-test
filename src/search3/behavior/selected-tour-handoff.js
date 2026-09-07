@@ -29,7 +29,7 @@
   }
 
   function prepareSelectedContext() {
-    var heading = selected.querySelector('.selected-head h2') || selected.querySelector('.search3-review-heading h2');
+    var heading = selected.querySelector('.selected-head h2');
     if (!heading) return null;
     if (!heading.id) heading.id = 'search3-selected-tour-heading';
     heading.setAttribute('tabindex', '-1');

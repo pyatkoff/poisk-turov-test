@@ -1,6 +1,6 @@
 /* Search3 selected/final/lead presentation overlay. Preview only. */
 /* The existing checkout decorator can reinsert these after a phase change. */
-html body.search3-candidate #selectedTour :is(.checkout-journey,.checkout-facts-heading){
+html body.search3-candidate #selectedTour :is(.checkout-journey,.checkout-facts-heading,.selected-tour-progress){
   display: none !important;
 }
 
@@ -57,10 +57,6 @@ body.search3-candidate{
   outline-offset: 3px;
 }
 
-& .search3-booking-stepper {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 & .flight-variants[data-search3-flight-disclosure] > .flight-variant[hidden] {
   display: none !important;
 }
@@ -108,23 +104,6 @@ body.search3-candidate{
 }
 
 @media (max-width: 640px) {
-  html body.search3-candidate{
-& #selectedTour .search3-booking-step {
-    flex-direction: column;
-    gap: 5px;
-    min-height: 44px;
-    font-size: 12px;
-  }
-
-  & #selectedTour .search3-booking-step b {
-    display: block;
-    padding: 0;
-    font-size: 12px;
-    white-space: normal;
-    overflow: visible;
-  }
-}
-
   body.search3-candidate{
 & #selectedTour.search3-flight-fallback .tour-flights .selected-loading {
     margin-top: 8px !important;
@@ -156,7 +135,7 @@ body.search3-candidate{
 /* Readable conditions and summaries throughout flight/review/application states. */
 html body.search3-candidate{
 & #selectedTour {
-& :is(.section-heading span,.selected-head p,.flight-segment-title span,.flight-route span,.flight-baggage,.flight-fuel,.facts span,.search3-final-services span,.search3-final-tourists span,.search3-final-section__heading span,.search3-booking-summary dt,.search3-booking-summary__place,.search3-booking-summary__price-note,.search3-lead-protection,.lead-selection-summary small,.lead-phone-hint,.search3-booking-step,.search3-booking-step b,.back-results) {font-size:12px!important;line-height:1.45!important}
+& :is(.section-heading span,.selected-head p,.flight-segment-title span,.flight-route span,.flight-baggage,.flight-fuel,.facts span,.search3-final-services span,.search3-final-tourists span,.search3-final-section__heading span,.search3-booking-summary dt,.search3-booking-summary__place,.search3-booking-summary__price-note,.search3-lead-protection,.lead-selection-summary small,.lead-phone-hint,.back-results) {font-size:12px!important;line-height:1.45!important}
 & :is(.flight-route b,.flight-choice>span,.flight-choice-summary,.flight-choice-tradeoffs span,.facts b,.search3-final-services strong,.search3-final-tourists strong,.search3-booking-summary dd,.lead-selection-summary b,.lead-form label,.lead-trust-note) {font-size:14px!important;line-height:1.45!important;white-space:normal!important;overflow-wrap:anywhere}
 & :is(.search3-summary-submit,.search3-flight-continue button,.lead-form button[type=submit]) {font-size:15px!important;min-height:48px!important}
 & .lead-form input[type=tel] {font-size:16px!important}
