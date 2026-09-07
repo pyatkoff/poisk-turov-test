@@ -13,6 +13,7 @@ let layoutWrites = 0;
 let layoutValue = '';
 const timeoutDelays = [];
 const windowEvents = [];
+const handlers = new Map(), formClasses = new Set();
 const formEvents = [];
 const mobileEvents = [];
 
@@ -55,6 +56,8 @@ Object.defineProperty(dataset, 'search3EntryLayout', {
   set(value) { layoutValue = value; layoutWrites += 1; }
 });
 const form = {
+  classList: { add(name) { formClasses.add(name); }, remove(name) { formClasses.delete(name); } },
+  scrollIntoView() {},
   dataset,
   elements: {
     region: { closest() { return region; } }
@@ -104,7 +107,7 @@ const mobile = {
 };
 const window = {
   matchMedia() { return mobile; },
-  addEventListener(type) { windowEvents.push(type); },
+  addEventListener(type, handler) { windowEvents.push(type); handlers.set(type, handler); },
   setTimeout(callback, delay) { timeoutDelays.push(delay); return timeoutDelays.length; },
   clearTimeout() {}
 };
@@ -128,9 +131,9 @@ vm.runInNewContext(
 const api = window.Search3CandidateEntryV1;
 assert.ok(api, 'entry adapter initialized');
 assert.deepEqual(timeoutDelays, [0, 40, 160, 320], 'initial settle schedule is preserved');
-assert.deepEqual(windowEvents, ['v2:search-reset', 'v2:results-rendered', 'v2:search-complete']);
+assert.deepEqual(windowEvents, ['v2:search-started', 'v2:search-dirty', 'v2:search-error', 'v2:search-reset', 'v2:results-rendered', 'v2:search-complete']);
 assert.deepEqual(formEvents, ['change']);
-assert.deepEqual(mobileEvents, ['change']);
+assert.deepEqual(mobileEvents, ['change', 'change']);
 assert.match(source, /mobile\.addListener\(settle\)/, 'legacy matchMedia listener fallback is preserved');
 
 api.sync();
@@ -159,4 +162,16 @@ api.sync();
 assert.equal(layoutValue, 'mobile-compact');
 assert.equal(layoutWrites, 2, 'real desktop-to-mobile transition writes layout once');
 
-console.log('PASS: entry summary, layout and price calendar sync avoid duplicate DOM work');
+handlers.get('v2:search-started')();
+assert.ok(formClasses.has('mobile-search-collapsed'));
+handlers.get('v2:search-error')({detail:{phase:'network'}});
+assert.ok(formClasses.has('mobile-search-collapsed'), 'network error keeps the existing status/retry presentation');
+handlers.get('v2:search-error')({detail:{phase:'validation'}});
+assert.ok(!formClasses.has('mobile-search-collapsed'), 'validation restores editable form');
+handlers.get('v2:search-started')();
+handlers.get('v2:search-dirty')();
+assert.ok(!formClasses.has('mobile-search-collapsed'), 'dirty parameters restore editable form');
+mobile.matches = false;
+handlers.get('v2:search-started')();
+assert.ok(!formClasses.has('mobile-search-collapsed'), 'desktop does not collapse');
+console.log('PASS: entry summary/calendar and retained mobile collapse/recovery');
