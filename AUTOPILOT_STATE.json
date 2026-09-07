@@ -53,29 +53,27 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1458 retired final CSS injector and repaired four presentation boundaries. #1461 fixed live review cascade collision.166978→166271 bytes(−707 net); final source/artifact CI green and exact preview b9445bc3 published through1462, desktop review rechecked.",
+    "last_material_progress": "#1464 retires standalone booking-services and lead-note owners.166271→165508 raw bytes(−763 JS);11 settled markup snapshots match, source Security/artifact CI pass. Release only; preview remains b9445bc3.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Retire selected-tour.css donor (6002 emitted bytes) only after current-source detail/review/lead geometry at375/760/1000, preserving shared shell/back/photo/facts/section/fixed-CTA primitives. Current browser lacks viewport resize; do not substitute desktop evidence. Independently audit other presentation owners if that prerequisite remains unavailable; do not repeat completed injectors or start micro-deploy loops.",
+    "next_action": "Do not repeat final-sections/lead-note owner retirement. Keep selected-tour.css until current-source detail/review/lead geometry at375/760/1000 is available; the supported cloud browser still has no viewport resize. Audit the remaining results-layout.css card family against results-cards-v2.css for a substantial owner batch, preserving expanded-card/mobile-fact boundaries; do not claim or publish uncertain visual removals. Accumulate technical reductions and reuse the checked source artifact at a justified publication.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_REVIEW_INJECTOR_BOUNDARY_REPAIR",
-    "title": "Retire the final CSS injector and repair presentation boundaries",
-    "status": "PUBLISHED_DESKTOP_REVIEW_REPAIRED_RESPONSIVE_DEFERRED",
+    "id": "S3_BOOKING_SERVICES_OWNER_CONSOLIDATION",
+    "title": "Consolidate booking services and lead-note event owners",
+    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1458,
-      1461
+      1464
     ],
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-    "artifact_run": 34113092204,
-    "artifact_id": 10015159660,
-    "next_action": "Retire selected-tour.css donor (6002 emitted bytes) only after current-source detail/review/lead geometry at375/760/1000, preserving shared shell/back/photo/facts/section/fixed-CTA primitives. Current browser lacks viewport resize; do not substitute desktop evidence. Independently audit other presentation owners if that prerequisite remains unavailable; do not repeat completed injectors or start micro-deploy loops.",
-    "deploy_pr": 1462,
-    "deploy_run": 34113272969
+    "implementation_sha": "337955cb77977508da3f40df23ef9c926dd2dd1a",
+    "artifact_run": 34115679887,
+    "artifact_id": 10016141814,
+    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "next_action": "Do not repeat final-sections/lead-note owner retirement. Keep selected-tour.css until current-source detail/review/lead geometry at375/760/1000 is available; the supported cloud browser still has no viewport resize. Audit the remaining results-layout.css card family against results-cards-v2.css for a substantial owner batch, preserving expanded-card/mobile-fact boundaries; do not claim or publish uncertain visual removals. Accumulate technical reductions and reuse the checked source artifact at a justified publication."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -878,10 +876,20 @@
       "artifact_rebuilt_on_release": false,
       "artifact_rebuilt_for_docs": false,
       "full_responsive_site_seo": "deferred, not passed"
+    },
+    "booking_owner_consolidation": {
+      "security_run": 34115679894,
+      "artifact_run": 34115679887,
+      "artifact_id": 10016141814,
+      "artifact_digest": "sha256:f9ecccf03ccaaaba15612b46df347712b6e616a4fd88d4f6d5de3ecc941dd914",
+      "conclusion": "success",
+      "required_passed": 2,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
     }
   },
-  "last_verified_commit": "b9445bc3c8aa0713b148241bcddeefdf07576079",
-  "last_verified_commit_scope": "Exact source Security/artifact and isolated publication passed; corrected desktop review22px/one-column title/note/CTA and eight cache keys checked. Mobile/tablet/lead lifecycle/Safari explicitly deferred.",
+  "last_verified_commit": "337955cb77977508da3f40df23ef9c926dd2dd1a",
+  "last_verified_commit_scope": "Security and exact artifact CI passed including PHP/path/presentation/isolation. Eleven compiled markup/copy/layout snapshots match prior published source; browser geometry/lifecycle and physical Safari deferred. No publication.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -939,8 +947,16 @@
       "total_bytes": 195944,
       "scope": "Eight public paths, raw uncompressed bytes; no transfer-size or speed claim."
     },
-    "package_delta": {"bytes": -3796, "css_bytes": -1430, "js_bytes": -2366},
-    "continuation_total": {"baseline_bytes": 301524, "after_bytes": 195944, "saved_bytes": 105580},
+    "package_delta": {
+      "bytes": -3796,
+      "css_bytes": -1430,
+      "js_bytes": -2366
+    },
+    "continuation_total": {
+      "baseline_bytes": 301524,
+      "after_bytes": 195944,
+      "saved_bytes": 105580
+    },
     "preview": {
       "published": false,
       "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
@@ -984,8 +1000,16 @@
       "total_bytes": 199740,
       "scope": "Eight public paths, raw uncompressed bytes; no transfer-size or speed claim."
     },
-    "package_delta": {"bytes": -3964, "css_bytes": -2219, "js_bytes": -1745},
-    "continuation_total": {"baseline_bytes": 301524, "after_bytes": 199740, "saved_bytes": 101784},
+    "package_delta": {
+      "bytes": -3964,
+      "css_bytes": -2219,
+      "js_bytes": -1745
+    },
+    "continuation_total": {
+      "baseline_bytes": 301524,
+      "after_bytes": 199740,
+      "saved_bytes": 101784
+    },
     "preview": {
       "published": false,
       "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
@@ -1028,8 +1052,16 @@
       "total_bytes": 203704,
       "scope": "Eight public paths, raw uncompressed bytes; no transfer-size or speed claim."
     },
-    "package_delta": {"bytes": -6049, "css_bytes": -1808, "js_bytes": -4241},
-    "continuation_total": {"baseline_bytes": 301524, "after_bytes": 203704, "saved_bytes": 97820},
+    "package_delta": {
+      "bytes": -6049,
+      "css_bytes": -1808,
+      "js_bytes": -4241
+    },
+    "continuation_total": {
+      "baseline_bytes": 301524,
+      "after_bytes": 203704,
+      "saved_bytes": 97820
+    },
     "preview": {
       "published": false,
       "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
@@ -1075,8 +1107,16 @@
       "total_lines": 7,
       "scope": "Eight public paths, raw uncompressed bytes; no transfer-size or speed claim."
     },
-    "package_delta": {"bytes": -4096, "css_bytes": -4096, "js_bytes": 0},
-    "continuation_total": {"baseline_bytes": 301524, "after_bytes": 215784, "saved_bytes": 85740},
+    "package_delta": {
+      "bytes": -4096,
+      "css_bytes": -4096,
+      "js_bytes": 0
+    },
+    "continuation_total": {
+      "baseline_bytes": 301524,
+      "after_bytes": 215784,
+      "saved_bytes": 85740
+    },
     "preview": {
       "published": false,
       "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
@@ -1084,7 +1124,13 @@
     },
     "visual_verification": {
       "status": "DEFERRED_NOT_RUN_FOR_UNPUBLISHED_SOURCE",
-      "deferred": ["cards375/430/1024/1348/1440", "expanded tours375/430", "selected flight375/1024", "lead lifecycle375/430/641/768/999", "physical Safari"]
+      "deferred": [
+        "cards375/430/1024/1348/1440",
+        "expanded tours375/430",
+        "selected flight375/1024",
+        "lead lifecycle375/430/641/768/999",
+        "physical Safari"
+      ]
     },
     "production_updated": false,
     "next_action": "Accumulate the proven 1064-public-byte results-context.css block set with another substantial safe removal. Whole-file results-context, results-layout and tour-detail retirement is unsafe without broad state salvage/evidence."
@@ -1203,7 +1249,11 @@
       "total_lines": 7,
       "scope": "Eight public paths, raw uncompressed bytes. JS includes embedded private CSS; no speed claim."
     },
-    "run_delta": {"bytes": -9167, "css_bytes": -7754, "js_bytes": -1413},
+    "run_delta": {
+      "bytes": -9167,
+      "css_bytes": -7754,
+      "js_bytes": -1413
+    },
     "continuation_total": {
       "baseline_bytes": 301524,
       "after_bytes": 225972,
@@ -1228,101 +1278,64 @@
       "production_fingerprints": "unchanged"
     },
     "visual_verification": {
-      "viewport": [1363, 936],
+      "viewport": [
+        1363,
+        936
+      ],
       "scope": "Initial published search page only: no overflow; eight cache keys exact; no Metrika/consultant script.",
       "real_lead_submitted": false,
-      "deferred": ["mobile final review/lead at375/430", "tablet flight choices at641/768/999", "physical Safari", "full matrix"]
+      "deferred": [
+        "mobile final review/lead at375/430",
+        "tablet flight choices at641/768/999",
+        "physical Safari",
+        "full matrix"
+      ]
     },
     "production_updated": false,
     "next_action": "Audit lead-review versus lead-state; delete only after sending/success/error and intermediate-width evidence."
   },
   "presentation_refactor_checkpoint": {
-    "stage": "CHECKED_AND_PUBLISHED_CORRECTED_DESKTOP_MOBILE_DEFERRED",
-    "baseline": "cca1d56605db6260071dfe2ff24ed8f46b437b21",
-    "implementation_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
-    "release_integration_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
-    "audit": "docs/project/search3-mobile-card-flight-retirement.json",
-    "scope": "Three substantial obsolete presentation block families retired in one batch; retained active lifecycle owners are not claimed fully retired.",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
+    "implementation_sha": "337955cb77977508da3f40df23ef9c926dd2dd1a",
+    "release_integration_sha": "337955cb77977508da3f40df23ef9c926dd2dd1a",
+    "audit": "docs/project/search3-booking-owner-consolidation.json",
+    "scope": "Retire standalone final-sections state/formatters/listeners into booking summary and standalone lead-note event tasks into summary CTA; markup and protected contracts retained.",
     "ci": {
-      "security_run": 34069311162,
-      "artifact_run": 34069311068,
-      "artifact_id": 9999945885,
-      "artifact_digest": "sha256:494c414b54be8320a3a3120972f11553b763f29ff4f936feca1618dcefc570ee",
-      "archive_sha256": "c400293d3d02a5cd4fb0ee654c861d271e24033c852c4093b54b391525ab5b9a",
-      "manifest_sha256": "2329fea78d1113abe4dc5893c700f98541145b595ec7b07b9107a14066e32e2e",
-      "payload_sha256": "62c6191b5ab628a24b05e112df10e96ee942174778f64c1797073f014b892376",
+      "security_run": 34115679894,
+      "artifact_run": 34115679887,
+      "artifact_id": 10016141814,
+      "artifact_digest": "sha256:f9ecccf03ccaaaba15612b46df347712b6e616a4fd88d4f6d5de3ecc941dd914",
       "conclusion": "success",
-      "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
-      "source_pr": 1432,
       "required_passed": 2,
       "artifact_rebuilt_on_release": false,
-      "artifact_rebuilt_for_docs": false,
-      "preview_published": true,
-      "full_responsive_site_seo": "deferred, not passed"
+      "artifact_rebuilt_for_docs": false
     },
     "public_assets": {
-      "css_bytes": 136248,
-      "js_bytes": 98891,
-      "total_bytes": 235139,
-      "css_lines": 4,
-      "js_lines": 3,
-      "total_lines": 7,
-      "scope": "Eight public paths, raw uncompressed bytes. JS includes embedded private CSS; no page speed claim."
+      "css_bytes": 94644,
+      "js_bytes": 70864,
+      "total_bytes": 165508,
+      "scope": "Eight public paths, raw bytes; seven assets identical, no page-speed claim."
     },
     "run_delta": {
-      "bytes": -10352,
-      "css_bytes": -6053,
-      "js_bytes": -4299
+      "bytes": -763,
+      "css_bytes": 0,
+      "js_bytes": -763
     },
     "continuation_total": {
       "baseline_bytes": 301524,
-      "after_bytes": 235139,
-      "saved_bytes": 66385,
-      "retired_layers": 18,
-      "retired_css_layers": 17,
-      "retired_js_owners": 1,
-      "additional_retired_block_families": 3
+      "after_bytes": 165508,
+      "saved_bytes": 136016
     },
-    "preview_updated": true,
+    "preview_updated": false,
     "production_updated": false,
-    "source_validation": "TWO_REQUIRED_SOURCE_JOBS_PASS",
-    "visual_verification": {
-      "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
-      "viewport": [
-        1363,
-        936
-      ],
-      "verified_at": "2026-09-07T00:22:33.879812+00:00",
-      "summary": "Corrective Chromium1363x936 screenshots inspected: expanded LUXOR APART facts now have three readable columns without midword accommodation wrap; selected outbound/return airport text14px and secondary12px, duplicate selected tick no longer overlaps72832RUB price. Native radios and next CTA visible.",
-      "expanded_card_screenshot_inspected": true,
-      "selected_flight_screenshot_inspected": true,
-      "hotels": 97,
-      "tours": 515,
-      "hotel": "LUXOR APART",
-      "price_rub": 72832,
-      "real_lead_submitted": false,
-      "full_matrix_run": false,
-      "deferred": [
-        "mobile/tablet widths",
-        "physical Safari",
-        "live no-flight branch",
-        "lead-entry/success/error",
-        "full filter/editor/price matrix"
-      ],
-      "earlier_source_evidence": {
-        "source_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
-        "states": [
-          "initial form",
-          "results/expanded card",
-          "selected flight",
-          "review/back"
-        ],
-        "findings_corrected": true
-      }
-    },
-    "browser_contract": "Native browser controls and explicit-& nesting retained; current Chromium desktop inspected, mobile/tablet/physical Safari deferred.",
-    "next_action": "Next substantial candidate: audit review-responsive.css mobile/tablet geometry against current selected-flow/review owners, retire duplicate layout only after protecting hidden/lead-shell/primary CTA boundaries. Do not repeat retired17CSS+1JS owner or the3block families and6-column/tiny-font repair. Current mobile/tablet, live no-flight and physical Safari remain deferred. Continue independent permitted work; production acceptance does not pause automation.",
-    "verified_at": "2026-09-07T00:22:33.904891+00:00"
+    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "visual_verification": [
+      "responsive detail/review/lead geometry at375/760/1000",
+      "physical Safari",
+      "current-source browser lifecycle inspection"
+    ],
+    "next_action": "Do not repeat final-sections/lead-note owner retirement. Keep selected-tour.css until current-source detail/review/lead geometry at375/760/1000 is available; the supported cloud browser still has no viewport resize. Audit the remaining results-layout.css card family against results-cards-v2.css for a substantial owner batch, preserving expanded-card/mobile-fact boundaries; do not claim or publish uncertain visual removals. Accumulate technical reductions and reuse the checked source artifact at a justified publication."
   },
   "presentation_refactor_history": [
     {
@@ -3025,6 +3038,94 @@
         "css_layers_retired": 5,
         "js_owners_retired": 1
       }
+    },
+    {
+      "stage": "CHECKED_AND_PUBLISHED_CORRECTED_DESKTOP_MOBILE_DEFERRED",
+      "baseline": "cca1d56605db6260071dfe2ff24ed8f46b437b21",
+      "implementation_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+      "release_integration_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+      "audit": "docs/project/search3-mobile-card-flight-retirement.json",
+      "scope": "Three substantial obsolete presentation block families retired in one batch; retained active lifecycle owners are not claimed fully retired.",
+      "ci": {
+        "security_run": 34069311162,
+        "artifact_run": 34069311068,
+        "artifact_id": 9999945885,
+        "artifact_digest": "sha256:494c414b54be8320a3a3120972f11553b763f29ff4f936feca1618dcefc570ee",
+        "archive_sha256": "c400293d3d02a5cd4fb0ee654c861d271e24033c852c4093b54b391525ab5b9a",
+        "manifest_sha256": "2329fea78d1113abe4dc5893c700f98541145b595ec7b07b9107a14066e32e2e",
+        "payload_sha256": "62c6191b5ab628a24b05e112df10e96ee942174778f64c1797073f014b892376",
+        "conclusion": "success",
+        "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+        "source_pr": 1432,
+        "required_passed": 2,
+        "artifact_rebuilt_on_release": false,
+        "artifact_rebuilt_for_docs": false,
+        "preview_published": true,
+        "full_responsive_site_seo": "deferred, not passed"
+      },
+      "public_assets": {
+        "css_bytes": 136248,
+        "js_bytes": 98891,
+        "total_bytes": 235139,
+        "css_lines": 4,
+        "js_lines": 3,
+        "total_lines": 7,
+        "scope": "Eight public paths, raw uncompressed bytes. JS includes embedded private CSS; no page speed claim."
+      },
+      "run_delta": {
+        "bytes": -10352,
+        "css_bytes": -6053,
+        "js_bytes": -4299
+      },
+      "continuation_total": {
+        "baseline_bytes": 301524,
+        "after_bytes": 235139,
+        "saved_bytes": 66385,
+        "retired_layers": 18,
+        "retired_css_layers": 17,
+        "retired_js_owners": 1,
+        "additional_retired_block_families": 3
+      },
+      "preview_updated": true,
+      "production_updated": false,
+      "source_validation": "TWO_REQUIRED_SOURCE_JOBS_PASS",
+      "visual_verification": {
+        "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
+        "viewport": [
+          1363,
+          936
+        ],
+        "verified_at": "2026-09-07T00:22:33.879812+00:00",
+        "summary": "Corrective Chromium1363x936 screenshots inspected: expanded LUXOR APART facts now have three readable columns without midword accommodation wrap; selected outbound/return airport text14px and secondary12px, duplicate selected tick no longer overlaps72832RUB price. Native radios and next CTA visible.",
+        "expanded_card_screenshot_inspected": true,
+        "selected_flight_screenshot_inspected": true,
+        "hotels": 97,
+        "tours": 515,
+        "hotel": "LUXOR APART",
+        "price_rub": 72832,
+        "real_lead_submitted": false,
+        "full_matrix_run": false,
+        "deferred": [
+          "mobile/tablet widths",
+          "physical Safari",
+          "live no-flight branch",
+          "lead-entry/success/error",
+          "full filter/editor/price matrix"
+        ],
+        "earlier_source_evidence": {
+          "source_sha": "857fba4a3768b5647f1f1eb59641c5e372f952ce",
+          "states": [
+            "initial form",
+            "results/expanded card",
+            "selected flight",
+            "review/back"
+          ],
+          "findings_corrected": true
+        }
+      },
+      "browser_contract": "Native browser controls and explicit-& nesting retained; current Chromium desktop inspected, mobile/tablet/physical Safari deferred.",
+      "next_action": "Next substantial candidate: audit review-responsive.css mobile/tablet geometry against current selected-flow/review owners, retire duplicate layout only after protecting hidden/lead-shell/primary CTA boundaries. Do not repeat retired17CSS+1JS owner or the3block families and6-column/tiny-font repair. Current mobile/tablet, live no-flight and physical Safari remain deferred. Continue independent permitted work; production acceptance does not pause automation.",
+      "verified_at": "2026-09-07T00:22:33.904891+00:00"
     }
   ],
   "preview_isolation_followup": {
@@ -3329,13 +3430,13 @@
       "url": "https://anytoour.ru/_preview/search3-candidate/poisk-turov/"
     },
     "site_draft": {
-      "artifact_digest": "sha256:47025ef6e71d2e1ceaf24081fee8f8f7daf7ea1a56cb4516ecac2aa6d46ede7d",
+      "artifact_digest": "sha256:f9ecccf03ccaaaba15612b46df347712b6e616a4fd88d4f6d5de3ecc941dd914",
       "branch": "release/search3-production-ready-v1",
-      "exact_artifact": 10000822583,
-      "exact_artifact_status": "CHECKED_AND_PUBLISHED",
-      "final_verification_artifact": 10000913111,
-      "final_verification_run": 34072481129,
-      "implementation_verified_sha": "4b061396bf3374e026f29943c78f90396352a135",
+      "exact_artifact": 10016141814,
+      "exact_artifact_status": "CHECKED_NOT_PUBLISHED",
+      "final_verification_artifact": 10015213085,
+      "final_verification_run": 34113272969,
+      "implementation_verified_sha": "337955cb77977508da3f40df23ef9c926dd2dd1a",
       "includes": [
         "home native independent night range and child ages",
         "offer/month date/night/party handoff",
@@ -3389,15 +3490,41 @@
         "Checked#1427,not published:2 further historical results layers retired with lifecycle/mobile fallback salvage;1609 fewerCSSbytes and all4JS unchanged.",
         "Published#1430/#1432:3large presentation block families removed; native package and flight readability repaired by removing old six-column/tiny-font overrides,245491→235139 rawbytes.",
         "Published#1434/#1435: complete responsive-review layer and earlier embedded mobile-review block retired,235139→225972 rawbytes; responsive mobile/tablet visual states deferred.",
-        "Published#1437/#1439: complete lead-review layer and embedded lead-entry owner retired,225972→219880 rawbytes; desktop search-to-empty-lead inspected, mobile/tablet/lifecycle visuals deferred."
+        "Published#1437/#1439: complete lead-review layer and embedded lead-entry owner retired,225972→219880 rawbytes; desktop search-to-empty-lead inspected, mobile/tablet/lifecycle visuals deferred.",
+        "Checked#1464: standalone booking-services and lead-note owners consolidated,166271→165508 raw bytes,11 settled markup snapshots retained; not yet published."
       ],
       "latest_publication_verification": {
-        "source_sha": "4b061396bf3374e026f29943c78f90396352a135",
-        "viewport": [1363, 936],
-        "verified_at": "2026-09-07T01:20:00Z",
-        "summary": "Desktop search-to-empty-lead without submission: no overflow/clipping, noindex, exact eight asset cache keys, no external Metrika/consultant script; fallback is рейс уточняется, not SU000.",
+        "deferred": [
+          "375/760/999/1000 responsive states; browser has no viewport-resize capability",
+          "physical iPhone/Safari",
+          "lead-entry/sending/success/error visuals",
+          "map interaction (label only checked)",
+          "full matrix"
+        ],
+        "full_matrix_run": false,
+        "header_after": {
+          "columns": "632px",
+          "font": "22px",
+          "note_align": "left"
+        },
+        "header_before": {
+          "columns": "176.844px 467.156px",
+          "font": "38px"
+        },
+        "lead_form_visited": false,
         "real_lead_submitted": false,
-        "deferred": ["mobile final review/lead at375/430", "tablet lead/flight at641/768/999", "sending/success/error preview visuals", "physical Safari", "full matrix"]
+        "source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+        "states": [
+          "initial form and results/tools at first publication90b3a3df",
+          "selected flight and final review",
+          "corrected review header at b9445bc3"
+        ],
+        "summary": "Cloud Chromium desktop: initial form and results/expanded hotel inspected, map label present, no duplicate mobile entry seen. A confirmed review cascade collision was found at 90b3a3df and repaired via1461/1462. Corrected LUXOR APART title is22px on one line, header one632px column, note left-aligned,69301RUB total and CTA visible, no horizontal document overflow. Eight live cache keys match exact final source.",
+        "verified_at": "2026-09-07T10:52:37Z",
+        "viewport": [
+          1363,
+          936
+        ]
       },
       "live_browser_verification": {
         "source_sha": "71efd3fe4e42987fbd596c0e4d2bba08f785fa5d",
@@ -3434,26 +3561,24 @@
         }
       },
       "pr": 1334,
-      "preview_deploy_pr": 1439,
-      "preview_deploy_run": 34072481129,
+      "preview_deploy_pr": 1462,
+      "preview_deploy_run": 34113272969,
       "preview_deploy_workflow_conclusion": "success",
       "preview_url": "https://anytoour.ru/_preview/search3-site-candidate/",
-      "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
-      "release_merge_sha": "4b061396bf3374e026f29943c78f90396352a135",
-      "source_tree": "d00be539e6ca873658d22cbea0ae99f7996f8383",
-      "status": "PUBLISHED_DESKTOP_SEARCH_TO_LEAD_OBSERVED_MOBILE_LIFECYCLE_DEFERRED",
+      "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+      "release_merge_sha": "337955cb77977508da3f40df23ef9c926dd2dd1a",
+      "source_tree": "5c998ce960fd844e5769d8f814918294c90d46a3",
+      "status": "CHECKED_SOURCE_AHEAD_OF_PUBLISHED_PREVIEW",
       "superseded_artifact": 9999511038,
       "pending_visual_verification": {
-        "source_sha": "4b061396bf3374e026f29943c78f90396352a135",
-        "status": "PARTIAL_DEFERRED",
+        "source_sha": "337955cb77977508da3f40df23ef9c926dd2dd1a",
+        "status": "DEFERRED",
         "states": [
-          "mobile final/lead at375/430",
-          "tablet lead/flight at641/768/999",
-          "sending/success/error preview visuals",
+          "responsive detail/review/lead geometry at375/760/1000",
           "physical Safari",
-          "full filter/editor/price matrix"
+          "current-source browser lifecycle inspection"
         ],
-        "reason": "Supported browser tab cannot resize and no physical device was used; desktop search-to-empty-lead only."
+        "reason": "Source is not published; supported browser has no viewport resize."
       }
     }
   },
@@ -6487,8 +6612,16 @@
       "total_bytes": 187488,
       "scope": "Eight public paths, raw uncompressed bytes; no transfer-size or speed claim."
     },
-    "package_delta": {"bytes": -8456, "css_bytes": -4058, "js_bytes": -4398},
-    "continuation_total": {"baseline_bytes": 301524, "after_bytes": 187488, "saved_bytes": 114036},
+    "package_delta": {
+      "bytes": -8456,
+      "css_bytes": -4058,
+      "js_bytes": -4398
+    },
+    "continuation_total": {
+      "baseline_bytes": 301524,
+      "after_bytes": 187488,
+      "saved_bytes": 114036
+    },
     "preview": {
       "published": false,
       "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
@@ -6584,11 +6717,20 @@
       "62a21a311a411533ef4d85aa763badceed56f374",
       "f6496c8a7b2532914a3769bfd8f42aabb4f1bea6"
     ],
-    "source_prs": [1450, 1451],
+    "source_prs": [
+      1450,
+      1451
+    ],
     "audit": "docs/project/search3-review-tour-density-retirement.json",
     "ci": {
-      "security_runs": [34097511897, 34097800910],
-      "artifact_runs": [34097511816, 34097800920],
+      "security_runs": [
+        34097511897,
+        34097800910
+      ],
+      "artifact_runs": [
+        34097511816,
+        34097800920
+      ],
       "final_artifact_id": 10009288882,
       "final_artifact_digest": "sha256:e5e2dfcae6e619c9e318bd8bdd68125157b91fbdce3df81625ade25db2cba220",
       "conclusion": "success",
@@ -6600,8 +6742,16 @@
       "js_bytes": 80123,
       "total_bytes": 180248
     },
-    "package_delta": {"bytes": -5077, "css_bytes": -5077, "js_bytes": 0},
-    "continuation_total": {"baseline_bytes": 301524, "after_bytes": 180248, "saved_bytes": 121276},
+    "package_delta": {
+      "bytes": -5077,
+      "css_bytes": -5077,
+      "js_bytes": 0
+    },
+    "continuation_total": {
+      "baseline_bytes": 301524,
+      "after_bytes": 180248,
+      "saved_bytes": 121276
+    },
     "preview": {
       "published": false,
       "published_source_sha": "4b061396bf3374e026f29943c78f90396352a135",
@@ -6620,7 +6770,10 @@
   },
   "latest_selected_mobile_package_owner_retirement": {
     "status": "CHECKED_RELEASE_NOT_PUBLISHED",
-    "source_prs": [1452, 1453],
+    "source_prs": [
+      1452,
+      1453
+    ],
     "source_shas": [
       "b778f18b70fd6dab330696c5b7ef89bca406de8d",
       "15ba3e46a43513b8452cc02a38ed6576ac59f3c1"
@@ -6636,8 +6789,20 @@
       "baseline_saved": 125483
     },
     "required_ci": [
-      {"pr":1452,"security_run":34102526996,"artifact_run":34102526876,"artifact_id":10011064554,"conclusion":"success"},
-      {"pr":1453,"security_run":34103338435,"artifact_run":34103338407,"artifact_id":10011377372,"conclusion":"success"}
+      {
+        "pr": 1452,
+        "security_run": 34102526996,
+        "artifact_run": 34102526876,
+        "artifact_id": 10011064554,
+        "conclusion": "success"
+      },
+      {
+        "pr": 1453,
+        "security_run": 34103338435,
+        "artifact_run": 34103338407,
+        "artifact_id": 10011377372,
+        "conclusion": "success"
+      }
     ],
     "visual_verification": {
       "performed": false,
@@ -6893,5 +7058,48 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-07T10:52:37Z"
+  "updated_at": "2026-09-07T11:18:11.827110+00:00",
+  "latest_booking_owner_consolidation": {
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",
+    "implementation_sha": "337955cb77977508da3f40df23ef9c926dd2dd1a",
+    "release_integration_sha": "337955cb77977508da3f40df23ef9c926dd2dd1a",
+    "audit": "docs/project/search3-booking-owner-consolidation.json",
+    "scope": "Retire standalone final-sections state/formatters/listeners into booking summary and standalone lead-note event tasks into summary CTA; markup and protected contracts retained.",
+    "ci": {
+      "security_run": 34115679894,
+      "artifact_run": 34115679887,
+      "artifact_id": 10016141814,
+      "artifact_digest": "sha256:f9ecccf03ccaaaba15612b46df347712b6e616a4fd88d4f6d5de3ecc941dd914",
+      "conclusion": "success",
+      "required_passed": 2,
+      "artifact_rebuilt_on_release": false,
+      "artifact_rebuilt_for_docs": false
+    },
+    "public_assets": {
+      "css_bytes": 94644,
+      "js_bytes": 70864,
+      "total_bytes": 165508,
+      "scope": "Eight public paths, raw bytes; seven assets identical, no page-speed claim."
+    },
+    "run_delta": {
+      "bytes": -763,
+      "css_bytes": 0,
+      "js_bytes": -763
+    },
+    "continuation_total": {
+      "baseline_bytes": 301524,
+      "after_bytes": 165508,
+      "saved_bytes": 136016
+    },
+    "preview_updated": false,
+    "production_updated": false,
+    "published_source_sha": "b9445bc3c8aa0713b148241bcddeefdf07576079",
+    "visual_verification": [
+      "responsive detail/review/lead geometry at375/760/1000",
+      "physical Safari",
+      "current-source browser lifecycle inspection"
+    ],
+    "next_action": "Do not repeat final-sections/lead-note owner retirement. Keep selected-tour.css until current-source detail/review/lead geometry at375/760/1000 is available; the supported cloud browser still has no viewport resize. Audit the remaining results-layout.css card family against results-cards-v2.css for a substantial owner batch, preserving expanded-card/mobile-fact boundaries; do not claim or publish uncertain visual removals. Accumulate technical reductions and reuse the checked source artifact at a justified publication."
+  }
 }

@@ -66,9 +66,46 @@ technical work. Production approval and protected contracts stay unchanged.
   production fingerprints still apply whenever publishing actually occurs.
   Full applicable gates restore on ready_for_review; hourly development is enabled.
 
-The latest checked release source is `b9445bc3c8aa0713b148241bcddeefdf07576079`;
-the published preview now uses the same source `b9445bc3c8aa0713b148241bcddeefdf07576079`.
+The latest checked release source is `337955cb77977508da3f40df23ef9c926dd2dd1a`;
+the published preview remains on source `b9445bc3c8aa0713b148241bcddeefdf07576079`.
 See the newest checkpoint below. Historical publication notes remain for provenance.
+
+### Latest checked checkpoint — booking and lead-note owners — 2026-09-07
+
+PR #1464 / source `337955cb77977508da3f40df23ef9c926dd2dd1a`, tree
+`5c998ce960fd844e5769d8f814918294c90d46a3`, retires two standalone runtime owners.
+`booking/services.js` shares the existing booking summary tour/flight state,
+number/money helpers and event queue. Tour/flight bursts use one task instead of
+three; price-only updates do not recreate services. The private lead note shares
+the existing CTA tour/review task; other lifecycle events and public APIs retain
+scope. Services without a lead form and note insertion into replaced forms remain.
+
+Eight raw assets **166271 → 165508 (−763 JS)**; CSS94644, JS70864.
+Seven assets are byte-identical. Main JS has14→12 IIFEs;9 untouched IIFEs are
+byte-identical, while unchanged search-form source has compiler-local identifier
+swaps only. This is a small measured technical batch, not a claimed large CSS win.
+Baseline301524→165508: **136016 bytes saved**.
+
+Both duplicate-task regressions first failed on the preceding published bundle.
+The final compiled source preserves11 settled markup/copy/layout snapshots
+(SHA256 `cc860066f8dbf857a76b926ac4bf5cae2b54e84981b86e319ebd4c9646a10234`).
+Existing summary/formatter checks pass. One write build and source check; final
+Security `34115679894` and exact artifact `34115679887` both succeed, including
+PHP/path/source/presentation/isolation checks. Reuse artifact `10016141814`, digest
+`sha256:f9ecccf03ccaaaba15612b46df347712b6e616a4fd88d4f6d5de3ecc941dd914`;
+release/docs do not rebuild it. Full per-asset hashes and evidence are in
+`docs/project/search3-booking-owner-consolidation.json`.
+
+**Not published.** Preview remains `b9445bc3`, main/production `fa58a0cb` unchanged.
+Responsive/lifecycle browser evidence and physical Safari remain deferred. Browser
+capabilities were refreshed: no viewport resize is advertised. No local/data URL
+workaround or repeated preview journey was attempted.
+
+Next: do not repeat these owners. Keep selected-tour.css until current-source
+375/760/1000 detail/review/lead geometry is available. Independently audit the
+remaining results-layout.css card family against results-cards-v2.css for a
+substantial batch; preserve expanded-card/mobile-fact boundaries and exclude
+uncertain visual removals. Accumulate technical work; no micro-deploy.
 
 ### Latest published checkpoint — accumulated reduction and review repair — 2026-09-07
 
