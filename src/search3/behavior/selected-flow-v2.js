@@ -341,7 +341,11 @@
   };
   window.Search3CandidateSelectedPresentationV1 = Object.freeze({
     version: 1,
-    decorate: syncPresentation,
+    decorate: function () {
+      if (!currentTour || selected.hidden) return;
+      syncPresentation();
+      syncDisplayedPrice();
+    },
     displayValues: displayValues,
     normalizedTotal: function (detail) { return normalizedTotal(detail, currentTour); }
   });

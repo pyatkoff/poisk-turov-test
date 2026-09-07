@@ -57,8 +57,10 @@ children qualify. Selector paths, media conditions, declaration order and style
 nesting depth stay intact; comments in discarded wrappers prevent grouping.
 Nested media uses the same [WebKit nesting support](https://webkit.org/blog/13813/try-css-nesting-today-in-safari-technology-preview/)
 as the existing preview. Readable source structure remains unchanged.
-Private injected CSS now uses this same pipeline before JavaScript escaping; its
-insertion order, IDs, selected-root guard and idempotence remain unchanged.
+Private injected CSS support uses this same pipeline before JavaScript escaping.
+Both historical Search3 style injectors are now retired: current linked selected
+and review owners supply their live rules. Synthetic builder fixtures retain the
+escaping, invalid-path and invalid-CSS guards without shipping a style injector.
 JavaScript concatenation
 expands private full-line `/* @include behavior/path.js */` markers in place.
 Included functions retain their original enclosing IIFE, declaration order and

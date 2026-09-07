@@ -30,6 +30,15 @@ const presentation = require('./search3-bundled-results.cjs');
 const selectedPresentation = fs.readFileSync(path.join(root, 'src/search3/behavior/selected-flow-v2.js'), 'utf8');
 const searchForm = fs.readFileSync(path.join(root, 'src/search3/behavior/search-form.js'), 'utf8');
 const mobile = fs.readFileSync(path.join(root, 'v2/mobile-results-filters-v1.js'), 'utf8');
+const toolbarCss = fs.readFileSync(path.join(root, 'src/search3/styles/mobile-results-toolbar.css'), 'utf8');
+const compactToolbar = toolbarCss.slice(toolbarCss.indexOf('@media(max-width:999px)'));
+assert.match(compactToolbar, /&:not\(\.search3-selected-open\) \.search3-mobile-toolbar\{display:grid!important\}/,
+  'canonical compact owner exposes the toolbar only outside the selected-tour flow');
+assert.match(compactToolbar, /& #resultsTools \.results-tools__actions\s*\{display:none!important\}/,
+  'canonical compact owner must hide duplicate desktop actions through 999px');
+const entryCss = fs.readFileSync(path.join(root, 'src/search3/styles/entry-v1.css'), 'utf8');
+assert.match(entryCss.split('@media')[0], /\.search3-mobile-search-entry\{display:none\}/,
+  'mobile search entry defaults to hidden outside phone media; JS creates it at all widths');
 
 assert.match(presentation, /(?:[A-Za-z_$][\w$]*|\([A-Za-z_$][\w$]*=document\.createElement\((['"])div\1\)\))\.className\s*=\s*(['"])search3-mobile-toolbar\2/, 'Search3 presentation owns the mobile toolbar shell');
 assert.ok(presentation.includes('search3-mobile-filter-slot'), 'Search3 presentation owns the mobile filter slot');

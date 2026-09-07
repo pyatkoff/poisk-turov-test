@@ -207,10 +207,20 @@ assert.match(strongText, /120[\s\u00a0]?000/, 'latest queued price wins');
 assert.equal(dateValue.textContent, '7 сентября', 'selected facts use the canonical date formatter');
 assert.equal(selectedPriceLabel.textContent, 'За весь тур · 2 взрослых, 1 ребёнок', 'party scope is owned by selected-flow');
 assert.equal(selectedDataset.search3SelectedPresentation, '1', 'compatibility presentation marker is retained');
+strongText = '';
+mobileAmount.textContent = '';
+window.Search3CandidateSelectedPresentationV1.decorate();
+assert.match(strongText, /120[\s\u00a0]?000/, 'legacy decorate synchronously restores the booking total');
+assert.match(mobileAmount.textContent, /120[\s\u00a0]?000/, 'legacy decorate synchronously restores the mobile total');
 window.Search3SelectedFlowV2.syncDisplayedPrice();
 window.Search3SelectedFlowV2.syncDisplayedPrice();
-assert.equal(priceWrites, 1, 'unchanged price text is not rewritten');
+assert.equal(priceWrites, 2, 'unchanged price text is not rewritten after one explicit restoration');
 assert.equal(priceAttributeWrites, 1, 'unchanged price aria-label is not rewritten');
+selected.hidden = true;
+strongText = 'retained hidden summary';
+window.Search3CandidateSelectedPresentationV1.decorate();
+assert.equal(strongText, 'retained hidden summary', 'legacy decorate still leaves a hidden tour untouched');
+selected.hidden = false;
 assert.equal(
   flightRootReads,
   1,

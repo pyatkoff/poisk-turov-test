@@ -7,7 +7,8 @@ let observeResults, cards = true, emptyLocal = false;
 const properties = new Map();
 const style = { setProperty(k,v,priority) { assert.equal(priority,'important'); properties.set(k,v); }, removeProperty(k) { properties.delete(k); } };
 const heading = { textContent: '' }, summary = { textContent: '' };
-const tools = { style, parentElement: { getBoundingClientRect() { return { left: 0 }; } }, querySelector(s) { assert.notEqual(s, '.search3-results-meta', 'hidden duplicate counters have no runtime owner'); return s === 'strong' ? heading : null; } };
+const mapButton = { textContent: 'На карте', setAttribute() {} };
+const tools = { style, parentElement: { getBoundingClientRect() { return { left: 0 }; } }, querySelector(s) { assert.notEqual(s, '.search3-results-meta', 'hidden duplicate counters have no runtime owner'); return s === 'strong' ? heading : s === '.results-map-button' ? mapButton : null; } };
 const results = { querySelector() { return cards ? {} : null; } };
 const route = { textContent: '' };
 const searchSummary = { querySelector() { return route; } };
@@ -22,6 +23,7 @@ vm.runInNewContext(bundledIife(bundle, { literal: '#resultsSearchRoute' }), {
  requestAnimationFrame(fn) { frames.push(fn); }
 });
 const emit = (n,items) => events.get(n)({ detail: { items } });
+assert.equal(mapButton.textContent, 'На карте', 'canonical map label survives without retired pseudo-content CSS');
 const flush = () => { while(frames.length) frames.shift()(); };
 emit('v2:results-rendered',[{ tours: [{},{}] }]); observeResults(); observeResults();
 assert.equal(frames.length,1,'result mutations share one state frame'); flush();

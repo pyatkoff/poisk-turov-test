@@ -79,6 +79,20 @@ class Search3SourceBuildTest(unittest.TestCase):
         for name in self.outputs:
             shutil.copy(ROOT / 'v2' / name, self.root / 'v2')
 
+    def install_private_css_fixture(self):
+        """Keep css-string safety coverage independent of production injectors."""
+        source = self.root / 'src/search3/behavior/summary-cta-styles.js'
+        part = self.root / 'src/search3/styles/injected/summary-cta.css'
+        part.parent.mkdir(parents=True, exist_ok=True)
+        part.write_text('.fixture { color: red; }\n')
+        source.write_text('''(function () {
+  const style = document.createElement('style');
+  style.textContent=/* @css-string styles/injected/summary-cta.css */ "";
+  document.head.appendChild(style);
+})();
+''')
+        return source, part
+
     def test_current_outputs_match_and_build_is_idempotent(self):
         self.assertEqual(builder.build(self.root), 8)
         before = (self.root / 'docs/project/search3-production-import.json').read_bytes()
@@ -148,7 +162,8 @@ class Search3SourceBuildTest(unittest.TestCase):
         part.write_bytes(original)
 
     def test_private_css_literal_preserves_strings_escapes_and_host_asset(self):
-        part = self.root / 'src/search3/styles/injected/summary-cta.css'
+        baseline, _, _ = builder.assemble(self.root)
+        _, part = self.install_private_css_fixture()
         css = b'.x{content:"quote \\\" and slash \\\\";--tokens:red/* note */blue}\n'
         part.write_bytes(css)
         with self.assertRaisesRegex(ValueError, 'Generated assets differ'):
@@ -158,12 +173,12 @@ class Search3SourceBuildTest(unittest.TestCase):
         self.assertIn(expected, text_content_literals(outputs['search3-results-filters-v1.js']))
         builder.build(self.root, write=True)
         self.assertEqual(builder.build(self.root), 8)
-        for name, original in self.outputs.items():
+        for name, original in baseline.items():
             if name != 'search3-results-filters-v1.js':
                 self.assertEqual(outputs[name], original)
 
     def test_invalid_private_css_reference_fails_before_writing_outputs(self):
-        source = self.root / 'src/search3/behavior/summary-cta-styles.js'
+        source, _ = self.install_private_css_fixture()
         original = source.read_text()
         for target in ('styles/injected/selected-tour-mobile.css',
                        '../../v2/search3-entry-v1.css', 'styles/injected/missing.css'):
@@ -176,7 +191,7 @@ class Search3SourceBuildTest(unittest.TestCase):
         source.write_text(original)
 
     def test_private_css_is_optimized_and_invalid_css_cannot_write_outputs(self):
-        part = self.root / 'src/search3/styles/injected/summary-cta.css'
+        _, part = self.install_private_css_fixture()
         part.write_text('.x { color: #AABBCC; margin: 0px 0px; }\n')
         outputs, _, _ = builder.assemble(self.root)
         self.assertIn('.x{color:#abc;margin:0}\n',

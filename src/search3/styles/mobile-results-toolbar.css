@@ -30,6 +30,8 @@ body.search3-candidate :is(.mrf-bar,.mrf-sheet){display:none!important}
   margin:0 var(--search3-results-inline-gutter) 48px!important;
 }
   & .results-filter-rail {display:none!important}
+  & #resultsTools .results-tools__actions{display:none!important}
+  &:not(.search3-selected-open) .search3-mobile-toolbar{display:grid!important}
   & .search3-mobile-toolbar {
     position:static!important;
     z-index:auto!important;
