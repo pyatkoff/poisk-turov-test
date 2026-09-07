@@ -16,18 +16,17 @@ const summary = { style: style('summary'), remove() {}, querySelector(s) { retur
 const shell = { style: style('shell'), parentNode: { insertBefore() {} }, querySelector() { return summary; }, insertAdjacentHTML(_, value) { renders++; html = value; } };
 const form = { style: style('form'), closest() { return shell; } };
 const root = { dataset: {}, classList: { contains(name) { return name === 'search3-lead-entry' ? lead : name === 'search3-final-review' && review; } }, querySelector(s) { return s === '.lead-form' ? form : s === '.search3-lead-shell,.lead-form' ? shell : null; } };
-const window = { addEventListener(name, fn) { events.set(name, fn); }, matchMedia() { return { matches: desktop }; }, Search3FlightPresentation: { flightLabel(v, fallback) { return v ? v.name : fallback; }, baggage() { return ''; } } };
+const window = { addEventListener(name, fn) { events.set(name, fn); }, matchMedia() { return { matches: desktop }; } };
 const bundle = fs.readFileSync(process.argv[2] || path.join(__dirname, '../v2/search3-results-filters-v1.js'), 'utf8');
 const bundledIife = require('./search3-bundle-iife.cjs');
-const presentationSource = bundledIife(bundle, { global: 'Search3PresentationText' })
-  + bundledIife(bundle, { global: 'Search3BookingSummary' });
+const presentationSource = bundledIife(bundle, { global: 'Search3BookingSummary' });
 vm.runInNewContext(presentationSource, {
   window, document: { getElementById() { return root; }, createElement() { return {}; }, addEventListener() {} }, setTimeout(fn) { timers.push(fn); }
 });
 const emit = (name, detail) => events.get(name)({ detail });
 const flush = () => { while (timers.length) timers.shift()(); };
 emit('v2:tour-selected', { tour: { name: 'First', price: 100 } });
-emit('v2:flight-selected', { flight: { name: 'Actual flight' } });
+emit('v2:flight-selected', { flight: { forward: [{ company: 'SU', number: 'Actual flight' }] } });
 emit('v2:tour-price-updated', { price: 321 });
 assert.equal(events.has('resize'), false, 'CSS-owned geometry needs no resize subscriber');
 assert.equal(timers.length, 1, 'one scheduled pass for a synchronous event burst');
