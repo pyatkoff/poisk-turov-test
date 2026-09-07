@@ -1,0 +1,38 @@
+name: Search3 offline source inspection
+on:
+  push:
+    branches: ['inspect/search3-offline-source-17d160c5']
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    if: github.repository == 'pyatkoff/poisk-turov-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 17d160c5d1be60c5515975425fb8bc3c3bdf9bb5
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare pinned build-only dependencies
+        run: npm ci --prefix scripts/build/search3-js --ignore-scripts --no-audit --no-fund
+      - name: Archive checked sources and local build tools without credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 17d160c5d1be60c5515975425fb8bc3c3bdf9bb5
+          mkdir -p "$RUNNER_TEMP/search3-offline"
+          git archive --format=tar HEAD | gzip -n > "$RUNNER_TEMP/search3-offline/source-17d160c5.tar.gz"
+          tar -czf "$RUNNER_TEMP/search3-offline/build-tools.tar.gz" scripts/build/search3-js/node_modules
+          cd "$RUNNER_TEMP/search3-offline"
+          printf '%s\n' '17d160c5d1be60c5515975425fb8bc3c3bdf9bb5' > source-sha.txt
+          sha256sum source-17d160c5.tar.gz build-tools.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: search3-offline-inspection-17d160c5
+          path: ${{ runner.temp }}/search3-offline/
+          retention-days: 1
+          if-no-files-found: error
