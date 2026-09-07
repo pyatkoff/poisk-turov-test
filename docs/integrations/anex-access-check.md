@@ -79,7 +79,43 @@ The next integration step is a bounded tour-price lookup with the available
 departure/destination IDs and then provider-specific mapping into AnyTour.
 No tour-price, availability, full import or booking result is claimed here.
 
-## Sources
+## Tour-price diagnostic (owner continuation)
+
+The owner requested a real tour-price search after the access check.
+`anex_access_probe.py --prices` now uses the same in-memory SSH execution from
+the AnyTour directory. The isolated workflow invokes that mode instead of
+repeating the already verified XML reference check.
+
+Six read-only API methods select the request using supplier data:
+`TOWNFROMS` → `STATES` → `CHECKIN` → `CURRENCIES` → `NIGHTS` → `PRICES`.
+Moscow and Turkey are preferred by labels/ISO metadata, with two adults and no
+children. The departure date comes from the availability string within the next
+60 days; nights prefer seven from the `places` list. Currency ID also comes
+from the API. No provider IDs or offer records are invented.
+
+The first price page uses `FREIGHT=1`, `FILTER=1`, `DYN_SEPARATE=1` and hotel
+minimum-price grouping. Local supplier prices are inspected; external-result
+polling is not performed. SAMO may initiate external-source searches internally.
+The report contains at most three sample offers with allowlisted hotel/meal/date
+fields, native price/currency, and separately parsed converted price/currency.
+Unknown fields, URLs, search/offer identifiers and supplier error text are
+excluded. Known credentials are also rejected from textual output fields.
+
+Only full packages for the selected dates, nights and traveller composition
+with valid positive prices are accepted as samples. Booking flags, grouping,
+hotel availability and economy-flight availability are reported as returned;
+they do not establish final quote actualization. The diagnostic creates no
+booking, lead, payment, database record or server file. It does not change the
+site search. Each response stays capped at 2 MiB with a 20-second socket timeout;
+price mode has a 290-second SSH deadline and a maximum budget of 12 API reads.
+
+### Price method documentation
+
+- [Available countries](https://dokuwiki.samo.ru/doku.php?id=onlinest:api:searchtour:states)
+- [Available departure dates](https://dokuwiki.samo.ru/doku.php?id=onlinest:api:searchtour:checkin)
+- [Currencies](https://dokuwiki.samo.ru/doku.php?id=onlinest:api:searchtour:currencies)
+- [Nights and seats](https://dokuwiki.samo.ru/doku.php?id=onlinest:api:searchtour:nights)
+- [Tour prices](https://dokuwiki.samo.ru/doku.php?id=onlinest:api:searchtour:prices)
 
 - [Online SAMO API](https://dokuwiki.samo.ru/doku.php?id=onlinest:api)
 - [XML gateway and reference synchronization](https://dokuwiki.samo.ru/doku.php?id=samotour:xml_gate)

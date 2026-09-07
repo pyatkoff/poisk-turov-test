@@ -6,8 +6,11 @@ raw supplier responses. Tokens travel in SSH stdin, never in SSH arguments.
 """
 
 import json
+import datetime as dt
+from decimal import Decimal, InvalidOperation
 import os
 from pathlib import Path
+import re
 import shlex
 import socket
 import ssl
@@ -29,9 +32,14 @@ STATUSES = {
     "response_too_large", "invalid_response", "supplier_error", "skipped",
     "missing_secret", "ssh_failed", "ssh_timeout", "ssh_auth_failed",
     "ssh_host_key_changed", "unexpected_probe_failure",
+    "no_departures", "no_destinations", "no_dates", "no_currency",
+    "no_nights", "no_prices", "invalid_offer", "request_limit",
 }
 CHECKS = {"api_townfroms", "reference_currentstamp", "reference_states",
-          "reference_routes", "configuration", "ssh", "probe"}
+          "reference_routes", "configuration", "ssh", "probe", "selection",
+          "api_states", "api_checkin", "api_currencies", "api_nights",
+          "api_prices", "api_prices_expanded"}
+SENSITIVE_VALUES = ()
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -170,26 +178,267 @@ def remote_probe(tokens):
             "checks": results}
 
 
+class StopProbe(Exception):
+    pass
+
+
+def safe_label(value):
+    value = str(value or "").strip()
+    if (not re.fullmatch(r"[\w .(),+/'&*–—-]{1,140}", value)
+            or any(secret and secret in value for secret in SENSITIVE_VALUES)):
+        return ""
+    return value
+
+
+def date_value(value):
+    value = str(value)
+    if not re.fullmatch(r"\d{8}", value):
+        raise ValueError("invalid date")
+    return dt.datetime.strptime(value, "%Y%m%d").date()
+
+
+def positive_id(item):
+    value = str(item.get("id", ""))
+    return int(value) if value.isdigit() and 0 < int(value) < 100_000_000 else None
+
+
+def api_data(token, action, params, checks, expanded=False):
+    allowed = {"SearchTour_TOWNFROMS": "api_townfroms",
+               "SearchTour_STATES": "api_states", "SearchTour_CHECKIN": "api_checkin",
+               "SearchTour_CURRENCIES": "api_currencies", "SearchTour_NIGHTS": "api_nights",
+               "SearchTour_PRICES": "api_prices_expanded" if expanded else "api_prices"}
+    if action not in allowed or len(checks) >= 12:
+        raise ValueError("invalid read method or request budget")
+    result, body = request(dict(params, samo_action="api", version="1.0",
+                                type="json", action=action), token)
+    result["check"] = allowed[action]
+    checks.append(result)
+    if body is None:
+        raise StopProbe()
+    try:
+        envelope = json.loads(body)
+        data = envelope.get(action) if isinstance(envelope, dict) else None
+        error = data if isinstance(data, dict) and "error" in data else envelope
+        if isinstance(error, dict) and "error" in error:
+            result["status"] = "supplier_error"
+            code = str(error.get("error", ""))
+            if code.isdigit() and 0 <= int(code) <= 10_000_000:
+                result["supplier_code"] = int(code)
+            raise StopProbe()
+        if not isinstance(data, (list, dict)):
+            raise ValueError("invalid API envelope")
+        if isinstance(data, list):
+            result["count"] = len(data)
+        return data
+    except (ValueError, UnicodeError):
+        result["status"] = "invalid_response"
+        raise StopProbe()
+
+
+def choose_named(items, preferred):
+    if isinstance(items, dict):
+        items = items.get("items", [])
+    if not isinstance(items, list):
+        return None
+    candidates = [item for item in items if isinstance(item, dict) and positive_id(item)]
+    for pattern in preferred:
+        for item in candidates:
+            names = " ".join(str(item.get(key, "")) for key in (
+                "name", "nameAlt", "alias", "currencyISO", "stateISO3")).casefold()
+            if re.search(pattern, names):
+                return item
+    return candidates[0] if candidates else None
+
+
+def available_dates(data, today):
+    if not isinstance(data, dict):
+        return []
+    start = date_value(data["start"])
+    valid = str(data.get("valid", ""))
+    candidates = [(start + dt.timedelta(days=i), status) for i, status in enumerate(valid)
+                  if status in "1235" and today + dt.timedelta(days=2) <= start + dt.timedelta(days=i)
+                  <= today + dt.timedelta(days=60)]
+    candidates.sort(key=lambda pair: (pair[1] not in "235",
+                                     pair[0] < today + dt.timedelta(days=7), pair[0]))
+    return candidates
+
+
+def amount(value):
+    text = str(value).replace(" ", "").replace("\u00a0", "").replace(",", ".")
+    if not re.fullmatch(r"\d{1,10}(?:\.\d{1,2})?", text):
+        return None
+    number = Decimal(text)
+    return float(number) if 0 < number <= 1_000_000_000 else None
+
+
+def offer_sample(row, selected):
+    if not isinstance(row, dict):
+        return None
+    try:
+        checkin = date_value(row["checkIn"])
+        checkout = date_value(row["checkOut"])
+        nights = int(row["nights"])
+        price = amount(row["price"])
+        currency = str(row["currency"])
+        if (not row.get("id") or not row.get("hotel") or price is None
+                or not re.fullmatch(r"[A-Z]{3}", currency)
+                or str(row.get("packetType")) != "0"
+                or int(row["adult"]) != selected["adults"] or int(row["child"]) != 0
+                or not date_value(selected["checkin_begin"]) <= checkin <= date_value(selected["checkin_end"])
+                or not selected["nights_from"] <= nights <= selected["nights_till"]
+                or not checkin < checkout):
+            return None
+        sample = {"hotel": safe_label(row["hotel"]), "star": safe_label(row.get("star")),
+                  "meal": safe_label(row.get("meal")), "room": safe_label(row.get("room")),
+                  "checkin": checkin.strftime("%Y%m%d"), "checkout": checkout.strftime("%Y%m%d"),
+                  "nights": nights, "adults": int(row["adult"]), "children": int(row["child"]),
+                  "price": price, "currency": currency,
+                  "bookable": str(row.get("bron")) == "1",
+                  "grouped": str(row.get("grouped")) == "1"}
+        converted = re.fullmatch(r"([\d .,\u00a0]+)\s+([A-Z]{3})", str(row.get("convertedPrice", "")))
+        if converted and amount(converted.group(1)):
+            sample.update(converted_price=amount(converted.group(1)), converted_currency=converted.group(2))
+        availability = str(row.get("hotelAvailability", ""))
+        if re.fullmatch(r"[YNFR]{1,8}", availability):
+            sample["hotel_availability"] = availability
+        freights = row.get("freights", {})
+        econom = freights.get("econom", {}) if isinstance(freights, dict) else {}
+        for source, target in (("in", "flight_outbound"), ("out", "flight_return")):
+            flag = econom.get(source) if isinstance(econom, dict) else None
+            if flag in ("Y", "N", "F", "R"):
+                sample[target] = flag
+        return sample if sample["hotel"] else None
+    except (KeyError, TypeError, ValueError, InvalidOperation):
+        return None
+
+
+def remote_price_probe(tokens):
+    global SENSITIVE_VALUES
+    SENSITIVE_VALUES = tuple(value for raw in tokens.values() if isinstance(raw, str)
+                             for value in (raw, raw.strip()) if value)
+    checks, selected, samples = [], {}, []
+    report = {"mode": "prices", "checks": checks, "search": selected, "samples": samples}
+    token = tokens.get("ANEX_API_TOKEN", "").strip()
+    if not token:
+        checks.append({"check": "configuration", "status": "missing_secret"})
+        return report
+
+    def stop(status):
+        checks.append({"check": "selection", "status": status})
+        raise StopProbe()
+
+    try:
+        departure = choose_named(api_data(token, "SearchTour_TOWNFROMS", {}, checks),
+                                 (r"москва|moscow",))
+        if departure is None:
+            stop("no_departures")
+        params = {"TOWNFROMINC": positive_id(departure)}
+        destination = choose_named(api_data(token, "SearchTour_STATES", params, checks),
+                                   (r"турци|turkey|türkiye|\btur\b", r"егип|egypt"))
+        if destination is None:
+            stop("no_destinations")
+        params.update(STATEINC=positive_id(destination), ADULT=2, CHILD=0)
+        selected.update(departure=safe_label(departure.get("name")),
+                        destination=safe_label(destination.get("name")), adults=2, children=0)
+        calendar = api_data(token, "SearchTour_CHECKIN", params, checks)
+        dates = available_dates(calendar, dt.datetime.now(dt.timezone.utc).date())
+        if not dates:
+            stop("no_dates")
+        checkin = dates[0][0].strftime("%Y%m%d")
+        params.update(CHECKIN_BEG=checkin, CHECKIN_END=checkin)
+        selected.update(checkin_begin=checkin, checkin_end=checkin)
+        currencies = api_data(token, "SearchTour_CURRENCIES", params, checks)
+        currency = choose_named(currencies, (r"\brub\b|руб",))
+        if currency is None:
+            stop("no_currency")
+        params["CURRENCY"] = positive_id(currency)
+        selected["currency"] = safe_label(currency.get("alias") or currency.get("currencyISO") or currency.get("name"))
+        nights_data = api_data(token, "SearchTour_NIGHTS", params, checks)
+        raw_nights = nights_data if isinstance(nights_data, list) else (
+            nights_data.get("places") or nights_data.get("nights", []))
+        nights = []
+        for item in raw_nights:
+            value = item.get("id", item.get("nights")) if isinstance(item, dict) else item
+            if str(value).isdigit() and 3 <= int(value) <= 14:
+                nights.append(int(value))
+        if not nights:
+            stop("no_nights")
+        duration = min(nights, key=lambda value: abs(value - 7))
+        params.update(NIGHTS_FROM=duration, NIGHTS_TILL=duration, FREIGHT=1, FILTER=1,
+                      PRICEPAGE=1, PARTITION_PRICE=32, SORT="ASC", DYN_SEPARATE=1)
+        selected.update(nights_from=duration, nights_till=duration)
+        data = api_data(token, "SearchTour_PRICES", params, checks)
+        rows = data.get("prices", []) if isinstance(data, dict) else data
+        if not isinstance(rows, list):
+            checks[-1]["status"] = "invalid_response"
+            raise StopProbe()
+        checks[-1]["count"] = len(rows)
+        report["external_results_not_loaded"] = bool(data.get("searchKey")) if isinstance(data, dict) else False
+        valid = [offer_sample(row, selected) for row in rows]
+        valid = [sample for sample in valid if sample is not None]
+        report["valid_offers"] = len(valid)
+        report["bookable_offers"] = sum(sample["bookable"] for sample in valid)
+        samples.extend(valid[:3])
+        if not rows:
+            stop("no_prices")
+        elif not valid:
+            stop("invalid_offer")
+    except StopProbe:
+        pass
+    except (KeyError, TypeError, ValueError):
+        checks.append({"check": "selection", "status": "invalid_response"})
+    return report
+
+
 def clean_report(report):
     """Only bounded, fixed-vocabulary diagnostics may leave either process."""
     if not isinstance(report, dict) or not isinstance(report.get("checks"), list):
         raise ValueError("invalid report")
-    if not 1 <= len(report["checks"]) <= 4:
+    if not 1 <= len(report["checks"]) <= (13 if report.get("mode") == "prices" else 4):
         raise ValueError("invalid checks")
     checks = []
     for item in report["checks"]:
         if item.get("check") not in CHECKS or item.get("status") not in STATUSES:
             raise ValueError("unknown result")
         clean = {"check": item["check"], "status": item["status"]}
-        for key in ("count", "http_status", "elapsed_ms"):
+        for key in ("count", "http_status", "elapsed_ms", "supplier_code"):
             value = item.get(key)
             if type(value) is int and 0 <= value <= 10_000_000:
                 clean[key] = value
         checks.append(clean)
-    return {"ok": all(item["status"] == "ok" for item in checks), "checks": checks}
+    result = {"ok": all(item["status"] == "ok" for item in checks), "checks": checks}
+    if report.get("mode") == "prices":
+        result["mode"] = "prices"
+        search = report.get("search", {})
+        result["search"] = {key: safe_label(search[key]) for key in (
+            "departure", "destination", "currency", "checkin_begin", "checkin_end") if key in search}
+        for key in ("adults", "children", "nights_from", "nights_till"):
+            if type(search.get(key)) is int and 0 <= search[key] <= 100:
+                result["search"][key] = search[key]
+        for key in ("valid_offers", "bookable_offers"):
+            if type(report.get(key)) is int and 0 <= report[key] <= 10000:
+                result[key] = report[key]
+        result["external_results_not_loaded"] = report.get("external_results_not_loaded") is True
+        result["samples"] = []
+        for sample in report.get("samples", [])[:3]:
+            clean = {}
+            for key in ("hotel", "star", "meal", "room", "checkin", "checkout", "currency",
+                        "converted_currency", "hotel_availability", "flight_outbound", "flight_return"):
+                if key in sample:
+                    clean[key] = safe_label(sample[key])
+            for key in ("nights", "adults", "children", "price", "converted_price"):
+                if type(sample.get(key)) in (int, float) and 0 <= sample[key] <= 1_000_000_000:
+                    clean[key] = sample[key]
+            for key in ("bookable", "grouped"):
+                clean[key] = sample.get(key) is True
+            result["samples"].append(clean)
+        result["ok"] = result["ok"] and bool(result["samples"])
+    return result
 
 
 def ssh_probe():
+    global SENSITIVE_VALUES
+    prices = "--prices" in sys.argv
     names = ("ANEX_API_TOKEN", "ANEX_REFERENCE_TOKEN", "ANYTOOUR_DEPLOY_SSH_KEY",
              "ANYTOOUR_DEPLOY_HOST", "ANYTOOUR_DEPLOY_USER")
     missing = [name for name in names if not os.environ.get(name, "").strip()]
@@ -199,6 +448,8 @@ def ssh_probe():
         return {"ok": False, "checks": [
             {"check": "configuration", "status": "missing_secret"}]}
     tokens = {name: os.environ[name] for name in names[:2]}
+    SENSITIVE_VALUES = tuple(value for name in names
+                             for value in (os.environ[name], os.environ[name].strip()) if value)
     host = os.environ["ANYTOOUR_DEPLOY_HOST"].strip()
     user = os.environ["ANYTOOUR_DEPLOY_USER"].strip()
     if host.startswith("-") or any(c.isspace() for c in host + user):
@@ -216,12 +467,13 @@ def ssh_probe():
             "-o", "ConnectTimeout=15", "-o", "ServerAliveInterval=15",
             "-o", "ServerAliveCountMax=2", "-o", "LogLevel=ERROR",
             "-l", user, host,
-            'cd "$HOME/www/anytoour.ru" && python3 -B -c ' + shlex.quote(source) + " --remote",
+            'cd "$HOME/www/anytoour.ru" && python3 -B -c ' + shlex.quote(source)
+            + " --remote" + (" --prices" if prices else ""),
         ]
         child_env = {k: v for k, v in os.environ.items() if k not in names}
         try:
             completed = subprocess.run(command, input=json.dumps(tokens), text=True,
-                                       capture_output=True, timeout=110, env=child_env)
+                                       capture_output=True, timeout=290 if prices else 110, env=child_env)
         except subprocess.TimeoutExpired:
             return {"ok": False, "checks": [{"check": "ssh", "status": "ssh_timeout"}]}
         if completed.returncode and not completed.stdout.strip():
@@ -239,7 +491,8 @@ def ssh_probe():
 
 def main():
     try:
-        report = remote_probe(json.loads(sys.stdin.read(16_384))) if "--remote" in sys.argv else ssh_probe()
+        remote = remote_price_probe if "--prices" in sys.argv else remote_probe
+        report = remote(json.loads(sys.stdin.read(16_384))) if "--remote" in sys.argv else ssh_probe()
         report = clean_report(report)
     except Exception:
         # Do not print exception text: urllib exceptions can include token URLs.
