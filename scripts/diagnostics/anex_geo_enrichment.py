@@ -14,8 +14,8 @@ def geo_decision(api, candidates, relation):
         return "review", "country_conflict"
     if best["distance_m"] is not None and best["distance_m"] > 5000:
         return "review", "coordinate_conflict"
-    # The reader returns at most eight rows: a full page cannot prove uniqueness.
-    if len(candidates) >= 8:
+    # The reader returns at most 64 rows: a full page cannot prove uniqueness.
+    if len(candidates) >= 64:
         return "review", "candidate_limit_reached"
     if len(candidates) > 1 and best["score"] - candidates[1]["score"] < 0.1:
         return "review", "competing_candidates"
@@ -56,7 +56,7 @@ def enrich_geo_sample(tokens, matches, hotels):
                 row["reason"] = "supplier_identity_unverified"
                 continue
             catalog = read_catalog([{"key": identifier, "names": [api["name"], xml["name"], xml["alternate_name"]],
-                                     "latitude": api["latitude"], "longitude": api["longitude"]}])
+                                     "latitude": api["latitude"], "longitude": api["longitude"]}], candidate_limit=64)
             if catalog["status"] != "ok":
                 row["reason"] = "catalog_unavailable"
                 continue

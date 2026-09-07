@@ -131,10 +131,10 @@ def classify_candidates(candidates):
     return "probable"
 
 
-def read_catalog(queries):
+def read_catalog(queries, candidate_limit=8):
     try:
         result = subprocess.run(["php", "-d", "display_errors=0", "-d", "log_errors=0", "-r", CATALOG_PHP],
-                                input=json.dumps({"queries": queries}), text=True,
+                                input=json.dumps({"queries": queries, "candidate_limit": candidate_limit}), text=True,
                                 capture_output=True, timeout=45)
         if result.returncode or len(result.stdout) > 300_000:
             return {"status": "catalog_unavailable", "items": []}

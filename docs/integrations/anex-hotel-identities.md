@@ -120,7 +120,7 @@ unchanged. Results are not a full-queue coverage estimate.
 
 `strong_candidate` requires matching known countries, name similarity >=0.90,
 distance <=200m, no competing score within 0.10, no recognized section-name
-difference, and fewer than the reader limit of eight candidates. This remains
+difference, and fewer than the enrichment reader limit of 64 candidates (the original pilot retains eight). This remains
 a review proposal, not proof of identity: shared complex coordinates, omitted
 section names and candidate retrieval limits can still hide ambiguity.
 Missing details and supplier-namespace conflicts remain in review. This pilot

@@ -75,6 +75,7 @@ try {
         || count($input['queries']) < 1 || count($input['queries']) > 10) {
         throw new RuntimeException();
     }
+    $candidateLimit = isset($input['candidate_limit']) && $input['candidate_limit'] === 64 ? 64 : 8;
     $queries = array();
     foreach ($input['queries'] as $query) {
         if (!is_array($query) || !isset($query['key']) || !is_int($query['key'])
@@ -177,7 +178,7 @@ try {
                 . 'WHERE h.is_active = 1 AND (' . implode(' OR ', $conditions) . ') ORDER BY '
                 . ($exactOrder ? 'CASE WHEN (' . implode(' OR ', $exactOrder) . ') THEN 0 '
                     . ($tokenOrder ? 'WHEN (' . implode(' OR ', $tokenOrder) . ') THEN 1 ' : '') . 'ELSE 2 END, ' : '')
-                . 'h.is_active DESC, h.id ASC LIMIT 8';
+                . 'h.is_active DESC, h.id ASC LIMIT ' . $candidateLimit;
             $statement = $pdo->prepare($sql);
             $statement->execute($params);
             while ($row = $statement->fetch(PDO::FETCH_ASSOC)) {
