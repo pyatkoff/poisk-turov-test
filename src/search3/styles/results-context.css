@@ -1,5 +1,6 @@
 /* Search3 keeps the shared DS2 shell and inactive controls out of its results flow. */
 body.search3-candidate{
+& #anytour-consultant-host,& .mobile-search-sticky{display:none!important}
 & .v2-shell{display:block!important}
 & .results-layout{grid-column:1/-1!important;justify-self:stretch!important;min-width:0!important}
 & .results-layout>.results,& #results{min-width:0!important;width:100%!important;max-width:none!important;align-items:stretch!important}
@@ -39,7 +40,6 @@ body.search3-candidate{
 &.search3-has-results.search3-editing-search .results-search-summary,&.search3-has-results :is(#v2ResultsConfidence,#v2AgencyTrust){display:none!important}
 /* A completed-search banner is useful while searching, but maket7's settled results state starts
    directly with the compact search summary. Keep empty/error/in-progress status UI untouched. */
-&.search3-has-results #status:has(.search-progress-done){display:none!important}
 & .results-search-summary{display:grid!important;grid-template-columns:minmax(0,1.55fr) .68fr .68fr .72fr 122px!important;align-items:stretch!important;gap:0!important;max-width:1120px!important;width:calc(100% - 32px)!important;margin:0 auto 10px!important;padding:0!important;border:1px solid #e2e8f0!important;border-radius:10px!important;background:#fff!important;box-shadow:none!important;overflow:hidden!important}
 & .results-search-summary__route{grid-column:1!important;grid-row:1!important;padding:8px 13px!important;border-right:1px solid #edf0f5!important}
 & .results-search-summary__route strong{display:block!important;margin-bottom:3px!important;color:#98a2b3!important;font-size:7px!important;font-weight:800!important;text-transform:uppercase!important;letter-spacing:.02em!important}
@@ -68,7 +68,6 @@ body.search3-candidate{
 & .results-view-switch{display:flex!important;gap:5px!important}
 & .results-view-switch button{min-height:31px!important;padding:0 10px!important;border:1px solid #dce4ef!important;border-radius:6px!important;background:#fff!important;color:#344054!important;font-size:8px!important;font-weight:850!important}
 & .results-view-switch button.is-active{border-color:#2463eb!important;color:#2463eb!important;background:#f7faff!important}
-&.search3-has-results .search3-mobile-toolbar{display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:wrap!important;margin:0 0 8px!important;width:100%!important;max-width:none!important}
 }
 @media(min-width:1000px){
 
@@ -92,32 +91,9 @@ body.search3-candidate{
 }
 @media(max-width:999px){
 body.search3-candidate{
-& .results-search-summary{grid-template-columns:minmax(0,1fr) 108px!important;width:calc(100% - 20px)!important;margin:0 auto 8px!important}
 & .results-search-summary__route{grid-column:1!important;grid-row:1!important;border-right:0!important;padding:7px 9px!important}
 & .results-search-summary__fact{display:none!important}
 & .results-search-summary__edit{grid-column:2!important;grid-row:1!important;min-height:44px!important;border-left:1px solid #edf0f5!important}
-& .search3-mobile-toolbar{display:grid!important;grid-template-columns:auto minmax(0,1fr)!important;align-items:start!important;margin:0 0 8px!important}
 & .results-tools--ds2{align-items:flex-start!important;flex-direction:column!important;padding:7px 0!important;border:0!important;background:transparent!important}
-& .results-tools--ds2>div:first-child{display:block!important}
-& .results-tools--ds2 #resultSummary{display:block!important;margin-top:3px!important}
-}
-}
-@media(max-width:640px){
-body.search3-candidate{
-&.search3-has-results {
-
-& .search3-page-intro {margin:8px auto 4px!important}
-
-
-
-
-
-
-
-}
-& .search3-mobile-toolbar{grid-template-columns:1fr!important}
-& .results-tools__actions{width:100%!important;align-items:stretch!important}
-& .results-tools__actions label{flex:1!important}
-& .results-tools select{width:100%!important}
 }
 }

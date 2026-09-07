@@ -78,6 +78,24 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertEqual(source.count(':is(.search3-messenger-actions,.search3-error-actions) {display:grid!important'), 1)
         self.assertEqual(source.count('.search3-stay-site {width:100%!important'), 1)
 
+    def test_retired_hotel_donor_and_tour_header_have_current_owners(self):
+        retired = (ROOT / 'src/search3/styles/hotel-results.css').read_text()
+        self.assertEqual(re.sub(r'/\*.*?\*/', '', retired, flags=re.S).strip(), '')
+        packages = (ROOT / 'src/search3/styles/hotel-packages.css').read_text()
+        context = (ROOT / 'src/search3/styles/results-context.css').read_text()
+        cards = (ROOT / 'src/search3/behavior/results/cards.js').read_text()
+        all_source = ''.join(
+            path.read_text() for path in (ROOT / 'src/search3').rglob('*')
+            if path.is_file()
+        )
+        self.assertIn('#anytour-consultant-host,& .mobile-search-sticky{display:none!important}', context)
+        self.assertIn('& #results .hotel-tours::before{display:none!important;content:none!important}', packages)
+        self.assertIn('& #results .tour-row[hidden]{display:none!important}', packages)
+        self.assertIn('.direct-tour{width:100%!important;min-height:36px!important', packages)
+        self.assertNotIn('search3-tour-list-head', all_source)
+        self.assertNotIn('ensureTourListHead', cards)
+        self.assertIn('search3-hotel-action__copy', cards)
+
     def test_lead_review_layer_is_retired_without_losing_lifecycle_truth(self):
         retired = (ROOT / 'src/search3/styles/lead-review.css').read_text()
         self.assertEqual(re.sub(r'/\*.*?\*/', '', retired, flags=re.S).strip(), '')

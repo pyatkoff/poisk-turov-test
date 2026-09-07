@@ -53,27 +53,11 @@ assert.equal(renders, 3, 'later updates are not lost');
 assert.ok(html.includes('987 ₽'));
 console.log('PASS: coalesced summary events preserve latest tour/flight/price and stage');
 
-// Preserve each target, write order, value and priority across all layout branches.
-const clear = [
-  ...['display', 'grid-column', 'grid-template-columns', 'gap', 'align-items'].map(p => ['shell', 'remove', p]),
-  ...['grid-column', 'grid-row'].map(p => ['form', 'remove', p]),
-  ...['display', 'grid-column', 'grid-row'].map(p => ['summary', 'remove', p])
-];
-const entryLayout = [
-  ['shell', 'display', 'grid'], ['shell', 'grid-column', '1 / -1'],
-  ['shell', 'grid-template-columns', 'minmax(0,1fr) 320px'], ['shell', 'gap', '18px'],
-  ['shell', 'align-items', 'start'], ['form', 'grid-column', '1'], ['form', 'grid-row', '1'],
-  ['summary', 'display', 'block'], ['summary', 'grid-column', '2'], ['summary', 'grid-row', '1']
-];
-const reviewLayout = [
-  ['shell', 'display', 'contents'], ['form', 'grid-column', '1 / 3'],
-  ['summary', 'display', 'block'], ['summary', 'grid-column', '3'], ['summary', 'grid-row', '4 / 12']
-];
+// Current CSS owns layout. The adapter keeps only lifecycle copy/data updates.
 for (desktop of [false, true]) for (review of [false, true]) for (lead of [false, true]) {
   layoutWrites.length = 0;
   window.Search3BookingSummary.syncLayout();
-  const setters = desktop && review ? (lead ? entryLayout : reviewLayout) : [];
-  assert.deepEqual(layoutWrites, clear.concat(setters.map(([owner, name, value]) => [owner, 'set', name, value, 'important'])));
+  assert.deepEqual(layoutWrites, []);
   assert.equal(root.dataset.search3FinalLayout, review && !lead ? 'maket7' : undefined);
 }
-console.log('PASS: all eight summary layout states preserve ordered DOM style operations');
+console.log('PASS: all eight summary states use CSS layout while preserving lifecycle data');

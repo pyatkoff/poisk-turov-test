@@ -18,7 +18,7 @@
     },
     "search3-results-cards-v2.css": {
       "candidateSha256": "ee51d0cfc08af6f48af748b9c77a9747d33afbf91630428526ce3c68bed26f3b",
-      "productionSha256": "fbfdfa1e06d7b0bc153bd13582a1a74eedc91e29dc510497b0d345f63a00136a"
+      "productionSha256": "225ca5c5f32a538dffa0b0fb2ba48147619d2e71fe20b9b8b560a3d2467d7bd7"
     },
     "search3-results-cards-v2.js": {
       "candidateSha256": "169c61338df3ef1914a9bd90c6fd26f3e1b6c8512427f4c02fa5b61574cea266",
@@ -26,11 +26,11 @@
     },
     "search3-results-filters-v1.css": {
       "candidateSha256": "056ca312c4f5356e1d3b8cc95e90355a0420420501e6467ae014e917df39fe7b",
-      "productionSha256": "4d1e68eba709ee82b71151bd356f5d5d3519159aa9baecd9c34f8e2400d90a59"
+      "productionSha256": "9b81c24b85b979143cbedb2e41a2bb39bad0280e9a3788bf9ee3fb2b8ef33d91"
     },
     "search3-results-filters-v1.js": {
       "candidateSha256": "59902609494edbecb014a1ebd3049b12071c799b88f939ff92fc7ca76883202f",
-      "productionSha256": "d5a348b8d4946b14639848f43ecab0a18ffd013be6486570dd5dc0e924875d01"
+      "productionSha256": "b091b8fd097d760a20c6b43f95494db16abc4ea99cd105b181f6a3776bebed47"
     },
     "search3-selected-flow-v2.css": {
       "candidateSha256": "26d7c6661ff29957309d8356ab47c430e37b718053d062d241e202d660bd6871",

@@ -51,19 +51,8 @@
     context.innerHTML = '<span>' + safe(guestLabel()) + '</span>';
   }
 
-  function ensureTourListHead(toursNode, hotel) {
-    if (!toursNode || toursNode.querySelector('.search3-tour-list-head')) return;
-    var count = Array.isArray(hotel && hotel.tours) ? hotel.tours.length : toursNode.querySelectorAll('.tour-row').length;
-    var head = document.createElement('div');
-    head.className = 'search3-tour-list-head';
-    head.innerHTML = '<div><strong>Лучшее предложение</strong><span>Сравните дату, номер, питание и цену</span></div>'
-      + '<b>' + count + ' ' + tourWord(count) + '</b>';
-    toursNode.insertBefore(head, toursNode.firstChild);
-  }
-
   function decorateTourRows(toursNode, hotel) {
     if (!toursNode) return;
-    ensureTourListHead(toursNode, hotel);
     toursNode.querySelectorAll('.tour-row').forEach(function (row) {
       if (row.dataset.search3OfferV2 === '1') return;
       row.dataset.search3OfferV2 = '1';
