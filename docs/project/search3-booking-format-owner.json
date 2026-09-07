@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "base_release_sha": "144f70ca5d0a8ee7eee53915b3920587dbe4f770",
+  "base_release_sha": "85e387ce3325f186128c86e53e36d9745fdbdb5b",
   "scope": "Retire the standalone presentation-text runtime owner into booking-summary.js and its private services/format parts.",
   "retired_runtime_owners": [
     "src/search3/behavior/presentation-text.js",
@@ -12,8 +12,8 @@
     "src/search3/behavior/booking/services.js"
   ],
   "served_assets": {
-    "before_bytes": 163280,
-    "after_bytes": 162926,
+    "before_bytes": 161470,
+    "after_bytes": 161116,
     "removed_bytes": 354,
     "changed": {
       "v2/search3-results-filters-v1.js": {
