@@ -226,6 +226,24 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('padding-inline:0!important', shell)
         self.assertIn(':not(.search3-has-results) .ds2-site-footer{margin-top:24px!important}', entry)
 
+    def test_legacy_checkout_presentation_is_not_a_search3_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        self.assertIn("'checkout-experience-v1.css'", manifest)
+        self.assertIn("'checkout-experience-v1.css'", scoped)
+        current = ''.join((ROOT / 'src/search3/styles' / name).read_text() for name in (
+            'tour-detail.css', 'selected-flow-v2.css', 'review-layout.css',
+            'booking-summary.css', 'final-sections.css', 'lead-state.css'
+        ))
+        for marker in ('.selected-head', '.selected-picture', '.facts', '.flight-variant',
+                       '.search3-booking-summary', '.lead-form'):
+            self.assertIn(marker, current)
+        flights = (ROOT / 'src/search3/styles/flights.css').read_text()
+        self.assertIn('position:relative!important', flights)
+        self.assertIn('.flight-variant{margin:0!important}', flights)
+        self.assertIn('min-height:380px!important', current)
+        self.assertIn('.lead-message{color:#2743cb!important;font-weight:600!important}', current)
+
     def test_retired_tablet_drawer_and_redundant_phone_rules_have_current_owners(self):
         tablet = (ROOT / 'src/search3/styles/results-tablet-layout.css').read_text()
         toolbar = (ROOT / 'src/search3/styles/mobile-results-toolbar.css').read_text()
