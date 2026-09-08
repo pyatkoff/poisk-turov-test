@@ -53,34 +53,34 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1568 retires the complete 10197-byte product-shell-v1.css legacy header/hero/grid layer from Search3. Exact Chromium identified and preserved only the inherited font, ink/soft tokens, hidden legacy hero and 52px mobile/tablet shell bottom spacing in the current Search3 base owner. Loaded route payload falls 496300 to 486335 raw (-9965) and carried same-method gzip falls 112163 to 110185 (-1978). The full legacy route retains the unchanged layer.",
+    "last_material_progress": "PR #1575 retires the complete 10798-byte ds2-selected-tour-convergence-v1.css legacy selected-tour layer from Search3. Exact Chromium exposed the live inherited slice and current owners now preserve shell sizing, price-label tracking, facts/disclosure heights, headings, flight-choice layout, route radius and lead-input radius. Loaded route payload falls 481880 to 472663 raw (-9217 net); the full legacy route retains the unchanged layer.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit search-header-shared-shell-v1.css as the next complete presentation-layer candidate against the current at-global-header and Search3 base/entry owners. Preserve shared header/footer/logo/navigation and active route geometry; retain the full old-route layer.",
+    "next_action": "Retire selected-tour-layout-guard-v1.css and audit br3-control-consistency-v1.css as one substantial reversible legacy-guard package. Preserve current progress/error controls, focus/touch targets, selected return/description geometry and the full old-search manifest.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_SHARED_HEADER_SHELL_LAYER",
-    "title": "Retire the legacy shared search-header shell from Search3",
+    "id": "S3_LEAN_SELECTED_CONVERGENCE_LAYER",
+    "title": "Retire the legacy selected-tour convergence layer from Search3",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1573
+      1575
     ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "2b6afe8602587ff6e45e13127129daec4187e22d"
+      "b86a5eeb7396134b08b2eb2ced2eddd717a0f882"
     ],
-    "release_sha": "e887eef45e8a23560d5f5138c0b38908f0be7ca3",
-    "artifact_run": 34210172714,
-    "artifact_id": 10049486332,
-    "artifact_digest": "sha256:879ab7e79da7b10782b64d55273028dce5efbddec0f77a0fd26b6107502c3d5c",
-    "checked_release_asset_bytes": 173509,
-    "checked_release_loaded_bytes": 481880,
+    "release_sha": "13df507f22e6e56c8320b944cb3c531ad8a796b9",
+    "artifact_run": 34215627824,
+    "artifact_id": 10051687021,
+    "artifact_digest": "sha256:6b813f3bc74c55ec3e9a4ff3acfab85edd1560b4f697a0400f09bc4dd7be6f65",
+    "checked_release_asset_bytes": 175090,
+    "checked_release_loaded_bytes": 472663,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit ds2-search-intro-v1.css and ds2-selected-tour-convergence-v1.css as whole reversible candidates in parallel; preserve active Search3 entry and selected-tour geometry."
+    "next_action": "Retire selected-tour-layout-guard-v1.css and audit br3-control-consistency-v1.css together; keep only proven live rules in current Search3 owners."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1349,6 +1349,23 @@
       "artifact_digest": "sha256:879ab7e79da7b10782b64d55273028dce5efbddec0f77a0fd26b6107502c3d5c",
       "required_passed": 2,
       "preview_published": false
+    },
+    "selected_convergence_layer_retirement": {
+      "artifact_digest": "sha256:6b813f3bc74c55ec3e9a4ff3acfab85edd1560b4f697a0400f09bc4dd7be6f65",
+      "artifact_id": 10051687021,
+      "artifact_run": 34215627824,
+      "initial_exact_run": 34215439223,
+      "preview_published": false,
+      "required_passed": 2,
+      "results_geometry_artifact": 10051686606,
+      "results_geometry_digest": "sha256:178b841171f92931285942b5968c722a71e5690edf4b7bab8f02b43a105ca351",
+      "results_geometry_states": "Result and entry states passed at the existing guarded widths; no overflow or clipped actions.",
+      "security_run": 34215439259,
+      "selected_geometry_artifact": 10051686211,
+      "selected_geometry_digest": "sha256:9c16de58147951a5a0a4291bc22b1aca3aded16df1a722d0aea49896a87812ef",
+      "selected_geometry_states": "12 detail/review/lead states at 375/760/1000/1440",
+      "source_pr": 1575,
+      "source_sha": "b86a5eeb7396134b08b2eb2ced2eddd717a0f882"
     }
   },
   "last_verified_commit": "e887eef45e8a23560d5f5138c0b38908f0be7ca3",
