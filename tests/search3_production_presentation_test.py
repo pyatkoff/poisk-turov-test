@@ -324,6 +324,21 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('font-family:Aeroport,Inter,-apple-system', base)
         self.assertIn("define('V2_SEARCH3_PRESENTATION', false)", legacy_route)
 
+    def test_search_header_shared_shell_is_a_legacy_only_layer(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/search-header-shared-shell-v1.css').read_text()
+        current_header = (ROOT / 'v2/site-header-v2.php').read_text()
+        current_header_css = (ROOT / 'v2/site-header-v2.css').read_text()
+        self.assertIn("'search-header-shared-shell-v1.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'search-header-shared-shell-v1.css'", scoped)
+        self.assertIn('.at-site-header', legacy)
+        self.assertNotIn('.at-global-header', legacy)
+        self.assertIn('<header class="at-global-header">', current_header)
+        self.assertIn('.at-global-header', current_header_css)
+        for current_contract in ['.v2-shell', '#tourSearch', '#results', '#selectedTour', '.search3-candidate']:
+            self.assertNotIn(current_contract, legacy)
+
     def test_tablet_legacy_extras_are_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
