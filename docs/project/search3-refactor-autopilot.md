@@ -2255,3 +2255,19 @@ Focused source checks cover base, pending and confirmed totals plus the retained
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-price-confidence-runtime.json`.
 
 Next: audit the complete `results-filter-autorefresh-v1.js` owner against current instant/local DS2 result filters. Preserve loaded-result completeness guards, zero-result recovery and explicit search submission; do not keep an automatic Tourvisor refresh path in Search3 unless a focused contract proves it is required.
+
+## S3_LEAN_FILTER_AUTOREFRESH_RUNTIME — checked release, 2026-09-08
+
+Source PR #1546 / `c7118489fe450ae7850f058206bb20031e6e3004`; checked code release `401c095df33a9cfd440534d48d72ff5a5e8a4c89`. Search3 no longer loads the complete 2714-byte `results-filter-autorefresh-v1.js` runtime. The full legacy route retains the unchanged file and `V2ResultsFilterAutorefreshV1` compatibility global.
+
+Current Search3 result facets remain instant and local, with completeness guards, zero-result recovery and reset intact. Changes to primary search parameters still mark results stale and are submitted explicitly through the current stale-results action and `V2SearchLifecycle.submit()`. The retired legacy owner only scheduled a second supplier search 650 ms after old-form filter changes; no replacement network path was added.
+
+Loaded raw is **548044 → 545330 bytes (−2714)**: scoped shared JavaScript 189660→186946; shared CSS and the eight Search3 assets remain 186118 and 172266. Exact emitted endpoints plus eight independent files gzip is **121807 → 121305 (−502)**.
+
+Security `34189315892` and exact artifacts `34189315891` / `34189452118` passed. Reusable final artifact `10041716679`, digest `sha256:bc39e469877ee9b24721262975490a1d9c6dca8c2ea23d592d558512c92eb384`; selected evidence `10041715945`, digest `sha256:1715d7b6a6ed15922830f774e5e1736899ff6d6fc632fafb4781d849cfb86f2f`; results evidence `10041716298`, digest `sha256:be83f6de2980095d3a23026ff785d0c341e4239e97e5279a9abeef25f85a1e95`.
+
+Focused source checks cover instant/local facets, completeness guards, zero-result recovery, explicit stale-results submission and unchanged legacy retention. Exact Chromium retained 12 selected states, 30 entry states, 12 result states and 10 header states. No supplier request or lead was sent.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-filter-autorefresh-runtime.json`.
+
+Next: audit `results-depth-v1.js` against `search-lifecycle-v6.js`. The lifecycle already renders 100 results before emitting `v2:search-complete`; preserve progressive 25-result refreshes and the final 100-result render, and remove the old post-completion owner only if focused coverage proves its second request is redundant.
