@@ -2426,3 +2426,42 @@ Final exact Chromium retained 12 selected detail/review/lead states, 30 entry st
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-product-shell-layer.json`.
 
 Next: audit the complete `search-header-shared-shell-v1.css` layer against the current `.at-global-header` and Search3 base/entry owners. Preserve header/footer/logo/navigation and active route geometry, and keep the full layer on the old route.
+
+### S3_LEAN_SHARED_HEADER_SHELL_LAYER — CHECKED RELEASE, NOT PUBLISHED, NOT PRODUCTION (2026-09-08)
+
+Source PR #1573 / `2b6afe8602587ff6e45e13127129daec4187e22d`; checked release
+`e887eef45e8a23560d5f5138c0b38908f0be7ca3`. Search3 no longer loads the complete
+`search-header-shared-shell-v1.css` layer. All of its selectors belong to the legacy
+`.at-site-header`, `.at-site-*` and `.at-mobile-menu-*` families. Current Search3
+renders `.at-global-header`, whose logo, navigation, mobile menu and geometry remain
+owned by `site-header-v2.php/css`. The full old-search manifest retains the 4,455-byte
+file; no compensating Search3 CSS was required.
+
+Loaded raw is **486335 → 481880 bytes (−4455)**: scoped shared CSS
+**129086 → 124631**, shared JavaScript remains **183740**, and the eight generated
+Search3 public assets remain exactly **173509**. Exact same-method endpoint plus
+eight-independent-file gzip is **110185 → 109432 (−753)**.
+
+Local source build/check, 13 source-build tests, 45 presentation tests (one local
+PHP-dependent skip) and the owner-priority validator passed. Security
+`34209958561`, initial exact artifact `34209962002` and ready repeat
+`34210172714` succeeded. Reusable artifact `10049486332`, digest
+`sha256:879ab7e79da7b10782b64d55273028dce5efbddec0f77a0fd26b6107502c3d5c`.
+Results/header evidence `10049485574`, digest
+`sha256:1da978383f64e0401a269ca7cd312033610c6c2743a3bbe66999a1349d2f49e5`;
+selected evidence `10049484807`, digest
+`sha256:1d4a362e8ed0255888f343830f540337abb913e5380cbcb88aca2d231cbf24f7`.
+Exact source/PHP/path/presentation/isolation guards and Chromium header, entry,
+results and selected-tour geometry passed without external API or lead requests.
+
+Published preview remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; this source was not
+published. Main and production were not changed. Live current-source visuals,
+representative screenshot inspection, physical Safari/safe-area and owner acceptance
+remain deferred. Audit: `docs/project/search3-lean-shared-header-shell-layer.json`.
+
+Next: audit complete `ds2-search-intro-v1.css` and
+`ds2-selected-tour-convergence-v1.css` layers against current Search3 owners.
+Retire only a proven whole layer or bounded family; preserve active entry, results,
+selected-tour, price, URL/payload, Tourvisor/API, lead, analytics, logo and browser
+contracts.
+
