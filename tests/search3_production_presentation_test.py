@@ -377,6 +377,27 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('.search3-tourists__ages{grid-column:1/-1!important;display:grid!important;gap:8px!important;margin-top:9px!important', entry)
         self.assertNotIn('.ux-native-hidden{', entry)
 
+    def test_legacy_selected_tour_skin_has_compact_current_owners(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/selected-tour-ux.css').read_text()
+        detail = (ROOT / 'src/search3/styles/tour-detail.css').read_text()
+        flights = (ROOT / 'src/search3/styles/flights.css').read_text()
+        flow = (ROOT / 'src/search3/styles/selected-flow-v2.css').read_text()
+        lead = (ROOT / 'src/search3/styles/lead-state.css').read_text()
+        self.assertIn("'selected-tour-ux.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'selected-tour-ux.css'", scoped)
+        for marker in ('.selected-choice-summary', '.lead-success-panel', '.selected-lead-cta-note'):
+            self.assertIn(marker, legacy)
+        for marker in ('position:relative!important;max-width:var(--at-shell)', '.hotel-desc.is-collapsed', '.room-details-host.is-expanded'):
+            self.assertIn(marker, detail)
+        for marker in ('.flight-variant {position:relative!important', '.flight-segment+.flight-segment', '.flight-arrow{transform:rotate(90deg)'):
+            self.assertIn(marker, flights)
+        self.assertIn('.selected-loading[data-v2-friendly-error="1"]', flow)
+        self.assertIn('.tour-load-retry{min-height:44px', flow)
+        self.assertIn('#selectedTour .lead-form{position:relative!important}', lead)
+        self.assertIn('#selectedTour .lead-phone-hint{display:block', lead)
+
     def test_legacy_header_css_is_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
@@ -643,7 +664,7 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         selected = (ROOT / 'src/search3/styles/selected-tour.css').read_text()
         detail = (ROOT / 'src/search3/styles/tour-detail.css').read_text()
         self.assertEqual(re.sub(r'/\*.*?\*/', '', selected, flags=re.S).strip(), '')
-        self.assertIn('#selectedTour{max-width:var(--at-shell)!important', detail)
+        self.assertIn('#selectedTour{position:relative!important;max-width:var(--at-shell)!important', detail)
         self.assertIn('& .selected-picture img{width:100%!important;height:100%!important;object-fit:cover!important}', detail)
         self.assertIn('& .facts{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important', detail)
         self.assertIn('#selectedTour:not(.search3-final-review){display:grid!important', detail)
