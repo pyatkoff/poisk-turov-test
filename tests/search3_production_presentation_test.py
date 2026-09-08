@@ -945,7 +945,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         )
         self.assertEqual((ROOT / 'v2/search3-selected-flow-v2.js').stat().st_size, 0)
 
-    def test_selected_runtime_uses_canonical_owners_once(self):
+    def test_selected_runtime_is_eager_and_uses_canonical_owners_once(self):
         phases = json.loads(subprocess.check_output([
             'php', '-r',
             'require "v2/bundle-manifest-v1.php"; echo json_encode(['
@@ -953,7 +953,6 @@ class Search3HalfSizeResetTest(unittest.TestCase):
             'v2_bundle_phase_files("js", "search3", "selected")]);'
         ], cwd=ROOT))
         initial, selected = phases
-        self.assertNotIn('flight-empty-recovery-v1.js', initial)
         self.assertEqual(selected.count('flight-empty-recovery-v1.js'), 1)
         self.assertEqual(selected.count('flight-price-sync-v1.js'), 1)
         self.assertEqual(selected.count('tour-controller-v4.js'), 1)
@@ -963,6 +962,11 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertIn("window.addEventListener('v2:tour-selected'", recovery)
         self.assertIn("selectedState(true)", summary)
         self.assertIn('correctTradeoffs', summary)
+        self.assertFalse((ROOT / 'src/search3/behavior/selected-runtime.js').exists())
+        index = (ROOT / 'v2/index.php').read_text()
+        self.assertNotIn('data-search3-selected-runtime', index)
+        self.assertNotIn("v2_search3_enabled() ? 'initial' : 'all'", index)
+        self.assertIn("v2_bundle_asset('js', null, 'all')", index)
 
     def test_native_controls_and_isolation_remain(self):
         native = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
@@ -989,9 +993,7 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         closures = json.loads(subprocess.check_output([
             'php', '-r',
             'require "v2/bundle-manifest-v1.php"; echo json_encode(['
-            'v2_bundle_files("js", "full"), v2_bundle_files("js", "search3"),'
-            'array_merge(v2_bundle_phase_files("js", "search3", "initial"),'
-            'v2_bundle_phase_files("js", "search3", "selected"))]);'
+            'v2_bundle_files("js", "full"), v2_bundle_files("js", "search3")]);'
         ], cwd=ROOT))
         for name in (
             'analytics-v4.js', 'tour-controller-v4.js', 'flight-price-sync-v1.js',
