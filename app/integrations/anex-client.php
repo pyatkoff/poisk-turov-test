@@ -187,7 +187,7 @@ final class AnyTourAnexClient
                 }
             } elseif ($key === 'HOTELS' || $key === 'AGES') {
                 $items = explode(',', $value);
-                $limit = $key === 'HOTELS' ? 10 : 6;
+                $limit = $key === 'HOTELS' ? 30 : 6;
                 if (count($items) > $limit) {
                     throw new RuntimeException('ANEX_INVALID_PARAMS');
                 }
