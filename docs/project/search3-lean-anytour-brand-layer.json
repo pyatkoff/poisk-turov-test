@@ -15,18 +15,33 @@
     "Active room-details.css and search-states-design.css"
   ],
   "payload": {
-    "before": {"css": 149005, "js": 183740, "eight_assets": 174000, "raw_total": 506022, "gzip_total": 114104},
-    "after": {"css": 139283, "js": 183740, "eight_assets": 174000, "raw_total": 496300, "gzip_total": 112163}
+    "before": {
+      "css": 149005,
+      "js": 183740,
+      "eight_assets": 173277,
+      "raw_total": 506022,
+      "gzip_total": 114104
+    },
+    "after": {
+      "css": 139283,
+      "js": 183740,
+      "eight_assets": 173277,
+      "raw_total": 496300,
+      "gzip_total": 112163
+    }
   },
   "legacy_layer_bytes_removed": 9722,
   "current_owner_bytes_added": 0,
   "raw_saved_bytes": 9722,
   "gzip_saved_bytes": 1941,
-  "measurement_scope": "Raw total sums route-scoped shared CSS/JS files and eight generated Search3 paths. Gzip carries the preceding absolute with a same-method exact endpoint and eight-file delta.",
+  "measurement_scope": "Raw total sums route-scoped shared CSS/JS files and eight generated Search3 paths. Exact artifact 10047845216 proves the eight-asset subtotal is 173277; this corrects the previously transcribed 174000 while leaving raw_total 506022 → 496300 unchanged. Gzip carries the preceding absolute with a same-method exact endpoint and eight-file delta.",
   "ci": {
     "security_run": 34205833337,
     "failed_exact_runs": [],
-    "green_exact_runs": [34205833396, 34206067387],
+    "green_exact_runs": [
+      34205833396,
+      34206067387
+    ],
     "artifact_id": 10047845216,
     "artifact_digest": "sha256:7111070f1ff14b5c9be8f20292219c3a752cb1dd8aef9b8c9dbdadb9d7014da6",
     "selected_geometry_artifact": 10047844074,
@@ -42,7 +57,11 @@
   "protected_contracts": "Eight public paths preserved. Tourvisor/API parameters, URL/payload, price arithmetic, lead transport/field mapping, analytics/goals, native controls, nesting and logo unchanged.",
   "publication": "NOT_PUBLISHED",
   "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
-  "deferred": ["Live current-source interaction and manual screenshots", "Physical Safari and safe-area", "Owner visual acceptance"],
+  "deferred": [
+    "Live current-source interaction and manual screenshots",
+    "Physical Safari and safe-area",
+    "Owner visual acceptance"
+  ],
   "next_action": "Audit product-shell-v1.css as the next substantial complete presentation-layer candidate. Preserve header/footer/logo and active route geometry, retain the full old-route layer, and keep active room-details.css/search-states-design.css loaded unless focused evidence proves otherwise.",
   "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
   "production_verification": "NOT_PERFORMED; no Search3 production deployment was made."
