@@ -135,6 +135,7 @@ Object.defineProperty(selectedDataset, 'search3FlightFallback', {
 });
 let fallbackClicks = 0;
 let leadForm = null;
+let priceVariants = [];
 const selectedClasses = new Set();
 const fallbackButton = { textContent: 'Далее: итог тура', click() { fallbackClicks += 1; } };
 const fallbackAction = {
@@ -176,6 +177,7 @@ const selected = {
     return null;
   },
   querySelectorAll(selector) {
+    if (selector === '.flight-variant') return priceVariants;
     if (selector === '.search3-booking-summary__total') return [priceBox];
     if (selector === '.facts > div') return [dateRow];
     if (selector === '.search3-booking-summary dl > div' || selector === '.search3-final-services > article') return [];
@@ -317,6 +319,30 @@ strongText = 'retained hidden summary';
 window.Search3CandidateSelectedPresentationV1.decorate();
 assert.equal(strongText, 'retained hidden summary', 'legacy decorate still leaves a hidden tour untouched');
 selected.hidden = false;
+const tradeoffBestClasses = new Set();
+const tradeoffBest = {
+  textContent: 'К минимальной цене',
+  classList: { toggle(name, enabled) { enabled ? tradeoffBestClasses.add(name) : tradeoffBestClasses.delete(name); } }
+};
+const tradeoffDecimal = { textContent: 'К минимальной цене', classList: { toggle() {} } };
+priceVariants = [
+  {
+    querySelector(selector) { return selector === '.flight-choice>b' ? { textContent: 'Стоимость тура: 72 832 ₽' } : null; },
+    querySelectorAll(selector) { return selector === '.flight-choice-tradeoffs span' ? [tradeoffBest] : []; }
+  },
+  {
+    querySelector(selector) { return selector === '.flight-choice>b' ? { textContent: 'Стоимость тура: 90 049,6 ₽' } : null; },
+    querySelectorAll(selector) { return selector === '.flight-choice-tradeoffs span' ? [tradeoffDecimal] : []; }
+  }
+];
+assert.equal(window.Search3SelectedFlowV2.localizedMoneyNumber('Стоимость тура: 90 049,6 ₽'), 90049.6,
+  'localized decimal parser remains exact in the current selected-flow owner');
+assert.equal(window.Search3SelectedFlowV2.correctFlightTradeoffs(), true,
+  'current owner corrects localized flight tradeoffs without a second observer');
+assert.equal(tradeoffBest.textContent, 'Самая низкая цена');
+assert.ok(tradeoffBestClasses.has('is-best-price'));
+assert.equal(tradeoffDecimal.textContent.replace(/\s/g, ' '), '+17 217,6 ₽ к минимальной');
+priceVariants = [];
 flightRootReads = 0;
 window.Search3SelectedFlowV2.sync();
 assert.equal(

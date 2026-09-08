@@ -120,6 +120,44 @@
     return amount > 0 ? new Intl.NumberFormat('ru-RU').format(amount) + ' ₽' : '';
   }
 
+  function localizedMoneyNumber(value) {
+    var compact = String(value == null ? '' : value)
+      .replace(/[\s\u00a0\u202f]/g, '').replace(/[^0-9,.-]/g, '');
+    if (!compact) return 0;
+    var separator = Math.max(compact.lastIndexOf(','), compact.lastIndexOf('.'));
+    compact = separator >= 0 && compact.length - separator - 1 > 0 && compact.length - separator - 1 <= 2
+      ? compact.slice(0, separator).replace(/[.,]/g, '') + '.' + compact.slice(separator + 1).replace(/[.,]/g, '')
+      : compact.replace(/[.,]/g, '');
+    var parsed = Number(compact);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }
+
+  function correctFlightTradeoffs() {
+    var variants = Array.from(selected.querySelectorAll('.flight-variant'));
+    if (variants.length < 2) return false;
+    var prices = variants.map(function (variant) {
+      var value = variant.querySelector('.flight-choice>b');
+      return localizedMoneyNumber(value && value.textContent);
+    });
+    if (prices.some(function (price) { return !price; })) return false;
+    var minimum = Math.min.apply(null, prices);
+    var changed = false;
+    variants.forEach(function (variant, index) {
+      var label = Array.from(variant.querySelectorAll('.flight-choice-tradeoffs span')).find(function (node) {
+        return /минимальн/i.test(String(node.textContent || ''));
+      });
+      if (!label) return;
+      var delta = prices[index] - minimum;
+      var next = delta === 0 ? 'Самая низкая цена' : '+' + new Intl.NumberFormat('ru-RU').format(delta) + ' ₽ к минимальной';
+      if (label.textContent !== next) {
+        label.textContent = next;
+        label.classList.toggle('is-best-price', delta === 0);
+        changed = true;
+      }
+    });
+    return changed;
+  }
+
   function labelValueRows(scope, rowSelector, labelSelector, valueSelector, values) {
     if (!scope) return;
     scope.querySelectorAll(rowSelector).forEach(function (row) {
@@ -406,6 +444,7 @@
     syncDisplayedPrice();
     syncLeadCopy();
     syncFlightDisclosure(flights);
+    correctFlightTradeoffs();
     var noFlight = noFlightState(flights);
     if (noFlight) {
       selected.classList.add('search3-flight-fallback');
@@ -463,6 +502,7 @@
   observer.observe(selected, {
     childList: true,
     subtree: true,
+    characterData: true,
     attributes: true,
     attributeFilter: ['hidden', 'class', 'style']
   });
@@ -494,6 +534,8 @@
     noFlightState: noFlightState,
     ensureEmptyFlightRecovery: ensureEmptyFlightRecovery,
     activateReview: activateReview,
+    localizedMoneyNumber: localizedMoneyNumber,
+    correctFlightTradeoffs: correctFlightTradeoffs,
     syncDisplayedPrice: syncDisplayedPrice,
     syncFlightDisclosure: syncFlightDisclosure,
     toggleFlightDisclosure: toggleFlightDisclosure,
