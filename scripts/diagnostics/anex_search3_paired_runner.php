@@ -5,7 +5,7 @@ function anex_paired_input($input): array
 {
     $keys = ['experiment_id','case_id','date','nights','adults','currency'];
     if (!is_array($input) || count($input) !== count($keys) || array_diff($keys, array_keys($input))
-        || ($input['experiment_id'] ?? null) !== 'one_day_anex_20260908'
+        || ($input['experiment_id'] ?? null) !== 'one_day_anex_20260908_v2'
         || !in_array($input['case_id'] ?? null, ['tv_day','tv_week','anex_day'], true)
         || $input['date'] !== '2026-09-16' || $input['nights'] !== 7
         || $input['adults'] !== 2 || $input['currency'] !== 'RUB') {
@@ -97,13 +97,21 @@ function anex_paired_metrics(array $data, array $secrets): array
     return $out;
 }
 
+/** Validate the fixed supplier paths before any transport operation. */
+function anex_paired_tv_path(string $path): string
+{
+    if (!in_array($path, ['/operators','/tours/search'], true)
+        && !preg_match('~\A/tours/search/[1-9][0-9]{0,17}(?:/status)?\z~D', $path)) {
+        throw new RuntimeException('PAIRED_TV_PATH');
+    }
+    return $path === '/operators' ? 'operators' : ($path === '/tours/search' ? 'search_start'
+        : (preg_match('~/status\z~', $path) ? 'search_status' : 'search_results'));
+}
+
 /** Single attempt, including search creation. No continuation, redirects or retries. */
 function anex_paired_tv_get(string $path, array $params, string $token, float $deadline, array &$requests): array
 {
-    $kind = $path === '/operators' ? 'operators' : ($path === '/tours/search' ? 'search_start'
-        : (preg_match('~/status\z~', $path) ? 'search_status' : 'search_results'));
-    if (!in_array($path, ['/operators','/tours/search'], true)
-        && !preg_match('~\A/tours/search/[1-9][0-9]{0,17}(?:/status)?\z/D', $path)) throw new RuntimeException('PAIRED_TV_PATH');
+    $kind = anex_paired_tv_path($path);
     if (!function_exists('curl_init')) throw new RuntimeException('PAIRED_TV_TRANSPORT_UNAVAILABLE');
     $remaining = (int)floor($deadline - microtime(true));
     if ($remaining < 2) throw new RuntimeException('PAIRED_TV_DEADLINE');
@@ -253,7 +261,7 @@ function anex_paired_tv_offers(array $groups, array $criteria, array $operator, 
 function anex_paired_main(): array
 {
     $started = microtime(true); $pdo = null; $anexClient = null; $tvRequests = []; $secrets = [];
-    $report = ['schema_version'=>1,'experiment_id'=>'one_day_anex_20260908','case_id'=>null,
+    $report = ['schema_version'=>1,'experiment_id'=>'one_day_anex_20260908_v2','case_id'=>null,
         'status'=>'probe_unavailable','ok'=>false,'scope'=>'preview','offers'=>[],
         'coverage_limits'=>['full_supplier_inventory'=>false,'final_price_verified'=>false],
         'requests'=>['tourvisor'=>0,'anex'=>0,'total'=>0],'no_request'=>true];
@@ -311,6 +319,8 @@ function anex_paired_main(): array
             $search = anex_paired_tv_get('/tours/search',$criteria,$token,$deadline,$tvRequests);
             $searchId = $search['searchId'] ?? null;
             if ((!is_int($searchId) && !is_string($searchId)) || !preg_match('/\A[1-9][0-9]{0,17}\z/D',(string)$searchId)) throw new RuntimeException('PAIRED_TV_SEARCH_ID_REQUIRED');
+            // Preserve the validated numeric handle for a later read without starting another search.
+            $report['search_handle'] = (string)$searchId;
             $report['search_started'] = true; $report['search_status_samples'] = []; $complete = false;
             for ($poll=0; $poll<8 && microtime(true)<$deadline-30; ++$poll) {
                 sleep($poll===0 ? 1 : 10);
@@ -408,11 +418,11 @@ function anex_paired_main(): array
     }
     // Last boundary checks the complete encoded report, including supplier labels.
     $json = json_encode($report,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
-    if ($json===false || strlen($json)>3900000) return ['schema_version'=>1,'experiment_id'=>'one_day_anex_20260908',
+    if ($json===false || strlen($json)>3900000) return ['schema_version'=>1,'experiment_id'=>'one_day_anex_20260908_v2',
         'case_id'=>$report['case_id'],'status'=>'probe_unavailable','ok'=>false,'error_code'=>'PAIRED_OUTPUT_LIMIT',
         'requests'=>$report['requests'],'no_request'=>$report['no_request'],'offers'=>[]];
     foreach ($secrets as $secret) if ($secret!=='' && strpos($json,$secret)!==false) return ['schema_version'=>1,
-        'experiment_id'=>'one_day_anex_20260908','case_id'=>$report['case_id'],'status'=>'probe_unavailable','ok'=>false,
+        'experiment_id'=>'one_day_anex_20260908_v2','case_id'=>$report['case_id'],'status'=>'probe_unavailable','ok'=>false,
         'error_code'=>'PAIRED_OUTPUT_REDACTED','requests'=>$report['requests'],'no_request'=>$report['no_request'],'offers'=>[]];
     return $report;
 }

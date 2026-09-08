@@ -11,17 +11,18 @@ import anex_search3_gap_queue as gaps
 import anex_search3_observed_queue as observed
 from anex_search3_owner_decisions import save, ssh_php
 
-EXPERIMENT = 'one_day_anex_20260908'
-BOOTSTRAP_ARTIFACT = 10075181725
-CHECKPOINT = 'anex-paired-search-checkpoint.json'
-REPORT = 'anex-paired-search-report.json'
+EXPERIMENT = 'one_day_anex_20260908_v2'
+BOOTSTRAP_ARTIFACT = 10076461153
+CHECKPOINT = 'anex-paired-search-v2-checkpoint.json'
+REPORT = 'anex-paired-search-v2-report.json'
 CASES = ['tv_day', 'tv_week', 'anex_day']
 SPEC = {'experiment_id': EXPERIMENT, 'date': '2026-09-16', 'nights': 7,
         'adults': 2, 'currency': 'RUB'}
 PROTECTED = ['anex-observed-hotel-checkpoint.json', 'anex-initial-search-checkpoint.json',
              'anex-hotel-geo-enrichment.json', 'anex-owner-hotel-decisions.json',
              'anex-complete-candidate-review-checkpoint.json',
-             'anex-complete-candidate-review-acceptance.json']
+             'anex-complete-candidate-review-acceptance.json',
+             'anex-paired-search-checkpoint.json']
 
 
 def fingerprints(directory):
@@ -68,6 +69,10 @@ def prepare(directory):
         raise ValueError('paired checkpoint absent outside its single approved bootstrap')
     cp = {'schema_version': 1, 'spec': SPEC, 'case_order': CASES,
           'restored_source': source, 'protected_files': fingerprints(directory),
+          'supersedes_incomplete_experiment': {'id': 'one_day_anex_20260908',
+              'artifact_id': 10076461153, 'reason': 'local_status_path_regex_error_after_search_start',
+              'previous_tourvisor_searches_started': 1, 'previous_anex_requests': 0,
+              'previous_results_rewritten': False},
           'reserved_by': [os.environ.get('GITHUB_RUN_ID'), os.environ.get('GITHUB_RUN_ATTEMPT')],
           'cases': {case_id: {'state': 'reserved'} for case_id in CASES}}
     save(path, cp)
@@ -158,6 +163,7 @@ def finalize(directory, refresh=True):
     results = {key: row['result'] for key, row in cp['cases'].items() if row['state'] == 'completed'}
     report = {'schema_version': 1, 'experiment_id': EXPERIMENT, 'source_sha': os.environ.get('GITHUB_SHA'),
               'spec': SPEC, 'restored_source': cp['restored_source'],
+              'supersedes_incomplete_experiment': cp.get('supersedes_incomplete_experiment'),
               'states': {k: v['state'] for k, v in cp['cases'].items()},
               'comparison': compare(results), 'case_results': results,
               'historical_files_unchanged': fingerprints(directory) == cp['protected_files'],
@@ -169,7 +175,7 @@ def finalize(directory, refresh=True):
     save(directory / REPORT, report)
     fields = ['case_id', 'hotel_id', 'local_hotel_id', 'hotel_name', 'date', 'nights',
               'adults', 'children', 'meal', 'room', 'price', 'currency', 'operator_id', 'operator_name']
-    path = directory / 'anex-paired-search-offers.csv'
+    path = directory / 'anex-paired-search-v2-offers.csv'
     with path.open('w', newline='') as handle:
         writer = csv.writer(handle)
         writer.writerow(fields)
@@ -180,7 +186,10 @@ def finalize(directory, refresh=True):
     with path.open(newline='') as handle:
         if len(list(csv.reader(handle))) != 1 + sum(len(r['offers']) for r in results.values()):
             raise ValueError('paired CSV readback mismatch')
-    return {k: v for k, v in report.items() if k != 'case_results'}
+    concise = {k: v for k, v in report.items() if k != 'case_results'}
+    if 'live_queue' in concise:
+        concise['live_queue'] = {k: v for k, v in concise['live_queue'].items() if k != 'triage'}
+    return concise
 
 
 if __name__ == '__main__':

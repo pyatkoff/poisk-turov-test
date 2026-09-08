@@ -9,7 +9,7 @@ function paired_rejected(callable $call, string $code): void {
     try { $call(); throw new LogicException('Unexpected acceptance'); }
     catch (RuntimeException $e) { paired_check($e->getMessage()===$code, $code); }
 }
-$input = ['experiment_id'=>'one_day_anex_20260908','case_id'=>'tv_day','date'=>'2026-09-16','nights'=>7,'adults'=>2,'currency'=>'RUB'];
+$input = ['experiment_id'=>'one_day_anex_20260908_v2','case_id'=>'tv_day','date'=>'2026-09-16','nights'=>7,'adults'=>2,'currency'=>'RUB'];
 paired_check(anex_paired_input($input)===$input,'exact experiment accepted');
 foreach (['date'=>'2026-09-17','nights'=>'7','adults'=>3,'currency'=>'USD','case_id'=>'anex_week','experiment_id'=>'new'] as $key=>$value) {
     paired_rejected(static function () use ($input,$key,$value) { anex_paired_input(array_replace($input,[$key=>$value])); },'PAIRED_INVALID_INPUT');
@@ -18,6 +18,18 @@ paired_rejected(static function () use ($input) { anex_paired_input($input+['ope
 paired_check(anex_paired_operator([['id'=>90,'name'=>' Anex-Tour '],['id'=>91,'name'=>'NOT ANEX']])['id']===90,'exact normalized dictionary identity');
 paired_rejected(static function () { anex_paired_operator([['id'=>90,'name'=>'ANEX'],['id'=>91,'name'=>'ANEX TOUR']]); },'PAIRED_TV_OPERATOR_NOT_UNIQUE');
 paired_rejected(static function () { anex_paired_operator([['id'=>90,'name'=>'ANEX Premium']]); },'PAIRED_TV_OPERATOR_NOT_UNIQUE');
+foreach (['/operators'=>'operators','/tours/search'=>'search_start','/tours/search/123/status'=>'search_status',
+          '/tours/search/123'=>'search_results'] as $path=>$action) {
+    paired_check(anex_paired_tv_path($path)===$action,'valid fixed Tourvisor path ' . $path);
+}
+foreach (['https://api.tourvisor.ru/search/api/v1/tours/search/123','/tours/search/123/continue',
+          '/tours/search/123/status/extra','/tours/search/123?limit=100','/tours/search/0','/operators/extra',
+          '/tours/search/1234567890123456789','/tours/search/123/status' . "\n"] as $path) {
+    paired_rejected(static function () use ($path) { anex_paired_tv_path($path); },'PAIRED_TV_PATH');
+}
+paired_rejected(static function () use ($input) {
+    anex_paired_input(array_replace($input,['experiment_id'=>'one_day_anex_20260908']));
+},'PAIRED_INVALID_INPUT');
 $secret = 'fixture-secret-token';
 foreach ([$secret,rawurlencode($secret),htmlspecialchars($secret),'https://supplier.invalid/'.$secret,'Bearer opaque','0x'.str_repeat('a',64)] as $value) {
     paired_check(anex_paired_text($value,[$secret])===null,'secret or opaque link removed');
