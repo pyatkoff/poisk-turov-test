@@ -2628,3 +2628,17 @@ Security `34243761242` and exact artifact/core-browser run `34243761739` passed.
 Preview was not published and remains source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`. Main observed `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production was not changed. Manual visual acceptance, live current-source interaction and physical Safari/safe-area remain deferred.
 
 Next: treat retained selected-flow JavaScript as one coarse package. Preserve price and pending arithmetic, URL/payload, Tourvisor/API, lead transport/mapping and analytics; do not spend a separate cycle on micro-reductions.
+
+## 2026-09-08 — native entry owner retirement (#1610)
+
+[#1610](https://github.com/pyatkoff/poisk-turov-test/pull/1610), exact source `ca42aa75d7558b902399b72f5135c3d52a4a0055`, removes the complete `entry-presentation.js` calendar/summary/timer-layout owner, the custom guest popup and obsolete mobile filter/trust wrappers. The original adult/child/child-age controls are directly editable; their nodes, values, names and catalog handlers remain. Native date/night controls, URL/payload, meals, price, API/Tourvisor, lead, analytics and all eight public paths are unchanged.
+
+Fresh base `686cd04e26a7d07bed559d637301cf30b4aed7b2`: eight assets **60811 → 54605 raw B (new saving 6206 B)**; main JS **28806 → 22600 B**; loaded route **179424 → 173218 B**. Concurrent #1607 had already retired results while #1608 was being prepared; #1608 was closed unmerged and its candidate bytes are not counted. Checked code release after #1610 is `def1cf844aa1b9d15bb59219d8633ad4e1409314`.
+
+One Security `34244914013` and exact artifact `34244914086` passed on the first source. Reusable artifact `10063598031`, digest `sha256:c5bbb4fa23c854381fc585fee8b06bbfa77135545d455a694ed06606b7768f38`; native-entry evidence `10063597221`, digest `sha256:90572d15f4f4a850fd73393fc5af6aeaa6e5a66e355b2a72582866d328bffd24`. Source build drift/malformed-input fixtures remain executable in the retained primary-controls module. Existing source/PHP/path/presentation/isolation and geometry conditions were not weakened. The exact presentation suite reports 7 active tests and 53 pre-existing skipped historical tests; this is not a claim that historical pixel assertions passed.
+
+Actual Chromium checks: 375/1440 URL guest hydration, original adult/child/age nodes, changed FormData values, night range, native >=44px tap targets and no horizontal overflow. Both screenshots were inspected: controls and labels are visible; the intentionally stripped shell remains from the earlier reset. Catalog/image requests were blocked, no search/lead request was sent. This does not establish live data availability or owner visual acceptance.
+
+Preview not published: source remains `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`. Main observed `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; production unchanged. Physical Safari, live current-source preview, owner acceptance and the full lead/responsive/site/SEO matrix are deferred. Audit: `docs/project/search3-entry-owner-retirement.json`.
+
+Next coarse owner audit is complete: selected-flow is 18705 raw B and still mixes optional disclosures/mobile bars/trust with required no-flight retry/review, selected-open state and decimal-safe price labels. Retire its presentation only with that salvage; recheck parallel PRs before editing. No speculative selected-byte saving has been counted.
