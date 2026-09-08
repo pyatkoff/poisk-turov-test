@@ -51,7 +51,7 @@ function harness() {
     stats, timers, sort, proxy, filterBar, slot, format: window.Search3CandidateResultsV1,
     results(items = [{ id: 'hotel' }]) { events.get('v2:results-rendered')({ detail: { items } }); },
     reset() { events.get('v2:search-reset')(); },
-    compact(matches = true) { mediaEvents.get('change')({ matches }); },
+    compact(matches = true) { mediaEvents.get('change')?.({ matches }); },
     setBarAvailable(value) { available = value; },
     flush() { const pending = [...timers.values()]; timers.clear(); pending.forEach(callback => callback()); },
     change(control, value) { control.value = value; control.dispatchEvent(new Event('change', { bubbles: true })); }
@@ -70,20 +70,18 @@ function harness() {
 {
   const h = harness();
   for (let i = 0; i < 20; i++) { h.results([{ id: 'hotel-' + i }]); h.compact(); }
-  assert.equal(h.timers.size, 1, 'progressive results and breakpoint bursts share one deferred mount, including timer id zero');
+  assert.equal(h.timers.size, 0, 'retired toolbar queues no work during progressive results or breakpoint changes');
   h.sort.value = 'rating';
   h.flush();
-  assert.equal(h.stats.mounts, 1);
-  assert.equal(h.stats.moves, 1);
-  assert.equal(h.proxy.value, 'rating', 'mount consumes the latest native sort state');
-  assert.equal(h.filterBar.parentElement, h.slot, 'reuse the canonical filter bar');
-  h.change(h.proxy, 'price');
-  assert.equal(h.sort.value, 'price', 'proxy preserves native change handoff');
-  h.change(h.sort, 'rating');
-  assert.equal(h.proxy.value, 'rating', 'native sort keeps proxy synchronized');
+  assert.equal(h.stats.mounts, 0);
+  assert.equal(h.stats.moves, 0);
+  assert.equal(h.sort.value, 'rating', 'presentation never overrides native sort');
+  assert.equal(h.sort.listeners.size, 0, 'only the core renderer binds native sorting');
+  assert.equal(h.proxy.listeners.size, 0, 'no duplicate proxy handlers');
+  assert.equal(h.filterBar.parentElement, null, 'presentation does not move an unrelated legacy filter');
   h.results(); h.compact(); h.flush();
-  assert.equal(h.stats.mounts, 1, 'no duplicate toolbar or control listeners');
-  assert.equal(h.stats.moves, 1, 'mounted filter bar is not moved again');
+  assert.equal(h.stats.mounts, 0);
+  assert.equal(h.stats.moves, 0);
 }
 {
   const h = harness();
@@ -95,15 +93,17 @@ function harness() {
   h.results(); h.results([]);
   assert.equal(h.timers.size, 0, 'empty results cancel an obsolete mount');
   h.results(); h.flush();
-  assert.equal(h.stats.mounts, 1, 'fresh results after cancellation still mount');
+  assert.equal(h.stats.mounts, 0, 'fresh results do not resurrect retired controls');
 }
 {
   const h = harness();
   h.setBarAvailable(false); h.results(); h.flush();
   assert.equal(h.stats.mounts, 0, 'missing canonical filter bar remains a safe no-op');
   h.setBarAvailable(true); h.compact(); h.flush();
-  assert.equal(h.stats.mounts, 1, 'next eligible event recovers after late filter-bar initialization');
+  assert.equal(h.stats.mounts, 0, 'late legacy owner does not resurrect the Search3 proxy');
   h.compact(false);
   assert.equal(h.timers.size, 0, 'desktop breakpoint does not mount mobile controls');
 }
-console.log('PASS: one deferred mobile toolbar mount; reset/empty cancellation, late owner and sort handoff preserved');
+assert.doesNotMatch(source, /search3-mobile-toolbar|search3-mobile-filter-slot|\.mrf-sheet|\.mrf-bar/,
+  'retired proxy and sheet focus trap are absent from the shipped owner');
+console.log('PASS: no mobile proxy timers, DOM moves or duplicate sort handlers; public plural labels retained');

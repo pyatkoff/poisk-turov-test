@@ -1,5 +1,13 @@
 # Search3 presentation sources
 
+Current results ownership (2026-09-08): core `results-renderer-v5.js` owns cards,
+representative offers, sorting and the only disclosure (`tour-more-toggle`).
+The retired `results/cards.js` and `results/toolbar.js` are not shipped. Search3
+retains shell/stale state and selected focus in `results-presentation.js`, and
+localized offer copy in `results/labels.js`. The earlier toolbar ownership notes
+below are historical. The exact-artifact results-owner smoke checks selection,
+return focus and empty-result recovery without submitting a lead.
+
 Edit this directory, then run from the repository root:
 
 ```sh

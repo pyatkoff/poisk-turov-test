@@ -32,7 +32,7 @@ for (const selector of ['search3-filter-section', 'search3-filter-edit-row', 'in
 assert.match(mobile, /sheet\.className=(['"])mrf-sheet\1/, 'mobile sheet remains independently owned');
 assert.ok(mobile.includes('function openSheet(') && mobile.includes('function closeSheet('),
   'mobile open/close lifecycle remains live');
-assert.match(presentation, /document\.querySelector\((['"])\.mrf-bar\1\)/,
-  'Search3 still mounts the canonical mobile filter bar');
+assert.doesNotMatch(presentation, /\.mrf-bar|\.mrf-sheet|search3-mobile-toolbar/,
+  'Search3 no longer wraps the excluded legacy mobile owner');
 
-console.log('PASS: one DS2 desktop filter owner, scoped Search3 empty bridge, independent mobile owner');
+console.log('PASS: legacy filter contracts and scoped empty bridge retained; no Search3 mobile proxy');

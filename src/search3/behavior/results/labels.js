@@ -1,35 +1,9 @@
-  function safe(value) {
-    return String(value == null ? '' : value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
   function textValue(value) {
     if (value == null) return '';
     if (typeof value === 'object') {
       return textValue(value.russianName || value.fullRussianName || value.name || value.title || '');
     }
     return String(value).trim();
-  }
-
-  function hotelId(hotel) {
-    return String(hotel && hotel.id != null ? hotel.id : '');
-  }
-
-  function representativeTour(hotel) {
-    var tours = hotel && Array.isArray(hotel.tours) ? hotel.tours : [];
-    if (!tours.length) return null;
-    return tours.slice().sort(function (a, b) {
-      var left = Number(a && a.price || 0) || Number.MAX_SAFE_INTEGER;
-      var right = Number(b && b.price || 0) || Number.MAX_SAFE_INTEGER;
-      return left - right;
-    })[0] || null;
-  }
-
-  function tourWord(count) {
-    return plural(count, 'тур', 'тура', 'туров');
   }
 
   function plural(count, one, few, many) {
@@ -103,9 +77,37 @@
     return labels[raw.toUpperCase()] || raw;
   }
 
-  function guestLabel() {
-    var form = document.getElementById('tourSearch');
-    var adults = Number(form && form.elements && form.elements.count_people && form.elements.count_people.value || 2) || 2;
-    var children = Number(form && form.elements && form.elements.child_count && form.elements.child_count.value || 0) || 0;
-    return guestCountLabel(adults, children);
+  // Core renderer owns cards and disclosure; Search3 only translates visible offer labels.
+  function decorateTourRows(toursNode) {
+    if (!toursNode) return;
+    toursNode.querySelectorAll('.tour-row').forEach(function (row) {
+      if (row.dataset.search3OfferV2 === '1') return;
+      row.dataset.search3OfferV2 = '1';
+      var date = row.querySelector('.tour-meta > strong');
+      if (date) date.textContent = formatTourDate(date.textContent);
+      row.querySelectorAll('.tour-fact').forEach(function (fact) {
+        var label = fact.querySelector('small');
+        var value = fact.querySelector('b');
+        if (!label || !value) return;
+        var name = textValue(label.textContent).toLowerCase();
+        if (name === 'питание') value.textContent = mealLabel(value.textContent);
+        if (name === 'номер') value.textContent = roomLabel(value.textContent);
+        if (name === 'размещение') value.textContent = placementLabel(value.textContent);
+      });
+      var action = row.querySelector('.tour-action');
+      var price = action && action.querySelector(':scope > b');
+      var choice = action && action.querySelector('button[data-tid]');
+      if (choice && !choice.dataset.search3ProductionLabel) {
+        choice.textContent = 'Проверить тур';
+        choice.setAttribute('aria-label', date && date.textContent ? 'Проверить тур на ' + date.textContent : 'Проверить выбранный тур');
+        choice.dataset.search3ProductionLabel = choice.textContent;
+      }
+      if (action && price) {
+        var scope = document.createElement('small');
+        scope.className = 'search3-tour-price-scope';
+        scope.textContent = 'За весь тур';
+        action.insertBefore(scope, price);
+        price.setAttribute('aria-label', (price.textContent || '').replace(/\s+/g, ' ').trim() + ', за весь тур');
+      }
+    });
   }

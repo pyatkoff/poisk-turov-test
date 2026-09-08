@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "status": "SOURCE_PACKAGE_AWAITING_REQUIRED_CI",
+  "base_release_sha": "3f4775eff161e73d19a7013f97b5f4099808d940",
+  "eight_assets": { "before_raw_bytes": 78454, "after_raw_bytes": 70965, "saved_raw_bytes": 7489 },
+  "main_js": { "before_raw_bytes": 46649, "after_raw_bytes": 39160 },
+  "loaded_route": { "before_raw_bytes": 197067, "after_raw_bytes": 189578 },
+  "retired_owners": ["src/search3/behavior/results/cards.js", "src/search3/behavior/results/toolbar.js"],
+  "removed": [
+    "second card heading/category/facts/price-context and sales badge decorators",
+    "second show-tours disclosure and hotel map",
+    "mobile filter proxy, deferred mounts and retired sheet focus trap"
+  ],
+  "retained": [
+    "core results-renderer-v5 cards, representative price, native sort and tour-more-toggle",
+    "results state, trip summary, edit and stale-search recovery",
+    "offer translations, production choice labels and price aria-labels in results/labels.js",
+    "selected-context focus and busy handoff; core controller return focus",
+    "all eight public paths, core shared JS hashes, API/price/URL/lead/analytics contracts"
+  ],
+  "confirmed_repair": "Keep core .empty-actionable results visible instead of hiding the results-layout shell for supplier zero results.",
+  "local_checks": ["source --write once and --check", "results scheduler", "retired mobile toolbar scheduler and native sort ownership", "filter rail ownership and price-input behavior", "selected handoff ownership", "git diff --check"],
+  "required_ci": { "security": "pending", "exact_artifact": "pending" },
+  "actual_browser_checks": [],
+  "planned_focused_smoke": "Exact isolated artifact at 375/1440: results, more, native sort, selection, return focus, dirty update, edit, empty recovery. All external/API/lead requests blocked.",
+  "guards": "Existing source/PHP/path/presentation/isolation and geometry conditions unchanged; additive focused JS-owner smoke only.",
+  "preview_published": false,
+  "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
+  "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+  "deferred": ["manual visual acceptance", "published-preview smoke", "physical Safari", "full lead/responsive/SEO journey"],
+  "next_step": "After required CI, merge to release and checkpoint exact artifact; audit the remaining selected-flow owner as a coarse package."
+}

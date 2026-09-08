@@ -1,6 +1,6 @@
 
 
-/* Candidate-owned result and responsive safety layer. */
+/* Search3 results state, offer labels and selected-context accessibility. */
 (function () {
   'use strict';
 
@@ -9,7 +9,6 @@
   var body = document.body;
   var results = document.getElementById('results');
   var tools = document.getElementById('resultsTools');
-  var sort = document.getElementById('sortResults');
   var selected = document.getElementById('selectedTour');
   var rail = window.DS2ResultsFilters && document.querySelector('.results-filter-rail');
   if (rail) {
@@ -27,8 +26,6 @@
   var searchSummary = document.getElementById('resultsSearchSummary');
   var edit = document.getElementById('resultsSearchEdit');
   var topReady = !!(form && heading && summary);
-  var hotelsById = new Map();
-  var mobileToolbarTimer = null;
   var frameQueued = false;
   var stale = false;
   var staleBanner = null;
@@ -163,7 +160,7 @@
   }
 
   function hasResults() {
-    return !!results.querySelector('.hotel-card') || emptyLocalResults();
+    return !!results.querySelector('.hotel-card,.empty-actionable') || emptyLocalResults();
   }
 
   function syncResultsState() {
@@ -178,7 +175,7 @@
   function updateTop(items) {
     var hotels = items.length;
     var tours = toursCount(items);
-    var has = hotels > 0 || emptyLocalResults();
+    var has = hotels > 0 || hasResults();
     heading.textContent = 'Найдено ' + tours + ' ' + word(tours, 'тур', 'тура', 'туров');
     summary.textContent = hotels
       ? hotels + ' ' + word(hotels, 'отель', 'отеля', 'отелей') + ' · актуальные варианты'
@@ -199,15 +196,15 @@
 
   /* @include behavior/results/labels.js */
 
-  /* @include behavior/results/cards.js */
-
-  /* @include behavior/results/toolbar.js */
+  function decorate() {
+    body.classList.toggle('search3-results-active', hasResults());
+    decorateTourRows(results);
+  }
 
   window.addEventListener('v2:results-rendered', function (event) {
     var items = event && event.detail && Array.isArray(event.detail.items) ? event.detail.items : [];
     if (topReady) updateTop(items);
-    collapseAll();
-    decorate(items);
+    decorate();
     if (stale) markStale();
   });
 
@@ -221,15 +218,11 @@
       heading.textContent = 'Предложения';
       summary.textContent = 'Актуальные варианты';
     }
-    cancelMobileToolbar();
-    hotelsById.clear();
-    collapseAll();
     body.classList.remove('search3-results-active');
     if (selected) selected.setAttribute('aria-busy', 'false');
   });
 
   window.addEventListener('v2:tour-selected', function () {
-    collapseAll();
     if (!selected) return;
     selected.setAttribute('aria-busy', 'false');
     restoreProductionLabels();
@@ -241,57 +234,10 @@
     if (more && results.contains(more)) {
       window.setTimeout(function () {
         var card = more.closest('.hotel-card');
-        var hotel = card && hotelsById.get(String(card.dataset.hotelId || ''));
-        decorateTourRows(card && card.querySelector('.hotel-tours'), hotel);
+        decorateTourRows(card && card.querySelector('.hotel-tours'));
       }, 0);
-      return;
     }
-    var button = event.target && event.target.closest && event.target.closest('.search3-show-tours');
-    if (!button || !results.contains(button)) return;
-    var card = button.closest('.hotel-card');
-    var tours = card && card.querySelector('.hotel-tours');
-    if (!card || !tours) return;
-    var open = button.getAttribute('aria-expanded') !== 'true';
-    collapseAll(open ? card : null);
-    card.classList.toggle('search3-tours-open', open);
-    tours.hidden = !open;
-    button.setAttribute('aria-expanded', open ? 'true' : 'false');
-    button.textContent = open ? 'Скрыть туры' : (button.dataset.search3ShowLabel || 'Показать туры');
   }, true);
-
-  document.addEventListener('keydown', function (event) {
-    if (event.key !== 'Tab') return;
-    var sheet = document.querySelector('.mrf-sheet.is-open');
-    var panel = sheet && sheet.querySelector('.mrf-panel[role="dialog"]');
-    if (!panel) return;
-    var focusable = Array.prototype.filter.call(
-      panel.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'),
-      function (node) {
-        var box = node.getBoundingClientRect();
-        var style = window.getComputedStyle(node);
-        return box.width > 0 && box.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
-      }
-    );
-    if (!focusable.length) return;
-    var first = focusable[0];
-    var last = focusable[focusable.length - 1];
-    if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
-      event.preventDefault();
-      first.focus();
-    }
-  });
-
-  if (window.matchMedia) {
-    var compactResults = window.matchMedia('(max-width:999px)');
-    if (compactResults.addEventListener) {
-      compactResults.addEventListener('change', function (event) {
-        if (event.matches) scheduleMobileToolbar();
-      });
-    }
-  }
 
   new MutationObserver(scheduleResultsSync).observe(results, { childList: true });
   syncResultsState();
@@ -338,7 +284,6 @@
     mealLabel: mealLabel,
     roomLabel: roomLabel,
     placementLabel: placementLabel,
-    decorate: decorate,
-    collapseAll: collapseAll
+    decorate: decorate
   });
 })();
