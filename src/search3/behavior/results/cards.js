@@ -39,6 +39,31 @@
     }
   }
 
+  function decorateSalesLeader(card, bodyNode, hotel) {
+    var image = card.querySelector('.hotel-photo img');
+    if (image) {
+      var fallback = function () {
+        var box = image.closest('.hotel-photo');
+        if (!box || box.querySelector('.photo-placeholder')) return;
+        var placeholder = document.createElement('div');
+        placeholder.className = 'photo-placeholder';
+        placeholder.textContent = 'ANYTOUR';
+        image.replaceWith(placeholder);
+      };
+      image.addEventListener('error', fallback, { once: true });
+      if (image.complete && image.naturalWidth === 0) fallback();
+    }
+    if (!hotel || hotel.salesLeader !== true) return;
+    var title = bodyNode.querySelector('.hotel-title');
+    if (!title) return;
+    var badge = document.createElement('span');
+    badge.className = 'sales-leader-badge';
+    badge.textContent = 'Лидер продаж';
+    badge.setAttribute('aria-label', 'Лидер продаж AnyTour');
+    title.before(badge);
+    card.classList.add('is-sales-leader');
+  }
+
   function decoratePriceContext(bodyNode, hotel) {
     var tour = representativeTour(hotel);
     var bestOffer = bodyNode.querySelector('.hotel-best-offer');
@@ -113,6 +138,7 @@
     if (!hotel || !bodyNode || !tours) return;
 
     card.dataset.search3ResultsV1 = '1';
+    decorateSalesLeader(card, bodyNode, hotel);
     decorateHeading(bodyNode, hotel);
     decorateDecisionCopy(card, hotel);
     decoratePriceContext(bodyNode, hotel);
