@@ -132,6 +132,23 @@ try {
         $defaultProbe['last_request'] = $client->lastRequestDiagnostics();
     }
     $report['default_form_probe'] = $defaultProbe;
+    if (!$defaultProbe['ok'] && count($defaultLocal) === 1) {
+        // One control isolates whether the default date interval causes the rejection.
+        $defaultParams['dateFrom'] = $params['dateFrom'];
+        $defaultParams['dateTo'] = $params['dateTo'];
+        $control = ['ok' => false, 'criteria' => $defaultParams];
+        try {
+            $controlResult = anytour_anex_search3_run(['generation' => 3, 'params' => $defaultParams], $pdo, $client, $cache);
+            $control['ok'] = true;
+            $control['projected_hotels'] = count($controlResult['hotels']);
+        } catch (Throwable $error) {
+            $code = $error->getMessage();
+            $control['status'] = preg_match('/\AANEX_[A-Z_]{1,70}\z/D', $code) ? $code : 'ANEX_SEARCH3_PROBE_ERROR';
+        }
+        $control['last_request'] = $client->lastRequestDiagnostics();
+        $report['single_date_control'] = $control;
+    }
+    $report['supplier_requests_total'] = $client->requestsMade();
 } catch (Throwable $error) {
     $code = $error->getMessage();
     $report['status'] = preg_match('/\AANEX_[A-Z_]{1,70}\z/D', $code) ? $code : 'ANEX_SEARCH3_PROBE_ERROR';

@@ -118,14 +118,15 @@ final class AnyTourAnexClient
     {
         // Read-only operational evidence, never included in public HTTP responses.
         $clean = $this->redactPayload($payload);
-        foreach (['error_description', 'message', 'errorMessage', 'msg'] as $key) {
-            $value = $clean[$key] ?? null;
+        $fields = [];
+        foreach (array_slice($clean, 0, 12, true) as $key => $value) {
+            if ($key === 'error' || !is_string($key) || !preg_match('/\A[a-zA-Z_]{1,40}\z/D', $key)) continue;
             if (is_string($value) && strlen($value) <= 600
-                && !preg_match('~https?://|oauth|token|password|secret~i', $value)) {
-                $this->lastRequest['supplier_message'] = $value;
-                break;
+                && !preg_match('~https?://|oauth|token|password|secret~i', $key . ' ' . $value)) {
+                $fields[$key] = $value;
             }
         }
+        if ($fields) $this->lastRequest['supplier_fields'] = $fields;
     }
 
     private function redactPayload(array $payload): array
