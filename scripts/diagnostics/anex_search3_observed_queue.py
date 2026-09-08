@@ -160,6 +160,46 @@ def csv_cell(value):
     return "'" + value if unsafe else value
 
 
+def candidate_ceiling_audit(items):
+    """Inspect saved capped sets without truncating, reclassifying or retrying them."""
+    rows = []
+    for item in items:
+        evidence = item['evidence']
+        if item['reason'] != 'candidate_limit_reached':
+            continue
+        candidates = evidence.get('candidates', [])
+        if not candidates:
+            continue
+        api, best = evidence.get('api', {}), candidates[0]
+        near = lambda c: c.get('distance_m') is not None and c['distance_m'] <= 200
+        named = lambda c: c.get('name_similarity', 0) >= 0.9
+        margin = round(best['score'] - candidates[1]['score'], 4) if len(candidates) > 1 else None
+        signals = []
+        if any(api.get(k) is None for k in ('latitude', 'longitude')):
+            signals.append('supplier_coordinates_missing')
+        if not near(best):
+            signals.append('best_not_verified_within_200m')
+        if not named(best):
+            signals.append('best_name_below_0_9')
+        if best.get('country_match') is not True:
+            signals.append('best_country_unverified')
+        if margin is not None and margin < 0.1:
+            signals.append('close_scoring_alternatives')
+        rows.append({'anex_hotel_id': item['anex_hotel_id'], 'hotel_name': api.get('name', ''),
+                     'country': item['observation'].get('country_name', ''),
+                     'candidate_count': len(candidates), 'score_margin': margin, 'signals': signals,
+                     'near_200m_count': sum(near(c) for c in candidates),
+                     'name_0_9_count': sum(named(c) for c in candidates),
+                     'name_country_near_count': sum(named(c) and near(c) and c.get('country_match') is True for c in candidates),
+                     'best': {k: best.get(k) for k in ('id', 'name', 'town', 'region', 'latitude', 'longitude',
+                                                       'name_similarity', 'distance_m', 'score')},
+                     'supplier': {k: api.get(k) for k in ('town', 'region', 'latitude', 'longitude')},
+                     'evidence_row_sha256': item['evidence_row_sha256'],
+                     'status': 'review', 'candidate_set_complete': False, 'automatic_acceptance': False})
+    return {'count': len(rows), 'signals': dict(Counter(s for r in rows for s in r['signals'])),
+            'rows': rows, 'policy': 'The saved candidate ceiling remains a blocker. Metrics do not establish uniqueness.'}
+
+
 def export_triage(directory, cp, observed):
     """Read-only review dossiers; priority is demand, never match confidence."""
     before = gaps.digest(cp)
@@ -189,6 +229,7 @@ def export_triage(directory, cp, observed):
     items.sort(key=lambda r: r['observation']['search_count'], reverse=True)
     for n, item in enumerate(items, 1):
         item['priority'] = n
+    ceiling_audit = candidate_ceiling_audit(items)
     summary = {'count': len(items), 'by_status': dict(Counter(r['status'] for r in items)),
                'by_reason': dict(Counter(r['reason'] for r in items)),
                'by_country': dict(Counter(r['observation'].get('country_name', '') for r in items)),
@@ -197,10 +238,13 @@ def export_triage(directory, cp, observed):
                'unknown_results_not_replayed': sum(r['reason'] == 'interrupted_result_unknown' for r in items),
                'top_priorities': [{'anex_hotel_id': r['anex_hotel_id'], 'status': r['status'],
                                   'reason': r['reason'], 'search_count': r['observation']['search_count']}
-                                 for r in items[:10]]}
+                                 for r in items[:10]],
+               'candidate_ceiling_audit': dict(ceiling_audit, rows=ceiling_audit['rows'][:30],
+                                              reported_rows=min(30, ceiling_audit['count']))}
     payload = {'schema_version': 1, 'scope': 'preview', 'kind': 'observed_review_dossiers',
                'source_sha': os.environ.get('GITHUB_SHA'), 'checkpoint_sha256': before,
                'observations_sha256': gaps.digest(observed), 'summary': summary, 'rows': items,
+               'candidate_ceiling_audit': ceiling_audit,
                'policy': 'Saved evidence only. Hints are historical, not fresh checks. No acceptance or retry.'}
     target = directory / 'anex-observed-hotel-triage.json'
     target.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n')

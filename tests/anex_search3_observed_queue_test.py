@@ -239,6 +239,35 @@ class ObservedQueueTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             live.export_triage(self.directory, self.cp, self.observed([value['rows'][0]['external_id']]))
 
+    def test_ceiling_audit_keeps_full_set_and_never_promotes_a_good_pair(self):
+        best = {'id': 10, 'name': 'Example Resort', 'score': 1.05,
+                'name_similarity': 1.0, 'distance_m': 10, 'country_match': True}
+        candidates = [best] + [dict(best, id=20 + i, score=0.2, name_similarity=0.2,
+                                    distance_m=900) for i in range(255)]
+        evidence = {'status': 'review', 'reason': 'candidate_limit_reached', 'candidates': candidates,
+                    'api': {'name': 'Example Resort', 'latitude': 28.0, 'longitude': 33.0}}
+        item = {'anex_hotel_id': 1, 'reason': evidence['reason'], 'evidence': evidence,
+                'evidence_row_sha256': gaps.digest(evidence), 'observation': {'country_name': 'Egypt'}}
+        before = copy.deepcopy(item)
+        with patch.object(gaps, 'ssh_batch') as api:
+            audit = live.candidate_ceiling_audit([item])
+        api.assert_not_called()
+        row = audit['rows'][0]
+        self.assertEqual(row['candidate_count'], 256)
+        self.assertEqual(row['name_country_near_count'], 1)
+        self.assertEqual(row['signals'], [])
+        self.assertEqual(row['status'], 'review')
+        self.assertFalse(row['candidate_set_complete'])
+        self.assertFalse(row['automatic_acceptance'])
+        self.assertEqual(item, before)
+        # Missing coordinates and close alternatives remain distinct from no candidates.
+        evidence['api']['latitude'] = None
+        candidates[0]['distance_m'] = None
+        candidates[1]['score'] = 1.02
+        row = live.candidate_ceiling_audit([item])['rows'][0]
+        self.assertEqual(set(row['signals']), {'supplier_coordinates_missing',
+                                             'best_not_verified_within_200m', 'close_scoring_alternatives'})
+
 
 if __name__ == '__main__':
     unittest.main()
