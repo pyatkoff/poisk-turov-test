@@ -53,32 +53,32 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PR #1538 retires the complete 4295-byte header-current-site.js runtime from Search3. The current header remains server-rendered and its native details/summary menu passes open/close checks at ten boundary widths. Raw route payload falls 556977 to 552682 (-4295) and gzip 124085 to 122720 (-1365). Full legacy route and protected contracts remain; no preview or production publication.",
+    "last_material_progress": "PR #1540 retires the complete 2526-byte selected-tour-return-v1.js runtime from Search3 and moves exact source/fallback focus into the current tour controller. Raw route payload falls 552682 to 551591 (-1091); exact gzip recount falls 122724 to 122454 (-270). Full legacy route and protected contracts remain; no preview or production publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit the complete 2526-byte selected-tour-return-v1.js owner against tour-controller-v4.js and the current selected/results handoff. Preserve source-button or results fallback focus, reveal/scroll behavior, aria-hidden state and v2:tour-returned; retire only through one current owner with focused return lifecycle and exact browser CI.",
+    "next_action": "Audit the complete 1855-byte flight-empty-recovery-v1.js owner against the current selected/flight-fallback owner. Retain friendly no-flight copy and exactly one delegated retry button, preserve fallback review/lead and price behavior, and require empty-retry-recovery plus exact selected browser CI.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_HEADER_RUNTIME",
-    "title": "Retire legacy header runtime",
+    "id": "S3_LEAN_SELECTED_RETURN_RUNTIME",
+    "title": "Retire selected-tour return runtime",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
-    "source_prs": [1538],
+    "source_prs": [1540],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "9a7ff81f041cf13d643deaf2eb73d57bc51e871b"
+      "dddbaa5d9ead9b3178766a44eeba329418b4e497"
     ],
-    "release_sha": "602124449fbe8595b86e55119304df355d82cc0e",
-    "artifact_run": 34182975846,
-    "artifact_id": 10039560348,
-    "artifact_digest": "sha256:ca5d0f292acc46e75bbca8cc9a774d5a39fd055050ac889106af54673f731f45",
+    "release_sha": "269233aba77ac17817c810256cd1c84bfc62dd78",
+    "artifact_run": 34184702799,
+    "artifact_id": 10040123280,
+    "artifact_digest": "sha256:6b40ec5faf8e19e1f5cfe20f38e149fbb7c4f8cabffdeab4c06f8ad0b7da3542",
     "checked_release_asset_bytes": 171559,
-    "checked_release_loaded_bytes": 552682,
+    "checked_release_loaded_bytes": 551591,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit the complete 2526-byte selected-tour-return-v1.js owner against tour-controller-v4.js and the current selected/results handoff. Preserve source-button or results fallback focus, reveal/scroll behavior, aria-hidden state and v2:tour-returned; retire only through one current owner with focused return lifecycle and exact browser CI."
+    "next_action": "Audit the complete 1855-byte flight-empty-recovery-v1.js owner against the current selected/flight-fallback owner. Retain friendly no-flight copy and exactly one delegated retry button, preserve fallback review/lead and price behavior, and require empty-retry-recovery plus exact selected browser CI."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1201,10 +1201,25 @@
       "geometry_baseline": "cc35208f740cd957ca450f7b19fa2acfe6af7e6d",
       "required_passed": 2,
       "preview_published": false
+    },
+    "selected_return_runtime_retirement": {
+      "source_pr": 1540,
+      "source_sha": "dddbaa5d9ead9b3178766a44eeba329418b4e497",
+      "security_run": 34184579113,
+      "artifact_runs": [34184579101, 34184702799],
+      "artifact_id": 10040123280,
+      "artifact_digest": "sha256:6b40ec5faf8e19e1f5cfe20f38e149fbb7c4f8cabffdeab4c06f8ad0b7da3542",
+      "results_geometry_artifact": 10040123068,
+      "results_geometry_digest": "sha256:2ceb6a6c4438c720955be9ded8cf47c8bae00cfccda7ca412a0a796d1bd2cb30",
+      "selected_geometry_artifact": 10040122833,
+      "selected_geometry_digest": "sha256:5e44b0c51a1d5bd57514ece700ebac4b85409df2b4a42030a073f5f56d8bb23e",
+      "focused_return_states": "original source, rerendered source, results fallback, lead-success return and temporary tabindex cleanup",
+      "required_passed": 2,
+      "preview_published": false
     }
   },
-  "last_verified_commit": "602124449fbe8595b86e55119304df355d82cc0e",
-  "last_verified_commit_scope": "Checked Search3 release after #1538; legacy header runtime excluded while server-rendered phone/navigation and native details/summary behavior pass the focused ten-width matrix. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "269233aba77ac17817c810256cd1c84bfc62dd78",
+  "last_verified_commit_scope": "Checked Search3 release after #1540; legacy selected-tour return runtime excluded while the current controller preserves exact source/fallback focus, hidden/aria-hidden, reveal/scroll and v2:tour-returned. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -8373,6 +8388,27 @@
     "full_legacy_manifest_unchanged": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-header-runtime.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_selected_return_runtime_retirement": {
+    "source_pr": 1540,
+    "source_sha": "dddbaa5d9ead9b3178766a44eeba329418b4e497",
+    "checked_code_release_sha": "269233aba77ac17817c810256cd1c84bfc62dd78",
+    "retired_search3_owner": "selected-tour-return-v1.js",
+    "legacy_runtime_bytes_removed": 2526,
+    "current_controller_bytes_added": 1435,
+    "raw_before": 552682,
+    "raw_after": 551591,
+    "raw_saved": 1091,
+    "gzip_before_recounted": 122724,
+    "gzip_after_recounted": 122454,
+    "gzip_saved": 270,
+    "eight_assets_before": 171559,
+    "eight_assets_after": 171559,
+    "measurement_correction": "Exact same-method recount corrects the preceding stored gzip absolute by +4 bytes; package delta is -270 bytes.",
+    "full_legacy_manifest_unchanged": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-selected-return-runtime.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }

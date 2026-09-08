@@ -2207,3 +2207,19 @@ Reusable final artifact `10039560348`, digest `sha256:ca5d0f292acc46e75bbca8cc9a
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area, owner visual acceptance and the pre-existing browser-default result-only retry styling remain deferred. Audit: `docs/project/search3-lean-header-runtime.json`.
 
 Next: audit the complete 2526-byte `selected-tour-return-v1.js` owner against `tour-controller-v4.js` and the current selected/results handoff. Preserve source-button or results fallback focus, reveal/scroll behavior, `aria-hidden` state and `v2:tour-returned`; retire only through one current owner after focused return lifecycle and exact browser CI.
+
+## S3_LEAN_SELECTED_RETURN_RUNTIME — checked release, 2026-09-08
+
+Source PR #1540 / `dddbaa5d9ead9b3178766a44eeba329418b4e497`; checked code release `269233aba77ac17817c810256cd1c84bfc62dd78`. Search3 no longer loads the complete 2526-byte `selected-tour-return-v1.js` owner. The full legacy route retains the unchanged file and `V2SelectedTourReturnV1` compatibility global.
+
+The current `tour-controller-v4.js` now captures the exact initiating tour action and id, recovers an equivalent action after result rerender, hides the selected root visually and through `aria-hidden`, and returns focus with reveal/scroll. If the source action is gone, `#results` receives temporary focus and its added tabindex is removed on blur. Both `.back-results` and `.lead-success-back` dispatch the existing `v2:tour-returned` detail. Selecting another tour clears stale `aria-hidden` before loading.
+
+Loaded raw is **552682 → 551591 bytes (−1091)**: scoped shared JavaScript 195005→193914; shared CSS and the eight Search3 assets remain 186118 and 171559. Exact same-method gzip recount is **122724 → 122454 (−270)**. This corrects the preceding stored gzip absolute by +4 bytes; the package delta is measured on both exact trees with one method.
+
+Security `34184579113` and exact artifacts `34184579101` / `34184702799` passed. Reusable final artifact `10040123280`, digest `sha256:6b40ec5faf8e19e1f5cfe20f38e149fbb7c4f8cabffdeab4c06f8ad0b7da3542`; selected evidence `10040122833`, digest `sha256:5e44b0c51a1d5bd57514ece700ebac4b85409df2b4a42030a073f5f56d8bb23e`; results evidence `10040123068`, digest `sha256:2ceb6a6c4438c720955be9ded8cf47c8bae00cfccda7ca412a0a796d1bd2cb30`.
+
+Focused deterministic coverage passed original source, rerendered same-tour source, results fallback, lead-success return and temporary tabindex cleanup. Exact Chromium retained 12 selected states, 30 entry states, 12 result states and 10 header states. No supplier request or lead was sent.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains observed at `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual screenshots, physical Safari/safe-area, owner visual acceptance and the pre-existing browser-default result-only retry styling remain deferred. Audit: `docs/project/search3-lean-selected-return-runtime.json`.
+
+Next: audit the complete 1855-byte `flight-empty-recovery-v1.js` owner against the current `selected/flight-fallback.js` owner. Retain the friendly no-flight message and exactly one delegated retry button, preserve fallback review/lead and price behavior, and require empty→retry→recovery plus exact selected browser CI. Do not take the larger `price-confidence-v1.js` before this lower-risk presentation-only owner.
