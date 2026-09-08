@@ -31,10 +31,6 @@ async function prepare(page, mode) {
       <form id="tourSearch"><input name="sessid" value="test"></form>
       <div id="results"></div>
       <section id="selectedTour" hidden></section>
-      <div class="search3-selected-mobile-bar" hidden>
-        <span class="search3-selected-mobile-bar__price"><small></small><strong data-s3-selected-price></strong></span>
-        <button type="button" data-s3-selected-lead></button>
-      </div>
     </body>
   `);
   await page.evaluate(({ mode, tour }) => {
@@ -102,7 +98,7 @@ async function verifyLocalizedFlightTradeoff(browser) {
       .some(node => node.textContent.replace(/\s/g, ' ') === '+17 217,6 ₽ к минимальной')
   ));
   // The booking sidebar belongs to review/lead, not the flight-selection stage.
-  await page.locator('[data-s3-selected-lead]:visible').click();
+  await page.locator('#selectedTour .search3-flight-continue button').click();
   await page.waitForSelector('#selectedTour .search3-summary-submit');
   await page.click('#selectedTour .search3-summary-submit');
   await page.waitForFunction(() => document.getElementById('selectedTour').classList.contains('search3-lead-entry'));
@@ -145,8 +141,7 @@ async function verifyFallbackHandoff(browser) {
     message: document.querySelector('#selectedTour .selected-loading')?.textContent || '',
     fallback: document.getElementById('selectedTour').dataset.search3FlightFallback,
     continueText: document.querySelector('#selectedTour .search3-flight-continue button')?.textContent || '',
-    mobileText: document.querySelector('[data-s3-selected-lead]')?.textContent || '',
-    mobileAction: document.querySelector('[data-s3-selected-lead]')?.dataset.search3SelectedFlowAction || '',
+    mobileActions: document.querySelectorAll('[data-s3-selected-lead]').length,
     legacyOwner: typeof window.V2FlightEmptyRecoveryV1
   }));
   if (
@@ -155,16 +150,29 @@ async function verifyFallbackHandoff(browser) {
     || !state.message.includes('менеджер уточнит перелёт по заявке')
     || state.fallback !== '1'
     || state.continueText !== 'Далее: итог тура'
-    || state.mobileText !== 'Далее: итог тура'
-    || state.mobileAction !== '1'
+    || state.mobileActions !== 0
     || state.legacyOwner !== 'undefined'
   ) throw new Error('initial fallback state failed: ' + JSON.stringify(state));
+
+  const stableWrites = await page.evaluate(async () => {
+    const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
+    for (let i=0;i<4;i++) await frame();
+    let writes = 0;
+    const observer = new MutationObserver(records => { writes += records.length; });
+    observer.observe(document.getElementById('selectedTour'), {subtree:true,childList:true,attributes:true,characterData:true});
+    window.Search3SelectedFlowV2.sync();
+    window.Search3SelectedFlowV2.sync();
+    for (let i=0;i<4;i++) await frame();
+    observer.disconnect();
+    return writes;
+  });
+  if(stableWrites !== 0) throw new Error('settled fallback keeps mutating its observed DOM: ' + stableWrites);
 
   await page.click('#selectedTour .load-flights');
   await page.waitForFunction(() => window.__fallbackTest.flightCalls === 2);
   await page.waitForFunction(() => document.querySelectorAll('#selectedTour .load-flights').length === 1);
 
-  await page.locator('[data-s3-selected-lead]:visible').click();
+  await page.locator('#selectedTour .search3-flight-continue button').click();
   await page.waitForFunction(() => document.getElementById('selectedTour').classList.contains('search3-final-review'));
   await page.waitForSelector('#selectedTour .search3-summary-submit');
   state = await page.evaluate(() => ({

@@ -1,4 +1,5 @@
-/* Focused before/after CSS geometry audit; all catalogue/lead/network calls are blocked. */
+/* Intentional selected presentation retirement: compare protected content and journey,
+ * record changed geometry, and reject overflow. All catalogue/lead/network calls blocked. */
 const { chromium } = require('playwright');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -44,7 +45,16 @@ async function capture(page, label) {
     const all = [root, ...root.querySelectorAll('*'), ...document.querySelectorAll('.search3-selected-mobile-bar,.search3-selected-mobile-bar *')];
     const visible = all.filter(n => { const r=n.getBoundingClientRect(); return r.width>0 && r.height>0 && getComputedStyle(n).visibility!=='hidden'; });
     const nodes=visible.map(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n),fixed=n.closest('.search3-selected-mobile-bar');return {tag:n.tagName,classes:[...n.classList].sort().join(' '),mobileBar:!!fixed,mobileCta:n.matches('[data-s3-selected-lead]'),rect:[r.x-(fixed?0:rr.x),r.y-(fixed?0:rr.y),r.width,r.height].map(round),styles:Object.fromEntries(properties.map(p=>[p,s.getPropertyValue(p)]))};});
-    return {overflow:document.documentElement.scrollWidth>innerWidth+2,rootWidth:round(rr.width),nodes};
+    const text = node => String(node?.textContent || '').replace(/\s+/g,' ').trim();
+    const contract = {
+      facts: [...root.querySelectorAll('.facts > div')].map(node => [text(node.querySelector('span')), text(node.querySelector('b'))]),
+      selectedPrice: text(root.querySelector('.selected-price')),
+      summaryTotal: text(root.querySelector('.search3-booking-summary__total strong')),
+      fields: [...root.querySelectorAll('.lead-form [name]')].map(node => [node.name,node.type,node.value,node.required]).sort((a,b)=>a[0].localeCompare(b[0])),
+      review: root.classList.contains('search3-final-review'),
+      lead: root.classList.contains('search3-lead-entry')
+    };
+    return {overflow:document.documentElement.scrollWidth>innerWidth+2,rootWidth:round(rr.width),nodes,contract};
   });
   await page.locator('#selectedTour').screenshot({ path: path.join(output, label+'.png'), animations:'disabled' });
   return snapshot;
@@ -81,12 +91,13 @@ async function run(browser, width, previous) {
     },{tour,flights});
     await page.waitForSelector('#selectedTour .flight-variant');
     await page.waitForSelector('#selectedTour .search3-flight-continue button');
-    await page.waitForFunction(()=>document.getElementById('selectedTour').dataset.search3SelectedPresentation==='1');
+    await page.waitForFunction(()=>document.body.classList.contains('search3-selected-open'));
     const prefix=(previous?'baseline':'current')+'-'+width;
     const states={detail:await capture(page,prefix+'-detail')};
-    assert.equal(await page.locator('#selectedTour .selected-confidence').count(),1,'exactly one retained trust block');
-    assert.equal(await page.locator('#selectedTour .selected-confidence').isVisible(),width>=1000,'desktop trust remains, mobile stays hidden');
+    assert.equal(await page.locator('#selectedTour .selected-confidence').count(),previous?1:0,'only the baseline contains the retired trust decoration');
     if(!previous) {
+      assert.equal(await page.locator('.search3-selected-mobile-bar,.facts-secondary-toggle,.hotel-desc-toggle,.lead-optional-toggle,.search3-flight-show-all').count(),0,'retired presentation owners are not reconstructed');
+      assert.equal(await page.locator('#selectedTour .facts > div[hidden]').count(),0,'all original tour facts remain directly available');
       assert.equal(await page.evaluate(()=>typeof window.V2ConversionConfidenceV1),'undefined','retired runtime is absent');
       assert.equal(await page.evaluate(()=>typeof window.V2PriceConfidenceV1),'undefined','retired price-confidence runtime is absent');
       assert.equal(await page.locator('#v2CompareTray,#v2CompareOverlay,#v2AgencyTrust,#v2ResultsConfidence').count(),0,'retired surfaces are not constructed');
@@ -100,6 +111,16 @@ async function run(browser, width, previous) {
     await page.waitForSelector('#selectedTour.search3-lead-entry .lead-form input[name="phone"]');
     states.lead=await capture(page,prefix+'-lead');
     assert.equal(await page.locator('#selectedTour .lead-form button[type=submit]').isVisible(),true,'lead submit remains reachable');
+    if(!previous) {
+      const total=page.locator('#selectedTour .search3-booking-summary__total strong');
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:tour-price-updated',{detail:{pricePending:true,price:999999,basePrice:148500}})));
+      await settle(page);
+      assert.equal((await total.textContent()).replace(/\s/g,' '),'148 500 ₽','pending flight uses the base tour total');
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent('v2:tour-price-updated',{detail:{pricePending:false,price:149900,basePrice:148500}})));
+      await settle(page);
+      assert.equal((await total.textContent()).replace(/\s/g,' '),'149 900 ₽','confirmed flight total replaces the pending base');
+      assert.equal(await page.locator('#selectedTour .lead-form input[name=phone]').isVisible(),true,'phone remains reachable after the price update');
+    }
     const calls=await page.evaluate(()=>window.__geometryCalls);
     assert.deepEqual(calls,{tour:1,flights:1,other:0});
     assert.deepEqual(errors,[],'fixture must not cause browser errors');
@@ -120,13 +141,11 @@ async function run(browser, width, previous) {
       evidence.widths[width]={before,after};
       for(const phase of ['detail','review','lead']){
         const a=before[phase],b=after[phase];
-        const intentionalMobileCta=width===375&&phase==='detail';
-        const comparable=snapshot=>intentionalMobileCta?{...snapshot,nodes:snapshot.nodes.filter(n=>!n.mobileBar)}:snapshot;
-        if(JSON.stringify(comparable(a))!==JSON.stringify(comparable(b))) evidence.differences.push({width,phase,beforeNodes:a.nodes.length,afterNodes:b.nodes.length});
-        if(intentionalMobileCta){
-          const cta=b.nodes.find(n=>n.mobileCta);
-          if(!cta||cta.rect[3]<48) evidence.differences.push({width,phase,error:'mobile selected CTA is below 48px'});
-        }
+        // Card/disclosure/optional-field wrappers are intentionally removed. Do
+        // not pretend their old pixel tree is the new design contract: retain
+        // exact facts, prices, lead fields/required flags and stage transitions.
+        if(JSON.stringify(a.contract)!==JSON.stringify(b.contract)) evidence.differences.push({width,phase,before:a.contract,after:b.contract});
+        if(b.rootWidth<=0||b.rootWidth>width+2) evidence.differences.push({width,phase,error:'selected content is not bounded and visible'});
         if(b.overflow) evidence.differences.push({width,phase,error:'horizontal overflow'});
       }
       console.log('SELECTED_GEOMETRY_CAPTURED',width);
@@ -135,6 +154,6 @@ async function run(browser, width, previous) {
     await browser.close();
     fs.writeFileSync(path.join(output,'geometry.json'),JSON.stringify(evidence,null,2)+'\n');
   }
-  assert.deepEqual(evidence.differences,[],'current selected-tour geometry/styles must match retained baseline in all12 states; see evidence');
-  console.log('SEARCH3_SELECTED_GEOMETRY_OK states=12 widths=375,760,1000,1440');
+  assert.deepEqual(evidence.differences,[],'protected selected facts/prices/lead fields and stages must match in all12 states without overflow; see evidence');
+  console.log('SEARCH3_SELECTED_GEOMETRY_OK states=12 widths=375,760,1000,1440 intentional_layout_retirement=1');
 })().catch(error=>{console.error(error);process.exitCode=1});

@@ -41,8 +41,8 @@ async function inspect(browser, width, previous) {
   try {
     const response = await page.goto(base + '/poisk-turov/?food=AI', { waitUntil: 'domcontentloaded' });
     assert.equal(response.status(), 200);
-    await page.waitForFunction(() => window.Search3CandidateEntryV1);
-    await page.waitForTimeout(400); // Drain the existing form's bounded settle timers.
+    await page.waitForFunction(() => document.getElementById('tourSearch')?.dataset.search3Ready === '1');
+    await page.waitForTimeout(400); // Drain canonical catalog/control initialization.
     const initial = await state();
     assert.ok(initial.visible && !initial.overflow, 'usable initial form');
     if (!previous) {
@@ -78,6 +78,16 @@ async function inspect(browser, width, previous) {
       assert.equal(meal.ariaHidden, null, 'native meal select remains accessible');
       assert.ok(meal.tabIndex >= 0, 'native meal select remains keyboard reachable');
       assert.equal(meal.quickChoices, 0, 'retired quick-choice surface is absent');
+      if(width===375||width===1440) {
+        await page.evaluate(() => window.V2Results.render([{id:'edit-fixture',name:'Проверочный отель',tours:[],price:148500}]));
+        assert.equal((await state()).visible,false,'results collapse the form');
+        await page.locator('#resultsSearchEdit').click();
+        assert.ok((await state()).visible,'result summary edit restores the native form');
+        await page.evaluate(() => window.V2Results.render([]));
+        assert.equal((await state()).visible,false,'new empty results close the previous editor');
+        await page.locator('.empty-edit-search').click();
+        assert.ok((await state()).visible,'empty-result edit restores the native form');
+      }
     }
     assert.deepEqual(errors, [], 'no browser exceptions');
     return { initial, started, validation, dirty, resized };

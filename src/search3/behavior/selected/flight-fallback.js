@@ -35,11 +35,11 @@
       setData(action, 'search3SelectedFlowOwned', '1');
       action.innerHTML = '<button type="button" class="primary">' + flowLabel('flight') + '</button>';
       flights.appendChild(action);
-    } else {
+    } else if (!action.classList.contains('search3-flight-continue--fallback')) {
       action.classList.add('search3-flight-continue--fallback');
     }
     var button = action.querySelector('button');
-    setText(button, flowLabel('flight'));
+    setText(button, selected.classList.contains('search3-final-review') ? 'Изменить рейс' : flowLabel());
     return button;
   }
 
@@ -55,17 +55,4 @@
     }
     review.click();
     return true;
-  }
-
-  function syncMobileAction(noFlight) {
-    var button = document.querySelector('.search3-selected-mobile-bar [data-s3-selected-lead]');
-    if (!button) return;
-    setText(button, flowLabel('flight'));
-    if (noFlight) {
-      setData(button, 'search3SelectedFlowAction', '1');
-      setAttribute(button, 'aria-label', 'Перейти к итогу тура без выбранного рейса');
-    } else {
-      removeData(button, 'search3SelectedFlowAction');
-      removeAttribute(button, 'aria-label');
-    }
   }
