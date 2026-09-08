@@ -30,7 +30,7 @@
     },
     "search3-results-filters-v1.js": {
       "candidateSha256": "59902609494edbecb014a1ebd3049b12071c799b88f939ff92fc7ca76883202f",
-      "productionSha256": "895d99ee6ff2218d6602ef9c830a2f6e3669e5d6125078cd055bd73e2a5d7bff"
+      "productionSha256": "c50e4f90a02d3d395bff4d8c4a93480b503bb131b50c1d851df0243607294cdb"
     },
     "search3-selected-flow-v2.css": {
       "candidateSha256": "26d7c6661ff29957309d8356ab47c430e37b718053d062d241e202d660bd6871",
@@ -38,7 +38,7 @@
     },
     "search3-selected-flow-v2.js": {
       "candidateSha256": "66e9dd7f936f2d6d65a40f5fd55c06146ff7a8abd66be3e7742bba567e8a415d",
-      "productionSha256": "6e7e5aed955d2c3ad55b61a61a6bb41591e1809bb742a199af38a0e92bf7f8ac"
+      "productionSha256": "b9770dbf1721a321ad127823289beb1c274353a451f25cf98d97c076c3029370"
     }
   },
   "protectedSha256": {

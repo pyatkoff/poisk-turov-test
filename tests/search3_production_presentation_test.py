@@ -361,6 +361,35 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         entry = (ROOT / 'src/search3/styles/entry-v1.css').read_text()
         self.assertIn('#tourSearch>details.extras[hidden]{display:none!important}', entry)
 
+    def test_legacy_filter_ux_css_is_not_loaded_by_search3(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy_css = (ROOT / 'v2/search-filters-ux-v1.css').read_text()
+        legacy_js = (ROOT / 'v2/search-filters-ux-v1.js').read_text()
+        current_js = ''.join((ROOT / 'src/search3/behavior' / name).read_text() for name in [
+            'search-form.js', 'search-form/primary-controls.js',
+            'search-form/secondary-controls.js', 'search-form/entry-presentation.js',
+        ])
+        current_css = ''.join((ROOT / 'src/search3/styles' / name).read_text() for name in [
+            'entry-v1.css', 'entry-native-controls.css', 'entry-calendar.css',
+        ])
+        self.assertIn("'search-filters-ux-v1.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'search-filters-ux-v1.css'", scoped)
+        self.assertIn("'search-filters-ux-v1.js'", manifest.split('$excluded =', 1)[0])
+        self.assertNotIn("'search-filters-ux-v1.js'", scoped)
+        for legacy_contract in ('.primary-search-flow', '.dates-picker', '.guests-picker',
+                                '.stars-quick', '.nights-quick', '.extras-secondary'):
+            self.assertIn(legacy_contract, legacy_css)
+        for legacy_contract in ('initDatesUX', 'initNightsUX', 'initGuestsUX',
+                                'arrangePrimaryLayout', 'window.V2SearchFiltersUXV1'):
+            self.assertIn(legacy_contract, legacy_js)
+        for current_contract in ('search3-primary-grid', 'search3-composite__control',
+                                 'search3-tourists__summary', 'installEntryPresentation'):
+            self.assertIn(current_contract, current_js)
+        for current_contract in ('search3-primary-grid', 'search3-composite__control',
+                                 'search3-tourists__pop', 'search3-mobile-search-filter-button'):
+            self.assertIn(current_contract, current_css)
+
     def test_legacy_header_css_is_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
