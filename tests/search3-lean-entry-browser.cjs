@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const base = process.env.SEARCH3_VISUAL_BASE;
-const baseline = process.env.SEARCH3_RUNTIME_BASE;
+const baseline = process.env.SEARCH3_ENTRY_BASE || process.env.SEARCH3_RUNTIME_BASE;
 assert.equal(new URL(base).hostname, '127.0.0.1');
 assert.match(baseline, /^[0-9a-f]{40}$/);
 const oldFile = name => execFileSync('git', ['show', `${baseline}:v2/${name}`]);

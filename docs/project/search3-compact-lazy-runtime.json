@@ -117,6 +117,16 @@
       "source": "9d8cdbcb948ebf5c566d5e30ba1c613b31ea3039",
       "exact_run": 34266516178,
       "failure": "Selected12 and lazy retry/reset/return scenarios passed. Existing native lifecycle check caught details left open after search; restored only close-on-search in current native form owner."
+    },
+    {
+      "source": "23c1da27d78af79e2fd81d2e3efb7c28c81f37e2",
+      "exact_run": 34266851626,
+      "failure": "Native extras close correctly; meal fixture dispatched synthetic focus on a hidden control. Reopen native extras and focus the actual select before awaiting catalog."
+    },
+    {
+      "source": "a51401595e70b73a96877aa0d06d2edb5fd5ca65",
+      "exact_run": 34267454310,
+      "failure": "Selected and lazy scenarios plus current catalog assertions passed. Entry parity reference still contained the pre-#1619 projection and reordered controls. Pin entry-only baseline to already merged native-entry release fa9917bf; retain full geometry/value/lifecycle equality and original selected/runtime baseline."
     }
   ],
   "invocation_start_release_sha": "e4fae092af9fa9d1607cdc141b52cc270ab00ca2",
