@@ -1012,8 +1012,9 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         self.assertNotIn('.ds2-site-footer', results)
 
     def test_optional_shared_layers_are_search3_only_exclusions(self):
+        self.assertEqual(self.bundle.count("'site-footer-v1.css'"), 1)
         for name in (
-            'site-footer-v1.css', 'ds2-search-intro-v1.css', 'ds2-search.css',
+            'ds2-search-intro-v1.css', 'ds2-search.css',
             'hotel-actions-v3.js', 'room-details-v3.js', 'hotel-autocomplete-v1.js',
             'search-filters-ux-v1.js', 'current-price-calendar-v1.js',
             'mobile-results-filters-v1.js', 'ds2-results-filters.js',
