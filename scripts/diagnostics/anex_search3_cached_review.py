@@ -19,6 +19,8 @@ BOOTSTRAP_ARTIFACT = 10079050364
 PINNED_AUDIT_SHA = 'caacb640360fb3867c3faef622f39a3fead776911ec94af9de8982c462694254'
 MAX_IDS = 14
 FINAL_STATES = {'completed', 'interrupted_result_unknown', 'not_started'}
+CHECKED_CHECKPOINT_SHA = '370b406754bd71d7e74e1ab20f9728163db7727ee56f819e911d9f7b5b33c921'
+ACCEPTANCE = 'anex-cached-review-acceptance.json'
 
 
 def job():
@@ -298,11 +300,69 @@ def finalize(directory):
                 report=REPORT, report_sha256=file_sha(directory / REPORT), report_readback_verified=True)
 
 
+def approved_delta(path):
+    """Reproduce the checked cache and complete local sets before proposing an append."""
+    path = Path(path)
+    if path.name != CHECKPOINT or CHECKED_CHECKPOINT_SHA is None or file_sha(path) != CHECKED_CHECKPOINT_SHA:
+        raise ValueError('unchecked cached-review checkpoint')
+    cp, _ = load(path.parent)
+    if any(batch['state'] != 'completed' for batch in cp['batches']):
+        raise ValueError('cached-review results are not all confirmed')
+    rows = []
+    for batch in cp['batches']:
+        for result in batch['results']:
+            if (result['candidate_set_complete'] is not True
+                    or result['proposal_status'] != 'strong_candidate'
+                    or result['proposal_reason'] != 'name_country_coordinates'):
+                continue
+            rows.append({'anex_hotel_id': result['anex_hotel_id'],
+                         'catalog_hotel_id': result['best']['id'], 'match_class': 'strong_candidate',
+                         'reason': 'observed_cached_review:name_country_coordinates',
+                         'source_row_digest': gaps.digest(result)})
+    sources = dict(cp['sources'], gap_sha256=CHECKED_CHECKPOINT_SHA)
+    return {'schema_version': 1, 'scope': 'preview', 'approval_policy': 'owner_exact_and_strong_20260908',
+            'append_only': True, 'sources': sources, 'rows': sorted(rows, key=lambda r: r['anex_hotel_id']),
+            'counts': {'exact': 0, 'strong': len(rows), 'total': len(rows),
+                       'unique_catalog_hotels': len({r['catalog_hotel_id'] for r in rows})}}
+
+
+def accept(directory):
+    from anex_search_mapping_import import ssh_import
+    delta = approved_delta(directory / CHECKPOINT)
+    path = directory / ACCEPTANCE
+    previous = json.loads(path.read_bytes()) if path.exists() else None
+    if previous is not None and previous.get('delta_sha256') != gaps.digest(delta):
+        raise ValueError('cached-review acceptance changed')
+    if previous is not None and previous.get('state') == 'finalized':
+        return {'status': 'already_finalized', 'inserted': 0, 'supplier_requests': 0, 'new_catalog_reads': 0}
+    if not delta['rows']:
+        return {'status': 'no_new_strong_candidates', 'inserted': 0, 'supplier_requests': 0, 'new_catalog_reads': 0}
+    before_history = protected(directory)
+    before = live.snapshot()
+    checkpoint = {'state': 'prepared', 'delta_sha256': gaps.digest(delta),
+                  'checked_checkpoint_sha256': CHECKED_CHECKPOINT_SHA, 'coverage_before': before['counts']}
+    owner.save(path, checkpoint)
+    imported = ssh_import(directory / 'anex-cached-review-mappings.json',
+                          cached_review_checkpoint=directory / CHECKPOINT)
+    after = live.snapshot()
+    if after['effective_mapped_count'] < before['effective_mapped_count'] or protected(directory) != before_history:
+        raise ValueError('cached-review import changed protected evidence')
+    preservation = gaps.ssh_batch([], {}, 1)['preservation']
+    report = dict(live.export(directory, live.restore(directory), after),
+                  coverage_before=before['counts'], coverage_after=after['counts'], import_result=imported,
+                  supplier_requests=0, new_completed=0, historical_evidence_unchanged=True,
+                  checked_checkpoint_sha256=CHECKED_CHECKPOINT_SHA, database_readback=preservation)
+    checkpoint.update(state='finalized', import_result=imported, report=report)
+    owner.save(path, checkpoint)
+    owner.save(directory / 'anex-cached-review-acceptance-report.json', report)
+    return {k: v for k, v in report.items() if k != 'triage'}
+
+
 if __name__ == '__main__':
     directory = Path(os.environ['ANEX_CATALOG_ARTIFACT_DIR'])
-    action = {'--prepare': prepare, '--run': run, '--finalize': finalize}
+    action = {'--prepare': prepare, '--run': run, '--finalize': finalize, '--accept': accept}
     if len(sys.argv) != 2 or sys.argv[1] not in action:
-        raise SystemExit('expected --prepare, --run or --finalize')
+        raise SystemExit('expected --prepare, --run, --finalize or --accept')
     result = action[sys.argv[1]](directory)
     print(json.dumps(result, ensure_ascii=False))
     if result.get('status') == 'catalog_read_unconfirmed':

@@ -73,6 +73,74 @@ class CachedReviewTests(unittest.TestCase):
                 review.prepare(path)
             snapshot.assert_not_called()
 
+    def acceptance_fixture(self, directory):
+        rows = {12: copy.deepcopy(self.row), 13: dict(copy.deepcopy(self.row), external_id=13,
+                api=dict(self.row['api'], id=13), xml=dict(self.row['xml'], id=13))}
+        sources = {'catalog_sha256': 'a' * 64, 'geo_sha256': 'b' * 64}
+        admissions = [{'anex_hotel_id': i, 'country_id': 4, 'country_name': 'Турция'} for i in rows]
+        request = {'mode': 'complete_review', 'queries': [review.query_for(rows[r['anex_hotel_id']], r) for r in admissions]}
+        competing = dict(copy.deepcopy(self.item), key=13, candidates=[dict(self.candidate, name='Hotel Example Beach')])
+        results = [review.analyze(rows[12], self.item), review.analyze(rows[13], competing)]
+        checkpoint = {'schema_version': 1, 'scope': 'preview', 'kind': 'cached_source_error_complete_reviews',
+                      'sources': sources, 'audit_sha256': review.PINNED_AUDIT_SHA,
+                      'source_artifact_id': review.BOOTSTRAP_ARTIFACT,
+                      'source_digests': {str(i): review.gaps.digest(row) for i, row in rows.items()},
+                      'source_audit_raw': 'fixture', 'reserved_by': ['1', '1'], 'admissions': admissions,
+                      'batches': [{'ids': [12, 13], 'request': request, 'request_sha256': review.gaps.digest(request),
+                                   'protected_ids': [], 'state': 'completed', 'results': results,
+                                   'results_sha256': review.gaps.digest(results)}]}
+        review.owner.save(directory / review.CHECKPOINT, checkpoint)
+        return rows, sources
+
+    def test_acceptance_pins_result_reproduces_scores_and_excludes_non_strong(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            rows, sources = self.acceptance_fixture(directory)
+            path = directory / review.CHECKPOINT
+            with patch.object(review, 'source_rows', return_value=(rows, sources)):
+                with patch.object(review, 'CHECKED_CHECKPOINT_SHA', None):
+                    with self.assertRaisesRegex(ValueError, 'unchecked cached-review checkpoint'):
+                        review.approved_delta(path)
+                with patch.object(review, 'CHECKED_CHECKPOINT_SHA', review.file_sha(path)):
+                    delta = review.approved_delta(path)
+                    self.assertEqual(delta['counts']['strong'], 1)
+                    self.assertEqual(delta['rows'][0]['anex_hotel_id'], 12)
+                    self.assertEqual(delta['rows'][0]['reason'], 'observed_cached_review:name_country_coordinates')
+                    cp, _ = review.load(directory)
+                    result = cp['batches'][0]['results'][0]
+                    result['raw_candidates'][0]['name'] = 'Completely Different Hotel'
+                    result['raw_candidates_sha256'] = review.gaps.digest(result['raw_candidates'])
+                    cp['batches'][0]['results_sha256'] = review.gaps.digest(cp['batches'][0]['results'])
+                    review.owner.save(path, cp)
+                    with self.assertRaisesRegex(ValueError, 'unchecked cached-review checkpoint'):
+                        review.approved_delta(path)
+                with patch.object(review, 'CHECKED_CHECKPOINT_SHA', review.file_sha(path)):
+                    with self.assertRaisesRegex(ValueError, 'score reproduction'):
+                        review.approved_delta(path)
+
+    def test_finalized_acceptance_has_no_database_or_supplier_calls_and_routes_are_exclusive(self):
+        import anex_search_mapping_import as importer
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            rows, sources = self.acceptance_fixture(directory)
+            path = directory / review.CHECKPOINT
+            with patch.object(review, 'source_rows', return_value=(rows, sources)), \
+                    patch.object(review, 'CHECKED_CHECKPOINT_SHA', review.file_sha(path)):
+                delta = review.approved_delta(path)
+                review.owner.save(directory / review.ACCEPTANCE, {'state': 'finalized', 'delta_sha256': review.gaps.digest(delta)})
+                with patch.object(review.live, 'snapshot') as snapshot, patch.object(importer, 'ssh_import') as sql, \
+                        patch.object(review.gaps, 'ssh_batch') as batch, patch.object(review.owner, 'ssh_php') as source:
+                    result = review.accept(directory)
+                    self.assertEqual(result['status'], 'already_finalized')
+                    self.assertEqual(result['inserted'], 0)
+                    snapshot.assert_not_called()
+                    sql.assert_not_called()
+                    batch.assert_not_called()
+                    source.assert_not_called()
+            with self.assertRaisesRegex(ValueError, 'one independent checkpoint'):
+                importer.ssh_import(directory / 'mapping.json', saved_review_checkpoint=path,
+                                    cached_review_checkpoint=path)
+
     def test_checkpoint_roundtrip_and_partial_registry_protection(self):
         rows = {12: self.row, 13: dict(self.row, external_id=13,
                                       api=dict(self.row['api'], id=13), xml=dict(self.row['xml'], id=13))}

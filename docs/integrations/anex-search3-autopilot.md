@@ -32,6 +32,24 @@ preview, manual decisions и catalog_hotels сохраняются. Исполь
 observed и append-only importer. Новые changes observed runtime требуют свежегоrun;
 старый34271815803/35fa3709 не rerun после подключения нового обработчика.
 
+## Проверка cache14 дала шесть строгих пар
+
+SHA5b22068c2f9ec76b5e77283e3ced5ccf84452c30, run34284981670/job102258346390,
+artifact10079156958, digest5212482eb64b556b8882f6deecbe33c691fdab8cf3ed58f200c5a2fbb7a5ba89;
+резерв10079122626, восстановлен10079050364. Все14 local catalog reads подтверждены,
+семь последовательных вызовов по2, новых/повторных supplier ID0/API0.
+Checkpoint SHA370b406754bd71d7e74e1ab20f9728163db7727ee56f819e911d9f7b5b33c921,
+report SHAb6076c9e2a720e0b89379adf1aaa1faef2a720f76e6758d5a5bed8be825f8aae.
+Шесть полных strong:34380→17325,34438→77657,35017→82367,36887→103994,
+37042→43227,39940→80474. Similarity1 у всех; расстояния2.2/6.3/8/2/3/30.7м,
+margin0.1625/0.2306/0.1978/0.2017/0.13/0.1978.
+Остальные8 — review:6 competing_candidates,2 insufficient_independent_evidence.
+Исторические source_error/live292 не изменялись, registry12893/coverage233/502.
+Новый pinned acceptance воспроизводит весь checkpoint, включает только6strong
+и использует существующий append-only importer с observed_cached_review:name_country_coordinates.
+Результат принятия требует следующего фактического DBreadback. Finalized стадия
+не выполняет SQLimport повторно; reader all14completed больше не читает кандидатов.
+
 ## Четыре связи приняты, следующий этап — 14 сохранённых карточек ошибок
 
 На d5c56b365833677598a90c882c47150e95b149d4, run34284774030/job102257688857,
