@@ -304,6 +304,23 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             self.assertIn(legacy_contract, legacy)
             self.assertIn(current_contract, current)
 
+    def test_product_shell_is_a_legacy_only_presentation_layer(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/product-shell-v1.css').read_text()
+        base = (ROOT / 'src/search3/styles/base.css').read_text()
+        current_header = (ROOT / 'v2/site-header-v2.php').read_text()
+        legacy_route = (ROOT / 'v2/poisk-turov-old/index.php').read_text()
+        self.assertIn("'product-shell-v1.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'product-shell-v1.css'", scoped)
+        self.assertIn('.at-site-header', legacy)
+        self.assertIn('.v2-product-hero', legacy)
+        self.assertIn('.primary-search-flow', legacy)
+        self.assertIn('<header class="at-global-header">', current_header)
+        self.assertIn('& .v2-product-hero{display:none!important}', base)
+        self.assertIn('& .v2-shell{padding-bottom:52px!important}', base)
+        self.assertIn("define('V2_SEARCH3_PRESENTATION', false)", legacy_route)
+
     def test_tablet_legacy_extras_are_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
