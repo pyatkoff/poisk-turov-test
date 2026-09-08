@@ -35,7 +35,13 @@ foreach ($files as $file) {
         echo "\n";
     } else {
         echo "\n;/* --- " . $file . " --- */\n";
-        readfile($path);
+        $compact = null;
+        if ($scope === 'search3') {
+            require_once __DIR__ . '/search3-shared-runtime.php';
+            $compact = v2_search3_compact_script($file);
+        }
+        if ($compact === null) readfile($path);
+        else echo $compact;
         echo "\n;\n";
     }
 }
