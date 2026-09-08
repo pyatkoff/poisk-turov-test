@@ -132,6 +132,15 @@ class PriceProbeTest(unittest.TestCase):
         self.assertEqual(result["evidence"][0]["rooms"], ["Family"])
         self.assertNotIn("accepted", result)
 
+    def test_price_evidence_cli_requires_bounded_selection(self):
+        source = (ROOT / "scripts/diagnostics/anex_access_probe.py").read_text(encoding="utf-8")
+        self.assertIn('price_evidence = "--price-evidence" in sys.argv', source)
+        self.assertIn('("ANEX_PRICE_HOTEL_IDS", "ANEX_PRICE_DESTINATION")', source)
+        self.assertIn('" --price-evidence" if price_evidence', source)
+        with self.assertRaises(ValueError):
+            probe.requested_price_hotel_ids({
+                "ANEX_PRICE_HOTEL_IDS": ",".join(str(value) for value in range(1, 32))})
+
     def test_empty_price_evidence_is_not_an_identity_rejection(self):
         payloads = copy.deepcopy(self.payloads)
         payloads[-1] = {"prices": []}

@@ -10,6 +10,10 @@ on:
       - 'scripts/diagnostics/anex_catalog_reader.php'
       - 'tests/anex_access_probe_test.py'
       - 'tests/anex_price_probe_test.py'
+      - 'scripts/diagnostics/anex_price_evidence_queue.py'
+      - 'scripts/diagnostics/anex_price_evidence_checkpoint.py'
+      - 'tests/anex_price_evidence_queue_test.py'
+      - 'tests/anex_price_evidence_checkpoint_test.py'
       - 'tests/anex_hotel_match_probe_test.py'
       - 'scripts/diagnostics/anex_adapter_probe.py'
       - 'scripts/diagnostics/anex_adapter_runner.php'
@@ -55,6 +59,7 @@ jobs:
           python3 -B tests/anex_geo_checkpoint_restore_test.py
           python3 -B tests/anex_staging_import_test.py
           python3 -B tests/anex_price_evidence_queue_test.py
+          python3 -B tests/anex_price_evidence_checkpoint_test.py
           python3 -B tests/anex_exact_registry_builder_test.py
           php -l scripts/diagnostics/anex_catalog_reader.php
           php -l scripts/diagnostics/anex_adapter_runner.php
@@ -89,7 +94,32 @@ jobs:
           python3 -B scripts/diagnostics/anex_price_evidence_queue.py \
             --catalog "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-catalog-match.json" \
             --geo "$ANEX_CATALOG_ARTIFACT_DIR/anex-hotel-geo-enrichment.json" \
+            --checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-checkpoint.json" \
             --output "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-queue.json"
+      - name: Probe one resumable 30-hotel price-evidence batch
+        env:
+          ANEX_API_TOKEN: ${{ secrets.ANEX_API_TOKEN }}
+          ANEX_REFERENCE_TOKEN: ${{ secrets.ANEX_REFERENCE_TOKEN }}
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: |
+          queue="$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-queue.json"
+          if ! jq -e '.batches[0]' "$queue" >/dev/null; then
+            echo "No unchecked diagnostic price-evidence batch remains"
+            exit 0
+          fi
+          export ANEX_PRICE_DESTINATION="$(jq -r '.batches[0].destination' "$queue")"
+          export ANEX_PRICE_HOTEL_IDS="$(jq -r '.batches[0].hotel_ids | join(",")' "$queue")"
+          # The catalogue process uses the same API token. Drain its rolling
+          # one-minute window before the six bounded SearchTour requests.
+          sleep 65
+          python3 -B scripts/diagnostics/anex_access_probe.py --price-evidence \
+            > "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-report.json"
+          python3 -B scripts/diagnostics/anex_price_evidence_checkpoint.py \
+            --checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-checkpoint.json" \
+            --report "$ANEX_CATALOG_ARTIFACT_DIR/anex-price-evidence-report.json"
       - name: Persist validated checkpoint in isolated ANEX staging tables
         env:
           ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
