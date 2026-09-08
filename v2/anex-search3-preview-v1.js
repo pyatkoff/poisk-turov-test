@@ -87,6 +87,9 @@
     });
     panel = node('section', 'anex-search3-panel');
     panel.id = 'anexSearch3Results';
+    // Inline priority beats the existing layered Search3 section whitelist.
+    panel.style.setProperty('display', 'block', 'important');
+    panel.style.setProperty('grid-column', '1 / -1');
     panel.setAttribute('aria-label', 'Предложения ANEX');
     panel.appendChild(node('h2', '', 'Предложения ANEX'));
     const status = node('p', 'anex-search3-status', filterNotice || message);

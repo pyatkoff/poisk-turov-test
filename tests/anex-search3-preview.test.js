@@ -38,7 +38,7 @@ class FakeElement {
     this.parentNode = null;
     this.attributes = {};
     this.dataset = {};
-    this.style = {};
+    this.style = { setProperty(name, value) { this[name] = value; } };
     this.id = '';
     this.className = '';
     this.hidden = false;
