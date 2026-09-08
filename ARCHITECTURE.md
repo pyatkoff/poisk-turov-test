@@ -71,7 +71,7 @@ Canonical public shell target:
 
 `base template → shared header/navigation → page content slot → shared footer → consultant/integrations`
 
-The reusable `.at-global-header` / `site-header-v2` family is the canonical shared-header direction for public standalone pages. `/poisk-turov/` currently remains on legacy `.at-site-header`; that is an explicit temporary seam, not permission to build further variants.
+The reusable `.at-global-header` / `site-header-v2` family is the canonical shared-header direction. Search3 on `/poisk-turov/` now renders this canonical header; the old-search compatibility route alone retains `.at-site-header` and its full legacy presentation bundle. Do not build further header variants.
 
 Footer, navigation, mobile navigation, containers, typography, buttons, cards, forms, breadcrumbs and spacing tokens should converge on one shared implementation/design system.
 
