@@ -1,4 +1,75 @@
 {
+  "latest_eager_selected_runtime_retirement": {
+    "schema_version": 1,
+    "date": "2026-09-08",
+    "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
+    "source_pr": 1640,
+    "base_release_sha": "d87ffe4f15c868dc28723593c90c9752998435b8",
+    "source_sha": "d123a1d8b7cae29c39d7c2678445238d3763ae96",
+    "source_tree": "8d76145840c17c6cb9ffbf2051fe80719423ee45",
+    "release_integration_sha": "a28d62772bcb89ffc7368de18002b524a961329e",
+    "public_assets": {
+      "paths": 8,
+      "before_raw_bytes": 11984,
+      "after_raw_bytes": 10097,
+      "removed_raw_bytes": 1887,
+      "removed_percent": 15.75
+    },
+    "loaded_file_payload": {
+      "before_raw_bytes": 116150,
+      "after_raw_bytes": 114263,
+      "removed_raw_bytes": 1887
+    },
+    "initial_file_payload_tradeoff": {
+      "before_raw_bytes": 73840,
+      "after_raw_bytes": 114263,
+      "added_raw_bytes": 40423,
+      "reason": "The protected 42310B selected phase is now eager; the deleted 1887B proxy is not moved elsewhere. Selection makes no second runtime request or click replay."
+    },
+    "retired_whole_sources": [
+      "src/search3/behavior/selected-runtime.js"
+    ],
+    "ci": {
+      "security_run": 34287755060,
+      "navigation_run": 34287754978,
+      "exact_artifact_run": 34287754975,
+      "conclusion": "success"
+    },
+    "artifact": {
+      "id": 10080169508,
+      "digest": "sha256:4eef8d02507356d150edc6146455bcd0450b75b24687b9c3f75c6b1bb8e26de2",
+      "archive_sha256": "8395ecc1a2ba5639ced1a3ad790c6e91be80e2fb359207f8b61e0390d572b922",
+      "file_count": 717
+    },
+    "browser_evidence": {
+      "selected_geometry_states": 8,
+      "selected_widths": [375, 760, 1000, 1440],
+      "eager_selected_scenarios": 3,
+      "selected_phase_requests": 0,
+      "tour_retry": true,
+      "reset_cancellation": true,
+      "decimal_price": true,
+      "phone_validation": true,
+      "stale_lead_blocked": true,
+      "return_focus": true,
+      "real_leads_submitted": 0
+    },
+    "publication": {
+      "published": false,
+      "published_preview_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
+      "main_observed_sha": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816",
+      "main_changed": false,
+      "production_changed": false
+    },
+    "deferred": [
+      "publish only with a later justified accumulated or visual package",
+      "current-source live/manual screenshots",
+      "physical Safari and safe-area verification",
+      "owner visual acceptance and full lead/site/SEO journey"
+    ],
+    "rollback": "Revert a28d62772bcb89ffc7368de18002b524a961329e to restore the split selected phase and proxy.",
+    "next_action": "Audit a new coarse results-state boundary and batch it only if it removes a complete owner with material eight-asset savings. Do not restore the proxy, trim individual statements, or remove protected controller/price/API/lead/analytics behavior."
+  },
   "latest_base_skin_retirement": {
     "source_pr": 1626,
     "source_sha": "98aed98b0ac90575be43bc22f58e8c2fcf4071b5",
@@ -373,28 +444,28 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "#1635 styles canonical header/form/results/selected surfaces with no JS change; #1637 fixes duplicated entry UI confirmed in live selected state. Eight8867→11984B (+3117CSS for visual repair, not deletion); #1633 retirement preserved. Both exact publications and actual checks recorded.",
+    "last_material_progress": "#1640 retires the whole selected-runtime lazy proxy. Eight11984→10097B (−1887); complete loaded files116150→114263B. The canonical selected owners are eager, so initial files rise by40423B; exact CI confirms zero selected-phase requests and the protected journey.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "The compact native presentation and selected-entry duplication repair are published. Preserve the current11984B eight-asset total and all retired boundaries. Next coherent UI package: group the eight primary search fields into destination/date/nights/party pairs, and fix existing footer/lead-summary text spacing within the same12KB budget. Batch these visible refinements; do not create printer/micro-trim PRs or restore legacy skins. Keep canonical values, price arithmetic, API/lead transport/mapping/analytics and original logo. Production remains gated on explicit owner visual acceptance.",
+    "next_action": "Audit a new coarse results-state boundary and batch it only if it removes a complete owner with material eight-asset savings. Do not restore retired layers or remove controller, price, API, lead, analytics or logo contracts. Production remains gated on explicit owner visual acceptance.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_COMPACT_NATIVE_PRESENTATION",
-    "title": "Compact native UI and selected-entry visibility repair",
-    "status": "PUBLISHED_ISOLATED_PREVIEW_WITH_DEFERRED_DESIGN_ACCEPTANCE",
+    "id": "S3_EAGER_SELECTED_RUNTIME_RETIREMENT",
+    "title": "Retire selected-runtime lazy proxy",
+    "status": "CHECKED_RELEASE_NOT_PUBLISHED",
     "issue": 996,
     "pr": 1334,
-    "source_pr": 1637,
+    "source_pr": 1640,
     "branch": "release/search3-production-ready-v1",
-    "implementation_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-    "release_sha": "abc6e4f255709572b731b0db1ffb0d94a4b0909e",
-    "last_fully_checked_release_sha": "abc6e4f255709572b731b0db1ffb0d94a4b0909e",
-    "security_run": 34286700375,
-    "exact_run": 34286700356,
-    "checked_release_asset_bytes": 11984,
+    "implementation_sha": "d123a1d8b7cae29c39d7c2678445238d3763ae96",
+    "release_sha": "a28d62772bcb89ffc7368de18002b524a961329e",
+    "last_fully_checked_release_sha": "a28d62772bcb89ffc7368de18002b524a961329e",
+    "security_run": 34287755060,
+    "exact_run": 34287754975,
+    "checked_release_asset_bytes": 10097,
     "published_source_sha": "89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1",
-    "next_action": "The compact native presentation and selected-entry duplication repair are published. Preserve the current11984B eight-asset total and all retired boundaries. Next coherent UI package: group the eight primary search fields into destination/date/nights/party pairs, and fix existing footer/lead-summary text spacing within the same12KB budget. Batch these visible refinements; do not create printer/micro-trim PRs or restore legacy skins. Keep canonical values, price arithmetic, API/lead transport/mapping/analytics and original logo. Production remains gated on explicit owner visual acceptance."
+    "next_action": "Audit a new coarse results-state boundary; proceed only for a complete owner and material eight-asset savings. Preserve protected business behavior and all retired layers."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -9038,7 +9109,7 @@
     "audit": "docs/project/search3-results-context-owner-retirement.json",
     "next_action": "Before publishing, bound the intentional summary/tools reset at 375/1440 and the 999/1000 toolbar seam; if unavailable, audit another independent owner."
   },
-  "updated_at": "2026-09-08T22:42:29.786738+00:00",
+  "updated_at": "2026-09-08T23:03:00+00:00",
   "latest_booking_owner_consolidation": {
     "stage": "CHECKED_RELEASE_NOT_PUBLISHED",
     "baseline": "4172f84ffbf02198146435d1f035ad275acdf0bb",

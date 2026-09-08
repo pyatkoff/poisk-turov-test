@@ -1,6 +1,47 @@
 # Search3 technical refactor autopilot
 
-## Current resume point — compact native UI #1635 and selected entry repair #1637 — 2026-09-08
+## Current resume point — eager selected runtime retirement #1640 — 2026-09-08
+
+Exact source `d123a1d8b7cae29c39d7c2678445238d3763ae96`, tree
+`8d76145840c17c6cb9ffbf2051fe80719423ee45`; checked release
+`a28d62772bcb89ffc7368de18002b524a961329e`. #1640 removes the whole
+`src/search3/behavior/selected-runtime.js` lazy proxy. Search3 now requests the
+existing compact shared runtime once; canonical tour, flight recovery, price and
+lead owners remain byte-identical and appear once.
+
+Eight public assets are **11984→10097 raw B (−1887, −15.75%)**. Results JS is
+6607→4720 B; the other seven public assets are unchanged and all eight URLs remain.
+Complete loaded files are **116150→114263 B (−1887)**, so this is deletion rather
+than movement. Record the latency tradeoff explicitly: the former42310 B selected
+phase is eager, making initial files **73840→114263 B (+40423)** while selection no
+longer makes a second runtime request or replays the click.
+
+Security `34287755060`, navigation `34287754978` and exact artifact
+`34287754975` passed on the final source. Reuse artifact `10080169508`, digest
+`sha256:4eef8d02507356d150edc6146455bcd0450b75b24687b9c3f75c6b1bb8e26de2`,
+archive `8395ecc1a2ba5639ced1a3ad790c6e91be80e2fb359207f8b61e0390d572b922`,
+717 files. Selected evidence `10080169022`, digest
+`sha256:a987a3cb2e4522f26870dbc2e16b4a557ec968d8f07d7cd0ec07797b338572d9`.
+
+Exact Chromium passed8 selected states at375/760/1000/1440 and direct/reset/
+tour-retry scenarios with zero selected-phase requests, native lead handoff,
+decimal prices, phone validation, stale-lead blocking and return focus. Empty-flight
+recovery and localized tradeoffs passed. External calls were blocked; real leads0.
+
+**Checked release is not published preview.** Preview remains exact source
+`89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1`; #1640 was not published because it
+does not introduce a visual package. Main observed
+`47d6ccd0c324aceb4d6090fe53ffac03b9c41816`; main and production are unchanged.
+Current-source live/manual screenshots, physical Safari/safe-area, owner visual
+acceptance and full lead/site/SEO journey remain deferred. Rollback: revert #1640.
+Audit: `docs/project/search3-eager-selected-runtime-retirement.json`.
+
+Next: audit a new coarse results-state boundary. Proceed only for removal of a
+complete owner with material eight-asset savings; do not restore retired layers,
+micro-trim statements or remove controller, price, URL/payload, Tourvisor/API,
+lead transport/mapping, analytics, logo or browser contracts.
+
+## Historical checkpoint — compact native UI #1635 and selected entry repair #1637 — 2026-09-08
 
 Exact final source `89a5a8c37b3c5e5473f8f0d99b9ce19c4b51cbf1`, tree `833623851f9411e188dfe6915dd04f2b4211c675`;
 checked code release `abc6e4f255709572b731b0db1ffb0d94a4b0909e`. Initial checkpoint
