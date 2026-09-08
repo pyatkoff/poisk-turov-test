@@ -1,25 +1,25 @@
 {
   "schema_version": 1,
-  "task": "Search3 token-preserving core compaction and on-demand selected runtime",
+  "task": "Search3 on-demand selected runtime and return-focus repair, integrated with parallel core compaction",
   "date": "2026-09-08",
   "status": "LOCAL_BUILT_AWAITING_SOURCE_CI",
-  "baseline_release_sha": "e4fae092af9fa9d1607cdc141b52cc270ab00ca2",
+  "baseline_release_sha": "fa9917bf35b88f548bbea44baf26785dc5a1aa93",
   "source_sha": null,
   "release_sha": null,
   "main_observed_sha": "86fc165277a13ae9bef1369659e9b150399f0e35",
   "published_preview_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
   "assets": {
     "search3-results-filters-v1.js": {
-      "before": 16656,
-      "after": 18414
+      "before": 9164,
+      "after": 10922
     },
     "search3-results-filters-v1.css": {
       "before": 8420,
       "after": 8420
     },
     "search3-entry-v1.css": {
-      "before": 2688,
-      "after": 2688
+      "before": 331,
+      "after": 331
     },
     "search3-entry-v1.js": {
       "before": 0,
@@ -43,26 +43,26 @@
     }
   },
   "eight_assets_raw": {
-    "before": 33355,
-    "after": 35113,
+    "before": 23506,
+    "after": 25264,
     "saved": -1758
   },
   "shared_file_payload_raw": {
-    "before": 106735,
-    "after": 101720,
-    "saved": 5015
+    "before": 101537,
+    "after": 101537,
+    "saved": 0
   },
   "complete_route_file_payload_raw": {
-    "before": 140090,
-    "after": 136833,
-    "saved": 3257
+    "before": 125043,
+    "after": 126801,
+    "saved": -1758
   },
   "initial_route_file_payload_raw": {
-    "before": 140090,
-    "after": 111114,
-    "saved": 28976
+    "before": 125043,
+    "after": 101197,
+    "saved": 23846
   },
-  "deferred_file_payload_raw": 25719,
+  "deferred_file_payload_raw": 25604,
   "http_bundle_boundaries_raw": {
     "all": 727,
     "initial": 590,
@@ -73,13 +73,14 @@
     "flight-price-sync-v1.js",
     "unpriced-flight-price-reset-v1.js"
   ],
-  "compaction_method": "Scope-aware local binding plan applied to original source tokens; exact AST compared with only planned identifier substitutions. Original operators, literals, empty statements and numeric quoted keys are preserved. Existing exact-print guard remains unchanged.",
+  "compaction_method": "Reuse #1619 exact source-SHA-locked normalization and existing guarded local-binding compaction, unchanged. No additional shared-byte reduction claimed by this integration.",
   "runtime": "Same-origin selected phase on existing bundle-v1.php. First real click is replayed once after ready, preserving original return focus. Failed downloads allow explicit retry; search reset cancels pending selection. Existing API proxy resolves through original controller. Early lead guards, search snapshot/fetch wrappers, runtime, catalog and analytics initialization remain eager. Confirmed browser regression repaired in current results owner: reveal the retained results on return capture, before the unchanged controller resolves the focus target.",
   "local_checks": [
     "8-asset final build once",
     "generated shared map once",
     "syntax and compaction semantic fixtures",
-    "one affected asset rebuild after confirmed return-visibility regression"
+    "one affected asset rebuild after confirmed return-visibility regression",
+    "one 8-asset integration build after concurrent native-entry manifest merge; shared artifact map reused byte-identically"
   ],
   "ci": {},
   "published": false,
@@ -94,7 +95,7 @@
     "owner visual acceptance",
     "full SEO/site/responsive/lead journey"
   ],
-  "next_action": "Run mandatory Security and exact artifact with focused lazy initial/retry/reset/first-click checks; merge release only after success. Then record exact source/artifact and checkpoint.",
+  "next_action": "Mandatory final combined Security/exact CI, then merge release and update state, audit, #996 and #1334. Next architecture candidate is late-loaded lead-form guard; keep race guard and lead-context wrapper eager, preserve bootstrap and price event order.",
   "failed_runs": [
     {
       "source": "516f0c413f20a847a1d66e56194c230a423e72c3",
@@ -111,5 +112,15 @@
       "exact_run": 34265737512,
       "failure": "12 selected geometry states passed; actual lazy return test exposed hidden results and missing return focus. Fixed in results-top owner before canonical return handler."
     }
-  ]
+  ],
+  "invocation_start_release_sha": "e4fae092af9fa9d1607cdc141b52cc270ab00ca2",
+  "parallel_integration": {
+    "pr": 1619,
+    "source_sha": "efd0368b99f91533cb5538d433244a71fb303c25",
+    "release_sha": "fa9917bf35b88f548bbea44baf26785dc5a1aa93",
+    "policy": "Keep its native-entry retirement and exact SHA-locked shared compaction. Supersede our overlapping token compaction; do not double count savings.",
+    "original_own_source_before_integration": "36d3661f8947a90d9d22d6d9340927c15aac4b84",
+    "original_own_exact_run": 34266026172,
+    "original_own_ci": "success; superseded by combined source, not merged by itself"
+  }
 }

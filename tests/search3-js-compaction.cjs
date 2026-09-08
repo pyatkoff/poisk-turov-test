@@ -1,7 +1,10 @@
 'use strict';
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
-const { compact, compactBindings, compactBindingTokens, print, parsed } = require('../scripts/build/search3-js/compact.cjs');
+const { compact, compactBindings, print, parsed } = require('../scripts/build/search3-js/compact.cjs');
+const { normalizeSharedSource, normalizationRules } = require('../scripts/build/search3-js/shared-source-normalization.cjs');
+const fs = require('node:fs');
+const path = require('node:path');
 
 (async () => {
   const cases = [
@@ -28,7 +31,6 @@ const { compact, compactBindings, compactBindingTokens, print, parsed } = requir
   for (const original of cases) {
     const output = await compact(original);
     assert.equal(execute(await compactBindings(original)), execute(original));
-    assert.equal(execute(await compactBindingTokens(original)), execute(original));
     assert.equal(execute(output), execute(original));
     assert.deepEqual(parsed(await print(original)), parsed(original));
     assert.equal(await compact(output), output, 'printing is deterministic and idempotent');
@@ -45,7 +47,6 @@ const { compact, compactBindings, compactBindingTokens, print, parsed } = requir
   for (const original of localNames) {
     const output = await compact(original);
     assert.equal(execute(await compactBindings(original)), execute(original));
-    assert.equal(execute(await compactBindingTokens(original)), execute(original));
     assert.equal(execute(output), execute(original));
     assert.ok(Buffer.byteLength(output) <= Buffer.byteLength(original));
   }
@@ -64,26 +65,6 @@ output("/* literal source explanation */");
     comment => !comment.value.includes('ordinary source explanation')));
   assert.deepEqual(parsed(await print(notedSource)), parsed(notedSource),
     'exact first-stage printing still retains every source comment');
-  assert.deepEqual(parsed(await compactBindingTokens(notedSource)).comments, parsed(notedOutput).comments);
-  const tokenCases = [
-    `(function(){function returnValue(){try{return\n {price:42};}catch(error){;} } output(returnValue());})();`,
-    `(function(){var countryCatalog={"2":"Turkey",'10':'Egypt'};output([Object.keys(countryCatalog),countryCatalog[2]]);})();`,
-    `(function(){var publicName=3;var {publicName:privateValue,otherValue=4}={publicName,otherValue:5};output({publicName,otherValue,total:privateValue+otherValue});})();`,
-    `(function(){var inferredFunction=function(){return 1};var inferredClass=class {};output([inferredFunction.name,inferredClass.name]);})();`,
-    `(function(){var escaped\\u004eame=2;output(escapedName);})();`,
-    `(function(){var beforeComment=1;output(beforeComment +/* comment */+ 2);})();`,
-    `(function(){var selectedPrice=72099;var fuelPrice=17217.6;output([selectedPrice+fuelPrice,Math.round(selectedPrice+fuelPrice)]);})();`
-  ];
-  for (const original of tokenCases) {
-    const output = await compactBindingTokens(original);
-    assert.equal(execute(output), execute(original));
-    assert.equal(await compactBindingTokens(original), output, 'token plans are deterministic');
-  }
-  assert.ok(!(await compactBindingTokens(localNames[0])).includes('veryLongLocalPrice'),
-    'token compaction actually shortens local bindings');
-  assert.ok((await compactBindingTokens(tokenCases[0])).includes('{;}'), 'empty statements remain');
-  assert.ok((await compactBindingTokens(tokenCases[1])).includes('"2":"Turkey"'),
-    'numeric string property keys retain their original spelling');
   assert.notDeepEqual(parsed('({__proto__})'), parsed('({__proto__:__proto__})'),
     'prototype setter and shorthand property are not equivalent');
   assert.notDeepEqual(parsed('String.raw`\\u0061`'), parsed('String.raw`a`'),
@@ -95,5 +76,14 @@ output("/* literal source explanation */");
     'dropping even an empty statement fails closed');
   await assert.rejects(compact('output(`line\n${2 + 3}`)'), /changed syntax/,
     'rewriting template raw text fails closed even for an untagged template');
+  for (const name of Object.keys(normalizationRules)) {
+    const original = fs.readFileSync(path.join(__dirname, '..', 'v2', name), 'utf8');
+    const normalized = normalizeSharedSource(name, original);
+    assert.notEqual(normalized, original, `${name} must use its one reviewed normalization`);
+    assert.ok(Buffer.byteLength(await compactBindings(normalized)) < Buffer.byteLength(original),
+      `${name} normalization must unlock a smaller binding-only representation`);
+    assert.throws(() => normalizeSharedSource(name, original + '\n'), /source changed/,
+      `${name} normalization must fail closed on canonical source drift`);
+  }
   console.log('PASS: checked printing and optimization preserve execution, closures, eval, public keys, names, arity and getter side effects');
 })().catch(error => { console.error(error); process.exitCode = 1; });

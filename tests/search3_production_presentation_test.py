@@ -940,8 +940,9 @@ class Search3HalfSizeResetTest(unittest.TestCase):
         native = (ROOT / 'src/search3/styles/entry-native-controls.css').read_text()
         base = (ROOT / 'src/search3/styles/base.css').read_text()
         results = (ROOT / 'src/search3/styles/results-layout.css').read_text()
-        for marker in ('search3-direct-control', 'appearance:auto!important', 'min-height:44px!important'):
+        for marker in ('input:not([type=checkbox])', 'font-size:16px!important', 'min-height:44px!important'):
             self.assertIn(marker, native)
+        self.assertNotIn('search3-direct-control', native)
         for marker in ('box-sizing:border-box!important', '.v2-product-hero{display:none!important}', '--at-font:'):
             self.assertIn(marker, base)
         for marker in ('.results-layout', '.direct-tour', '[hidden]'):
