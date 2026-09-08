@@ -92,7 +92,7 @@ try {
         'anex_currency_id' => $currency, 'hotel_filter' => false];
     $diagnostics = [];
     $result = anytour_anex_search3_run(['generation' => 1, 'params' => $params], $pdo, $client, $cache, $diagnostics);
-    foreach (['supplier_offers', 'mapped_offers', 'rejected_count', 'samples'] as $field) {
+    foreach (['supplier_offers', 'mapped_offers', 'rejected_count', 'samples', 'unmapped_hotel_ids'] as $field) {
         if (!array_key_exists($field, $diagnostics)) throw new RuntimeException('ANEX_DIAGNOSTICS_UNAVAILABLE');
         $report[$field] = $diagnostics[$field];
     }

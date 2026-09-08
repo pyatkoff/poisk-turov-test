@@ -92,7 +92,7 @@ def build_payload(repo: Path, payload: Path, source_sha: str) -> dict:
     html = search.read_text(encoding="utf-8")
     if html.count("</body>") != 1:
         raise ValueError("preview search script insertion source drift")
-    script = '<script src="' + PREVIEW_ROUTE + 'anex-search3-preview-v1.js"></script>'
+    script = '<script src="' + PREVIEW_ROUTE + 'anex-search3-preview-v1.js?v=' + source_sha + '"></script>'
     search.write_text(html.replace("</body>", script + "</body>"), encoding="utf-8")
     (payload / ".htaccess").write_text(HTACCESS, encoding="utf-8")
     # This denied stub contains no secret and works even when PHP clears HOME.

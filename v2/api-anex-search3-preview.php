@@ -147,12 +147,19 @@ function anytour_anex_search3_run(array $request, PDO $pdo, $client, array &$cac
     // Optional server-only observation for the deployment probe; never projected into HTTP output.
     if ($diagnostics !== null) {
         $diagnostics = ['supplier_offers' => count($result['offers']), 'mapped_offers' => 0,
-            'rejected_count' => $result['rejected_count'], 'external_search_pending' => $result['external_search_pending'], 'samples' => []];
+            'rejected_count' => $result['rejected_count'], 'external_search_pending' => $result['external_search_pending'],
+            'samples' => [], 'unmapped_hotel_ids' => []];
+        $unmapped = [];
         foreach ($result['offers'] as $offer) {
             if (is_int($offer['hotel']['local_id'])) $diagnostics['mapped_offers']++;
             if (is_int($offer['hotel']['local_id']) && count($diagnostics['samples']) < 3) $diagnostics['samples'][] = [
                 'anex_hotel_id' => (int) $offer['hotel']['external_id'], 'catalog_hotel_id' => $offer['hotel']['local_id']];
+            if ($offer['hotel']['local_id'] === null && count($unmapped) < 300
+                && preg_match('/\A[1-9][0-9]{0,7}\z/D', $offer['hotel']['external_id'])) {
+                $unmapped[(int) $offer['hotel']['external_id']] = true;
+            }
         }
+        $diagnostics['unmapped_hotel_ids'] = array_keys($unmapped);
     }
     $ids = [];
     foreach ($result['offers'] as $offer) if (is_int($offer['hotel']['local_id']) && $offer['hotel']['local_id'] > 0) $ids[$offer['hotel']['local_id']] = true;
