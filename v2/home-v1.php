@@ -7,6 +7,7 @@ $homePhoneHref = v2_phone_href($homePhone);
 $homeDescription = 'AnyTour — удобный поиск туров с актуальными ценами, перелётами и помощью менеджера. Начните с короткого поиска и сравните предложения туроператоров.';
 $homeCanonical = 'https://anytoour.ru/';
 $homeRobots = v2_seo_robots_content(v2_seo_indexable($homeSiteParams));
+$homeMetrikaCounter = v2_metrika_counter_id();
 $homeSchema = v2_seo_schema($homePhone, $homeDescription);
 $homeLegacyBase = '';
 function home_e($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
@@ -89,6 +90,8 @@ function home_e($value): string { return htmlspecialchars((string)$value, ENT_QU
   </section>
 </main>
 <?php v2_render_site_footer($homePhone, $homePhoneHref); ?>
+<script>window.V2_CONFIG=Object.assign({},window.V2_CONFIG||{},{metrikaCounter:<?=json_encode($homeMetrikaCounter,JSON_UNESCAPED_SLASHES)?>});</script>
+<script src="<?=home_e(v2_asset('analytics-v4.js'))?>"></script>
 <script>
 (function(){
   const dep=document.querySelector('[data-home-departures]'),country=document.querySelector('[data-home-countries]');

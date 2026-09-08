@@ -19,9 +19,10 @@ foreach(['/country/turkey/kemer/','/country/egypt/','/country/maldives/'] as $pa
     if(!str_starts_with((string)$ctx['robots'],'index,follow')) runtime_gate_fail('allowed_not_indexable_'.$path);
 }
 
+// Owner-approved production policy: the canonical search entry remains indexable.
 $_SERVER['REQUEST_URI']='/poisk-turov/?country=4&region=22';
 $search=sp_context('/poisk-turov/','Search','Search description');
-if(!str_starts_with((string)$search['robots'],'noindex,follow')) runtime_gate_fail('search_leaked');
+if(!str_starts_with((string)$search['robots'],'index,follow')) runtime_gate_fail('search_not_indexable');
 $_SERVER['REQUEST_URI']='/country/egypt/hotel/example-123/';
 $hotel=sp_context('/country/egypt/hotel/example-123/','Hotel','Hotel description');
 if(!str_starts_with((string)$hotel['robots'],'noindex,follow')) runtime_gate_fail('hotel_tours_leaked');
@@ -41,4 +42,4 @@ $disabled=sp_context('/country/turkey/kemer/','Kemer','Kemer description');
 if(!str_starts_with((string)$disabled['robots'],'noindex,follow')) runtime_gate_fail('controlled_flag_precedence');
 
 @unlink($tmp.'/site_conf.php'); @rmdir($tmp);
-echo "SEO_RUNTIME_GATE_OK controlledPaths=8 turkey=1 egypt=1 maldives=1 searchProtected=1 hotelTours=0 disabledSafe=1\n";
+echo "SEO_RUNTIME_GATE_OK controlledPaths=8 turkey=1 egypt=1 maldives=1 searchIndexable=1 hotelTours=0 disabledSafe=1\n";
