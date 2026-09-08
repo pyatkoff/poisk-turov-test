@@ -283,6 +283,27 @@ class Search3ProductionPresentationTest(unittest.TestCase):
             self.assertIn(contract, legacy)
             self.assertIn(contract, current)
 
+    def test_anytour_brand_is_a_legacy_only_presentation_layer(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/anytour-brand.css').read_text()
+        current = ''.join((ROOT / 'src/search3/styles' / name).read_text() for name in [
+            'base.css', 'entry-v1.css', 'results-layout.css', 'results-cards-v2.css',
+            'tour-detail.css', 'lead-state.css'
+        ])
+        self.assertIn("'anytour-brand.css'", manifest.split('$excluded =', 1)[0])
+        self.assertIn("'anytour-brand.css'", scoped)
+        self.assertNotIn('var(--anytour-', current)
+        for legacy_contract, current_contract in [
+            ('.search-card', '#tourSearch'),
+            ('.results-tools', '.results-tools'),
+            ('.hotel-card', '.hotel-card'),
+            ('.selected-tour', '#selectedTour'),
+            ('.lead-form', '.lead-form'),
+        ]:
+            self.assertIn(legacy_contract, legacy)
+            self.assertIn(current_contract, current)
+
     def test_tablet_legacy_extras_are_not_a_search3_owner(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
