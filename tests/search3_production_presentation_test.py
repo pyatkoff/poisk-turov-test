@@ -223,6 +223,20 @@ class Search3ProductionPresentationTest(unittest.TestCase):
         self.assertIn('.at-global-header{', current_styles)
         self.assertNotIn('.at-global-header', legacy_styles)
 
+    def test_legacy_selected_description_is_not_a_search3_owner(self):
+        manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
+        scoped = manifest.split('$excluded =', 1)[1]
+        legacy = (ROOT / 'v2/selected-tour-description-v1.js').read_text()
+        current = (ROOT / 'src/search3/behavior/selected-flow-v2.js').read_text()
+        self.assertIn("'selected-tour-description-v1.js'", scoped)
+        self.assertIn('function ensureDescriptionDisclosure()', current)
+        self.assertIn('function ensureFactsDisclosure()', current)
+        self.assertIn("setText(selected.querySelector('.selected-head .eyebrow'), 'ВАШ ТУР')", current)
+        self.assertIn('window.V2SelectedTourDescription=', legacy)
+        self.assertNotIn('ensureApprovedStyles', current)
+        self.assertNotIn('selected-tour-progress', current)
+        self.assertNotIn('selected-choice-summary-item', current)
+
     def test_small_legacy_layout_guards_are_not_search3_owners(self):
         manifest = (ROOT / 'v2/bundle-manifest-v1.php').read_text()
         scoped = manifest.split('$excluded =', 1)[1]
