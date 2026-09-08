@@ -47,9 +47,10 @@ async function inspect(browser, width, previous) {
     // Observe the same completed catalogs in both versions: screenshot duration
     // must not race aborted departure/country fallback or deferred meal loading.
     await page.waitForFunction(() => document.getElementById('tourSearch').dataset.catalogSource === 'anytour-departures');
-    await page.locator('#tourSearch details.extras').evaluate(node => { node.open = true; });
-    await page.waitForFunction(() => document.querySelector('[name=food]').value === 'AI');
-    await page.locator('#tourSearch details.extras').evaluate(node => { node.open = false; });
+    await page.locator('#tourSearch details.extras').evaluate(node => new Promise(resolve => { node.addEventListener('toggle', resolve, {once:true}); node.open = true; }));
+    await page.locator('[name=food]').focus();
+    await page.waitForFunction(() => { const meal=document.querySelector('[name=food]'); return meal.value === 'AI' && [...meal.options].some(option => option.value === 'BB'); });
+    await page.locator('#tourSearch details.extras').evaluate(node => new Promise(resolve => { node.addEventListener('toggle', resolve, {once:true}); node.open = false; }));
     await page.waitForTimeout(100); // Drain native toggle event before lifecycle snapshots.
     const initial = await state();
     if (!previous) {
