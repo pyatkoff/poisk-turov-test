@@ -55,6 +55,26 @@ class PriceEvidenceQueueTest(unittest.TestCase):
         self.assertEqual(result["batches"][0]["hotel_ids"], [1])
         self.assertNotIn("accepted", result)
 
+    def test_excludes_completed_ids_without_resetting_queue(self):
+        rows = [self.row(1), self.row(2), self.row(3)]
+        catalog = {"matches": [{"external_id": value} for value in (1, 2, 3)]}
+        result = queue.build_queue(catalog, {"rows": rows}, completed={1, 3},
+                                   generated_at="fixed")
+        self.assertEqual(result["counts"]["already_checked"], 2)
+        self.assertEqual(result["counts"]["eligible"], 1)
+        self.assertEqual(result["batches"][0]["hotel_ids"], [2])
+
+    def test_rejects_invalid_checkpoint_instead_of_starting_over(self):
+        with self.assertRaises(ValueError):
+            queue.completed_ids({"schema_version": 1, "rows": []})
+        with self.assertRaises(ValueError):
+            queue.completed_ids({
+                "schema_version": 1,
+                "mode": "price_evidence_checkpoint",
+                "decision_policy": "diagnostic_only",
+                "rows": [{"external_id": 7}, {"external_id": 7}],
+            })
+
     def test_rejects_oversized_configured_batch(self):
         with self.assertRaises(ValueError):
             queue.build_queue({"matches": []}, {"rows": []}, batch_size=31)
