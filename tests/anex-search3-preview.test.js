@@ -458,8 +458,9 @@ test('one mapped card retains TV controls and groups both sources inside its dis
   assert.equal(box.hidden, true);
   assert.equal(box.querySelector('.anex-search3-offers').tagName, 'SECTION');
   assert.match(box.textContent, /через Tourvisor.*ANEX API/);
-  assert.match(label.textContent, /Через Tourvisor/);
-  assert.equal(count.textContent, '3 предложений · 2 источника');
+  assert.match(best.querySelector('.anex-search3-tv-price-label').textContent, /Через Tourvisor/);
+  assert.equal(label.textContent, 'За весь тур');
+  assert.equal(count.textContent, 'Предложений: 3 ');
   assert.deepEqual(items, before, 'source results remain untouched');
   box.hidden = false;
   page.sort.dispatchEvent({ type: 'change' });

@@ -75,6 +75,7 @@
   const style = node('style');
   style.textContent = 'body.search3-candidate #anexSearch3Results.anex-search3-panel{display:block!important;grid-column:1/-1;min-width:0}.anex-search3-panel{margin:20px 0;min-width:0}.anex-search3-panel h2{font:inherit;font-weight:700;font-size:20px;margin:0 0 12px}.anex-search3-status{color:#566176;font-size:14px;line-height:1.5}.anex-search3-hotel{border:1px solid #dbe2ed;border-radius:16px;background:#fff;padding:16px;margin:12px 0;overflow-wrap:anywhere}.anex-search3-hotel h3{font:inherit;font-size:18px;font-weight:700;margin:0 0 6px}.anex-search3-place{color:#566176;font-size:14px;margin:0 0 12px}.anex-search3-offers{margin:12px 16px;border-top:1px solid #dbe2ed;padding-top:12px;min-width:0;overflow-wrap:anywhere}.anex-search3-hotel .anex-search3-offers{margin:0}.anex-search3-offers summary{cursor:pointer;min-height:44px;display:list-item;align-content:center;color:#2743cb;font-weight:700;line-height:1.5;padding:8px 0}.anex-search3-offer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 20px;padding:12px 0;border-top:1px solid #edf0f5;line-height:1.5;font-size:14px}.anex-search3-offer p{margin:0;flex:1 1 230px}.anex-search3-offer strong{white-space:nowrap}.anex-search3-note{color:#566176;font-size:12px;line-height:1.5;margin:8px 0}';
   document.head.appendChild(style);
+  style.textContent += '\n.anex-search3-tv-price-label{display:block!important;font-size:11px;font-weight:500;line-height:1.4;color:#566176}';
   style.textContent += '\nbody.search3-candidate #results .anex-search3-hotel{display:block!important;padding:0!important;width:100%;min-width:0;grid-column:1/-1}.anex-search3-identity{padding:18px 18px 4px}.anex-search3-identity h3{margin:0 0 6px;font-size:18px;line-height:1.3}.anex-search3-source{display:inline-flex;flex-wrap:wrap;align-items:center;gap:5px 10px;padding:7px 10px;border-radius:8px;background:#edf2ff;color:#2743cb;font-size:13px;line-height:1.4;font-weight:700;margin:8px 0;max-width:100%;overflow-wrap:anywhere}.anex-search3-source strong{white-space:nowrap}.anex-search3-offers h4{margin:0 0 8px;font-size:15px;color:#2743cb}.anex-search3-tv-source{margin:12px 16px 0;font-size:14px;color:#566176}.anex-search3-hotel .anex-search3-offers{margin:8px 18px 12px}.anex-search3-panel{padding:10px 0}.anex-search3-panel h2{font-size:16px;margin-bottom:4px}.anex-search3-panel p{margin:4px 0}.anex-search3-offer .anex-search3-source{display:block;background:none;padding:0;margin:0 0 4px;font-size:12px}.anex-search3-hotel .anex-search3-place{margin-bottom:4px}@media(max-width:600px){.anex-search3-identity{padding:14px 14px 4px}.anex-search3-hotel .anex-search3-offers{margin:6px 14px 10px}.anex-search3-offer{gap:6px}.anex-search3-offer p{flex-basis:100%}}';
   function replaceText(element, value) {
     if (!element) return;
@@ -137,11 +138,15 @@
       box.insertBefore(origin, box.firstElementChild || null);
       box.appendChild(offers(hotel, true));
       const label = card.querySelector('.hotel-best-offer');
-      if (label) replaceText(label.querySelector('small'), 'Через Tourvisor · за тур');
+      if (label) {
+        const source = node('span', 'anex-search3-tv-price-label', 'Через Tourvisor');
+        source.setAttribute('data-anex-search3-row', String(hotel.local_id));
+        label.insertBefore(source, label.firstElementChild || null);
+      }
       const copy = card.querySelector('.search3-hotel-action__copy');
       const tv = tvItems.find(item => String(item.id) === String(hotel.local_id));
       if (copy && tv && Array.isArray(tv.tours)) replaceText(copy.querySelector('strong'),
-        (tv.tours.length + hotel.tours.length) + ' предложений · 2 источника');
+        'Предложений: ' + (tv.tours.length + hotel.tours.length) + ' ');
     } else card.appendChild(offers(hotel));
   }
   function standalone(hotel) {
@@ -228,7 +233,8 @@
       document.body.classList.add('search3-has-results', 'search3-results-active');
       if (tools) tools.hidden = false;
       if (tools) replaceText(tools.querySelector('strong'), 'Найдено отелей: ' + ranked.length);
-      replaceText(document.getElementById('resultSummary'), 'Отелей: ' + ranked.length + ' · с ANEX API: ' + (added + merged));
+      replaceText(document.getElementById('resultSummary'), 'С ANEX API: ' + (added + merged));
+      replaceText(document.getElementById('search3PriceCalendarTitle'), 'Календарь цен Tourvisor');
       status.textContent = 'Отелей с ANEX API в общей выдаче: ' + (added + merged) + (ambiguous ? '. Часть предложений ожидает уточнения связи.' : '.');
     } else {
       // Restore the original source order when ANEX is hidden by changed filters.
