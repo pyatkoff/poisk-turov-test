@@ -23,7 +23,7 @@ function harness() {
     toggle(name, enabled) { if (enabled) classes.add(name); else classes.delete(name); },
     remove: name => classes.delete(name)
   } };
-  const results = { querySelector: () => null, querySelectorAll: () => [] };
+  const results = { querySelector: () => null, querySelectorAll: () => [], classList: { add() {}, remove() {} } };
   const tools = { querySelector: () => null, insertAdjacentElement(where, node) { assert.equal(where, 'afterend'); toolbar = node; stats.mounts++; } };
   const document = {
     body,

@@ -22,6 +22,35 @@
   var hotelsById = new Map();
   var mobileToolbarTimer = null;
   var frameQueued = false;
+  var stale = false;
+  var staleBanner = null;
+
+  function ensureStaleBanner() {
+    if (staleBanner && staleBanner.isConnected) return staleBanner;
+    staleBanner = document.createElement('div');
+    staleBanner.className = 'search-stale-banner';
+    staleBanner.hidden = true;
+    staleBanner.innerHTML = '<div><strong>Условия поиска изменены</strong><span>Предложения ниже найдены по предыдущим параметрам.</span></div><button type="button" class="search-stale-update">Обновить результаты</button>';
+    results.parentNode.insertBefore(staleBanner, results);
+    staleBanner.querySelector('.search-stale-update').addEventListener('click', function () {
+      if (window.V2SearchLifecycle && typeof window.V2SearchLifecycle.submit === 'function') window.V2SearchLifecycle.submit();
+    });
+    return staleBanner;
+  }
+
+  function markStale() {
+    if (!results.querySelector('.hotel-card')) return;
+    stale = true;
+    ensureStaleBanner().hidden = false;
+    results.classList.add('search-results-stale');
+    tools.hidden = true;
+  }
+
+  function clearStale() {
+    stale = false;
+    if (staleBanner) staleBanner.hidden = true;
+    results.classList.remove('search-results-stale');
+  }
 
   function restoreProductionLabels() {
     results.querySelectorAll('button[data-search3-production-label]').forEach(function (button) {
@@ -171,9 +200,14 @@
     if (topReady) updateTop(items);
     collapseAll();
     decorate(items);
+    if (stale) markStale();
   });
 
-  window.addEventListener('v2:search-reset', function () {
+  window.addEventListener('v2:search-started', clearStale);
+  window.addEventListener('v2:search-dirty', markStale);
+
+  window.addEventListener('v2:search-reset', function (event) {
+    if (!(event && event.detail && event.detail.dirty)) clearStale();
     body.classList.remove('search3-has-results', 'search3-editing-search');
     if (topReady) {
       heading.textContent = 'Предложения';

@@ -2,12 +2,22 @@
 
 /* Candidate-owned exact-head result and responsive safety layer. */
 /* Search3 candidate results/filter presentation reconstructed from frozen run 467. */
+@media(max-width:560px){
+body.search3-candidate .search-stale-banner{position:sticky;top:0;z-index:15;display:grid;grid-template-columns:minmax(0,1fr);padding:11px 12px}
+body.search3-candidate .search-stale-update{width:100%;min-height:44px}
+}
 body.search3-candidate{
+& .search-stale-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0 12px;padding:12px 14px;border:1px solid #f0d7a5;border-radius:14px;background:#fffaf0;color:#55421e}
+& .search-stale-banner strong{display:block;font-size:14px}
+& .search-stale-banner span{display:block;margin-top:2px;font-size:12px;color:#7c6840}
+& .search-stale-update{flex:0 0 auto;min-height:40px;border:0;border-radius:10px;padding:0 14px;background:#3154cf;color:#fff;font-weight:900;cursor:pointer}
+& .results.search-results-stale{opacity:.45;filter:saturate(.55);pointer-events:none;user-select:none}
 & :is(.results-search-summary[hidden],.results-tools--ds2[hidden]),&:not(.search3-has-results) .results-layout{display:none!important}
 &:not(.search3-has-results){
 & :is(.results-tools--ds2,.search3-mobile-toolbar),& #resultsSearchSummary{display:none!important}
 & #results:empty{display:none!important;min-height:0!important;margin:0!important;padding:0!important}
 }
+
 &.search3-has-results .v2-product-hero,&.search3-has-results #tourSearch{display:none!important}
 &.search3-has-results .results-search-summary{display:grid!important}
 &.search3-has-results.search3-editing-search #tourSearch{display:block!important;margin-bottom:12px!important}
