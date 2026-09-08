@@ -10,7 +10,10 @@ require_once __DIR__ . '/anex-search.php';
 final class AnyTourAnexPreviewGateway
 {
     private const SESSION_TTL = 900;
+    private const BURST_WINDOW_SECONDS = 1;
+    private const BURST_REQUEST_LIMIT = 10;
     private const WINDOW_SECONDS = 60;
+    // Keep preview traffic below the supplier's 60 requests/minute token limit.
     private const WINDOW_REQUEST_LIMIT = 20;
     private $clientFactory;
     private $resolver;
@@ -98,15 +101,27 @@ final class AnyTourAnexPreviewGateway
             || $session['request_count'] < 0) {
             $session['request_count'] = 0;
         }
+        if (!isset($session['burst_started_at']) || !is_int($session['burst_started_at'])
+            || $session['burst_started_at'] > $now
+            || $session['burst_started_at'] + self::BURST_WINDOW_SECONDS <= $now) {
+            $session['burst_started_at'] = $now;
+            $session['burst_request_count'] = 0;
+        }
+        if (!isset($session['burst_request_count']) || !is_int($session['burst_request_count'])
+            || $session['burst_request_count'] < 0) {
+            $session['burst_request_count'] = 0;
+        }
         $session['expires_at'] = $now + self::SESSION_TTL;
     }
 
     private function consumeRequest(array &$session): void
     {
-        if ($session['request_count'] >= self::WINDOW_REQUEST_LIMIT) {
+        if ($session['request_count'] >= self::WINDOW_REQUEST_LIMIT
+            || $session['burst_request_count'] >= self::BURST_REQUEST_LIMIT) {
             throw new RuntimeException('ANEX_RATE_LIMIT');
         }
         ++$session['request_count'];
+        ++$session['burst_request_count'];
     }
 
     private static function exactKeys(array $value, array $expected): bool
