@@ -10,7 +10,13 @@ import tempfile
 
 MAX_HOTELS = 30
 MAX_ID = 999_999_999
-STATUSES = {"offer_seen", "no_offer"}
+FAILURE_STATUSES = {
+    "http_error", "network_error", "tls_error", "timeout", "response_too_large",
+    "invalid_response", "supplier_error", "no_departures", "no_destinations",
+    "no_dates", "no_currency", "no_nights", "no_prices", "request_limit",
+    "ssh_failed", "ssh_timeout", "unexpected_probe_failure",
+}
+STATUSES = {"offer_seen", "no_offer", "probe_unavailable"}
 
 
 def utc_now():
@@ -59,6 +65,9 @@ def load_checkpoint(path):
         if (not isinstance(row, dict) or not valid_id(row.get("external_id"))
                 or row.get("status") not in STATUSES or row["external_id"] in seen):
             raise ValueError("invalid price evidence checkpoint row")
+        if (row["status"] == "probe_unavailable"
+                and row.get("reason") not in FAILURE_STATUSES):
+            raise ValueError("invalid price evidence failure reason")
         seen.add(row["external_id"])
     return value
 
@@ -104,6 +113,69 @@ def validate_report(report):
     return requested, returned_set, destination, evidence_by_id
 
 
+def validate_failure(report, queue):
+    if (not isinstance(report, dict) or report.get("mode") != "price_evidence"
+            or report.get("ok") is not False or not isinstance(report.get("checks"), list)):
+        raise ValueError("invalid failed price evidence report")
+    reasons = [item.get("status") for item in report["checks"]
+               if isinstance(item, dict) and item.get("status") != "ok"]
+    if not reasons or reasons[-1] not in FAILURE_STATUSES:
+        raise ValueError("invalid failed price evidence status")
+    if (not isinstance(queue, dict) or queue.get("schema_version") != 1
+            or queue.get("mode") != "price_evidence_queue"
+            or queue.get("decision_policy") != "diagnostic_only"
+            or not isinstance(queue.get("batches"), list) or not queue["batches"]):
+        raise ValueError("invalid price evidence queue")
+    batch = queue["batches"][0]
+    if not isinstance(batch, dict):
+        raise ValueError("invalid price evidence batch")
+    requested = unique_ids(batch.get("hotel_ids"), "queued hotel ids")
+    destination = bounded_text(batch.get("destination"))
+    if not requested or not destination:
+        raise ValueError("invalid price evidence batch")
+    return requested, destination, reasons[-1]
+
+
+def merge_failure_checkpoint(checkpoint, report, queue, checked_at=None):
+    requested, destination, reason = validate_failure(report, queue)
+    checked_at = checked_at or utc_now()
+    previous = {row["external_id"]: row for row in checkpoint["rows"]}
+    new_ids = sum(identifier not in previous for identifier in requested)
+    for identifier in requested:
+        old = previous.get(identifier, {})
+        previous[identifier] = {
+            "external_id": identifier,
+            "destination": destination,
+            "status": "probe_unavailable",
+            "reason": reason,
+            "first_checked_at": old.get("first_checked_at", checked_at),
+            "last_checked_at": checked_at,
+        }
+    rows = [previous[key] for key in sorted(previous)]
+    status_counts = {status: sum(row["status"] == status for row in rows)
+                     for status in sorted(STATUSES)}
+    return {
+        "schema_version": 1,
+        "mode": "price_evidence_checkpoint",
+        "decision_policy": "diagnostic_only",
+        "updated_at": checked_at,
+        "counts": {
+            "completed_ids": len(rows),
+            "checked_ids": status_counts["offer_seen"] + status_counts["no_offer"],
+            "deferred_ids": status_counts["probe_unavailable"],
+            "new_ids": new_ids,
+            "repeated_ids": len(requested) - new_ids,
+            **status_counts,
+        },
+        "last_batch": {
+            "destination": destination,
+            "requested_ids": len(requested),
+            "probe_status": reason,
+        },
+        "rows": rows,
+    }
+
+
 def merge_checkpoint(checkpoint, report, checked_at=None):
     requested, returned, destination, evidence = validate_report(report)
     checked_at = checked_at or utc_now()
@@ -129,7 +201,9 @@ def merge_checkpoint(checkpoint, report, checked_at=None):
         "decision_policy": "diagnostic_only",
         "updated_at": checked_at,
         "counts": {
-            "checked_ids": len(rows),
+            "completed_ids": len(rows),
+            "checked_ids": status_counts["offer_seen"] + status_counts["no_offer"],
+            "deferred_ids": status_counts["probe_unavailable"],
             "new_ids": new_ids,
             "repeated_ids": len(requested) - new_ids,
             **status_counts,
@@ -167,10 +241,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--report", required=True)
+    parser.add_argument("--queue")
     args = parser.parse_args()
     checkpoint = load_checkpoint(args.checkpoint)
     report = json.loads(Path(args.report).read_text(encoding="utf-8"))
-    result = merge_checkpoint(checkpoint, report)
+    if report.get("ok") is True:
+        result = merge_checkpoint(checkpoint, report)
+    else:
+        if not args.queue:
+            raise ValueError("failed report requires queue")
+        queue = json.loads(Path(args.queue).read_text(encoding="utf-8"))
+        result = merge_failure_checkpoint(checkpoint, report, queue)
     write_atomic(args.checkpoint, result)
     print(json.dumps(result["counts"], ensure_ascii=False, sort_keys=True))
 
