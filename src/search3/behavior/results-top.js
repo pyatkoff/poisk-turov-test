@@ -10,5 +10,7 @@
     if(tools)tools.hidden=!value;
   }
   window.addEventListener('v2:results-rendered',function(){active(true);});
+  window.addEventListener('v2:tour-selected',function(){active(false);});
+  window.addEventListener('v2:selected-tour-closed',function(){active(results.children.length>0);});
   window.addEventListener('v2:search-reset',function(){active(false);});
 }());

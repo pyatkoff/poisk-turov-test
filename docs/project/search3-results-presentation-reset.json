@@ -5,22 +5,22 @@
   "scope": "retire the duplicate Search3 result decoration layer and retain only route-state visibility",
   "eight_assets": {
     "before_raw_bytes": 78454,
-    "after_raw_bytes": 60653,
-    "saved_raw_bytes": 17801,
+    "after_raw_bytes": 60811,
+    "saved_raw_bytes": 17643,
     "before_gzip_bytes": 22594,
-    "after_gzip_bytes": 18073,
-    "saved_gzip_bytes": 4521
+    "after_gzip_bytes": 18093,
+    "saved_gzip_bytes": 4501
   },
   "loaded_route": {
     "before_raw_bytes": 197067,
-    "after_raw_bytes": 179266,
-    "saved_raw_bytes": 17801
+    "after_raw_bytes": 179424,
+    "saved_raw_bytes": 17643
   },
   "original_route": {
     "before_raw_bytes": 665247,
-    "after_raw_bytes": 179266,
-    "saved_raw_bytes": 485981,
-    "reduction_percent": 73.05
+    "after_raw_bytes": 179424,
+    "saved_raw_bytes": 485823,
+    "reduction_percent": 73.03
   },
   "retired_modules": [
     "behavior/results-presentation.js",
