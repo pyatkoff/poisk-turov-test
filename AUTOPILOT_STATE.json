@@ -53,34 +53,34 @@
   },
   "current_stage": {
     "id": "SEARCH_RESULTS_FILTERS_AND_VISUAL_CONVERGENCE",
-    "last_material_progress": "PRs #1523/#1524/#1526/#1528/#1529/#1531 retire nine complete legacy presentation owners from Search3. Exact current invocation total is 594063 to 577381 raw (-16682), gzip 131441 to 128290 (-3151). Full legacy route and protected contracts remain; no preview or production publication.",
+    "last_material_progress": "PR #1533 retires the complete legacy search-progress-ux-v1.js/.css pair from Search3, retaining progress, empty/error recovery, continue-search and result-only retry in one current owner. This invocation is 577381 to 574518 raw (-2863), gzip 128290 to 127657 (-633). Full legacy route and protected contracts remain; no preview or production publication.",
     "name": "Search3 site completion and preview acceptance before migration",
-    "next_action": "Audit the complete search-progress-ux-v1.js/.css owner against current entry/results behavior. Preserve progress, continue-search, empty/error recovery and retryResultsOnly semantics; do not retire it unless a bounded current owner passes focused lifecycle and exact browser CI with a net route saving of at least 500 raw bytes.",
+    "next_action": "Exclude the complete 6266-byte header-current-site.css owner from Search3 after focused global-header geometry proves it only targets absent legacy header classes. Keep the file in the full legacy manifest; do not touch selected-tour-layout-guard-v1.css.",
     "status": "ACTIVE",
     "substage": "SEARCH3_SITE_COMPLETION_BEFORE_MIGRATION"
   },
   "current_task": {
-    "id": "S3_LEAN_COMPLETE_RECOVERY_OWNER",
-    "title": "Retire duplicate complete-search recovery runtime",
+    "id": "S3_LEAN_PROGRESS_OWNER",
+    "title": "Retire legacy progress and recovery presentation pair",
     "status": "CHECKED_RELEASE_AHEAD_OF_PUBLISHED_PREVIEW_NOT_PRODUCTION",
     "issue": 996,
     "pr": 1334,
     "source_prs": [
-      1531
+      1533
     ],
     "branch": "release/search3-production-ready-v1",
     "implementation_shas": [
-      "db7a8789b1b267a1d03143bb2f05f8ffdbe6dcdf"
+      "a9653110264e6b47c0f4467afb14300c6a80c16d"
     ],
-    "release_sha": "ed2b4f2c35674f7242203d4e5db8db98eec112c2",
-    "artifact_run": 34175744875,
-    "artifact_id": 10037202118,
-    "artifact_digest": "sha256:463c93d6cec9c305a289f43855c60921893f0a59318ae6f20ba14d7964acfe78",
-    "checked_release_asset_bytes": 156903,
-    "checked_release_loaded_bytes": 577381,
+    "release_sha": "aad34a0590b94bf3b140097411e935e9be33116f",
+    "artifact_run": 34178849497,
+    "artifact_id": 10038202718,
+    "artifact_digest": "sha256:86cf62bcbe99f2a3619550c740f6d3e78b2dd1e19b006e96ce90a414cf76eda8",
+    "checked_release_asset_bytes": 169877,
+    "checked_release_loaded_bytes": 574518,
     "published_source_sha": "c9ba79528ebc80c6803c9d7c5be6118f087b1eb3",
     "published_preview_asset_bytes": 147378,
-    "next_action": "Audit the complete search-progress-ux-v1.js/.css owner against current entry/results behavior. Preserve progress, continue-search, empty/error recovery and retryResultsOnly semantics; do not retire it unless a bounded current owner passes focused lifecycle and exact browser CI with a net route saving of at least 500 raw bytes."
+    "next_action": "Exclude the complete 6266-byte header-current-site.css owner from Search3 after focused global-header geometry proves it only targets absent legacy header classes. Keep the file in the full legacy manifest; do not touch selected-tour-layout-guard-v1.css."
   },
   "deferred": {
     "legacy_footer_rhythm_fixture": "ZERO_GAP_REPORTED_ON ANYTOUR.ONLINE FIXTURE WHILE FOOTER_LAYOUT_ASSERTIONS PASS; INVESTIGATE SEPARATELY IF IT BECOMES RELEASE-BLOCKING",
@@ -1138,10 +1138,27 @@
       "results_geometry_digest": "sha256:3ca738534f477060b4d5a6629c0c98728df6dfd18dc9f2320acdb61099b67a26",
       "required_passed": 2,
       "preview_published": false
+    },
+    "progress_owner_retirement": {
+      "source_pr": 1533,
+      "source_sha": "a9653110264e6b47c0f4467afb14300c6a80c16d",
+      "security_run": 34178713799,
+      "artifact_runs": [
+        34178713803,
+        34178849497
+      ],
+      "artifact_id": 10038202718,
+      "artifact_digest": "sha256:86cf62bcbe99f2a3619550c740f6d3e78b2dd1e19b006e96ce90a414cf76eda8",
+      "selected_geometry_artifact": 10038202139,
+      "selected_geometry_digest": "sha256:f29db0f523ce4379982205861cb1944b5c7c789753e67cc38fa7a9970042452b",
+      "results_geometry_artifact": 10038202445,
+      "results_geometry_digest": "sha256:a9ab05fde18a7702063793e1c6083b437523ae227ec4d38e9c3471a555c43dad",
+      "required_passed": 2,
+      "preview_published": false
     }
   },
-  "last_verified_commit": "ed2b4f2c35674f7242203d4e5db8db98eec112c2",
-  "last_verified_commit_scope": "Checked Search3 release after #1531; duplicate complete-search recovery runtime excluded while the identical accessible result-only retry remains in search-progress-ux-v1.js. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
+  "last_verified_commit": "aad34a0590b94bf3b140097411e935e9be33116f",
+  "last_verified_commit_scope": "Checked Search3 release after #1533; legacy progress JS/CSS excluded while one current owner retains all 13 lifecycle/recovery states and guarded result-only retry. Published preview remains c9ba7952; main observed at 47d6ccd0 and was not changed.",
   "local_results_filtering": {
     "generic_client_pagination": "DO_NOT_INTRODUCE",
     "loaded_hotel_target": 100,
@@ -8241,6 +8258,29 @@
     "full_legacy_manifest_unchanged": true,
     "preview_published": false,
     "audit": "docs/project/search3-lean-complete-recovery-owner.json",
+    "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
+  },
+  "latest_progress_owner_retirement": {
+    "source_pr": 1533,
+    "source_sha": "a9653110264e6b47c0f4467afb14300c6a80c16d",
+    "checked_code_release_sha": "aad34a0590b94bf3b140097411e935e9be33116f",
+    "retired_search3_owners": [
+      "search-progress-ux-v1.js",
+      "search-progress-ux-v1.css"
+    ],
+    "legacy_owner_bytes_removed": 15837,
+    "current_owner_bytes_added": 12974,
+    "raw_before": 577381,
+    "raw_after": 574518,
+    "raw_saved": 2863,
+    "gzip_before": 128290,
+    "gzip_after": 127657,
+    "gzip_saved": 633,
+    "eight_assets_before": 156903,
+    "eight_assets_after": 169877,
+    "full_legacy_manifest_unchanged": true,
+    "preview_published": false,
+    "audit": "docs/project/search3-lean-progress-owner.json",
     "main_sha_observed": "47d6ccd0c324aceb4d6090fe53ffac03b9c41816"
   }
 }

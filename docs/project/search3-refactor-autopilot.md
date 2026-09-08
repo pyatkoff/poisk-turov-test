@@ -2163,3 +2163,17 @@ Security `34175615768` and exact artifacts `34175615653` / `34175744875` passed.
 Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, physical Safari/safe-area and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-complete-recovery-owner.json`.
 
 Next: audit the complete `search-progress-ux-v1.js/.css` owner against current entry/results behavior. Preserve progress, continue-search, empty/error recovery and `retryResultsOnly` semantics; retire it only after focused lifecycle and exact browser CI with at least 500 raw bytes net saving.
+
+## S3_LEAN_PROGRESS_OWNER — checked release, 2026-09-08
+
+Source PR #1533 / `a9653110264e6b47c0f4467afb14300c6a80c16d`; checked code release `aad34a0590b94bf3b140097411e935e9be33116f`. Search3 no longer loads the complete 12769-byte `search-progress-ux-v1.js` and 3068-byte `search-progress-ux-v1.css` owners. Both unchanged files and the compatibility global remain on the full legacy route.
+
+One current Search3 owner retains all 13 progress/continue lifecycle states, accessible empty/error presentation, non-submitting date/night relaxation, edit/filter actions, normal retry and guarded result-only retry. Focused differential coverage verifies recovery success/failure and stale-generation rejection. The initial mobile loading state remains sticky through a scoped rule; 44px actions remain at widths through 700px. The excluded mobile-summary safe-area selector and redundant post-results override are retired.
+
+Loaded raw is **577381 → 574518 bytes (−2863)**: shared CSS 195452→192384, shared JavaScript 225026→212257 and eight Search3 assets 156903→169877, including all retained current-owner code. Exact emitted endpoints plus eight independent files gzip is **128290 → 127657 (−633)**. This is the complete reduction for this invocation.
+
+Security `34178713799` and exact artifacts `34178713803` / `34178849497` passed. Reusable final artifact `10038202718`, digest `sha256:86cf62bcbe99f2a3619550c740f6d3e78b2dd1e19b006e96ce90a414cf76eda8`; selected/results evidence `10038202139` / `10038202445`. Exact Chromium retained 12 selected, 30 entry and 12 result states. No supplier request or lead was sent.
+
+Preview was not published and remains exact source `c9ba79528ebc80c6803c9d7c5be6118f087b1eb3`; main remains `47d6ccd0c324aceb4d6090fe53ffac03b9c41816`. No production deployment occurred. Live current-source interaction, manual focused screenshot review, physical Safari/safe-area, the pre-existing browser-default result-only retry styling and owner visual acceptance remain deferred. Audit: `docs/project/search3-lean-progress-owner.json`.
+
+Next: exclude the complete 6266-byte `header-current-site.css` owner from Search3 after focused global-header geometry proves it only targets absent legacy header classes. Keep the file in the full legacy manifest and do not touch the live `selected-tour-layout-guard-v1.css` owner.
