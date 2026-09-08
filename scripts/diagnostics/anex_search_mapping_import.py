@@ -110,12 +110,18 @@ def write_protocol(path, meta, rows):
                                 "rows_digest": meta["rows_digest"]}) + b"\n")
 
 
-def ssh_import(mapping_path, gap_checkpoint=None):
-    if gap_checkpoint is None:
+def ssh_import(mapping_path, gap_checkpoint=None, observed_checkpoint=None):
+    if gap_checkpoint is not None and observed_checkpoint is not None:
+        raise ValueError('choose one independent checkpoint')
+    if gap_checkpoint is None and observed_checkpoint is None:
         meta, rows = load_mapping(mapping_path)
     else:
-        from anex_search3_gap_queue import approved_delta
-        document = approved_delta(gap_checkpoint)
+        if observed_checkpoint is not None:
+            from anex_search3_observed_queue import approved_delta
+            document = approved_delta(observed_checkpoint)
+        else:
+            from anex_search3_gap_queue import approved_delta
+            document = approved_delta(gap_checkpoint)
         rows = [sanitize_row(r) for r in document['rows']]
         Path(mapping_path).write_bytes(canonical(document) + b'\n')
         if not rows:
@@ -160,11 +166,12 @@ def main():
     parser.add_argument("--mapping", type=Path)
     parser.add_argument("--report", type=Path)
     parser.add_argument("--gap-checkpoint", type=Path)
+    parser.add_argument("--observed-checkpoint", type=Path)
     args = parser.parse_args()
     try:
         artifact_dir = Path(os.environ.get("ANEX_CATALOG_ARTIFACT_DIR", "."))
         mapping = args.mapping or artifact_dir / "anex-search-mappings.json"
-        report = ssh_import(mapping, args.gap_checkpoint)
+        report = ssh_import(mapping, args.gap_checkpoint, args.observed_checkpoint)
         (args.report or mapping.with_name("anex-search-mapping-import.json")).write_text(
             json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(json.dumps(report, sort_keys=True))

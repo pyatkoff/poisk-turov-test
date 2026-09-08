@@ -132,8 +132,17 @@ def matching_source():
     return '\n\n'.join(pieces)
 
 
-def remote_batch(selected, catalog_rows, country_id):
+def remote_batch(selected, catalog_rows, country_id, observations=False):
     """Executed on the existing AnyTour server; never reads secrets into Python."""
+    if observations:
+        if selected:
+            raise ValueError('observation reads cannot include supplier requests')
+        result = subprocess.run(['php', '-d', 'display_errors=0', '-d', 'log_errors=0', '-r', DETAILS_PHP],
+            input='{"mode":"observations"}', text=True, capture_output=True, timeout=30)
+        value = json.loads(result.stdout)
+        if result.returncode or value.get('status') != 'ok' or value.get('truncated') is not False:
+            raise ValueError('observation snapshot unavailable')
+        return value
     def snapshot():
         result = subprocess.run(['php', '-d', 'display_errors=0', '-d', 'log_errors=0', '-r', DETAILS_PHP],
             input='{"mode":"snapshot"}', text=True, capture_output=True, timeout=30)
@@ -193,7 +202,8 @@ def remote_batch(selected, catalog_rows, country_id):
                 row.update(status='review', reason='supplier_identity_unverified')
                 continue
             local = read_catalog([{'key': identifier, 'names': [api['name'], xml['name'], xml['alternate_name']],
-                'country_id': country_id, 'latitude': api['latitude'], 'longitude': api['longitude']}], candidate_limit=256)
+                'country_id': country_id[str(identifier)] if isinstance(country_id, dict) else country_id,
+                'latitude': api['latitude'], 'longitude': api['longitude']}], candidate_limit=256)
             if local['status'] != 'ok':
                 row['reason'] = 'catalog_unavailable'
                 continue
@@ -219,7 +229,7 @@ def remote_batch(selected, catalog_rows, country_id):
     return {'rows': rows, 'preservation': after}
 
 
-def ssh_batch(selected, catalog_rows, country_id):
+def ssh_batch(selected, catalog_rows, country_id, observations=False):
     names = ('ANYTOOUR_DEPLOY_SSH_KEY', 'ANYTOOUR_DEPLOY_HOST', 'ANYTOOUR_DEPLOY_USER')
     if any(not os.environ.get(name, '').strip() for name in names):
         raise ValueError('missing SSH configuration')
@@ -244,7 +254,7 @@ def ssh_batch(selected, catalog_rows, country_id):
             '-o', 'LogLevel=ERROR', '-l', user, host,
             'cd "$HOME/www/anytoour.ru" && python3 -c ' + shlex.quote(source)]
         result = subprocess.run(command, input=json.dumps({'selected': selected, 'catalog_rows': catalog_rows,
-            'country_id': country_id}), text=True, capture_output=True, timeout=310,
+            'country_id': country_id, 'observations': observations}), text=True, capture_output=True, timeout=310,
             env={k: v for k, v in os.environ.items() if k not in names and not k.startswith('ANEX_')})
     if result.returncode or len(result.stdout) > 4000000:
         raise ValueError('remote_batch_exit_' + str(result.returncode))
@@ -272,6 +282,11 @@ def approved_delta(checkpoint_path):
     queue = load_queue()
     raw = Path(checkpoint_path).read_bytes()
     cp = validate_checkpoint(json.loads(raw), queue)
+    return verified_delta(directory, cp, raw, queue, 'initial_search_gap:')
+
+
+def verified_delta(directory, cp, raw, queue, reason_prefix):
+    """Shared strict validator; callers must validate their independent checkpoint first."""
     if cp['in_flight']:
         raise ValueError('unfinished batch cannot be accepted')
     sources = {}
@@ -313,7 +328,7 @@ def approved_delta(checkpoint_path):
         if status != 'strong_candidate' or reason != row['reason']:
             raise ValueError('gap does not meet unchanged strong criteria')
         rows.append({'anex_hotel_id': identifier, 'catalog_hotel_id': candidates[0]['id'],
-            'match_class': status, 'reason': 'initial_search_gap:' + reason, 'source_row_digest': digest(row)})
+            'match_class': status, 'reason': reason_prefix + reason, 'source_row_digest': digest(row)})
     sources['gap_sha256'] = hashlib.sha256(raw).hexdigest()
     rows.sort(key=lambda r: r['anex_hotel_id'])
     return {'schema_version': 1, 'scope': 'preview', 'approval_policy': 'owner_exact_and_strong_20260908',

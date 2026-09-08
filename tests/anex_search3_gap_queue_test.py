@@ -141,6 +141,12 @@ class GapQueueTests(unittest.TestCase):
         query = json.loads(run.call_args_list[-2].kwargs['input'])['queries'][0]
         self.assertEqual(query['country_id'], 1)
         self.assertEqual(result['preservation']['staging_total'], 8362)
+        countries = {str(r['anex_hotel_id']): 4 for r in selected}
+        with patch.object(ns['subprocess'], 'run', side_effect=responses) as run:
+            result = ns['remote_batch'](selected, originals, countries)
+        query = json.loads(run.call_args_list[-2].kwargs['input'])['queries'][0]
+        self.assertEqual(query['country_id'], 4)
+        self.assertEqual(result['rows'][-1]['status'], 'strong_candidate')
 
     def test_failure_diagnostic_excludes_arbitrary_error_text(self):
         secret = 'test-secret-must-never-be-logged'

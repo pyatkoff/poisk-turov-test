@@ -44,8 +44,8 @@ on:
     inputs:
       operation:
         type: choice
-        options: [gaps, preview]
-        default: gaps
+        options: [observed, gaps, preview]
+        default: observed
         description: Focused hotel queue or isolated preview verification
 
 permissions:
@@ -74,11 +74,11 @@ jobs:
           import os, subprocess
           requested = os.environ.get('REQUESTED_OPERATION', '')
           if os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch':
-              mode = requested or 'gaps'
+              mode = requested or 'observed'
           else:
               paths = subprocess.check_output(['git', 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD'], text=True).splitlines()
-              mode = 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'gaps'
-          if mode not in ('gaps', 'preview'): raise SystemExit('Invalid ANEX operation')
+              mode = 'preview' if any(p.startswith(('app/integrations/', 'v2/')) or p == 'scripts/diagnostics/anex_search3_preview_deploy.py' for p in paths) else 'observed'
+          if mode not in ('observed', 'gaps', 'preview'): raise SystemExit('Invalid ANEX operation')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out: out.write('mode=' + mode + '\n')
           print('ANEX operation:', mode)
           PYTHON
@@ -101,6 +101,7 @@ jobs:
           python3 -B tests/anex_search_mapping_import_test.py
           python3 -B tests/anex_search3_preview_deploy_test.py
           python3 -B tests/anex_search3_gap_queue_test.py
+          python3 -B tests/anex_search3_observed_queue_test.py
           node --check v2/anex-search3-preview-v1.js
           node --test tests/anex-search3-preview.test.js
           php -l scripts/diagnostics/anex_catalog_reader.php
@@ -150,8 +151,16 @@ jobs:
         env:
           ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
         run: python3 -B scripts/diagnostics/anex_search3_gap_queue.py --prepare
+      - name: Reserve new observed hotels and preserve earlier results
+        if: steps.operation.outputs.mode == 'observed'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_observed_queue.py --prepare
       - name: Preserve reservation before any hotel requests
-        if: steps.operation.outputs.mode == 'gaps'
+        if: steps.operation.outputs.mode == 'gaps' || steps.operation.outputs.mode == 'observed'
         uses: actions/upload-artifact@v4
         with:
           name: anex-hotel-catalog-match-${{ github.run_id }}-${{ github.run_attempt }}-reserved
@@ -178,6 +187,27 @@ jobs:
             --gap-checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-initial-search-checkpoint.json" \
             --mapping "$ANEX_CATALOG_ARTIFACT_DIR/anex-initial-search-mappings.json" \
             --report "$ANEX_CATALOG_ARTIFACT_DIR/anex-initial-search-mapping-import.json"
+      - name: Match one batch of at most 30 newly observed hotels
+        if: steps.operation.outputs.mode == 'observed'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: python3 -B scripts/diagnostics/anex_search3_observed_queue.py
+      - name: Append verified observed links and measure saved search coverage
+        if: steps.operation.outputs.mode == 'observed'
+        env:
+          ANYTOOUR_DEPLOY_SSH_KEY: ${{ secrets.ANYTOOUR_DEPLOY_SSH_KEY }}
+          ANYTOOUR_DEPLOY_HOST: ${{ secrets.ANYTOOUR_DEPLOY_HOST }}
+          ANYTOOUR_DEPLOY_USER: ${{ secrets.ANYTOOUR_DEPLOY_USER }}
+          ANEX_CATALOG_ARTIFACT_DIR: ${{ runner.temp }}/anex-catalog
+        run: |
+          python3 -B scripts/diagnostics/anex_search_mapping_import.py \
+            --observed-checkpoint "$ANEX_CATALOG_ARTIFACT_DIR/anex-observed-hotel-checkpoint.json" \
+            --mapping "$ANEX_CATALOG_ARTIFACT_DIR/anex-observed-hotel-mappings.json" \
+            --report "$ANEX_CATALOG_ARTIFACT_DIR/anex-observed-hotel-mapping-import.json"
+          python3 -B scripts/diagnostics/anex_search3_observed_queue.py --finalize
       - name: Publish isolated ANEX Search3 preview
         if: steps.operation.outputs.mode == 'preview'
         env:

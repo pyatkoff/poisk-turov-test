@@ -11,7 +11,8 @@ try {
     $input = json_decode((string)file_get_contents('php://stdin', false, null, 0, 1025), true);
     $id = $input['id'] ?? null;
     $snapshot = ($input['mode'] ?? null) === 'snapshot';
-    if (!$snapshot && (!is_int($id) || $id < 1 || $id > 2147483647)) throw new RuntimeException();
+    $observations = ($input['mode'] ?? null) === 'observations';
+    if (!$snapshot && !$observations && (!is_int($id) || $id < 1 || $id > 2147483647)) throw new RuntimeException();
     $preview = $root . '/_preview/search3-anex-candidate';
     $phase = 'configuration';
     require (string)getenv('HOME') . '/.anytoour-anex/search3-preview.php';
@@ -20,6 +21,27 @@ try {
     $phase = 'database';
     $pdo = v2_data_db();
     $pdo->exec('START TRANSACTION READ ONLY');
+    if ($observations) {
+        $phase = 'observations';
+        require_once $preview . '/app/integrations/anex-search-mapping-registry.php';
+        require_once $preview . '/app/integrations/anex-search-observations.php';
+        $registry = AnyTourAnexSearchMappingRegistry::fromPdo($pdo);
+        $manual = [];
+        foreach ($pdo->query('SELECT anex_hotel_id FROM anex_hotel_decisions')->fetchAll(PDO::FETCH_COLUMN) as $manualId) $manual[(int)$manualId] = true;
+        $rows = $pdo->query('SELECT o.*,c.name AS country_name FROM anex_search_hotel_observations o'
+            . ' LEFT JOIN catalog_countries c ON c.id=o.country_id'
+            . ' ORDER BY o.search_count DESC,o.last_seen_utc DESC,o.anex_hotel_id LIMIT 50001')->fetchAll(PDO::FETCH_ASSOC);
+        if (count($rows) > 50000) throw new RuntimeException();
+        // Export the full bounded set so old completed IDs cannot starve lower-priority new arrivals.
+        $result = AnyTourAnexSearchObservations::classify($rows, $registry->previewResolver(), $manual, 50000);
+        $result['status'] = 'ok';
+        $result['effective_mapped_count'] = $registry->count();
+        $result['generated_at_utc'] = gmdate('c');
+        $pdo->rollBack();
+        while (ob_get_level() > 0) ob_end_clean();
+        echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE), "\n";
+        exit;
+    }
     if ($snapshot) {
         $phase = 'snapshot';
         $result = ['status' => 'ok', 'staging_total' => (int)$pdo->query('SELECT COUNT(*) FROM anex_hotels')->fetchColumn()];
